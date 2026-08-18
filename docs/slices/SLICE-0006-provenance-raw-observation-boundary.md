@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0006  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 2.5 — provenance/runtime foundation before external acquisition  
 **Depends on:** SLICE-0005 accepted / DONE  
 **Blocks:** SLICE-0007

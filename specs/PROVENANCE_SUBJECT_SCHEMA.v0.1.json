@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/provenance-subject/0.1",
+  "title": "HullQ ProvenanceSubject",
+  "description": "Stable typed identity address for any first-class HullQ provenance subject. Shared single source of truth for subject kind vocabulary across FieldEvidence and FieldResolution contracts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "id"
+  ],
+  "properties": {
+    "kind": {
+      "enum": [
+        "boat_model",
+        "boat_design",
+        "named_variant",
+        "design_option",
+        "brand",
+        "organization",
+        "identity_alias",
+        "brand_model_relationship",
+        "organization_design_relationship"
+      ]
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

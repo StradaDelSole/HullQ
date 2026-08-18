@@ -1,0 +1,18 @@
+{
+  "schema_version": "0.2",
+  "evidence_id": "EVID_ALIAS_001",
+  "subject": {"kind": "identity_alias", "id": "ALIAS_TEST_001"},
+  "field_pointer": "/name",
+  "source_id": "SRC_TEST_002",
+  "source_locator": {"page": null, "section": null, "anchor": null, "table": null, "figure": null, "record_key": null},
+  "observation": {
+    "raw": {"kind": "text_fragment", "value": "Alpha Y.", "unit": null, "excerpt": "commonly referred to as Alpha Y."}
+  },
+  "evidence_type": "narrative_text",
+  "producer": {"kind": "human", "identifier": "researcher-01", "version": null, "model": null, "prompt_or_rule_version": null},
+  "research_context": {"research_job_id": null, "activity_id": null},
+  "observed_at": "2026-08-18T11:00:00Z",
+  "confidence": "medium",
+  "supersedes_evidence_id": null,
+  "notes": "Alias addressed by stable alias ID, not parent-array index"
+}

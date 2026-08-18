@@ -1,0 +1,17 @@
+{
+  "schema_version": "0.2",
+  "resolution_id": "RES_ODR_001",
+  "subject": {"kind": "organization_design_relationship", "id": "ODR_TEST_001"},
+  "field_pointer": "/role",
+  "state": "resolved",
+  "canonical_value_snapshot": "builder",
+  "supporting_evidence_ids": ["EVID_ODR_001"],
+  "contradicting_evidence_ids": [],
+  "considered_evidence_ids": ["EVID_ODR_001"],
+  "resolution_method": "unanimous_evidence",
+  "policy_version": "prov-policy-1.0",
+  "resolver": {"kind": "human", "identifier": "researcher-01", "version": null},
+  "resolved_at": "2026-08-18T13:00:00Z",
+  "supersedes_resolution_id": null,
+  "notes": null
+}
