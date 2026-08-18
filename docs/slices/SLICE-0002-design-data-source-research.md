@@ -1,7 +1,7 @@
 # SLICE-0002 — Design Data Source Research & Seed Corpus
 
 **Type:** DESIGN_RESEARCH  
-**Status:** BACKLOG  
+**Status:** IN_PROGRESS  
 **Stage:** 1.6 / pre-domain-implementation evidence gate  
 **Depends on:** SLICE-0001  
 **Blocks:** first HullQ domain implementation slices  
