@@ -1,99 +1,92 @@
 # HullQ
 
-**Tagline:** Find boats by what they are.
+**Find boats by what they are.**
 
-HullQ is a sailboat design search engine and market finder. Users describe a boat by technical characteristics, HullQ resolves matching designs, and market adapters look for current examples for sale.
+HullQ is a technical-first sailboat discovery and market-finding project. It lets users describe the boat they want by actual design characteristics, resolves those requirements to matching sailboat designs, and ultimately connects those designs to current boats for sale.
 
-## Repository map
+This repository is developed **docs-to-code**: accepted specifications, requirements, architecture decisions, evidence, fixtures and tests define what implementation is allowed to do.
 
-- `PROJECT_CONTEXT.md` — concise canonical project overview.
-- `docs/EXECUTION_PLAN.md` — canonical step-by-step execution order and phase gates.
-- `docs/PROJECT_STATE.md` — current stage, active blocker and next canonical action for humans/agents.
-- `docs/DOCS_TO_CODE_METHOD.md` — repository-wide docs-to-code development method.
-- `specs/REQUIREMENTS.md` — stable requirement IDs and acceptance baseline.
-- `specs/` — data contracts, taxonomies, provenance, validation and quality rules. `specs/IDENTITY_MODEL.v0.1.md` is the accepted identity model; `specs/SCHEMA_STATUS.md` records which JSON schemas are accepted, draft or historical.
-- `research/` — independent-data research workflow and queue templates.
-- `architecture/` — system boundaries, market-adapter contract and accepted ADRs under `architecture/decisions/`.
-- `docs/` — execution plan, governance, engineering standards, product/data strategy, legal working position, roadmap and the external-LLM review pack.
-- `docs/DATABASE_COVERAGE_STRATEGY.md` — canonical breadth-vs-depth strategy and sparse/unknown-data semantics.
-- `docs/PRODUCT_RETENTION_AND_MONETIZATION.md` — owner-watcher retention thesis and accepted freemium/monitoring direction.
-- `specs/PROVENANCE_MODEL.v0.1.md` — accepted OQ-004 field-provenance model with separate evidence, resolution and derivation lineage.
-- `docs/governance/REPOSITORY_AUDIT_2026-08-18.md` — latest docs-to-code consistency audit.
-- `reference/imported/` — the three uploaded source files, preserved unchanged.
-- `pyproject.toml` + `.python-version` — accepted OQ-010 Python toolchain configuration.
-- `.github/workflows/ci.yml` — cross-platform quality CI; `.github/dependabot.yml` — dependency/update visibility.
-- `docs/engineering/REPOSITORY_BOOTSTRAP.md` — current bootstrap state and the remaining real-lockfile gate.
+## Current state
 
-## Authority order
+HullQ is at the repository-bootstrap / pre-domain-implementation boundary. Core data-foundation decisions covering identity, source rights, field-level provenance, derived metrics and the Python research toolchain are accepted.
 
-For implementation work in this repository, use the following precedence:
+Before HullQ domain implementation begins, two gates remain:
 
-1. `specs/` — normative implementation-facing contracts and rules.
-2. accepted ADRs under `architecture/decisions/`.
-3. `architecture/` — component boundaries and interfaces.
-4. `research/` — operational research process.
-5. governance/engineering standards.
-6. project context / strategy / roadmap.
-7. `reference/` — historical/source material; never an invisible production-data fallback.
+1. close repository bootstrap with a real committed `uv.lock` and first green Linux/Windows CI (`SLICE-0001`);
+2. consolidate the accepted distributed contracts into one persistence-neutral canonical logical data model (`OQ-019` / `SLICE-0002`).
 
-Where a newer file explicitly says **DRAFT** or **PROPOSED**, it is not yet a production rule. `docs/governance/OPEN_QUESTIONS.md` is the canonical open-decision register; `docs/DECISIONS_REQUIRED.md` is retained only as a legacy ID map.
+The production database/search technology remains intentionally open under OQ-012 until the logical model, access patterns and benchmark evidence exist.
 
-**Current implementation gate:** OQ-010 is accepted. Repository bootstrap is in progress; Stage-2 pipeline code remains blocked until a real `uv.lock` is generated and the locked Linux/Windows CI baseline passes.
+See:
 
-## Core chain
+- `PROJECT_CONTEXT.md`
+- `CLAUDE.md`
+- `docs/PROJECT_STATE.md`
+- `docs/EXECUTION_PLAN.md`
+- `docs/slices/INDEX.md`
+- `docs/DOCS_TO_CODE_METHOD.md`
+- `specs/REQUIREMENTS.md`
+- `docs/governance/OPEN_QUESTIONS.md`
+- `architecture/decisions/`
+
+## Product principle
 
 ```text
-technical requirements
-→ matching BoatDesigns
-→ live/on-request market lookup
-→ normalize + deduplicate
-→ current boats for sale
-→ compare / save / alert
+TECHNICAL REQUIREMENTS
+        ↓
+HULLQ DESIGN UNIVERSE
+        ↓
+MATCHING DESIGNS
+        ↓
+MARKET AVAILABILITY
+        ↓
+COMPARE / SAVE / MONITOR / ALERT
 ```
 
-## Non-negotiable data rules
+HullQ is not intended to become a generic boating super-app or a two-sided listing marketplace. The current business objective is a lean, highly automated, low-maintenance niche product; larger-scale expansion may be reconsidered if actual traction justifies it.
 
-- Independent production data; the Sailboatdata scrape is reference/prototype only.
-- No production value without provenance.
-- Unknown is better than invented.
-- Conflicting authoritative evidence is not silently resolved.
-- Keel, rudder and skeg are separate dimensions.
-- Monohulls, catamarans and trimarans are first-class from day one.
-- Derived ratios are computed internally from base parameters with a versioned methodology.
-- Aim for broad SailboatData-like identity coverage because unknown-model discovery requires a large universe; prioritize enrichment depth by real-market relevance rather than chasing record count for vanity.
-- The 50–100 model set is a research benchmark corpus, not the product/launch database.
-- Sparse records are valid; unknown fields are not negative facts.
-- Identity is `BoatModel → BoatDesign generation → NamedVariant / orthogonal DesignOptions → ResolvedConfiguration`; independent option axes are not flattened into duplicated Cartesian variants.
-- Prefer high-throughput automation with exception-based human review.
+## Data strategy
 
-## Development method
+HullQ targets broad SailboatData-like design coverage early, with progressive verification depth. A 50–100-design corpus is a benchmark for the research pipeline, not the intended product database. Unknown data is never interpreted as a negative fact.
 
-HullQ is a **single-repository docs-to-code project**. Significant work follows:
+The current data-architecture rule is:
 
 ```text
-open question / evidence
-→ decision / ADR
-→ normative spec + requirement ID
-→ tests / fixtures
-→ implementation
-→ automated verification
+accepted logical/domain model first
+        ↓
+research + benchmark implementation
+        ↓
+measured access patterns / scale
+        ↓
+production database + search/index choice under OQ-012
 ```
 
-See `docs/DOCS_TO_CODE_METHOD.md`, `docs/governance/OPEN_QUESTIONS.md`, `docs/engineering/QUALITY_GATES.md` and `docs/EXECUTION_PLAN.md`.
+## AI-assisted development
 
-## Current decision work
+HullQ uses bounded implementation/research slices under `docs/slices/`.
 
-- OQ-003 identity model: accepted (`specs/IDENTITY_MODEL.v0.1.md`, ADR-0004).
-- OQ-007 source rights/licensing: accepted (`specs/SOURCE_RIGHTS_POLICY.v0.1.md`, `specs/SOURCE_SCHEMA.v0.2.json`, ADR-0005).
-- OQ-004 field-level provenance persistence: DECIDED; separate FieldEvidence / FieldResolution / DerivationRecord ledger + RFC 6901 field addressing is accepted.
-- OQ-016 subscription pricing/entitlement defaults: deferred until pre-paid-launch validation; freemium architecture is already documented.
+An implementation agent should receive a small instruction such as:
 
-## Search/distribution architecture
+```text
+Implement SLICE-0001.
+Read CLAUDE.md first and follow the assigned slice exactly.
+Do not begin the next slice automatically.
+```
 
-Search Architecture and SEO are first-class product architecture. See `architecture/SEARCH_AND_SEO_ARCHITECTURE.md` and accepted ADR-0007; OQ-018 gates the exact public search/SEO surface before frontend implementation.
+The slice itself points to controlling requirements/specs/ADRs and defines scope, acceptance criteria, stop conditions and validation.
 
-## Development baseline
+## Engineering baseline
 
-The accepted Stage-2 Python baseline is CPython 3.14 + uv. See `docs/engineering/PYTHON_TOOLCHAIN_BASELINE.v0.1.md` and ADR-0009. The repository intentionally keeps normative JSON Schema contracts separate from Python implementation models.
+- single repository
+- docs-to-code
+- bounded implementation slices
+- CPython 3.14
+- uv
+- Ruff
+- mypy strict
+- pytest + coverage + Hypothesis
+- JSON Schema Draft 2020-12
+- Linux + Windows CI
+- explicit requirements → tests → implementation traceability
 
-Bootstrap with `uv python install 3.14`, `uv lock`, and `uv sync --locked --all-groups`. A committed `uv.lock` is required before Stage-2 code is mergeable.
+See `docs/engineering/` for the engineering baseline.
