@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/identity-alias/0.1",
+  "title": "HullQ IdentityAlias v0.1",
+  "description": "An entity-scoped alias record with stable identity. Aliases are scoped to the entity they name; a Brand alias must not be stored as an Organization alias and vice versa. Alias identity must not depend on array position.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "alias_class",
+    "name"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable opaque alias ID within the entity scope."
+    },
+    "alias_class": {
+      "enum": [
+        "common_name",
+        "trade_name",
+        "abbreviation",
+        "historical_name",
+        "alternate_spelling",
+        "transliteration",
+        "source_spelling",
+        "other"
+      ],
+      "description": "Normative alias class from IDENTITY_MODEL.v0.2 Section 4."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Alias display string. Preserved byte-for-byte; normalization must not be applied here."
+    },
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Optional clarifying note about this alias."
+    }
+  }
+}

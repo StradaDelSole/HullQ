@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/organization-design-relationship/0.1",
+  "title": "HullQ Organization-BoatDesign Relationship v0.1",
+  "description": "An independently identifiable builder/manufacturer relationship between an Organization and a BoatDesign. A builder change alone must not create a new BoatDesign (ADR-0004/ADR-0011). Multiple time-bounded builders are supported.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "organization_id",
+    "boat_design_id",
+    "role"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable opaque relationship ID."
+    },
+    "organization_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Reference to the Organization entity ID."
+    },
+    "boat_design_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Reference to the BoatDesign entity ID."
+    },
+    "role": {
+      "enum": [
+        "builder",
+        "manufacturer",
+        "licensed_builder",
+        "other"
+      ],
+      "description": "Builder/manufacturer role semantics for this relationship."
+    },
+    "first_year": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1800,
+      "maximum": 2200,
+      "description": "First year this Organization built/manufactured this design. Null when unknown."
+    },
+    "last_year": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1800,
+      "maximum": 2200,
+      "description": "Last year this Organization built/manufactured this design. Null when unknown or still active."
+    },
+    "hull_number_from": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Inclusive hull/build number boundary from. Null when unknown."
+    },
+    "hull_number_to": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Inclusive hull/build number boundary to. Null when unknown."
+    },
+    "market": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Optional market/region label when relationship was region-specific."
+    },
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

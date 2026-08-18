@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/boat-model/0.2",
+  "title": "HullQ BoatModel Identity v0.2",
+  "description": "BoatModel identity contract superseding v0.1. Removes authoritative free-text manufacturer_name and brand_name fields; replaces with explicit Brand relationship records (brand_relationships). Model aliases are now entity-scoped typed IdentityAlias records rather than plain strings. All other BoatModel semantics from v0.1 are preserved.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "canonical_name",
+    "aliases",
+    "brand_relationships",
+    "first_built",
+    "last_built",
+    "boat_design_ids"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.2"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable opaque HullQ BoatModel ID, independent of display name."
+    },
+    "canonical_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Canonical model name. Must not be mutated by normalization."
+    },
+    "aliases": {
+      "type": "array",
+      "items": {
+        "$ref": "https://hullq.local/schemas/identity-alias/0.1"
+      },
+      "description": "Entity-scoped typed model name aliases. Supersedes the plain-string aliases array from v0.1."
+    },
+    "brand_relationships": {
+      "type": "array",
+      "items": {
+        "$ref": "https://hullq.local/schemas/brand-model-relationship/0.1"
+      },
+      "description": "Explicit Brand relationships. May be empty when evidence is insufficient. Supersedes free-text manufacturer_name and brand_name from v0.1."
+    },
+    "first_built": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1800,
+      "maximum": 2200
+    },
+    "last_built": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1800,
+      "maximum": 2200
+    },
+    "boat_design_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "description": "IDs of BoatDesign generations belonging to this model lineage."
+    }
+  }
+}

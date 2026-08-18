@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/brand-model-relationship/0.1",
+  "title": "HullQ Brand-BoatModel Relationship v0.1",
+  "description": "An independently identifiable relationship between a Brand and a BoatModel. Supports multiple historical associations and optional applicability boundaries. A BoatModel may have zero Brand relationships when evidence is insufficient.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "brand_id",
+    "boat_model_id"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable opaque relationship ID."
+    },
+    "brand_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Reference to the Brand entity ID."
+    },
+    "boat_model_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Reference to the BoatModel entity ID."
+    },
+    "first_year": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1800,
+      "maximum": 2200,
+      "description": "First year this Brand marketed this BoatModel. Null when unknown."
+    },
+    "last_year": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1800,
+      "maximum": 2200,
+      "description": "Last year this Brand marketed this BoatModel. Null when unknown or still active."
+    },
+    "hull_number_from": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Inclusive hull/build number boundary from. Null when unknown."
+    },
+    "hull_number_to": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Inclusive hull/build number boundary to. Null when unknown."
+    },
+    "market": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Optional market/region label when relationship was region-specific."
+    },
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}
