@@ -1,6 +1,6 @@
 # HullQ — Requirements Baseline
 
-**Version:** 0.5  
+**Version:** 0.6  
 **Status:** ACTIVE baseline; requirements blocked by unresolved decisions are explicitly marked.  
 **Normative language:** uppercase MUST/SHOULD/MAY use BCP 14 semantics.
 
@@ -93,7 +93,7 @@ Ambiguous models/generations/variants MUST NOT be collapsed without evidence.
 **Acceptance:** ambiguous identity fixtures can remain candidate-set/unresolved rather than being forced to one canonical identity.
 
 ### REQ-ID-003 — Generation/variant rule
-The canonical identity model MUST distinguish commercial `BoatModel`, technical `BoatDesign` generation, named variants and orthogonal factory `DesignOption`s according to `specs/IDENTITY_MODEL.v0.1.md`.
+The canonical identity model MUST distinguish commercial `BoatModel`, technical `BoatDesign` generation, named variants and orthogonal factory `DesignOption`s according to `specs/IDENTITY_MODEL.v0.2.md`.
 
 **Acceptance:** accepted OQ-003 identity fixtures validate against this hierarchy.
 
@@ -121,6 +121,26 @@ Owner/refit modifications MUST NOT mutate canonical production BoatDesign baseli
 Identity resolution MUST return only the most specific evidence-supported level and MUST NOT invent model-generation/variant/configuration specificity.
 
 **Acceptance:** a model-only listing cannot resolve to a specific generation/configuration when required disambiguating evidence is absent.
+
+### REQ-ID-009 — Brand and builder are distinct identities
+Brand/Marque and Organization/Builder/Manufacturer MUST be representable as distinct first-class identities with stable opaque IDs; one MUST NOT be reduced to an alias of the other solely because users commonly conflate their names.
+
+**Acceptance:** a fixture can represent one BoatModel under a Brand while its BoatDesign is built by a differently named Organization, and both identities remain independently addressable.
+
+### REQ-ID-010 — Entity-scoped aliases
+Canonical Brand, Organization and BoatModel identities MUST support entity-scoped aliases/source spellings without changing their stable canonical IDs or collapsing different entity kinds.
+
+**Acceptance:** adding a Brand alias leaves the linked Organization identity unchanged, preserves the canonical Brand ID, and can retain the source spelling for provenance/matching.
+
+### REQ-ID-011 — Historical/multiple brand-builder relationships
+The identity model MUST support multiple and historically bounded Brand↔BoatModel and Organization↔BoatDesign relationships where evidence requires them, without forcing a new BoatDesign solely because the builder/manufacturer changes.
+
+**Acceptance:** fixtures can represent one Brand with sequential builders and one Organization producing for multiple Brands, with optional validity boundaries, while BoatDesign generation rules remain governed by technical evidence.
+
+### REQ-ID-012 — Raw manufacturer label is not canonical role evidence
+A research/source field labelled `manufacturer` MUST be preserved as raw identity input and MUST NOT by itself prove whether the supplied name is a canonical Brand, Organization, or both.
+
+**Acceptance:** an input manufacturer string can remain unresolved or resolve to separate Brand/Organization candidates without being coerced to one entity kind from the source column heading alone.
 
 ## Provenance
 
@@ -167,9 +187,9 @@ Unresolved conflict MUST NOT emit a non-null canonical value; resolved-with-conf
 ## Research
 
 ### REQ-RESEARCH-001 — Minimal target input
-The canonical research target input MUST contain only `manufacturer`, `model`, and `first_built`; workflow metadata belongs in ResearchJob state.
+The canonical research target input MUST contain only `manufacturer`, `model`, and `first_built`; workflow metadata belongs in ResearchJob state. `manufacturer` is a raw source/reference label and does not by itself assert a canonical Brand or Organization role.
 
-**Acceptance:** the research input template contains exactly those identity fields; workflow fields validate in ResearchJob instead.
+**Acceptance:** the research input template contains exactly those identity fields; workflow fields validate in ResearchJob instead, and the raw manufacturer label can be preserved independently of later identity resolution.
 
 ### REQ-RESEARCH-002 — Exception-based review
 The research pipeline SHOULD automatically accept clear, supported records that pass validation and MUST route uncertain/conflicting/high-risk cases to human review rather than requiring manual approval of every record.
@@ -284,6 +304,21 @@ Given the same dataset version, query specification and formula/taxonomy version
 Where a criterion depends on option-sensitive values, search MUST evaluate a ResolvedConfiguration rather than assuming the BoatDesign baseline applies to every factory configuration.
 
 **Acceptance:** a shallow-draft option can match a draft criterion while the standard configuration of the same BoatDesign does not, without duplicating the BoatDesign identity.
+
+### REQ-SEARCH-007 — Brand and builder/manufacturer discoverability
+Accepted Brand and Organization builder/manufacturer identities MUST both be independently searchable paths to their related BoatModels/BoatDesigns.
+
+**Acceptance:** a brand-name query and a differently named builder/manufacturer query can both resolve to the same related BoatModel/BoatDesign without treating Brand and Organization as the same entity.
+
+### REQ-SEARCH-008 — Corporate-name tolerance
+A user MUST NOT be required to type non-distinguishing legal suffixes or source decorations to find an accepted builder/manufacturer Organization. Search/index projections MUST support accepted shortened/common forms while preserving the canonical/source name unchanged.
+
+**Acceptance:** a fixture whose canonical/source Organization name contains a legal suffix and country annotation is discoverable from an accepted shortened form without changing the stored canonical name or source spelling.
+
+### REQ-SEARCH-009 — Search normalization is not identity mutation
+Case, punctuation, accepted transliteration/alternate spelling and later fuzzy matching MAY improve discovery but MUST NOT automatically merge or rewrite canonical Brand, Organization or BoatModel identities.
+
+**Acceptance:** two distinct canonical entities can share a normalized/fuzzy candidate token without being merged; resolution remains evidence-bounded and ambiguity can be surfaced.
 
 ## SEO / public search architecture
 
