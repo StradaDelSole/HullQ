@@ -114,7 +114,7 @@ The current standards baseline is summarized in `docs/engineering/STANDARDS_BASE
 
 ### SRC-STD-0004 — Semantic Versioning 2.0.0
 - Publisher: Semantic Versioning
-- URL: https://semver.org/spec/v2.0.0.html
+- URL: https://semver.org/spec/v2.0.0/
 - Purpose: released contract/component versioning.
 
 ### SRC-STD-0005 — Conventional Commits 1.0.0
@@ -126,7 +126,6 @@ The current standards baseline is summarized in `docs/engineering/STANDARDS_BASE
 - Publisher: Python Packaging Authority
 - URL: https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
 - Purpose: Python project configuration baseline when implementation begins.
-
 
 ### SRC-STD-0007 — RFC 6901 JSON Pointer
 - Publisher: IETF / RFC Editor
@@ -363,7 +362,6 @@ As the project advances, this register or successor machine-readable registries 
 - Supports: deterministic SI/non-SI conversion constants and conversion practice.
 - Used by: OQ-001 research/spec.
 
-
 ---
 
 ## OQ-010 — Python/data-pipeline toolchain
@@ -458,3 +456,154 @@ As the project advances, this register or successor machine-readable registries 
 - Reviewed: 2026-08-18
 - Supports: known-vulnerability auditing of Python dependencies, with documented security limitations.
 - Used by: OQ-010 dependency-security baseline.
+
+---
+
+## SLICE-0002 — Design-data source research
+
+The following entries support `docs/research/DESIGN_DATA_SOURCE_LANDSCAPE.md`, `research/DESIGN_DATA_FIELD_COVERAGE_MATRIX.md`, and `research/benchmark/SEED_RESEARCH_NOTES.md`. Classification here is research-oriented evidence metadata; it does not override `SOURCE_RIGHTS_POLICY.v0.1.md`.
+
+### SRC-DSRC-0001 — Wikidata Sailboat Class data model / EntitySchema E297
+
+- Publisher: Wikimedia / Wikidata community
+- Source type: open structured-data model
+- URLs: https://www.wikidata.org/wiki/Q106179098 ; https://www.wikidata.org/wiki/EntitySchema:E297 ; https://www.wikidata.org/wiki/Wikidata:WikiProject_Sailing/Data_Models/Sailboat_class
+- Reviewed: 2026-08-18
+- Rights/access: structured Wikidata data is CC0; API access remains subject to Wikimedia API/User-Agent/rate-limit rules.
+- HullQ research classification: `BOOTSTRAP_CANDIDATE`.
+- Supports: direct model/class identity; manufacturer/designer; qualified LOA/LWL/beam/draft/air-draft/displacement/ballast model; open four-digit bootstrap feasibility.
+- Caveat: completeness/reference quality varies; generation/rudder/skeg depth is not solved by the schema.
+
+### SRC-DSRC-0002 — Wikimedia Foundation API Usage Guidelines / User-Agent Policy
+
+- Publisher: Wikimedia Foundation
+- Source type: platform access policy
+- URLs: https://foundation.wikimedia.org/wiki/Policy:Wikimedia_Foundation_API_Usage_Guidelines ; https://foundation.wikimedia.org/wiki/Policy:Wikimedia_Foundation_User-Agent_Policy
+- Reviewed: 2026-08-18
+- Supports: identifiable User-Agent, rate-limit/backoff, robot-policy and content-license compliance requirements for automated Wikimedia access.
+- Used by: SLICE-0002 bootstrap-access assessment; future Wikidata adapter requirements.
+
+### SRC-DSRC-0003 — Hallberg-Rassy previous-model and parts archives
+
+- Publisher: Hallberg-Rassy
+- Source type: manufacturer heritage / parts evidence
+- URLs: https://www.hallberg-rassy.com/yachts/previous-models/hallberg-rassy-36 ; https://www.hallberg-rassy.com/yachts/previous-models/hallberg-rassy-42e
+- Reviewed: 2026-08-18
+- HullQ research classification: `PRIMARY_VERIFY`.
+- Supports: hull-number generation boundary, shallow-draft/rig options, displacement/sail-area source bases, retrospective model naming and cross-surface rudder/skeg evidence.
+- Rights/access: factual verification permitted as research evidence; no blanket bulk crawl/redistribution clearance inferred.
+
+### SRC-DSRC-0004 — Rustler Yachts design/measurement technical articles
+
+- Publisher: Rustler Yachts
+- Source type: manufacturer technical articles
+- URLs: https://www.rustleryachts.com/keel-design-explained/ ; https://www.rustleryachts.com/yacht-measurements-explained/
+- Reviewed: 2026-08-18
+- HullQ research classification: `PRIMARY_VERIFY`.
+- Supports: explicit long-keel + keel-hung-rudder taxonomy; LOA/LWL ambiguity; lightship/half-load/full-load displacement distinction; differing sail-area conventions.
+- Rights/access: no blanket bulk use assumed.
+
+### SRC-DSRC-0005 — Alubat OVNI 370
+
+- Publisher: Alubat
+- Source type: manufacturer model specification
+- URL: https://www.alubat.com/the-range/ovni-370/
+- Reviewed: 2026-08-18
+- HullQ research classification: `PRIMARY_VERIFY`.
+- Supports: aluminium construction, centreboard up/down draft, ballast vs keel/board mass semantics, mixed sail-area values.
+
+### SRC-DSRC-0006 — Pogo Structures Pogo 1 archive
+
+- Publisher: Pogo Structures
+- Source type: manufacturer previous-model archive
+- URL: https://www.pogostructures.com/fiche-bateau/pogo-1/?lang=en
+- Reviewed: 2026-08-18
+- HullQ research classification: `PRIMARY_VERIFY`.
+- Supports: twin rudders, historical build range/count, `light measurement trim` mass-basis terminology.
+
+### SRC-DSRC-0007 — RM 1180 specification + configurator
+
+- Publisher: RM Yachts
+- Source type: manufacturer model page / live configurator
+- URLs: https://www.rm-yachts.com/en/rm-1180/ ; https://www.rm-yachts.com/en/product/rm1180-2/
+- Reviewed: 2026-08-18
+- HullQ research classification: `PRIMARY_VERIFY`.
+- Supports: independent keel/rudder option axes; single/twin/lifting-keel and single/twin-rudder combinations; plywood-epoxy construction.
+- Caveat: configurator state is volatile and requires timestamped evidence.
+
+### SRC-DSRC-0008 — Garcia Exploration 45
+
+- Publisher: Garcia Yachts
+- Source type: manufacturer model specification / technical prose
+- URL: https://www.garciayachts.com/en/sailsboats/exploration-45
+- Reviewed: 2026-08-18
+- HullQ research classification: `PRIMARY_VERIFY`.
+- Supports: aluminium centreboarder; twin rudders; each rudder preceded by a protective skeg; board-up/down draft and ballast.
+
+### SRC-DSRC-0009 — Island Packet 349
+
+- Publisher: Island Packet Yachts
+- Source type: manufacturer specifications / construction / customization
+- URLs: https://ipy.com/yachts/ip-349/ ; https://ipy.com/yachts/ip-349/specifications/ ; https://ipy.com/customization/
+- Reviewed: 2026-08-18
+- HullQ research classification: `PRIMARY_VERIFY`.
+- Supports: proprietary `Full Foil Keel®`, skeg-hung rudder, encapsulated lead ballast, branded terminology requiring lossless raw-term preservation.
+
+### SRC-DSRC-0010 — Najad 34 official previous-model PDF
+
+- Publisher: Najad
+- Source type: manufacturer heritage PDF
+- URL: https://najad.se/wp-content/uploads/2018/04/n34_productinformation-all-languages.pdf
+- Reviewed: 2026-08-18
+- HullQ research classification: `PRIMARY_VERIFY`.
+- Supports: long keel + separate skeg/rudder; production/history narrative.
+- Critical finding: the same official multilingual PDF gives conflicting production counts (English/Swedish 354 vs German 352), proving primary-source internal conflicts require evidence-level resolution.
+
+### SRC-DSRC-0011 — International J/24 Class / World Sailing class rules
+
+- Publisher: International J/24 Class Association / World Sailing
+- Source type: official class technical/rules documents
+- URLs: https://j24class.org/about-the-j24/history/ ; https://j24class.org/rules-regulations/class-rules/
+- Reviewed: 2026-08-18
+- HullQ research classification: `PRIMARY_VERIFY` for class-rule constraints; not a broad bootstrap source.
+- Supports: one-design identity, production breadth, class-rule/tolerance source shape and distinction between allowed geometry and nominal production value.
+
+### SRC-DSRC-0012 — Westerly Owners Association / Westerly Wiki
+
+- Publisher: Westerly Owners Association
+- Source type: owner-association archive with historical manufacturer/designer material
+- URL: https://wiki.westerly-owners.co.uk/index.php?title=Centaur
+- Reviewed: 2026-08-18
+- HullQ research classification: `SECONDARY_VERIFY` unless an underlying original document is separately cited.
+- Supports: defunct-builder research path, twin-keel data, skegless spade-rudder prose, and a small internal production-count conflict.
+- Rights/access: no bulk database reuse assumed.
+
+### SRC-DSRC-0013 — Seafarer 26 technical review
+
+- Publisher: Good Old Boat
+- Source type: specialist technical secondary source
+- URL: https://goodoldboat.com/seafarer-26/
+- Reviewed: 2026-08-18
+- HullQ research classification: `SECONDARY_VERIFY`.
+- Supports: fin keel + rudder hung on partial skeg; defunct-builder construction detail; explicit warning that an earlier, different Seafarer 26 design existed.
+- Rights/access: factual lead/verification only; no bulk reuse assumed.
+
+### SRC-DSRC-0014 — ORC certificate database / published access surface
+
+- Publisher: Offshore Racing Congress
+- Source type: rating/certificate database
+- URLs: https://orc.org/sailors/active-certificates-database ; https://data.orc.org/active
+- Reviewed: 2026-08-18
+- HullQ research classification: `BLOCKED` for systematic commercial HullQ ingestion under the terms reviewed during SLICE-0002 unless separate ORC permission/licence is obtained.
+- Technical value: large structured measurement/certificate corpus with 14,000+ active certificates across 45 countries reported by ORC.
+- Policy rule: public accessibility is not treated as production clearance.
+
+### SRC-DSRC-0015 — sailboat-database.com
+
+- Publisher: independent open-data web project
+- Source type: mixed-source derived sailboat catalogue
+- URL: https://sailboat-database.com/
+- Reviewed: 2026-08-18
+- HullQ research classification: `REFERENCE_ONLY`.
+- Supports: current evidence that Wikimedia-derived sailboat data can produce a four-digit catalogue (1,062 indexed boats at review time).
+- Rights caveat: site states data is sourced from Wikidata (CC0) and enriched from Wikipedia infoboxes (CC-BY-SA); HullQ should consume cleared Wikidata directly rather than bulk-copy the mixed derived database.
