@@ -22,6 +22,8 @@ resolve blocker / gather real evidence
 
 No downstream step may silently decide an upstream open question. An assigned agent MUST NOT automatically begin the next slice.
 
+The application technology target is accepted early under ADR-0010 so domain work does not drift into incompatible runtime/persistence/frontend assumptions. **This does not authorize early application implementation outside its later slices.**
+
 ---
 
 # Stage 0 — Repository governance and specification discipline
@@ -48,18 +50,11 @@ Accepted:
 - ADR-0002 docs-to-code
 - ADR-0003 broad coverage + progressive verification depth
 
-## 0.3 Tooling/repository bootstrap — IN PROGRESS
+## 0.3 Tooling/repository bootstrap — DONE
 
-Accepted OQ-010 / ADR-0009 baseline is implemented in repository configuration and CI.
+Accepted OQ-010 / ADR-0009 baseline is implemented with a committed `uv.lock`, locked synchronization, repository validation, Ruff, mypy, pytest/coverage, dependency audit and cross-platform CI.
 
-Remaining gate is `SLICE-0001`:
-
-- generate real `uv.lock` under accepted Python 3.14 + uv toolchain;
-- synchronize locked environment;
-- pass repository validator, Ruff, mypy, pytest/coverage and dependency audit;
-- pass Linux + Windows GitHub Actions.
-
-**Exit gate G0:** reproducible locked toolchain + green baseline CI.
+**Exit gate G0:** passed.
 
 ---
 
@@ -94,34 +89,61 @@ Accepted methodology `hullq-derived-1.0.0` defines formulas, canonical inputs, a
 
 ## 1.5 OQ-010 — Research/data toolchain — DONE
 
-Accepted via ADR-0009. Bootstrap closure remains Stage 0.3 operational work, not an open toolchain decision.
+Accepted via ADR-0009.
 
-## 1.6 Real design-data source research — REQUIRED BEFORE DOMAIN PIPELINE CODE
+## 1.6 Real design-data source research — DONE
 
-Executed by `SLICE-0002` after bootstrap closure.
+SLICE-0002 researched the **actual independent sailboat-design data sources** from which HullQ's own canonical universe can be built rather than designing a pipeline around imagined inputs.
 
-HullQ must research the **actual independent sailboat-design data sources** from which its own canonical universe can be built rather than designing a pipeline around imagined inputs.
+Completed work includes:
 
-Required work includes:
+- plausible broad identity/bootstrap sources under ADR-0005;
+- Source Register rights/access/clearance evidence;
+- HullQ-critical field/source coverage matrix;
+- official manufacturer/designer/class-association/archive research;
+- 20-design core sample + targeted edge-case supplement;
+- observed missing-data, conflict, generation, option and semantic-basis problems;
+- automation vs human-review findings;
+- evidence-derived extraction/normalization pipeline needs.
 
-- identify plausible broad identity/bootstrap sources usable under ADR-0005;
-- build/extend the Source Register with rights/access/clearance information;
-- map HullQ-critical technical fields to real source classes and observed availability;
-- research official manufacturer/designer/class-association/archive sources for primary verification;
-- manually research 20–30 representative difficult BoatDesign candidates;
-- record real missing-data, conflict, generation, option and semantic-basis problems;
-- distinguish likely automatable work from human-review work;
-- derive extraction/normalization pipeline requirements from the observed source evidence.
+The imported/reference SailboatData material remains research/reference only and MUST NOT become an invisible production-value source.
 
-The imported/reference SailboatData material may inform taxonomy, edge-case and candidate-model research but MUST NOT become an invisible production-value source.
-
-The 20–30-design seed evidence sample is not the product database and not the final 50–100-design pipeline benchmark. Its purpose is to make later implementation evidence-driven.
-
-**Stage 1 exit:** G0 passes and SLICE-0002 source/data research is complete enough to define the first pipeline implementation slices against real source conditions.
+**Stage 1 exit:** passed after project-owner acceptance of SLICE-0002.
 
 ### Deferred logical-model note
 
-OQ-019 is no longer a pre-code gate. Consolidating accepted contracts into a separate logical entity/relationship document may be revisited before production persistence under OQ-012 if implementation evidence shows that it is useful.
+OQ-019 is not a pre-code gate. Consolidating accepted contracts into a separate persistence-neutral logical entity/relationship document may be revisited before physical PostgreSQL schema work if implementation evidence shows that it is useful.
+
+---
+
+# Cross-stage application architecture decision — ACCEPTED EARLY
+
+OQ-008, OQ-011 and OQ-012 were deliberately resolved before frontend/backend/persistence implementation to prevent incompatible stack assumptions while the Python/domain foundation is built.
+
+Accepted via ADR-0010 / `docs/engineering/APPLICATION_STACK_BASELINE.v0.1.md`:
+
+- initial host: **Contabo commodity Linux VPS**;
+- edge: Cloudflare DNS/proxy/CDN/TLS/basic WAF; R2 optional for off-VPS backups/HullQ-owned artifacts;
+- backend: **CPython 3.14 + FastAPI** when the API slice is reached;
+- production persistence: **PostgreSQL**;
+- no dedicated search engine initially; PostgreSQL indexes/projections first after accepted query semantics;
+- web: **Astro + TypeScript**;
+- React + TypeScript only as selective Astro islands for sufficiently stateful UI; no full-site client-only React SPA;
+- no Strapi/Next.js/Flutter Web baseline;
+- no CMS initially;
+- responsive web/PWA first; **Flutter** preferred later for Android/iOS via the same API boundary;
+- simple VPS deployment; no Kubernetes/broker/distributed scheduler without measured need.
+
+This architecture choice does **not** resolve or bypass:
+
+- OQ-006 alert cadence/freshness;
+- OQ-009 unknown-data query semantics;
+- OQ-014 exact authentication/account/privacy architecture;
+- OQ-015 stable HTTP API/versioning;
+- OQ-017 market-history retention;
+- OQ-018 exact public SEO/search surface.
+
+In particular, OQ-014 remains intentionally deferred. Accounts/SavedQuery/Monitor/Alert are architecturally supported, but no JWT/session/auth library/provider/password/OAuth/email-verification implementation is accepted yet.
 
 ---
 
@@ -129,43 +151,49 @@ OQ-019 is no longer a pre-code gate. Consolidating accepted contracts into a sep
 
 **Goal:** implement against observed real source conditions, then prove that HullQ can research accurately, reproducibly and cheaply enough to scale.
 
-Stage-2 implementation is decomposed through `docs/slices/INDEX.md`. Slice boundaries after SLICE-0002 must be refined from actual source evidence rather than treated as fixed in advance.
+Stage-2 implementation is decomposed through `docs/slices/INDEX.md`. Slice boundaries after SLICE-0002 are refined from actual source evidence rather than treated as fixed in advance.
 
 ## 2.1 Repository code structure — BOOTSTRAPPED
 
 Current single-repo structure includes root Python project config, `src/hullq/`, tests, specs, fixtures, research, docs and architecture. Do not create separate repositories or distributed services without a later accepted decision.
 
-## 2.2 Implement canonical contract runtime first
+## 2.2 Canonical contract runtime — REVIEW
 
-Only after SLICE-0002 has documented the real source shapes and any resulting contract gaps have been resolved.
+SLICE-0003 implements one reusable repository-local Draft-2020-12 JSON-Schema registry/validation boundary without network retrieval or new boat semantics.
 
-Implement runtime handling for accepted contracts such as:
+Implementation branch: `slice/0003-canonical-contract-runtime`; PR #3 is the independent-review/CI path. SLICE-0004 remains blocked until SLICE-0003 is accepted/DONE.
 
-- Source;
-- BoatModel / BoatDesign / ResolvedConfiguration;
-- provenance/evidence/resolution/derivation records;
-- ResearchJob when its contract is ready;
-- dataset/version metadata.
+## 2.3 Deterministic measurement normalization
 
-Positive and negative schema fixtures remain first-class tests.
+After SLICE-0003 acceptance, implement the smallest evidence-derived slice for source observations and deterministic unit/basis normalization while preserving raw source semantics.
 
-## 2.3 Implement deterministic normalization library
-
-Pure functions/modules for the source patterns proven necessary by SLICE-0002, including as applicable:
+Expected later pure functions/modules include as justified by the source sample:
 
 - unit parsing/conversion;
-- text normalization without identity loss;
-- canonical manufacturer/model strings;
-- taxonomy mappings;
-- raw-value preservation;
-- confidence/evidence attachment;
-- validation rules.
+- raw label/basis preservation;
+- ranges and option-sensitive observations;
+- explicit invalid/unknown behavior;
+- no network/source discovery in pure normalization functions.
 
-Network/source discovery MUST NOT be embedded in pure normalization functions.
+## 2.4 Identity text primitives
 
-## 2.4 Implement research job state machine
+Normalize/manipulate manufacturer/model/generation text only within accepted identity semantics. Do not introduce fuzzy forced identity resolution or silent generation invention.
 
-Requirements:
+## 2.5 Appendage/configuration normalization
+
+Treat keel, board, rudder, skeg, rudder count/state and support/protection relationships as independent dimensions. Real SLICE-0002 evidence proved this requires a dedicated boundary rather than one flat taxonomy mapping.
+
+## 2.6 Provenance/conflict runtime
+
+Implement accepted FieldEvidence / FieldResolution / DerivationRecord behavior and explicit conflict handling.
+
+## 2.7 Derived metrics
+
+Implement `hullq-derived-1.0.0` only after the required canonical/provenance/configuration foundations exist.
+
+## 2.8 Research job state machine
+
+Requirements include:
 
 - explicit states;
 - restart/idempotency where feasible;
@@ -174,7 +202,11 @@ Requirements:
 - explicit review queue;
 - immutable raw artifacts.
 
-## 2.5 Build benchmark corpus
+## 2.9 First real rights-gated source adapter
+
+Preferred initial target: Wikidata CC0. Source clearance must be enforced before acquisition/bulk use; exact current identity/field-completeness metrics must be reproducibly recorded rather than hard-coded from research estimates.
+
+## 2.10 Build benchmark corpus
 
 50–100 deliberately difficult designs across:
 
@@ -188,7 +220,7 @@ Requirements:
 
 Use the source landscape and difficult cases discovered in SLICE-0002 to select the corpus. This corpus benchmarks the implemented pipeline; it is not the product universe.
 
-## 2.6 Measure benchmark
+## 2.11 Measure benchmark
 
 Mandatory metrics include:
 
@@ -204,7 +236,7 @@ Mandatory metrics include:
 - repeatability/idempotency;
 - false normalization/classification errors.
 
-## 2.7 Harden until Gate G3 passes
+## 2.12 Harden until Gate G3 passes
 
 Do not scale because the happy path works. Fix taxonomy/schema/validation/review behavior from benchmark evidence.
 
@@ -315,7 +347,7 @@ Before technical query-engine implementation, freeze confirmed match/non-match/i
 
 # Pre-public search/SEO gate — OQ-018
 
-Before public frontend/search-surface implementation, define canonical page taxonomy, URL grammar, faceted crawl/index policy, rendering strategy, canonicalization/sitemaps, internal linking and structured-data mapping under ADR-0007.
+Before public frontend/search-surface implementation, define canonical page taxonomy, URL grammar, faceted crawl/index policy, rendering strategy, canonicalization/sitemaps, internal linking and structured-data mapping under ADR-0007. Astro is already selected by ADR-0010, but framework selection does not replace this gate.
 
 ---
 
@@ -323,7 +355,7 @@ Before public frontend/search-surface implementation, define canonical page taxo
 
 1. resolve OQ-009;
 2. define versioned machine-readable query contract;
-3. implement pure deterministic query engine independent of UI/market adapters;
+3. implement pure deterministic query engine independent of UI/market adapters/PostgreSQL;
 4. build query golden masters including unknown-data behavior;
 5. build canonical-data compare engine.
 
@@ -331,59 +363,81 @@ Before public frontend/search-surface implementation, define canonical page taxo
 
 ---
 
-# Stage 5 — Application/backend architecture and persistence
+# Stage 5 — Production persistence and application API
 
-## 5.1 Resolve OQ-011/OQ-012
+The technology target is already accepted by ADR-0010; this stage implements it only after domain/query requirements are sufficiently stable.
 
-Choose application/backend architecture and production database/search/index strategy based on:
+## 5.1 Re-evaluate logical-model need
 
-- accepted domain/provenance contracts;
-- real source and benchmark evidence;
-- measured Stage-2/3 access patterns and scale;
-- technical-query behavior;
-- operational maintenance economics.
+If implementation evidence shows a separate persistence-neutral relationship model is useful, resolve/revive OQ-019 here. Do not create one merely because PostgreSQL was selected.
 
-If a consolidated persistence-neutral logical model is useful at this stage, resolve/revive OQ-019 before choosing physical persistence. Do not choose by framework habit.
+## 5.2 PostgreSQL persistence
 
-## 5.2 Persist canonical dataset and query API
+Design and implement physical PostgreSQL persistence behind domain/repository adapters. Persistence must not redefine accepted identity/provenance/query semantics.
 
-Storage adapters stay behind domain interfaces. Domain/search rules remain independent from ORM/framework semantics.
+Before relying on production data, introduce tested off-VPS backup/restore behavior. Preferred low-cost direction is encrypted/compressed PostgreSQL backups to R2 or another independent target.
 
-## 5.3 API contract
+## 5.3 API contract and FastAPI boundary
 
-If an HTTP boundary is introduced, specify/version it before implementation under OQ-015.
+Resolve OQ-015 before exposing a stable public HTTP boundary. Then implement the accepted API using FastAPI/CPython 3.14 and reuse the existing HullQ core.
+
+Do not reimplement canonical business rules in TypeScript/frontend handlers.
 
 ---
 
 # Stage 6 — Web product MVP
 
-1. resolve OQ-008 frontend stack;
-2. resolve OQ-018 search/SEO public surface;
-3. build technical discovery UX;
-4. add compare;
-5. integrate first permitted market path from Track M.
+The frontend technology is already accepted by ADR-0010:
 
-Do not recreate the raw-field prototype as the product UX.
+- Astro;
+- TypeScript;
+- React islands only for sufficiently complex stateful UI;
+- static/server-rendered HTML first for public/SEO content.
+
+Before public search implementation:
+
+1. resolve OQ-018;
+2. build technical discovery UX;
+3. add compare;
+4. integrate the first permitted market path from Track M.
+
+Do not recreate the raw-field prototype as the product UX and do not default to a client-only React SPA.
 
 ---
 
 # Stage 7 — Accounts, saved technical queries and alerts
 
-1. resolve security/privacy baseline OQ-014;
+1. **resolve OQ-014 in detail before auth code** — session/token architecture, credential/OAuth/provider choice, verification/reset, privacy/security and web/later-Flutter consequences;
 2. persist SavedQuery as first-class versioned technical query;
 3. add Monitor and Alert as separate domain concepts;
 4. resolve OQ-005 before claiming cross-market physical-listing uniqueness;
-5. resolve OQ-006 cadence/freshness policy.
+5. resolve OQ-006 cadence/freshness policy;
+6. introduce email/web/native-push delivery only through explicit notification slices.
+
+The accepted PostgreSQL/FastAPI architecture must accommodate these features, but ADR-0010 intentionally did not pre-select the auth implementation.
 
 Subscription entitlements control capacity/frequency/features, not technical query semantics.
 
 ---
 
-# Stage 8 — Public release, distribution and low-maintenance operations
+# Stage 8 — Native mobile when justified
+
+Responsive web/PWA is the initial mobile path. When recurring monitor/alert usage justifies native apps:
+
+1. define the mobile/API/product slice;
+2. implement Flutter for Android/iOS;
+3. consume the same stable HTTP API;
+4. do not duplicate domain/query semantics in Dart.
+
+Native app-store costs/operations should not be incurred before product usage justifies them.
+
+---
+
+# Stage 9 — Public release, distribution and low-maintenance operations
 
 Measure product and business KPIs including technical searches, unknown/insufficient-data rates, compare/monitor usage, market click-through, returning users, monthly profit, human maintenance hours, unplanned maintenance, source-integration burden, research cost per design, and profit per maintenance hour.
 
-HullQ is not currently optimized for venture-scale expectations. Revisit scaling only if real traction justifies a deliberate new decision.
+HullQ is not currently optimized for venture-scale expectations. Scale VPS/services only if real traction justifies a deliberate new decision.
 
 ---
 
@@ -396,8 +450,7 @@ HullQ is not currently optimized for venture-scale expectations. Revisit scaling
 
 # Immediate next actions
 
-1. **SLICE-0001 — READY:** generate `uv.lock`, pass local quality gates and first green Linux + Windows CI.
-2. **SLICE-0002 — then:** research actual independent sailboat-design sources and complete the 20–30-design seed evidence sample.
-3. Refine the implementation slices from those real findings.
-4. Begin contract/runtime + deterministic-normalization implementation only after the source-research gate is sufficiently complete.
-5. Continue OQ-013 market-access research in parallel when useful, without distracting from the design-data foundation.
+1. **SLICE-0003 — REVIEW:** complete remote PR CI + independent review + project-owner acceptance; do not merge/mark DONE before all three.
+2. If accepted, move SLICE-0003 to DONE and detail only SLICE-0004.
+3. Continue evidence-derived Stage-2 slices in bounded order; do not start PostgreSQL/FastAPI/Astro merely because the stack is selected.
+4. Continue OQ-013 market-access research in parallel when useful, without distracting from the design-data foundation.
