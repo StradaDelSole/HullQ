@@ -43,6 +43,8 @@ Explain the problem this slice closes and why it belongs at this point in the ex
 
 - [ ] ...
 
+An implementation/research agent MUST NOT check an acceptance criterion that it has not actually verified. External criteria such as GitHub Actions remain unchecked until their results have actually been observed.
+
 ## Expected touch points
 
 Expected files/modules only; this is not permission to modify unrelated files.
@@ -62,11 +64,54 @@ Stop and report instead of inventing a solution when:
 - the requested behavior would violate source-rights, provenance, identity, search/SEO, or other accepted policy;
 - implementation requires scope outside this slice.
 
+## Status handoff rule
+
+The implementation/research agent may recommend or set `IN_PROGRESS`, `BLOCKED`, or `REVIEW` as appropriate, but MUST NOT mark the slice `DONE`.
+
+`DONE` requires verified acceptance criteria, required remote/external checks, independent review, and explicit user/project-owner acceptance as defined in `CLAUDE.md`.
+
+A successful agent completion therefore normally hands the slice off in `REVIEW`.
+
 ## Required completion report
 
-- changed files;
-- requirements implemented or researched;
-- tests/fixtures added or updated;
-- validation commands and outcomes;
-- unresolved findings;
-- recommended follow-up, without automatically beginning it.
+Use this structure exactly at the end of the assigned slice.
+
+### Slice
+
+- Slice ID: `SLICE-XXXX`
+- Recommended slice state: `REVIEW` | `BLOCKED`
+- Scope completed: `YES` | `NO`
+
+### Changes
+
+- Changed files:
+- Requirements implemented or researched:
+- Tests/fixtures added or updated:
+
+### Validation
+
+- Local validation: `PASS` | `FAIL` | `PARTIAL` | `NOT APPLICABLE`
+- Commands run:
+- Results:
+
+### External verification
+
+- Remote CI: `PASS` | `FAIL` | `NOT VERIFIED` | `NOT APPLICABLE`
+- Other external gates: `PASS` | `FAIL` | `NOT VERIFIED` | `NOT APPLICABLE`
+
+### Findings
+
+- Unresolved findings:
+- Spec/ADR ambiguities:
+- Scope deviations:
+
+### Follow-up
+
+- Recommended next action:
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice was not started automatically.
+- The agent has NOT marked this slice `DONE`.
