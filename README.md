@@ -10,12 +10,14 @@ This repository is developed **docs-to-code**: accepted specifications, requirem
 
 HullQ is at the repository-bootstrap / pre-domain-implementation boundary. Core data-foundation decisions covering identity, source rights, field-level provenance, derived metrics and the Python research toolchain are accepted.
 
-Before HullQ domain implementation begins, two gates remain:
+Before meaningful HullQ research-pipeline/domain implementation begins, two immediate gates remain:
 
 1. close repository bootstrap with a real committed `uv.lock` and first green Linux/Windows CI (`SLICE-0001`);
-2. consolidate the accepted distributed contracts into one persistence-neutral canonical logical data model (`OQ-019` / `SLICE-0002`).
+2. research the **actual independent sailboat-design data sources** HullQ can use and manually study a representative 20–30-design seed evidence sample (`SLICE-0002`).
 
-The production database/search technology remains intentionally open under OQ-012 until the logical model, access patterns and benchmark evidence exist.
+This evidence-first source research exists because SailboatData is reference/prototype material only and must not become an invisible production-value source. The later pipeline should be designed around real observed source formats, field gaps, conflicts, option/generation behavior and rights constraints rather than hypothetical inputs.
+
+The production database/search technology remains intentionally open under OQ-012 until real source/benchmark evidence and measured access patterns exist.
 
 See:
 
@@ -47,19 +49,27 @@ HullQ is not intended to become a generic boating super-app or a two-sided listi
 
 ## Data strategy
 
-HullQ targets broad SailboatData-like design coverage early, with progressive verification depth. A 50–100-design corpus is a benchmark for the research pipeline, not the intended product database. Unknown data is never interpreted as a negative fact.
+HullQ targets broad SailboatData-like design coverage early, with progressive verification depth. A 50–100-design corpus is a benchmark for the implemented research pipeline, not the intended product database. Unknown data is never interpreted as a negative fact.
 
-The current data-architecture rule is:
+The immediate evidence-first sequence is:
 
 ```text
-accepted logical/domain model first
+reproducible toolchain
         ↓
-research + benchmark implementation
+actual design-data source research
         ↓
-measured access patterns / scale
+20–30 manually researched difficult designs
         ↓
-production database + search/index choice under OQ-012
+observed pipeline requirements
+        ↓
+bounded research-pipeline implementation
+        ↓
+50–100-design benchmark
+        ↓
+broad universe toward thousands of designs
 ```
+
+Candidate source classes include cleared open structured datasets for broad bootstrap plus official manufacturer/designer/class-association/archive material for deeper primary verification. Technical accessibility is not equivalent to legal/contractual clearance; ADR-0005 and the Source Rights Policy govern every source.
 
 ## AI-assisted development
 
