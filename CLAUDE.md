@@ -37,9 +37,36 @@ HullQ uses bounded implementation/research slices defined under `docs/slices/`.
 - An `IMPLEMENTATION` slice may implement only already accepted semantics identified by its controlling artifacts.
 - If the assigned slice depends on an unresolved OQ, stop and report it.
 - If repository truth conflicts with the slice, repository truth wins and the slice must be corrected.
-- Move a slice toward `REVIEW`/`DONE` only after its explicit acceptance criteria and relevant repository gates have passed.
+- Move an assigned slice to `IN_PROGRESS`, `BLOCKED`, or `REVIEW` only when justified by the actual state and evidence.
+- Do not automatically begin another slice after reaching `REVIEW` or `BLOCKED`.
 
 The canonical operational queue is `docs/slices/INDEX.md`.
+
+## Slice status authority and completion reports
+
+The implementation/research agent does **not** own final acceptance.
+
+An agent MAY move its assigned slice among:
+
+```text
+READY → IN_PROGRESS → REVIEW
+                 ↘ BLOCKED
+```
+
+An agent MUST NOT mark a slice `DONE`.
+
+`DONE` is a project acceptance state. It may be set only after all of the following are true:
+
+1. every required acceptance criterion has actually been verified;
+2. required remote/external checks have actually been observed and passed, or are explicitly not applicable;
+3. independent review is complete;
+4. the user/project owner accepts the slice.
+
+Never mark an acceptance checkbox as passed when its evidence was not actually observed. In particular, a locally green implementation is not evidence that remote GitHub CI passed. If an external check cannot be observed, record it as `NOT VERIFIED` and recommend `REVIEW`, not `DONE`.
+
+At the end of every assigned slice, use the exact completion-report structure defined in `docs/slices/SLICE_TEMPLATE.md`. The report MUST distinguish local validation from remote/external verification and MUST include unresolved findings, scope deviations, and an explicit agent declaration.
+
+Default successful agent handoff state is `REVIEW`. Default unsuccessful/incomplete handoff state is `BLOCKED`.
 
 ## Product guardrail
 
