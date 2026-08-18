@@ -6,6 +6,7 @@ plus Hypothesis property tests for conversion invariants.
 
 from __future__ import annotations
 
+import decimal
 import json
 from decimal import Decimal
 from pathlib import Path
@@ -15,6 +16,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from hullq.domain.measurements import (
+    _CONVERSION_CTX,
     AreaUnit,
     DisplacementBasis,
     LengthUnit,
@@ -342,22 +344,25 @@ def test_sail_area_basis_cardinality_matches_schema() -> None:
 
 # ---------------------------------------------------------------------------
 # Scenario 14: no source-label text causes automatic basis inference
-# (Architecture test: normalization layer takes no basis parameter, makes no mapping)
 # ---------------------------------------------------------------------------
 
 
-def test_normalize_measurement_has_no_basis_parameter() -> None:
-    """The normalization function must not accept a basis parameter.
+def test_normalized_measurement_carries_no_inferred_basis() -> None:
+    """NormalizedMeasurement must never carry a basis field inferred from semantic_label.
 
-    Basis classification is an out-of-scope source-semantic decision.
+    Basis values are accepted only when supplied explicitly by the caller.
+    The normalization layer has no inference path from raw text or labels to basis values.
     """
-    import inspect
-
-    sig = inspect.signature(normalize_measurement)
-    param_names = set(sig.parameters)
-    assert "basis" not in param_names
-    assert "displacement_basis" not in param_names
-    assert "sail_area_basis" not in param_names
+    obs = MeasurementObservation(
+        quantity=Quantity.MASS,
+        value=Decimal("5000"),
+        unit=MassUnit.KILOGRAM,
+        semantic_label="lightship displacement",
+    )
+    result = normalize_measurement(obs)
+    assert not hasattr(result, "displacement_basis")
+    assert not hasattr(result, "sail_area_basis")
+    assert not hasattr(result, "basis")
 
 
 def test_raw_label_cannot_trigger_basis_side_effect() -> None:
@@ -426,6 +431,35 @@ def test_normalized_measurement_is_immutable() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Context independence: ambient Decimal precision must not affect results
+# ---------------------------------------------------------------------------
+
+
+def test_conversion_independent_of_low_ambient_precision() -> None:
+    """Same finite input must produce the same canonical value at any ambient Decimal precision."""
+    obs = MeasurementObservation(
+        quantity=Quantity.LENGTH, value=Decimal("36.5"), unit=LengthUnit.FOOT
+    )
+    with decimal.localcontext() as ctx:
+        ctx.prec = 5  # far below default (28) — would corrupt unguarded multiplication
+        result_low = normalize_measurement(obs)
+
+    result_default = normalize_measurement(obs)
+    assert result_low.canonical_value == result_default.canonical_value
+
+
+def test_conversion_independent_of_high_ambient_precision() -> None:
+    """Raising ambient precision beyond 50 must not change the canonical value."""
+    obs = MeasurementObservation(quantity=Quantity.MASS, value=Decimal("1"), unit=MassUnit.POUND)
+    with decimal.localcontext() as ctx:
+        ctx.prec = 100
+        result_high = normalize_measurement(obs)
+
+    result_default = normalize_measurement(obs)
+    assert result_high.canonical_value == result_default.canonical_value
+
+
+# ---------------------------------------------------------------------------
 # Hypothesis property tests
 # ---------------------------------------------------------------------------
 
@@ -437,10 +471,12 @@ def test_normalized_measurement_is_immutable() -> None:
 )
 @settings(max_examples=200)
 def test_hypothesis_foot_metre_round_trip_proportional(value: Decimal) -> None:
-    """Canonical value must equal value x exact constant for all finite inputs."""
+    """Canonical value must equal value x exact constant computed in the same fixed context."""
     obs = MeasurementObservation(quantity=Quantity.LENGTH, value=value, unit=LengthUnit.FOOT)
     result = normalize_measurement(obs)
-    assert result.canonical_value == value * Decimal("0.3048")
+    with decimal.localcontext(_CONVERSION_CTX):
+        expected = value * Decimal("0.3048")
+    assert result.canonical_value == expected
 
 
 @given(
@@ -452,7 +488,9 @@ def test_hypothesis_foot_metre_round_trip_proportional(value: Decimal) -> None:
 def test_hypothesis_pound_kg_proportional(value: Decimal) -> None:
     obs = MeasurementObservation(quantity=Quantity.MASS, value=value, unit=MassUnit.POUND)
     result = normalize_measurement(obs)
-    assert result.canonical_value == value * Decimal("0.45359237")
+    with decimal.localcontext(_CONVERSION_CTX):
+        expected = value * Decimal("0.45359237")
+    assert result.canonical_value == expected
 
 
 @given(
@@ -475,7 +513,26 @@ def test_hypothesis_non_finite_always_rejected(value: Decimal) -> None:
 )
 @settings(max_examples=100)
 def test_hypothesis_metre_identity(value: Decimal) -> None:
-    """Metre-to-metre conversion is a no-op on canonical_value (up to Decimal multiplication)."""
+    """Metre-to-metre conversion multiplies by 1 inside the fixed precision context."""
     obs = MeasurementObservation(quantity=Quantity.LENGTH, value=value, unit=LengthUnit.METRE)
     result = normalize_measurement(obs)
-    assert result.canonical_value == value * Decimal("1")
+    with decimal.localcontext(_CONVERSION_CTX):
+        expected = value * Decimal("1")
+    assert result.canonical_value == expected
+
+
+@given(
+    st.decimals(
+        allow_nan=False, allow_infinity=False, min_value=Decimal("-1e12"), max_value=Decimal("1e12")
+    ),
+    st.integers(min_value=1, max_value=6),
+)
+@settings(max_examples=200)
+def test_hypothesis_context_independence_foot(value: Decimal, prec: int) -> None:
+    """normalize_measurement must give the same result regardless of ambient Decimal precision."""
+    obs = MeasurementObservation(quantity=Quantity.LENGTH, value=value, unit=LengthUnit.FOOT)
+    with decimal.localcontext() as ctx:
+        ctx.prec = prec
+        result_ambient = normalize_measurement(obs)
+    result_default = normalize_measurement(obs)
+    assert result_ambient.canonical_value == result_default.canonical_value

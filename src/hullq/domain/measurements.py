@@ -7,6 +7,7 @@ strings, infer basis from free-text labels, or apply derived-metric rounding.
 
 from __future__ import annotations
 
+import decimal
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import Enum, StrEnum
@@ -97,6 +98,12 @@ _CANONICAL_UNIT: dict[Quantity, str] = {
     Quantity.MASS: "kg",
     Quantity.AREA: "m2",
 }
+
+# Fixed-precision context used for all unit multiplication so that results are
+# independent of whatever ambient/global Decimal context the caller has set.
+# 50 significant digits is sufficient for any realistic measurement value paired
+# with our conversion constants (max 10 significant digits).
+_CONVERSION_CTX = decimal.Context(prec=50, rounding=decimal.ROUND_HALF_EVEN)
 
 
 # ---------------------------------------------------------------------------
@@ -211,21 +218,24 @@ def _check_unit_for_quantity(quantity: Quantity, unit: Unit) -> None:
 def normalize_measurement(observation: MeasurementObservation) -> NormalizedMeasurement:
     """Convert *observation* to its canonical SI value.
 
-    Multiplication uses the exact constants defined in this module. No rounding
-    is applied; the caller is responsible for any projection-level rounding
-    (e.g. the six-decimal policy in ``hullq-derived-1.0.0``).
+    Multiplication is performed inside a fixed-precision Decimal context
+    (``_CONVERSION_CTX``, prec=50) so results are independent of any ambient
+    context the caller has set. No rounding is applied; the caller is responsible
+    for projection-level rounding (e.g. the six-decimal policy in
+    ``hullq-derived-1.0.0``).
     """
     unit = observation.unit
     value = observation.value
 
-    if isinstance(unit, LengthUnit):
-        canonical_value = value * _LENGTH_TO_M[unit]
-    elif isinstance(unit, MassUnit):
-        canonical_value = value * _MASS_TO_KG[unit]
-    elif isinstance(unit, AreaUnit):
-        canonical_value = value * _AREA_TO_M2[unit]
-    else:  # pragma: no cover
-        assert_never(unit)
+    with decimal.localcontext(_CONVERSION_CTX):
+        if isinstance(unit, LengthUnit):
+            canonical_value = value * _LENGTH_TO_M[unit]
+        elif isinstance(unit, MassUnit):
+            canonical_value = value * _MASS_TO_KG[unit]
+        elif isinstance(unit, AreaUnit):
+            canonical_value = value * _AREA_TO_M2[unit]
+        else:  # pragma: no cover
+            assert_never(unit)
 
     return NormalizedMeasurement(
         quantity=observation.quantity,
