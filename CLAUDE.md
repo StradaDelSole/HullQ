@@ -104,7 +104,37 @@ Do not build extraction or normalization behavior only from imagined source form
 
 SailboatData may remain a reference/prototype aid under the accepted source-rights policy, but must not become an invisible production-value source.
 
-The production database/search technology remains a separate later decision under OQ-012.
+The initial application/deployment stack is now accepted by ADR-0010, but this does not authorize premature persistence/API/frontend/deployment work outside an assigned slice.
+
+## Accepted application architecture guardrail
+
+Before any application/backend/persistence/frontend/deployment work, read:
+
+- `architecture/decisions/ADR-0010-vps-first-application-stack.md`;
+- `docs/engineering/APPLICATION_STACK_BASELINE.v0.1.md`;
+- `architecture/SYSTEM_ARCHITECTURE.md`.
+
+Accepted baseline:
+
+- initial hosting provider: **Contabo VPS**, while targeting a portable commodity Linux VPS;
+- public edge: Cloudflare DNS/proxy/CDN/TLS/basic WAF; R2 optional for backups/HullQ-owned artifacts;
+- backend/application runtime: CPython 3.14 + **FastAPI** when OQ-015/API work is reached;
+- production relational persistence: **PostgreSQL**;
+- no dedicated search engine initially; add one only from measured need;
+- web: **Astro + TypeScript**;
+- React + TypeScript only as selective Astro islands where interaction/state complexity justifies it; do not turn HullQ into a client-only React SPA;
+- Strapi, Next.js, Flutter Web, D1 as canonical production DB, and a second TypeScript business-logic backend are not the accepted baseline;
+- responsive web/PWA first; **Flutter** is the preferred later Android/iOS client consuming the same accepted API boundary;
+- simple VPS deployment is preferred; do not introduce Kubernetes, broker/distributed scheduler or paid managed-service dependencies without an accepted slice/decision.
+
+Critical deferred boundaries:
+
+- **OQ-014 remains unresolved**: do not choose JWT vs server sessions, auth library/provider, password/OAuth flow, email verification/reset or privacy/security mechanics before the dedicated account/auth decision;
+- OQ-006 still controls alert cadence/freshness;
+- OQ-015 still controls the stable public HTTP/API/versioning boundary;
+- OQ-018 still controls exact public SEO URL/index/rendering/canonical/structured-data behavior.
+
+SavedQuery, Monitor and Alert remain separate concepts. The application architecture must support them, but agents MUST NOT implement accounts/alerts merely because PostgreSQL/FastAPI are selected.
 
 ## Research behavior
 
@@ -136,7 +166,7 @@ Keep each marketplace in its own adapter. Before implementation, verify permitte
 - Keep raw imports immutable.
 - Do not couple UI filters to raw source field names.
 - Do not encode multiple technical concepts into a single legacy field.
-- Do not make frontend-framework assumptions from the existing Tabulator prototype.
+- Do not make frontend assumptions from the existing Tabulator prototype; use the accepted Astro/TypeScript baseline only when a frontend slice authorizes frontend work.
 
 ## Open decisions
 
