@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-18  
-**Current stage:** Stage 2.4 — SLICE-0005 identity contracts/search labels READY  
+**Current stage:** Stage 2.4 complete — SLICE-0005 DONE; next implementation slice not yet READY  
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -88,6 +88,31 @@ Acceptance evidence:
 
 The merged boundary provides deterministic exact conversion for explicit length/mass/area measurements using accepted unit tokens, preserves raw text/semantic labels, keeps ratio-input basis vocabularies aligned with the normative schema, rejects non-finite values and performs no free-text semantic inference or derived-metric rounding.
 
+## Completed implementation — SLICE-0005
+
+### Identity Contracts and Deterministic Search Labels — DONE
+
+SLICE-0005 was implemented by Claude Code, independently reviewed through multiple amendment rounds, explicitly accepted by the project owner and merged through PR #10 on 2026-08-18.
+
+Final merge commit: `e46857ab9d76a2e83f0ceef9e6878db7f2f66022`.
+
+Acceptance evidence:
+
+- accepted implementation head: `38520ce0ed12ec4d33f747fe1121c229d3df5279`;
+- GitHub Actions run #77: Ubuntu quality PASS, Windows quality PASS, dependency audit PASS;
+- independent review: ACCEPT, no remaining blockers;
+- explicit project-owner acceptance received on 2026-08-18.
+
+The merged boundary establishes:
+
+- separate first-class Brand/Marque and Organization/Builder identities;
+- stable entity-scoped aliases;
+- versioned BoatModel v0.2 and BoatDesign v0.5 identity contracts while preserving legacy schemas;
+- independently addressable Brand↔BoatModel and Organization↔BoatDesign relationships;
+- a shared relationship applicability core preventing embedded/standalone semantic drift;
+- deterministic corporate-name search projections without canonical-name mutation;
+- explicit rejection of raw-string role inference, fuzzy matching and accidental identity collapse.
+
 ## AI repository workflow — ACTIVE
 
 The single-writer/worktree workflow is merged. The project owner normally starts and finishes implementation slices with:
@@ -97,35 +122,31 @@ START_SLICE.bat
 FINISH_SLICE.bat
 ```
 
-`START_SLICE.bat` synchronizes `main`, creates an isolated slice worktree/branch, opens VS Code and copies Claude's instruction to the clipboard. It refuses any slice that is not explicitly `READY`.
+`START_SLICE.bat` synchronizes `main`, creates an isolated slice worktree/branch and copies Claude's instruction to the clipboard. It refuses any slice that is not explicitly `READY`.
 
-The initial Windows PowerShell `$Args` collision was corrected in PR #8; both START and FINISH now pass Git arguments through an explicit `$GitArgs` parameter.
+The workflow now reuses the existing VS Code window (`code -r`) rather than opening a second VS Code instance. If the `code` command is unavailable, Explorer opens the worktree instead.
+
+The initial Windows PowerShell `$Args` collision was corrected in PR #8; both START and FINISH pass Git arguments through an explicit `$GitArgs` parameter.
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned `slice/...` branch. The master/architect does not write Claude's active slice branch, and `main` remains frozen during active implementation except for an explicit blocker-resolution workflow.
 
-## Current operational step — SLICE-0005
+## Current operational position
 
-### Identity Contracts and Deterministic Search Labels — READY
+No later implementation slice is `READY` yet.
 
-See `docs/slices/SLICE-0005-identity-contracts-and-search-labels.md`.
+Before Claude starts SLICE-0006:
 
-The slice implements the accepted ADR-0011 identity consequence before real external identity data is ingested:
-
-- Brand/Marque and Organization/Builder/Manufacturer become separate first-class contract identities;
-- aliases are entity-scoped and stable/provenance-addressable;
-- Brand ↔ BoatModel and Organization ↔ BoatDesign relationships support multiple/historical applicability;
-- BoatModel/BoatDesign successor schemas remove authoritative free-text brand/builder identity boundaries without mutating legacy schemas;
-- a small pure-Python identity layer provides deterministic search-label keys, including corporate-name shortening, without mutating canonical identity;
-- no fuzzy matching, raw-string role inference, persistence, provenance runtime or acquisition is allowed in this slice.
-
-Only SLICE-0005 is `READY`.
+1. finish/clean the SLICE-0005 worktree locally;
+2. refine the provenance/raw-observation slice against the accepted identity contracts;
+3. move exactly SLICE-0006 from `BACKLOG` to `READY`;
+4. start it through `START_SLICE.bat` from synchronized `origin/main`.
 
 ## Revised near-term path to real data
 
-The rolling wave now intentionally brings controlled real data earlier:
+The rolling wave intentionally brings controlled real data early:
 
 ```text
-SLICE-0005  identity contracts/search labels
+SLICE-0005  identity contracts/search labels                 DONE
       ↓
 SLICE-0006  provenance/raw-observation boundary
       ↓
@@ -157,7 +178,7 @@ Accepted strategic direction remains in `docs/PRODUCT_RETENTION_AND_MONETIZATION
 
 ## Do not start yet
 
-- SLICE-0006 or later implementation;
+- SLICE-0006 or later implementation until explicitly prepared/READY;
 - production broad ingestion;
 - PostgreSQL production schema/application persistence;
 - FastAPI public API;
