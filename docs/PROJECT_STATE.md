@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-18  
-**Current stage:** Stage 2.4 complete — SLICE-0005 DONE; next implementation slice not yet READY  
+**Current stage:** Stage 2.5 — SLICE-0006 provenance/raw-observation boundary READY  
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -124,22 +124,29 @@ FINISH_SLICE.bat
 
 `START_SLICE.bat` synchronizes `main`, creates an isolated slice worktree/branch and copies Claude's instruction to the clipboard. It refuses any slice that is not explicitly `READY`.
 
-The workflow now reuses the existing VS Code window (`code -r`) rather than opening a second VS Code instance. If the `code` command is unavailable, Explorer opens the worktree instead.
+The workflow reuses the existing VS Code window (`code -r`) rather than opening a second VS Code instance. If the `code` command is unavailable, Explorer opens the worktree instead.
 
 The initial Windows PowerShell `$Args` collision was corrected in PR #8; both START and FINISH pass Git arguments through an explicit `$GitArgs` parameter.
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned `slice/...` branch. The master/architect does not write Claude's active slice branch, and `main` remains frozen during active implementation except for an explicit blocker-resolution workflow.
 
-## Current operational position
+## Current operational position — SLICE-0006 READY
 
-No later implementation slice is `READY` yet.
+`docs/slices/SLICE-0006-provenance-raw-observation-boundary.md` is the only `READY` implementation slice.
 
-Before Claude starts SLICE-0006:
+The slice turns the already accepted ADR-0006 provenance architecture into a small persistence-agnostic runtime before any external acquisition is introduced. It is intentionally bounded to:
 
-1. finish/clean the SLICE-0005 worktree locally;
-2. refine the provenance/raw-observation slice against the accepted identity contracts;
-3. move exactly SLICE-0006 from `BACKLOG` to `READY`;
-4. start it through `START_SLICE.bat` from synchronized `origin/main`.
+- a shared provenance-subject contract;
+- successor FieldEvidence/FieldResolution contracts that can address the SLICE-0005 Brand/Organization/alias/relationship identities without mutating legacy provenance schemas;
+- immutable/snapshot-safe raw observation vs normalized-candidate primitives;
+- RFC 6901 pointer parsing/lookup;
+- evidence/resolution supersession, conflict and current-resolution validation;
+- canonical value ↔ active resolution consistency checks;
+- Source → FieldEvidence → FieldResolution reverse-impact lookup over supplied collections.
+
+SLICE-0006 explicitly does **not** implement source-rights clearance, ResearchJob, network acquisition, persistence/ORM, source-authority ranking, derivation calculations or search semantics.
+
+After implementation it must stop in `REVIEW`; SLICE-0007 must not start automatically.
 
 ## Revised near-term path to real data
 
@@ -148,7 +155,7 @@ The rolling wave intentionally brings controlled real data early:
 ```text
 SLICE-0005  identity contracts/search labels                 DONE
       ↓
-SLICE-0006  provenance/raw-observation boundary
+SLICE-0006  provenance/raw-observation boundary              READY
       ↓
 SLICE-0007  ResearchJob + source-rights clearance gate
       ↓
@@ -178,7 +185,7 @@ Accepted strategic direction remains in `docs/PRODUCT_RETENTION_AND_MONETIZATION
 
 ## Do not start yet
 
-- SLICE-0006 or later implementation until explicitly prepared/READY;
+- SLICE-0007 or later implementation;
 - production broad ingestion;
 - PostgreSQL production schema/application persistence;
 - FastAPI public API;
