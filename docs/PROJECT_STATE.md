@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-18  
-**Current stage:** Stage 2.3 complete — SLICE-0004 DONE; next implementation slice not yet READY  
+**Current stage:** Stage 2.4 — SLICE-0005 identity contracts/search labels READY  
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -22,7 +22,8 @@
 - Python research toolchain accepted (OQ-010 / ADR-0009);
 - initial application/deployment stack accepted (OQ-008/OQ-011/OQ-012 / ADR-0010);
 - requirements/test/governance baseline established;
-- bounded implementation-slice workflow established under `docs/slices/`.
+- bounded implementation-slice workflow established under `docs/slices/`;
+- isolated AI worktree/single-writer Windows workflow merged and active.
 
 ## Accepted application/deployment architecture
 
@@ -87,31 +88,68 @@ Acceptance evidence:
 
 The merged boundary provides deterministic exact conversion for explicit length/mass/area measurements using accepted unit tokens, preserves raw text/semantic labels, keeps ratio-input basis vocabularies aligned with the normative schema, rejects non-finite values and performs no free-text semantic inference or derived-metric rounding.
 
-## Current operational position
+## AI repository workflow — ACTIVE
 
-No later implementation slice is `READY` yet.
+The single-writer/worktree workflow is merged. The project owner normally starts and finishes implementation slices with:
 
-Before Claude starts the next slice:
+```text
+START_SLICE.bat
+FINISH_SLICE.bat
+```
 
-1. close the new AI single-writer/worktree automation workflow;
-2. refine the rolling-wave backlog using accepted ADR-0011 Brand/Builder identity semantics;
-3. move exactly one next slice to `READY`;
-4. start it from synchronized `origin/main` through the isolated worktree workflow.
+`START_SLICE.bat` synchronizes `main`, creates an isolated slice worktree/branch, opens VS Code and copies Claude's instruction to the clipboard. It refuses any slice that is not explicitly `READY`.
 
-The current preferred near-term sequence is to bring real rights-cleared web data earlier than the old backlog order, while preserving the minimum prerequisites for identity, provenance/raw observations and source-rights gating.
+The initial Windows PowerShell `$Args` collision was corrected in PR #8; both START and FINISH now pass Git arguments through an explicit `$GitArgs` parameter.
+
+GitHub `origin/main` remains canonical truth. Claude owns only its assigned `slice/...` branch. The master/architect does not write Claude's active slice branch, and `main` remains frozen during active implementation except for an explicit blocker-resolution workflow.
+
+## Current operational step — SLICE-0005
+
+### Identity Contracts and Deterministic Search Labels — READY
+
+See `docs/slices/SLICE-0005-identity-contracts-and-search-labels.md`.
+
+The slice implements the accepted ADR-0011 identity consequence before real external identity data is ingested:
+
+- Brand/Marque and Organization/Builder/Manufacturer become separate first-class contract identities;
+- aliases are entity-scoped and stable/provenance-addressable;
+- Brand ↔ BoatModel and Organization ↔ BoatDesign relationships support multiple/historical applicability;
+- BoatModel/BoatDesign successor schemas remove authoritative free-text brand/builder identity boundaries without mutating legacy schemas;
+- a small pure-Python identity layer provides deterministic search-label keys, including corporate-name shortening, without mutating canonical identity;
+- no fuzzy matching, raw-string role inference, persistence, provenance runtime or acquisition is allowed in this slice.
+
+Only SLICE-0005 is `READY`.
+
+## Revised near-term path to real data
+
+The rolling wave now intentionally brings controlled real data earlier:
+
+```text
+SLICE-0005  identity contracts/search labels
+      ↓
+SLICE-0006  provenance/raw-observation boundary
+      ↓
+SLICE-0007  ResearchJob + source-rights clearance gate
+      ↓
+SLICE-0008  FIRST RIGHTS-GATED REAL DATA — Wikidata CC0
+      ↓
+inspect actual source quality
+      ↓
+SLICE-0009  appendage/configuration normalization
+      ↓
+SLICE-0010  derived metrics
+```
+
+This avoids over-designing the hardest appendage/configuration layer purely from imagined source formats. Broad ingestion remains gated by controlled real-data inspection and the 50–100 difficult-design benchmark.
 
 ## Downstream gates
 
 - broad ingestion is not yet authorized;
-- OQ-009 is required before query-engine implementation;
+- OQ-009 is required before technical query-engine implementation;
 - OQ-018 is required before the public search/SEO surface;
 - OQ-014 is required before account/auth implementation;
 - OQ-015 is required before exposing the stable public HTTP API;
 - OQ-006 is required before automated alert cadence/freshness is frozen.
-
-## Repository working convention
-
-GitHub `origin/main` is canonical truth. Implementation agents work only on assigned slice branches/worktrees; accepted work reaches `main` through review/CI/project-owner acceptance. The dedicated one-click Windows workflow automation is being introduced separately so the project owner does not need to manage routine Git branching manually.
 
 ## Retention / freemium direction
 
@@ -119,7 +157,7 @@ Accepted strategic direction remains in `docs/PRODUCT_RETENTION_AND_MONETIZATION
 
 ## Do not start yet
 
-- SLICE-0005 or later implementation until explicitly prepared/READY;
+- SLICE-0006 or later implementation;
 - production broad ingestion;
 - PostgreSQL production schema/application persistence;
 - FastAPI public API;
