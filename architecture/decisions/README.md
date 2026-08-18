@@ -29,6 +29,9 @@ See `templates/ADR_TEMPLATE.md` and `docs/governance/OPEN_QUESTION_PROCESS.md`.
 - `ADR-0002` — Docs-to-code
 - `ADR-0003` — Broad coverage with progressive verification depth
 - `ADR-0004` — BoatModel / BoatDesign generation / NamedVariant / DesignOption identity
-
-
-- ADR-0007 — Search Architecture and SEO Are First-Class Product Architecture — ACCEPTED
+- `ADR-0005` — Source rights / clearance
+- `ADR-0006` — Field provenance ledger
+- `ADR-0007` — Search Architecture and SEO are first-class product architecture
+- `ADR-0008` — Derived metric methodology
+- `ADR-0009` — Python research/data-pipeline toolchain
+- `ADR-0010` — VPS-first application stack: Contabo + Cloudflare edge + Astro/TypeScript + selective React + FastAPI/Python + PostgreSQL; auth remains deferred
