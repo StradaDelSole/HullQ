@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-18  
-**Current stage:** Stage 0.3 complete — SLICE-0001 done; next: SLICE-0002 real design-data source research  
+**Current stage:** Stage 0.3 complete; SLICE-0002 design-data evidence research in REVIEW  
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -22,88 +22,86 @@
 - requirements/test/governance baseline established;
 - bounded implementation-slice workflow established under `docs/slices/`.
 
-## Current operational step
-
-### SLICE-0002 — Design Data Source Research & Seed Corpus — READY
-
-SLICE-0001 is complete: `uv.lock` committed, all local gates green, Linux + Windows CI green.
-
-See `docs/slices/SLICE-0002-source-data-research.md`.
-
 ## Completed bootstrap
 
 ### SLICE-0001 — Close repository bootstrap — DONE
 
-`uv.lock` generated and committed; all local quality gates pass (Ruff format/lint, mypy strict, pytest 18/18, coverage 100%, pip-audit clean); first green Linux + Windows GitHub Actions CI run confirmed.
+`uv.lock` is committed and the accepted local quality gates passed. See `docs/slices/SLICE-0001-bootstrap-closure.md` for the recorded bootstrap evidence.
 
-See `docs/slices/SLICE-0001-bootstrap-closure.md`.
+## Current operational step
 
-## Immediate pre-domain research step
+### SLICE-0002 — Design Data Source Research & Seed Corpus — REVIEW
 
-### SLICE-0002 — Design Data Source Research & Seed Corpus — READY
+The evidence-first source research is complete enough for independent review and project-owner acceptance. The research agent has **not** marked the slice `DONE`.
 
-Before HullQ writes meaningful research-pipeline/domain code, research the **actual independent sailboat-design data sources** from which HullQ can build its own canonical universe.
+See `docs/slices/SLICE-0002-design-data-source-research.md`.
 
-This means researching real boat data, not choosing a database product.
+### Evidence package
 
-SLICE-0002 must:
+- `docs/research/DESIGN_DATA_SOURCE_LANDSCAPE.md`
+- `research/evidence/SOURCE_REGISTER.md`
+- `research/DESIGN_DATA_FIELD_COVERAGE_MATRIX.md`
+- `research/benchmark/SEED_RESEARCH_NOTES.md`
+- `research/benchmark/SEED_RESEARCH_SUPPLEMENT.md`
 
-- identify plausible broad identity/bootstrap sources that are usable under the accepted source-rights model;
-- map HullQ-critical fields to real sources and observed availability;
-- research manufacturer/designer/class-association/archive sources for primary verification;
-- manually research 20–30 representative difficult BoatDesign candidates;
-- record missing data, source conflicts, generations/options and semantic ambiguity;
-- distinguish what can likely be automated from what requires human review;
-- derive actual extraction/normalization pipeline requirements from the source evidence.
+### Main findings
 
-SailboatData remains reference/prototype material only and MUST NOT become an invisible production-value source.
+1. **Wikidata CC0 is the strongest current broad bootstrap candidate.** The official sailing data model and query surface support a four-digit open identity/common-field seed. Current planning range is approximately 1,000–1,500 useful sailboat-class identity candidates before additional-source expansion/deduplication; the future adapter must record an exact reproducible live count.
+2. **No single SailboatData replacement was found.** HullQ needs broad open bootstrap plus progressive manufacturer/designer/class/archive enrichment.
+3. **Common specifications are much easier than HullQ differentiators.** In the deliberately difficult 21-case evidence set, useful common specs were directly available in 18/21 cases, keel/board architecture in 17/21, rudder/support architecture in 13/21, and explicit skeg/skegless state in only 7/21.
+4. **Configuration awareness is mandatory.** 8/21 cases have option/variant changes to core technical values; real examples include shallow/deep/lifting/twin keels, single/twin rudders, rig variants, folding multihull geometry and board-up/down states.
+5. **Measurement basis must survive normalization.** 11/21 cases expose a non-generic mass/displacement basis such as lightship, half-load, measurement trim, unladen or EEC-light.
+6. **Primary sources are not globally authoritative.** Najad's own multilingual N34 PDF conflicts internally on number built; Westerly archival evidence contains another count discrepancy. Evidence resolution must remain field-specific.
+7. **ORC is technically attractive but not a permitted HullQ bootstrap under the terms reviewed.** Public access does not equal commercial/systematic database reuse clearance.
+8. **Rudder/skeg research will drive disproportionate human review.** These facts often live in prose, parts catalogues, manuals, class documents or drawings rather than structured model tables.
 
-The 20–30-design seed sample is not the final benchmark. After implementation begins, HullQ still builds and measures the deliberately difficult 50–100-design research benchmark before broad ingestion.
+## Evidence-derived implementation sequence
 
-## Current source-research direction
+The backlog was refined from the observed source shapes:
 
-Initial candidate classes include:
+1. SLICE-0003 — canonical JSON-Schema contract runtime / local reference registry;
+2. SLICE-0004 — measurement observation + unit/basis normalization preserving raw semantics;
+3. SLICE-0005 — identity/model/generation text primitives;
+4. SLICE-0006 — appendage/configuration normalization for independent keel/board/rudder/skeg/count/state relationships;
+5. SLICE-0007 — provenance/conflict runtime;
+6. SLICE-0008 — derived metrics;
+7. SLICE-0009 — ResearchJob state machine;
+8. SLICE-0010 — rights-gated first real acquisition adapter, preferred initial target Wikidata CC0.
 
-- open structured data such as Wikidata for broad identity/common-field bootstrap where source clearance permits;
-- official manufacturer heritage/current model pages, brochures, manuals and parts/heritage systems for primary factual verification;
-- official designer/builder/class-association technical material;
-- explicitly licensed secondary datasets where obligations are compatible with the accepted source-rights policy;
-- commercial/community databases only as permitted research leads/reference where production clearance is absent.
+Only SLICE-0003 should be detailed/made READY after SLICE-0002 is accepted. Later slices remain directional rolling-wave backlog.
 
-Every source remains subject to ADR-0005: technical accessibility is not equivalent to rights or HullQ clearance.
+## Following gate
 
-## Following steps
+SLICE-0002 requires:
 
-1. ~~execute `SLICE-0001`~~ **DONE**: `uv.lock` committed, all gates green, Linux + Windows CI green;
-2. execute `SLICE-0002`: perform real source/data research and the 20–30-design seed evidence sample;
-3. use those findings to refine `SLICE-0003+` rather than coding against hypothetical input shapes;
-4. implement contracts and deterministic normalization in bounded slices;
-5. implement provenance/derived runtime and ResearchJob state machine;
-6. build and measure the 50–100-design benchmark;
-7. harden the pipeline before broad ingestion toward thousands of designs.
+1. independent review of the research package;
+2. explicit user/project-owner acceptance;
+3. only then status `DONE` and preparation of SLICE-0003.
 
-OQ-009 remains required before query-engine implementation and OQ-018 before the public search/SEO surface.
+No domain implementation slice is READY while SLICE-0002 remains in REVIEW.
 
-## Database / persistence note
+## Downstream gates unchanged
 
-The concrete production database/search/index choice remains OQ-012 and is **not** the immediate task. A separate logical-model consolidation may be revisited when implementation/persistence work requires it; it is not a substitute for researching the actual sailboat data sources first.
+- 50–100 difficult designs remain the real pipeline benchmark after the first implementation slices;
+- broad ingestion toward 1,000 → 2,500 → 5,000 → 10,000+ designs follows benchmark hardening;
+- OQ-009 is required before query-engine implementation;
+- OQ-018 is required before the public search/SEO surface;
+- OQ-012 remains the later physical production database/search/index decision.
 
 ## Retention / freemium direction
 
-Accepted strategic direction is documented in `docs/PRODUCT_RETENTION_AND_MONETIZATION.md`: HullQ serves active buyers plus long-lived owner-watchers/opportunity hunters; core search remains open in the preferred freemium model; subscription value attaches to monitoring capacity/frequency and advanced market-watch features. Exact pricing/limits remain OQ-016.
+Accepted strategic direction remains in `docs/PRODUCT_RETENTION_AND_MONETIZATION.md`: core technical search stays open in the preferred freemium thesis; subscription value attaches primarily to monitoring capacity/frequency and advanced market intelligence. Exact pricing/limits remain OQ-016.
 
 ## Parallel work
 
-OQ-013 — market-source access matrix can be researched in parallel but MUST NOT distract from the design-data foundation.
+OQ-013 market-source access research may continue in parallel when useful, but must not distract from the canonical design-data foundation.
 
 ## Do not start yet
 
+- SLICE-0003 implementation before SLICE-0002 acceptance;
 - production broad ingestion;
-- frontend implementation;
-- application/backend implementation;
-- physical production database/search technology selection under OQ-012;
+- frontend/application backend;
+- physical production database/search technology selection;
 - production marketplace adapters;
 - accounts/alerts;
 - multi-source listing deduplication.
-
-These remain downstream of explicit gates in `docs/EXECUTION_PLAN.md`.
