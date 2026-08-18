@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/relationship-applicability/0.1",
+  "title": "HullQ Relationship Applicability Core v0.1",
+  "description": "Shared core for all HullQ relationship records. Defines the stable relationship id, optional applicability/boundary fields, and the builder_role vocabulary. Compose into standalone and embedded relationship schemas via allOf/$ref. This schema intentionally has no unevaluatedProperties constraint — composing schemas apply that.",
+  "type": "object",
+  "required": ["id"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable opaque relationship ID. Independent of array position. Required in all forms (standalone and embedded)."
+    },
+    "first_year": {
+      "type": ["integer", "null"],
+      "minimum": 1800,
+      "maximum": 2200,
+      "description": "First year this relationship was applicable. Null when unknown."
+    },
+    "last_year": {
+      "type": ["integer", "null"],
+      "minimum": 1800,
+      "maximum": 2200,
+      "description": "Last year this relationship was applicable. Null when unknown or still active."
+    },
+    "hull_number_from": {
+      "type": ["string", "null"],
+      "description": "Inclusive hull/build number boundary from. Null when unknown."
+    },
+    "hull_number_to": {
+      "type": ["string", "null"],
+      "description": "Inclusive hull/build number boundary to. Null when unknown."
+    },
+    "market": {
+      "type": ["string", "null"],
+      "description": "Optional market/region label when the relationship was region-specific."
+    },
+    "notes": {
+      "type": ["string", "null"]
+    }
+  },
+  "$defs": {
+    "builder_role": {
+      "type": "string",
+      "enum": ["builder", "manufacturer", "licensed_builder", "other"],
+      "description": "Builder/manufacturer role vocabulary. Single definition shared by standalone OrganizationDesignRelationship and embedded BoatDesign builder records. Both forms $ref this definition."
+    }
+  }
+}

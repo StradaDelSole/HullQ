@@ -39,63 +39,19 @@
     "brand_relationships": {
       "type": "array",
       "items": {
+        "allOf": [{"$ref": "https://hullq.local/schemas/relationship-applicability/0.1"}],
         "type": "object",
-        "additionalProperties": false,
+        "unevaluatedProperties": false,
+        "description": "Embedded Brand relationship. boat_model_id is omitted (implicit enclosing BoatModel); omitting it prevents contradictory cross-ID claims. Shared applicability fields come from relationship-applicability/0.1. The standalone BRAND_MODEL_RELATIONSHIP_SCHEMA.v0.1 retains both IDs for cross-entity use.",
         "required": [
           "id",
           "brand_id"
         ],
-        "description": "Embedded Brand relationship. boat_model_id is omitted here because it is always the enclosing BoatModel id; omitting it prevents contradictory cross-ID claims. The standalone BRAND_MODEL_RELATIONSHIP_SCHEMA.v0.1 retains both IDs for cross-entity use.",
         "properties": {
-          "id": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Stable opaque relationship ID for independent addressing."
-          },
           "brand_id": {
             "type": "string",
             "minLength": 1,
             "description": "Reference to the Brand entity ID."
-          },
-          "first_year": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "minimum": 1800,
-            "maximum": 2200
-          },
-          "last_year": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "minimum": 1800,
-            "maximum": 2200
-          },
-          "hull_number_from": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "hull_number_to": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "market": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "notes": {
-            "type": [
-              "string",
-              "null"
-            ]
           }
         }
       },

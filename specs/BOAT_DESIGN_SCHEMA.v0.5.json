@@ -114,74 +114,24 @@
           "type": "array",
           "description": "Organization relationships for builders/manufacturers. Each entry references a stable Organization ID; the free-text name from v0.4 is replaced. Multiple time-bounded entries are supported.",
           "items": {
+            "allOf": [{"$ref": "https://hullq.local/schemas/relationship-applicability/0.1"}],
             "type": "object",
-            "additionalProperties": false,
+            "unevaluatedProperties": false,
+            "description": "Embedded builder relationship. boat_design_id is omitted (implicit enclosing BoatDesign). Shared applicability fields and role vocabulary come from relationship-applicability/0.1.",
             "required": [
               "id",
               "organization_id",
               "role"
             ],
             "properties": {
-              "id": {
-                "type": "string",
-                "minLength": 1,
-                "description": "Stable opaque relationship ID for independent addressing, independent of array position."
-              },
               "organization_id": {
                 "type": "string",
                 "minLength": 1,
                 "description": "Stable HullQ Organization ID. Replaces free-text name from BOAT_DESIGN_SCHEMA.v0.4."
               },
               "role": {
-                "enum": [
-                  "builder",
-                  "manufacturer",
-                  "licensed_builder",
-                  "other"
-                ],
+                "$ref": "https://hullq.local/schemas/relationship-applicability/0.1#/$defs/builder_role",
                 "description": "Builder/manufacturer role semantics for this relationship."
-              },
-              "first_year": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "minimum": 1800,
-                "maximum": 2200,
-                "description": "First year this Organization was the builder. Null when unknown."
-              },
-              "last_year": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "minimum": 1800,
-                "maximum": 2200,
-                "description": "Last year this Organization was the builder. Null when unknown or still active."
-              },
-              "hull_number_from": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "hull_number_to": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "market": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "notes": {
-                "type": [
-                  "string",
-                  "null"
-                ]
               }
             }
           }

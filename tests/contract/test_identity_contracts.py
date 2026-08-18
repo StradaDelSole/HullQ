@@ -60,6 +60,9 @@ class TestSchemaLoading:
     def test_legacy_boat_design_v04_still_loads(self, registry: ContractRegistry) -> None:
         assert "BOAT_DESIGN_SCHEMA.v0.4.json" in registry.schema_names
 
+    def test_relationship_applicability_core_loads(self, registry: ContractRegistry) -> None:
+        assert "RELATIONSHIP_APPLICABILITY_SCHEMA.v0.1.json" in registry.schema_names
+
 
 # ---------------------------------------------------------------------------
 # IdentityAlias contract
@@ -617,3 +620,183 @@ class TestBoatDesignV05Schema:
         ]
         with pytest.raises(ValidationError):
             v.validate(data)
+
+
+# ---------------------------------------------------------------------------
+# Relationship semantic parity — anti-drift tests
+#
+# These tests enforce that standalone and embedded relationship schemas share
+# a single source of truth (relationship-applicability/0.1). Any drift between
+# the two forms — a bounds field missing in embedded, a role value added only
+# to standalone, or an extra-field rule dropped from one form — must cause
+# one of these tests to fail.
+# ---------------------------------------------------------------------------
+
+
+def _bd_with_builders(builders: list) -> dict:
+    """Return a minimal valid BoatDesign v0.5 with the given builders list."""
+    import copy
+
+    data = copy.deepcopy(VALID_BD_V05)
+    data["relationships"]["builders"] = builders
+    return data
+
+
+def _bm_with_brand_rels(brand_rels: list) -> dict:
+    """Return a minimal valid BoatModel v0.2 with the given brand_relationships."""
+    return {**VALID_BM_V02, "brand_relationships": brand_rels}
+
+
+# Full set of optional bounds fields shared by all relationship forms.
+_ALL_BOUNDS = {
+    "first_year": 1985,
+    "last_year": 1998,
+    "hull_number_from": "001",
+    "hull_number_to": "523",
+    "market": "North America",
+    "notes": "test note",
+}
+
+_ALL_ROLE_VALUES = ["builder", "manufacturer", "licensed_builder", "other"]
+
+
+class TestRelationshipSemanticParity:
+    """Anti-drift: standalone and embedded relationship forms must share semantics.
+
+    Each test would fail if standalone ODR or BMR diverge from their embedded
+    counterparts in bounds fields, role vocabulary, or extra-field enforcement.
+    """
+
+    # --- Bounds field parity: ODR standalone vs embedded builder ---
+
+    def test_odr_standalone_accepts_all_bounds_fields(self, registry: ContractRegistry) -> None:
+        v = registry.validator_by_name("ORGANIZATION_DESIGN_RELATIONSHIP_SCHEMA.v0.1.json")
+        v.validate({**VALID_ODR, **_ALL_BOUNDS})
+
+    def test_embedded_builder_accepts_all_bounds_fields(self, registry: ContractRegistry) -> None:
+        v = registry.validator_by_name("BOAT_DESIGN_SCHEMA.v0.5.json")
+        embedded = {
+            "id": "ODR_PARITY_001",
+            "organization_id": "ORG_PARITY",
+            "role": "builder",
+            **_ALL_BOUNDS,
+        }
+        v.validate(_bd_with_builders([embedded]))
+
+    # --- Bounds field parity: BMR standalone vs embedded brand_rel ---
+
+    def test_bmr_standalone_accepts_all_bounds_fields(self, registry: ContractRegistry) -> None:
+        v = registry.validator_by_name("BRAND_MODEL_RELATIONSHIP_SCHEMA.v0.1.json")
+        v.validate({**VALID_BMR, **_ALL_BOUNDS})
+
+    def test_embedded_brand_rel_accepts_all_bounds_fields(self, registry: ContractRegistry) -> None:
+        v = registry.validator_by_name("BOAT_MODEL_SCHEMA.v0.2.json")
+        embedded = {"id": "BMR_PARITY_001", "brand_id": "BR_PARITY", **_ALL_BOUNDS}
+        v.validate(_bm_with_brand_rels([embedded]))
+
+    # --- Role vocabulary parity: all values valid in both standalone and embedded ---
+
+    def test_all_roles_valid_in_standalone_odr(self, registry: ContractRegistry) -> None:
+        v = registry.validator_by_name("ORGANIZATION_DESIGN_RELATIONSHIP_SCHEMA.v0.1.json")
+        for role in _ALL_ROLE_VALUES:
+            v.validate({**VALID_ODR, "role": role})
+
+    def test_all_roles_valid_in_embedded_builder(self, registry: ContractRegistry) -> None:
+        v = registry.validator_by_name("BOAT_DESIGN_SCHEMA.v0.5.json")
+        for role in _ALL_ROLE_VALUES:
+            embedded = {"id": "ODR_ROLE_TEST", "organization_id": "ORG_X", "role": role}
+            v.validate(_bd_with_builders([embedded]))
+
+    def test_invalid_role_rejected_in_standalone_odr(self, registry: ContractRegistry) -> None:
+        v = registry.validator_by_name("ORGANIZATION_DESIGN_RELATIONSHIP_SCHEMA.v0.1.json")
+        with pytest.raises(ValidationError):
+            v.validate({**VALID_ODR, "role": "fabricator"})
+
+    def test_invalid_role_rejected_in_embedded_builder(self, registry: ContractRegistry) -> None:
+        v = registry.validator_by_name("BOAT_DESIGN_SCHEMA.v0.5.json")
+        embedded = {"id": "ODR_X", "organization_id": "ORG_X", "role": "fabricator"}
+        with pytest.raises(ValidationError):
+            v.validate(_bd_with_builders([embedded]))
+
+    # --- Extra-field rejection: must be consistent in both forms ---
+
+    def test_spurious_field_rejected_in_standalone_odr(self, registry: ContractRegistry) -> None:
+        v = registry.validator_by_name("ORGANIZATION_DESIGN_RELATIONSHIP_SCHEMA.v0.1.json")
+        with pytest.raises(ValidationError):
+            v.validate({**VALID_ODR, "undeclared_extra": "x"})
+
+    def test_spurious_field_rejected_in_embedded_builder(self, registry: ContractRegistry) -> None:
+        v = registry.validator_by_name("BOAT_DESIGN_SCHEMA.v0.5.json")
+        embedded = {
+            "id": "ODR_X",
+            "organization_id": "ORG_X",
+            "role": "builder",
+            "undeclared_extra": "x",
+        }
+        with pytest.raises(ValidationError):
+            v.validate(_bd_with_builders([embedded]))
+
+    def test_spurious_field_rejected_in_standalone_bmr(self, registry: ContractRegistry) -> None:
+        v = registry.validator_by_name("BRAND_MODEL_RELATIONSHIP_SCHEMA.v0.1.json")
+        with pytest.raises(ValidationError):
+            v.validate({**VALID_BMR, "undeclared_extra": "x"})
+
+    def test_spurious_field_rejected_in_embedded_brand_rel(
+        self, registry: ContractRegistry
+    ) -> None:
+        v = registry.validator_by_name("BOAT_MODEL_SCHEMA.v0.2.json")
+        embedded = {"id": "BMR_X", "brand_id": "BR_X", "undeclared_extra": "x"}
+        with pytest.raises(ValidationError):
+            v.validate(_bm_with_brand_rels([embedded]))
+
+    # --- Year boundary values: same constraint (min 1800, max 2200) in both forms ---
+
+    def test_boundary_years_valid_in_standalone_odr(self, registry: ContractRegistry) -> None:
+        v = registry.validator_by_name("ORGANIZATION_DESIGN_RELATIONSHIP_SCHEMA.v0.1.json")
+        v.validate({**VALID_ODR, "first_year": 1800, "last_year": 2200})
+
+    def test_boundary_years_valid_in_embedded_builder(self, registry: ContractRegistry) -> None:
+        v = registry.validator_by_name("BOAT_DESIGN_SCHEMA.v0.5.json")
+        embedded = {
+            "id": "ODR_X",
+            "organization_id": "ORG_X",
+            "role": "builder",
+            "first_year": 1800,
+            "last_year": 2200,
+        }
+        v.validate(_bd_with_builders([embedded]))
+
+    def test_boundary_years_valid_in_standalone_bmr(self, registry: ContractRegistry) -> None:
+        v = registry.validator_by_name("BRAND_MODEL_RELATIONSHIP_SCHEMA.v0.1.json")
+        v.validate({**VALID_BMR, "first_year": 1800, "last_year": 2200})
+
+    def test_boundary_years_valid_in_embedded_brand_rel(self, registry: ContractRegistry) -> None:
+        v = registry.validator_by_name("BOAT_MODEL_SCHEMA.v0.2.json")
+        embedded = {"id": "BMR_X", "brand_id": "BR_X", "first_year": 1800, "last_year": 2200}
+        v.validate(_bm_with_brand_rels([embedded]))
+
+    # --- Role vocabulary structural check: both forms must reference the shared def ---
+
+    def test_role_not_inline_in_standalone_odr(self) -> None:
+        # Standalone ODR must reference role via $ref, not define its own inline enum.
+        # If someone duplicates the enum instead of using $ref, this catches it.
+        schema = json.loads(
+            (SPECS / "ORGANIZATION_DESIGN_RELATIONSHIP_SCHEMA.v0.1.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        role_prop = schema.get("properties", {}).get("role", {})
+        assert "$ref" in role_prop, (
+            "ODR role must be a $ref to relationship-applicability/0.1#/$defs/builder_role"
+        )
+        assert "enum" not in role_prop, "ODR role must not define its own inline enum"
+
+    def test_role_not_inline_in_embedded_builder_schema(self) -> None:
+        # Embedded builder items in BoatDesign v0.5 must reference role via $ref.
+        schema = json.loads((SPECS / "BOAT_DESIGN_SCHEMA.v0.5.json").read_text(encoding="utf-8"))
+        builder_items = schema["properties"]["relationships"]["properties"]["builders"]["items"]
+        role_prop = builder_items.get("properties", {}).get("role", {})
+        assert "$ref" in role_prop, (
+            "Embedded builder role must be a $ref to relationship-applicability/0.1#/$defs/builder_role"
+        )
+        assert "enum" not in role_prop, "Embedded builder role must not define its own inline enum"
