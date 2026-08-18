@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-18  
-**Current stage:** Stage 2.2 — SLICE-0003 canonical contract runtime in REVIEW  
+**Current stage:** Stage 2.3 — SLICE-0004 measurement normalization READY  
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -25,7 +25,7 @@
 
 ## Accepted initial application/deployment architecture
 
-ADR-0010 and `docs/engineering/APPLICATION_STACK_BASELINE.v0.1.md` define the target stack before application/persistence/frontend work begins:
+ADR-0010 and `docs/engineering/APPLICATION_STACK_BASELINE.v0.1.md` define the target stack:
 
 ```text
 Cloudflare edge
@@ -44,9 +44,9 @@ Off-VPS backup/artifact direction: Cloudflare R2 when introduced
 Later native mobile: Flutter Android/iOS via the same accepted API boundary
 ```
 
-Key guardrails:
+Guardrails:
 
-- Contabo is the selected initial provider, but application code targets a portable commodity Linux VPS;
+- Contabo is the selected initial provider, while application code targets a portable commodity Linux VPS;
 - Cloudflare remains edge infrastructure, not the canonical application runtime/database;
 - PostgreSQL is the initial production relational store;
 - no dedicated search engine initially; PostgreSQL indexes/projections come first after query semantics are accepted;
@@ -60,17 +60,18 @@ OQ-014 remains deliberately deferred until the dedicated account/auth slice. The
 
 OQ-006 still controls alert cadence/freshness. OQ-015 still controls the stable HTTP API/versioning boundary. OQ-018 still controls exact public SEO URL/index/rendering/canonicalization/structured-data behavior.
 
-## Completed bootstrap
+## Completed evidence gate — SLICE-0002
 
-### SLICE-0001 — Close repository bootstrap — DONE
+SLICE-0002 is `DONE`. Main findings retained for implementation:
 
-`uv.lock` is committed and the accepted local quality gates passed. See `docs/slices/SLICE-0001-bootstrap-closure.md` for the recorded bootstrap evidence.
-
-## Completed evidence gate
-
-### SLICE-0002 — Design Data Source Research & Seed Corpus — DONE
-
-SLICE-0002 completed its independent review and was explicitly accepted by the project owner on 2026-08-18. The final research-agent handoff was `REVIEW`; the slice was moved to `DONE` only after review and project-owner acceptance under the status-authority rule in `CLAUDE.md`.
+1. Wikidata CC0 is the strongest current broad bootstrap candidate; exact live count belongs to the future adapter rather than a hard-coded planning number.
+2. No single SailboatData replacement exists; HullQ needs broad open bootstrap plus progressive manufacturer/designer/class/archive enrichment.
+3. In the deliberately difficult 21-case evidence set, useful common specs were directly available in 18/21, keel/board architecture in 17/21, rudder/support architecture in 13/21 and explicit skeg/skegless state in 7/21.
+4. 8/21 cases have option/variant changes to core technical values.
+5. 11/21 cases expose a non-generic displacement/mass basis; source basis must survive normalization.
+6. Primary sources can conflict internally or with other strong evidence; resolution remains field-specific.
+7. ORC remains blocked for systematic commercial ingestion under reviewed terms absent separate permission/licence.
+8. Rudder/skeg classification will drive disproportionate review cost.
 
 Evidence package:
 
@@ -80,47 +81,46 @@ Evidence package:
 - `research/benchmark/SEED_RESEARCH_NOTES.md`
 - `research/benchmark/SEED_RESEARCH_SUPPLEMENT.md`
 
-Main findings retained for implementation:
+## Completed implementation — SLICE-0003
 
-1. **Wikidata CC0 is the strongest current broad bootstrap candidate.** Current planning evidence supports a four-digit open identity/common-field seed; the later adapter must record an exact reproducible live count rather than hard-code a volatile number.
-2. **No single SailboatData replacement was found.** HullQ needs broad open bootstrap plus progressive manufacturer/designer/class/archive enrichment.
-3. **Common specifications are much easier than HullQ differentiators.** In the deliberately difficult 21-case evidence set, useful common specs were directly available in 18/21 cases, keel/board architecture in 17/21, rudder/support architecture in 13/21, and explicit skeg/skegless state in only 7/21.
-4. **Configuration awareness is mandatory.** 8/21 cases have option/variant changes to core technical values.
-5. **Measurement basis must survive normalization.** 11/21 cases expose a non-generic mass/displacement basis.
-6. **Primary sources are not globally authoritative.** Real manufacturer/archival source conflicts were observed; evidence resolution remains field-specific.
-7. **ORC is technically attractive but is not a permitted HullQ systematic commercial bootstrap under the reviewed terms absent separate permission/licence.**
-8. **Rudder/skeg research will drive disproportionate review.** These facts often live in prose, manuals, parts catalogues, class documents or drawings rather than structured model tables.
+### Canonical JSON-Schema Contract Runtime — DONE
 
-See `docs/slices/SLICE-0002-design-data-source-research.md` for final acceptance evidence and completion report.
+SLICE-0003 was implemented by Claude Code, independently reviewed, explicitly accepted by the project owner, and merged through PR #3 on 2026-08-18.
 
-## Current operational step
+Final merge commit: `b927a6b17e204de43773c8682e36a29db037ab8a`.
 
-### SLICE-0003 — Canonical JSON-Schema Contract Runtime — REVIEW
+Acceptance evidence:
 
-Claude Code implemented the slice on branch `slice/0003-canonical-contract-runtime`, commit `7b8f4a9066031b2de6d4149ee31fc55f7be85b6c`.
+- local implementation report: repository validator PASS, Ruff PASS, mypy strict PASS, pytest 39/39 PASS, coverage 98.18%, pip-audit PASS;
+- PR-head CI run #45: Ubuntu quality PASS, Windows quality PASS, dependency audit PASS;
+- independent code/spec review: ACCEPT, no blocking findings;
+- explicit project-owner acceptance received on 2026-08-18.
 
-Draft PR: **#3 — SLICE-0003: canonical JSON-Schema contract runtime**.
+The merged runtime provides repository-local Draft 2020-12 schema loading/validation and local `$id`/`$ref` resolution without network retrieval. No normalization/acquisition/persistence/query/frontend semantics were introduced.
 
-Reported local evidence:
+## Current operational step — SLICE-0004
 
-- repository validator PASS;
-- Ruff format/lint PASS;
-- mypy strict PASS;
-- pytest 39/39 PASS;
-- coverage 98.18%;
-- pip-audit PASS;
-- no normalization/acquisition/persistence/query/frontend/domain-semantics expansion.
+### Measurement Observation and Deterministic Unit/Basis Normalization — READY
 
-The actual GitHub commit/diff has been independently inspected and is consistent with the intended slice boundary. Remote PR CI was triggered after opening PR #3 and remains an external acceptance gate until observed green.
+See `docs/slices/SLICE-0004-measurement-normalization.md`.
 
-SLICE-0003 MUST NOT be moved to `DONE` or merged merely because local validation passed. Explicit project-owner acceptance remains required after remote CI + independent review.
+The slice is intentionally narrow:
 
-SLICE-0004 remains `BACKLOG`.
+- deterministic conversion of explicit length/mass/area values to SI;
+- explicit supported units only;
+- exact conversion relationships covered by tests;
+- raw source text and semantic labels preserved unchanged;
+- accepted displacement/sail-area basis values remain explicit and machine-visible;
+- `unknown` remains distinct from `source_unspecified`;
+- **no free-text source-label inference** such as automatically mapping `half-load`, `EEC light`, `unladen` or `working sails` into accepted semantic basis values;
+- no source acquisition, identity, appendage, provenance, persistence, API or frontend behavior.
+
+This boundary follows directly from SLICE-0002 evidence: unit conversion is highly automatable, while source-semantic interpretation often requires explicit rules/evidence/review.
 
 ## Evidence-derived implementation sequence
 
-1. **SLICE-0003 — REVIEW:** canonical JSON-Schema contract runtime / local reference registry;
-2. SLICE-0004 — measurement observation + unit/basis normalization preserving raw semantics;
+1. ~~SLICE-0003~~ — **DONE**: canonical JSON-Schema contract runtime;
+2. **SLICE-0004 — READY:** measurement observation + deterministic unit/basis normalization preserving raw semantics;
 3. SLICE-0005 — identity/model/generation text primitives;
 4. SLICE-0006 — appendage/configuration normalization for independent keel/board/rudder/skeg/count/state relationships;
 5. SLICE-0007 — provenance/conflict runtime;
@@ -128,7 +128,7 @@ SLICE-0004 remains `BACKLOG`.
 7. SLICE-0009 — ResearchJob state machine;
 8. SLICE-0010 — rights-gated first real acquisition adapter, preferred initial target Wikidata CC0.
 
-SLICE-0004–0010 remain directional rolling-wave backlog until prior implementation evidence justifies detailing them.
+Only SLICE-0004 is currently `READY`. SLICE-0005–0010 remain rolling-wave backlog and MUST NOT be started automatically.
 
 ## Downstream gates
 
@@ -142,6 +142,19 @@ SLICE-0004–0010 remain directional rolling-wave backlog until prior implementa
 
 The physical technology choices PostgreSQL/FastAPI/Astro/Contabo are accepted, but their implementation still waits for the relevant bounded slices.
 
+## Agent/repository working convention
+
+Coding agents should read repository files from the **local checkout** for normal implementation work. GitHub is the canonical shared state for pushed branches, PRs, CI, review and accepted `main`, but agents should not repeatedly fetch ordinary repository files through remote tooling when the synchronized local checkout already contains them.
+
+Before starting a new slice locally, synchronize `main` explicitly and avoid merging `main` into an old feature branch by accident:
+
+```bash
+git switch main
+git pull --ff-only origin main
+```
+
+Then create/use the assigned slice branch. Branch work must be pushed to GitHub for review; final `DONE` remains owned by the acceptance workflow, not the implementation agent.
+
 ## Retention / freemium direction
 
 Accepted strategic direction remains in `docs/PRODUCT_RETENTION_AND_MONETIZATION.md`: core technical search stays open in the preferred freemium thesis; subscription value attaches primarily to monitoring capacity/frequency and advanced market intelligence. Exact pricing/limits remain OQ-016.
@@ -152,7 +165,7 @@ OQ-013 market-source access research may continue in parallel when useful, but m
 
 ## Do not start yet
 
-- SLICE-0004 or later implementation before SLICE-0003 acceptance;
+- SLICE-0005 or later implementation;
 - production broad ingestion;
 - PostgreSQL production schema/application persistence;
 - FastAPI public API;
