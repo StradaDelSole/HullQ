@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-18  
-**Current stage:** Stage 0.3 complete; SLICE-0002 design-data evidence research in REVIEW  
+**Current stage:** Stage 2.2 — SLICE-0003 canonical contract runtime READY  
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -28,15 +28,13 @@
 
 `uv.lock` is committed and the accepted local quality gates passed. See `docs/slices/SLICE-0001-bootstrap-closure.md` for the recorded bootstrap evidence.
 
-## Current operational step
+## Completed evidence gate
 
-### SLICE-0002 — Design Data Source Research & Seed Corpus — REVIEW
+### SLICE-0002 — Design Data Source Research & Seed Corpus — DONE
 
-The evidence-first source research is complete enough for independent review and project-owner acceptance. The research agent has **not** marked the slice `DONE`.
+SLICE-0002 completed its independent review and was explicitly accepted by the project owner on 2026-08-18. The final research-agent handoff was `REVIEW`; the slice was moved to `DONE` only after review and project-owner acceptance under the status-authority rule in `CLAUDE.md`.
 
-See `docs/slices/SLICE-0002-design-data-source-research.md`.
-
-### Evidence package
+Evidence package:
 
 - `docs/research/DESIGN_DATA_SOURCE_LANDSCAPE.md`
 - `research/evidence/SOURCE_REGISTER.md`
@@ -44,22 +42,41 @@ See `docs/slices/SLICE-0002-design-data-source-research.md`.
 - `research/benchmark/SEED_RESEARCH_NOTES.md`
 - `research/benchmark/SEED_RESEARCH_SUPPLEMENT.md`
 
-### Main findings
+Main findings retained for implementation:
 
-1. **Wikidata CC0 is the strongest current broad bootstrap candidate.** The official sailing data model and query surface support a four-digit open identity/common-field seed. Current planning range is approximately 1,000–1,500 useful sailboat-class identity candidates before additional-source expansion/deduplication; the future adapter must record an exact reproducible live count.
+1. **Wikidata CC0 is the strongest current broad bootstrap candidate.** Current planning evidence supports a four-digit open identity/common-field seed; the later adapter must record an exact reproducible live count rather than hard-code a volatile number.
 2. **No single SailboatData replacement was found.** HullQ needs broad open bootstrap plus progressive manufacturer/designer/class/archive enrichment.
 3. **Common specifications are much easier than HullQ differentiators.** In the deliberately difficult 21-case evidence set, useful common specs were directly available in 18/21 cases, keel/board architecture in 17/21, rudder/support architecture in 13/21, and explicit skeg/skegless state in only 7/21.
-4. **Configuration awareness is mandatory.** 8/21 cases have option/variant changes to core technical values; real examples include shallow/deep/lifting/twin keels, single/twin rudders, rig variants, folding multihull geometry and board-up/down states.
-5. **Measurement basis must survive normalization.** 11/21 cases expose a non-generic mass/displacement basis such as lightship, half-load, measurement trim, unladen or EEC-light.
-6. **Primary sources are not globally authoritative.** Najad's own multilingual N34 PDF conflicts internally on number built; Westerly archival evidence contains another count discrepancy. Evidence resolution must remain field-specific.
-7. **ORC is technically attractive but not a permitted HullQ bootstrap under the terms reviewed.** Public access does not equal commercial/systematic database reuse clearance.
-8. **Rudder/skeg research will drive disproportionate human review.** These facts often live in prose, parts catalogues, manuals, class documents or drawings rather than structured model tables.
+4. **Configuration awareness is mandatory.** 8/21 cases have option/variant changes to core technical values.
+5. **Measurement basis must survive normalization.** 11/21 cases expose a non-generic mass/displacement basis.
+6. **Primary sources are not globally authoritative.** Real manufacturer/archival source conflicts were observed; evidence resolution remains field-specific.
+7. **ORC is technically attractive but is not a permitted HullQ systematic commercial bootstrap under the reviewed terms absent separate permission/licence.**
+8. **Rudder/skeg research will drive disproportionate review.** These facts often live in prose, manuals, parts catalogues, class documents or drawings rather than structured model tables.
+
+See `docs/slices/SLICE-0002-design-data-source-research.md` for final acceptance evidence and completion report.
+
+## Current operational step
+
+### SLICE-0003 — Canonical JSON-Schema Contract Runtime — READY
+
+This is the first implementation slice after the evidence gate.
+
+Objective: create one small reusable Python runtime for repository-local JSON Schema loading/validation and local `$id`/`$ref` resolution, replacing duplicated ad-hoc registry logic without introducing new HullQ boat semantics.
+
+Key scope boundaries:
+
+- local explicitly supplied schema directory only;
+- Draft 2020-12 meta-schema validation;
+- deterministic filename / `$id` registry;
+- local reference resolution without network retrieval;
+- reuse by contract tests and repository validator;
+- no normalization, acquisition, persistence, Wikidata, source-rights runtime, derived formulas, query engine, frontend or market behavior.
+
+See `docs/slices/SLICE-0003-canonical-contract-runtime.md`.
 
 ## Evidence-derived implementation sequence
 
-The backlog was refined from the observed source shapes:
-
-1. SLICE-0003 — canonical JSON-Schema contract runtime / local reference registry;
+1. **SLICE-0003 — READY:** canonical JSON-Schema contract runtime / local reference registry;
 2. SLICE-0004 — measurement observation + unit/basis normalization preserving raw semantics;
 3. SLICE-0005 — identity/model/generation text primitives;
 4. SLICE-0006 — appendage/configuration normalization for independent keel/board/rudder/skeg/count/state relationships;
@@ -68,17 +85,20 @@ The backlog was refined from the observed source shapes:
 7. SLICE-0009 — ResearchJob state machine;
 8. SLICE-0010 — rights-gated first real acquisition adapter, preferred initial target Wikidata CC0.
 
-Only SLICE-0003 should be detailed/made READY after SLICE-0002 is accepted. Later slices remain directional rolling-wave backlog.
+Only SLICE-0003 is detailed/READY. SLICE-0004–0010 remain directional rolling-wave backlog until prior implementation evidence justifies detailing them.
 
-## Following gate
+## Handoff rule for SLICE-0003
 
-SLICE-0002 requires:
+Claude Code / the implementation agent should:
 
-1. independent review of the research package;
-2. explicit user/project-owner acceptance;
-3. only then status `DONE` and preparation of SLICE-0003.
+1. read `CLAUDE.md`;
+2. execute only `docs/slices/SLICE-0003-canonical-contract-runtime.md`;
+3. run the required local quality gates;
+4. hand the slice off as `REVIEW` or `BLOCKED` using the standard completion report;
+5. not mark it `DONE`;
+6. not start SLICE-0004 automatically.
 
-No domain implementation slice is READY while SLICE-0002 remains in REVIEW.
+Independent review + explicit project-owner acceptance remain required for `REVIEW → DONE`.
 
 ## Downstream gates unchanged
 
@@ -98,7 +118,7 @@ OQ-013 market-source access research may continue in parallel when useful, but m
 
 ## Do not start yet
 
-- SLICE-0003 implementation before SLICE-0002 acceptance;
+- SLICE-0004 or later implementation;
 - production broad ingestion;
 - frontend/application backend;
 - physical production database/search technology selection;
