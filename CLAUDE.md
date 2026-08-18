@@ -69,15 +69,21 @@ Do not broaden it into a generic boating super-app.
 - Appropriately licensed/open sources may bootstrap common fields; do not re-research every ordinary fact from zero without reason.
 - Optimize research for high-throughput automation and exception-based human review.
 
-## Data-model / database rule
+## Pre-code source-evidence rule
 
-Before HullQ domain implementation begins, OQ-019 must consolidate the accepted contracts into a persistence-neutral canonical logical data model.
+Before meaningful HullQ research-pipeline/domain implementation begins, execute the assigned design-data source-research slice and study **real sailboat data from independently usable sources**.
 
-Do not choose a production database merely because implementation has started. OQ-019 defines **what the data is and how it relates**. OQ-012 later decides **which persistence/search technology stores and indexes it** using measured access patterns and benchmark evidence.
+Do not build extraction or normalization behavior only from imagined source formats. The source-research slice must establish actual source availability, rights/clearance, field coverage, generation/option representation, conflicts, missing-data patterns and likely human-review needs using a representative real-boat evidence sample.
+
+SailboatData may remain a reference/prototype aid under the accepted source-rights policy, but must not become an invisible production-value source.
+
+The production database/search technology remains a separate later decision under OQ-012.
 
 ## Research behavior
 
 Prefer primary/authoritative sources for deep verification in the order documented in `research/RESEARCH_WORKFLOW.md`. Appropriately licensed/open structured data may bootstrap identity/common facts when provenance is explicit. Use `null`, `unknown`, `needs_review` or `conflict` when evidence is insufficient. Read `docs/DATABASE_COVERAGE_STRATEGY.md` before changing ingestion or search semantics.
+
+Research source accessibility, rights and HullQ clearance separately. A technically accessible page or API is not automatically cleared for bulk ingestion, persistence or redistribution.
 
 ## Search / SEO architecture
 
