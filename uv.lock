@@ -309,6 +309,7 @@ source = { editable = "." }
 dependencies = [
     { name = "httpx" },
     { name = "jsonschema" },
+    { name = "referencing" },
 ]
 
 [package.dev-dependencies]
@@ -325,6 +326,7 @@ dev = [
 requires-dist = [
     { name = "httpx", specifier = ">=0.28,<1" },
     { name = "jsonschema", specifier = ">=4.26,<5" },
+    { name = "referencing", specifier = ">=0.37,<1" },
 ]
 
 [package.metadata.requires-dev]

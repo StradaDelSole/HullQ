@@ -1,7 +1,7 @@
 # SLICE-0003 — Canonical JSON-Schema Contract Runtime
 
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 2.2 — first domain-foundation implementation slice  
 **Depends on:** SLICE-0002 accepted / DONE  
 **Blocks:** SLICE-0004  
@@ -168,21 +168,21 @@ Do not touch unrelated domain or research files merely for cleanup.
 
 ## Acceptance criteria
 
-- [ ] one reusable typed contract runtime exists under `src/hullq/`;
-- [ ] schema loading uses only an explicitly supplied local directory;
-- [ ] no contract-validation path performs network access;
-- [ ] repository schema documents are meta-schema validated as Draft 2020-12;
-- [ ] duplicate schema `$id` values fail explicitly;
-- [ ] unknown schema lookup fails explicitly;
-- [ ] local `$ref` resolution works from the in-memory registry;
-- [ ] missing local `$ref` resources fail without HTTP retrieval;
-- [ ] existing valid contract fixtures validate through the runtime;
-- [ ] existing invalid provenance fixtures remain rejected;
-- [ ] duplicate ad-hoc registry construction in repository script/tests is removed or materially reduced without weakening checks;
-- [ ] no new HullQ boat/source/normalization semantics were introduced;
-- [ ] no acquisition, persistence, query, market, frontend or source-adapter code was introduced;
-- [ ] repository validator, Ruff, mypy, pytest/coverage and dependency audit pass locally;
-- [ ] required remote CI is reported truthfully as `PASS`, `FAIL`, or `NOT VERIFIED` and is not guessed.
+- [x] one reusable typed contract runtime exists under `src/hullq/` (`src/hullq/contracts/registry.py`, `ContractRegistry`);
+- [x] schema loading uses only an explicitly supplied local directory (`from_directory(schema_dir)` parameter);
+- [x] no contract-validation path performs network access (local `referencing.Registry` only; test 9 verifies missing ref raises `Unresolvable` not HTTP);
+- [x] repository schema documents are meta-schema validated as Draft 2020-12 (`Draft202012Validator.check_schema` in `from_directory`);
+- [x] duplicate schema `$id` values fail explicitly (`ValueError` — test 6 verifies);
+- [x] unknown schema lookup fails explicitly (`KeyError` — test 5 verifies);
+- [x] local `$ref` resolution works from the in-memory registry (test 8 verifies with synthetic cross-schema `$ref`);
+- [x] missing local `$ref` resources fail without HTTP retrieval (`Unresolvable` — test 9 verifies);
+- [x] existing valid contract fixtures validate through the runtime (all contract tests pass — 12/12 parametrized cases);
+- [x] existing invalid provenance fixtures remain rejected (6/6 negative cases still raise `ValidationError`);
+- [x] duplicate ad-hoc registry construction in repository script/tests is removed or materially reduced without weakening checks (`validate_repository.py` and `test_contract_fixtures.py` refactored to use `ContractRegistry`; `test_repository_governance.py` updated; no check weakened);
+- [x] no new HullQ boat/source/normalization semantics were introduced;
+- [x] no acquisition, persistence, query, market, frontend or source-adapter code was introduced;
+- [x] repository validator, Ruff, mypy, pytest/coverage and dependency audit pass locally (see completion report);
+- [ ] required remote CI is reported truthfully as `PASS`, `FAIL`, or `NOT VERIFIED` and is not guessed. → **NOT VERIFIED** (branch pushed; see completion report)
 
 ## Validation
 
