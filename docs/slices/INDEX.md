@@ -7,9 +7,9 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | Slice | Type | Status | Objective | Depends on |
 |---|---|---|---|---|
 | SLICE-0001 | BOOTSTRAP | READY | Close repository bootstrap: real `uv.lock`, full local gates, first green Linux/Windows CI | OQ-010 / ADR-0009 |
-| SLICE-0002 | DESIGN_RESEARCH | BACKLOG | Resolve OQ-019: canonical persistence-neutral logical data model and data-access requirements before domain implementation | SLICE-0001 |
-| SLICE-0003 | IMPLEMENTATION | BACKLOG | Canonical contract runtime and schema-loading/validation layer | SLICE-0002 |
-| SLICE-0004 | IMPLEMENTATION | BACKLOG | Deterministic unit-normalization primitives | SLICE-0003 |
+| SLICE-0002 | DESIGN_RESEARCH | BACKLOG | Research actual independent sailboat-design data sources and a 20–30-design seed evidence sample before domain pipeline code | SLICE-0001 |
+| SLICE-0003 | IMPLEMENTATION | BACKLOG | Canonical contract runtime and schema-loading/validation layer, refined from SLICE-0002 evidence | SLICE-0002 |
+| SLICE-0004 | IMPLEMENTATION | BACKLOG | Deterministic unit-normalization primitives based on observed source inputs | SLICE-0003 |
 | SLICE-0005 | IMPLEMENTATION | BACKLOG | Text and identity-normalization primitives without fuzzy identity invention | SLICE-0004 |
 | SLICE-0006 | IMPLEMENTATION | BACKLOG | Taxonomy normalization for hull/keel/rudder/skeg/rig concepts | SLICE-0005 |
 | SLICE-0007 | IMPLEMENTATION | BACKLOG | Provenance runtime: FieldEvidence, FieldResolution and DerivationRecord behavior | SLICE-0006 |
@@ -20,25 +20,33 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 
 Only `SLICE-0001` is currently `READY`.
 
-No HullQ domain implementation may begin before:
+No HullQ domain implementation should begin before:
 
 1. `SLICE-0001` is `DONE`; and
-2. `SLICE-0002` has resolved OQ-019 and is `DONE`.
+2. `SLICE-0002` has researched real data sources and completed its seed evidence sample.
 
-This deliberately separates:
+This deliberately uses evidence-first pipeline design:
 
 ```text
-logical data model now
+reproducible toolchain
         ↓
-research/contract implementation
+real design-data source research
         ↓
-benchmark evidence
+manual 20–30-design evidence sample
         ↓
-physical production database/search technology later under OQ-012
+actual observed extraction / normalization requirements
+        ↓
+bounded pipeline implementation
+        ↓
+50–100-design benchmark
+        ↓
+broad ingestion into thousands of designs
 ```
 
-Do not select PostgreSQL, Elasticsearch/OpenSearch, a document database, ORM strategy, or production indexing topology merely to complete SLICE-0002.
+The purpose of SLICE-0002 is **not** to finish the product database manually. It is to prevent HullQ from building a research pipeline against imaginary source conditions.
+
+The production persistence/search technology remains a later OQ-012 decision. A persistence-neutral logical-model review may be performed when implementation evidence makes it useful, but it is no longer a pre-code gate.
 
 ## Rolling-wave note
 
-Slices 0003–0009 are directional backlog. Their exact boundaries MAY be refined after SLICE-0002 or earlier implementation evidence, provided scope changes are recorded here and do not silently alter accepted requirements/specs.
+Slices 0003–0009 are directional backlog. Their exact boundaries MUST be refined from SLICE-0002 source evidence and later implementation findings. Do not detail future slices merely to create a long plan.
