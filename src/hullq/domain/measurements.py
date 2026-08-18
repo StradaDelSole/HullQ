@@ -99,11 +99,24 @@ _CANONICAL_UNIT: dict[Quantity, str] = {
     Quantity.AREA: "m2",
 }
 
-# Fixed-precision context used for all unit multiplication so that results are
-# independent of whatever ambient/global Decimal context the caller has set.
-# 50 significant digits is sufficient for any realistic measurement value paired
-# with our conversion constants (max 10 significant digits).
-_CONVERSION_CTX = decimal.Context(prec=50, rounding=decimal.ROUND_HALF_EVEN)
+
+# ---------------------------------------------------------------------------
+# Exact arithmetic helper
+# ---------------------------------------------------------------------------
+
+
+def _exact_multiply(value: Decimal, factor: Decimal) -> Decimal:
+    """Multiply value by factor with no rounding, independent of ambient context.
+
+    For any two finite Decimal values with m and n significant digits the exact
+    product requires at most m + n significant digits (the integer coefficients
+    multiply directly; the exponents add). The local precision is derived from
+    the actual operands so the result is always exact, regardless of whatever
+    ``decimal.getcontext().prec`` the caller has set.
+    """
+    prec = len(value.as_tuple().digits) + len(factor.as_tuple().digits)
+    with decimal.localcontext(decimal.Context(prec=prec)):
+        return value * factor
 
 
 # ---------------------------------------------------------------------------
@@ -218,24 +231,22 @@ def _check_unit_for_quantity(quantity: Quantity, unit: Unit) -> None:
 def normalize_measurement(observation: MeasurementObservation) -> NormalizedMeasurement:
     """Convert *observation* to its canonical SI value.
 
-    Multiplication is performed inside a fixed-precision Decimal context
-    (``_CONVERSION_CTX``, prec=50) so results are independent of any ambient
-    context the caller has set. No rounding is applied; the caller is responsible
-    for projection-level rounding (e.g. the six-decimal policy in
-    ``hullq-derived-1.0.0``).
+    Multiplication is performed via ``_exact_multiply``, which derives the
+    required Decimal precision from the operand digit counts and therefore
+    produces the mathematically exact product for any finite input, regardless
+    of the ambient Decimal context. No rounding is applied.
     """
     unit = observation.unit
     value = observation.value
 
-    with decimal.localcontext(_CONVERSION_CTX):
-        if isinstance(unit, LengthUnit):
-            canonical_value = value * _LENGTH_TO_M[unit]
-        elif isinstance(unit, MassUnit):
-            canonical_value = value * _MASS_TO_KG[unit]
-        elif isinstance(unit, AreaUnit):
-            canonical_value = value * _AREA_TO_M2[unit]
-        else:  # pragma: no cover
-            assert_never(unit)
+    if isinstance(unit, LengthUnit):
+        canonical_value = _exact_multiply(value, _LENGTH_TO_M[unit])
+    elif isinstance(unit, MassUnit):
+        canonical_value = _exact_multiply(value, _MASS_TO_KG[unit])
+    elif isinstance(unit, AreaUnit):
+        canonical_value = _exact_multiply(value, _AREA_TO_M2[unit])
+    else:  # pragma: no cover
+        assert_never(unit)
 
     return NormalizedMeasurement(
         quantity=observation.quantity,

@@ -16,7 +16,6 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from hullq.domain.measurements import (
-    _CONVERSION_CTX,
     AreaUnit,
     DisplacementBasis,
     LengthUnit,
@@ -25,6 +24,7 @@ from hullq.domain.measurements import (
     NormalizedMeasurement,
     Quantity,
     SailAreaBasis,
+    _exact_multiply,
     normalize_measurement,
 )
 
@@ -459,6 +459,29 @@ def test_conversion_independent_of_high_ambient_precision() -> None:
     assert result_high.canonical_value == result_default.canonical_value
 
 
+def test_conversion_exact_for_value_exceeding_50_significant_digits() -> None:
+    """A value with >50 significant digits must normalize without rounding.
+
+    The previous Context(prec=50) implementation rounded inputs whose coefficient
+    exceeded 50 digits. _exact_multiply derives precision from the actual operand
+    digit counts, so no rounding can occur. The exact product is verified
+    independently via fractions.Fraction (exact rational arithmetic).
+    """
+    from fractions import Fraction
+
+    # 60 significant digits — exceeds the old fixed prec=50 ceiling
+    value = Decimal("1" * 60)  # 111...1 (60 ones) as an integer Decimal
+    obs = MeasurementObservation(quantity=Quantity.LENGTH, value=value, unit=LengthUnit.FOOT)
+    result = normalize_measurement(obs)
+
+    # Fraction arithmetic is exact; no precision limit applies
+    exact = Fraction(value) * Fraction(Decimal("0.3048"))
+    assert Fraction(result.canonical_value) == exact
+
+    # Confirm the result was NOT silently rounded to <=50 significant digits
+    assert len(result.canonical_value.as_tuple().digits) > 50
+
+
 # ---------------------------------------------------------------------------
 # Hypothesis property tests
 # ---------------------------------------------------------------------------
@@ -471,12 +494,10 @@ def test_conversion_independent_of_high_ambient_precision() -> None:
 )
 @settings(max_examples=200)
 def test_hypothesis_foot_metre_round_trip_proportional(value: Decimal) -> None:
-    """Canonical value must equal value x exact constant computed in the same fixed context."""
+    """Canonical value must be the exact product of value and the conversion factor."""
     obs = MeasurementObservation(quantity=Quantity.LENGTH, value=value, unit=LengthUnit.FOOT)
     result = normalize_measurement(obs)
-    with decimal.localcontext(_CONVERSION_CTX):
-        expected = value * Decimal("0.3048")
-    assert result.canonical_value == expected
+    assert result.canonical_value == _exact_multiply(value, Decimal("0.3048"))
 
 
 @given(
@@ -488,9 +509,7 @@ def test_hypothesis_foot_metre_round_trip_proportional(value: Decimal) -> None:
 def test_hypothesis_pound_kg_proportional(value: Decimal) -> None:
     obs = MeasurementObservation(quantity=Quantity.MASS, value=value, unit=MassUnit.POUND)
     result = normalize_measurement(obs)
-    with decimal.localcontext(_CONVERSION_CTX):
-        expected = value * Decimal("0.45359237")
-    assert result.canonical_value == expected
+    assert result.canonical_value == _exact_multiply(value, Decimal("0.45359237"))
 
 
 @given(
@@ -513,12 +532,10 @@ def test_hypothesis_non_finite_always_rejected(value: Decimal) -> None:
 )
 @settings(max_examples=100)
 def test_hypothesis_metre_identity(value: Decimal) -> None:
-    """Metre-to-metre conversion multiplies by 1 inside the fixed precision context."""
+    """Metre-to-metre conversion is the exact product of value and 1."""
     obs = MeasurementObservation(quantity=Quantity.LENGTH, value=value, unit=LengthUnit.METRE)
     result = normalize_measurement(obs)
-    with decimal.localcontext(_CONVERSION_CTX):
-        expected = value * Decimal("1")
-    assert result.canonical_value == expected
+    assert result.canonical_value == _exact_multiply(value, Decimal("1"))
 
 
 @given(
