@@ -9,7 +9,7 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0001 | BOOTSTRAP | DONE | Close repository bootstrap: real `uv.lock`, full local gates, first green Linux/Windows CI | OQ-010 / ADR-0009 |
 | SLICE-0002 | DESIGN_RESEARCH | DONE | Research independent sailboat-design data sources and a 20–30-design seed evidence sample before domain pipeline code | SLICE-0001 |
 | SLICE-0003 | IMPLEMENTATION | DONE | Canonical JSON-Schema contract runtime and local `$id`/reference registry | SLICE-0002 |
-| SLICE-0004 | IMPLEMENTATION | REVIEW | Measurement observation + deterministic unit/basis normalization while preserving raw source semantics | SLICE-0003 |
+| SLICE-0004 | IMPLEMENTATION | DONE | Measurement observation + deterministic unit/basis normalization while preserving raw source semantics | SLICE-0003 |
 | SLICE-0005 | IMPLEMENTATION | BACKLOG | Identity/model/generation text primitives without fuzzy resolution or silent generation inference | SLICE-0004 |
 | SLICE-0006 | IMPLEMENTATION | BACKLOG | Appendage/configuration normalization: independent keel, board, rudder, skeg, count/state and option relationships | SLICE-0005 |
 | SLICE-0007 | IMPLEMENTATION | BACKLOG | Provenance/conflict runtime: FieldEvidence, FieldResolution and DerivationRecord behavior | SLICE-0006 |
@@ -19,11 +19,9 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 
 ## Current execution rule
 
-`SLICE-0003` is `DONE`: implementation was merged through PR #3 after green Ubuntu/Windows/dependency-audit CI, independent review, and explicit project-owner acceptance on 2026-08-18.
+`SLICE-0004` is `DONE`: implementation was merged through PR #4 after green Ubuntu/Windows/dependency-audit CI, independent review, and explicit project-owner acceptance on 2026-08-18.
 
-`SLICE-0004` is `REVIEW`: implementation complete, local gates pass, branch pushed to GitHub; awaiting project-owner acceptance before SLICE-0005 may begin.
-
-No implementation agent may begin SLICE-0005 or later work automatically after completing SLICE-0004.
+No later implementation slice is `READY` yet. The next slice must be prepared from the accepted current identity model and the post-SLICE-0004 rolling-wave backlog before Claude starts new implementation work.
 
 Evidence-first sequence:
 
@@ -36,18 +34,18 @@ real design-data source research
         ↓
 canonical contract runtime            DONE
         ↓
-measurement normalization             REVIEW
+measurement normalization             DONE
         ↓
-identity / appendage / provenance implementation
+identity / provenance / research-boundary implementation
         ↓
 first rights-gated real source adapter
         ↓
-50–100-design benchmark
+controlled real-data pilot
         ↓
 broad ingestion into thousands of designs
 ```
 
-## Why SLICE-0004 is deliberately narrow
+## Why SLICE-0004 was deliberately narrow
 
 SLICE-0002 proved that measurement semantics are broader than unit conversion: source labels such as lightship, half-load, measurement trim and EEC-light must survive normalization. At the same time, arbitrary free-text interpretation would silently invent source semantics.
 
@@ -57,4 +55,4 @@ The initial application/deployment/persistence target remains accepted under ADR
 
 ## Rolling-wave note
 
-SLICE-0004 is fully detailed in `docs/slices/SLICE-0004-measurement-normalization.md`. SLICE-0005–0010 remain directional backlog and may be refined by implementation evidence. Do not create a long speculative plan merely to fill the queue.
+SLICE-0004 is closed. SLICE-0005 and later backlog remain directional until explicitly refined and moved to `READY`; no implementation agent may start them automatically.
