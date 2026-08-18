@@ -10,8 +10,8 @@ This document defines execution order and gates. `docs/ROADMAP.md` is the strate
 ## Operating rule for every step
 
 ```text
-resolve blocker
-→ update normative spec/requirements
+resolve blocker / gather real evidence
+→ update normative spec/requirements where needed
 → define tests/fixtures
 → create/ready a bounded slice
 → implement/research smallest coherent unit
@@ -63,9 +63,9 @@ Remaining gate is `SLICE-0001`:
 
 ---
 
-# Stage 1 — Resolve data-foundation blockers
+# Stage 1 — Resolve data-foundation blockers and research real source data
 
-**Goal:** prevent implementation and broad ingestion against unstable identity, provenance, calculation or data-model semantics.
+**Goal:** prevent implementation and broad ingestion against hypothetical source conditions or unstable identity/provenance/calculation semantics.
 
 ## 1.1 OQ-003 — Model / generation / variant identity — DONE
 
@@ -96,41 +96,48 @@ Accepted methodology `hullq-derived-1.0.0` defines formulas, canonical inputs, a
 
 Accepted via ADR-0009. Bootstrap closure remains Stage 0.3 operational work, not an open toolchain decision.
 
-## 1.6 OQ-019 — Canonical logical data model — OPEN / PRE-CODE GATE
-
-Before HullQ domain implementation, consolidate the accepted contracts into one persistence-neutral logical model.
-
-Required output:
-
-- complete entity/value-object inventory;
-- relationships and cardinalities;
-- stable identity/reference rules;
-- lifecycle/mutability/versioning classification;
-- explicit separation of canonical design universe, research/provenance, derived calculations, dataset releases, market observations and user-query/monitor domains;
-- documented access patterns and order-of-magnitude scale assumptions for later persistence research;
-- mapping back to accepted schemas/specs.
+## 1.6 Real design-data source research — REQUIRED BEFORE DOMAIN PIPELINE CODE
 
 Executed by `SLICE-0002` after bootstrap closure.
 
-**Important distinction:** OQ-019 defines **what HullQ data is and how it relates**. It MUST NOT choose production PostgreSQL/Elasticsearch/OpenSearch/document DB/ORM/etc. OQ-012 later chooses physical persistence/search technology based on this logical model plus benchmark evidence.
+HullQ must research the **actual independent sailboat-design data sources** from which its own canonical universe can be built rather than designing a pipeline around imagined inputs.
 
-**Stage 1 exit:** G0 passes and OQ-019 is accepted.
+Required work includes:
+
+- identify plausible broad identity/bootstrap sources usable under ADR-0005;
+- build/extend the Source Register with rights/access/clearance information;
+- map HullQ-critical technical fields to real source classes and observed availability;
+- research official manufacturer/designer/class-association/archive sources for primary verification;
+- manually research 20–30 representative difficult BoatDesign candidates;
+- record real missing-data, conflict, generation, option and semantic-basis problems;
+- distinguish likely automatable work from human-review work;
+- derive extraction/normalization pipeline requirements from the observed source evidence.
+
+The imported/reference SailboatData material may inform taxonomy, edge-case and candidate-model research but MUST NOT become an invisible production-value source.
+
+The 20–30-design seed evidence sample is not the product database and not the final 50–100-design pipeline benchmark. Its purpose is to make later implementation evidence-driven.
+
+**Stage 1 exit:** G0 passes and SLICE-0002 source/data research is complete enough to define the first pipeline implementation slices against real source conditions.
+
+### Deferred logical-model note
+
+OQ-019 is no longer a pre-code gate. Consolidating accepted contracts into a separate logical entity/relationship document may be revisited before production persistence under OQ-012 if implementation evidence shows that it is useful.
 
 ---
 
 # Stage 2 — Build the research-pipeline benchmark implementation
 
-**Goal:** prove that HullQ can research accurately, reproducibly and cheaply enough to scale.
+**Goal:** implement against observed real source conditions, then prove that HullQ can research accurately, reproducibly and cheaply enough to scale.
 
-Stage-2 implementation is decomposed through `docs/slices/INDEX.md`. Current directional sequence is contract runtime → deterministic normalization → provenance/derived runtime → ResearchJob state machine.
+Stage-2 implementation is decomposed through `docs/slices/INDEX.md`. Slice boundaries after SLICE-0002 must be refined from actual source evidence rather than treated as fixed in advance.
 
 ## 2.1 Repository code structure — BOOTSTRAPPED
 
 Current single-repo structure includes root Python project config, `src/hullq/`, tests, specs, fixtures, research, docs and architecture. Do not create separate repositories or distributed services without a later accepted decision.
 
-## 2.2 Implement canonical contracts first
+## 2.2 Implement canonical contract runtime first
 
-Only after OQ-019 acceptance.
+Only after SLICE-0002 has documented the real source shapes and any resulting contract gaps have been resolved.
 
 Implement runtime handling for accepted contracts such as:
 
@@ -144,7 +151,7 @@ Positive and negative schema fixtures remain first-class tests.
 
 ## 2.3 Implement deterministic normalization library
 
-Pure functions/modules for:
+Pure functions/modules for the source patterns proven necessary by SLICE-0002, including as applicable:
 
 - unit parsing/conversion;
 - text normalization without identity loss;
@@ -179,7 +186,7 @@ Requirements:
 - mixed source availability;
 - conflicting specifications.
 
-This corpus benchmarks the pipeline; it is not the product universe.
+Use the source landscape and difficult cases discovered in SLICE-0002 to select the corpus. This corpus benchmarks the implemented pipeline; it is not the product universe.
 
 ## 2.6 Measure benchmark
 
@@ -207,9 +214,9 @@ Do not scale because the happy path works. Fix taxonomy/schema/validation/review
 
 **Goal:** reach breadth sufficient for unknown-model discovery.
 
-## 3.1 Establish legal/open identity bootstrap sources
+## 3.1 Establish approved identity bootstrap sources
 
-Use approved OQ-007 sources. The reference SailboatData scrape may inform taxonomy/edge-case research but MUST NOT become an invisible production-value source.
+Promote the best cleared bootstrap path(s) identified during SLICE-0002 / later benchmark work. The reference SailboatData scrape may inform taxonomy/edge-case research but MUST NOT become an invisible production-value source.
 
 ## 3.2 Create canonical identity universe
 
@@ -330,12 +337,13 @@ Before public frontend/search-surface implementation, define canonical page taxo
 
 Choose application/backend architecture and production database/search/index strategy based on:
 
-- accepted OQ-019 logical model;
+- accepted domain/provenance contracts;
+- real source and benchmark evidence;
 - measured Stage-2/3 access patterns and scale;
 - technical-query behavior;
 - operational maintenance economics.
 
-Do not choose by framework habit.
+If a consolidated persistence-neutral logical model is useful at this stage, resolve/revive OQ-019 before choosing physical persistence. Do not choose by framework habit.
 
 ## 5.2 Persist canonical dataset and query API
 
@@ -389,6 +397,7 @@ HullQ is not currently optimized for venture-scale expectations. Revisit scaling
 # Immediate next actions
 
 1. **SLICE-0001 — READY:** generate `uv.lock`, pass local quality gates and first green Linux + Windows CI.
-2. **SLICE-0002 — then:** research and decide OQ-019 canonical logical data model.
-3. Only after both are DONE: begin the first HullQ domain implementation slice (contract runtime).
-4. Continue OQ-013 market-access research in parallel when useful, without distracting from the data foundation.
+2. **SLICE-0002 — then:** research actual independent sailboat-design sources and complete the 20–30-design seed evidence sample.
+3. Refine the implementation slices from those real findings.
+4. Begin contract/runtime + deterministic-normalization implementation only after the source-research gate is sufficiently complete.
+5. Continue OQ-013 market-access research in parallel when useful, without distracting from the design-data foundation.
