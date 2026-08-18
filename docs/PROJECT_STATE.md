@@ -1,8 +1,9 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-18  
-**Current stage:** Stage 0.3 / Stage 2 boundary — repository bootstrap  
-**Execution plan:** `docs/EXECUTION_PLAN.md`
+**Current stage:** Stage 0.3 / Stage 1.6 boundary — bootstrap closure, then canonical logical data-model gate  
+**Execution plan:** `docs/EXECUTION_PLAN.md`  
+**Operational work queue:** `docs/slices/INDEX.md`
 
 ## Completed foundation
 
@@ -16,9 +17,10 @@
 - identity contract fixtures created;
 - requirements baseline and test strategy created;
 - open-question/decision process established;
-- engineering quality gates established.
+- engineering quality gates established;
+- implementation-slice workflow established under `docs/slices/`.
 
-## Newly completed decisions
+## Completed decisions
 
 ### OQ-007 — Source rights / licensing metadata — DECIDED
 
@@ -42,7 +44,7 @@ Accepted artifacts:
 - `architecture/decisions/ADR-0006-field-provenance-ledger.md`;
 - `fixtures/provenance/`.
 
-BoatDesign v0.4 and ResolvedConfiguration v0.2 are now the accepted canonical contracts after OQ-001; BoatDesign v0.3 is retained only as historical accepted reference.
+BoatDesign v0.4 and ResolvedConfiguration v0.2 are the accepted canonical contracts after OQ-001; BoatDesign v0.3 is retained only as historical accepted reference.
 
 ### Search Architecture + SEO — ACCEPTED ARCHITECTURAL PRINCIPLE
 
@@ -63,8 +65,6 @@ Accepted artifacts:
 
 The accepted methodology is `hullq-derived-1.0.0`.
 
-## Newly completed toolchain decision
-
 ### OQ-010 — Python/data-pipeline runtime and tooling baseline — DECIDED
 
 Accepted artifacts:
@@ -73,20 +73,38 @@ Accepted artifacts:
 - `docs/engineering/PYTHON_TOOLCHAIN_BASELINE.v0.1.md`;
 - `architecture/decisions/ADR-0009-python-research-toolchain.md`.
 
-Accepted baseline: CPython 3.14 + uv + uv_build + Ruff + mypy strict + pytest/coverage/Hypothesis + jsonschema + HTTPX + asyncio TaskGroup + Stage-2 SQLite.
+Accepted baseline: CPython 3.14 + uv + uv_build + Ruff + mypy strict + pytest/coverage/Hypothesis + jsonschema + HTTPX + asyncio TaskGroup + Stage-2 SQLite for local benchmark/job state only.
 
-## Active implementation step
+## Current operational step
 
-**Repository tooling + CI bootstrap under Stage 0.3.**
+### SLICE-0001 — Close repository bootstrap — READY
 
-Created root Python project configuration, package/test skeleton, cross-platform GitHub Actions CI and dependency-update configuration. A valid committed `uv.lock` remains the final bootstrap gate and MUST be generated with uv 0.12.5+ in a networked development environment before Stage-2 implementation is mergeable.
+Root Python project configuration, package/test skeleton, cross-platform GitHub Actions CI and dependency-update policy are present. A valid committed `uv.lock` remains the final bootstrap gate and MUST be generated in a networked development environment before HullQ domain implementation begins.
+
+See `docs/slices/SLICE-0001-bootstrap-closure.md`.
+
+## New pre-code data-model gate
+
+### OQ-019 — Canonical logical data model — OPEN
+
+Before HullQ domain implementation, the distributed accepted contracts must be consolidated into one persistence-neutral logical model covering entity inventory, relationships/cardinalities, lifecycle/mutability, domain boundaries and required access patterns.
+
+This is **not** the production database-technology decision.
+
+- OQ-019 answers: what data exists, how it relates, what is immutable/versioned/derived, and what access patterns must be supported.
+- OQ-012 later answers: which production persistence/search technology and indexing strategy best implements that model after benchmark evidence exists.
+
+OQ-019 is executed through `SLICE-0002` after bootstrap closure.
 
 ## Following steps
 
-1. generate and commit `uv.lock`;
-2. pass the full Linux + Windows CI baseline;
-3. begin Stage 2.2 contract implementation/tests;
-4. continue to deterministic normalization and research job-state implementation.
+1. execute `SLICE-0001`: generate and commit `uv.lock`, pass full local gates and first green Linux + Windows CI;
+2. execute `SLICE-0002`: research and explicitly accept OQ-019 canonical logical data model;
+3. begin Stage-2 contract runtime slice;
+4. continue to deterministic normalization, provenance/derived runtime and ResearchJob state machine;
+5. build the 50–100-design benchmark only after those foundations are implementation-ready.
+
+No HullQ domain code should be introduced before steps 1 and 2 are complete.
 
 OQ-009 remains required before query-engine implementation and OQ-018 before the public search/SEO surface.
 
@@ -103,6 +121,7 @@ OQ-013 — market-source access matrix can be researched in parallel but MUST NO
 - production broad ingestion;
 - frontend implementation;
 - application/backend implementation;
+- physical production database/search technology selection under OQ-012;
 - production marketplace adapters;
 - accounts/alerts;
 - multi-source listing deduplication.

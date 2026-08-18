@@ -1,35 +1,36 @@
 # HullQ — Step-by-Step Execution Plan
 
 **Status:** ACTIVE master execution plan  
-**Method:** docs-to-code  
-**Repository:** single repository
+**Method:** docs-to-code + bounded implementation slices  
+**Repository:** single repository  
+**Operational queue:** `docs/slices/INDEX.md`
 
-This document is the execution order. `docs/ROADMAP.md` remains the strategic phase view; this plan defines the actual gates and deliverables.
+This document defines execution order and gates. `docs/ROADMAP.md` is the strategic phase view. `docs/slices/` decomposes the currently permitted work into small research/implementation contracts for coding agents.
 
 ## Operating rule for every step
-
-Every implementation step follows:
 
 ```text
 resolve blocker
 → update normative spec/requirements
 → define tests/fixtures
-→ implement smallest coherent unit
+→ create/ready a bounded slice
+→ implement/research smallest coherent unit
 → pass quality gate
-→ commit/version/change log where relevant
+→ review
+→ merge/version/change log where relevant
 ```
 
-No downstream step may silently decide an upstream open question.
+No downstream step may silently decide an upstream open question. An assigned agent MUST NOT automatically begin the next slice.
 
 ---
 
 # Stage 0 — Repository governance and specification discipline
 
-**Goal:** make the repository safe for AI-assisted docs-to-code development before meaningful code exists.
+**Goal:** make the repository safe for AI-assisted docs-to-code development before meaningful domain code exists.
 
 ## 0.1 Establish authority and workflow — DONE
 
-Artifacts:
+Artifacts include:
 
 - `docs/DOCS_TO_CODE_METHOD.md`
 - `docs/governance/DOCUMENT_AUTHORITY.md`
@@ -39,7 +40,7 @@ Artifacts:
 - `specs/TEST_STRATEGY.md`
 - ADR framework/templates
 
-## 0.2 Lock repository decisions — DONE
+## 0.2 Lock foundational repository decisions — DONE
 
 Accepted:
 
@@ -49,131 +50,101 @@ Accepted:
 
 ## 0.3 Tooling/repository bootstrap — IN PROGRESS
 
-Under accepted OQ-010 / ADR-0009:
+Accepted OQ-010 / ADR-0009 baseline is implemented in repository configuration and CI.
 
-- initialize the real Git repository when moved to its hosted/local Git working tree;
-- add `.editorconfig`, `.gitignore`, root tooling configuration;
-- add CI skeleton;
-- validate all JSON Schemas and fixtures in CI;
-- enforce formatter/linter/type/test gates for implemented languages;
-- use Conventional Commits;
-- protect the default branch with required checks when hosted on GitHub or equivalent.
+Remaining gate is `SLICE-0001`:
 
-**Bootstrap status:** root configuration, package/test skeleton, CI and dependency-update policy are created. `uv.lock` generation + successful locked CI remain required before this step is DONE.
+- generate real `uv.lock` under accepted Python 3.14 + uv toolchain;
+- synchronize locked environment;
+- pass repository validator, Ruff, mypy, pytest/coverage and dependency audit;
+- pass Linux + Windows GitHub Actions.
 
-**Exit gate:** G0 governance baseline complete.
+**Exit gate G0:** reproducible locked toolchain + green baseline CI.
 
 ---
 
 # Stage 1 — Resolve data-foundation blockers
 
-**Goal:** prevent expensive broad ingestion against unstable identity/provenance semantics.
+**Goal:** prevent implementation and broad ingestion against unstable identity, provenance, calculation or data-model semantics.
 
 ## 1.1 OQ-003 — Model / generation / variant identity — DONE
 
-Produce:
+Accepted:
 
 - `specs/IDENTITY_MODEL.v0.1.md`
-- examples covering simple model, named variant, major generation, keel/rig variants and builder changes;
-- schema changes if necessary;
-- test fixtures for ambiguous identities.
-
-Decision questions include:
-
-- What constitutes one `BoatDesign`?
-- When is a production generation a separate design entity?
-- When is a keel/rig option merely a variant?
-- Can one listing resolve to a variant when source data only identifies the parent model?
-
-**Blocking:** broad canonical ingestion.
+- ADR-0004
+- identity schemas/fixtures
 
 ## 1.2 OQ-007 — Source rights/licensing model — DONE
 
-Produce:
+Accepted:
 
 - source-rights taxonomy;
-- required Source fields for license/rights/access constraints;
-- policy for CC0, CC-BY, CC-BY-SA, public-domain, permission-based, factual-primary-source and unknown-rights sources;
-- explicit rule for what may seed identity vs production technical values.
+- Source rights/access/clearance metadata;
+- production/bulk default-deny where rights remain unresolved;
+- ADR-0005 + schemas/fixtures.
 
-Accepted decision package: `docs/research/OQ-007_SOURCE_RIGHTS_RESEARCH.md`, `specs/SOURCE_RIGHTS_POLICY.v0.1.md`, `specs/SOURCE_SCHEMA.v0.2.json`, ADR-0005 and source-rights fixtures.
+## 1.3 OQ-004 — Field-level provenance persistence — DONE
 
-**Blocking:** open-data bootstrap at scale.
-
-## 1.3 OQ-004 — Provenance persistence shape — COMPLETE
-
-Accepted ADR-0006 and `specs/PROVENANCE_MODEL.v0.1.md`: separate immutable FieldEvidence, versioned FieldResolution and DerivationRecord lineage; RFC 6901 JSON Pointer field addressing; plain canonical searchable values.
+Accepted ADR-0006 and `specs/PROVENANCE_MODEL.v0.1.md` define separate immutable FieldEvidence, versioned FieldResolution and DerivationRecord lineage with RFC-6901 field addressing.
 
 ## 1.4 OQ-001 — Derived ratios / metrics — DONE
 
-Accepted methodology `hullq-derived-1.0.0` and its contracts define:
-
-- formulas;
-- canonical input units;
-- multihull applicability/exclusions;
-- rounding/display rules;
-- missing-input behavior;
-- reference examples;
-- automated boundary/golden tests.
+Accepted methodology `hullq-derived-1.0.0` defines formulas, canonical inputs, applicability, status behavior, rounding and golden tests.
 
 ## 1.5 OQ-010 — Research/data toolchain — DONE
 
-Accepted via ADR-0009: use the smallest modern stack for the data/research engine.
+Accepted via ADR-0009. Bootstrap closure remains Stage 0.3 operational work, not an open toolchain decision.
 
-Evaluate at least:
+## 1.6 OQ-019 — Canonical logical data model — OPEN / PRE-CODE GATE
 
-- supported Python runtime;
-- project/dependency manager;
-- Ruff baseline;
-- type checker;
-- pytest;
-- JSON Schema validator;
-- persistence for benchmark/local development;
-- job orchestration approach appropriate to a single-repo lean project.
+Before HullQ domain implementation, consolidate the accepted contracts into one persistence-neutral logical model.
 
-Avoid selecting distributed infrastructure before throughput evidence requires it.
+Required output:
 
-**Stage 1 exit:** all blocking data contracts are implementation-ready and G0 passes for pipeline code.
+- complete entity/value-object inventory;
+- relationships and cardinalities;
+- stable identity/reference rules;
+- lifecycle/mutability/versioning classification;
+- explicit separation of canonical design universe, research/provenance, derived calculations, dataset releases, market observations and user-query/monitor domains;
+- documented access patterns and order-of-magnitude scale assumptions for later persistence research;
+- mapping back to accepted schemas/specs.
+
+Executed by `SLICE-0002` after bootstrap closure.
+
+**Important distinction:** OQ-019 defines **what HullQ data is and how it relates**. It MUST NOT choose production PostgreSQL/Elasticsearch/OpenSearch/document DB/ORM/etc. OQ-012 later chooses physical persistence/search technology based on this logical model plus benchmark evidence.
+
+**Stage 1 exit:** G0 passes and OQ-019 is accepted.
 
 ---
 
 # Stage 2 — Build the research-pipeline benchmark implementation
 
-**Goal:** prove that HullQ can research accurately and cheaply enough to scale.
+**Goal:** prove that HullQ can research accurately, reproducibly and cheaply enough to scale.
 
-## 2.1 Create repository code structure
+Stage-2 implementation is decomposed through `docs/slices/INDEX.md`. Current directional sequence is contract runtime → deterministic normalization → provenance/derived runtime → ResearchJob state machine.
 
-Only after ADR/toolchain decisions. Suggested logical shape (exact names may be refined):
+## 2.1 Repository code structure — BOOTSTRAPPED
 
-```text
-apps/                  # user-facing applications when introduced
-packages/              # shared first-party libraries/contracts if needed
-services/              # deployable/background components if actually needed
-src/ or packages/...   # research/domain implementation per chosen stack
-specs/
-research/
-tests/
-fixtures/
-docs/
-architecture/
-```
+Current single-repo structure includes root Python project config, `src/hullq/`, tests, specs, fixtures, research, docs and architecture. Do not create separate repositories or distributed services without a later accepted decision.
 
-Do not create separate repositories.
+## 2.2 Implement canonical contracts first
 
-## 2.2 Implement schemas/contracts first
+Only after OQ-019 acceptance.
 
-- Source
-- BoatDesign/identity structure
-- ResearchJob
-- evidence/conflict structures
-- taxonomy validation
-- dataset/version metadata
+Implement runtime handling for accepted contracts such as:
 
-Add positive and negative schema fixtures.
+- Source;
+- BoatModel / BoatDesign / ResolvedConfiguration;
+- provenance/evidence/resolution/derivation records;
+- ResearchJob when its contract is ready;
+- dataset/version metadata.
+
+Positive and negative schema fixtures remain first-class tests.
 
 ## 2.3 Implement deterministic normalization library
 
-Functions/modules for:
+Pure functions/modules for:
 
 - unit parsing/conversion;
 - text normalization without identity loss;
@@ -183,17 +154,18 @@ Functions/modules for:
 - confidence/evidence attachment;
 - validation rules.
 
-Network/source discovery is NOT embedded in these pure domain functions.
+Network/source discovery MUST NOT be embedded in pure normalization functions.
 
 ## 2.4 Implement research job state machine
 
-Explicit states and restart behavior. Requirements:
+Requirements:
 
-- idempotent/restart-safe where possible;
-- each stage records evidence/errors;
-- failures do not corrupt accepted output;
-- review queue is explicit;
-- raw artifacts remain immutable.
+- explicit states;
+- restart/idempotency where feasible;
+- evidence/error recording per stage;
+- failures never corrupt accepted output;
+- explicit review queue;
+- immutable raw artifacts.
 
 ## 2.5 Build benchmark corpus
 
@@ -211,10 +183,10 @@ This corpus benchmarks the pipeline; it is not the product universe.
 
 ## 2.6 Measure benchmark
 
-Mandatory metrics:
+Mandatory metrics include:
 
 - identity-resolution success;
-- source discovery success;
+- source-discovery success;
 - automated acceptance rate;
 - human-review rate;
 - minutes per reviewed record;
@@ -227,28 +199,28 @@ Mandatory metrics:
 
 ## 2.7 Harden until Gate G3 passes
 
-Do not scale because the happy path works. Fix taxonomy/schema/validation/review behavior based on benchmark evidence.
+Do not scale because the happy path works. Fix taxonomy/schema/validation/review behavior from benchmark evidence.
 
 ---
 
-# Stage 3 — Build the broad Sailboat universe
+# Stage 3 — Build the broad sailboat universe
 
 **Goal:** reach breadth sufficient for unknown-model discovery.
 
 ## 3.1 Establish legal/open identity bootstrap sources
 
-Use approved sources from OQ-007. Build a broad identity queue without importing technical values from the prohibited/reference scrape.
+Use approved OQ-007 sources. The reference SailboatData scrape may inform taxonomy/edge-case research but MUST NOT become an invisible production-value source.
 
 ## 3.2 Create canonical identity universe
 
-Target progression rather than a fake hard threshold:
+Target progression:
 
 - first 1,000 identities;
 - 2,500;
 - 5,000;
-- continue toward SailboatData-like breadth (potentially 5,000–10,000+).
+- continue toward SailboatData-like breadth, potentially 5,000–10,000+.
 
-At each milestone measure duplicate/ambiguity rates.
+Measure duplicate/ambiguity rates at milestones.
 
 ## 3.3 Enrich basic searchable fields
 
@@ -272,17 +244,17 @@ Priority:
 - draft ranges/options;
 - construction method where useful.
 
-## 3.5 Calculate ratios
+## 3.5 Calculate derived metrics
 
-Only from canonical inputs and only under approved formula version.
+Only from canonical inputs and only under approved method version.
 
 ## 3.6 Dataset snapshots and reproducibility
 
-Introduce explicit dataset release/snapshot metadata so a search result can be reproduced against the same dataset + taxonomy + formula versions.
+Introduce explicit dataset release/snapshot metadata so search results can be reproduced against the same dataset + taxonomy + formula versions.
 
 ## 3.7 Market-driven enrichment loop
 
-Unknown models observed in real market research later feed back into priority enrichment.
+Unknown models observed in real market work later feed priority enrichment.
 
 **Stage exit:** Gate G4 passes and coverage is broad enough that query-engine testing is meaningful.
 
@@ -290,7 +262,7 @@ Unknown models observed in real market research later feed back into priority en
 
 # Parallel Track M — Market access and integration discovery
 
-**Starts during Stage 1; does not wait for frontend work.**
+Starts during data work but does not block design-database construction.
 
 ## M1 Build market-source access register
 
@@ -308,17 +280,11 @@ For each target source record:
 - pricing/access requirements?
 - contact/status/date verified?
 
-Initial targets:
-
-- Boat24
-- YachtWorld / Boats Group
-- Scanboat
-- TheYachtMarket
-- Rightboat / other relevant regional sources
+Initial targets include Boat24, YachtWorld / Boats Group, Scanboat, TheYachtMarket, Rightboat and relevant regional sources.
 
 ## M2 Rank integration paths
 
-Prefer in order where commercially sensible:
+Prefer where commercially sensible:
 
 1. documented permitted API/data partnership;
 2. commercial/partner access;
@@ -328,59 +294,31 @@ Prefer in order where commercially sensible:
 
 ## M3 Prove one source
 
-Build no multi-source orchestration yet. One source must prove the canonical adapter contract and actual maintenance burden.
+Do not build multi-source orchestration until one source proves the canonical adapter contract and actual maintenance burden.
 
 ## M4 Measure maintenance
 
-Track adapter break/fix frequency and human minutes. This is a first-class business KPI because HullQ targets low ongoing maintenance.
+Track break/fix frequency and human minutes. Maintenance burden is a first-class business KPI.
 
 ---
 
-# Pre-Stage-4 public search/SEO gate — OQ-018
+# Pre-Stage-4 search-semantics gate — OQ-009
 
-Before public frontend/search-surface implementation, define the canonical page taxonomy, URL grammar, faceted-navigation crawl/index policy, rendering strategy, canonicalization/sitemaps, internal-linking rules and structured-data mapping under ADR-0007. This does not block research-pipeline or broad-data work.
+Before technical query-engine implementation, freeze confirmed match/non-match/insufficient-data semantics, ranges, OR conditions and variant-aware matching.
+
+# Pre-public search/SEO gate — OQ-018
+
+Before public frontend/search-surface implementation, define canonical page taxonomy, URL grammar, faceted crawl/index policy, rendering strategy, canonicalization/sitemaps, internal linking and structured-data mapping under ADR-0007.
+
+---
 
 # Stage 4 — Technical Query Engine
 
-**Goal:** implement the central HullQ differentiator over the broad database.
-
-## 4.1 Resolve OQ-009 first
-
-Freeze semantics for:
-
-- confirmed match;
-- confirmed non-match;
-- insufficient data;
-- inclusion/exclusion of unknown candidates;
-- range filters;
-- OR conditions such as rudder type sets;
-- variant-aware matching.
-
-## 4.2 Define machine-readable query contract
-
-Create versioned query schema before implementation.
-
-## 4.3 Implement pure deterministic query engine
-
-Keep query semantics independent from UI and marketplace adapters.
-
-## 4.4 Build query golden masters
-
-Include realistic examples such as:
-
-```text
-34–40 ft
-Draft <= 1.8 m
-GRP
-Skeg-hung OR keel-hung rudder
-D/L >= threshold
-```
-
-Validate unknown-data behavior explicitly.
-
-## 4.5 Compare engine
-
-Side-by-side normalized comparison uses the same canonical dataset and displays missing/uncertain data honestly.
+1. resolve OQ-009;
+2. define versioned machine-readable query contract;
+3. implement pure deterministic query engine independent of UI/market adapters;
+4. build query golden masters including unknown-data behavior;
+5. build canonical-data compare engine.
 
 **Exit:** Gate G5.
 
@@ -390,150 +328,67 @@ Side-by-side normalized comparison uses the same canonical dataset and displays 
 
 ## 5.1 Resolve OQ-011/OQ-012
 
-Decide:
+Choose application/backend architecture and production database/search/index strategy based on:
 
-- backend/application framework;
-- whether Strapi remains useful or adds unnecessary abstraction;
-- database technology;
-- search/index strategy;
-- deployment topology;
-- migration tooling.
+- accepted OQ-019 logical model;
+- measured Stage-2/3 access patterns and scale;
+- technical-query behavior;
+- operational maintenance economics.
 
-Choose based on measured dataset/query needs, not habit.
+Do not choose by framework habit.
 
 ## 5.2 Persist canonical dataset and query API
 
-Implement storage adapters behind domain interfaces. Domain/search rules stay independent from framework ORM semantics.
+Storage adapters stay behind domain interfaces. Domain/search rules remain independent from ORM/framework semantics.
 
 ## 5.3 API contract
 
-If HTTP boundary is introduced, specify it first with an official OpenAPI version selected at implementation time.
+If an HTTP boundary is introduced, specify/version it before implementation under OQ-015.
 
 ---
 
 # Stage 6 — Web product MVP
 
-**Goal:** smallest high-quality public product using the broad database.
+1. resolve OQ-008 frontend stack;
+2. resolve OQ-018 search/SEO public surface;
+3. build technical discovery UX;
+4. add compare;
+5. integrate first permitted market path from Track M.
 
-## 6.1 Resolve OQ-008 frontend stack
-
-Select modern framework/tooling based on:
-
-- static/SEO needs;
-- interactive filtering;
-- accessibility;
-- bundle/performance;
-- maintainability;
-- single-repo integration.
-
-## 6.2 Build discovery UX
-
-Primary path:
-
-```text
-technical query
-→ matching unknown designs
-→ transparent match/unknown state
-→ compare
-→ market availability action
-```
-
-Do not recreate the raw-field Tabulator prototype.
-
-## 6.3 Add compare
-
-Comparison is canonical-data based and version-aware.
-
-## 6.4 Integrate first permitted market path
-
-Use the best validated path from Track M: real adapter if cleanly available; otherwise a documented deep-link/partner fallback while maintaining the product boundary.
+Do not recreate the raw-field prototype as the product UX.
 
 ---
 
 # Stage 7 — Accounts, saved technical queries and alerts
 
-## 7.1 Security/privacy spec first
+1. resolve security/privacy baseline OQ-014;
+2. persist SavedQuery as first-class versioned technical query;
+3. add Monitor and Alert as separate domain concepts;
+4. resolve OQ-005 before claiming cross-market physical-listing uniqueness;
+5. resolve OQ-006 cadence/freshness policy.
 
-Resolve OQ-014 before account code.
-
-## 7.2 Saved query is first-class
-
-Store the versioned technical query itself, not just a list of model names.
-
-## 7.3 Alert resolver
-
-```text
-saved technical query
-→ matching design set
-→ grouped market lookups
-→ new physical listings
-→ notification
-```
-
-## 7.4 Dedup before multi-market alerts
-
-Resolve OQ-005 before claiming cross-platform new-listing uniqueness.
-
-## 7.5 Cadence/freshness
-
-Resolve OQ-006 based on source constraints and actual user value.
+Subscription entitlements control capacity/frequency/features, not technical query semantics.
 
 ---
 
 # Stage 8 — Public release, distribution and low-maintenance operations
 
-## 8.1 SEO/discovery surfaces
+Measure product and business KPIs including technical searches, unknown/insufficient-data rates, compare/monitor usage, market click-through, returning users, monthly profit, human maintenance hours, unplanned maintenance, source-integration burden, research cost per design, and profit per maintenance hour.
 
-Focus on unique query/category surfaces and high-quality design pages only where they provide real value; do not assume head-on model-name SEO is the only acquisition strategy.
+HullQ is not currently optimized for venture-scale expectations. Revisit scaling only if real traction justifies a deliberate new decision.
 
-## 8.2 Product analytics
+---
 
-Measure:
+# Deferred commercial/intelligence gates
 
-- technical searches;
-- zero/low-result searches;
-- insufficient-data rates;
-- compare usage;
-- market click-through;
-- saved-query/alert intent;
-- returning active-search users;
-- unknown model requests.
-
-## 8.3 Business KPIs
-
-Primary operational economics:
-
-- monthly profit;
-- human maintenance hours/month;
-- **profit per maintenance hour**;
-- unplanned maintenance hours;
-- source integration maintenance cost;
-- research/enrichment cost per design.
-
-## 8.4 Scaling decision
-
-HullQ is not currently designed around venture-scale expectations. If real traction later shows materially larger opportunity, evaluate a deliberate scaling strategy in a new ADR/business decision rather than pre-optimizing architecture now.
+- OQ-016: subscription pricing and entitlement defaults before paid launch.
+- OQ-017: source-specific longitudinal listing/asking-price retention and price-intelligence semantics before durable price-history storage or Pro price-intelligence launch.
 
 ---
 
 # Immediate next actions
 
-The next work session should continue **Stage 1**, in order:
-
-1. research and freeze `OQ-001` ratio formulas;
-2. decide `OQ-010` Python/research toolchain;
-3. bootstrap repo/CI and then implement the research pipeline.
-
-Already completed foundation blockers: OQ-003 identity, OQ-007 source rights, OQ-004 provenance. OQ-009 must close before query-engine code; OQ-018 must close before the public frontend/search surface.
-
-In parallel, begin `OQ-013` market-access research, but do not let it distract from the design-data foundation.
-
-
-## Product-commercial gate — OQ-016 subscription packaging
-
-Before paid subscription launch, validate and freeze pricing/entitlement defaults. The architecture must already support configurable Free/Plus/Pro entitlements without coupling query semantics to billing. Current hypothesis is documented in `docs/PRODUCT_RETENTION_AND_MONETIZATION.md`.
-
-
-## Deferred market-intelligence gate
-
-Before implementing durable listing-price history or Pro price-intelligence features, resolve `OQ-017` to define source-specific retention permission, listing lifecycle semantics, asking-price vs sale-price rules, aggregation windows and tests.
+1. **SLICE-0001 — READY:** generate `uv.lock`, pass local quality gates and first green Linux + Windows CI.
+2. **SLICE-0002 — then:** research and decide OQ-019 canonical logical data model.
+3. Only after both are DONE: begin the first HullQ domain implementation slice (contract runtime).
+4. Continue OQ-013 market-access research in parallel when useful, without distracting from the data foundation.
