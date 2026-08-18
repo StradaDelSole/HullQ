@@ -1,10 +1,13 @@
 # HullQ — System Architecture
 
-**Status:** ACTIVE logical architecture; implementation technologies remain gated by open questions.
+**Status:** ACTIVE logical + accepted initial application/deployment architecture  
+**Application stack:** ADR-0010 / `docs/engineering/APPLICATION_STACK_BASELINE.v0.1.md`
 
 ## Principle
 
 HullQ is a technical query/search layer over a mostly static sailboat-design universe and, where access permits, external market inventory. Domain boundaries are intentionally more stable than framework choices.
+
+The initial implementation is deliberately optimized for a near-zero-budget side business: one Contabo Linux VPS plus the domain are the only expected fixed infrastructure costs at launch. Cloudflare remains the preferred edge layer. The application must remain portable to another commodity Linux VPS or managed infrastructure without redefining HullQ domain semantics.
 
 ## Logical components
 
@@ -51,9 +54,76 @@ Separately:
 → [Canonical Design Domain]
 ```
 
-## Technology selection is intentionally unresolved
+## Accepted initial technology/deployment baseline
 
-Earlier project discussion identified Strapi as a pragmatic possibility, but **no backend framework is accepted**. OQ-011 controls application/backend architecture. OQ-012 controls persistence/search technology. OQ-008 controls frontend technology. Implementation agents MUST NOT infer a framework from historical preferences.
+OQ-008, OQ-011 and OQ-012 are resolved by ADR-0010.
+
+```text
+                         Internet
+                            |
+                      Cloudflare edge
+                  DNS / CDN / WAF / TLS
+                            |
+                            v
+                     Contabo Linux VPS
+                            |
+                 reverse proxy (Caddy baseline)
+                            |
+             +--------------+---------------+
+             |                              |
+             v                              v
+        Astro web                      FastAPI API
+        TypeScript                     CPython 3.14
+        React islands                       |
+        only where useful                   |
+             |                              |
+             +--------------+---------------+
+                            v
+                        PostgreSQL
+                            |
+                 background/scheduled worker
+                            |
+                 optional off-VPS R2 storage
+```
+
+### Web
+
+- Astro is the selected framework.
+- TypeScript is the default browser/web language.
+- Public/SEO-oriented pages should be normal static/server-rendered HTML with minimal client JavaScript.
+- React is not the whole-site architecture; React + TypeScript is used selectively as Astro islands for sufficiently stateful UI such as search, compare, saved-search/account/dashboard and monitor management.
+- No client-only React SPA is the baseline.
+- Flutter Web and Next.js are not the selected public-web baseline.
+- No CMS is required initially; Strapi is not the HullQ backend or technical-data store.
+
+Exact public page taxonomy, URL grammar, faceted-index policy, rendering/canonicalization/sitemap behavior and structured-data mapping still require OQ-018 before public frontend implementation.
+
+### Backend
+
+- CPython 3.14 remains the authoritative HullQ domain/application runtime.
+- FastAPI is the selected HTTP application framework when the API slice begins.
+- Canonical domain/query/research rules live in the Python core and must not be duplicated in TypeScript or frontend state.
+- Scheduled/long-running jobs belong in a Python worker/background boundary rather than request handlers.
+- No Redis/Celery/Temporal/Airflow/message broker is part of the initial baseline without measured need.
+
+The actual stable HTTP API/versioning/OpenAPI boundary remains governed by OQ-015.
+
+### Production persistence and search
+
+- PostgreSQL is the accepted initial production relational store.
+- Existing stdlib SQLite remains limited to non-production Stage-2 local research/job-control use.
+- Technical search/filtering begins with PostgreSQL plus appropriate indexes/projections after OQ-009 query semantics are accepted.
+- No dedicated Elasticsearch/OpenSearch/Meilisearch/Typesense service is part of the initial architecture.
+- Specialist search infrastructure may be introduced later only from measured need.
+- Domain/search semantics remain storage-independent; PostgreSQL is persistence technology, not semantic authority.
+
+### Hosting / operations
+
+- Contabo is the chosen initial VPS provider.
+- HullQ targets a conventional commodity Linux VPS and must not depend on Contabo-specific application APIs.
+- Cloudflare remains preferred for public DNS/proxy/CDN/cache/TLS/basic WAF and may provide Turnstile/R2 where later slices select them.
+- Simple Docker Compose or equivalent small-host orchestration is preferred when deployment work begins; Kubernetes is explicitly out of baseline scope.
+- PostgreSQL must have automated off-VPS backups before production/user data is relied upon. R2 is the preferred low-cost direction, but exact backup/restore/encryption/retention procedures belong to an operations slice.
 
 ## Core domain entities
 
@@ -75,7 +145,7 @@ Stable conceptual entities include:
 - MarketListing
 - SourcePlatform
 
-Additional deployment/persistence entities MUST be introduced only when their governing decision is accepted.
+Additional deployment/persistence entities MUST be introduced only when their governing slice/decision is accepted.
 
 ## Design database
 
@@ -91,7 +161,28 @@ Canonical searchable values remain separate from source evidence under accepted 
 
 Search Architecture and SEO are first-class product architecture under ADR-0007 and `architecture/SEARCH_AND_SEO_ARCHITECTURE.md`. The interactive technical-query surface and the public organic-discovery surface share canonical domain data but are not identical: arbitrary filter combinations MUST NOT automatically become an unbounded indexable URL space.
 
-OQ-018 gates the exact public URL grammar, indexable page taxonomy, faceted crawl/index policy, rendering strategy, canonicalization/sitemaps and structured-data mapping before frontend implementation. Frontend technology selected under OQ-008 MUST satisfy these architectural requirements.
+OQ-018 still gates the exact public URL grammar, indexable page taxonomy, faceted crawl/index policy, rendering strategy, canonicalization/sitemaps and structured-data mapping. Astro was selected partly because it supports the static-first/crawlable HTML direction; the framework choice does not itself resolve OQ-018.
+
+## Accounts, saved queries and alerts
+
+The application architecture explicitly supports:
+
+```text
+Search
+  -> SavedQuery
+  -> Monitor
+  -> Alert
+```
+
+SavedQuery is persisted independently from Monitor. A user may save a query without monitoring it; subscription entitlement may later control monitoring capacity/frequency without changing query semantics.
+
+Authentication/account/session/privacy implementation is **deliberately deferred to OQ-014**. ADR-0010 does not choose JWT vs server sessions, auth library/provider, password/OAuth mechanics, email verification/reset or privacy details. The eventual auth design must support the web product and later Flutter clients.
+
+OQ-006 controls monitor/alert cadence, freshness and cache policy.
+
+## Mobile
+
+Responsive web/PWA is the initial mobile-access path. Flutter is the preferred later Android/iOS client technology once recurring monitoring/alert use justifies native apps. Flutter consumes the same accepted API boundary; it must not become a second implementation of HullQ domain/query semantics.
 
 ## Market access
 
