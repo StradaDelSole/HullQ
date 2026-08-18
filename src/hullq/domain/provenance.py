@@ -17,9 +17,15 @@ acquisition, or fuzzy identity matching.
 from __future__ import annotations
 
 import copy
+import re
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
+
+# RFC 6901 §4: array-index tokens must be "0" or a non-zero digit followed by
+# zero or more digits.  Negative indices, leading zeros (e.g. "01"), explicit
+# plus signs and the append sentinel "-" are all rejected during lookup.
+_ARRAY_INDEX_RE = re.compile(r"^(0|[1-9][0-9]*)$")
 
 __all__ = [
     "ConfidenceLevel",
@@ -212,13 +218,13 @@ class JsonPointer:
                 current = mapping[token]
             elif isinstance(current, list):
                 seq: list[object] = current
-                try:
-                    idx = int(token)
-                except ValueError:
+                if not _ARRAY_INDEX_RE.match(token):
                     raise KeyError(
-                        f"List index must be a non-negative integer, got {token!r}"
-                    ) from None
-                current = seq[idx]
+                        f"Invalid RFC 6901 array index {token!r}: must be '0' or a "
+                        f"non-zero digit followed by zero or more digits (no leading zeros, "
+                        f"no sign prefix, no '-' sentinel)"
+                    )
+                current = seq[int(token)]
             else:
                 raise TypeError(
                     f"Cannot traverse {type(current).__name__!r} "
@@ -734,12 +740,27 @@ def check_canonical_consistency(
     resolved_states = {ResolutionState.RESOLVED, ResolutionState.RESOLVED_WITH_CONFLICT}
 
     if state not in resolved_states:
-        # Non-resolved states must have null snapshot — no canonical value to check.
+        # Non-resolved states must have null snapshot (REQ-PROV-008).
         if resolution.canonical_value_snapshot is not None:
             errors.append(
                 f"Resolution {resolution.resolution_id!r} state {state!r} "
                 f"must have null canonical_value_snapshot"
             )
+            return errors
+        # REQ-PROV-005 / REQ-PROV-008: an unresolved resolution must not coexist with
+        # a non-null canonical production value at the same field.  A missing field or
+        # an explicit null value in the canonical snapshot is acceptable.
+        try:
+            canonical_value = resolution.field_pointer.lookup(canonical_subject_snapshot)
+            if canonical_value is not None:
+                errors.append(
+                    f"Resolution {resolution.resolution_id!r} state {state!r}: "
+                    f"canonical subject has non-null value {canonical_value!r} at "
+                    f"{resolution.field_pointer} but resolution has null "
+                    f"canonical_value_snapshot"
+                )
+        except KeyError, IndexError, TypeError:
+            pass  # field absent from canonical snapshot — acceptable for unresolved
         return errors
 
     if resolution.canonical_value_snapshot is None:

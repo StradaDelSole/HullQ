@@ -326,6 +326,23 @@ class TestScenario10MalformedPointerRejected:
         ptr = JsonPointer("/valid/pointer")
         assert ptr.raw == "/valid/pointer"
 
+    # --- RFC 6901 array-index regression (Fix 1, PR #14) ---
+
+    @pytest.mark.parametrize("token", ["-1", "+1", "01", "-"])
+    def test_invalid_rfc6901_array_index_rejected(self, token: str) -> None:
+        ptr = JsonPointer(f"/items/{token}")
+        with pytest.raises(KeyError):
+            ptr.lookup({"items": [10, 20, 30]})
+
+    @pytest.mark.parametrize(
+        "token,expected",
+        [("0", 0), ("1", 1), ("42", 42)],
+    )
+    def test_valid_rfc6901_array_index_accepted(self, token: str, expected: int) -> None:
+        seq = list(range(50))
+        ptr = JsonPointer(f"/items/{token}")
+        assert ptr.lookup({"items": seq}) == expected
+
 
 # ---------------------------------------------------------------------------
 # Scenario 11 — raw value/unit/excerpt unchanged after normalized candidate
@@ -897,6 +914,45 @@ class TestScenario22InvalidSupersession:
         errors = validate_resolution_history([res])
         assert any("itself" in e or "self" in e.lower() for e in errors)
 
+    def test_fork_two_resolutions_superseding_same_predecessor_rejected(self) -> None:
+        # Scenario 22 fork: one valid predecessor + two resolutions both superseding it.
+        # Both R22g and R22h are current (not superseded), producing an ambiguous state
+        # that validate_resolution_history must reject.
+        predecessor = _resolution(
+            "R22f",
+            _SUBJECT_BD,
+            _POINTER_LOA,
+            ResolutionState.RESOLVED,
+            10.541,
+            frozenset({"E1"}),
+            frozenset(),
+            frozenset({"E1"}),
+        )
+        fork_a = _resolution(
+            "R22g",
+            _SUBJECT_BD,
+            _POINTER_LOA,
+            ResolutionState.RESOLVED,
+            10.60,
+            frozenset({"E2"}),
+            frozenset(),
+            frozenset({"E2"}),
+            supersedes_resolution_id="R22f",
+        )
+        fork_b = _resolution(
+            "R22h",
+            _SUBJECT_BD,
+            _POINTER_LOA,
+            ResolutionState.RESOLVED,
+            10.65,
+            frozenset({"E3"}),
+            frozenset(),
+            frozenset({"E3"}),
+            supersedes_resolution_id="R22f",
+        )
+        errors = validate_resolution_history([predecessor, fork_a, fork_b])
+        assert errors, "Expected error: two resolutions fork from the same predecessor"
+
 
 # ---------------------------------------------------------------------------
 # Scenario 23 — canonical value/resolution snapshot consistency
@@ -944,6 +1000,63 @@ class TestScenario23CanonicalConsistency:
             _SUBJECT_BD,
             _POINTER_LOA,
             ResolutionState.UNKNOWN,
+            None,
+            frozenset(),
+            frozenset(),
+            frozenset(),
+        )
+        errors = check_canonical_consistency(snapshot, res)
+        assert errors == []
+
+    # --- Unresolved-state canonical consistency regression (Fix 2, PR #14) ---
+
+    @pytest.mark.parametrize(
+        "state",
+        [ResolutionState.CONFLICT, ResolutionState.UNKNOWN, ResolutionState.NEEDS_REVIEW],
+    )
+    def test_unresolved_state_fails_when_canonical_has_nonnull_value(
+        self, state: ResolutionState
+    ) -> None:
+        # REQ-PROV-005 / REQ-PROV-008: unresolved resolution must not coexist with
+        # a non-null canonical production value at the same field pointer.
+        snapshot = {"baseline": {"dimensions": {"loa_m": 10.541}}}
+        res = _resolution(
+            "R23d",
+            _SUBJECT_BD,
+            _POINTER_LOA,
+            state,
+            None,
+            frozenset(),
+            frozenset(),
+            frozenset(),
+        )
+        errors = check_canonical_consistency(snapshot, res)
+        assert errors, f"Expected consistency error for state={state} with non-null canonical field"
+
+    def test_unresolved_state_passes_when_canonical_field_is_null(self) -> None:
+        # Explicit null in canonical snapshot is acceptable for unresolved states.
+        snapshot = {"baseline": {"dimensions": {"loa_m": None}}}
+        res = _resolution(
+            "R23e",
+            _SUBJECT_BD,
+            _POINTER_LOA,
+            ResolutionState.CONFLICT,
+            None,
+            frozenset(),
+            frozenset(),
+            frozenset(),
+        )
+        errors = check_canonical_consistency(snapshot, res)
+        assert errors == []
+
+    def test_unresolved_state_passes_when_canonical_field_is_missing(self) -> None:
+        # Missing field in canonical snapshot is acceptable for unresolved states.
+        snapshot: dict[str, object] = {}
+        res = _resolution(
+            "R23f",
+            _SUBJECT_BD,
+            _POINTER_LOA,
+            ResolutionState.NEEDS_REVIEW,
             None,
             frozenset(),
             frozenset(),
