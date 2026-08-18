@@ -2,7 +2,7 @@
 
 **Status:** ACCEPTED  
 **Date:** 2026-08-18  
-**Related:** ADR-0004, OQ-003, REQ-ID-003..012, REQ-SEARCH-007..009
+**Related:** ADR-0004, OQ-003, `specs/IDENTITY_MODEL.v0.2.md`
 
 ## Context
 
