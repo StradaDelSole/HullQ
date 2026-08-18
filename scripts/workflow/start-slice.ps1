@@ -4,13 +4,13 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 function Run-Git {
-    param([string[]]$Args)
-    & git @Args
-    if ($LASTEXITCODE -ne 0) { throw "git failed: git $($Args -join ' ')" }
+    param([string[]]$GitArgs)
+    & git @GitArgs
+    if ($LASTEXITCODE -ne 0) { throw "git failed: git $($GitArgs -join ' ')" }
 }
 
 function Normalize-Slice([string]$Value) {
-    if ($Value -match '(\d{1,4})') { return $Matches[1].PadLeft(4, '0') }
+    if ($Value -match '^(\d{1,4})$') { return $Matches[1].PadLeft(4, '0') }
     throw "Enter a slice number such as 5 or 0005."
 }
 
@@ -34,10 +34,10 @@ $dirty = & git -C $repoRoot status --porcelain
 if ($LASTEXITCODE -ne 0) { throw "This folder is not a valid Git checkout." }
 if ($dirty) { throw "Main checkout has local changes. Commit/stash them before starting a slice." }
 
-Run-Git @('-C', $repoRoot, 'fetch', '--prune', 'origin')
-Run-Git @('-C', $repoRoot, 'switch', 'main')
-Run-Git @('-C', $repoRoot, 'pull', '--ff-only', 'origin', 'main')
-Run-Git @('-C', $repoRoot, 'worktree', 'prune')
+Run-Git -GitArgs @('-C', $repoRoot, 'fetch', '--prune', 'origin')
+Run-Git -GitArgs @('-C', $repoRoot, 'switch', 'main')
+Run-Git -GitArgs @('-C', $repoRoot, 'pull', '--ff-only', 'origin', 'main')
+Run-Git -GitArgs @('-C', $repoRoot, 'worktree', 'prune')
 
 $sliceFiles = @(Get-ChildItem (Join-Path $repoRoot 'docs\slices') -Filter "SLICE-$sliceNumber-*.md")
 if ($sliceFiles.Count -ne 1) {
@@ -45,6 +45,16 @@ if ($sliceFiles.Count -ne 1) {
 }
 
 $sliceFile = $sliceFiles[0]
+$sliceText = Get-Content -Raw $sliceFile.FullName
+$statusMatch = [regex]::Match($sliceText, '(?m)^\*\*Status:\*\*\s*([A-Z_]+)\s*$')
+if (-not $statusMatch.Success) {
+    throw "Could not read the status from $($sliceFile.Name)."
+}
+$sliceStatus = $statusMatch.Groups[1].Value
+if ($sliceStatus -ne 'READY') {
+    throw "SLICE-$sliceNumber is '$sliceStatus', not READY. Do not start Claude yet; ask the project master to prepare/authorize this slice first."
+}
+
 $slug = $sliceFile.BaseName -replace "^SLICE-$sliceNumber-", ''
 $branch = "slice/$sliceNumber-$slug"
 $repoName = Split-Path $repoRoot -Leaf
@@ -65,12 +75,12 @@ if (Test-Path $worktree) {
     $remoteExists = ($LASTEXITCODE -eq 0)
 
     if ($localExists) {
-        Run-Git @('-C', $repoRoot, 'worktree', 'add', $worktree, $branch)
+        Run-Git -GitArgs @('-C', $repoRoot, 'worktree', 'add', $worktree, $branch)
     } elseif ($remoteExists) {
-        Run-Git @('-C', $repoRoot, 'branch', '--track', $branch, "origin/$branch")
-        Run-Git @('-C', $repoRoot, 'worktree', 'add', $worktree, $branch)
+        Run-Git -GitArgs @('-C', $repoRoot, 'branch', '--track', $branch, "origin/$branch")
+        Run-Git -GitArgs @('-C', $repoRoot, 'worktree', 'add', $worktree, $branch)
     } else {
-        Run-Git @('-C', $repoRoot, 'worktree', 'add', '-b', $branch, $worktree, 'origin/main')
+        Run-Git -GitArgs @('-C', $repoRoot, 'worktree', 'add', '-b', $branch, $worktree, 'origin/main')
     }
 }
 

@@ -4,13 +4,13 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 function Run-Git {
-    param([string[]]$Args)
-    & git @Args
-    if ($LASTEXITCODE -ne 0) { throw "git failed: git $($Args -join ' ')" }
+    param([string[]]$GitArgs)
+    & git @GitArgs
+    if ($LASTEXITCODE -ne 0) { throw "git failed: git $($GitArgs -join ' ')" }
 }
 
 function Normalize-Slice([string]$Value) {
-    if ($Value -match '(\d{1,4})') { return $Matches[1].PadLeft(4, '0') }
+    if ($Value -match '^(\d{1,4})$') { return $Matches[1].PadLeft(4, '0') }
     throw "Enter a slice number such as 5 or 0005."
 }
 
@@ -21,9 +21,9 @@ $sliceNumber = Normalize-Slice $Slice
 Write-Host ""
 Write-Host "Finishing SLICE-$sliceNumber..."
 
-Run-Git @('-C', $repoRoot, 'fetch', '--prune', 'origin')
-Run-Git @('-C', $repoRoot, 'switch', 'main')
-Run-Git @('-C', $repoRoot, 'pull', '--ff-only', 'origin', 'main')
+Run-Git -GitArgs @('-C', $repoRoot, 'fetch', '--prune', 'origin')
+Run-Git -GitArgs @('-C', $repoRoot, 'switch', 'main')
+Run-Git -GitArgs @('-C', $repoRoot, 'pull', '--ff-only', 'origin', 'main')
 
 $sliceFiles = @(Get-ChildItem (Join-Path $repoRoot 'docs\slices') -Filter "SLICE-$sliceNumber-*.md")
 if ($sliceFiles.Count -ne 1) {
@@ -63,13 +63,13 @@ if ($LASTEXITCODE -ne 0 -or -not $mergedJson -or $mergedJson.Trim() -eq '[]') {
     exit 0
 }
 
-Run-Git @('-C', $repoRoot, 'worktree', 'remove', $worktree)
+Run-Git -GitArgs @('-C', $repoRoot, 'worktree', 'remove', $worktree)
 & git -C $repoRoot show-ref --verify --quiet "refs/heads/$branch"
 if ($LASTEXITCODE -eq 0) {
-    Run-Git @('-C', $repoRoot, 'branch', '-D', $branch)
+    Run-Git -GitArgs @('-C', $repoRoot, 'branch', '-D', $branch)
 }
-Run-Git @('-C', $repoRoot, 'worktree', 'prune')
-Run-Git @('-C', $repoRoot, 'fetch', '--prune', 'origin')
+Run-Git -GitArgs @('-C', $repoRoot, 'worktree', 'prune')
+Run-Git -GitArgs @('-C', $repoRoot, 'fetch', '--prune', 'origin')
 
 Write-Host ""
 Write-Host "DONE"
