@@ -11,6 +11,7 @@ Before changing the project, read in this order:
 7. `docs/slices/INDEX.md`
 8. the explicitly assigned slice under `docs/slices/`
 9. relevant versioned specs / accepted ADRs / operational docs named by that slice
+10. `docs/engineering/AI_SLICE_WORKFLOW.md` for local/GitHub ownership rules
 
 ## Repository access convention
 
@@ -24,16 +25,62 @@ GitHub remains the canonical shared state for:
 - review/acceptance handoff;
 - accepted `main`.
 
-Before starting a new slice locally:
+Before starting a new slice locally, use the repository's `START_SLICE.bat` workflow unless the project owner explicitly instructs otherwise. The helper creates an isolated worktree from current `origin/main` and keeps the normal HullQ checkout on `main`.
+
+If manual recovery is required, synchronize the normal main checkout only with:
 
 ```bash
 git switch main
 git pull --ff-only origin main
 ```
 
-Then create/use the assigned slice branch. Never use `git pull origin main` from an old feature branch merely to refresh local `main`; that attempts to merge `main` into the current branch and may create avoidable conflicts.
+Never use `git pull origin main` from an old feature branch merely to refresh local `main`; that attempts to merge `main` into the current branch and may create avoidable conflicts.
 
-Implementation work occurs in the local checkout, but the completed slice branch MUST be pushed to GitHub for review. Do not merge it to `main` yourself unless the user/project-owner explicitly changes the acceptance workflow.
+Implementation work occurs in the assigned local worktree, but the completed slice branch MUST be pushed to GitHub for review. Do not merge it to `main` yourself unless the user/project-owner explicitly changes the acceptance workflow.
+
+## Single-writer branch ownership
+
+HullQ uses a strict single-writer workflow to prevent multiple AI agents from overwriting or silently diverging from one another.
+
+### Canonical truth
+
+`origin/main` is the only accepted canonical repository truth. Local checkouts, worktrees, feature branches and review branches are temporary working state.
+
+### Branch ownership
+
+For an active implementation slice:
+
+- Claude owns exactly the assigned `slice/...` branch/worktree and MUST write only there.
+- Claude MUST NOT push directly to `main`.
+- Claude MUST NOT write to `master/...`, `review/...`, or another agent's branch.
+- The master/architect/reviewer MUST NOT write to Claude's active `slice/...` branch.
+- Review findings are returned to Claude; Claude applies fixes on the same slice branch.
+- Force-push to an active shared slice branch is forbidden unless the project owner explicitly authorizes recovery.
+
+### Main freeze while a slice is active
+
+Once an implementation slice has started from current `origin/main`, `main` is treated as frozen until that slice reaches review/acceptance/merge.
+
+The master/architect MAY during that time:
+
+- read repository state;
+- research future decisions;
+- review the active PR;
+- comment findings;
+- prepare future work on a separate `master/...` branch.
+
+The master/architect MUST NOT merge unrelated changes to `main` while Claude is actively implementing a slice. If a newly discovered issue is a genuine blocker that requires changing controlling specs/ADRs, stop the slice deliberately, resolve the blocker through a separate reviewed change, then restart/rebase the slice explicitly.
+
+### Slice boundary synchronization
+
+After a slice is accepted and merged:
+
+1. synchronize the normal local `main` from `origin/main`;
+2. remove the completed worktree only after merge is confirmed and the worktree is clean;
+3. start the next slice from the newly synchronized `origin/main`;
+4. never carry an old slice worktree forward as the base for a new slice.
+
+Use `START_SLICE.bat` and `FINISH_SLICE.bat` for this normal lifecycle.
 
 ## Authority
 
