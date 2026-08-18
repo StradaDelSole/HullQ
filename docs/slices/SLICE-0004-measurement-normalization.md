@@ -1,7 +1,7 @@
 # SLICE-0004 — Measurement Observation and Deterministic Unit/Basis Normalization
 
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 2.3 — deterministic normalization foundation  
 **Depends on:** SLICE-0003 accepted / DONE  
 **Blocks:** SLICE-0005
@@ -250,16 +250,16 @@ Avoid new dependencies. Python stdlib `decimal`, `dataclasses` and `enum` are su
 
 ## Acceptance criteria
 
-- [ ] explicit length/mass/area units normalize deterministically to SI;
-- [ ] accepted exact conversion constants are covered by tests;
-- [ ] raw source representation and semantic label can be retained unchanged;
-- [ ] basis values remain explicit and no free-text inference occurs;
-- [ ] `unknown` and `source_unspecified` remain distinct;
-- [ ] typed basis vocabulary, if introduced, cannot drift from the normative schema unnoticed;
-- [ ] unit/quantity mismatches and unsupported/non-finite inputs fail explicitly;
-- [ ] no derived-metric rounding is applied in generic normalization;
-- [ ] no source acquisition, identity, appendage, provenance, persistence, API or frontend behavior is introduced;
-- [ ] repository validator, Ruff, mypy, pytest/coverage and dependency audit pass locally;
+- [x] explicit length/mass/area units normalize deterministically to SI;
+- [x] accepted exact conversion constants are covered by tests;
+- [x] raw source representation and semantic label can be retained unchanged;
+- [x] basis values remain explicit and no free-text inference occurs;
+- [x] `unknown` and `source_unspecified` remain distinct;
+- [x] typed basis vocabulary, if introduced, cannot drift from the normative schema unnoticed;
+- [x] unit/quantity mismatches and unsupported/non-finite inputs fail explicitly;
+- [x] no derived-metric rounding is applied in generic normalization;
+- [x] no source acquisition, identity, appendage, provenance, persistence, API or frontend behavior is introduced;
+- [x] repository validator, Ruff, mypy, pytest/coverage and dependency audit pass locally;
 - [ ] required remote CI is reported truthfully and is not guessed.
 
 ## Validation
@@ -305,3 +305,76 @@ Also report:
 - any source-semantic mapping intentionally deferred.
 
 Successful implementation hands the slice to `REVIEW`, never `DONE`. Do not begin SLICE-0005.
+
+---
+
+### Slice
+
+- Slice ID: `SLICE-0004`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+
+### Changes
+
+- Changed files:
+  - `src/hullq/domain/measurements.py` — new module (Quantity, LengthUnit, MassUnit, AreaUnit, DisplacementBasis, SailAreaBasis, MeasurementObservation, NormalizedMeasurement, normalize_measurement, Unit type alias)
+  - `tests/unit/test_measurements.py` — new test module (81 tests total, 44 in this file covering all 15 required scenarios + 4 Hypothesis property tests)
+  - `docs/slices/SLICE-0004-measurement-normalization.md` — status READY → REVIEW, acceptance criteria checked
+  - `docs/slices/INDEX.md` — status SLICE-0004 READY → REVIEW
+- Requirements implemented:
+  - REQ-DATA-003, REQ-DATA-005, REQ-DATA-008, REQ-RATIO-003, REQ-RATIO-004
+- Tests/fixtures added:
+  - `tests/unit/test_measurements.py` — 44 tests covering all 15 mandatory scenarios and 4 Hypothesis property tests
+
+### Validation
+
+- Local validation: `PASS`
+- Commands run:
+  ```
+  uv lock --check
+  uv sync --locked --all-groups
+  uv run python scripts/validate_repository.py
+  uv run ruff format --check .
+  uv run ruff check .
+  uv run mypy src
+  uv run coverage run -m pytest
+  uv run coverage report
+  uv run pip-audit
+  ```
+- Results:
+  - `uv lock --check`: PASS (51 packages, no change)
+  - `validate_repository.py`: PASS (11 schemas, 81 requirements, 81 acceptance criteria)
+  - `ruff format --check`: PASS (formatter applied once, then clean)
+  - `ruff check`: PASS (lint errors fixed: UP040, UP042, RUF002/003, F401)
+  - `mypy src`: PASS (9 source files, strict, no issues)
+  - `pytest`: PASS (81/81 passed)
+  - `coverage report`: PASS (99.35% total; measurements.py 100%)
+  - `pip-audit`: PASS (no known vulnerabilities)
+
+### External verification
+
+- Remote CI: `NOT VERIFIED` — branch pushed to GitHub; GitHub Actions result not yet observed
+- Other external gates: `NOT APPLICABLE`
+
+### Findings
+
+- Unresolved findings: none
+- Spec/ADR ambiguities: none encountered
+- Scope deviations: none
+- Implementation notes:
+  - `TypeAlias` (PEP 526) replaced with `type` keyword (PEP 695) per UP040; `(str, Enum)` replaced with `StrEnum` per UP042 — both are idiomatic Python 3.12+/3.14 and do not change runtime semantics
+  - `DisplacementBasis` and `SailAreaBasis` now use `StrEnum`; tests still prove exact value-set equality against the normative JSON schema
+  - `assert_never` branches carry `# pragma: no cover` — they are structurally unreachable by design and would pull coverage below 90% without the pragma
+  - No new third-party dependencies introduced; stdlib `decimal`, `dataclasses`, `enum` used throughout
+  - Source-semantic mapping (e.g., "half-load" → `normal_sailing`) intentionally deferred; no mapping logic exists in this slice
+
+### Follow-up
+
+- Recommended next action: project-owner reviews and accepts SLICE-0004 before authorizing SLICE-0005 (identity/model/generation text primitives)
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice was not started automatically.
+- The agent has NOT marked this slice `DONE`.

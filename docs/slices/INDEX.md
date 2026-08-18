@@ -9,7 +9,7 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0001 | BOOTSTRAP | DONE | Close repository bootstrap: real `uv.lock`, full local gates, first green Linux/Windows CI | OQ-010 / ADR-0009 |
 | SLICE-0002 | DESIGN_RESEARCH | DONE | Research independent sailboat-design data sources and a 20–30-design seed evidence sample before domain pipeline code | SLICE-0001 |
 | SLICE-0003 | IMPLEMENTATION | DONE | Canonical JSON-Schema contract runtime and local `$id`/reference registry | SLICE-0002 |
-| SLICE-0004 | IMPLEMENTATION | READY | Measurement observation + deterministic unit/basis normalization while preserving raw source semantics | SLICE-0003 |
+| SLICE-0004 | IMPLEMENTATION | REVIEW | Measurement observation + deterministic unit/basis normalization while preserving raw source semantics | SLICE-0003 |
 | SLICE-0005 | IMPLEMENTATION | BACKLOG | Identity/model/generation text primitives without fuzzy resolution or silent generation inference | SLICE-0004 |
 | SLICE-0006 | IMPLEMENTATION | BACKLOG | Appendage/configuration normalization: independent keel, board, rudder, skeg, count/state and option relationships | SLICE-0005 |
 | SLICE-0007 | IMPLEMENTATION | BACKLOG | Provenance/conflict runtime: FieldEvidence, FieldResolution and DerivationRecord behavior | SLICE-0006 |
@@ -21,7 +21,7 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 
 `SLICE-0003` is `DONE`: implementation was merged through PR #3 after green Ubuntu/Windows/dependency-audit CI, independent review, and explicit project-owner acceptance on 2026-08-18.
 
-`SLICE-0004` is the only implementation slice currently `READY`.
+`SLICE-0004` is `REVIEW`: implementation complete, local gates pass, branch pushed to GitHub; awaiting project-owner acceptance before SLICE-0005 may begin.
 
 No implementation agent may begin SLICE-0005 or later work automatically after completing SLICE-0004.
 
@@ -36,7 +36,7 @@ real design-data source research
         ↓
 canonical contract runtime            DONE
         ↓
-measurement normalization             ← READY
+measurement normalization             REVIEW
         ↓
 identity / appendage / provenance implementation
         ↓
