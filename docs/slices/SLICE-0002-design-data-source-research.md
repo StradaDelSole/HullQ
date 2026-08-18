@@ -1,10 +1,10 @@
 # SLICE-0002 — Design Data Source Research & Seed Corpus
 
 **Type:** DESIGN_RESEARCH  
-**Status:** REVIEW  
+**Status:** DONE  
 **Stage:** 1.6 / pre-domain-implementation evidence gate  
 **Depends on:** SLICE-0001  
-**Blocks:** first HullQ domain implementation slices  
+**Blocks:** none after acceptance; SLICE-0003 is now READY  
 
 ## Objective
 
@@ -40,151 +40,95 @@ The goal is to let real evidence shape the pipeline rather than building the pip
 - `specs/PROVENANCE_MODEL.v0.1.md`
 - ADR-0003, ADR-0004, ADR-0005, ADR-0006
 
-## Source classes to research
+## Source classes researched
 
 ### A. Open structured bootstrap candidates
 
-Research sources that may legally and technically seed broad identity/common-field coverage.
+The research evaluated sources that may legally and technically seed broad identity/common-field coverage.
 
-Current high-priority candidate:
+The strongest current candidate is:
 
-- **Wikidata structured data (CC0)** — investigate sailboat-class coverage, identifiers, builders/designers, dimensions and reference quality. Treat individual statements as evidence requiring normal HullQ provenance/quality handling; CC0 status does not imply factual correctness.
-
-Any additional open/licensed structured datasets discovered during this slice must be added to the Source Register with explicit rights/access/clearance assessment before use.
+- **Wikidata structured data (CC0)** — suitable as a broad identity/common-field bootstrap candidate, subject to normal HullQ provenance, quality and access controls. CC0 status does not imply factual correctness.
 
 ### B. Primary factual verification sources
 
-Research manufacturer/builder/designer/official-association sources such as:
+Manufacturer/builder/designer/official-association sources were researched, including:
 
 - current and heritage model pages;
 - archived brochures and specification PDFs;
 - owner manuals;
 - official class association technical documents;
 - designer/builder archives;
-- official parts/heritage systems that reveal generation/build-number/configuration changes.
+- official heritage systems that reveal generation/build-number/configuration changes.
 
 These can be excellent evidence for individual technical facts while still requiring separate bulk-access/redistribution clearance under ADR-0005.
 
 ### C. Licensed/open secondary sources
 
-Research secondary datasets/pages only where license and obligations are explicit. Share-alike or mixed-license material must remain quarantined from bulk merge unless the accepted Source Rights Policy permits the specific use.
+Secondary datasets/pages were considered only where license and obligations were explicit. Share-alike or mixed-license material remains quarantined from bulk merge unless the accepted Source Rights Policy permits the specific use.
 
-### D. Reference-only sources
+### D. Reference-only / blocked sources
 
-- SailboatData scrape/reference materials may help identify taxonomy, edge cases and candidate models, but MUST NOT become an invisible production-value source.
-- Commercial/community databases without sufficient rights clearance may be used as research leads or comparison references only according to their Source clearance.
+- SailboatData scrape/reference materials remain useful for taxonomy, edge cases and candidate leads, but are not an invisible production-value source.
+- ORC was found technically valuable but blocked for systematic HullQ commercial ingestion under current published terms absent separate permission/licence.
+- Commercial/community databases without sufficient rights clearance remain research leads/comparison references only according to their Source clearance.
 
-## Required research work
+## Research completed
 
-### 1. Build the source landscape
+### 1. Source landscape
 
-For every serious candidate record at least:
+Serious candidates were recorded with source/operator, source class, access method, coverage/breadth, fields, identity/configuration usefulness, rights/access constraints, HullQ clearance, provenance quality and automation/review notes.
 
-- source name / operator;
-- source type;
-- current URL or access method;
-- geographic/model coverage;
-- approximate breadth where discoverable;
-- fields available;
-- identity/generation/option usefulness;
-- update/archival characteristics;
-- rights/license basis;
-- access/TOS/automation constraints;
-- HullQ clearance category under `SOURCE_RIGHTS_POLICY.v0.1.md`;
-- provenance quality;
-- expected automation difficulty;
-- notes on known ambiguity/conflicts.
+See `docs/research/DESIGN_DATA_SOURCE_LANDSCAPE.md` and `research/evidence/SOURCE_REGISTER.md`.
 
-### 2. Produce a field-source coverage matrix
+### 2. Field-source coverage matrix
 
-Map each HullQ-critical field to realistic source classes and observed availability:
+HullQ-critical fields were mapped against observed source availability, including identity, dimensions, displacement/ballast/sail-area bases, hull/keel/rudder/skeg/rig, construction and option-sensitive values.
 
-- manufacturer / brand / model;
-- BoatDesign generation;
-- designer;
-- builder;
-- first/last built and number built where available;
-- LOA / LWL / beam / draft;
-- displacement / ballast / sail area with semantic basis where discoverable;
-- hull configuration;
-- keel type/subtype;
-- rudder type;
-- skeg type;
-- rig;
-- construction material/method;
-- design options / shallow draft / tall rig / alternate rudder etc.;
-- secondary cruising fields where present.
+See `research/DESIGN_DATA_FIELD_COVERAGE_MATRIX.md`.
 
-For every field, distinguish `commonly available`, `sometimes available`, `rare`, `requires inference/diagram review`, and `not realistically sourceable at scale` based on evidence rather than assumption.
+### 3. Representative real-boat seed research
 
-### 3. Manually research representative real boats
+A 20-design core sample plus one targeted partial-skeg/reused-name supplement was researched across monohull/catamaran/trimaran, older/modern, large/small/defunct builders, generation ambiguity, multiple appendage forms, option-sensitive configurations, strong/weak documentation and conflicting source evidence.
 
-Before writing the automated research pipeline, manually research enough difficult examples to expose real-world source problems.
+See:
 
-Initial target: **20–30 representative BoatDesign candidates**, selected across:
+- `research/benchmark/SEED_RESEARCH_NOTES.md`;
+- `research/benchmark/SEED_RESEARCH_SUPPLEMENT.md`.
 
-- monohull / catamaran / trimaran;
-- older / modern;
-- large-volume manufacturer / small builder;
-- clear identity / reused model name / generation ambiguity;
-- fixed keel / centerboard / lifting keel / bilge/twin keel / daggerboard where available;
-- spade / skeg / partial-skeg / keel-hung / twin rudder;
-- multiple factory draft or rig options;
-- strong official documentation / weak documentation;
-- conflicting sources.
+### 4. Broad-universe bootstrap feasibility
 
-This is a discovery/evidence sample, not the final 50–100 benchmark and not the product database.
+The research established a plausible four-digit open seed path through Wikidata. Historical/current comparison evidence supports planning around roughly 1,000–1,500 sailboat-class/production-sailboat candidates as an order-of-magnitude bootstrap range, not as a frozen live count.
 
-For each sample record capture:
+The exact live direct-instance count and field-completeness snapshot should be measured reproducibly by the later Wikidata adapter rather than hard-coded into a specification.
 
-- candidate canonical identity;
-- source list;
-- observed raw facts;
-- conflicts/ambiguities;
-- missing fields;
-- fields requiring diagram/manual interpretation;
-- source-rights classification;
-- what an automated system could safely extract vs what likely needs review.
+### 5. Pipeline requirements derived from real evidence
 
-### 4. Test broad-universe bootstrap feasibility
+The sample proved the later implementation must support at least:
 
-Determine whether one or more cleared sources can provide a sufficiently broad identity queue without copying SailboatData production values.
+- structured Wikidata/RDF/API-style statements and qualifiers;
+- manufacturer HTML specification tables;
+- linked brochure/manual/PDF evidence;
+- mixed metric/imperial units;
+- source-semantic mass and sail-area bases;
+- multiple concurrent factory configurations/options;
+- generation boundaries expressed by year/hull number/prose;
+- source conflicts and explicit unknowns;
+- appendage relationships beyond one flat taxonomy field;
+- manual/diagram review for some rudder/skeg/construction cases;
+- provenance from accepted canonical values to exact source observations.
 
-The research must answer with evidence:
-
-- approximate identity count obtainable from each candidate bootstrap source;
-- duplicate/reused-name issues;
-- builder/designer coverage;
-- basic technical-field completeness;
-- whether HullQ likely needs multiple bootstrap sources;
-- what enrichment must come from primary-source research.
-
-### 5. Derive pipeline requirements from evidence
-
-Only after the manual source research, document the actual extraction/normalization capabilities the implementation must support, e.g.:
-
-- structured JSON/RDF/API input;
-- HTML tables/definition lists;
-- PDFs/manuals;
-- imperial/metric mixed units;
-- ranges and alternate factory options;
-- semantic ambiguity in displacement/sail-area basis;
-- conflicting authoritative sources;
-- diagram/image-assisted classification where unavoidable;
-- explicit `unknown` and human-review paths.
-
-Do not implement those capabilities in this slice.
+No implementation of these capabilities was performed in this slice.
 
 ## Deliverables
 
 - `docs/research/DESIGN_DATA_SOURCE_LANDSCAPE.md`
 - updated `research/evidence/SOURCE_REGISTER.md`
 - `research/DESIGN_DATA_FIELD_COVERAGE_MATRIX.md`
-- `research/benchmark/SEED_RESEARCH_NOTES.md` containing the representative 20–30-design core research sample and source leads
-- `research/benchmark/SEED_RESEARCH_SUPPLEMENT.md` for the targeted partial-skeg/reused-name edge case
+- `research/benchmark/SEED_RESEARCH_NOTES.md`
+- `research/benchmark/SEED_RESEARCH_SUPPLEMENT.md`
 - documented recommendation for broad identity bootstrap + deeper enrichment strategy
-- explicit list of pipeline capabilities learned from the real source sample
-- updates to subsequent slice boundaries where the evidence requires them
+- evidence-derived implementation backlog in `docs/slices/INDEX.md`
 
 ## Acceptance criteria
 
@@ -198,27 +142,45 @@ Do not implement those capabilities in this slice.
 - [x] pipeline requirements are derived from the researched sample rather than invented in advance;
 - [x] no domain implementation is introduced in this slice.
 
-## Stop conditions
+## Quantitative checkpoint from the researched sample
 
-Stop and surface a decision if:
+Across the 20-design core plus one targeted supplement:
 
-- a proposed bootstrap source is legally/contractually unclear for the intended use;
-- a source appears technically ideal but fails HullQ clearance under ADR-0005;
-- a major required field appears infeasible to source reliably at useful scale;
-- real source evidence contradicts an accepted domain/schema assumption.
+- 18/21 exposed usable common specifications directly;
+- 17/21 exposed usable keel/board architecture explicitly;
+- 13/21 exposed rudder/support architecture explicitly enough to classify;
+- 7/21 exposed skeg/skegless state explicitly;
+- 8/21 had option-sensitive technical core values;
+- 7/21 required multiple source surfaces;
+- 2/21 already showed real source conflicts;
+- 11/21 exposed materially different displacement/mass-basis semantics.
 
-Do not work around those findings silently.
+These numbers are seed evidence, not final production-quality estimates. The later 50–100-design benchmark must measure the actual automated-acceptance/review/cost distribution.
 
-## Status handoff rule
+## Major findings
 
-This slice is now handed to independent review. It MUST NOT be moved to `DONE` by the research agent. `DONE` requires the review/acceptance path defined in `CLAUDE.md`.
+1. No single cleared source replaces SailboatData across breadth + HullQ-critical depth.
+2. Wikidata is the strongest current broad CC0 bootstrap candidate, but deeper primary-source enrichment is required.
+3. Manufacturer/official sources are high-value evidence but are not automatically bulk-reuse sources and are not automatically conflict-free.
+4. Rudder/skeg/support relationships are significantly less available than common dimensions and will drive disproportionate review effort.
+5. Option-sensitive values are common enough that one scalar technical record per commercial model would be incorrect.
+6. Measurement labels such as lightship, half-load, measurement trim and other source-specific mass bases must survive normalization.
+7. Real appendage combinations justify a dedicated implementation slice rather than one generic taxonomy mapper.
+8. Source authority must remain evidence-based; even primary manufacturer material can contain internal contradictions.
 
-## Required completion report
+## Acceptance evidence
+
+- Independent review: **PASS** — repository research artifacts and the SLICE-0002 diff were independently reviewed on 2026-08-18; recommendation was `ACCEPT`.
+- Required remote/external checks: **NOT APPLICABLE** to this research-only slice; no CI status is claimed as acceptance evidence.
+- Project-owner acceptance: **ACCEPTED** explicitly by the user/project owner on 2026-08-18.
+- Final state transition: `REVIEW → DONE` performed only after independent review and project-owner acceptance, consistent with `CLAUDE.md`.
+
+## Completion report
 
 ### Slice
 
 - Slice ID: `SLICE-0002`
-- Recommended slice state: `REVIEW`
+- Final slice state: `DONE`
 - Scope completed: `YES`
 
 ### Changes
@@ -231,36 +193,34 @@ This slice is now handed to independent review. It MUST NOT be moved to `DONE` b
   - `research/benchmark/SEED_RESEARCH_SUPPLEMENT.md`
   - `docs/slices/INDEX.md`
   - this slice document
+  - `docs/PROJECT_STATE.md`
 - Requirements implemented or researched: evidence-first design-data acquisition requirements under accepted data strategy, identity, source-rights and provenance policy; no new production semantics introduced.
 - Tests/fixtures added or updated: no executable tests; 20-design core evidence sample plus one targeted partial-skeg supplement added as research evidence.
 
 ### Validation
 
 - Local validation: `NOT APPLICABLE`
-- Commands run: none required for this documentation/research-only slice.
-- Results: research artifacts cross-checked against the controlling source-rights/identity/provenance rules; no domain code changed.
+- Commands run: none required for the documentation/research-only scope.
+- Results: research artifacts were cross-checked against controlling source-rights/identity/provenance rules; no domain code changed.
 
 ### External verification
 
-- Remote CI: `NOT APPLICABLE` to slice acceptance; repository CI may still run on commits but no CI result is claimed here.
-- Other external gates: `NOT APPLICABLE`; source reuse classifications remain governed by ADR-0005 and do not grant new permissions.
+- Remote CI: `NOT APPLICABLE`
+- Other external gates: `NOT APPLICABLE`
 
 ### Findings
 
 - Unresolved findings:
-  - Exact live Wikidata direct-instance count was not independently executed through WDQS in this research environment. Order-of-magnitude bootstrap feasibility is established by the official data model/query surface, a historical Wikimedia diagnostic count of 1,471 `Q106179098` items, and a current Wikidata-derived catalogue indexing 1,062 production sailboats. The future Wikidata adapter should record an exact reproducible live count and field-completeness snapshot.
-  - No single cleared source provides both broad identity coverage and HullQ-level rudder/skeg/configuration depth; multi-layer enrichment is required.
-  - ORC is technically attractive but remains blocked for HullQ systematic commercial ingestion without separate permission/licence.
-- Spec/ADR ambiguities: no blocking contradiction found. The source evidence reinforces existing identity, provenance and derived-input-basis decisions. Appendage/configuration implementation scope was separated in the backlog because real evidence proved keel/rudder/skeg relationships cannot safely be treated as one flat taxonomy field.
-- Scope deviations: one additional Seafarer 26 supplement was added beyond the 20-design core sample to explicitly cover partial-skeg + reused-model-name + defunct-builder behaviour. No implementation work was started.
+  - exact live Wikidata direct-instance count remains for the later rights-gated Wikidata adapter to measure reproducibly;
+  - no single cleared source supplies broad identity plus HullQ-level rudder/skeg/configuration depth;
+  - ORC remains blocked without separate permission/licence.
+- Spec/ADR ambiguities: no blocking contradiction found. Existing identity, provenance and derived-input-basis decisions were reinforced by the source evidence.
+- Scope deviations: one additional Seafarer 26 supplement was added beyond the 20-design core to explicitly cover partial-skeg + reused-model-name + defunct-builder behavior. No implementation work was started.
 
 ### Follow-up
 
-- Recommended next action: independent review and user/project-owner acceptance of SLICE-0002. If accepted, detail only `SLICE-0003` (canonical JSON-Schema contract runtime) and make it `READY`; do not begin later slices automatically.
+- Accepted next action: `SLICE-0003 — Canonical JSON-Schema Contract Runtime` is now the only `READY` implementation slice.
 
 ### Agent declaration
 
-- No work outside the assigned slice was started.
-- No unverified acceptance criterion was marked as passed.
-- The next slice was not started automatically.
-- The research agent has NOT marked this slice `DONE`.
+The research agent handed this slice off at `REVIEW` and did not self-mark it `DONE`. Final acceptance was applied only after independent review and project-owner acceptance.
