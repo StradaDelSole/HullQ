@@ -1,0 +1,56 @@
+{
+  "fixture_version": "0.1",
+  "cases": [
+    {
+      "id": "RATIO-STATUS-001",
+      "condition": "sail area missing",
+      "metric": "sa_displ",
+      "expected_value": null,
+      "expected_status": "missing_input"
+    },
+    {
+      "id": "RATIO-STATUS-002",
+      "condition": "sail area basis = working_sails_actual",
+      "metric": "sa_displ",
+      "expected_value": null,
+      "expected_status": "nonstandard_input"
+    },
+    {
+      "id": "RATIO-STATUS-003",
+      "condition": "displacement basis = normal_sailing",
+      "metrics": [
+        "sa_displ",
+        "ballast_displ_pct",
+        "displ_length",
+        "comfort_ratio",
+        "capsize_screening_formula"
+      ],
+      "expected_value": null,
+      "expected_status": "nonstandard_input"
+    },
+    {
+      "id": "RATIO-STATUS-004",
+      "condition": "hull configuration = unknown",
+      "metrics": [
+        "ballast_displ_pct",
+        "comfort_ratio",
+        "capsize_screening_formula",
+        "hull_speed_kn"
+      ],
+      "expected_value": null,
+      "expected_status": "applicability_unknown"
+    },
+    {
+      "id": "RATIO-STATUS-005",
+      "condition": "required canonical input has unresolved FieldResolution conflict",
+      "expected_value": null,
+      "expected_status": "unresolved_input"
+    },
+    {
+      "id": "RATIO-STATUS-006",
+      "condition": "displacement <= 0 or required length <= 0 or ballast > displacement",
+      "expected_value": null,
+      "expected_status": "invalid_input"
+    }
+  ]
+}

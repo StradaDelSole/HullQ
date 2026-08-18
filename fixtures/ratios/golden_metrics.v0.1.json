@@ -1,0 +1,119 @@
+{
+  "fixture_version": "0.1",
+  "methodology_version": "hullq-derived-1.0.0",
+  "cases": [
+    {
+      "id": "RATIO-GOLD-001",
+      "description": "Standard monohull, design displacement and nominal sail area",
+      "input": {
+        "hull_configuration": "monohull",
+        "loa_m": 10.5,
+        "lwl_m": 8.7,
+        "beam_m": 3.4,
+        "displacement_kg": 7000,
+        "ballast_kg": 2800,
+        "sail_area_m2": 60,
+        "displacement_basis": "design",
+        "sail_area_basis": "nominal_main_plus_foretriangle"
+      },
+      "expected": {
+        "sa_displ": 16.670672,
+        "ballast_displ_pct": 40.0,
+        "displ_length": 296.258904,
+        "comfort_ratio": 31.44796,
+        "capsize_screening_formula": 1.792173,
+        "hull_speed_kn": 7.159076,
+        "status": {
+          "sa_displ": "computed",
+          "ballast_displ_pct": "computed",
+          "displ_length": "computed",
+          "comfort_ratio": "computed",
+          "capsize_screening_formula": "computed",
+          "hull_speed_kn": "computed"
+        }
+      }
+    },
+    {
+      "id": "RATIO-GOLD-002",
+      "description": "Catamaran: only type-appropriate v1 metrics are populated",
+      "input": {
+        "hull_configuration": "catamaran",
+        "loa_m": 12.0,
+        "lwl_m": 11.5,
+        "beam_m": 6.5,
+        "displacement_kg": 6500,
+        "ballast_kg": 0,
+        "sail_area_m2": 95,
+        "displacement_basis": "design",
+        "sail_area_basis": "nominal_main_plus_foretriangle"
+      },
+      "expected": {
+        "sa_displ": 27.732046,
+        "ballast_displ_pct": null,
+        "displ_length": 119.110751,
+        "comfort_ratio": null,
+        "capsize_screening_formula": null,
+        "hull_speed_kn": null,
+        "status": {
+          "sa_displ": "computed",
+          "ballast_displ_pct": "not_applicable",
+          "displ_length": "computed",
+          "comfort_ratio": "not_applicable",
+          "capsize_screening_formula": "not_applicable",
+          "hull_speed_kn": "not_applicable"
+        }
+      }
+    },
+    {
+      "id": "RATIO-GOLD-003",
+      "description": "Unknown input basis is explicit provisional calculation, not false certainty",
+      "input": {
+        "hull_configuration": "monohull",
+        "loa_m": 10.5,
+        "lwl_m": 8.7,
+        "beam_m": 3.4,
+        "displacement_kg": 7000,
+        "ballast_kg": 2800,
+        "sail_area_m2": 60,
+        "displacement_basis": "source_unspecified",
+        "sail_area_basis": "source_unspecified"
+      },
+      "expected": {
+        "sa_displ": 16.670672,
+        "ballast_displ_pct": 40.0,
+        "displ_length": 296.258904,
+        "comfort_ratio": 31.44796,
+        "capsize_screening_formula": 1.792173,
+        "hull_speed_kn": 7.159076,
+        "status": {
+          "sa_displ": "computed_provisional",
+          "ballast_displ_pct": "computed_provisional",
+          "displ_length": "computed_provisional",
+          "comfort_ratio": "computed_provisional",
+          "capsize_screening_formula": "computed_provisional",
+          "hull_speed_kn": "computed"
+        }
+      }
+    },
+    {
+      "id": "RATIO-COMPAT-001",
+      "description": "Rustler-published D/L example compatibility: 26,830 lb and 33.53 ft produces ~318",
+      "source_id": "SRC-RATIO-0001",
+      "input": {
+        "hull_configuration": "monohull",
+        "loa_m": null,
+        "lwl_m": 10.219944,
+        "beam_m": null,
+        "displacement_kg": 12169.8832871,
+        "ballast_kg": null,
+        "sail_area_m2": null,
+        "displacement_basis": "lightship",
+        "sail_area_basis": "unknown"
+      },
+      "expected": {
+        "displ_length": 317.740075,
+        "published_rounded_reference": 318
+      }
+    }
+  ]
+}

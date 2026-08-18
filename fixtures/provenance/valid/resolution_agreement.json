@@ -1,0 +1,17 @@
+{
+  "schema_version": "0.1",
+  "resolution_id": "RES_001",
+  "subject": {"kind": "boat_design", "id": "BD_TEST_001"},
+  "field_pointer": "/baseline/dimensions/loa_m",
+  "state": "resolved",
+  "canonical_value_snapshot": 10.541,
+  "supporting_evidence_ids": ["EVID_001", "EVID_003"],
+  "contradicting_evidence_ids": [],
+  "considered_evidence_ids": ["EVID_001", "EVID_003"],
+  "resolution_method": "unanimous_evidence",
+  "policy_version": "field-resolution-v0.1",
+  "resolver": {"kind": "deterministic_tool", "identifier": "hullq-resolver", "version": "0.1"},
+  "resolved_at": "2026-08-18T11:10:00Z",
+  "supersedes_resolution_id": null,
+  "notes": null
+}

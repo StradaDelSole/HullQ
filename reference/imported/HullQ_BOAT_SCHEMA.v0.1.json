@@ -1,0 +1,80 @@
+{
+  "schema_version": "0.1",
+  "entity": "BoatDesign",
+  "id": "string",
+  "input_identity": {
+    "manufacturer": "string|null",
+    "model": "string",
+    "first_built": "integer|null"
+  },
+  "verified_identity": {
+    "manufacturer": "string|null",
+    "brand": "string|null",
+    "model": "string",
+    "variant": "string|null",
+    "builder": "string|null",
+    "designer": "string|null",
+    "first_built": "integer|null",
+    "last_built": "integer|null",
+    "number_built": "integer|null"
+  },
+  "dimensions": {
+    "loa_m": "number|null",
+    "lwl_m": "number|null",
+    "beam_m": "number|null",
+    "draft_min_m": "number|null",
+    "draft_max_m": "number|null",
+    "displacement_kg": "number|null",
+    "ballast_kg": "number|null",
+    "sail_area_m2": "number|null"
+  },
+  "configuration": {
+    "hull_configuration": "monohull|catamaran|trimaran|other|unknown",
+    "hull_count": "integer|null",
+    "keel_type": "string|null",
+    "keel_subtype": "string|null",
+    "rudder_type": "string|null",
+    "rudder_count": "integer|null",
+    "skeg_type": "string|null",
+    "rig_type": "string|null"
+  },
+  "construction": {
+    "hull_material": "string|null",
+    "construction_method": "string|null"
+  },
+  "cruising": {
+    "engine_make": "string|null",
+    "engine_model": "string|null",
+    "engine_type": "string|null",
+    "engine_power_hp": "number|null",
+    "fuel_capacity_l": "number|null",
+    "water_capacity_l": "number|null",
+    "headroom_m": "number|null",
+    "bridgedeck_clearance_m": "number|null"
+  },
+  "derived_ratios": {
+    "sa_displ": "number|null",
+    "ballast_displ_pct": "number|null",
+    "displ_length": "number|null",
+    "comfort_ratio": "number|null",
+    "capsize_screening_formula": "number|null",
+    "hull_speed_kn": "number|null",
+    "formula_version": "string|null"
+  },
+  "quality": {
+    "status": "verified|partial|needs_review|conflict",
+    "confidence": "high|medium|low|unknown",
+    "notes": "string|null"
+  },
+  "sources": [
+    {
+      "source_id": "string",
+      "source_type": "string",
+      "title": "string|null",
+      "publisher": "string|null",
+      "url": "string|null",
+      "accessed_at": "string|null",
+      "notes": "string|null"
+    }
+  ]
+}

@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/derivation-record/0.1",
+  "title": "HullQ DerivationRecord",
+  "description": "Lineage for a value generated from versioned HullQ inputs/methods rather than directly observed in an external source.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "derivation_id",
+    "target",
+    "method",
+    "inputs",
+    "output_value_snapshot",
+    "producer",
+    "generated_at",
+    "notes"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "derivation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id",
+        "field_pointer"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "resolved_configuration",
+            "boat_design",
+            "boat_model",
+            "materialized_projection"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "field_pointer": {
+          "type": "string",
+          "pattern": "^/"
+        }
+      }
+    },
+    "method": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "inputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "subject",
+          "field_pointer",
+          "field_resolution_id",
+          "value_snapshot"
+        ],
+        "properties": {
+          "subject": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "id"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "boat_model",
+                  "boat_design",
+                  "named_variant",
+                  "design_option",
+                  "resolved_configuration"
+                ]
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "field_pointer": {
+            "type": "string",
+            "pattern": "^/"
+          },
+          "field_resolution_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value_snapshot": {}
+        }
+      }
+    },
+    "output_value_snapshot": {},
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "identifier",
+        "version"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "deterministic_tool",
+            "human"
+          ]
+        },
+        "identifier": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

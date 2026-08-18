@@ -1,0 +1,17 @@
+{
+  "schema_version": "0.1",
+  "resolution_id": "BAD_RES_003",
+  "subject": {"kind": "boat_design", "id": "BD_TEST_001"},
+  "field_pointer": "/baseline/dimensions/loa_m",
+  "state": "resolved_with_conflict",
+  "canonical_value_snapshot": 10.54,
+  "supporting_evidence_ids": ["EVID_001"],
+  "contradicting_evidence_ids": [],
+  "considered_evidence_ids": ["EVID_001"],
+  "resolution_method": "manual_adjudication",
+  "policy_version": "field-resolution-v0.1",
+  "resolver": {"kind": "human", "identifier": "test", "version": null},
+  "resolved_at": "2026-08-18T11:00:00Z",
+  "supersedes_resolution_id": null,
+  "notes": null
+}

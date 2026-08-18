@@ -1,0 +1,467 @@
+{
+  "fixture_version": "0.1",
+  "cases": [
+    {
+      "case_id": "SRC-RIGHTS-CC0",
+      "description": "Open structured dataset with CC0 and separately conditional API automation.",
+      "source": {
+        "source_id": "SRC_TEST_CC0",
+        "title": "Synthetic CC0 dataset",
+        "publisher": "Synthetic Publisher",
+        "source_type": "structured_dataset",
+        "url": "https://example.invalid/cc0-data",
+        "document_identifier": null,
+        "publication_date": null,
+        "accessed_at": "2026-08-18",
+        "notes": "Contract fixture only.",
+        "rights": {
+          "assessment_status": "assessed",
+          "rights_basis": "standard_license",
+          "rights_holder": "Synthetic Publisher",
+          "license_expression": "CC0-1.0",
+          "license_name": "Creative Commons Zero v1.0 Universal",
+          "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+          "license_scope": ["database_structure", "database_contents", "individual_content"],
+          "access": {
+            "method": "api",
+            "public_access": true,
+            "automated_access": "conditional",
+            "terms_url": "https://example.invalid/api-policy",
+            "terms_reviewed_at": "2026-08-18",
+            "tdm_reservation": "not_applicable",
+            "rate_limit_notes": "Follow documented API limits."
+          },
+          "permissions": {
+            "commercial_use": "allowed",
+            "extract_facts": "allowed",
+            "normalize": "allowed",
+            "store_canonical_values": "allowed",
+            "bulk_ingest": "allowed",
+            "automated_extract": "conditional",
+            "redistribute_source_material": "allowed",
+            "publish_derived_database": "allowed"
+          },
+          "obligations": {
+            "attribution_required": "no",
+            "share_alike": "no",
+            "notice_required": "no",
+            "attribution_instructions": null,
+            "other_conditions": ["Technical access limits still apply."]
+          },
+          "clearance": {
+            "research_reference": "allowed",
+            "research_lead": "allowed",
+            "identity_seed": "allowed",
+            "production_value": "allowed",
+            "bulk_bootstrap": "allowed",
+            "automated_ingestion": "conditional",
+            "artifact_redistribution": "conditional"
+          },
+          "rights_evidence": [],
+          "review": {
+            "reviewed_at": "2026-08-18",
+            "reviewer": "fixture",
+            "rationale": "Open-license baseline fixture.",
+            "next_review_at": null
+          }
+        }
+      }
+    },
+    {
+      "case_id": "SRC-RIGHTS-CCBY",
+      "description": "Attribution-licensed dataset permitted with attribution obligations.",
+      "source": {
+        "source_id": "SRC_TEST_CCBY",
+        "title": "Synthetic CC BY dataset",
+        "publisher": "Synthetic Publisher",
+        "source_type": "structured_dataset",
+        "url": "https://example.invalid/ccby-data",
+        "document_identifier": null,
+        "publication_date": null,
+        "accessed_at": "2026-08-18",
+        "notes": "Contract fixture only.",
+        "rights": {
+          "assessment_status": "assessed",
+          "rights_basis": "standard_license",
+          "rights_holder": "Synthetic Publisher",
+          "license_expression": "CC-BY-4.0",
+          "license_name": "Creative Commons Attribution 4.0 International",
+          "license_url": "https://creativecommons.org/licenses/by/4.0/",
+          "license_scope": ["database_structure", "database_contents", "individual_content"],
+          "access": {
+            "method": "download",
+            "public_access": true,
+            "automated_access": "allowed",
+            "terms_url": null,
+            "terms_reviewed_at": "2026-08-18",
+            "tdm_reservation": "not_applicable",
+            "rate_limit_notes": null
+          },
+          "permissions": {
+            "commercial_use": "allowed",
+            "extract_facts": "allowed",
+            "normalize": "allowed",
+            "store_canonical_values": "allowed",
+            "bulk_ingest": "allowed",
+            "automated_extract": "allowed",
+            "redistribute_source_material": "allowed",
+            "publish_derived_database": "allowed"
+          },
+          "obligations": {
+            "attribution_required": "yes",
+            "share_alike": "no",
+            "notice_required": "yes",
+            "attribution_instructions": "Preserve source attribution and license notice.",
+            "other_conditions": []
+          },
+          "clearance": {
+            "research_reference": "allowed",
+            "research_lead": "allowed",
+            "identity_seed": "allowed",
+            "production_value": "conditional",
+            "bulk_bootstrap": "conditional",
+            "automated_ingestion": "allowed",
+            "artifact_redistribution": "conditional"
+          },
+          "rights_evidence": [],
+          "review": {
+            "reviewed_at": "2026-08-18",
+            "reviewer": "fixture",
+            "rationale": "Attribution must be satisfied downstream.",
+            "next_review_at": null
+          }
+        }
+      }
+    },
+    {
+      "case_id": "SRC-RIGHTS-SHAREALIKE",
+      "description": "Share-alike dataset quarantined from bulk canonical merge pending compatibility decision.",
+      "source": {
+        "source_id": "SRC_TEST_SA",
+        "title": "Synthetic share-alike dataset",
+        "publisher": "Synthetic Publisher",
+        "source_type": "structured_dataset",
+        "url": "https://example.invalid/sa-data",
+        "document_identifier": null,
+        "publication_date": null,
+        "accessed_at": "2026-08-18",
+        "notes": "Contract fixture only.",
+        "rights": {
+          "assessment_status": "legal_review_required",
+          "rights_basis": "standard_license",
+          "rights_holder": "Synthetic Publisher",
+          "license_expression": "ODbL-1.0",
+          "license_name": "Open Database License 1.0",
+          "license_url": "https://opendatacommons.org/licenses/odbl/1-0/",
+          "license_scope": ["database_structure", "database_contents"],
+          "access": {
+            "method": "download",
+            "public_access": true,
+            "automated_access": "allowed",
+            "terms_url": null,
+            "terms_reviewed_at": "2026-08-18",
+            "tdm_reservation": "not_applicable",
+            "rate_limit_notes": null
+          },
+          "permissions": {
+            "commercial_use": "allowed",
+            "extract_facts": "allowed",
+            "normalize": "allowed",
+            "store_canonical_values": "conditional",
+            "bulk_ingest": "conditional",
+            "automated_extract": "allowed",
+            "redistribute_source_material": "conditional",
+            "publish_derived_database": "conditional"
+          },
+          "obligations": {
+            "attribution_required": "yes",
+            "share_alike": "yes",
+            "notice_required": "yes",
+            "attribution_instructions": "ODbL obligations apply according to license scope/use.",
+            "other_conditions": ["Do not merge into canonical public database until compatibility decision is accepted."]
+          },
+          "clearance": {
+            "research_reference": "allowed",
+            "research_lead": "allowed",
+            "identity_seed": "conditional",
+            "production_value": "legal_review_required",
+            "bulk_bootstrap": "legal_review_required",
+            "automated_ingestion": "conditional",
+            "artifact_redistribution": "legal_review_required"
+          },
+          "rights_evidence": [],
+          "review": {
+            "reviewed_at": "2026-08-18",
+            "reviewer": "fixture",
+            "rationale": "Share-alike compatibility must be decided before merge/publication.",
+            "next_review_at": null
+          }
+        }
+      }
+    },
+    {
+      "case_id": "SRC-RIGHTS-PRIMARY-FACT",
+      "description": "Public manufacturer page with no open license, suitable for discrete factual evidence but not bulk extraction by default.",
+      "source": {
+        "source_id": "SRC_TEST_PRIMARY_FACT",
+        "title": "Synthetic manufacturer specification",
+        "publisher": "Synthetic Shipyard",
+        "source_type": "manufacturer_specification",
+        "url": "https://example.invalid/model/specs",
+        "document_identifier": null,
+        "publication_date": null,
+        "accessed_at": "2026-08-18",
+        "notes": "Contract fixture only.",
+        "rights": {
+          "assessment_status": "assessed",
+          "rights_basis": "unlicensed_factual_reference",
+          "rights_holder": "Synthetic Shipyard",
+          "license_expression": null,
+          "license_name": null,
+          "license_url": null,
+          "license_scope": ["unknown"],
+          "access": {
+            "method": "public_web",
+            "public_access": true,
+            "automated_access": "unknown",
+            "terms_url": "https://example.invalid/terms",
+            "terms_reviewed_at": "2026-08-18",
+            "tdm_reservation": "not_checked",
+            "rate_limit_notes": null
+          },
+          "permissions": {
+            "commercial_use": "unknown",
+            "extract_facts": "conditional",
+            "normalize": "conditional",
+            "store_canonical_values": "conditional",
+            "bulk_ingest": "prohibited",
+            "automated_extract": "unknown",
+            "redistribute_source_material": "prohibited",
+            "publish_derived_database": "conditional"
+          },
+          "obligations": {
+            "attribution_required": "unknown",
+            "share_alike": "unknown",
+            "notice_required": "unknown",
+            "attribution_instructions": "Retain provenance/source link; do not copy expressive source material.",
+            "other_conditions": ["Discrete factual research only unless source-specific clearance expands scope."]
+          },
+          "clearance": {
+            "research_reference": "allowed",
+            "research_lead": "allowed",
+            "identity_seed": "conditional",
+            "production_value": "conditional",
+            "bulk_bootstrap": "prohibited",
+            "automated_ingestion": "unknown",
+            "artifact_redistribution": "prohibited"
+          },
+          "rights_evidence": [],
+          "review": {
+            "reviewed_at": "2026-08-18",
+            "reviewer": "fixture",
+            "rationale": "Primary factual evidence without blanket open/bulk rights.",
+            "next_review_at": null
+          }
+        }
+      }
+    },
+    {
+      "case_id": "SRC-RIGHTS-NC",
+      "description": "NonCommercial source rejected for commercial production reliance.",
+      "source": {
+        "source_id": "SRC_TEST_NC",
+        "title": "Synthetic non-commercial dataset",
+        "publisher": "Synthetic Publisher",
+        "source_type": "structured_dataset",
+        "url": "https://example.invalid/nc-data",
+        "document_identifier": null,
+        "publication_date": null,
+        "accessed_at": "2026-08-18",
+        "notes": "Contract fixture only.",
+        "rights": {
+          "assessment_status": "assessed",
+          "rights_basis": "standard_license",
+          "rights_holder": "Synthetic Publisher",
+          "license_expression": "CC-BY-NC-4.0",
+          "license_name": "Creative Commons Attribution-NonCommercial 4.0 International",
+          "license_url": "https://creativecommons.org/licenses/by-nc/4.0/",
+          "license_scope": ["database_structure", "database_contents"],
+          "access": {
+            "method": "download",
+            "public_access": true,
+            "automated_access": "allowed",
+            "terms_url": null,
+            "terms_reviewed_at": "2026-08-18",
+            "tdm_reservation": "not_applicable",
+            "rate_limit_notes": null
+          },
+          "permissions": {
+            "commercial_use": "prohibited",
+            "extract_facts": "conditional",
+            "normalize": "conditional",
+            "store_canonical_values": "prohibited",
+            "bulk_ingest": "prohibited",
+            "automated_extract": "conditional",
+            "redistribute_source_material": "conditional",
+            "publish_derived_database": "prohibited"
+          },
+          "obligations": {
+            "attribution_required": "yes",
+            "share_alike": "no",
+            "notice_required": "yes",
+            "attribution_instructions": "Not suitable for HullQ commercial production reliance.",
+            "other_conditions": []
+          },
+          "clearance": {
+            "research_reference": "allowed",
+            "research_lead": "allowed",
+            "identity_seed": "legal_review_required",
+            "production_value": "prohibited",
+            "bulk_bootstrap": "prohibited",
+            "automated_ingestion": "prohibited",
+            "artifact_redistribution": "conditional"
+          },
+          "rights_evidence": [],
+          "review": {
+            "reviewed_at": "2026-08-18",
+            "reviewer": "fixture",
+            "rationale": "NC restriction conflicts with planned commercial HullQ use.",
+            "next_review_at": null
+          }
+        }
+      }
+    },
+    {
+      "case_id": "SRC-RIGHTS-UNKNOWN",
+      "description": "Unknown-rights source fails closed for production/bulk.",
+      "source": {
+        "source_id": "SRC_TEST_UNKNOWN",
+        "title": "Unknown-rights source",
+        "publisher": null,
+        "source_type": "secondary_web",
+        "url": "https://example.invalid/unknown",
+        "document_identifier": null,
+        "publication_date": null,
+        "accessed_at": "2026-08-18",
+        "notes": "Contract fixture only.",
+        "rights": {
+          "assessment_status": "unassessed",
+          "rights_basis": "unknown",
+          "rights_holder": null,
+          "license_expression": null,
+          "license_name": null,
+          "license_url": null,
+          "license_scope": ["unknown"],
+          "access": {
+            "method": "public_web",
+            "public_access": true,
+            "automated_access": "unknown",
+            "terms_url": null,
+            "terms_reviewed_at": null,
+            "tdm_reservation": "not_checked",
+            "rate_limit_notes": null
+          },
+          "permissions": {
+            "commercial_use": "unknown",
+            "extract_facts": "unknown",
+            "normalize": "unknown",
+            "store_canonical_values": "unknown",
+            "bulk_ingest": "unknown",
+            "automated_extract": "unknown",
+            "redistribute_source_material": "unknown",
+            "publish_derived_database": "unknown"
+          },
+          "obligations": {
+            "attribution_required": "unknown",
+            "share_alike": "unknown",
+            "notice_required": "unknown",
+            "attribution_instructions": null,
+            "other_conditions": []
+          },
+          "clearance": {
+            "research_reference": "conditional",
+            "research_lead": "conditional",
+            "identity_seed": "unknown",
+            "production_value": "unknown",
+            "bulk_bootstrap": "unknown",
+            "automated_ingestion": "unknown",
+            "artifact_redistribution": "unknown"
+          },
+          "rights_evidence": [],
+          "review": {
+            "reviewed_at": null,
+            "reviewer": null,
+            "rationale": null,
+            "next_review_at": null
+          }
+        }
+      }
+    },
+    {
+      "case_id": "SRC-RIGHTS-REFERENCE-SCRAPE",
+      "description": "Historical proprietary/reference scrape remains barred from production use.",
+      "source": {
+        "source_id": "SRC_TEST_REFERENCE_SCRAPE",
+        "title": "Historical SailboatData scrape reference",
+        "publisher": "SailboatData / local historical scrape",
+        "source_type": "reference_scrape",
+        "url": null,
+        "document_identifier": "reference/imported/historical-scrape",
+        "publication_date": null,
+        "accessed_at": null,
+        "notes": "REFERENCE / PROTOTYPE ONLY; not production data.",
+        "rights": {
+          "assessment_status": "assessed",
+          "rights_basis": "unknown",
+          "rights_holder": null,
+          "license_expression": null,
+          "license_name": null,
+          "license_url": null,
+          "license_scope": ["unknown"],
+          "access": {
+            "method": "other",
+            "public_access": null,
+            "automated_access": "prohibited",
+            "terms_url": null,
+            "terms_reviewed_at": null,
+            "tdm_reservation": "unknown",
+            "rate_limit_notes": null
+          },
+          "permissions": {
+            "commercial_use": "unknown",
+            "extract_facts": "prohibited",
+            "normalize": "prohibited",
+            "store_canonical_values": "prohibited",
+            "bulk_ingest": "prohibited",
+            "automated_extract": "prohibited",
+            "redistribute_source_material": "prohibited",
+            "publish_derived_database": "prohibited"
+          },
+          "obligations": {
+            "attribution_required": "unknown",
+            "share_alike": "unknown",
+            "notice_required": "unknown",
+            "attribution_instructions": null,
+            "other_conditions": ["May create research leads only; canonical acceptance requires independent cleared evidence."]
+          },
+          "clearance": {
+            "research_reference": "allowed",
+            "research_lead": "conditional",
+            "identity_seed": "prohibited",
+            "production_value": "prohibited",
+            "bulk_bootstrap": "prohibited",
+            "automated_ingestion": "prohibited",
+            "artifact_redistribution": "prohibited"
+          },
+          "rights_evidence": [],
+          "review": {
+            "reviewed_at": "2026-08-18",
+            "reviewer": "HullQ governance",
+            "rationale": "Explicit project guardrail inherited from project context and legal working position.",
+            "next_review_at": null
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,280 @@
+{
+  "fixture_version": "0.2",
+  "methodology_version": "hullq-derived-1.0.0",
+  "cases": [
+    {
+      "id": "RATIO-STATUS-001",
+      "description": "Missing sail area only blocks SA/D",
+      "input": {
+        "hull_configuration": "monohull",
+        "loa_m": 10.5,
+        "lwl_m": 8.7,
+        "beam_m": 3.4,
+        "displacement_kg": 7000,
+        "ballast_kg": 2800,
+        "sail_area_m2": null,
+        "displacement_basis": "design",
+        "sail_area_basis": "nominal_main_plus_foretriangle"
+      },
+      "unresolved_fields": [],
+      "expected": {
+        "sa_displ": {
+          "value": null,
+          "status": "missing_input"
+        },
+        "hull_speed_kn": {
+          "value": 7.159076,
+          "status": "computed"
+        }
+      }
+    },
+    {
+      "id": "RATIO-STATUS-002",
+      "description": "Actual working-sail area is not silently treated as standard SA/D",
+      "input": {
+        "hull_configuration": "monohull",
+        "loa_m": 10.5,
+        "lwl_m": 8.7,
+        "beam_m": 3.4,
+        "displacement_kg": 7000,
+        "ballast_kg": 2800,
+        "sail_area_m2": 60,
+        "displacement_basis": "design",
+        "sail_area_basis": "working_sails_actual"
+      },
+      "unresolved_fields": [],
+      "expected": {
+        "sa_displ": {
+          "value": null,
+          "status": "nonstandard_input"
+        }
+      }
+    },
+    {
+      "id": "RATIO-STATUS-003",
+      "description": "Normal-sailing displacement does not populate the single canonical v1 displacement-dependent slots",
+      "input": {
+        "hull_configuration": "monohull",
+        "loa_m": 10.5,
+        "lwl_m": 8.7,
+        "beam_m": 3.4,
+        "displacement_kg": 7000,
+        "ballast_kg": 2800,
+        "sail_area_m2": 60,
+        "displacement_basis": "normal_sailing",
+        "sail_area_basis": "nominal_main_plus_foretriangle"
+      },
+      "unresolved_fields": [],
+      "expected": {
+        "sa_displ": {
+          "value": null,
+          "status": "nonstandard_input"
+        },
+        "ballast_displ_pct": {
+          "value": null,
+          "status": "nonstandard_input"
+        },
+        "displ_length": {
+          "value": null,
+          "status": "nonstandard_input"
+        },
+        "comfort_ratio": {
+          "value": null,
+          "status": "nonstandard_input"
+        },
+        "capsize_screening_formula": {
+          "value": null,
+          "status": "nonstandard_input"
+        },
+        "hull_speed_kn": {
+          "value": 7.159076,
+          "status": "computed"
+        }
+      }
+    },
+    {
+      "id": "RATIO-STATUS-004",
+      "description": "Unknown hull configuration leaves monohull-only applicability unresolved",
+      "input": {
+        "hull_configuration": "unknown",
+        "loa_m": 10.5,
+        "lwl_m": 8.7,
+        "beam_m": 3.4,
+        "displacement_kg": 7000,
+        "ballast_kg": 2800,
+        "sail_area_m2": 60,
+        "displacement_basis": "design",
+        "sail_area_basis": "nominal_main_plus_foretriangle"
+      },
+      "unresolved_fields": [],
+      "expected": {
+        "ballast_displ_pct": {
+          "value": null,
+          "status": "applicability_unknown"
+        },
+        "comfort_ratio": {
+          "value": null,
+          "status": "applicability_unknown"
+        },
+        "capsize_screening_formula": {
+          "value": null,
+          "status": "applicability_unknown"
+        },
+        "hull_speed_kn": {
+          "value": null,
+          "status": "applicability_unknown"
+        },
+        "sa_displ": {
+          "value": null,
+          "status": "applicability_unknown"
+        },
+        "displ_length": {
+          "value": null,
+          "status": "applicability_unknown"
+        }
+      }
+    },
+    {
+      "id": "RATIO-STATUS-005",
+      "description": "Unresolved canonical displacement conflict blocks dependent metrics",
+      "input": {
+        "hull_configuration": "monohull",
+        "loa_m": 10.5,
+        "lwl_m": 8.7,
+        "beam_m": 3.4,
+        "displacement_kg": 7000,
+        "ballast_kg": 2800,
+        "sail_area_m2": 60,
+        "displacement_basis": "design",
+        "sail_area_basis": "nominal_main_plus_foretriangle"
+      },
+      "unresolved_fields": [
+        "/effective/dimensions/displacement_kg"
+      ],
+      "expected": {
+        "sa_displ": {
+          "value": null,
+          "status": "unresolved_input"
+        },
+        "ballast_displ_pct": {
+          "value": null,
+          "status": "unresolved_input"
+        },
+        "displ_length": {
+          "value": null,
+          "status": "unresolved_input"
+        },
+        "comfort_ratio": {
+          "value": null,
+          "status": "unresolved_input"
+        },
+        "capsize_screening_formula": {
+          "value": null,
+          "status": "unresolved_input"
+        },
+        "hull_speed_kn": {
+          "value": 7.159076,
+          "status": "computed"
+        }
+      }
+    },
+    {
+      "id": "RATIO-STATUS-006",
+      "description": "Invalid displacement blocks displacement-dependent metrics",
+      "input": {
+        "hull_configuration": "monohull",
+        "loa_m": 10.5,
+        "lwl_m": 8.7,
+        "beam_m": 3.4,
+        "displacement_kg": 0,
+        "ballast_kg": 2800,
+        "sail_area_m2": 60,
+        "displacement_basis": "design",
+        "sail_area_basis": "nominal_main_plus_foretriangle"
+      },
+      "unresolved_fields": [],
+      "expected": {
+        "sa_displ": {
+          "value": null,
+          "status": "invalid_input"
+        },
+        "ballast_displ_pct": {
+          "value": null,
+          "status": "invalid_input"
+        },
+        "displ_length": {
+          "value": null,
+          "status": "invalid_input"
+        },
+        "comfort_ratio": {
+          "value": null,
+          "status": "invalid_input"
+        },
+        "capsize_screening_formula": {
+          "value": null,
+          "status": "invalid_input"
+        },
+        "hull_speed_kn": {
+          "value": 7.159076,
+          "status": "computed"
+        }
+      }
+    },
+    {
+      "id": "RATIO-STATUS-007",
+      "description": "Ballast greater than displacement is invalid only for ballast/displacement while other metrics can still calculate from valid displacement",
+      "input": {
+        "hull_configuration": "monohull",
+        "loa_m": 10.5,
+        "lwl_m": 8.7,
+        "beam_m": 3.4,
+        "displacement_kg": 7000,
+        "ballast_kg": 8000,
+        "sail_area_m2": 60,
+        "displacement_basis": "design",
+        "sail_area_basis": "nominal_main_plus_foretriangle"
+      },
+      "unresolved_fields": [],
+      "expected": {
+        "ballast_displ_pct": {
+          "value": null,
+          "status": "invalid_input"
+        }
+      }
+    },
+    {
+      "id": "RATIO-STATUS-008",
+      "description": "Catamaran monohull-only metrics are not applicable",
+      "input": {
+        "hull_configuration": "catamaran",
+        "loa_m": 10.5,
+        "lwl_m": 8.7,
+        "beam_m": 6.2,
+        "displacement_kg": 7000,
+        "ballast_kg": 0,
+        "sail_area_m2": 60,
+        "displacement_basis": "design",
+        "sail_area_basis": "nominal_main_plus_foretriangle"
+      },
+      "unresolved_fields": [],
+      "expected": {
+        "ballast_displ_pct": {
+          "value": null,
+          "status": "not_applicable"
+        },
+        "comfort_ratio": {
+          "value": null,
+          "status": "not_applicable"
+        },
+        "capsize_screening_formula": {
+          "value": null,
+          "status": "not_applicable"
+        },
+        "hull_speed_kn": {
+          "value": null,
+          "status": "not_applicable"
+        }
+      }
+    }
+  ]
+}

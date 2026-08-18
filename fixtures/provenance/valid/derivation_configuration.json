@@ -1,0 +1,24 @@
+{
+  "schema_version": "0.1",
+  "derivation_id": "DER_001",
+  "target": {"kind": "resolved_configuration", "id": "RC_TEST_001", "field_pointer": "/effective/dimensions/draft_min_m"},
+  "method": {"id": "resolved-configuration.apply-overrides", "version": "1"},
+  "inputs": [
+    {
+      "subject": {"kind": "boat_design", "id": "BD_TEST_001"},
+      "field_pointer": "/baseline/dimensions/draft_min_m",
+      "field_resolution_id": "RES_020",
+      "value_snapshot": 1.85
+    },
+    {
+      "subject": {"kind": "design_option", "id": "OPT_TEST_SHALLOW"},
+      "field_pointer": "/overrides/dimensions/draft_min_m",
+      "field_resolution_id": "RES_021",
+      "value_snapshot": 1.55
+    }
+  ],
+  "output_value_snapshot": 1.55,
+  "producer": {"kind": "deterministic_tool", "identifier": "hullq-configuration-resolver", "version": "0.1"},
+  "generated_at": "2026-08-18T11:25:00Z",
+  "notes": "Derived from accepted baseline/option values; not direct source evidence."
+}

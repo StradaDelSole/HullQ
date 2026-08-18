@@ -1,0 +1,11 @@
+{
+  "schema_version": "0.1",
+  "derivation_id": "BAD_DER_001",
+  "target": {"kind": "resolved_configuration", "id": "RC_TEST_001", "field_pointer": "/effective/dimensions/draft_min_m"},
+  "method": {"id": "resolved-configuration.apply-overrides", "version": "1"},
+  "inputs": [],
+  "output_value_snapshot": 1.55,
+  "producer": {"kind": "deterministic_tool", "identifier": "test", "version": "0.1"},
+  "generated_at": "2026-08-18T11:00:00Z",
+  "notes": null
+}

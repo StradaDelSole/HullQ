@@ -1,0 +1,613 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/boat-design/0.2",
+  "title": "HullQ BoatDesign",
+  "description": "Draft v0.2 implementation-facing schema derived from HullQ project context. Values and evidence are separated so canonical fields remain queryable while provenance stays field-addressable.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "input_identity",
+    "verified_identity",
+    "dimensions",
+    "configuration",
+    "construction",
+    "cruising",
+    "derived_ratios",
+    "quality",
+    "source_ids",
+    "evidence",
+    "conflicts"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.2"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "input_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manufacturer",
+        "model",
+        "first_built"
+      ],
+      "properties": {
+        "manufacturer": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "first_built": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "verified_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manufacturer",
+        "brand",
+        "model",
+        "variant",
+        "builder",
+        "designer",
+        "first_built",
+        "last_built",
+        "number_built"
+      ],
+      "properties": {
+        "manufacturer": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "brand": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "variant": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "builder": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "designer": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "first_built": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "last_built": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "number_built": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "dimensions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "loa_m",
+        "lwl_m",
+        "beam_m",
+        "draft_min_m",
+        "draft_max_m",
+        "displacement_kg",
+        "ballast_kg",
+        "sail_area_m2"
+      ],
+      "properties": {
+        "loa_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "lwl_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "beam_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "draft_min_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "draft_max_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "displacement_kg": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "ballast_kg": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "sail_area_m2": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hull_configuration",
+        "hull_count",
+        "keel_type",
+        "keel_subtype",
+        "rudder_type",
+        "rudder_count",
+        "skeg_type",
+        "rig_type",
+        "daggerboard_count",
+        "centerboard_count"
+      ],
+      "properties": {
+        "hull_configuration": {
+          "enum": [
+            "monohull",
+            "catamaran",
+            "trimaran",
+            "other",
+            "unknown"
+          ]
+        },
+        "hull_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "keel_type": {
+          "enum": [
+            "full",
+            "modified_full",
+            "long_fin",
+            "fin",
+            "wing",
+            "bulb",
+            "twin",
+            "bilge",
+            "centerboard",
+            "daggerboard",
+            "swing",
+            "lifting",
+            "shoal",
+            "other",
+            "unknown"
+          ]
+        },
+        "keel_subtype": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rudder_type": {
+          "enum": [
+            "keel_hung",
+            "skeg_hung",
+            "partial_skeg",
+            "spade",
+            "transom_hung",
+            "twin",
+            "other",
+            "unknown"
+          ]
+        },
+        "rudder_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "skeg_type": {
+          "enum": [
+            "full",
+            "partial",
+            "none",
+            "unknown"
+          ]
+        },
+        "rig_type": {
+          "enum": [
+            "masthead_sloop",
+            "fractional_sloop",
+            "cutter",
+            "ketch",
+            "yawl",
+            "schooner",
+            "cat_rig",
+            "other",
+            "unknown"
+          ]
+        },
+        "daggerboard_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "centerboard_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "construction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hull_material",
+        "construction_method"
+      ],
+      "properties": {
+        "hull_material": {
+          "enum": [
+            "grp_fiberglass",
+            "aluminium",
+            "steel",
+            "wood",
+            "wood_composite",
+            "carbon",
+            "other",
+            "unknown"
+          ]
+        },
+        "construction_method": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "cruising": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "engine_make",
+        "engine_model",
+        "engine_type",
+        "engine_power_hp",
+        "fuel_capacity_l",
+        "water_capacity_l",
+        "headroom_m",
+        "bridgedeck_clearance_m"
+      ],
+      "properties": {
+        "engine_make": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "engine_model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "engine_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "engine_power_hp": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "fuel_capacity_l": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "water_capacity_l": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "headroom_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "bridgedeck_clearance_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "derived_ratios": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sa_displ",
+        "ballast_displ_pct",
+        "displ_length",
+        "comfort_ratio",
+        "capsize_screening_formula",
+        "hull_speed_kn",
+        "formula_version"
+      ],
+      "properties": {
+        "sa_displ": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "ballast_displ_pct": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "displ_length": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "comfort_ratio": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "capsize_screening_formula": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "hull_speed_kn": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "formula_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "confidence",
+        "notes"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "verified",
+            "partial",
+            "needs_review",
+            "conflict"
+          ]
+        },
+        "confidence": {
+          "enum": [
+            "high",
+            "medium",
+            "low",
+            "unknown"
+          ]
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "source_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "field_path",
+          "source_id",
+          "raw_value",
+          "normalized_value",
+          "confidence",
+          "evidence_type",
+          "notes"
+        ],
+        "properties": {
+          "field_path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "raw_value": {
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          },
+          "normalized_value": {
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          },
+          "confidence": {
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "unknown"
+            ]
+          },
+          "evidence_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "field_path",
+          "source_ids",
+          "status",
+          "notes"
+        ],
+        "properties": {
+          "field_path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_ids": {
+            "type": "array",
+            "minItems": 2,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "status": {
+            "enum": [
+              "open",
+              "resolved"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/field-resolution/0.1",
+  "title": "HullQ FieldResolution",
+  "description": "Versioned canonical decision for one field on one stable HullQ subject.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "resolution_id",
+    "subject",
+    "field_pointer",
+    "state",
+    "canonical_value_snapshot",
+    "supporting_evidence_ids",
+    "contradicting_evidence_ids",
+    "considered_evidence_ids",
+    "resolution_method",
+    "policy_version",
+    "resolver",
+    "resolved_at",
+    "supersedes_resolution_id",
+    "notes"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "resolution_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "boat_model",
+            "boat_design",
+            "named_variant",
+            "design_option"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "field_pointer": {
+      "type": "string",
+      "pattern": "^/"
+    },
+    "state": {
+      "enum": [
+        "resolved",
+        "resolved_with_conflict",
+        "unknown",
+        "needs_review",
+        "conflict"
+      ]
+    },
+    "canonical_value_snapshot": {},
+    "supporting_evidence_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "contradicting_evidence_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "considered_evidence_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "resolution_method": {
+      "enum": [
+        "unanimous_evidence",
+        "source_priority_rule",
+        "deterministic_validation",
+        "manual_adjudication",
+        "insufficient_evidence",
+        "conflict_unresolved",
+        "other"
+      ]
+    },
+    "policy_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "resolver": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "identifier",
+        "version"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "human",
+            "deterministic_tool",
+            "llm"
+          ]
+        },
+        "identifier": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "supersedes_resolution_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "enum": [
+              "unknown",
+              "needs_review",
+              "conflict"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "canonical_value_snapshot": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "enum": [
+              "resolved",
+              "resolved_with_conflict"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "canonical_value_snapshot": {
+            "not": {
+              "type": "null"
+            }
+          },
+          "supporting_evidence_ids": {
+            "minItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "resolved_with_conflict"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "contradicting_evidence_ids": {
+            "minItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "conflict"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "contradicting_evidence_ids": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ]
+}

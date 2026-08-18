@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "fixture_version": "0.1",
+  "open_question": "OQ-003",
+  "cases": [
+    {
+      "id": "IDCASE-001",
+      "scenario": "Manufacturer-defined Mk I and Mk II with known production boundary and technical changes",
+      "example": "Hallberg-Rassy 36 Mk I / Mk II",
+      "expected": "same_boat_model_separate_boat_design_generations"
+    },
+    {
+      "id": "IDCASE-002",
+      "scenario": "Shallow-draft alternative offered within the same design generation",
+      "example": "Hallberg-Rassy shallow-draft version",
+      "expected": "design_option",
+      "axis": "keel"
+    },
+    {
+      "id": "IDCASE-003",
+      "scenario": "Sloop and ketch rigs offered on the same design while shallow-draft keel is also available",
+      "example": "Hallberg-Rassy 42E",
+      "expected": "independent_design_options",
+      "axes": ["rig", "keel"]
+    },
+    {
+      "id": "IDCASE-004",
+      "scenario": "Fin and wing keel plus standard and tall rig affect different technical values",
+      "example": "Catalina family configuration pattern",
+      "expected": "independent_design_options_no_cartesian_persistence",
+      "axes": ["keel", "rig"]
+    },
+    {
+      "id": "IDCASE-005",
+      "scenario": "Named Daysailer / Weekender / Cruiser versions primarily identify layout packages",
+      "example": "Beneteau Oceanis 35",
+      "expected": "named_variant_unless_evidence_requires_design_split"
+    },
+    {
+      "id": "IDCASE-006",
+      "scenario": "Builder changes but underlying technical design remains unchanged",
+      "example": "licensed or transferred production",
+      "expected": "same_boat_design_time_bounded_builder_relationship"
+    },
+    {
+      "id": "IDCASE-007",
+      "scenario": "Owner replaces engine/rudder/rig after production",
+      "example": "aftermarket refit",
+      "expected": "instance_override_not_canonical_design_identity"
+    },
+    {
+      "id": "IDCASE-008",
+      "scenario": "Same manufacturer reuses identical model name years later for an unrelated new hull design",
+      "example": "name reuse",
+      "expected": "separate_boat_model_identity_same_display_name_allowed"
+    },
+    {
+      "id": "IDCASE-009",
+      "scenario": "Persistent non-optional rudder redesign begins at a known hull/year boundary but receives no marketing Mk label",
+      "example": "unnamed production redesign",
+      "expected": "separate_boat_design_generation"
+    },
+    {
+      "id": "IDCASE-010",
+      "scenario": "Marketplace listing gives model but no generation/keel/rig evidence",
+      "example": "generic model listing",
+      "expected": "resolve_only_to_supported_precision_no_guess"
+    },
+    {
+      "id": "IDCASE-011",
+      "scenario": "Two sources disagree about displacement without evidence of distinct production versions",
+      "example": "measurement/source conflict",
+      "expected": "conflict_not_new_generation"
+    },
+    {
+      "id": "IDCASE-012",
+      "scenario": "Keel choice changes draft, ballast and displacement and therefore ratio inputs",
+      "example": "Catalina wing vs fin keel",
+      "expected": "ratio_calculated_on_resolved_configuration"
+    }
+  ]
+}

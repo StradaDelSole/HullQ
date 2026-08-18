@@ -1,0 +1,247 @@
+{
+  "fixture_version": "0.1-oq001-draft",
+  "purpose": "Synthetic OQ-001 migration fixture for BoatDesign v0.4 and ResolvedConfiguration v0.2; not production boat facts.",
+  "boat_model": {
+    "schema_version": "0.1",
+    "id": "BM_EXAMPLE_36_A",
+    "canonical_name": "Example 36",
+    "manufacturer_name": "Example Yachts",
+    "brand_name": "Example",
+    "aliases": [
+      "Example Thirty-Six"
+    ],
+    "first_built": 1988,
+    "last_built": 1998,
+    "boat_design_ids": [
+      "BD_EXAMPLE_36_MK1"
+    ]
+  },
+  "boat_design": {
+    "schema_version": "0.4",
+    "id": "BD_EXAMPLE_36_MK1",
+    "boat_model_id": "BM_EXAMPLE_36_A",
+    "generation": {
+      "label": "Mk I",
+      "sequence": 1,
+      "aliases": [],
+      "first_built": 1988,
+      "last_built": 1998,
+      "hull_number_from": null,
+      "hull_number_to": null,
+      "boundary_confidence": "medium"
+    },
+    "relationships": {
+      "builders": [
+        {
+          "name": "Example Yachts",
+          "first_built": 1988,
+          "last_built": 1998,
+          "hull_number_from": null,
+          "hull_number_to": null
+        }
+      ],
+      "designers": [
+        {
+          "name": "Example Designer",
+          "role": "naval_architect"
+        }
+      ],
+      "number_built": null
+    },
+    "baseline": {
+      "dimensions": {
+        "loa_m": 10.97,
+        "lwl_m": 8.9,
+        "beam_m": 3.4,
+        "draft_min_m": 1.8,
+        "draft_max_m": 1.8,
+        "displacement_kg": 6500,
+        "ballast_kg": 2400,
+        "sail_area_m2": 58.0
+      },
+      "configuration": {
+        "hull_configuration": "monohull",
+        "hull_count": 1,
+        "keel_type": "fin",
+        "keel_subtype": null,
+        "rudder_type": "skeg_hung",
+        "rudder_count": 1,
+        "skeg_type": "partial",
+        "rig_type": "masthead_sloop",
+        "daggerboard_count": 0,
+        "centerboard_count": 0
+      },
+      "construction": {
+        "hull_material": "grp_fiberglass",
+        "construction_method": null
+      },
+      "cruising": {
+        "engine_make": null,
+        "engine_model": null,
+        "engine_type": "inboard_diesel",
+        "engine_power_hp": 28,
+        "fuel_capacity_l": 120,
+        "water_capacity_l": 240,
+        "headroom_m": 1.9,
+        "bridgedeck_clearance_m": null
+      },
+      "ratio_input_basis": {
+        "displacement_basis": "design",
+        "sail_area_basis": "nominal_main_plus_foretriangle"
+      }
+    },
+    "named_variants": [
+      {
+        "id": "NV_CRUISER",
+        "name": "Cruiser",
+        "aliases": [],
+        "applicability": {
+          "first_built": null,
+          "last_built": null,
+          "hull_number_from": null,
+          "hull_number_to": null,
+          "notes": null
+        },
+        "overrides": {
+          "dimensions": {},
+          "configuration": {},
+          "construction": {},
+          "cruising": {},
+          "ratio_input_basis": {}
+        },
+        "requires_option_ids": [],
+        "excludes_option_ids": []
+      }
+    ],
+    "design_options": [
+      {
+        "id": "OPT_KEEL_SHALLOW",
+        "axis": "keel",
+        "name": "Shallow draft keel",
+        "aliases": [],
+        "applicability": {
+          "first_built": null,
+          "last_built": null,
+          "hull_number_from": null,
+          "hull_number_to": null,
+          "notes": null
+        },
+        "overrides": {
+          "dimensions": {
+            "draft_min_m": 1.5,
+            "draft_max_m": 1.5,
+            "displacement_kg": 6650,
+            "ballast_kg": 2550
+          },
+          "configuration": {
+            "keel_type": "shoal"
+          },
+          "construction": {},
+          "cruising": {},
+          "ratio_input_basis": {}
+        },
+        "requires_option_ids": [],
+        "excludes_option_ids": []
+      },
+      {
+        "id": "OPT_RIG_TALL",
+        "axis": "rig",
+        "name": "Tall rig",
+        "aliases": [],
+        "applicability": {
+          "first_built": null,
+          "last_built": null,
+          "hull_number_from": null,
+          "hull_number_to": null,
+          "notes": null
+        },
+        "overrides": {
+          "dimensions": {
+            "sail_area_m2": 62.0
+          },
+          "configuration": {
+            "rig_type": "masthead_sloop"
+          },
+          "construction": {},
+          "cruising": {},
+          "ratio_input_basis": {}
+        },
+        "requires_option_ids": [],
+        "excludes_option_ids": []
+      }
+    ],
+    "quality": {
+      "status": "partial",
+      "confidence": "medium",
+      "notes": "Synthetic contract fixture."
+    }
+  },
+  "resolved_configuration": {
+    "schema_version": "0.2",
+    "boat_design_id": "BD_EXAMPLE_36_MK1",
+    "named_variant_id": "NV_CRUISER",
+    "selected_option_ids": [
+      "OPT_KEEL_SHALLOW",
+      "OPT_RIG_TALL"
+    ],
+    "effective": {
+      "dimensions": {
+        "loa_m": 10.97,
+        "lwl_m": 8.9,
+        "beam_m": 3.4,
+        "draft_min_m": 1.5,
+        "draft_max_m": 1.5,
+        "displacement_kg": 6650,
+        "ballast_kg": 2550,
+        "sail_area_m2": 62.0
+      },
+      "configuration": {
+        "hull_configuration": "monohull",
+        "hull_count": 1,
+        "keel_type": "shoal",
+        "keel_subtype": null,
+        "rudder_type": "skeg_hung",
+        "rudder_count": 1,
+        "skeg_type": "partial",
+        "rig_type": "masthead_sloop",
+        "daggerboard_count": 0,
+        "centerboard_count": 0
+      },
+      "construction": {
+        "hull_material": "grp_fiberglass",
+        "construction_method": null
+      },
+      "cruising": {
+        "engine_make": null,
+        "engine_model": null,
+        "engine_type": "inboard_diesel",
+        "engine_power_hp": 28,
+        "fuel_capacity_l": 120,
+        "water_capacity_l": 240,
+        "headroom_m": 1.9,
+        "bridgedeck_clearance_m": null
+      },
+      "ratio_input_basis": {
+        "displacement_basis": "design",
+        "sail_area_basis": "nominal_main_plus_foretriangle"
+      }
+    },
+    "derived_metrics": {
+      "methodology_version": "hullq-derived-1.0.0",
+      "sa_displ": 17.825613,
+      "ballast_displ_pct": 38.345865,
+      "displ_length": 262.895259,
+      "comfort_ratio": 28.993824,
+      "capsize_screening_formula": 1.823078,
+      "hull_speed_kn": 7.240896,
+      "status": {
+        "sa_displ": "computed",
+        "ballast_displ_pct": "computed",
+        "displ_length": "computed",
+        "comfort_ratio": "computed",
+        "capsize_screening_formula": "computed",
+        "hull_speed_kn": "computed"
+      }
+    }
+  }
+}

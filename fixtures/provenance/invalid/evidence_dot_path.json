@@ -1,0 +1,16 @@
+{
+  "schema_version": "0.1",
+  "evidence_id": "BAD_EVID_001",
+  "subject": {"kind": "boat_design", "id": "BD_TEST_001"},
+  "field_pointer": "baseline.dimensions.loa_m",
+  "source_id": "SRC_TEST_001",
+  "source_locator": {"page": null, "section": null, "anchor": null, "table": null, "figure": null, "record_key": null},
+  "observation": {"raw": {"kind": "literal", "value": 10.54, "unit": "m", "excerpt": null}, "normalized_candidate": {"value": 10.54, "unit": "m", "method_id": null, "method_version": null}},
+  "evidence_type": "manufacturer_specification",
+  "producer": {"kind": "human", "identifier": "test", "version": null, "model": null, "prompt_or_rule_version": null},
+  "research_context": {"research_job_id": null, "activity_id": null},
+  "observed_at": "2026-08-18T11:00:00Z",
+  "confidence": "high",
+  "supersedes_evidence_id": null,
+  "notes": null
+}

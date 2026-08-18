@@ -1,0 +1,524 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/source/0.2",
+  "title": "HullQ Source",
+  "description": "Source/provenance record with structured access, rights, obligations and HullQ use-specific clearance.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "source_id",
+    "title",
+    "publisher",
+    "source_type",
+    "url",
+    "document_identifier",
+    "publication_date",
+    "accessed_at",
+    "notes",
+    "rights"
+  ],
+  "properties": {
+    "source_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "title": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "publisher": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "document_identifier": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "publication_date": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "accessed_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assessment_status",
+        "rights_basis",
+        "rights_holder",
+        "license_expression",
+        "license_name",
+        "license_url",
+        "license_scope",
+        "access",
+        "permissions",
+        "obligations",
+        "clearance",
+        "rights_evidence",
+        "review"
+      ],
+      "properties": {
+        "assessment_status": {
+          "enum": [
+            "unassessed",
+            "assessed",
+            "conflict",
+            "legal_review_required"
+          ]
+        },
+        "rights_basis": {
+          "enum": [
+            "public_domain",
+            "standard_license",
+            "custom_license",
+            "explicit_permission",
+            "statutory_exception",
+            "unlicensed_factual_reference",
+            "mixed",
+            "unknown"
+          ]
+        },
+        "rights_holder": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "license_expression": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Use an SPDX license expression/identifier where suitable; custom terms use LicenseRef-HullQ-*."
+        },
+        "license_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "license_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "license_scope": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "database_structure",
+              "database_contents",
+              "individual_content",
+              "text",
+              "media",
+              "unknown",
+              "mixed"
+            ]
+          }
+        },
+        "access": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "method",
+            "public_access",
+            "automated_access",
+            "terms_url",
+            "terms_reviewed_at",
+            "tdm_reservation",
+            "rate_limit_notes"
+          ],
+          "properties": {
+            "method": {
+              "enum": [
+                "public_web",
+                "api",
+                "download",
+                "feed",
+                "manual_document",
+                "permissioned_portal",
+                "user_provided",
+                "other",
+                "unknown"
+              ]
+            },
+            "public_access": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "automated_access": {
+              "enum": [
+                "allowed",
+                "conditional",
+                "prohibited",
+                "unknown"
+              ]
+            },
+            "terms_url": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "terms_reviewed_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "tdm_reservation": {
+              "enum": [
+                "not_checked",
+                "none_observed",
+                "reserved",
+                "unknown",
+                "not_applicable"
+              ]
+            },
+            "rate_limit_notes": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "permissions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "commercial_use",
+            "extract_facts",
+            "normalize",
+            "store_canonical_values",
+            "bulk_ingest",
+            "automated_extract",
+            "redistribute_source_material",
+            "publish_derived_database"
+          ],
+          "properties": {
+            "commercial_use": {
+              "enum": [
+                "allowed",
+                "conditional",
+                "prohibited",
+                "unknown"
+              ]
+            },
+            "extract_facts": {
+              "enum": [
+                "allowed",
+                "conditional",
+                "prohibited",
+                "unknown"
+              ]
+            },
+            "normalize": {
+              "enum": [
+                "allowed",
+                "conditional",
+                "prohibited",
+                "unknown"
+              ]
+            },
+            "store_canonical_values": {
+              "enum": [
+                "allowed",
+                "conditional",
+                "prohibited",
+                "unknown"
+              ]
+            },
+            "bulk_ingest": {
+              "enum": [
+                "allowed",
+                "conditional",
+                "prohibited",
+                "unknown"
+              ]
+            },
+            "automated_extract": {
+              "enum": [
+                "allowed",
+                "conditional",
+                "prohibited",
+                "unknown"
+              ]
+            },
+            "redistribute_source_material": {
+              "enum": [
+                "allowed",
+                "conditional",
+                "prohibited",
+                "unknown"
+              ]
+            },
+            "publish_derived_database": {
+              "enum": [
+                "allowed",
+                "conditional",
+                "prohibited",
+                "unknown"
+              ]
+            }
+          }
+        },
+        "obligations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "attribution_required",
+            "share_alike",
+            "notice_required",
+            "attribution_instructions",
+            "other_conditions"
+          ],
+          "properties": {
+            "attribution_required": {
+              "enum": [
+                "yes",
+                "no",
+                "unknown",
+                "not_applicable"
+              ]
+            },
+            "share_alike": {
+              "enum": [
+                "yes",
+                "no",
+                "unknown",
+                "not_applicable"
+              ]
+            },
+            "notice_required": {
+              "enum": [
+                "yes",
+                "no",
+                "unknown",
+                "not_applicable"
+              ]
+            },
+            "attribution_instructions": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "other_conditions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "clearance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "research_reference",
+            "research_lead",
+            "identity_seed",
+            "production_value",
+            "bulk_bootstrap",
+            "automated_ingestion",
+            "artifact_redistribution"
+          ],
+          "properties": {
+            "research_reference": {
+              "enum": [
+                "allowed",
+                "conditional",
+                "legal_review_required",
+                "prohibited",
+                "unknown"
+              ]
+            },
+            "research_lead": {
+              "enum": [
+                "allowed",
+                "conditional",
+                "legal_review_required",
+                "prohibited",
+                "unknown"
+              ]
+            },
+            "identity_seed": {
+              "enum": [
+                "allowed",
+                "conditional",
+                "legal_review_required",
+                "prohibited",
+                "unknown"
+              ]
+            },
+            "production_value": {
+              "enum": [
+                "allowed",
+                "conditional",
+                "legal_review_required",
+                "prohibited",
+                "unknown"
+              ]
+            },
+            "bulk_bootstrap": {
+              "enum": [
+                "allowed",
+                "conditional",
+                "legal_review_required",
+                "prohibited",
+                "unknown"
+              ]
+            },
+            "automated_ingestion": {
+              "enum": [
+                "allowed",
+                "conditional",
+                "legal_review_required",
+                "prohibited",
+                "unknown"
+              ]
+            },
+            "artifact_redistribution": {
+              "enum": [
+                "allowed",
+                "conditional",
+                "legal_review_required",
+                "prohibited",
+                "unknown"
+              ]
+            }
+          }
+        },
+        "rights_evidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "evidence_type",
+              "url",
+              "document_identifier",
+              "accessed_at",
+              "sha256",
+              "notes"
+            ],
+            "properties": {
+              "evidence_type": {
+                "enum": [
+                  "license_page",
+                  "terms_page",
+                  "permission_record",
+                  "public_domain_statement",
+                  "machine_readable_reservation",
+                  "legal_review",
+                  "other"
+                ]
+              },
+              "url": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "document_identifier": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "accessed_at": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "sha256": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-fA-F0-9]{64}$"
+              },
+              "notes": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "review": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reviewed_at",
+            "reviewer",
+            "rationale",
+            "next_review_at"
+          ],
+          "properties": {
+            "reviewed_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "reviewer": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rationale": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "next_review_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

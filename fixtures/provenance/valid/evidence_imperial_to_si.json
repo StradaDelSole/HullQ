@@ -1,0 +1,19 @@
+{
+  "schema_version": "0.1",
+  "evidence_id": "EVID_001",
+  "subject": {"kind": "boat_design", "id": "BD_TEST_001"},
+  "field_pointer": "/baseline/dimensions/loa_m",
+  "source_id": "SRC_TEST_001",
+  "source_locator": {"page": 3, "section": "Dimensions", "anchor": null, "table": "Principal dimensions", "figure": null, "record_key": null},
+  "observation": {
+    "raw": {"kind": "literal", "value": "34 ft 7 in", "unit": "imperial_compound_length", "excerpt": null},
+    "normalized_candidate": {"value": 10.541, "unit": "m", "method_id": "length.parse-and-convert", "method_version": "1"}
+  },
+  "evidence_type": "manufacturer_specification",
+  "producer": {"kind": "deterministic_tool", "identifier": "hullq-normalizer", "version": "0.1", "model": null, "prompt_or_rule_version": "length-v1"},
+  "research_context": {"research_job_id": "RJ_TEST_001", "activity_id": "ACT_TEST_001"},
+  "observed_at": "2026-08-18T11:00:00Z",
+  "confidence": "high",
+  "supersedes_evidence_id": null,
+  "notes": null
+}

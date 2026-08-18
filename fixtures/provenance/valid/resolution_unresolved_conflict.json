@@ -1,0 +1,17 @@
+{
+  "schema_version": "0.1",
+  "resolution_id": "RES_002",
+  "subject": {"kind": "boat_design", "id": "BD_TEST_002"},
+  "field_pointer": "/baseline/dimensions/displacement_kg",
+  "state": "conflict",
+  "canonical_value_snapshot": null,
+  "supporting_evidence_ids": ["EVID_010"],
+  "contradicting_evidence_ids": ["EVID_011"],
+  "considered_evidence_ids": ["EVID_010", "EVID_011"],
+  "resolution_method": "conflict_unresolved",
+  "policy_version": "field-resolution-v0.1",
+  "resolver": {"kind": "deterministic_tool", "identifier": "hullq-resolver", "version": "0.1"},
+  "resolved_at": "2026-08-18T11:15:00Z",
+  "supersedes_resolution_id": null,
+  "notes": "Canonical field remains unknown until adjudication."
+}

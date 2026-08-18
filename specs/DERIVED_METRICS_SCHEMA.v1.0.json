@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/derived-metrics/1.0",
+  "title": "HullQ DerivedMetrics 1.0",
+  "description": "Versioned derived yacht metrics calculated under OQ-001 methodology.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "methodology_version",
+    "sa_displ",
+    "ballast_displ_pct",
+    "displ_length",
+    "comfort_ratio",
+    "capsize_screening_formula",
+    "hull_speed_kn",
+    "status"
+  ],
+  "properties": {
+    "methodology_version": {
+      "const": "hullq-derived-1.0.0"
+    },
+    "sa_displ": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "ballast_displ_pct": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "displ_length": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "comfort_ratio": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "capsize_screening_formula": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "hull_speed_kn": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sa_displ",
+        "ballast_displ_pct",
+        "displ_length",
+        "comfort_ratio",
+        "capsize_screening_formula",
+        "hull_speed_kn"
+      ],
+      "properties": {
+        "sa_displ": {
+          "enum": [
+            "computed",
+            "computed_provisional",
+            "missing_input",
+            "unresolved_input",
+            "invalid_input",
+            "not_applicable",
+            "applicability_unknown",
+            "nonstandard_input"
+          ]
+        },
+        "ballast_displ_pct": {
+          "enum": [
+            "computed",
+            "computed_provisional",
+            "missing_input",
+            "unresolved_input",
+            "invalid_input",
+            "not_applicable",
+            "applicability_unknown",
+            "nonstandard_input"
+          ]
+        },
+        "displ_length": {
+          "enum": [
+            "computed",
+            "computed_provisional",
+            "missing_input",
+            "unresolved_input",
+            "invalid_input",
+            "not_applicable",
+            "applicability_unknown",
+            "nonstandard_input"
+          ]
+        },
+        "comfort_ratio": {
+          "enum": [
+            "computed",
+            "computed_provisional",
+            "missing_input",
+            "unresolved_input",
+            "invalid_input",
+            "not_applicable",
+            "applicability_unknown",
+            "nonstandard_input"
+          ]
+        },
+        "capsize_screening_formula": {
+          "enum": [
+            "computed",
+            "computed_provisional",
+            "missing_input",
+            "unresolved_input",
+            "invalid_input",
+            "not_applicable",
+            "applicability_unknown",
+            "nonstandard_input"
+          ]
+        },
+        "hull_speed_kn": {
+          "enum": [
+            "computed",
+            "computed_provisional",
+            "missing_input",
+            "unresolved_input",
+            "invalid_input",
+            "not_applicable",
+            "applicability_unknown",
+            "nonstandard_input"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "schema_version": "0.1",
+  "evidence_id": "EVID_002",
+  "subject": {"kind": "design_option", "id": "OPT_TEST_SHALLOW"},
+  "field_pointer": "/overrides/configuration/keel_type",
+  "source_id": "SRC_TEST_002",
+  "source_locator": {"page": 2, "section": null, "anchor": null, "table": null, "figure": "Profile drawing", "record_key": null},
+  "observation": {
+    "raw": {"kind": "visual_classification", "value": "profile drawing", "unit": null, "excerpt": null},
+    "normalized_candidate": {"value": "fin", "unit": null, "method_id": "keel.visual-classification", "method_version": "1"}
+  },
+  "evidence_type": "visual_classification",
+  "producer": {"kind": "human", "identifier": "reviewer:test", "version": null, "model": null, "prompt_or_rule_version": "keel-taxonomy-v0.1"},
+  "research_context": {"research_job_id": "RJ_TEST_002", "activity_id": "ACT_TEST_002"},
+  "observed_at": "2026-08-18T11:05:00Z",
+  "confidence": "medium",
+  "supersedes_evidence_id": null,
+  "notes": "No fabricated textual quote; classification is explicitly visual."
+}

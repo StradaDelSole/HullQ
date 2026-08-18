@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/source/0.1",
+  "title": "HullQ Source",
+  "description": "Source/provenance record. Rights fields are draft extensions and may be left unknown until a project decision is made.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "source_id",
+    "title",
+    "publisher",
+    "source_type",
+    "url",
+    "document_identifier",
+    "publication_date",
+    "accessed_at",
+    "notes",
+    "rights_status",
+    "license_identifier"
+  ],
+  "properties": {
+    "source_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "title": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "publisher": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "document_identifier": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "publication_date": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "accessed_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "rights_status": {
+      "enum": [
+        "unknown",
+        "open",
+        "permission_required",
+        "licensed",
+        "restricted",
+        "not_applicable"
+      ]
+    },
+    "license_identifier": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

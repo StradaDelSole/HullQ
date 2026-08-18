@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/ratio-input-basis/0.1",
+  "title": "HullQ RatioInputBasis",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "displacement_basis",
+    "sail_area_basis"
+  ],
+  "properties": {
+    "displacement_basis": {
+      "enum": [
+        "design",
+        "lightship",
+        "normal_sailing",
+        "full_load",
+        "source_unspecified",
+        "unknown"
+      ]
+    },
+    "sail_area_basis": {
+      "enum": [
+        "nominal_main_plus_foretriangle",
+        "upwind_100pct",
+        "working_sails_actual",
+        "downwind",
+        "source_unspecified",
+        "unknown"
+      ]
+    }
+  }
+}

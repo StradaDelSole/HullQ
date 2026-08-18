@@ -1,0 +1,17 @@
+{
+  "schema_version": "0.1",
+  "resolution_id": "BAD_RES_001",
+  "subject": {"kind": "boat_design", "id": "BD_TEST_002"},
+  "field_pointer": "/baseline/dimensions/displacement_kg",
+  "state": "conflict",
+  "canonical_value_snapshot": 6800,
+  "supporting_evidence_ids": ["EVID_010"],
+  "contradicting_evidence_ids": ["EVID_011"],
+  "considered_evidence_ids": ["EVID_010", "EVID_011"],
+  "resolution_method": "conflict_unresolved",
+  "policy_version": "field-resolution-v0.1",
+  "resolver": {"kind": "human", "identifier": "test", "version": null},
+  "resolved_at": "2026-08-18T11:00:00Z",
+  "supersedes_resolution_id": null,
+  "notes": null
+}

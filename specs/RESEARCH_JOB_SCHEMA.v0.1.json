@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/research-job/0.1",
+  "title": "HullQ ResearchJob",
+  "description": "Operational metadata around a minimal research target. Keeps workflow state separate from input identity.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "job_id",
+    "target",
+    "hull_configuration_hint",
+    "status",
+    "notes",
+    "requested_count",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "job_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manufacturer",
+        "model",
+        "first_built"
+      ],
+      "properties": {
+        "manufacturer": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "first_built": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "hull_configuration_hint": {
+      "enum": [
+        "monohull",
+        "catamaran",
+        "trimaran",
+        "other",
+        "unknown",
+        null
+      ]
+    },
+    "status": {
+      "enum": [
+        "pending",
+        "researching",
+        "needs_review",
+        "conflict",
+        "complete",
+        "blocked"
+      ]
+    },
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "requested_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "created_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "updated_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

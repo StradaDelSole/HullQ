@@ -1,0 +1,42 @@
+{
+  "fixture_version": "0.1",
+  "purpose": "Future semantic/integration test cases for OQ-004 invariants that JSON Schema alone cannot enforce.",
+  "cases": [
+    {
+      "id": "PROV-SEM-001",
+      "rules": ["VAL-PROV-004"],
+      "scenario": "supporting evidence is absent from considered evidence",
+      "expected": "error"
+    },
+    {
+      "id": "PROV-SEM-002",
+      "rules": ["VAL-PROV-005"],
+      "scenario": "canonical BoatDesign value differs from active resolution snapshot",
+      "expected": "error"
+    },
+    {
+      "id": "PROV-SEM-003",
+      "rules": ["VAL-PROV-006"],
+      "scenario": "two current resolutions exist for the same subject and field pointer",
+      "expected": "error"
+    },
+    {
+      "id": "PROV-SEM-004",
+      "rules": ["VAL-PROV-002"],
+      "scenario": "evidence supports a production value but its Source production_value clearance is unknown",
+      "expected": "error"
+    },
+    {
+      "id": "PROV-SEM-005",
+      "rules": ["VAL-PROV-009"],
+      "scenario": "a source is reclassified and dependent evidence cannot be reverse-located",
+      "expected": "review"
+    },
+    {
+      "id": "PROV-SEM-006",
+      "rules": ["VAL-PROV-010"],
+      "scenario": "ResolvedConfiguration value is computed from baseline/option values but represented as direct external evidence instead of derivation lineage",
+      "expected": "error"
+    }
+  ]
+}

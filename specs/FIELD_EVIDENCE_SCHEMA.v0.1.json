@@ -1,0 +1,294 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/field-evidence/0.1",
+  "title": "HullQ FieldEvidence",
+  "description": "Immutable source observation supporting one field on one stable HullQ subject.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "evidence_id",
+    "subject",
+    "field_pointer",
+    "source_id",
+    "source_locator",
+    "observation",
+    "evidence_type",
+    "producer",
+    "research_context",
+    "observed_at",
+    "confidence",
+    "supersedes_evidence_id",
+    "notes"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "evidence_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "boat_model",
+            "boat_design",
+            "named_variant",
+            "design_option"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "field_pointer": {
+      "type": "string",
+      "pattern": "^/",
+      "description": "RFC 6901 JSON Pointer relative to the canonical subject representation."
+    },
+    "source_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_locator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "page",
+        "section",
+        "anchor",
+        "table",
+        "figure",
+        "record_key"
+      ],
+      "properties": {
+        "page": {
+          "type": [
+            "integer",
+            "string",
+            "null"
+          ]
+        },
+        "section": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "anchor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "table": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "figure": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "record_key": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw",
+        "normalized_candidate"
+      ],
+      "properties": {
+        "raw": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value",
+            "unit",
+            "excerpt"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "literal",
+                "text_fragment",
+                "visual_classification",
+                "structured_record",
+                "other"
+              ]
+            },
+            "value": {},
+            "unit": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "excerpt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "normalized_candidate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "value",
+            "unit",
+            "method_id",
+            "method_version"
+          ],
+          "properties": {
+            "value": {},
+            "unit": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "method_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "method_version": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "evidence_type": {
+      "enum": [
+        "manufacturer_specification",
+        "brochure",
+        "manual",
+        "technical_drawing",
+        "class_or_owner_association",
+        "structured_dataset",
+        "api_record",
+        "narrative_text",
+        "visual_classification",
+        "user_submission",
+        "other"
+      ]
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "identifier",
+        "version",
+        "model",
+        "prompt_or_rule_version"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "human",
+            "deterministic_tool",
+            "llm",
+            "importer"
+          ]
+        },
+        "identifier": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "prompt_or_rule_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "research_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "research_job_id",
+        "activity_id"
+      ],
+      "properties": {
+        "research_job_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "activity_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "confidence": {
+      "enum": [
+        "high",
+        "medium",
+        "low",
+        "unknown"
+      ]
+    },
+    "supersedes_evidence_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}
