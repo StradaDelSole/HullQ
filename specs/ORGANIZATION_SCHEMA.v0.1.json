@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/organization/0.1",
+  "title": "HullQ Organization v0.1",
+  "description": "A real organization such as a shipyard, manufacturer, or builder. Separate first-class identity from Brand/Marque (ADR-0011). The same visible name does not force identity collapse with a Brand that uses the same word.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "canonical_name",
+    "aliases"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable opaque HullQ Organization ID, independent of name."
+    },
+    "canonical_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Canonical HullQ display name. Corporate suffixes and country annotations must not be removed from this field; stripping is a search-projection concern only."
+    },
+    "aliases": {
+      "type": "array",
+      "items": {
+        "$ref": "https://hullq.local/schemas/identity-alias/0.1"
+      },
+      "description": "Entity-scoped aliases. Must not contain Brand aliases."
+    }
+  }
+}

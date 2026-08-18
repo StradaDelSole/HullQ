@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/brand/0.1",
+  "title": "HullQ Brand v0.1",
+  "description": "A market-facing marque under which a BoatModel is marketed. Separate first-class identity from Organization/Builder (ADR-0011). The same visible name does not force identity collapse with an Organization that uses the same word.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "canonical_name",
+    "aliases"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable opaque HullQ Brand ID, independent of display spelling."
+    },
+    "canonical_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Canonical HullQ display name. Must not be mutated by search normalization."
+    },
+    "aliases": {
+      "type": "array",
+      "items": {
+        "$ref": "https://hullq.local/schemas/identity-alias/0.1"
+      },
+      "description": "Entity-scoped aliases. Must not contain Organization aliases."
+    }
+  }
+}

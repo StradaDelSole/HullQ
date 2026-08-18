@@ -1,0 +1,177 @@
+{
+  "fixture_version": "0.1",
+  "purpose": "Synthetic SLICE-0005 identity contract fixture. Demonstrates Brand/Organization separation, BoatModel v0.2 (typed aliases, brand_relationships), BoatDesign v0.5 (organization_id in builders), and multi-builder/multi-brand relationship history. Not production boat facts.",
+  "organization": {
+    "schema_version": "0.1",
+    "id": "ORG_EXAMPLE_WORKS",
+    "canonical_name": "Example Works Ltd. (USA)",
+    "aliases": [
+      {
+        "id": "A_ORG_1",
+        "alias_class": "common_name",
+        "name": "Example Works"
+      },
+      {
+        "id": "A_ORG_2",
+        "alias_class": "source_spelling",
+        "name": "Example Works Ltd"
+      }
+    ]
+  },
+  "brand": {
+    "schema_version": "0.1",
+    "id": "BR_EXAMPLE",
+    "canonical_name": "Example",
+    "aliases": [
+      {
+        "id": "A_BR_1",
+        "alias_class": "trade_name",
+        "name": "Example Yachts"
+      }
+    ]
+  },
+  "boat_model": {
+    "schema_version": "0.2",
+    "id": "BM_EXAMPLE_36_A",
+    "canonical_name": "Example 36",
+    "aliases": [
+      {
+        "id": "A_BM_1",
+        "alias_class": "common_name",
+        "name": "Example Thirty-Six"
+      }
+    ],
+    "brand_relationships": [
+      {
+        "id": "BMR_001",
+        "brand_id": "BR_EXAMPLE",
+        "first_year": 1988,
+        "last_year": 1998,
+        "hull_number_from": null,
+        "hull_number_to": null,
+        "market": null,
+        "notes": null
+      }
+    ],
+    "first_built": 1988,
+    "last_built": 1998,
+    "boat_design_ids": [
+      "BD_EXAMPLE_36_MK1"
+    ]
+  },
+  "boat_design": {
+    "schema_version": "0.5",
+    "id": "BD_EXAMPLE_36_MK1",
+    "boat_model_id": "BM_EXAMPLE_36_A",
+    "generation": {
+      "label": "Mk I",
+      "sequence": 1,
+      "aliases": [],
+      "first_built": 1988,
+      "last_built": 1998,
+      "hull_number_from": null,
+      "hull_number_to": null,
+      "boundary_confidence": "medium"
+    },
+    "relationships": {
+      "builders": [
+        {
+          "id": "ODR_EXAMPLE_36_MK1_ORIG",
+          "organization_id": "ORG_EXAMPLE_WORKS",
+          "role": "builder",
+          "first_year": 1988,
+          "last_year": 1998,
+          "hull_number_from": null,
+          "hull_number_to": null,
+          "market": null,
+          "notes": null
+        }
+      ],
+      "designers": [
+        {
+          "name": "Example Designer",
+          "role": "naval_architect"
+        }
+      ],
+      "number_built": null
+    },
+    "baseline": {
+      "dimensions": {
+        "loa_m": 10.97,
+        "lwl_m": 8.9,
+        "beam_m": 3.4,
+        "draft_min_m": 1.8,
+        "draft_max_m": 1.8,
+        "displacement_kg": 6500,
+        "ballast_kg": 2400,
+        "sail_area_m2": 58.0
+      },
+      "configuration": {
+        "hull_configuration": "monohull",
+        "hull_count": 1,
+        "keel_type": "fin",
+        "keel_subtype": null,
+        "rudder_type": "skeg_hung",
+        "rudder_count": 1,
+        "skeg_type": "partial",
+        "rig_type": "masthead_sloop",
+        "daggerboard_count": 0,
+        "centerboard_count": 0
+      },
+      "construction": {
+        "hull_material": "grp_fiberglass",
+        "construction_method": null
+      },
+      "cruising": {
+        "engine_make": null,
+        "engine_model": null,
+        "engine_type": "inboard_diesel",
+        "engine_power_hp": 28,
+        "fuel_capacity_l": 120,
+        "water_capacity_l": 240,
+        "headroom_m": 1.9,
+        "bridgedeck_clearance_m": null
+      },
+      "ratio_input_basis": {
+        "displacement_basis": "design",
+        "sail_area_basis": "nominal_main_plus_foretriangle"
+      }
+    },
+    "named_variants": [],
+    "design_options": [],
+    "quality": {
+      "status": "partial",
+      "confidence": "medium",
+      "notes": "Synthetic SLICE-0005 identity fixture. Not production data."
+    }
+  },
+  "builder_transfer_scenario": {
+    "description": "Demonstrates that a builder change alone does not create a new BoatDesign. Two time-bounded builder relationships share the same boat_design_id.",
+    "builder_relationships": [
+      {
+        "id": "ODR_ORIGINAL",
+        "organization_id": "ORG_EXAMPLE_WORKS",
+        "boat_design_id": "BD_EXAMPLE_36_MK1",
+        "role": "builder",
+        "first_year": 1988,
+        "last_year": 1993,
+        "hull_number_from": null,
+        "hull_number_to": null,
+        "market": null,
+        "notes": "Original builder period"
+      },
+      {
+        "id": "ODR_SUCCESSOR",
+        "organization_id": "ORG_SUCCESSOR_YARD",
+        "boat_design_id": "BD_EXAMPLE_36_MK1",
+        "role": "licensed_builder",
+        "first_year": 1993,
+        "last_year": null,
+        "hull_number_from": null,
+        "hull_number_to": null,
+        "market": null,
+        "notes": "Licensed production after ownership transfer"
+      }
+    ]
+  }
+}

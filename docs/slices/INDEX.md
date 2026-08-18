@@ -10,7 +10,7 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0002 | DESIGN_RESEARCH | DONE | Research independent sailboat-design data sources and a 20–30-design seed evidence sample before domain pipeline code | SLICE-0001 |
 | SLICE-0003 | IMPLEMENTATION | DONE | Canonical JSON-Schema contract runtime and local `$id`/reference registry | SLICE-0002 |
 | SLICE-0004 | IMPLEMENTATION | DONE | Measurement observation + deterministic unit/basis normalization while preserving raw source semantics | SLICE-0003 |
-| SLICE-0005 | IMPLEMENTATION | READY | First-class Brand/Organization identity contracts, BoatModel/BoatDesign identity migration, entity-scoped aliases and deterministic search-label keys | SLICE-0004 / ADR-0011 |
+| SLICE-0005 | IMPLEMENTATION | REVIEW | First-class Brand/Organization identity contracts, BoatModel/BoatDesign identity migration, entity-scoped aliases and deterministic search-label keys | SLICE-0004 / ADR-0011 |
 | SLICE-0006 | IMPLEMENTATION | BACKLOG | Provenance/raw-observation boundary needed before real external values enter canonical identity/design records | SLICE-0005 |
 | SLICE-0007 | IMPLEMENTATION | BACKLOG | ResearchJob state + source-clearance enforcement so automated acquisition fails closed by rights/use | SLICE-0006 |
 | SLICE-0008 | IMPLEMENTATION | BACKLOG | First rights-gated real external acquisition adapter; preferred initial target Wikidata CC0 | SLICE-0007 |
@@ -21,7 +21,7 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 
 `SLICE-0004` is `DONE`: implementation was merged through PR #4 after green Ubuntu/Windows/dependency-audit CI, independent review, and explicit project-owner acceptance on 2026-08-18.
 
-`SLICE-0005` is the **only READY slice**. It is fully defined in `docs/slices/SLICE-0005-identity-contracts-and-search-labels.md` and incorporates ADR-0011 Brand/Builder separation before any real external identity ingestion.
+`SLICE-0005` is `REVIEW`: implementation is complete on branch `slice/0005-identity-contracts-and-search-labels`; all local gates pass; remote CI verification and project-owner acceptance required before `DONE`.
 
 No implementation agent may begin SLICE-0006 or later work automatically after completing SLICE-0005.
 

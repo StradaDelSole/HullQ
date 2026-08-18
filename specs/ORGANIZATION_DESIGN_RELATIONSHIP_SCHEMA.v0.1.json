@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/organization-design-relationship/0.1",
+  "title": "HullQ Organization-BoatDesign Relationship v0.1",
+  "description": "Standalone independently identifiable builder/manufacturer relationship between an Organization and a BoatDesign. Composes from relationship-applicability/0.1 for shared applicability fields and builder_role vocabulary. A builder change alone must not create a new BoatDesign (ADR-0004/ADR-0011).",
+  "allOf": [{"$ref": "https://hullq.local/schemas/relationship-applicability/0.1"}],
+  "type": "object",
+  "unevaluatedProperties": false,
+  "required": ["id", "organization_id", "boat_design_id", "role"],
+  "properties": {
+    "organization_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Reference to the Organization entity ID."
+    },
+    "boat_design_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Reference to the BoatDesign entity ID."
+    },
+    "role": {
+      "$ref": "https://hullq.local/schemas/relationship-applicability/0.1#/$defs/builder_role",
+      "description": "Builder/manufacturer role semantics for this relationship."
+    }
+  }
+}

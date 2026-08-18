@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0005  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 2.4 — canonical identity runtime foundation  
 **Depends on:** SLICE-0004 accepted / DONE  
 **Blocks:** SLICE-0006
@@ -225,18 +225,18 @@ Schema names/version numbers may follow the repository's existing versioning con
 
 ## Acceptance criteria
 
-- [ ] Brand and Organization are distinct first-class validated identities with stable opaque IDs.
-- [ ] entity-scoped aliases are versioned, typed and provenance-addressable without array-position dependence.
-- [ ] Brand ↔ BoatModel and Organization ↔ BoatDesign relationships support multiple/historical associations and optional explicit applicability boundaries.
-- [ ] BoatModel successor removes authoritative free-text manufacturer/brand identity boundaries while preserving BoatModel semantics.
-- [ ] BoatDesign successor removes authoritative free-text builder identity names while preserving all unrelated v0.4 technical semantics.
-- [ ] legacy schema versions remain available and loadable.
-- [ ] deterministic search-label generation supports accepted corporate-name shortening without mutating canonical/source strings.
-- [ ] normalized-key collisions do not merge distinct canonical entities.
-- [ ] no fuzzy matching, raw-string role inference, persistence, provenance runtime, acquisition or appendage redesign is introduced.
-- [ ] synthetic tests/fixtures cover the required cases above.
-- [ ] repository validator, Ruff, strict mypy, pytest/coverage and dependency audit pass locally.
-- [ ] required remote CI is reported truthfully and is not guessed.
+- [x] Brand and Organization are distinct first-class validated identities with stable opaque IDs.
+- [x] entity-scoped aliases are versioned, typed and provenance-addressable without array-position dependence.
+- [x] Brand ↔ BoatModel and Organization ↔ BoatDesign relationships support multiple/historical associations and optional explicit applicability boundaries.
+- [x] BoatModel successor removes authoritative free-text manufacturer/brand identity boundaries while preserving BoatModel semantics.
+- [x] BoatDesign successor removes authoritative free-text builder identity names while preserving all unrelated v0.4 technical semantics.
+- [x] legacy schema versions remain available and loadable.
+- [x] deterministic search-label generation supports accepted corporate-name shortening without mutating canonical/source strings.
+- [x] normalized-key collisions do not merge distinct canonical entities.
+- [x] no fuzzy matching, raw-string role inference, persistence, provenance runtime, acquisition or appendage redesign is introduced.
+- [x] synthetic tests/fixtures cover the required cases above.
+- [x] repository validator, Ruff, strict mypy, pytest/coverage and dependency audit pass locally.
+- [ ] required remote CI is reported truthfully and is not guessed. — **NOT VERIFIED** (remote GitHub Actions not observable from local environment; push required for CI observation)
 
 ## Expected touch points
 
@@ -297,3 +297,126 @@ Also report:
 - how relationship history/applicability is represented;
 - how corporate-name search keys are generated without canonical mutation;
 - any identity ambiguity deliberately deferred to later research/provenance/search slices.
+
+---
+
+### Slice
+
+- Slice ID: `SLICE-0005`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+
+### Changes
+
+- **New files:**
+  - `specs/IDENTITY_ALIAS_SCHEMA.v0.1.json`
+  - `specs/ORGANIZATION_SCHEMA.v0.1.json`
+  - `specs/BRAND_SCHEMA.v0.1.json`
+  - `specs/BRAND_MODEL_RELATIONSHIP_SCHEMA.v0.1.json`
+  - `specs/ORGANIZATION_DESIGN_RELATIONSHIP_SCHEMA.v0.1.json`
+  - `specs/BOAT_MODEL_SCHEMA.v0.2.json`
+  - `specs/BOAT_DESIGN_SCHEMA.v0.5.json`
+  - `src/hullq/domain/identity.py`
+  - `tests/unit/test_identity.py`
+  - `tests/contract/test_identity_contracts.py`
+  - `fixtures/identity/identity_contracts_v0.5.json`
+- **Updated files:**
+  - `docs/slices/SLICE-0005-identity-contracts-and-search-labels.md` (status, acceptance criteria, this report)
+  - `docs/slices/INDEX.md` (status update)
+- **Unchanged (legacy, not mutated):**
+  - `specs/BOAT_MODEL_SCHEMA.v0.1.json`
+  - `specs/BOAT_DESIGN_SCHEMA.v0.4.json`
+
+- Requirements implemented: REQ-ID-001 through REQ-ID-012; REQ-SEARCH-007, REQ-SEARCH-008, REQ-SEARCH-009 (as scoped by slice).
+
+- Tests/fixtures: 205 tests total (114 new in `test_identity.py` + `test_identity_contracts.py`); 1 new fixture file; all 16 required test scenarios covered.
+
+### Validation
+
+- Local validation: `PASS`
+- Commands run:
+  - `uv lock --check` → PASS
+  - `uv sync --locked --all-groups` → PASS
+  - `uv run python scripts/validate_repository.py` → PASS (18 active schemas, 88 requirements, 88 acceptance criteria)
+  - `uv run ruff format --check .` → PASS (108 files formatted/checked)
+  - `uv run ruff check .` → PASS
+  - `uv run mypy src` → PASS (no issues in 10 source files)
+  - `uv run coverage run -m pytest` → PASS (205 passed)
+  - `uv run coverage report` → PASS (99.35% overall; identity.py 99.32%)
+  - `uv run pip-audit` → PASS (no known vulnerabilities)
+
+### External verification
+
+- Remote CI: `NOT VERIFIED` — GitHub Actions results are not observable from the local environment. The branch must be pushed and CI observed independently.
+- Other external gates: `NOT APPLICABLE`
+
+### Findings
+
+- **Unresolved findings:** None introduced by this slice.
+- **OQ-009 deferred:** Technical query semantics, fuzzy matching, and ranking are explicitly not implemented per slice spec. `generate_search_keys` returns normalized/stripped lookup tokens only.
+- **Designer identity deferred:** `relationships.designers` in BoatDesign v0.5 retains the v0.4 free-text `name` + `role` shape. IDENTITY_MODEL.v0.2 §8 notes that designer identity modeling may be refined separately; this slice does not force a person/organization designer schema beyond no-silent-merge rules.
+- **Provenance deferred:** `IdentityAlias`, `Organization`, and `Brand` carry no provenance/FieldEvidence IDs. Provenance attachment belongs to SLICE-0006.
+- **Scope deviations:** None. No appendage normalization, persistence, ORM, FastAPI, or acquisition work was introduced.
+
+### Extended report — slice-specific items
+
+**Final schema/version names introduced:**
+
+| Schema file | $id |
+|---|---|
+| `IDENTITY_ALIAS_SCHEMA.v0.1.json` | `https://hullq.local/schemas/identity-alias/0.1` |
+| `ORGANIZATION_SCHEMA.v0.1.json` | `https://hullq.local/schemas/organization/0.1` |
+| `BRAND_SCHEMA.v0.1.json` | `https://hullq.local/schemas/brand/0.1` |
+| `BRAND_MODEL_RELATIONSHIP_SCHEMA.v0.1.json` | `https://hullq.local/schemas/brand-model-relationship/0.1` |
+| `ORGANIZATION_DESIGN_RELATIONSHIP_SCHEMA.v0.1.json` | `https://hullq.local/schemas/organization-design-relationship/0.1` |
+| `BOAT_MODEL_SCHEMA.v0.2.json` | `https://hullq.local/schemas/boat-model/0.2` |
+| `BOAT_DESIGN_SCHEMA.v0.5.json` | `https://hullq.local/schemas/boat-design/0.5` |
+
+**Final public Python API (`src/hullq/domain/identity.py`):**
+- `AliasClass` (StrEnum, 8 values matching `IDENTITY_ALIAS_SCHEMA.v0.1`)
+- `BuilderRole` (StrEnum: builder, manufacturer, licensed_builder, other)
+- `IdentityAlias(id, alias_class, name, notes=None)` — frozen dataclass
+- `Organization(id, canonical_name, aliases=())` — frozen dataclass
+- `Brand(id, canonical_name, aliases=())` — frozen dataclass
+- `BrandModelRelationship(id, brand_id, boat_model_id, first_year, last_year, hull_number_from, hull_number_to, market, notes)` — frozen dataclass
+- `OrganizationDesignRelationship(id, organization_id, boat_design_id, role, first_year, last_year, hull_number_from, hull_number_to, market, notes)` — frozen dataclass
+- `generate_search_keys(canonical_name, aliases=()) -> frozenset[str]`
+
+**Brand/Organization separation enforcement:**
+- Separate Python types (`Brand` vs `Organization`); `isinstance()` checks distinguish them.
+- Separate JSON Schema files with non-overlapping `$id` URIs.
+- `BOAT_MODEL_SCHEMA.v0.2` uses `brand_relationships` (typed alias + `BrandModelRelationship` refs) and rejects `manufacturer_name`/`brand_name` via `additionalProperties: false`.
+- `BOAT_DESIGN_SCHEMA.v0.5` uses `organization_id` in builders and rejects free-text `name` via `additionalProperties: false`.
+- Aliases are entity-scoped: Brand and Organization each carry their own `aliases` array with no cross-entity injection path.
+
+**Relationship history/applicability:**
+- Both `BrandModelRelationship` and `OrganizationDesignRelationship` carry optional `first_year`, `last_year`, `hull_number_from`, `hull_number_to`, `market` fields — all nullable.
+- Multiple relationship records per entity are supported (one Brand may have many `BrandModelRelationship` records; one BoatDesign may have many builder entries in `relationships.builders`).
+- `OrganizationDesignRelationship.role` enum (`builder`, `manufacturer`, `licensed_builder`, `other`) distinguishes builder/manufacturer role without forcing a new BoatDesign.
+
+**Corporate-name search keys without canonical mutation:**
+- `generate_search_keys()` calls `_normalize()` (NFC + casefold + whitespace collapse) on the canonical name.
+- `_strip_suffixes()` iteratively removes terminal corporate suffixes (`Ltd.`, `Limited`, `Inc.`, `Corp.`, `Corporation`, `GmbH`, `Co.`, `Company`) and country annotations (`(USA)`, `(UK)`, `(FRA)`, etc.) from the normalized form.
+- Both the full normalized key and the shortened key are returned.
+- The canonical/source name is never modified: the function returns a `frozenset[str]` of projection tokens only.
+- Two distinct entity IDs may produce the same normalized key; this is expected and does not imply identity collapse.
+
+**Deliberately deferred to later slices:**
+- OQ-009 query semantics, fuzzy matching, ranking — deferred to the dedicated search implementation slice.
+- Provenance/FieldEvidence attachment on identity entities — SLICE-0006.
+- Source-rights enforcement and ResearchJob state — SLICE-0007.
+- Wikidata/external acquisition — SLICE-0008.
+- Designer person/organization schema redesign — not authorized in this slice.
+- PostgreSQL/ORM schema migrations for identity entities — not authorized in this slice.
+
+### Follow-up
+
+- Recommended next action: independent review of this branch (`slice/0005-identity-contracts-and-search-labels`); observe remote CI before marking `DONE`.
+- After acceptance and merge: proceed to SLICE-0006 (provenance/raw-observation boundary).
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice (SLICE-0006) was not started automatically.
+- The agent has NOT marked this slice `DONE`.
