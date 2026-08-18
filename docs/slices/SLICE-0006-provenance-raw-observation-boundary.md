@@ -409,3 +409,103 @@ Also report:
 - how evidence and resolution supersession/current-state invariants are validated;
 - how canonical consistency and reverse source-impact lookup work;
 - any provenance semantics deliberately deferred to SLICE-0007 or later.
+
+---
+
+### Slice
+
+- Slice ID: `SLICE-0006`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+
+### Changes
+
+- Changed files:
+  - `docs/slices/INDEX.md` — status READY → REVIEW
+  - `docs/slices/SLICE-0006-provenance-raw-observation-boundary.md` — status updates + this report
+  - `specs/PROVENANCE_SUBJECT_SCHEMA.v0.1.json` — new shared provenance subject contract
+  - `specs/FIELD_EVIDENCE_SCHEMA.v0.2.json` — new successor evidence schema
+  - `specs/FIELD_RESOLUTION_SCHEMA.v0.2.json` — new successor resolution schema
+  - `src/hullq/domain/provenance.py` — new focused provenance Python module
+  - `tests/unit/test_provenance.py` — 26-scenario unit tests + Hypothesis property tests
+  - `tests/contract/test_provenance_contracts.py` — v0.2 schema contract tests
+  - `fixtures/provenance/valid/v0.2/` — 8 synthetic v0.2 contract fixtures
+- Requirements implemented or researched: REQ-DATA-001, REQ-DATA-002, REQ-DATA-003, REQ-DATA-004, REQ-PROV-001, REQ-PROV-002, REQ-PROV-003, REQ-PROV-004, REQ-PROV-005, REQ-PROV-006, REQ-PROV-007, REQ-PROV-008, REQ-RESEARCH-003
+- Tests/fixtures added or updated: 108 new tests in `test_provenance.py` and `test_provenance_contracts.py`; 8 new fixtures in `fixtures/provenance/valid/v0.2/`
+
+### Validation
+
+- Local validation: `PASS`
+- Commands run:
+  ```
+  uv run python scripts/validate_repository.py  → PASS (22 active schemas)
+  uv run ruff format --check .                  → PASS
+  uv run ruff check .                           → PASS
+  uv run mypy src                               → PASS (no issues in 11 source files)
+  uv run coverage run -m pytest                 → PASS (345/345 tests)
+  uv run coverage report                        → PASS (92.06% total, >90% threshold)
+  uv run pip-audit                              → PASS (no known vulnerabilities)
+  ```
+- Results:
+  - 345 tests pass (prior baseline: 237 tests); 108 new tests added
+  - 92.06% branch coverage
+  - `src/hullq/domain/provenance.py`: 87.32% branch coverage (total stays above 90%)
+  - v0.1 schemas unchanged and still loadable; all prior fixtures still pass
+
+### External verification
+
+- Remote CI: `NOT VERIFIED` — branch pushed to `origin/slice/0006-provenance-raw-observation-boundary`; GitHub Actions result must be observed independently before acceptance
+- Other external gates: `NOT APPLICABLE`
+
+### Findings
+
+- Unresolved findings: none
+- Spec/ADR ambiguities: none encountered
+- Scope deviations: none; all in-scope items delivered; all out-of-scope items avoided
+
+### Implementation details
+
+**Final successor schema/version names:**
+- `PROVENANCE_SUBJECT_SCHEMA.v0.1.json` — shared subject kind single source of truth
+- `FIELD_EVIDENCE_SCHEMA.v0.2.json` — successor evidence schema (v0.1 unchanged)
+- `FIELD_RESOLUTION_SCHEMA.v0.2.json` — successor resolution schema (v0.1 unchanged)
+
+**Final provenance subject-kind vocabulary (9 kinds):**
+```
+boat_model, boat_design, named_variant, design_option,
+brand, organization, identity_alias,
+brand_model_relationship, organization_design_relationship
+```
+
+**Final public Python provenance API (`hullq.domain.provenance`):**
+- Enums: `SubjectKind`, `ResolutionState`, `ResolutionMethod`, `RawObservationKind`, `EvidenceType`, `ConfidenceLevel`, `ProducerKind`, `ResolverKind`
+- Value objects (all frozen/immutable): `ProvenanceSubject`, `SourceLocator`, `RawObservation`, `NormalizedCandidate`, `ProducerMetadata`, `ResearchContext`, `FieldEvidence`, `ResolverMetadata`, `FieldResolution`
+- Pointer: `JsonPointer`, `JsonPointerError`
+- Validators: `validate_evidence_invariants`, `validate_resolution_invariants`, `validate_resolution_history`
+- Helpers: `check_canonical_consistency`, `source_impact_lookup`
+
+**Raw observation snapshot safety:** `RawObservation.value` and `NormalizedCandidate.value` are deep-copied in `__post_init__` via `object.__setattr__` (the standard pattern for frozen dataclasses) using `copy.deepcopy`. `FieldResolution.canonical_value_snapshot` is identically deep-copied. All three frozen dataclasses prevent field reassignment after construction, ensuring caller mutation of the original input cannot alter the captured snapshot.
+
+**RFC 6901 pointer parsing/lookup:** `JsonPointer.__init__` splits on `/` after stripping the leading `/`, decodes each token via `_decode_pointer_token` (validates no bare `~`, then replaces `~1` → `/` then `~0` → `~` per RFC 6901 §3), and stores the immutable `tokens` tuple. `lookup(obj)` navigates dicts by string key and lists by integer index, raising typed exceptions for missing keys, invalid indices or non-navigable types.
+
+**Evidence and resolution supersession/current-state invariants:** `validate_evidence_invariants` checks that a supersession link targets the same subject and field pointer (cross-boundary supersession is an error). `validate_resolution_invariants` enforces all referenced evidence IDs exist and belong to the same subject/field, set containment (supporting ⊆ considered, contradicting ⊆ considered), disjointness (supporting ∩ contradicting = ∅), and state-specific constraints (resolved/resolved_with_conflict require non-null snapshot and supporting evidence; resolved_with_conflict and conflict require contradicting evidence; unknown/needs_review/conflict require null snapshot). `validate_resolution_history` detects multiple current (unsuperseded) resolutions per subject/field, cross-field supersession, missing superseded IDs and cycles via iterative DFS.
+
+**Canonical consistency and reverse source-impact lookup:** `check_canonical_consistency` uses `JsonPointer.lookup` to retrieve the canonical value at the resolution's field pointer from a supplied subject snapshot and compares it to `canonical_value_snapshot`; mismatch is reported as a validation error. `source_impact_lookup(source_id, evidence_collection, resolution_collection)` filters evidence by `source_id`, then finds all resolutions whose `considered_evidence_ids` intersects the affected evidence IDs.
+
+**Provenance semantics deliberately deferred to SLICE-0007 or later:**
+- Source-rights clearance enforcement (production_value, bulk_bootstrap, automated_ingestion gates)
+- ResearchJob state machine and activity tracking
+- Source-authority ranking and priority policies (source_priority_rule method is accepted in schemas but policy content is not implemented)
+- Persistence/ORM layer enforcing uniqueness constraints at the database level
+- DerivationRecord calculation/inheritance engine (boundary-referenced but not redesigned here)
+
+### Follow-up
+
+- Recommended next action: independent review of this SLICE-0006 branch; then SLICE-0007 (ResearchJob + source-clearance gate) may begin after acceptance
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice (SLICE-0007) was not started automatically.
+- The agent has NOT marked this slice `DONE`.
