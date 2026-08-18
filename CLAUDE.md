@@ -12,6 +12,29 @@ Before changing the project, read in this order:
 8. the explicitly assigned slice under `docs/slices/`
 9. relevant versioned specs / accepted ADRs / operational docs named by that slice
 
+## Repository access convention
+
+For normal implementation work, read repository files from the **local checkout** after synchronizing `main`. Do not repeatedly fetch ordinary repo files through GitHub/API tooling when the synchronized local checkout already contains them; this wastes context/tokens and creates no additional authority.
+
+GitHub remains the canonical shared state for:
+
+- pushed slice branches;
+- pull requests;
+- CI/external verification;
+- review/acceptance handoff;
+- accepted `main`.
+
+Before starting a new slice locally:
+
+```bash
+git switch main
+git pull --ff-only origin main
+```
+
+Then create/use the assigned slice branch. Never use `git pull origin main` from an old feature branch merely to refresh local `main`; that attempts to merge `main` into the current branch and may create avoidable conflicts.
+
+Implementation work occurs in the local checkout, but the completed slice branch MUST be pushed to GitHub for review. Do not merge it to `main` yourself unless the user/project-owner explicitly changes the acceptance workflow.
+
 ## Authority
 
 1. normative `specs/`
