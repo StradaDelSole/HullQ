@@ -22,9 +22,8 @@ if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
     Fail "GitHub CLI (gh) is not installed. Install GitHub CLI once, then run SETUP_WORKFLOW.bat again."
 }
 
-try {
-    gh auth status 2>$null | Out-Null
-} catch {
+gh auth status 2>$null | Out-Null
+if ($LASTEXITCODE -ne 0) {
     Fail "GitHub CLI is not logged in. Run 'gh auth login' once, then run SETUP_WORKFLOW.bat again."
 }
 
@@ -37,54 +36,89 @@ if ($remote -notmatch "StradaDelSole/HullQ(\.git)?$") {
     Fail "This does not look like the canonical StradaDelSole/HullQ checkout. origin=$remote"
 }
 
-Write-Host "Applying protection to GitHub main..."
+$rulesetName = "HullQ main protection"
 
-$payload = @{
-    required_status_checks = @{
-        strict = $true
-        contexts = @(
-            "quality (ubuntu-latest)",
-            "quality (windows-latest)",
-            "dependency audit"
-        )
+$payloadObject = @{
+    name = $rulesetName
+    target = "branch"
+    enforcement = "active"
+    bypass_actors = @()
+    conditions = @{
+        ref_name = @{
+            include = @("refs/heads/main")
+            exclude = @()
+        }
     }
-    enforce_admins = $true
-    required_pull_request_reviews = @{
-        dismiss_stale_reviews = $false
-        require_code_owner_reviews = $false
-        required_approving_review_count = 0
-        require_last_push_approval = $false
-    }
-    restrictions = $null
-    required_linear_history = $true
-    allow_force_pushes = $false
-    allow_deletions = $false
-    block_creations = $false
-    required_conversation_resolution = $false
-    lock_branch = $false
-    allow_fork_syncing = $true
-} | ConvertTo-Json -Depth 8
+    rules = @(
+        @{
+            type = "deletion"
+        },
+        @{
+            type = "non_fast_forward"
+        },
+        @{
+            type = "required_linear_history"
+        },
+        @{
+            type = "pull_request"
+            parameters = @{
+                allowed_merge_methods = @("squash", "rebase")
+                dismiss_stale_reviews_on_push = $false
+                require_code_owner_review = $false
+                require_last_push_approval = $false
+                required_approving_review_count = 0
+                required_review_thread_resolution = $false
+            }
+        },
+        @{
+            type = "required_status_checks"
+            parameters = @{
+                do_not_enforce_on_create = $false
+                strict_required_status_checks_policy = $true
+                required_status_checks = @(
+                    @{ context = "quality (ubuntu-latest)" },
+                    @{ context = "quality (windows-latest)" },
+                    @{ context = "dependency audit" }
+                )
+            }
+        }
+    )
+}
 
-$temp = New-TemporaryFile
-try {
-    Set-Content -Path $temp -Value $payload -Encoding utf8
-    gh api --method PUT "repos/StradaDelSole/HullQ/branches/main/protection" --input $temp.FullName | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        Fail "GitHub rejected the branch-protection request. Your account/plan may not allow this setting. No local files were changed."
-    }
-} finally {
-    Remove-Item $temp -ErrorAction SilentlyContinue
+$payload = $payloadObject | ConvertTo-Json -Depth 10 -Compress
+
+Write-Host "Checking existing GitHub rulesets..."
+$existingJson = gh api "repos/StradaDelSole/HullQ/rulesets" 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Fail "Could not read repository rulesets. GitHub CLI needs repository Administration access."
+}
+
+$existing = @($existingJson | ConvertFrom-Json)
+$match = $existing | Where-Object { $_.name -eq $rulesetName } | Select-Object -First 1
+
+if ($null -eq $match) {
+    Write-Host "Creating main protection ruleset..."
+    $payload | gh api --method POST "repos/StradaDelSole/HullQ/rulesets" --input - | Out-Null
+} else {
+    Write-Host "Updating existing main protection ruleset..."
+    $payload | gh api --method PUT "repos/StradaDelSole/HullQ/rulesets/$($match.id)" --input - | Out-Null
+}
+
+if ($LASTEXITCODE -ne 0) {
+    Fail "GitHub rejected the ruleset request. Your account/plan or gh authorization may not allow repository rulesets. No local files were changed."
 }
 
 Write-Host ""
 Write-Host "SUCCESS" -ForegroundColor Green
-Write-Host "main is now protected with:"
-Write-Host "  - pull-request-only changes"
+Write-Host "GitHub main is now protected with:"
+Write-Host "  - changes must go through a pull request"
+Write-Host "  - zero formal GitHub approvals required"
 Write-Host "  - required Ubuntu CI"
 Write-Host "  - required Windows CI"
 Write-Host "  - required dependency audit"
 Write-Host "  - branch must be up to date before merge"
 Write-Host "  - force pushes blocked"
-Write-Host "  - branch deletion blocked"
+Write-Host "  - main deletion blocked"
+Write-Host "  - linear history required (squash/rebase merge)"
 Write-Host ""
-Write-Host "You only need to run SETUP_WORKFLOW.bat once."
+Write-Host "You only need to run SETUP_WORKFLOW.bat once. Running it again is safe and updates the same ruleset."
