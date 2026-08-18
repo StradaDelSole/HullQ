@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-18  
-**Current stage:** Stage 0.3 / Stage 1.6 boundary — bootstrap closure, then canonical logical data-model gate  
+**Current stage:** Stage 0.3 / Stage 1.6 boundary — bootstrap closure, then real design-data source research  
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -14,99 +14,71 @@
 - docs-to-code method accepted (ADR-0002);
 - broad-coverage strategy captured as ADR-0003;
 - model/design-generation/option identity accepted (OQ-003 / ADR-0004 / `IDENTITY_MODEL.v0.1.md`);
-- identity contract fixtures created;
-- requirements baseline and test strategy created;
-- open-question/decision process established;
-- engineering quality gates established;
-- implementation-slice workflow established under `docs/slices/`.
-
-## Completed decisions
-
-### OQ-007 — Source rights / licensing metadata — DECIDED
-
-Accepted artifacts:
-
-- `docs/research/OQ-007_SOURCE_RIGHTS_RESEARCH.md`;
-- `specs/SOURCE_RIGHTS_POLICY.v0.1.md`;
-- `specs/SOURCE_SCHEMA.v0.2.json`;
-- `architecture/decisions/ADR-0005-source-rights-clearance.md`;
-- `fixtures/sources/source_rights_cases.v0.1.json`.
-
-### OQ-004 — Field-level provenance persistence — DECIDED
-
-Accepted artifacts:
-
-- `docs/research/OQ-004_FIELD_PROVENANCE_RESEARCH.md`;
-- `specs/PROVENANCE_MODEL.v0.1.md`;
-- `specs/FIELD_EVIDENCE_SCHEMA.v0.1.json`;
-- `specs/FIELD_RESOLUTION_SCHEMA.v0.1.json`;
-- `specs/DERIVATION_RECORD_SCHEMA.v0.1.json`;
-- `architecture/decisions/ADR-0006-field-provenance-ledger.md`;
-- `fixtures/provenance/`.
-
-BoatDesign v0.4 and ResolvedConfiguration v0.2 are the accepted canonical contracts after OQ-001; BoatDesign v0.3 is retained only as historical accepted reference.
-
-### Search Architecture + SEO — ACCEPTED ARCHITECTURAL PRINCIPLE
-
-ADR-0007 establishes that Search Architecture and SEO are part of product architecture, not a post-launch marketing layer. `architecture/SEARCH_AND_SEO_ARCHITECTURE.md` defines the baseline; OQ-018 gates the exact public URL/indexation/rendering surface before frontend implementation.
-
-### OQ-001 — Derived-ratio / metric methodology — DECIDED
-
-Accepted artifacts:
-
-- `docs/research/OQ-001_DERIVED_METRICS_RESEARCH.md`;
-- `specs/DERIVED_METRICS_SPEC.v1.0.md`;
-- `specs/RATIO_INPUT_BASIS_SCHEMA.v0.1.json`;
-- `specs/DERIVED_METRICS_SCHEMA.v1.0.json`;
-- `specs/BOAT_DESIGN_SCHEMA.v0.4.json`;
-- `specs/RESOLVED_CONFIGURATION_SCHEMA.v0.2.json`;
-- `architecture/decisions/ADR-0008-derived-metric-methodology.md`;
-- `fixtures/ratios/`.
-
-The accepted methodology is `hullq-derived-1.0.0`.
-
-### OQ-010 — Python/data-pipeline runtime and tooling baseline — DECIDED
-
-Accepted artifacts:
-
-- `docs/research/OQ-010_PYTHON_TOOLCHAIN_RESEARCH.md`;
-- `docs/engineering/PYTHON_TOOLCHAIN_BASELINE.v0.1.md`;
-- `architecture/decisions/ADR-0009-python-research-toolchain.md`.
-
-Accepted baseline: CPython 3.14 + uv + uv_build + Ruff + mypy strict + pytest/coverage/Hypothesis + jsonschema + HTTPX + asyncio TaskGroup + Stage-2 SQLite for local benchmark/job state only.
+- source-rights/clearance model accepted (OQ-007 / ADR-0005);
+- field-level provenance accepted (OQ-004 / ADR-0006);
+- search/SEO as first-class product architecture accepted (ADR-0007);
+- derived metrics methodology accepted (OQ-001 / ADR-0008);
+- Python research toolchain accepted (OQ-010 / ADR-0009);
+- requirements/test/governance baseline established;
+- bounded implementation-slice workflow established under `docs/slices/`.
 
 ## Current operational step
 
 ### SLICE-0001 — Close repository bootstrap — READY
 
-Root Python project configuration, package/test skeleton, cross-platform GitHub Actions CI and dependency-update policy are present. A valid committed `uv.lock` remains the final bootstrap gate and MUST be generated in a networked development environment before HullQ domain implementation begins.
+Root Python project configuration, package/test skeleton, cross-platform GitHub Actions CI and dependency-update policy are present. A valid committed `uv.lock` remains the final bootstrap gate and MUST be generated in a networked development environment.
 
 See `docs/slices/SLICE-0001-bootstrap-closure.md`.
 
-## New pre-code data-model gate
+## Immediate pre-domain research step
 
-### OQ-019 — Canonical logical data model — OPEN
+### SLICE-0002 — Design Data Source Research & Seed Corpus — BACKLOG until SLICE-0001 is done
 
-Before HullQ domain implementation, the distributed accepted contracts must be consolidated into one persistence-neutral logical model covering entity inventory, relationships/cardinalities, lifecycle/mutability, domain boundaries and required access patterns.
+Before HullQ writes meaningful research-pipeline/domain code, research the **actual independent sailboat-design data sources** from which HullQ can build its own canonical universe.
 
-This is **not** the production database-technology decision.
+This means researching real boat data, not choosing a database product.
 
-- OQ-019 answers: what data exists, how it relates, what is immutable/versioned/derived, and what access patterns must be supported.
-- OQ-012 later answers: which production persistence/search technology and indexing strategy best implements that model after benchmark evidence exists.
+SLICE-0002 must:
 
-OQ-019 is executed through `SLICE-0002` after bootstrap closure.
+- identify plausible broad identity/bootstrap sources that are usable under the accepted source-rights model;
+- map HullQ-critical fields to real sources and observed availability;
+- research manufacturer/designer/class-association/archive sources for primary verification;
+- manually research 20–30 representative difficult BoatDesign candidates;
+- record missing data, source conflicts, generations/options and semantic ambiguity;
+- distinguish what can likely be automated from what requires human review;
+- derive actual extraction/normalization pipeline requirements from the source evidence.
+
+SailboatData remains reference/prototype material only and MUST NOT become an invisible production-value source.
+
+The 20–30-design seed sample is not the final benchmark. After implementation begins, HullQ still builds and measures the deliberately difficult 50–100-design research benchmark before broad ingestion.
+
+## Current source-research direction
+
+Initial candidate classes include:
+
+- open structured data such as Wikidata for broad identity/common-field bootstrap where source clearance permits;
+- official manufacturer heritage/current model pages, brochures, manuals and parts/heritage systems for primary factual verification;
+- official designer/builder/class-association technical material;
+- explicitly licensed secondary datasets where obligations are compatible with the accepted source-rights policy;
+- commercial/community databases only as permitted research leads/reference where production clearance is absent.
+
+Every source remains subject to ADR-0005: technical accessibility is not equivalent to rights or HullQ clearance.
 
 ## Following steps
 
 1. execute `SLICE-0001`: generate and commit `uv.lock`, pass full local gates and first green Linux + Windows CI;
-2. execute `SLICE-0002`: research and explicitly accept OQ-019 canonical logical data model;
-3. begin Stage-2 contract runtime slice;
-4. continue to deterministic normalization, provenance/derived runtime and ResearchJob state machine;
-5. build the 50–100-design benchmark only after those foundations are implementation-ready.
-
-No HullQ domain code should be introduced before steps 1 and 2 are complete.
+2. execute `SLICE-0002`: perform real source/data research and the 20–30-design seed evidence sample;
+3. use those findings to refine `SLICE-0003+` rather than coding against hypothetical input shapes;
+4. implement contracts and deterministic normalization in bounded slices;
+5. implement provenance/derived runtime and ResearchJob state machine;
+6. build and measure the 50–100-design benchmark;
+7. harden the pipeline before broad ingestion toward thousands of designs.
 
 OQ-009 remains required before query-engine implementation and OQ-018 before the public search/SEO surface.
+
+## Database / persistence note
+
+The concrete production database/search/index choice remains OQ-012 and is **not** the immediate task. A separate logical-model consolidation may be revisited when implementation/persistence work requires it; it is not a substitute for researching the actual sailboat data sources first.
 
 ## Retention / freemium direction
 
@@ -127,7 +99,3 @@ OQ-013 — market-source access matrix can be researched in parallel but MUST NO
 - multi-source listing deduplication.
 
 These remain downstream of explicit gates in `docs/EXECUTION_PLAN.md`.
-
-## Repository audit
-
-A pre-OQ-004 consistency audit is recorded in `docs/governance/REPOSITORY_AUDIT_2026-08-18.md`. It resolved stale draft placement, legacy decision-ID drift, missing identity requirements, architecture wording drift and the missing price-intelligence decision gate.
