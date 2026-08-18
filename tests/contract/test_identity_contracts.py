@@ -196,6 +196,13 @@ VALID_BMR = {
     "boat_model_id": "BM_EXAMPLE_36",
 }
 
+# Embedded shape for BoatModel v0.2 brand_relationships — no boat_model_id
+# (the parent BoatModel id is implicit; omitting it prevents contradictory cross-ID claims).
+EMBEDDED_BMR = {
+    "id": "BMR_001",
+    "brand_id": "BR_EXAMPLE_001",
+}
+
 
 class TestBrandModelRelationshipSchema:
     def test_minimal_rel_passes(self, registry: ContractRegistry) -> None:
@@ -301,9 +308,28 @@ class TestBoatModelV02Schema:
         v.validate(
             {
                 **VALID_BM_V02,
-                "brand_relationships": [VALID_BMR],
+                "brand_relationships": [EMBEDDED_BMR],
             }
         )
+
+    def test_embedded_brand_rel_boat_model_id_rejected(self, registry: ContractRegistry) -> None:
+        # boat_model_id must not be present in the embedded shape; its presence
+        # would allow a relationship claiming a different boat_model_id than the
+        # enclosing BoatModel id, creating a contradictory record.
+        v = registry.validator_by_name("BOAT_MODEL_SCHEMA.v0.2.json")
+        with pytest.raises(ValidationError):
+            v.validate(
+                {
+                    **VALID_BM_V02,
+                    "brand_relationships": [
+                        {
+                            "id": "BMR_001",
+                            "brand_id": "BR_EXAMPLE_001",
+                            "boat_model_id": "BM_WRONG_OTHER_MODEL",
+                        }
+                    ],
+                }
+            )
 
     def test_manufacturer_name_field_rejected(self, registry: ContractRegistry) -> None:
         v = registry.validator_by_name("BOAT_MODEL_SCHEMA.v0.2.json")
@@ -375,6 +401,7 @@ VALID_BD_V05: dict = {
     "relationships": {
         "builders": [
             {
+                "id": "ODR_EXAMPLE_36_MK1_ORIG",
                 "organization_id": "ORG_EXAMPLE_001",
                 "role": "builder",
                 "first_year": 1988,
@@ -452,6 +479,7 @@ class TestBoatDesignV05Schema:
         data = copy.deepcopy(VALID_BD_V05)
         data["relationships"]["builders"] = [
             {
+                "id": "ODR_A",
                 "organization_id": "ORG_A",
                 "role": "builder",
                 "first_year": 1988,
@@ -462,6 +490,7 @@ class TestBoatDesignV05Schema:
                 "notes": None,
             },
             {
+                "id": "ODR_B",
                 "organization_id": "ORG_B",
                 "role": "licensed_builder",
                 "first_year": 1993,
@@ -544,3 +573,47 @@ class TestBoatDesignV05Schema:
             }
         ]
         v.validate(data)
+
+    def test_builder_missing_id_fails(self, registry: ContractRegistry) -> None:
+        # Each embedded builder relationship must carry a stable id.
+        v = registry.validator_by_name("BOAT_DESIGN_SCHEMA.v0.5.json")
+        import copy
+
+        data = copy.deepcopy(VALID_BD_V05)
+        data["relationships"]["builders"] = [{"organization_id": "ORG_X", "role": "builder"}]
+        with pytest.raises(ValidationError):
+            v.validate(data)
+
+    def test_builder_stable_id_addressable(self, registry: ContractRegistry) -> None:
+        # The embedded builder id must be a non-empty string — stable, not position-dependent.
+        v = registry.validator_by_name("BOAT_DESIGN_SCHEMA.v0.5.json")
+        import copy
+
+        data = copy.deepcopy(VALID_BD_V05)
+        builder_id = "ODR_EXAMPLE_36_MK1_ORIG"
+        data["relationships"]["builders"] = [
+            {
+                "id": builder_id,
+                "organization_id": "ORG_EXAMPLE_001",
+                "role": "builder",
+                "first_year": 1988,
+                "last_year": 1998,
+                "hull_number_from": None,
+                "hull_number_to": None,
+                "market": None,
+                "notes": None,
+            }
+        ]
+        v.validate(data)
+        assert data["relationships"]["builders"][0]["id"] == builder_id
+
+    def test_builder_empty_id_fails(self, registry: ContractRegistry) -> None:
+        v = registry.validator_by_name("BOAT_DESIGN_SCHEMA.v0.5.json")
+        import copy
+
+        data = copy.deepcopy(VALID_BD_V05)
+        data["relationships"]["builders"] = [
+            {"id": "", "organization_id": "ORG_X", "role": "builder"}
+        ]
+        with pytest.raises(ValidationError):
+            v.validate(data)

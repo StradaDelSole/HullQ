@@ -45,7 +45,6 @@
       {
         "id": "BMR_001",
         "brand_id": "BR_EXAMPLE",
-        "boat_model_id": "BM_EXAMPLE_36_A",
         "first_year": 1988,
         "last_year": 1998,
         "hull_number_from": null,
@@ -77,6 +76,7 @@
     "relationships": {
       "builders": [
         {
+          "id": "ODR_EXAMPLE_36_MK1_ORIG",
           "organization_id": "ORG_EXAMPLE_WORKS",
           "role": "builder",
           "first_year": 1988,

@@ -117,10 +117,16 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
+              "id",
               "organization_id",
               "role"
             ],
             "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Stable opaque relationship ID for independent addressing, independent of array position."
+              },
               "organization_id": {
                 "type": "string",
                 "minLength": 1,

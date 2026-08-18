@@ -432,6 +432,57 @@ class TestScenario13CorporateSuffixStripping:
         keys = generate_search_keys("Jeanneau (FRA)")
         assert "jeanneau" in keys
 
+    def test_country_annotation_nor_stripped(self) -> None:
+        keys = generate_search_keys("Hallberg-Rassy (NOR)")
+        assert "hallberg-rassy" in keys
+
+    def test_country_annotation_ger_stripped(self) -> None:
+        keys = generate_search_keys("Dehler Yachts (GER)")
+        assert "dehler yachts" in keys
+
+
+class TestCountryAnnotationRegressions:
+    """Regression: only explicitly curated country codes may be stripped.
+
+    Generic parentheticals that happen to be 2-4 letters must NOT be stripped.
+    """
+
+    def test_ovni_parenthetical_preserved(self) -> None:
+        # (OVNI) is a boat brand/model identifier — must not be treated as a country.
+        keys = generate_search_keys("Alubat (OVNI)")
+        assert "alubat (ovni)" in keys
+        assert "alubat" not in keys  # should not silently strip (OVNI)
+
+    def test_mki_parenthetical_preserved(self) -> None:
+        # (MkI) is a generation label — must not be treated as a country annotation.
+        keys = generate_search_keys("Example 36 (MkI)")
+        assert "example 36 (mki)" in keys
+        assert "example 36" not in keys
+
+    def test_four_letter_non_country_preserved(self) -> None:
+        # (MKII) is 4 letters — must not match the generic pattern.
+        keys = generate_search_keys("Example 36 (MKII)")
+        assert "example 36 (mkii)" in keys
+
+    def test_two_letter_non_country_preserved(self) -> None:
+        # (SE) could be Sweden but is also used as "Special Edition" — too ambiguous.
+        # Only curated codes in the explicit list may be stripped.
+        # SE is not in the curated list, so it must be preserved.
+        keys = generate_search_keys("Example 36 (SE)")
+        assert "example 36 (se)" in keys
+
+    def test_explicit_usa_still_stripped(self) -> None:
+        keys = generate_search_keys("Builder Works (USA)")
+        assert "builder works" in keys
+
+    def test_explicit_uk_still_stripped(self) -> None:
+        keys = generate_search_keys("Builder Works (UK)")
+        assert "builder works" in keys
+
+    def test_explicit_fra_still_stripped(self) -> None:
+        keys = generate_search_keys("Builder Works (FRA)")
+        assert "builder works" in keys
+
 
 # ---------------------------------------------------------------------------
 # Scenario 14: Repeated suffixes like "Co., Ltd." can generate a shortened key

@@ -39,7 +39,65 @@
     "brand_relationships": {
       "type": "array",
       "items": {
-        "$ref": "https://hullq.local/schemas/brand-model-relationship/0.1"
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "brand_id"
+        ],
+        "description": "Embedded Brand relationship. boat_model_id is omitted here because it is always the enclosing BoatModel id; omitting it prevents contradictory cross-ID claims. The standalone BRAND_MODEL_RELATIONSHIP_SCHEMA.v0.1 retains both IDs for cross-entity use.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stable opaque relationship ID for independent addressing."
+          },
+          "brand_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Reference to the Brand entity ID."
+          },
+          "first_year": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1800,
+            "maximum": 2200
+          },
+          "last_year": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1800,
+            "maximum": 2200
+          },
+          "hull_number_from": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hull_number_to": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "market": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
       },
       "description": "Explicit Brand relationships. May be empty when evidence is insufficient. Supersedes free-text manufacturer_name and brand_name from v0.1."
     },

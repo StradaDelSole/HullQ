@@ -203,7 +203,12 @@ _SUFFIX_PATTERN = re.compile(
         | gmbh
         | co\.?               # Co. or Co
         | company
-        | \([a-z]{2,4}\)      # country annotations: (usa), (uk), (fra), etc.
+        # Explicitly accepted country/region annotations only (IDENTITY_MODEL.v0.2 §11 / ADR-0011 §4).
+        # A generic \([a-z]{2,4}\) would wrongly strip model-name or brand parentheticals like (OVNI) or (MkI).
+        | \( (?:
+              usa | uk  | fra | ger | ned | nor | swe | den | fin
+            | irl | ita | esp | por | bel | sui | can | aus | nz  | pol
+          ) \)
     )
     \s*$                      # end of string
     """,
