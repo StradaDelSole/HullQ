@@ -1,7 +1,7 @@
 # SLICE-0002 — Design Data Source Research & Seed Corpus
 
 **Type:** DESIGN_RESEARCH  
-**Status:** IN_PROGRESS  
+**Status:** REVIEW  
 **Stage:** 1.6 / pre-domain-implementation evidence gate  
 **Depends on:** SLICE-0001  
 **Blocks:** first HullQ domain implementation slices  
@@ -180,22 +180,23 @@ Do not implement those capabilities in this slice.
 - `docs/research/DESIGN_DATA_SOURCE_LANDSCAPE.md`
 - updated `research/evidence/SOURCE_REGISTER.md`
 - `research/DESIGN_DATA_FIELD_COVERAGE_MATRIX.md`
-- `research/benchmark/SEED_RESEARCH_NOTES.md` containing the representative 20–30-design research sample and source leads
+- `research/benchmark/SEED_RESEARCH_NOTES.md` containing the representative 20–30-design core research sample and source leads
+- `research/benchmark/SEED_RESEARCH_SUPPLEMENT.md` for the targeted partial-skeg/reused-name edge case
 - documented recommendation for broad identity bootstrap + deeper enrichment strategy
 - explicit list of pipeline capabilities learned from the real source sample
 - updates to subsequent slice boundaries where the evidence requires them
 
 ## Acceptance criteria
 
-- [ ] at least one plausible broad identity-bootstrap path has been researched under the accepted source-rights model;
-- [ ] source candidates are classified by rights/access/clearance, not merely technical accessibility;
-- [ ] all HullQ-critical technical field groups are covered by the field-source matrix;
-- [ ] 20–30 representative real designs have been manually source-researched deeply enough to expose missing/conflicting/option-sensitive data behavior;
-- [ ] SailboatData is not used as an invisible production-value source;
-- [ ] actual observed source shapes and ambiguities are documented;
-- [ ] likely automated vs human-review work is estimated from evidence;
-- [ ] pipeline requirements are derived from the researched sample rather than invented in advance;
-- [ ] no domain implementation is introduced in this slice.
+- [x] at least one plausible broad identity-bootstrap path has been researched under the accepted source-rights model;
+- [x] source candidates are classified by rights/access/clearance, not merely technical accessibility;
+- [x] all HullQ-critical technical field groups are covered by the field-source matrix;
+- [x] 20–30 representative real designs have been manually source-researched deeply enough to expose missing/conflicting/option-sensitive data behavior;
+- [x] SailboatData is not used as an invisible production-value source;
+- [x] actual observed source shapes and ambiguities are documented;
+- [x] likely automated vs human-review work is estimated from evidence;
+- [x] pipeline requirements are derived from the researched sample rather than invented in advance;
+- [x] no domain implementation is introduced in this slice.
 
 ## Stop conditions
 
@@ -208,17 +209,58 @@ Stop and surface a decision if:
 
 Do not work around those findings silently.
 
+## Status handoff rule
+
+This slice is now handed to independent review. It MUST NOT be moved to `DONE` by the research agent. `DONE` requires the review/acceptance path defined in `CLAUDE.md`.
+
 ## Required completion report
 
-Report:
+### Slice
 
-- serious source candidates found;
-- recommended broad bootstrap path;
-- field coverage findings;
-- representative-design sample completed;
-- major conflicts/ambiguities discovered;
-- estimated automation vs human-review split;
-- pipeline capabilities that the evidence proves we need;
-- any schema/OQ changes required before implementation.
+- Slice ID: `SLICE-0002`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
 
-Do not automatically begin SLICE-0003.
+### Changes
+
+- Changed files:
+  - `docs/research/DESIGN_DATA_SOURCE_LANDSCAPE.md`
+  - `research/evidence/SOURCE_REGISTER.md`
+  - `research/DESIGN_DATA_FIELD_COVERAGE_MATRIX.md`
+  - `research/benchmark/SEED_RESEARCH_NOTES.md`
+  - `research/benchmark/SEED_RESEARCH_SUPPLEMENT.md`
+  - `docs/slices/INDEX.md`
+  - this slice document
+- Requirements implemented or researched: evidence-first design-data acquisition requirements under accepted data strategy, identity, source-rights and provenance policy; no new production semantics introduced.
+- Tests/fixtures added or updated: no executable tests; 20-design core evidence sample plus one targeted partial-skeg supplement added as research evidence.
+
+### Validation
+
+- Local validation: `NOT APPLICABLE`
+- Commands run: none required for this documentation/research-only slice.
+- Results: research artifacts cross-checked against the controlling source-rights/identity/provenance rules; no domain code changed.
+
+### External verification
+
+- Remote CI: `NOT APPLICABLE` to slice acceptance; repository CI may still run on commits but no CI result is claimed here.
+- Other external gates: `NOT APPLICABLE`; source reuse classifications remain governed by ADR-0005 and do not grant new permissions.
+
+### Findings
+
+- Unresolved findings:
+  - Exact live Wikidata direct-instance count was not independently executed through WDQS in this research environment. Order-of-magnitude bootstrap feasibility is established by the official data model/query surface, a historical Wikimedia diagnostic count of 1,471 `Q106179098` items, and a current Wikidata-derived catalogue indexing 1,062 production sailboats. The future Wikidata adapter should record an exact reproducible live count and field-completeness snapshot.
+  - No single cleared source provides both broad identity coverage and HullQ-level rudder/skeg/configuration depth; multi-layer enrichment is required.
+  - ORC is technically attractive but remains blocked for HullQ systematic commercial ingestion without separate permission/licence.
+- Spec/ADR ambiguities: no blocking contradiction found. The source evidence reinforces existing identity, provenance and derived-input-basis decisions. Appendage/configuration implementation scope was separated in the backlog because real evidence proved keel/rudder/skeg relationships cannot safely be treated as one flat taxonomy field.
+- Scope deviations: one additional Seafarer 26 supplement was added beyond the 20-design core sample to explicitly cover partial-skeg + reused-model-name + defunct-builder behaviour. No implementation work was started.
+
+### Follow-up
+
+- Recommended next action: independent review and user/project-owner acceptance of SLICE-0002. If accepted, detail only `SLICE-0003` (canonical JSON-Schema contract runtime) and make it `READY`; do not begin later slices automatically.
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice was not started automatically.
+- The research agent has NOT marked this slice `DONE`.
