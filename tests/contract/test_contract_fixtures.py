@@ -40,9 +40,7 @@ def test_identity_current_contract_fixture() -> None:
     assert isinstance(fixture, dict)
     validator("BOAT_MODEL_SCHEMA.v0.1.json").validate(fixture["boat_model"])
     validator("BOAT_DESIGN_SCHEMA.v0.4.json").validate(fixture["boat_design"])
-    validator("RESOLVED_CONFIGURATION_SCHEMA.v0.2.json").validate(
-        fixture["resolved_configuration"]
-    )
+    validator("RESOLVED_CONFIGURATION_SCHEMA.v0.2.json").validate(fixture["resolved_configuration"])
 
 
 def test_ratio_schema_contract_fixture() -> None:
@@ -50,9 +48,7 @@ def test_ratio_schema_contract_fixture() -> None:
     assert isinstance(fixture, dict)
     validator("BOAT_MODEL_SCHEMA.v0.1.json").validate(fixture["boat_model"])
     validator("BOAT_DESIGN_SCHEMA.v0.4.json").validate(fixture["boat_design"])
-    validator("RESOLVED_CONFIGURATION_SCHEMA.v0.2.json").validate(
-        fixture["resolved_configuration"]
-    )
+    validator("RESOLVED_CONFIGURATION_SCHEMA.v0.2.json").validate(fixture["resolved_configuration"])
 
 
 def test_source_rights_fixtures() -> None:
@@ -83,7 +79,10 @@ def test_valid_provenance_fixtures(directory: str, schema_name: str) -> None:
         ("evidence_dot_path.json", "FIELD_EVIDENCE_SCHEMA.v0.1.json"),
         ("evidence_missing_source.json", "FIELD_EVIDENCE_SCHEMA.v0.1.json"),
         ("resolution_conflict_with_value.json", "FIELD_RESOLUTION_SCHEMA.v0.1.json"),
-        ("resolution_resolved_conflict_without_contradiction.json", "FIELD_RESOLUTION_SCHEMA.v0.1.json"),
+        (
+            "resolution_resolved_conflict_without_contradiction.json",
+            "FIELD_RESOLUTION_SCHEMA.v0.1.json",
+        ),
         ("resolution_resolved_without_support.json", "FIELD_RESOLUTION_SCHEMA.v0.1.json"),
         ("derivation_no_inputs.json", "DERIVATION_RECORD_SCHEMA.v0.1.json"),
     ],

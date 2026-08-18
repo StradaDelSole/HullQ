@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-18  
-**Current stage:** Stage 0.3 / Stage 1.6 boundary — bootstrap closure, then real design-data source research  
+**Current stage:** Stage 0.3 complete — SLICE-0001 done; next: SLICE-0002 real design-data source research  
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -24,15 +24,23 @@
 
 ## Current operational step
 
-### SLICE-0001 — Close repository bootstrap — READY
+### SLICE-0002 — Design Data Source Research & Seed Corpus — READY
 
-Root Python project configuration, package/test skeleton, cross-platform GitHub Actions CI and dependency-update policy are present. A valid committed `uv.lock` remains the final bootstrap gate and MUST be generated in a networked development environment.
+SLICE-0001 is complete: `uv.lock` committed, all local gates green, Linux + Windows CI green.
+
+See `docs/slices/SLICE-0002-source-data-research.md`.
+
+## Completed bootstrap
+
+### SLICE-0001 — Close repository bootstrap — DONE
+
+`uv.lock` generated and committed; all local quality gates pass (Ruff format/lint, mypy strict, pytest 18/18, coverage 100%, pip-audit clean); first green Linux + Windows GitHub Actions CI run confirmed.
 
 See `docs/slices/SLICE-0001-bootstrap-closure.md`.
 
 ## Immediate pre-domain research step
 
-### SLICE-0002 — Design Data Source Research & Seed Corpus — BACKLOG until SLICE-0001 is done
+### SLICE-0002 — Design Data Source Research & Seed Corpus — READY
 
 Before HullQ writes meaningful research-pipeline/domain code, research the **actual independent sailboat-design data sources** from which HullQ can build its own canonical universe.
 
@@ -66,7 +74,7 @@ Every source remains subject to ADR-0005: technical accessibility is not equival
 
 ## Following steps
 
-1. execute `SLICE-0001`: generate and commit `uv.lock`, pass full local gates and first green Linux + Windows CI;
+1. ~~execute `SLICE-0001`~~ **DONE**: `uv.lock` committed, all gates green, Linux + Windows CI green;
 2. execute `SLICE-0002`: perform real source/data research and the 20–30-design seed evidence sample;
 3. use those findings to refine `SLICE-0003+` rather than coding against hypothetical input shapes;
 4. implement contracts and deterministic normalization in bounded slices;

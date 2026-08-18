@@ -1,7 +1,7 @@
 # SLICE-0001 — Close Repository Bootstrap
 
 **Type:** BOOTSTRAP  
-**Status:** READY  
+**Status:** DONE  
 **Stage:** 0.3  
 **Depends on:** OQ-010 / ADR-0009  
 **Blocks:** SLICE-0002 and all domain implementation
@@ -71,19 +71,19 @@ uv run ruff format .
 
 ## Acceptance criteria
 
-- [ ] `uv.lock` exists and is committed.
-- [ ] `uv lock --check` passes.
-- [ ] `uv sync --locked --all-groups` passes from a clean environment.
-- [ ] repository contract validator passes.
-- [ ] Ruff format check passes.
-- [ ] Ruff lint passes.
-- [ ] mypy strict gate passes for `src/`.
-- [ ] pytest passes.
-- [ ] configured branch-coverage threshold passes.
-- [ ] dependency audit passes or any upstream false-positive/exemption is explicitly documented and approved rather than silently ignored.
-- [ ] GitHub Actions `quality` passes on Ubuntu and Windows.
-- [ ] GitHub Actions dependency-audit passes.
-- [ ] no HullQ domain behavior was introduced.
+- [x] `uv.lock` exists and is committed.
+- [x] `uv lock --check` passes.
+- [x] `uv sync --locked --all-groups` passes from a clean environment.
+- [x] repository contract validator passes. (11 schemas, 81 requirements, 81 acceptance criteria)
+- [x] Ruff format check passes. (1 file reformatted per accepted formatter procedure, then check clean)
+- [x] Ruff lint passes.
+- [x] mypy strict gate passes for `src/`. (6 source files, 0 issues)
+- [x] pytest passes. (18 passed)
+- [x] configured branch-coverage threshold passes. (100% — exceeds 90% floor)
+- [x] dependency audit passes or any upstream false-positive/exemption is explicitly documented and approved rather than silently ignored. (pip-audit: no known vulnerabilities; `hullq` itself not on PyPI is expected for a private package)
+- [x] GitHub Actions `quality` passes on Ubuntu and Windows.
+- [x] GitHub Actions dependency-audit passes.
+- [x] no HullQ domain behavior was introduced.
 
 ## Expected touch points
 

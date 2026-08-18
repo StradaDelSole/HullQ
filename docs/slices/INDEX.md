@@ -6,8 +6,8 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 
 | Slice | Type | Status | Objective | Depends on |
 |---|---|---|---|---|
-| SLICE-0001 | BOOTSTRAP | READY | Close repository bootstrap: real `uv.lock`, full local gates, first green Linux/Windows CI | OQ-010 / ADR-0009 |
-| SLICE-0002 | DESIGN_RESEARCH | BACKLOG | Research actual independent sailboat-design data sources and a 20–30-design seed evidence sample before domain pipeline code | SLICE-0001 |
+| SLICE-0001 | BOOTSTRAP | DONE | Close repository bootstrap: real `uv.lock`, full local gates, first green Linux/Windows CI | OQ-010 / ADR-0009 |
+| SLICE-0002 | DESIGN_RESEARCH | READY | Research actual independent sailboat-design data sources and a 20–30-design seed evidence sample before domain pipeline code | SLICE-0001 |
 | SLICE-0003 | IMPLEMENTATION | BACKLOG | Canonical contract runtime and schema-loading/validation layer, refined from SLICE-0002 evidence | SLICE-0002 |
 | SLICE-0004 | IMPLEMENTATION | BACKLOG | Deterministic unit-normalization primitives based on observed source inputs | SLICE-0003 |
 | SLICE-0005 | IMPLEMENTATION | BACKLOG | Text and identity-normalization primitives without fuzzy identity invention | SLICE-0004 |
@@ -18,7 +18,7 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 
 ## Current execution rule
 
-Only `SLICE-0001` is currently `READY`.
+Only `SLICE-0002` is currently `READY`. `SLICE-0001` is `DONE`.
 
 No HullQ domain implementation should begin before:
 
