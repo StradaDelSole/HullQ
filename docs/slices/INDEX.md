@@ -7,46 +7,56 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | Slice | Type | Status | Objective | Depends on |
 |---|---|---|---|---|
 | SLICE-0001 | BOOTSTRAP | DONE | Close repository bootstrap: real `uv.lock`, full local gates, first green Linux/Windows CI | OQ-010 / ADR-0009 |
-| SLICE-0002 | DESIGN_RESEARCH | IN_PROGRESS | Research actual independent sailboat-design data sources and a 20–30-design seed evidence sample before domain pipeline code | SLICE-0001 |
-| SLICE-0003 | IMPLEMENTATION | BACKLOG | Canonical contract runtime and schema-loading/validation layer, refined from SLICE-0002 evidence | SLICE-0002 |
-| SLICE-0004 | IMPLEMENTATION | BACKLOG | Deterministic unit-normalization primitives based on observed source inputs | SLICE-0003 |
-| SLICE-0005 | IMPLEMENTATION | BACKLOG | Text and identity-normalization primitives without fuzzy identity invention | SLICE-0004 |
-| SLICE-0006 | IMPLEMENTATION | BACKLOG | Taxonomy normalization for hull/keel/rudder/skeg/rig concepts | SLICE-0005 |
-| SLICE-0007 | IMPLEMENTATION | BACKLOG | Provenance runtime: FieldEvidence, FieldResolution and DerivationRecord behavior | SLICE-0006 |
+| SLICE-0002 | DESIGN_RESEARCH | REVIEW | Research independent sailboat-design data sources and a 20–30-design seed evidence sample before domain pipeline code | SLICE-0001 |
+| SLICE-0003 | IMPLEMENTATION | BACKLOG | Canonical JSON-Schema contract runtime and local `$id`/reference registry; no acquisition/network semantics | SLICE-0002 acceptance |
+| SLICE-0004 | IMPLEMENTATION | BACKLOG | Measurement observation + deterministic unit/basis normalization while preserving raw source semantics | SLICE-0003 |
+| SLICE-0005 | IMPLEMENTATION | BACKLOG | Identity/model/generation text primitives without fuzzy resolution or silent generation inference | SLICE-0004 |
+| SLICE-0006 | IMPLEMENTATION | BACKLOG | Appendage/configuration normalization: independent keel, board, rudder, skeg, count/state and option relationships | SLICE-0005 |
+| SLICE-0007 | IMPLEMENTATION | BACKLOG | Provenance/conflict runtime: FieldEvidence, FieldResolution and DerivationRecord behavior | SLICE-0006 |
 | SLICE-0008 | IMPLEMENTATION | BACKLOG | Derived-metrics engine under `hullq-derived-1.0.0` | SLICE-0007 |
 | SLICE-0009 | IMPLEMENTATION | BACKLOG | ResearchJob state machine, restartability and explicit review/error states | SLICE-0008 |
+| SLICE-0010 | IMPLEMENTATION | BACKLOG | Source-clearance guard plus first real external acquisition adapter, preferred initial target: Wikidata CC0 | SLICE-0009 |
 
 ## Current execution rule
 
-Only `SLICE-0002` is currently `IN_PROGRESS`. `SLICE-0001` is `DONE`.
+`SLICE-0002` is in `REVIEW`. No implementation slice is `READY` until independent review and project-owner acceptance move SLICE-0002 to `DONE`.
 
 No HullQ domain implementation should begin before:
 
 1. `SLICE-0001` is `DONE`; and
-2. `SLICE-0002` has researched real data sources and completed its seed evidence sample.
+2. `SLICE-0002` is accepted after review.
 
-This deliberately uses evidence-first pipeline design:
+Evidence-first sequence:
 
 ```text
 reproducible toolchain
         ↓
 real design-data source research
         ↓
-manual 20–30-design evidence sample
+20-design core seed + targeted supplement
         ↓
-actual observed extraction / normalization requirements
+observed extraction / measurement / appendage / conflict requirements
         ↓
-bounded pipeline implementation
+bounded pure-domain implementation
+        ↓
+first rights-gated real source adapter
         ↓
 50–100-design benchmark
         ↓
 broad ingestion into thousands of designs
 ```
 
-The purpose of SLICE-0002 is **not** to finish the product database manually. It is to prevent HullQ from building a research pipeline against imaginary source conditions.
+## Why the implementation backlog changed after SLICE-0002
 
-The production persistence/search technology remains a later OQ-012 decision. A persistence-neutral logical-model review may be performed when implementation evidence makes it useful, but it is no longer a pre-code gate.
+The source sample proved several concerns deserve separate boundaries:
+
+- **measurement semantics** are broader than unit conversion: raw labels such as lightship, half-load, measurement trim and EEC-light must survive normalization;
+- **appendage/configuration normalization** needs its own slice because keel, board, rudder, skeg, rudder count and protection/support relationships vary independently in real boats;
+- **source acquisition** should come only after the pure contracts/normalization/provenance/job-state foundations exist, and the first adapter must enforce source clearance before network use;
+- one generic `taxonomy normalization` slice would hide too much domain complexity and encourage accidental source-string mapping.
+
+The production persistence/search technology remains a later OQ-012 decision.
 
 ## Rolling-wave note
 
-Slices 0003–0009 are directional backlog. Their exact boundaries MUST be refined from SLICE-0002 source evidence and later implementation findings. Do not detail future slices merely to create a long plan.
+SLICE-0003 is the next candidate to detail after SLICE-0002 acceptance. SLICE-0004–0010 remain directional backlog and may be refined by implementation evidence. Do not create a long speculative plan merely to fill the queue.
