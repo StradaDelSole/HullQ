@@ -2,39 +2,13 @@
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
-from jsonschema import Draft202012Validator
-from referencing import Registry, Resource
+from hullq.contracts import ContractRegistry
 
 ROOT = Path(__file__).resolve().parents[1]
 SPECS = ROOT / "specs"
-
-
-def load_json(path: Path) -> object:
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def active_schemas() -> dict[str, dict[str, object]]:
-    schemas: dict[str, dict[str, object]] = {}
-    for path in sorted(SPECS.glob("*_SCHEMA*.json")):
-        schema = load_json(path)
-        if not isinstance(schema, dict):
-            raise TypeError(f"Schema must be an object: {path}")
-        Draft202012Validator.check_schema(schema)
-        schema_id = schema.get("$id")
-        if isinstance(schema_id, str):
-            schemas[schema_id] = schema
-    return schemas
-
-
-def schema_registry(schemas: dict[str, dict[str, object]]) -> Registry:
-    registry = Registry()
-    for uri, schema in schemas.items():
-        registry = registry.with_resource(uri, Resource.from_contents(schema))
-    return registry
 
 
 def requirements_check() -> tuple[int, int]:
@@ -58,11 +32,10 @@ def no_active_drafts_check() -> None:
 
 
 def main() -> None:
-    schemas = active_schemas()
-    _ = schema_registry(schemas)
+    registry = ContractRegistry.from_directory(SPECS)
     req_count, acceptance_count = requirements_check()
     no_active_drafts_check()
-    print(f"active schemas: {len(schemas)}")
+    print(f"active schemas: {len(registry.schema_names)}")
     print(f"requirements: {req_count}")
     print(f"acceptance criteria: {acceptance_count}")
     print("repository governance validation: PASS")

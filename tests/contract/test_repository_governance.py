@@ -1,12 +1,15 @@
 from pathlib import Path
 
-from scripts.validate_repository import active_schemas, no_active_drafts_check, requirements_check
+from hullq.contracts import ContractRegistry
+from scripts.validate_repository import no_active_drafts_check, requirements_check
 
 ROOT = Path(__file__).resolve().parents[2]
+SPECS = ROOT / "specs"
 
 
 def test_active_json_schemas_are_valid() -> None:
-    assert active_schemas()
+    registry = ContractRegistry.from_directory(SPECS)
+    assert registry.schema_names
 
 
 def test_every_requirement_has_one_acceptance_criterion() -> None:

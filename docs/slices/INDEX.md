@@ -8,7 +8,7 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 |---|---|---|---|---|
 | SLICE-0001 | BOOTSTRAP | DONE | Close repository bootstrap: real `uv.lock`, full local gates, first green Linux/Windows CI | OQ-010 / ADR-0009 |
 | SLICE-0002 | DESIGN_RESEARCH | DONE | Research independent sailboat-design data sources and a 20–30-design seed evidence sample before domain pipeline code | SLICE-0001 |
-| SLICE-0003 | IMPLEMENTATION | READY | Canonical JSON-Schema contract runtime and local `$id`/reference registry; no acquisition/network semantics | SLICE-0002 |
+| SLICE-0003 | IMPLEMENTATION | REVIEW | Canonical JSON-Schema contract runtime and local `$id`/reference registry; no acquisition/network semantics | SLICE-0002 |
 | SLICE-0004 | IMPLEMENTATION | BACKLOG | Measurement observation + deterministic unit/basis normalization while preserving raw source semantics | SLICE-0003 |
 | SLICE-0005 | IMPLEMENTATION | BACKLOG | Identity/model/generation text primitives without fuzzy resolution or silent generation inference | SLICE-0004 |
 | SLICE-0006 | IMPLEMENTATION | BACKLOG | Appendage/configuration normalization: independent keel, board, rudder, skeg, count/state and option relationships | SLICE-0005 |
