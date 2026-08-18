@@ -17,7 +17,7 @@ function Normalize-Slice([string]$Value) {
 function Open-Worktree([string]$Path) {
     $code = Get-Command code -ErrorAction SilentlyContinue
     if ($code) {
-        Start-Process -FilePath $code.Source -ArgumentList @('-n', $Path)
+        Start-Process -FilePath $code.Source -ArgumentList @('-r', $Path)
     } else {
         Start-Process explorer.exe $Path
     }
