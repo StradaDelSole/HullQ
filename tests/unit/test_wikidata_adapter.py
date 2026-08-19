@@ -1721,8 +1721,8 @@ def test_unsupported_qualifier_produces_no_field_evidence_with_qualifier_keys() 
 # ---------------------------------------------------------------------------
 
 
-def test_kg_unit_on_length_field_produces_no_normalized_candidate() -> None:
-    """A mass unit (kg) on a length field must not produce a NormalizedCandidate."""
+def test_kg_unit_on_length_field_produces_no_field_evidence() -> None:
+    """A recognised mass unit (kg) on a length field must produce zero beam FieldEvidence."""
     entity = WikidataEntityData(
         qid="Q4001",
         label="Cross Dim Boat",
@@ -1732,38 +1732,43 @@ def test_kg_unit_on_length_field_produces_no_normalized_candidate() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, _ = adapter.extract_field_evidence(
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    beam_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/beam_m"]
+    assert len(beam_ev) == 0
+    assert report.unsupported_qualifier_count == 1
+
+
+def test_unknown_unit_on_length_field_still_produces_raw_evidence() -> None:
+    """An unrecognised unit on a length field must still produce raw FieldEvidence.
+
+    Unknown units are not rejected — they produce evidence with no NormalizedCandidate
+    and do not increment the unsupported counter (existing unknown-unit contract).
+    """
+    entity = WikidataEntityData(
+        qid="Q4002",
+        label="Unknown Unit Boat",
+        aliases=[],
+        raw_claims={
+            "P2049": [_quantity_claim("P2049", "+9.8", "Q999999")]  # unknown unit
+        },
+    )
+    adapter = _make_adapter()
+    evidence, report = adapter.extract_field_evidence(
         [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
     )
     beam_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/beam_m"]
     assert len(beam_ev) == 1
     assert beam_ev[0].normalized_candidate is None
-
-
-def test_kg_unit_on_length_field_preserves_raw_observation() -> None:
-    """Raw observation must be preserved even when dimension check prevents normalization."""
-    entity = WikidataEntityData(
-        qid="Q4002",
-        label="Raw Preserved Boat",
-        aliases=[],
-        raw_claims={
-            "P2049": [_quantity_claim("P2049", "+9.8", "Q11570")]  # kg on beam
-        },
-    )
-    adapter = _make_adapter()
-    evidence, _ = adapter.extract_field_evidence(
-        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
-    )
-    beam_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/beam_m"]
-    assert len(beam_ev) == 1
+    assert report.unsupported_qualifier_count == 0
     raw_val = beam_ev[0].raw.value
     assert isinstance(raw_val, dict)
     assert raw_val["amount"] == "+9.8"
-    assert "Q11570" in raw_val["unit"]
 
 
-def test_metre_unit_on_mass_field_produces_no_normalized_candidate() -> None:
-    """A length unit (metre) on a mass field must not produce a NormalizedCandidate."""
+def test_metre_unit_on_mass_field_produces_no_field_evidence() -> None:
+    """A recognised length unit (metre) on a mass field must produce zero displacement evidence."""
     entity = WikidataEntityData(
         qid="Q4003",
         label="Wrong Dim Boat",
@@ -1780,12 +1785,12 @@ def test_metre_unit_on_mass_field_produces_no_normalized_candidate() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, _ = adapter.extract_field_evidence(
+    evidence, report = adapter.extract_field_evidence(
         [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
     )
     disp_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/displacement_kg"]
-    assert len(disp_ev) == 1
-    assert disp_ev[0].normalized_candidate is None
+    assert len(disp_ev) == 0
+    assert report.unsupported_qualifier_count == 1
 
 
 def test_correct_length_unit_on_length_field_produces_normalized_candidate() -> None:
@@ -1833,8 +1838,8 @@ def test_correct_mass_unit_on_mass_field_produces_normalized_candidate() -> None
     assert disp_ev[0].normalized_candidate is not None
 
 
-def test_kg_on_loa_field_produces_no_normalized_candidate() -> None:
-    """P2043 LOA with kg unit — raw evidence kept, no normalization."""
+def test_kg_on_loa_field_produces_no_field_evidence() -> None:
+    """P2043 LOA with recognised kg unit — zero LOA FieldEvidence, unsupported incremented."""
     entity = WikidataEntityData(
         qid="Q4006",
         label="LOA Wrong Unit Boat",
@@ -1851,16 +1856,16 @@ def test_kg_on_loa_field_produces_no_normalized_candidate() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, _ = adapter.extract_field_evidence(
+    evidence, report = adapter.extract_field_evidence(
         [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
     )
     loa_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/loa_m"]
-    assert len(loa_ev) == 1
-    assert loa_ev[0].normalized_candidate is None
+    assert len(loa_ev) == 0
+    assert report.unsupported_qualifier_count == 1
 
 
-def test_metre_on_ballast_field_produces_no_normalized_candidate() -> None:
-    """P2067 ballast with metre unit — raw evidence kept, no normalization."""
+def test_metre_on_ballast_field_produces_no_field_evidence() -> None:
+    """P2067 ballast with recognised metre unit — zero ballast FieldEvidence, unsupported incremented."""
     entity = WikidataEntityData(
         qid="Q4007",
         label="Ballast Wrong Unit Boat",
@@ -1877,12 +1882,12 @@ def test_metre_on_ballast_field_produces_no_normalized_candidate() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, _ = adapter.extract_field_evidence(
+    evidence, report = adapter.extract_field_evidence(
         [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
     )
     ballast_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/ballast_kg"]
-    assert len(ballast_ev) == 1
-    assert ballast_ev[0].normalized_candidate is None
+    assert len(ballast_ev) == 0
+    assert report.unsupported_qualifier_count == 1
 
 
 def test_p1092_with_dimensional_unit_increments_unsupported_count() -> None:
@@ -1924,13 +1929,13 @@ def test_p1092_with_length_unit_also_increments_unsupported_count() -> None:
 
 
 def test_p1092_with_dimensionless_unit_produces_evidence_without_normalization() -> None:
-    """P1092 with sentinel '1' unit produces evidence; normalized_candidate is None."""
+    """P1092 with non-QID URL unit (test-helper sentinel) produces evidence."""
     entity = WikidataEntityData(
         qid="Q4010",
         label="Built Count Dimensionless",
         aliases=[],
         raw_claims={
-            "P1092": [_quantity_claim("P1092", "+300", "1")]  # sentinel via test helper
+            "P1092": [_quantity_claim("P1092", "+300", "1")]  # helper builds non-QID URL
         },
     )
     adapter = _make_adapter()
@@ -1941,6 +1946,59 @@ def test_p1092_with_dimensionless_unit_produces_evidence_without_normalization()
     assert len(built_ev) == 1
     assert built_ev[0].normalized_candidate is None
     assert report.unsupported_qualifier_count == 0
+
+
+def test_p1092_with_literal_sentinel_unit_produces_evidence() -> None:
+    """P1092 with the real Wikidata API unit '1' (literal) produces count evidence."""
+    raw_claim: dict[str, Any] = {
+        "type": "statement",
+        "id": "P1092$literal-001",
+        "rank": "normal",
+        "mainsnak": {
+            "snaktype": "value",
+            "property": "P1092",
+            "datavalue": {
+                "type": "quantity",
+                "value": {
+                    "amount": "+450",
+                    "unit": "1",  # literal sentinel as Wikidata API sends it
+                },
+            },
+        },
+    }
+    entity = WikidataEntityData(
+        qid="Q4011",
+        label="Built Count Literal Sentinel",
+        aliases=[],
+        raw_claims={"P1092": [raw_claim]},
+    )
+    adapter = _make_adapter()
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    built_ev = [e for e in evidence if e.field_pointer.raw == "/relationships/number_built"]
+    assert len(built_ev) == 1
+    assert built_ev[0].normalized_candidate is None
+    assert report.unsupported_qualifier_count == 0
+
+
+def test_p1092_with_unknown_qid_unit_is_unsupported() -> None:
+    """P1092 with an unknown Wikidata QID unit → zero evidence, unsupported increments."""
+    entity = WikidataEntityData(
+        qid="Q4012",
+        label="Built Count Unknown Unit",
+        aliases=[],
+        raw_claims={
+            "P1092": [_quantity_claim("P1092", "+150", "Q999999")]  # unknown QID
+        },
+    )
+    adapter = _make_adapter()
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    built_ev = [e for e in evidence if e.field_pointer.raw == "/relationships/number_built"]
+    assert len(built_ev) == 0
+    assert report.unsupported_qualifier_count == 1
 
 
 # ---------------------------------------------------------------------------

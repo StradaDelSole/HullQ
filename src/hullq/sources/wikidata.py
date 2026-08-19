@@ -380,6 +380,28 @@ def _extract_unit_qid(unit_uri: str) -> str | None:
     return m.group(1) if m else None
 
 
+def _claim_unit_qid(claim: dict[str, Any]) -> str | None:
+    """Extract the unit QID from a quantity claim's mainsnak.
+
+    Returns the QID string (e.g. ``"Q11570"``) for a recognisable Wikidata
+    entity unit URL, or ``None`` for the dimensionless sentinel ``"1"``, an
+    unrecognised URL, or a malformed/missing value.
+    """
+    mainsnak = claim.get("mainsnak")
+    if not isinstance(mainsnak, dict):
+        return None
+    dv = mainsnak.get("datavalue")
+    if not isinstance(dv, dict):
+        return None
+    val = dv.get("value")
+    if not isinstance(val, dict):
+        return None
+    unit_uri = val.get("unit", "1")
+    if not isinstance(unit_uri, str):
+        return None
+    return _extract_unit_qid(unit_uri)
+
+
 def _make_evidence_id(qid: str, prop: str, stmt_id: str | None, index: int) -> str:
     """Build a deterministic, collision-resistant evidence ID."""
     if stmt_id:
@@ -1035,8 +1057,12 @@ class WikidataAdapter:
     ) -> None:
         """Process quantity claims that need no qualifier disambiguation.
 
-        ``expected_quantity`` is passed to ``_build_quantity_evidence`` so that
-        units of the wrong physical dimension never produce a NormalizedCandidate.
+        When ``expected_quantity`` is supplied, any claim whose unit resolves to
+        a recognised Wikidata entity QID of the wrong physical dimension is routed
+        to ``unsupported_qualifier_count`` and produces NO FieldEvidence.
+        Unrecognised units are not rejected — they pass through to
+        ``_build_quantity_evidence`` and produce raw evidence without a
+        NormalizedCandidate, preserving the existing unknown-unit contract.
         """
         prop_claims = claims.get(prop_id, [])
         if not isinstance(prop_claims, list):
@@ -1045,6 +1071,14 @@ class WikidataAdapter:
             if not isinstance(claim, dict):
                 state.malformed_count += 1
                 continue
+            # Reject a recognised wrong-dimension unit before creating any evidence.
+            if expected_quantity is not None:
+                unit_qid = _claim_unit_qid(claim)
+                if unit_qid is not None and unit_qid in _UNIT_QID_MAP:
+                    actual_qty, _ = _UNIT_QID_MAP[unit_qid]
+                    if actual_qty != expected_quantity:
+                        state.unsupported_qualifier_count += 1
+                        continue
             ev = _build_quantity_evidence(
                 qid,
                 prop_id,
@@ -1078,9 +1112,10 @@ class WikidataAdapter:
     ) -> None:
         """Process dimensionless integer-count claims (e.g. P1092 total produced).
 
-        Only the Wikidata dimensionless sentinel unit QID "1" is accepted.  Any
-        recognised dimensional unit (kg, m, …) is counted as unsupported rather
-        than silently normalised into a length or mass field.
+        Only the Wikidata dimensionless sentinel ``"1"`` (i.e. any unit URI that
+        does not resolve to a Wikidata entity QID) is accepted.  Any unit that
+        resolves to a QID — whether recognised (kg, m, …) or unknown — is counted
+        as unsupported rather than silently mapped to the count field.
         """
         prop_claims = claims.get(prop_id, [])
         if not isinstance(prop_claims, list):
@@ -1092,21 +1127,11 @@ class WikidataAdapter:
             mainsnak = claim.get("mainsnak", {})
             if isinstance(mainsnak, dict) and mainsnak.get("snaktype") in ("novalue", "somevalue"):
                 continue
-            if isinstance(mainsnak, dict):
-                dv = mainsnak.get("datavalue", {})
-                unit_url = ""
-                if isinstance(dv, dict):
-                    unit_url = (
-                        dv.get("value", {}).get("unit", "")
-                        if isinstance(dv.get("value"), dict)
-                        else ""
-                    )
-                # Extract trailing QID from unit URL (e.g. "http://…/entity/Q11570")
-                raw_unit = unit_url.rsplit("/", 1)[-1] if "/" in unit_url else unit_url
-                if raw_unit in _UNIT_QID_MAP:
-                    # Dimensional unit on a count field — unsupported, not malformed
-                    state.unsupported_qualifier_count += 1
-                    continue
+            # Enforce: only dimensionless sentinel is accepted.  Use _claim_unit_qid
+            # which returns None for "1" and for non-QID URLs.  Any QID → unsupported.
+            if _claim_unit_qid(claim) is not None:
+                state.unsupported_qualifier_count += 1
+                continue
             ev = _build_quantity_evidence(
                 qid,
                 prop_id,
@@ -1160,6 +1185,15 @@ class WikidataAdapter:
             for qual_qid in qual_qids:
                 if qual_qid in qualifier_map:
                     field_pointer, field_label = qualifier_map[qual_qid]
+                    # Reject a recognised wrong-dimension unit before creating evidence.
+                    if expected_quantity is not None:
+                        unit_qid = _claim_unit_qid(claim)
+                        if unit_qid is not None and unit_qid in _UNIT_QID_MAP:
+                            actual_qty, _ = _UNIT_QID_MAP[unit_qid]
+                            if actual_qty != expected_quantity:
+                                state.unsupported_qualifier_count += 1
+                                matched = True
+                                break
                     ev = _build_quantity_evidence(
                         qid,
                         prop_id,
