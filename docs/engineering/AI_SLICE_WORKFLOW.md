@@ -20,10 +20,13 @@ The GitHub ruleset protects `main` by requiring a pull request, the existing Ubu
 
 1. Double-click `START_SLICE.bat` in the normal HullQ folder.
 2. Enter the slice number, for example `0005`.
-3. The script synchronizes local `main` with `origin/main`, creates/reuses an isolated Git worktree and slice branch, opens that worktree in VS Code, and copies the Claude Code instruction to the clipboard.
-4. Paste the copied instruction into Claude Code.
+3. The script synchronizes local `main` with `origin/main`, creates/reuses an isolated Git worktree and slice branch, and copies the Claude Code instruction to the clipboard.
+4. The script deliberately does **not** open, close, reload, or switch any VS Code window.
+5. When ready, explicitly open the sibling worktree (for example `HullQ-slice-0005`) in the VS Code window that should host Claude Code, then paste the copied instruction.
 
 The normal HullQ folder stays on `main`. Claude works in a sibling folder such as `HullQ-slice-0005`.
+
+Why VS Code opening is manual: Claude Code UI/session state can be tied to the current VS Code workspace. Automatically reusing a window can replace the current workspace and interrupt an existing Claude session; automatically opening a second window may also be unwanted. The workflow therefore prepares Git state only and leaves the UI decision to the project owner.
 
 ### Finish a slice
 
@@ -54,6 +57,7 @@ The helper scripts are intentionally fail-safe:
 - they refuse to start from a dirty main checkout;
 - they use `git pull --ff-only` for local main;
 - they never push or merge to `main`;
+- `START_SLICE.bat` never manipulates VS Code windows;
 - the finish script does not delete a worktree with uncommitted changes;
 - cleanup is skipped unless a merged PR can be confirmed through GitHub CLI;
 - the setup script verifies the canonical repository before changing GitHub rules;
