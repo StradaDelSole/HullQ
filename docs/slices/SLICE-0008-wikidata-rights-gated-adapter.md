@@ -309,6 +309,7 @@ When implementation is complete:
 - Slice ID: `SLICE-0008`
 - Recommended slice state: `REVIEW`
 - Scope completed: `YES`
+- **Amendment:** PR #19 review findings addressed (see Review Amendment below)
 
 ### Changes
 
@@ -368,3 +369,42 @@ When implementation is complete:
 - No unverified acceptance criterion was marked as passed.
 - The next slice (SLICE-0009) was not started automatically.
 - The agent has NOT marked this slice `DONE`.
+
+---
+
+## Review Amendment (PR #19 findings)
+
+**HEAD after amendment:** `b277714c…` (pushed to `slice/0008-wikidata-rights-gated-adapter`)
+
+### Finding 1 resolved — requested_qid_count is now independent of fetched count
+
+`extract_field_evidence()` now requires an explicit `requested_qid_count: int` keyword argument (the distinct QID count after deduplication, as submitted to `fetch_entities`). This is tracked in `run_controlled_probe()` before the API call so partial-return cases (absent or non-item entities) are correctly represented in the quality report. 5 new tests added covering all required scenarios.
+
+Semantic choice documented: `requested_qid_count` counts post-deduplication distinct QIDs submitted to the Wikidata API. Duplicate handling is deterministic (exact-QID identity, not fuzzy).
+
+### Finding 2 resolved — User-Agent requires HullQ identity + contact identifier
+
+`WikidataAdapterConfig.__post_init__` now validates:
+1. `"hullq"` present in user_agent (case-insensitive) — project identifier;
+2. a contact identifier present — email address pattern (`user@domain.tld`) or URL (`http://…` or `https://…`).
+
+Existing item_limit/timeout tests that used bare `"HullQ/0.1"` updated to use valid contact-bearing strings. 7 new tests added (4 negative, 3 positive including case-insensitive check).
+
+### Finding 3 resolved — P642 qualifier identity preserved in raw observation
+
+`_build_quantity_evidence()` now accepts `qualifier_qid: str | None` keyword argument. When supplied (by `_process_qualified_quantity` passing the matched qualifier), the `RawObservation.value` dict includes:
+- `"qualifier_property": "P642"` — the qualifier property;
+- `"qualifier_value_id": "<qual_QID>"` — the matched qualifier value (e.g., `"Q2358152"` for LOA).
+
+Unqualified fields (beam, number_built) receive no qualifier keys. Unsupported qualifiers continue to route to `unsupported_qualifier_count` without producing evidence. 8 new tests added.
+
+### Validation after amendment
+
+- ruff check: clean
+- ruff format: clean
+- mypy (SLICE-0008 files): clean
+- pytest: **587 passed** (20 new tests from review fixes)
+- branch coverage: **90.99%** (≥90% required)
+- pip-audit: no known vulnerabilities
+- Remote CI (PR #19): **NOT VERIFIED** — branch pushed; GitHub Actions result not yet observed
+- Live smoke: not executed
