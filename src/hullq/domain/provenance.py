@@ -218,7 +218,7 @@ class JsonPointer:
                 current = mapping[token]
             elif isinstance(current, list):
                 seq: list[object] = current
-                if not _ARRAY_INDEX_RE.match(token):
+                if not _ARRAY_INDEX_RE.fullmatch(token):
                     raise KeyError(
                         f"Invalid RFC 6901 array index {token!r}: must be '0' or a "
                         f"non-zero digit followed by zero or more digits (no leading zeros, "

@@ -334,6 +334,12 @@ class TestScenario10MalformedPointerRejected:
         with pytest.raises(KeyError):
             ptr.lookup({"items": [10, 20, 30]})
 
+    @pytest.mark.parametrize("token", ["1\n", "0\n", "1 ", " 1"])
+    def test_whitespace_tainted_array_index_rejected(self, token: str) -> None:
+        ptr = JsonPointer(f"/items/{token}")
+        with pytest.raises(KeyError):
+            ptr.lookup({"items": [10, 20, 30]})
+
     @pytest.mark.parametrize(
         "token,expected",
         [("0", 0), ("1", 1), ("42", 42)],
