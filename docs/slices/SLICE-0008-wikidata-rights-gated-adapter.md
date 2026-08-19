@@ -1,0 +1,301 @@
+# SLICE-0008 — First Rights-Gated Real Adapter: Wikidata
+
+**ID:** SLICE-0008  
+**Type:** IMPLEMENTATION  
+**Status:** READY  
+**Stage:** 2.7 — first controlled real external acquisition  
+**Depends on:** SLICE-0007 accepted / DONE  
+**Blocks:** SLICE-0009
+
+## Objective
+
+Implement HullQ's first real external acquisition adapter against Wikidata structured data, using the accepted SLICE-0007 rights/access gate before network use and the SLICE-0006 provenance boundary after extraction.
+
+This slice proves the smallest end-to-end external-data path:
+
+```text
+reviewed Wikidata Source record
+        +
+ResearchJob / bounded acquisition request
+        ↓
+SLICE-0007 automated-ingestion rights gate
+        ↓ ALLOWED only
+HTTP acquisition from official Wikimedia/Wikidata endpoint(s)
+        ↓
+raw response preserved in memory / test fixture boundary
+        ↓
+Wikidata statement parsing with qualifiers retained
+        ↓
+FieldEvidence candidates
+        ↓
+NO canonical FieldResolution / BoatDesign write yet
+```
+
+The goal is not broad ingestion. The goal is to prove that HullQ can fetch a small, reproducible, rights-cleared real sample and preserve enough source semantics to inform SLICE-0009.
+
+## Controlling artifacts
+
+- `docs/research/DESIGN_DATA_SOURCE_LANDSCAPE.md` — Wikidata is the strongest current broad bootstrap candidate.
+- `architecture/decisions/ADR-0005-source-rights-clearance.md`.
+- `specs/SOURCE_RIGHTS_POLICY.v0.1.md`.
+- `specs/SOURCE_SCHEMA.v0.2.json`.
+- SLICE-0007 runtime in `src/hullq/sources/rights.py`.
+- SLICE-0007 ResearchJob runtime in `src/hullq/research/jobs.py`.
+- SLICE-0006 provenance runtime in `src/hullq/domain/provenance.py`.
+- SLICE-0004 measurement normalization boundary.
+- accepted identity contracts from SLICE-0005.
+
+External source facts already established by reviewed HullQ research and rechecked during preparation:
+
+- Wikidata structured data is CC0.
+- official Wikimedia API use requires a descriptive User-Agent/contact and compliance with throttling/rate-limit instructions.
+- Wikidata's sailboat-class model uses `Q106179098` and structured properties including manufacturer `P176`, designer `P287`, length `P2043`, width `P2049`, height `P2048`, mass `P2067`, with `P642` qualifiers distinguishing concepts such as LOA/LWL, draft/air-draft, displacement/ballast.
+
+## Core rules
+
+1. **Rights gate before network.** No adapter HTTP request may be sent until `check_source_use(..., SourceUse.AUTOMATED_INGESTION, ...)` returns `ALLOWED` for the reviewed Wikidata Source record.
+2. **No license inference in code.** The adapter must not grant itself permission because a URL contains `wikidata.org` or because a payload says CC0. Permission comes from the reviewed Source record.
+3. **Controlled, not broad.** SLICE-0008 is a bounded probe/acquisition slice. It must not become a production crawler or full Wikidata dump importer.
+4. **Descriptive User-Agent.** Requests must send an explicit HullQ User-Agent containing a contact identifier supplied by configuration. Generic HTTPX/Python user agents are not acceptable.
+5. **Respect API pressure signals.** HTTP 429 / Retry-After and explicit service throttling must result in a deterministic non-success acquisition outcome; no aggressive concurrent retry loop.
+6. **Preserve statement semantics.** Do not flatten qualified Wikidata values into unlabeled canonical facts. Raw claim/value/unit/qualifier identity must remain recoverable.
+7. **Unknown stays unknown.** Missing properties produce absence/unknown, never fabricated values.
+8. **No authority shortcut.** Wikidata being open/structured does not make every statement correct and does not resolve conflicts automatically.
+9. **Evidence before canonical.** This slice may create `FieldEvidence` / normalized candidates where mappings are deterministic, but must not create accepted `FieldResolution` or mutate BoatModel/BoatDesign canonical records.
+10. **No private boat-list content.** The private 9,277-row reference universe must not be committed or used as a source payload.
+
+## In scope
+
+### 1. Reviewed Wikidata Source record
+
+Add a repository-safe Source record for the exact Wikidata access path used by this adapter, validated against `SOURCE_SCHEMA.v0.2.json`.
+
+It must document at least:
+
+- stable HullQ `source_id`;
+- publisher/operator;
+- API access method and endpoint family;
+- CC0 structured-data rights basis;
+- reviewed automated-access state for this concrete access path;
+- use-specific HullQ clearances;
+- API/User-Agent/rate-limit operational conditions in structured notes/evidence;
+- review date and rights evidence URLs.
+
+Do not weaken the existing generic CC0 fixture. This is a source-specific reviewed record for Wikidata.
+
+### 2. Bounded adapter configuration
+
+Add a small immutable configuration/value-object boundary containing at least:
+
+- descriptive User-Agent/contact string;
+- request timeout;
+- explicit item/query limit for this controlled slice;
+- optional language preference with deterministic fallback.
+
+The caller must explicitly bound the acquisition. This slice must refuse an unbounded request. A hard implementation safety ceiling for the controlled probe is acceptable, but it must be documented as a SLICE-0008 operational cap, not a rights/licence rule.
+
+### 3. Rights-gated HTTP boundary
+
+Use HTTPX from the accepted toolchain.
+
+The adapter must:
+
+- accept the reviewed Source record or source-id-resolved equivalent;
+- call the SLICE-0007 automated-ingestion gate before any request;
+- refuse acquisition on BLOCKED / CONDITIONAL / UNKNOWN / LEGAL_REVIEW outcomes;
+- keep request counting attributable to the same `source_id`;
+- use the configured User-Agent;
+- avoid uncontrolled concurrency;
+- expose deterministic error/result types for timeout, HTTP error, throttling and malformed JSON.
+
+Do not build a generic scraping framework.
+
+### 4. Sailboat-class discovery probe
+
+Provide a bounded official-Wikidata discovery operation for items that are direct instances of sailboat class `Q106179098`.
+
+Preferred approach: a narrowly scoped WDQS/SPARQL query equivalent to:
+
+```sparql
+?sailboat_class wdt:P31 wd:Q106179098
+```
+
+Requirements:
+
+- deterministic query text/version in code;
+- explicit caller limit;
+- deterministic extraction of QIDs;
+- no silent deduplication beyond exact QID identity;
+- preserve query/access metadata sufficient to reproduce the probe.
+
+If implementation evidence shows WDQS is unsuitable for the controlled adapter, stop and report rather than silently switching to a different acquisition strategy.
+
+### 5. Entity acquisition
+
+Fetch structured Wikidata entity data for a bounded QID set using an official Wikidata/Wikibase API surface.
+
+Requirements:
+
+- validate QID syntax before network use;
+- batch only within documented/controlled limits;
+- preserve entity QID, labels/aliases requested, claims, statement IDs/ranks where present, mainsnak value/unit and qualifiers required for HullQ field interpretation;
+- do not fetch Wikipedia article text or mixed CC-BY-SA content in this slice.
+
+### 6. Minimal deterministic field extraction
+
+Implement only the common fields strongly justified by the reviewed Wikidata sailboat-class model:
+
+- label / source identity name;
+- manufacturer statement(s) `P176` as raw identity evidence only — do not infer Brand vs Organization role solely from the property label;
+- designer statement(s) `P287` as evidence/reference identity values;
+- qualified length `P2043`:
+  - LOA qualifier `Q2358152`;
+  - LWL qualifier `Q1817392`;
+- qualified width/beam from the accepted Wikidata model, preserving qualifiers;
+- qualified height/draft `P2048` with draft qualifier `Q244777` where present;
+- qualified mass `P2067` with displacement qualifier `Q5636358` and ballast qualifier `Q5461048` where present;
+- optional `P1092` total produced as raw evidence if present.
+
+Do not add keel/rudder/skeg taxonomy in this slice. Do not infer configuration from free text, subclasses or unlabeled values unless explicitly specified in the slice.
+
+### 7. Provenance integration
+
+For mapped scalar observations, produce SLICE-0006-compatible evidence with:
+
+- Wikidata Source `source_id`;
+- locator identifying QID + property + statement ID/index as available;
+- raw source representation preserved separately from normalized candidate;
+- qualifiers retained sufficiently to explain semantic basis;
+- observed/retrieved timestamp;
+- deterministic producer metadata/version.
+
+Where SLICE-0004 unit normalization applies, reuse it; do not duplicate conversion logic.
+
+No evidence item may pretend to be a canonical resolution.
+
+### 8. Reproducible source-quality report
+
+The slice must emit a deterministic in-memory/report object for the controlled sample containing at least:
+
+- requested/discovered QID count;
+- successfully fetched entity count;
+- per-field presence counts for the mapped fields;
+- malformed/unsupported statement counts;
+- statements routed to review/unsupported because qualifiers or semantics cannot be mapped safely;
+- retrieval count attributed to the Wikidata `source_id`.
+
+A small checked-in Markdown/JSON result from an explicitly run live probe MAY be committed only if it contains CC0 Wikidata structured data or aggregate metrics and no unrelated third-party content. Tests must not require live network access.
+
+## Live-network test policy
+
+Normal CI/unit/contract tests MUST be deterministic and offline using synthetic or minimal CC0-safe recorded payloads.
+
+A real network smoke/integration test may exist only as an explicit opt-in test/command and must:
+
+- be skipped by default in CI;
+- use the same rights gate and User-Agent requirements as production adapter code;
+- remain tightly bounded;
+- report the exact endpoint/query/QIDs used;
+- fail clearly on network unavailability rather than weakening offline tests.
+
+## Required tests
+
+Cover at least:
+
+1. reviewed Wikidata Source record validates against SOURCE_SCHEMA.v0.2.
+2. adapter performs zero HTTP calls when the rights gate is non-allow.
+3. descriptive User-Agent/contact is mandatory.
+4. unbounded/invalid requested item limit is rejected.
+5. malformed QIDs are rejected before network.
+6. controlled discovery parses exact QIDs deterministically.
+7. duplicate identical QIDs are handled deterministically without inventing identity merges.
+8. HTTP 429 / Retry-After yields explicit throttled/non-success result and no busy retry loop.
+9. timeout/5xx/malformed JSON are explicit acquisition failures.
+10. manufacturer/designer statements remain source observations; no Brand/Organization role inference is made automatically.
+11. LOA vs LWL are distinguished only from explicit qualifier semantics.
+12. draft vs unrelated height is not conflated.
+13. displacement vs ballast are distinguished only from explicit qualifier semantics.
+14. missing qualifier/unsupported qualifier is retained/routed unsupported rather than guessed.
+15. raw Wikidata quantity/unit survives separately from normalized candidate.
+16. SLICE-0004 normalization is reused for supported quantity units.
+17. generated FieldEvidence carries source/QID/property locator and immutable raw observation.
+18. no FieldResolution/canonical BoatModel/BoatDesign write occurs.
+19. quality report counts requested/fetched/present/unsupported deterministically.
+20. normal test suite performs no live network access.
+21. optional live smoke is explicitly opt-in and bounded.
+22. private boat-list content is absent from fixtures and repository changes.
+
+## Explicitly out of scope
+
+Do not implement:
+
+- full Wikidata dump ingestion;
+- unbounded WDQS crawling;
+- Wikipedia text/infobox ingestion;
+- mixed Wikimedia-derived third-party datasets;
+- manufacturer website crawling;
+- ORC ingestion;
+- source-authority ranking;
+- fuzzy identity resolution;
+- automatic Brand/Organization merging;
+- canonical FieldResolution policy;
+- canonical BoatModel/BoatDesign persistence;
+- PostgreSQL/SQLite persistence;
+- keel/rudder/skeg/configuration normalization (SLICE-0009);
+- derived metrics (SLICE-0010);
+- FastAPI/frontend/query engine;
+- background scheduler/worker orchestration;
+- broad production ingestion;
+- private reference boat-list rows.
+
+## Expected touch points
+
+Prefer a small bounded structure such as:
+
+- `src/hullq/sources/wikidata.py`;
+- `src/hullq/research/` only where a small adapter result/report type belongs;
+- one reviewed Wikidata Source fixture/record under `fixtures/sources/`;
+- focused offline tests under `tests/unit/` and `tests/contract/`;
+- optional explicit opt-in integration smoke test;
+- this slice document + index handoff update.
+
+Do not introduce a generic plugin framework or persistence layer.
+
+## Acceptance criteria
+
+- [ ] Wikidata access is represented by a schema-valid reviewed Source record.
+- [ ] every network request is preceded by an ALLOWED automated-ingestion rights decision.
+- [ ] adapter sends a descriptive configured User-Agent/contact and has bounded request behavior.
+- [ ] direct sailboat-class discovery is bounded and reproducible.
+- [ ] entity acquisition preserves QIDs, statement semantics and relevant qualifiers.
+- [ ] minimal field extraction is qualifier-aware and does not invent missing semantics.
+- [ ] raw observation and normalized candidate remain separate.
+- [ ] SLICE-0004 normalization and SLICE-0006 evidence primitives are reused rather than duplicated.
+- [ ] no canonical resolution/write, broad ingestion or appendage normalization is introduced.
+- [ ] deterministic quality/coverage metrics are produced for the controlled sample.
+- [ ] normal CI remains offline and deterministic; any live smoke is explicit opt-in only.
+- [ ] repository validator, formatting, Ruff, strict mypy, pytest branch coverage >=90% and dependency audit pass.
+- [ ] required remote CI is independently observed before owner acceptance.
+
+## Claude stop conditions
+
+Stop and report rather than broadening scope if:
+
+- the reviewed Wikidata Source record cannot legitimately reach `ALLOWED` for the concrete automated access method under SLICE-0007;
+- official endpoint behavior materially conflicts with the prepared access assumptions;
+- WDQS requires a broader crawler/retry/orchestration system to be usable;
+- a Wikidata field cannot be mapped without inventing semantic rules;
+- implementation would require canonical identity resolution, persistence, appendage taxonomy or broad ingestion;
+- external terms/access policy appear materially changed from the reviewed record.
+
+## Implementation-agent handoff
+
+When implementation is complete:
+
+1. run all required local gates;
+2. push the same `slice/0008-wikidata-rights-gated-adapter` branch;
+3. leave SLICE-0008 in `REVIEW` or `BLOCKED`;
+4. report exact head SHA and local results truthfully;
+5. report whether the optional real network smoke was executed and, if so, its bounded parameters/results;
+6. do not merge to `main`;
+7. do not start SLICE-0009.
