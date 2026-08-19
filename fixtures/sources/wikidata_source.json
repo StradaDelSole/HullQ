@@ -1,0 +1,91 @@
+{
+  "source_id": "SRC_WIKIDATA_API_2026",
+  "title": "Wikidata — Wikimedia Foundation structured knowledge base",
+  "publisher": "Wikimedia Foundation",
+  "source_type": "structured_dataset",
+  "url": "https://www.wikidata.org/",
+  "document_identifier": null,
+  "publication_date": null,
+  "accessed_at": "2026-08-19",
+  "notes": "Wikidata structured data (statements/metadata) is released as CC0 1.0 Universal. This source record covers the official Wikidata entity API (wbgetentities at https://www.wikidata.org/w/api.php) and the WDQS SPARQL endpoint (https://query.wikidata.org/sparql). Sailboat-class items are instances of Q106179098. Wikipedia article text (CC BY-SA) is explicitly excluded from this access path and must not be ingested via this source record. The Wikimedia User-Agent policy (https://meta.wikimedia.org/wiki/User-Agent_policy) requires a descriptive User-Agent string identifying the project and providing a contact identifier; generic library User-Agents are not acceptable. WDQS SPARQL: recommended max 1 concurrent request per client; observe HTTP 429/Retry-After. wbgetentities: batch up to 50 IDs per request; use format=json.",
+  "rights": {
+    "assessment_status": "assessed",
+    "rights_basis": "public_domain",
+    "rights_holder": "Wikimedia Foundation and Wikidata contributors",
+    "license_expression": "CC0-1.0",
+    "license_name": "Creative Commons Zero v1.0 Universal",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "license_scope": ["database_structure", "database_contents", "individual_content"],
+    "access": {
+      "method": "api",
+      "public_access": true,
+      "automated_access": "allowed",
+      "terms_url": "https://www.wikidata.org/wiki/Wikidata:Terms_of_use",
+      "terms_reviewed_at": "2026-08-19",
+      "tdm_reservation": "not_applicable",
+      "rate_limit_notes": "Wikimedia User-Agent policy requires a descriptive User-Agent with project name and contact identifier. WDQS SPARQL: observe HTTP 429/Retry-After; avoid concurrent queries per client. wbgetentities: batch up to 50 IDs per request; format=json. See https://www.mediawiki.org/wiki/API:Etiquette and https://meta.wikimedia.org/wiki/User-Agent_policy."
+    },
+    "permissions": {
+      "commercial_use": "allowed",
+      "extract_facts": "allowed",
+      "normalize": "allowed",
+      "store_canonical_values": "allowed",
+      "bulk_ingest": "allowed",
+      "automated_extract": "allowed",
+      "redistribute_source_material": "allowed",
+      "publish_derived_database": "allowed"
+    },
+    "obligations": {
+      "attribution_required": "no",
+      "share_alike": "no",
+      "notice_required": "no",
+      "attribution_instructions": null,
+      "other_conditions": [
+        "Wikimedia User-Agent policy requires a descriptive User-Agent string with project name and a contact identifier (see https://meta.wikimedia.org/wiki/User-Agent_policy); generic library User-Agents are not acceptable.",
+        "Observe documented API rate limits and HTTP 429/Retry-After signals; do not send uncontrolled concurrent requests.",
+        "Wikipedia article text (CC BY-SA) is a distinct content layer and must not be ingested under this CC0 source record; only Wikidata structured statements and labels are cleared."
+      ]
+    },
+    "clearance": {
+      "research_reference": "allowed",
+      "research_lead": "allowed",
+      "identity_seed": "allowed",
+      "production_value": "allowed",
+      "bulk_bootstrap": "allowed",
+      "automated_ingestion": "allowed",
+      "artifact_redistribution": "allowed"
+    },
+    "rights_evidence": [
+      {
+        "evidence_type": "public_domain_statement",
+        "url": "https://www.wikidata.org/wiki/Wikidata:Copyright",
+        "document_identifier": null,
+        "accessed_at": "2026-08-19",
+        "sha256": null,
+        "notes": "Wikidata copyright page explicitly states that structured data (statements/metadata) is released as CC0 1.0 Universal. Wikipedia article text remains CC BY-SA and is a separate content layer not covered by this source record."
+      },
+      {
+        "evidence_type": "license_page",
+        "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+        "document_identifier": "CC0-1.0",
+        "accessed_at": "2026-08-19",
+        "sha256": null,
+        "notes": "Creative Commons Zero 1.0 Universal — worldwide public domain dedication with no rights reserved."
+      },
+      {
+        "evidence_type": "terms_page",
+        "url": "https://www.wikidata.org/wiki/Wikidata:Terms_of_use",
+        "document_identifier": null,
+        "accessed_at": "2026-08-19",
+        "sha256": null,
+        "notes": "Wikimedia Terms of Use govern API access. Programmatic access is permitted subject to rate limits and a descriptive User-Agent per https://meta.wikimedia.org/wiki/User-Agent_policy and https://www.mediawiki.org/wiki/API:Etiquette."
+      }
+    ],
+    "review": {
+      "reviewed_at": "2026-08-19",
+      "reviewer": "HullQ-SLICE-0008",
+      "rationale": "Wikidata structured data is CC0 1.0 Universal — all rights including attribution are waived worldwide. Automated API access is explicitly permitted by Wikimedia policy subject to rate limits and a descriptive User-Agent requirement. The wbgetentities and WDQS SPARQL endpoints are official, documented, and stable access paths. Wikipedia text (CC BY-SA) is a distinct content layer excluded from this access path. No TDM reservation applies to CC0 content. No share-alike constraint. No commercial-use restriction.",
+      "next_review_at": null
+    }
+  }
+}

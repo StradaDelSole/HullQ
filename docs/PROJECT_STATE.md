@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-19  
-**Current stage:** Stage 2.6 — SLICE-0007 ResearchJob/source-rights gate READY  
+**Current stage:** Stage 2.7 — SLICE-0008 Wikidata rights-gated adapter REVIEW  
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -142,26 +142,29 @@ After PR #15, `START_SLICE` deliberately does **not** open, close, reload or swi
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned `slice/...` branch. The master/architect does not write Claude's active slice branch. No later implementation slice begins automatically.
 
-## Current operational position — SLICE-0007 READY
+## Current operational position — SLICE-0008 REVIEW
 
-`docs/slices/SLICE-0007-research-job-source-rights-gate.md` is the only `READY` implementation slice.
+`docs/slices/SLICE-0008-wikidata-rights-gated-adapter.md` is the current implementation slice, now in `REVIEW`.
 
-Its purpose is to make the already accepted OQ-007 / ADR-0005 source-rights model executable before any real external acquisition. It is deliberately bounded to:
+The Wikidata CC0 rights-gated adapter provides:
 
-- ResearchJob runtime parity with the accepted v0.1 contract;
-- one deterministic use-specific Source gate across research reference, research lead, identity seed, production value, bulk bootstrap, automated ingestion and artifact redistribution;
-- fail-closed behavior for prohibited, unknown, unassessed, legal-review-required and unresolved conditional states;
-- independent automated-access checks so open/reusable data cannot bypass access restrictions;
-- defensive permission-conflict checks;
-- machine-visible attribution/notice/share-alike obligations;
-- persistence-agnostic source request/extraction telemetry for cumulative-extraction control on non-bulk-cleared sources;
-- integration with ResearchJob routing and the SLICE-0006 Source-impact provenance lookup.
+- reviewed Wikidata Source record (`fixtures/sources/wikidata_source.json`) validated against `SOURCE_SCHEMA.v0.2.json`, CC0-1.0, all HullQ use-clearances allowed;
+- `WikidataAdapterConfig` immutable bounded configuration with validated user_agent, request timeout, item limit (capped at `SLICE_0008_ITEM_CEILING = 100`) and language preference;
+- SLICE-0007 automated-ingestion rights gate enforced before every HTTP call;
+- SPARQL discovery probe (`SELECT ?item WHERE { ?item wdt:P31 wd:Q106179098 }`) bounded to caller limit;
+- entity acquisition via `wbgetentities` API in batches of ≤50 QIDs;
+- qualifier-aware field extraction for manufacturer (P176), designer (P287), LOA/LWL (P2043 + P642 qualifiers), beam (P2049), draft (P2048 + Q244777), displacement/ballast (P2067 + Q5636358/Q5461048), and number built (P1092);
+- SLICE-0006 FieldEvidence with preserved raw observations and SLICE-0004 normalization reused for supported quantity units;
+- deterministic `WikidataQualityReport` covering requested/fetched/field-presence/malformed/unsupported/attributed counts;
+- explicit typed errors for rights-blocked, throttled (429/Retry-After), HTTP error, timeout, and malformed response;
+- 70 offline unit tests, 17 contract tests, 2 opt-in live integration smoke tests;
+- 567 total tests PASS, 90.13% branch coverage (≥90% required), ruff lint/format clean, strict mypy clean on new files, no known vulnerabilities.
 
-SLICE-0007 does **not** perform HTTP/API acquisition, source-specific legal classification, persistence, canonical writes, source-authority ranking or broad ingestion.
+SLICE-0008 does **not** write canonical FieldResolution, modify BoatDesign/BoatModel records, perform broad ingestion, introduce appendage taxonomy, or implement persistence.
 
-Conditional clearance is intentionally not bypassable through a generic caller boolean. A Source profile that remains `conditional` produces a non-allow outcome until an explicit reviewed Source decision resolves that use.
+Branch `slice/0008-wikidata-rights-gated-adapter` is pushed to GitHub. Independent review and project-owner acceptance are required before `DONE`.
 
-After implementation, SLICE-0007 must stop in `REVIEW` or `BLOCKED`; SLICE-0008 must not start automatically.
+SLICE-0009 must not start automatically.
 
 ## Revised near-term path to real data
 
@@ -170,9 +173,9 @@ SLICE-0005  identity contracts/search labels                 DONE
       ↓
 SLICE-0006  provenance/raw-observation boundary              DONE
       ↓
-SLICE-0007  ResearchJob + source-rights clearance gate       READY
+SLICE-0007  ResearchJob + source-rights clearance gate       DONE
       ↓
-SLICE-0008  FIRST RIGHTS-GATED REAL DATA — Wikidata CC0
+SLICE-0008  FIRST RIGHTS-GATED REAL DATA — Wikidata CC0     REVIEW
       ↓
 inspect actual source quality
       ↓
@@ -194,7 +197,7 @@ This avoids over-designing the hardest appendage/configuration layer from imagin
 
 ## Do not start yet
 
-- SLICE-0008 or later implementation;
+- SLICE-0009 or later implementation (SLICE-0008 must complete review/acceptance first);
 - production broad ingestion;
 - PostgreSQL production schema/application persistence;
 - FastAPI public API;

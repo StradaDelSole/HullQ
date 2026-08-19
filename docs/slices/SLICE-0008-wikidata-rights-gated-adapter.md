@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0008  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 2.7 — first controlled real external acquisition  
 **Depends on:** SLICE-0007 accepted / DONE  
 **Blocks:** SLICE-0009
@@ -299,3 +299,226 @@ When implementation is complete:
 5. report whether the optional real network smoke was executed and, if so, its bounded parameters/results;
 6. do not merge to `main`;
 7. do not start SLICE-0009.
+
+---
+
+## Completion Report
+
+### Slice
+
+- Slice ID: `SLICE-0008`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+- **Amendment:** PR #19 review findings addressed (see Review Amendment below)
+
+### Changes
+
+- Changed files:
+  - `docs/slices/SLICE-0008-wikidata-rights-gated-adapter.md` — status IN_PROGRESS → REVIEW; completion report appended
+  - `docs/slices/INDEX.md` — SLICE-0008 status READY → REVIEW; execution rule updated
+  - `docs/PROJECT_STATE.md` — stage updated to 2.7 REVIEW; operational position section updated
+- New files:
+  - `fixtures/sources/wikidata_source.json` — reviewed Wikidata Source record, CC0-1.0, all clearances allowed, schema-valid against `SOURCE_SCHEMA.v0.2.json`
+  - `src/hullq/sources/wikidata.py` — complete Wikidata CC0 rights-gated adapter (403 statements)
+  - `tests/unit/test_wikidata_adapter.py` — 70 offline unit tests covering scenarios 2–22
+  - `tests/contract/test_wikidata_source_record.py` — 17 contract tests covering scenario 1
+  - `tests/integration/conftest.py` — `--run-live` pytest option for opt-in live smoke
+  - `tests/integration/test_wikidata_live.py` — 2 opt-in live smoke tests (skipped in normal CI)
+- Requirements implemented: all in-scope behaviors from sections 1–8 of the slice
+
+### Validation
+
+- Local validation: `PASS`
+- Commands run:
+  ```
+  uv run ruff check src/ tests/
+  uv run ruff format --check src/ tests/
+  uv run mypy src/hullq/sources/wikidata.py tests/unit/test_wikidata_adapter.py tests/contract/test_wikidata_source_record.py tests/integration/test_wikidata_live.py tests/integration/conftest.py
+  uv run coverage run -m pytest tests/unit/ tests/contract/ -q
+  uv run coverage report
+  uv run pip-audit
+  ```
+- Results:
+  - ruff check: `All checks passed!`
+  - ruff format: `30 files already formatted`
+  - mypy (new SLICE-0008 files): `Success: no issues found in 5 source files`
+  - pytest: `567 passed in 22.04s`
+  - coverage total: `90.13%` (≥90% required; `wikidata.py` alone is 81.62% — the requirement is the overall suite threshold)
+  - pip-audit: `No known vulnerabilities found`
+
+### External verification
+
+- Remote CI: `NOT VERIFIED` — branch pushed to GitHub; GitHub Actions results were not observed during this session
+- Other external gates: `NOT APPLICABLE`
+
+### Findings
+
+- Unresolved findings: none
+- Spec/ADR ambiguities: none
+- Scope deviations: none
+- Live network smoke: NOT executed — the opt-in smoke tests exist and are bounded (`_LIVE_DISCOVERY_LIMIT = 5`) but were not run in this session; they are skipped by default in CI and require `--run-live`
+- Pre-existing mypy errors in non-SLICE-0008 files (`test_source_rights_fixtures.py`, `test_provenance.py`, `test_measurements.py`, `test_identity.py`, `test_identity_contracts.py`) were not introduced by this slice and were not modified
+
+### Follow-up
+
+- Recommended next action: independent review of the PR on branch `slice/0008-wikidata-rights-gated-adapter`; if all acceptance criteria are verified including remote CI, project-owner may mark `DONE` and start `FINISH_SLICE.bat`
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice (SLICE-0009) was not started automatically.
+- The agent has NOT marked this slice `DONE`.
+
+---
+
+## Review Amendment (PR #19 findings)
+
+**HEAD after amendment:** `b277714c…` (pushed to `slice/0008-wikidata-rights-gated-adapter`)
+
+### Finding 1 resolved — requested_qid_count is now independent of fetched count
+
+`extract_field_evidence()` now requires an explicit `requested_qid_count: int` keyword argument (the distinct QID count after deduplication, as submitted to `fetch_entities`). This is tracked in `run_controlled_probe()` before the API call so partial-return cases (absent or non-item entities) are correctly represented in the quality report. 5 new tests added covering all required scenarios.
+
+Semantic choice documented: `requested_qid_count` counts post-deduplication distinct QIDs submitted to the Wikidata API. Duplicate handling is deterministic (exact-QID identity, not fuzzy).
+
+### Finding 2 resolved — User-Agent requires HullQ identity + contact identifier
+
+`WikidataAdapterConfig.__post_init__` now validates:
+1. `"hullq"` present in user_agent (case-insensitive) — project identifier;
+2. a contact identifier present — email address pattern (`user@domain.tld`) or URL (`http://…` or `https://…`).
+
+Existing item_limit/timeout tests that used bare `"HullQ/0.1"` updated to use valid contact-bearing strings. 7 new tests added (4 negative, 3 positive including case-insensitive check).
+
+### Finding 3 resolved — P642 qualifier identity preserved in raw observation
+
+`_build_quantity_evidence()` now accepts `qualifier_qid: str | None` keyword argument. When supplied (by `_process_qualified_quantity` passing the matched qualifier), the `RawObservation.value` dict includes:
+- `"qualifier_property": "P642"` — the qualifier property;
+- `"qualifier_value_id": "<qual_QID>"` — the matched qualifier value (e.g., `"Q2358152"` for LOA).
+
+Unqualified fields (beam, number_built) receive no qualifier keys. Unsupported qualifiers continue to route to `unsupported_qualifier_count` without producing evidence. 8 new tests added.
+
+### Validation after amendment
+
+- ruff check: clean
+- ruff format: clean
+- mypy (SLICE-0008 files): clean
+- pytest: **587 passed** (20 new tests from review fixes)
+- branch coverage: **90.99%** (≥90% required)
+- pip-audit: no known vulnerabilities
+- Remote CI (PR #19): **NOT VERIFIED** — branch pushed; GitHub Actions result not yet observed
+- Live smoke: not executed
+
+---
+
+## Review Amendment 2 (PR #19 findings 4–6)
+
+**HEAD after amendment:** `c460493` (pushed to `slice/0008-wikidata-rights-gated-adapter`)
+
+### Finding 4 resolved — Cross-dimension normalization prevented
+
+`_build_quantity_evidence()` now accepts `expected_quantity: Quantity | None = None`. When a recognized unit resolves to a different physical dimension than expected (e.g., kg on a length field), normalization is skipped: the raw observation is still preserved but no `NormalizedCandidate` is produced.
+
+`_process_unqualified_quantity` and `_process_qualified_quantity` forward `expected_quantity` to `_build_quantity_evidence`. `_extract_entity_evidence` passes `expected_quantity=Quantity.LENGTH` for P2043/P2048/P2049 and `expected_quantity=Quantity.MASS` for P2067.
+
+New `_process_count_quantity` method handles P1092 (total produced): only the dimensionless sentinel unit "1" is accepted; any recognized dimensional unit (kg, m, …) increments `unsupported_qualifier_count` without producing evidence or a malformed count. `test_total_produced_evidence_from_p1092` corrected (kg unit now correctly yields unsupported). 11 new dimension-check tests added.
+
+### Finding 5 resolved — Language fallback is real at the API boundary
+
+`fetch_entities` now sends `languages=lang|en` when `config.language` is non-English, and `languages=en` when it is English (avoiding `en|en`). `_parse_entity` alias fallback changed to `aliases_raw.get(lang, []) or aliases_raw.get("en", [])` so that when the preferred language has no aliases, English aliases are used. 5 new offline tests cover both the API parameter and the alias-fallback behaviour.
+
+### Finding 6 resolved — Live smoke uses real contact path
+
+`test_wikidata_live.py` `_LIVE_USER_AGENT` updated to use `https://github.com/StradaDelSole/HullQ` as the contact path. The unit test `test_user_agent_with_hullq_and_email_is_accepted` now uses `contact@example.invalid` instead of a real email address.
+
+### Validation after amendment 2
+
+- ruff check: clean
+- ruff format: clean
+- mypy (SLICE-0008 files, strict): clean
+- pytest: **602 passed** (15 new tests from review fixes 4–6)
+- branch coverage total: **90.59%** (≥90% required)
+- pip-audit: no known vulnerabilities
+- Remote CI (PR #19): **NOT VERIFIED** — branch pushed to `c460493`; GitHub Actions result not yet observed
+- Live smoke: not executed
+
+---
+
+## Review Amendment 3 (PR #19 blockers 4A and 4B)
+
+**HEAD after amendment:** `96ad4de` (pushed to `slice/0008-wikidata-rights-gated-adapter`)
+
+### Blocker 4A resolved — Cross-dimension evidence eliminated entirely
+
+A recognised Wikidata unit of the wrong physical dimension no longer produces any `FieldEvidence` for the incompatible HullQ field.
+
+New module-level helper `_claim_unit_qid(claim)` extracts the unit QID from a claim without constructing evidence.
+
+`_process_unqualified_quantity`: when `expected_quantity` is set and the claim's unit resolves to a recognised QID of the wrong dimension, `unsupported_qualifier_count` is incremented and no evidence is created. Unrecognised/unknown units are not rejected — they pass through to `_build_quantity_evidence` as before (raw evidence, no normalization), preserving the existing unknown-unit contract.
+
+`_process_qualified_quantity`: same pre-check applied inside the qualifier-match block before calling `_build_quantity_evidence`.
+
+`_build_quantity_evidence` retains its normalization guard as defense in depth but is no longer the primary routing control for cross-dimension statements.
+
+### Blocker 4B resolved — P1092 strictly requires dimensionless sentinel
+
+`_process_count_quantity` now uses `_claim_unit_qid(claim)` to determine the unit. If any Wikidata entity QID is returned — whether recognised (kg, m, metric tonne, …) or unknown (Q999999, …) — `unsupported_qualifier_count` is incremented and no evidence is produced. Only claims where the unit URI does not resolve to a QID (the literal API sentinel `"1"` or a non-QID URL) produce count `FieldEvidence`. This closes the gap where an unknown unit QID could previously slip through as evidence.
+
+### Test changes
+
+- `test_kg_unit_on_length_field_produces_no_normalized_candidate` → renamed `test_kg_unit_on_length_field_produces_no_field_evidence`; asserts `len(beam_ev) == 0` and `unsupported == 1`.
+- `test_kg_unit_on_length_field_preserves_raw_observation` → repurposed as `test_unknown_unit_on_length_field_still_produces_raw_evidence`; explicitly verifies that unrecognised units (Q999999) still produce raw evidence without incrementing unsupported.
+- `test_metre_unit_on_mass_field_produces_no_normalized_candidate` → renamed `…_no_field_evidence`; asserts zero displacement evidence + unsupported count = 1.
+- `test_kg_on_loa_field_produces_no_normalized_candidate` → renamed `…_no_field_evidence`; asserts zero LOA evidence + unsupported count = 1.
+- `test_metre_on_ballast_field_produces_no_normalized_candidate` → renamed `…_no_field_evidence`; asserts zero ballast evidence + unsupported count = 1.
+- New `test_p1092_with_literal_sentinel_unit_produces_evidence`: builds claim with `unit="1"` (literal Wikidata API form) and asserts evidence produced with no normalization.
+- New `test_p1092_with_unknown_qid_unit_is_unsupported`: Q999999 → zero evidence, unsupported count = 1.
+
+### Validation after amendment 3
+
+- ruff check: clean
+- ruff format: clean
+- mypy (SLICE-0008 files, strict): clean
+- pytest: **604 passed** (2 new tests, 5 renamed/rewritten)
+- branch coverage total: **90.63%** (≥90% required)
+- pip-audit: no known vulnerabilities
+- Remote CI (PR #19): **NOT VERIFIED** — branch pushed to `96ad4de`; GitHub Actions result not yet observed
+- Live smoke: not executed
+
+---
+
+## Review Amendment 4 (final blocker 4B — literal sentinel enforcement)
+
+**HEAD after amendment:** `12afd0e` (pushed to `slice/0008-wikidata-rights-gated-adapter`)
+
+### Implementation
+
+New module-level helper `_get_claim_raw_unit(claim)` returns the raw `unit` string exactly as it appears in the Wikidata API response, or `None` for absent/non-string unit. This is explicitly distinct from `_claim_unit_qid()`, which returns `None` for both the sentinel `"1"` and for non-QID URLs — making those two cases indistinguishable.
+
+`_process_count_quantity` now uses `_get_claim_raw_unit()` for an explicit three-way dispatch:
+
+- `unit == "1"` → raw count `FieldEvidence` (no `NormalizedCandidate`)
+- `unit` is any other string → `unsupported_qualifier_count += 1`, zero evidence
+- `unit` absent or non-string → `malformed_count += 1`, zero evidence
+
+The docstring names the reason `_claim_unit_qid()` is intentionally not used here.
+
+### Test changes
+
+- `test_total_produced_evidence_from_p1092`: the `entity_ok` case now uses a hand-built raw claim with literal `"unit": "1"` instead of the `_quantity_claim` helper (which builds the URL form).
+- `test_p1092_with_dimensionless_unit_produces_evidence_without_normalization` → renamed `test_p1092_with_url_form_of_1_is_unsupported`; asserts zero evidence + `unsupported == 1` (the URL form `"http://…/entity/1"` is not the sentinel).
+- `test_p1092_with_literal_sentinel_unit_produces_evidence`: unchanged ✓
+- `test_p1092_with_unknown_qid_unit_is_unsupported`: unchanged ✓
+- New `test_p1092_with_non_qid_url_is_unsupported`: `http://example.com/unit/count` → zero evidence, unsupported increments.
+- New `test_p1092_with_missing_unit_is_malformed`: absent `unit` key → zero evidence, malformed increments (not unsupported).
+
+### Validation after amendment 4
+
+- ruff check: clean
+- ruff format: clean
+- mypy (SLICE-0008 files, strict): clean
+- pytest: **606 passed** (2 new tests, 2 renamed/rewritten)
+- branch coverage total: **90.42%** (≥90% required)
+- pip-audit: no known vulnerabilities
+- Remote CI (PR #19): **NOT VERIFIED** — branch pushed to `12afd0e`; GitHub Actions result not yet observed
+- Live smoke: not executed
