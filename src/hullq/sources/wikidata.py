@@ -215,9 +215,22 @@ class WikidataAdapterConfig:
     language: str = "en"
 
     def __post_init__(self) -> None:
-        if not self.user_agent.strip():
+        ua = self.user_agent.strip()
+        if not ua:
             raise ValueError(
                 "WikidataAdapterConfig.user_agent must be a non-empty descriptive string"
+            )
+        # Enforce Wikimedia User-Agent policy: must identify HullQ and include a
+        # contact identifier (email address or URL).  A bare version string or
+        # generic library name is insufficient.
+        has_hullq = "hullq" in ua.lower()
+        has_contact = bool(re.search(r"\S+@\S+\.\S+", ua) or re.search(r"https?://\S+", ua))
+        if not has_hullq or not has_contact:
+            raise ValueError(
+                "WikidataAdapterConfig.user_agent must identify HullQ and include "
+                "a contact identifier (email address or URL), per Wikimedia "
+                "User-Agent policy. Example: "
+                "'HullQ/0.1 (contact@example.com; https://github.com/example/hullq)'"
             )
         if not (1 <= self.item_limit <= SLICE_0008_ITEM_CEILING):
             raise ValueError(
@@ -415,12 +428,18 @@ def _build_quantity_evidence(
     field_label: str,
     retrieved_at: str,
     index: int,
+    *,
+    qualifier_qid: str | None = None,
 ) -> FieldEvidence | None:
     """Build FieldEvidence from a single Wikidata quantity claim.
 
     Returns None if the claim is malformed or not a value-type quantity snak.
     The raw Wikidata quantity/unit representation is always preserved separately
     from the normalized candidate (SLICE-0004 reused).
+
+    When ``qualifier_qid`` is supplied (the P642 "of" qualifier value that
+    determined the semantic mapping), it is preserved in the raw observation so
+    that the mapping decision is fully recoverable from the evidence alone.
     """
     stmt_id = claim.get("id") if isinstance(claim.get("id"), str) else None
     mainsnak = claim.get("mainsnak", {})
@@ -466,9 +485,18 @@ def _build_quantity_evidence(
         except ValueError, InvalidOperation:
             normalized = None
 
+    # Preserve raw Wikidata quantity/unit representation.  When the statement
+    # was mapped via a P642 qualifier, also preserve the qualifier identity so
+    # that the mapping basis (LOA vs LWL, displacement vs ballast, etc.) is
+    # fully recoverable from this evidence object alone.
+    raw_value: dict[str, str] = {"amount": amount_str, "unit": unit_uri}
+    if qualifier_qid is not None:
+        raw_value["qualifier_property"] = _QUALIFIER_OF
+        raw_value["qualifier_value_id"] = qualifier_qid
+
     raw = RawObservation(
         kind=RawObservationKind.LITERAL,
-        value={"amount": amount_str, "unit": unit_uri},
+        value=raw_value,
         unit=unit_qid,
         excerpt=None,
     )
@@ -826,8 +854,16 @@ class WikidataAdapter:
         self,
         entities: list[WikidataEntityData],
         retrieved_at: str,
+        *,
+        requested_qid_count: int,
     ) -> tuple[list[FieldEvidence], WikidataQualityReport]:
         """Extract FieldEvidence candidates from acquired entities.
+
+        ``requested_qid_count`` must be the number of distinct QIDs that were
+        submitted to fetch_entities (post-deduplication), as tracked by the
+        caller before the API call.  It is distinct from ``fetched_entity_count``
+        (the number of usable item-type entities actually returned by the API),
+        which may be lower when QIDs are absent or of a non-item type.
 
         No canonical FieldResolution or BoatDesign write is performed.
         SLICE-0004 normalization is reused for recognised quantity units.
@@ -841,7 +877,7 @@ class WikidataAdapter:
 
         report = WikidataQualityReport(
             source_id=WIKIDATA_SOURCE_ID,
-            requested_qid_count=len(entities),
+            requested_qid_count=requested_qid_count,
             fetched_entity_count=len(entities),
             field_presence=state.field_presence(),
             malformed_statement_count=state.malformed_count,
@@ -1035,7 +1071,14 @@ class WikidataAdapter:
                 if qual_qid in qualifier_map:
                     field_pointer, field_label = qualifier_map[qual_qid]
                     ev = _build_quantity_evidence(
-                        qid, prop_id, claim, field_pointer, field_label, retrieved_at, idx
+                        qid,
+                        prop_id,
+                        claim,
+                        field_pointer,
+                        field_label,
+                        retrieved_at,
+                        idx,
+                        qualifier_qid=qual_qid,
                     )
                     if ev is None:
                         state.malformed_count += 1
@@ -1067,15 +1110,30 @@ class WikidataAdapter:
         decision = self._check_rights()
 
         if explicit_qids is not None:
-            entities = self.fetch_entities(explicit_qids)
+            # Deduplicate preserving order; requested_qid_count is the distinct
+            # count after exact-QID deduplication — i.e., what is actually
+            # submitted to fetch_entities and thus to the Wikidata API.
+            seen: set[str] = set()
+            deduped: list[str] = []
+            for q in explicit_qids:
+                if q not in seen:
+                    seen.add(q)
+                    deduped.append(q)
+            requested_count = len(deduped)
+            entities = self.fetch_entities(deduped)
         else:
             effective_limit = (
                 discovery_limit if discovery_limit is not None else self._config.item_limit
             )
             qids = self.discover_sailboat_qids(effective_limit)
+            # discover_sailboat_qids already deduplicates; requested_count is the
+            # number of discovered QIDs submitted to fetch_entities.
+            requested_count = len(qids)
             entities = self.fetch_entities(qids) if qids else []
 
-        evidence, report = self.extract_field_evidence(entities, retrieved_at)
+        evidence, report = self.extract_field_evidence(
+            entities, retrieved_at, requested_qid_count=requested_count
+        )
 
         return WikidataProbeResult(
             decision=decision,

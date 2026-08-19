@@ -297,27 +297,34 @@ def test_adapter_sends_configured_user_agent() -> None:
 
 def test_zero_item_limit_is_rejected() -> None:
     with pytest.raises(ValueError, match="item_limit"):
-        WikidataAdapterConfig(user_agent="HullQ/0.1", item_limit=0)
+        WikidataAdapterConfig(user_agent="HullQ/0.1 (test; contact@example.invalid)", item_limit=0)
 
 
 def test_negative_item_limit_is_rejected() -> None:
     with pytest.raises(ValueError, match="item_limit"):
-        WikidataAdapterConfig(user_agent="HullQ/0.1", item_limit=-1)
+        WikidataAdapterConfig(user_agent="HullQ/0.1 (test; contact@example.invalid)", item_limit=-1)
 
 
 def test_item_limit_above_ceiling_is_rejected() -> None:
     with pytest.raises(ValueError, match="item_limit"):
-        WikidataAdapterConfig(user_agent="HullQ/0.1", item_limit=SLICE_0008_ITEM_CEILING + 1)
+        WikidataAdapterConfig(
+            user_agent="HullQ/0.1 (test; contact@example.invalid)",
+            item_limit=SLICE_0008_ITEM_CEILING + 1,
+        )
 
 
 def test_maximum_ceiling_item_limit_is_accepted() -> None:
-    cfg = WikidataAdapterConfig(user_agent="HullQ/0.1 (test)", item_limit=SLICE_0008_ITEM_CEILING)
+    cfg = WikidataAdapterConfig(
+        user_agent="HullQ/0.1 (test; contact@example.invalid)", item_limit=SLICE_0008_ITEM_CEILING
+    )
     assert cfg.item_limit == SLICE_0008_ITEM_CEILING
 
 
 def test_negative_timeout_is_rejected() -> None:
     with pytest.raises(ValueError, match="timeout"):
-        WikidataAdapterConfig(user_agent="HullQ/0.1", request_timeout_seconds=-1.0)
+        WikidataAdapterConfig(
+            user_agent="HullQ/0.1 (test; contact@example.invalid)", request_timeout_seconds=-1.0
+        )
 
 
 def test_discover_limit_exceeding_config_limit_is_rejected() -> None:
@@ -549,7 +556,9 @@ def test_manufacturer_statement_is_raw_evidence_no_role_inference() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, _ = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
 
     mfg_ev = [e for e in evidence if "/relationships/builders" in e.field_pointer.raw]
     assert len(mfg_ev) >= 1
@@ -572,7 +581,9 @@ def test_designer_statement_is_raw_evidence_no_role_inference() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, _ = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
 
     des_ev = [e for e in evidence if "/relationships/designers" in e.field_pointer.raw]
     assert len(des_ev) >= 1
@@ -594,7 +605,9 @@ def test_loa_qualifier_maps_to_loa_field() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, report = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
 
     loa_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/loa_m"]
     assert len(loa_ev) == 1
@@ -611,7 +624,9 @@ def test_lwl_qualifier_maps_to_lwl_field() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, report = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
 
     lwl_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/lwl_m"]
     assert len(lwl_ev) == 1
@@ -628,7 +643,9 @@ def test_p2043_without_qualifier_is_unsupported_not_guessed() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, report = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
 
     # No LOA or LWL evidence should be produced
     length_ev = [
@@ -665,7 +682,9 @@ def test_loa_and_lwl_from_same_entity_are_independent() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, _ = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
 
     loa_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/loa_m"]
     lwl_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/lwl_m"]
@@ -688,7 +707,9 @@ def test_draft_qualifier_maps_to_draft_field() -> None:
         raw_claims={"P2048": [_quantity_claim("P2048", "+1.8", "Q11573", qualifier_qid="Q244777")]},
     )
     adapter = _make_adapter()
-    evidence, report = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
 
     draft_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/draft_min_m"]
     assert len(draft_ev) == 1
@@ -708,7 +729,9 @@ def test_height_without_draft_qualifier_is_unsupported() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, report = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
 
     draft_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/draft_min_m"]
     assert draft_ev == []
@@ -730,7 +753,9 @@ def test_displacement_qualifier_maps_to_displacement_field() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, report = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
 
     disp_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/displacement_kg"]
     assert len(disp_ev) == 1
@@ -747,7 +772,9 @@ def test_ballast_qualifier_maps_to_ballast_field() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, report = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
 
     ballast_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/ballast_kg"]
     assert len(ballast_ev) == 1
@@ -764,7 +791,9 @@ def test_mass_without_qualifier_is_unsupported_not_guessed() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, report = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
 
     mass_ev = [
         e
@@ -794,7 +823,9 @@ def test_unknown_qualifier_qid_routes_to_unsupported() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, report = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
 
     length_ev = [
         e
@@ -824,7 +855,9 @@ def test_unsupported_qualifier_count_is_cumulative_across_entities() -> None:
         for i in range(3)
     ]
     adapter = _make_adapter()
-    _, report = adapter.extract_field_evidence(entities, "2026-08-19T00:00:00Z")
+    _, report = adapter.extract_field_evidence(
+        entities, "2026-08-19T00:00:00Z", requested_qid_count=len(entities)
+    )
 
     assert report.unsupported_qualifier_count == 3
 
@@ -852,7 +885,9 @@ def test_raw_quantity_and_unit_are_preserved_separately() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, _ = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
 
     loa_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/loa_m"]
     assert len(loa_ev) == 1
@@ -891,7 +926,9 @@ def test_unknown_unit_produces_no_normalized_candidate() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, _ = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
 
     loa_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/loa_m"]
     assert len(loa_ev) == 1
@@ -920,7 +957,9 @@ def test_metres_unit_produces_correct_normalized_candidate() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, _ = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
 
     beam_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/beam_m"]
     assert len(beam_ev) == 1
@@ -941,7 +980,9 @@ def test_kilograms_unit_produces_correct_normalized_candidate() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, _ = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
 
     disp_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/displacement_kg"]
     assert len(disp_ev) == 1
@@ -959,7 +1000,9 @@ def test_metric_tonne_converts_to_kg() -> None:
         raw_claims={"P2067": [_quantity_claim("P2067", "+5", "Q11369", qualifier_qid="Q5636358")]},
     )
     adapter = _make_adapter()
-    evidence, _ = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
 
     disp_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/displacement_kg"]
     assert len(disp_ev) == 1
@@ -985,7 +1028,9 @@ def test_field_evidence_has_wikidata_source_id() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, _ = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
     assert len(evidence) >= 1
     for ev in evidence:
         assert ev.source_id == WIKIDATA_SOURCE_ID
@@ -1001,7 +1046,9 @@ def test_field_evidence_locator_contains_qid_and_property() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, _ = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
     ev = evidence[0]
     assert ev.source_locator.record_key is not None
     assert "Q801" in ev.source_locator.record_key
@@ -1018,7 +1065,9 @@ def test_field_evidence_subject_uses_qid_as_id() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, _ = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
     ev = evidence[0]
     assert ev.subject.id == "Q802"
     assert ev.subject.kind == SubjectKind.BOAT_DESIGN
@@ -1030,7 +1079,9 @@ def test_field_evidence_raw_observation_is_immutable_snapshot() -> None:
     }
     entity = WikidataEntityData(qid="Q803", label="Sloop I", aliases=[], raw_claims=raw_claims)
     adapter = _make_adapter()
-    evidence, _ = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
 
     # Mutating the original raw_claims must not affect captured evidence
     raw_claims.clear()
@@ -1065,7 +1116,9 @@ def test_extract_field_evidence_returns_only_field_evidence_objects() -> None:
         raw_claims={"P2049": [_quantity_claim("P2049", "+4.0", "Q11573")]},
     )
     adapter = _make_adapter()
-    evidence, _ = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
     for ev in evidence:
         assert isinstance(ev, FieldEvidence)
 
@@ -1076,14 +1129,18 @@ def test_extract_field_evidence_returns_only_field_evidence_objects() -> None:
 
 
 def test_quality_report_requested_count_matches_input() -> None:
+    """When all requested QIDs are returned, requested == fetched."""
     entities = [
         WikidataEntityData(qid=f"Q{1000 + i}", label=f"Boat {i}", aliases=[], raw_claims={})
         for i in range(4)
     ]
     adapter = _make_adapter()
-    _, report = adapter.extract_field_evidence(entities, "2026-08-19T00:00:00Z")
+    _, report = adapter.extract_field_evidence(
+        entities, "2026-08-19T00:00:00Z", requested_qid_count=4
+    )
     assert report.requested_qid_count == 4
     assert report.fetched_entity_count == 4
+    assert report.requested_qid_count == report.fetched_entity_count
 
 
 def test_quality_report_field_presence_counts_entities_not_statements() -> None:
@@ -1108,7 +1165,9 @@ def test_quality_report_field_presence_counts_entities_not_statements() -> None:
         },
     )
     adapter = _make_adapter()
-    _, report = adapter.extract_field_evidence([entity_1, entity_2], "2026-08-19T00:00:00Z")
+    _, report = adapter.extract_field_evidence(
+        [entity_1, entity_2], "2026-08-19T00:00:00Z", requested_qid_count=2
+    )
 
     assert report.field_presence.get("beam", 0) == 2
 
@@ -1123,13 +1182,15 @@ def test_quality_report_malformed_count_includes_bad_statements() -> None:
         },
     )
     adapter = _make_adapter()
-    _, report = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    _, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
     assert report.malformed_statement_count >= 1
 
 
 def test_quality_report_source_id_matches_wikidata() -> None:
     adapter = _make_adapter()
-    _, report = adapter.extract_field_evidence([], "2026-08-19T00:00:00Z")
+    _, report = adapter.extract_field_evidence([], "2026-08-19T00:00:00Z", requested_qid_count=0)
     assert report.source_id == WIKIDATA_SOURCE_ID
 
 
@@ -1151,7 +1212,9 @@ def test_quality_report_retrieval_count_attributed() -> None:
 
     adapter.discover_sailboat_qids(5)
     entities = adapter.fetch_entities(qids)
-    _, report = adapter.extract_field_evidence(entities, "2026-08-19T00:00:00Z")
+    _, report = adapter.extract_field_evidence(
+        entities, "2026-08-19T00:00:00Z", requested_qid_count=len(qids)
+    )
 
     # 2 HTTP requests: 1 SPARQL + 1 entity batch
     assert report.retrieval_count_attributed == 2
@@ -1232,7 +1295,9 @@ def test_beam_without_qualifier_produces_evidence() -> None:
         raw_claims={"P2049": [_quantity_claim("P2049", "+6.2", "Q11573")]},
     )
     adapter = _make_adapter()
-    evidence, report = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
     beam_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/beam_m"]
     assert len(beam_ev) == 1
     assert report.field_presence.get("beam", 0) == 1
@@ -1248,7 +1313,9 @@ def test_total_produced_evidence_from_p1092() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, report = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
     built_ev = [e for e in evidence if e.field_pointer.raw == "/relationships/number_built"]
     assert len(built_ev) == 1
     assert report.field_presence.get("total_produced", 0) == 1
@@ -1272,7 +1339,9 @@ def test_novalue_snak_is_skipped_not_malformed() -> None:
         },
     )
     adapter = _make_adapter()
-    evidence, report = adapter.extract_field_evidence([entity], "2026-08-19T00:00:00Z")
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
     assert evidence == []
     assert report.malformed_statement_count == 0
 
@@ -1285,3 +1354,346 @@ def test_usage_metrics_increments_on_retrieval() -> None:
     assert adapter.usage_metrics.retrieval_count == 0
     adapter.discover_sailboat_qids(5)
     assert adapter.usage_metrics.retrieval_count == 1
+
+
+# ---------------------------------------------------------------------------
+# Finding 1 — requested_qid_count vs fetched_entity_count are distinct
+# ---------------------------------------------------------------------------
+
+
+def test_requested_equals_fetched_when_all_returned() -> None:
+    """When the API returns all requested QIDs, requested == fetched."""
+    entities = [
+        WikidataEntityData(qid=f"Q{2100 + i}", label=f"Boat {i}", aliases=[], raw_claims={})
+        for i in range(3)
+    ]
+    adapter = _make_adapter()
+    _, report = adapter.extract_field_evidence(
+        entities, "2026-08-19T00:00:00Z", requested_qid_count=3
+    )
+    assert report.requested_qid_count == 3
+    assert report.fetched_entity_count == 3
+
+
+def test_requested_greater_than_fetched_when_some_absent() -> None:
+    """When fewer entities are returned than QIDs submitted, requested > fetched."""
+    # Simulate: 3 QIDs submitted, only 2 returned as usable entities
+    entities = [
+        WikidataEntityData(qid=f"Q{2200 + i}", label=f"Boat {i}", aliases=[], raw_claims={})
+        for i in range(2)
+    ]
+    adapter = _make_adapter()
+    _, report = adapter.extract_field_evidence(
+        entities, "2026-08-19T00:00:00Z", requested_qid_count=3
+    )
+    assert report.requested_qid_count == 3
+    assert report.fetched_entity_count == 2
+    assert report.requested_qid_count > report.fetched_entity_count
+
+
+def test_run_controlled_probe_discovery_preserves_discovered_count() -> None:
+    """Via discovery path, requested_qid_count == distinct QIDs discovered by SPARQL."""
+    discovered_qids = ["Q2300", "Q2301", "Q2302"]
+    sparql_resp = _make_mock_response(json_body=_sparql_response_for_qids(discovered_qids))
+    # Return 2 of 3 entities from the API
+    entity_resp = _make_mock_response(
+        json_body=_entity_api_response(
+            {
+                "Q2300": _minimal_entity("Q2300"),
+                "Q2301": _minimal_entity("Q2301"),
+                # Q2302 absent
+            }
+        )
+    )
+    mock_client = MagicMock(spec=httpx.Client)
+    mock_client.get.side_effect = [sparql_resp, entity_resp]
+    adapter = _make_adapter(mock_client=mock_client)
+
+    result = adapter.run_controlled_probe(discovery_limit=5, retrieved_at="2026-08-19T00:00:00Z")
+    report = result.quality_report
+    assert report.requested_qid_count == 3  # 3 QIDs discovered
+    assert report.fetched_entity_count == 2  # 2 entities returned
+
+
+def test_run_controlled_probe_explicit_qids_preserves_requested_count() -> None:
+    """Via explicit_qids path, requested_qid_count == distinct supplied QIDs."""
+    entity_resp = _make_mock_response(
+        json_body=_entity_api_response(
+            {
+                "Q2400": _minimal_entity("Q2400"),
+                # Q2401 absent
+            }
+        )
+    )
+    mock_client = _make_mock_client(entity_resp)
+    adapter = _make_adapter(mock_client=mock_client)
+
+    result = adapter.run_controlled_probe(
+        explicit_qids=["Q2400", "Q2401"],
+        retrieved_at="2026-08-19T00:00:00Z",
+    )
+    report = result.quality_report
+    assert report.requested_qid_count == 2  # 2 distinct QIDs supplied
+    assert report.fetched_entity_count == 1  # 1 entity returned
+
+
+def test_run_controlled_probe_duplicate_explicit_qids_use_deduplicated_count() -> None:
+    """Duplicate explicit QIDs are deduplicated before the API call.
+
+    requested_qid_count counts distinct QIDs (post-deduplication) — i.e., the
+    number of distinct items actually submitted to the Wikidata API.
+    """
+    entity_resp = _make_mock_response(
+        json_body=_entity_api_response({"Q2500": _minimal_entity("Q2500")})
+    )
+    mock_client = _make_mock_client(entity_resp)
+    adapter = _make_adapter(mock_client=mock_client)
+
+    # Supply 3 QIDs but Q2500 is repeated — only 1 distinct QID after dedup
+    result = adapter.run_controlled_probe(
+        explicit_qids=["Q2500", "Q2500", "Q2500"],
+        retrieved_at="2026-08-19T00:00:00Z",
+    )
+    report = result.quality_report
+    assert report.requested_qid_count == 1  # 1 distinct QID submitted
+    assert report.fetched_entity_count == 1
+
+
+# ---------------------------------------------------------------------------
+# Finding 2 — User-Agent validation enforces HullQ identity + contact
+# ---------------------------------------------------------------------------
+
+
+def test_user_agent_without_hullq_identifier_is_rejected() -> None:
+    """A user_agent that lacks 'hullq' (case-insensitive) must be rejected."""
+    with pytest.raises(ValueError, match="user_agent"):
+        WikidataAdapterConfig(user_agent="contact@example.com", item_limit=5)
+
+
+def test_user_agent_generic_string_is_rejected() -> None:
+    with pytest.raises(ValueError, match="user_agent"):
+        WikidataAdapterConfig(user_agent="x", item_limit=5)
+
+
+def test_user_agent_library_style_without_contact_is_rejected() -> None:
+    with pytest.raises(ValueError, match="user_agent"):
+        WikidataAdapterConfig(user_agent="python-script", item_limit=5)
+
+
+def test_user_agent_hullq_only_without_contact_is_rejected() -> None:
+    """HullQ identifier present but no contact identifier — must be rejected."""
+    with pytest.raises(ValueError, match="user_agent"):
+        WikidataAdapterConfig(user_agent="HullQ/0.1", item_limit=5)
+
+
+def test_user_agent_with_hullq_and_email_is_accepted() -> None:
+    cfg = WikidataAdapterConfig(
+        user_agent="HullQ/0.1 (mesingsing@gmail.com)",
+        item_limit=5,
+    )
+    assert "HullQ" in cfg.user_agent
+
+
+def test_user_agent_with_hullq_and_url_is_accepted() -> None:
+    cfg = WikidataAdapterConfig(
+        user_agent="HullQ/0.1 (https://github.com/example/hullq)",
+        item_limit=5,
+    )
+    assert "HullQ" in cfg.user_agent
+
+
+def test_user_agent_case_insensitive_hullq_check() -> None:
+    """'hullq' is accepted case-insensitively for the project identifier."""
+    cfg = WikidataAdapterConfig(
+        user_agent="hullq/0.1 (contact@example.invalid)",
+        item_limit=5,
+    )
+    assert "hullq" in cfg.user_agent.lower()
+
+
+# ---------------------------------------------------------------------------
+# Finding 3 — Qualifier identity preserved in individual FieldEvidence
+# ---------------------------------------------------------------------------
+
+
+def test_loa_evidence_preserves_p642_qualifier_identity() -> None:
+    """LOA evidence must carry P642=Q2358152 in its raw observation."""
+    entity = WikidataEntityData(
+        qid="Q3000",
+        label="Sloop LOA",
+        aliases=[],
+        raw_claims={
+            "P2043": [_quantity_claim("P2043", "+12.0", "Q11573", qualifier_qid="Q2358152")]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+
+    loa_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/loa_m"]
+    assert len(loa_ev) == 1
+    raw_val = loa_ev[0].raw.value
+    assert isinstance(raw_val, dict)
+    assert raw_val.get("qualifier_property") == "P642"
+    assert raw_val.get("qualifier_value_id") == "Q2358152"
+    # Amount and unit also preserved
+    assert raw_val.get("amount") == "+12.0"
+
+
+def test_lwl_evidence_preserves_p642_qualifier_identity() -> None:
+    """LWL evidence must carry P642=Q1817392 in its raw observation."""
+    entity = WikidataEntityData(
+        qid="Q3001",
+        label="Sloop LWL",
+        aliases=[],
+        raw_claims={
+            "P2043": [_quantity_claim("P2043", "+10.5", "Q11573", qualifier_qid="Q1817392")]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+
+    lwl_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/lwl_m"]
+    assert len(lwl_ev) == 1
+    raw_val = lwl_ev[0].raw.value
+    assert isinstance(raw_val, dict)
+    assert raw_val.get("qualifier_property") == "P642"
+    assert raw_val.get("qualifier_value_id") == "Q1817392"
+
+
+def test_draft_evidence_preserves_qualifier_identity() -> None:
+    """Draft evidence must carry the draft qualifier Q244777."""
+    entity = WikidataEntityData(
+        qid="Q3002",
+        label="Draft test",
+        aliases=[],
+        raw_claims={"P2048": [_quantity_claim("P2048", "+1.9", "Q11573", qualifier_qid="Q244777")]},
+    )
+    adapter = _make_adapter()
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+
+    draft_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/draft_min_m"]
+    assert len(draft_ev) == 1
+    raw_val = draft_ev[0].raw.value
+    assert isinstance(raw_val, dict)
+    assert raw_val.get("qualifier_property") == "P642"
+    assert raw_val.get("qualifier_value_id") == "Q244777"
+
+
+def test_displacement_evidence_preserves_qualifier_identity() -> None:
+    """Displacement evidence must carry Q5636358 in its raw observation."""
+    entity = WikidataEntityData(
+        qid="Q3003",
+        label="Disp test",
+        aliases=[],
+        raw_claims={
+            "P2067": [_quantity_claim("P2067", "+5000", "Q11570", qualifier_qid="Q5636358")]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+
+    disp_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/displacement_kg"]
+    assert len(disp_ev) == 1
+    raw_val = disp_ev[0].raw.value
+    assert isinstance(raw_val, dict)
+    assert raw_val.get("qualifier_property") == "P642"
+    assert raw_val.get("qualifier_value_id") == "Q5636358"
+
+
+def test_ballast_evidence_preserves_qualifier_identity() -> None:
+    """Ballast evidence must carry Q5461048 in its raw observation."""
+    entity = WikidataEntityData(
+        qid="Q3004",
+        label="Ballast test",
+        aliases=[],
+        raw_claims={
+            "P2067": [_quantity_claim("P2067", "+2000", "Q11570", qualifier_qid="Q5461048")]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+
+    ballast_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/ballast_kg"]
+    assert len(ballast_ev) == 1
+    raw_val = ballast_ev[0].raw.value
+    assert isinstance(raw_val, dict)
+    assert raw_val.get("qualifier_property") == "P642"
+    assert raw_val.get("qualifier_value_id") == "Q5461048"
+
+
+def test_qualifier_evidence_still_preserves_raw_amount_and_unit() -> None:
+    """Adding qualifier keys must not discard raw amount and unit strings."""
+    entity = WikidataEntityData(
+        qid="Q3005",
+        label="Amount/unit check",
+        aliases=[],
+        raw_claims={
+            "P2043": [_quantity_claim("P2043", "+15.0", "Q11573", qualifier_qid="Q2358152")]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+
+    ev = next(e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/loa_m")
+    raw_val = ev.raw.value
+    assert isinstance(raw_val, dict)
+    assert raw_val["amount"] == "+15.0"
+    assert "Q11573" in raw_val["unit"]
+    assert ev.raw.unit == "Q11573"
+
+
+def test_unqualified_quantity_evidence_has_no_qualifier_keys() -> None:
+    """Beam (unqualified) evidence must not carry qualifier keys."""
+    entity = WikidataEntityData(
+        qid="Q3006",
+        label="Beam check",
+        aliases=[],
+        raw_claims={"P2049": [_quantity_claim("P2049", "+4.0", "Q11573")]},
+    )
+    adapter = _make_adapter()
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+
+    beam_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/beam_m"]
+    assert len(beam_ev) == 1
+    raw_val = beam_ev[0].raw.value
+    assert isinstance(raw_val, dict)
+    assert "qualifier_property" not in raw_val
+    assert "qualifier_value_id" not in raw_val
+
+
+def test_unsupported_qualifier_produces_no_field_evidence_with_qualifier_keys() -> None:
+    """An unrecognised qualifier must not produce FieldEvidence with false qualifier identity."""
+    entity = WikidataEntityData(
+        qid="Q3007",
+        label="Unknown qual",
+        aliases=[],
+        raw_claims={
+            "P2043": [_quantity_claim("P2043", "+10.0", "Q11573", qualifier_qid="Q9999999")]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    # No FieldEvidence must be produced for this unsupported qualifier
+    length_ev = [
+        e
+        for e in evidence
+        if e.field_pointer.raw in ("/baseline/dimensions/loa_m", "/baseline/dimensions/lwl_m")
+    ]
+    assert length_ev == []
+    assert report.unsupported_qualifier_count >= 1
