@@ -13,26 +13,27 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0005 | IMPLEMENTATION | DONE | First-class Brand/Organization identity contracts, BoatModel/BoatDesign identity migration, entity-scoped aliases and deterministic search-label keys | SLICE-0004 / ADR-0011 |
 | SLICE-0006 | IMPLEMENTATION | DONE | Provenance/raw-observation runtime: successor FieldEvidence/FieldResolution contracts, stable provenance subjects, conflict/supersession/current-resolution validation and source-impact lookup | SLICE-0005 / ADR-0006 |
 | SLICE-0007 | IMPLEMENTATION | DONE | ResearchJob runtime + deterministic source-rights/use gate + cumulative extraction telemetry so automated acquisition fails closed | SLICE-0006 / ADR-0005 |
-| SLICE-0008 | IMPLEMENTATION | REVIEW | First rights-gated real external acquisition adapter against Wikidata CC0 with bounded discovery/entity acquisition and provenance-aware extraction | SLICE-0007 |
-| SLICE-0009 | IMPLEMENTATION | BACKLOG | Appendage/configuration normalization refined from actual acquired data: keel, board, rudder, skeg, count/state and option relationships | SLICE-0008 |
+| SLICE-0008 | IMPLEMENTATION | DONE | First rights-gated real external acquisition adapter against Wikidata CC0 with bounded discovery/entity acquisition and provenance-aware extraction | SLICE-0007 |
+| SLICE-0009 | IMPLEMENTATION | READY | Deterministic appendage/configuration normalization for explicit keel, rudder, skeg, hull and board observations using the existing BoatDesign vocabulary | SLICE-0008 |
 | SLICE-0010 | IMPLEMENTATION | BACKLOG | Derived-metrics engine under `hullq-derived-1.0.0` after canonical/configuration inputs are hardened | SLICE-0009 |
 
 ## Current execution rule
 
-`SLICE-0007` is `DONE`. It was implemented on `slice/0007-research-job-source-rights-gate`, independently reviewed through multiple fail-closed amendment rounds, explicitly accepted by the project owner on 2026-08-19 and merged through PR #17.
+`SLICE-0008` is `DONE`. It was implemented on `slice/0008-wikidata-rights-gated-adapter`, independently reviewed through four precision amendment rounds and merged through PR #19 on 2026-08-19.
 
 Acceptance evidence:
 
-- accepted implementation head: `8bf3347c7751be1bbf9b364f3d1f44635dd98eef`;
-- GitHub Actions run #96: Ubuntu quality PASS, Windows quality PASS, dependency audit PASS;
-- final independent review: no remaining blockers;
-- implementation merge commit: `ca5ac38d5d402aa9e1b5d366d30d2ce0b2cdee53`.
+- accepted final implementation/PR head: `491a2db310c75dd6768b15cc1e0dcba57f1a8fc9`;
+- GitHub Actions run #108: CI PASS;
+- final offline suite reported by the implementation agent: 606 tests PASS, 90.42% branch coverage, Ruff/format clean, strict mypy clean on SLICE-0008 files, pip-audit clean;
+- final independent review: no remaining blocking findings;
+- implementation merge commit: `e7129cd61145a5a33613a08df5c008555ff569c4`.
 
-The accepted boundary provides ResearchJob runtime parity, deterministic use-specific rights decisions, overall-assessment fail-closed behavior, independent automated-access checks, permission-conflict checks, machine-visible obligations, source-bound cumulative extraction telemetry with projected-usage limits, effective bulk-clearance evaluation, job routing and provenance impact integration.
+The accepted SLICE-0008 boundary provides the first rights-gated real source adapter against Wikidata CC0: bounded direct sailboat-class discovery, official entity acquisition, descriptive contact-bearing User-Agent enforcement, qualifier-aware FieldEvidence, strict physical-dimension normalization guards, deterministic source-quality counts, preferred-language/English fallback, and exact dimensionless handling for P1092 counts. It does not create canonical FieldResolution, mutate BoatDesign/BoatModel records, perform broad ingestion, or solve appendage/configuration taxonomy.
 
-`SLICE-0008` is in `REVIEW`. The Wikidata CC0 rights-gated adapter is implemented, all required local quality gates pass (567 tests, 90.13% branch coverage, ruff clean, strict mypy clean on new files, pip-audit clean), and the branch `slice/0008-wikidata-rights-gated-adapter` has been pushed to GitHub. Independent review and project-owner acceptance are required before `DONE`.
+`SLICE-0009` is the **only `READY` implementation slice**. It must implement a conservative, source-agnostic appendage/configuration normalization boundary over the existing `BOAT_DESIGN_SCHEMA.v0.5` vocabulary. It must preserve raw source observations, fail closed on unknown/proprietary/ambiguous semantics, keep option/variant/state applicability separate from baseline, and must not introduce new source acquisition, canonical conflict resolution, persistence, or derived metrics.
 
-No implementation agent may begin SLICE-0009 automatically.
+No implementation agent may begin SLICE-0010 automatically.
 
 ## Evidence-first sequence
 
@@ -51,29 +52,25 @@ provenance/raw observation boundary   DONE
         ↓
 ResearchJob + source-rights gate      DONE
         ↓
-FIRST RIGHTS-GATED REAL DATA — Wikidata CC0   REVIEW
+FIRST RIGHTS-GATED REAL DATA — Wikidata CC0   DONE
         ↓
-inspect actual data quality
+appendage/configuration hardening     READY
         ↓
-appendage/configuration hardening
-        ↓
-derived metrics
+derived metrics                      BACKLOG
         ↓
 controlled benchmark → broad ingestion
 ```
 
-## Why real data moved earlier
+## Why appendage/configuration hardening is next
 
-SLICE-0002 showed that appendage/configuration data is the hardest and most irregular part of the domain. Implementing its full normalization purely from imagined formats would create avoidable rework.
+SLICE-0002 showed that no single broad source provides SailboatData-like breadth plus HullQ-critical keel/rudder/skeg/configuration depth under clearly reusable terms. Manufacturer evidence also showed that configuration frequently lives in options, brochures, manuals, proprietary wording and state-specific measurements rather than one flat model field.
 
-The rolling wave therefore establishes only the minimum prerequisites first: identity, provenance/raw observations, and source-rights/research-job controls. HullQ now acquires one controlled rights-cleared source and uses actual data quality to refine deeper normalization.
-
-This does not authorize broad ingestion. The first adapter remains controlled and the 50–100 difficult-design corpus remains the benchmark before production-scale ingestion.
+SLICE-0008 proved that HullQ can acquire and preserve rights-cleared structured evidence safely, but Wikidata's strongest common-field model still does not solve generation/variant/configuration identity or rudder/skeg depth. The next safe boundary is therefore not another crawler: it is a deterministic semantic normalizer for explicit configuration observations so later source adapters can emit auditable candidates without guessing.
 
 ## Workflow note
 
-The current `START_SLICE` workflow prepares/synchronizes Git state, creates or reuses the isolated worktree, and copies the Claude prompt. It deliberately does **not** open, close, reload or switch VS Code windows. The project owner explicitly opens the prepared worktree in the desired VS Code window.
+The current `START_SLICE` workflow prepares/synchronizes Git state, creates or reuses the isolated slice worktree, and copies the Claude prompt. It deliberately does **not** open, close, reload or switch any VS Code window. The project owner explicitly opens the prepared worktree in the desired VS Code window.
 
 ## Rolling-wave note
 
-Exactly one implementation slice is `READY`. SLICE-0009–0010 remain directional backlog and may be refined by implementation and real-data evidence.
+Exactly one implementation slice is `READY`: SLICE-0009. SLICE-0010 remains directional backlog and may be refined by implementation evidence from SLICE-0009.
