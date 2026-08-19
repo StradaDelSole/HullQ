@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0009  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 2.8 — appendage/configuration hardening  
 **Depends on:** SLICE-0008 accepted / DONE  
 **Blocks:** SLICE-0010
@@ -333,35 +333,57 @@ A successful implementation therefore normally hands the slice off in `REVIEW`.
 ### Slice
 
 - Slice ID: `SLICE-0009`
-- Recommended slice state: `REVIEW` | `BLOCKED`
-- Scope completed: `YES` | `NO`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
 
 ### Changes
 
 - Changed files:
+  - `src/hullq/domain/configuration.py` — new; full implementation
+  - `tests/unit/test_configuration.py` — new; 162 tests covering all 21 required scenarios
+  - `docs/slices/SLICE-0009-appendage-configuration-normalization.md` — status READY → REVIEW, completion report appended
 - Requirements implemented:
+  - In-scope items 1–7 from the slice (vocabulary boundary, input/result contract, alias rules, count normalization, option/state-safe applicability, provenance integration, synthetic edge-case fixtures)
 - Tests/fixtures added or updated:
+  - `tests/unit/test_configuration.py`: 162 unit tests covering all 21 required test scenarios
+  - Schema-vocabulary parity tests for HullConfiguration, KeelType, RudderType, SkegType against `BOAT_DESIGN_SCHEMA.v0.5`
 
 ### Validation
 
-- Local validation: `PASS` | `FAIL` | `PARTIAL`
+- Local validation: `PASS`
 - Commands run:
+  - `uv run coverage run -m pytest tests/unit/ tests/contract/ -q`
+  - `uv run coverage report`
+  - `uv run ruff check src/ tests/`
+  - `uv run ruff format --check src/ tests/`
+  - `uv run mypy src/hullq/domain/configuration.py tests/unit/test_configuration.py`
+  - `uv run pip-audit`
+  - `uv run python scripts/validate_repository.py`
 - Results:
+  - pytest: 768 passed, 0 failed (including all pre-existing SLICE-0003–0008 tests)
+  - branch coverage total: 91.11% (≥ 90% threshold)
+  - configuration.py coverage: 98.75%
+  - ruff check: clean
+  - ruff format: clean (auto-formatted before final check)
+  - mypy strict: clean (0 errors in 2 source files)
+  - pip-audit: no known vulnerabilities
+  - repository validator: PASS (22 schemas, 88 requirements/criteria)
 
 ### External verification
 
-- Remote CI: `PASS` | `FAIL` | `NOT VERIFIED`
-- Other external gates: `PASS` | `FAIL` | `NOT VERIFIED` | `NOT APPLICABLE`
+- Remote CI: `NOT VERIFIED` — branch pushed to GitHub; CI result not yet observed locally
+- Other external gates: `NOT APPLICABLE`
 
 ### Findings
 
-- Unresolved findings:
+- Unresolved findings: none
 - Spec/ADR ambiguities:
-- Scope deviations:
+  - `NormalizedCandidate` from SLICE-0006 is general-purpose (`value: object`, `unit: str | None`) and can represent categorical/count values without contract change. Stop condition in section "Stop conditions" was NOT triggered.
+- Scope deviations: none — implementation stays within the defined in-scope items and does not touch network acquisition, FieldResolution, BoatDesign mutation, persistence, NLP/LLM, or derived metrics
 
 ### Follow-up
 
-- Recommended next action:
+- Recommended next action: independent review of `src/hullq/domain/configuration.py` and `tests/unit/test_configuration.py`; verify remote CI; accept or amend via standard PR review process
 
 ### Agent declaration
 
