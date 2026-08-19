@@ -495,6 +495,98 @@ def test_bulk_cleared_source_with_metrics_still_allows_without_budget() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Fix 1 — Effective bulk clearance, not only raw clearance field
+# ---------------------------------------------------------------------------
+
+
+def test_bulk_ingest_prohibited_means_not_effectively_bulk_cleared() -> None:
+    """bulk_bootstrap=allowed but bulk_ingest=prohibited: must still require telemetry/budget."""
+    src = _make_source(
+        automated_access="allowed",
+        bulk_bootstrap_clearance="allowed",
+        permission_overrides={"bulk_ingest": "prohibited"},
+    )
+    # No metrics or budget — a truly bulk-cleared source would allow, but this one is not.
+    dec = check_source_use(src, SourceUse.AUTOMATED_INGESTION, metrics=None, budget=None)
+    assert dec.outcome == DecisionOutcome.BLOCKED
+    assert DecisionReason.MISSING_TELEMETRY_CONTEXT in dec.reasons
+
+
+def test_share_alike_unresolved_means_not_effectively_bulk_cleared() -> None:
+    """bulk_bootstrap=allowed but share_alike=yes: must still require telemetry/budget."""
+    src = _make_source(
+        automated_access="allowed",
+        bulk_bootstrap_clearance="allowed",
+        share_alike="yes",
+    )
+    dec = check_source_use(src, SourceUse.AUTOMATED_INGESTION, metrics=None, budget=None)
+    assert dec.outcome == DecisionOutcome.BLOCKED
+    assert DecisionReason.MISSING_TELEMETRY_CONTEXT in dec.reasons
+
+
+def test_share_alike_unknown_means_not_effectively_bulk_cleared() -> None:
+    """bulk_bootstrap=allowed but share_alike=unknown: must still require telemetry/budget."""
+    src = _make_source(
+        automated_access="allowed",
+        bulk_bootstrap_clearance="allowed",
+        share_alike="unknown",
+    )
+    dec = check_source_use(src, SourceUse.AUTOMATED_INGESTION, metrics=None, budget=None)
+    assert dec.outcome == DecisionOutcome.BLOCKED
+    assert DecisionReason.MISSING_TELEMETRY_CONTEXT in dec.reasons
+
+
+def test_compatible_bulk_cleared_source_still_bypasses_telemetry() -> None:
+    """Genuinely bulk-cleared (no incompatible constraints) must not receive an invented cap."""
+    src = _make_source(
+        automated_access="allowed",
+        bulk_bootstrap_clearance="allowed",
+        share_alike="no",
+    )
+    dec = check_source_use(src, SourceUse.AUTOMATED_INGESTION, metrics=None, budget=None)
+    assert dec.outcome == DecisionOutcome.ALLOWED
+
+
+# ---------------------------------------------------------------------------
+# Fix 2 — ExtractionBudget must have at least one configured non-negative limit
+# ---------------------------------------------------------------------------
+
+
+def test_extraction_budget_both_none_is_rejected() -> None:
+    """ExtractionBudget(None, None) is not a valid budget — must raise ValueError."""
+    with pytest.raises(ValueError, match="at least one configured limit"):
+        ExtractionBudget(retrieval_limit=None, extracted_record_limit=None)
+
+
+def test_extraction_budget_negative_retrieval_limit_is_rejected() -> None:
+    with pytest.raises(ValueError, match="retrieval_limit must be non-negative"):
+        ExtractionBudget(retrieval_limit=-1, extracted_record_limit=None)
+
+
+def test_extraction_budget_negative_extracted_limit_is_rejected() -> None:
+    with pytest.raises(ValueError, match="extracted_record_limit must be non-negative"):
+        ExtractionBudget(retrieval_limit=None, extracted_record_limit=-1)
+
+
+def test_extraction_budget_retrieval_only_is_valid() -> None:
+    b = ExtractionBudget(retrieval_limit=100, extracted_record_limit=None)
+    assert b.retrieval_limit == 100
+    assert b.extracted_record_limit is None
+
+
+def test_extraction_budget_extracted_only_is_valid() -> None:
+    b = ExtractionBudget(retrieval_limit=None, extracted_record_limit=500)
+    assert b.retrieval_limit is None
+    assert b.extracted_record_limit == 500
+
+
+def test_extraction_budget_both_valid_limits_is_valid() -> None:
+    b = ExtractionBudget(retrieval_limit=100, extracted_record_limit=500)
+    assert b.retrieval_limit == 100
+    assert b.extracted_record_limit == 500
+
+
+# ---------------------------------------------------------------------------
 # Scenario 26 — rights-gate routing does not falsely complete the job
 # ---------------------------------------------------------------------------
 

@@ -141,11 +141,24 @@ class ExtractionBudget:
     """Caller-configured extraction limit for non-bulk-cleared automated research.
 
     Thresholds are caller-supplied; no numeric default is invented here.
+    At least one limit must be configured — both None is not a valid budget and
+    cannot represent an unlimited threshold for non-bulk automated ingestion.
     At-or-above the limit is treated as exceeded (fail-closed boundary).
     """
 
     retrieval_limit: int | None
     extracted_record_limit: int | None
+
+    def __post_init__(self) -> None:
+        if self.retrieval_limit is None and self.extracted_record_limit is None:
+            raise ValueError(
+                "ExtractionBudget requires at least one configured limit; "
+                "both None is equivalent to no limit and is not valid for non-bulk automated ingestion"
+            )
+        if self.retrieval_limit is not None and self.retrieval_limit < 0:
+            raise ValueError("ExtractionBudget.retrieval_limit must be non-negative")
+        if self.extracted_record_limit is not None and self.extracted_record_limit < 0:
+            raise ValueError("ExtractionBudget.extracted_record_limit must be non-negative")
 
     def within_limits(self, metrics: SourceUsageMetrics) -> bool:
         """Return True if current metrics are strictly below both configured limits."""
@@ -200,6 +213,27 @@ def _build_obligation_summary(obligations_raw: dict[str, Any]) -> ObligationSumm
         attribution_instructions=obligations_raw.get("attribution_instructions"),
         other_conditions=tuple(other),
     )
+
+
+def _is_effective_bulk_cleared(
+    clearance: dict[str, Any],
+    permissions: dict[str, Any],
+    obligations_raw: dict[str, Any],
+) -> bool:
+    """Return True only when bulk_bootstrap is effectively allowed under SLICE-0007 policy.
+
+    Mirrors the permission-conflict and share-alike checks applied by the bulk_bootstrap
+    gate path so that AUTOMATED_INGESTION cannot bypass cumulative-extraction telemetry
+    merely because the raw clearance field says ``allowed`` while an incompatible
+    underlying constraint would block actual bulk use.
+    """
+    if clearance.get("bulk_bootstrap") != "allowed":
+        return False
+    if permissions.get("bulk_ingest") == "prohibited":
+        return False
+    if permissions.get("commercial_use") == "prohibited":
+        return False
+    return obligations_raw.get("share_alike") not in {"yes", "unknown"}
 
 
 def check_source_use(
@@ -305,7 +339,8 @@ def check_source_use(
         # automated_access == "allowed" — proceed to telemetry + permission checks.
 
         # Telemetry check for non-bulk-cleared sources (REQ-RESEARCH-008).
-        is_bulk_cleared: bool = clearance.get("bulk_bootstrap") == "allowed"
+        # Effective clearance is determined by policy, not the raw field alone.
+        is_bulk_cleared: bool = _is_effective_bulk_cleared(clearance, permissions, obligations_raw)
         if not is_bulk_cleared:
             if metrics is None or budget is None:
                 return _block(DecisionReason.MISSING_TELEMETRY_CONTEXT)
