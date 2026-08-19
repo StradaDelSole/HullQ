@@ -305,7 +305,9 @@ def test_bulk_bootstrap_clearance_allowed_but_bulk_ingest_prohibited_fails_close
     assert DecisionReason.PERMISSION_CONFLICT_BULK_INGEST in dec.reasons
 
 
-def test_automated_ingestion_clearance_allowed_but_automated_extract_prohibited_fails_closed() -> None:
+def test_automated_ingestion_clearance_allowed_but_automated_extract_prohibited_fails_closed() -> (
+    None
+):
     src = _make_source(
         clearance_overrides={"automated_ingestion": "allowed"},
         permission_overrides={"automated_extract": "prohibited"},
@@ -321,7 +323,9 @@ def test_automated_ingestion_clearance_allowed_but_automated_extract_prohibited_
     assert DecisionReason.PERMISSION_CONFLICT_AUTOMATED_EXTRACT in dec.reasons
 
 
-def test_artifact_redistribution_clearance_allowed_but_redistribute_prohibited_fails_closed() -> None:
+def test_artifact_redistribution_clearance_allowed_but_redistribute_prohibited_fails_closed() -> (
+    None
+):
     src = _make_source(
         permission_overrides={"redistribute_source_material": "prohibited"},
     )
@@ -380,7 +384,9 @@ def test_within_extraction_threshold_allows() -> None:
         automated_access="allowed",
         bulk_bootstrap_clearance="conditional",
     )
-    metrics = SourceUsageMetrics(source_id="SRC_SYNTH", retrieval_count=50, extracted_record_count=0)
+    metrics = SourceUsageMetrics(
+        source_id="SRC_SYNTH", retrieval_count=50, extracted_record_count=0
+    )
     budget = ExtractionBudget(retrieval_limit=100, extracted_record_limit=None)
     dec = check_source_use(src, SourceUse.AUTOMATED_INGESTION, metrics=metrics, budget=budget)
     assert dec.outcome == DecisionOutcome.ALLOWED
@@ -391,7 +397,9 @@ def test_at_extraction_threshold_blocks() -> None:
         automated_access="allowed",
         bulk_bootstrap_clearance="conditional",
     )
-    metrics = SourceUsageMetrics(source_id="SRC_SYNTH", retrieval_count=100, extracted_record_count=0)
+    metrics = SourceUsageMetrics(
+        source_id="SRC_SYNTH", retrieval_count=100, extracted_record_count=0
+    )
     budget = ExtractionBudget(retrieval_limit=100, extracted_record_limit=None)
     dec = check_source_use(src, SourceUse.AUTOMATED_INGESTION, metrics=metrics, budget=budget)
     assert dec.outcome == DecisionOutcome.BLOCKED
@@ -598,6 +606,227 @@ def test_trusted_publisher_name_does_not_grant_rights() -> None:
     src["publisher"] = "Trusted Official Publisher"
     dec = check_source_use(src, SourceUse.PRODUCTION_VALUE)
     assert dec.outcome != DecisionOutcome.ALLOWED
+
+
+# ---------------------------------------------------------------------------
+# Blocker 1 — Telemetry binding: metrics must be attributed to the evaluated source
+# ---------------------------------------------------------------------------
+
+
+def test_metrics_source_id_mismatch_fails_closed() -> None:
+    """Blocker 1: metrics from a different source must not satisfy the gate for another source."""
+    src = _make_source(
+        source_id="SRC_A",
+        automated_access="allowed",
+        bulk_bootstrap_clearance="conditional",
+    )
+    metrics_b = SourceUsageMetrics(source_id="SRC_B", retrieval_count=0, extracted_record_count=0)
+    dec = check_source_use(
+        src, SourceUse.AUTOMATED_INGESTION, metrics=metrics_b, budget=_budget(100)
+    )
+    assert dec.outcome == DecisionOutcome.BLOCKED
+    assert DecisionReason.METRICS_SOURCE_ID_MISMATCH in dec.reasons
+
+
+def test_source_a_cannot_use_source_b_telemetry_regression() -> None:
+    """Regression: Source A with a tight budget cannot pass by supplying Source B's counters."""
+    src_a = _make_source(
+        source_id="SRC_A",
+        automated_access="allowed",
+        bulk_bootstrap_clearance="conditional",
+    )
+    metrics_b = SourceUsageMetrics(source_id="SRC_B", retrieval_count=0, extracted_record_count=0)
+    budget = ExtractionBudget(retrieval_limit=5, extracted_record_limit=None)
+    dec = check_source_use(src_a, SourceUse.AUTOMATED_INGESTION, metrics=metrics_b, budget=budget)
+    assert dec.outcome == DecisionOutcome.BLOCKED
+    assert DecisionReason.METRICS_SOURCE_ID_MISMATCH in dec.reasons
+
+
+def test_matching_source_id_in_metrics_proceeds_normally() -> None:
+    """Matching source_id in metrics does not trigger the mismatch guard."""
+    src = _make_source(
+        automated_access="allowed",
+        bulk_bootstrap_clearance="conditional",
+    )
+    metrics = SourceUsageMetrics(source_id="SRC_SYNTH", retrieval_count=0, extracted_record_count=0)
+    dec = check_source_use(src, SourceUse.AUTOMATED_INGESTION, metrics=metrics, budget=_budget(100))
+    assert dec.outcome == DecisionOutcome.ALLOWED
+    assert DecisionReason.METRICS_SOURCE_ID_MISMATCH not in dec.reasons
+
+
+# ---------------------------------------------------------------------------
+# Blocker 2 — Projected cumulative extraction usage
+# ---------------------------------------------------------------------------
+
+
+def test_projected_extraction_within_limit_allows() -> None:
+    """current=98 + projected=1 with limit=100 → allow."""
+    src = _make_source(automated_access="allowed", bulk_bootstrap_clearance="conditional")
+    metrics = SourceUsageMetrics(
+        source_id="SRC_SYNTH", retrieval_count=98, extracted_record_count=0
+    )
+    budget = ExtractionBudget(retrieval_limit=100, extracted_record_limit=None)
+    dec = check_source_use(
+        src,
+        SourceUse.AUTOMATED_INGESTION,
+        metrics=metrics,
+        budget=budget,
+        projected_retrieval_delta=1,
+    )
+    assert dec.outcome == DecisionOutcome.ALLOWED
+
+
+def test_projected_extraction_at_limit_blocks() -> None:
+    """current=99 + projected=1 with limit=100 → non-allow (at-or-above fails closed)."""
+    src = _make_source(automated_access="allowed", bulk_bootstrap_clearance="conditional")
+    metrics = SourceUsageMetrics(
+        source_id="SRC_SYNTH", retrieval_count=99, extracted_record_count=0
+    )
+    budget = ExtractionBudget(retrieval_limit=100, extracted_record_limit=None)
+    dec = check_source_use(
+        src,
+        SourceUse.AUTOMATED_INGESTION,
+        metrics=metrics,
+        budget=budget,
+        projected_retrieval_delta=1,
+    )
+    assert dec.outcome == DecisionOutcome.BLOCKED
+    assert DecisionReason.EXTRACTION_THRESHOLD_EXCEEDED in dec.reasons
+
+
+def test_projected_extraction_crossing_limit_blocks() -> None:
+    """Projected increment that would cross the limit → non-allow."""
+    src = _make_source(automated_access="allowed", bulk_bootstrap_clearance="conditional")
+    metrics = SourceUsageMetrics(
+        source_id="SRC_SYNTH", retrieval_count=95, extracted_record_count=0
+    )
+    budget = ExtractionBudget(retrieval_limit=100, extracted_record_limit=None)
+    dec = check_source_use(
+        src,
+        SourceUse.AUTOMATED_INGESTION,
+        metrics=metrics,
+        budget=budget,
+        projected_retrieval_delta=10,
+    )
+    assert dec.outcome == DecisionOutcome.BLOCKED
+    assert DecisionReason.EXTRACTION_THRESHOLD_EXCEEDED in dec.reasons
+
+
+def test_negative_projected_retrieval_delta_rejected() -> None:
+    """Negative projected retrieval increment must be rejected with ValueError."""
+    src = _make_source(automated_access="allowed", bulk_bootstrap_clearance="conditional")
+    metrics = SourceUsageMetrics(source_id="SRC_SYNTH", retrieval_count=0, extracted_record_count=0)
+    with pytest.raises(ValueError, match="non-negative"):
+        check_source_use(
+            src,
+            SourceUse.AUTOMATED_INGESTION,
+            metrics=metrics,
+            budget=_budget(100),
+            projected_retrieval_delta=-1,
+        )
+
+
+def test_negative_projected_extracted_delta_rejected() -> None:
+    """Negative projected extracted increment must be rejected with ValueError."""
+    src = _make_source(automated_access="allowed", bulk_bootstrap_clearance="conditional")
+    metrics = SourceUsageMetrics(source_id="SRC_SYNTH", retrieval_count=0, extracted_record_count=0)
+    with pytest.raises(ValueError, match="non-negative"):
+        check_source_use(
+            src,
+            SourceUse.AUTOMATED_INGESTION,
+            metrics=metrics,
+            budget=_budget(100),
+            projected_extracted_delta=-1,
+        )
+
+
+def test_bulk_cleared_source_not_affected_by_projected_deltas() -> None:
+    """Bulk-cleared sources skip the telemetry check; projected deltas must not add an invented cap."""
+    src = _make_source(automated_access="allowed", bulk_bootstrap_clearance="allowed")
+    dec = check_source_use(
+        src,
+        SourceUse.AUTOMATED_INGESTION,
+        metrics=None,
+        budget=None,
+        projected_retrieval_delta=99999,
+    )
+    assert dec.outcome == DecisionOutcome.ALLOWED
+
+
+# ---------------------------------------------------------------------------
+# Blocker 4 — Fail closed on unresolved overall rights assessment for high-risk uses
+# ---------------------------------------------------------------------------
+
+
+def test_legal_review_required_assessment_blocks_production_value() -> None:
+    """assessment_status=legal_review_required + production_value=allowed → non-allow."""
+    src = _make_source(assessment_status="legal_review_required")
+    dec = check_source_use(src, SourceUse.PRODUCTION_VALUE)
+    assert dec.outcome != DecisionOutcome.ALLOWED
+    assert DecisionReason.ASSESSMENT_UNRESOLVED in dec.reasons
+
+
+def test_conflict_assessment_blocks_production_value() -> None:
+    """assessment_status=conflict + production_value=allowed → non-allow."""
+    src = _make_source(assessment_status="conflict")
+    dec = check_source_use(src, SourceUse.PRODUCTION_VALUE)
+    assert dec.outcome != DecisionOutcome.ALLOWED
+    assert DecisionReason.ASSESSMENT_UNRESOLVED in dec.reasons
+
+
+def test_legal_review_required_assessment_blocks_bulk_bootstrap() -> None:
+    """assessment_status=legal_review_required + bulk_bootstrap=allowed → non-allow."""
+    src = _make_source(assessment_status="legal_review_required")
+    dec = check_source_use(src, SourceUse.BULK_BOOTSTRAP)
+    assert dec.outcome != DecisionOutcome.ALLOWED
+    assert DecisionReason.ASSESSMENT_UNRESOLVED in dec.reasons
+
+
+def test_conflict_assessment_blocks_bulk_bootstrap() -> None:
+    """assessment_status=conflict + bulk_bootstrap=allowed → non-allow."""
+    src = _make_source(assessment_status="conflict")
+    dec = check_source_use(src, SourceUse.BULK_BOOTSTRAP)
+    assert dec.outcome != DecisionOutcome.ALLOWED
+    assert DecisionReason.ASSESSMENT_UNRESOLVED in dec.reasons
+
+
+def test_legal_review_required_assessment_blocks_automated_ingestion() -> None:
+    """assessment_status=legal_review_required blocks automated ingestion (high-risk)."""
+    src = _make_source(
+        assessment_status="legal_review_required",
+        automated_access="allowed",
+        bulk_bootstrap_clearance="conditional",
+    )
+    dec = check_source_use(
+        src,
+        SourceUse.AUTOMATED_INGESTION,
+        metrics=_minimal_metrics(),
+        budget=_budget(100),
+    )
+    assert dec.outcome != DecisionOutcome.ALLOWED
+    assert DecisionReason.ASSESSMENT_UNRESOLVED in dec.reasons
+
+
+def test_conflict_assessment_blocks_artifact_redistribution() -> None:
+    """assessment_status=conflict + artifact_redistribution=allowed → non-allow."""
+    src = _make_source(assessment_status="conflict")
+    dec = check_source_use(src, SourceUse.ARTIFACT_REDISTRIBUTION)
+    assert dec.outcome != DecisionOutcome.ALLOWED
+    assert DecisionReason.ASSESSMENT_UNRESOLVED in dec.reasons
+
+
+def test_unresolved_assessment_does_not_affect_low_risk_uses() -> None:
+    """assessment_status=legal_review_required does not block research_reference (low-risk)."""
+    src = _make_source(assessment_status="legal_review_required")
+    dec = check_source_use(src, SourceUse.RESEARCH_REFERENCE)
+    assert dec.outcome == DecisionOutcome.ALLOWED
+
+
+def test_unresolved_conflict_does_not_affect_low_risk_uses() -> None:
+    """assessment_status=conflict does not block research_reference (low-risk)."""
+    src = _make_source(assessment_status="conflict")
+    dec = check_source_use(src, SourceUse.RESEARCH_REFERENCE)
+    assert dec.outcome == DecisionOutcome.ALLOWED
 
 
 # ---------------------------------------------------------------------------

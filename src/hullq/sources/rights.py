@@ -78,7 +78,9 @@ class DecisionReason(StrEnum):
     PERMISSION_CONFLICT_COMMERCIAL = "permission_conflict_commercial"
     EXTRACTION_THRESHOLD_EXCEEDED = "extraction_threshold_exceeded"
     MISSING_TELEMETRY_CONTEXT = "missing_telemetry_context"
+    METRICS_SOURCE_ID_MISMATCH = "metrics_source_id_mismatch"
     SHARE_ALIKE_UNRESOLVED = "share_alike_unresolved"
+    ASSESSMENT_UNRESOLVED = "assessment_unresolved"
 
 
 @dataclass(frozen=True)
@@ -205,6 +207,8 @@ def check_source_use(
     use: SourceUse,
     metrics: SourceUsageMetrics | None = None,
     budget: ExtractionBudget | None = None,
+    projected_retrieval_delta: int = 0,
+    projected_extracted_delta: int = 0,
 ) -> SourceUseDecision:
     """Deterministic, fail-closed gate for one source-use combination.
 
@@ -212,10 +216,19 @@ def check_source_use(
     ``metrics`` and ``budget`` are required for AUTOMATED_INGESTION when the
     source is not bulk-cleared; their absence fails closed (REQ-RESEARCH-008).
 
+    ``projected_retrieval_delta`` and ``projected_extracted_delta`` express the
+    anticipated increment for the next acquisition step. The gate evaluates
+    current + projected usage against the budget (REQ-RESEARCH-008). Both must
+    be non-negative; negative values raise ValueError immediately.
+
     Returns a SourceUseDecision with machine-readable outcome and reason codes.
     Never grants permission from license name, publisher identity, public
     accessibility, or source prestige alone.
     """
+    if projected_retrieval_delta < 0 or projected_extracted_delta < 0:
+        raise ValueError(
+            "projected_retrieval_delta and projected_extracted_delta must be non-negative"
+        )
     source_id: str = source["source_id"]
     rights: dict[str, Any] = source["rights"]
     clearance: dict[str, Any] = rights["clearance"]
@@ -250,6 +263,15 @@ def check_source_use(
     # Rule: unassessed sources fail closed for high-risk uses (SR-003).
     if assessment_status == "unassessed" and use in _HIGH_RISK_USES:
         return _non_allow(DecisionOutcome.UNKNOWN_UNASSESSED, DecisionReason.SOURCE_UNASSESSED)
+
+    # Rule: unresolved overall assessment (legal_review_required, conflict) must not
+    # authorize high-risk uses even when the per-use clearance field says "allowed" (SR-003).
+    if assessment_status == "legal_review_required" and use in _HIGH_RISK_USES:
+        return _non_allow(
+            DecisionOutcome.LEGAL_REVIEW_REQUIRED, DecisionReason.ASSESSMENT_UNRESOLVED
+        )
+    if assessment_status == "conflict" and use in _HIGH_RISK_USES:
+        return _block(DecisionReason.ASSESSMENT_UNRESOLVED)
 
     clearance_value: str = clearance[use.value]
 
@@ -287,7 +309,15 @@ def check_source_use(
         if not is_bulk_cleared:
             if metrics is None or budget is None:
                 return _block(DecisionReason.MISSING_TELEMETRY_CONTEXT)
-            if not budget.within_limits(metrics):
+            # Telemetry must be attributed to the same source being evaluated.
+            if metrics.source_id != source_id:
+                return _block(DecisionReason.METRICS_SOURCE_ID_MISMATCH)
+            # Evaluate current + projected cumulative usage against the budget.
+            effective_metrics = metrics.add(
+                retrieval_delta=projected_retrieval_delta,
+                extracted_delta=projected_extracted_delta,
+            )
+            if not budget.within_limits(effective_metrics):
                 return _block(DecisionReason.EXTRACTION_THRESHOLD_EXCEEDED)
 
         # Permission conflict: automated_extract prohibited (rule 5).

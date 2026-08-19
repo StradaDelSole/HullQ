@@ -102,7 +102,9 @@ def test_ccby_automated_ingestion_allows_when_access_allowed_and_within_budget()
     src = _case_by_id("SRC-RIGHTS-CCBY")
     # CC BY: clearance.automated_ingestion = "allowed", access.automated_access = "allowed"
     # clearance.bulk_bootstrap = "conditional" (not bulk-cleared) → requires telemetry.
-    metrics = SourceUsageMetrics(source_id="SRC_TEST_CCBY", retrieval_count=0, extracted_record_count=0)
+    metrics = SourceUsageMetrics(
+        source_id="SRC_TEST_CCBY", retrieval_count=0, extracted_record_count=0
+    )
     budget = ExtractionBudget(retrieval_limit=1000, extracted_record_limit=None)
     dec = check_source_use(src, SourceUse.AUTOMATED_INGESTION, metrics=metrics, budget=budget)
     assert dec.outcome == DecisionOutcome.ALLOWED
@@ -165,7 +167,9 @@ def test_nc_bulk_bootstrap_is_prohibited() -> None:
 
 def test_nc_automated_ingestion_is_blocked() -> None:
     src = _case_by_id("SRC-RIGHTS-NC")
-    metrics = SourceUsageMetrics(source_id="SRC_TEST_NC", retrieval_count=0, extracted_record_count=0)
+    metrics = SourceUsageMetrics(
+        source_id="SRC_TEST_NC", retrieval_count=0, extracted_record_count=0
+    )
     budget = ExtractionBudget(retrieval_limit=100, extracted_record_limit=None)
     dec = check_source_use(src, SourceUse.AUTOMATED_INGESTION, metrics=metrics, budget=budget)
     assert dec.outcome == DecisionOutcome.BLOCKED
@@ -375,7 +379,9 @@ def _make_resolution(
     )
 
 
-def test_source_rights_block_enumerates_affected_evidence_and_resolutions_without_mutation() -> None:
+def test_source_rights_block_enumerates_affected_evidence_and_resolutions_without_mutation() -> (
+    None
+):
     """Scenario 27: blocking a source enumerates affected provenance without deleting records."""
     blocked_source_id = "SRC_TEST_REFERENCE_SCRAPE"
     unrelated_source_id = "SRC_OTHER"

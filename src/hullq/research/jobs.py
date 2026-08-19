@@ -82,8 +82,17 @@ class ResearchJob:
 
 
 def is_terminal_status(status: ResearchJobStatus) -> bool:
-    """Return True for statuses that represent a completed/final workflow outcome."""
-    return status in {ResearchJobStatus.COMPLETE, ResearchJobStatus.BLOCKED}
+    """Return True for statuses that represent a completed/final workflow outcome.
+
+    Per RESEARCH_WORKFLOW.md: complete, needs_review, conflict, blocked are all terminal.
+    pending and researching are active (non-terminal).
+    """
+    return status in {
+        ResearchJobStatus.COMPLETE,
+        ResearchJobStatus.NEEDS_REVIEW,
+        ResearchJobStatus.CONFLICT,
+        ResearchJobStatus.BLOCKED,
+    }
 
 
 def is_review_status(status: ResearchJobStatus) -> bool:

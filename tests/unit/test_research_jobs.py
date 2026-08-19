@@ -163,13 +163,16 @@ def test_is_terminal_status_blocked() -> None:
     assert is_terminal_status(ResearchJobStatus.BLOCKED) is True
 
 
+def test_is_terminal_status_needs_review() -> None:
+    assert is_terminal_status(ResearchJobStatus.NEEDS_REVIEW) is True
+
+
+def test_is_terminal_status_conflict() -> None:
+    assert is_terminal_status(ResearchJobStatus.CONFLICT) is True
+
+
 def test_is_terminal_status_non_terminal() -> None:
-    for s in (
-        ResearchJobStatus.PENDING,
-        ResearchJobStatus.RESEARCHING,
-        ResearchJobStatus.NEEDS_REVIEW,
-        ResearchJobStatus.CONFLICT,
-    ):
+    for s in (ResearchJobStatus.PENDING, ResearchJobStatus.RESEARCHING):
         assert is_terminal_status(s) is False
 
 
