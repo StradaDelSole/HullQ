@@ -29,6 +29,9 @@ from decimal import ROUND_HALF_EVEN, Decimal
 from enum import StrEnum
 from typing import Any, Final
 
+from hullq.domain.configuration import HullConfiguration
+from hullq.domain.measurements import DisplacementBasis, SailAreaBasis
+
 __all__ = [
     "FORMULA_BALLAST_DISPL_PCT",
     "FORMULA_CAPSIZE_SCREENING",
@@ -48,6 +51,7 @@ __all__ = [
     "MetricResult",
     "MetricStatus",
     "compute_derived_metrics",
+    "evaluate_metric_results",
 ]
 
 # ---------------------------------------------------------------------------
@@ -153,6 +157,16 @@ def _merge(*statuses: MetricStatus) -> MetricStatus:
     return min(statuses, key=lambda s: _PRIORITY[s])
 
 
+def _add_if_unresolved(
+    problems: list[MetricStatus],
+    pointer: str,
+    unresolved: frozenset[str],
+) -> None:
+    """Append UNRESOLVED_INPUT to problems if the pointer is in the unresolved set."""
+    if pointer in unresolved:
+        problems.append(MetricStatus.UNRESOLVED_INPUT)
+
+
 # ---------------------------------------------------------------------------
 # EffectiveInputSnapshot
 # ---------------------------------------------------------------------------
@@ -188,6 +202,18 @@ class EffectiveInputSnapshot:
     def __post_init__(self) -> None:
         if not self.resolved_configuration_id:
             raise ValueError("resolved_configuration_id must be non-empty")
+        try:
+            HullConfiguration(self.hull_configuration)
+        except ValueError as exc:
+            raise ValueError(f"Invalid hull_configuration: {self.hull_configuration!r}") from exc
+        try:
+            DisplacementBasis(self.displacement_basis)
+        except ValueError as exc:
+            raise ValueError(f"Invalid displacement_basis: {self.displacement_basis!r}") from exc
+        try:
+            SailAreaBasis(self.sail_area_basis)
+        except ValueError as exc:
+            raise ValueError(f"Invalid sail_area_basis: {self.sail_area_basis!r}") from exc
         object.__setattr__(self, "resolution_ids", copy.deepcopy(self.resolution_ids))
 
     @classmethod
@@ -476,6 +502,7 @@ def _eval_sa_displ(snap: EffectiveInputSnapshot) -> MetricResult:
     hull_p = _hull_problem(snap.hull_configuration, _MONO_CAT_TRI)
     if hull_p is not None:
         problems.append(hull_p)
+    _add_if_unresolved(problems, _FP_HULL, snap.unresolved_fields)
 
     problems.extend(
         _field_problems(_FP_SAIL, snap.sail_area_m2, snap.unresolved_fields, require_positive=True)
@@ -492,6 +519,8 @@ def _eval_sa_displ(snap: EffectiveInputSnapshot) -> MetricResult:
         problems.append(MetricStatus.NONSTANDARD_INPUT)
     if sail_ns:
         problems.append(MetricStatus.NONSTANDARD_INPUT)
+    _add_if_unresolved(problems, _FP_DISPL_BASIS, snap.unresolved_fields)
+    _add_if_unresolved(problems, _FP_SAIL_BASIS, snap.unresolved_fields)
     if displ_prov or sail_prov:
         provisional = True
 
@@ -512,6 +541,7 @@ def _eval_ballast_displ_pct(snap: EffectiveInputSnapshot) -> MetricResult:
     hull_p = _hull_problem(snap.hull_configuration, _MONO_ONLY)
     if hull_p is not None:
         problems.append(hull_p)
+    _add_if_unresolved(problems, _FP_HULL, snap.unresolved_fields)
 
     problems.extend(
         _field_problems(_FP_BALLAST, snap.ballast_kg, snap.unresolved_fields, require_nonneg=True)
@@ -533,6 +563,7 @@ def _eval_ballast_displ_pct(snap: EffectiveInputSnapshot) -> MetricResult:
     displ_ns, displ_prov = _displ_basis_flag(snap.displacement_basis)
     if displ_ns:
         problems.append(MetricStatus.NONSTANDARD_INPUT)
+    _add_if_unresolved(problems, _FP_DISPL_BASIS, snap.unresolved_fields)
     if displ_prov:
         provisional = True
 
@@ -551,6 +582,7 @@ def _eval_displ_length(snap: EffectiveInputSnapshot) -> MetricResult:
     hull_p = _hull_problem(snap.hull_configuration, _MONO_CAT_TRI)
     if hull_p is not None:
         problems.append(hull_p)
+    _add_if_unresolved(problems, _FP_HULL, snap.unresolved_fields)
 
     problems.extend(
         _field_problems(
@@ -564,6 +596,7 @@ def _eval_displ_length(snap: EffectiveInputSnapshot) -> MetricResult:
     displ_ns, displ_prov = _displ_basis_flag(snap.displacement_basis)
     if displ_ns:
         problems.append(MetricStatus.NONSTANDARD_INPUT)
+    _add_if_unresolved(problems, _FP_DISPL_BASIS, snap.unresolved_fields)
     if displ_prov:
         provisional = True
 
@@ -584,6 +617,7 @@ def _eval_comfort_ratio(snap: EffectiveInputSnapshot) -> MetricResult:
     hull_p = _hull_problem(snap.hull_configuration, _MONO_ONLY)
     if hull_p is not None:
         problems.append(hull_p)
+    _add_if_unresolved(problems, _FP_HULL, snap.unresolved_fields)
 
     problems.extend(
         _field_problems(
@@ -603,6 +637,7 @@ def _eval_comfort_ratio(snap: EffectiveInputSnapshot) -> MetricResult:
     displ_ns, displ_prov = _displ_basis_flag(snap.displacement_basis)
     if displ_ns:
         problems.append(MetricStatus.NONSTANDARD_INPUT)
+    _add_if_unresolved(problems, _FP_DISPL_BASIS, snap.unresolved_fields)
     if displ_prov:
         provisional = True
 
@@ -626,6 +661,7 @@ def _eval_capsize_screening(snap: EffectiveInputSnapshot) -> MetricResult:
     hull_p = _hull_problem(snap.hull_configuration, _MONO_ONLY)
     if hull_p is not None:
         problems.append(hull_p)
+    _add_if_unresolved(problems, _FP_HULL, snap.unresolved_fields)
 
     problems.extend(
         _field_problems(
@@ -639,6 +675,7 @@ def _eval_capsize_screening(snap: EffectiveInputSnapshot) -> MetricResult:
     displ_ns, displ_prov = _displ_basis_flag(snap.displacement_basis)
     if displ_ns:
         problems.append(MetricStatus.NONSTANDARD_INPUT)
+    _add_if_unresolved(problems, _FP_DISPL_BASIS, snap.unresolved_fields)
     if displ_prov:
         provisional = True
 
@@ -658,6 +695,7 @@ def _eval_hull_speed(snap: EffectiveInputSnapshot) -> MetricResult:
     hull_p = _hull_problem(snap.hull_configuration, _MONO_ONLY)
     if hull_p is not None:
         problems.append(hull_p)
+    _add_if_unresolved(problems, _FP_HULL, snap.unresolved_fields)
 
     problems.extend(
         _field_problems(_FP_LWL, snap.lwl_m, snap.unresolved_fields, require_positive=True)
@@ -756,6 +794,25 @@ _COMPUTED_STATUSES: Final[frozenset[MetricStatus]] = frozenset(
 # ---------------------------------------------------------------------------
 
 
+def evaluate_metric_results(
+    snapshot: EffectiveInputSnapshot,
+) -> tuple[MetricResult, ...]:
+    """Return all six per-metric diagnostic results for audit and test use.
+
+    The canonical DerivedMetrics projection uses these same results.
+    Expose them publicly so callers can inspect per-metric statuses,
+    multi-problem context, and formula IDs without accessing private evaluators.
+    """
+    return (
+        _eval_sa_displ(snapshot),
+        _eval_ballast_displ_pct(snapshot),
+        _eval_displ_length(snapshot),
+        _eval_comfort_ratio(snapshot),
+        _eval_capsize_screening(snapshot),
+        _eval_hull_speed(snapshot),
+    )
+
+
 def compute_derived_metrics(
     snapshot: EffectiveInputSnapshot,
     *,
@@ -779,14 +836,7 @@ def compute_derived_metrics(
     - create FieldEvidence for derived outputs;
     - implement search semantics, safety scoring, or persistence.
     """
-    results: list[MetricResult] = [
-        _eval_sa_displ(snapshot),
-        _eval_ballast_displ_pct(snapshot),
-        _eval_displ_length(snapshot),
-        _eval_comfort_ratio(snapshot),
-        _eval_capsize_screening(snapshot),
-        _eval_hull_speed(snapshot),
-    ]
+    results: list[MetricResult] = list(evaluate_metric_results(snapshot))
 
     by_key: dict[str, MetricResult] = {r.metric_key: r for r in results}
 

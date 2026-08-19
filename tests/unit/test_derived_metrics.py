@@ -39,8 +39,10 @@ from hullq.domain.derived_metrics import (
     DerivationRecord,
     DerivedMetrics,
     EffectiveInputSnapshot,
+    MetricResult,
     MetricStatus,
     compute_derived_metrics,
+    evaluate_metric_results,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -184,14 +186,12 @@ class TestGoldenFixtures:
         dm = self._run_case(case)
         exp = case["expected"]
 
-        assert dm.sa_displ == pytest.approx(exp["sa_displ"], abs=1e-6)
-        assert dm.ballast_displ_pct == pytest.approx(exp["ballast_displ_pct"], abs=1e-6)
-        assert dm.displ_length == pytest.approx(exp["displ_length"], abs=1e-6)
-        assert dm.comfort_ratio == pytest.approx(exp["comfort_ratio"], abs=1e-6)
-        assert dm.capsize_screening_formula == pytest.approx(
-            exp["capsize_screening_formula"], abs=1e-6
-        )
-        assert dm.hull_speed_kn == pytest.approx(exp["hull_speed_kn"], abs=1e-6)
+        assert dm.sa_displ == exp["sa_displ"]
+        assert dm.ballast_displ_pct == exp["ballast_displ_pct"]
+        assert dm.displ_length == exp["displ_length"]
+        assert dm.comfort_ratio == exp["comfort_ratio"]
+        assert dm.capsize_screening_formula == exp["capsize_screening_formula"]
+        assert dm.hull_speed_kn == exp["hull_speed_kn"]
 
         for key, expected_status in exp["status"].items():
             assert dm.status[key] == expected_status, f"{key}: got {dm.status[key]!r}"
@@ -202,9 +202,9 @@ class TestGoldenFixtures:
         dm = self._run_case(case)
         exp = case["expected"]
 
-        # Computed metrics
-        assert dm.sa_displ == pytest.approx(exp["sa_displ"], abs=1e-6)
-        assert dm.displ_length == pytest.approx(exp["displ_length"], abs=1e-6)
+        # Computed metrics — exact six-decimal equality
+        assert dm.sa_displ == exp["sa_displ"]
+        assert dm.displ_length == exp["displ_length"]
 
         # Null metrics
         assert dm.ballast_displ_pct is None
@@ -222,15 +222,13 @@ class TestGoldenFixtures:
         dm = self._run_case(case)
         exp = case["expected"]
 
-        # Values same as GOLD-001 (same inputs, only basis differs)
-        assert dm.sa_displ == pytest.approx(exp["sa_displ"], abs=1e-6)
-        assert dm.ballast_displ_pct == pytest.approx(exp["ballast_displ_pct"], abs=1e-6)
-        assert dm.displ_length == pytest.approx(exp["displ_length"], abs=1e-6)
-        assert dm.comfort_ratio == pytest.approx(exp["comfort_ratio"], abs=1e-6)
-        assert dm.capsize_screening_formula == pytest.approx(
-            exp["capsize_screening_formula"], abs=1e-6
-        )
-        assert dm.hull_speed_kn == pytest.approx(exp["hull_speed_kn"], abs=1e-6)
+        # Values same as GOLD-001 (same inputs, only basis differs) — exact equality
+        assert dm.sa_displ == exp["sa_displ"]
+        assert dm.ballast_displ_pct == exp["ballast_displ_pct"]
+        assert dm.displ_length == exp["displ_length"]
+        assert dm.comfort_ratio == exp["comfort_ratio"]
+        assert dm.capsize_screening_formula == exp["capsize_screening_formula"]
+        assert dm.hull_speed_kn == exp["hull_speed_kn"]
 
         # Statuses — hull speed should be computed, others computed_provisional
         for key, expected_status in exp["status"].items():
@@ -242,7 +240,7 @@ class TestGoldenFixtures:
         dm = self._run_case(case)
         exp = case["expected"]
 
-        assert dm.displ_length == pytest.approx(exp["displ_length"], abs=1e-6)
+        assert dm.displ_length == exp["displ_length"]
 
 
 # ---------------------------------------------------------------------------
@@ -312,7 +310,7 @@ class TestStatusFixtures:
                     f"[{case_id}] {metric_key}: expected null value, got {actual_value!r}"
                 )
             else:
-                assert actual_value == pytest.approx(expected_value, abs=1e-6), (
+                assert actual_value == expected_value, (
                     f"[{case_id}] {metric_key}: value={actual_value!r}, expected={expected_value!r}"
                 )
 
@@ -1196,4 +1194,280 @@ def test_catamaran_provisional_sa_and_dl() -> None:
 def test_zero_ballast_is_valid_bd_zero_percent() -> None:
     dm = _metrics(_snap(ballast_kg=0))
     assert dm.status["ballast_displ_pct"] == "computed"
-    assert dm.ballast_displ_pct == pytest.approx(0.0, abs=1e-6)
+    assert dm.ballast_displ_pct == 0.0
+
+
+# ---------------------------------------------------------------------------
+# 22. Finding 1 — unresolved hull/basis categorical inputs
+# ---------------------------------------------------------------------------
+
+_ALL_SIX = [
+    "sa_displ",
+    "ballast_displ_pct",
+    "displ_length",
+    "comfort_ratio",
+    "capsize_screening_formula",
+    "hull_speed_kn",
+]
+
+_FP_HULL_TEST = "/effective/configuration/hull_configuration"
+_FP_DISPL_BASIS_TEST = "/effective/ratio_input_basis/displacement_basis"
+_FP_SAIL_BASIS_TEST = "/effective/ratio_input_basis/sail_area_basis"
+
+
+def test_unresolved_hull_blocks_all_six_metrics() -> None:
+    dm = _metrics(_snap(unresolved_fields=[_FP_HULL_TEST]))
+    for key in _ALL_SIX:
+        assert dm.status[key] == "unresolved_input", f"{key}"
+        assert getattr(dm, key) is None or key not in _ALL_SIX
+
+
+def test_unresolved_hull_all_values_null() -> None:
+    dm = _metrics(_snap(unresolved_fields=[_FP_HULL_TEST]))
+    for key in _ALL_SIX:
+        assert getattr(dm, key) is None, f"{key} should be null when hull is unresolved"
+
+
+def test_unresolved_hull_outranks_not_applicable_for_catamaran() -> None:
+    # Catamaran stale value + hull marked unresolved → unresolved_input beats not_applicable
+    dm = _metrics(
+        _snap(
+            hull_configuration="catamaran",
+            beam_m=6.0,
+            ballast_kg=0,
+            unresolved_fields=[_FP_HULL_TEST],
+        )
+    )
+    assert dm.status["ballast_displ_pct"] == "unresolved_input"
+    assert dm.status["hull_speed_kn"] == "unresolved_input"
+    assert dm.status["comfort_ratio"] == "unresolved_input"
+    assert dm.status["capsize_screening_formula"] == "unresolved_input"
+
+
+def test_unresolved_hull_outranks_applicability_unknown_for_other() -> None:
+    # "other" stale value → applicability_unknown, but unresolved marker wins
+    dm = _metrics(_snap(hull_configuration="other", unresolved_fields=[_FP_HULL_TEST]))
+    for key in _ALL_SIX:
+        assert dm.status[key] == "unresolved_input", f"{key}"
+
+
+def test_unresolved_displacement_basis_blocks_basis_dependent_metrics() -> None:
+    dm = _metrics(_snap(unresolved_fields=[_FP_DISPL_BASIS_TEST]))
+    for key in [
+        "sa_displ",
+        "ballast_displ_pct",
+        "displ_length",
+        "comfort_ratio",
+        "capsize_screening_formula",
+    ]:
+        assert dm.status[key] == "unresolved_input", f"{key}"
+    # hull_speed_kn is independent of displacement basis
+    assert dm.status["hull_speed_kn"] == "computed"
+    assert dm.hull_speed_kn is not None
+
+
+def test_unresolved_sail_area_basis_blocks_only_sa_displ() -> None:
+    dm = _metrics(_snap(unresolved_fields=[_FP_SAIL_BASIS_TEST]))
+    assert dm.status["sa_displ"] == "unresolved_input"
+    assert dm.sa_displ is None
+    # All other metrics are unaffected
+    assert dm.status["hull_speed_kn"] == "computed"
+    assert dm.status["displ_length"] == "computed"
+    assert dm.status["ballast_displ_pct"] == "computed"
+    assert dm.status["comfort_ratio"] == "computed"
+    assert dm.status["capsize_screening_formula"] == "computed"
+
+
+def test_unresolved_displacement_basis_does_not_affect_hull_speed() -> None:
+    dm = _metrics(_snap(unresolved_fields=[_FP_DISPL_BASIS_TEST]))
+    assert dm.status["hull_speed_kn"] == "computed"
+    assert dm.hull_speed_kn is not None
+
+
+def test_invalid_displacement_outranks_unresolved_displacement_basis() -> None:
+    # invalid numeric + unresolved basis on same metric → invalid_input wins (priority 0)
+    dm = _metrics(_snap(displacement_kg=0, unresolved_fields=[_FP_DISPL_BASIS_TEST]))
+    assert dm.status["sa_displ"] == "invalid_input"
+    assert dm.status["displ_length"] == "invalid_input"
+    assert dm.status["ballast_displ_pct"] == "invalid_input"
+
+
+def test_unresolved_hull_with_valid_stale_monohull_still_blocks() -> None:
+    # Even though stale hull value = "monohull" (which would compute), unresolved wins
+    dm = _metrics(_snap(hull_configuration="monohull", unresolved_fields=[_FP_HULL_TEST]))
+    for key in _ALL_SIX:
+        assert dm.status[key] == "unresolved_input", f"{key}"
+
+
+# ---------------------------------------------------------------------------
+# 23. Finding 2 — EffectiveInputSnapshot categorical vocabulary validation
+# ---------------------------------------------------------------------------
+
+
+def test_invalid_hull_configuration_raises() -> None:
+    with pytest.raises(ValueError, match="hull_configuration"):
+        EffectiveInputSnapshot.create(
+            resolved_configuration_id="RC-BAD",
+            hull_configuration="keelboat",
+            displacement_basis="design",
+            sail_area_basis="nominal_main_plus_foretriangle",
+        )
+
+
+def test_invalid_displacement_basis_raises() -> None:
+    with pytest.raises(ValueError, match="displacement_basis"):
+        EffectiveInputSnapshot.create(
+            resolved_configuration_id="RC-BAD",
+            hull_configuration="monohull",
+            displacement_basis="typo",
+            sail_area_basis="nominal_main_plus_foretriangle",
+        )
+
+
+def test_invalid_sail_area_basis_raises() -> None:
+    with pytest.raises(ValueError, match="sail_area_basis"):
+        EffectiveInputSnapshot.create(
+            resolved_configuration_id="RC-BAD",
+            hull_configuration="monohull",
+            displacement_basis="design",
+            sail_area_basis="racing_sails",
+        )
+
+
+@pytest.mark.parametrize("hull", ["monohull", "catamaran", "trimaran", "other", "unknown"])
+def test_all_accepted_hull_configurations_valid(hull: str) -> None:
+    snap = EffectiveInputSnapshot.create(
+        resolved_configuration_id="RC-VOCAB",
+        hull_configuration=hull,
+        displacement_basis="design",
+        sail_area_basis="nominal_main_plus_foretriangle",
+    )
+    assert snap.hull_configuration == hull
+
+
+@pytest.mark.parametrize(
+    "basis",
+    ["design", "lightship", "normal_sailing", "full_load", "source_unspecified", "unknown"],
+)
+def test_all_accepted_displacement_bases_valid(basis: str) -> None:
+    snap = EffectiveInputSnapshot.create(
+        resolved_configuration_id="RC-VOCAB",
+        hull_configuration="monohull",
+        displacement_basis=basis,
+        sail_area_basis="nominal_main_plus_foretriangle",
+    )
+    assert snap.displacement_basis == basis
+
+
+@pytest.mark.parametrize(
+    "basis",
+    [
+        "nominal_main_plus_foretriangle",
+        "upwind_100pct",
+        "working_sails_actual",
+        "downwind",
+        "source_unspecified",
+        "unknown",
+    ],
+)
+def test_all_accepted_sail_area_bases_valid(basis: str) -> None:
+    snap = EffectiveInputSnapshot.create(
+        resolved_configuration_id="RC-VOCAB",
+        hull_configuration="monohull",
+        displacement_basis="design",
+        sail_area_basis=basis,
+    )
+    assert snap.sail_area_basis == basis
+
+
+# ---------------------------------------------------------------------------
+# 24. Finding 3 — evaluate_metric_results public diagnostic boundary
+# ---------------------------------------------------------------------------
+
+
+def test_evaluate_metric_results_returns_six_results() -> None:
+    results = evaluate_metric_results(_snap())
+    assert len(results) == 6
+    keys = {r.metric_key for r in results}
+    assert keys == {
+        "sa_displ",
+        "ballast_displ_pct",
+        "displ_length",
+        "comfort_ratio",
+        "capsize_screening_formula",
+        "hull_speed_kn",
+    }
+
+
+def test_evaluate_metric_results_returns_metric_result_instances() -> None:
+    results = evaluate_metric_results(_snap())
+    for r in results:
+        assert isinstance(r, MetricResult)
+
+
+def test_evaluate_metric_results_statuses_match_projection() -> None:
+    snap = _snap()
+    results = evaluate_metric_results(snap)
+    dm = _metrics(snap)
+    for r in results:
+        assert str(r.status) == dm.status[r.metric_key], f"{r.metric_key}"
+
+
+def test_evaluate_metric_results_multiple_problems_visible() -> None:
+    # Catamaran + missing displacement: BD has both not_applicable AND missing_input in problems
+    snap = _snap(hull_configuration="catamaran", displacement_kg=None, beam_m=6.0, ballast_kg=0)
+    results = evaluate_metric_results(snap)
+    bd = next(r for r in results if r.metric_key == "ballast_displ_pct")
+    # Both problems are retained in diagnostics
+    assert "not_applicable" in bd.problems
+    assert "missing_input" in bd.problems
+    # Canonical status is the highest-priority (not_applicable over missing_input)
+    assert bd.status == MetricStatus.NOT_APPLICABLE
+
+
+def test_evaluate_metric_results_no_problems_when_computed() -> None:
+    results = evaluate_metric_results(_snap())
+    for r in results:
+        assert r.problems == (), f"{r.metric_key} should have no problems when computed"
+        assert r.status == MetricStatus.COMPUTED
+
+
+def test_evaluate_metric_results_no_diagnostics_in_as_dict() -> None:
+    dm = _metrics(_snap())
+    d = dm.as_dict()
+    assert "problems" not in d
+    assert "formula_id" not in d
+    assert "metric_key" not in d
+
+
+def test_compute_derived_metrics_consistent_with_evaluate_metric_results() -> None:
+    # compute_derived_metrics and evaluate_metric_results must agree on status/value
+    snap = _snap()
+    results = evaluate_metric_results(snap)
+    dm, _ = _run(snap)
+    for r in results:
+        assert str(r.status) == dm.status[r.metric_key]
+        assert r.value == getattr(dm, r.metric_key)
+
+
+# ---------------------------------------------------------------------------
+# 25. Finding 4 — ROUND_HALF_EVEN regression
+# ---------------------------------------------------------------------------
+
+
+def test_quantize_uses_round_half_even() -> None:
+    from decimal import ROUND_HALF_EVEN, Decimal
+
+    from hullq.domain.derived_metrics import _quantize
+
+    # 0.0000025 has a 5 in the 7th decimal position; the 6th decimal (2) is even,
+    # so ROUND_HALF_EVEN rounds to 0.000002 (not 0.000003 as ROUND_HALF_UP would).
+    mid = Decimal("0.0000025")
+    expected = float(mid.quantize(Decimal("0.000001"), rounding=ROUND_HALF_EVEN))
+    assert _quantize(float(mid)) == expected  # == 0.000002
+
+    # 0.0000035 has a 5 in the 7th position; 6th decimal (3) is odd,
+    # so ROUND_HALF_EVEN rounds up to 0.000004.
+    mid2 = Decimal("0.0000035")
+    expected2 = float(mid2.quantize(Decimal("0.000001"), rounding=ROUND_HALF_EVEN))
+    assert _quantize(float(mid2)) == expected2  # == 0.000004
