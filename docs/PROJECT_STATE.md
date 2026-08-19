@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
-**Updated:** 2026-08-19  
-**Current stage:** Stage 2.9 — SLICE-0010 derived metrics engine REVIEW  
+**Updated:** 2026-08-20  
+**Current stage:** Stage 2.10–2.11 — SLICE-0011 controlled real-web benchmark research IN_PROGRESS  
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -155,63 +155,89 @@ Acceptance evidence:
 - independent final review: no remaining blockers;
 - merge commit: `001ca87817f37553b463ca01270c64a26b7716b6`.
 
-The accepted boundary provides:
+The accepted boundary provides deterministic exact/explicit-alias configuration normalization, independent keel/rudder/skeg/hull/board axes, strict count handling, option/variant/state scope preservation, snapshot-safe raw observations and fail-closed baseline projection. It does not perform canonical conflict resolution, source acquisition, persistence or derived calculations.
 
-- runtime vocabularies matching the existing BoatDesign configuration enums;
-- deterministic exact/explicit-alias normalization for keel, rudder, skeg and hull configuration;
-- strict count normalization for hull/rudder/centerboard/daggerboard counts;
-- explicit unsupported/ambiguous/malformed outcomes rather than guessed mappings;
-- independent configuration axes with no twin-rudder/skeg/keel inference;
-- baseline/named-variant/design-option/board-state scope preservation;
-- required scope identity for named variants/design options;
-- fail-closed `baseline_projection()` so non-baseline observations cannot silently become baseline canonical facts;
-- snapshot-safe raw configuration observations;
-- generic `NormalizedCandidate` integration without changing the SLICE-0006 provenance contract.
+## Completed implementation — SLICE-0010
 
-SLICE-0009 does **not** create accepted FieldResolution, mutate BoatDesign, perform source acquisition, persist data or calculate derived metrics.
+### Derived Metrics Engine — DONE
+
+SLICE-0010 implemented methodology `hullq-derived-1.0.0` and was independently reviewed, amended and merged through PR #21 on 2026-08-19.
+
+Acceptance evidence:
+
+- accepted final implementation/PR head: `601af0e859a8c771640f473394b78efa32bf918c`;
+- GitHub Actions run #120: PASS on the exact accepted head;
+- final local implementation report: 915 tests PASS, 92.62% branch coverage, `derived_metrics.py` 99.50% branch coverage, repository validator PASS, Ruff/format clean, strict mypy clean, pip-audit clean;
+- independent review found four precision issues; all four were amended and rechecked with no remaining blockers;
+- merge commit: `8f9a5ab07f454d6dfbfcb2f133c80c48b14dcc4a`.
+
+The accepted runtime computes the six approved metrics only from explicit effective inputs, preserves status/basis/applicability semantics, exposes exact six-decimal canonical output and emits DerivationRecord lineage without creating fake source evidence. It does not implement configuration resolution, source conflict resolution, persistence, query semantics, API/frontend behavior or safety/seaworthiness scoring.
 
 ## AI repository workflow — ACTIVE
 
-The project owner normally starts and finishes implementation slices with:
+Implementation slices normally use:
 
 ```text
 START_SLICE.bat
 FINISH_SLICE.bat
 ```
 
-`START_SLICE.bat` synchronizes `main`, creates/reuses an isolated slice worktree/branch and copies Claude's instruction to the clipboard. It refuses any slice whose own slice document is not explicitly `READY`.
-
-`START_SLICE` deliberately does **not** open, close, reload or switch any VS Code window. The project owner explicitly opens the sibling `HullQ-slice-XXXX` worktree in the desired VS Code window before pasting the prompt.
-
-`FINISH_SLICE.bat` synchronizes local `main` and removes the old clean worktree/local branch only after merged-PR confirmation when GitHub CLI is available.
+`START_SLICE.bat` synchronizes `main`, creates/reuses an isolated slice worktree/branch and copies Claude's instruction to the clipboard. It refuses implementation slices whose own slice document is not explicitly `READY`.
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned `slice/...` branch. The master/architect does not write Claude's active implementation branch. No later implementation slice begins automatically.
 
-## Current operational position — SLICE-0010 REVIEW
+SLICE-0011 is deliberately different: it is a master-led DESIGN_RESEARCH slice. ChatGPT/master research performs the real-web evidence work; Claude Code is not used as the autonomous web-research agent. Research updates are prepared on `research/0011-controlled-benchmark` and go through a PR before becoming canonical.
 
-`docs/slices/SLICE-0010-derived-metrics-engine.md` is in `REVIEW` pending CI and independent acceptance.
+## Current operational position — SLICE-0011 IN_PROGRESS
 
-OQ-001 / ADR-0008 already froze methodology `hullq-derived-1.0.0`. SLICE-0010 is therefore an execution slice, not a research slice. It must implement exactly:
+The project owner explicitly authorized the controlled real-data benchmark after SLICE-0010 acceptance.
 
-- Sail Area / Displacement (`sa_displ`);
-- Ballast / Displacement % (`ballast_displ_pct`);
-- Displacement / Length (`displ_length`);
-- Brewer Comfort Ratio (`comfort_ratio`);
-- Capsize Screening Formula (`capsize_screening_formula`);
-- legacy/theoretical Hull Speed (`hull_speed_kn`).
+Research method:
 
-The accepted method already specifies exact Imperial conversion constants, hull applicability, displacement/sail-area basis semantics, status precedence, six-decimal round-half-even canonical precision, and DerivationRecord lineage. `fixtures/ratios/golden_metrics.v0.1.json` and `fixtures/ratios/status_cases.v0.2.json` are compatibility fixtures and must be executed by the runtime tests rather than silently rewritten.
+```text
+selected difficult design
+      ↓
+broad independent web research
+      ↓
+source ranking + raw evidence/context capture
+      ↓
+corroboration / conflict detection
+      ↓
+post-hoc reference comparison
+      ↓
+structured benchmark evidence
+      ↓
+measured ambiguity/completeness/review findings
+```
 
-SLICE-0010 must remain bounded:
+The active source policy is deliberately broad: manufacturer/shipyard material, brochures/manuals, designers, class/owners associations, archives, specialist publications/databases, brokers where appropriate, forums/owner communities, refit/restoration material and other useful web leads may all contribute. Evidence confidence remains source- and field-specific.
 
-- consume an explicit caller-supplied effective input snapshot corresponding to accepted `/effective/...` ResolvedConfiguration fields;
-- preserve explicit unresolved-field markers and optional input FieldResolution IDs;
-- do not implement full BoatDesign + NamedVariant + DesignOption configuration resolution;
-- do not resolve source conflicts or choose canonical evidence;
-- produce null values for all noncomputed statuses;
-- produce schema-valid DerivationRecord lineage for every populated metric;
-- do not create fake FieldEvidence for HullQ-calculated outputs;
-- no search/filter semantics, persistence, API/frontend behavior or safety/bluewater scoring.
+**Source breadth is intentionally broad; canonical confidence is intentionally strict.**
+
+SailboatData is used only as a post-hoc reference comparison after independent research. Its field values are not HullQ evidence, are not used as fallbacks and do not resolve conflicts. The benchmark records only comparison outcomes/anomaly triggers.
+
+### Wave 01
+
+- 5 designs;
+- 58 structured observations;
+- Hallberg-Rassy 36, Westerly Centaur, RM 1180, Najad 34, J/24.
+
+### Wave 02
+
+- 12 designs;
+- 138 structured observations;
+- Dragonfly 32, OVNI 370, Garcia Exploration 45, Boréal 44.2, Island Packet 349, Corsair 880, Lagoon 42 (2016), Nauticat 33→331, Catalina 316, Jeanneau Sun Odyssey 410, CATANA Ocean Class, Pogo 1.
+
+Current actively re-researched benchmark count: **17 designs** toward the 50–100 target.
+
+Early recurring problem classes already include model-name reuse, named variants, option-sensitive mass/draft, board-state geometry, folded multihull geometry, proprietary appendage vocabulary, rudder↔skeg relationships, primary-source internal contradiction, cross-source appendage conflict, design-vs-individual-boat values and displacement/sail-area basis differences.
+
+See:
+
+- `docs/slices/SLICE-0011-controlled-benchmark-research.md`;
+- `research/benchmark/CONTROLLED_BENCHMARK_LEDGER.md`;
+- `research/benchmark/waves/WAVE-01-summary.md`;
+- `research/benchmark/waves/WAVE-02-summary.md`.
 
 ## Revised near-term path to real data
 
@@ -222,20 +248,23 @@ SLICE-0006  provenance/raw-observation boundary              DONE
       ↓
 SLICE-0007  ResearchJob + source-rights clearance gate       DONE
       ↓
-SLICE-0008  first rights-gated real data — Wikidata CC0      DONE
+SLICE-0008  first rights-gated real adapter — Wikidata       DONE
       ↓
 SLICE-0009  appendage/configuration normalization            DONE
       ↓
-SLICE-0010  derived metrics                                  READY
+SLICE-0010  derived metrics                                  DONE
       ↓
-controlled benchmark                                        NOT AUTHORIZED YET
+SLICE-0011  controlled real-web benchmark                    IN PROGRESS
+      ↓
+next persistence/import implementation slice                TO BE REFINED FROM BENCHMARK
+      ↓
+broad design-universe ingestion                             NOT AUTHORIZED YET
 ```
-
-SLICE-0010 closes the last already-accepted pure calculation boundary needed before the next controlled benchmark wave is refined. The benchmark remains a later slice and must not be started automatically.
 
 ## Downstream gates
 
-- broad ingestion is not yet authorized;
+- broad production ingestion is not yet authorized;
+- production PostgreSQL schema/application persistence remains deferred until the benchmark justifies the exact boundary;
 - OQ-009 is required before technical query-engine implementation;
 - OQ-018 is required before the public search/SEO surface;
 - OQ-014 is required before account/auth implementation;
@@ -244,9 +273,9 @@ SLICE-0010 closes the last already-accepted pure calculation boundary needed bef
 
 ## Do not start yet
 
-- controlled benchmark implementation beyond the prepared SLICE-0010 boundary;
-- production broad ingestion;
-- PostgreSQL production schema/application persistence;
+- broad production ingestion;
+- unbounded crawler work;
+- PostgreSQL production persistence implementation before the benchmark-derived slice is specified;
 - FastAPI public API;
 - Astro frontend implementation;
 - account/auth implementation;
