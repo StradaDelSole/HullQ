@@ -484,3 +484,41 @@ New module-level helper `_claim_unit_qid(claim)` extracts the unit QID from a cl
 - pip-audit: no known vulnerabilities
 - Remote CI (PR #19): **NOT VERIFIED** — branch pushed to `96ad4de`; GitHub Actions result not yet observed
 - Live smoke: not executed
+
+---
+
+## Review Amendment 4 (final blocker 4B — literal sentinel enforcement)
+
+**HEAD after amendment:** `12afd0e` (pushed to `slice/0008-wikidata-rights-gated-adapter`)
+
+### Implementation
+
+New module-level helper `_get_claim_raw_unit(claim)` returns the raw `unit` string exactly as it appears in the Wikidata API response, or `None` for absent/non-string unit. This is explicitly distinct from `_claim_unit_qid()`, which returns `None` for both the sentinel `"1"` and for non-QID URLs — making those two cases indistinguishable.
+
+`_process_count_quantity` now uses `_get_claim_raw_unit()` for an explicit three-way dispatch:
+
+- `unit == "1"` → raw count `FieldEvidence` (no `NormalizedCandidate`)
+- `unit` is any other string → `unsupported_qualifier_count += 1`, zero evidence
+- `unit` absent or non-string → `malformed_count += 1`, zero evidence
+
+The docstring names the reason `_claim_unit_qid()` is intentionally not used here.
+
+### Test changes
+
+- `test_total_produced_evidence_from_p1092`: the `entity_ok` case now uses a hand-built raw claim with literal `"unit": "1"` instead of the `_quantity_claim` helper (which builds the URL form).
+- `test_p1092_with_dimensionless_unit_produces_evidence_without_normalization` → renamed `test_p1092_with_url_form_of_1_is_unsupported`; asserts zero evidence + `unsupported == 1` (the URL form `"http://…/entity/1"` is not the sentinel).
+- `test_p1092_with_literal_sentinel_unit_produces_evidence`: unchanged ✓
+- `test_p1092_with_unknown_qid_unit_is_unsupported`: unchanged ✓
+- New `test_p1092_with_non_qid_url_is_unsupported`: `http://example.com/unit/count` → zero evidence, unsupported increments.
+- New `test_p1092_with_missing_unit_is_malformed`: absent `unit` key → zero evidence, malformed increments (not unsupported).
+
+### Validation after amendment 4
+
+- ruff check: clean
+- ruff format: clean
+- mypy (SLICE-0008 files, strict): clean
+- pytest: **606 passed** (2 new tests, 2 renamed/rewritten)
+- branch coverage total: **90.42%** (≥90% required)
+- pip-audit: no known vulnerabilities
+- Remote CI (PR #19): **NOT VERIFIED** — branch pushed to `12afd0e`; GitHub Actions result not yet observed
+- Live smoke: not executed
