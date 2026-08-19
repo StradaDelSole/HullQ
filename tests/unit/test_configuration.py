@@ -22,6 +22,7 @@ from hullq.domain.configuration import (
     ObservationScope,
     RudderType,
     SkegType,
+    baseline_projection,
     canonical_pointer,
     normalize_configuration,
     to_normalized_candidate,
@@ -751,7 +752,12 @@ def test_centreboard_british_spelling_on_keel_axis() -> None:
 # Lifting/swing keel as explicit option rather than baseline
 def test_lifting_keel_as_design_option() -> None:
     result = normalize_configuration(
-        _obs(ConfigAxis.KEEL_TYPE, "lifting keel", scope=ObservationScope.DESIGN_OPTION)
+        _obs(
+            ConfigAxis.KEEL_TYPE,
+            "lifting keel",
+            scope=ObservationScope.DESIGN_OPTION,
+            scope_ref="option-lift-keel",
+        )
     )
     assert result.canonical_value == "lifting"
     assert result.observation.scope == ObservationScope.DESIGN_OPTION
@@ -759,7 +765,12 @@ def test_lifting_keel_as_design_option() -> None:
 
 def test_swing_keel_as_design_option() -> None:
     result = normalize_configuration(
-        _obs(ConfigAxis.KEEL_TYPE, "swing keel", scope=ObservationScope.DESIGN_OPTION)
+        _obs(
+            ConfigAxis.KEEL_TYPE,
+            "swing keel",
+            scope=ObservationScope.DESIGN_OPTION,
+            scope_ref="option-swing-keel",
+        )
     )
     assert result.canonical_value == "swing"
     assert result.observation.scope == ObservationScope.DESIGN_OPTION
@@ -924,3 +935,250 @@ def test_keel_subtype_empty_string_is_malformed() -> None:
 def test_keel_subtype_non_string_is_malformed() -> None:
     result = _norm(ConfigAxis.KEEL_SUBTYPE, 42)
     assert result.outcome == NormalizationOutcome.MALFORMED
+
+
+# ---------------------------------------------------------------------------
+# Finding 1 — Scope-safe projection via baseline_projection()
+# ---------------------------------------------------------------------------
+
+
+# 1. BASELINE observation projects successfully
+def test_baseline_keel_projects_to_baseline_pointer() -> None:
+    result = _norm(ConfigAxis.KEEL_TYPE, "fin")
+    projection = baseline_projection(result)
+    assert projection is not None
+    pointer, candidate = projection
+    assert str(pointer) == "/baseline/configuration/keel_type"
+    assert candidate.value == "fin"
+
+
+def test_baseline_alias_keel_projects_to_baseline_pointer() -> None:
+    result = _norm(ConfigAxis.KEEL_TYPE, "fin keel")
+    projection = baseline_projection(result)
+    assert projection is not None
+    pointer, candidate = projection
+    assert str(pointer) == "/baseline/configuration/keel_type"
+    assert candidate.value == "fin"
+
+
+def test_baseline_count_projects_to_baseline_pointer() -> None:
+    result = _norm(ConfigAxis.RUDDER_COUNT, 2)
+    projection = baseline_projection(result)
+    assert projection is not None
+    pointer, candidate = projection
+    assert str(pointer) == "/baseline/configuration/rudder_count"
+    assert candidate.value == 2
+
+
+# 2. DESIGN_OPTION is refused by baseline_projection
+def test_design_option_refused_by_baseline_projection() -> None:
+    result = normalize_configuration(
+        _obs(
+            ConfigAxis.KEEL_TYPE,
+            "lifting keel",
+            scope=ObservationScope.DESIGN_OPTION,
+            scope_ref="option-lift",
+        )
+    )
+    assert result.outcome == NormalizationOutcome.ALIAS
+    assert baseline_projection(result) is None
+
+
+# 3. NAMED_VARIANT is refused by baseline_projection
+def test_named_variant_refused_by_baseline_projection() -> None:
+    result = normalize_configuration(
+        _obs(
+            ConfigAxis.KEEL_TYPE,
+            "shoal",
+            scope=ObservationScope.NAMED_VARIANT,
+            scope_ref="shallow-draft",
+        )
+    )
+    assert result.outcome == NormalizationOutcome.EXACT
+    assert baseline_projection(result) is None
+
+
+# 4. BOARD_UP is refused by baseline_projection
+def test_board_up_refused_by_baseline_projection() -> None:
+    result = normalize_configuration(
+        _obs(ConfigAxis.CENTERBOARD_COUNT, 1, scope=ObservationScope.BOARD_UP)
+    )
+    assert result.outcome == NormalizationOutcome.EXACT
+    assert baseline_projection(result) is None
+
+
+# 5. BOARD_DOWN is refused by baseline_projection
+def test_board_down_refused_by_baseline_projection() -> None:
+    result = normalize_configuration(
+        _obs(ConfigAxis.DAGGERBOARD_COUNT, 2, scope=ObservationScope.BOARD_DOWN)
+    )
+    assert result.outcome == NormalizationOutcome.EXACT
+    assert baseline_projection(result) is None
+
+
+# 6. DESIGN_OPTION requires non-empty scope_ref
+def test_design_option_without_scope_ref_raises() -> None:
+    with pytest.raises(ValueError, match="scope_ref"):
+        ConfigurationObservation(
+            axis=ConfigAxis.KEEL_TYPE,
+            raw_value="lifting keel",
+            scope=ObservationScope.DESIGN_OPTION,
+            scope_ref=None,
+        )
+
+
+def test_design_option_with_empty_scope_ref_raises() -> None:
+    with pytest.raises(ValueError, match="scope_ref"):
+        ConfigurationObservation(
+            axis=ConfigAxis.KEEL_TYPE,
+            raw_value="lifting keel",
+            scope=ObservationScope.DESIGN_OPTION,
+            scope_ref="",
+        )
+
+
+def test_design_option_with_whitespace_scope_ref_raises() -> None:
+    with pytest.raises(ValueError, match="scope_ref"):
+        ConfigurationObservation(
+            axis=ConfigAxis.KEEL_TYPE,
+            raw_value="lifting keel",
+            scope=ObservationScope.DESIGN_OPTION,
+            scope_ref="   ",
+        )
+
+
+# 7. NAMED_VARIANT requires non-empty scope_ref
+def test_named_variant_without_scope_ref_raises() -> None:
+    with pytest.raises(ValueError, match="scope_ref"):
+        ConfigurationObservation(
+            axis=ConfigAxis.KEEL_TYPE,
+            raw_value="shoal",
+            scope=ObservationScope.NAMED_VARIANT,
+            scope_ref=None,
+        )
+
+
+def test_named_variant_with_empty_scope_ref_raises() -> None:
+    with pytest.raises(ValueError, match="scope_ref"):
+        ConfigurationObservation(
+            axis=ConfigAxis.KEEL_TYPE,
+            raw_value="shoal",
+            scope=ObservationScope.NAMED_VARIANT,
+            scope_ref="",
+        )
+
+
+# 8. Baseline normalization behavior unchanged
+def test_baseline_normalization_unchanged_fin() -> None:
+    result = _norm(ConfigAxis.KEEL_TYPE, "fin")
+    assert result.outcome == NormalizationOutcome.EXACT
+    assert result.canonical_value == "fin"
+    assert result.ruleset_version == RULESET_VERSION
+
+
+def test_baseline_normalization_unchanged_alias() -> None:
+    result = _norm(ConfigAxis.RUDDER_TYPE, "keel hung rudder")
+    assert result.outcome == NormalizationOutcome.ALIAS
+    assert result.canonical_value == "keel_hung"
+
+
+# 9. to_normalized_candidate is scope-agnostic; baseline_projection is the safe path
+def test_to_normalized_candidate_does_not_check_scope() -> None:
+    # to_normalized_candidate converts outcome only — it is scope-agnostic
+    result = normalize_configuration(
+        _obs(
+            ConfigAxis.KEEL_TYPE,
+            "fin",
+            scope=ObservationScope.DESIGN_OPTION,
+            scope_ref="opt-fin",
+        )
+    )
+    # The low-level helper still converts the outcome
+    candidate = to_normalized_candidate(result)
+    assert candidate is not None
+    assert candidate.value == "fin"
+    # But the scope-safe path (baseline_projection) refuses it
+    assert baseline_projection(result) is None
+
+
+# baseline_projection also refuses non-successful outcomes at baseline scope
+def test_baseline_projection_refuses_unsupported_outcome() -> None:
+    result = _norm(ConfigAxis.KEEL_TYPE, "mystery keel")
+    assert result.observation.scope == ObservationScope.BASELINE
+    assert result.outcome == NormalizationOutcome.UNSUPPORTED
+    assert baseline_projection(result) is None
+
+
+def test_baseline_projection_refuses_malformed_outcome() -> None:
+    result = _norm(ConfigAxis.KEEL_TYPE, "")
+    assert result.observation.scope == ObservationScope.BASELINE
+    assert result.outcome == NormalizationOutcome.MALFORMED
+    assert baseline_projection(result) is None
+
+
+# BOARD_UP/BOARD_DOWN do not require scope_ref (board state does not fabricate an option ID)
+def test_board_up_does_not_require_scope_ref() -> None:
+    obs = ConfigurationObservation(
+        axis=ConfigAxis.CENTERBOARD_COUNT,
+        raw_value=1,
+        scope=ObservationScope.BOARD_UP,
+        scope_ref=None,
+    )
+    assert obs.scope == ObservationScope.BOARD_UP
+    assert obs.scope_ref is None
+
+
+def test_board_down_does_not_require_scope_ref() -> None:
+    obs = ConfigurationObservation(
+        axis=ConfigAxis.DAGGERBOARD_COUNT,
+        raw_value=2,
+        scope=ObservationScope.BOARD_DOWN,
+        scope_ref=None,
+    )
+    assert obs.scope == ObservationScope.BOARD_DOWN
+
+
+# ---------------------------------------------------------------------------
+# Finding 2 — ConfigurationObservation raw_value snapshot safety
+# ---------------------------------------------------------------------------
+
+
+def test_dict_raw_value_snapshotted_at_construction() -> None:
+    raw: dict[str, object] = {"type": "fin"}
+    obs = ConfigurationObservation(axis=ConfigAxis.KEEL_TYPE, raw_value=raw)
+    raw["type"] = "full"
+    assert obs.raw_value == {"type": "fin"}
+
+
+def test_dict_raw_value_snapshotted_before_normalization() -> None:
+    raw: dict[str, object] = {"type": "fin"}
+    obs = ConfigurationObservation(axis=ConfigAxis.KEEL_TYPE, raw_value=raw)
+    result = normalize_configuration(obs)
+    raw["type"] = "full"
+    assert result.observation.raw_value == {"type": "fin"}
+
+
+def test_list_raw_value_snapshotted_at_construction() -> None:
+    raw: list[str] = ["fin"]
+    obs = ConfigurationObservation(axis=ConfigAxis.KEEL_TYPE, raw_value=raw)
+    raw.append("full")
+    assert obs.raw_value == ["fin"]
+
+
+def test_nested_dict_raw_value_snapshotted_deeply() -> None:
+    raw: dict[str, object] = {"outer": {"inner": "fin"}}
+    obs = ConfigurationObservation(axis=ConfigAxis.KEEL_TYPE, raw_value=raw)
+    inner = raw["outer"]
+    assert isinstance(inner, dict)
+    inner["inner"] = "full"
+    assert obs.raw_value == {"outer": {"inner": "fin"}}
+
+
+def test_malformed_dict_raw_value_still_snapshotted() -> None:
+    # Even MALFORMED observations must have stable raw provenance
+    raw: dict[str, object] = {"unexpected": 42}
+    obs = ConfigurationObservation(axis=ConfigAxis.RUDDER_COUNT, raw_value=raw)
+    result = normalize_configuration(obs)
+    assert result.outcome == NormalizationOutcome.MALFORMED
+    raw["unexpected"] = 99
+    assert result.observation.raw_value == {"unexpected": 42}

@@ -14,6 +14,7 @@ metrics.
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Final
@@ -31,6 +32,7 @@ __all__ = [
     "ObservationScope",
     "RudderType",
     "SkegType",
+    "baseline_projection",
     "canonical_pointer",
     "normalize_configuration",
     "to_normalized_candidate",
@@ -159,9 +161,14 @@ class ObservationScope(StrEnum):
 class ConfigurationObservation:
     """Immutable explicit source observation for one configuration axis.
 
-    ``raw_value`` is preserved as-is; it is never inferred or guessed.
-    ``scope`` and ``scope_ref`` are retained so that option/variant/state
-    observations are never silently treated as baseline facts.
+    ``raw_value`` is deep-copied on construction so that later caller mutations
+    cannot alter the stored snapshot (snapshot-safe provenance discipline from
+    SLICE-0006). ``scope`` and ``scope_ref`` are retained so that option/variant/
+    state observations are never silently treated as baseline facts.
+
+    DESIGN_OPTION and NAMED_VARIANT scopes require a non-empty ``scope_ref``
+    identifying the target option or variant; construction raises ``ValueError``
+    if this invariant is violated.
     """
 
     axis: ConfigAxis
@@ -169,6 +176,19 @@ class ConfigurationObservation:
     scope: ObservationScope = ObservationScope.BASELINE
     scope_ref: str | None = None
     evidence_id: str | None = None
+
+    def __post_init__(self) -> None:
+        # Snapshot-safe: deep-copy caller-owned mutable raw_value at construction
+        object.__setattr__(self, "raw_value", copy.deepcopy(self.raw_value))
+        # DESIGN_OPTION and NAMED_VARIANT must identify their target
+        if self.scope in (
+            ObservationScope.DESIGN_OPTION,
+            ObservationScope.NAMED_VARIANT,
+        ) and (not self.scope_ref or not self.scope_ref.strip()):
+            raise ValueError(
+                f"scope={self.scope!r} requires a non-empty scope_ref "
+                f"identifying the target option or variant"
+            )
 
 
 @dataclass(frozen=True)
@@ -427,6 +447,11 @@ def to_normalized_candidate(
 
     Returns None for UNSUPPORTED, AMBIGUOUS and MALFORMED outcomes.
     unit is None (categorical/count values are not physical measurements).
+
+    **Scope-agnostic low-level helper.** This function converts the normalization
+    outcome only; it does not check ``observation.scope``. Callers that need safe
+    baseline projection must use ``baseline_projection()`` instead, which refuses
+    non-baseline observations before calling this helper.
     """
     if result.outcome not in (NormalizationOutcome.EXACT, NormalizationOutcome.ALIAS):
         return None
@@ -436,3 +461,26 @@ def to_normalized_candidate(
         method_id=result.rule_id or "configuration-exact",
         method_version=result.ruleset_version,
     )
+
+
+def baseline_projection(
+    result: ConfigurationNormalizationResult,
+) -> tuple[JsonPointer, NormalizedCandidate] | None:
+    """Return (baseline_pointer, candidate) only when scope is BASELINE.
+
+    Returns None for any non-BASELINE scope (DESIGN_OPTION, NAMED_VARIANT,
+    BOARD_UP, BOARD_DOWN, OTHER) and for non-successful normalization outcomes
+    (UNSUPPORTED, AMBIGUOUS, MALFORMED).
+
+    This is the scope-safe projection boundary. A non-baseline observation
+    cannot accidentally be projected as a baseline canonical fact through this
+    function. Callers that need to project option/variant/state observations
+    must handle scope routing themselves and must not use this helper for that
+    purpose.
+    """
+    if result.observation.scope != ObservationScope.BASELINE:
+        return None
+    candidate = to_normalized_candidate(result)
+    if candidate is None:
+        return None
+    return (canonical_pointer(result.observation.axis), candidate)
