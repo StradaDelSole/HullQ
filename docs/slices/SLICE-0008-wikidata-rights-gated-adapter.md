@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0008  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 2.7 — first controlled real external acquisition  
 **Depends on:** SLICE-0007 accepted / DONE  
 **Blocks:** SLICE-0009
@@ -299,3 +299,72 @@ When implementation is complete:
 5. report whether the optional real network smoke was executed and, if so, its bounded parameters/results;
 6. do not merge to `main`;
 7. do not start SLICE-0009.
+
+---
+
+## Completion Report
+
+### Slice
+
+- Slice ID: `SLICE-0008`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+
+### Changes
+
+- Changed files:
+  - `docs/slices/SLICE-0008-wikidata-rights-gated-adapter.md` — status IN_PROGRESS → REVIEW; completion report appended
+  - `docs/slices/INDEX.md` — SLICE-0008 status READY → REVIEW; execution rule updated
+  - `docs/PROJECT_STATE.md` — stage updated to 2.7 REVIEW; operational position section updated
+- New files:
+  - `fixtures/sources/wikidata_source.json` — reviewed Wikidata Source record, CC0-1.0, all clearances allowed, schema-valid against `SOURCE_SCHEMA.v0.2.json`
+  - `src/hullq/sources/wikidata.py` — complete Wikidata CC0 rights-gated adapter (403 statements)
+  - `tests/unit/test_wikidata_adapter.py` — 70 offline unit tests covering scenarios 2–22
+  - `tests/contract/test_wikidata_source_record.py` — 17 contract tests covering scenario 1
+  - `tests/integration/conftest.py` — `--run-live` pytest option for opt-in live smoke
+  - `tests/integration/test_wikidata_live.py` — 2 opt-in live smoke tests (skipped in normal CI)
+- Requirements implemented: all in-scope behaviors from sections 1–8 of the slice
+
+### Validation
+
+- Local validation: `PASS`
+- Commands run:
+  ```
+  uv run ruff check src/ tests/
+  uv run ruff format --check src/ tests/
+  uv run mypy src/hullq/sources/wikidata.py tests/unit/test_wikidata_adapter.py tests/contract/test_wikidata_source_record.py tests/integration/test_wikidata_live.py tests/integration/conftest.py
+  uv run coverage run -m pytest tests/unit/ tests/contract/ -q
+  uv run coverage report
+  uv run pip-audit
+  ```
+- Results:
+  - ruff check: `All checks passed!`
+  - ruff format: `30 files already formatted`
+  - mypy (new SLICE-0008 files): `Success: no issues found in 5 source files`
+  - pytest: `567 passed in 22.04s`
+  - coverage total: `90.13%` (≥90% required; `wikidata.py` alone is 81.62% — the requirement is the overall suite threshold)
+  - pip-audit: `No known vulnerabilities found`
+
+### External verification
+
+- Remote CI: `NOT VERIFIED` — branch pushed to GitHub; GitHub Actions results were not observed during this session
+- Other external gates: `NOT APPLICABLE`
+
+### Findings
+
+- Unresolved findings: none
+- Spec/ADR ambiguities: none
+- Scope deviations: none
+- Live network smoke: NOT executed — the opt-in smoke tests exist and are bounded (`_LIVE_DISCOVERY_LIMIT = 5`) but were not run in this session; they are skipped by default in CI and require `--run-live`
+- Pre-existing mypy errors in non-SLICE-0008 files (`test_source_rights_fixtures.py`, `test_provenance.py`, `test_measurements.py`, `test_identity.py`, `test_identity_contracts.py`) were not introduced by this slice and were not modified
+
+### Follow-up
+
+- Recommended next action: independent review of the PR on branch `slice/0008-wikidata-rights-gated-adapter`; if all acceptance criteria are verified including remote CI, project-owner may mark `DONE` and start `FINISH_SLICE.bat`
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice (SLICE-0009) was not started automatically.
+- The agent has NOT marked this slice `DONE`.

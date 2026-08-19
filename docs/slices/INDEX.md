@@ -13,7 +13,7 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0005 | IMPLEMENTATION | DONE | First-class Brand/Organization identity contracts, BoatModel/BoatDesign identity migration, entity-scoped aliases and deterministic search-label keys | SLICE-0004 / ADR-0011 |
 | SLICE-0006 | IMPLEMENTATION | DONE | Provenance/raw-observation runtime: successor FieldEvidence/FieldResolution contracts, stable provenance subjects, conflict/supersession/current-resolution validation and source-impact lookup | SLICE-0005 / ADR-0006 |
 | SLICE-0007 | IMPLEMENTATION | DONE | ResearchJob runtime + deterministic source-rights/use gate + cumulative extraction telemetry so automated acquisition fails closed | SLICE-0006 / ADR-0005 |
-| SLICE-0008 | IMPLEMENTATION | READY | First rights-gated real external acquisition adapter against Wikidata CC0 with bounded discovery/entity acquisition and provenance-aware extraction | SLICE-0007 |
+| SLICE-0008 | IMPLEMENTATION | REVIEW | First rights-gated real external acquisition adapter against Wikidata CC0 with bounded discovery/entity acquisition and provenance-aware extraction | SLICE-0007 |
 | SLICE-0009 | IMPLEMENTATION | BACKLOG | Appendage/configuration normalization refined from actual acquired data: keel, board, rudder, skeg, count/state and option relationships | SLICE-0008 |
 | SLICE-0010 | IMPLEMENTATION | BACKLOG | Derived-metrics engine under `hullq-derived-1.0.0` after canonical/configuration inputs are hardened | SLICE-0009 |
 
@@ -30,7 +30,7 @@ Acceptance evidence:
 
 The accepted boundary provides ResearchJob runtime parity, deterministic use-specific rights decisions, overall-assessment fail-closed behavior, independent automated-access checks, permission-conflict checks, machine-visible obligations, source-bound cumulative extraction telemetry with projected-usage limits, effective bulk-clearance evaluation, job routing and provenance impact integration.
 
-`SLICE-0008` is the only `READY` implementation slice. It is the first controlled real external acquisition slice and is bounded to Wikidata structured data. It must pass the SLICE-0007 automated-ingestion gate before network use, preserve raw Wikidata statement semantics/qualifiers, produce provenance-aware evidence candidates and quality metrics, and must not write canonical resolutions or perform broad ingestion.
+`SLICE-0008` is in `REVIEW`. The Wikidata CC0 rights-gated adapter is implemented, all required local quality gates pass (567 tests, 90.13% branch coverage, ruff clean, strict mypy clean on new files, pip-audit clean), and the branch `slice/0008-wikidata-rights-gated-adapter` has been pushed to GitHub. Independent review and project-owner acceptance are required before `DONE`.
 
 No implementation agent may begin SLICE-0009 automatically.
 
@@ -51,7 +51,7 @@ provenance/raw observation boundary   DONE
         ↓
 ResearchJob + source-rights gate      DONE
         ↓
-FIRST RIGHTS-GATED REAL DATA — Wikidata CC0   READY
+FIRST RIGHTS-GATED REAL DATA — Wikidata CC0   REVIEW
         ↓
 inspect actual data quality
         ↓
