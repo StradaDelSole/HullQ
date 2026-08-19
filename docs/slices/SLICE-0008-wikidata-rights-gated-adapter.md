@@ -408,3 +408,36 @@ Unqualified fields (beam, number_built) receive no qualifier keys. Unsupported q
 - pip-audit: no known vulnerabilities
 - Remote CI (PR #19): **NOT VERIFIED** — branch pushed; GitHub Actions result not yet observed
 - Live smoke: not executed
+
+---
+
+## Review Amendment 2 (PR #19 findings 4–6)
+
+**HEAD after amendment:** `c460493` (pushed to `slice/0008-wikidata-rights-gated-adapter`)
+
+### Finding 4 resolved — Cross-dimension normalization prevented
+
+`_build_quantity_evidence()` now accepts `expected_quantity: Quantity | None = None`. When a recognized unit resolves to a different physical dimension than expected (e.g., kg on a length field), normalization is skipped: the raw observation is still preserved but no `NormalizedCandidate` is produced.
+
+`_process_unqualified_quantity` and `_process_qualified_quantity` forward `expected_quantity` to `_build_quantity_evidence`. `_extract_entity_evidence` passes `expected_quantity=Quantity.LENGTH` for P2043/P2048/P2049 and `expected_quantity=Quantity.MASS` for P2067.
+
+New `_process_count_quantity` method handles P1092 (total produced): only the dimensionless sentinel unit "1" is accepted; any recognized dimensional unit (kg, m, …) increments `unsupported_qualifier_count` without producing evidence or a malformed count. `test_total_produced_evidence_from_p1092` corrected (kg unit now correctly yields unsupported). 11 new dimension-check tests added.
+
+### Finding 5 resolved — Language fallback is real at the API boundary
+
+`fetch_entities` now sends `languages=lang|en` when `config.language` is non-English, and `languages=en` when it is English (avoiding `en|en`). `_parse_entity` alias fallback changed to `aliases_raw.get(lang, []) or aliases_raw.get("en", [])` so that when the preferred language has no aliases, English aliases are used. 5 new offline tests cover both the API parameter and the alias-fallback behaviour.
+
+### Finding 6 resolved — Live smoke uses real contact path
+
+`test_wikidata_live.py` `_LIVE_USER_AGENT` updated to use `https://github.com/StradaDelSole/HullQ` as the contact path. The unit test `test_user_agent_with_hullq_and_email_is_accepted` now uses `contact@example.invalid` instead of a real email address.
+
+### Validation after amendment 2
+
+- ruff check: clean
+- ruff format: clean
+- mypy (SLICE-0008 files, strict): clean
+- pytest: **602 passed** (15 new tests from review fixes 4–6)
+- branch coverage total: **90.59%** (≥90% required)
+- pip-audit: no known vulnerabilities
+- Remote CI (PR #19): **NOT VERIFIED** — branch pushed to `c460493`; GitHub Actions result not yet observed
+- Live smoke: not executed
