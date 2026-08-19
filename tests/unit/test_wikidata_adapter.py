@@ -1304,14 +1304,26 @@ def test_beam_without_qualifier_produces_evidence() -> None:
 
 
 def test_total_produced_evidence_from_p1092() -> None:
-    """P1092 with dimensionless unit '1' produces evidence; kg unit is rejected."""
+    """P1092 with literal unit '1' produces evidence; kg unit is rejected."""
+    # Build a raw claim with the literal Wikidata sentinel unit (not the URL form)
+    p1092_sentinel: dict[str, Any] = {
+        "type": "statement",
+        "id": "P1092$sentinel-ok",
+        "rank": "normal",
+        "mainsnak": {
+            "snaktype": "value",
+            "property": "P1092",
+            "datavalue": {
+                "type": "quantity",
+                "value": {"amount": "+450", "unit": "1"},
+            },
+        },
+    }
     entity_ok = WikidataEntityData(
         qid="Q2001",
         label="Series D",
         aliases=[],
-        raw_claims={
-            "P1092": [_quantity_claim("P1092", "+450", "1")]  # dimensionless sentinel
-        },
+        raw_claims={"P1092": [p1092_sentinel]},
     )
     adapter = _make_adapter()
     evidence, report = adapter.extract_field_evidence(
@@ -1928,14 +1940,18 @@ def test_p1092_with_length_unit_also_increments_unsupported_count() -> None:
     assert report.unsupported_qualifier_count == 1
 
 
-def test_p1092_with_dimensionless_unit_produces_evidence_without_normalization() -> None:
-    """P1092 with non-QID URL unit (test-helper sentinel) produces evidence."""
+def test_p1092_with_url_form_of_1_is_unsupported() -> None:
+    """P1092 with 'http://www.wikidata.org/entity/1' (URL form) is unsupported.
+
+    The test helper _quantity_claim builds that URL; it is not the real Wikidata
+    dimensionless sentinel '1' and must not produce number_built FieldEvidence.
+    """
     entity = WikidataEntityData(
         qid="Q4010",
-        label="Built Count Dimensionless",
+        label="Built Count URL Form",
         aliases=[],
         raw_claims={
-            "P1092": [_quantity_claim("P1092", "+300", "1")]  # helper builds non-QID URL
+            "P1092": [_quantity_claim("P1092", "+300", "1")]  # helper → URL, not literal "1"
         },
     )
     adapter = _make_adapter()
@@ -1943,9 +1959,8 @@ def test_p1092_with_dimensionless_unit_produces_evidence_without_normalization()
         [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
     )
     built_ev = [e for e in evidence if e.field_pointer.raw == "/relationships/number_built"]
-    assert len(built_ev) == 1
-    assert built_ev[0].normalized_candidate is None
-    assert report.unsupported_qualifier_count == 0
+    assert len(built_ev) == 0
+    assert report.unsupported_qualifier_count == 1
 
 
 def test_p1092_with_literal_sentinel_unit_produces_evidence() -> None:
@@ -1999,6 +2014,73 @@ def test_p1092_with_unknown_qid_unit_is_unsupported() -> None:
     built_ev = [e for e in evidence if e.field_pointer.raw == "/relationships/number_built"]
     assert len(built_ev) == 0
     assert report.unsupported_qualifier_count == 1
+
+
+def test_p1092_with_non_qid_url_is_unsupported() -> None:
+    """P1092 with a non-Wikidata URL unit → zero evidence, unsupported increments."""
+    raw_claim: dict[str, Any] = {
+        "type": "statement",
+        "id": "P1092$non-qid-url",
+        "rank": "normal",
+        "mainsnak": {
+            "snaktype": "value",
+            "property": "P1092",
+            "datavalue": {
+                "type": "quantity",
+                "value": {
+                    "amount": "+100",
+                    "unit": "http://example.com/unit/count",  # non-QID URL
+                },
+            },
+        },
+    }
+    entity = WikidataEntityData(
+        qid="Q4013",
+        label="Built Count Non-QID URL",
+        aliases=[],
+        raw_claims={"P1092": [raw_claim]},
+    )
+    adapter = _make_adapter()
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    built_ev = [e for e in evidence if e.field_pointer.raw == "/relationships/number_built"]
+    assert len(built_ev) == 0
+    assert report.unsupported_qualifier_count == 1
+
+
+def test_p1092_with_missing_unit_is_malformed() -> None:
+    """P1092 with missing unit key → zero evidence, malformed_statement_count increments."""
+    raw_claim: dict[str, Any] = {
+        "type": "statement",
+        "id": "P1092$no-unit",
+        "rank": "normal",
+        "mainsnak": {
+            "snaktype": "value",
+            "property": "P1092",
+            "datavalue": {
+                "type": "quantity",
+                "value": {
+                    "amount": "+100",
+                    # unit key absent — malformed
+                },
+            },
+        },
+    }
+    entity = WikidataEntityData(
+        qid="Q4014",
+        label="Built Count No Unit",
+        aliases=[],
+        raw_claims={"P1092": [raw_claim]},
+    )
+    adapter = _make_adapter()
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    built_ev = [e for e in evidence if e.field_pointer.raw == "/relationships/number_built"]
+    assert len(built_ev) == 0
+    assert report.malformed_statement_count == 1
+    assert report.unsupported_qualifier_count == 0
 
 
 # ---------------------------------------------------------------------------

@@ -380,6 +380,27 @@ def _extract_unit_qid(unit_uri: str) -> str | None:
     return m.group(1) if m else None
 
 
+def _get_claim_raw_unit(claim: dict[str, Any]) -> str | None:
+    """Return the raw unit string from a quantity claim's mainsnak value.
+
+    Returns the ``unit`` field exactly as it appears in the Wikidata API
+    response (e.g. ``"1"`` or ``"http://www.wikidata.org/entity/Q11570"``),
+    or ``None`` if the unit is absent, non-string, or the claim is malformed.
+    Does not interpret the value — callers must compare directly.
+    """
+    mainsnak = claim.get("mainsnak")
+    if not isinstance(mainsnak, dict):
+        return None
+    dv = mainsnak.get("datavalue")
+    if not isinstance(dv, dict):
+        return None
+    val = dv.get("value")
+    if not isinstance(val, dict):
+        return None
+    unit = val.get("unit")
+    return unit if isinstance(unit, str) else None
+
+
 def _claim_unit_qid(claim: dict[str, Any]) -> str | None:
     """Extract the unit QID from a quantity claim's mainsnak.
 
@@ -1112,10 +1133,18 @@ class WikidataAdapter:
     ) -> None:
         """Process dimensionless integer-count claims (e.g. P1092 total produced).
 
-        Only the Wikidata dimensionless sentinel ``"1"`` (i.e. any unit URI that
-        does not resolve to a Wikidata entity QID) is accepted.  Any unit that
-        resolves to a QID — whether recognised (kg, m, …) or unknown — is counted
-        as unsupported rather than silently mapped to the count field.
+        Acceptance is exact: only the literal Wikidata dimensionless sentinel
+        ``"1"`` produces ``number_built`` FieldEvidence.
+
+        - ``unit == "1"``          → raw count evidence (no NormalizedCandidate)
+        - ``unit`` is a QID URL    → ``unsupported_qualifier_count`` incremented
+        - ``unit`` is any other URL → ``unsupported_qualifier_count`` incremented
+        - ``unit`` missing / non-str → ``malformed_count`` incremented
+
+        ``_claim_unit_qid()`` is intentionally NOT used here because it returns
+        ``None`` for both ``"1"`` and for non-QID URLs, making those two cases
+        indistinguishable.  ``_get_claim_raw_unit()`` returns the literal string
+        for direct comparison.
         """
         prop_claims = claims.get(prop_id, [])
         if not isinstance(prop_claims, list):
@@ -1127,9 +1156,13 @@ class WikidataAdapter:
             mainsnak = claim.get("mainsnak", {})
             if isinstance(mainsnak, dict) and mainsnak.get("snaktype") in ("novalue", "somevalue"):
                 continue
-            # Enforce: only dimensionless sentinel is accepted.  Use _claim_unit_qid
-            # which returns None for "1" and for non-QID URLs.  Any QID → unsupported.
-            if _claim_unit_qid(claim) is not None:
+            raw_unit = _get_claim_raw_unit(claim)
+            if raw_unit is None:
+                # Missing or non-string unit — malformed statement
+                state.malformed_count += 1
+                continue
+            if raw_unit != "1":
+                # Any unit other than the exact dimensionless sentinel — unsupported
                 state.unsupported_qualifier_count += 1
                 continue
             ev = _build_quantity_evidence(
