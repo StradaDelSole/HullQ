@@ -441,3 +441,46 @@ New `_process_count_quantity` method handles P1092 (total produced): only the di
 - pip-audit: no known vulnerabilities
 - Remote CI (PR #19): **NOT VERIFIED** — branch pushed to `c460493`; GitHub Actions result not yet observed
 - Live smoke: not executed
+
+---
+
+## Review Amendment 3 (PR #19 blockers 4A and 4B)
+
+**HEAD after amendment:** `96ad4de` (pushed to `slice/0008-wikidata-rights-gated-adapter`)
+
+### Blocker 4A resolved — Cross-dimension evidence eliminated entirely
+
+A recognised Wikidata unit of the wrong physical dimension no longer produces any `FieldEvidence` for the incompatible HullQ field.
+
+New module-level helper `_claim_unit_qid(claim)` extracts the unit QID from a claim without constructing evidence.
+
+`_process_unqualified_quantity`: when `expected_quantity` is set and the claim's unit resolves to a recognised QID of the wrong dimension, `unsupported_qualifier_count` is incremented and no evidence is created. Unrecognised/unknown units are not rejected — they pass through to `_build_quantity_evidence` as before (raw evidence, no normalization), preserving the existing unknown-unit contract.
+
+`_process_qualified_quantity`: same pre-check applied inside the qualifier-match block before calling `_build_quantity_evidence`.
+
+`_build_quantity_evidence` retains its normalization guard as defense in depth but is no longer the primary routing control for cross-dimension statements.
+
+### Blocker 4B resolved — P1092 strictly requires dimensionless sentinel
+
+`_process_count_quantity` now uses `_claim_unit_qid(claim)` to determine the unit. If any Wikidata entity QID is returned — whether recognised (kg, m, metric tonne, …) or unknown (Q999999, …) — `unsupported_qualifier_count` is incremented and no evidence is produced. Only claims where the unit URI does not resolve to a QID (the literal API sentinel `"1"` or a non-QID URL) produce count `FieldEvidence`. This closes the gap where an unknown unit QID could previously slip through as evidence.
+
+### Test changes
+
+- `test_kg_unit_on_length_field_produces_no_normalized_candidate` → renamed `test_kg_unit_on_length_field_produces_no_field_evidence`; asserts `len(beam_ev) == 0` and `unsupported == 1`.
+- `test_kg_unit_on_length_field_preserves_raw_observation` → repurposed as `test_unknown_unit_on_length_field_still_produces_raw_evidence`; explicitly verifies that unrecognised units (Q999999) still produce raw evidence without incrementing unsupported.
+- `test_metre_unit_on_mass_field_produces_no_normalized_candidate` → renamed `…_no_field_evidence`; asserts zero displacement evidence + unsupported count = 1.
+- `test_kg_on_loa_field_produces_no_normalized_candidate` → renamed `…_no_field_evidence`; asserts zero LOA evidence + unsupported count = 1.
+- `test_metre_on_ballast_field_produces_no_normalized_candidate` → renamed `…_no_field_evidence`; asserts zero ballast evidence + unsupported count = 1.
+- New `test_p1092_with_literal_sentinel_unit_produces_evidence`: builds claim with `unit="1"` (literal Wikidata API form) and asserts evidence produced with no normalization.
+- New `test_p1092_with_unknown_qid_unit_is_unsupported`: Q999999 → zero evidence, unsupported count = 1.
+
+### Validation after amendment 3
+
+- ruff check: clean
+- ruff format: clean
+- mypy (SLICE-0008 files, strict): clean
+- pytest: **604 passed** (2 new tests, 5 renamed/rewritten)
+- branch coverage total: **90.63%** (≥90% required)
+- pip-audit: no known vulnerabilities
+- Remote CI (PR #19): **NOT VERIFIED** — branch pushed to `96ad4de`; GitHub Actions result not yet observed
+- Live smoke: not executed
