@@ -12,27 +12,27 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0004 | IMPLEMENTATION | DONE | Measurement observation + deterministic unit/basis normalization while preserving raw source semantics | SLICE-0003 |
 | SLICE-0005 | IMPLEMENTATION | DONE | First-class Brand/Organization identity contracts, BoatModel/BoatDesign identity migration, entity-scoped aliases and deterministic search-label keys | SLICE-0004 / ADR-0011 |
 | SLICE-0006 | IMPLEMENTATION | DONE | Provenance/raw-observation runtime: successor FieldEvidence/FieldResolution contracts, stable provenance subjects, conflict/supersession/current-resolution validation and source-impact lookup | SLICE-0005 / ADR-0006 |
-| SLICE-0007 | IMPLEMENTATION | REVIEW | ResearchJob runtime + deterministic source-rights/use gate + cumulative extraction telemetry so automated acquisition fails closed | SLICE-0006 / ADR-0005 |
-| SLICE-0008 | IMPLEMENTATION | BACKLOG | First rights-gated real external acquisition adapter; preferred initial target Wikidata CC0 | SLICE-0007 |
+| SLICE-0007 | IMPLEMENTATION | DONE | ResearchJob runtime + deterministic source-rights/use gate + cumulative extraction telemetry so automated acquisition fails closed | SLICE-0006 / ADR-0005 |
+| SLICE-0008 | IMPLEMENTATION | READY | First rights-gated real external acquisition adapter against Wikidata CC0 with bounded discovery/entity acquisition and provenance-aware extraction | SLICE-0007 |
 | SLICE-0009 | IMPLEMENTATION | BACKLOG | Appendage/configuration normalization refined from actual acquired data: keel, board, rudder, skeg, count/state and option relationships | SLICE-0008 |
 | SLICE-0010 | IMPLEMENTATION | BACKLOG | Derived-metrics engine under `hullq-derived-1.0.0` after canonical/configuration inputs are hardened | SLICE-0009 |
 
 ## Current execution rule
 
-`SLICE-0006` is `DONE`. It was implemented on `slice/0006-provenance-raw-observation-boundary`, independently reviewed through multiple amendment rounds, explicitly accepted by the project owner on 2026-08-19 and merged through PR #14.
+`SLICE-0007` is `DONE`. It was implemented on `slice/0007-research-job-source-rights-gate`, independently reviewed through multiple fail-closed amendment rounds, explicitly accepted by the project owner on 2026-08-19 and merged through PR #17.
 
 Acceptance evidence:
 
-- accepted implementation head: `c934dc615d306ef8d8ad11a5024925e650933c27`;
-- GitHub Actions run #86: Ubuntu quality PASS, Windows quality PASS, dependency audit PASS;
+- accepted implementation head: `8bf3347c7751be1bbf9b364f3d1f44635dd98eef`;
+- GitHub Actions run #96: Ubuntu quality PASS, Windows quality PASS, dependency audit PASS;
 - final independent review: no remaining blockers;
-- implementation merge commit: `c0163795df3c4efb27102163770da0f7ff8cedbb`.
+- implementation merge commit: `ca5ac38d5d402aa9e1b5d366d30d2ce0b2cdee53`.
 
-The accepted boundary provides shared provenance subjects, immutable raw-vs-normalized evidence snapshots, versioned field resolutions, strict RFC 6901 lookup, conflict/supersession/current-resolution validation, canonical consistency checking and Source → FieldEvidence → FieldResolution reverse-impact lookup.
+The accepted boundary provides ResearchJob runtime parity, deterministic use-specific rights decisions, overall-assessment fail-closed behavior, independent automated-access checks, permission-conflict checks, machine-visible obligations, source-bound cumulative extraction telemetry with projected-usage limits, effective bulk-clearance evaluation, job routing and provenance impact integration.
 
-`SLICE-0007` is in `REVIEW`. Implementation is complete on branch `slice/0007-research-job-source-rights-gate`. Remote CI must be observed and independent review completed before project-owner acceptance.
+`SLICE-0008` is the only `READY` implementation slice. It is the first controlled real external acquisition slice and is bounded to Wikidata structured data. It must pass the SLICE-0007 automated-ingestion gate before network use, preserve raw Wikidata statement semantics/qualifiers, produce provenance-aware evidence candidates and quality metrics, and must not write canonical resolutions or perform broad ingestion.
 
-No implementation agent may begin SLICE-0008 automatically.
+No implementation agent may begin SLICE-0009 automatically.
 
 ## Evidence-first sequence
 
@@ -49,9 +49,9 @@ Brand / Organization identity         DONE
         ↓
 provenance/raw observation boundary   DONE
         ↓
-ResearchJob + source-rights gate      READY
+ResearchJob + source-rights gate      DONE
         ↓
-FIRST RIGHTS-GATED REAL DATA — Wikidata CC0
+FIRST RIGHTS-GATED REAL DATA — Wikidata CC0   READY
         ↓
 inspect actual data quality
         ↓
@@ -66,7 +66,7 @@ controlled benchmark → broad ingestion
 
 SLICE-0002 showed that appendage/configuration data is the hardest and most irregular part of the domain. Implementing its full normalization purely from imagined formats would create avoidable rework.
 
-The rolling wave therefore establishes only the minimum prerequisites first: identity, provenance/raw observations, and source-rights/research-job controls. HullQ then ingests one controlled rights-cleared source and uses actual data quality to refine deeper normalization.
+The rolling wave therefore establishes only the minimum prerequisites first: identity, provenance/raw observations, and source-rights/research-job controls. HullQ now acquires one controlled rights-cleared source and uses actual data quality to refine deeper normalization.
 
 This does not authorize broad ingestion. The first adapter remains controlled and the 50–100 difficult-design corpus remains the benchmark before production-scale ingestion.
 
@@ -76,4 +76,4 @@ The current `START_SLICE` workflow prepares/synchronizes Git state, creates or r
 
 ## Rolling-wave note
 
-Exactly one implementation slice is `READY`. SLICE-0008–0010 remain directional backlog and may be refined by implementation and real-data evidence.
+Exactly one implementation slice is `READY`. SLICE-0009–0010 remain directional backlog and may be refined by implementation and real-data evidence.
