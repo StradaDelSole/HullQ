@@ -1,0 +1,17 @@
+{
+  "schema_version": "0.2",
+  "resolution_id": "RES_BRAND_001",
+  "subject": {"kind": "brand", "id": "BR_TEST_001"},
+  "field_pointer": "/canonical_name",
+  "state": "resolved",
+  "canonical_value_snapshot": "Alpha Yachts",
+  "supporting_evidence_ids": ["EVID_BRAND_001"],
+  "contradicting_evidence_ids": [],
+  "considered_evidence_ids": ["EVID_BRAND_001"],
+  "resolution_method": "unanimous_evidence",
+  "policy_version": "prov-policy-1.0",
+  "resolver": {"kind": "deterministic_tool", "identifier": "hullq-resolver", "version": "0.1"},
+  "resolved_at": "2026-08-18T10:05:00Z",
+  "supersedes_resolution_id": null,
+  "notes": null
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": "0.2",
+  "evidence_id": "EVID_ORG_001",
+  "subject": {"kind": "organization", "id": "ORG_TEST_001"},
+  "field_pointer": "/canonical_name",
+  "source_id": "SRC_TEST_001",
+  "source_locator": {"page": null, "section": null, "anchor": null, "table": null, "figure": null, "record_key": "wikidata:Q67890"},
+  "observation": {
+    "raw": {"kind": "literal", "value": "Alpha Works Ltd.", "unit": null, "excerpt": null}
+  },
+  "evidence_type": "structured_dataset",
+  "producer": {"kind": "deterministic_tool", "identifier": "hullq-importer", "version": "0.1", "model": null, "prompt_or_rule_version": null},
+  "research_context": {"research_job_id": null, "activity_id": null},
+  "observed_at": "2026-08-18T10:00:00Z",
+  "confidence": "high",
+  "supersedes_evidence_id": null,
+  "notes": null
+}

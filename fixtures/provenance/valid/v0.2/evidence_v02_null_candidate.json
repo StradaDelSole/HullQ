@@ -1,0 +1,19 @@
+{
+  "schema_version": "0.2",
+  "evidence_id": "EVID_NC_001",
+  "subject": {"kind": "boat_design", "id": "BD_TEST_002"},
+  "field_pointer": "/baseline/dimensions/loa_m",
+  "source_id": "SRC_TEST_004",
+  "source_locator": {"page": 5, "section": "Dimensions", "anchor": null, "table": null, "figure": null, "record_key": null},
+  "observation": {
+    "raw": {"kind": "literal", "value": "approx 10m", "unit": null, "excerpt": "Length approximately 10 metres"},
+    "normalized_candidate": null
+  },
+  "evidence_type": "brochure",
+  "producer": {"kind": "human", "identifier": "researcher-02", "version": null, "model": null, "prompt_or_rule_version": null},
+  "research_context": {"research_job_id": null, "activity_id": null},
+  "observed_at": "2026-08-18T13:00:00Z",
+  "confidence": "low",
+  "supersedes_evidence_id": null,
+  "notes": "Approximate value; no deterministic normalization applied"
+}

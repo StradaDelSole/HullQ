@@ -1,0 +1,18 @@
+{
+  "schema_version": "0.2",
+  "evidence_id": "EVID_BMR_001",
+  "subject": {"kind": "brand_model_relationship", "id": "BMR_TEST_001"},
+  "field_pointer": "/first_year",
+  "source_id": "SRC_TEST_003",
+  "source_locator": {"page": 1, "section": "History", "anchor": null, "table": null, "figure": null, "record_key": null},
+  "observation": {
+    "raw": {"kind": "literal", "value": 1978, "unit": null, "excerpt": "first produced in 1978"}
+  },
+  "evidence_type": "brochure",
+  "producer": {"kind": "human", "identifier": "researcher-01", "version": null, "model": null, "prompt_or_rule_version": null},
+  "research_context": {"research_job_id": null, "activity_id": null},
+  "observed_at": "2026-08-18T12:00:00Z",
+  "confidence": "high",
+  "supersedes_evidence_id": null,
+  "notes": "BrandModelRelationship addressed by stable relationship ID"
+}
