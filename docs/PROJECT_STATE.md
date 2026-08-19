@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-19  
-**Current stage:** Stage 2.8 — SLICE-0009 appendage/configuration normalization READY  
+**Current stage:** Stage 2.9 — SLICE-0010 derived metrics engine READY  
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -60,7 +60,7 @@ SLICE-0002 is `DONE`. Main retained findings:
 6. ORC remains blocked for systematic commercial ingestion under reviewed terms absent separate permission/licence.
 7. Rudder/skeg classification is expected to drive disproportionate review cost.
 
-The reviewed source landscape also established that official manufacturer material frequently exposes appendage/configuration semantics in brochures, manuals, parts pages or factory-option descriptions rather than one flat model record. Representative source shapes include long/full/fin/bulb/shoal/lifting/centerboard configurations, twin rudders, keel-hung/skeg-hung/partial-skeg arrangements and explicit option/state axes.
+The reviewed source landscape also established that official manufacturer material frequently exposes appendage/configuration semantics in brochures, manuals, parts pages or factory-option descriptions rather than one flat model record.
 
 ## Completed implementation — SLICE-0003
 
@@ -129,7 +129,7 @@ The accepted boundary provides deterministic use-specific rights decisions, fail
 
 ### First Rights-Gated Real Adapter: Wikidata — DONE
 
-SLICE-0008 was implemented on `slice/0008-wikidata-rights-gated-adapter`, independently reviewed through four precision amendment rounds and merged through PR #19 on 2026-08-19.
+SLICE-0008 was independently reviewed through four precision amendment rounds and merged through PR #19 on 2026-08-19.
 
 Acceptance evidence:
 
@@ -139,21 +139,36 @@ Acceptance evidence:
 - independent final review: no remaining blockers;
 - merge commit: `e7129cd61145a5a33613a08df5c008555ff569c4`.
 
+The accepted boundary provides a reviewed Wikidata CC0 source record, rights gate before external requests, bounded sailboat-class discovery/entity acquisition, qualifier-aware FieldEvidence, strict physical-dimension guards, exact P1092 dimensionless handling, deterministic language fallback and source-quality reporting. It does not create canonical FieldResolution, mutate BoatDesign/BoatModel, perform broad ingestion or solve configuration taxonomy.
+
+## Completed implementation — SLICE-0009
+
+### Appendage / Configuration Normalization — DONE
+
+SLICE-0009 was implemented on `slice/0009-appendage-configuration-normalization`, independently reviewed, amended for scope-safe projection and snapshot-safe raw observations, and merged through PR #20 on 2026-08-19.
+
+Acceptance evidence:
+
+- accepted final PR head: `9da6a579881b0451a028426b80a8a7281e6f6a0b`;
+- GitHub Actions CI run #114: PASS;
+- final local implementation report: 792 tests PASS, 91.20% total branch coverage, `configuration.py` 98.88% branch coverage, repository validator PASS, Ruff/format clean, strict mypy clean, pip-audit clean;
+- independent final review: no remaining blockers;
+- merge commit: `001ca87817f37553b463ca01270c64a26b7716b6`.
+
 The accepted boundary provides:
 
-- reviewed Wikidata CC0 source record;
-- rights gate before every external request;
-- bounded direct sailboat-class WDQS discovery and `wbgetentities` acquisition;
-- descriptive contact-bearing User-Agent enforcement and deterministic throttling/error behavior;
-- qualifier-aware extraction for manufacturer/designer and common dimensions/mass/count fields;
-- FieldEvidence with raw quantity/unit/qualifier semantics preserved;
-- strict length-vs-mass dimension guards;
-- exact P1092 dimensionless-sentinel handling;
-- preferred-language → English fallback;
-- deterministic requested/fetched/field-presence/malformed/unsupported/retrieval quality reporting;
-- offline deterministic normal CI and explicit opt-in live smoke tests.
+- runtime vocabularies matching the existing BoatDesign configuration enums;
+- deterministic exact/explicit-alias normalization for keel, rudder, skeg and hull configuration;
+- strict count normalization for hull/rudder/centerboard/daggerboard counts;
+- explicit unsupported/ambiguous/malformed outcomes rather than guessed mappings;
+- independent configuration axes with no twin-rudder/skeg/keel inference;
+- baseline/named-variant/design-option/board-state scope preservation;
+- required scope identity for named variants/design options;
+- fail-closed `baseline_projection()` so non-baseline observations cannot silently become baseline canonical facts;
+- snapshot-safe raw configuration observations;
+- generic `NormalizedCandidate` integration without changing the SLICE-0006 provenance contract.
 
-SLICE-0008 does **not** write canonical FieldResolution, mutate BoatDesign/BoatModel records, perform broad ingestion, or solve appendage/configuration taxonomy.
+SLICE-0009 does **not** create accepted FieldResolution, mutate BoatDesign, perform source acquisition, persist data or calculate derived metrics.
 
 ## AI repository workflow — ACTIVE
 
@@ -172,25 +187,31 @@ FINISH_SLICE.bat
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned `slice/...` branch. The master/architect does not write Claude's active implementation branch. No later implementation slice begins automatically.
 
-## Current operational position — SLICE-0009 READY
+## Current operational position — SLICE-0010 READY
 
-`docs/slices/SLICE-0009-appendage-configuration-normalization.md` is the only `READY` implementation slice.
+`docs/slices/SLICE-0010-derived-metrics-engine.md` is the only `READY` implementation slice.
 
-The existing BoatDesign schema already defines the target configuration axes and vocabulary: hull configuration/count, keel type/subtype, rudder type/count, skeg type, daggerboard count and centerboard count. SLICE-0009 must reuse these semantics rather than create a second hidden taxonomy.
+OQ-001 / ADR-0008 already froze methodology `hullq-derived-1.0.0`. SLICE-0010 is therefore an execution slice, not a research slice. It must implement exactly:
 
-SLICE-0009 is intentionally conservative and source-agnostic:
+- Sail Area / Displacement (`sa_displ`);
+- Ballast / Displacement % (`ballast_displ_pct`);
+- Displacement / Length (`displ_length`);
+- Brewer Comfort Ratio (`comfort_ratio`);
+- Capsize Screening Formula (`capsize_screening_formula`);
+- legacy/theoretical Hull Speed (`hull_speed_kn`).
 
-- normalize explicit source-backed appendage/configuration observations only;
-- preserve raw representation separately from normalized output;
-- deterministic exact/alias rules only, no fuzzy/LLM naval-architecture inference;
-- fail closed on unknown, proprietary, ambiguous or wrong-axis terms;
-- keep keel, rudder, skeg, board and hull axes independent;
-- preserve baseline vs named-variant / design-option / state applicability;
-- strict non-negative integer count normalization;
-- do not create accepted FieldResolution or mutate canonical BoatDesign records;
-- no new network adapter, crawler, persistence or derived metric.
+The accepted method already specifies exact Imperial conversion constants, hull applicability, displacement/sail-area basis semantics, status precedence, six-decimal round-half-even canonical precision, and DerivationRecord lineage. `fixtures/ratios/golden_metrics.v0.1.json` and `fixtures/ratios/status_cases.v0.2.json` are compatibility fixtures and must be executed by the runtime tests rather than silently rewritten.
 
-The difficult semantic shapes to cover with synthetic repository-safe tests are derived from the reviewed source research: full/long keel with keel-hung rudder, fin/bulb/wing/shoal wording, centerboard and board-state handling, lifting/swing keel options, twin rudders, skeg-hung and partial-skeg rudders, twin rudders with separately explicit skeg protection, multihull configuration/count and proprietary manufacturer terminology routed to review.
+SLICE-0010 must remain bounded:
+
+- consume an explicit caller-supplied effective input snapshot corresponding to accepted `/effective/...` ResolvedConfiguration fields;
+- preserve explicit unresolved-field markers and optional input FieldResolution IDs;
+- do not implement full BoatDesign + NamedVariant + DesignOption configuration resolution;
+- do not resolve source conflicts or choose canonical evidence;
+- produce null values for all noncomputed statuses;
+- produce schema-valid DerivationRecord lineage for every populated metric;
+- do not create fake FieldEvidence for HullQ-calculated outputs;
+- no search/filter semantics, persistence, API/frontend behavior or safety/bluewater scoring.
 
 ## Revised near-term path to real data
 
@@ -203,12 +224,14 @@ SLICE-0007  ResearchJob + source-rights clearance gate       DONE
       ↓
 SLICE-0008  first rights-gated real data — Wikidata CC0      DONE
       ↓
-SLICE-0009  appendage/configuration normalization            READY
+SLICE-0009  appendage/configuration normalization            DONE
       ↓
-SLICE-0010  derived metrics                                  BACKLOG
+SLICE-0010  derived metrics                                  READY
+      ↓
+controlled benchmark                                        NOT AUTHORIZED YET
 ```
 
-This sequencing avoids pretending that sparse/irregular appendage terminology can be solved by a generic scraper. First make explicit configuration evidence safe and deterministic; then build metrics and later source-specific enrichment on top of that boundary.
+SLICE-0010 closes the last already-accepted pure calculation boundary needed before the next controlled benchmark wave is refined. The benchmark remains a later slice and must not be started automatically.
 
 ## Downstream gates
 
@@ -221,7 +244,7 @@ This sequencing avoids pretending that sparse/irregular appendage terminology ca
 
 ## Do not start yet
 
-- SLICE-0010 or later implementation;
+- controlled benchmark implementation beyond the prepared SLICE-0010 boundary;
 - production broad ingestion;
 - PostgreSQL production schema/application persistence;
 - FastAPI public API;
