@@ -1304,21 +1304,38 @@ def test_beam_without_qualifier_produces_evidence() -> None:
 
 
 def test_total_produced_evidence_from_p1092() -> None:
-    entity = WikidataEntityData(
+    """P1092 with dimensionless unit '1' produces evidence; kg unit is rejected."""
+    entity_ok = WikidataEntityData(
         qid="Q2001",
         label="Series D",
         aliases=[],
         raw_claims={
-            "P1092": [_quantity_claim("P1092", "+450", "Q11570")]  # using kg unit for test
+            "P1092": [_quantity_claim("P1092", "+450", "1")]  # dimensionless sentinel
         },
     )
     adapter = _make_adapter()
     evidence, report = adapter.extract_field_evidence(
-        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+        [entity_ok], "2026-08-19T00:00:00Z", requested_qid_count=1
     )
     built_ev = [e for e in evidence if e.field_pointer.raw == "/relationships/number_built"]
     assert len(built_ev) == 1
     assert report.field_presence.get("total_produced", 0) == 1
+
+    # Dimensional unit (kg) on count field → unsupported, no evidence
+    entity_kg = WikidataEntityData(
+        qid="Q2001",
+        label="Series D",
+        aliases=[],
+        raw_claims={
+            "P1092": [_quantity_claim("P1092", "+450", "Q11570")]  # kg — dimensional
+        },
+    )
+    evidence2, report2 = adapter.extract_field_evidence(
+        [entity_kg], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    built_ev2 = [e for e in evidence2 if e.field_pointer.raw == "/relationships/number_built"]
+    assert len(built_ev2) == 0
+    assert report2.unsupported_qualifier_count == 1
 
 
 def test_novalue_snak_is_skipped_not_malformed() -> None:
@@ -1488,7 +1505,7 @@ def test_user_agent_hullq_only_without_contact_is_rejected() -> None:
 
 def test_user_agent_with_hullq_and_email_is_accepted() -> None:
     cfg = WikidataAdapterConfig(
-        user_agent="HullQ/0.1 (mesingsing@gmail.com)",
+        user_agent="HullQ/0.1 (contact@example.invalid)",
         item_limit=5,
     )
     assert "HullQ" in cfg.user_agent
@@ -1697,3 +1714,322 @@ def test_unsupported_qualifier_produces_no_field_evidence_with_qualifier_keys() 
     ]
     assert length_ev == []
     assert report.unsupported_qualifier_count >= 1
+
+
+# ---------------------------------------------------------------------------
+# Finding 4 — Cross-dimension normalization prevention
+# ---------------------------------------------------------------------------
+
+
+def test_kg_unit_on_length_field_produces_no_normalized_candidate() -> None:
+    """A mass unit (kg) on a length field must not produce a NormalizedCandidate."""
+    entity = WikidataEntityData(
+        qid="Q4001",
+        label="Cross Dim Boat",
+        aliases=[],
+        raw_claims={
+            "P2049": [_quantity_claim("P2049", "+9.8", "Q11570")]  # kg on beam field
+        },
+    )
+    adapter = _make_adapter()
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    beam_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/beam_m"]
+    assert len(beam_ev) == 1
+    assert beam_ev[0].normalized_candidate is None
+
+
+def test_kg_unit_on_length_field_preserves_raw_observation() -> None:
+    """Raw observation must be preserved even when dimension check prevents normalization."""
+    entity = WikidataEntityData(
+        qid="Q4002",
+        label="Raw Preserved Boat",
+        aliases=[],
+        raw_claims={
+            "P2049": [_quantity_claim("P2049", "+9.8", "Q11570")]  # kg on beam
+        },
+    )
+    adapter = _make_adapter()
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    beam_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/beam_m"]
+    assert len(beam_ev) == 1
+    raw_val = beam_ev[0].raw.value
+    assert isinstance(raw_val, dict)
+    assert raw_val["amount"] == "+9.8"
+    assert "Q11570" in raw_val["unit"]
+
+
+def test_metre_unit_on_mass_field_produces_no_normalized_candidate() -> None:
+    """A length unit (metre) on a mass field must not produce a NormalizedCandidate."""
+    entity = WikidataEntityData(
+        qid="Q4003",
+        label="Wrong Dim Boat",
+        aliases=[],
+        raw_claims={
+            "P2067": [
+                _quantity_claim(
+                    "P2067",
+                    "+5200",
+                    "Q11573",  # metres on displacement
+                    qualifier_qid="Q5636358",  # displacement
+                )
+            ]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    disp_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/displacement_kg"]
+    assert len(disp_ev) == 1
+    assert disp_ev[0].normalized_candidate is None
+
+
+def test_correct_length_unit_on_length_field_produces_normalized_candidate() -> None:
+    """Matching dimension still normalises — metre on beam."""
+    entity = WikidataEntityData(
+        qid="Q4004",
+        label="Correct Dim Boat",
+        aliases=[],
+        raw_claims={
+            "P2049": [_quantity_claim("P2049", "+4.5", "Q11573")]  # metres on beam
+        },
+    )
+    adapter = _make_adapter()
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    beam_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/beam_m"]
+    assert len(beam_ev) == 1
+    assert beam_ev[0].normalized_candidate is not None
+
+
+def test_correct_mass_unit_on_mass_field_produces_normalized_candidate() -> None:
+    """Matching dimension still normalises — kg on displacement."""
+    entity = WikidataEntityData(
+        qid="Q4005",
+        label="Mass Correct Boat",
+        aliases=[],
+        raw_claims={
+            "P2067": [
+                _quantity_claim(
+                    "P2067",
+                    "+3500",
+                    "Q11570",  # kg on displacement
+                    qualifier_qid="Q5636358",  # displacement
+                )
+            ]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    disp_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/displacement_kg"]
+    assert len(disp_ev) == 1
+    assert disp_ev[0].normalized_candidate is not None
+
+
+def test_kg_on_loa_field_produces_no_normalized_candidate() -> None:
+    """P2043 LOA with kg unit — raw evidence kept, no normalization."""
+    entity = WikidataEntityData(
+        qid="Q4006",
+        label="LOA Wrong Unit Boat",
+        aliases=[],
+        raw_claims={
+            "P2043": [
+                _quantity_claim(
+                    "P2043",
+                    "+11.5",
+                    "Q11570",  # kg on LOA
+                    qualifier_qid="Q2358152",  # LOA
+                )
+            ]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    loa_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/loa_m"]
+    assert len(loa_ev) == 1
+    assert loa_ev[0].normalized_candidate is None
+
+
+def test_metre_on_ballast_field_produces_no_normalized_candidate() -> None:
+    """P2067 ballast with metre unit — raw evidence kept, no normalization."""
+    entity = WikidataEntityData(
+        qid="Q4007",
+        label="Ballast Wrong Unit Boat",
+        aliases=[],
+        raw_claims={
+            "P2067": [
+                _quantity_claim(
+                    "P2067",
+                    "+1200",
+                    "Q11573",  # metres on ballast
+                    qualifier_qid="Q5461048",  # ballast
+                )
+            ]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    ballast_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/ballast_kg"]
+    assert len(ballast_ev) == 1
+    assert ballast_ev[0].normalized_candidate is None
+
+
+def test_p1092_with_dimensional_unit_increments_unsupported_count() -> None:
+    """P1092 with a dimensional unit (kg) increments unsupported_qualifier_count."""
+    entity = WikidataEntityData(
+        qid="Q4008",
+        label="Built Count Wrong Unit",
+        aliases=[],
+        raw_claims={
+            "P1092": [_quantity_claim("P1092", "+500", "Q11570")]  # kg on count field
+        },
+    )
+    adapter = _make_adapter()
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    built_ev = [e for e in evidence if e.field_pointer.raw == "/relationships/number_built"]
+    assert len(built_ev) == 0
+    assert report.unsupported_qualifier_count == 1
+
+
+def test_p1092_with_length_unit_also_increments_unsupported_count() -> None:
+    """P1092 with a length unit (metre) also increments unsupported_qualifier_count."""
+    entity = WikidataEntityData(
+        qid="Q4009",
+        label="Built Count Length Unit",
+        aliases=[],
+        raw_claims={
+            "P1092": [_quantity_claim("P1092", "+200", "Q11573")]  # metres on count field
+        },
+    )
+    adapter = _make_adapter()
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    built_ev = [e for e in evidence if e.field_pointer.raw == "/relationships/number_built"]
+    assert len(built_ev) == 0
+    assert report.unsupported_qualifier_count == 1
+
+
+def test_p1092_with_dimensionless_unit_produces_evidence_without_normalization() -> None:
+    """P1092 with sentinel '1' unit produces evidence; normalized_candidate is None."""
+    entity = WikidataEntityData(
+        qid="Q4010",
+        label="Built Count Dimensionless",
+        aliases=[],
+        raw_claims={
+            "P1092": [_quantity_claim("P1092", "+300", "1")]  # sentinel via test helper
+        },
+    )
+    adapter = _make_adapter()
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    built_ev = [e for e in evidence if e.field_pointer.raw == "/relationships/number_built"]
+    assert len(built_ev) == 1
+    assert built_ev[0].normalized_candidate is None
+    assert report.unsupported_qualifier_count == 0
+
+
+# ---------------------------------------------------------------------------
+# Finding 5 — Language fallback at the API boundary
+# ---------------------------------------------------------------------------
+
+
+def test_non_english_language_requests_lang_pipe_en() -> None:
+    """When language is not 'en', fetch_entities must request 'lang|en' from the API."""
+    resp = _make_mock_response(
+        json_body=_entity_api_response({"Q5001": _minimal_entity("Q5001", "TestBoat")})
+    )
+    mock_client = _make_mock_client(resp)
+    adapter = _make_adapter(
+        config=_make_config(language="de"),
+        mock_client=mock_client,
+    )
+    adapter.fetch_entities(["Q5001"])
+    call_kwargs = mock_client.get.call_args
+    params = call_kwargs[1]["params"] if call_kwargs[1] else call_kwargs[0][1]
+    assert params["languages"] == "de|en"
+
+
+def test_english_language_requests_only_en() -> None:
+    """When language is 'en', the languages param must be just 'en', not 'en|en'."""
+    resp = _make_mock_response(
+        json_body=_entity_api_response({"Q5002": _minimal_entity("Q5002", "TestBoat")})
+    )
+    mock_client = _make_mock_client(resp)
+    adapter = _make_adapter(
+        config=_make_config(language="en"),
+        mock_client=mock_client,
+    )
+    adapter.fetch_entities(["Q5002"])
+    call_kwargs = mock_client.get.call_args
+    params = call_kwargs[1]["params"] if call_kwargs[1] else call_kwargs[0][1]
+    assert params["languages"] == "en"
+
+
+def test_parse_entity_uses_preferred_language_aliases_when_present() -> None:
+    """Aliases for the preferred language are used when present."""
+    raw = {
+        "type": "item",
+        "id": "Q5003",
+        "labels": {"en": {"language": "en", "value": "Test"}},
+        "aliases": {
+            "de": [{"language": "de", "value": "Testschiff"}],
+            "en": [{"language": "en", "value": "Test Ship"}],
+        },
+        "claims": {},
+    }
+    resp = _make_mock_response(json_body=_entity_api_response({"Q5003": raw}))
+    mock_client = _make_mock_client(resp)
+    adapter = _make_adapter(config=_make_config(language="de"), mock_client=mock_client)
+    entities = adapter.fetch_entities(["Q5003"])
+    assert entities[0].aliases == ["Testschiff"]
+
+
+def test_parse_entity_falls_back_to_en_aliases_when_preferred_absent() -> None:
+    """When preferred language has no aliases, English aliases must be used."""
+    raw = {
+        "type": "item",
+        "id": "Q5004",
+        "labels": {"en": {"language": "en", "value": "Test"}},
+        "aliases": {
+            "en": [{"language": "en", "value": "English Alias"}],
+        },
+        "claims": {},
+    }
+    resp = _make_mock_response(json_body=_entity_api_response({"Q5004": raw}))
+    mock_client = _make_mock_client(resp)
+    adapter = _make_adapter(config=_make_config(language="fr"), mock_client=mock_client)
+    entities = adapter.fetch_entities(["Q5004"])
+    assert entities[0].aliases == ["English Alias"]
+
+
+def test_parse_entity_returns_empty_aliases_when_neither_lang_present() -> None:
+    """Aliases are empty when neither preferred language nor 'en' has any entries."""
+    raw = {
+        "type": "item",
+        "id": "Q5005",
+        "labels": {"en": {"language": "en", "value": "Test"}},
+        "aliases": {
+            "fr": [{"language": "fr", "value": "Bateau Test"}],
+        },
+        "claims": {},
+    }
+    resp = _make_mock_response(json_body=_entity_api_response({"Q5005": raw}))
+    mock_client = _make_mock_client(resp)
+    adapter = _make_adapter(config=_make_config(language="de"), mock_client=mock_client)
+    entities = adapter.fetch_entities(["Q5005"])
+    assert entities[0].aliases == []

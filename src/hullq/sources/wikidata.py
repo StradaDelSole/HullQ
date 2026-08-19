@@ -430,6 +430,7 @@ def _build_quantity_evidence(
     index: int,
     *,
     qualifier_qid: str | None = None,
+    expected_quantity: Quantity | None = None,
 ) -> FieldEvidence | None:
     """Build FieldEvidence from a single Wikidata quantity claim.
 
@@ -440,6 +441,12 @@ def _build_quantity_evidence(
     When ``qualifier_qid`` is supplied (the P642 "of" qualifier value that
     determined the semantic mapping), it is preserved in the raw observation so
     that the mapping decision is fully recoverable from the evidence alone.
+
+    When ``expected_quantity`` is supplied, a recognized unit of a different
+    physical dimension (e.g., kg for a length field) is NOT normalized — the
+    raw observation is preserved but no NormalizedCandidate is produced.  This
+    prevents cross-dimension candidates (e.g., a mass candidate on a length
+    field or a length candidate on a mass field).
     """
     stmt_id = claim.get("id") if isinstance(claim.get("id"), str) else None
     mainsnak = claim.get("mainsnak", {})
@@ -469,21 +476,26 @@ def _build_quantity_evidence(
 
     unit_qid = _extract_unit_qid(unit_uri)
 
-    # Build normalized candidate via SLICE-0004 if unit is recognized.
+    # Build normalized candidate via SLICE-0004 if unit is recognized and
+    # matches the expected physical quantity dimension.  A recognized unit of
+    # the wrong dimension (e.g., kg on a length field) is NOT normalized —
+    # only the raw observation is preserved in that case.
     normalized: NormalizedCandidate | None = None
     if unit_qid and unit_qid in _UNIT_QID_MAP:
         qty, unit_enum = _UNIT_QID_MAP[unit_qid]
-        try:
-            obs = MeasurementObservation(quantity=qty, value=amount, unit=unit_enum)
-            norm = normalize_measurement(obs)
-            normalized = NormalizedCandidate(
-                value=norm.canonical_value,
-                unit=norm.canonical_unit,
-                method_id="hullq-measurements-1.0",
-                method_version="SLICE-0004-v1",
-            )
-        except ValueError, InvalidOperation:
-            normalized = None
+        dimension_ok = expected_quantity is None or qty == expected_quantity
+        if dimension_ok:
+            try:
+                obs = MeasurementObservation(quantity=qty, value=amount, unit=unit_enum)
+                norm = normalize_measurement(obs)
+                normalized = NormalizedCandidate(
+                    value=norm.canonical_value,
+                    unit=norm.canonical_unit,
+                    method_id="hullq-measurements-1.0",
+                    method_version="SLICE-0004-v1",
+                )
+            except ValueError, InvalidOperation:
+                normalized = None
 
     # Preserve raw Wikidata quantity/unit representation.  When the statement
     # was mapped via a P642 qualifier, also preserve the qualifier identity so
@@ -792,13 +804,15 @@ class WikidataAdapter:
         for i in range(0, len(deduped), _ENTITY_API_BATCH_SIZE):
             batch = deduped[i : i + _ENTITY_API_BATCH_SIZE]
             self._check_rights()
+            lang = self._config.language
+            languages_param = lang if lang == "en" else f"{lang}|en"
             data = self._get(
                 _ENTITY_API_ENDPOINT,
                 params={
                     "action": "wbgetentities",
                     "ids": "|".join(batch),
                     "format": "json",
-                    "languages": self._config.language,
+                    "languages": languages_param,
                     "props": "labels|aliases|claims",
                 },
             )
@@ -831,7 +845,7 @@ class WikidataAdapter:
         aliases_raw = raw.get("aliases") or {}
         if not isinstance(aliases_raw, dict):
             aliases_raw = {}
-        lang_aliases = aliases_raw.get(lang, [])
+        lang_aliases = aliases_raw.get(lang, []) or aliases_raw.get("en", [])
         if not isinstance(lang_aliases, list):
             lang_aliases = []
         aliases = [
@@ -918,7 +932,7 @@ class WikidataAdapter:
             state,
         )
 
-        # P2043: length — qualifier distinguishes LOA vs LWL
+        # P2043: length — qualifier distinguishes LOA vs LWL; all must be LENGTH
         self._process_qualified_quantity(
             qid,
             _PROP_LENGTH,
@@ -926,9 +940,10 @@ class WikidataAdapter:
             {_QUAL_LOA: (_PTR_LOA, "loa"), _QUAL_LWL: (_PTR_LWL, "lwl")},
             retrieved_at,
             state,
+            expected_quantity=Quantity.LENGTH,
         )
 
-        # P2049: beam/width — no qualifier required for semantic disambiguation
+        # P2049: beam/width — no qualifier required; must be LENGTH
         self._process_unqualified_quantity(
             qid,
             _PROP_WIDTH,
@@ -937,9 +952,10 @@ class WikidataAdapter:
             "beam",
             retrieved_at,
             state,
+            expected_quantity=Quantity.LENGTH,
         )
 
-        # P2048: height — qualifier distinguishes draft; others are unsupported
+        # P2048: height — qualifier distinguishes draft; others are unsupported; must be LENGTH
         self._process_qualified_quantity(
             qid,
             _PROP_HEIGHT,
@@ -947,9 +963,10 @@ class WikidataAdapter:
             {_QUAL_DRAFT: (_PTR_DRAFT, "draft")},
             retrieved_at,
             state,
+            expected_quantity=Quantity.LENGTH,
         )
 
-        # P2067: mass — qualifier distinguishes displacement vs ballast
+        # P2067: mass — qualifier distinguishes displacement vs ballast; all must be MASS
         self._process_qualified_quantity(
             qid,
             _PROP_MASS,
@@ -960,10 +977,11 @@ class WikidataAdapter:
             },
             retrieved_at,
             state,
+            expected_quantity=Quantity.MASS,
         )
 
-        # P1092: total produced — dimensionless integer count
-        self._process_unqualified_quantity(
+        # P1092: total produced — dimensionless count; dimensional units → unsupported
+        self._process_count_quantity(
             qid,
             _PROP_TOTAL_PRODUCED,
             claims,
@@ -1012,8 +1030,14 @@ class WikidataAdapter:
         field_label: str,
         retrieved_at: str,
         state: _ExtractionState,
+        *,
+        expected_quantity: Quantity | None = None,
     ) -> None:
-        """Process quantity claims that need no qualifier disambiguation."""
+        """Process quantity claims that need no qualifier disambiguation.
+
+        ``expected_quantity`` is passed to ``_build_quantity_evidence`` so that
+        units of the wrong physical dimension never produce a NormalizedCandidate.
+        """
         prop_claims = claims.get(prop_id, [])
         if not isinstance(prop_claims, list):
             return
@@ -1022,7 +1046,14 @@ class WikidataAdapter:
                 state.malformed_count += 1
                 continue
             ev = _build_quantity_evidence(
-                qid, prop_id, claim, field_pointer, field_label, retrieved_at, idx
+                qid,
+                prop_id,
+                claim,
+                field_pointer,
+                field_label,
+                retrieved_at,
+                idx,
+                expected_quantity=expected_quantity,
             )
             if ev is None:
                 mainsnak = claim.get("mainsnak", {})
@@ -1035,6 +1066,62 @@ class WikidataAdapter:
             else:
                 state.add_evidence(ev, field_label)
 
+    def _process_count_quantity(
+        self,
+        qid: str,
+        prop_id: str,
+        claims: dict[str, Any],
+        field_pointer: JsonPointer,
+        field_label: str,
+        retrieved_at: str,
+        state: _ExtractionState,
+    ) -> None:
+        """Process dimensionless integer-count claims (e.g. P1092 total produced).
+
+        Only the Wikidata dimensionless sentinel unit QID "1" is accepted.  Any
+        recognised dimensional unit (kg, m, …) is counted as unsupported rather
+        than silently normalised into a length or mass field.
+        """
+        prop_claims = claims.get(prop_id, [])
+        if not isinstance(prop_claims, list):
+            return
+        for idx, claim in enumerate(prop_claims):
+            if not isinstance(claim, dict):
+                state.malformed_count += 1
+                continue
+            mainsnak = claim.get("mainsnak", {})
+            if isinstance(mainsnak, dict) and mainsnak.get("snaktype") in ("novalue", "somevalue"):
+                continue
+            if isinstance(mainsnak, dict):
+                dv = mainsnak.get("datavalue", {})
+                unit_url = ""
+                if isinstance(dv, dict):
+                    unit_url = (
+                        dv.get("value", {}).get("unit", "")
+                        if isinstance(dv.get("value"), dict)
+                        else ""
+                    )
+                # Extract trailing QID from unit URL (e.g. "http://…/entity/Q11570")
+                raw_unit = unit_url.rsplit("/", 1)[-1] if "/" in unit_url else unit_url
+                if raw_unit in _UNIT_QID_MAP:
+                    # Dimensional unit on a count field — unsupported, not malformed
+                    state.unsupported_qualifier_count += 1
+                    continue
+            ev = _build_quantity_evidence(
+                qid,
+                prop_id,
+                claim,
+                field_pointer,
+                field_label,
+                retrieved_at,
+                idx,
+                expected_quantity=None,
+            )
+            if ev is None:
+                state.malformed_count += 1
+            else:
+                state.add_evidence(ev, field_label)
+
     def _process_qualified_quantity(
         self,
         qid: str,
@@ -1043,11 +1130,14 @@ class WikidataAdapter:
         qualifier_map: dict[str, tuple[JsonPointer, str]],
         retrieved_at: str,
         state: _ExtractionState,
+        *,
+        expected_quantity: Quantity | None = None,
     ) -> None:
         """Process quantity claims where a P642 qualifier determines field mapping.
 
         Statements with absent or unrecognised qualifier values are counted as
-        unsupported rather than guessed.
+        unsupported rather than guessed.  ``expected_quantity`` is forwarded to
+        ``_build_quantity_evidence`` to prevent cross-dimension normalisation.
         """
         prop_claims = claims.get(prop_id, [])
         if not isinstance(prop_claims, list):
@@ -1079,6 +1169,7 @@ class WikidataAdapter:
                         retrieved_at,
                         idx,
                         qualifier_qid=qual_qid,
+                        expected_quantity=expected_quantity,
                     )
                     if ev is None:
                         state.malformed_count += 1

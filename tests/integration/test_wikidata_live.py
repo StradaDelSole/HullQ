@@ -35,9 +35,8 @@ WIKIDATA_FIXTURE = ROOT / "fixtures" / "sources" / "wikidata_source.json"
 
 # Bounded probe parameters for the live smoke
 _LIVE_DISCOVERY_LIMIT = 5
-_LIVE_CONTACT = "hullq-slice-0008-smoke@hullq.local"
 _LIVE_USER_AGENT = (
-    f"HullQ/0.1 (SLICE-0008 controlled smoke test; {_LIVE_CONTACT}; https://github.com/hullq/hullq)"
+    "HullQ/0.1 (SLICE-0008 controlled smoke test; https://github.com/StradaDelSole/HullQ)"
 )
 
 
