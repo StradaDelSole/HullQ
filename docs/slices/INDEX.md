@@ -12,7 +12,7 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0004 | IMPLEMENTATION | DONE | Measurement observation + deterministic unit/basis normalization while preserving raw source semantics | SLICE-0003 |
 | SLICE-0005 | IMPLEMENTATION | DONE | First-class Brand/Organization identity contracts, BoatModel/BoatDesign identity migration, entity-scoped aliases and deterministic search-label keys | SLICE-0004 / ADR-0011 |
 | SLICE-0006 | IMPLEMENTATION | DONE | Provenance/raw-observation runtime: successor FieldEvidence/FieldResolution contracts, stable provenance subjects, conflict/supersession/current-resolution validation and source-impact lookup | SLICE-0005 / ADR-0006 |
-| SLICE-0007 | IMPLEMENTATION | READY | ResearchJob runtime + deterministic source-rights/use gate + cumulative extraction telemetry so automated acquisition fails closed | SLICE-0006 / ADR-0005 |
+| SLICE-0007 | IMPLEMENTATION | REVIEW | ResearchJob runtime + deterministic source-rights/use gate + cumulative extraction telemetry so automated acquisition fails closed | SLICE-0006 / ADR-0005 |
 | SLICE-0008 | IMPLEMENTATION | BACKLOG | First rights-gated real external acquisition adapter; preferred initial target Wikidata CC0 | SLICE-0007 |
 | SLICE-0009 | IMPLEMENTATION | BACKLOG | Appendage/configuration normalization refined from actual acquired data: keel, board, rudder, skeg, count/state and option relationships | SLICE-0008 |
 | SLICE-0010 | IMPLEMENTATION | BACKLOG | Derived-metrics engine under `hullq-derived-1.0.0` after canonical/configuration inputs are hardened | SLICE-0009 |
@@ -30,9 +30,9 @@ Acceptance evidence:
 
 The accepted boundary provides shared provenance subjects, immutable raw-vs-normalized evidence snapshots, versioned field resolutions, strict RFC 6901 lookup, conflict/supersession/current-resolution validation, canonical consistency checking and Source → FieldEvidence → FieldResolution reverse-impact lookup.
 
-`SLICE-0007` is now the only `READY` implementation slice. It is defined in `docs/slices/SLICE-0007-research-job-source-rights-gate.md` and must run only on its isolated `slice/0007-research-job-source-rights-gate` worktree/branch.
+`SLICE-0007` is in `REVIEW`. Implementation is complete on branch `slice/0007-research-job-source-rights-gate`. Remote CI must be observed and independent review completed before project-owner acceptance.
 
-No implementation agent may begin SLICE-0008 or later work automatically after completing SLICE-0007.
+No implementation agent may begin SLICE-0008 automatically.
 
 ## Evidence-first sequence
 

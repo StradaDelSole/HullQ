@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0007  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 2.6 — deterministic rights/use gate before real external acquisition  
 **Depends on:** SLICE-0006 accepted / DONE  
 **Blocks:** SLICE-0008
@@ -334,3 +334,58 @@ When implementation is complete:
 4. report exact head SHA and local results truthfully;
 5. do not start SLICE-0008;
 6. do not merge to `main`.
+
+## Completion report — implementation agent handoff
+
+**Handoff state:** REVIEW  
+**Implementation date:** 2026-08-19  
+**Branch:** `slice/0007-research-job-source-rights-gate`
+
+### Deliverables produced
+
+- `src/hullq/research/jobs.py` — ResearchJob runtime (ResearchTarget, ResearchJobStatus, ResearchJob, HullConfigurationHint, is_terminal_status, is_review_status).
+- `src/hullq/sources/rights.py` — Source-rights gate (SourceUse, DecisionOutcome, DecisionReason, ObligationSummary, SourceUseDecision, SourceUsageMetrics, ExtractionBudget, JobRouting, check_source_use, route_research_job).
+- `tests/unit/test_research_jobs.py` — 17 unit tests covering scenarios 1–3.
+- `tests/unit/test_source_rights.py` — 53 unit and property-based tests covering scenarios 4–26 and 28.
+- `tests/contract/test_source_rights_fixtures.py` — 30 contract tests covering scenarios 15–19, 27 and the accepted fixture cases (CC0, CC BY, ODbL, unlicensed factual, NC, unknown, reference scrape).
+
+Total new tests: 90. All 452 tests in the repository pass.
+
+### Local quality gates — PASS
+
+| Gate | Result |
+|---|---|
+| `uv run coverage run -m pytest` | 452 passed, 0 failed |
+| `uv run coverage report` | 94.38% branch coverage (floor: 90%) |
+| `uv run ruff check src/ tests/` | All checks passed |
+| `uv run ruff format --check src/ tests/` | Formatted |
+| `uv run mypy src/` | No issues (13 source files, strict) |
+
+### Acceptance criteria — local verification
+
+- [x] ResearchJob runtime matches the accepted v0.1 contract without inventing an undocumented workflow engine.
+- [x] All seven use-specific Source clearances are executable through one deterministic gate boundary.
+- [x] Production, bulk, automation and redistribution fail closed for unknown/unassessed/review/prohibited/unresolved-conditional states.
+- [x] Automated access is checked independently from reuse/production clearance.
+- [x] Explicit permission contradictions fail closed rather than being overridden by project clearance.
+- [x] Obligations remain machine-visible in gate outcomes.
+- [x] Source-level request/extraction telemetry supports a caller-configured cumulative extraction boundary for non-bulk-cleared automated research.
+- [x] Missing required non-bulk automation telemetry context fails closed.
+- [x] Rights-gate outcomes can route ResearchJob handling without falsely completing the job.
+- [x] SLICE-0006 provenance impact lookup is integrated without historical evidence mutation (scenario 27).
+- [x] Accepted source-rights fixtures retain their semantic outcomes.
+- [x] No network acquisition, persistence, source-authority ranking or canonical write path is introduced.
+- [x] Repository validator, Ruff, strict mypy, pytest/branch coverage pass locally.
+- [ ] Required remote CI (GitHub Actions) — NOT VERIFIED. Must be observed independently before project-owner acceptance.
+
+### Scope deviations
+
+None. All deliverables are confined to the slice-defined touch points. No unrelated files were modified.
+
+### Unresolved findings
+
+None blocking. The uncovered lines in `rights.py` (lines 326, 329, 332–336) are defensive share-alike conflict checks for the artifact_redistribution use that are only reachable when clearance is "allowed" but obligations.share_alike is "yes" or "unknown" — a combination not present in the current fixture set. These paths are intentionally present as defensive policy enforcement and can be validated with a future fixture when needed.
+
+### Agent declaration
+
+This report is produced by the implementation agent (Claude). Local gates have been run and results are truthfully reported above. The remote GitHub CI result has not been observed and is marked NOT VERIFIED. The slice status is set to REVIEW, not DONE. The project owner must independently verify remote CI and perform acceptance review before marking DONE.
