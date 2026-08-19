@@ -14,15 +14,6 @@ function Normalize-Slice([string]$Value) {
     throw "Enter a slice number such as 5 or 0005."
 }
 
-function Open-Worktree([string]$Path) {
-    $code = Get-Command code -ErrorAction SilentlyContinue
-    if ($code) {
-        Start-Process -FilePath $code.Source -ArgumentList @('-r', $Path)
-    } else {
-        Start-Process explorer.exe $Path
-    }
-}
-
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 if (-not $Slice) { $Slice = Read-Host 'Slice number (example: 0005)' }
 $sliceNumber = Normalize-Slice $Slice
@@ -108,10 +99,10 @@ try {
     Write-Host $prompt
 }
 
-Open-Worktree $worktree
-
 Write-Host ""
 Write-Host "READY"
 Write-Host "Worktree: $worktree"
 Write-Host "Branch:   $branch"
-Write-Host "Paste the copied prompt into Claude Code."
+Write-Host ""
+Write-Host "START_SLICE did NOT open, close, reload, or switch any VS Code window."
+Write-Host "When you are ready, open the worktree in the VS Code window you want Claude to use, then paste the copied prompt."
