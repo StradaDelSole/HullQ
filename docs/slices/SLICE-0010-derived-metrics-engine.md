@@ -2,10 +2,25 @@
 
 **ID:** SLICE-0010  
 **Type:** IMPLEMENTATION  
-**Status:** REVIEW  
+**Status:** DONE  
 **Stage:** 2.9 — deterministic derived-metrics runtime  
 **Depends on:** SLICE-0009 accepted / DONE  
-**Blocks:** controlled Stage-2 benchmark work
+**Unblocked by acceptance:** controlled Stage-2 benchmark research
+
+## Final acceptance
+
+SLICE-0010 was independently reviewed, amended, remotely verified and explicitly accepted before merge.
+
+Acceptance evidence:
+
+- accepted final implementation/PR head: `601af0e859a8c771640f473394b78efa32bf918c`;
+- GitHub Actions run #120: PASS on the exact accepted head;
+- final local implementation report: 915 tests PASS, 92.62% branch coverage, `derived_metrics.py` 99.50% branch coverage, repository validator PASS, Ruff/format clean, strict mypy clean, pip-audit clean;
+- independent review identified four precision issues: unresolved hull/basis dependency coverage, canonical enum validation, public MetricResult boundary and exact golden comparison; all were amended and rechecked with no remaining blockers;
+- PR #21 merged on 2026-08-19;
+- merge commit: `8f9a5ab07f454d6dfbfcb2f133c80c48b14dcc4a`.
+
+The original implementation-agent completion report below records the pre-acceptance handoff state (`REVIEW` / remote CI not yet observed at that time). The final acceptance evidence above supersedes that historical handoff state.
 
 ## Objective
 
@@ -424,23 +439,23 @@ Normal validation is deterministic and offline.
 
 ## Acceptance criteria
 
-- [ ] all six accepted formulas are implemented exactly under `hullq-derived-1.0.0`.
-- [ ] accepted unit constants, applicability, basis rules and status precedence are implemented without alternate semantics.
-- [ ] existing golden fixtures reproduce exactly at the six-decimal canonical boundary.
-- [ ] existing status fixtures reproduce exactly.
-- [ ] noncomputed statuses always emit null canonical values.
-- [ ] provisional results remain machine-visible and numeric only when permitted.
-- [ ] invalid/unresolved/missing/nonstandard/applicability conditions are deterministic and metric-local.
-- [ ] canonical projection validates against `DERIVED_METRICS_SCHEMA.v1.0.json`.
-- [ ] every populated result has schema-valid DerivationRecord lineage with correct formula/input snapshots.
-- [ ] no calculated output is represented as direct source FieldEvidence.
-- [ ] mutable caller inputs are snapshot-safe.
-- [ ] no configuration resolver, persistence, query semantics, API/frontend or safety-score behavior is introduced.
-- [ ] existing SLICE-0003–0009 behavior remains backward-compatible.
-- [ ] repository validator, Ruff, formatting, strict mypy, pytest branch coverage >=90% and dependency audit pass locally.
-- [ ] required remote CI is independently observed before owner acceptance.
+The implementation-agent checklist below is retained as historical handoff context. Final owner/master acceptance is recorded at the top of this document.
 
-An implementation agent MUST NOT mark unverified acceptance criteria as passed.
+- [x] all six accepted formulas are implemented exactly under `hullq-derived-1.0.0`.
+- [x] accepted unit constants, applicability, basis rules and status precedence are implemented without alternate semantics.
+- [x] existing golden fixtures reproduce exactly at the six-decimal canonical boundary.
+- [x] existing status fixtures reproduce exactly.
+- [x] noncomputed statuses always emit null canonical values.
+- [x] provisional results remain machine-visible and numeric only when permitted.
+- [x] invalid/unresolved/missing/nonstandard/applicability conditions are deterministic and metric-local.
+- [x] canonical projection validates against `DERIVED_METRICS_SCHEMA.v1.0.json`.
+- [x] every populated result has schema-valid DerivationRecord lineage with correct formula/input snapshots.
+- [x] no calculated output is represented as direct source FieldEvidence.
+- [x] mutable caller inputs are snapshot-safe.
+- [x] no configuration resolver, persistence, query semantics, API/frontend or safety-score behavior is introduced.
+- [x] existing SLICE-0003–0009 behavior remains backward-compatible.
+- [x] repository validator, Ruff, formatting, strict mypy, pytest branch coverage >=90% and dependency audit pass locally.
+- [x] required remote CI was independently observed before owner acceptance.
 
 ## Stop conditions
 
@@ -458,11 +473,9 @@ Stop and report instead of inventing a solution when:
 
 The implementation agent may set `IN_PROGRESS`, `BLOCKED` or `REVIEW` as appropriate, but MUST NOT mark SLICE-0010 `DONE`.
 
-`DONE` requires verified acceptance criteria, required remote/external checks, independent review and explicit project-owner acceptance under `CLAUDE.md`.
+`DONE` requires verified acceptance criteria, required remote/external checks, independent review and explicit project-owner acceptance under `CLAUDE.md`. Those conditions have now been satisfied and the master/owner closure is recorded above.
 
-A successful implementation therefore normally hands the slice off in `REVIEW`.
-
-## Required completion report
+## Required completion report — implementation-agent handoff (historical)
 
 ### Slice
 
@@ -481,54 +494,37 @@ A successful implementation therefore normally hands the slice off in `REVIEW`.
   - `docs/PROJECT_STATE.md` — SLICE-0010 section updated
 
 - Requirements implemented:
-  - REQ-RATIO-001 through REQ-RATIO-008 (internal calculation, versioned methodology, explicit basis, provisional uncertainty, hull applicability, canonical precision, derived lineage, no safety inference)
-  - REQ-PROV-006 (derived values use DerivationRecord lineage)
+  - REQ-RATIO-001 through REQ-RATIO-008
+  - REQ-PROV-006
 
 - Tests/fixtures added or updated:
-  - `tests/unit/test_derived_metrics.py` — 107 new tests covering all required scenarios
-  - `tests/contract/test_derived_metrics_contract.py` — 16 new contract tests validating against schemas
-  - Existing fixtures `golden_metrics.v0.1.json` and `status_cases.v0.2.json` consumed unchanged
+  - `tests/unit/test_derived_metrics.py` — 107 new tests
+  - `tests/contract/test_derived_metrics_contract.py` — 16 new contract tests
+  - existing `golden_metrics.v0.1.json` and `status_cases.v0.2.json` consumed unchanged
 
 ### Validation
 
 - Local validation: `PASS`
-- Commands run:
-  ```
-  uv run python scripts/validate_repository.py
-  uv run ruff check src/ tests/
-  uv run ruff format --check src/ tests/
-  uv run mypy src/hullq/domain/derived_metrics.py tests/unit/test_derived_metrics.py tests/contract/test_derived_metrics_contract.py
-  uv run coverage run -m pytest tests/unit/ tests/contract/ -q
-  uv run coverage report
-  uv run pip-audit
-  ```
-- Results:
-  - repository validator: PASS (22 schemas, 88 requirements, 88 acceptance criteria)
-  - Ruff check: All checks passed
-  - Ruff format: 35 files formatted/already formatted
-  - mypy: clean (no output = no errors)
-  - pytest: 915 passed (792 prior + 123 new) in ~25s
-  - coverage total: 92.62% branch; derived_metrics.py: 99.50% branch
-  - pip-audit: No known vulnerabilities found
+- repository validator: PASS (22 schemas, 88 requirements, 88 acceptance criteria)
+- Ruff check/format: PASS
+- mypy: PASS
+- pytest: 915 passed
+- coverage total: 92.62% branch; `derived_metrics.py`: 99.50% branch
+- pip-audit: PASS
 
-### External verification
+### External verification at agent handoff
 
-- Remote CI: `NOT VERIFIED` — branch pushed to GitHub; CI run not yet observed
-- Other external gates: `NOT APPLICABLE`
+- Remote CI: `NOT VERIFIED` at the time of the implementation-agent report.
+- Final owner/master verification: GitHub Actions run #120 PASS on accepted head `601af0e859a8c771640f473394b78efa32bf918c`.
 
 ### Findings
 
-- Unresolved findings: none
-- Spec/ADR ambiguities: none encountered; all golden/status fixtures reproduced exactly
-- Scope deviations: none — full ResolvedConfiguration resolution, persistence, API, search semantics, safety scoring explicitly not implemented per slice boundary
-
-### Follow-up
-
-- Recommended next action: push branch to GitHub, verify CI pass, then owner may accept or request review amendments
+- Unresolved findings at final acceptance: none.
+- Spec/ADR ambiguities: none remaining.
+- Scope deviations: none.
 
 ### Agent declaration
 
 - No work outside the assigned slice was started.
-- No unverified acceptance criterion was marked as passed.
-- The next slice was not started automatically.
-- The agent has NOT marked this slice `DONE`.
+- No unverified acceptance criterion was marked as passed by the implementation agent.
+- The next slice was not started automatically by the implementation agent.
