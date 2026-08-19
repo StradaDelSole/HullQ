@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0010  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 2.9 — deterministic derived-metrics runtime  
 **Depends on:** SLICE-0009 accepted / DONE  
 **Blocks:** controlled Stage-2 benchmark work
@@ -467,35 +467,64 @@ A successful implementation therefore normally hands the slice off in `REVIEW`.
 ### Slice
 
 - Slice ID: `SLICE-0010`
-- Recommended slice state: `REVIEW` | `BLOCKED`
-- Scope completed: `YES` | `NO`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
 
 ### Changes
 
 - Changed files:
+  - `src/hullq/domain/derived_metrics.py` — new: bounded derived-metrics engine
+  - `tests/unit/test_derived_metrics.py` — new: 107 unit tests
+  - `tests/contract/test_derived_metrics_contract.py` — new: 16 contract/schema tests
+  - `docs/slices/SLICE-0010-derived-metrics-engine.md` — status update and completion report
+  - `docs/slices/INDEX.md` — status updated to REVIEW
+  - `docs/PROJECT_STATE.md` — SLICE-0010 section updated
+
 - Requirements implemented:
+  - REQ-RATIO-001 through REQ-RATIO-008 (internal calculation, versioned methodology, explicit basis, provisional uncertainty, hull applicability, canonical precision, derived lineage, no safety inference)
+  - REQ-PROV-006 (derived values use DerivationRecord lineage)
+
 - Tests/fixtures added or updated:
+  - `tests/unit/test_derived_metrics.py` — 107 new tests covering all required scenarios
+  - `tests/contract/test_derived_metrics_contract.py` — 16 new contract tests validating against schemas
+  - Existing fixtures `golden_metrics.v0.1.json` and `status_cases.v0.2.json` consumed unchanged
 
 ### Validation
 
-- Local validation: `PASS` | `FAIL` | `PARTIAL`
+- Local validation: `PASS`
 - Commands run:
+  ```
+  uv run python scripts/validate_repository.py
+  uv run ruff check src/ tests/
+  uv run ruff format --check src/ tests/
+  uv run mypy src/hullq/domain/derived_metrics.py tests/unit/test_derived_metrics.py tests/contract/test_derived_metrics_contract.py
+  uv run coverage run -m pytest tests/unit/ tests/contract/ -q
+  uv run coverage report
+  uv run pip-audit
+  ```
 - Results:
+  - repository validator: PASS (22 schemas, 88 requirements, 88 acceptance criteria)
+  - Ruff check: All checks passed
+  - Ruff format: 35 files formatted/already formatted
+  - mypy: clean (no output = no errors)
+  - pytest: 915 passed (792 prior + 123 new) in ~25s
+  - coverage total: 92.62% branch; derived_metrics.py: 99.50% branch
+  - pip-audit: No known vulnerabilities found
 
 ### External verification
 
-- Remote CI: `PASS` | `FAIL` | `NOT VERIFIED`
-- Other external gates: `PASS` | `FAIL` | `NOT VERIFIED` | `NOT APPLICABLE`
+- Remote CI: `NOT VERIFIED` — branch pushed to GitHub; CI run not yet observed
+- Other external gates: `NOT APPLICABLE`
 
 ### Findings
 
-- Unresolved findings:
-- Spec/ADR ambiguities:
-- Scope deviations:
+- Unresolved findings: none
+- Spec/ADR ambiguities: none encountered; all golden/status fixtures reproduced exactly
+- Scope deviations: none — full ResolvedConfiguration resolution, persistence, API, search semantics, safety scoring explicitly not implemented per slice boundary
 
 ### Follow-up
 
-- Recommended next action:
+- Recommended next action: push branch to GitHub, verify CI pass, then owner may accept or request review amendments
 
 ### Agent declaration
 

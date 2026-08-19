@@ -15,7 +15,7 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0007 | IMPLEMENTATION | DONE | ResearchJob runtime + deterministic source-rights/use gate + cumulative extraction telemetry so automated acquisition fails closed | SLICE-0006 / ADR-0005 |
 | SLICE-0008 | IMPLEMENTATION | DONE | First rights-gated real external acquisition adapter against Wikidata CC0 with bounded discovery/entity acquisition and provenance-aware extraction | SLICE-0007 |
 | SLICE-0009 | IMPLEMENTATION | DONE | Deterministic appendage/configuration normalization for explicit keel, rudder, skeg, hull and board observations using the existing BoatDesign vocabulary | SLICE-0008 |
-| SLICE-0010 | IMPLEMENTATION | READY | Deterministic `hullq-derived-1.0.0` derived-metrics engine with accepted formulas, status precedence, six-decimal canonical precision and DerivationRecord lineage | SLICE-0009 / ADR-0008 |
+| SLICE-0010 | IMPLEMENTATION | REVIEW | Deterministic `hullq-derived-1.0.0` derived-metrics engine with accepted formulas, status precedence, six-decimal canonical precision and DerivationRecord lineage | SLICE-0009 / ADR-0008 |
 
 ## Current execution rule
 
@@ -31,7 +31,7 @@ Acceptance evidence:
 
 The accepted SLICE-0009 boundary provides a versioned source-agnostic configuration normalizer over the existing BoatDesign vocabulary; conservative exact/alias rules; explicit unsupported/ambiguous/malformed outcomes; independent keel/rudder/skeg/hull/board axes; strict count handling; snapshot-safe raw observations; and fail-closed baseline projection so option/variant/state observations cannot silently become baseline facts. It does not create FieldResolution, mutate BoatDesign, perform source acquisition, persist data or calculate derived metrics.
 
-`SLICE-0010` is the **only `READY` implementation slice**. It must implement the already accepted OQ-001 / ADR-0008 methodology `hullq-derived-1.0.0` mechanically from explicit effective input snapshots. It must reproduce the checked-in golden/status fixtures, enforce exact applicability/basis/status-precedence rules, quantize populated outputs to six decimals using round-half-even, and create DerivationRecord lineage for every populated metric.
+`SLICE-0010` is in `REVIEW`. Implementation is complete locally: 915 tests pass, 92.62% branch coverage, Ruff/format/mypy/pip-audit all clean. Branch pushed to `slice/0010-derived-metrics-engine`; awaiting CI verification and independent review before owner acceptance.
 
 No implementation agent may begin later benchmark/broad-ingestion work automatically.
 

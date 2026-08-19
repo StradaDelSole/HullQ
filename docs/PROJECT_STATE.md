@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-19  
-**Current stage:** Stage 2.9 — SLICE-0010 derived metrics engine READY  
+**Current stage:** Stage 2.9 — SLICE-0010 derived metrics engine REVIEW  
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -187,9 +187,9 @@ FINISH_SLICE.bat
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned `slice/...` branch. The master/architect does not write Claude's active implementation branch. No later implementation slice begins automatically.
 
-## Current operational position — SLICE-0010 READY
+## Current operational position — SLICE-0010 REVIEW
 
-`docs/slices/SLICE-0010-derived-metrics-engine.md` is the only `READY` implementation slice.
+`docs/slices/SLICE-0010-derived-metrics-engine.md` is in `REVIEW` pending CI and independent acceptance.
 
 OQ-001 / ADR-0008 already froze methodology `hullq-derived-1.0.0`. SLICE-0010 is therefore an execution slice, not a research slice. It must implement exactly:
 
