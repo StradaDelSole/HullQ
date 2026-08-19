@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
-**Updated:** 2026-08-18  
-**Current stage:** Stage 2.5 — SLICE-0006 provenance/raw-observation boundary READY  
+**Updated:** 2026-08-19  
+**Current stage:** Stage 2.6 — SLICE-0007 ResearchJob/source-rights gate READY  
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -46,7 +46,7 @@ Off-VPS backup/artifact direction: Cloudflare R2 when introduced
 Later native mobile: Flutter Android/iOS via the same accepted API boundary
 ```
 
-Auth remains deliberately deferred under OQ-014. OQ-006 still controls alert cadence/freshness; OQ-015 controls the stable HTTP API/versioning boundary; OQ-018 controls exact public SEO URL/index/rendering/canonicalization/structured-data behavior.
+Auth remains deferred under OQ-014. OQ-006 controls alert cadence/freshness; OQ-015 controls the stable HTTP API/versioning boundary; OQ-018 controls exact public SEO URL/index/rendering/canonicalization/structured-data behavior.
 
 ## Completed evidence gate — SLICE-0002
 
@@ -72,27 +72,23 @@ Final merge commit: `b927a6b17e204de43773c8682e36a29db037ab8a`.
 
 ### Measurement Observation and Deterministic Unit/Basis Normalization — DONE
 
-SLICE-0004 was implemented by Claude Code, independently reviewed, explicitly accepted by the project owner and merged through PR #4 on 2026-08-18.
+SLICE-0004 was independently reviewed, explicitly accepted and merged through PR #4 on 2026-08-18.
 
 Final merge commit: `ec6ceabbc45970be286adac68cc0095aa2f1f9d1`.
 
 Acceptance evidence:
 
 - accepted implementation head: `a473c4778ad134df8ba9f8f803a5f71c5f031132`;
-- final implementation-agent report: 85/85 tests PASS;
-- `measurements.py` 100% branch coverage; total coverage 99.38%;
-- Ruff, strict mypy and pip-audit clean;
 - GitHub Actions run #65: Ubuntu quality PASS, Windows quality PASS, dependency audit PASS;
-- independent review: ACCEPT, no blocking findings;
-- explicit project-owner acceptance received on 2026-08-18.
+- independent review: ACCEPT, no blocking findings.
 
-The merged boundary provides deterministic exact conversion for explicit length/mass/area measurements using accepted unit tokens, preserves raw text/semantic labels, keeps ratio-input basis vocabularies aligned with the normative schema, rejects non-finite values and performs no free-text semantic inference or derived-metric rounding.
+The accepted boundary provides deterministic exact conversion for explicit length/mass/area measurements, preserves raw source representation and semantic labels, keeps ratio-input basis vocabularies aligned with normative schemas, rejects non-finite values and performs no free-text inference or derived-metric rounding.
 
 ## Completed implementation — SLICE-0005
 
 ### Identity Contracts and Deterministic Search Labels — DONE
 
-SLICE-0005 was implemented by Claude Code, independently reviewed through multiple amendment rounds, explicitly accepted by the project owner and merged through PR #10 on 2026-08-18.
+SLICE-0005 was independently reviewed through multiple amendment rounds, explicitly accepted and merged through PR #10 on 2026-08-18.
 
 Final merge commit: `e46857ab9d76a2e83f0ceef9e6878db7f2f66022`.
 
@@ -100,64 +96,81 @@ Acceptance evidence:
 
 - accepted implementation head: `38520ce0ed12ec4d33f747fe1121c229d3df5279`;
 - GitHub Actions run #77: Ubuntu quality PASS, Windows quality PASS, dependency audit PASS;
-- independent review: ACCEPT, no remaining blockers;
-- explicit project-owner acceptance received on 2026-08-18.
+- independent review: ACCEPT, no remaining blockers.
 
-The merged boundary establishes:
+The accepted boundary establishes separate first-class Brand and Organization identities, stable entity-scoped aliases, versioned BoatModel/BoatDesign identity contracts, independently addressable Brand↔BoatModel and Organization↔BoatDesign relationships, a shared relationship applicability core and deterministic non-destructive search-label projections.
 
-- separate first-class Brand/Marque and Organization/Builder identities;
-- stable entity-scoped aliases;
-- versioned BoatModel v0.2 and BoatDesign v0.5 identity contracts while preserving legacy schemas;
-- independently addressable Brand↔BoatModel and Organization↔BoatDesign relationships;
-- a shared relationship applicability core preventing embedded/standalone semantic drift;
-- deterministic corporate-name search projections without canonical-name mutation;
-- explicit rejection of raw-string role inference, fuzzy matching and accidental identity collapse.
+## Completed implementation — SLICE-0006
+
+### Provenance and Raw Observation Boundary — DONE
+
+SLICE-0006 was implemented on `slice/0006-provenance-raw-observation-boundary`, independently reviewed through multiple precision amendments, explicitly accepted by the project owner on 2026-08-19 and merged through PR #14.
+
+Acceptance evidence:
+
+- accepted implementation head: `c934dc615d306ef8d8ad11a5024925e650933c27`;
+- GitHub Actions run #86: Ubuntu quality PASS, Windows quality PASS, dependency audit PASS;
+- final independent review: no remaining blockers;
+- implementation merge commit: `c0163795df3c4efb27102163770da0f7ff8cedbb`.
+
+The accepted boundary establishes:
+
+- one shared provenance-subject vocabulary covering BoatModel, BoatDesign, NamedVariant, DesignOption, Brand, Organization, IdentityAlias and both relationship identities;
+- successor FieldEvidence/FieldResolution contracts while keeping legacy v0.1 contracts loadable;
+- immutable/snapshot-safe raw source observations separate from normalized candidates;
+- strict RFC 6901 field addressing, including exact array-index handling;
+- append-oriented evidence/resolution supersession and current-resolution history validation;
+- explicit conflict/unknown semantics and canonical-value consistency checks;
+- Source → FieldEvidence → current/past FieldResolution reverse-impact lookup.
+
+No source-rights gate, network acquisition, persistence, derivation engine or search behavior was introduced in SLICE-0006.
 
 ## AI repository workflow — ACTIVE
 
-The single-writer/worktree workflow is merged. The project owner normally starts and finishes implementation slices with:
+The project owner normally starts and finishes implementation slices with:
 
 ```text
 START_SLICE.bat
 FINISH_SLICE.bat
 ```
 
-`START_SLICE.bat` synchronizes `main`, creates an isolated slice worktree/branch and copies Claude's instruction to the clipboard. It refuses any slice that is not explicitly `READY`.
+`START_SLICE.bat` synchronizes `main`, creates/reuses an isolated slice worktree/branch and copies Claude's instruction to the clipboard. It refuses any slice that is not explicitly `READY`.
 
-The workflow reuses the existing VS Code window (`code -r`) rather than opening a second VS Code instance. If the `code` command is unavailable, Explorer opens the worktree instead.
+After PR #15, `START_SLICE` deliberately does **not** open, close, reload or switch any VS Code window. The project owner explicitly opens the sibling `HullQ-slice-XXXX` worktree in the desired VS Code window before pasting the prompt.
 
-The initial Windows PowerShell `$Args` collision was corrected in PR #8; both START and FINISH pass Git arguments through an explicit `$GitArgs` parameter.
+`FINISH_SLICE.bat` synchronizes local `main` and removes the old clean worktree/local branch only after merged-PR confirmation when GitHub CLI is available.
 
-GitHub `origin/main` remains canonical truth. Claude owns only its assigned `slice/...` branch. The master/architect does not write Claude's active slice branch, and `main` remains frozen during active implementation except for an explicit blocker-resolution workflow.
+GitHub `origin/main` remains canonical truth. Claude owns only its assigned `slice/...` branch. The master/architect does not write Claude's active slice branch. No later implementation slice begins automatically.
 
-## Current operational position — SLICE-0006 READY
+## Current operational position — SLICE-0007 READY
 
-`docs/slices/SLICE-0006-provenance-raw-observation-boundary.md` is the only `READY` implementation slice.
+`docs/slices/SLICE-0007-research-job-source-rights-gate.md` is the only `READY` implementation slice.
 
-The slice turns the already accepted ADR-0006 provenance architecture into a small persistence-agnostic runtime before any external acquisition is introduced. It is intentionally bounded to:
+Its purpose is to make the already accepted OQ-007 / ADR-0005 source-rights model executable before any real external acquisition. It is deliberately bounded to:
 
-- a shared provenance-subject contract;
-- successor FieldEvidence/FieldResolution contracts that can address the SLICE-0005 Brand/Organization/alias/relationship identities without mutating legacy provenance schemas;
-- immutable/snapshot-safe raw observation vs normalized-candidate primitives;
-- RFC 6901 pointer parsing/lookup;
-- evidence/resolution supersession, conflict and current-resolution validation;
-- canonical value ↔ active resolution consistency checks;
-- Source → FieldEvidence → FieldResolution reverse-impact lookup over supplied collections.
+- ResearchJob runtime parity with the accepted v0.1 contract;
+- one deterministic use-specific Source gate across research reference, research lead, identity seed, production value, bulk bootstrap, automated ingestion and artifact redistribution;
+- fail-closed behavior for prohibited, unknown, unassessed, legal-review-required and unresolved conditional states;
+- independent automated-access checks so open/reusable data cannot bypass access restrictions;
+- defensive permission-conflict checks;
+- machine-visible attribution/notice/share-alike obligations;
+- persistence-agnostic source request/extraction telemetry for cumulative-extraction control on non-bulk-cleared sources;
+- integration with ResearchJob routing and the SLICE-0006 Source-impact provenance lookup.
 
-SLICE-0006 explicitly does **not** implement source-rights clearance, ResearchJob, network acquisition, persistence/ORM, source-authority ranking, derivation calculations or search semantics.
+SLICE-0007 does **not** perform HTTP/API acquisition, source-specific legal classification, persistence, canonical writes, source-authority ranking or broad ingestion.
 
-After implementation it must stop in `REVIEW`; SLICE-0007 must not start automatically.
+Conditional clearance is intentionally not bypassable through a generic caller boolean. A Source profile that remains `conditional` produces a non-allow outcome until an explicit reviewed Source decision resolves that use.
+
+After implementation, SLICE-0007 must stop in `REVIEW` or `BLOCKED`; SLICE-0008 must not start automatically.
 
 ## Revised near-term path to real data
-
-The rolling wave intentionally brings controlled real data early:
 
 ```text
 SLICE-0005  identity contracts/search labels                 DONE
       ↓
-SLICE-0006  provenance/raw-observation boundary              READY
+SLICE-0006  provenance/raw-observation boundary              DONE
       ↓
-SLICE-0007  ResearchJob + source-rights clearance gate
+SLICE-0007  ResearchJob + source-rights clearance gate       READY
       ↓
 SLICE-0008  FIRST RIGHTS-GATED REAL DATA — Wikidata CC0
       ↓
@@ -168,7 +181,7 @@ SLICE-0009  appendage/configuration normalization
 SLICE-0010  derived metrics
 ```
 
-This avoids over-designing the hardest appendage/configuration layer purely from imagined source formats. Broad ingestion remains gated by controlled real-data inspection and the 50–100 difficult-design benchmark.
+This avoids over-designing the hardest appendage/configuration layer from imagined source formats. Broad ingestion remains gated by controlled real-data inspection and the 50–100 difficult-design benchmark.
 
 ## Downstream gates
 
@@ -179,13 +192,9 @@ This avoids over-designing the hardest appendage/configuration layer purely from
 - OQ-015 is required before exposing the stable public HTTP API;
 - OQ-006 is required before automated alert cadence/freshness is frozen.
 
-## Retention / freemium direction
-
-Accepted strategic direction remains in `docs/PRODUCT_RETENTION_AND_MONETIZATION.md`: core technical search stays open in the preferred freemium thesis; subscription value attaches primarily to monitoring capacity/frequency and advanced market intelligence. Exact pricing/limits remain OQ-016.
-
 ## Do not start yet
 
-- SLICE-0007 or later implementation;
+- SLICE-0008 or later implementation;
 - production broad ingestion;
 - PostgreSQL production schema/application persistence;
 - FastAPI public API;
