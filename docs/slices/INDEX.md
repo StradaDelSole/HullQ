@@ -11,19 +11,28 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0003 | IMPLEMENTATION | DONE | Canonical JSON-Schema contract runtime and local `$id`/reference registry | SLICE-0002 |
 | SLICE-0004 | IMPLEMENTATION | DONE | Measurement observation + deterministic unit/basis normalization while preserving raw source semantics | SLICE-0003 |
 | SLICE-0005 | IMPLEMENTATION | DONE | First-class Brand/Organization identity contracts, BoatModel/BoatDesign identity migration, entity-scoped aliases and deterministic search-label keys | SLICE-0004 / ADR-0011 |
-| SLICE-0006 | IMPLEMENTATION | REVIEW | Provenance/raw-observation runtime: successor FieldEvidence/FieldResolution contracts, stable provenance subjects, conflict/supersession/current-resolution validation and source-impact lookup | SLICE-0005 / ADR-0006 |
-| SLICE-0007 | IMPLEMENTATION | BACKLOG | ResearchJob state + source-clearance enforcement so automated acquisition fails closed by rights/use | SLICE-0006 |
+| SLICE-0006 | IMPLEMENTATION | DONE | Provenance/raw-observation runtime: successor FieldEvidence/FieldResolution contracts, stable provenance subjects, conflict/supersession/current-resolution validation and source-impact lookup | SLICE-0005 / ADR-0006 |
+| SLICE-0007 | IMPLEMENTATION | READY | ResearchJob runtime + deterministic source-rights/use gate + cumulative extraction telemetry so automated acquisition fails closed | SLICE-0006 / ADR-0005 |
 | SLICE-0008 | IMPLEMENTATION | BACKLOG | First rights-gated real external acquisition adapter; preferred initial target Wikidata CC0 | SLICE-0007 |
 | SLICE-0009 | IMPLEMENTATION | BACKLOG | Appendage/configuration normalization refined from actual acquired data: keel, board, rudder, skeg, count/state and option relationships | SLICE-0008 |
 | SLICE-0010 | IMPLEMENTATION | BACKLOG | Derived-metrics engine under `hullq-derived-1.0.0` after canonical/configuration inputs are hardened | SLICE-0009 |
 
 ## Current execution rule
 
-`SLICE-0005` is `DONE`: implementation was merged through PR #10 after green Ubuntu/Windows/dependency-audit CI on final reviewed head `38520ce0ed12ec4d33f747fe1121c229d3df5279`, independent review with no remaining blockers, and explicit project-owner acceptance on 2026-08-18.
+`SLICE-0006` is `DONE`. It was implemented on `slice/0006-provenance-raw-observation-boundary`, independently reviewed through multiple amendment rounds, explicitly accepted by the project owner on 2026-08-19 and merged through PR #14.
 
-`SLICE-0006` is the only `READY` implementation slice. It is defined in `docs/slices/SLICE-0006-provenance-raw-observation-boundary.md` and must be run on its isolated `slice/0006-provenance-raw-observation-boundary` worktree/branch.
+Acceptance evidence:
 
-No implementation agent may begin SLICE-0007 or later work automatically after completing SLICE-0006.
+- accepted implementation head: `c934dc615d306ef8d8ad11a5024925e650933c27`;
+- GitHub Actions run #86: Ubuntu quality PASS, Windows quality PASS, dependency audit PASS;
+- final independent review: no remaining blockers;
+- implementation merge commit: `c0163795df3c4efb27102163770da0f7ff8cedbb`.
+
+The accepted boundary provides shared provenance subjects, immutable raw-vs-normalized evidence snapshots, versioned field resolutions, strict RFC 6901 lookup, conflict/supersession/current-resolution validation, canonical consistency checking and Source → FieldEvidence → FieldResolution reverse-impact lookup.
+
+`SLICE-0007` is now the only `READY` implementation slice. It is defined in `docs/slices/SLICE-0007-research-job-source-rights-gate.md` and must run only on its isolated `slice/0007-research-job-source-rights-gate` worktree/branch.
+
+No implementation agent may begin SLICE-0008 or later work automatically after completing SLICE-0007.
 
 ## Evidence-first sequence
 
@@ -38,9 +47,9 @@ measurement normalization             DONE
         ↓
 Brand / Organization identity         DONE
         ↓
-provenance/raw observation boundary   READY
+provenance/raw observation boundary   DONE
         ↓
-ResearchJob + source-rights gate
+ResearchJob + source-rights gate      READY
         ↓
 FIRST RIGHTS-GATED REAL DATA — Wikidata CC0
         ↓
@@ -55,12 +64,16 @@ controlled benchmark → broad ingestion
 
 ## Why real data moved earlier
 
-The earlier directional queue placed appendage normalization and derived metrics before the first external adapter. SLICE-0002 already showed that appendage/configuration data is the hardest and most irregular part of the domain. Implementing its full normalization purely from imagined formats would create avoidable rework.
+SLICE-0002 showed that appendage/configuration data is the hardest and most irregular part of the domain. Implementing its full normalization purely from imagined formats would create avoidable rework.
 
-The revised rolling wave therefore establishes only the minimum prerequisites first: identity, provenance/raw observations, and source-rights/research-job controls. HullQ then ingests a controlled rights-cleared source and uses actual data quality to refine deeper normalization.
+The rolling wave therefore establishes only the minimum prerequisites first: identity, provenance/raw observations, and source-rights/research-job controls. HullQ then ingests one controlled rights-cleared source and uses actual data quality to refine deeper normalization.
 
-This does not authorize broad ingestion. The first adapter remains a controlled acquisition slice and the 50–100 difficult-design corpus remains the benchmark before production-scale ingestion.
+This does not authorize broad ingestion. The first adapter remains controlled and the 50–100 difficult-design corpus remains the benchmark before production-scale ingestion.
+
+## Workflow note
+
+The current `START_SLICE` workflow prepares/synchronizes Git state, creates or reuses the isolated worktree, and copies the Claude prompt. It deliberately does **not** open, close, reload or switch VS Code windows. The project owner explicitly opens the prepared worktree in the desired VS Code window.
 
 ## Rolling-wave note
 
-SLICE-0006 is fully detailed and `READY`. SLICE-0007–0010 remain directional backlog and may be refined by implementation and real-data evidence. Exactly one implementation slice is `READY`; do not create or start later slices automatically.
+Exactly one implementation slice is `READY`. SLICE-0008–0010 remain directional backlog and may be refined by implementation and real-data evidence.
