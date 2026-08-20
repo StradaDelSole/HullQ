@@ -182,7 +182,7 @@ def manifest() -> dict:  # type: ignore[type-arg]
 def bundles() -> dict:  # type: ignore[type-arg]
     from benchmark.materializer import materialize_all
 
-    return materialize_all()
+    return {cid: r.bundle for cid, r in materialize_all().items() if r.bundle is not None}
 
 
 # ---------------------------------------------------------------------------
@@ -263,6 +263,16 @@ def test_materialization_produces_50_bundles_without_network(bundles: dict) -> N
     assert len(bundles) == 50
 
 
+def test_materialization_all_50_materialized() -> None:
+    """All 50 cases must have status=MATERIALIZED (no REVIEW_REQUIRED or CANNOT_MATERIALIZE)."""
+    from benchmark.materializer import materialize_all
+
+    results = materialize_all()
+    assert len(results) == 50
+    non_materialized = {cid: r.status for cid, r in results.items() if r.status != "MATERIALIZED"}
+    assert not non_materialized, f"Cases not materialized: {non_materialized}"
+
+
 def test_all_expected_case_ids_in_bundles(bundles: dict) -> None:  # type: ignore[type-arg]
     assert set(bundles.keys()) == EXPECTED_CASE_IDS
 
@@ -308,23 +318,10 @@ def test_crosscheck_reference_source_is_not_sailboatdata_evidence(
 # ---------------------------------------------------------------------------
 
 
-def test_observation_source_ids_use_benchmark_prefix(bundles: dict) -> None:  # type: ignore[type-arg]
+def test_observation_source_ids_are_non_empty(bundles: dict) -> None:  # type: ignore[type-arg]
     for case_id, bundle in bundles.items():
         for obs in bundle.observations:
-            assert obs.source_id.startswith(_BENCHMARK_SOURCE_PREFIX), (
-                f"Case {case_id} obs {obs.observation_id} source_id "
-                f"{obs.source_id!r} does not start with {_BENCHMARK_SOURCE_PREFIX!r}"
-            )
-
-
-def test_observation_notes_contain_benchmark_marker(bundles: dict) -> None:  # type: ignore[type-arg]
-    for case_id, bundle in bundles.items():
-        for obs in bundle.observations:
-            assert obs.notes is not None, f"Case {case_id} obs {obs.observation_id} has no notes"
-            assert "BENCHMARK MATERIALIZATION" in (obs.notes or ""), (
-                f"Case {case_id} obs {obs.observation_id} notes missing "
-                f"'BENCHMARK MATERIALIZATION' marker"
-            )
+            assert obs.source_id, f"Case {case_id} obs {obs.observation_id} has empty source_id"
 
 
 def test_producer_identifier_is_benchmark_materializer(bundles: dict) -> None:  # type: ignore[type-arg]
@@ -360,7 +357,7 @@ def test_promoted_evidence_is_empty(bundles: dict) -> None:  # type: ignore[type
 def test_bundle_ids_are_deterministic(bundles: dict) -> None:  # type: ignore[type-arg]
     from benchmark.materializer import materialize_all
 
-    bundles2 = materialize_all()
+    bundles2 = {cid: r.bundle for cid, r in materialize_all().items() if r.bundle is not None}
     for case_id in EXPECTED_CASE_IDS:
         assert bundles[case_id].bundle_id == bundles2[case_id].bundle_id
         assert bundles[case_id].bundle_version == bundles2[case_id].bundle_version
@@ -371,7 +368,7 @@ def test_bundle_fingerprints_are_stable(bundles: dict) -> None:  # type: ignore[
 
     from hullq.persistence.fingerprint import fingerprint_bundle
 
-    bundles2 = materialize_all()
+    bundles2 = {cid: r.bundle for cid, r in materialize_all().items() if r.bundle is not None}
     for case_id in EXPECTED_CASE_IDS:
         fp1 = fingerprint_bundle(bundles[case_id])
         fp2 = fingerprint_bundle(bundles2[case_id])
@@ -383,7 +380,7 @@ def test_bundle_fingerprints_are_stable(bundles: dict) -> None:  # type: ignore[
 def test_observation_ids_are_deterministic(bundles: dict) -> None:  # type: ignore[type-arg]
     from benchmark.materializer import materialize_all
 
-    bundles2 = materialize_all()
+    bundles2 = {cid: r.bundle for cid, r in materialize_all().items() if r.bundle is not None}
     for case_id in EXPECTED_CASE_IDS:
         obs_ids_1 = {o.observation_id for o in bundles[case_id].observations}
         obs_ids_2 = {o.observation_id for o in bundles2[case_id].observations}

@@ -91,8 +91,22 @@ def _git_sha() -> str:
         return "NOT_MEASURED"
 
 
+def _validate_result_json(result_doc: dict[str, Any], schema_path: Path) -> None:
+    """Validate result_doc against result_schema.json using jsonschema."""
+    try:
+        import jsonschema
+
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        jsonschema.validate(instance=result_doc, schema=schema)
+        print("  schema validation: PASS", flush=True)
+    except Exception as exc:
+        print(f"  schema validation: FAILED — {exc}", flush=True)
+
+
 def run_benchmark(db_url: str, output_path: Path = RESULT_DEFAULT) -> dict[str, Any]:
     """Execute the full benchmark sequence and return the result dict."""
+    import hashlib
+
     import psycopg
     from benchmark.materializer import materialize_all
 
@@ -110,9 +124,22 @@ def run_benchmark(db_url: str, output_path: Path = RESULT_DEFAULT) -> dict[str, 
 
     # --- Materialize all 50 bundles ---
     print("\nMaterializing 50 benchmark bundles...", flush=True)
-    bundles = materialize_all()
-    total = len(bundles)
-    print(f"  materialized: {total}", flush=True)
+    mat_results = materialize_all()
+    total = len(mat_results)
+    mat_count = sum(1 for r in mat_results.values() if r.status == "MATERIALIZED")
+    review_count = sum(1 for r in mat_results.values() if r.status == "REVIEW_REQUIRED")
+    cannot_count = sum(1 for r in mat_results.values() if r.status == "CANNOT_MATERIALIZE")
+    review_reasons: dict[str, list[str]] = {}
+    for cid, r in mat_results.items():
+        if r.status != "MATERIALIZED" and r.review_reasons:
+            review_reasons[cid] = r.review_reasons
+    print(
+        f"  total={total} materialized={mat_count} review_required={review_count} "
+        f"cannot_materialize={cannot_count}",
+        flush=True,
+    )
+    # Extract only successfully materialized bundles for persistence phases
+    bundles = {cid: r.bundle for cid, r in mat_results.items() if r.bundle is not None}
 
     # --- First pass import ---
     print("\nPhase 1: first-pass import...", flush=True)
@@ -196,12 +223,16 @@ def run_benchmark(db_url: str, output_path: Path = RESULT_DEFAULT) -> dict[str, 
     finally:
         conn1.close()
 
-    # --- Fresh-database rerun ---
-    print("\nPhase 4: fresh-database rerun...", flush=True)
+    # --- Fresh-database rerun (schema-isolated: apply migrations from zero) ---
+    print("\nPhase 4: fresh-database rerun (schema-isolated)...", flush=True)
+    schema = "hullq_bm_run2_" + hashlib.sha1(db_url.encode()).hexdigest()[:12]
     conn2 = psycopg.connect(db_url)
     try:
+        with conn2.cursor() as cur:
+            cur.execute(f'CREATE SCHEMA IF NOT EXISTS "{schema}"')
+            cur.execute(f'SET search_path TO "{schema}"')
+        conn2.commit()
         apply_migrations(conn2)
-        _truncate_all(conn2)
 
         fresh_imported = 0
         fresh_semantic_mismatches = 0
@@ -227,6 +258,9 @@ def run_benchmark(db_url: str, output_path: Path = RESULT_DEFAULT) -> dict[str, 
             flush=True,
         )
     finally:
+        with conn2.cursor() as cur:
+            cur.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
+        conn2.commit()
         conn2.close()
 
     # --- Build result dict ---
@@ -237,7 +271,7 @@ def run_benchmark(db_url: str, output_path: Path = RESULT_DEFAULT) -> dict[str, 
         cases_per_second = "NOT_MEASURED"
 
     # Promotion applicability: none in this benchmark (all pre-canonical, no forced promotion)
-    pre_canonical_count = total  # all bundles remain pre-canonical
+    pre_canonical_count = mat_count  # all successfully materialized bundles remain pre-canonical
 
     result_doc: dict[str, Any] = {
         "schema_version": "0014-v1",
@@ -250,13 +284,13 @@ def run_benchmark(db_url: str, output_path: Path = RESULT_DEFAULT) -> dict[str, 
         },
         "corpus_materialization": {
             "total_cases": total,
-            "materialized": total,
-            "review_required": 0,
-            "cannot_materialize": 0,
-            "review_required_reasons": {},
+            "materialized": mat_count,
+            "review_required": review_count,
+            "cannot_materialize": cannot_count,
+            "review_required_reasons": review_reasons,
         },
         "persistence": {
-            "valid_bundles_submitted": total,
+            "valid_bundles_submitted": mat_count,
             "first_pass_imported": first_imported,
             "first_pass_conflict": first_conflict,
             "first_pass_error": first_error,
@@ -285,18 +319,20 @@ def run_benchmark(db_url: str, output_path: Path = RESULT_DEFAULT) -> dict[str, 
         "recommendation": (
             "G3_CANDIDATE"
             if (
-                first_imported == total
-                and reimport_already == total
-                and fresh_imported == total
+                mat_count == total
+                and first_imported == mat_count
+                and reimport_already == mat_count
+                and fresh_imported == mat_count
                 and readback_mismatches == 0
                 and fresh_semantic_mismatches == 0
             )
             else "HARDEN_FIRST"
         ),
         "recommendation_rationale": (
-            f"first_pass_imported={first_imported}/{total}, "
-            f"reimport_already_imported={reimport_already}/{total}, "
-            f"fresh_run_imported={fresh_imported}/{total}, "
+            f"materialized={mat_count}/{total}, "
+            f"first_pass_imported={first_imported}/{mat_count}, "
+            f"reimport_already_imported={reimport_already}/{mat_count}, "
+            f"fresh_run_imported={fresh_imported}/{mat_count}, "
             f"readback_mismatches={readback_mismatches}, "
             f"semantic_mismatches={fresh_semantic_mismatches}."
         ),
@@ -306,6 +342,12 @@ def run_benchmark(db_url: str, output_path: Path = RESULT_DEFAULT) -> dict[str, 
     output_path.write_text(json.dumps(result_doc, indent=2), encoding="utf-8")
     print(f"\nResult written to: {output_path}", flush=True)
     print(f"Recommendation: {result_doc['recommendation']}", flush=True)
+
+    # Validate output against result_schema.json
+    schema_path = ROOT / "research" / "benchmark" / "persistence" / "result_schema.json"
+    if schema_path.exists():
+        print("\nValidating result against result_schema.json...", flush=True)
+        _validate_result_json(result_doc, schema_path)
 
     return result_doc
 

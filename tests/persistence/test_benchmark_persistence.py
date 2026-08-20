@@ -112,7 +112,7 @@ def benchmark_bundles() -> dict[str, Any]:
     """Materialize all 50 benchmark bundles once for the test session."""
     from benchmark.materializer import materialize_all
 
-    return materialize_all()
+    return {cid: r.bundle for cid, r in materialize_all().items() if r.bundle is not None}
 
 
 @pytest.fixture(scope="module")
@@ -273,29 +273,27 @@ def fresh_db_results(
     benchmark_bundles: dict[str, Any],
     reimport_results: dict[str, Any],  # ordering: fresh DB runs after idempotency phase
 ) -> dict[str, Any]:
-    """Import all bundles into a fresh schema; return {case_id: (result, content_hash)}."""
+    """Import all bundles into a fresh isolated schema; return {case_id: (result, content_hash)}.
+
+    Uses schema isolation (CREATE SCHEMA + SET search_path + apply_migrations from zero)
+    to avoid any shared state with the benchmark_conn fixture.
+    """
+    import hashlib
+
     import psycopg
 
     from hullq.persistence.fingerprint import fingerprint_bundle
     from hullq.persistence.importer import import_research_evidence_bundle
     from hullq.persistence.migrations import apply_migrations
 
+    schema = "hullq_bm_run2_" + hashlib.sha1(db_url.encode()).hexdigest()[:12]
     conn = psycopg.connect(db_url)
     try:
-        apply_migrations(conn)
         with conn.cursor() as cur:
-            cur.execute("""
-                TRUNCATE TABLE
-                    bundle_evidence_members,
-                    bundle_reference_crosschecks,
-                    bundle_unresolved_findings,
-                    bundle_observation_members,
-                    research_evidence,
-                    research_observations,
-                    research_bundles
-                RESTART IDENTITY CASCADE
-            """)
+            cur.execute(f'CREATE SCHEMA IF NOT EXISTS "{schema}"')
+            cur.execute(f'SET search_path TO "{schema}"')
         conn.commit()
+        apply_migrations(conn)
 
         results: dict[str, Any] = {}
         for case_id, bundle in benchmark_bundles.items():
@@ -303,6 +301,9 @@ def fresh_db_results(
             expected_fp = fingerprint_bundle(bundle)
             results[case_id] = (result, expected_fp)
     finally:
+        with conn.cursor() as cur:
+            cur.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
+        conn.commit()
         conn.close()
 
     return results
@@ -506,3 +507,116 @@ def test_duplicate_bundle_id_is_idempotent_not_partial(
     result = import_research_evidence_bundle(benchmark_conn, bundle)
     assert result.status == ImportStatus.ALREADY_IMPORTED
     assert result.content_hash == fingerprint_bundle(bundle)
+
+
+# ---------------------------------------------------------------------------
+# Exhaustive semantic readback — all observation fields
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "case_id",
+    [
+        "B01-001",  # W01 legacy — HR36 (conflict case, multiple cc strings)
+        "B02-007",  # W02 legacy — Lagoon42-2016 (conflict case, W02 nested cc dict)
+        "B04-003",  # W03-W06 fact — HR35Rasmus (IDENTITY_DISAMBIGUATION_REQUIRED)
+        "B05-006",  # W03-W06 fact — Catalina36 (MATCH, non-conflict)
+    ],
+)
+def test_exhaustive_observation_semantic_readback(
+    benchmark_conn: Any,
+    benchmark_bundles: dict[str, Any],
+    first_pass_results: dict[str, Any],
+    case_id: str,
+) -> None:
+    """Verify persisted/read-back ResearchObservation semantics match originals.
+
+    Checks: source_id, raw.kind, raw.value, raw.unit, evidence_type,
+    claim_semantics, applicability (all 10 fields), confidence, notes.
+    """
+    from hullq.persistence.readback import fetch_observation
+
+    bundle = benchmark_bundles[case_id]
+    for original in bundle.observations:
+        fetched = fetch_observation(benchmark_conn, original.observation_id)
+        assert fetched is not None, (
+            f"{case_id}: observation {original.observation_id} not found in DB"
+        )
+
+        # source identity
+        assert fetched.source_id == original.source_id, (
+            f"{case_id}/{original.observation_id}: source_id mismatch: "
+            f"{fetched.source_id!r} != {original.source_id!r}"
+        )
+
+        # raw observation
+        assert fetched.raw.kind == original.raw.kind, (
+            f"{case_id}/{original.observation_id}: raw.kind mismatch: "
+            f"{fetched.raw.kind!r} != {original.raw.kind!r}"
+        )
+        assert fetched.raw.value == original.raw.value, (
+            f"{case_id}/{original.observation_id}: raw.value mismatch: "
+            f"{fetched.raw.value!r} != {original.raw.value!r}"
+        )
+        assert fetched.raw.unit == original.raw.unit, (
+            f"{case_id}/{original.observation_id}: raw.unit mismatch: "
+            f"{fetched.raw.unit!r} != {original.raw.unit!r}"
+        )
+
+        # evidence type
+        assert fetched.evidence_type == original.evidence_type, (
+            f"{case_id}/{original.observation_id}: evidence_type mismatch: "
+            f"{fetched.evidence_type!r} != {original.evidence_type!r}"
+        )
+
+        # claim semantics
+        assert fetched.claim_semantics == original.claim_semantics, (
+            f"{case_id}/{original.observation_id}: claim_semantics mismatch: "
+            f"{fetched.claim_semantics!r} != {original.claim_semantics!r}"
+        )
+
+        # applicability — all 10 required fields
+        fa = fetched.applicability
+        oa = original.applicability
+        assert fa.first_year == oa.first_year, (
+            f"{case_id}/{original.observation_id}: applicability.first_year mismatch"
+        )
+        assert fa.last_year == oa.last_year, (
+            f"{case_id}/{original.observation_id}: applicability.last_year mismatch"
+        )
+        assert fa.hull_number_from == oa.hull_number_from, (
+            f"{case_id}/{original.observation_id}: applicability.hull_number_from mismatch"
+        )
+        assert fa.hull_number_to == oa.hull_number_to, (
+            f"{case_id}/{original.observation_id}: applicability.hull_number_to mismatch"
+        )
+        assert fa.market_or_region == oa.market_or_region, (
+            f"{case_id}/{original.observation_id}: applicability.market_or_region mismatch"
+        )
+        assert fa.named_variant_hint == oa.named_variant_hint, (
+            f"{case_id}/{original.observation_id}: applicability.named_variant_hint mismatch"
+        )
+        assert fa.design_option_hints == oa.design_option_hints, (
+            f"{case_id}/{original.observation_id}: applicability.design_option_hints mismatch"
+        )
+        assert fa.operating_state_hint == oa.operating_state_hint, (
+            f"{case_id}/{original.observation_id}: applicability.operating_state_hint mismatch"
+        )
+        assert fa.individual_hull_or_listing_ref == oa.individual_hull_or_listing_ref, (
+            f"{case_id}/{original.observation_id}: applicability.individual_hull_or_listing_ref mismatch"
+        )
+        assert fa.unknown_or_unbounded == oa.unknown_or_unbounded, (
+            f"{case_id}/{original.observation_id}: applicability.unknown_or_unbounded mismatch"
+        )
+
+        # confidence
+        assert fetched.confidence == original.confidence, (
+            f"{case_id}/{original.observation_id}: confidence mismatch: "
+            f"{fetched.confidence!r} != {original.confidence!r}"
+        )
+
+        # notes (None or string match)
+        assert fetched.notes == original.notes, (
+            f"{case_id}/{original.observation_id}: notes mismatch: "
+            f"{fetched.notes!r} != {original.notes!r}"
+        )

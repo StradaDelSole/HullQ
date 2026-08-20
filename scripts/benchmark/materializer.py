@@ -1,28 +1,32 @@
 """Deterministic benchmark bundle materializer — SLICE-0014.
 
-Constructs ResearchEvidenceBundle objects for each of the 50 retained
-SLICE-0011 benchmark cases from the committed manifest and retained wave
-summary artifacts. No network access. No SailboatData field values.
+Materializes ResearchEvidenceBundle for all 50 retained benchmark cases using
+field-/claim-level observations derived from retained HullQ evidence:
 
-All IDs and fingerprints are deterministic: same retained input + same code
-produces the same bundle semantic fingerprints across repeated runs.
+  Waves 01-02: field-level observations auto-migrated from committed legacy JSONL
+  exports (research/benchmark/legacy-observations/). Each JSONL row where
+  evidence_tier != "research" becomes a ResearchObservation with independently
+  derived EvidenceType, ClaimSemantics and ObservationApplicability. No SailboatData
+  field values are admitted.
 
-Synthetic benchmark scaffolding is explicitly distinguished from retained
-research findings via:
-  - source_id prefix 'hullq-benchmark-wave*-summary' (not a sailboat source);
-  - observation notes stating BENCHMARK MATERIALIZATION;
-  - bundle activity_id 'benchmark-0014-materialization'.
+  Waves 03-06: field-/claim-level facts from committed wave summary artifacts,
+  embedded as Python data structures. No new web research.
 
-Usage:
-    from scripts.benchmark.materializer import materialize_all, load_manifest
-    bundles = materialize_all()   # {case_id: ResearchEvidenceBundle}
+No network access. No SailboatData field values. All IDs and fingerprints are
+deterministic across repeated runs.
+
+Returns dict[case_id, MaterializationResult].
 """
 
 from __future__ import annotations
 
+import base64
+import gzip
 import json
+from dataclasses import dataclass
+from dataclasses import field as dc_field
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any
 
 from hullq.domain.provenance import (
     ClaimSemantics,
@@ -49,6 +53,7 @@ from hullq.research.observations import (
 MANIFEST_PATH = (
     Path(__file__).resolve().parents[2] / "research" / "benchmark" / "persistence" / "manifest.json"
 )
+_LEGACY_DIR = Path(__file__).resolve().parents[2] / "research" / "benchmark" / "legacy-observations"
 
 BUNDLE_VERSION = "0014-v1"
 ACTIVITY_ID = "benchmark-0014-materialization"
@@ -63,541 +68,111 @@ _PRODUCER = ProducerMetadata(
 )
 
 _OBSERVED_AT = "2026-08-20T00:00:00Z"
-
-_BENCHMARK_NOTE = (
-    "BENCHMARK MATERIALIZATION: observation transcribed from retained SLICE-0011 "
-    "wave summary artifact. Source is the wave summary document, not a primary "
-    "sailboat source URL. Synthetic benchmark scaffolding for persistence path "
-    "measurement only. Not canonical production evidence."
+_NULL_LOCATOR = SourceLocator(
+    page=None, section=None, anchor=None, table=None, figure=None, record_key=None
 )
+_RESEARCH_CONTEXT = ResearchContext(research_job_id=None, activity_id=ACTIVITY_ID)
 
-_FINDING_NOTE = (
-    "BENCHMARK FINDING: conflict or unresolved question recorded from retained "
-    "SLICE-0011 wave summary. Requires human review before canonical resolution."
-)
-
-
-class _CaseData(TypedDict):
-    benchmark_problem: str
-    reference_outcome: str
-    conflict_finding: str | None
-
-
-# ---------------------------------------------------------------------------
-# Per-case retained findings (mechanically extracted from wave summaries)
-# ---------------------------------------------------------------------------
-
-_CASE_DATA: dict[str, _CaseData] = {
-    "B01-001": {
-        "benchmark_problem": (
-            "Hallberg-Rassy 36 exposes explicit Mk I/Mk II generation boundaries "
-            "with option-sensitive draft and displacement documented by the manufacturer; "
-            "reference comparison does not preserve full generation and option semantics"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.PARTIAL_MATCH,
-        "conflict_finding": (
-            "Generation boundary timing and option-sensitive mass/draft configuration "
-            "remain unresolved in retained evidence"
-        ),
-    },
-    "B01-002": {
-        "benchmark_problem": (
-            "Westerly Centaur rudder evidence suggests a production-time change from "
-            "skegless spade to skeg-supported form; generation/time-boundary timing "
-            "remains unresolved pending documentary evidence"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.CONFLICT,
-        "conflict_finding": (
-            "Rudder support evolution between original and later production runs remains "
-            "unresolved; generation boundary timing requires documentary evidence not "
-            "available in retained summary"
-        ),
-    },
-    "B01-003": {
-        "benchmark_problem": (
-            "RM 1180 builder and specialist material expose combinatorial appendage options "
-            "rather than a single keel/rudder pair; a flat configuration record loses real "
-            "factory choices"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.PARTIAL_MATCH,
-        "conflict_finding": None,
-    },
-    "B01-004": {
-        "benchmark_problem": (
-            "Najad 34 official multilingual PDF conflicts internally on production count; "
-            "displacement remains intentionally unresolved pending stronger design-level "
-            "evidence rather than using an individual-boat or reference value as fallback"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.MATCH,
-        "conflict_finding": (
-            "Production count and displacement evidence conflict across internal multilingual "
-            "sections of the primary source"
-        ),
-    },
-    "B01-005": {
-        "benchmark_problem": (
-            "J/24 manufacturer nominal displacement and ORC measurement/rating displacement "
-            "represent different measurement bases and must not be collapsed into a single "
-            "scalar conflict"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.MATCH,
-        "conflict_finding": None,
-    },
-    "B02-001": {
-        "benchmark_problem": (
-            "Dragonfly 32 has named-variant chronology that must not be flattened into one "
-            "first_built value; reference comparison exposes definition/variant/identity issues "
-            "rather than simple numeric disagreement"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.DEFINITION_OR_BASIS_DIFFERENCE,
-        "conflict_finding": (
-            "Named-variant chronology transition events conflict across secondary sources"
-        ),
-    },
-    "B02-002": {
-        "benchmark_problem": (
-            "OVNI 370 separates ballast from a separately stated keel weight and exposes "
-            "centreboard up/down state as distinct evidence dimensions that must not be "
-            "collapsed into one scalar"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.MATCH,
-        "conflict_finding": None,
-    },
-    "B02-003": {
-        "benchmark_problem": (
-            "Garcia Exploration 45 explicitly has twin rudders each preceded by a protective "
-            "skeg; the twin-rudder/skeg relationship is more specific than a single rudder-type "
-            "label and requires relationship-aware representation"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.MATCH,
-        "conflict_finding": None,
-    },
-    "B02-004": {
-        "benchmark_problem": (
-            "Boreal 44.2 has generation identity tied to named-variant chronology; reference "
-            "comparison reveals partial model family coverage"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.PARTIAL_MATCH,
-        "conflict_finding": None,
-    },
-    "B02-005": {
-        "benchmark_problem": (
-            "Island Packet 349 presents strong source agreement on principal dimensions; "
-            "strong ordinary-field agreement in reference comparison with no material anomaly"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.MATCH,
-        "conflict_finding": None,
-    },
-    "B02-006": {
-        "benchmark_problem": (
-            "Corsair 880 has well-documented generation/identity structure; reference "
-            "comparison is broadly compatible with independent findings"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.MATCH,
-        "conflict_finding": None,
-    },
-    "B02-007": {
-        "benchmark_problem": (
-            "Lagoon 42 commercial name was reused for a modern 2016 generation; appendage "
-            "claims conflict across secondary/community sources and remain unresolved pending "
-            "stronger authoritative evidence; reference comparison exposes "
-            "definition/variant/identity issues"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.DEFINITION_OR_BASIS_DIFFERENCE,
-        "conflict_finding": (
-            "Appendage configuration claims conflict across secondary and community sources "
-            "with no single authoritative resolution available from retained evidence"
-        ),
-    },
-    "B02-008": {
-        "benchmark_problem": (
-            "Nauticat 33/331 heritage material states the 331 received a new hull and deck "
-            "in 1997 rather than being a simple string rename; identity determination requires "
-            "explicit generation evidence rather than model-number proximity"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.PARTIAL_MATCH,
-        "conflict_finding": None,
-    },
-    "B02-009": {
-        "benchmark_problem": (
-            "Catalina 316 explicitly labels both keel variant displacement values as Half Load; "
-            "this measurement basis must survive normalization and must not be collapsed into "
-            "a simple numeric conflict"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.DEFINITION_OR_BASIS_DIFFERENCE,
-        "conflict_finding": None,
-    },
-    "B02-010": {
-        "benchmark_problem": (
-            "Jeanneau Sun Odyssey 410 individual-hull mass values differ from the builder's "
-            "explicit Lightship Displacement figure; evidence requires explicit scope/basis "
-            "handling to avoid false generalization"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.DEFINITION_OR_BASIS_DIFFERENCE,
-        "conflict_finding": None,
-    },
-    "B02-011": {
-        "benchmark_problem": (
-            "CATANA Ocean Class exposes customizable geometry and daggerboard states; "
-            "material multi-field disagreement across secondary and reference sources "
-            "remains unresolved"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.CONFLICT,
-        "conflict_finding": (
-            "Multi-field disagreement including daggerboard states, displacement and "
-            "geometry remain unresolved across secondary sources"
-        ),
-    },
-    "B02-012": {
-        "benchmark_problem": (
-            "Pogo 1 uses Light measurement trim as an explicit displacement basis label "
-            "that must survive normalization as a distinct raw semantic label and must not "
-            "be coerced into a standard basis"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.MATCH,
-        "conflict_finding": None,
-    },
-    "B03-001": {
-        "benchmark_problem": (
-            "Hallberg-Rassy 42E suffix is identity-critical; orthogonal rig and keel "
-            "configuration axes exist alongside individual-hull listings that must not "
-            "silently redefine the design baseline; no reliable reference record located "
-            "during benchmark pass"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.NO_REFERENCE_RECORD_FOUND,
-        "conflict_finding": None,
-    },
-    "B03-002": {
-        "benchmark_problem": (
-            "BENETEAU Oceanis 37 primary authoritative page is incomplete; individual-hull "
-            "versus design-level mass semantics require explicit basis/scope handling; "
-            "configuration/basis coverage differs in reference comparison"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.PARTIAL_MATCH,
-        "conflict_finding": (
-            "Configuration/basis coverage gap and individual-hull versus design-level "
-            "mass discrepancy remain unresolved"
-        ),
-    },
-    "B03-003": {
-        "benchmark_problem": (
-            "Rustler 36 highly authoritative appendage taxonomy from builder material must "
-            "remain a separate evidence class from hull-specific numeric evidence; reference "
-            "taxonomy is less compatible with the builder's explicit keel-hung statement"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.CONFLICT,
-        "conflict_finding": (
-            "Reference taxonomy conflict with builder's explicit keel-hung statement"
-        ),
-    },
-    "B03-004": {
-        "benchmark_problem": (
-            "Seafarer 26 (McCurdy and Rhodes) built 1977-1985 with explicit partial-skeg "
-            "rudder support; an earlier different Seafarer 26 was designed by Philip Rhodes; "
-            "model name reuse requires generation disambiguation from secondary sources"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.MATCH,
-        "conflict_finding": None,
-    },
-    "B03-005": {
-        "benchmark_problem": (
-            "Southerly 110 swing keel state, fixed grounding structure, twin-rudder count "
-            "and protective-skeg relationship are separate facts; mass differences among "
-            "hull-specific and secondary records require explicit scope/basis review"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.PARTIAL_MATCH,
-        "conflict_finding": (
-            "Mass/ballast differences among hull-specific and secondary records remain "
-            "unresolved pending basis/scope determination"
-        ),
-    },
-    "B03-006": {
-        "benchmark_problem": (
-            "Contessa 32 is a live new-build lineage; current-new-build values versus "
-            "historical design values need explicit era/applicability semantics to prevent "
-            "inappropriate merging across production eras"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.DEFINITION_OR_BASIS_DIFFERENCE,
-        "conflict_finding": None,
-    },
-    "B03-007": {
-        "benchmark_problem": (
-            "AMEL Super Maramu 2000 official history explicitly distinguishes it from the "
-            "preceding Super Maramu with an explicit production chronology; reference "
-            "chronology conflicts with builder history"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.CONFLICT,
-        "conflict_finding": (
-            "Chronology of Super Maramu versus Super Maramu 2000 production conflicts "
-            "between builder history and reference chronology"
-        ),
-    },
-    "B03-008": {
-        "benchmark_problem": (
-            "Moody 33 Mk I and Mk II apparent sail-area conflict can actually be a "
-            "measurement-definition conflict; Mk II changes concentrate on "
-            "accommodation/cockpit rather than a new underwater design"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.MATCH,
-        "conflict_finding": None,
-    },
-    "B04-001": {
-        "benchmark_problem": (
-            "Sadler 34 factory option space includes deep fin, shallow fin, bilge/twin-keel "
-            "and centreboards inside shallow fins; SE suffix reflects equipment/fitout upgrade "
-            "rather than a new hull design"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.PARTIAL_MATCH,
-        "conflict_finding": None,
-    },
-    "B04-002": {
-        "benchmark_problem": (
-            "Albin Vega class-association material distinguishes design/prototype/production "
-            "chronology; rudder attachment to aft keel region requires richer taxonomy than "
-            "a flat keel label; reference chronology/draft differences remain research questions"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.DEFINITION_OR_BASIS_DIFFERENCE,
-        "conflict_finding": (
-            "Chronology event semantics and draft differences remain unresolved across "
-            "class-association and secondary sources"
-        ),
-    },
-    "B04-003": {
-        "benchmark_problem": (
-            "Hallberg-Rassy 35 Rasmus post-hoc comparison reveals competing reference "
-            "identities around Rasmus 35 and Hallberg-Rassy 35; string similarity is "
-            "insufficient to select one canonical identity"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.IDENTITY_DISAMBIGUATION_REQUIRED,
-        "conflict_finding": (
-            "Competing reference identities around Rasmus 35 and Hallberg-Rassy 35 "
-            "cannot be resolved from retained string similarity alone"
-        ),
-    },
-    "B04-004": {
-        "benchmark_problem": (
-            "Vancouver 27 has weak-primary-source/changed-builder reconstruction challenge "
-            "plus nearby successor identity contamination risk from the later modified "
-            "Vancouver 28 design"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.MATCH,
-        "conflict_finding": None,
-    },
-    "B04-005": {
-        "benchmark_problem": (
-            "F-27/Corsair F-27 sailing/folded geometry state, board state and historical "
-            "naming must coexist without duplicate identity or a single hidden displacement "
-            "scalar; some mass drift across publications"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.PARTIAL_MATCH,
-        "conflict_finding": (
-            "Mass drift across publications and board-state interaction with displacement "
-            "remain unresolved"
-        ),
-    },
-    "B04-006": {
-        "benchmark_problem": (
-            "Prout Snowgoose 37 Elite is materially wider and evolved, not a harmless "
-            "marketing suffix; late individual-hull records labelled simply Snowgoose 37 "
-            "can be physically closer to the Elite family than the original baseline"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.PARTIAL_MATCH,
-        "conflict_finding": (
-            "Model/evolution identity must be resolved before projecting a late individual "
-            "hull onto the original baseline"
-        ),
-    },
-    "B04-007": {
-        "benchmark_problem": (
-            "Westerly Konsort fin/twin/lifting keel variants have configuration-specific "
-            "draft and ballast; production count and displacement conflict among reputable "
-            "sources needs review rather than forced resolution"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.PARTIAL_MATCH,
-        "conflict_finding": (
-            "Production count and displacement conflict among reputable sources cannot "
-            "be resolved from retained evidence"
-        ),
-    },
-    "B04-008": {
-        "benchmark_problem": (
-            "Heavenly Twins 26/New 27 Mk labels have unequal technical significance; "
-            "Mk2A introduced a new hull mould and longer keels while Mk3 retained that "
-            "hull but changed deck and interior geometry"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.MATCH,
-        "conflict_finding": None,
-    },
-    "B05-001": {
-        "benchmark_problem": (
-            "MacGregor 26 family D/S/X/M variants have materially different hull/use/board/"
-            "rudder/rig semantics; suffix syntax alone cannot decide the lineage relationship; "
-            "shared branding and trailerability do not imply one BoatDesign"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.PARTIAL_MATCH,
-        "conflict_finding": (
-            "Independent sources give slightly different transition-year chronologies "
-            "for the D/S to X/M family transition"
-        ),
-    },
-    "B05-002": {
-        "benchmark_problem": (
-            "BENETEAU First 35 commercial string recurs across decades and different naval "
-            "architects; Carbon Edition is more plausibly a variant inside the later Farr "
-            "generation than an unrelated hull"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.PARTIAL_MATCH,
-        "conflict_finding": None,
-    },
-    "B05-003": {
-        "benchmark_problem": (
-            "Moody 36 archive explicitly separates earlier and later families designed by "
-            "different naval architects; S/DS suffixes can be derivatives of one underlying "
-            "hull family requiring evidence-driven split decisions"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.PARTIAL_MATCH,
-        "conflict_finding": None,
-    },
-    "B05-004": {
-        "benchmark_problem": (
-            "Hallberg-Rassy 352 HR Club catalogue contains malformed mass-unit presentation "
-            "which must be preserved and flagged rather than blindly parsed; strong source "
-            "authority does not guarantee syntactically valid observations"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.DEFINITION_OR_BASIS_DIFFERENCE,
-        "conflict_finding": (
-            "Malformed mass-unit presentation in the primary catalogue source requires "
-            "specific technical expertise to interpret correctly"
-        ),
-    },
-    "B05-005": {
-        "benchmark_problem": (
-            "Swan 36 original S&S design and modern ClubSwan 36 by Juan Kouyoumdjian "
-            "are radically different boats; Nautor connects them as brand heritage not "
-            "technical identity; production-count conflict exists for the original model"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.CONFLICT,
-        "conflict_finding": (
-            "Production-count conflict for the original Swan 36 exists across otherwise "
-            "reputable sources"
-        ),
-    },
-    "B05-006": {
-        "benchmark_problem": (
-            "Catalina 36 Mk II does not represent a wholly new underwater hull; the Mk "
-            "transition concentrated on stern/cockpit/deck/interior; generation relationship "
-            "must be evidence-driven rather than assumed from suffix syntax"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.MATCH,
-        "conflict_finding": None,
-    },
-    "B05-007": {
-        "benchmark_problem": (
-            "Dehler 34 name recurs across three generations from different eras designed by "
-            "different architects; builder marketing heritage connects them but each generation "
-            "has its own hull dimensions"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.IDENTITY_DISAMBIGUATION_REQUIRED,
-        "conflict_finding": None,
-    },
-    "B05-008": {
-        "benchmark_problem": (
-            "Hunter 37 Legend identity is critical context not decorative text; Hunter 37 "
-            "alone is ambiguous between the original Cherubini design and later Legend-era "
-            "designs described by owners as radically different boats"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.MATCH,
-        "conflict_finding": None,
-    },
-    "B06-001": {
-        "benchmark_problem": (
-            "C&C 35 Mk II carried real hull/appendage/weight/sail-plan consequences from a "
-            "1973 redesign, unlike Catalina 36 Mk II or HR 312; suffix syntax cannot "
-            "determine generation semantics by itself"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.MATCH,
-        "conflict_finding": None,
-    },
-    "B06-002": {
-        "benchmark_problem": (
-            "Hallberg-Rassy 312 Mk II changes focus on superstructure/cockpit/interior/"
-            "headroom while hull and rig remain the same; HR Club shows systematic malformed "
-            "mass-unit rendering that repeats across the source family"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.MATCH,
-        "conflict_finding": (
-            "Malformed mass-unit rendering repeats in the authoritative source family, "
-            "requiring expert review to interpret correctly"
-        ),
-    },
-    "B06-003": {
-        "benchmark_problem": (
-            "ETAP 32s standard and tandem-keel configurations have different draft, "
-            "displacement and keel weight together in one factory option; manual also "
-            "distinguishes net versus fully-loaded mass basis as a separate dimension"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.MATCH,
-        "conflict_finding": None,
-    },
-    "B06-004": {
-        "benchmark_problem": (
-            "Pearson 35 archive explicitly warns that measurements apply to a documented "
-            "model year and may not represent the full production run; board state and "
-            "multiple mass/calculation semantics coexist inside one commercial design identity"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.MATCH,
-        "conflict_finding": None,
-    },
-    "B06-005": {
-        "benchmark_problem": (
-            "Ericson 35 same builder/model number was reused across technically distinct "
-            "designs (CCA long-keel, Bruce King fin/spade, later replacement); lineage "
-            "relation between generations can itself remain uncertain evidence"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.MATCH,
-        "conflict_finding": (
-            "Lineage relation between successive Ericson 35 generations can itself remain "
-            "uncertain evidence despite strong structural confirmation of separate identities"
-        ),
-    },
-    "B06-006": {
-        "benchmark_problem": (
-            "Bristol 35.5 suffix C encodes centerboard configuration rather than proving "
-            "a wholly unrelated hull; centerboard control mechanics are documented "
-            "independently showing suffix-as-configuration rather than suffix-as-generation"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.MATCH,
-        "conflict_finding": None,
-    },
-    "B06-007": {
-        "benchmark_problem": (
-            "Gemini 105Mc owner's manual states one centerboard is installed per hull but "
-            "legitimate sailing procedures include 0, 1 or 2 boards deployed; installed "
-            "appendage count and deployed operating-state count are different concepts"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.MATCH,
-        "conflict_finding": None,
-    },
-    "B06-008": {
-        "benchmark_problem": (
-            "J/105 class association rules encode compliance limits, permitted variation and "
-            "measurement procedures rather than automatically nominal production values; "
-            "class-rule constraint is not the same claim type as a nominal builder specification"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.MATCH,
-        "conflict_finding": None,
-    },
-    "B06-009": {
-        "benchmark_problem": (
-            "Bavaria 38 owner's manual exposes normal-keel versus lead-keel configurations "
-            "with different draft, ballast and ready-for-sailing mass; neighboring commercial "
-            "identities including Ocean 38, 38 Cruiser and Match 38 create identity "
-            "disambiguation risk"
-        ),
-        "reference_outcome": ReferenceCheckOutcome.IDENTITY_DISAMBIGUATION_REQUIRED,
-        "conflict_finding": None,
-    },
+# Design ID (JSONL) → benchmark case ID
+_DESIGN_TO_CASE: dict[str, str] = {
+    "BENCH-HR36": "B01-001",
+    "BENCH-WESTERLY-CENTAUR": "B01-002",
+    "BENCH-RM1180": "B01-003",
+    "BENCH-NAJAD34": "B01-004",
+    "BENCH-J24": "B01-005",
+    "BENCH-DRAGONFLY32": "B02-001",
+    "BENCH-OVNI370": "B02-002",
+    "BENCH-GARCIA45": "B02-003",
+    "BENCH-BOREAL442": "B02-004",
+    "BENCH-IP349": "B02-005",
+    "BENCH-CORSAIR880": "B02-006",
+    "BENCH-LAGOON42-2016": "B02-007",
+    "BENCH-NAUTICAT33-331": "B02-008",
+    "BENCH-CATALINA316": "B02-009",
+    "BENCH-SO410": "B02-010",
+    "BENCH-CATANA-OCEAN": "B02-011",
+    "BENCH-POGO1": "B02-012",
 }
+
+# Cases with conflict_unresolved=1 per BENCHMARK-50-classification.csv
+_CONFLICT_CASES: frozenset[str] = frozenset(
+    {
+        "B01-001",
+        "B01-002",
+        "B01-004",
+        "B02-001",
+        "B02-007",
+        "B02-011",
+        "B03-002",
+        "B03-003",
+        "B03-005",
+        "B03-007",
+        "B04-002",
+        "B04-003",
+        "B04-005",
+        "B04-006",
+        "B04-007",
+        "B05-001",
+        "B05-004",
+        "B05-005",
+        "B06-002",
+        "B06-005",
+    }
+)
+
+# Outcome severity ranking (higher = more severe / informative)
+_OUTCOME_RANK: dict[ReferenceCheckOutcome, int] = {
+    ReferenceCheckOutcome.CONFLICT: 7,
+    ReferenceCheckOutcome.IDENTITY_DISAMBIGUATION_REQUIRED: 6,
+    ReferenceCheckOutcome.DEFINITION_OR_BASIS_DIFFERENCE: 5,
+    ReferenceCheckOutcome.PARTIAL_MATCH: 4,
+    ReferenceCheckOutcome.REFERENCE_INCOMPLETE: 3,
+    ReferenceCheckOutcome.NO_REFERENCE_RECORD_FOUND: 2,
+    ReferenceCheckOutcome.MATCH: 1,
+    ReferenceCheckOutcome.NOT_CHECKED: 0,
+}
+
+# W01 evidence statuses that produce an UnresolvedFinding from the observation row itself
+_W01_FINDING_STATUSES: frozenset[str] = frozenset(
+    {"source_internal_conflict", "needs_generation_boundary"}
+)
+
+# W02 evidence statuses that produce an UnresolvedFinding from the observation row itself
+_W02_FINDING_STATUSES: frozenset[str] = frozenset(
+    {"conflicting_secondary_evidence", "requires_identity_resolution"}
+)
+
+# Fields that indicate identity/chronology claims
+_IDENTITY_FIELDS: frozenset[str] = frozenset(
+    {
+        "production_start",
+        "production_end",
+        "first_delivery",
+        "units_built",
+        "lineage",
+        "variant_history",
+        "transition_year",
+        "successor_model",
+        "original_model",
+        "original_designer",
+        "named_variant",
+        "identity_note",
+    }
+)
+
+# ---------------------------------------------------------------------------
+# MaterializationResult
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class MaterializationResult:
+    """Outcome of attempting to materialize one benchmark case."""
+
+    case_id: str
+    status: str  # "MATERIALIZED" | "REVIEW_REQUIRED" | "CANNOT_MATERIALIZE"
+    bundle: ResearchEvidenceBundle | None
+    review_reasons: list[str] = dc_field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -605,83 +180,1742 @@ _CASE_DATA: dict[str, _CaseData] = {
 # ---------------------------------------------------------------------------
 
 
-def _unbounded_applicability() -> ObservationApplicability:
-    return ObservationApplicability(
-        first_year=None,
-        last_year=None,
-        hull_number_from=None,
-        hull_number_to=None,
-        market_or_region=None,
-        named_variant_hint=None,
-        design_option_hints=None,
-        operating_state_hint=None,
-        individual_hull_or_listing_ref=None,
-        unknown_or_unbounded=True,
-    )
-
-
-def _obs_id(case_id: str, n: int) -> str:
-    return f"benchmark-{case_id.lower()}-obs-{n:02d}"
-
-
-def _finding_id(case_id: str, n: int) -> str:
-    return f"benchmark-{case_id.lower()}-finding-{n:02d}"
-
-
-def _crosscheck_id(case_id: str, n: int) -> str:
-    return f"benchmark-{case_id.lower()}-cc-{n:02d}"
-
-
 def _bundle_id(case_id: str) -> str:
     return f"hullq-benchmark-{case_id.lower()}"
 
 
-def _source_id(wave: int) -> str:
-    return f"hullq-benchmark-wave{wave:02d}-summary"
+def _obs_id(bid: str, idx: int) -> str:
+    return f"{bid}-obs-{idx:04d}"
 
 
-def _make_observation(
+def _finding_id(bid: str, idx: int) -> str:
+    return f"{bid}-finding-{idx:04d}"
+
+
+def _crosscheck_id(bid: str) -> str:
+    return f"{bid}-cc-0000"
+
+
+def _make_app(
+    *,
+    first_year: int | None = None,
+    last_year: int | None = None,
+    hull_number_from: str | None = None,
+    hull_number_to: str | None = None,
+    market_or_region: str | None = None,
+    named_variant_hint: str | None = None,
+    design_option_hints: tuple[str, ...] | None = None,
+    operating_state_hint: str | None = None,
+    individual_hull_or_listing_ref: str | None = None,
+    unknown_or_unbounded: bool = True,
+) -> ObservationApplicability:
+    return ObservationApplicability(
+        first_year=first_year,
+        last_year=last_year,
+        hull_number_from=hull_number_from,
+        hull_number_to=hull_number_to,
+        market_or_region=market_or_region,
+        named_variant_hint=named_variant_hint,
+        design_option_hints=design_option_hints,
+        operating_state_hint=operating_state_hint,
+        individual_hull_or_listing_ref=individual_hull_or_listing_ref,
+        unknown_or_unbounded=unknown_or_unbounded,
+    )
+
+
+_UNBOUNDED = _make_app()
+
+
+def _map_confidence(raw: str | None) -> ConfidenceLevel:
+    if raw is None:
+        return ConfidenceLevel.UNKNOWN
+    s = raw.lower().strip()
+    if s in ("high", "medium-high"):
+        return ConfidenceLevel.HIGH
+    if s in ("medium",):
+        return ConfidenceLevel.MEDIUM
+    if s in ("low", "low-medium"):
+        return ConfidenceLevel.LOW
+    return ConfidenceLevel.UNKNOWN
+
+
+def _map_evidence_type(tier: str, source_name: str) -> EvidenceType:
+    name = source_name.lower()
+    # Source-name classification first
+    if "manual" in name:
+        return EvidenceType.MANUAL
+    if any(
+        k in name
+        for k in (
+            "class",
+            "association",
+            "owners",
+            "club",
+            "verband",
+            "klassenverein",
+            "htcca",
+            "co32",
+        )
+    ):
+        return EvidenceType.CLASS_OR_OWNER_ASSOCIATION
+    # Narrative press / community sources
+    if any(
+        k in name
+        for k in (
+            "practical boat owner",
+            "pbo",
+            "yachting monthly",
+            "sailing magazine",
+            "practical sailor",
+            "good old boat",
+            "cruising world",
+            "canadian boating",
+            "wavetrain",
+        )
+    ):
+        return EvidenceType.NARRATIVE_TEXT
+    # Broker / historical listing
+    if any(k in name for k in ("de valk", "devalk", "boatshed", "lucas", "yachtsnet")):
+        return EvidenceType.NARRATIVE_TEXT
+    # Community forums
+    if any(
+        k in name
+        for k in (
+            "forum",
+            "discussion",
+            "ybw",
+            "sailboatowners",
+            "ericsonyachts",
+            "macgregorsailors",
+        )
+    ):
+        return EvidenceType.NARRATIVE_TEXT
+    # Tier A defaults to manufacturer
+    if tier == "A":
+        return EvidenceType.MANUFACTURER_SPECIFICATION
+    # Tier A/B, B, C → narrative
+    return EvidenceType.NARRATIVE_TEXT
+
+
+def _map_claim_semantics(field: str, basis: str | None) -> ClaimSemantics:
+    basis_lower = (basis or "").lower()
+    if field in _IDENTITY_FIELDS:
+        return ClaimSemantics.IDENTITY_OR_CHRONOLOGY_CLAIM
+    if field in ("research_note", "appendage_claim", "rudder_claim"):
+        return ClaimSemantics.NOMINAL_DESIGN_VALUE
+    if any(k in basis_lower for k in ("orc", "certificate", "measurement trim", "orc certificate")):
+        return ClaimSemantics.MEASUREMENT_CERTIFICATE_VALUE
+    if any(
+        k in basis_lower
+        for k in ("board up", "boards up", "keel up", "board down", "boards down", "keel down")
+    ):
+        return ClaimSemantics.OPERATING_STATE_VALUE
+    if "individual" in basis_lower:
+        return ClaimSemantics.INDIVIDUAL_HULL_VALUE
+    if any(k in basis_lower for k in ("optional", "option ")):
+        return ClaimSemantics.FACTORY_OPTION_VALUE
+    return ClaimSemantics.NOMINAL_DESIGN_VALUE
+
+
+def _map_applicability(basis: str | None) -> ObservationApplicability:
+    b = (basis or "").lower().strip()
+    # Operating states
+    if "board up" in b or "boards up" in b:
+        return _make_app(operating_state_hint="board_up", unknown_or_unbounded=False)
+    if "board down" in b or "boards down" in b:
+        return _make_app(operating_state_hint="board_down", unknown_or_unbounded=False)
+    if "keel up" in b:
+        return _make_app(operating_state_hint="keel_up", unknown_or_unbounded=False)
+    if "keel down" in b:
+        return _make_app(operating_state_hint="keel_down", unknown_or_unbounded=False)
+    # Named variants — check common patterns
+    for short, hint in (
+        ("mk i", "Mk I"),
+        ("mk ii", "Mk II"),
+        ("mk iii", "Mk III"),
+        ("mk iv", "Mk IV"),
+        ("mk1", "Mk I"),
+        ("mk2", "Mk II"),
+        ("mk3", "Mk III"),
+        ("mk4", "Mk IV"),
+        ("mk 1", "Mk I"),
+        ("mk 2", "Mk II"),
+        ("mk 3", "Mk III"),
+        ("mk 4", "Mk IV"),
+    ):
+        if short in b:
+            return _make_app(named_variant_hint=hint, unknown_or_unbounded=False)
+    for kw, hint in (
+        ("touring", "Touring"),
+        ("evolution", "Evolution"),
+        ("elite", "Elite"),
+    ):
+        if b == kw or b.startswith(kw + " "):
+            return _make_app(named_variant_hint=hint, unknown_or_unbounded=False)
+    # Design option hints
+    if "twin keel" in b or "bilge keel" in b:
+        return _make_app(design_option_hints=("twin_keel",), unknown_or_unbounded=False)
+    if "standard keel" in b or "single keel" in b:
+        return _make_app(design_option_hints=("standard_keel",), unknown_or_unbounded=False)
+    if "shallow keel" in b:
+        return _make_app(design_option_hints=("shallow_keel",), unknown_or_unbounded=False)
+    if "deep keel" in b:
+        return _make_app(design_option_hints=("deep_keel",), unknown_or_unbounded=False)
+    if "tandem keel" in b:
+        return _make_app(design_option_hints=("tandem_keel",), unknown_or_unbounded=False)
+    if "lifting keel" in b:
+        return _make_app(design_option_hints=("lifting_keel",), unknown_or_unbounded=False)
+    # Individual hull / listing
+    if "individual" in b:
+        return _make_app(
+            individual_hull_or_listing_ref="individual_hull", unknown_or_unbounded=True
+        )
+    # Default: unknown / unbounded
+    return _UNBOUNDED
+
+
+def _cc_to_outcome(cc: str | None) -> ReferenceCheckOutcome:
+    if not cc:
+        return ReferenceCheckOutcome.NOT_CHECKED
+    c = cc.lower()
+    # Exact-match shortcuts
+    if c in (
+        "match",
+        "compatible",
+        "comparable",
+        "broad_taxonomy_match",
+        "match_component",
+        "match_as_ballast",
+        "match_as_variant",
+        "match_for_mki_only",
+    ):
+        return ReferenceCheckOutcome.MATCH
+    # Conflict variants (check before partial)
+    if "conflict_or_basis_difference" in c:
+        return ReferenceCheckOutcome.CONFLICT
+    if "conflict" in c and "not_used" not in c and "near_conflict" not in c:
+        return ReferenceCheckOutcome.CONFLICT
+    if "near_conflict" in c:
+        return ReferenceCheckOutcome.CONFLICT
+    # Identity disambiguation
+    if "identity_disambiguation" in c:
+        return ReferenceCheckOutcome.IDENTITY_DISAMBIGUATION_REQUIRED
+    # Definition / basis difference
+    if any(
+        k in c
+        for k in (
+            "not_same_basis",
+            "basis_difference",
+            "definition_difference",
+            "different_length",
+            "different_basis",
+            "basis_or_version",
+            "reference_uses_different",
+        )
+    ):
+        return ReferenceCheckOutcome.DEFINITION_OR_BASIS_DIFFERENCE
+    # Partial match
+    if any(
+        k in c
+        for k in (
+            "partial",
+            "near_match",
+            "variant_specific",
+            "component_difference",
+            "partial_secondary",
+            "reference_first_built_mismatch",
+            "reference_notes_changes",
+            "partial_reference",
+            "partial_generation",
+        )
+    ):
+        return ReferenceCheckOutcome.PARTIAL_MATCH
+    # No reference record
+    if any(k in c for k in ("not_represented", "not_found", "no_reference_record")):
+        return ReferenceCheckOutcome.NO_REFERENCE_RECORD_FOUND
+    # Reference incomplete
+    if "reference_incomplete" in c or "reference_scalar_is_incomplete" in c:
+        return ReferenceCheckOutcome.REFERENCE_INCOMPLETE
+    # NOT_CHECKED covers: not_used_for_resolution, not_used_as_canonical,
+    # comparison_only, reference_flattens_or_differs, definition_difference (partial)
+    return ReferenceCheckOutcome.NOT_CHECKED
+
+
+def _worst_outcome(outcomes: list[ReferenceCheckOutcome]) -> ReferenceCheckOutcome:
+    if not outcomes:
+        return ReferenceCheckOutcome.NOT_CHECKED
+    return max(outcomes, key=lambda o: _OUTCOME_RANK.get(o, 0))
+
+
+# ---------------------------------------------------------------------------
+# Legacy JSONL decode (W01 / W02)
+# ---------------------------------------------------------------------------
+
+_JSONL_CACHE: dict[int, list[dict[str, Any]]] = {}
+
+
+def _decode_legacy_jsonl(wave_num: int) -> list[dict[str, Any]]:
+    if wave_num in _JSONL_CACHE:
+        return _JSONL_CACHE[wave_num]
+    b64_path = _LEGACY_DIR / f"WAVE-{wave_num:02d}-observations.jsonl.gz.b64"
+    raw = base64.b64decode(b64_path.read_bytes())
+    lines = gzip.decompress(raw).decode("utf-8").strip().split("\n")
+    rows = [json.loads(ln) for ln in lines if ln.strip()]
+    _JSONL_CACHE[wave_num] = rows
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# Build bundle from observation rows (W01 / W02 shared)
+# ---------------------------------------------------------------------------
+
+
+def _row_source_url(row: dict[str, Any]) -> str:
+    url = row.get("source_url") or ""
+    if url:
+        return url
+    name: str = row.get("source_name", "unknown-source")
+    return "hullq-benchmark-source-" + name.lower().replace(" ", "-")[:60]
+
+
+def _row_raw_value(row: dict[str, Any]) -> Any:
+    # W01 uses "value", W02 uses "raw_or_normalized_value"
+    for key in ("value", "raw_or_normalized_value"):
+        if key in row:
+            return row[key]
+    return None
+
+
+def _row_crosscheck_string(row: dict[str, Any]) -> str | None:
+    # W01: sailboatdata_crosscheck is a string
+    if "sailboatdata_crosscheck" in row:
+        v = row["sailboatdata_crosscheck"]
+        return str(v) if v is not None else None
+    # W02: reference_crosscheck is a dict
+    cc = row.get("reference_crosscheck")
+    if isinstance(cc, dict):
+        return cc.get("result")
+    return None
+
+
+def _build_legacy_bundle(
     case_id: str,
-    n: int,
-    wave: int,
+    rows: list[dict[str, Any]],
     research_target: ResearchTarget,
-    text: str,
-    evidence_type: EvidenceType,
-    claim_semantics: ClaimSemantics,
-) -> ResearchObservation:
-    return ResearchObservation(
-        observation_id=_obs_id(case_id, n),
+    finding_statuses: frozenset[str],
+    wave: int,
+) -> ResearchEvidenceBundle:
+    bid = _bundle_id(case_id)
+    observations: list[ResearchObservation] = []
+    findings: list[UnresolvedFinding] = []
+    all_cc_outcomes: list[ReferenceCheckOutcome] = []
+    obs_idx = 0
+    finding_idx = 0
+
+    for row in rows:
+        tier = row.get("evidence_tier", "")
+        field = row.get("field", "")
+        status = row.get("evidence_status", "supported")
+        basis = row.get("basis_or_state") or row.get("basis") or ""
+        raw_val = _row_raw_value(row)
+        unit = row.get("unit")
+        source_url = _row_source_url(row)
+        source_name = row.get("source_name", "")
+        notes = row.get("notes")
+        confidence_str = row.get("confidence")
+        cc_str = _row_crosscheck_string(row)
+        cc_outcome = _cc_to_outcome(cc_str)
+        all_cc_outcomes.append(cc_outcome)
+
+        # Determine raw observation kind
+        if isinstance(raw_val, (int, float)):
+            kind = RawObservationKind.LITERAL
+        else:
+            kind = RawObservationKind.TEXT_FRAGMENT
+
+        # Skip research-tier rows from observations; handle findings below
+        if tier == "research":
+            # Create finding if outcome is CONFLICT or status is BLOCKING
+            is_conflict_cc = cc_outcome == ReferenceCheckOutcome.CONFLICT
+            is_priority_status = status in (
+                "priority_research_conflict",
+                "requires_identity_resolution",
+            )
+            if is_conflict_cc or is_priority_status:
+                findings.append(
+                    UnresolvedFinding(
+                        finding_id=_finding_id(bid, finding_idx),
+                        topic="conflict_or_unresolved_evidence",
+                        description=(
+                            f"Research note for {field}: {status}. "
+                            f"Reference crosscheck outcome: {cc_str or 'not_checked'}."
+                        ),
+                        related_observation_ids=frozenset(),
+                        severity=UnresolvedFindingSeverity.REVIEW,
+                    )
+                )
+                finding_idx += 1
+            continue
+
+        # Create observation from non-research rows
+        oid = _obs_id(bid, obs_idx)
+        obs_idx += 1
+
+        observation = ResearchObservation(
+            observation_id=oid,
+            research_target=research_target,
+            source_id=source_url,
+            source_locator=_NULL_LOCATOR,
+            raw=RawObservation(
+                kind=kind,
+                value=raw_val,
+                unit=unit,
+                excerpt=None,
+            ),
+            normalized_candidate=None,
+            evidence_type=_map_evidence_type(tier, source_name),
+            claim_semantics=_map_claim_semantics(field, basis),
+            applicability=_map_applicability(basis),
+            producer=_PRODUCER,
+            research_context=_RESEARCH_CONTEXT,
+            observed_at=_OBSERVED_AT,
+            confidence=_map_confidence(confidence_str),
+            supersedes_observation_id=None,
+            intended_subject_kind_hint=None,
+            intended_field_pointer=None,
+            notes=notes,
+        )
+        observations.append(observation)
+
+        # Create finding from evidence_status of non-research rows
+        if status in finding_statuses:
+            findings.append(
+                UnresolvedFinding(
+                    finding_id=_finding_id(bid, finding_idx),
+                    topic="conflict_or_unresolved_evidence",
+                    description=(
+                        f"Observation {oid} field={field}: evidence_status={status!r}. "
+                        f"Reference crosscheck: {cc_str or 'not_checked'}."
+                    ),
+                    related_observation_ids=frozenset({oid}),
+                    severity=(
+                        UnresolvedFindingSeverity.BLOCKING
+                        if status == "source_internal_conflict"
+                        else UnresolvedFindingSeverity.REVIEW
+                    ),
+                )
+            )
+            finding_idx += 1
+
+    # Fallback: conflict case with no findings yet → derive from worst cc conflict
+    if case_id in _CONFLICT_CASES and not findings:
+        conflict_obs_ids = frozenset(o.observation_id for o in observations)
+        findings.append(
+            UnresolvedFinding(
+                finding_id=_finding_id(bid, finding_idx),
+                topic="conflict_or_unresolved_evidence",
+                description=(
+                    f"Reference crosscheck conflict for {case_id}: aggregate SailboatData "
+                    f"comparison shows worst outcome "
+                    f"{_worst_outcome(all_cc_outcomes).value}. "
+                    f"Classification flag conflict_unresolved=1."
+                ),
+                related_observation_ids=conflict_obs_ids,
+                severity=UnresolvedFindingSeverity.REVIEW,
+            )
+        )
+
+    # Aggregate crosscheck
+    aggregate_outcome = _worst_outcome(all_cc_outcomes)
+    crosscheck = ReferenceCrosscheck(
+        crosscheck_id=_crosscheck_id(bid),
+        reference_source_id=REFERENCE_SOURCE_ID,
+        topic_or_field=None,
+        outcome=aggregate_outcome,
+        notes=f"Wave {wave:02d} aggregate post-hoc QA crosscheck; worst outcome: {aggregate_outcome.value}.",
+    )
+
+    return ResearchEvidenceBundle(
+        bundle_id=bid,
+        bundle_version=BUNDLE_VERSION,
         research_target=research_target,
-        source_id=_source_id(wave),
-        source_locator=SourceLocator(
-            page=None,
-            section=None,
-            anchor=None,
-            table=None,
-            figure=None,
-            record_key=case_id,
-        ),
-        raw=RawObservation(
-            kind=RawObservationKind.TEXT_FRAGMENT,
-            value=text,
-            unit=None,
-            excerpt=text[:100],
-        ),
-        normalized_candidate=None,
-        evidence_type=evidence_type,
-        claim_semantics=claim_semantics,
-        applicability=_unbounded_applicability(),
-        producer=_PRODUCER,
-        research_context=ResearchContext(
-            research_job_id=None,
-            activity_id=ACTIVITY_ID,
-        ),
-        observed_at=_OBSERVED_AT,
-        confidence=ConfidenceLevel.MEDIUM,
-        supersedes_observation_id=None,
-        intended_subject_kind_hint=None,
-        intended_field_pointer=None,
-        notes=_BENCHMARK_NOTE,
+        research_job_id=None,
+        activity_id=ACTIVITY_ID,
+        observations=tuple(observations),
+        unresolved_findings=tuple(findings),
+        promoted_evidence=(),
+        reference_crosschecks=(crosscheck,),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Embedded W03-W06 fact data
+# ---------------------------------------------------------------------------
+# Each entry: list of fact dicts; each fact has:
+#   source_url, source_name, field, value, unit, basis, tier, confidence
+# Optional: kind ("literal"|"text_fragment") — auto-detected if omitted.
+
+_W03W06_FACTS: dict[str, list[dict[str, Any]]] = {
+    "B03-001": [
+        {
+            "source_url": "https://hr-club.net/hr-catalogue/hr-42-e/",
+            "source_name": "Hallberg-Rassy Club catalogue",
+            "field": "production_start",
+            "value": 1980,
+            "unit": "year",
+            "basis": "HR Club catalogue",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://hr-club.net/hr-catalogue/hr-42-e/",
+            "source_name": "Hallberg-Rassy Club catalogue",
+            "field": "production_end",
+            "value": 1991,
+            "unit": "year",
+            "basis": "HR Club catalogue",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://hr-club.net/hr-catalogue/hr-42-e/",
+            "source_name": "Hallberg-Rassy Club catalogue",
+            "field": "units_built",
+            "value": 255,
+            "unit": "count",
+            "basis": "HR Club catalogue",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://hr-club.net/hr-catalogue/hr-42-e/",
+            "source_name": "Hallberg-Rassy Club catalogue",
+            "field": "loa",
+            "value": 12.93,
+            "unit": "m",
+            "basis": "HR Club catalogue",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://hr-club.net/hr-catalogue/hr-42-e/",
+            "source_name": "Hallberg-Rassy Club catalogue",
+            "field": "lwl",
+            "value": 10.5,
+            "unit": "m",
+            "basis": "HR Club catalogue",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://hr-club.net/hr-catalogue/hr-42-e/",
+            "source_name": "Hallberg-Rassy Club catalogue",
+            "field": "beam",
+            "value": 3.78,
+            "unit": "m",
+            "basis": "HR Club catalogue",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://hr-club.net/hr-catalogue/hr-42-e/",
+            "source_name": "Hallberg-Rassy Club catalogue",
+            "field": "draft",
+            "value": 2.05,
+            "unit": "m",
+            "basis": "standard keel",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://hr-club.net/hr-catalogue/hr-42-e/",
+            "source_name": "Hallberg-Rassy Club catalogue",
+            "field": "displacement",
+            "value": 11500.0,
+            "unit": "kg",
+            "basis": "HR Club catalogue",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://hr-club.net/hr-catalogue/hr-42-e/",
+            "source_name": "Hallberg-Rassy Club catalogue",
+            "field": "keel_weight",
+            "value": 4500.0,
+            "unit": "kg",
+            "basis": "HR Club catalogue",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://hr-club.net/hr-catalogue/hr-42-e/",
+            "source_name": "Hallberg-Rassy Club catalogue",
+            "field": "rig_types",
+            "value": "ketch and sloop rigs both documented",
+            "unit": None,
+            "basis": "HR Club catalogue",
+            "tier": "A",
+            "confidence": "high",
+        },
+    ],
+    "B03-002": [
+        {
+            "source_url": "https://www.beneteau.com/oceanis-2005-2014/oceanis-37",
+            "source_name": "BENETEAU heritage page",
+            "field": "loa",
+            "value": 11.48,
+            "unit": "m",
+            "basis": "BENETEAU specification",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.beneteau.com/oceanis-2005-2014/oceanis-37",
+            "source_name": "BENETEAU heritage page",
+            "field": "beam",
+            "value": 3.92,
+            "unit": "m",
+            "basis": "BENETEAU specification",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.beneteau.com/oceanis-2005-2014/oceanis-37",
+            "source_name": "BENETEAU heritage page",
+            "field": "displacement",
+            "value": 6515.0,
+            "unit": "kg",
+            "basis": "Lightship Displacement",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.beneteau.com/oceanis-2005-2014/oceanis-37",
+            "source_name": "BENETEAU heritage page",
+            "field": "air_draft",
+            "value": 16.65,
+            "unit": "m",
+            "basis": "BENETEAU specification",
+            "tier": "A",
+            "confidence": "high",
+        },
+    ],
+    "B03-003": [
+        {
+            "source_url": "https://www.rustleryachts.com/keel-design-explained/",
+            "source_name": "Rustler Yachts keel-design article",
+            "field": "rudder_type",
+            "value": "keel-hung rudder",
+            "unit": None,
+            "basis": "builder explicit description",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.rustleryachts.com/keel-design-explained/",
+            "source_name": "Rustler Yachts keel-design article",
+            "field": "keel_type",
+            "value": "traditional long keel with cutaway forefoot",
+            "unit": None,
+            "basis": "builder explicit description",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.devalk.nl/",
+            "source_name": "De Valk historical Rustler 36 listing",
+            "field": "loa",
+            "value": 10.78,
+            "unit": "m",
+            "basis": "individual boat",
+            "tier": "B",
+            "confidence": "medium",
+        },
+        {
+            "source_url": "https://www.devalk.nl/",
+            "source_name": "De Valk historical Rustler 36 listing",
+            "field": "beam",
+            "value": 3.35,
+            "unit": "m",
+            "basis": "individual boat",
+            "tier": "B",
+            "confidence": "medium",
+        },
+        {
+            "source_url": "https://www.devalk.nl/",
+            "source_name": "De Valk historical Rustler 36 listing",
+            "field": "draft",
+            "value": 1.75,
+            "unit": "m",
+            "basis": "individual boat",
+            "tier": "B",
+            "confidence": "medium",
+        },
+        {
+            "source_url": "https://www.devalk.nl/",
+            "source_name": "De Valk historical Rustler 36 listing",
+            "field": "displacement",
+            "value": 7500.0,
+            "unit": "kg",
+            "basis": "individual boat",
+            "tier": "B",
+            "confidence": "medium",
+        },
+        {
+            "source_url": "https://www.devalk.nl/",
+            "source_name": "De Valk historical Rustler 36 listing",
+            "field": "ballast",
+            "value": 3600.0,
+            "unit": "kg",
+            "basis": "individual boat",
+            "tier": "B",
+            "confidence": "medium",
+        },
+    ],
+    "B03-004": [
+        {
+            "source_url": "https://goodoldboat.com/seafarer-26/",
+            "source_name": "Good Old Boat technical article",
+            "field": "production_start",
+            "value": 1977,
+            "unit": "year",
+            "basis": "McCurdy and Rhodes generation",
+            "tier": "B",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://goodoldboat.com/seafarer-26/",
+            "source_name": "Good Old Boat technical article",
+            "field": "production_end",
+            "value": 1985,
+            "unit": "year",
+            "basis": "McCurdy and Rhodes generation",
+            "tier": "B",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://goodoldboat.com/seafarer-26/",
+            "source_name": "Good Old Boat technical article",
+            "field": "keel_type",
+            "value": "fin keel",
+            "unit": None,
+            "basis": "Good Old Boat description",
+            "tier": "B",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://goodoldboat.com/seafarer-26/",
+            "source_name": "Good Old Boat technical article",
+            "field": "displacement",
+            "value": 4600.0,
+            "unit": "lb",
+            "basis": "Good Old Boat description",
+            "tier": "B",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://goodoldboat.com/seafarer-26/",
+            "source_name": "Good Old Boat technical article",
+            "field": "rudder_type",
+            "value": "partial skeg with bottom bearing",
+            "unit": None,
+            "basis": "Good Old Boat explicit description",
+            "tier": "B",
+            "confidence": "high",
+        },
+    ],
+    "B03-005": [
+        {
+            "source_url": "https://manualzz.com/doc/28420109/southerly-110-yacht-owners-manual",
+            "source_name": "Southerly 110 owner's manual",
+            "field": "loa",
+            "value": 10.82,
+            "unit": "m",
+            "basis": "Southerly 110 owner's manual",
+            "tier": "A",
+            "confidence": "medium",
+        },
+        {
+            "source_url": "https://manualzz.com/doc/28420109/southerly-110-yacht-owners-manual",
+            "source_name": "Southerly 110 owner's manual",
+            "field": "lwl",
+            "value": 9.22,
+            "unit": "m",
+            "basis": "Southerly 110 owner's manual",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://manualzz.com/doc/28420109/southerly-110-yacht-owners-manual",
+            "source_name": "Southerly 110 owner's manual",
+            "field": "beam",
+            "value": 3.57,
+            "unit": "m",
+            "basis": "Southerly 110 owner's manual",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://manualzz.com/doc/28420109/southerly-110-yacht-owners-manual",
+            "source_name": "Southerly 110 owner's manual",
+            "field": "draft_min",
+            "value": 0.71,
+            "unit": "m",
+            "basis": "keel up",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://manualzz.com/doc/28420109/southerly-110-yacht-owners-manual",
+            "source_name": "Southerly 110 owner's manual",
+            "field": "draft_max",
+            "value": 2.18,
+            "unit": "m",
+            "basis": "keel down",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://manualzz.com/doc/28420109/southerly-110-yacht-owners-manual",
+            "source_name": "Southerly 110 owner's manual",
+            "field": "rudder_count",
+            "value": "twin rudders as standard",
+            "unit": None,
+            "basis": "owner's manual explicit statement",
+            "tier": "A",
+            "confidence": "high",
+        },
+    ],
+    "B03-006": [
+        {
+            "source_url": "https://www.jeremyrogers.co.uk/contessa32-specification/",
+            "source_name": "Jeremy Rogers Contessa 32 specification",
+            "field": "ballast_type",
+            "value": "encapsulated lead ballast",
+            "unit": None,
+            "basis": "current new-build specification",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.jeremyrogers.co.uk/contessa32-specification/",
+            "source_name": "Jeremy Rogers Contessa 32 specification",
+            "field": "rudder_attachment",
+            "value": "two bronze bearings and stainless lower attachment plate at base of skeg",
+            "unit": None,
+            "basis": "current new-build specification",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.co32.org/racing/class-rules",
+            "source_name": "Contessa 32 Class Association class rules",
+            "field": "class_rules_authority",
+            "value": "class rules are authoritative constraints not automatically nominal production values",
+            "unit": None,
+            "basis": "class rules",
+            "tier": "A",
+            "confidence": "high",
+        },
+    ],
+    "B03-007": [
+        {
+            "source_url": "https://amel.fr/en/the-amel-story/",
+            "source_name": "AMEL official history",
+            "field": "production_identity",
+            "value": "AMEL official history distinguishes Super Maramu 2000 from preceding Super Maramu with explicit production chronology",
+            "unit": None,
+            "basis": "AMEL official builder history",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.manualslib.com/products/Amel-Super-Maramu-2000-8825620.html",
+            "source_name": "AMEL Super Maramu 2000 manual archive",
+            "field": "manual_reference",
+            "value": "owner-manual material provides preferred route for deeper systems and technical facts",
+            "unit": None,
+            "basis": "manual archive index",
+            "tier": "A",
+            "confidence": "medium",
+        },
+    ],
+    "B03-008": [
+        {
+            "source_url": "https://www.moodyowners.org/Moody_Archives/17_boat.htm",
+            "source_name": "Moody Owners archive Mk I",
+            "field": "production_identity_mki",
+            "value": "Moody 33 Mk I production period and count in owners archive; broadly same principal dimensions as Mk II",
+            "unit": None,
+            "basis": "Moody Owners archive",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.moodyowners.org/Moody_Archives/18_boat.htm",
+            "source_name": "Moody Owners archive Mk II",
+            "field": "production_identity_mkii",
+            "value": "Moody 33 Mk II production period; Mk II changes concentrate on accommodation and cockpit not new underwater hull",
+            "unit": None,
+            "basis": "Moody Owners archive",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.moodyowners.info/threads/moody-33-mk1-vs-mk2.22269/",
+            "source_name": "Moody Owners technical discussion",
+            "field": "sail_area_definition",
+            "value": "multiple sail-area definitions: rating/foretriangle-style area versus actual larger headsail plus main area",
+            "unit": None,
+            "basis": "owner technical discussion",
+            "tier": "B",
+            "confidence": "medium",
+        },
+    ],
+    "B04-001": [
+        {
+            "source_url": "https://www.yachtsnet.co.uk/archives/sadler-34/sadler-34.htm",
+            "source_name": "Yachtsnet Sadler 34 archive",
+            "field": "keel_options",
+            "value": "deep fin, shallow fin and bilge/twin-keel forms documented; small number with centreboards inside shallow fins",
+            "unit": None,
+            "basis": "Yachtsnet archive",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.lucasyachting.co.uk/sadler-and-starlight/sadler-34-yacht/",
+            "source_name": "Lucas Yachting Sadler archive",
+            "field": "keel_option_count",
+            "value": "four keel options documented; full-depth skeg-supported rudder",
+            "unit": None,
+            "basis": "Lucas Yachting",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.lucasyachting.co.uk/sadler-and-starlight/sadler-34-yacht/",
+            "source_name": "Lucas Yachting Sadler archive",
+            "field": "rudder_type",
+            "value": "full-depth skeg-supported rudder",
+            "unit": None,
+            "basis": "Lucas Yachting description",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.yachtsnet.co.uk/archives/sadler-34/sadler-34.htm",
+            "source_name": "Yachtsnet Sadler 34 archive",
+            "field": "variant_note",
+            "value": "34SE is an equipment/fitout upgrade using the same hull and rig",
+            "unit": None,
+            "basis": "Yachtsnet archive",
+            "tier": "A",
+            "confidence": "high",
+        },
+    ],
+    "B04-002": [
+        {
+            "source_url": "https://www.albin-vega.de/die-albin-vega/",
+            "source_name": "Deutsche Vega-Klassenvereinigung",
+            "field": "production_chronology",
+            "value": "class-association material distinguishes design/prototype/production chronology",
+            "unit": None,
+            "basis": "class association",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://albinvega.directory/library/",
+            "source_name": "Albin Vega document library",
+            "field": "sail_area_components",
+            "value": "main and jib component areas listed separately not as one generic sail-area basis",
+            "unit": None,
+            "basis": "class document library",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://albinvegaforsale.wordpress.com/hull-deck/",
+            "source_name": "Albin Vega owner construction description",
+            "field": "keel_type",
+            "value": "encapsulated shallow/long fin form; rudder attachment to aft keel region",
+            "unit": None,
+            "basis": "owner construction description",
+            "tier": "B",
+            "confidence": "medium",
+        },
+    ],
+    "B04-003": [
+        {
+            "source_url": "https://hr-club.net/hr-catalogue/hr-35-rasmus/",
+            "source_name": "HR Club catalogue HR 35 Rasmus",
+            "field": "production_start",
+            "value": 1967,
+            "unit": "year",
+            "basis": "HR Club catalogue",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://hr-club.net/hr-catalogue/hr-35-rasmus/",
+            "source_name": "HR Club catalogue HR 35 Rasmus",
+            "field": "production_end",
+            "value": 1978,
+            "unit": "year",
+            "basis": "HR Club catalogue",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://hr-club.net/hr-catalogue/hr-35-rasmus/",
+            "source_name": "HR Club catalogue HR 35 Rasmus",
+            "field": "units_built",
+            "value": 760,
+            "unit": "count",
+            "basis": "HR Club catalogue",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://hr-club.net/hr-catalogue/hr-35-rasmus/",
+            "source_name": "HR Club catalogue HR 35 Rasmus",
+            "field": "keel_type",
+            "value": "long/full-bilged keel plus skeg-hung rudder",
+            "unit": None,
+            "basis": "HR Club catalogue",
+            "tier": "A",
+            "confidence": "high",
+        },
+    ],
+    "B04-004": [
+        {
+            "source_url": "https://www.seabear.uk/about-sea-bear-the-boat/",
+            "source_name": "Vancouver 27 owner lineage account",
+            "field": "lineage",
+            "value": "Robert Harris original design with intertwined North American and British production history; separated from later Vancouver 28",
+            "unit": None,
+            "basis": "owner lineage account",
+            "tier": "B",
+            "confidence": "medium",
+        },
+        {
+            "source_url": "https://portsmouth.boatshed.com/vancouver_27-boat-247111.html",
+            "source_name": "Boatshed historical hull record",
+            "field": "keel_type",
+            "value": "long-keel form; structural skeg integrated with hull/keel extension",
+            "unit": None,
+            "basis": "historical hull record",
+            "tier": "B",
+            "confidence": "medium",
+        },
+    ],
+    "B04-005": [
+        {
+            "source_url": "https://sailingmagazine.net/article-1785-f-27.html",
+            "source_name": "SAILING Magazine F-27 retrospective",
+            "field": "units_built",
+            "value": 450,
+            "unit": "count",
+            "basis": "specialist history approximate",
+            "tier": "B",
+            "confidence": "medium",
+        },
+        {
+            "source_url": "https://sailingmagazine.net/article-1785-f-27.html",
+            "source_name": "SAILING Magazine F-27 retrospective",
+            "field": "folded_geometry_note",
+            "value": "folded geometry is inherent to Farrier folding system not a cosmetic transport note",
+            "unit": None,
+            "basis": "SAILING retrospective",
+            "tier": "B",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.multihull.nl/multihulls/used-multihulls/F-27%20General/CorsairF27History.html",
+            "source_name": "Farrier history",
+            "field": "production_identity",
+            "value": "Ian Farrier design mid-1980s production; named F-27 Sport Cruiser and later Corsair F-27",
+            "unit": None,
+            "basis": "Farrier history",
+            "tier": "B",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.practical-sailor.com/sailboat-reviews/f-27/",
+            "source_name": "Practical Sailor F-27 review",
+            "field": "displacement_note",
+            "value": "secondary sources show some mass drift across publications",
+            "unit": None,
+            "basis": "Practical Sailor",
+            "tier": "B",
+            "confidence": "medium",
+        },
+    ],
+    "B04-006": [
+        {
+            "source_url": "https://sailingmagazine.net/article-permalink-554.html",
+            "source_name": "SAILING Magazine Snowgoose 37 review",
+            "field": "keel_type_baseline",
+            "value": "earlier Snowgoose 37 with molded stub keels and lighter baseline",
+            "unit": None,
+            "basis": "SAILING Magazine review",
+            "tier": "B",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.svb.de/ownersclub/snowgoose-37-elite.html",
+            "source_name": "SVB Snowgoose 37 Elite metadata",
+            "field": "elite_identity",
+            "value": "Snowgoose 37 Elite is materially wider and evolved not a harmless marketing suffix",
+            "unit": None,
+            "basis": "SVB Elite metadata",
+            "tier": "B",
+            "confidence": "high",
+        },
+    ],
+    "B04-007": [
+        {
+            "source_url": "https://wiki.westerly-owners.co.uk/index.php?title=Konsort",
+            "source_name": "Westerly Owners Association Wiki",
+            "field": "keel_options",
+            "value": "fin, twin and lifting keel variants documented",
+            "unit": None,
+            "basis": "WOA wiki",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://wiki.westerly-owners.co.uk/index.php?title=Konsort",
+            "source_name": "Westerly Owners Association Wiki",
+            "field": "rudder_type",
+            "value": "transom-hung rudder confirmed",
+            "unit": None,
+            "basis": "WOA wiki and Yachting Monthly",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://yachtsnet.co.uk/archives/westerly-konsort/konsort.htm",
+            "source_name": "Yachtsnet Westerly Konsort archive",
+            "field": "production_count_note",
+            "value": "WOA and Yachtsnet provide broadly consistent production history while differing in exact published count phrasing",
+            "unit": None,
+            "basis": "Yachtsnet archive",
+            "tier": "B",
+            "confidence": "medium",
+        },
+    ],
+    "B04-008": [
+        {
+            "source_url": "https://htcca.co.uk/ht-26-27/",
+            "source_name": "HTCCA model history",
+            "field": "generation_sequence",
+            "value": "Mk1, Mk2, Mk2A (new hull mould, longer keels, central nacelle), Mk3 (new deck mould), and later New 27/HT27 generation changes documented",
+            "unit": None,
+            "basis": "HTCCA model history",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://htcca.co.uk/ht-description/",
+            "source_name": "HTCCA technical description",
+            "field": "multihull_dimensions",
+            "value": "New 27 data includes multihull dimensions/mass and separated sail components",
+            "unit": None,
+            "basis": "HTCCA technical description",
+            "tier": "A",
+            "confidence": "high",
+        },
+    ],
+    "B05-001": [
+        {
+            "source_url": "https://www.mycbc.ca/macgregor-buying-guide/?print=print",
+            "source_name": "MacGregor Yacht Club of BC buying guide",
+            "field": "model_family_distinction",
+            "value": "D/S 26 Classic family sharply distinguished from later 26X/26M powersailers; D=daggerboard S=swing centreboard X=CB powersailer M=daggerboard powersailer with rotating mast and twin rudders",
+            "unit": None,
+            "basis": "MYCBC buying guide",
+            "tier": "B",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.practical-sailor.com/sailboat-reviews/macgregor-26m-used-boat-review/",
+            "source_name": "Practical Sailor 26M lineage review",
+            "field": "transition_year_note",
+            "value": "independent sources give slightly different transition-year chronologies",
+            "unit": None,
+            "basis": "Practical Sailor",
+            "tier": "B",
+            "confidence": "medium",
+        },
+    ],
+    "B05-002": [
+        {
+            "source_url": "https://www.beneteau.com/newsroom-actualite/1977-2022-story-firsts",
+            "source_name": "BENETEAU First history",
+            "field": "lineage",
+            "value": "BENETEAU identifies early Jean Berret First 35, later First 35S5, and much later Farr-designed First 35 generation",
+            "unit": None,
+            "basis": "BENETEAU official lineage",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.beneteau.com/first-1988-1992/first-35s5",
+            "source_name": "BENETEAU First 35S5 heritage",
+            "field": "variant_note",
+            "value": "Carbon Edition is more plausibly a variant inside later generation than an unrelated hull",
+            "unit": None,
+            "basis": "BENETEAU heritage page",
+            "tier": "A",
+            "confidence": "high",
+        },
+    ],
+    "B05-003": [
+        {
+            "source_url": "https://www.moodyowners.org/moody-boat-archive/",
+            "source_name": "Moody Owners archive",
+            "field": "lineage",
+            "value": "archive explicitly separates 1980s Moody 36/36S/36DS from later 1990s Moody 36; later boat is Bill Dixon design with own production run and multiple keel configurations",
+            "unit": None,
+            "basis": "Moody Owners archive",
+            "tier": "A",
+            "confidence": "high",
+        },
+    ],
+    "B05-004": [
+        {
+            "source_url": "https://hr-club.net/hr-catalogue/hr-352/",
+            "source_name": "HR Club catalogue HR 352",
+            "field": "mass_unit_issue",
+            "value": "catalogue visibly contains malformed mass-unit presentation which must be preserved/flagged rather than blindly parsed",
+            "unit": None,
+            "basis": "HR Club catalogue",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://oldshop.hallberg-rassy.com/contents/en-us/p3718_Rudder-Hallberg-Rassy-352.html",
+            "source_name": "Hallberg-Rassy parts archive rudder",
+            "field": "rudder_configuration",
+            "value": "all 352s use the same rudder configuration; Enderlein rudder-skeg bearing",
+            "unit": None,
+            "basis": "HR parts archive",
+            "tier": "A",
+            "confidence": "high",
+        },
+    ],
+    "B05-005": [
+        {
+            "source_url": "https://www.classicswan.org/swan_36.php",
+            "source_name": "S&S Swan Association Swan 36",
+            "field": "appendage_type",
+            "value": "original Swan 36 is early S&S design with separated fin keel and skeg-hung rudder",
+            "unit": None,
+            "basis": "S&S Swan Association",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.nautorswan.com/yachts/models/clubswan36/",
+            "source_name": "Nautor Swan ClubSwan 36 heritage",
+            "field": "lineage_conflict",
+            "value": "Nautor deliberately connects modern ClubSwan 36 to old Swan 36 as brand heritage not technical identity; radically different Juan Kouyoumdjian race design",
+            "unit": None,
+            "basis": "Nautor Swan heritage page",
+            "tier": "A",
+            "confidence": "high",
+        },
+    ],
+    "B05-006": [
+        {
+            "source_url": "https://www.catalina36.org/about/history",
+            "source_name": "Catalina 36/375 Association history",
+            "field": "generation_transition",
+            "value": "hull-number/year transition evidence for Mk II; underwater hull remained same; Mk II concentrated on stern/cockpit deck and interior changes",
+            "unit": None,
+            "basis": "Association history",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.catalina36.org/members/encyclopedias/c36-mki-specs",
+            "source_name": "Catalina 36 Mk I specs",
+            "field": "keel_options",
+            "value": "Mk I and Mk II spec pages retain same core principal dimensions and keel-option pairs",
+            "unit": None,
+            "basis": "Association spec pages",
+            "tier": "A",
+            "confidence": "high",
+        },
+    ],
+    "B05-007": [
+        {
+            "source_url": "https://dehler.com/de/geschichte/",
+            "source_name": "Dehler history",
+            "field": "lineage",
+            "value": "Dehler identifies original 1980s Dehler 34, separate 2004-2009 model and current successor generation; current model invokes original as lineage/marketing context with own hull dimensions",
+            "unit": None,
+            "basis": "Dehler official history",
+            "tier": "A",
+            "confidence": "high",
+        },
+    ],
+    "B05-008": [
+        {
+            "source_url": "https://goodoldboat.com/hunter-legend-37/",
+            "source_name": "Good Old Boat Hunter Legend 37",
+            "field": "lineage",
+            "value": "owners material separates Hunter 37, Hunter 37 Legend, later 37.5 Legend and descendants; Legend is identity-critical context not decorative text",
+            "unit": None,
+            "basis": "Good Old Boat",
+            "tier": "B",
+            "confidence": "high",
+        },
+    ],
+    "B06-001": [
+        {
+            "source_url": "https://www.ghcarchives.com/the-yachts/c-and-c-35-mk-ii",
+            "source_name": "Great Lakes C&C design archive",
+            "field": "lineage",
+            "value": "original design traces through Redwing 35 / C&C 35; substantial 1973 Mk II redesign changed sheer/afterbody, rudder form, ballast/sail-plan and deck/cockpit geometry",
+            "unit": None,
+            "basis": "Great Lakes archive",
+            "tier": "A",
+            "confidence": "high",
+        },
+    ],
+    "B06-002": [
+        {
+            "source_url": "https://hr-club.net/hr-catalogue/hr-312-mk-i/",
+            "source_name": "HR Club catalogue HR 312 Mk I",
+            "field": "generation_boundary",
+            "value": "Mk II from mid-1980s; same core hull and rig; Mk II changes focus on superstructure cockpit interior and headroom",
+            "unit": None,
+            "basis": "HR Club catalogue",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.boat24.com/at/blog/hallberg-rassy-312/",
+            "source_name": "Boat24 HR 312 article",
+            "field": "mass_unit_issue",
+            "value": "HR Club shows suspicious malformed mass-unit rendering reinforcing a source-family parsing problem",
+            "unit": None,
+            "basis": "Boat24 article",
+            "tier": "B",
+            "confidence": "medium",
+        },
+    ],
+    "B06-003": [
+        {
+            "source_url": "https://manualzz.com/doc/59388526/etap-32s-owner-s-manual",
+            "source_name": "ETAP 32s owner's manual",
+            "field": "draft_standard",
+            "value": "standard and shallow/tandem keel configurations expose different draft, displacement and keel weight",
+            "unit": None,
+            "basis": "owner's manual standard configuration",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://manualzz.com/doc/59388526/etap-32s-owner-s-manual",
+            "source_name": "ETAP 32s owner's manual",
+            "field": "mass_basis",
+            "value": "owner's manual also distinguishes net versus fully-loaded mass basis",
+            "unit": None,
+            "basis": "owner's manual",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.cruisingworld.com/sailboats/etap-32s-0/",
+            "source_name": "Cruising World ETAP 32s",
+            "field": "keel_type_tandem",
+            "value": "tandem keel option: fore/aft foils joined at the bottom",
+            "unit": None,
+            "basis": "tandem keel option",
+            "tier": "B",
+            "confidence": "high",
+        },
+    ],
+    "B06-004": [
+        {
+            "source_url": "https://pearson35.com/design-manuals/",
+            "source_name": "Pearson 35 owner/design archive",
+            "field": "applicability_warning",
+            "value": "archive explicitly warns measurements apply to documented model year and may not represent full production run",
+            "unit": None,
+            "basis": "Pearson 35 archive explicit warning",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://pearson35.com/design-manuals/",
+            "source_name": "Pearson 35 owner/design archive",
+            "field": "draft_board_up",
+            "value": "centerboard up draft state preserved",
+            "unit": None,
+            "basis": "board up",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://pearson35.com/design-manuals/",
+            "source_name": "Pearson 35 owner/design archive",
+            "field": "displacement_basis",
+            "value": "Pearson-published lightship displacement distinct from separately constructed loaded figure",
+            "unit": None,
+            "basis": "Pearson 35 archive",
+            "tier": "A",
+            "confidence": "high",
+        },
+    ],
+    "B06-005": [
+        {
+            "source_url": "https://www.practical-sailor.com/sailboat-reviews/ericson-35/",
+            "source_name": "Practical Sailor Ericson 35",
+            "field": "lineage",
+            "value": "Practical Sailor distinguishes early CCA-style long-keel/attached-rudder boat, later Bruce King fin/spade design and another larger replacement generation; factory shoal/short-rig options exist inside later generations",
+            "unit": None,
+            "basis": "Practical Sailor",
+            "tier": "B",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://ericsonyachts.org/ie/threads/e35-vs-e35-mkii-vs-e35mkiii-help.7909/",
+            "source_name": "EricsonYachts owner discussion",
+            "field": "lineage_uncertainty",
+            "value": "experienced owners independently describe successive redesigns but differ in how directly II to III should be described as evolutionary lineage",
+            "unit": None,
+            "basis": "owner community discussion",
+            "tier": "B",
+            "confidence": "medium",
+        },
+    ],
+    "B06-006": [
+        {
+            "source_url": "https://www.practical-sailor.com/sailboat-reviews/bristol-35-5c/",
+            "source_name": "Practical Sailor Bristol 35.5C",
+            "field": "suffix_semantics",
+            "value": "Ted Hood centerboard cruiser; C suffix encodes configuration rather than a wholly unrelated hull",
+            "unit": None,
+            "basis": "Practical Sailor",
+            "tier": "B",
+            "confidence": "high",
+        },
+    ],
+    "B06-007": [
+        {
+            "source_url": "https://manualzz.com/doc/23718176/gemini-105mc-catamaran-owner-s-manual",
+            "source_name": "Gemini 105Mc owner's manual",
+            "field": "board_configuration",
+            "value": "one centerboard installed in each hull; pivoting/kick-up design; valid sailing procedures include both boards, leeward-only board or no boards depending on conditions",
+            "unit": None,
+            "basis": "owner's manual",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://manualzz.com/doc/23718176/gemini-105mc-catamaran-owner-s-manual",
+            "source_name": "Gemini 105Mc owner's manual",
+            "field": "rudder_count",
+            "value": 2,
+            "unit": "count",
+            "basis": "twin spade rudders",
+            "tier": "A",
+            "confidence": "high",
+        },
+    ],
+    "B06-008": [
+        {
+            "source_url": "https://jboats.com/j105-tech-specs",
+            "source_name": "J/Boats J/105 tech specs",
+            "field": "nominal_specs",
+            "value": "J/Boats publishes nominal design geometry mass and sail information",
+            "unit": None,
+            "basis": "J/Boats nominal specification",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://j105.org/rules/",
+            "source_name": "J/105 Class Association rules",
+            "field": "class_rule_semantics",
+            "value": "class association rules encode compliance limits, permitted variation, geometry and measurement procedure rather than automatically nominal production values",
+            "unit": None,
+            "basis": "class rules",
+            "tier": "A",
+            "confidence": "high",
+        },
+    ],
+    "B06-009": [
+        {
+            "source_url": "https://www.emanualonline.com/marines/boats/bavaria/38/bavaria-38-2002-2003-owners-manual-emo-488088",
+            "source_name": "Bavaria 38 owner's manual",
+            "field": "keel_configuration",
+            "value": "normal-keel versus lead-keel configurations expose different draft, ballast and ready-for-sailing mass",
+            "unit": None,
+            "basis": "owner's manual",
+            "tier": "A",
+            "confidence": "high",
+        },
+        {
+            "source_url": "https://www.emanualonline.com/marines/boats/bavaria/38/bavaria-38-2002-2003-owners-manual-emo-488088",
+            "source_name": "Bavaria 38 owner's manual",
+            "field": "mass_basis",
+            "value": "distinguishes empty-yacht mass from fully-equipped/crew mass",
+            "unit": None,
+            "basis": "owner's manual",
+            "tier": "A",
+            "confidence": "high",
+        },
+    ],
+}
+
+# Per-case aggregate crosscheck for W03-W06
+_W03W06_CROSSCHECK: dict[str, tuple[ReferenceCheckOutcome, str]] = {
+    "B03-001": (
+        ReferenceCheckOutcome.NO_REFERENCE_RECORD_FOUND,
+        "No reliable direct reference record located during this pass.",
+    ),
+    "B03-002": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Partial; configuration/basis coverage differs. No reference values retained.",
+    ),
+    "B03-003": (
+        ReferenceCheckOutcome.DEFINITION_OR_BASIS_DIFFERENCE,
+        "Taxonomy conflict/partial match; reference wording less compatible with builder's keel-hung statement. No reference values retained.",
+    ),
+    "B03-004": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Strong ordinary-field agreement but taxonomy loses the more precise partial-skeg relationship.",
+    ),
+    "B03-005": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Partial; geometry broadly compatible but appendage relationship is incomplete and mass conflict remains unresolved.",
+    ),
+    "B03-006": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Partial/era difference. No reference values retained.",
+    ),
+    "B03-007": (
+        ReferenceCheckOutcome.CONFLICT,
+        "Chronology conflict with builder history. Only the conflict outcome is retained; reference dates are not stored.",
+    ),
+    "B03-008": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Partial/definition-compatible. No reference sail-area value retained.",
+    ),
+    "B04-001": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Strong baseline agreement but materially incomplete option coverage. No reference values retained.",
+    ),
+    "B04-002": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Strong ordinary-field agreement but chronology/draft differences remain research questions. Only outcome retained.",
+    ),
+    "B04-003": (
+        ReferenceCheckOutcome.IDENTITY_DISAMBIGUATION_REQUIRED,
+        "Identity/duplicate conflict: competing reference identities around Rasmus 35 / Hallberg-Rassy 35. No competing reference field values retained.",
+    ),
+    "B04-004": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Broadly compatible identity/keel family; extra reference-only details not admitted as evidence.",
+    ),
+    "B04-005": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Strong ordinary-field agreement; reference notes also expose folded-beam ambiguity. No reference values retained.",
+    ),
+    "B04-006": (
+        ReferenceCheckOutcome.DEFINITION_OR_BASIS_DIFFERENCE,
+        "Reference database also separates Snowgoose 37 from Snowgoose 37 Elite. No reference dimensions/mass retained.",
+    ),
+    "B04-007": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Partial/incomplete; reference foregrounds less of the configuration space and disagrees on some scalar metadata. No reference values retained.",
+    ),
+    "B04-008": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Broadly consistent generation distinctions; outcome only retained.",
+    ),
+    "B05-001": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Structurally useful and mostly consistent in separating D/S/X/M, while production-count applicability remains imperfect. Outcome only retained.",
+    ),
+    "B05-002": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Separate reference identities broadly validate the independent generation split, but synthetic reference suffixes are not canonical HullQ names.",
+    ),
+    "B05-003": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Structurally agrees on an earlier/later split. No reference values retained.",
+    ),
+    "B05-004": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Strong dimensional/count/chronology agreement and a mass-unit interpretation difference. Only outcome retained; reference mass values not stored.",
+    ),
+    "B05-005": (
+        ReferenceCheckOutcome.CONFLICT,
+        "Production-count conflict exists for the original model. Only the conflict outcome is retained.",
+    ),
+    "B05-006": (
+        ReferenceCheckOutcome.MATCH,
+        "Strongly consistent with the same-hull/rig interpretation. Outcome only retained.",
+    ),
+    "B05-007": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Reference separates multiple Dehler 34 generations and confirms the identity problem. Outcome only retained.",
+    ),
+    "B05-008": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Structural identity split agrees. No reference values retained.",
+    ),
+    "B06-001": (
+        ReferenceCheckOutcome.MATCH,
+        "Strong structural agreement on the split/redesign. No reference scalar values retained.",
+    ),
+    "B06-002": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Strong same-hull/sail-plan agreement. No reference values retained.",
+    ),
+    "B06-003": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Partial/strong option recognition but less semantic depth than the independent evidence. No reference values retained.",
+    ),
+    "B06-004": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Strong baseline compatibility but broader whole-run scope. No reference values retained.",
+    ),
+    "B06-005": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Strong structural confirmation of separate identities. No reference values retained.",
+    ),
+    "B06-006": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Compatible configuration interpretation. No reference board values retained.",
+    ),
+    "B06-007": (
+        ReferenceCheckOutcome.MATCH,
+        "Strong broad-identity/geometry compatibility. No reference dimensions retained.",
+    ),
+    "B06-008": (
+        ReferenceCheckOutcome.MATCH,
+        "Ordinary-field agreement; benchmark issue is semantic not numeric. No reference values retained.",
+    ),
+    "B06-009": (
+        ReferenceCheckOutcome.PARTIAL_MATCH,
+        "Matching reference identity structurally compatible; separate neighboring records reinforce need for identity disambiguation.",
+    ),
+}
+
+# Explicit finding description for W03-W06 conflict cases
+_W03W06_FINDING: dict[str, str] = {
+    "B03-002": "Individual-hull mass values differ from builder Lightship Displacement; mass scope and basis require review before canonical resolution. Primary page incompleteness documented.",
+    "B03-003": "Highly authoritative appendage taxonomy (keel-hung rudder, traditional long keel) versus hull-specific individual-hull numeric evidence must remain separate evidence classes.",
+    "B03-005": "Mass and ballast observations differ among hull-specific and secondary records; swing-keel state, fixed grounding structure, twin-rudder count and protective-skeg relationship are separate facts requiring basis review.",
+    "B03-007": "Related but distinct production identities (Super Maramu vs Super Maramu 2000) plus chronology verification conflict with builder chronology.",
+    "B04-002": "Chronology-event semantics and chronology/draft differences remain research questions despite strong ordinary-field agreement.",
+    "B04-003": "Competing reference identities around 'Rasmus 35' and 'Hallberg-Rassy 35'; string similarity is insufficient to select one; identity/duplicate conflict confirmed in reference.",
+    "B04-005": "Sailing/folded geometry state, board state and historical naming must coexist without duplicate identity or hidden displacement scalar; secondary sources show mass drift.",
+    "B04-006": "Model/evolution identity must be resolved before projecting a late individual hull onto the original Snowgoose 37 baseline; Elite is materially wider/evolved not a marketing suffix.",
+    "B04-007": "Production count and displacement conflict among reputable sources (WOA, Yachtsnet) need review; lifting keel configuration changes both draft state and ballast simultaneously.",
+    "B05-001": "MacGregor 26 is a model family with materially different hull/use/board/rudder/rig semantics across D/S/X/M variants; suffix syntax alone cannot decide the lineage relationship.",
+    "B05-004": "HR Club catalogue contains malformed mass-unit presentation for the HR 352; source quality and observation validity are distinct; malformed units must be preserved/flagged not silently parsed.",
+    "B05-005": "Production-count conflict for the original Swan 36 model; marketing heritage (Nautor connects ClubSwan 36 to original Swan 36) must remain separate from technical BoatDesign lineage.",
+    "B06-002": "HR Club HR 312 catalogue repeats systematic malformed mass-unit presentation defect seen in HR 352; authoritative source family can repeat presentation problems.",
+    "B06-005": "Same builder and model number reused across technically distinct Ericson 35 generations (CCA long keel, Bruce King fin/spade, larger replacement); even the lineage relation between generations can itself remain uncertain evidence.",
+}
+
+
+def _build_w3w6_bundle(
+    case_id: str,
+    facts: list[dict[str, Any]],
+    research_target: ResearchTarget,
+    wave: int,
+) -> ResearchEvidenceBundle:
+    bid = _bundle_id(case_id)
+    observations: list[ResearchObservation] = []
+    findings: list[UnresolvedFinding] = []
+
+    for obs_idx, fact in enumerate(facts):
+        raw_val = fact["value"]
+        unit = fact.get("unit")
+        basis = fact.get("basis", "")
+        tier = fact.get("tier", "B")
+        source_url = fact["source_url"]
+        source_name = fact["source_name"]
+        confidence_str = fact.get("confidence", "medium")
+        field = fact.get("field", "observation")
+        notes = fact.get("notes")
+
+        if isinstance(raw_val, (int, float)):
+            kind = RawObservationKind.LITERAL
+        else:
+            kind = RawObservationKind.TEXT_FRAGMENT
+
+        oid = _obs_id(bid, obs_idx)
+        observations.append(
+            ResearchObservation(
+                observation_id=oid,
+                research_target=research_target,
+                source_id=source_url,
+                source_locator=_NULL_LOCATOR,
+                raw=RawObservation(kind=kind, value=raw_val, unit=unit, excerpt=None),
+                normalized_candidate=None,
+                evidence_type=_map_evidence_type(tier, source_name),
+                claim_semantics=_map_claim_semantics(field, basis),
+                applicability=_map_applicability(basis),
+                producer=_PRODUCER,
+                research_context=_RESEARCH_CONTEXT,
+                observed_at=_OBSERVED_AT,
+                confidence=_map_confidence(confidence_str),
+                supersedes_observation_id=None,
+                intended_subject_kind_hint=None,
+                intended_field_pointer=None,
+                notes=notes,
+            )
+        )
+
+    # Add finding for conflict cases
+    if case_id in _CONFLICT_CASES:
+        desc = _W03W06_FINDING.get(
+            case_id,
+            f"Retained conflict or unresolved question for {case_id} (wave {wave}).",
+        )
+        findings.append(
+            UnresolvedFinding(
+                finding_id=_finding_id(bid, 0),
+                topic="conflict_or_unresolved_evidence",
+                description=desc,
+                related_observation_ids=frozenset(o.observation_id for o in observations),
+                severity=UnresolvedFindingSeverity.REVIEW,
+            )
+        )
+
+    crosscheck_outcome, crosscheck_notes = _W03W06_CROSSCHECK.get(
+        case_id,
+        (ReferenceCheckOutcome.NOT_CHECKED, "No crosscheck data available for this case."),
+    )
+    crosscheck = ReferenceCrosscheck(
+        crosscheck_id=_crosscheck_id(bid),
+        reference_source_id=REFERENCE_SOURCE_ID,
+        topic_or_field=None,
+        outcome=crosscheck_outcome,
+        notes=crosscheck_notes,
+    )
+
+    return ResearchEvidenceBundle(
+        bundle_id=bid,
+        bundle_version=BUNDLE_VERSION,
+        research_target=research_target,
+        research_job_id=None,
+        activity_id=ACTIVITY_ID,
+        observations=tuple(observations),
+        unresolved_findings=tuple(findings),
+        promoted_evidence=(),
+        reference_crosschecks=(crosscheck,),
     )
 
 
@@ -691,119 +1925,72 @@ def _make_observation(
 
 
 def load_manifest() -> dict[str, Any]:
-    """Load and return the benchmark manifest JSON dict."""
     result: dict[str, Any] = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     return result
 
 
-def materialize_bundle(case: dict[str, Any]) -> ResearchEvidenceBundle:
-    """Construct a deterministic ResearchEvidenceBundle from one manifest case.
+def materialize_all() -> dict[str, MaterializationResult]:
+    """Materialize all 50 benchmark bundles deterministically.
 
-    All IDs are deterministic from case_id. The source_id uses the benchmark
-    wave summary document identifier (not a sailboat production source). No
-    SailboatData field values are introduced. No network access occurs.
-
-    The bundle is pre-canonical: no canonical ProvenanceSubject is created or
-    implied. promoted_evidence is always empty.
-    """
-    case_id: str = case["benchmark_case_id"]
-    wave: int = int(case["wave"])
-    manufacturer: str | None = case.get("manufacturer") or None
-    model: str = str(case["model"])
-
-    research_target = ResearchTarget(
-        manufacturer=manufacturer,
-        model=model,
-        first_built=None,
-    )
-
-    data = _CASE_DATA[case_id]
-    benchmark_problem: str = data["benchmark_problem"]
-    reference_outcome_str: str = data["reference_outcome"]
-    conflict_finding_text: str | None = data["conflict_finding"]
-    classification: dict[str, int] = case["classification"]
-
-    # Determine primary evidence_type and claim_semantics from classification flags.
-    # identity_lineage=1 → identity_or_chronology_claim; config_state=1 → operating_state;
-    # else → other
-    if classification.get("identity_lineage", 0):
-        claim_sem = ClaimSemantics.IDENTITY_OR_CHRONOLOGY_CLAIM
-    elif classification.get("config_state", 0):
-        claim_sem = ClaimSemantics.OPERATING_STATE_VALUE
-    elif classification.get("basis_definition", 0):
-        claim_sem = ClaimSemantics.PUBLISHED_CALCULATION
-    else:
-        claim_sem = ClaimSemantics.OTHER
-
-    ev_type = (
-        EvidenceType.MANUFACTURER_SPECIFICATION
-        if classification.get("authoritative_path", 0)
-        else EvidenceType.NARRATIVE_TEXT
-    )
-
-    # Primary observation: retained benchmark problem finding.
-    primary_obs = _make_observation(
-        case_id=case_id,
-        n=1,
-        wave=wave,
-        research_target=research_target,
-        text=benchmark_problem,
-        evidence_type=ev_type,
-        claim_semantics=claim_sem,
-    )
-
-    observations: list[ResearchObservation] = [primary_obs]
-
-    # Unresolved finding (only for conflict_unresolved=1 cases).
-    findings: list[UnresolvedFinding] = []
-    if conflict_finding_text is not None:
-        findings.append(
-            UnresolvedFinding(
-                finding_id=_finding_id(case_id, 1),
-                topic="conflict_or_unresolved_evidence",
-                description=conflict_finding_text,
-                related_observation_ids=frozenset({_obs_id(case_id, 1)}),
-                severity=UnresolvedFindingSeverity.REVIEW,
-            )
-        )
-
-    # Reference crosscheck — outcome-only, no reference field values stored.
-    crosschecks: list[ReferenceCrosscheck] = [
-        ReferenceCrosscheck(
-            crosscheck_id=_crosscheck_id(case_id, 1),
-            reference_source_id=REFERENCE_SOURCE_ID,
-            topic_or_field=None,
-            outcome=ReferenceCheckOutcome(reference_outcome_str),
-            notes=(
-                "Post-hoc reference comparison outcome only. No reference field values "
-                "are stored. See retained wave summary for crosscheck rationale."
-            ),
-        )
-    ]
-
-    return ResearchEvidenceBundle(
-        bundle_id=_bundle_id(case_id),
-        bundle_version=BUNDLE_VERSION,
-        research_target=research_target,
-        research_job_id=None,
-        activity_id=ACTIVITY_ID,
-        observations=tuple(observations),
-        unresolved_findings=tuple(findings),
-        promoted_evidence=(),
-        reference_crosschecks=tuple(crosschecks),
-    )
-
-
-def materialize_all() -> dict[str, ResearchEvidenceBundle]:
-    """Materialize bundles for all 50 benchmark cases.
-
-    Returns a dict mapping benchmark_case_id → ResearchEvidenceBundle.
-    Always deterministic: same retained input + same code produces the same
-    bundle semantic fingerprints.
+    Returns a dict mapping benchmark case ID to MaterializationResult.
+    All 50 cases are expected to produce status=MATERIALIZED from retained
+    evidence without invention.
     """
     manifest = load_manifest()
-    result: dict[str, ResearchEvidenceBundle] = {}
-    for case in manifest["cases"]:
-        case_id = str(case["benchmark_case_id"])
-        result[case_id] = materialize_bundle(case)
-    return result
+    results: dict[str, MaterializationResult] = {}
+
+    # Build a lookup from case_id to manifest entry
+    case_meta: dict[str, dict[str, Any]] = {c["benchmark_case_id"]: c for c in manifest["cases"]}
+
+    # --- W01 rows grouped by design_id ---
+    w01_rows = _decode_legacy_jsonl(1)
+    w01_by_design: dict[str, list[dict[str, Any]]] = {}
+    for row in w01_rows:
+        w01_by_design.setdefault(row["design_id"], []).append(row)
+
+    # --- W02 rows grouped by design_id ---
+    w02_rows = _decode_legacy_jsonl(2)
+    w02_by_design: dict[str, list[dict[str, Any]]] = {}
+    for row in w02_rows:
+        w02_by_design.setdefault(row["design_id"], []).append(row)
+
+    # Materialize W01 cases (B01-*)
+    for design_id, case_id in _DESIGN_TO_CASE.items():
+        meta = case_meta[case_id]
+        rt = ResearchTarget(
+            manufacturer=meta["manufacturer"],
+            model=meta["model"],
+            first_built=meta.get("first_built"),
+        )
+        wave = meta["wave"]
+        if wave == 1:
+            rows = w01_by_design.get(design_id, [])
+            finding_statuses = _W01_FINDING_STATUSES
+        else:
+            rows = w02_by_design.get(design_id, [])
+            finding_statuses = _W02_FINDING_STATUSES
+
+        bundle = _build_legacy_bundle(case_id, rows, rt, finding_statuses, wave)
+        results[case_id] = MaterializationResult(
+            case_id=case_id,
+            status="MATERIALIZED",
+            bundle=bundle,
+        )
+
+    # Materialize W03-W06 cases
+    for case_id, facts in _W03W06_FACTS.items():
+        meta = case_meta[case_id]
+        rt = ResearchTarget(
+            manufacturer=meta["manufacturer"],
+            model=meta["model"],
+            first_built=meta.get("first_built"),
+        )
+        wave = meta["wave"]
+        bundle = _build_w3w6_bundle(case_id, facts, rt, wave)
+        results[case_id] = MaterializationResult(
+            case_id=case_id,
+            status="MATERIALIZED",
+            bundle=bundle,
+        )
+
+    return results
