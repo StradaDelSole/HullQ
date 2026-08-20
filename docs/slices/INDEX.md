@@ -17,7 +17,7 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0009 | IMPLEMENTATION | DONE | Deterministic appendage/configuration normalization for explicit keel, rudder, skeg, hull and board observations using the existing BoatDesign vocabulary | SLICE-0008 |
 | SLICE-0010 | IMPLEMENTATION | DONE | Deterministic `hullq-derived-1.0.0` derived-metrics engine with accepted formulas, status precedence, six-decimal canonical precision and DerivationRecord lineage | SLICE-0009 / ADR-0008 |
 | SLICE-0011 | DESIGN_RESEARCH | REVIEW | Controlled 50-design real-web stress benchmark, measured ambiguity/conflict classes, post-hoc reference QA and benchmark-derived persistence requirements | SLICE-0010 |
-| SLICE-0012 | IMPLEMENTATION | BLOCKED | Add evidence claim semantics, structured evidence applicability and machine-ingestible ResearchEvidenceBundle before physical persistence | SLICE-0011 accepted / DONE |
+| SLICE-0012 | IMPLEMENTATION | BLOCKED | Add pre-canonical ResearchObservation, claim/applicability semantics, explicit promotion to FieldEvidence and machine-ingestible ResearchEvidenceBundle before physical persistence | SLICE-0011 accepted / DONE |
 
 ## Current execution rule
 
@@ -32,51 +32,58 @@ Acceptance evidence:
 - PR #21 merged on 2026-08-19;
 - implementation merge commit: `8f9a5ab07f454d6dfbfcb2f133c80c48b14dcc4a`.
 
-`SLICE-0011` is in `REVIEW`. The master-led research pass reached the minimum 50-design difficult corpus, coded the retained cases, measured the recurring stress classes and derived the next bounded pre-persistence requirements. It remains research-led: ChatGPT/master performed real-web source discovery and evidence assessment; Claude Code was not used as an autonomous network-research agent.
+`SLICE-0011` is in `REVIEW`. The master-led research pass reached the minimum 50-design difficult corpus, coded the retained cases, measured recurring stress classes and derived the next bounded pre-persistence requirements. It remains research-led: ChatGPT/master performed real-web source discovery and evidence assessment; Claude Code was not used as an autonomous network-research agent.
 
 Benchmark closure artifacts include:
 
 - Waves 01–06 under `research/benchmark/waves/`;
 - `research/benchmark/CONTROLLED_BENCHMARK_LEDGER.md`;
 - `research/benchmark/BENCHMARK-50-classification.csv`;
-- `research/benchmark/BENCHMARK-50-analysis.md`.
+- `research/benchmark/BENCHMARK-50-analysis.md`;
+- retained pre-contract structured exports for Waves 01/02 under `research/benchmark/legacy-observations/`.
 
 The 50-design stress corpus is deliberately difficult; its measured incidences are not sailboat-population prevalence estimates. Runtime automation/review/idempotency/cost metrics remain deferred until an executable importer/persistence path exists.
+
+The closure review found and corrected two important governance/architecture issues before acceptance:
+
+1. post-hoc SailboatData comparison is outcome-only in retained summaries/exports; no SailboatData field value is HullQ evidence or retained as fallback data;
+2. ResearchJob targets are intentionally pre-canonical, while FieldEvidence requires a stable provenance subject. SLICE-0012 therefore introduces pre-canonical `ResearchObservation` and explicit caller-supplied promotion to FieldEvidence rather than forcing identity during research.
 
 `SLICE-0012` is drafted but `BLOCKED`. It MUST NOT start until SLICE-0011 has passed current-head CI, independent closure review and explicit owner acceptance/DONE. No implementation agent may automatically begin it.
 
 ## Evidence-first sequence
 
 ```text
-reproducible toolchain                         DONE
+reproducible toolchain                            DONE
         ↓
-seed design-data source research               DONE
+seed design-data source research                  DONE
         ↓
-canonical contract runtime                     DONE
+canonical contract runtime                        DONE
         ↓
-measurement normalization                      DONE
+measurement normalization                         DONE
         ↓
-Brand / Organization identity                  DONE
+Brand / Organization identity                     DONE
         ↓
-provenance/raw observation boundary            DONE
+provenance/raw observation boundary               DONE
         ↓
-ResearchJob + source-rights gate               DONE
+ResearchJob + source-rights gate                  DONE
         ↓
-first rights-gated real adapter — Wikidata     DONE
+first rights-gated real adapter — Wikidata        DONE
         ↓
-appendage/configuration hardening              DONE
+appendage/configuration hardening                 DONE
         ↓
-derived metrics                               DONE
+derived metrics                                  DONE
         ↓
-controlled 50-design real-web benchmark        REVIEW — SLICE-0011
+controlled 50-design real-web benchmark           REVIEW — SLICE-0011
         ↓
-evidence applicability + research bundle      BLOCKED — SLICE-0012
+pre-canonical observation + evidence applicability
++ ResearchEvidenceBundle                          BLOCKED — SLICE-0012
         ↓
-PostgreSQL persistence + deterministic importer LATER
+PostgreSQL persistence + deterministic importer   LATER
         ↓
-execute same benchmark through importer/DB     LATER
+execute same benchmark through importer/DB        LATER
         ↓
-broad design-universe ingestion                NOT AUTHORIZED YET
+broad design-universe ingestion                   NOT AUTHORIZED YET
 ```
 
 ## SLICE-0011 retained research rules
@@ -85,18 +92,19 @@ broad design-universe ingestion                NOT AUTHORIZED YET
 2. Source breadth is intentionally broad; canonical confidence is intentionally strict.
 3. Preserve raw wording/value, unit, measurement basis, configuration/variant/state, retrieval date, source identity and confidence.
 4. Never invent missing values or silently resolve conflicts.
-5. SailboatData is **reference crosscheck only after independent research**. No SailboatData value becomes HullQ FieldEvidence, no missing field is filled from it, and no reference value is copied into canonical candidates. Crosscheck output is limited to comparison outcomes/anomaly triggers.
+5. SailboatData is **reference crosscheck only after independent research**. No SailboatData value becomes HullQ FieldEvidence, no missing field is filled from it, and no reference value is retained as canonical/research evidence. Crosscheck output is limited to comparison outcomes/anomaly triggers.
 6. Benchmark outputs are research evidence, not production canonical data.
 
 ## Benchmark-derived next boundary
 
-The 50-design analysis found that existing identity/configuration/provenance foundations are directionally sound, but three lossless handoff semantics must be explicit before a physical database schema is frozen:
+The 50-design analysis found that existing identity/configuration/provenance foundations are directionally sound, but four lossless handoff semantics must be explicit before a physical database schema is frozen:
 
-1. source/document `EvidenceType` must remain separate from the semantic claim role of an observation;
-2. FieldEvidence needs structured applicability/scope for year/hull/variant/option/state/individual-hull restrictions where known;
-3. master research needs a versioned machine-ingestible ResearchEvidenceBundle whose optional reference crosschecks remain outside canonical provenance.
+1. pre-canonical web research needs `ResearchObservation` because accepted `ResearchTarget` deliberately does not assert a canonical HullQ subject;
+2. source/document `EvidenceType` must remain separate from the semantic claim role of an observation;
+3. observation/evidence applicability must preserve year/hull/variant/option/state/individual-hull restrictions where known;
+4. master research needs a versioned machine-ingestible `ResearchEvidenceBundle`, with explicit promotion to successor FieldEvidence only after a stable canonical `ProvenanceSubject` is supplied; optional reference crosschecks remain outside both ResearchObservation and FieldEvidence provenance.
 
-`docs/slices/SLICE-0012-evidence-applicability-research-bundle.md` defines that small boundary. It does not authorize PostgreSQL, broad ingestion, network acquisition, automatic conflict resolution or a general ontology/graph redesign.
+`docs/slices/SLICE-0012-evidence-applicability-research-bundle.md` defines that small boundary. It does not authorize PostgreSQL, broad ingestion, network acquisition, identity resolution, automatic conflict resolution or a general ontology/graph redesign.
 
 ## Workflow note
 
@@ -106,4 +114,4 @@ GitHub `origin/main` remains canonical truth. Research changes are prepared on `
 
 ## Rolling-wave note
 
-No implementation slice is currently `READY`. SLICE-0012 remains `BLOCKED` until SLICE-0011 is explicitly accepted/DONE. After 0012 acceptance, the intended next bounded implementation is PostgreSQL persistence plus deterministic ResearchEvidenceBundle import, followed by execution of the same benchmark corpus before broad ingestion is considered.
+No implementation slice is currently `READY`. SLICE-0012 remains `BLOCKED` until SLICE-0011 is explicitly accepted/DONE. After 0012 acceptance, the intended next bounded implementation is PostgreSQL persistence plus deterministic ResearchEvidenceBundle import/promotion handling, followed by execution of the same benchmark corpus before broad ingestion is considered.
