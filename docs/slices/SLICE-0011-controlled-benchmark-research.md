@@ -32,7 +32,7 @@ Search broadly across manufacturer/shipyard pages, original brochures and manual
 
 For every useful observation preserve source identity, URL/document identity, retrieval date, raw value or wording, unit, measurement basis, generation/variant/option/state context, confidence and unresolved/conflict status where relevant. Partial records are valid; invented completeness is not.
 
-Individual-hull/broker records may be used for discovery and corroboration, but they remain hull-specific unless independent evidence supports projection to the design level.
+Individual-hull/broker records may be used for discovery and corroboration, but they remain hull-specific unless independent evidence supports projection to design level.
 
 ## Reference comparison rule
 
@@ -59,8 +59,9 @@ The SLICE-0002 seed sample is a selection aid only. Benchmark records are re-res
 | Wave 02 | 12 | 17 | multihulls, board state, named variants, appendage relationships |
 | Wave 03 | 8 | 25 | partial skeg, chronology, era applicability, sail-area basis |
 | Wave 04 | 8 | 33 | identity split, suffix semantics, legacy multihull generations, rare keel options |
+| Wave 05 | 8 | 41 | model-family reuse, under/over-splitting risk, technical lineage vs marketing lineage, malformed authoritative observations |
 
-Current actively re-researched benchmark count: **33 designs**.
+Current actively re-researched benchmark count: **41 designs**.
 
 Detailed wave evidence:
 
@@ -68,6 +69,7 @@ Detailed wave evidence:
 - `research/benchmark/waves/WAVE-02-summary.md`
 - `research/benchmark/waves/WAVE-03-summary.md`
 - `research/benchmark/waves/WAVE-04-summary.md`
+- `research/benchmark/waves/WAVE-05-summary.md`
 - `research/benchmark/CONTROLLED_BENCHMARK_LEDGER.md`
 
 ### Wave 01
@@ -86,22 +88,30 @@ Hallberg-Rassy 42E; BENETEAU Oceanis 37; Rustler 36; Seafarer 26 (McCurdy & Rhod
 
 Sadler 34; Albin Vega / Vega 27; Hallberg-Rassy 35 Rasmus; Vancouver 27; F-27 Sport Cruiser / Corsair F-27; Prout Snowgoose 37 / Snowgoose 37 Elite; Westerly Konsort; Heavenly Twins 26 → New 27 lineage.
 
+### Wave 05
+
+MacGregor 26 D/S/X/M family; BENETEAU First 35 family; Moody 36 families; Hallberg-Rassy 352; Swan 36 versus ClubSwan 36; Catalina 36 Mk I/Mk II; Dehler 34 lineage; Hunter 37/Hunter 37 Legend.
+
 ## Measurements to build
 
 Track identity-resolution success, source-discovery success, primary-source coverage, HullQ-critical-field completeness, explicit unresolved rate, conflict rate, source-internal conflict rate, generation/variant ambiguity, appendage ambiguity, measurement-basis ambiguity, dependence on community/secondary evidence, reference-comparison outcomes and estimated review reasons/rates. Add runtime repeatability and false-normalization metrics once an importer executes the corpus.
 
 ## Findings already forcing architecture attention
 
-The first 33 designs repeatedly demonstrate that:
+The first 41 designs repeatedly demonstrate that:
 
 - one scalar per physical concept is insufficient;
 - generation identity cannot be inferred from model strings alone;
-- suffixes may mean fitout-only changes or genuine hull evolution;
+- model number + builder is not globally unique over time;
+- suffixes may mean fitout-only changes, design evolution or identity-critical unrelated generations;
+- both under-splitting and over-splitting are real identity risks;
+- manufacturer marketing lineage must remain distinct from technical BoatDesign lineage;
 - configuration options can change displacement/ballast as well as draft;
 - rudder, skeg, keel and board axes must remain independent;
 - multihull folded/sailing geometry and board state are first-class data;
 - source measurement basis must survive normalization;
 - current and historical design-level facts need applicability/era context;
+- source authority does not guarantee that every observation is syntactically/semantically valid;
 - reference datasets can contain identity duplication/anomalies as well as useful QA agreement;
 - weak/defunct-builder records can be researched, but confidence depends more heavily on archival/community corroboration.
 
