@@ -59,6 +59,45 @@ jobs:
       - name: Enforce coverage
         run: uv run coverage report
 
+  db-integration:
+    name: db integration (PostgreSQL 18)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: hullq_test
+          POSTGRES_PASSWORD: hullq_test
+          POSTGRES_DB: hullq_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.12.5"
+          enable-cache: true
+          python-version: "3.14"
+
+      - name: Sync environment
+        run: uv sync --locked --all-groups
+
+      - name: Apply migrations and run integration tests
+        env:
+          HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
+        run: uv run pytest tests/persistence/ -v
+
   dependency-audit:
     name: dependency audit
     runs-on: ubuntu-latest

@@ -19,7 +19,7 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0010 | IMPLEMENTATION | DONE | `hullq-derived-1.0.0` derived metrics | SLICE-0009 / ADR-0008 |
 | SLICE-0011 | DESIGN_RESEARCH | DONE | Controlled 50-design real-web stress benchmark | SLICE-0010 |
 | SLICE-0012 | IMPLEMENTATION | DONE | Pre-canonical ResearchObservation, claim/applicability semantics, explicit promotion and ResearchEvidenceBundle | SLICE-0011 |
-| SLICE-0013 | IMPLEMENTATION | READY | PostgreSQL 18 migrations + lossless deterministic ResearchEvidenceBundle importer | SLICE-0012 accepted / DONE |
+| SLICE-0013 | IMPLEMENTATION | REVIEW | PostgreSQL 18 migrations + lossless deterministic ResearchEvidenceBundle importer | SLICE-0012 accepted / DONE |
 
 ## Current execution rule
 
@@ -77,7 +77,7 @@ controlled 50-design real-web benchmark           DONE — SLICE-0011
         ↓
 pre-canonical observation + applicability/bundle  DONE — SLICE-0012
         ↓
-PostgreSQL persistence + deterministic importer   READY — SLICE-0013
+PostgreSQL persistence + deterministic importer   REVIEW — SLICE-0013
         ↓
 run same benchmark through importer/DB            LATER / NOT READY
         ↓

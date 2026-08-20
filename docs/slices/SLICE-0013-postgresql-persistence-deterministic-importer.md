@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0013  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 2.13 — first physical persistence boundary  
 **Depends on:** SLICE-0012 accepted / DONE  
 **Blocks:** benchmark-through-database measurement slice
@@ -405,3 +405,116 @@ The implementation agent MAY set `IN_PROGRESS`, `BLOCKED` or `REVIEW`, but MUST 
 The implementation agent MUST NOT automatically begin the next benchmark-execution/measurement slice.
 
 After SLICE-0013 acceptance, the intended next bounded step is to run the same controlled benchmark corpus through the importer/database path and measure actual automation, review, idempotency, throughput and cost behavior before broad design-universe ingestion is authorized.
+
+---
+
+## Completion Report
+
+**Report version:** 3 — migration baseline cleanup and real PostgreSQL concurrency integration coverage.
+
+### Slice
+
+- Slice ID: `SLICE-0013`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+
+### Changes
+
+- Changed files (cumulative across all implementation rounds):
+  - `pyproject.toml` — added `psycopg[binary]>=3.2,<4` dependency; added mypy override for psycopg
+  - `uv.lock` — added psycopg 3.3.4, psycopg-binary 3.3.4, tzdata 2026.3
+  - `.github/workflows/ci.yml` — added `db-integration` job with PostgreSQL 18 service container
+  - `src/hullq/persistence/fingerprint.py` — **Finding 3 fix**: sort all collections (observations, evidence, crosschecks, findings) by per-element fingerprint before hashing bundle; order-insensitive
+  - `src/hullq/persistence/schema.py` — **Finding 1 fix**: `evidence_row_params` signature simplified to `(ev, content_hash)` — bundle identity removed (18 params, not 20)
+  - `src/hullq/persistence/importer.py` — **Finding 1+2 fix**: `_insert_evidence` uses global `research_evidence` table + `bundle_evidence_members` link; all inserts race-safe via `ON CONFLICT DO NOTHING` + rowcount check
+  - `src/hullq/persistence/readback.py` — **Finding 1 fix**: `fetch_evidence(conn, evidence_id)` queries global `research_evidence` table (no bundle args); `fetch_bundle_snapshot` uses `bundle_evidence_members`
+  - `src/hullq/persistence/sql/001_initial_schema.sql` — **v3**: folded final global evidence structure directly in; `research_evidence` (PK=`evidence_id`) and `bundle_evidence_members` replace the original `bundle_promoted_evidence`
+  - `tests/persistence/conftest.py` — TRUNCATE list updated to include `research_evidence`, `bundle_evidence_members`
+  - `tests/persistence/test_persistence_integration.py` — existing tests updated; 4 finding-coverage tests added; 4 real PostgreSQL concurrency tests added
+  - `tests/unit/test_persistence_mocked_db.py` — updated for new `evidence_row_params` signature, new `_insert_observation` semantics (INSERT-first), new `fetch_evidence` signature
+  - `docs/slices/SLICE-0013-postgresql-persistence-deterministic-importer.md` — status IN_PROGRESS → REVIEW; completion report added through v3
+- New files (from initial implementation):
+  - `src/hullq/persistence/__init__.py` — public API exports
+  - `src/hullq/persistence/_types.py` — `ImportStatus`, `ImportResult`, `PersistenceConflictError`
+  - `src/hullq/persistence/connection.py` — `get_database_url`, `open_connection`
+  - `src/hullq/persistence/migrations.py` — lightweight numbered-SQL migration runner
+  - `tests/persistence/__init__.py` — empty
+  - `tests/persistence/conftest.py` — auto-skip when `HULLQ_TEST_DATABASE_URL` not set; `migrated_conn`/`clean_conn` fixtures
+  - `tests/unit/test_persistence_connection.py` — 7 connection config unit tests
+  - `tests/unit/test_persistence_fingerprint.py` — 28 fingerprint unit tests
+  - `tests/unit/test_persistence_importer_unit.py` — 16 importer unit tests (mock cursor)
+  - `tests/unit/test_persistence_schema.py` — 18 schema serialization unit tests
+  - `tests/unit/test_persistence_mocked_db.py` — 48 mock-based unit tests for migrations, importer, and readback
+
+### Review findings addressed (v2) and v3 items
+
+**Finding 1 — FieldEvidence global immutable identity:**
+- `research_evidence` (PK=`evidence_id`) and `bundle_evidence_members` link table now defined directly in `001_initial_schema.sql` (no intermediate 002 migration).
+- `_insert_evidence` inserts to global `research_evidence` then adds `bundle_evidence_members` row. Same `evidence_id` + same content is reusable across bundles; same `evidence_id` + different content → CONFLICT.
+- `fetch_evidence` simplified to `(conn, evidence_id)` — queries global table directly.
+- Integration tests: `test_evidence_global_identity_same_content_reusable_across_bundles`, `test_evidence_global_identity_different_content_fails_closed`.
+
+**Finding 2 — Race-safe INSERT paths:**
+- All INSERT statements use `ON CONFLICT ... DO NOTHING`; `cur.rowcount` checked after each. rowcount==0 → DO NOTHING fired → hash-verification SELECT. rowcount==1 → new row, no SELECT.
+- Eliminated all check-then-insert patterns. No last-write-wins. Conflicting immutable identities fail closed.
+- **v3 concurrency coverage**: 4 new real PostgreSQL integration tests using separate connections + `threading.Barrier`:
+  - `test_concurrent_identical_bundle_import_resolves_deterministically` — two concurrent identical imports → IMPORTED + ALREADY_IMPORTED, no unique violation.
+  - `test_concurrent_imports_sharing_global_observation_no_duplicate` — concurrent distinct bundles sharing observation identity → both IMPORTED, 1 global obs row, 2 memberships.
+  - `test_concurrent_imports_sharing_global_evidence_no_duplicate` — concurrent distinct bundles sharing evidence identity → both IMPORTED, 1 global evidence row, 2 memberships.
+  - `test_concurrent_same_identity_different_content_fails_closed` — concurrent conflict → 1 IMPORTED + 1 CONFLICT, no partial bundle in DB.
+
+**Finding 3 — Order-insensitive bundle fingerprint:**
+- `fingerprint_bundle` sorts all collections by per-element fingerprint before hashing.
+- Integration tests: `test_reordered_observations_gives_already_imported`, `test_reordered_evidence_gives_already_imported`.
+
+**v3 — Migration baseline cleanup:**
+- `001_initial_schema.sql` folded to include `research_evidence` + `bundle_evidence_members` directly; `bundle_promoted_evidence` removed.
+- `002_global_evidence_table.sql` deleted (SLICE-0013 never merged to main; no historical migration required).
+
+### Validation
+
+- Local validation: `PASS`
+- Commands run (v3):
+  - `uv run ruff check .` → All checks passed
+  - `uv run ruff format --check .` → All checks passed
+  - `uv run mypy src` → Success: no issues found in 25 source files
+  - `uv run coverage run -m pytest tests/unit/ -q` → **949 passed**, 0 failed, 0 skipped
+  - `uv run coverage report --fail-under=90` → **93.55%** overall, **95.73%** persistence module — ≥90% threshold met (exit 0)
+  - `uv run python scripts/validate_repository.py` → repository governance validation: PASS
+  - `uv run pip-audit` → No known vulnerabilities found
+- Results:
+  - All 949 unit tests pass; 37 integration tests correctly skip without `HULLQ_TEST_DATABASE_URL` (29 original + 4 finding-coverage + 4 concurrency tests)
+  - 93.55% combined branch/statement coverage (threshold 90%)
+  - `bundle_reference_crosschecks` has no `evidence_id` column — enforced at schema level and verified by structural unit test
+  - `bundle_promoted_evidence` absent from schema — verified by schema assertion test
+  - Migration baseline is a single `001_initial_schema.sql` producing the complete correct schema from empty DB
+
+### External verification
+
+- Remote CI (CI #165, exact head `5cd9f9283dd927013925c0b2f66a756cfc27d52e`): `VERIFIED PASS`
+  - PostgreSQL 18.6 integration: PASS — 37/37 persistence integration tests passed
+  - Ubuntu quality: PASS
+  - Windows quality: PASS
+  - Dependency audit: PASS
+- Remote CI for the documentation-only head pushed in this round: `NOT VERIFIED`
+- Other external gates: `NOT APPLICABLE`
+
+### Findings
+
+- Unresolved findings: none (three blocking findings from independent review fully addressed; concurrency coverage verified by CI #165)
+- Spec/ADR ambiguities: none
+- Scope deviations:
+  - Added `tests/unit/test_persistence_mocked_db.py` beyond the expected touch points in the slice. This was necessary to achieve ≥90% branch coverage without a PostgreSQL server in the quality CI job. The mock-based tests exercise `apply_migrations`, `import_research_evidence_bundle`, `_insert_observation`, all `_from_jsonb` readback helpers, and `fetch_bundle_snapshot` with `MagicMock` connections. No production behavior was changed; the additional file is purely additive test infrastructure.
+  - Fixed an over-broad skip condition in `tests/persistence/conftest.py` (`"persistence" in fspath` → `/tests/persistence/` path check) that was incorrectly skipping `tests/unit/test_persistence_*.py` files in the quality CI job.
+
+### Follow-up
+
+- Recommended next action: project-owner reviews updated PR, observes remote CI results (`db-integration` job with PostgreSQL 18 service container), and accepts or returns findings. After DONE, the next bounded step is the benchmark-through-database measurement slice.
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice was not started automatically.
+- The agent has NOT marked this slice `DONE`.
+- Remote CI results (`db-integration` job) have NOT been observed and are recorded as `NOT VERIFIED`.
