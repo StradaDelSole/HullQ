@@ -420,7 +420,7 @@ After SLICE-0013 acceptance, the intended next bounded step is to run the same c
 
 ### Changes
 
-- Changed files (cumulative across both implementation rounds):
+- Changed files (cumulative across all implementation rounds):
   - `pyproject.toml` — added `psycopg[binary]>=3.2,<4` dependency; added mypy override for psycopg
   - `uv.lock` — added psycopg 3.3.4, psycopg-binary 3.3.4, tzdata 2026.3
   - `.github/workflows/ci.yml` — added `db-integration` job with PostgreSQL 18 service container
@@ -428,17 +428,16 @@ After SLICE-0013 acceptance, the intended next bounded step is to run the same c
   - `src/hullq/persistence/schema.py` — **Finding 1 fix**: `evidence_row_params` signature simplified to `(ev, content_hash)` — bundle identity removed (18 params, not 20)
   - `src/hullq/persistence/importer.py` — **Finding 1+2 fix**: `_insert_evidence` uses global `research_evidence` table + `bundle_evidence_members` link; all inserts race-safe via `ON CONFLICT DO NOTHING` + rowcount check
   - `src/hullq/persistence/readback.py` — **Finding 1 fix**: `fetch_evidence(conn, evidence_id)` queries global `research_evidence` table (no bundle args); `fetch_bundle_snapshot` uses `bundle_evidence_members`
+  - `src/hullq/persistence/sql/001_initial_schema.sql` — **v3**: folded final global evidence structure directly in; `research_evidence` (PK=`evidence_id`) and `bundle_evidence_members` replace the original `bundle_promoted_evidence`
   - `tests/persistence/conftest.py` — TRUNCATE list updated to include `research_evidence`, `bundle_evidence_members`
-  - `tests/persistence/test_persistence_integration.py` — existing tests updated; 5 new integration tests added (Finding 1: global evidence identity; Finding 3: reordered content idempotency)
+  - `tests/persistence/test_persistence_integration.py` — existing tests updated; 4 finding-coverage tests added; 4 real PostgreSQL concurrency tests added
   - `tests/unit/test_persistence_mocked_db.py` — updated for new `evidence_row_params` signature, new `_insert_observation` semantics (INSERT-first), new `fetch_evidence` signature
-  - `docs/slices/SLICE-0013-postgresql-persistence-deterministic-importer.md` — status IN_PROGRESS → REVIEW; completion report added; v2 update with finding fixes
+  - `docs/slices/SLICE-0013-postgresql-persistence-deterministic-importer.md` — status IN_PROGRESS → REVIEW; completion report added through v3
 - New files (from initial implementation):
   - `src/hullq/persistence/__init__.py` — public API exports
   - `src/hullq/persistence/_types.py` — `ImportStatus`, `ImportResult`, `PersistenceConflictError`
   - `src/hullq/persistence/connection.py` — `get_database_url`, `open_connection`
   - `src/hullq/persistence/migrations.py` — lightweight numbered-SQL migration runner
-  - `src/hullq/persistence/sql/001_initial_schema.sql` — initial schema: `research_bundles`, `research_observations`, `bundle_observation_members`, `bundle_unresolved_findings`, `bundle_reference_crosschecks` (no evidence table here — see 002)
-  - `src/hullq/persistence/sql/002_global_evidence_table.sql` — **Finding 1 fix**: creates `research_evidence` (global PK=`evidence_id`) and `bundle_evidence_members`; drops `bundle_promoted_evidence`
   - `tests/persistence/__init__.py` — empty
   - `tests/persistence/conftest.py` — auto-skip when `HULLQ_TEST_DATABASE_URL` not set; `migrated_conn`/`clean_conn` fixtures
   - `tests/unit/test_persistence_connection.py` — 7 connection config unit tests
@@ -484,7 +483,7 @@ After SLICE-0013 acceptance, the intended next bounded step is to run the same c
   - `uv run python scripts/validate_repository.py` → repository governance validation: PASS
   - `uv run pip-audit` → No known vulnerabilities found
 - Results:
-  - All 949 unit tests pass; 38 integration tests correctly skip without `HULLQ_TEST_DATABASE_URL` (29 original + 5 finding-coverage + 4 concurrency tests)
+  - All 949 unit tests pass; 37 integration tests correctly skip without `HULLQ_TEST_DATABASE_URL` (29 original + 4 finding-coverage + 4 concurrency tests)
   - 93.55% combined branch/statement coverage (threshold 90%)
   - `bundle_reference_crosschecks` has no `evidence_id` column — enforced at schema level and verified by structural unit test
   - `bundle_promoted_evidence` absent from schema — verified by schema assertion test
@@ -492,17 +491,21 @@ After SLICE-0013 acceptance, the intended next bounded step is to run the same c
 
 ### External verification
 
-- Remote CI: `NOT VERIFIED` — awaiting GitHub CI run on the new exact head
+- Remote CI (CI #165, exact head `5cd9f9283dd927013925c0b2f66a756cfc27d52e`): `VERIFIED PASS`
+  - PostgreSQL 18.6 integration: PASS — 37/37 persistence integration tests passed
+  - Ubuntu quality: PASS
+  - Windows quality: PASS
+  - Dependency audit: PASS
+- Remote CI for the documentation-only head pushed in this round: `NOT VERIFIED`
 - Other external gates: `NOT APPLICABLE`
 
 ### Findings
 
-- Unresolved findings: none (three blocking findings from independent review fully addressed)
+- Unresolved findings: none (three blocking findings from independent review fully addressed; concurrency coverage verified by CI #165)
 - Spec/ADR ambiguities: none
 - Scope deviations:
   - Added `tests/unit/test_persistence_mocked_db.py` beyond the expected touch points in the slice. This was necessary to achieve ≥90% branch coverage without a PostgreSQL server in the quality CI job. The mock-based tests exercise `apply_migrations`, `import_research_evidence_bundle`, `_insert_observation`, all `_from_jsonb` readback helpers, and `fetch_bundle_snapshot` with `MagicMock` connections. No production behavior was changed; the additional file is purely additive test infrastructure.
   - Fixed an over-broad skip condition in `tests/persistence/conftest.py` (`"persistence" in fspath` → `/tests/persistence/` path check) that was incorrectly skipping `tests/unit/test_persistence_*.py` files in the quality CI job.
-  - Added `src/hullq/persistence/sql/002_global_evidence_table.sql` migration to fix Finding 1; not in the original expected touch points but required by the review fix.
 
 ### Follow-up
 
