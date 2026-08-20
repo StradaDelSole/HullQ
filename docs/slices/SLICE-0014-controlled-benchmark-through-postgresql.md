@@ -483,14 +483,25 @@ Independent review of PR #29 (head `70d1a96`) found 6 blocking issues. All 6 are
 
 ### External verification (Session 2)
 
-- Remote CI (GitHub Actions quality gate): `NOT VERIFIED` — new commit `f9b5adb` pushed at time of report; CI must be observed post-push.
-- Remote CI (db-integration PostgreSQL gate + benchmark runner): `NOT VERIFIED` — requires CI observation; benchmark runner now also executed in CI job and result validated against schema.
+- Remote CI #173 for head `d871d51` (pre-session-3 state): **VERIFIED PASS** — PostgreSQL 18.6, 158 persistence tests, benchmark runner, Ubuntu, Windows, dependency audit.
+
+### External verification (Session 3 — review #4985913258 fixes)
+
+- Remote CI for new head `ee84e6c`: `NOT VERIFIED` — pushed at time of report; CI must be observed post-push.
 - Coverage threshold (90%): `NOT VERIFIED` — must be observed in CI run.
 
 ### Persistence results (local integration tests unavailable — no HULLQ_TEST_DATABASE_URL locally)
 
 - Integration tests (`tests/persistence/`) skipped locally when `HULLQ_TEST_DATABASE_URL` is unset.
 - All persistence outcomes (first_pass_imported, reimport_already_imported, fresh_run_imported, readback_mismatches, semantic_mismatches, recommendation) are `NOT VERIFIED` pending CI db-integration job.
+
+### Session 3 local gate results
+
+- ruff format: PASS (4 files reformatted)
+- ruff check: PASS (All checks passed, after fix for I001/SIM102)
+- mypy src: PASS (no issues in 25 source files)
+- pytest tests/unit/: **979 passed** in 25.92s — PASS (4 new tests added)
+- Coverage (src + scripts): 93.55%
 
 ### Scope deviations
 
@@ -500,20 +511,18 @@ Independent review of PR #29 (head `70d1a96`) found 6 blocking issues. All 6 are
 
 ### Findings
 
-- **Issue 1 resolved:** W01/W02 cases now use real field-level observations from committed legacy JSONL. W03–W06 use embedded field-/claim-level facts from wave summaries. All 50 use real `EvidenceType`/`ClaimSemantics`/`ObservationApplicability`.
-- **Issue 2 resolved:** Runner derives all counts from actual `MaterializationResult.status`. Recommendation conditioned on `mat_count == total` and all persistence phase metrics.
-- **Issue 3 resolved:** Phase 4 and `fresh_db_results` fixture use schema isolation — fresh schema with migrations applied from zero, not TRUNCATE of already-migrated schema.
-- **Issue 4 resolved:** CI db-integration job now executes benchmark runner and validates JSON output against result_schema.json.
-- **Issue 5 resolved:** Exhaustive semantic readback test added for 4 hard cases covering all 10+ observation fields.
-- **Issue 6 confirmed:** Strict scope maintained throughout.
+- **Blocker 1 resolved (fail-closed semantics):** `_map_claim_semantics` now defaults to `ClaimSemantics.UNKNOWN`; uses `_FIELD_TO_CLAIM`, `_NOMINAL_DESIGN_FIELDS`, `_OTHER_CLAIM_FIELDS` lookup tables. `_map_evidence_type` removes tier-A fallback; classifies via source-name keywords only. B06-008 J/105 class rule fields produce `CLASS_RULE_CONSTRAINT`. Four focused unit tests added.
+- **Blocker 2 resolved (materialization status):** `materialize_all` derives status from actual conversion outcome via try/except; a-priori `test_materialization_all_50_materialized` replaced with `test_materialization_status_derived_from_conversion`; runner `human_review_burden` uses real counts; `automation_rate_disclaimer` added to result doc.
+- **Blocker 3 resolved (corpus-wide semantic readback):** `compare_observation_semantics()` reusable helper covers all semantic fields (source_id, raw, normalized_candidate, evidence_type, claim_semantics, all 10 applicability fields, producer, research_context, confidence, notes, intended_field_pointer). Runner Phase 2 and Phase 4 upgraded to full semantic comparison. `test_corpus_wide_semantic_readback_all_bundles` (50 bundles, first-pass schema) and `test_corpus_wide_semantic_readback_fresh_schema` (fresh DROP+CREATE schema) added to persistence tests.
+- **Blocker 4 resolved (outputs + traceability):** `_validate_result_json` raises on failure (not just prints); Phase 4 uses `DROP SCHEMA IF EXISTS` before `CREATE SCHEMA`; same fix in `fresh_db_results` fixture; `_write_report()` generates `BENCHMARK-REPORT.md` with MEASURED FACT / INTERPRETATION / RECOMMENDED NEXT ACTION sections; `--report` and `--sha` CLI args added; `HULLQ_IMPL_SHA` env var support; CI uploads both `BENCHMARK-RESULT.json` and `BENCHMARK-REPORT.md` as artifacts.
 
 ### Benchmark recommendation
 
-Cannot confirm `G3_CANDIDATE` until CI db-integration job runs with new commit and persistence phase outcomes are observed. Local evidence (all 50 materialized, determinism proven) is consistent with `G3_CANDIDATE` if persistence phases also succeed. The actual recommendation will be in `BENCHMARK-RESULT.json` produced by CI.
+Cannot confirm `G3_CANDIDATE` until CI db-integration job runs with new head `ee84e6c` and persistence phase outcomes are observed. Local evidence (all 50 materialized, 979 unit tests pass, determinism proven) is consistent with `G3_CANDIDATE` if persistence phases also succeed. The actual recommendation will be in `BENCHMARK-RESULT.json` produced by CI and uploaded as an artifact.
 
 ### Follow-up
 
-- Recommended next action: observe CI for new head `f9b5adb` on PR #29. If both quality and db-integration jobs (including benchmark runner) pass, the slice is ready for independent acceptance review.
+- Recommended next action: observe CI for new head `ee84e6c` on PR #29. If both quality and db-integration jobs (including benchmark runner and schema validation) pass, the slice is ready for independent acceptance review.
 - Do NOT start SLICE-0015 or the 1,000-design bootstrap until this slice is explicitly accepted as `DONE` by the project owner.
 
 ### Agent declaration
@@ -522,4 +531,4 @@ Cannot confirm `G3_CANDIDATE` until CI db-integration job runs with new commit a
 - No unverified acceptance criterion was marked as passed.
 - The next slice was not started automatically.
 - The agent has NOT marked this slice `DONE`.
-- Remote CI for new head `f9b5adb` is `NOT VERIFIED` at time of this report.
+- Remote CI for new head `ee84e6c` is `NOT VERIFIED` at time of this report.
