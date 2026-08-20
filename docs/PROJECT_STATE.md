@@ -46,52 +46,33 @@ Auth remains deferred under OQ-014. OQ-006 controls alert cadence/freshness; OQ-
 ## Completed foundation and implementation
 
 ### SLICE-0001 — repository bootstrap — DONE
-
 Repository governance, docs-to-code workflow, locked toolchain and cross-platform quality gates established.
 
 ### SLICE-0002 — real design-data source research — DONE
-
-Retained findings include:
-
-1. Wikidata CC0 is the strongest current broad bootstrap candidate.
-2. No single SailboatData replacement exists; HullQ needs broad open bootstrap plus progressive independent enrichment.
-3. Appendage/configuration depth is materially harder than ordinary scalar dimensions.
-4. Measurement basis, option-sensitive values and source conflicts must remain explicit.
-5. Primary sources can conflict or be internally malformed.
-6. Rudder/skeg classification creates disproportionate research/review complexity.
-
-The imported/reference SailboatData material remains research/reference only and MUST NOT become an invisible production-value source.
+Retained findings include broad open bootstrap + progressive independent enrichment, explicit measurement/configuration semantics, conflict preservation and stronger appendage review needs. The old/reference SailboatData material remains research/reference only and MUST NOT become an invisible production-value source.
 
 ### SLICE-0003 — canonical contract runtime — DONE
-
 Draft-2020-12 schema registry/validation boundary accepted and merged.
 
 ### SLICE-0004 — measurement normalization — DONE
-
 Deterministic exact unit normalization accepted with raw text/semantic-label preservation and no arbitrary-string inference.
 
 ### SLICE-0005 — identity contracts/search labels — DONE
-
-Accepted first-class Brand/Organization identities, BoatModel/BoatDesign identity separation, entity-scoped aliases and deterministic search-label projections.
+Accepted Brand/Organization identities, BoatModel/BoatDesign separation, entity-scoped aliases and deterministic search-label projections.
 
 ### SLICE-0006 — provenance/raw observation runtime — DONE
-
 Accepted FieldEvidence/FieldResolution boundary, immutable raw observations, normalized candidates, conflict/supersession/current-resolution validation and source-impact lookup.
 
 ### SLICE-0007 — ResearchJob/source-rights gate — DONE
-
 Accepted deterministic use-specific rights decisions, fail-closed automated-access gating, extraction telemetry and ResearchJob integration.
 
 ### SLICE-0008 — first rights-gated real adapter: Wikidata CC0 — DONE
-
 Accepted bounded Wikidata discovery/entity acquisition with rights gate before network access, qualifier-aware FieldEvidence and deterministic extraction behavior.
 
 ### SLICE-0009 — appendage/configuration normalization — DONE
-
 Accepted independent keel/rudder/skeg/hull/board axes, exact/explicit-alias normalization, count handling, option/variant/state scope preservation and fail-closed baseline projection.
 
 ### SLICE-0010 — derived metrics engine — DONE
-
 Accepted methodology `hullq-derived-1.0.0` after independent review/amendment.
 
 Acceptance evidence:
@@ -102,8 +83,6 @@ Acceptance evidence:
 - 92.62% branch coverage; `derived_metrics.py` 99.50%;
 - repository validator, Ruff/format, strict mypy and pip-audit clean;
 - PR #21 merge commit: `8f9a5ab07f454d6dfbfcb2f133c80c48b14dcc4a`.
-
-The runtime computes the six approved metrics from explicit effective inputs, preserves basis/status/applicability semantics and produces DerivationRecord lineage. It does not resolve source conflicts, build full configurations or persist data.
 
 ## Current operational position — SLICE-0011 REVIEW
 
@@ -128,10 +107,12 @@ Source discovery intentionally spans manufacturer/shipyard material, original br
 
 SailboatData is used only after independent HullQ research as a QA/reference comparison.
 
-- no SailboatData value becomes HullQ FieldEvidence;
+- no SailboatData value becomes HullQ FieldEvidence or ResearchObservation;
 - no missing HullQ value is filled from SailboatData;
 - SailboatData does not resolve conflicts;
-- comparison records retain outcomes/anomaly triggers only, not reference field values as HullQ provenance.
+- retained wave summaries and legacy structured exports contain comparison outcomes/anomaly classes only, not SailboatData field values.
+
+The closure review explicitly sanitized Waves 03–06 to enforce this outcome-only rule consistently.
 
 ### Research corpus
 
@@ -147,6 +128,8 @@ Six waves reached the deliberate minimum corpus:
 | 06 | 9 | 50 |
 
 Detailed evidence is under `research/benchmark/waves/` and the rolling ledger is `research/benchmark/CONTROLLED_BENCHMARK_LEDGER.md`.
+
+The exact pre-contract structured observation exports created during Waves 01/02 are retained losslessly under `research/benchmark/legacy-observations/` with decoded-row counts and SHA-256 hashes. They are migration fixtures only, not canonical contracts.
 
 ### Measured 50-design stress benchmark
 
@@ -173,11 +156,12 @@ Actual automated-acceptance rate, false-normalization rate, idempotency, machine
 
 ## Benchmark-derived architecture decision
 
-The 50-design corpus validates most accepted domain foundations and identifies three concrete lossless-data gaps that should be closed **before** freezing PostgreSQL tables:
+The 50-design corpus validates most accepted domain foundations and identifies four concrete lossless-data gaps that should be closed **before** freezing PostgreSQL tables:
 
-1. **claim semantics:** existing `EvidenceType` describes source/document class but does not distinguish nominal design values, factory option values, operating-state values, individual-hull values, class-rule constraints, measurement-certificate values, published calculations or identity/chronology claims;
-2. **evidence applicability:** FieldEvidence needs structured year/hull/variant/option/state/individual-hull scope where known rather than hiding critical applicability in free-text notes;
-3. **research handoff:** master research needs a versioned machine-ingestible `ResearchEvidenceBundle` so source-linked partial/unresolved research can enter deterministic import/persistence without narrative text silently becoming canonical data.
+1. **pre-canonical observation:** accepted `ResearchJob.target` is deliberately only raw `manufacturer/model/first_built` and may not yet have a stable HullQ subject, while FieldEvidence requires a typed canonical `ProvenanceSubject`; web research therefore needs a pre-canonical `ResearchObservation` boundary;
+2. **claim semantics:** existing `EvidenceType` describes source/document class but does not distinguish nominal design values, factory option values, operating-state values, individual-hull values, class-rule constraints, measurement-certificate values, published calculations or identity/chronology claims;
+3. **observation/evidence applicability:** structured year/hull/variant/option/state/individual-hull scope is needed where known rather than hiding critical applicability in free-text notes;
+4. **research handoff + promotion:** master research needs a versioned machine-ingestible `ResearchEvidenceBundle`; promotion from ResearchObservation to successor FieldEvidence must require an explicit caller-supplied stable canonical subject after identity resolution and must not itself perform identity resolution or FieldResolution.
 
 The existing identity model, FieldResolution states, independent appendage axes and raw/normalized separation remain directionally correct and should not be redesigned wholesale.
 
@@ -189,14 +173,16 @@ Operating-state projection and explicit technical/marketing lineage relationship
 
 It is intentionally limited to:
 
+- pre-canonical immutable ResearchObservation;
 - observation claim semantics separate from source/document EvidenceType;
-- structured FieldEvidence applicability;
-- successor FieldEvidence contract without mutating v0.2;
-- versioned ResearchEvidenceBundle;
+- structured applicability/scope;
+- successor FieldEvidence without mutating v0.2;
+- explicit deterministic promotion only after caller supplies stable `ProvenanceSubject`;
+- versioned ResearchEvidenceBundle that supports partial/identity-ambiguous research;
 - structurally separate non-provenance reference-crosscheck entries;
 - deterministic runtime/value-object/validation support and benchmark-derived fixtures.
 
-It explicitly excludes PostgreSQL, ORM/migrations, web acquisition/crawling, authority ranking, automatic conflict resolution, broad taxonomy expansion, query/API/frontend work and SailboatData ingestion.
+It explicitly excludes PostgreSQL, ORM/migrations, web acquisition/crawling, fuzzy identity resolution, authority ranking, automatic conflict resolution, broad taxonomy expansion, query/API/frontend work and SailboatData ingestion.
 
 SLICE-0012 remains `BLOCKED` until SLICE-0011 is accepted/DONE. No implementation slice is currently `READY`.
 
@@ -205,15 +191,15 @@ SLICE-0012 remains `BLOCKED` until SLICE-0011 is accepted/DONE. No implementatio
 ```text
 SLICE-0011  controlled 50-design benchmark + analysis        REVIEW
       ↓
-SLICE-0012  evidence applicability + ResearchEvidenceBundle BLOCKED
+SLICE-0012  ResearchObservation + applicability/bundle       BLOCKED
       ↓
-SLICE-0013  PostgreSQL persistence + deterministic importer LATER
+SLICE-0013  PostgreSQL persistence + deterministic importer  LATER
       ↓
-execute same benchmark through importer/DB                  LATER
+identity/promotion + same benchmark through importer/DB      LATER
       ↓
-measure automation/review/idempotency/cost                  LATER
+measure automation/review/idempotency/cost                   LATER
       ↓
-1,000-design broad bootstrap                                NOT AUTHORIZED YET
+1,000-design broad bootstrap                                 NOT AUTHORIZED YET
 ```
 
 The benchmark corpus should not be expanded merely to reach a higher count. Additional designs are justified only if later importer execution exposes a materially missing problem class.
