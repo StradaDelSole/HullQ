@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-20  
-**Current stage:** Stage 2.10–2.11 — SLICE-0011 controlled real-web benchmark `REVIEW`  
+**Current stage:** Stage 2.12 — SLICE-0012 evidence/applicability/research-bundle contract `READY`  
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -84,11 +84,23 @@ Acceptance evidence:
 - repository validator, Ruff/format, strict mypy and pip-audit clean;
 - PR #21 merge commit: `8f9a5ab07f454d6dfbfcb2f133c80c48b14dcc4a`.
 
-## Current operational position — SLICE-0011 REVIEW
+### SLICE-0011 — controlled 50-design benchmark — DONE
 
-SLICE-0011 is the master/ChatGPT-led controlled real-web benchmark. Claude Code was deliberately **not** used as the autonomous web-research agent.
+The master/ChatGPT-led real-web benchmark reached the 50-design minimum gate and was explicitly accepted by the project owner.
 
-Research policy:
+Acceptance evidence:
+
+- final accepted PR head: `9f1859fe9762e05bd2a5be57c550f255be302c9b`;
+- GitHub Actions CI run #151: PASS on that exact head;
+- Ubuntu quality: PASS;
+- Windows quality: PASS;
+- dependency audit: PASS;
+- independent closure review: no remaining blocking scope/data-governance issue;
+- explicit project-owner acceptance on 2026-08-20;
+- PR #22 merged on 2026-08-20;
+- merge commit: `668e91937d27dc9c70760301b92ce0ded41abb2f`.
+
+Research policy was:
 
 ```text
 broad independent web research
@@ -99,44 +111,9 @@ broad independent web research
 → persistence requirements derived from evidence
 ```
 
-Source discovery intentionally spans manufacturer/shipyard material, original brochures/manuals, designers, class/owners associations, archives, specialist publications/databases, broker technical records, forums/owner communities, refit/restoration material and other useful leads.
+SailboatData remained outcome-only QA/reference comparison after independent research: no reference field value became HullQ FieldEvidence/ResearchObservation, no missing value was filled from it, and it did not resolve conflicts.
 
-**Source breadth is intentionally broad; canonical confidence is intentionally strict.**
-
-### SailboatData reference rule
-
-SailboatData is used only after independent HullQ research as a QA/reference comparison.
-
-- no SailboatData value becomes HullQ FieldEvidence or ResearchObservation;
-- no missing HullQ value is filled from SailboatData;
-- SailboatData does not resolve conflicts;
-- retained wave summaries and legacy structured exports contain comparison outcomes/anomaly classes only, not SailboatData field values.
-
-The closure review explicitly sanitized Waves 03–06 to enforce this outcome-only rule consistently.
-
-### Research corpus
-
-Six waves reached the deliberate minimum corpus:
-
-| Wave | Designs | Cumulative |
-|---|---:|---:|
-| 01 | 5 | 5 |
-| 02 | 12 | 17 |
-| 03 | 8 | 25 |
-| 04 | 8 | 33 |
-| 05 | 8 | 41 |
-| 06 | 9 | 50 |
-
-Detailed evidence is under `research/benchmark/waves/` and the rolling ledger is `research/benchmark/CONTROLLED_BENCHMARK_LEDGER.md`.
-
-The exact pre-contract structured observation exports created during Waves 01/02 are retained losslessly under `research/benchmark/legacy-observations/` with decoded-row counts and SHA-256 hashes. They are migration fixtures only, not canonical contracts.
-
-### Measured 50-design stress benchmark
-
-Retained coded analysis:
-
-- `research/benchmark/BENCHMARK-50-classification.csv`;
-- `research/benchmark/BENCHMARK-50-analysis.md`.
+Six waves covered 50 deliberately difficult designs. The retained exact pre-contract Wave 01/02 exports remain under `research/benchmark/legacy-observations/` as migration fixtures only.
 
 Measured non-exclusive incidences in the intentionally difficult stress corpus:
 
@@ -150,9 +127,7 @@ Measured non-exclusive incidences in the intentionally difficult stress corpus:
 - measurement/definition-basis semantics mattered: **22/50 (44%)**;
 - material explicit conflict or unresolved question: **20/50 (40%)**.
 
-These values are **not population prevalence estimates**. The corpus was deliberately selected to be difficult.
-
-Actual automated-acceptance rate, false-normalization rate, idempotency, machine processing cost and human review minutes cannot be measured from manual research and are intentionally deferred until an executable importer/persistence path exists.
+These values are stress-corpus incidences, not population prevalence estimates.
 
 ## Benchmark-derived architecture decision
 
@@ -165,11 +140,9 @@ The 50-design corpus validates most accepted domain foundations and identifies f
 
 The existing identity model, FieldResolution states, independent appendage axes and raw/normalized separation remain directionally correct and should not be redesigned wholesale.
 
-Operating-state projection and explicit technical/marketing lineage relationships remain bounded later concerns; they do not justify another broad architecture phase before persistence.
+## Current operational position — SLICE-0012 READY
 
-## SLICE-0012 — drafted, BLOCKED
-
-`docs/slices/SLICE-0012-evidence-applicability-research-bundle.md` defines the small benchmark-driven contract hardening boundary.
+`docs/slices/SLICE-0012-evidence-applicability-research-bundle.md` is the only current READY implementation slice.
 
 It is intentionally limited to:
 
@@ -184,16 +157,16 @@ It is intentionally limited to:
 
 It explicitly excludes PostgreSQL, ORM/migrations, web acquisition/crawling, fuzzy identity resolution, authority ranking, automatic conflict resolution, broad taxonomy expansion, query/API/frontend work and SailboatData ingestion.
 
-SLICE-0012 remains `BLOCKED` until SLICE-0011 is accepted/DONE. No implementation slice is currently `READY`.
+SLICE-0012 may be started only through the normal `START_SLICE.bat` isolated worktree workflow. Claude Code implements exactly this slice and must return the mandatory completion report. The implementation agent must not mark it `DONE`; normal successful handoff is `REVIEW`.
 
 ## Near-term path
 
 ```text
-SLICE-0011  controlled 50-design benchmark + analysis        REVIEW
+SLICE-0011  controlled 50-design benchmark + analysis        DONE
       ↓
-SLICE-0012  ResearchObservation + applicability/bundle       BLOCKED
+SLICE-0012  ResearchObservation + applicability/bundle       READY
       ↓
-SLICE-0013  PostgreSQL persistence + deterministic importer  LATER
+SLICE-0013  PostgreSQL persistence + deterministic importer  LATER / NOT READY
       ↓
 identity/promotion + same benchmark through importer/DB      LATER
       ↓
@@ -206,7 +179,7 @@ The benchmark corpus should not be expanded merely to reach a higher count. Addi
 
 ## AI repository workflow — ACTIVE
 
-Implementation slices normally use:
+Implementation slices use:
 
 ```text
 START_SLICE.bat
@@ -217,21 +190,15 @@ FINISH_SLICE.bat
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned implementation branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-SLICE-0011 is different: it is master-led DESIGN_RESEARCH and is prepared on `research/0011-controlled-benchmark` through PR #22.
+## Do not start yet
 
-## Current closure gates
-
-SLICE-0011 may become `DONE` only after:
-
-- current exact PR head CI passes;
-- independent closure review finds no blocking scope/data-governance issue;
-- explicit project-owner acceptance;
-- PR #22 merge and canonical `main` verification.
-
-Until then:
-
-- do not start SLICE-0012;
-- do not start PostgreSQL persistence;
-- do not start broad production ingestion;
-- do not start unbounded crawler work;
-- do not start query/API/frontend/auth/alert work from this research status.
+- SLICE-0013 / PostgreSQL persistence before SLICE-0012 acceptance;
+- broad production ingestion;
+- unbounded crawler work;
+- query-engine implementation;
+- public FastAPI API;
+- Astro frontend;
+- account/auth;
+- marketplace adapters;
+- alerts/monitoring execution;
+- multi-source listing deduplication.
