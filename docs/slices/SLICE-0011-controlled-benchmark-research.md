@@ -131,8 +131,8 @@ This slice does not authorize broad production ingestion, production PostgreSQL 
 - [x] major ambiguity/conflict classes have measured stress-corpus frequencies;
 - [x] minimum pre-persistence semantics have been derived from real evidence;
 - [x] next bounded implementation slice has been drafted from observed evidence;
-- [ ] current exact branch-head CI independently verified;
-- [ ] independent closure review finds no blocking scope/data-governance issue;
+- [x] exact branch head `fd8f01c94edeb5064ed241384045680f1985ff0d` passed GitHub Actions CI run #149;
+- [x] independent closure review found no remaining blocking scope/data-governance issue after the documented ResearchObservation and reference-crosscheck corrections;
 - [ ] explicit project-owner acceptance / merge.
 
-SLICE-0011 therefore hands off in `REVIEW`, not `DONE`. SLICE-0012 MUST NOT start automatically.
+SLICE-0011 therefore remains in `REVIEW`, technically ready for owner acceptance. SLICE-0012 MUST NOT start automatically.
