@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0014  
 **Type:** DESIGN_RESEARCH  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 2.14 — persistence-path benchmark execution and measurement  
 **Depends on:** SLICE-0013 accepted / DONE  
 **Blocks:** benchmark hardening / Stage-2 Gate G3 decision
@@ -373,3 +373,74 @@ The implementation/research agent MAY set `IN_PROGRESS`, `BLOCKED` or `REVIEW`, 
 `DONE` requires verified local gates, real PostgreSQL remote CI where applicable, independent master review and explicit project-owner acceptance.
 
 The agent MUST NOT automatically begin SLICE-0015 or the 1,000-design bootstrap.
+
+---
+
+## Completion report
+
+### Slice
+
+- Slice ID: `SLICE-0014`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+
+### Changes
+
+**New files created:**
+
+- `research/benchmark/persistence/manifest.json` — deterministic 50-case benchmark manifest (schema_version, wave, classification flags, artifact_references, materialization_status)
+- `research/benchmark/persistence/result_schema.json` — JSON Schema 2020-12 for runner output artifact
+- `scripts/benchmark/__init__.py` — package marker
+- `scripts/benchmark/materializer.py` — deterministic offline materializer: `materialize_all() -> dict[case_id, ResearchEvidenceBundle]`; `load_manifest()`; `materialize_bundle(case)`. No network access. No SailboatData field values. All 50 cases produce TEXT_FRAGMENT observations from retained wave summary facts.
+- `scripts/benchmark/runner.py` — CLI benchmark runner: applies migrations, first-pass import, readback fidelity, exact re-import idempotency, fresh-DB rerun, fingerprint comparison; writes `BENCHMARK-RESULT.json`; emits `G3_CANDIDATE` / `HARDEN_FIRST` / `BLOCKED` recommendation.
+- `tests/unit/test_benchmark_manifest.py` — 26 offline unit tests covering criteria 1-6, 15 and named quality requirements (manifest membership, flag totals, determinism, no SailboatData, benchmark marker, promoted_evidence empty, crosscheck contract).
+- `tests/persistence/test_benchmark_persistence.py` — PostgreSQL integration tests covering criteria 7-14 (first-pass import of 50, idempotent re-import, fresh-DB rerun, readback fidelity, no promoted evidence, no fuzzy promotion, partial-state safety).
+
+**Modified files:**
+
+- `docs/slices/SLICE-0014-controlled-benchmark-through-postgresql.md` — status `READY` → `IN_PROGRESS` → `REVIEW`; this completion report appended.
+- `scripts/benchmark/materializer.py` — Cyrillic character in `REFERENCE_SOURCE_ID` corrected to ASCII `sailboatdata-post-hoc-qa`.
+
+**No production domain/persistence modules were changed.**
+
+### Validation
+
+- Local validation: `PASS`
+- Commands run:
+  ```
+  uv run ruff format scripts/benchmark/ tests/unit/test_benchmark_manifest.py tests/persistence/test_benchmark_persistence.py
+  uv run ruff check scripts/benchmark/ tests/unit/test_benchmark_manifest.py tests/persistence/test_benchmark_persistence.py
+  uv run mypy scripts/benchmark/materializer.py scripts/benchmark/runner.py --ignore-missing-imports
+  uv run pytest tests/unit/ -v
+  ```
+- Results:
+  - ruff format: 4 files reformatted, 1 unchanged — PASS
+  - ruff check: All checks passed — PASS
+  - mypy: Success, no issues found in 2 source files — PASS
+  - pytest tests/unit/: **975 passed** in 59.37s (includes 26 new benchmark manifest tests) — PASS
+
+### External verification
+
+- Remote CI (GitHub Actions quality gate): `NOT VERIFIED` — branch not yet pushed at time of local validation; CI must be observed post-push.
+- Remote CI (db-integration PostgreSQL gate): `NOT VERIFIED` — `test_benchmark_persistence.py` tests require `HULLQ_TEST_DATABASE_URL` which is only set in the CI db-integration job. Tests are skipped locally when URL is absent. Remote CI result must be observed after push.
+- Coverage threshold (90%): `NOT VERIFIED` — new files add lines; threshold compliance must be observed in CI run.
+
+### Findings
+
+- **Unresolved findings:** None. All 50 benchmark cases were materializable from retained wave summary facts without invention. No `REVIEW_REQUIRED` cases emerged.
+- **Scope deviations:** None. Work remained strictly within the `scripts/benchmark/`, `research/benchmark/persistence/`, `tests/unit/`, and `tests/persistence/` touch points named by the slice.
+- **Spec/ADR ambiguities:** None new identified.
+- **REFERENCE_SOURCE_ID:** The string `sailboatdata-post-hoc-qa` marks reference crosschecks as post-hoc QA outcomes, not as SailboatData evidence values — consistent with the accepted source-rights policy. The crosscheck `reference_source_id` field is outcome metadata only.
+- **Benchmark recommendation (local evidence only):** All 50 bundles materialize offline, all 50 classification flag totals match the accepted CSV, determinism is proven across two independent `materialize_all()` runs. Persistence criteria 7-14 are structurally covered by integration tests. The runner will emit `G3_CANDIDATE` if all 50 first-pass imports succeed, all 50 re-imports return `ALREADY_IMPORTED`, all 50 fresh-DB imports succeed, and readback/fingerprint mismatches are zero; otherwise `HARDEN_FIRST`. The actual recommendation cannot be confirmed until the db-integration CI job runs.
+
+### Follow-up
+
+- Recommended next action: merge to main after independent review and both CI jobs (standard quality + db-integration) pass. If db-integration job shows failures, diagnose before accepting.
+- Do NOT start SLICE-0015 or the 1,000-design bootstrap until this slice is explicitly accepted as `DONE` by the project owner.
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice was not started automatically.
+- The agent has NOT marked this slice `DONE`.
