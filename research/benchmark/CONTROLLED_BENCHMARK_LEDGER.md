@@ -3,69 +3,105 @@
 **Status:** ACTIVE — SLICE-0011  
 **Updated:** 2026-08-20  
 **Target:** 50–100 deliberately difficult designs  
-**Active re-researched designs:** 17
+**Active re-researched designs:** 33
 
 This ledger tracks the controlled benchmark research waves. It is not a production canonical dataset.
 
 ## Research policy
 
 - independent web research first;
-- broad source discovery, strict evidence assessment;
-- preserve generation/variant/option/state and measurement basis;
+- broad source discovery with strict evidence assessment;
+- preserve generation, variant, option, operating state and measurement basis;
 - explicit unknown/conflict is preferable to guessed completeness;
-- SailboatData comparison occurs only after independent research and records only comparison outcomes, not reference field values.
+- individual-hull listings remain hull-specific unless corroborated at design level;
+- the SailboatData check happens only after independent research;
+- SailboatData is a QA/reference comparison only: never HullQ evidence, never a fallback value source.
+
+## Wave progress
+
+| Wave | Designs | Cumulative | Main coverage added |
+|---|---:|---:|---|
+| 01 | 5 | 5 | generation boundaries, option-sensitive values, source-internal conflicts, configuration combinatorics, measurement basis |
+| 02 | 12 | 17 | multihull geometry, board state, twin/protective-skeg relationships, named variants, successor identity, Half Load and other mass bases |
+| 03 | 8 | 25 | partial skeg, era applicability, official chronology conflict, swing-keel/twin-rudder relationships, sail-area basis ambiguity |
+| 04 | 8 | 33 | reference identity split, legacy multihull generations, rare centreboard/keel options, suffix semantics, weak-primary-source reconstruction |
+
+Detailed evidence summaries are under `research/benchmark/waves/`.
 
 ## Wave 01
 
-| ID | Design | Main evidence classes | Primary benchmark problem | Reference crosscheck |
-|---|---|---|---|---|
-| B01-001 | Hallberg-Rassy 36 | manufacturer model archive + parts archive | Mk I/Mk II dimensions + shallow-draft option + appendage evidence across pages | partial / dimensional conflicts |
-| B01-002 | Westerly Centaur | owners-association archive + historical designer material + specialist press | rudder configuration appears to change during production | strong common-field match; appendage history incomplete |
-| B01-003 | RM 1180 | manufacturer + specialist test/configuration reporting | combinatorial keel/rudder factory configurations | partial configuration coverage |
-| B01-004 | Najad 34 | official multilingual PDF + broker + community | official source conflicts internally; design-vs-individual mass ambiguity | comparison only; unresolved fields remain unresolved |
-| B01-005 | J/24 | manufacturer + class association + measurement certificate | nominal design value versus measurement/rating basis | strong nominal-spec agreement |
+- B01-001 Hallberg-Rassy 36
+- B01-002 Westerly Centaur
+- B01-003 RM 1180
+- B01-004 Najad 34
+- B01-005 J/24
 
 ## Wave 02
 
-| ID | Design | Main evidence classes | Primary benchmark problem | Reference crosscheck |
-|---|---|---|---|---|
-| B02-001 | Dragonfly 32 | manufacturer specs/history + specialist secondary | Touring/Evolution named variants, folded/sailing geometry and chronology | variant/first-built semantics conflict |
-| B02-002 | OVNI 370 | manufacturer + specialist review | board-up/down state; ballast separate from stated keel weight; twin-rudder enrichment | mostly compatible; sail-area/basis differences |
-| B02-003 | Garcia Exploration 45 | manufacturer + specialist corroboration | twin rudders each preceded by protective skeg; relationship semantics | no useful reference record found |
-| B02-004 | Boréal 44.2 | manufacturer + predecessor/secondary leads | successor identity; one-rudder primary statement; extra appendage claims need independent corroboration | partial / dimensional-definition differences |
-| B02-005 | Island Packet 349 | manufacturer specs/construction + model review | proprietary Full Foil Keel terminology and protected/attached rudder mapping | strong ordinary-field match |
-| B02-006 | Corsair 880 | manufacturer standard + Sport variant material | folding-state geometry, daggerboard state, standard/Sport rig variant | strong match; variant noted |
-| B02-007 | Lagoon 42 (2016) | manufacturer + specialist DB + owner/review sources | commercial-name reuse plus conflicting skeg/rudder claims | correct modern record requires identity disambiguation |
-| B02-008 | Nauticat 33 → 331 | current heritage source + owners/community technical leads | 1997 new hull/deck successor boundary and long-production underwater changes | broad identity match; historical appendage boundary incomplete |
-| B02-009 | Catalina 316 | manufacturer | fin vs shoal configuration changes draft/ballast/mass; displacement explicitly Half Load | numeric match can hide basis semantics |
-| B02-010 | Jeanneau Sun Odyssey 410 | manufacturer model + manufacturer product/news material | standard/shoal/lifting-keel options; LOA definition including/excluding bowsprit | definition/version differences |
-| B02-011 | CATANA Ocean Class | manufacturer | customizable beam/board-down geometry and material reference disagreement | material multi-field conflict; priority follow-up |
-| B02-012 | Pogo 1 | manufacturer archive + specialist/community corroboration | twin rudders and `Light measurement trim` displacement basis | no useful reference record found |
+- B02-001 Dragonfly 32
+- B02-002 OVNI 370
+- B02-003 Garcia Exploration 45
+- B02-004 Boréal 44.2
+- B02-005 Island Packet 349
+- B02-006 Corsair 880
+- B02-007 Lagoon 42 (2016)
+- B02-008 Nauticat 33 → 331
+- B02-009 Catalina 316
+- B02-010 Jeanneau Sun Odyssey 410
+- B02-011 CATANA Ocean Class
+- B02-012 Pogo 1
+
+## Wave 03
+
+- B03-001 Hallberg-Rassy 42E
+- B03-002 BENETEAU Oceanis 37
+- B03-003 Rustler 36
+- B03-004 Seafarer 26 (McCurdy & Rhodes generation)
+- B03-005 Southerly 110
+- B03-006 Contessa 32
+- B03-007 AMEL Super Maramu 2000
+- B03-008 Moody 33 Mk I / Mk II
+
+## Wave 04
+
+- B04-001 Sadler 34
+- B04-002 Albin Vega / Vega 27
+- B04-003 Hallberg-Rassy 35 Rasmus
+- B04-004 Vancouver 27
+- B04-005 F-27 Sport Cruiser / Corsair F-27
+- B04-006 Prout Snowgoose 37 / Snowgoose 37 Elite
+- B04-007 Westerly Konsort
+- B04-008 Heavenly Twins 26 → New 27 lineage
 
 ## Current recurring problem classes
 
 1. generation/model-name reuse;
-2. named variants with distinct physical/rig values;
-3. option-sensitive displacement/ballast/draft;
+2. named variants with distinct physical or rig values;
+3. option-sensitive displacement, ballast and draft;
 4. board-up/down state;
 5. folded/sailing multihull geometry;
-6. proprietary or source-specific appendage terminology;
+6. proprietary/source-specific appendage terminology;
 7. rudder↔skeg support/protection relationships;
-8. primary-source internal contradiction;
-9. cross-source appendage conflict;
-10. design-level versus individual-boat values;
-11. displacement/sail-area measurement-basis differences;
-12. reference database values that match numerically while losing source basis or configuration context.
+8. partial-skeg evidence versus generic skeg labels;
+9. primary-source internal contradiction;
+10. cross-source appendage conflict;
+11. design-level versus individual-hull values;
+12. displacement and sail-area measurement-basis differences;
+13. current-new-build versus historical values in one long-lived lineage;
+14. builder chronology versus secondary/reference chronology;
+15. commercial suffixes that mean anything from fitout package to material hull evolution;
+16. reference-database duplicate/identity anomalies;
+17. rare configurations hidden by a single baseline reference record;
+18. weak/defunct-builder source chains requiring archival/community corroboration.
 
 ## Next selection priorities
 
-Continue toward 50–100 with cases that increase coverage rather than duplicate easy records:
+Continue toward 50–100 only with cases that add information:
 
-- partial-skeg ambiguity;
-- older Scandinavian and British production boats with long model lives;
-- centreboard/lifting-keel designs with multiple draft/mass options;
-- additional catamarans and trimarans;
-- defunct/small builders with weak primary web presence;
-- model names reused across unrelated generations;
-- classes where measurement rules differ from nominal builder specifications;
-- semi-custom boats where design-level versus hull-specific facts are difficult to separate.
+- additional Scandinavian generations and model-number reuse;
+- documented mid-production appendage/construction changes;
+- semi-custom boats where design-level vs hull-specific facts are difficult to separate;
+- more catamarans/trimarans with materially different generation geometry;
+- classes where rule/measurement values differ from builder nominal specifications;
+- option packages that alter displacement/ballast/sail area together;
+- records where primary, archival and community sources materially disagree.
