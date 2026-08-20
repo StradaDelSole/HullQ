@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0011  
 **Type:** DESIGN_RESEARCH  
-**Status:** IN_PROGRESS  
+**Status:** REVIEW  
 **Stage:** 2.10–2.11  
 **Depends on:** SLICE-0010 accepted / DONE  
 **Research owner:** project owner + ChatGPT/master research
@@ -51,7 +51,7 @@ Cover deliberately difficult cases across monohulls/catamarans/trimarans, reused
 
 The SLICE-0002 seed sample is a selection aid only. Benchmark records are re-researched in the current wave.
 
-## Current progress
+## Completed research corpus
 
 | Wave | Designs | Cumulative | Main focus |
 |---|---:|---:|---|
@@ -62,9 +62,7 @@ The SLICE-0002 seed sample is a selection aid only. Benchmark records are re-res
 | Wave 05 | 8 | 41 | model-family reuse, under/over-splitting risk, technical lineage vs marketing lineage, malformed authoritative observations |
 | Wave 06 | 9 | 50 | Mk counterexamples, rule semantics, twin-board deployment state, special/tandem keel, configuration × mass-basis interaction |
 
-**Minimum corpus gate reached: 50 designs.**
-
-Corpus expansion now pauses unless measurement shows a material missing problem class. SLICE-0011 remains `IN_PROGRESS` because the benchmark measurements and follow-on persistence/import specification are still required.
+**Minimum corpus gate reached: 50 designs.** Corpus expansion is paused unless later execution evidence exposes a materially missing problem class.
 
 Detailed wave evidence:
 
@@ -76,26 +74,30 @@ Detailed wave evidence:
 - `research/benchmark/waves/WAVE-06-summary.md`
 - `research/benchmark/CONTROLLED_BENCHMARK_LEDGER.md`
 
-## Measurements now required
+## Benchmark measurement completed
 
-Track and record at least:
+The coded corpus and analysis are retained in:
 
-- identity-resolution / generation-ambiguity incidence;
-- source-discovery success and primary/authoritative-source coverage;
-- dependence on owners/community/broker/secondary evidence;
-- HullQ-critical-field completeness at useful confidence;
-- explicit unresolved/conflict frequency;
-- source-internal conflict frequency;
-- option/variant/state incidence;
-- appendage ambiguity and relationship complexity;
-- displacement/sail-area/other measurement-basis ambiguity;
-- temporal/applicability-scope incidence;
-- reference-comparison outcomes and anomaly classes;
-- likely human-review reasons and estimated review routing.
+- `research/benchmark/BENCHMARK-50-classification.csv`;
+- `research/benchmark/BENCHMARK-50-analysis.md`.
 
-Runtime repeatability, automated-acceptance rate, false-normalization rate, processing cost and actual human minutes per review require an executable importer and therefore belong to the next implementation/benchmark-execution wave rather than being invented from manual research.
+The intentionally difficult stress corpus measured:
 
-## Findings already forcing architecture attention
+- authoritative/original-document path found: 44/50 (88%);
+- appendage/configuration taxonomy complexity: 42/50 (84%);
+- temporal/production applicability materially relevant: 32/50 (64%);
+- identity/generation/lineage semantics materially relevant: 30/50 (60%);
+- option/variant/operating-state semantics materially relevant: 30/50 (60%);
+- secondary/community/broker evidence materially needed: 30/50 (60%);
+- post-hoc reference anomaly/incompleteness/definition issue: 28/50 (56%);
+- measurement-basis/field-definition semantics materially relevant: 22/50 (44%);
+- explicit material conflict or unresolved question: 20/50 (40%).
+
+These are **stress-corpus incidences, not population prevalence estimates**.
+
+Runtime repeatability, automated-acceptance rate, false-normalization rate, processing cost and actual human minutes per review cannot be measured honestly from manual research. They require the executable importer/persistence benchmark and are deliberately deferred rather than invented.
+
+## Findings forcing the next bounded contract
 
 The 50-design corpus repeatedly demonstrates that:
 
@@ -116,16 +118,21 @@ The 50-design corpus repeatedly demonstrates that:
 - reference datasets can contain identity duplication/anomalies as well as useful QA agreement;
 - weak/defunct-builder records can be researched, but confidence depends more heavily on archival/community corroboration.
 
+The benchmark therefore derives one small pre-persistence implementation requirement: a successor evidence/applicability contract plus a machine-ingestible ResearchEvidenceBundle. The draft is `docs/slices/SLICE-0012-evidence-applicability-research-bundle.md` and remains `BLOCKED` until this slice is accepted/DONE.
+
 ## Out of scope
 
 This slice does not authorize broad production ingestion, production PostgreSQL schema work, persistence implementation, query/search semantics, public API/frontend work, marketplace ingestion, accounts/alerts, or treating reference comparison data as production evidence.
 
-## Exit gate
+## Exit gate status
 
-Close SLICE-0011 only when:
+- [x] minimum 50-design difficult corpus reached;
+- [x] evidence remains source-linked and reproducible at research-summary level;
+- [x] major ambiguity/conflict classes have measured stress-corpus frequencies;
+- [x] minimum pre-persistence semantics have been derived from real evidence;
+- [x] next bounded implementation slice has been drafted from observed evidence;
+- [ ] current exact branch-head CI independently verified;
+- [ ] independent closure review finds no blocking scope/data-governance issue;
+- [ ] explicit project-owner acceptance / merge.
 
-1. the corpus covers the intended difficult classes — **minimum size reached**;
-2. evidence remains reproducible and source-linked;
-3. major ambiguity/conflict classes have measured frequencies;
-4. the minimum persistence/import semantics demanded by the evidence are explicitly derived;
-5. the next bounded implementation slice can be specified from observed evidence rather than assumptions.
+SLICE-0011 therefore hands off in `REVIEW`, not `DONE`. SLICE-0012 MUST NOT start automatically.
