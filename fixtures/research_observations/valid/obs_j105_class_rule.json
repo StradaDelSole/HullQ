@@ -1,0 +1,64 @@
+{
+  "schema_version": "0.1",
+  "observation_id": "OBS-J105-CLASSRULE-DISP-001",
+  "research_target": {
+    "manufacturer": "J/Boats",
+    "model": "J/105",
+    "first_built": 1992
+  },
+  "source_id": "SRC-J105-CLASS-RULES",
+  "source_locator": {
+    "page": null,
+    "section": "Class Rules — Equipment",
+    "anchor": "displacement",
+    "table": null,
+    "figure": null,
+    "record_key": null
+  },
+  "observation": {
+    "raw": {
+      "kind": "text_fragment",
+      "value": "minimum displacement 2268 kg (5000 lbs)",
+      "unit": null,
+      "excerpt": "Minimum displacement shall not be less than 2268 kg (5000 lbs)"
+    },
+    "normalized_candidate": {
+      "value": 2268.0,
+      "unit": "kg",
+      "method_id": "hullq-norm-1.0",
+      "method_version": "1.0"
+    }
+  },
+  "evidence_type": "class_or_owner_association",
+  "claim_semantics": "class_rule_constraint",
+  "applicability": {
+    "schema_version": "0.1",
+    "first_year": null,
+    "last_year": null,
+    "hull_number_from": null,
+    "hull_number_to": null,
+    "market_or_region": null,
+    "named_variant_hint": null,
+    "design_option_hints": null,
+    "operating_state_hint": null,
+    "individual_hull_or_listing_ref": null,
+    "unknown_or_unbounded": true
+  },
+  "producer": {
+    "kind": "llm",
+    "identifier": "benchmark-research-agent",
+    "version": "0.1",
+    "model": "claude-sonnet-4-6",
+    "prompt_or_rule_version": "slice-0012-benchmark"
+  },
+  "research_context": {
+    "research_job_id": "JOB-J105-001",
+    "activity_id": "WAVE-03"
+  },
+  "observed_at": "2026-08-18T11:30:00Z",
+  "confidence": "high",
+  "supersedes_observation_id": null,
+  "intended_subject_kind_hint": "boat_design",
+  "intended_field_pointer": null,
+  "notes": "J/105 class rule minimum displacement — this is a class_rule_constraint, not a nominal builder specification"
+}

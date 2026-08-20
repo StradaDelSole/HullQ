@@ -1,0 +1,64 @@
+{
+  "schema_version": "0.1",
+  "observation_id": "OBS-PEARSON35-LOA-001",
+  "research_target": {
+    "manufacturer": "Pearson Yachts",
+    "model": "Pearson 35",
+    "first_built": 1969
+  },
+  "source_id": "SRC-PEARSON35-SPEC-1979",
+  "source_locator": {
+    "page": 1,
+    "section": "Specifications",
+    "anchor": null,
+    "table": "Dimensions",
+    "figure": null,
+    "record_key": null
+  },
+  "observation": {
+    "raw": {
+      "kind": "literal",
+      "value": "35'0\"",
+      "unit": "ft",
+      "excerpt": "LOA: 35'0\""
+    },
+    "normalized_candidate": {
+      "value": 10.668,
+      "unit": "m",
+      "method_id": "hullq-norm-1.0",
+      "method_version": "1.0"
+    }
+  },
+  "evidence_type": "manufacturer_specification",
+  "claim_semantics": "nominal_design_value",
+  "applicability": {
+    "schema_version": "0.1",
+    "first_year": 1979,
+    "last_year": 1979,
+    "hull_number_from": null,
+    "hull_number_to": null,
+    "market_or_region": null,
+    "named_variant_hint": null,
+    "design_option_hints": null,
+    "operating_state_hint": null,
+    "individual_hull_or_listing_ref": null,
+    "unknown_or_unbounded": false
+  },
+  "producer": {
+    "kind": "llm",
+    "identifier": "benchmark-research-agent",
+    "version": "0.1",
+    "model": "claude-sonnet-4-6",
+    "prompt_or_rule_version": "slice-0012-benchmark"
+  },
+  "research_context": {
+    "research_job_id": "JOB-PEARSON35-001",
+    "activity_id": "WAVE-01"
+  },
+  "observed_at": "2026-08-18T10:00:00Z",
+  "confidence": "high",
+  "supersedes_observation_id": null,
+  "intended_subject_kind_hint": "boat_design",
+  "intended_field_pointer": "/loa_m",
+  "notes": "Pearson 35 LOA from 1979 model year specification — 1979 applicability confirmed"
+}

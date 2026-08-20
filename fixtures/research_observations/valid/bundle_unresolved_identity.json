@@ -1,0 +1,97 @@
+{
+  "schema_version": "0.1",
+  "bundle_id": "BUNDLE-UNRESOLVED-IDENTITY-001",
+  "bundle_version": "1.0",
+  "research_target": {
+    "manufacturer": null,
+    "model": "Catalina 316",
+    "first_built": 2001
+  },
+  "research_job_id": "JOB-CATALINA316-001",
+  "activity_id": "WAVE-02",
+  "observations": [
+    {
+      "schema_version": "0.1",
+      "observation_id": "OBS-CATALINA316-DISP-001",
+      "research_target": {
+        "manufacturer": null,
+        "model": "Catalina 316",
+        "first_built": 2001
+      },
+      "source_id": "SRC-CATALINA-SPEC-2001",
+      "source_locator": {
+        "page": 1,
+        "section": "Specifications",
+        "anchor": null,
+        "table": null,
+        "figure": null,
+        "record_key": null
+      },
+      "observation": {
+        "raw": {
+          "kind": "literal",
+          "value": "9600",
+          "unit": "lbs",
+          "excerpt": "Displacement: 9600 lbs"
+        },
+        "normalized_candidate": {
+          "value": 4354.0,
+          "unit": "kg",
+          "method_id": "hullq-norm-1.0",
+          "method_version": "1.0"
+        }
+      },
+      "evidence_type": "manufacturer_specification",
+      "claim_semantics": "nominal_design_value",
+      "applicability": {
+        "schema_version": "0.1",
+        "first_year": null,
+        "last_year": null,
+        "hull_number_from": null,
+        "hull_number_to": null,
+        "market_or_region": null,
+        "named_variant_hint": null,
+        "design_option_hints": null,
+        "operating_state_hint": null,
+        "individual_hull_or_listing_ref": null,
+        "unknown_or_unbounded": true
+      },
+      "producer": {
+        "kind": "llm",
+        "identifier": "benchmark-research-agent",
+        "version": "0.1",
+        "model": "claude-sonnet-4-6",
+        "prompt_or_rule_version": "slice-0012-benchmark"
+      },
+      "research_context": {
+        "research_job_id": "JOB-CATALINA316-001",
+        "activity_id": "WAVE-02"
+      },
+      "observed_at": "2026-08-18T15:00:00Z",
+      "confidence": "medium",
+      "supersedes_observation_id": null,
+      "intended_subject_kind_hint": "boat_design",
+      "intended_field_pointer": "/displacement_kg",
+      "notes": "Catalina 316 displacement — manufacturer identity ambiguous (Catalina Yachts vs. Catalina Direct), no canonical subject yet"
+    }
+  ],
+  "unresolved_findings": [
+    {
+      "finding_id": "FIND-CATALINA316-MFR-001",
+      "topic": "manufacturer_identity",
+      "description": "Catalina 316 manufacturer identity ambiguous — 'Catalina Yachts' and 'Catalina Direct' both appear in sources; canonical Brand resolution needed before promotion",
+      "related_observation_ids": ["OBS-CATALINA316-DISP-001"],
+      "severity": "review"
+    }
+  ],
+  "promoted_evidence": [],
+  "reference_crosschecks": [
+    {
+      "crosscheck_id": "CC-CATALINA316-REF-001",
+      "reference_source_id": "sailboatdata-reference",
+      "topic_or_field": "/displacement_kg",
+      "outcome": "definition_or_basis_difference",
+      "notes": "Reference value differs — likely different measurement basis (light ship vs. ready to sail); no reference value stored"
+    }
+  ]
+}

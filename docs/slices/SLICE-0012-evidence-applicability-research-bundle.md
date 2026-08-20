@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0012  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 2.12 — benchmark-driven contract hardening before persistence  
 **Depends on:** SLICE-0011 accepted / DONE  
 **Blocks:** first PostgreSQL persistence/import slice

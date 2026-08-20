@@ -1,0 +1,64 @@
+{
+  "schema_version": "0.1",
+  "observation_id": "OBS-GEMINI105MC-AIRDRAFT-MASTDOWN-001",
+  "research_target": {
+    "manufacturer": "Performance Cruising",
+    "model": "Gemini 105Mc",
+    "first_built": 1994
+  },
+  "source_id": "SRC-GEMINI105MC-SPEC",
+  "source_locator": {
+    "page": 2,
+    "section": "Specifications",
+    "anchor": null,
+    "table": "Dimensions",
+    "figure": null,
+    "record_key": null
+  },
+  "observation": {
+    "raw": {
+      "kind": "literal",
+      "value": "1'3\"",
+      "unit": "ft",
+      "excerpt": "Air Draft (mast down): 1'3\""
+    },
+    "normalized_candidate": {
+      "value": 0.381,
+      "unit": "m",
+      "method_id": "hullq-norm-1.0",
+      "method_version": "1.0"
+    }
+  },
+  "evidence_type": "manufacturer_specification",
+  "claim_semantics": "operating_state_value",
+  "applicability": {
+    "schema_version": "0.1",
+    "first_year": null,
+    "last_year": null,
+    "hull_number_from": null,
+    "hull_number_to": null,
+    "market_or_region": null,
+    "named_variant_hint": null,
+    "design_option_hints": null,
+    "operating_state_hint": "mast_down",
+    "individual_hull_or_listing_ref": null,
+    "unknown_or_unbounded": false
+  },
+  "producer": {
+    "kind": "llm",
+    "identifier": "benchmark-research-agent",
+    "version": "0.1",
+    "model": "claude-sonnet-4-6",
+    "prompt_or_rule_version": "slice-0012-benchmark"
+  },
+  "research_context": {
+    "research_job_id": "JOB-GEMINI105MC-001",
+    "activity_id": "WAVE-04"
+  },
+  "observed_at": "2026-08-18T14:00:00Z",
+  "confidence": "high",
+  "supersedes_observation_id": null,
+  "intended_subject_kind_hint": "boat_design",
+  "intended_field_pointer": null,
+  "notes": "Gemini 105Mc air draft with mast lowered — operating_state_value, no DesignOption ID invented"
+}
