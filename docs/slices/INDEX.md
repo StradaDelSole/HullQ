@@ -1,55 +1,64 @@
 # HullQ Slice Index
 
-**Status:** ACTIVE execution board
+**Status:** ACTIVE execution board  
+**Updated:** 2026-08-20
 
-The slice index is the canonical operational queue for bounded AI-assisted work. It does not replace `docs/EXECUTION_PLAN.md`, requirements, specs, or ADRs.
+The slice index is the canonical operational queue for bounded AI-assisted work. It does not replace `docs/EXECUTION_PLAN.md`, requirements, specs, ADRs or accepted slice contracts.
 
 | Slice | Type | Status | Objective | Depends on |
 |---|---|---|---|---|
-| SLICE-0001 | BOOTSTRAP | DONE | Close repository bootstrap: real `uv.lock`, full local gates, first green Linux/Windows CI | OQ-010 / ADR-0009 |
-| SLICE-0002 | DESIGN_RESEARCH | DONE | Research independent sailboat-design data sources and a 20–30-design seed evidence sample before domain pipeline code | SLICE-0001 |
-| SLICE-0003 | IMPLEMENTATION | DONE | Canonical JSON-Schema contract runtime and local `$id`/reference registry | SLICE-0002 |
-| SLICE-0004 | IMPLEMENTATION | DONE | Measurement observation + deterministic unit/basis normalization while preserving raw source semantics | SLICE-0003 |
-| SLICE-0005 | IMPLEMENTATION | DONE | First-class Brand/Organization identity contracts, BoatModel/BoatDesign identity migration, entity-scoped aliases and deterministic search-label keys | SLICE-0004 / ADR-0011 |
-| SLICE-0006 | IMPLEMENTATION | DONE | Provenance/raw-observation runtime: FieldEvidence/FieldResolution contracts, stable provenance subjects, conflict/supersession/current-resolution validation and source-impact lookup | SLICE-0005 / ADR-0006 |
-| SLICE-0007 | IMPLEMENTATION | DONE | ResearchJob runtime + deterministic source-rights/use gate + cumulative extraction telemetry so automated acquisition fails closed | SLICE-0006 / ADR-0005 |
-| SLICE-0008 | IMPLEMENTATION | DONE | First rights-gated real external acquisition adapter against Wikidata CC0 with bounded discovery/entity acquisition and provenance-aware extraction | SLICE-0007 |
-| SLICE-0009 | IMPLEMENTATION | DONE | Deterministic appendage/configuration normalization for explicit keel, rudder, skeg, hull and board observations using the existing BoatDesign vocabulary | SLICE-0008 |
-| SLICE-0010 | IMPLEMENTATION | DONE | Deterministic `hullq-derived-1.0.0` derived-metrics engine with accepted formulas, status precedence, six-decimal canonical precision and DerivationRecord lineage | SLICE-0009 / ADR-0008 |
-| SLICE-0011 | DESIGN_RESEARCH | DONE | Controlled 50-design real-web stress benchmark, measured ambiguity/conflict classes, post-hoc reference QA and benchmark-derived persistence requirements | SLICE-0010 |
-| SLICE-0012 | IMPLEMENTATION | READY | Add pre-canonical ResearchObservation, claim/applicability semantics, explicit promotion to FieldEvidence and machine-ingestible ResearchEvidenceBundle before physical persistence | SLICE-0011 accepted / DONE |
+| SLICE-0001 | BOOTSTRAP | DONE | Repository bootstrap, locked toolchain and cross-platform CI | OQ-010 / ADR-0009 |
+| SLICE-0002 | DESIGN_RESEARCH | DONE | Independent sailboat-design source research and seed evidence | SLICE-0001 |
+| SLICE-0003 | IMPLEMENTATION | DONE | Canonical JSON-Schema contract runtime | SLICE-0002 |
+| SLICE-0004 | IMPLEMENTATION | DONE | Measurement observation + deterministic normalization | SLICE-0003 |
+| SLICE-0005 | IMPLEMENTATION | DONE | Brand/Organization + BoatModel/BoatDesign identity contracts and search labels | SLICE-0004 / ADR-0011 |
+| SLICE-0006 | IMPLEMENTATION | DONE | FieldEvidence/FieldResolution provenance boundary | SLICE-0005 / ADR-0006 |
+| SLICE-0007 | IMPLEMENTATION | DONE | ResearchJob + source-rights/use gate + extraction telemetry | SLICE-0006 / ADR-0005 |
+| SLICE-0008 | IMPLEMENTATION | DONE | First rights-gated real adapter: Wikidata CC0 | SLICE-0007 |
+| SLICE-0009 | IMPLEMENTATION | DONE | Appendage/configuration normalization | SLICE-0008 |
+| SLICE-0010 | IMPLEMENTATION | DONE | `hullq-derived-1.0.0` derived metrics | SLICE-0009 / ADR-0008 |
+| SLICE-0011 | DESIGN_RESEARCH | DONE | Controlled 50-design real-web stress benchmark | SLICE-0010 |
+| SLICE-0012 | IMPLEMENTATION | DONE | Pre-canonical ResearchObservation, claim/applicability semantics, explicit promotion and ResearchEvidenceBundle | SLICE-0011 |
+| SLICE-0013 | IMPLEMENTATION | READY | PostgreSQL 18 migrations + lossless deterministic ResearchEvidenceBundle importer | SLICE-0012 accepted / DONE |
 
 ## Current execution rule
 
-`SLICE-0011` is `DONE` and accepted.
+`SLICE-0013` is the **only READY implementation slice**.
+
+It may start only through the normal isolated `START_SLICE.bat` workflow.
+
+No later benchmark-execution slice, broad ingestion, query engine, API, frontend or marketplace work is authorized merely because SLICE-0013 is READY.
+
+## SLICE-0012 acceptance closure
+
+SLICE-0012 is explicitly accepted and `DONE`.
 
 Acceptance evidence:
 
-- final accepted PR head: `9f1859fe9762e05bd2a5be57c550f255be302c9b`;
-- GitHub Actions CI run #151: PASS on the exact accepted head;
+- final accepted implementation head: `d2344cd359d296e2483ab074a14b773ae5668952`;
+- GitHub Actions CI run #157: PASS on the exact accepted head;
 - Ubuntu quality: PASS;
 - Windows quality: PASS;
 - dependency audit: PASS;
-- independent closure review: no remaining blocking scope/data-governance issue;
+- 1084 local tests passed, 2 skipped;
+- branch coverage: 93.33%;
+- Ruff/format: clean;
+- strict mypy: clean;
+- pip-audit: no known vulnerabilities;
+- independent review: no remaining blocker;
 - explicit project-owner acceptance on 2026-08-20;
-- PR #22 merged on 2026-08-20;
-- merge commit: `668e91937d27dc9c70760301b92ce0ded41abb2f`.
+- PR #24 merged on 2026-08-20;
+- merge commit: `db68e53ddc9cfe4aa53caa3ba900dc6a3daa7324`.
 
-Benchmark closure artifacts include:
+The final closure record is `docs/slices/SLICE-0012-acceptance-closure.md`. The original SLICE-0012 implementation document retains its implementation-agent handoff history; the acceptance closure and this index are authoritative for final state.
 
-- Waves 01–06 under `research/benchmark/waves/`;
-- `research/benchmark/CONTROLLED_BENCHMARK_LEDGER.md`;
-- `research/benchmark/BENCHMARK-50-classification.csv`;
-- `research/benchmark/BENCHMARK-50-analysis.md`;
-- `research/benchmark/BENCHMARK-50-closure-review.md`;
-- retained pre-contract structured exports for Waves 01/02 under `research/benchmark/legacy-observations/`.
+Review corrections incorporated before acceptance included:
 
-The closure review found and corrected two important governance/architecture issues before acceptance:
-
-1. post-hoc SailboatData comparison is outcome-only in retained summaries/exports; no SailboatData field value is HullQ evidence or retained as fallback data;
-2. ResearchJob targets are intentionally pre-canonical, while FieldEvidence requires a stable provenance subject. SLICE-0012 therefore introduces pre-canonical `ResearchObservation` and explicit caller-supplied promotion to FieldEvidence rather than forcing identity during research.
-
-`SLICE-0012` is now the **only READY implementation slice**. It may start only through the normal isolated `START_SLICE.bat` workflow. No PostgreSQL, broad ingestion, query-engine, API or frontend work is authorized by this READY state.
+1. fail-closed applicability validation for every asserted string scope dimension;
+2. removal of invented/incorrect benchmark fixture facts;
+3. strict SailboatData outcome-only crosscheck handling;
+4. synthetic fixture producer/source/job/observation metadata clearly separated from retained benchmark facts;
+5. Catalina unresolved identity explicitly marked synthetic contract scaffolding.
 
 ## Evidence-first sequence
 
@@ -58,62 +67,66 @@ reproducible toolchain                            DONE
         ↓
 seed design-data source research                  DONE
         ↓
-canonical contract runtime                        DONE
+canonical contracts / measurements / identity     DONE
         ↓
-measurement normalization                         DONE
+provenance + source-rights + first adapter         DONE
         ↓
-Brand / Organization identity                     DONE
-        ↓
-provenance/raw observation boundary               DONE
-        ↓
-ResearchJob + source-rights gate                  DONE
-        ↓
-first rights-gated real adapter — Wikidata        DONE
-        ↓
-appendage/configuration hardening                 DONE
-        ↓
-derived metrics                                  DONE
+appendage/configuration + derived metrics          DONE
         ↓
 controlled 50-design real-web benchmark           DONE — SLICE-0011
         ↓
-pre-canonical observation + evidence applicability
-+ ResearchEvidenceBundle                          READY — SLICE-0012
+pre-canonical observation + applicability/bundle  DONE — SLICE-0012
         ↓
-PostgreSQL persistence + deterministic importer   LATER
+PostgreSQL persistence + deterministic importer   READY — SLICE-0013
         ↓
-execute same benchmark through importer/DB        LATER
+run same benchmark through importer/DB            LATER / NOT READY
         ↓
-broad design-universe ingestion                   NOT AUTHORIZED YET
+measure automation/review/idempotency/cost        LATER
+        ↓
+1,000-design broad bootstrap                      NOT AUTHORIZED YET
 ```
 
-## SLICE-0011 retained research rules
+## SLICE-0013 boundary
 
-1. Research independently across the broad useful web: manufacturer/shipyard, original brochures/manuals, designer/class/owners associations, archives, specialist publications/databases, brokers where appropriate, forums/owner communities and other discoverable evidence.
+`docs/slices/SLICE-0013-postgresql-persistence-deterministic-importer.md` is the controlling READY contract.
+
+It is deliberately limited to:
+
+- PostgreSQL 18 migration baseline;
+- persistence of accepted ResearchEvidenceBundle / ResearchObservation / applicability / unresolved findings / reference-crosscheck structures;
+- optional already-promoted FieldEvidence v0.3 persistence;
+- deterministic content fingerprinting;
+- immutable/idempotent bundle and observation import semantics;
+- transactional rollback/fail-closed collision behavior;
+- minimal semantic round-trip/readback proof;
+- real PostgreSQL 18 integration testing in CI.
+
+It explicitly excludes:
+
+- fuzzy/canonical identity resolution;
+- automatic ResearchObservation → FieldEvidence promotion;
+- automatic FieldResolution/canonical-value selection;
+- broad BoatModel/BoatDesign persistence beyond what the accepted evidence snapshot requires;
+- broad ingestion/crawling;
+- the 50-design benchmark execution itself;
+- query engine/API/frontend/auth;
+- marketplace/listing ingestion;
+- monitoring/price history;
+- SailboatData field-value storage.
+
+## Retained research rules
+
+1. Research independently across the broad useful web.
 2. Source breadth is intentionally broad; canonical confidence is intentionally strict.
-3. Preserve raw wording/value, unit, measurement basis, configuration/variant/state, retrieval date, source identity and confidence.
+3. Preserve raw wording/value, unit, measurement basis, configuration/variant/state, source identity, retrieval context and confidence.
 4. Never invent missing values or silently resolve conflicts.
-5. SailboatData is **reference crosscheck only after independent research**. No SailboatData value becomes HullQ FieldEvidence, no missing field is filled from it, and no reference value is retained as canonical/research evidence. Crosscheck output is limited to comparison outcomes/anomaly triggers.
-6. Benchmark outputs are research evidence, not production canonical data.
-
-## Benchmark-derived next boundary
-
-The 50-design analysis found that existing identity/configuration/provenance foundations are directionally sound, but four lossless handoff semantics must be explicit before a physical database schema is frozen:
-
-1. pre-canonical web research needs `ResearchObservation` because accepted `ResearchTarget` deliberately does not assert a canonical HullQ subject;
-2. source/document `EvidenceType` must remain separate from the semantic claim role of an observation;
-3. observation/evidence applicability must preserve year/hull/variant/option/state/individual-hull restrictions where known;
-4. master research needs a versioned machine-ingestible `ResearchEvidenceBundle`, with explicit promotion to successor FieldEvidence only after a stable canonical `ProvenanceSubject` is supplied; optional reference crosschecks remain outside both ResearchObservation and FieldEvidence provenance.
-
-`docs/slices/SLICE-0012-evidence-applicability-research-bundle.md` defines that small boundary. It does not authorize PostgreSQL, broad ingestion, network acquisition, identity resolution, automatic conflict resolution or a general ontology/graph redesign.
+5. SailboatData remains post-hoc reference crosscheck only; no SailboatData field value becomes HullQ evidence, fallback data or canonical input.
+6. Benchmark outputs are research evidence/stress fixtures, not automatically production canonical data.
 
 ## Workflow note
 
-The `START_SLICE` / `FINISH_SLICE` worktree workflow governs Claude implementation slices.
+`START_SLICE.bat` / `FINISH_SLICE.bat` govern Claude implementation worktrees.
 
-GitHub `origin/main` remains canonical truth. Claude owns only its assigned `slice/...` implementation branch. The master/architect does not write Claude's active implementation branch. No later implementation slice begins automatically.
+GitHub `origin/main` remains canonical truth. Claude owns only its assigned `slice/...` branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-SLICE-0012 is now `READY`. The user may run `START_SLICE.bat` for SLICE-0012; that action should create/reuse the isolated worktree/branch and place the assignment in the clipboard. Claude must implement exactly SLICE-0012 and return the mandatory completion report in `REVIEW`/`BLOCKED`/`IN_PROGRESS` as appropriate, never `DONE`.
-
-## Rolling-wave note
-
-After SLICE-0012 acceptance, the intended next bounded implementation is PostgreSQL persistence plus deterministic ResearchEvidenceBundle import/promotion handling, followed by execution of the same benchmark corpus before broad ingestion is considered. SLICE-0013 is not READY and must not start automatically.
+The implementation agent must return SLICE-0013 in `REVIEW`, `BLOCKED` or `IN_PROGRESS` as appropriate and must not mark it `DONE`.
