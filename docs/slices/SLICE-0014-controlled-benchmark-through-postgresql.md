@@ -376,7 +376,32 @@ The agent MUST NOT automatically begin SLICE-0015 or the 1,000-design bootstrap.
 
 ---
 
-## Completion report
+## Completion report (Session 1 — superseded by Session 2 below)
+
+### Slice (Session 1)
+
+- Slice ID: `SLICE-0014`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+
+### Changes (Session 1)
+
+**New files created:**
+
+- `research/benchmark/persistence/manifest.json` — deterministic 50-case benchmark manifest
+- `research/benchmark/persistence/result_schema.json` — JSON Schema 2020-12 for runner output artifact
+- `scripts/benchmark/__init__.py` — package marker
+- `scripts/benchmark/materializer.py` — initial materializer (one TEXT_FRAGMENT per design; superseded by Session 2 rewrite)
+- `scripts/benchmark/runner.py` — CLI benchmark runner (hardcoded metrics; superseded by Session 2 fix)
+- `tests/unit/test_benchmark_manifest.py` — 26 offline unit tests (updated in Session 2)
+- `tests/persistence/test_benchmark_persistence.py` — PostgreSQL integration tests (updated in Session 2)
+
+**Session 1 head:** `70d1a96bece8bd3bf921bb03dcf1876883792038`
+**Session 1 CI #171:** PASS (quality Ubuntu/Windows, db-integration PostgreSQL 18, dependency audit)
+
+---
+
+## Completion report (Session 2 — review fixes)
 
 ### Slice
 
@@ -384,58 +409,111 @@ The agent MUST NOT automatically begin SLICE-0015 or the 1,000-design bootstrap.
 - Recommended slice state: `REVIEW`
 - Scope completed: `YES`
 
-### Changes
+### Session 2 context
 
-**New files created:**
+Independent review of PR #29 (head `70d1a96`) found 6 blocking issues. All 6 are addressed in this session's commit (`f9b5adb`).
 
-- `research/benchmark/persistence/manifest.json` — deterministic 50-case benchmark manifest (schema_version, wave, classification flags, artifact_references, materialization_status)
-- `research/benchmark/persistence/result_schema.json` — JSON Schema 2020-12 for runner output artifact
-- `scripts/benchmark/__init__.py` — package marker
-- `scripts/benchmark/materializer.py` — deterministic offline materializer: `materialize_all() -> dict[case_id, ResearchEvidenceBundle]`; `load_manifest()`; `materialize_bundle(case)`. No network access. No SailboatData field values. All 50 cases produce TEXT_FRAGMENT observations from retained wave summary facts.
-- `scripts/benchmark/runner.py` — CLI benchmark runner: applies migrations, first-pass import, readback fidelity, exact re-import idempotency, fresh-DB rerun, fingerprint comparison; writes `BENCHMARK-RESULT.json`; emits `G3_CANDIDATE` / `HARDEN_FIRST` / `BLOCKED` recommendation.
-- `tests/unit/test_benchmark_manifest.py` — 26 offline unit tests covering criteria 1-6, 15 and named quality requirements (manifest membership, flag totals, determinism, no SailboatData, benchmark marker, promoted_evidence empty, crosscheck contract).
-- `tests/persistence/test_benchmark_persistence.py` — PostgreSQL integration tests covering criteria 7-14 (first-pass import of 50, idempotent re-import, fresh-DB rerun, readback fidelity, no promoted evidence, no fuzzy promotion, partial-state safety).
+### Changes (Session 2 — 5 files modified)
 
-**Modified files:**
+**`scripts/benchmark/materializer.py` — complete rewrite:**
+- Added `MaterializationResult` dataclass with `case_id`, `status`, `bundle`, `review_reasons`.
+- `materialize_all()` now returns `dict[str, MaterializationResult]` (was `dict[str, ResearchEvidenceBundle]`).
+- W01/W02: field-level rows from committed legacy JSONL exports auto-migrated into real `ResearchObservation` objects. Each non-research-tier row becomes one observation with independently derived `EvidenceType`, `ClaimSemantics`, `ObservationApplicability`. Research-tier rows used only for finding creation.
+- W03–W06: field-/claim-level retained facts from wave summary `.md` artifacts, embedded as Python data structures (`_W03W06_FACTS`, `_W03W06_CROSSCHECK`, `_W03W06_FINDING`). Explicit per-case crosscheck outcomes from wave summaries.
+- Helpers: `_make_app()`, `_map_confidence()`, `_map_evidence_type()`, `_map_claim_semantics()`, `_map_applicability()`, `_cc_to_outcome()`, `_worst_outcome()`, `_decode_legacy_jsonl()`.
+- Finding creation: evidence_status-based (W01/W02 non-research rows) + research-tier cc-based + conflict_unresolved fallback. All findings use `topic="conflict_or_unresolved_evidence"`.
+- No SailboatData field values. No new web research. All 50 cases produce `status=MATERIALIZED`.
 
-- `docs/slices/SLICE-0014-controlled-benchmark-through-postgresql.md` — status `READY` → `IN_PROGRESS` → `REVIEW`; this completion report appended.
-- `scripts/benchmark/materializer.py` — Cyrillic character in `REFERENCE_SOURCE_ID` corrected to ASCII `sailboatdata-post-hoc-qa`.
+**`scripts/benchmark/runner.py` — real metrics + schema isolation:**
+- Derives `materialized`/`review_required`/`cannot_materialize` counts from actual `MaterializationResult.status`.
+- Extracts bundles from `MaterializationResult` for persistence phases.
+- Phase 4 fresh-DB rerun uses schema isolation (`CREATE SCHEMA + SET search_path + apply_migrations from zero + DROP SCHEMA CASCADE`) instead of TRUNCATE on the already-migrated DB.
+- `G3_CANDIDATE`/`HARDEN_FIRST` recommendation depends on `mat_count == total` in addition to all persistence phase metrics.
+- Calls `_validate_result_json()` after writing output to validate against `result_schema.json`.
+
+**`.github/workflows/ci.yml` — benchmark runner step added:**
+- Added `Run benchmark runner against PostgreSQL 18` step executing `scripts/benchmark/runner.py`.
+- Added `Validate benchmark result against schema` step using jsonschema to validate `BENCHMARK-RESULT.json` against `result_schema.json` and assert recommendation is in `{G3_CANDIDATE, HARDEN_FIRST, BLOCKED}`.
+
+**`tests/unit/test_benchmark_manifest.py` — fixture and test updates:**
+- `bundles` fixture updated: extracts `.bundle` from `MaterializationResult`.
+- `test_bundle_ids_are_deterministic`, `test_bundle_fingerprints_are_stable`, `test_observation_ids_are_deterministic`: second `materialize_all()` call also extracts `.bundle`.
+- Removed `test_observation_source_ids_use_benchmark_prefix` (real URLs won't share synthetic prefix).
+- Removed `test_observation_notes_contain_benchmark_marker` (real observations carry source notes not markers).
+- Added `test_observation_source_ids_are_non_empty` (all `source_id` fields must be non-empty).
+- Added `test_materialization_all_50_materialized` (all 50 cases must have `status=MATERIALIZED`).
+
+**`tests/persistence/test_benchmark_persistence.py` — fixture and test updates:**
+- `benchmark_bundles` fixture updated: extracts `.bundle` from `MaterializationResult`.
+- `fresh_db_results` fixture rewritten to use schema isolation (matches Phase 4 runner approach).
+- Added `test_exhaustive_observation_semantic_readback` — parametrized over 4 representative cases (B01-001, B02-007, B04-003, B05-006), verifying every persisted `ResearchObservation` field against the original: `source_id`, `raw.kind`, `raw.value`, `raw.unit`, `evidence_type`, `claim_semantics`, all 10 `applicability` fields, `confidence`, `notes`.
 
 **No production domain/persistence modules were changed.**
 
-### Validation
+### Validation (Session 2)
 
 - Local validation: `PASS`
 - Commands run:
   ```
   uv run ruff format scripts/benchmark/ tests/unit/test_benchmark_manifest.py tests/persistence/test_benchmark_persistence.py
-  uv run ruff check scripts/benchmark/ tests/unit/test_benchmark_manifest.py tests/persistence/test_benchmark_persistence.py
+  uv run ruff check --fix scripts/benchmark/ tests/unit/test_benchmark_manifest.py tests/persistence/test_benchmark_persistence.py
   uv run mypy scripts/benchmark/materializer.py scripts/benchmark/runner.py --ignore-missing-imports
-  uv run pytest tests/unit/ -v
+  uv run ruff format --check .
+  uv run ruff check .
+  uv run mypy src
+  uv run pytest tests/unit/ -q
   ```
 - Results:
-  - ruff format: 4 files reformatted, 1 unchanged — PASS
-  - ruff check: All checks passed — PASS
-  - mypy: Success, no issues found in 2 source files — PASS
-  - pytest tests/unit/: **975 passed** in 59.37s (includes 26 new benchmark manifest tests) — PASS
+  - ruff format: all files formatted or already formatted — PASS
+  - ruff check (fix): 1 import-sort fixed, 0 remaining — PASS
+  - ruff format --check .: 172 files already formatted — PASS
+  - ruff check .: All checks passed — PASS
+  - mypy src: Success, no issues found in 25 source files — PASS
+  - mypy scripts: Success, no issues found in 2 source files — PASS
+  - pytest tests/unit/: **975 passed** in 31.54s — PASS
 
-### External verification
+### Measured benchmark result (local, offline materialization)
 
-- Remote CI (GitHub Actions quality gate): `NOT VERIFIED` — branch not yet pushed at time of local validation; CI must be observed post-push.
-- Remote CI (db-integration PostgreSQL gate): `NOT VERIFIED` — `test_benchmark_persistence.py` tests require `HULLQ_TEST_DATABASE_URL` which is only set in the CI db-integration job. Tests are skipped locally when URL is absent. Remote CI result must be observed after push.
-- Coverage threshold (90%): `NOT VERIFIED` — new files add lines; threshold compliance must be observed in CI run.
+- Total benchmark cases: **50**
+- Materialized automatically: **50** (`status=MATERIALIZED` for all 50)
+- Review required: **0**
+- Cannot materialize: **0**
+- Review decisions required: **0** (no human review needed for materialization)
+- Reviewer minutes: `NOT_MEASURED` (all cases materialized mechanically from retained evidence)
+
+### External verification (Session 2)
+
+- Remote CI (GitHub Actions quality gate): `NOT VERIFIED` — new commit `f9b5adb` pushed at time of report; CI must be observed post-push.
+- Remote CI (db-integration PostgreSQL gate + benchmark runner): `NOT VERIFIED` — requires CI observation; benchmark runner now also executed in CI job and result validated against schema.
+- Coverage threshold (90%): `NOT VERIFIED` — must be observed in CI run.
+
+### Persistence results (local integration tests unavailable — no HULLQ_TEST_DATABASE_URL locally)
+
+- Integration tests (`tests/persistence/`) skipped locally when `HULLQ_TEST_DATABASE_URL` is unset.
+- All persistence outcomes (first_pass_imported, reimport_already_imported, fresh_run_imported, readback_mismatches, semantic_mismatches, recommendation) are `NOT VERIFIED` pending CI db-integration job.
+
+### Scope deviations
+
+- None. All changes within `scripts/benchmark/`, `tests/unit/`, `tests/persistence/`, `.github/workflows/ci.yml` touch points.
+- No production domain/persistence modules modified.
+- No new web research, no SailboatData field values, no fuzzy identity resolution, no automatic promotion, no SLICE-0015 started.
 
 ### Findings
 
-- **Unresolved findings:** None. All 50 benchmark cases were materializable from retained wave summary facts without invention. No `REVIEW_REQUIRED` cases emerged.
-- **Scope deviations:** None. Work remained strictly within the `scripts/benchmark/`, `research/benchmark/persistence/`, `tests/unit/`, and `tests/persistence/` touch points named by the slice.
-- **Spec/ADR ambiguities:** None new identified.
-- **REFERENCE_SOURCE_ID:** The string `sailboatdata-post-hoc-qa` marks reference crosschecks as post-hoc QA outcomes, not as SailboatData evidence values — consistent with the accepted source-rights policy. The crosscheck `reference_source_id` field is outcome metadata only.
-- **Benchmark recommendation (local evidence only):** All 50 bundles materialize offline, all 50 classification flag totals match the accepted CSV, determinism is proven across two independent `materialize_all()` runs. Persistence criteria 7-14 are structurally covered by integration tests. The runner will emit `G3_CANDIDATE` if all 50 first-pass imports succeed, all 50 re-imports return `ALREADY_IMPORTED`, all 50 fresh-DB imports succeed, and readback/fingerprint mismatches are zero; otherwise `HARDEN_FIRST`. The actual recommendation cannot be confirmed until the db-integration CI job runs.
+- **Issue 1 resolved:** W01/W02 cases now use real field-level observations from committed legacy JSONL. W03–W06 use embedded field-/claim-level facts from wave summaries. All 50 use real `EvidenceType`/`ClaimSemantics`/`ObservationApplicability`.
+- **Issue 2 resolved:** Runner derives all counts from actual `MaterializationResult.status`. Recommendation conditioned on `mat_count == total` and all persistence phase metrics.
+- **Issue 3 resolved:** Phase 4 and `fresh_db_results` fixture use schema isolation — fresh schema with migrations applied from zero, not TRUNCATE of already-migrated schema.
+- **Issue 4 resolved:** CI db-integration job now executes benchmark runner and validates JSON output against result_schema.json.
+- **Issue 5 resolved:** Exhaustive semantic readback test added for 4 hard cases covering all 10+ observation fields.
+- **Issue 6 confirmed:** Strict scope maintained throughout.
+
+### Benchmark recommendation
+
+Cannot confirm `G3_CANDIDATE` until CI db-integration job runs with new commit and persistence phase outcomes are observed. Local evidence (all 50 materialized, determinism proven) is consistent with `G3_CANDIDATE` if persistence phases also succeed. The actual recommendation will be in `BENCHMARK-RESULT.json` produced by CI.
 
 ### Follow-up
 
-- Recommended next action: merge to main after independent review and both CI jobs (standard quality + db-integration) pass. If db-integration job shows failures, diagnose before accepting.
+- Recommended next action: observe CI for new head `f9b5adb` on PR #29. If both quality and db-integration jobs (including benchmark runner) pass, the slice is ready for independent acceptance review.
 - Do NOT start SLICE-0015 or the 1,000-design bootstrap until this slice is explicitly accepted as `DONE` by the project owner.
 
 ### Agent declaration
@@ -444,3 +522,4 @@ The agent MUST NOT automatically begin SLICE-0015 or the 1,000-design bootstrap.
 - No unverified acceptance criterion was marked as passed.
 - The next slice was not started automatically.
 - The agent has NOT marked this slice `DONE`.
+- Remote CI for new head `f9b5adb` is `NOT VERIFIED` at time of this report.
