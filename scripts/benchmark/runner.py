@@ -40,6 +40,12 @@ RESULT_DEFAULT = ROOT / "research" / "benchmark" / "persistence" / "BENCHMARK-RE
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from benchmark.semantics_compare import (  # noqa: E402
+    compare_crosscheck_semantics,
+    compare_finding_semantics,
+    compare_observation_semantics,
+)
+
 
 def _get_db_url(cli_url: str | None) -> str:
     if cli_url:
@@ -97,46 +103,8 @@ def _git_sha(explicit_sha: str | None = None) -> str:
         return "NOT_MEASURED"
 
 
-def _compare_observation_semantics(
-    case_id: str,
-    original: Any,
-    fetched: Any,
-) -> list[str]:
-    """Return list of mismatch descriptions comparing all semantic fields of two observations."""
-    mismatches: list[str] = []
-    oid = original.observation_id
-    prefix = f"{case_id}/{oid}"
-
-    def chk(label: str, got: Any, exp: Any) -> None:
-        if got != exp:
-            mismatches.append(f"{prefix}: {label}: got={got!r} expected={exp!r}")
-
-    chk("source_id", fetched.source_id, original.source_id)
-    chk("raw.kind", fetched.raw.kind, original.raw.kind)
-    chk("raw.value", fetched.raw.value, original.raw.value)
-    chk("raw.unit", fetched.raw.unit, original.raw.unit)
-    chk("raw.excerpt", fetched.raw.excerpt, original.raw.excerpt)
-    chk("normalized_candidate", fetched.normalized_candidate, original.normalized_candidate)
-    chk("evidence_type", fetched.evidence_type, original.evidence_type)
-    chk("claim_semantics", fetched.claim_semantics, original.claim_semantics)
-    fa, oa = fetched.applicability, original.applicability
-    for attr in (
-        "first_year",
-        "last_year",
-        "hull_number_from",
-        "hull_number_to",
-        "market_or_region",
-        "named_variant_hint",
-        "design_option_hints",
-        "operating_state_hint",
-        "individual_hull_or_listing_ref",
-        "unknown_or_unbounded",
-    ):
-        chk(f"applicability.{attr}", getattr(fa, attr), getattr(oa, attr))
-    chk("confidence", fetched.confidence, original.confidence)
-    chk("notes", fetched.notes, original.notes)
-    chk("intended_field_pointer", fetched.intended_field_pointer, original.intended_field_pointer)
-    return mismatches
+# compare_observation_semantics, compare_finding_semantics, compare_crosscheck_semantics
+# are imported from benchmark.semantics_compare (the single canonical implementation).
 
 
 def _write_report(result_doc: dict[str, Any], report_path: Path) -> None:
@@ -249,10 +217,19 @@ def run_benchmark(
     mat_count = sum(1 for r in mat_results.values() if r.status == "MATERIALIZED")
     review_count = sum(1 for r in mat_results.values() if r.status == "REVIEW_REQUIRED")
     cannot_count = sum(1 for r in mat_results.values() if r.status == "CANNOT_MATERIALIZE")
-    review_reasons: dict[str, list[str]] = {}
-    for cid, r in mat_results.items():
-        if r.status != "MATERIALIZED" and r.review_reasons:
-            review_reasons[cid] = r.review_reasons
+    # review_required_reasons must be {failure_class: count} per result_schema.json
+    _REASON_TO_CLASS: dict[str, str] = {
+        "no_observations_extracted": "INSUFFICIENT_RETAINED_FACT",
+    }
+    review_reason_counts: dict[str, int] = {}
+    for r in mat_results.values():
+        if r.status != "MATERIALIZED":
+            for raw_reason in r.review_reasons:
+                cls = _REASON_TO_CLASS.get(raw_reason)
+                if cls is None:
+                    # Classify exception-derived reasons as VALIDATION_FAILURE
+                    cls = "VALIDATION_FAILURE"
+                review_reason_counts[cls] = review_reason_counts.get(cls, 0) + 1
     print(
         f"  total={total} materialized={mat_count} review_required={review_count} "
         f"cannot_materialize={cannot_count}",
@@ -293,8 +270,10 @@ def run_benchmark(
         )
         print(f"  wall-clock: {import_elapsed:.3f}s", flush=True)
 
-        # --- Readback fidelity (full semantic comparison for all observations) ---
+        # --- Readback fidelity (full semantic comparison for all bundle children) ---
         print("\nPhase 2: readback fidelity (semantic)...", flush=True)
+        from hullq.persistence.readback import fetch_crosscheck as _fetch_cc
+        from hullq.persistence.readback import fetch_finding as _fetch_finding
         from hullq.persistence.readback import fetch_observation as _fetch_obs
 
         readback_mismatches = 0
@@ -311,18 +290,50 @@ def run_benchmark(
                     readback_mismatches += 1
                     print(f"    OBS ID MISMATCH: {case_id}", flush=True)
                     continue
-                # Full semantic comparison for every observation
+                # Observations: full semantic comparison (all fields)
                 for original in bundle.observations:
                     fetched = _fetch_obs(conn1, original.observation_id)
                     if fetched is None:
                         readback_mismatches += 1
                         print(f"    OBS NOT FOUND: {case_id}/{original.observation_id}", flush=True)
                         continue
-                    diffs = _compare_observation_semantics(case_id, original, fetched)
+                    diffs = compare_observation_semantics(case_id, original, fetched)
                     if diffs:
                         readback_mismatches += len(diffs)
                         for d in diffs[:3]:
                             print(f"    SEMANTIC DIFF: {d}", flush=True)
+                # Findings: full semantic comparison
+                for original_f in bundle.unresolved_findings:
+                    fetched_f = _fetch_finding(
+                        conn1, original_f.finding_id, bundle.bundle_id, bundle.bundle_version
+                    )
+                    if fetched_f is None:
+                        readback_mismatches += 1
+                        print(
+                            f"    FINDING NOT FOUND: {case_id}/{original_f.finding_id}", flush=True
+                        )
+                        continue
+                    diffs = compare_finding_semantics(case_id, original_f, fetched_f)
+                    if diffs:
+                        readback_mismatches += len(diffs)
+                        for d in diffs[:3]:
+                            print(f"    FINDING DIFF: {d}", flush=True)
+                # Crosschecks: full semantic comparison
+                for original_cc in bundle.reference_crosschecks:
+                    fetched_cc = _fetch_cc(
+                        conn1, original_cc.crosscheck_id, bundle.bundle_id, bundle.bundle_version
+                    )
+                    if fetched_cc is None:
+                        readback_mismatches += 1
+                        print(
+                            f"    CC NOT FOUND: {case_id}/{original_cc.crosscheck_id}", flush=True
+                        )
+                        continue
+                    diffs = compare_crosscheck_semantics(case_id, original_cc, fetched_cc)
+                    if diffs:
+                        readback_mismatches += len(diffs)
+                        for d in diffs[:3]:
+                            print(f"    CC DIFF: {d}", flush=True)
             except Exception as exc:
                 readback_mismatches += 1
                 print(f"    READBACK ERROR: {case_id}: {exc}", flush=True)
@@ -371,6 +382,8 @@ def run_benchmark(
         conn2.commit()
         apply_migrations(conn2)
 
+        from hullq.persistence.readback import fetch_crosscheck as _fetch_cc4
+        from hullq.persistence.readback import fetch_finding as _fetch_finding4
         from hullq.persistence.readback import fetch_observation as _fetch_obs4
 
         fresh_imported = 0
@@ -380,7 +393,7 @@ def run_benchmark(
                 result = import_research_evidence_bundle(conn2, bundle)
                 if result.status == ImportStatus.IMPORTED:
                     fresh_imported += 1
-                    # Full semantic comparison for every observation in fresh schema
+                    # Observations: full semantic comparison
                     for original in bundle.observations:
                         fetched = _fetch_obs4(conn2, original.observation_id)
                         if fetched is None:
@@ -390,11 +403,48 @@ def run_benchmark(
                                 flush=True,
                             )
                             continue
-                        diffs = _compare_observation_semantics(case_id, original, fetched)
+                        diffs = compare_observation_semantics(case_id, original, fetched)
                         if diffs:
                             fresh_semantic_mismatches += len(diffs)
                             for d in diffs[:3]:
                                 print(f"    FRESH SEMANTIC DIFF: {d}", flush=True)
+                    # Findings: full semantic comparison
+                    for original_f in bundle.unresolved_findings:
+                        fetched_f = _fetch_finding4(
+                            conn2, original_f.finding_id, bundle.bundle_id, bundle.bundle_version
+                        )
+                        if fetched_f is None:
+                            fresh_semantic_mismatches += 1
+                            print(
+                                f"    FRESH FINDING MISSING: {case_id}/{original_f.finding_id}",
+                                flush=True,
+                            )
+                            continue
+                        diffs = compare_finding_semantics(case_id, original_f, fetched_f)
+                        if diffs:
+                            fresh_semantic_mismatches += len(diffs)
+                            for d in diffs[:3]:
+                                print(f"    FRESH FINDING DIFF: {d}", flush=True)
+                    # Crosschecks: full semantic comparison
+                    for original_cc in bundle.reference_crosschecks:
+                        fetched_cc = _fetch_cc4(
+                            conn2,
+                            original_cc.crosscheck_id,
+                            bundle.bundle_id,
+                            bundle.bundle_version,
+                        )
+                        if fetched_cc is None:
+                            fresh_semantic_mismatches += 1
+                            print(
+                                f"    FRESH CC MISSING: {case_id}/{original_cc.crosscheck_id}",
+                                flush=True,
+                            )
+                            continue
+                        diffs = compare_crosscheck_semantics(case_id, original_cc, fetched_cc)
+                        if diffs:
+                            fresh_semantic_mismatches += len(diffs)
+                            for d in diffs[:3]:
+                                print(f"    FRESH CC DIFF: {d}", flush=True)
                 else:
                     fresh_semantic_mismatches += 1
                     print(f"    FRESH IMPORT FAILED: {case_id}: {result.status}", flush=True)
@@ -435,7 +485,8 @@ def run_benchmark(
             "materialized": mat_count,
             "review_required": review_count,
             "cannot_materialize": cannot_count,
-            "review_required_reasons": review_reasons,
+            # review_required_reasons: {failure_class: count} per result_schema.json contract
+            "review_required_reasons": review_reason_counts,
         },
         "persistence": {
             "valid_bundles_submitted": mat_count,
@@ -469,27 +520,67 @@ def run_benchmark(
             "These bundles are pre-curated benchmark cases, not a random sample of the broader "
             "design universe. A production automation rate study requires a separate evaluation."
         ),
-        "recommendation": (
-            "G3_CANDIDATE"
-            if (
-                mat_count == total
-                and first_imported == mat_count
-                and reimport_already == mat_count
-                and fresh_imported == mat_count
-                and readback_mismatches == 0
-                and fresh_semantic_mismatches == 0
-            )
-            else "HARDEN_FIRST"
-        ),
-        "recommendation_rationale": (
+        "benchmark_cost": {
+            "researcher_hours": "NOT_MEASURED",
+            "researcher_hours_reason": (
+                "Benchmark uses pre-curated retained evidence; no live research sessions "
+                "are conducted during this runner execution."
+            ),
+            "compute_cost_usd": "NOT_MEASURED",
+            "compute_cost_reason": (
+                "Runner executes on CI infrastructure; per-run cost is not directly "
+                "measurable from within the runner process."
+            ),
+        },
+    }
+
+    # Derive recommendation: BLOCKED when contracts cannot represent retained reality
+    # (CANNOT_MATERIALIZE means bundle building threw an exception — the domain contracts
+    # are insufficient for those cases, not just that the evidence is ambiguous).
+    # HARDEN_FIRST for cases where persistence/readback criteria were not met.
+    # G3_CANDIDATE only when all acceptance criteria pass.
+    if cannot_count > 0:
+        recommendation = "BLOCKED"
+        rationale = (
+            f"BLOCKED: {cannot_count} case(s) cannot_materialize — accepted domain contracts "
+            f"cannot represent retained benchmark reality for those cases. "
             f"materialized={mat_count}/{total}, "
             f"first_pass_imported={first_imported}/{mat_count}, "
             f"reimport_already_imported={reimport_already}/{mat_count}, "
             f"fresh_run_imported={fresh_imported}/{mat_count}, "
             f"readback_mismatches={readback_mismatches}, "
             f"semantic_mismatches={fresh_semantic_mismatches}."
-        ),
-    }
+        )
+    elif (
+        mat_count == total
+        and first_imported == mat_count
+        and reimport_already == mat_count
+        and fresh_imported == mat_count
+        and readback_mismatches == 0
+        and fresh_semantic_mismatches == 0
+    ):
+        recommendation = "G3_CANDIDATE"
+        rationale = (
+            f"All acceptance criteria met: materialized={mat_count}/{total}, "
+            f"first_pass_imported={first_imported}/{mat_count}, "
+            f"reimport_already_imported={reimport_already}/{mat_count}, "
+            f"fresh_run_imported={fresh_imported}/{mat_count}, "
+            f"readback_mismatches={readback_mismatches}, "
+            f"semantic_mismatches={fresh_semantic_mismatches}."
+        )
+    else:
+        recommendation = "HARDEN_FIRST"
+        rationale = (
+            f"One or more acceptance criteria not met: materialized={mat_count}/{total}, "
+            f"first_pass_imported={first_imported}/{mat_count}, "
+            f"reimport_already_imported={reimport_already}/{mat_count}, "
+            f"fresh_run_imported={fresh_imported}/{mat_count}, "
+            f"readback_mismatches={readback_mismatches}, "
+            f"semantic_mismatches={fresh_semantic_mismatches}."
+        )
+
+    result_doc["recommendation"] = recommendation
+    result_doc["recommendation_rationale"] = rationale
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(result_doc, indent=2), encoding="utf-8")

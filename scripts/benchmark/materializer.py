@@ -32,6 +32,7 @@ from hullq.domain.provenance import (
     ClaimSemantics,
     ConfidenceLevel,
     EvidenceType,
+    JsonPointer,
     ObservationApplicability,
     ProducerKind,
     ProducerMetadata,
@@ -242,6 +243,57 @@ _OTHER_CLAIM_FIELDS: frozenset[str] = frozenset(
     }
 )
 
+# Fields for which a canonical JSON-Pointer field path is established in the
+# HullQ domain model. Only well-known physical/design dimensions are included;
+# do not add speculative or research-specific fields.
+_CANONICAL_POINTER_FIELDS: frozenset[str] = frozenset(
+    {
+        "loa",
+        "lwl",
+        "beam",
+        "draft",
+        "draft_min",
+        "draft_max",
+        "air_draft",
+        "freeboard",
+        "displacement",
+        "ballast",
+        "sail_area",
+        "sail_area_main",
+        "sail_area_jib",
+        "sail_area_spinnaker",
+        "keel_type",
+        "rudder_type",
+        "rig_types",
+    }
+)
+
+
+def _canonical_field_pointer(field: str) -> JsonPointer | None:
+    """Return a JsonPointer for fields with established canonical domain paths.
+
+    Only fields in _CANONICAL_POINTER_FIELDS receive a pointer. All others
+    return None; their identity must be preserved via notes instead.
+    """
+    if field in _CANONICAL_POINTER_FIELDS:
+        return JsonPointer(f"/{field}")
+    return None
+
+
+def _field_notes(field: str, existing_notes: str | None) -> str | None:
+    """Append the retained field label to notes so identity is never lost.
+
+    The exact original field label is always preserved in notes regardless of
+    whether a canonical intended_field_pointer is also set. This ensures the
+    observation remains reconstructable even when the canonical pointer mapping
+    is not established or later changes.
+    """
+    tag = f"field_label:{field}"
+    if existing_notes:
+        return f"{existing_notes}; {tag}"
+    return tag
+
+
 # ---------------------------------------------------------------------------
 # MaterializationResult
 # ---------------------------------------------------------------------------
@@ -351,7 +403,9 @@ def _map_evidence_type(tier: str, source_name: str) -> EvidenceType:
     # Note: "club" alone is ambiguous (e.g. "HR Club" is manufacturer-affiliated).
     # Only classify as association when "club" appears with "class" or "association".
     # Standalone "club" falls through to narrative or manufacturer checks below.
-    # Known manufacturer sources — by manufacturer/brand name in source
+    # Known manufacturer sources — classified by manufacturer/brand name only.
+    # Do NOT include generic terms like "specification", "tech spec", "tech-spec":
+    # these appear in third-party documents and do not imply manufacturer authorship.
     if any(
         k in name
         for k in (
@@ -374,9 +428,6 @@ def _map_evidence_type(tier: str, source_name: str) -> EvidenceType:
             "dehler",
             "bavaria",
             "etap",
-            "specification",
-            "tech spec",
-            "tech-spec",
         )
     ):
         return EvidenceType.MANUFACTURER_SPECIFICATION
@@ -736,8 +787,11 @@ def _build_legacy_bundle(
             confidence=_map_confidence(confidence_str),
             supersedes_observation_id=None,
             intended_subject_kind_hint=None,
-            intended_field_pointer=None,
-            notes=notes,
+            # Preserve retained field identity losslessly:
+            # canonical pointer for established domain fields; field label in
+            # notes for all fields so the observation is always reconstructable.
+            intended_field_pointer=_canonical_field_pointer(field),
+            notes=_field_notes(field, notes),
         )
         observations.append(observation)
 
@@ -2004,6 +2058,18 @@ def _build_w3w6_bundle(
         field = fact.get("field", "observation")
         notes = fact.get("notes")
 
+        # Prefer explicit evidence_type from fact dict when source context
+        # establishes it deterministically; otherwise infer from source name.
+        # Never infer MANUFACTURER_SPECIFICATION from tier alone or generic keywords.
+        explicit_et_raw: str | None = fact.get("evidence_type")
+        if explicit_et_raw is not None:
+            try:
+                evidence_type = EvidenceType(explicit_et_raw)
+            except ValueError:
+                evidence_type = _map_evidence_type(tier, source_name)
+        else:
+            evidence_type = _map_evidence_type(tier, source_name)
+
         if isinstance(raw_val, (int, float)):
             kind = RawObservationKind.LITERAL
         else:
@@ -2018,7 +2084,7 @@ def _build_w3w6_bundle(
                 source_locator=_NULL_LOCATOR,
                 raw=RawObservation(kind=kind, value=raw_val, unit=unit, excerpt=None),
                 normalized_candidate=None,
-                evidence_type=_map_evidence_type(tier, source_name),
+                evidence_type=evidence_type,
                 claim_semantics=_map_claim_semantics(field, basis),
                 applicability=_map_applicability(basis),
                 producer=_PRODUCER,
@@ -2027,8 +2093,11 @@ def _build_w3w6_bundle(
                 confidence=_map_confidence(confidence_str),
                 supersedes_observation_id=None,
                 intended_subject_kind_hint=None,
-                intended_field_pointer=None,
-                notes=notes,
+                # Preserve retained field identity losslessly:
+                # canonical pointer for established domain fields; field label in
+                # notes for all fields so the observation is always reconstructable.
+                intended_field_pointer=_canonical_field_pointer(field),
+                notes=_field_notes(field, notes),
             )
         )
 

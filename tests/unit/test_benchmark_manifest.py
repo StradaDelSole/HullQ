@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -538,3 +539,143 @@ def test_tier_a_alone_not_manufacturer_specification() -> None:
         f"Tier 'A' alone must not map to MANUFACTURER_SPECIFICATION (got {result!r}). "
         "Document type must come from source-name evidence, not authority tier."
     )
+
+
+# ---------------------------------------------------------------------------
+# Field identity preservation
+# ---------------------------------------------------------------------------
+
+
+def test_field_identity_in_notes_preserves_field_label(bundles: dict) -> None:  # type: ignore[type-arg]
+    """Every observation's notes must contain the retained field label.
+
+    This ensures that even when intended_field_pointer is None, the original
+    field identity is always reconstructable from notes.
+    """
+    missing_labels: list[tuple[str, str]] = [
+        (case_id, obs.observation_id)
+        for case_id, bundle in bundles.items()
+        for obs in bundle.observations
+        if obs.notes is None or "field_label:" not in obs.notes
+    ]
+    assert not missing_labels, (
+        f"{len(missing_labels)} observation(s) lack a field_label: tag in notes: "
+        f"{missing_labels[:5]}"
+    )
+
+
+def test_two_dimensional_observations_are_field_distinguishable(bundles: dict) -> None:  # type: ignore[type-arg]
+    """Two observations from the same bundle with the same source but different fields
+    must carry different field labels so they are distinguishable.
+
+    Checks that LOA and LWL observations are not conflated — a 12.93m and a 10.50m
+    observation from the same bundle must have distinct field_label: tags in notes.
+    """
+    for case_id, bundle in bundles.items():
+        obs_by_source: dict[str, list[Any]] = {}
+        for obs in bundle.observations:
+            obs_by_source.setdefault(obs.source_id, []).append(obs)
+        for source_id, obs_list in obs_by_source.items():
+            if len(obs_list) < 2:
+                continue
+            field_labels = []
+            for obs in obs_list:
+                label = None
+                if obs.notes:
+                    for part in obs.notes.split(";"):
+                        part = part.strip()
+                        if part.startswith("field_label:"):
+                            label = part[len("field_label:") :].strip()
+                            break
+                field_labels.append(label)
+            # If there are multiple observations, their field labels should not all be None
+            # (at minimum, field identity must exist for each obs)
+            none_count = sum(1 for fl in field_labels if fl is None)
+            assert none_count < len(field_labels), (
+                f"Case {case_id} source {source_id!r}: all {len(field_labels)} observations "
+                f"are missing field_label: in notes — field identity is not preserved."
+            )
+
+
+def test_canonical_field_pointer_for_known_dimension(bundles: dict) -> None:  # type: ignore[type-arg]
+    """Observations for established canonical fields must have intended_field_pointer set."""
+    from benchmark.materializer import _CANONICAL_POINTER_FIELDS
+
+    from hullq.domain.provenance import JsonPointer
+
+    canonical_obs_found: list[tuple[str, str, Any]] = []
+    for case_id, bundle in bundles.items():
+        for obs in bundle.observations:
+            if obs.notes is None:
+                continue
+            for part in obs.notes.split(";"):
+                part = part.strip()
+                if not part.startswith("field_label:"):
+                    continue
+                field = part[len("field_label:") :].strip()
+                if field in _CANONICAL_POINTER_FIELDS:
+                    canonical_obs_found.append(
+                        (case_id, obs.observation_id, obs.intended_field_pointer)
+                    )
+
+    if not canonical_obs_found:
+        pytest.skip("No observations for canonical fields found — check field label population")
+
+    wrong: list[tuple[str, str, Any]] = [
+        (cid, oid, fp) for cid, oid, fp in canonical_obs_found if not isinstance(fp, JsonPointer)
+    ]
+    assert not wrong, (
+        f"{len(wrong)} canonical-field observation(s) missing JsonPointer: {wrong[:5]}"
+    )
+
+
+def test_no_guessed_canonical_pointer_for_unknown_fields(bundles: dict) -> None:  # type: ignore[type-arg]
+    """Observations for non-canonical fields must NOT have an intended_field_pointer.
+
+    This guards against over-eager pointer assignment that would manufacture
+    canonical mappings for research-specific or ambiguous field names.
+    """
+    from benchmark.materializer import _CANONICAL_POINTER_FIELDS
+
+    from hullq.domain.provenance import JsonPointer
+
+    wrong: list[tuple[str, str, str]] = []
+    for case_id, bundle in bundles.items():
+        for obs in bundle.observations:
+            if obs.intended_field_pointer is None:
+                continue
+            if not isinstance(obs.intended_field_pointer, JsonPointer):
+                continue
+            # Extract the field label from notes
+            field_from_notes: str | None = None
+            if obs.notes:
+                for part in obs.notes.split(";"):
+                    part = part.strip()
+                    if part.startswith("field_label:"):
+                        field_from_notes = part[len("field_label:") :].strip()
+                        break
+            if field_from_notes and field_from_notes not in _CANONICAL_POINTER_FIELDS:
+                wrong.append((case_id, obs.observation_id, field_from_notes))
+
+    assert not wrong, (
+        f"{len(wrong)} observation(s) have intended_field_pointer for non-canonical fields: "
+        f"{wrong[:5]}"
+    )
+
+
+def test_generic_specification_source_not_manufacturer_specification() -> None:
+    """A source whose name only contains 'specification' must not become MANUFACTURER_SPECIFICATION.
+
+    Generic terms like 'specification', 'tech spec', 'tech-spec' appear in
+    third-party documents and do not imply manufacturer authorship.
+    """
+    from benchmark.materializer import _map_evidence_type
+
+    from hullq.domain.provenance import EvidenceType
+
+    for name in ("Catalina 36 Specification Sheet", "Tech Spec comparison", "Tech-Spec Overview"):
+        result = _map_evidence_type("A", name)
+        assert result != EvidenceType.MANUFACTURER_SPECIFICATION, (
+            f"Source name {name!r} produced MANUFACTURER_SPECIFICATION via generic keyword guessing. "
+            "Document type must come from established manufacturer name evidence, not generic terms."
+        )

@@ -25,6 +25,12 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from benchmark.semantics_compare import (  # noqa: E402
+    compare_crosscheck_semantics,
+    compare_finding_semantics,
+    compare_observation_semantics,
+)
+
 EXPECTED_CASE_IDS = {
     "B01-001",
     "B01-002",
@@ -625,112 +631,10 @@ def test_exhaustive_observation_semantic_readback(
 
 
 # ---------------------------------------------------------------------------
-# Corpus-wide semantic readback — all 50 bundles, all observations
+# Corpus-wide semantic readback — all 50 bundles, all bundle children
 # ---------------------------------------------------------------------------
-
-
-def compare_observation_semantics(
-    case_id: str,
-    original: Any,
-    fetched: Any,
-) -> list[str]:
-    """Return a list of semantic mismatch descriptions (empty = exact match).
-
-    Compares all semantic fields: source_id, source_locator, raw (kind/value/unit/excerpt),
-    normalized_candidate, evidence_type, claim_semantics, applicability (all 10 fields),
-    producer (identifier/kind/version), research_context, observed_at, confidence,
-    supersedes_observation_id, intended_subject_kind_hint, intended_field_pointer,
-    notes.
-    """
-    mismatches: list[str] = []
-    oid = original.observation_id
-    prefix = f"{case_id}/{oid}"
-
-    def chk(label: str, got: Any, exp: Any) -> None:
-        if got != exp:
-            mismatches.append(f"{prefix}: {label}: got={got!r} expected={exp!r}")
-
-    chk("source_id", fetched.source_id, original.source_id)
-
-    # source_locator
-    if fetched.source_locator is None and original.source_locator is not None:
-        mismatches.append(
-            f"{prefix}: source_locator: got=None expected={original.source_locator!r}"
-        )
-    elif fetched.source_locator is not None and original.source_locator is None:
-        mismatches.append(f"{prefix}: source_locator: got={fetched.source_locator!r} expected=None")
-    elif fetched.source_locator is not None and original.source_locator is not None:
-        chk("source_locator.page", fetched.source_locator.page, original.source_locator.page)
-        chk(
-            "source_locator.section",
-            fetched.source_locator.section,
-            original.source_locator.section,
-        )
-        chk("source_locator.anchor", fetched.source_locator.anchor, original.source_locator.anchor)
-
-    # raw
-    chk("raw.kind", fetched.raw.kind, original.raw.kind)
-    chk("raw.value", fetched.raw.value, original.raw.value)
-    chk("raw.unit", fetched.raw.unit, original.raw.unit)
-    chk("raw.excerpt", fetched.raw.excerpt, original.raw.excerpt)
-
-    # normalized_candidate
-    chk("normalized_candidate", fetched.normalized_candidate, original.normalized_candidate)
-
-    # semantics
-    chk("evidence_type", fetched.evidence_type, original.evidence_type)
-    chk("claim_semantics", fetched.claim_semantics, original.claim_semantics)
-
-    # applicability (all 10 fields)
-    fa, oa = fetched.applicability, original.applicability
-    for attr in (
-        "first_year",
-        "last_year",
-        "hull_number_from",
-        "hull_number_to",
-        "market_or_region",
-        "named_variant_hint",
-        "design_option_hints",
-        "operating_state_hint",
-        "individual_hull_or_listing_ref",
-        "unknown_or_unbounded",
-    ):
-        chk(f"applicability.{attr}", getattr(fa, attr), getattr(oa, attr))
-
-    # producer
-    chk("producer.identifier", fetched.producer.identifier, original.producer.identifier)
-    chk("producer.kind", fetched.producer.kind, original.producer.kind)
-    chk("producer.version", fetched.producer.version, original.producer.version)
-
-    # research_context
-    if fetched.research_context is not None and original.research_context is not None:
-        chk(
-            "research_context.activity_id",
-            fetched.research_context.activity_id,
-            original.research_context.activity_id,
-        )
-        chk(
-            "research_context.research_job_id",
-            fetched.research_context.research_job_id,
-            original.research_context.research_job_id,
-        )
-
-    chk("observed_at", fetched.observed_at, original.observed_at)
-    chk("confidence", fetched.confidence, original.confidence)
-    chk(
-        "supersedes_observation_id",
-        fetched.supersedes_observation_id,
-        original.supersedes_observation_id,
-    )
-    chk(
-        "intended_subject_kind_hint",
-        fetched.intended_subject_kind_hint,
-        original.intended_subject_kind_hint,
-    )
-    chk("intended_field_pointer", fetched.intended_field_pointer, original.intended_field_pointer)
-    chk("notes", fetched.notes, original.notes)
-
-    return mismatches
+# compare_observation_semantics, compare_finding_semantics, compare_crosscheck_semantics
+# are imported from benchmark.semantics_compare (the single canonical implementation).
 
 
 def test_corpus_wide_semantic_readback_all_bundles(
@@ -738,11 +642,12 @@ def test_corpus_wide_semantic_readback_all_bundles(
     benchmark_bundles: dict[str, Any],
     first_pass_results: dict[str, Any],
 ) -> None:
-    """Corpus-wide: every observation of every bundle must round-trip semantically exact.
+    """Corpus-wide: every bundle child (observation, finding, crosscheck) must round-trip.
 
-    Compares all persisted semantic fields for all 50 cases. Zero mismatches required.
+    Uses the canonical compare_* functions from benchmark.semantics_compare.
+    Zero mismatches required across all 50 cases.
     """
-    from hullq.persistence.readback import fetch_observation
+    from hullq.persistence.readback import fetch_crosscheck, fetch_finding, fetch_observation
 
     all_mismatches: list[str] = []
     for case_id in sorted(EXPECTED_CASE_IDS):
@@ -756,6 +661,24 @@ def test_corpus_wide_semantic_readback_all_bundles(
                 all_mismatches.append(f"{case_id}/{original.observation_id}: not found in DB")
                 continue
             all_mismatches.extend(compare_observation_semantics(case_id, original, fetched))
+        for original_f in bundle.unresolved_findings:
+            fetched_f = fetch_finding(
+                benchmark_conn, original_f.finding_id, bundle.bundle_id, bundle.bundle_version
+            )
+            if fetched_f is None:
+                all_mismatches.append(f"{case_id}/{original_f.finding_id}: finding not found in DB")
+                continue
+            all_mismatches.extend(compare_finding_semantics(case_id, original_f, fetched_f))
+        for original_cc in bundle.reference_crosschecks:
+            fetched_cc = fetch_crosscheck(
+                benchmark_conn, original_cc.crosscheck_id, bundle.bundle_id, bundle.bundle_version
+            )
+            if fetched_cc is None:
+                all_mismatches.append(
+                    f"{case_id}/{original_cc.crosscheck_id}: crosscheck not found in DB"
+                )
+                continue
+            all_mismatches.extend(compare_crosscheck_semantics(case_id, original_cc, fetched_cc))
 
     assert not all_mismatches, (
         f"{len(all_mismatches)} semantic mismatch(es) in corpus-wide readback:\n"
@@ -769,9 +692,9 @@ def test_corpus_wide_semantic_readback_fresh_schema(
     benchmark_bundles: dict[str, Any],
     reimport_results: dict[str, Any],
 ) -> None:
-    """Fresh-schema: every observation round-trips semantically after DROP+CREATE schema.
+    """Fresh-schema: all bundle children round-trip semantically after DROP+CREATE schema.
 
-    Runs an independent fresh-schema import and compares all semantic fields.
+    Uses canonical comparators from benchmark.semantics_compare.
     Zero semantic mismatches required.
     """
     import hashlib
@@ -780,7 +703,7 @@ def test_corpus_wide_semantic_readback_fresh_schema(
 
     from hullq.persistence.importer import import_research_evidence_bundle
     from hullq.persistence.migrations import apply_migrations
-    from hullq.persistence.readback import fetch_observation
+    from hullq.persistence.readback import fetch_crosscheck, fetch_finding, fetch_observation
 
     schema = "hullq_bm_sr2_" + hashlib.sha1(db_url.encode()).hexdigest()[:12]
     conn = psycopg.connect(db_url)
@@ -807,6 +730,28 @@ def test_corpus_wide_semantic_readback_fresh_schema(
                     )
                     continue
                 all_mismatches.extend(compare_observation_semantics(case_id, original, fetched))
+            for original_f in bundle.unresolved_findings:
+                fetched_f = fetch_finding(
+                    conn, original_f.finding_id, bundle.bundle_id, bundle.bundle_version
+                )
+                if fetched_f is None:
+                    all_mismatches.append(
+                        f"{case_id}/{original_f.finding_id}: finding not found in fresh-schema DB"
+                    )
+                    continue
+                all_mismatches.extend(compare_finding_semantics(case_id, original_f, fetched_f))
+            for original_cc in bundle.reference_crosschecks:
+                fetched_cc = fetch_crosscheck(
+                    conn, original_cc.crosscheck_id, bundle.bundle_id, bundle.bundle_version
+                )
+                if fetched_cc is None:
+                    all_mismatches.append(
+                        f"{case_id}/{original_cc.crosscheck_id}: crosscheck not found in fresh-schema DB"
+                    )
+                    continue
+                all_mismatches.extend(
+                    compare_crosscheck_semantics(case_id, original_cc, fetched_cc)
+                )
     finally:
         with conn.cursor() as cur:
             cur.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
