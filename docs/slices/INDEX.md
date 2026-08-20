@@ -16,23 +16,24 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0008 | IMPLEMENTATION | DONE | First rights-gated real external acquisition adapter against Wikidata CC0 with bounded discovery/entity acquisition and provenance-aware extraction | SLICE-0007 |
 | SLICE-0009 | IMPLEMENTATION | DONE | Deterministic appendage/configuration normalization for explicit keel, rudder, skeg, hull and board observations using the existing BoatDesign vocabulary | SLICE-0008 |
 | SLICE-0010 | IMPLEMENTATION | DONE | Deterministic `hullq-derived-1.0.0` derived-metrics engine with accepted formulas, status precedence, six-decimal canonical precision and DerivationRecord lineage | SLICE-0009 / ADR-0008 |
-| SLICE-0011 | DESIGN_RESEARCH | REVIEW | Controlled 50-design real-web stress benchmark, measured ambiguity/conflict classes, post-hoc reference QA and benchmark-derived persistence requirements | SLICE-0010 |
-| SLICE-0012 | IMPLEMENTATION | BLOCKED | Add pre-canonical ResearchObservation, claim/applicability semantics, explicit promotion to FieldEvidence and machine-ingestible ResearchEvidenceBundle before physical persistence | SLICE-0011 accepted / DONE |
+| SLICE-0011 | DESIGN_RESEARCH | DONE | Controlled 50-design real-web stress benchmark, measured ambiguity/conflict classes, post-hoc reference QA and benchmark-derived persistence requirements | SLICE-0010 |
+| SLICE-0012 | IMPLEMENTATION | READY | Add pre-canonical ResearchObservation, claim/applicability semantics, explicit promotion to FieldEvidence and machine-ingestible ResearchEvidenceBundle before physical persistence | SLICE-0011 accepted / DONE |
 
 ## Current execution rule
 
-`SLICE-0010` is `DONE` and accepted.
+`SLICE-0011` is `DONE` and accepted.
 
 Acceptance evidence:
 
-- accepted final implementation/PR head: `601af0e859a8c771640f473394b78efa32bf918c`;
-- GitHub Actions run #120: PASS on the accepted head;
-- final local implementation report: 915 tests PASS, 92.62% branch coverage, `derived_metrics.py` 99.50% branch coverage, repository validator PASS, Ruff/format clean, strict mypy clean, pip-audit clean;
-- independent review found four blocking precision issues; all four were amended and independently rechecked with no remaining blockers;
-- PR #21 merged on 2026-08-19;
-- implementation merge commit: `8f9a5ab07f454d6dfbfcb2f133c80c48b14dcc4a`.
-
-`SLICE-0011` is in `REVIEW`. The master-led research pass reached the minimum 50-design difficult corpus, coded the retained cases, measured recurring stress classes and derived the next bounded pre-persistence requirements. It remains research-led: ChatGPT/master performed real-web source discovery and evidence assessment; Claude Code was not used as an autonomous network-research agent.
+- final accepted PR head: `9f1859fe9762e05bd2a5be57c550f255be302c9b`;
+- GitHub Actions CI run #151: PASS on the exact accepted head;
+- Ubuntu quality: PASS;
+- Windows quality: PASS;
+- dependency audit: PASS;
+- independent closure review: no remaining blocking scope/data-governance issue;
+- explicit project-owner acceptance on 2026-08-20;
+- PR #22 merged on 2026-08-20;
+- merge commit: `668e91937d27dc9c70760301b92ce0ded41abb2f`.
 
 Benchmark closure artifacts include:
 
@@ -40,16 +41,15 @@ Benchmark closure artifacts include:
 - `research/benchmark/CONTROLLED_BENCHMARK_LEDGER.md`;
 - `research/benchmark/BENCHMARK-50-classification.csv`;
 - `research/benchmark/BENCHMARK-50-analysis.md`;
+- `research/benchmark/BENCHMARK-50-closure-review.md`;
 - retained pre-contract structured exports for Waves 01/02 under `research/benchmark/legacy-observations/`.
-
-The 50-design stress corpus is deliberately difficult; its measured incidences are not sailboat-population prevalence estimates. Runtime automation/review/idempotency/cost metrics remain deferred until an executable importer/persistence path exists.
 
 The closure review found and corrected two important governance/architecture issues before acceptance:
 
 1. post-hoc SailboatData comparison is outcome-only in retained summaries/exports; no SailboatData field value is HullQ evidence or retained as fallback data;
 2. ResearchJob targets are intentionally pre-canonical, while FieldEvidence requires a stable provenance subject. SLICE-0012 therefore introduces pre-canonical `ResearchObservation` and explicit caller-supplied promotion to FieldEvidence rather than forcing identity during research.
 
-`SLICE-0012` is drafted but `BLOCKED`. It MUST NOT start until SLICE-0011 has passed current-head CI, independent closure review and explicit owner acceptance/DONE. No implementation agent may automatically begin it.
+`SLICE-0012` is now the **only READY implementation slice**. It may start only through the normal isolated `START_SLICE.bat` workflow. No PostgreSQL, broad ingestion, query-engine, API or frontend work is authorized by this READY state.
 
 ## Evidence-first sequence
 
@@ -74,10 +74,10 @@ appendage/configuration hardening                 DONE
         ↓
 derived metrics                                  DONE
         ↓
-controlled 50-design real-web benchmark           REVIEW — SLICE-0011
+controlled 50-design real-web benchmark           DONE — SLICE-0011
         ↓
 pre-canonical observation + evidence applicability
-+ ResearchEvidenceBundle                          BLOCKED — SLICE-0012
++ ResearchEvidenceBundle                          READY — SLICE-0012
         ↓
 PostgreSQL persistence + deterministic importer   LATER
         ↓
@@ -108,10 +108,12 @@ The 50-design analysis found that existing identity/configuration/provenance fou
 
 ## Workflow note
 
-The `START_SLICE` / `FINISH_SLICE` worktree workflow continues to govern Claude implementation slices. SLICE-0011 is a master-led DESIGN_RESEARCH slice and does not require Claude to perform web research.
+The `START_SLICE` / `FINISH_SLICE` worktree workflow governs Claude implementation slices.
 
-GitHub `origin/main` remains canonical truth. Research changes are prepared on `research/0011-controlled-benchmark` and go through PR #22 before becoming canonical.
+GitHub `origin/main` remains canonical truth. Claude owns only its assigned `slice/...` implementation branch. The master/architect does not write Claude's active implementation branch. No later implementation slice begins automatically.
+
+SLICE-0012 is now `READY`. The user may run `START_SLICE.bat` for SLICE-0012; that action should create/reuse the isolated worktree/branch and place the assignment in the clipboard. Claude must implement exactly SLICE-0012 and return the mandatory completion report in `REVIEW`/`BLOCKED`/`IN_PROGRESS` as appropriate, never `DONE`.
 
 ## Rolling-wave note
 
-No implementation slice is currently `READY`. SLICE-0012 remains `BLOCKED` until SLICE-0011 is explicitly accepted/DONE. After 0012 acceptance, the intended next bounded implementation is PostgreSQL persistence plus deterministic ResearchEvidenceBundle import/promotion handling, followed by execution of the same benchmark corpus before broad ingestion is considered.
+After SLICE-0012 acceptance, the intended next bounded implementation is PostgreSQL persistence plus deterministic ResearchEvidenceBundle import/promotion handling, followed by execution of the same benchmark corpus before broad ingestion is considered. SLICE-0013 is not READY and must not start automatically.
