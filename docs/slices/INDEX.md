@@ -16,7 +16,8 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0008 | IMPLEMENTATION | DONE | First rights-gated real external acquisition adapter against Wikidata CC0 with bounded discovery/entity acquisition and provenance-aware extraction | SLICE-0007 |
 | SLICE-0009 | IMPLEMENTATION | DONE | Deterministic appendage/configuration normalization for explicit keel, rudder, skeg, hull and board observations using the existing BoatDesign vocabulary | SLICE-0008 |
 | SLICE-0010 | IMPLEMENTATION | DONE | Deterministic `hullq-derived-1.0.0` derived-metrics engine with accepted formulas, status precedence, six-decimal canonical precision and DerivationRecord lineage | SLICE-0009 / ADR-0008 |
-| SLICE-0011 | DESIGN_RESEARCH | IN_PROGRESS | Controlled 50–100-design real-web benchmark: broad independent source research, provenance/conflict capture, post-hoc reference crosscheck and measured research quality | SLICE-0010 |
+| SLICE-0011 | DESIGN_RESEARCH | REVIEW | Controlled 50-design real-web stress benchmark, measured ambiguity/conflict classes, post-hoc reference QA and benchmark-derived persistence requirements | SLICE-0010 |
+| SLICE-0012 | IMPLEMENTATION | BLOCKED | Add evidence claim semantics, structured evidence applicability and machine-ingestible ResearchEvidenceBundle before physical persistence | SLICE-0011 accepted / DONE |
 
 ## Current execution rule
 
@@ -31,9 +32,18 @@ Acceptance evidence:
 - PR #21 merged on 2026-08-19;
 - implementation merge commit: `8f9a5ab07f454d6dfbfcb2f133c80c48b14dcc4a`.
 
-`SLICE-0011` is now the active controlled benchmark research wave. It is **research-led, not an autonomous Claude/network-crawling slice**. ChatGPT/master research performs the real-web source discovery and evidence assessment. Claude Code remains the implementation agent for later deterministic import/persistence/processing work.
+`SLICE-0011` is in `REVIEW`. The master-led research pass reached the minimum 50-design difficult corpus, coded the retained cases, measured the recurring stress classes and derived the next bounded pre-persistence requirements. It remains research-led: ChatGPT/master performed real-web source discovery and evidence assessment; Claude Code was not used as an autonomous network-research agent.
 
-No implementation agent may automatically begin persistence, broad ingestion, query-engine, API or frontend work from this research status.
+Benchmark closure artifacts include:
+
+- Waves 01–06 under `research/benchmark/waves/`;
+- `research/benchmark/CONTROLLED_BENCHMARK_LEDGER.md`;
+- `research/benchmark/BENCHMARK-50-classification.csv`;
+- `research/benchmark/BENCHMARK-50-analysis.md`.
+
+The 50-design stress corpus is deliberately difficult; its measured incidences are not sailboat-population prevalence estimates. Runtime automation/review/idempotency/cost metrics remain deferred until an executable importer/persistence path exists.
+
+`SLICE-0012` is drafted but `BLOCKED`. It MUST NOT start until SLICE-0011 has passed current-head CI, independent closure review and explicit owner acceptance/DONE. No implementation agent may automatically begin it.
 
 ## Evidence-first sequence
 
@@ -58,29 +68,42 @@ appendage/configuration hardening              DONE
         ↓
 derived metrics                               DONE
         ↓
-controlled real-web benchmark                  IN PROGRESS — SLICE-0011
+controlled 50-design real-web benchmark        REVIEW — SLICE-0011
         ↓
-persistence/import boundary                    LATER — refine from benchmark evidence
+evidence applicability + research bundle      BLOCKED — SLICE-0012
+        ↓
+PostgreSQL persistence + deterministic importer LATER
+        ↓
+execute same benchmark through importer/DB     LATER
         ↓
 broad design-universe ingestion                NOT AUTHORIZED YET
 ```
 
-## SLICE-0011 research rules
+## SLICE-0011 retained research rules
 
 1. Research independently across the broad useful web: manufacturer/shipyard, original brochures/manuals, designer/class/owners associations, archives, specialist publications/databases, brokers where appropriate, forums/owner communities and other discoverable evidence.
 2. Source breadth is intentionally broad; canonical confidence is intentionally strict.
 3. Preserve raw wording/value, unit, measurement basis, configuration/variant/state, retrieval date, source identity and confidence.
 4. Never invent missing values or silently resolve conflicts.
-5. SailboatData is **reference crosscheck only after independent research**. No SailboatData value becomes HullQ FieldEvidence, no missing field is filled from it, and no reference value is copied into canonical candidates. Crosscheck output is limited to outcomes such as match/partial/conflict/not-found and follow-up research triggers.
+5. SailboatData is **reference crosscheck only after independent research**. No SailboatData value becomes HullQ FieldEvidence, no missing field is filled from it, and no reference value is copied into canonical candidates. Crosscheck output is limited to comparison outcomes/anomaly triggers.
 6. Benchmark outputs are research evidence, not production canonical data.
-7. Benchmark target remains 50–100 deliberately difficult designs; work proceeds in auditable waves.
+
+## Benchmark-derived next boundary
+
+The 50-design analysis found that existing identity/configuration/provenance foundations are directionally sound, but three lossless handoff semantics must be explicit before a physical database schema is frozen:
+
+1. source/document `EvidenceType` must remain separate from the semantic claim role of an observation;
+2. FieldEvidence needs structured applicability/scope for year/hull/variant/option/state/individual-hull restrictions where known;
+3. master research needs a versioned machine-ingestible ResearchEvidenceBundle whose optional reference crosschecks remain outside canonical provenance.
+
+`docs/slices/SLICE-0012-evidence-applicability-research-bundle.md` defines that small boundary. It does not authorize PostgreSQL, broad ingestion, network acquisition, automatic conflict resolution or a general ontology/graph redesign.
 
 ## Workflow note
 
-The `START_SLICE` / `FINISH_SLICE` worktree workflow continues to govern Claude implementation slices. SLICE-0011 is intentionally different: it is a master-led DESIGN_RESEARCH slice and does not require Claude to perform web research.
+The `START_SLICE` / `FINISH_SLICE` worktree workflow continues to govern Claude implementation slices. SLICE-0011 is a master-led DESIGN_RESEARCH slice and does not require Claude to perform web research.
 
-GitHub `origin/main` remains canonical truth. Research changes are prepared on `research/0011-controlled-benchmark` and go through a PR before becoming canonical.
+GitHub `origin/main` remains canonical truth. Research changes are prepared on `research/0011-controlled-benchmark` and go through PR #22 before becoming canonical.
 
 ## Rolling-wave note
 
-The current research wave may continue without waiting for an implementation agent. Findings from SLICE-0011 will determine the smallest safe persistence/import implementation slice that follows; that downstream implementation slice must be specified and readied separately before Claude starts it.
+No implementation slice is currently `READY`. SLICE-0012 remains `BLOCKED` until SLICE-0011 is explicitly accepted/DONE. After 0012 acceptance, the intended next bounded implementation is PostgreSQL persistence plus deterministic ResearchEvidenceBundle import, followed by execution of the same benchmark corpus before broad ingestion is considered.
