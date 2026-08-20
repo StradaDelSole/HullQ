@@ -1,12 +1,12 @@
 {
   "schema_version": "0.1",
-  "observation_id": "OBS-BAVARIA38-BROKER-DISP-001",
+  "observation_id": "SYNTHETIC-OBS-BAVARIA38-BROKER-DISP-001",
   "research_target": {
     "manufacturer": "Bavaria Yachtbau",
     "model": "Bavaria 38",
     "first_built": 1999
   },
-  "source_id": "SRC-BROKER-LISTING-SYNTHETIC",
+  "source_id": "SYNTHETIC-SRC-BROKER-LISTING-REF",
   "source_locator": {
     "page": null,
     "section": null,
@@ -40,20 +40,20 @@
     "unknown_or_unbounded": false
   },
   "producer": {
-    "kind": "llm",
-    "identifier": "benchmark-research-agent",
+    "kind": "deterministic_tool",
+    "identifier": "slice-0012-fixture-builder",
     "version": "0.1",
-    "model": "claude-sonnet-4-6",
-    "prompt_or_rule_version": "slice-0012-benchmark"
+    "model": null,
+    "prompt_or_rule_version": "slice-0012-fixture-v1"
   },
   "research_context": {
-    "research_job_id": "JOB-BAVARIA38-001",
+    "research_job_id": "SYNTHETIC-JOB-BAVARIA38-001",
     "activity_id": "WAVE-06"
   },
-  "observed_at": "2026-08-20T10:00:00Z",
+  "observed_at": "2026-08-20T00:00:00Z",
   "confidence": "low",
   "supersedes_observation_id": null,
   "intended_subject_kind_hint": null,
   "intended_field_pointer": null,
-  "notes": "Synthetic fixture demonstrating individual_hull_value claim type — broker listing displacement must not project to BoatDesign baseline. B06-009 Wave 06 benchmark case: Bavaria 38 has keel-configuration-dependent mass."
+  "notes": "BENCHMARK CONCEPT: B06-009 Wave 06 — individual_hull_value from a broker listing must not project to BoatDesign baseline; Bavaria 38 has keel-configuration-dependent mass. SYNTHETIC SCAFFOLDING: all observation values, observation_id, source_id, listing ref, research_job_id, producer, and observed_at are synthetic contract fixture metadata, not retained benchmark provenance."
 }

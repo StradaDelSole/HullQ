@@ -1,12 +1,12 @@
 {
   "schema_version": "0.1",
-  "observation_id": "OBS-GEMINI105MC-BOARDSTATE-001",
+  "observation_id": "SYNTHETIC-OBS-GEMINI105MC-BOARDSTATE-001",
   "research_target": {
     "manufacturer": "Performance Cruising",
     "model": "Gemini 105Mc",
     "first_built": 1994
   },
-  "source_id": "SRC-GEMINI105MC-MANUAL",
+  "source_id": "SYNTHETIC-SRC-GEMINI105MC-MANUAL-REF",
   "source_locator": {
     "page": null,
     "section": null,
@@ -40,20 +40,20 @@
     "unknown_or_unbounded": false
   },
   "producer": {
-    "kind": "llm",
-    "identifier": "benchmark-research-agent",
+    "kind": "deterministic_tool",
+    "identifier": "slice-0012-fixture-builder",
     "version": "0.1",
-    "model": "claude-sonnet-4-6",
-    "prompt_or_rule_version": "slice-0012-benchmark"
+    "model": null,
+    "prompt_or_rule_version": "slice-0012-fixture-v1"
   },
   "research_context": {
-    "research_job_id": "JOB-GEMINI105MC-001",
+    "research_job_id": "SYNTHETIC-JOB-GEMINI105MC-001",
     "activity_id": "WAVE-06"
   },
-  "observed_at": "2026-08-20T10:00:00Z",
+  "observed_at": "2026-08-20T00:00:00Z",
   "confidence": "high",
   "supersedes_observation_id": null,
   "intended_subject_kind_hint": "boat_design",
   "intended_field_pointer": null,
-  "notes": "Gemini 105Mc centerboard deployment state — operating_state_value, no DesignOption ID invented. B06-007 Wave 06: installed appendage count (one board per hull) differs from deployed-state count. Design has one pivoting centerboard per hull; operating state specifies how many and which boards are deployed."
+  "notes": "BENCHMARK CONCEPT: B06-007 Wave 06 — installed appendage count (one centerboard per hull) differs from deployed-state count; operating state specifies how many/which boards are deployed without inventing a DesignOption. SYNTHETIC SCAFFOLDING: observation text, observation_id, source_id, research_job_id, producer, and observed_at are synthetic contract fixture metadata, not retained benchmark provenance."
 }

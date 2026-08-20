@@ -1,12 +1,12 @@
 {
   "schema_version": "0.1",
-  "observation_id": "OBS-J105-CLASSRULE-DISP-001",
+  "observation_id": "SYNTHETIC-OBS-J105-CLASSRULE-DISP-001",
   "research_target": {
     "manufacturer": "J/Boats",
     "model": "J/105",
     "first_built": 1992
   },
-  "source_id": "SRC-J105-CLASS-ASSOC-RULES",
+  "source_id": "SYNTHETIC-SRC-J105-CLASS-ASSOC-RULES-REF",
   "source_locator": {
     "page": null,
     "section": null,
@@ -40,20 +40,20 @@
     "unknown_or_unbounded": true
   },
   "producer": {
-    "kind": "llm",
-    "identifier": "benchmark-research-agent",
+    "kind": "deterministic_tool",
+    "identifier": "slice-0012-fixture-builder",
     "version": "0.1",
-    "model": "claude-sonnet-4-6",
-    "prompt_or_rule_version": "slice-0012-benchmark"
+    "model": null,
+    "prompt_or_rule_version": "slice-0012-fixture-v1"
   },
   "research_context": {
-    "research_job_id": "JOB-J105-001",
+    "research_job_id": "SYNTHETIC-JOB-J105-001",
     "activity_id": "WAVE-06"
   },
-  "observed_at": "2026-08-20T10:00:00Z",
+  "observed_at": "2026-08-20T00:00:00Z",
   "confidence": "high",
   "supersedes_observation_id": null,
   "intended_subject_kind_hint": "boat_design",
   "intended_field_pointer": null,
-  "notes": "Synthetic fixture demonstrating class_rule_constraint claim type distinct from nominal_design_value. B06-008 Wave 06 benchmark case: class-rule compliance limits are not the same as builder nominal specs."
+  "notes": "BENCHMARK CONCEPT: B06-008 Wave 06 — class_rule_constraint claim type distinct from nominal_design_value; J/105 class association rules encode compliance limits, not nominal builder specs. SYNTHETIC SCAFFOLDING: observation value, observation_id, source_id, research_job_id, producer, and observed_at are synthetic contract fixture metadata, not retained benchmark provenance."
 }

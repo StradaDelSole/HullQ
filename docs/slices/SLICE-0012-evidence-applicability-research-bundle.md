@@ -471,3 +471,50 @@ No SailboatData field values remain in any SLICE-0012 test or fixture.
 - No unverified acceptance criterion was marked as passed.
 - SLICE-0013 was not started.
 - The agent has NOT marked this slice `DONE`.
+
+---
+
+## Amendment completion report — provenance-integrity fixes (2026-08-20)
+
+Addresses the provenance-integrity blocking issue raised in the second PR #24 review cycle.
+
+### Slice
+
+- Slice ID: `SLICE-0012`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+
+### Changes
+
+- `fixtures/research_observations/valid/obs_pearson35_1979_applicability.json` — producer changed to `deterministic_tool / slice-0012-fixture-builder / model:null`; source_id prefixed `SYNTHETIC-SRC-`; research_job_id prefixed `SYNTHETIC-JOB-`; observation_id prefixed `SYNTHETIC-OBS-`; notes clearly distinguish benchmark fact from synthetic scaffolding
+- `fixtures/research_observations/valid/obs_j105_class_rule.json` — same producer/source/job/obs-id corrections as above
+- `fixtures/research_observations/valid/obs_gemini105mc_board_state.json` — same producer/source/job/obs-id corrections as above
+- `fixtures/research_observations/valid/obs_broker_individual_hull.json` — same producer/source/job/obs-id corrections as above; source_id renamed from `SRC-BROKER-LISTING-SYNTHETIC` to `SYNTHETIC-SRC-BROKER-LISTING-REF`
+- `fixtures/research_observations/valid/bundle_unresolved_identity.json` — both observations updated with synthetic producer; bundle_id, research_job_id, crosscheck_id, finding_id all prefixed `SYNTHETIC-`; unresolved_finding description completely rewritten to be explicitly synthetic contract scaffolding; retained benchmark facts (Shoal Bulb Keel 12,400 lb / Fin Keel 12,000 lb) preserved with `BENCHMARK FACT:` prefix in notes
+- `tests/contract/test_research_observation_fixtures.py` — added 4 new regression tests: `test_no_observation_fixture_claims_claude_as_producer`, `test_all_observation_fixtures_use_synthetic_fixture_producer`, `test_bundle_fixture_observations_use_synthetic_fixture_producer`, `test_catalina_unresolved_finding_is_explicitly_synthetic`
+
+### Validation
+
+- Local validation: `PASS`
+- Commands run: `uv run python -m coverage run -m pytest -x -q`, `uv run python -m coverage report --fail-under=90`, `uv run ruff check .`, `uv run ruff format --check .`, `uv run mypy src/ --strict`, `uv run pip-audit`, ContractRegistry load check
+- Results: (see gate output below)
+
+### External verification
+
+- Remote CI: `NOT VERIFIED` (branch pushed to GitHub; CI result not yet observed locally)
+- Other external gates: `NOT APPLICABLE`
+
+### Findings
+
+- Unresolved findings: none
+- Spec/ADR ambiguities: none
+- Scope deviations: none — only fixture provenance-integrity issues addressed
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- SLICE-0013 was not started.
+- The agent has NOT marked this slice `DONE`.
+- No fixture falsely attributes benchmark research to Claude.
+- No synthetic provenance metadata is presented as historical fact.

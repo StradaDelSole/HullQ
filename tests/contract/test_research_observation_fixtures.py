@@ -314,3 +314,68 @@ def test_bundle_crosscheck_has_no_evidence_id_field() -> None:
     assert "evidence_id" not in field_names
     assert "observation_id" not in field_names
     assert cc.crosscheck_id == "CC-SAILBOATDATA"
+
+
+# ---------------------------------------------------------------------------
+# Provenance-integrity regression tests
+# ---------------------------------------------------------------------------
+
+_ALL_OBSERVATION_FIXTURES = [
+    FIXTURES / "valid" / "obs_pearson35_1979_applicability.json",
+    FIXTURES / "valid" / "obs_j105_class_rule.json",
+    FIXTURES / "valid" / "obs_gemini105mc_board_state.json",
+    FIXTURES / "valid" / "obs_broker_individual_hull.json",
+]
+
+
+def test_no_observation_fixture_claims_claude_as_producer() -> None:
+    # Regression: benchmark research was NOT performed by Claude Code.
+    # No fixture may have producer.model = "claude-sonnet-4-6" or any claude/openai model.
+    for path in _ALL_OBSERVATION_FIXTURES:
+        fix = _load(path)
+        assert isinstance(fix, dict)
+        producer_model = fix["producer"]["model"]
+        assert producer_model is None or "claude" not in str(producer_model).lower(), (
+            f"{path.name}: producer.model must not claim a Claude model; got {producer_model!r}"
+        )
+
+
+def test_all_observation_fixtures_use_synthetic_fixture_producer() -> None:
+    # Regression: all fixture files must use the explicit synthetic producer identifier.
+    for path in _ALL_OBSERVATION_FIXTURES:
+        fix = _load(path)
+        assert isinstance(fix, dict)
+        assert fix["producer"]["identifier"] == "slice-0012-fixture-builder", (
+            f"{path.name}: producer.identifier must be 'slice-0012-fixture-builder'"
+        )
+        assert fix["producer"]["kind"] == "deterministic_tool", (
+            f"{path.name}: producer.kind must be 'deterministic_tool' for synthetic fixtures"
+        )
+
+
+def test_bundle_fixture_observations_use_synthetic_fixture_producer() -> None:
+    # Regression: bundle fixture observations must also use the synthetic producer.
+    bundle = _load(FIXTURES / "valid" / "bundle_unresolved_identity.json")
+    assert isinstance(bundle, dict)
+    for obs in bundle["observations"]:
+        assert isinstance(obs, dict)
+        assert obs["producer"]["identifier"] == "slice-0012-fixture-builder", (
+            f"bundle obs {obs['observation_id']}: producer must be slice-0012-fixture-builder"
+        )
+        assert obs["producer"]["model"] is None, (
+            f"bundle obs {obs['observation_id']}: producer.model must be null for synthetic fixtures"
+        )
+
+
+def test_catalina_unresolved_finding_is_explicitly_synthetic() -> None:
+    # Regression: the Catalina unresolved identity finding is synthetic contract scaffolding,
+    # NOT a retained B02-009 research finding. Its description must say so explicitly.
+    bundle = _load(FIXTURES / "valid" / "bundle_unresolved_identity.json")
+    assert isinstance(bundle, dict)
+    findings = bundle["unresolved_findings"]
+    assert len(findings) == 1
+    description = findings[0]["description"]
+    assert "[SYNTHETIC" in description, (
+        "Catalina unresolved identity finding description must contain '[SYNTHETIC' "
+        "marker to distinguish it from retained benchmark evidence"
+    )

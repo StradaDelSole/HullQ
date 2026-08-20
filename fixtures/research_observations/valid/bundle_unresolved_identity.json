@@ -1,24 +1,24 @@
 {
   "schema_version": "0.1",
-  "bundle_id": "BUNDLE-UNRESOLVED-IDENTITY-001",
+  "bundle_id": "SYNTHETIC-BUNDLE-PRE-CANONICAL-001",
   "bundle_version": "1.0",
   "research_target": {
     "manufacturer": null,
     "model": "Catalina 316",
     "first_built": null
   },
-  "research_job_id": "JOB-CATALINA316-001",
+  "research_job_id": "SYNTHETIC-JOB-CATALINA316-001",
   "activity_id": "WAVE-02",
   "observations": [
     {
       "schema_version": "0.1",
-      "observation_id": "OBS-CATALINA316-DISP-SHOALBULB-001",
+      "observation_id": "SYNTHETIC-OBS-CATALINA316-DISP-SHOALBULB-001",
       "research_target": {
         "manufacturer": null,
         "model": "Catalina 316",
         "first_built": null
       },
-      "source_id": "SRC-CATALINA316-MANUFACTURER-SPEC",
+      "source_id": "SYNTHETIC-SRC-CATALINA316-MFGR-SPEC-REF",
       "source_locator": {
         "page": null,
         "section": null,
@@ -52,32 +52,32 @@
         "unknown_or_unbounded": false
       },
       "producer": {
-        "kind": "llm",
-        "identifier": "benchmark-research-agent",
+        "kind": "deterministic_tool",
+        "identifier": "slice-0012-fixture-builder",
         "version": "0.1",
-        "model": "claude-sonnet-4-6",
-        "prompt_or_rule_version": "slice-0012-benchmark"
+        "model": null,
+        "prompt_or_rule_version": "slice-0012-fixture-v1"
       },
       "research_context": {
-        "research_job_id": "JOB-CATALINA316-001",
+        "research_job_id": "SYNTHETIC-JOB-CATALINA316-001",
         "activity_id": "WAVE-02"
       },
-      "observed_at": "2026-08-20T10:00:00Z",
+      "observed_at": "2026-08-20T00:00:00Z",
       "confidence": "medium",
       "supersedes_observation_id": null,
       "intended_subject_kind_hint": "boat_design",
       "intended_field_pointer": "/displacement_kg",
-      "notes": "Catalina 316 Shoal Bulb Keel displacement Half Load — B02-009 Wave 02 retained evidence. Manufacturer identity unresolved (no canonical subject yet)."
+      "notes": "BENCHMARK FACT: Catalina 316 Shoal Bulb Keel displacement Half Load — retained B02-009 Wave 02 evidence. Manufacturer identity unresolved (no canonical subject yet). SYNTHETIC SCAFFOLDING: observation_id, source_id, research_job_id, producer, and observed_at are synthetic fixture metadata, not retained benchmark provenance."
     },
     {
       "schema_version": "0.1",
-      "observation_id": "OBS-CATALINA316-DISP-FINKEEL-001",
+      "observation_id": "SYNTHETIC-OBS-CATALINA316-DISP-FINKEEL-001",
       "research_target": {
         "manufacturer": null,
         "model": "Catalina 316",
         "first_built": null
       },
-      "source_id": "SRC-CATALINA316-MANUFACTURER-SPEC",
+      "source_id": "SYNTHETIC-SRC-CATALINA316-MFGR-SPEC-REF",
       "source_locator": {
         "page": null,
         "section": null,
@@ -111,32 +111,32 @@
         "unknown_or_unbounded": false
       },
       "producer": {
-        "kind": "llm",
-        "identifier": "benchmark-research-agent",
+        "kind": "deterministic_tool",
+        "identifier": "slice-0012-fixture-builder",
         "version": "0.1",
-        "model": "claude-sonnet-4-6",
-        "prompt_or_rule_version": "slice-0012-benchmark"
+        "model": null,
+        "prompt_or_rule_version": "slice-0012-fixture-v1"
       },
       "research_context": {
-        "research_job_id": "JOB-CATALINA316-001",
+        "research_job_id": "SYNTHETIC-JOB-CATALINA316-001",
         "activity_id": "WAVE-02"
       },
-      "observed_at": "2026-08-20T10:00:00Z",
+      "observed_at": "2026-08-20T00:00:00Z",
       "confidence": "medium",
       "supersedes_observation_id": null,
       "intended_subject_kind_hint": "boat_design",
       "intended_field_pointer": "/displacement_kg",
-      "notes": "Catalina 316 Fin Keel displacement Half Load — B02-009 Wave 02 retained evidence. Configuration-sensitive: both keel variants use Half Load basis but differ in displacement value."
+      "notes": "BENCHMARK FACT: Catalina 316 Fin Keel displacement Half Load — retained B02-009 Wave 02 evidence. Configuration-sensitive: both keel variants use Half Load basis but differ in displacement value. SYNTHETIC SCAFFOLDING: observation_id, source_id, research_job_id, producer, and observed_at are synthetic fixture metadata, not retained benchmark provenance."
     }
   ],
   "unresolved_findings": [
     {
-      "finding_id": "FIND-CATALINA316-MFR-001",
-      "topic": "manufacturer_identity",
-      "description": "Catalina 316 manufacturer identity ambiguous — multiple Catalina-branded entities appear in sources; canonical Brand resolution needed before promotion",
+      "finding_id": "SYNTHETIC-FIND-PRE-CANONICAL-001",
+      "topic": "canonical_identity_unresolved",
+      "description": "[SYNTHETIC contract scaffolding — not a retained B02-009 research finding] This bundle exercises pre-canonical ResearchEvidenceBundle behavior: the research target has no canonical HullQ ProvenanceSubject yet and cannot be promoted without explicit identity resolution. The retained benchmark evidence above (Shoal Bulb Keel 12,400 lb and Fin Keel 12,000 lb Half Load) is real; this finding description is synthetic fixture scaffolding to demonstrate the unresolved-identity bundle shape.",
       "related_observation_ids": [
-        "OBS-CATALINA316-DISP-SHOALBULB-001",
-        "OBS-CATALINA316-DISP-FINKEEL-001"
+        "SYNTHETIC-OBS-CATALINA316-DISP-SHOALBULB-001",
+        "SYNTHETIC-OBS-CATALINA316-DISP-FINKEEL-001"
       ],
       "severity": "review"
     }
@@ -144,7 +144,7 @@
   "promoted_evidence": [],
   "reference_crosschecks": [
     {
-      "crosscheck_id": "CC-CATALINA316-REF-001",
+      "crosscheck_id": "SYNTHETIC-CC-CATALINA316-REF-001",
       "reference_source_id": "sailboatdata-reference",
       "topic_or_field": "/displacement_kg",
       "outcome": "definition_or_basis_difference",

@@ -1,12 +1,12 @@
 {
   "schema_version": "0.1",
-  "observation_id": "OBS-PEARSON35-LOA-001",
+  "observation_id": "SYNTHETIC-OBS-PEARSON35-LOA-001",
   "research_target": {
     "manufacturer": "Pearson Yachts",
     "model": "Pearson 35",
     "first_built": 1969
   },
-  "source_id": "SRC-PEARSON35-ARCHIVE",
+  "source_id": "SYNTHETIC-SRC-PEARSON35-ARCHIVE-REF",
   "source_locator": {
     "page": null,
     "section": null,
@@ -45,20 +45,20 @@
     "unknown_or_unbounded": false
   },
   "producer": {
-    "kind": "llm",
-    "identifier": "benchmark-research-agent",
+    "kind": "deterministic_tool",
+    "identifier": "slice-0012-fixture-builder",
     "version": "0.1",
-    "model": "claude-sonnet-4-6",
-    "prompt_or_rule_version": "slice-0012-benchmark"
+    "model": null,
+    "prompt_or_rule_version": "slice-0012-fixture-v1"
   },
   "research_context": {
-    "research_job_id": "JOB-PEARSON35-001",
+    "research_job_id": "SYNTHETIC-JOB-PEARSON35-001",
     "activity_id": "WAVE-06"
   },
-  "observed_at": "2026-08-20T10:00:00Z",
+  "observed_at": "2026-08-20T00:00:00Z",
   "confidence": "high",
   "supersedes_observation_id": null,
   "intended_subject_kind_hint": "boat_design",
   "intended_field_pointer": "/loa_m",
-  "notes": "Pearson 35 LOA from 1979-year archive design manual — applicability scoped to 1979 model year per archive warning. B06-004 Wave 06 benchmark case."
+  "notes": "BENCHMARK FACT: Pearson 35 LOA from 1979-year archive design manual; applicability scoped to 1979 model year per archive warning. B06-004 Wave 06. SYNTHETIC SCAFFOLDING: observation_id, source_id, research_job_id, producer, and observed_at are synthetic contract fixture metadata, not retained benchmark provenance."
 }
