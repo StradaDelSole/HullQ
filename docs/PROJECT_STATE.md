@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-20  
-**Current stage:** Stage 2.13 — SLICE-0013 PostgreSQL persistence + deterministic importer `READY`  
+**Current stage:** Stage 2.14 — SLICE-0014 controlled benchmark-through-PostgreSQL `READY`  
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -61,8 +61,9 @@ Auth remains deferred under OQ-014. OQ-006 controls alert cadence/freshness; OQ-
 | SLICE-0010 | `hullq-derived-1.0.0` derived metrics |
 | SLICE-0011 | controlled 50-design real-web benchmark |
 | SLICE-0012 | pre-canonical observations, claim/applicability semantics, research bundle + explicit promotion |
+| SLICE-0013 | PostgreSQL 18 persistence + deterministic transactional importer |
 
-All slices 0001–0012 are `DONE` and owner-accepted.
+All slices 0001–0013 are `DONE` and owner-accepted.
 
 ## SLICE-0011 — benchmark result retained
 
@@ -107,29 +108,11 @@ SLICE-0012 closed the benchmark-proven pre-persistence data gaps:
 - ResearchEvidenceBundle supports partial/unresolved identity research;
 - reference crosschecks remain structurally outside evidence/provenance.
 
-Final acceptance evidence:
-
-- accepted PR head: `d2344cd359d296e2483ab074a14b773ae5668952`;
-- GitHub Actions CI run #157: PASS on exact head;
-- Ubuntu quality: PASS;
-- Windows quality: PASS;
-- dependency audit: PASS;
-- 1084 local tests passed, 2 skipped;
-- branch coverage: 93.33%;
-- Ruff/format, strict mypy and pip-audit clean;
-- independent review: no remaining blocker;
-- explicit project-owner acceptance: 2026-08-20;
-- PR #24 merge commit: `db68e53ddc9cfe4aa53caa3ba900dc6a3daa7324`.
-
 Final closure record: `docs/slices/SLICE-0012-acceptance-closure.md`.
 
-The review process additionally established a strict fixture-integrity rule: retained benchmark facts and synthetic contract scaffolding must be explicitly distinguishable; fixture metadata must not fabricate historical producer/source/retrieval provenance.
+## SLICE-0013 — DONE / accepted
 
-## Current operational position — SLICE-0013 READY
-
-`docs/slices/SLICE-0013-postgresql-persistence-deterministic-importer.md` is the only current READY implementation slice.
-
-Its objective is the first real persistence boundary:
+SLICE-0013 established the first real physical persistence boundary:
 
 ```text
 validated ResearchEvidenceBundle
@@ -143,36 +126,93 @@ immutable persisted research/evidence records
 round-trip/readback verification
 ```
 
+Accepted persistence semantics include:
+
+- reproducible PostgreSQL 18 schema creation from empty database;
+- external environment-driven connection configuration;
+- immutable `(bundle_id, bundle_version)` identity;
+- globally stable immutable `ResearchObservation.observation_id`;
+- globally stable immutable `FieldEvidence.evidence_id`;
+- separate bundle membership for global observations/evidence;
+- lossless raw/normalized/claim/applicability snapshots;
+- crosschecks structurally outside evidence;
+- deterministic order-insensitive bundle fingerprinting;
+- atomic/idempotent/fail-closed imports;
+- PostgreSQL-native race-safe concurrent imports;
+- no fuzzy identity resolution, automatic canonical subject creation, automatic promotion or FieldResolution.
+
+Final acceptance evidence:
+
+- accepted PR head: `2da1ad19717707f3ec48c0ebfd6925d5e2fee043`;
+- PR #27 merge commit: `2b8417beeb848507ba0f97c49bbd0f37d647c438`;
+- GitHub Actions CI #166: PASS on exact accepted head;
+- PostgreSQL 18 integration: PASS;
+- Ubuntu quality: PASS;
+- Windows quality: PASS;
+- dependency audit: PASS;
+- technical head `5cd9f9283dd927013925c0b2f66a756cfc27d52e`: 37/37 PostgreSQL 18.6 persistence integration tests PASS under CI #165;
+- 949 local unit tests passed;
+- 93.55% overall coverage;
+- 95.73% persistence-module coverage;
+- Ruff/format, strict mypy, repository validator and pip-audit clean;
+- independent review: no remaining blocker;
+- explicit project-owner acceptance: 2026-08-20.
+
+Final closure record: `docs/slices/SLICE-0013-acceptance-closure.md`.
+
+The review process specifically hardened global evidence identity, concurrency behavior, bundle fingerprint semantics and the unreleased migration baseline before acceptance.
+
+## Current operational position — SLICE-0014 READY
+
+`docs/slices/SLICE-0014-controlled-benchmark-through-postgresql.md` is the only current READY slice.
+
+Its purpose is to run the **same accepted 50-design stress corpus** through the real ResearchEvidenceBundle/PostgreSQL path and measure actual behavior before any broad design-universe ingestion is considered.
+
+Target flow:
+
+```text
+retained SLICE-0011 benchmark evidence
+        ↓
+mechanical benchmark-only bundle materialization
+        ↓
+accepted SLICE-0012 validation semantics
+        ↓
+accepted SLICE-0013 PostgreSQL importer
+        ↓
+readback + exact re-import + fresh-DB rerun
+        ↓
+measured automation/review/idempotency/throughput evidence
+```
+
 In scope:
 
-- PostgreSQL 18 migration baseline;
-- environment-driven connection configuration with no committed secrets;
-- persistence of versioned ResearchEvidenceBundle snapshots;
-- stable ResearchObservation persistence;
-- structured applicability persistence;
-- unresolved finding persistence;
-- separate reference-crosscheck persistence;
-- optional already-promoted FieldEvidence v0.3 persistence;
-- deterministic immutable identity/content fingerprints;
-- atomic/idempotent importer;
-- explicit conflict/fail-closed behavior;
-- minimal semantic round-trip readback;
-- a real PostgreSQL 18 integration job in CI.
+- exact 50 retained benchmark cases, unchanged;
+- deterministic benchmark manifest;
+- mechanical materialization from already retained HullQ research artifacts only;
+- honest review-required/insufficient-retained-fact classification instead of invention;
+- real PostgreSQL 18 execution;
+- exact re-import idempotency measurement;
+- fresh-database reproducibility measurement;
+- readback fidelity checks on hard cases;
+- measurement of materialization/review burden and execution throughput;
+- observable cost only; unavailable cost must be `NOT_MEASURED`;
+- evidence-based recommendation: HARDEN FIRST / G3 CANDIDATE / BLOCKED.
 
-Explicitly not in SLICE-0013:
+Explicitly not in SLICE-0014:
 
-- fuzzy/canonical BoatModel/BoatDesign identity resolution;
-- automatic ResearchObservation → FieldEvidence promotion;
-- automatic FieldResolution/canonical-value selection;
-- broad ingestion/crawling;
-- running/importing the full 50-design benchmark as the next measurement exercise;
+- new broad web research or source acquisition;
+- SailboatData field-value use;
+- fuzzy/canonical BoatDesign resolver;
+- automatic promotion or FieldResolution;
+- broad production ingestion;
+- the 1,000-design bootstrap;
 - query engine/API/frontend/auth;
 - marketplace/listings;
 - monitoring/price history;
 - SEO/public pages;
-- SailboatData value storage.
+- distributed infrastructure.
 
-The project owner's local PostgreSQL baseline is PostgreSQL 18.6 on Windows. Repository code must not depend on local passwords/database names; local/CI connection settings remain external configuration.
+SLICE-0014 does not authorize Stage-2 Gate G3 by itself. The agent may recommend a G3 candidate state, but owner acceptance and a later bounded hardening/gate decision remain required.
 
 ## Near-term path
 
@@ -181,34 +221,35 @@ SLICE-0011  controlled 50-design benchmark + analysis          DONE
       ↓
 SLICE-0012  ResearchObservation + applicability/bundle         DONE
       ↓
-SLICE-0013  PostgreSQL persistence + deterministic importer    READY
+SLICE-0013  PostgreSQL persistence + deterministic importer    DONE
       ↓
-next slice   same benchmark through importer/database          LATER / NOT READY
+SLICE-0014  same 50 cases through importer/database            READY
       ↓
-measure      automation/review/idempotency/throughput/cost     LATER
+SLICE-0015  harden benchmark / Stage-2 G3 decision             LATER / NOT READY
       ↓
-1,000-design broad bootstrap                                   NOT AUTHORIZED YET
+first 1,000-design broad bootstrap                             NOT AUTHORIZED YET
 ```
 
 The benchmark corpus should not be expanded merely to increase its count. Additional stress designs are justified only if importer/database execution exposes a materially missing problem class.
 
 ## AI repository workflow — ACTIVE
 
-Implementation slices use:
+Implementation/research slices use:
 
 ```text
 START_SLICE.bat
 FINISH_SLICE.bat
 ```
 
-`START_SLICE.bat` synchronizes `main`, creates/reuses an isolated worktree/branch and copies Claude's assignment. It must refuse slices whose own slice document is not explicitly `READY`.
+`START_SLICE.bat` synchronizes `main`, creates/reuses an isolated worktree/branch and copies Claude's assignment. It must refuse slices whose own primary slice document is not explicitly `READY`.
 
-GitHub `origin/main` remains canonical truth. Claude owns only its assigned implementation branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
+GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
 ## Do not start yet
 
-- any post-0013 benchmark execution until SLICE-0013 is accepted;
+- SLICE-0015 before SLICE-0014 acceptance;
 - broad production ingestion;
+- 1,000-design bootstrap;
 - unbounded crawler work;
 - query-engine implementation;
 - public FastAPI API;
