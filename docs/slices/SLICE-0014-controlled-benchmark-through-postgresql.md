@@ -532,3 +532,97 @@ Cannot confirm `G3_CANDIDATE` until CI db-integration job runs with new head `ee
 - The next slice was not started automatically.
 - The agent has NOT marked this slice `DONE`.
 - Remote CI for new head `ee84e6c` is `NOT VERIFIED` at time of this report.
+
+---
+
+## Completion report (Session 4 — final four acceptance fixes)
+
+### Slice
+
+- Slice ID: `SLICE-0014`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+
+### Session 4 context
+
+Four final acceptance issues were fixed in this session against head `0e25af0` (CI #175 VERIFIED PASS). All four were independent correctness requirements from the independent acceptance review.
+
+### Changes (Session 4 — 5 files)
+
+**`scripts/benchmark/semantics_compare.py` (NEW):**
+- Single canonical comparator extracted from runner.py for shared use.
+- `compare_observation_semantics`: ALL persisted ResearchObservation fields — research_target (3), source_id, complete SourceLocator (6), RawObservation (4), normalized_candidate, EvidenceType, ClaimSemantics, all 10 applicability fields, complete ProducerMetadata (5), ResearchContext (both fields with None handling), observed_at, confidence, supersedes_observation_id, intended_subject_kind_hint, intended_field_pointer, notes.
+- `compare_finding_semantics`: 5 UnresolvedFinding fields (finding_id, topic, description, related_observation_ids, severity).
+- `compare_crosscheck_semantics`: 5 ReferenceCrosscheck fields (crosscheck_id, reference_source_id, topic_or_field, outcome, notes).
+
+**`scripts/benchmark/materializer.py`:**
+- Added `_CANONICAL_POINTER_FIELDS` frozenset (17 established physics/rig fields).
+- Added `_canonical_field_pointer(field)` — returns `JsonPointer(f"/{field}")` for canonical fields, `None` otherwise.
+- Added `_field_notes(field, existing_notes)` — always appends `field_label:{field}` tag to notes.
+- All W01/W02 and W03–W06 observations now carry `intended_field_pointer` and `field_label:{field}` in notes.
+- Removed "specification", "tech spec", "tech-spec" from MANUFACTURER_SPECIFICATION keywords — too generic, appear in third-party docs; prefer explicit `evidence_type` from W03–W06 fact dict.
+- W03–W06 observations prefer explicit `evidence_type` from fact dict when present, fall back to `_map_evidence_type` otherwise.
+
+**`scripts/benchmark/runner.py`:**
+- Imports `compare_observation_semantics`, `compare_finding_semantics`, `compare_crosscheck_semantics` from canonical `benchmark.semantics_compare` (local duplicate removed).
+- Phase 2 readback and Phase 4 fresh-schema readback now compare findings and crosschecks via canonical comparators in addition to observations.
+- `review_required_reasons` now `{failure_class: count}` per `result_schema.json` schema (was incorrectly `{case_id: list[str]}`).
+- `recommendation = "BLOCKED"` when `cannot_count > 0`; explicit derivation replacing single-expression ternary.
+- `benchmark_cost` measurement fields added (`researcher_hours`, `compute_cost_usd`, both `NOT_MEASURED` with reasons).
+
+**`tests/persistence/test_benchmark_persistence.py`:**
+- Imports canonical `compare_observation_semantics`, `compare_finding_semantics`, `compare_crosscheck_semantics` (local duplicate removed).
+- `test_corpus_wide_semantic_readback_all_bundles` and `test_corpus_wide_semantic_readback_fresh_schema` now also compare unresolved_findings and reference_crosschecks using canonical comparators.
+
+**`tests/unit/test_benchmark_manifest.py`:**
+- Added `from typing import Any` to module imports.
+- 5 new field identity / evidence-type tests:
+  - `test_field_identity_in_notes_preserves_field_label`: all observations carry `field_label:` in notes.
+  - `test_two_dimensional_observations_are_field_distinguishable`: multiple obs from same source have distinct labels.
+  - `test_canonical_field_pointer_for_known_dimension`: canonical physics fields have `JsonPointer` set.
+  - `test_no_guessed_canonical_pointer_for_unknown_fields`: non-canonical fields have `intended_field_pointer = None`.
+  - `test_generic_specification_source_not_manufacturer_specification`: "Catalina 36 Specification Sheet", "Tech Spec comparison", "Tech-Spec Overview" all NOT → `MANUFACTURER_SPECIFICATION`.
+
+### Validation (Session 4)
+
+- ruff format: PASS (5 files reformatted)
+- ruff check: PASS (6 errors fixed — F821 `Any` missing import, 2× I001 import sort, PERF401 list comprehension)
+- mypy src: PASS (no issues in 25 source files)
+- pytest tests/unit/: **984 passed** in 29.08s — PASS (5 new tests added vs Session 3's 979)
+- Coverage (src + scripts): **93.59%**
+
+### Measured benchmark result (Session 4)
+
+- Total benchmark cases: 50
+- Materialized automatically: **50** (all `status=MATERIALIZED`)
+- Review required: 0
+- Cannot materialize: 0
+- Persistence (from CI #175 at head `0e25af0`): 50/50 imported, 50/50 ALREADY_IMPORTED, 50/50 fresh-schema, 0 semantic mismatches, 0 errors/conflicts
+- Recommendation: consistent with **G3_CANDIDATE** if persistence phases pass with new head
+
+### External verification (Session 4)
+
+- Pushed head: `033c1a2cbdaa8cc873c7dc53c0986ce5c998b583`
+- Remote CI for head `033c1a2`: `NOT VERIFIED` — must be observed after push.
+- CI #175 (prior head `0e25af0`): VERIFIED PASS (reference only).
+
+### Scope deviations
+
+- None. All changes within `scripts/benchmark/`, `tests/unit/`, `tests/persistence/` touch points.
+- No production domain/persistence modules modified.
+- No new web research, no SailboatData field values, no fuzzy identity resolution, no automatic promotion, no SLICE-0015 started.
+
+### Findings
+
+- **Issue 1 resolved (field identity):** `_canonical_field_pointer()` and `_field_notes()` helpers added; every observation now carries `field_label:{field}` in notes; established physics/rig fields receive `JsonPointer`; non-canonical fields preserve `None`.
+- **Issue 2 resolved (single comparator):** `scripts/benchmark/semantics_compare.py` created; both runner.py and persistence tests import from it; local duplicates removed; findings and crosschecks now also compared in both readback phases.
+- **Issue 3 resolved (evidence-type guessing):** Generic keywords "specification", "tech spec", "tech-spec" removed from MANUFACTURER_SPECIFICATION detection; W03–W06 observations prefer explicit `evidence_type` from fact dict; test verifies these sources map to OTHER not MANUFACTURER_SPECIFICATION.
+- **Issue 4 resolved (result/failure contract):** `review_required_reasons` is `{failure_class: count}`; BLOCKED reachable for `cannot_count > 0`; `benchmark_cost` measurement fields added.
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice was not started automatically.
+- The agent has NOT marked this slice `DONE`.
+- Remote CI for new head `033c1a2cbdaa8cc873c7dc53c0986ce5c998b583` is `NOT VERIFIED` at time of this report.
