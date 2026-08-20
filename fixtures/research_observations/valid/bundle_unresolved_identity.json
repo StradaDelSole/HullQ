@@ -5,23 +5,23 @@
   "research_target": {
     "manufacturer": null,
     "model": "Catalina 316",
-    "first_built": 2001
+    "first_built": null
   },
   "research_job_id": "JOB-CATALINA316-001",
   "activity_id": "WAVE-02",
   "observations": [
     {
       "schema_version": "0.1",
-      "observation_id": "OBS-CATALINA316-DISP-001",
+      "observation_id": "OBS-CATALINA316-DISP-SHOALBULB-001",
       "research_target": {
         "manufacturer": null,
         "model": "Catalina 316",
-        "first_built": 2001
+        "first_built": null
       },
-      "source_id": "SRC-CATALINA-SPEC-2001",
+      "source_id": "SRC-CATALINA316-MANUFACTURER-SPEC",
       "source_locator": {
-        "page": 1,
-        "section": "Specifications",
+        "page": null,
+        "section": null,
         "anchor": null,
         "table": null,
         "figure": null,
@@ -30,16 +30,11 @@
       "observation": {
         "raw": {
           "kind": "literal",
-          "value": "9600",
+          "value": "12400",
           "unit": "lbs",
-          "excerpt": "Displacement: 9600 lbs"
+          "excerpt": "Displacement – Half Load (Shoal Bulb Keel): 12,400 lbs"
         },
-        "normalized_candidate": {
-          "value": 4354.0,
-          "unit": "kg",
-          "method_id": "hullq-norm-1.0",
-          "method_version": "1.0"
-        }
+        "normalized_candidate": null
       },
       "evidence_type": "manufacturer_specification",
       "claim_semantics": "nominal_design_value",
@@ -51,10 +46,10 @@
         "hull_number_to": null,
         "market_or_region": null,
         "named_variant_hint": null,
-        "design_option_hints": null,
+        "design_option_hints": ["shoal_bulb_keel"],
         "operating_state_hint": null,
         "individual_hull_or_listing_ref": null,
-        "unknown_or_unbounded": true
+        "unknown_or_unbounded": false
       },
       "producer": {
         "kind": "llm",
@@ -67,20 +62,82 @@
         "research_job_id": "JOB-CATALINA316-001",
         "activity_id": "WAVE-02"
       },
-      "observed_at": "2026-08-18T15:00:00Z",
+      "observed_at": "2026-08-20T10:00:00Z",
       "confidence": "medium",
       "supersedes_observation_id": null,
       "intended_subject_kind_hint": "boat_design",
       "intended_field_pointer": "/displacement_kg",
-      "notes": "Catalina 316 displacement — manufacturer identity ambiguous (Catalina Yachts vs. Catalina Direct), no canonical subject yet"
+      "notes": "Catalina 316 Shoal Bulb Keel displacement Half Load — B02-009 Wave 02 retained evidence. Manufacturer identity unresolved (no canonical subject yet)."
+    },
+    {
+      "schema_version": "0.1",
+      "observation_id": "OBS-CATALINA316-DISP-FINKEEL-001",
+      "research_target": {
+        "manufacturer": null,
+        "model": "Catalina 316",
+        "first_built": null
+      },
+      "source_id": "SRC-CATALINA316-MANUFACTURER-SPEC",
+      "source_locator": {
+        "page": null,
+        "section": null,
+        "anchor": null,
+        "table": null,
+        "figure": null,
+        "record_key": null
+      },
+      "observation": {
+        "raw": {
+          "kind": "literal",
+          "value": "12000",
+          "unit": "lbs",
+          "excerpt": "Displacement – Half Load (Fin Keel): 12,000 lbs"
+        },
+        "normalized_candidate": null
+      },
+      "evidence_type": "manufacturer_specification",
+      "claim_semantics": "nominal_design_value",
+      "applicability": {
+        "schema_version": "0.1",
+        "first_year": null,
+        "last_year": null,
+        "hull_number_from": null,
+        "hull_number_to": null,
+        "market_or_region": null,
+        "named_variant_hint": null,
+        "design_option_hints": ["fin_keel"],
+        "operating_state_hint": null,
+        "individual_hull_or_listing_ref": null,
+        "unknown_or_unbounded": false
+      },
+      "producer": {
+        "kind": "llm",
+        "identifier": "benchmark-research-agent",
+        "version": "0.1",
+        "model": "claude-sonnet-4-6",
+        "prompt_or_rule_version": "slice-0012-benchmark"
+      },
+      "research_context": {
+        "research_job_id": "JOB-CATALINA316-001",
+        "activity_id": "WAVE-02"
+      },
+      "observed_at": "2026-08-20T10:00:00Z",
+      "confidence": "medium",
+      "supersedes_observation_id": null,
+      "intended_subject_kind_hint": "boat_design",
+      "intended_field_pointer": "/displacement_kg",
+      "notes": "Catalina 316 Fin Keel displacement Half Load — B02-009 Wave 02 retained evidence. Configuration-sensitive: both keel variants use Half Load basis but differ in displacement value."
     }
   ],
   "unresolved_findings": [
     {
       "finding_id": "FIND-CATALINA316-MFR-001",
       "topic": "manufacturer_identity",
-      "description": "Catalina 316 manufacturer identity ambiguous — 'Catalina Yachts' and 'Catalina Direct' both appear in sources; canonical Brand resolution needed before promotion",
-      "related_observation_ids": ["OBS-CATALINA316-DISP-001"],
+      "description": "Catalina 316 manufacturer identity ambiguous — multiple Catalina-branded entities appear in sources; canonical Brand resolution needed before promotion",
+      "related_observation_ids": [
+        "OBS-CATALINA316-DISP-SHOALBULB-001",
+        "OBS-CATALINA316-DISP-FINKEEL-001"
+      ],
       "severity": "review"
     }
   ],
@@ -91,7 +148,7 @@
       "reference_source_id": "sailboatdata-reference",
       "topic_or_field": "/displacement_kg",
       "outcome": "definition_or_basis_difference",
-      "notes": "Reference value differs — likely different measurement basis (light ship vs. ready to sail); no reference value stored"
+      "notes": "Reference record does not reflect keel-configuration distinction; basis difference (Half Load vs reference basis) is the likely source of disagreement — no reference field values stored"
     }
   ]
 }

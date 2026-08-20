@@ -390,3 +390,84 @@ SLICE-0012 is now `READY` after SLICE-0011 owner acceptance and merge. It may be
 The implementation agent MUST NOT begin SLICE-0013 or any PostgreSQL work automatically.
 
 After SLICE-0012 acceptance, the intended next bounded implementation is **PostgreSQL persistence + deterministic ResearchEvidenceBundle importer**, followed by explicit identity/promotion processing and execution of the same 50-design benchmark through that path to measure actual automation/review/idempotency/cost behavior.
+
+---
+
+## Amendment completion report — blocking-review fixes (2026-08-20)
+
+Addresses the three blocking issues raised in independent PR #24 review.
+
+### Slice
+
+- Slice ID: `SLICE-0012`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+
+### Changes
+
+- `src/hullq/domain/provenance.py` — `ObservationApplicability.__post_init__` now rejects empty strings for all six string scope dimensions: `hull_number_from`, `hull_number_to`, `market_or_region`, `named_variant_hint`, `operating_state_hint`, `individual_hull_or_listing_ref` (Issue 1 runtime fix)
+- `specs/OBSERVATION_APPLICABILITY_SCHEMA.v0.1.json` — added `"minLength": 1` to all six non-null string dimension properties; sharpened description wording to clarify null means unknown, not global/all-production (Issue 1 schema fix)
+- `fixtures/research_observations/valid/obs_pearson35_1979_applicability.json` — corrected `activity_id` from `WAVE-01` to `WAVE-06` (B06-004); cleared invented source locator page/section/table (all null); updated source_id to `SRC-PEARSON35-ARCHIVE` (Issue 2)
+- `fixtures/research_observations/valid/obs_j105_class_rule.json` — corrected `activity_id` from `WAVE-03` to `WAVE-06` (B06-008); cleared invented source locator section/anchor; replaced invented numeric class-rule value with explicitly synthetic text fragment; removed normalized_candidate (Issue 2)
+- `fixtures/research_observations/valid/obs_gemini105mc_mast_down.json` — DELETED (invented mast-down scenario for B06-007, wrong Wave) (Issue 2)
+- `fixtures/research_observations/valid/obs_gemini105mc_board_state.json` — CREATED replacing the deleted fixture; represents B06-007 Wave 06 accepted benchmark case: leeward centerboard deployment operating state; `activity_id` WAVE-06; source locator all null; no DesignOption ID invented (Issue 2)
+- `fixtures/research_observations/valid/obs_broker_individual_hull.json` — corrected `activity_id` from `WAVE-05` to `WAVE-06` (B06-009 Bavaria 38); replaced invented numeric displacement value with explicit synthetic text fragment; removed normalized_candidate; updated source_id to `SRC-BROKER-LISTING-SYNTHETIC` (Issue 2)
+- `fixtures/research_observations/valid/bundle_unresolved_identity.json` — removed fabricated `first_built: 2001` (now null) and fabricated 9600 lbs displacement; replaced with TWO observations using accepted B02-009 Wave 02 retained benchmark evidence: Shoal Bulb Keel 12,400 lb Half Load and Fin Keel 12,000 lb Half Load, each with correct `design_option_hints`; updated `related_observation_ids` in unresolved_finding; `activity_id` already WAVE-02 (Issue 2)
+- `tests/unit/test_research_observations.py` — removed numeric SailboatData values from `test_reference_crosscheck_has_no_evidence_id` notes; added `test_reference_crosscheck_outcome_only_no_numeric_values` regression test; added 6 new runtime validation tests for empty-string rejection (one per scope dimension) plus one positive-case acceptance test (Issues 1 and 3)
+- `tests/contract/test_research_bundle_contracts.py` — added 7 new JSON schema contract tests for empty-string rejection on each string scope dimension plus one positive-case test (Issue 1 schema)
+- `tests/contract/test_research_observation_fixtures.py` — renamed all Gemini `mast_down` test functions to `board_state`; updated fixture filename reference and `operating_state_hint` assertion to `leeward_board_only_deployed` (Issue 2)
+
+### Validation
+
+- Local validation: `PASS`
+- Commands run:
+  - `uv run python -m coverage run -m pytest -x -q`
+  - `uv run python -m coverage report --fail-under=90`
+  - `uv run ruff check .`
+  - `uv run ruff format --check .`
+  - `uv run mypy src/ --strict`
+  - `uv run pip-audit`
+  - `uv run python -c "from hullq.contracts import ContractRegistry; ..."`
+- Results:
+  - 1080 passed, 2 skipped (14 net-new tests: 6 unit + 7 contract + 1 regression)
+  - Branch coverage: 93.33% (≥90% threshold passes)
+  - Ruff: all checks passed, 147 files formatted
+  - mypy: no issues found in 17 source files (strict)
+  - pip-audit: no known vulnerabilities found
+  - ContractRegistry: 27 schemas loaded without error
+
+### External verification
+
+- Remote CI: `NOT VERIFIED` (branch pushed to GitHub; CI result not yet observed locally)
+- Other external gates: `NOT APPLICABLE`
+
+### Findings
+
+- Unresolved findings: none
+- Spec/ADR ambiguities: none
+- Scope deviations: none — only the three blocking issues from PR #24 were addressed
+
+### Benchmark audit confirmation
+
+All five benchmark-derived fixtures audited against `research/benchmark/waves/WAVE-02-summary.md` and `research/benchmark/waves/WAVE-06-summary.md` and `research/benchmark/CONTROLLED_BENCHMARK_LEDGER.md`:
+
+| Fixture | Design | Correct Wave | Issues found | Resolution |
+|---|---|---|---|---|
+| `obs_pearson35_1979_applicability.json` | B06-004 Pearson 35 | WAVE-06 | Wrong wave (was WAVE-01), invented page/section/table | Fixed |
+| `obs_j105_class_rule.json` | B06-008 J/105 | WAVE-06 | Wrong wave (was WAVE-03), invented section/anchor, invented numeric value | Fixed — value replaced with synthetic |
+| `obs_gemini105mc_mast_down.json` | B06-007 Gemini 105Mc | WAVE-06 | Wrong wave (WAVE-04), wrong scenario (mast-down not in Wave 06), invented value | Deleted; replaced with `obs_gemini105mc_board_state.json` |
+| `obs_broker_individual_hull.json` | B06-009 Bavaria 38 | WAVE-06 | Wrong wave (was WAVE-05), invented numeric displacement value | Fixed — value replaced with synthetic |
+| `bundle_unresolved_identity.json` | B02-009 Catalina 316 | WAVE-02 | Invented `first_built: 2001`, invented 9600 lbs displacement | Fixed — uses accepted retained benchmark evidence (12,400 lb Shoal Bulb, 12,000 lb Fin Keel) |
+
+No SailboatData field values remain in any SLICE-0012 test or fixture.
+
+### Follow-up
+
+- Recommended next action: independent review of PR #24 amendment; remote CI observation; project-owner acceptance if satisfied
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- SLICE-0013 was not started.
+- The agent has NOT marked this slice `DONE`.

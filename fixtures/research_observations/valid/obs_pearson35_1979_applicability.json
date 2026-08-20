@@ -6,12 +6,12 @@
     "model": "Pearson 35",
     "first_built": 1969
   },
-  "source_id": "SRC-PEARSON35-SPEC-1979",
+  "source_id": "SRC-PEARSON35-ARCHIVE",
   "source_locator": {
-    "page": 1,
-    "section": "Specifications",
+    "page": null,
+    "section": null,
     "anchor": null,
-    "table": "Dimensions",
+    "table": null,
     "figure": null,
     "record_key": null
   },
@@ -53,12 +53,12 @@
   },
   "research_context": {
     "research_job_id": "JOB-PEARSON35-001",
-    "activity_id": "WAVE-01"
+    "activity_id": "WAVE-06"
   },
-  "observed_at": "2026-08-18T10:00:00Z",
+  "observed_at": "2026-08-20T10:00:00Z",
   "confidence": "high",
   "supersedes_observation_id": null,
   "intended_subject_kind_hint": "boat_design",
   "intended_field_pointer": "/loa_m",
-  "notes": "Pearson 35 LOA from 1979 model year specification — 1979 applicability confirmed"
+  "notes": "Pearson 35 LOA from 1979-year archive design manual — applicability scoped to 1979 model year per archive warning. B06-004 Wave 06 benchmark case."
 }

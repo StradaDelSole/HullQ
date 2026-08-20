@@ -898,14 +898,19 @@ class ObservationApplicability:
             )
 
         # Non-empty refs when that scope dimension is asserted.
-        if (
-            self.individual_hull_or_listing_ref is not None
-            and not self.individual_hull_or_listing_ref
-        ):
-            raise ValueError(
-                "ObservationApplicability.individual_hull_or_listing_ref "
-                "must be non-empty when provided"
-            )
+        _str_fields: tuple[tuple[str, str | None], ...] = (
+            ("hull_number_from", self.hull_number_from),
+            ("hull_number_to", self.hull_number_to),
+            ("market_or_region", self.market_or_region),
+            ("named_variant_hint", self.named_variant_hint),
+            ("operating_state_hint", self.operating_state_hint),
+            ("individual_hull_or_listing_ref", self.individual_hull_or_listing_ref),
+        )
+        for _field_name, _field_val in _str_fields:
+            if _field_val is not None and not _field_val:
+                raise ValueError(
+                    f"ObservationApplicability.{_field_name} must be non-empty when provided"
+                )
         if self.design_option_hints is not None:
             for hint in self.design_option_hints:
                 if not hint:

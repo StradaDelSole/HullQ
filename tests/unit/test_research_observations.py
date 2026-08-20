@@ -997,12 +997,32 @@ def test_reference_crosscheck_has_no_evidence_id() -> None:
         reference_source_id="sailboatdata-reference",
         topic_or_field="/displacement_kg",
         outcome=ReferenceCheckOutcome.CONFLICT,
-        notes="Reference shows 7800kg vs researched 8200kg from spec sheet",
+        notes="Conflict detected on /displacement_kg — likely measurement-basis difference",
     )
     # No evidence_id field — cannot be used as a FieldResolution supporting evidence
     assert not hasattr(cc, "evidence_id")
     assert cc.crosscheck_id == "CC-001"
     assert cc.outcome == ReferenceCheckOutcome.CONFLICT
+
+
+def test_reference_crosscheck_outcome_only_no_numeric_values() -> None:
+    # Regression: ReferenceCrosscheck notes must be qualitative only —
+    # no reference field values (no numeric measurements from the reference source).
+    cc = ReferenceCrosscheck(
+        crosscheck_id="CC-REG-001",
+        reference_source_id="sailboatdata-reference",
+        topic_or_field="/displacement_kg",
+        outcome=ReferenceCheckOutcome.DEFINITION_OR_BASIS_DIFFERENCE,
+        notes="Outcome: definition/basis difference on /displacement_kg — reference and researched sources likely use different load-state basis",
+    )
+    assert cc.outcome == ReferenceCheckOutcome.DEFINITION_OR_BASIS_DIFFERENCE
+    assert cc.reference_source_id == "sailboatdata-reference"
+    assert cc.topic_or_field == "/displacement_kg"
+    # Notes must not contain standalone numeric values that would represent
+    # a reference field value (qualitative outcome description only).
+    import re
+
+    assert re.search(r"\b\d{4,}\s*(kg|lbs|lb|m|ft)\b", cc.notes or "") is None
 
 
 def test_reference_crosscheck_in_bundle_is_separate() -> None:
@@ -1232,3 +1252,110 @@ def test_bundle_rejects_empty_bundle_version() -> None:
             promoted_evidence=(),
             reference_crosschecks=(),
         )
+
+
+# ---------------------------------------------------------------------------
+# Issue 1 — fail-closed validation for all string scope dimensions
+# ---------------------------------------------------------------------------
+
+
+def test_applicability_rejects_empty_hull_number_from() -> None:
+    with pytest.raises(ValueError, match="hull_number_from"):
+        ObservationApplicability(
+            first_year=None,
+            last_year=None,
+            hull_number_from="",
+            hull_number_to=None,
+            market_or_region=None,
+            named_variant_hint=None,
+            design_option_hints=None,
+            operating_state_hint=None,
+            individual_hull_or_listing_ref=None,
+            unknown_or_unbounded=True,
+        )
+
+
+def test_applicability_rejects_empty_hull_number_to() -> None:
+    with pytest.raises(ValueError, match="hull_number_to"):
+        ObservationApplicability(
+            first_year=None,
+            last_year=None,
+            hull_number_from=None,
+            hull_number_to="",
+            market_or_region=None,
+            named_variant_hint=None,
+            design_option_hints=None,
+            operating_state_hint=None,
+            individual_hull_or_listing_ref=None,
+            unknown_or_unbounded=True,
+        )
+
+
+def test_applicability_rejects_empty_market_or_region() -> None:
+    with pytest.raises(ValueError, match="market_or_region"):
+        ObservationApplicability(
+            first_year=None,
+            last_year=None,
+            hull_number_from=None,
+            hull_number_to=None,
+            market_or_region="",
+            named_variant_hint=None,
+            design_option_hints=None,
+            operating_state_hint=None,
+            individual_hull_or_listing_ref=None,
+            unknown_or_unbounded=True,
+        )
+
+
+def test_applicability_rejects_empty_named_variant_hint() -> None:
+    with pytest.raises(ValueError, match="named_variant_hint"):
+        ObservationApplicability(
+            first_year=None,
+            last_year=None,
+            hull_number_from=None,
+            hull_number_to=None,
+            market_or_region=None,
+            named_variant_hint="",
+            design_option_hints=None,
+            operating_state_hint=None,
+            individual_hull_or_listing_ref=None,
+            unknown_or_unbounded=True,
+        )
+
+
+def test_applicability_rejects_empty_operating_state_hint() -> None:
+    with pytest.raises(ValueError, match="operating_state_hint"):
+        ObservationApplicability(
+            first_year=None,
+            last_year=None,
+            hull_number_from=None,
+            hull_number_to=None,
+            market_or_region=None,
+            named_variant_hint=None,
+            design_option_hints=None,
+            operating_state_hint="",
+            individual_hull_or_listing_ref=None,
+            unknown_or_unbounded=True,
+        )
+
+
+def test_applicability_accepts_non_empty_string_scope_dimensions() -> None:
+    # All string scope dimensions accept non-empty values without error.
+    app = ObservationApplicability(
+        first_year=None,
+        last_year=None,
+        hull_number_from="H001",
+        hull_number_to="H999",
+        market_or_region="US",
+        named_variant_hint="shoal draft",
+        design_option_hints=("lead_keel",),
+        operating_state_hint="mast_up",
+        individual_hull_or_listing_ref="LISTING-001",
+        unknown_or_unbounded=False,
+    )
+    assert app.hull_number_from == "H001"
+    assert app.hull_number_to == "H999"
+    assert app.market_or_region == "US"
+    assert app.named_variant_hint == "shoal draft"
+    assert app.operating_state_hint == "mast_up"
+    assert app.individual_hull_or_listing_ref == "LISTING-001"

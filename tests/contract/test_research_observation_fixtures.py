@@ -102,23 +102,24 @@ def test_fixture_j105_evidence_type_is_class_association() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_fixture_gemini_mast_down_validates_against_schema() -> None:
-    fix = _load(FIXTURES / "valid" / "obs_gemini105mc_mast_down.json")
+def test_fixture_gemini_board_state_validates_against_schema() -> None:
+    fix = _load(FIXTURES / "valid" / "obs_gemini105mc_board_state.json")
     _REGISTRY.validator_by_name("RESEARCH_OBSERVATION_SCHEMA.v0.1.json").validate(fix)
 
 
-def test_fixture_gemini_mast_down_claim_is_operating_state() -> None:
-    fix = _load(FIXTURES / "valid" / "obs_gemini105mc_mast_down.json")
+def test_fixture_gemini_board_state_claim_is_operating_state() -> None:
+    fix = _load(FIXTURES / "valid" / "obs_gemini105mc_board_state.json")
     assert isinstance(fix, dict)
     assert fix["claim_semantics"] == "operating_state_value"
 
 
-def test_fixture_gemini_mast_down_has_state_hint_no_design_option() -> None:
-    fix = _load(FIXTURES / "valid" / "obs_gemini105mc_mast_down.json")
+def test_fixture_gemini_board_state_has_state_hint_no_design_option() -> None:
+    fix = _load(FIXTURES / "valid" / "obs_gemini105mc_board_state.json")
     assert isinstance(fix, dict)
     app = fix["applicability"]
     assert isinstance(app, dict)
-    assert app["operating_state_hint"] == "mast_down"
+    # B06-007: centerboard deployment state, not mast-down; no DesignOption ID invented
+    assert app["operating_state_hint"] == "leeward_board_only_deployed"
     assert app["design_option_hints"] is None
     assert app["individual_hull_or_listing_ref"] is None
 

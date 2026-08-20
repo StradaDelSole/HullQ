@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://hullq.local/schemas/observation-applicability/0.1",
   "title": "HullQ ObservationApplicability",
-  "description": "Structured applicability scope for an observation or evidence record. Preserves year/hull/market/variant/option/state/individual-hull restrictions where known. Unknown boundaries are normal and must not be interpreted as global or all-production applicability.",
+  "description": "Structured applicability scope for an observation or evidence record. Preserves year/hull/market/variant/option/state/individual-hull restrictions where known. Unknown boundaries are normal and must not be interpreted as global or all-production applicability. A null value for any dimension means the bound is unknown, NOT that the observation applies to all production.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -24,27 +24,31 @@
     },
     "first_year": {
       "type": ["integer", "null"],
-      "description": "First production year this observation applies to. Null means unknown lower bound."
+      "description": "First production year this observation applies to. Null means unknown lower bound, not the beginning of production."
     },
     "last_year": {
       "type": ["integer", "null"],
-      "description": "Last production year this observation applies to. Null means unknown upper bound."
+      "description": "Last production year this observation applies to. Null means unknown upper bound, not the end of production."
     },
     "hull_number_from": {
       "type": ["string", "null"],
-      "description": "Hull serial number lower bound, inclusive. Null means unknown."
+      "minLength": 1,
+      "description": "Hull serial number lower bound, inclusive. Null means unknown. Empty string is forbidden."
     },
     "hull_number_to": {
       "type": ["string", "null"],
-      "description": "Hull serial number upper bound, inclusive. Null means unknown."
+      "minLength": 1,
+      "description": "Hull serial number upper bound, inclusive. Null means unknown. Empty string is forbidden."
     },
     "market_or_region": {
       "type": ["string", "null"],
-      "description": "Market or geographic region this observation applies to (e.g. US, EU). Null means unknown or global."
+      "minLength": 1,
+      "description": "Market or geographic region this observation applies to (e.g. US, EU). Null means unknown or region is not a known scope restriction. Empty string is forbidden."
     },
     "named_variant_hint": {
       "type": ["string", "null"],
-      "description": "Named variant reference or hint where known (e.g. 'shoal draft', 'tall rig'). Not a canonical NamedVariant ID."
+      "minLength": 1,
+      "description": "Named variant reference or hint where known (e.g. 'shoal draft', 'tall rig'). Not a canonical NamedVariant ID. Empty string is forbidden."
     },
     "design_option_hints": {
       "type": ["array", "null"],
@@ -52,15 +56,17 @@
         "type": "string",
         "minLength": 1
       },
-      "description": "Design option references or hints where known. Not canonical DesignOption IDs."
+      "description": "Design option references or hints where known. Not canonical DesignOption IDs. Array items must be non-empty strings."
     },
     "operating_state_hint": {
       "type": ["string", "null"],
-      "description": "Operating state reference (e.g. 'mast up', 'mast down', 'loaded waterline'). Does not create a DesignOption."
+      "minLength": 1,
+      "description": "Operating state reference (e.g. 'mast_up', 'boards_both_deployed', 'loaded_waterline'). Does not create a DesignOption. Empty string is forbidden."
     },
     "individual_hull_or_listing_ref": {
       "type": ["string", "null"],
-      "description": "Reference to a specific hull, listing or build where the observation applies only to that individual. Non-null means the observation is individual-hull scoped and must not project to BoatDesign baseline."
+      "minLength": 1,
+      "description": "Reference to a specific hull, listing or build where the observation applies only to that individual. Non-null means the observation is individual-hull scoped and must not project to BoatDesign baseline. Empty string is forbidden."
     },
     "unknown_or_unbounded": {
       "type": "boolean",

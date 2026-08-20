@@ -257,6 +257,72 @@ def test_observation_applicability_rejects_empty_design_option_hint_string() -> 
         )
 
 
+def test_observation_applicability_rejects_empty_hull_number_from() -> None:
+    v = _REGISTRY.validator_by_name("OBSERVATION_APPLICABILITY_SCHEMA.v0.1.json")
+    bad = dict(_applicability_json())
+    bad["hull_number_from"] = ""
+    with pytest.raises(ValidationError):
+        v.validate(bad)
+
+
+def test_observation_applicability_rejects_empty_hull_number_to() -> None:
+    v = _REGISTRY.validator_by_name("OBSERVATION_APPLICABILITY_SCHEMA.v0.1.json")
+    bad = dict(_applicability_json())
+    bad["hull_number_to"] = ""
+    with pytest.raises(ValidationError):
+        v.validate(bad)
+
+
+def test_observation_applicability_rejects_empty_market_or_region() -> None:
+    v = _REGISTRY.validator_by_name("OBSERVATION_APPLICABILITY_SCHEMA.v0.1.json")
+    bad = dict(_applicability_json())
+    bad["market_or_region"] = ""
+    with pytest.raises(ValidationError):
+        v.validate(bad)
+
+
+def test_observation_applicability_rejects_empty_named_variant_hint() -> None:
+    v = _REGISTRY.validator_by_name("OBSERVATION_APPLICABILITY_SCHEMA.v0.1.json")
+    bad = dict(_applicability_json())
+    bad["named_variant_hint"] = ""
+    with pytest.raises(ValidationError):
+        v.validate(bad)
+
+
+def test_observation_applicability_rejects_empty_operating_state_hint() -> None:
+    v = _REGISTRY.validator_by_name("OBSERVATION_APPLICABILITY_SCHEMA.v0.1.json")
+    bad = dict(_applicability_json())
+    bad["operating_state_hint"] = ""
+    with pytest.raises(ValidationError):
+        v.validate(bad)
+
+
+def test_observation_applicability_rejects_empty_individual_hull_ref_string() -> None:
+    v = _REGISTRY.validator_by_name("OBSERVATION_APPLICABILITY_SCHEMA.v0.1.json")
+    bad = dict(_applicability_json())
+    bad["individual_hull_or_listing_ref"] = ""
+    with pytest.raises(ValidationError):
+        v.validate(bad)
+
+
+def test_observation_applicability_accepts_non_null_string_scope_dimensions() -> None:
+    v = _REGISTRY.validator_by_name("OBSERVATION_APPLICABILITY_SCHEMA.v0.1.json")
+    valid = {
+        "schema_version": "0.1",
+        "first_year": None,
+        "last_year": None,
+        "hull_number_from": "H001",
+        "hull_number_to": "H999",
+        "market_or_region": "US",
+        "named_variant_hint": "shoal draft",
+        "design_option_hints": ["lead_keel"],
+        "operating_state_hint": "mast_up",
+        "individual_hull_or_listing_ref": "LISTING-001",
+        "unknown_or_unbounded": False,
+    }
+    v.validate(valid)
+
+
 # ---------------------------------------------------------------------------
 # Research observation schema
 # ---------------------------------------------------------------------------
