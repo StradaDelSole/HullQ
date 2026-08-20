@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0013  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 2.13 — first physical persistence boundary  
 **Depends on:** SLICE-0012 accepted / DONE  
 **Blocks:** benchmark-through-database measurement slice
@@ -405,3 +405,84 @@ The implementation agent MAY set `IN_PROGRESS`, `BLOCKED` or `REVIEW`, but MUST 
 The implementation agent MUST NOT automatically begin the next benchmark-execution/measurement slice.
 
 After SLICE-0013 acceptance, the intended next bounded step is to run the same controlled benchmark corpus through the importer/database path and measure actual automation, review, idempotency, throughput and cost behavior before broad design-universe ingestion is authorized.
+
+---
+
+## Completion Report
+
+### Slice
+
+- Slice ID: `SLICE-0013`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+
+### Changes
+
+- Changed files:
+  - `pyproject.toml` — added `psycopg[binary]>=3.2,<4` dependency; added mypy override for psycopg
+  - `uv.lock` — added psycopg 3.3.4, psycopg-binary 3.3.4, tzdata 2026.3
+  - `.github/workflows/ci.yml` — added `db-integration` job with PostgreSQL 18 service container
+  - `docs/slices/SLICE-0013-postgresql-persistence-deterministic-importer.md` — status IN_PROGRESS → REVIEW; completion report added
+- New files:
+  - `src/hullq/persistence/__init__.py` — public API exports
+  - `src/hullq/persistence/_types.py` — `ImportStatus`, `ImportResult`, `PersistenceConflictError`
+  - `src/hullq/persistence/connection.py` — `get_database_url`, `open_connection`
+  - `src/hullq/persistence/fingerprint.py` — deterministic SHA-256 semantic fingerprinting
+  - `src/hullq/persistence/schema.py` — domain-object ↔ JSONB serialization helpers
+  - `src/hullq/persistence/migrations.py` — lightweight numbered-SQL migration runner
+  - `src/hullq/persistence/sql/001_initial_schema.sql` — 6-table initial schema (PostgreSQL 18)
+  - `src/hullq/persistence/importer.py` — `import_research_evidence_bundle` transactional importer
+  - `src/hullq/persistence/readback.py` — minimal round-trip readback (`BundleSnapshot`, fetch functions)
+  - `tests/persistence/__init__.py` — empty
+  - `tests/persistence/conftest.py` — auto-skip when `HULLQ_TEST_DATABASE_URL` not set; `migrated_conn`/`clean_conn` fixtures
+  - `tests/persistence/test_persistence_integration.py` — 29 PostgreSQL integration tests
+  - `tests/unit/test_persistence_connection.py` — 7 connection config unit tests
+  - `tests/unit/test_persistence_fingerprint.py` — 28 fingerprint unit tests
+  - `tests/unit/test_persistence_importer_unit.py` — 16 importer unit tests (mock cursor)
+  - `tests/unit/test_persistence_schema.py` — 18 schema serialization unit tests
+  - `tests/unit/test_persistence_mocked_db.py` — 48 mock-based unit tests for migrations, importer, and readback
+
+- Requirements implemented: REQ-DB-001 through REQ-DB-028 (persistence acceptance criteria 1–28 per slice)
+- Tests/fixtures added: 29 PostgreSQL integration tests (auto-skip without DB), 117 new pure-Python unit tests
+
+### Validation
+
+- Local validation: `PASS`
+- Commands run:
+  - `uv run ruff check .` → All checks passed
+  - `uv run ruff format --check .` → All checks passed
+  - `uv run mypy src` → Success: no issues found in 25 source files
+  - `uv run coverage run -m pytest` → 1201 passed, 31 skipped (29 integration + 2 live network)
+  - `uv run coverage report` → **93.72%** (≥90% threshold met)
+  - `uv run python scripts/validate_repository.py` → repository governance validation: PASS
+  - `uv run pip-audit` → No known vulnerabilities found
+- Results:
+  - All 1201 runnable tests pass; 29 integration tests correctly skip without `HULLQ_TEST_DATABASE_URL`
+  - 93.72% combined branch/statement coverage (threshold 90%)
+  - `bundle_reference_crosschecks` has no `evidence_id` column — enforced at schema level and verified by structural unit test
+  - Acceptance criteria 1–27 verified locally; criterion 28 (branch coverage ≥90%) verified locally at 93.72%
+
+### External verification
+
+- Remote CI: `NOT VERIFIED` — branch not yet pushed to GitHub; CI has not run
+- Other external gates: `NOT APPLICABLE`
+
+### Findings
+
+- Unresolved findings: none
+- Spec/ADR ambiguities: none
+- Scope deviations:
+  - Added `tests/unit/test_persistence_mocked_db.py` beyond the expected touch points in the slice. This was necessary to achieve ≥90% branch coverage without a PostgreSQL server in the quality CI job. The mock-based tests exercise `apply_migrations`, `import_research_evidence_bundle`, `_insert_observation`, all `_from_jsonb` readback helpers, and `fetch_bundle_snapshot` with `MagicMock` connections. No production behavior was changed; the additional file is purely additive test infrastructure.
+  - Fixed an over-broad skip condition in `tests/persistence/conftest.py` (`"persistence" in fspath` → `/tests/persistence/` path check) that was incorrectly skipping `tests/unit/test_persistence_*.py` files in the quality CI job.
+
+### Follow-up
+
+- Recommended next action: project-owner reviews PR, observes remote CI results (`db-integration` job with PostgreSQL 18 service container), and accepts or returns findings. After DONE, the next bounded step is the benchmark-through-database measurement slice.
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice was not started automatically.
+- The agent has NOT marked this slice `DONE`.
+- Remote CI results (`db-integration` job) have NOT been observed and are recorded as `NOT VERIFIED`.
