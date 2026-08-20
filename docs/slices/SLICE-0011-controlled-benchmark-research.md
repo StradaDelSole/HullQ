@@ -2,16 +2,35 @@
 
 **ID:** SLICE-0011  
 **Type:** DESIGN_RESEARCH  
-**Status:** REVIEW  
+**Status:** DONE  
 **Stage:** 2.10–2.11  
 **Depends on:** SLICE-0010 accepted / DONE  
 **Research owner:** project owner + ChatGPT/master research
+
+## Final acceptance
+
+SLICE-0011 was explicitly accepted by the project owner after independent closure review and exact-head CI verification.
+
+Acceptance evidence:
+
+- final accepted PR head: `9f1859fe9762e05bd2a5be57c550f255be302c9b`;
+- GitHub Actions CI run #151: PASS on that exact head;
+- Ubuntu quality: PASS;
+- Windows quality: PASS;
+- dependency audit: PASS;
+- changed-file scope at acceptance: 18 files, all under `docs/` or `research/`;
+- independent closure review found no remaining blocking scope/data-governance issue after the documented pre-canonical ResearchObservation and reference-crosscheck corrections;
+- explicit project-owner acceptance: 2026-08-20;
+- PR #22 merged on 2026-08-20;
+- merge commit: `668e91937d27dc9c70760301b92ce0ded41abb2f`.
+
+SLICE-0012 is unblocked by this acceptance but still requires a separate READY status before implementation starts.
 
 ## Objective
 
 Build a controlled 50–100-design benchmark from independently researched web evidence. Use the corpus to test HullQ's accepted identity, provenance, measurement, configuration and derived-metric foundations against real sailboat-data conditions before persistence and broad ingestion are frozen.
 
-This is a research slice. Claude Code is not the web-research agent; it remains the implementation agent for later bounded import, persistence and processing work.
+This was a research slice. Claude Code was not the web-research agent; it remains the implementation agent for later bounded import, persistence and processing work.
 
 ## Research method
 
@@ -26,30 +45,24 @@ selected difficult design
 → benchmark measurements and architecture findings
 ```
 
-Search broadly across manufacturer/shipyard pages, original brochures and manuals, designers, class and owners associations, archives, specialist publications/databases, reputable broker documentation, sailing forums, owners groups, refit/restoration material and other useful web leads.
+Search covered manufacturer/shipyard pages, original brochures and manuals, designers, class and owners associations, archives, specialist publications/databases, reputable broker documentation, sailing forums, owners groups, refit/restoration material and other useful web leads.
 
-**Source breadth is intentionally broad; canonical confidence is intentionally strict.**
+**Source breadth was intentionally broad; canonical confidence remained strict.**
 
-For every useful observation preserve source identity, URL/document identity, retrieval date, raw value or wording, unit, measurement basis, generation/variant/option/state context, confidence and unresolved/conflict status where relevant. Partial records are valid; invented completeness is not.
+For every useful observation, the research preserved source identity, URL/document identity, retrieval date, raw value or wording, unit, measurement basis, generation/variant/option/state context, confidence and unresolved/conflict status where relevant. Partial records were valid; invented completeness was not.
 
-Individual-hull/broker records may be used for discovery and corroboration, but they remain hull-specific unless independent evidence supports projection to design level.
+Individual-hull/broker records were used for discovery and corroboration only and remained hull-specific unless independent evidence supported projection to design level.
 
 ## Reference comparison rule
 
-SailboatData is used only after independent HullQ research as a QA/reference comparison.
+SailboatData was used only after independent HullQ research as a QA/reference comparison.
 
-- no SailboatData value becomes HullQ evidence;
-- no missing HullQ field is filled from SailboatData;
-- no FieldEvidence is created from SailboatData;
-- SailboatData does not resolve conflicts;
-- comparison output stores only outcomes such as `match`, `partial_match`, `conflict`, `basis_difference`, `identity_disambiguation_required` or `no_reference_record_found`;
-- a mismatch is a trigger for further independent research where useful.
-
-## Benchmark selection
-
-Cover deliberately difficult cases across monohulls/catamarans/trimarans, reused model names, generations and named variants, keel/centreboard/daggerboard options, single/twin rudders, skeg relationships, old or defunct builders, modern configurators, measurement-basis differences, internal source contradictions, cross-source conflicts and semi-custom configurations.
-
-The SLICE-0002 seed sample is a selection aid only. Benchmark records are re-researched in the current wave.
+- no SailboatData value became HullQ evidence;
+- no missing HullQ field was filled from SailboatData;
+- no FieldEvidence was created from SailboatData;
+- SailboatData did not resolve conflicts;
+- retained comparison output stores outcome/anomaly classes rather than SailboatData field values;
+- a mismatch was a trigger for further independent research where useful.
 
 ## Completed research corpus
 
@@ -62,9 +75,9 @@ The SLICE-0002 seed sample is a selection aid only. Benchmark records are re-res
 | Wave 05 | 8 | 41 | model-family reuse, under/over-splitting risk, technical lineage vs marketing lineage, malformed authoritative observations |
 | Wave 06 | 9 | 50 | Mk counterexamples, rule semantics, twin-board deployment state, special/tandem keel, configuration × mass-basis interaction |
 
-**Minimum corpus gate reached: 50 designs.** Corpus expansion is paused unless later execution evidence exposes a materially missing problem class.
+**Minimum corpus gate reached: 50 designs.** Corpus expansion is paused unless later executable benchmark work exposes a materially missing problem class.
 
-Detailed wave evidence:
+Detailed retained evidence:
 
 - `research/benchmark/waves/WAVE-01-summary.md`
 - `research/benchmark/waves/WAVE-02-summary.md`
@@ -73,13 +86,15 @@ Detailed wave evidence:
 - `research/benchmark/waves/WAVE-05-summary.md`
 - `research/benchmark/waves/WAVE-06-summary.md`
 - `research/benchmark/CONTROLLED_BENCHMARK_LEDGER.md`
+- `research/benchmark/legacy-observations/`
 
 ## Benchmark measurement completed
 
 The coded corpus and analysis are retained in:
 
 - `research/benchmark/BENCHMARK-50-classification.csv`;
-- `research/benchmark/BENCHMARK-50-analysis.md`.
+- `research/benchmark/BENCHMARK-50-analysis.md`;
+- `research/benchmark/BENCHMARK-50-closure-review.md`.
 
 The intentionally difficult stress corpus measured:
 
@@ -95,11 +110,11 @@ The intentionally difficult stress corpus measured:
 
 These are **stress-corpus incidences, not population prevalence estimates**.
 
-Runtime repeatability, automated-acceptance rate, false-normalization rate, processing cost and actual human minutes per review cannot be measured honestly from manual research. They require the executable importer/persistence benchmark and are deliberately deferred rather than invented.
+Runtime repeatability, automated-acceptance rate, false-normalization rate, processing cost and actual human minutes per review cannot be measured honestly from manual research. They require the executable importer/persistence benchmark and were deliberately deferred rather than invented.
 
 ## Findings forcing the next bounded contract
 
-The 50-design corpus repeatedly demonstrates that:
+The 50-design corpus repeatedly demonstrated that:
 
 - one scalar per physical concept is insufficient;
 - generation identity cannot be inferred from model strings alone;
@@ -118,11 +133,20 @@ The 50-design corpus repeatedly demonstrates that:
 - reference datasets can contain identity duplication/anomalies as well as useful QA agreement;
 - weak/defunct-builder records can be researched, but confidence depends more heavily on archival/community corroboration.
 
-The benchmark therefore derives one small pre-persistence implementation requirement: a successor evidence/applicability contract plus a machine-ingestible ResearchEvidenceBundle. The draft is `docs/slices/SLICE-0012-evidence-applicability-research-bundle.md` and remains `BLOCKED` until this slice is accepted/DONE.
+The independent closure review added one critical precision: accepted ResearchJob targets are deliberately pre-canonical, while FieldEvidence requires a stable ProvenanceSubject. The next bounded implementation must therefore use:
+
+```text
+ResearchObservation
+→ ResearchEvidenceBundle
+→ explicit caller-supplied stable ProvenanceSubject
+→ deterministic promotion to successor FieldEvidence
+```
+
+rather than forcing canonical identity during web research.
 
 ## Out of scope
 
-This slice does not authorize broad production ingestion, production PostgreSQL schema work, persistence implementation, query/search semantics, public API/frontend work, marketplace ingestion, accounts/alerts, or treating reference comparison data as production evidence.
+This slice did not authorize broad production ingestion, production PostgreSQL schema work, persistence implementation, query/search semantics, public API/frontend work, marketplace ingestion, accounts/alerts, or treating reference comparison data as production evidence.
 
 ## Exit gate status
 
@@ -130,10 +154,10 @@ This slice does not authorize broad production ingestion, production PostgreSQL 
 - [x] evidence remains source-linked and reproducible at research-summary level;
 - [x] major ambiguity/conflict classes have measured stress-corpus frequencies;
 - [x] minimum pre-persistence semantics have been derived from real evidence;
-- [x] next bounded implementation slice has been drafted from observed evidence;
-- [x] completed research/closure-review head `fd8f01c94edeb5064ed241384045680f1985ff0d` passed GitHub Actions CI run #149;
-- [x] independent closure review found no remaining blocking scope/data-governance issue after the documented ResearchObservation and reference-crosscheck corrections;
-- [ ] final current PR head CI independently verified before merge;
-- [ ] explicit project-owner acceptance / merge.
+- [x] next bounded implementation slice drafted from observed evidence;
+- [x] exact accepted PR head `9f1859fe9762e05bd2a5be57c550f255be302c9b` passed GitHub Actions CI run #151;
+- [x] independent closure review found no remaining blocking scope/data-governance issue;
+- [x] explicit project-owner acceptance;
+- [x] PR #22 merged to canonical `main` as `668e91937d27dc9c70760301b92ce0ded41abb2f`.
 
-SLICE-0011 therefore remains in `REVIEW`. SLICE-0012 MUST NOT start automatically.
+SLICE-0011 is `DONE`. No later slice was started automatically.
