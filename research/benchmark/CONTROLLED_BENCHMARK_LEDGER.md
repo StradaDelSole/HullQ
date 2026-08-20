@@ -3,7 +3,7 @@
 **Status:** ACTIVE — SLICE-0011  
 **Updated:** 2026-08-20  
 **Target:** 50–100 deliberately difficult designs  
-**Active re-researched designs:** 33
+**Active re-researched designs:** 41
 
 This ledger tracks the controlled benchmark research waves. It is not a production canonical dataset.
 
@@ -25,6 +25,7 @@ This ledger tracks the controlled benchmark research waves. It is not a producti
 | 02 | 12 | 17 | multihull geometry, board state, twin/protective-skeg relationships, named variants, successor identity, Half Load and other mass bases |
 | 03 | 8 | 25 | partial skeg, era applicability, official chronology conflict, swing-keel/twin-rudder relationships, sail-area basis ambiguity |
 | 04 | 8 | 33 | reference identity split, legacy multihull generations, rare centreboard/keel options, suffix semantics, weak-primary-source reconstruction |
+| 05 | 8 | 41 | model-family reuse, under-split vs over-split generation risk, manufacturer heritage vs technical identity, malformed authoritative-source units |
 
 Detailed evidence summaries are under `research/benchmark/waves/`.
 
@@ -73,6 +74,17 @@ Detailed evidence summaries are under `research/benchmark/waves/`.
 - B04-007 Westerly Konsort
 - B04-008 Heavenly Twins 26 → New 27 lineage
 
+## Wave 05
+
+- B05-001 MacGregor 26 D/S/X/M family
+- B05-002 BENETEAU First 35 family
+- B05-003 Moody 36 families
+- B05-004 Hallberg-Rassy 352
+- B05-005 Swan 36 (1967) versus ClubSwan 36
+- B05-006 Catalina 36 Mk I / Mk II
+- B05-007 Dehler 34 lineage
+- B05-008 Hunter 37 / Hunter 37 Legend
+
 ## Current recurring problem classes
 
 1. generation/model-name reuse;
@@ -92,16 +104,20 @@ Detailed evidence summaries are under `research/benchmark/waves/`.
 15. commercial suffixes that mean anything from fitout package to material hull evolution;
 16. reference-database duplicate/identity anomalies;
 17. rare configurations hidden by a single baseline reference record;
-18. weak/defunct-builder source chains requiring archival/community corroboration.
+18. weak/defunct-builder source chains requiring archival/community corroboration;
+19. under-splitting distinct technical designs that reuse a model number;
+20. over-splitting Mk/suffix evolutions that retain the same core hull/rig;
+21. manufacturer marketing heritage that links technically unrelated designs;
+22. authoritative-source observations with malformed unit labels;
+23. reference-specific synthetic model names that must not leak into canonical naming.
 
 ## Next selection priorities
 
-Continue toward 50–100 only with cases that add information:
+Reach the 50-design minimum with cases that add information rather than easy coverage, then switch from corpus expansion to measured benchmark analysis:
 
-- additional Scandinavian generations and model-number reuse;
-- documented mid-production appendage/construction changes;
 - semi-custom boats where design-level vs hull-specific facts are difficult to separate;
-- more catamarans/trimarans with materially different generation geometry;
-- classes where rule/measurement values differ from builder nominal specifications;
-- option packages that alter displacement/ballast/sail area together;
+- class-rule nominal/tolerance values versus builder nominal specifications;
+- documented mid-production appendage/construction changes;
+- additional multihulls with generation-dependent geometry;
+- production boats with multiple concurrent keel/rig packages that alter mass and sail area together;
 - records where primary, archival and community sources materially disagree.
