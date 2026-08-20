@@ -2,10 +2,12 @@
 
 **ID:** SLICE-0012  
 **Type:** IMPLEMENTATION  
-**Status:** BLOCKED  
+**Status:** READY  
 **Stage:** 2.12 — benchmark-driven contract hardening before persistence  
 **Depends on:** SLICE-0011 accepted / DONE  
 **Blocks:** first PostgreSQL persistence/import slice
+
+**Authorization:** READY after explicit project-owner acceptance of SLICE-0011, successful merge of PR #22, and canonical merge commit `668e91937d27dc9c70760301b92ce0ded41abb2f`.
 
 ## Objective
 
@@ -381,6 +383,10 @@ Do not change BoatDesign/BoatModel/ResolvedConfiguration schemas unless a hard c
 
 ## Status handoff rule
 
-This slice remains `BLOCKED` until SLICE-0011 is accepted/DONE. Once unblocked it may be set `READY` by the master/owner. The implementation agent MUST NOT start it from this draft branch and MUST NOT mark it `DONE`.
+SLICE-0012 is now `READY` after SLICE-0011 owner acceptance and merge. It may be started only through the normal `START_SLICE.bat` isolated worktree workflow. The implementation agent MAY set `IN_PROGRESS`, `BLOCKED` or `REVIEW` as appropriate, but MUST NOT mark this slice `DONE`.
+
+`DONE` requires verified acceptance criteria, required remote/external checks, independent master review and explicit project-owner acceptance. A successful implementation therefore normally hands the slice off in `REVIEW` with a mandatory completion report.
+
+The implementation agent MUST NOT begin SLICE-0013 or any PostgreSQL work automatically.
 
 After SLICE-0012 acceptance, the intended next bounded implementation is **PostgreSQL persistence + deterministic ResearchEvidenceBundle importer**, followed by explicit identity/promotion processing and execution of the same 50-design benchmark through that path to measure actual automation/review/idempotency/cost behavior.
