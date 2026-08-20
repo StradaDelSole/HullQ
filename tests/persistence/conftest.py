@@ -70,10 +70,11 @@ def clean_conn(db_url: str) -> Generator[Any]:
         with conn.cursor() as cur:
             cur.execute("""
                 TRUNCATE TABLE
-                    bundle_promoted_evidence,
+                    bundle_evidence_members,
                     bundle_reference_crosschecks,
                     bundle_unresolved_findings,
                     bundle_observation_members,
+                    research_evidence,
                     research_observations,
                     research_bundles
                 RESTART IDENTITY CASCADE

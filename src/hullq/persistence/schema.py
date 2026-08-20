@@ -138,14 +138,11 @@ def observation_row_params(
 
 def evidence_row_params(
     ev: FieldEvidenceV3,
-    bundle: ResearchEvidenceBundle,
     content_hash: str,
 ) -> tuple[Any, ...]:
-    """Return the ordered parameter tuple for INSERT into bundle_promoted_evidence."""
+    """Return the ordered parameter tuple for INSERT into research_evidence (global table)."""
     return (
         ev.evidence_id,
-        bundle.bundle_id,
-        bundle.bundle_version,
         content_hash,
         str(ev.subject.kind),
         ev.subject.id,

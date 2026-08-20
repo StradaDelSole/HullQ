@@ -212,17 +212,15 @@ def test_observation_row_params_second_field_is_hash() -> None:
 
 def test_evidence_row_params_length() -> None:
     ev = _make_evidence()
-    bundle = _make_bundle()
     ev_hash = fingerprint_evidence(ev)
-    params = evidence_row_params(ev, bundle, ev_hash)
+    params = evidence_row_params(ev, ev_hash)
     assert isinstance(params, tuple)
-    assert len(params) == 20  # matches INSERT column count
+    assert len(params) == 18  # matches INSERT column count (no bundle_id/bundle_version)
 
 
 def test_evidence_row_params_first_field_is_evidence_id() -> None:
     ev = _make_evidence("EV-ZZZ")
-    bundle = _make_bundle()
-    params = evidence_row_params(ev, bundle, "h")
+    params = evidence_row_params(ev, "h")
     assert params[0] == "EV-ZZZ"
 
 
@@ -354,31 +352,33 @@ def test_apply_migrations_empty_dir(tmp_path: Any) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_insert_observation_new_calls_execute_twice() -> None:
-    """When obs not found (fetchone=None), two execute calls: SELECT + INSERT."""
+def test_insert_observation_new_calls_execute_once() -> None:
+    """When obs INSERT succeeds (rowcount=1), only one execute call: INSERT."""
     cur = MagicMock()
-    cur.fetchone.return_value = None
+    cur.rowcount = 1  # INSERT row created — no SELECT needed
     obs = _make_obs()
     obs_hash = fingerprint_observation(obs)
     _insert_observation(cur, obs, obs_hash)
-    assert cur.execute.call_count == 2
+    assert cur.execute.call_count == 1
 
 
-def test_insert_observation_same_hash_skips_insert() -> None:
-    """When obs exists with matching hash, only SELECT is executed (no INSERT)."""
+def test_insert_observation_same_hash_calls_execute_twice() -> None:
+    """When obs INSERT conflicts (rowcount=0) and hashes match, two execute calls: INSERT + SELECT."""
     obs = _make_obs()
     obs_hash = fingerprint_observation(obs)
     cur = MagicMock()
+    cur.rowcount = 0  # INSERT did nothing — check existing hash
     cur.fetchone.return_value = (obs_hash,)
     _insert_observation(cur, obs, obs_hash)
-    assert cur.execute.call_count == 1  # SELECT only
+    assert cur.execute.call_count == 2  # INSERT + SELECT
 
 
 def test_insert_observation_hash_mismatch_raises() -> None:
-    """When obs exists with a different hash, PersistenceConflictError is raised."""
+    """When obs INSERT conflicts (rowcount=0) and hashes differ, PersistenceConflictError."""
     obs = _make_obs()
     obs_hash = fingerprint_observation(obs)
     cur = MagicMock()
+    cur.rowcount = 0  # INSERT did nothing — check existing hash
     cur.fetchone.return_value = ("completely-different-hash",)
     with pytest.raises(PersistenceConflictError):
         _insert_observation(cur, obs, obs_hash)
@@ -402,7 +402,11 @@ def test_import_empty_bundle_returns_imported() -> None:
 def test_import_already_imported_returns_already_imported() -> None:
     bundle = _make_bundle()
     bundle_hash = fingerprint_bundle(bundle)
-    mock_conn = _make_mock_conn(fetchone_return=(bundle_hash,))
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+    mock_cursor.rowcount = 0  # bundle INSERT did nothing — check existing hash
+    mock_cursor.fetchone.return_value = (bundle_hash,)
     result = import_research_evidence_bundle(mock_conn, bundle)
     assert result.status == ImportStatus.ALREADY_IMPORTED
     assert result.content_hash == bundle_hash
@@ -410,7 +414,11 @@ def test_import_already_imported_returns_already_imported() -> None:
 
 def test_import_conflict_at_bundle_level_returns_conflict() -> None:
     bundle = _make_bundle()
-    mock_conn = _make_mock_conn(fetchone_return=("old-hash-that-does-not-match",))
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+    mock_cursor.rowcount = 0  # bundle INSERT did nothing — check existing hash
+    mock_cursor.fetchone.return_value = ("old-hash-that-does-not-match",)
     result = import_research_evidence_bundle(mock_conn, bundle)
     assert result.status == ImportStatus.CONFLICT
     assert result.detail is not None
@@ -449,14 +457,20 @@ def test_import_bundle_with_evidence_returns_imported() -> None:
 
 
 def test_import_bundle_observation_conflict_returns_conflict() -> None:
-    """Observation hash mismatch after bundle insert → CONFLICT."""
+    """Observation INSERT conflicts (rowcount=0) and hash mismatches → CONFLICT."""
     obs = _make_obs()
     bundle = _make_bundle(obs=(obs,))
-    # Bundle check: None (not found). Observation check: wrong hash.
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
     mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
-    mock_cursor.fetchone.side_effect = [None, ("wrong-obs-hash",)]
+    # Bundle INSERT succeeds (rowcount=1), observation INSERT conflicts (rowcount=0).
+    rowcounts = iter([1, 0])
+
+    def _on_execute(*args: Any, **kwargs: Any) -> None:
+        mock_cursor.rowcount = next(rowcounts, 0)
+
+    mock_cursor.execute.side_effect = _on_execute
+    mock_cursor.fetchone.return_value = ("wrong-obs-hash",)
     result = import_research_evidence_bundle(mock_conn, bundle)
     assert result.status == ImportStatus.CONFLICT
 
@@ -750,4 +764,4 @@ def test_fetch_evidence_not_found_returns_none() -> None:
     from hullq.persistence.readback import fetch_evidence
 
     mock_conn = _make_mock_conn(fetchone_return=None)
-    assert fetch_evidence(mock_conn, "EV-999", "B-001", "1.0") is None
+    assert fetch_evidence(mock_conn, "EV-999") is None

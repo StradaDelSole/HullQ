@@ -191,16 +191,25 @@ def fingerprint_evidence(ev: FieldEvidenceV3) -> str:
 
 
 def fingerprint_bundle(bundle: ResearchEvidenceBundle) -> str:
-    """Stable fingerprint covering the full semantic content of a ResearchEvidenceBundle."""
+    """Stable fingerprint covering the full semantic content of a ResearchEvidenceBundle.
+
+    Collections are sorted by their per-element fingerprint so that reordering
+    semantically identical members does not produce a different bundle hash.
+    Persistence membership tables are unordered; the fingerprint must match.
+    """
     d: dict[str, Any] = {
         "activity_id": bundle.activity_id,
         "bundle_id": bundle.bundle_id,
         "bundle_version": bundle.bundle_version,
-        "observations": [fingerprint_observation(o) for o in bundle.observations],
-        "promoted_evidence": [fingerprint_evidence(e) for e in bundle.promoted_evidence],
-        "reference_crosschecks": [_crosscheck_dict(cc) for cc in bundle.reference_crosschecks],
+        "observations": sorted(fingerprint_observation(o) for o in bundle.observations),
+        "promoted_evidence": sorted(fingerprint_evidence(e) for e in bundle.promoted_evidence),
+        "reference_crosschecks": sorted(
+            fingerprint_dict(_crosscheck_dict(cc)) for cc in bundle.reference_crosschecks
+        ),
         "research_job_id": bundle.research_job_id,
         "research_target": _target_dict(bundle.research_target),
-        "unresolved_findings": [_finding_dict(f) for f in bundle.unresolved_findings],
+        "unresolved_findings": sorted(
+            fingerprint_dict(_finding_dict(f)) for f in bundle.unresolved_findings
+        ),
     }
     return fingerprint_dict(d)

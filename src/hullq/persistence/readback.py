@@ -161,7 +161,7 @@ def fetch_bundle_snapshot(conn: Any, bundle_id: str, bundle_version: str) -> Bun
 
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT evidence_id FROM bundle_promoted_evidence "
+            "SELECT evidence_id FROM bundle_evidence_members "
             "WHERE bundle_id = %s AND bundle_version = %s ORDER BY evidence_id",
             [bundle_id, bundle_version],
         )
@@ -270,17 +270,14 @@ def fetch_crosscheck(
     )
 
 
-def fetch_evidence(
-    conn: Any, evidence_id: str, bundle_id: str, bundle_version: str
-) -> FieldEvidenceV3 | None:
-    """Reconstruct a FieldEvidenceV3 from the database."""
+def fetch_evidence(conn: Any, evidence_id: str) -> FieldEvidenceV3 | None:
+    """Reconstruct a FieldEvidenceV3 from the global research_evidence table, or None."""
     from psycopg.rows import dict_row
 
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(
-            "SELECT * FROM bundle_promoted_evidence "
-            "WHERE evidence_id = %s AND bundle_id = %s AND bundle_version = %s",
-            [evidence_id, bundle_id, bundle_version],
+            "SELECT * FROM research_evidence WHERE evidence_id = %s",
+            [evidence_id],
         )
         row = cur.fetchone()
     if row is None:

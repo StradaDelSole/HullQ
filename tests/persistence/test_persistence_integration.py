@@ -215,10 +215,14 @@ def test_migrations_create_schema_from_empty(clean_conn: Any) -> None:
         "bundle_observation_members",
         "bundle_unresolved_findings",
         "bundle_reference_crosschecks",
-        "bundle_promoted_evidence",
+        "research_evidence",
+        "bundle_evidence_members",
         "hullq_schema_migrations",
     }
     assert expected <= tables
+    assert "bundle_promoted_evidence" not in tables, (
+        "bundle_promoted_evidence must be replaced by research_evidence + bundle_evidence_members"
+    )
 
 
 def test_migrations_idempotent_second_apply(db_url: str) -> None:
@@ -633,7 +637,7 @@ def test_promoted_evidence_round_trips(clean_conn: Any) -> None:
     b = _bundle(promoted_evidence=(ev,))
     import_research_evidence_bundle(clean_conn, b)
 
-    fetched = fetch_evidence(clean_conn, "EV-RT-001", "BUNDLE-001", "1.0")
+    fetched = fetch_evidence(clean_conn, "EV-RT-001")
     assert fetched is not None
     assert fetched.evidence_id == "EV-RT-001"
     assert fetched.subject.kind == SubjectKind.BOAT_DESIGN
@@ -660,10 +664,10 @@ def test_importer_does_not_resolve_or_promote(clean_conn: Any) -> None:
     b = _bundle(observations=(obs,))
     import_research_evidence_bundle(clean_conn, b)
 
-    # Observation imported but no auto-promoted evidence should exist
+    # Observation imported but no auto-promoted evidence membership should exist
     with clean_conn.cursor() as cur:
         cur.execute(
-            "SELECT COUNT(*) FROM bundle_promoted_evidence WHERE bundle_id = %s",
+            "SELECT COUNT(*) FROM bundle_evidence_members WHERE bundle_id = %s",
             ["BUNDLE-001"],
         )
         count = cur.fetchone()[0]  # type: ignore[index]
@@ -947,3 +951,116 @@ def test_slice0012_fixture_bundle_imports(clean_conn: Any) -> None:
     )
     assert cc_fetched is not None
     assert cc_fetched.outcome == ReferenceCheckOutcome.DEFINITION_OR_BASIS_DIFFERENCE
+
+
+# ---------------------------------------------------------------------------
+# Finding 1: FieldEvidence global immutable identity (mirror ResearchObservation)
+# ---------------------------------------------------------------------------
+
+
+def test_evidence_global_identity_same_content_reusable_across_bundles(clean_conn: Any) -> None:
+    """Finding 1: same evidence_id + same content imported in two separate bundles is idempotent.
+
+    One global row in research_evidence; one membership row per bundle version.
+    """
+    ev = _ev("EV-GLOBAL-001")
+    b1 = _bundle("BUNDLE-EV-G1", "1.0", promoted_evidence=(ev,))
+    b2 = _bundle("BUNDLE-EV-G2", "1.0", promoted_evidence=(ev,))
+
+    r1 = import_research_evidence_bundle(clean_conn, b1)
+    r2 = import_research_evidence_bundle(clean_conn, b2)
+    assert r1.status == ImportStatus.IMPORTED
+    assert r2.status == ImportStatus.IMPORTED
+
+    # Exactly one global evidence row
+    with clean_conn.cursor() as cur:
+        cur.execute(
+            "SELECT COUNT(*) FROM research_evidence WHERE evidence_id = %s",
+            ["EV-GLOBAL-001"],
+        )
+        assert cur.fetchone()[0] == 1  # type: ignore[index]
+
+    # Two membership rows (one per bundle)
+    with clean_conn.cursor() as cur:
+        cur.execute(
+            "SELECT COUNT(*) FROM bundle_evidence_members WHERE evidence_id = %s",
+            ["EV-GLOBAL-001"],
+        )
+        assert cur.fetchone()[0] == 2  # type: ignore[index]
+
+
+def test_evidence_global_identity_different_content_fails_closed(clean_conn: Any) -> None:
+    """Finding 1: same evidence_id with materially different content must fail closed (CONFLICT).
+
+    The second bundle import must be rejected; its bundle row must not appear.
+    """
+    ev_v1 = _ev("EV-CONFLICT-001")
+    b1 = _bundle("BUNDLE-EVC-1", "1.0", promoted_evidence=(ev_v1,))
+    r1 = import_research_evidence_bundle(clean_conn, b1)
+    assert r1.status == ImportStatus.IMPORTED
+
+    # Same evidence_id but different raw value — different content hash
+    ev_v2 = FieldEvidenceV3(
+        evidence_id="EV-CONFLICT-001",
+        subject=ProvenanceSubject(kind=SubjectKind.BOAT_DESIGN, id="design-xyz"),
+        field_pointer=JsonPointer("/loa_m"),
+        source_id="SRC-001",
+        source_locator=SourceLocator(
+            page=None, section=None, anchor=None, table=None, figure=None, record_key=None
+        ),
+        raw=RawObservation(kind=RawObservationKind.LITERAL, value="99.9", unit="m", excerpt=None),
+        normalized_candidate=None,
+        evidence_type=EvidenceType.MANUFACTURER_SPECIFICATION,
+        producer=_producer(),
+        research_context=ResearchContext(research_job_id="JOB-1", activity_id="WAVE-1"),
+        observed_at="2026-08-20T00:00:00Z",
+        confidence=ConfidenceLevel.HIGH,
+        supersedes_evidence_id=None,
+        notes=None,
+        claim_semantics=ClaimSemantics.NOMINAL_DESIGN_VALUE,
+        applicability=_applicability(unknown_or_unbounded=True),
+    )
+    b2 = _bundle("BUNDLE-EVC-2", "1.0", promoted_evidence=(ev_v2,))
+    r2 = import_research_evidence_bundle(clean_conn, b2)
+    assert r2.status == ImportStatus.CONFLICT
+
+    # b2 must not appear in the database
+    snap = fetch_bundle_snapshot(clean_conn, "BUNDLE-EVC-2", "1.0")
+    assert snap is None
+
+
+# ---------------------------------------------------------------------------
+# Finding 3: reordered semantically identical bundles are idempotent
+# ---------------------------------------------------------------------------
+
+
+def test_reordered_observations_gives_already_imported(clean_conn: Any) -> None:
+    """Finding 3: a bundle with the same observations in different order must be ALREADY_IMPORTED."""
+    obs_a = _obs("OBS-ORD-A", raw_value="10.5")
+    obs_b = _obs("OBS-ORD-B", raw_value="20.0")
+
+    b1 = _bundle("BUNDLE-ORD", "1.0", observations=(obs_a, obs_b))
+    b2 = _bundle("BUNDLE-ORD", "1.0", observations=(obs_b, obs_a))  # reversed order
+
+    r1 = import_research_evidence_bundle(clean_conn, b1)
+    assert r1.status == ImportStatus.IMPORTED
+
+    r2 = import_research_evidence_bundle(clean_conn, b2)
+    assert r2.status == ImportStatus.ALREADY_IMPORTED
+    assert r2.content_hash == r1.content_hash
+
+
+def test_reordered_evidence_gives_already_imported(clean_conn: Any) -> None:
+    """Finding 3: a bundle with the same evidence in different order must be ALREADY_IMPORTED."""
+    ev_a = _ev("EV-ORD-A")
+    ev_b = _ev("EV-ORD-B")
+
+    b1 = _bundle("BUNDLE-EV-ORD", "1.0", promoted_evidence=(ev_a, ev_b))
+    b2 = _bundle("BUNDLE-EV-ORD", "1.0", promoted_evidence=(ev_b, ev_a))  # reversed order
+
+    r1 = import_research_evidence_bundle(clean_conn, b1)
+    assert r1.status == ImportStatus.IMPORTED
+
+    r2 = import_research_evidence_bundle(clean_conn, b2)
+    assert r2.status == ImportStatus.ALREADY_IMPORTED
+    assert r2.content_hash == r1.content_hash

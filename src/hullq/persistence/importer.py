@@ -8,6 +8,7 @@ Importer guarantees:
 - one database transaction; rollback on any conflict or persistence error;
 - idempotent: exact repeated import returns ALREADY_IMPORTED, no duplicates;
 - fail-closed: same identity with different content returns CONFLICT;
+- race-safe: INSERT ... ON CONFLICT ... DO NOTHING eliminates check-then-insert races;
 - no identity resolution, no automatic promotion, no FieldResolution.
 """
 
@@ -39,6 +40,7 @@ _INSERT_BUNDLE = """
 INSERT INTO research_bundles
     (bundle_id, bundle_version, content_hash, research_target, research_job_id, activity_id)
 VALUES (%s, %s, %s, %s, %s, %s)
+ON CONFLICT (bundle_id, bundle_version) DO NOTHING
 """
 
 _SELECT_BUNDLE_HASH = """
@@ -69,6 +71,7 @@ INSERT INTO research_observations (
     %s, %s,
     %s, %s
 )
+ON CONFLICT (observation_id) DO NOTHING
 """
 
 _INSERT_MEMBERSHIP = """
@@ -91,26 +94,33 @@ VALUES (%s, %s, %s, %s, %s, %s, %s)
 
 _SELECT_EVIDENCE_HASH = """
 SELECT content_hash
-FROM bundle_promoted_evidence
-WHERE evidence_id = %s AND bundle_id = %s AND bundle_version = %s
+FROM research_evidence
+WHERE evidence_id = %s
 """
 
 _INSERT_EVIDENCE = """
-INSERT INTO bundle_promoted_evidence (
-    evidence_id, bundle_id, bundle_version, content_hash,
+INSERT INTO research_evidence (
+    evidence_id, content_hash,
     subject_kind, subject_id, field_pointer, source_id,
     source_locator, raw_observation, normalized_candidate,
     evidence_type, claim_semantics, applicability,
     producer, research_context, observed_at, confidence,
     supersedes_evidence_id, notes
 ) VALUES (
-    %s, %s, %s, %s,
+    %s, %s,
     %s, %s, %s, %s,
     %s, %s, %s,
     %s, %s, %s,
     %s, %s, %s, %s,
     %s, %s
 )
+ON CONFLICT (evidence_id) DO NOTHING
+"""
+
+_INSERT_EVIDENCE_MEMBERSHIP = """
+INSERT INTO bundle_evidence_members (bundle_id, bundle_version, evidence_id)
+VALUES (%s, %s, %s)
+ON CONFLICT DO NOTHING
 """
 
 
@@ -125,7 +135,11 @@ def _check_existing_bundle(
     bundle_version: str,
     content_hash: str,
 ) -> ImportResult | None:
-    """Return a terminal ImportResult if the bundle already exists, else None."""
+    """Return a terminal ImportResult if the bundle already exists, else None.
+
+    Called only when the bundle INSERT triggered DO NOTHING (rowcount == 0),
+    meaning a row for this (bundle_id, bundle_version) already exists.
+    """
     cur.execute(_SELECT_BUNDLE_HASH, [bundle_id, bundle_version])
     row = cur.fetchone()
     if row is None:
@@ -155,22 +169,27 @@ def _insert_observation(
     obs: ResearchObservation,
     obs_hash: str,
 ) -> None:
-    """Insert one observation row; raise PersistenceConflictError on hash mismatch."""
-    cur.execute(_SELECT_OBSERVATION_HASH, [obs.observation_id])
-    existing = cur.fetchone()
-    if existing is not None:
-        if existing[0] != obs_hash:
+    """Race-safe insert of one observation row.
+
+    Uses INSERT ... ON CONFLICT DO NOTHING to avoid check-then-insert races.
+    If the row already existed (rowcount == 0), verifies the content hash;
+    raises PersistenceConflictError on hash mismatch.
+    """
+    from psycopg.types.json import Jsonb
+
+    params = observation_row_params(obs, obs_hash)
+    adapted = [Jsonb(p) if isinstance(p, dict) else p for p in params]
+    cur.execute(_INSERT_OBSERVATION, adapted)
+    if cur.rowcount == 0:
+        # ON CONFLICT DO NOTHING fired: observation already existed; verify hash.
+        cur.execute(_SELECT_OBSERVATION_HASH, [obs.observation_id])
+        existing = cur.fetchone()
+        if existing is None or existing[0] != obs_hash:
             raise PersistenceConflictError(
                 f"Observation {obs.observation_id!r} already persisted "
                 "with a different semantic content hash."
             )
-        # Same hash → reuse the existing row without inserting.
-        return
-    params = observation_row_params(obs, obs_hash)
-    from psycopg.types.json import Jsonb
-
-    adapted = [Jsonb(p) if isinstance(p, dict) else p for p in params]
-    cur.execute(_INSERT_OBSERVATION, adapted)
+        # Same hash: reuse the existing global row without duplicate insert.
 
 
 def _insert_evidence(
@@ -179,22 +198,32 @@ def _insert_evidence(
     bundle: ResearchEvidenceBundle,
     ev_hash: str,
 ) -> None:
-    """Insert one promoted evidence row; raise PersistenceConflictError on hash mismatch."""
-    cur.execute(_SELECT_EVIDENCE_HASH, [ev.evidence_id, bundle.bundle_id, bundle.bundle_version])
-    existing = cur.fetchone()
-    if existing is not None:
-        if existing[0] != ev_hash:
-            raise PersistenceConflictError(
-                f"Promoted evidence {ev.evidence_id!r} in bundle "
-                f"({bundle.bundle_id!r}, {bundle.bundle_version!r}) "
-                "already persisted with a different content hash."
-            )
-        return
-    params = evidence_row_params(ev, bundle, ev_hash)
+    """Race-safe insert of one global evidence row + bundle membership.
+
+    Uses INSERT ... ON CONFLICT DO NOTHING for the global research_evidence row.
+    If the evidence already existed (rowcount == 0), verifies the global hash;
+    raises PersistenceConflictError on hash mismatch.
+    Membership is always recorded (idempotent ON CONFLICT DO NOTHING).
+    """
     from psycopg.types.json import Jsonb
 
+    params = evidence_row_params(ev, ev_hash)
     adapted = [Jsonb(p) if isinstance(p, dict) else p for p in params]
     cur.execute(_INSERT_EVIDENCE, adapted)
+    if cur.rowcount == 0:
+        # ON CONFLICT DO NOTHING fired: evidence already existed; verify global hash.
+        cur.execute(_SELECT_EVIDENCE_HASH, [ev.evidence_id])
+        existing = cur.fetchone()
+        if existing is None or existing[0] != ev_hash:
+            raise PersistenceConflictError(
+                f"Evidence {ev.evidence_id!r} already persisted "
+                "with a different semantic content hash."
+            )
+        # Same hash: reuse the existing global row.
+    # Always add bundle membership (idempotent).
+    cur.execute(
+        _INSERT_EVIDENCE_MEMBERSHIP, [bundle.bundle_id, bundle.bundle_version, ev.evidence_id]
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -217,6 +246,11 @@ def import_research_evidence_bundle(
       or an observation/evidence identity collision was detected. The full import
       attempt is rolled back.
 
+    All INSERT paths use ON CONFLICT DO NOTHING to eliminate check-then-insert
+    races. Concurrent identical imports resolve deterministically without leaking
+    raw PostgreSQL unique-violation errors. Conflicting immutable identities fail
+    closed as CONFLICT.
+
     Does not perform identity resolution, automatic promotion, or FieldResolution.
     Does not modify existing immutable records.
     """
@@ -227,16 +261,7 @@ def import_research_evidence_bundle(
     # Attempt atomic import inside a single transaction.
     try:
         with conn.transaction(), conn.cursor() as cur:
-            # 1. Check existing bundle.
-            early = _check_existing_bundle(
-                cur, bundle.bundle_id, bundle.bundle_version, bundle_hash
-            )
-            if early is not None:
-                # ALREADY_IMPORTED or CONFLICT detected before any writes.
-                # Raise to abort the transaction block cleanly.
-                raise _EarlyReturn(early)
-
-            # 2. Insert bundle row.
+            # 1. Insert bundle row (race-safe: ON CONFLICT DO NOTHING).
             cur.execute(
                 _INSERT_BUNDLE,
                 [
@@ -248,8 +273,20 @@ def import_research_evidence_bundle(
                     bundle.activity_id,
                 ],
             )
+            if cur.rowcount == 0:
+                # Another import already committed this (bundle_id, bundle_version).
+                # Check whether it is the same content (idempotent) or a conflict.
+                early = _check_existing_bundle(
+                    cur, bundle.bundle_id, bundle.bundle_version, bundle_hash
+                )
+                if early is None:
+                    raise PersistenceConflictError(
+                        f"Bundle ({bundle.bundle_id!r}, {bundle.bundle_version!r}) "
+                        "disappeared after insert conflict."
+                    )
+                raise _EarlyReturn(early)
 
-            # 3. Observations: insert (or verify existing) + membership.
+            # 2. Observations: race-safe insert + membership.
             for obs in bundle.observations:
                 obs_hash = fingerprint_observation(obs)
                 _insert_observation(cur, obs, obs_hash)
@@ -258,17 +295,17 @@ def import_research_evidence_bundle(
                     [bundle.bundle_id, bundle.bundle_version, obs.observation_id],
                 )
 
-            # 4. Unresolved findings.
+            # 3. Unresolved findings.
             for finding in bundle.unresolved_findings:
                 params = finding_row_params(finding, bundle)
                 adapted = [Jsonb(p) if isinstance(p, list) else p for p in params]
                 cur.execute(_INSERT_FINDING, adapted)
 
-            # 5. Reference crosschecks (structurally outside evidence).
+            # 4. Reference crosschecks (structurally outside evidence).
             for cc in bundle.reference_crosschecks:
                 cur.execute(_INSERT_CROSSCHECK, list(crosscheck_row_params(cc, bundle)))
 
-            # 6. Promoted FieldEvidence v0.3 (optional).
+            # 5. Promoted FieldEvidence v0.3 (global identity; optional).
             for ev in bundle.promoted_evidence:
                 ev_hash = fingerprint_evidence(ev)
                 _insert_evidence(cur, ev, bundle, ev_hash)
