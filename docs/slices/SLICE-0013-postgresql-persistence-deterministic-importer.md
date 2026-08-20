@@ -410,7 +410,7 @@ After SLICE-0013 acceptance, the intended next bounded step is to run the same c
 
 ## Completion Report
 
-**Report version:** 2 — incorporates fixes for three blocking independent-review findings (PR #27).
+**Report version:** 3 — migration baseline cleanup and real PostgreSQL concurrency integration coverage.
 
 ### Slice
 
@@ -447,42 +447,52 @@ After SLICE-0013 acceptance, the intended next bounded step is to run the same c
   - `tests/unit/test_persistence_schema.py` — 18 schema serialization unit tests
   - `tests/unit/test_persistence_mocked_db.py` — 48 mock-based unit tests for migrations, importer, and readback
 
-### Review findings addressed
+### Review findings addressed (v2) and v3 items
 
 **Finding 1 — FieldEvidence global immutable identity:**
-- Created `src/hullq/persistence/sql/002_global_evidence_table.sql` adding `research_evidence` (PK=`evidence_id`) + `bundle_evidence_members` link table, and dropping `bundle_promoted_evidence`.
-- `_insert_evidence` now inserts to global `research_evidence` then adds a `bundle_evidence_members` row. Same evidence_id + same content is reusable across bundles; same evidence_id + different content → CONFLICT.
+- `research_evidence` (PK=`evidence_id`) and `bundle_evidence_members` link table now defined directly in `001_initial_schema.sql` (no intermediate 002 migration).
+- `_insert_evidence` inserts to global `research_evidence` then adds `bundle_evidence_members` row. Same `evidence_id` + same content is reusable across bundles; same `evidence_id` + different content → CONFLICT.
 - `fetch_evidence` simplified to `(conn, evidence_id)` — queries global table directly.
-- New integration tests: `test_evidence_global_identity_same_content_reusable_across_bundles`, `test_evidence_global_identity_different_content_fails_closed`.
+- Integration tests: `test_evidence_global_identity_same_content_reusable_across_bundles`, `test_evidence_global_identity_different_content_fails_closed`.
 
 **Finding 2 — Race-safe INSERT paths:**
-- All INSERT statements use `ON CONFLICT ... DO NOTHING`; after each insert `cur.rowcount` is checked. rowcount==0 means DO NOTHING fired, triggering a hash-verification SELECT. rowcount==1 means new row — no SELECT needed.
+- All INSERT statements use `ON CONFLICT ... DO NOTHING`; `cur.rowcount` checked after each. rowcount==0 → DO NOTHING fired → hash-verification SELECT. rowcount==1 → new row, no SELECT.
 - Eliminated all check-then-insert patterns. No last-write-wins. Conflicting immutable identities fail closed.
+- **v3 concurrency coverage**: 4 new real PostgreSQL integration tests using separate connections + `threading.Barrier`:
+  - `test_concurrent_identical_bundle_import_resolves_deterministically` — two concurrent identical imports → IMPORTED + ALREADY_IMPORTED, no unique violation.
+  - `test_concurrent_imports_sharing_global_observation_no_duplicate` — concurrent distinct bundles sharing observation identity → both IMPORTED, 1 global obs row, 2 memberships.
+  - `test_concurrent_imports_sharing_global_evidence_no_duplicate` — concurrent distinct bundles sharing evidence identity → both IMPORTED, 1 global evidence row, 2 memberships.
+  - `test_concurrent_same_identity_different_content_fails_closed` — concurrent conflict → 1 IMPORTED + 1 CONFLICT, no partial bundle in DB.
 
 **Finding 3 — Order-insensitive bundle fingerprint:**
-- `fingerprint_bundle` now sorts observations, evidence, crosschecks, and findings collections by per-element fingerprint before computing the bundle hash.
-- New integration tests: `test_reordered_observations_gives_already_imported`, `test_reordered_evidence_gives_already_imported`.
+- `fingerprint_bundle` sorts all collections by per-element fingerprint before hashing.
+- Integration tests: `test_reordered_observations_gives_already_imported`, `test_reordered_evidence_gives_already_imported`.
+
+**v3 — Migration baseline cleanup:**
+- `001_initial_schema.sql` folded to include `research_evidence` + `bundle_evidence_members` directly; `bundle_promoted_evidence` removed.
+- `002_global_evidence_table.sql` deleted (SLICE-0013 never merged to main; no historical migration required).
 
 ### Validation
 
 - Local validation: `PASS`
-- Commands run (v2 run after finding fixes):
+- Commands run (v3):
   - `uv run ruff check .` → All checks passed
   - `uv run ruff format --check .` → All checks passed
   - `uv run mypy src` → Success: no issues found in 25 source files
-  - `uv run coverage run -m pytest tests/unit/ -v` → **949 passed**, 0 failed, 0 skipped
+  - `uv run coverage run -m pytest tests/unit/ -q` → **949 passed**, 0 failed, 0 skipped
   - `uv run coverage report --fail-under=90` → **93.55%** overall, **95.73%** persistence module — ≥90% threshold met (exit 0)
   - `uv run python scripts/validate_repository.py` → repository governance validation: PASS
   - `uv run pip-audit` → No known vulnerabilities found
 - Results:
-  - All 949 unit tests pass; 34 integration tests correctly skip without `HULLQ_TEST_DATABASE_URL` (29 original + 5 new finding-coverage tests)
+  - All 949 unit tests pass; 38 integration tests correctly skip without `HULLQ_TEST_DATABASE_URL` (29 original + 5 finding-coverage + 4 concurrency tests)
   - 93.55% combined branch/statement coverage (threshold 90%)
   - `bundle_reference_crosschecks` has no `evidence_id` column — enforced at schema level and verified by structural unit test
-  - `bundle_promoted_evidence` replaced by `research_evidence` + `bundle_evidence_members` — verified by schema assertion test
+  - `bundle_promoted_evidence` absent from schema — verified by schema assertion test
+  - Migration baseline is a single `001_initial_schema.sql` producing the complete correct schema from empty DB
 
 ### External verification
 
-- Remote CI: `NOT VERIFIED` — awaiting GitHub CI run on the updated branch head
+- Remote CI: `NOT VERIFIED` — awaiting GitHub CI run on the new exact head
 - Other external gates: `NOT APPLICABLE`
 
 ### Findings

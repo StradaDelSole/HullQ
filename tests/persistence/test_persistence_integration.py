@@ -1064,3 +1064,296 @@ def test_reordered_evidence_gives_already_imported(clean_conn: Any) -> None:
     r2 = import_research_evidence_bundle(clean_conn, b2)
     assert r2.status == ImportStatus.ALREADY_IMPORTED
     assert r2.content_hash == r1.content_hash
+
+
+# ---------------------------------------------------------------------------
+# Real PostgreSQL concurrency: race-safe importer under concurrent connections
+# ---------------------------------------------------------------------------
+
+
+def _concurrency_setup(db_url: str) -> None:
+    """Apply migrations (idempotent) and truncate all data tables."""
+    import psycopg
+
+    from hullq.persistence.migrations import apply_migrations
+
+    conn = psycopg.connect(db_url)
+    try:
+        apply_migrations(conn)
+        with conn.cursor() as cur:
+            cur.execute("""
+                TRUNCATE TABLE
+                    bundle_evidence_members,
+                    bundle_reference_crosschecks,
+                    bundle_unresolved_findings,
+                    bundle_observation_members,
+                    research_evidence,
+                    research_observations,
+                    research_bundles
+                RESTART IDENTITY CASCADE
+            """)
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def test_concurrent_identical_bundle_import_resolves_deterministically(db_url: str) -> None:
+    """Two concurrent identical bundle imports must resolve as IMPORTED + ALREADY_IMPORTED.
+
+    No PostgreSQL unique-violation must leak to the caller. No duplicate rows.
+    Uses two separate connections synchronized by a threading.Barrier.
+    """
+    import threading
+
+    import psycopg
+
+    _concurrency_setup(db_url)
+
+    bundle = _bundle("BUNDLE-CONC-IDENT", "1.0", observations=(_obs("OBS-CONC-IDENT-001"),))
+    results: list[Any] = []
+    errors: list[BaseException] = []
+    barrier = threading.Barrier(2)
+
+    def _worker() -> None:
+        try:
+            conn = psycopg.connect(db_url)
+            try:
+                barrier.wait(timeout=10)
+                result = import_research_evidence_bundle(conn, bundle)
+                results.append(result)
+            finally:
+                conn.close()
+        except Exception as exc:
+            errors.append(exc)
+
+    threads = [threading.Thread(target=_worker) for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=20)
+
+    assert not errors, f"Thread errors: {errors}"
+    assert len(results) == 2
+    statuses = {r.status for r in results}
+    assert statuses == {ImportStatus.IMPORTED, ImportStatus.ALREADY_IMPORTED}, (
+        f"Expected IMPORTED+ALREADY_IMPORTED; got {statuses}"
+    )
+
+    # Verify: exactly one bundle row and one observation row.
+    verify = psycopg.connect(db_url)
+    try:
+        with verify.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) FROM research_bundles WHERE bundle_id = %s",
+                ["BUNDLE-CONC-IDENT"],
+            )
+            assert cur.fetchone()[0] == 1  # type: ignore[index]
+        with verify.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) FROM research_observations WHERE observation_id = %s",
+                ["OBS-CONC-IDENT-001"],
+            )
+            assert cur.fetchone()[0] == 1  # type: ignore[index]
+    finally:
+        verify.close()
+
+
+def test_concurrent_imports_sharing_global_observation_no_duplicate(db_url: str) -> None:
+    """Concurrent distinct bundles sharing an observation identity must not create duplicates.
+
+    Both bundles must import successfully. The shared observation has exactly one
+    global row in research_observations and two membership rows.
+    """
+    import threading
+
+    import psycopg
+
+    _concurrency_setup(db_url)
+
+    shared_obs = _obs("OBS-CONC-SHARED-OBS")
+    bundle_a = _bundle("BUNDLE-CONC-SHOBS-A", "1.0", observations=(shared_obs,))
+    bundle_b = _bundle("BUNDLE-CONC-SHOBS-B", "1.0", observations=(shared_obs,))
+
+    results: list[Any] = []
+    errors: list[BaseException] = []
+    barrier = threading.Barrier(2)
+
+    def _worker(b: Any) -> None:
+        try:
+            conn = psycopg.connect(db_url)
+            try:
+                barrier.wait(timeout=10)
+                result = import_research_evidence_bundle(conn, b)
+                results.append(result)
+            finally:
+                conn.close()
+        except Exception as exc:
+            errors.append(exc)
+
+    threads = [
+        threading.Thread(target=_worker, args=(bundle_a,)),
+        threading.Thread(target=_worker, args=(bundle_b,)),
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=20)
+
+    assert not errors, f"Thread errors: {errors}"
+    assert len(results) == 2
+    assert all(r.status == ImportStatus.IMPORTED for r in results), (
+        f"Both imports must succeed; got {[r.status for r in results]}"
+    )
+
+    verify = psycopg.connect(db_url)
+    try:
+        with verify.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) FROM research_observations WHERE observation_id = %s",
+                ["OBS-CONC-SHARED-OBS"],
+            )
+            assert cur.fetchone()[0] == 1  # type: ignore[index]
+        with verify.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) FROM bundle_observation_members WHERE observation_id = %s",
+                ["OBS-CONC-SHARED-OBS"],
+            )
+            assert cur.fetchone()[0] == 2  # type: ignore[index]
+    finally:
+        verify.close()
+
+
+def test_concurrent_imports_sharing_global_evidence_no_duplicate(db_url: str) -> None:
+    """Concurrent distinct bundles sharing an evidence identity must not create duplicates.
+
+    Both bundles must import successfully. The shared evidence has exactly one
+    global row in research_evidence and two membership rows.
+    """
+    import threading
+
+    import psycopg
+
+    _concurrency_setup(db_url)
+
+    shared_ev = _ev("EV-CONC-SHARED-EV")
+    bundle_a = _bundle("BUNDLE-CONC-SHEV-A", "1.0", promoted_evidence=(shared_ev,))
+    bundle_b = _bundle("BUNDLE-CONC-SHEV-B", "1.0", promoted_evidence=(shared_ev,))
+
+    results: list[Any] = []
+    errors: list[BaseException] = []
+    barrier = threading.Barrier(2)
+
+    def _worker(b: Any) -> None:
+        try:
+            conn = psycopg.connect(db_url)
+            try:
+                barrier.wait(timeout=10)
+                result = import_research_evidence_bundle(conn, b)
+                results.append(result)
+            finally:
+                conn.close()
+        except Exception as exc:
+            errors.append(exc)
+
+    threads = [
+        threading.Thread(target=_worker, args=(bundle_a,)),
+        threading.Thread(target=_worker, args=(bundle_b,)),
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=20)
+
+    assert not errors, f"Thread errors: {errors}"
+    assert len(results) == 2
+    assert all(r.status == ImportStatus.IMPORTED for r in results), (
+        f"Both evidence-sharing imports must succeed; got {[r.status for r in results]}"
+    )
+
+    verify = psycopg.connect(db_url)
+    try:
+        with verify.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) FROM research_evidence WHERE evidence_id = %s",
+                ["EV-CONC-SHARED-EV"],
+            )
+            assert cur.fetchone()[0] == 1  # type: ignore[index]
+        with verify.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) FROM bundle_evidence_members WHERE evidence_id = %s",
+                ["EV-CONC-SHARED-EV"],
+            )
+            assert cur.fetchone()[0] == 2  # type: ignore[index]
+    finally:
+        verify.close()
+
+
+def test_concurrent_same_identity_different_content_fails_closed(db_url: str) -> None:
+    """Concurrent imports with same observation identity but different content must fail closed.
+
+    One import wins (IMPORTED); the other detects the hash mismatch (CONFLICT) and
+    rolls back — leaving no partial bundle in the database.
+    """
+    import threading
+
+    import psycopg
+
+    _concurrency_setup(db_url)
+
+    obs_v1 = _obs("OBS-CONC-CONFLICT", raw_value="10.5")
+    obs_v2 = _obs("OBS-CONC-CONFLICT", raw_value="99.9")  # different semantic content
+    bundle_a = _bundle("BUNDLE-CONC-CONFLICT-A", "1.0", observations=(obs_v1,))
+    bundle_b = _bundle("BUNDLE-CONC-CONFLICT-B", "1.0", observations=(obs_v2,))
+
+    results: list[Any] = []
+    errors: list[BaseException] = []
+    barrier = threading.Barrier(2)
+
+    def _worker(b: Any) -> None:
+        try:
+            conn = psycopg.connect(db_url)
+            try:
+                barrier.wait(timeout=10)
+                result = import_research_evidence_bundle(conn, b)
+                results.append(result)
+            finally:
+                conn.close()
+        except Exception as exc:
+            errors.append(exc)
+
+    threads = [
+        threading.Thread(target=_worker, args=(bundle_a,)),
+        threading.Thread(target=_worker, args=(bundle_b,)),
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=20)
+
+    assert not errors, f"Thread errors: {errors}"
+    assert len(results) == 2
+    statuses = [r.status for r in results]
+    assert statuses.count(ImportStatus.IMPORTED) == 1, f"Exactly one must succeed; got {statuses}"
+    assert statuses.count(ImportStatus.CONFLICT) == 1, f"Exactly one must conflict; got {statuses}"
+
+    # The CONFLICT bundle must not appear in research_bundles (fully rolled back).
+    conflict_result = next(r for r in results if r.status == ImportStatus.CONFLICT)
+    verify = psycopg.connect(db_url)
+    try:
+        with verify.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) FROM research_bundles WHERE bundle_id = %s",
+                [conflict_result.bundle_id],
+            )
+            assert cur.fetchone()[0] == 0, (  # type: ignore[index]
+                "CONFLICT bundle must not have a row in research_bundles"
+            )
+        # Exactly one observation row from the winning import.
+        with verify.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) FROM research_observations WHERE observation_id = %s",
+                ["OBS-CONC-CONFLICT"],
+            )
+            assert cur.fetchone()[0] == 1  # type: ignore[index]
+    finally:
+        verify.close()

@@ -3,7 +3,8 @@
 --
 -- Immutable identity semantics:
 --   (bundle_id, bundle_version) is the PRIMARY KEY for research_bundles.
---   observation_id is the PRIMARY KEY for research_observations (shared global table).
+--   observation_id is the PRIMARY KEY for research_observations (global shared table).
+--   evidence_id    is the PRIMARY KEY for research_evidence      (global shared table).
 --   content_hash columns enforce fail-closed collision detection at import time.
 --
 -- Reference crosschecks intentionally have NO evidence_id column and no foreign
@@ -47,7 +48,7 @@ CREATE TABLE research_observations (
     PRIMARY KEY (observation_id)
 );
 
--- Bundle ↔ observation membership (one observation may appear in multiple bundles)
+-- Bundle <-> observation membership (one observation may appear in multiple bundles)
 CREATE TABLE bundle_observation_members (
     bundle_id       TEXT NOT NULL,
     bundle_version  TEXT NOT NULL,
@@ -76,7 +77,7 @@ CREATE TABLE bundle_unresolved_findings (
         REFERENCES research_bundles (bundle_id, bundle_version)
 );
 
--- Reference crosschecks — structurally outside HullQ evidence/provenance.
+-- Reference crosschecks -- structurally outside HullQ evidence/provenance.
 -- No evidence_id column. No foreign key into evidence tables.
 -- SailboatData field values are NOT stored here.
 CREATE TABLE bundle_reference_crosschecks (
@@ -93,13 +94,12 @@ CREATE TABLE bundle_reference_crosschecks (
         REFERENCES research_bundles (bundle_id, bundle_version)
 );
 
--- Optional already-promoted FieldEvidence v0.3 (per bundle version)
+-- Global FieldEvidence v0.3 (shared across bundles; identity is evidence_id).
 -- subject_kind / subject_id represent the typed canonical subject without
 -- requiring a canonical entity table in this slice.
-CREATE TABLE bundle_promoted_evidence (
+-- SailboatData field values are NOT stored here.
+CREATE TABLE research_evidence (
     evidence_id             TEXT        NOT NULL,
-    bundle_id               TEXT        NOT NULL,
-    bundle_version          TEXT        NOT NULL,
     content_hash            TEXT        NOT NULL,
     subject_kind            TEXT        NOT NULL,
     subject_id              TEXT        NOT NULL,
@@ -117,8 +117,20 @@ CREATE TABLE bundle_promoted_evidence (
     confidence              TEXT        NOT NULL,
     supersedes_evidence_id  TEXT,
     notes                   TEXT,
-    PRIMARY KEY (evidence_id, bundle_id, bundle_version),
-    CONSTRAINT fk_bpe_bundle
+    first_recorded_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (evidence_id)
+);
+
+-- Bundle <-> evidence membership (one evidence row may appear in multiple bundles)
+CREATE TABLE bundle_evidence_members (
+    bundle_id       TEXT NOT NULL,
+    bundle_version  TEXT NOT NULL,
+    evidence_id     TEXT NOT NULL,
+    PRIMARY KEY (bundle_id, bundle_version, evidence_id),
+    CONSTRAINT fk_bem_bundle
         FOREIGN KEY (bundle_id, bundle_version)
-        REFERENCES research_bundles (bundle_id, bundle_version)
+        REFERENCES research_bundles (bundle_id, bundle_version),
+    CONSTRAINT fk_bem_evidence
+        FOREIGN KEY (evidence_id)
+        REFERENCES research_evidence (evidence_id)
 );
