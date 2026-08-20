@@ -290,7 +290,9 @@ def fresh_db_results(
     conn = psycopg.connect(db_url)
     try:
         with conn.cursor() as cur:
-            cur.execute(f'CREATE SCHEMA IF NOT EXISTS "{schema}"')
+            # DROP first to prevent contamination from interrupted runs (IF NOT EXISTS is insufficient)
+            cur.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
+            cur.execute(f'CREATE SCHEMA "{schema}"')
             cur.execute(f'SET search_path TO "{schema}"')
         conn.commit()
         apply_migrations(conn)
@@ -620,3 +622,199 @@ def test_exhaustive_observation_semantic_readback(
             f"{case_id}/{original.observation_id}: notes mismatch: "
             f"{fetched.notes!r} != {original.notes!r}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Corpus-wide semantic readback — all 50 bundles, all observations
+# ---------------------------------------------------------------------------
+
+
+def compare_observation_semantics(
+    case_id: str,
+    original: Any,
+    fetched: Any,
+) -> list[str]:
+    """Return a list of semantic mismatch descriptions (empty = exact match).
+
+    Compares all semantic fields: source_id, source_locator, raw (kind/value/unit/excerpt),
+    normalized_candidate, evidence_type, claim_semantics, applicability (all 10 fields),
+    producer (identifier/kind/version), research_context, observed_at, confidence,
+    supersedes_observation_id, intended_subject_kind_hint, intended_field_pointer,
+    notes.
+    """
+    mismatches: list[str] = []
+    oid = original.observation_id
+    prefix = f"{case_id}/{oid}"
+
+    def chk(label: str, got: Any, exp: Any) -> None:
+        if got != exp:
+            mismatches.append(f"{prefix}: {label}: got={got!r} expected={exp!r}")
+
+    chk("source_id", fetched.source_id, original.source_id)
+
+    # source_locator
+    if fetched.source_locator is None and original.source_locator is not None:
+        mismatches.append(
+            f"{prefix}: source_locator: got=None expected={original.source_locator!r}"
+        )
+    elif fetched.source_locator is not None and original.source_locator is None:
+        mismatches.append(f"{prefix}: source_locator: got={fetched.source_locator!r} expected=None")
+    elif fetched.source_locator is not None and original.source_locator is not None:
+        chk("source_locator.page", fetched.source_locator.page, original.source_locator.page)
+        chk(
+            "source_locator.section",
+            fetched.source_locator.section,
+            original.source_locator.section,
+        )
+        chk("source_locator.anchor", fetched.source_locator.anchor, original.source_locator.anchor)
+
+    # raw
+    chk("raw.kind", fetched.raw.kind, original.raw.kind)
+    chk("raw.value", fetched.raw.value, original.raw.value)
+    chk("raw.unit", fetched.raw.unit, original.raw.unit)
+    chk("raw.excerpt", fetched.raw.excerpt, original.raw.excerpt)
+
+    # normalized_candidate
+    chk("normalized_candidate", fetched.normalized_candidate, original.normalized_candidate)
+
+    # semantics
+    chk("evidence_type", fetched.evidence_type, original.evidence_type)
+    chk("claim_semantics", fetched.claim_semantics, original.claim_semantics)
+
+    # applicability (all 10 fields)
+    fa, oa = fetched.applicability, original.applicability
+    for attr in (
+        "first_year",
+        "last_year",
+        "hull_number_from",
+        "hull_number_to",
+        "market_or_region",
+        "named_variant_hint",
+        "design_option_hints",
+        "operating_state_hint",
+        "individual_hull_or_listing_ref",
+        "unknown_or_unbounded",
+    ):
+        chk(f"applicability.{attr}", getattr(fa, attr), getattr(oa, attr))
+
+    # producer
+    chk("producer.identifier", fetched.producer.identifier, original.producer.identifier)
+    chk("producer.kind", fetched.producer.kind, original.producer.kind)
+    chk("producer.version", fetched.producer.version, original.producer.version)
+
+    # research_context
+    if fetched.research_context is not None and original.research_context is not None:
+        chk(
+            "research_context.activity_id",
+            fetched.research_context.activity_id,
+            original.research_context.activity_id,
+        )
+        chk(
+            "research_context.research_job_id",
+            fetched.research_context.research_job_id,
+            original.research_context.research_job_id,
+        )
+
+    chk("observed_at", fetched.observed_at, original.observed_at)
+    chk("confidence", fetched.confidence, original.confidence)
+    chk(
+        "supersedes_observation_id",
+        fetched.supersedes_observation_id,
+        original.supersedes_observation_id,
+    )
+    chk(
+        "intended_subject_kind_hint",
+        fetched.intended_subject_kind_hint,
+        original.intended_subject_kind_hint,
+    )
+    chk("intended_field_pointer", fetched.intended_field_pointer, original.intended_field_pointer)
+    chk("notes", fetched.notes, original.notes)
+
+    return mismatches
+
+
+def test_corpus_wide_semantic_readback_all_bundles(
+    benchmark_conn: Any,
+    benchmark_bundles: dict[str, Any],
+    first_pass_results: dict[str, Any],
+) -> None:
+    """Corpus-wide: every observation of every bundle must round-trip semantically exact.
+
+    Compares all persisted semantic fields for all 50 cases. Zero mismatches required.
+    """
+    from hullq.persistence.readback import fetch_observation
+
+    all_mismatches: list[str] = []
+    for case_id in sorted(EXPECTED_CASE_IDS):
+        bundle = benchmark_bundles.get(case_id)
+        if bundle is None:
+            all_mismatches.append(f"{case_id}: bundle not in benchmark_bundles")
+            continue
+        for original in bundle.observations:
+            fetched = fetch_observation(benchmark_conn, original.observation_id)
+            if fetched is None:
+                all_mismatches.append(f"{case_id}/{original.observation_id}: not found in DB")
+                continue
+            all_mismatches.extend(compare_observation_semantics(case_id, original, fetched))
+
+    assert not all_mismatches, (
+        f"{len(all_mismatches)} semantic mismatch(es) in corpus-wide readback:\n"
+        + "\n".join(all_mismatches[:20])
+        + ("\n... (truncated)" if len(all_mismatches) > 20 else "")
+    )
+
+
+def test_corpus_wide_semantic_readback_fresh_schema(
+    db_url: str,
+    benchmark_bundles: dict[str, Any],
+    reimport_results: dict[str, Any],
+) -> None:
+    """Fresh-schema: every observation round-trips semantically after DROP+CREATE schema.
+
+    Runs an independent fresh-schema import and compares all semantic fields.
+    Zero semantic mismatches required.
+    """
+    import hashlib
+
+    import psycopg
+
+    from hullq.persistence.importer import import_research_evidence_bundle
+    from hullq.persistence.migrations import apply_migrations
+    from hullq.persistence.readback import fetch_observation
+
+    schema = "hullq_bm_sr2_" + hashlib.sha1(db_url.encode()).hexdigest()[:12]
+    conn = psycopg.connect(db_url)
+    all_mismatches: list[str] = []
+    try:
+        with conn.cursor() as cur:
+            cur.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
+            cur.execute(f'CREATE SCHEMA "{schema}"')
+            cur.execute(f'SET search_path TO "{schema}"')
+        conn.commit()
+        apply_migrations(conn)
+
+        for case_id in sorted(EXPECTED_CASE_IDS):
+            bundle = benchmark_bundles.get(case_id)
+            if bundle is None:
+                all_mismatches.append(f"{case_id}: bundle not in benchmark_bundles")
+                continue
+            import_research_evidence_bundle(conn, bundle)
+            for original in bundle.observations:
+                fetched = fetch_observation(conn, original.observation_id)
+                if fetched is None:
+                    all_mismatches.append(
+                        f"{case_id}/{original.observation_id}: not found in fresh-schema DB"
+                    )
+                    continue
+                all_mismatches.extend(compare_observation_semantics(case_id, original, fetched))
+    finally:
+        with conn.cursor() as cur:
+            cur.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
+        conn.commit()
+        conn.close()
+
+    assert not all_mismatches, (
+        f"{len(all_mismatches)} semantic mismatch(es) in fresh-schema corpus-wide readback:\n"
+        + "\n".join(all_mismatches[:20])
+        + ("\n... (truncated)" if len(all_mismatches) > 20 else "")
+    )

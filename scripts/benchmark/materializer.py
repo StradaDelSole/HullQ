@@ -142,9 +142,10 @@ _W02_FINDING_STATUSES: frozenset[str] = frozenset(
     {"conflicting_secondary_evidence", "requires_identity_resolution"}
 )
 
-# Fields that indicate identity/chronology claims
+# Fields whose claim role is unambiguously identity / chronology
 _IDENTITY_FIELDS: frozenset[str] = frozenset(
     {
+        # W01/W02 legacy fields
         "production_start",
         "production_end",
         "first_delivery",
@@ -157,6 +158,87 @@ _IDENTITY_FIELDS: frozenset[str] = frozenset(
         "original_designer",
         "named_variant",
         "identity_note",
+        # W03-W06 fact fields
+        "production_identity",
+        "production_identity_mki",
+        "production_identity_mkii",
+        "generation_sequence",
+        "generation_boundary",
+        "generation_transition",
+        "model_family_distinction",
+        "variant_note",
+        "suffix_semantics",
+        "elite_identity",
+        "lineage_conflict",
+        "lineage_uncertainty",
+        "lineage_note",
+    }
+)
+
+# Fields whose claim role is unambiguously a class/design-rule constraint
+_FIELD_TO_CLAIM: dict[str, ClaimSemantics] = {
+    "class_rule_semantics": ClaimSemantics.CLASS_RULE_CONSTRAINT,
+    "class_rules_authority": ClaimSemantics.CLASS_RULE_CONSTRAINT,
+}
+
+# Physical-dimension and appendage-characterization fields: claim is nominal design value
+_NOMINAL_DESIGN_FIELDS: frozenset[str] = frozenset(
+    {
+        "loa",
+        "lwl",
+        "beam",
+        "draft",
+        "draft_min",
+        "draft_max",
+        "draft_board_up",
+        "draft_max_board_down",
+        "air_draft",
+        "freeboard",
+        "displacement",
+        "ballast",
+        "keel_weight",
+        "sail_area",
+        "sail_area_main",
+        "sail_area_jib",
+        "sail_area_spinnaker",
+        "keel_type",
+        "keel_options",
+        "keel_option_count",
+        "keel_type_baseline",
+        "keel_type_tandem",
+        "rudder_type",
+        "rudder_attachment",
+        "rudder_configuration",
+        "rudder_count",
+        "appendage_claim",
+        "rudder_claim",
+        "board_type",
+        "board_configuration",
+        "ballast_type",
+        "rig_types",
+        "configuration_option",
+        "configuration_customizability",
+        "folded_geometry_note",
+        "multihull_dimensions",
+        "nominal_specs",
+        "sail_area_components",
+        "sail_area_definition",
+        "production_count_note",
+    }
+)
+
+# Fields that are research/methodology notes — not a design-value claim
+_OTHER_CLAIM_FIELDS: frozenset[str] = frozenset(
+    {
+        "research_note",
+        "mass_unit_issue",
+        "manual_reference",
+        "applicability_warning",
+        "mass_basis",
+        "displacement_basis",
+        "displacement_note",
+        "transition_year_note",
+        "appendage_type",
     }
 )
 
@@ -240,25 +322,65 @@ def _map_confidence(raw: str | None) -> ConfidenceLevel:
 
 
 def _map_evidence_type(tier: str, source_name: str) -> EvidenceType:
+    """Map source_name (and tier as a tie-breaker) to EvidenceType.
+
+    Tier/authority is NOT a proxy for document type: tier A alone does not
+    imply MANUFACTURER_SPECIFICATION. Only source-name evidence is used to
+    classify the document. Fallback is NARRATIVE_TEXT, not MANUFACTURER_SPECIFICATION.
+    """
     name = source_name.lower()
-    # Source-name classification first
+    # Owner's manual / operator manual (check before association)
     if "manual" in name:
         return EvidenceType.MANUAL
+    # Class or owner association (keyword-based)
     if any(
         k in name
         for k in (
-            "class",
-            "association",
-            "owners",
-            "club",
-            "verband",
+            "class association",
+            "owners association",
+            "owner association",
+            "class rules",
             "klassenverein",
+            "verband",
             "htcca",
             "co32",
+            "class org",
         )
     ):
         return EvidenceType.CLASS_OR_OWNER_ASSOCIATION
-    # Narrative press / community sources
+    # Note: "club" alone is ambiguous (e.g. "HR Club" is manufacturer-affiliated).
+    # Only classify as association when "club" appears with "class" or "association".
+    # Standalone "club" falls through to narrative or manufacturer checks below.
+    # Known manufacturer sources — by manufacturer/brand name in source
+    if any(
+        k in name
+        for k in (
+            "hallberg-rassy",
+            "hallberg rassy",
+            "hr club catalogue",
+            "beneteau",
+            "amel official",
+            "amel official history",
+            "rustler yachts",
+            "southerly",
+            "jeremy rogers",
+            "j/boats",
+            "jboats",
+            "corsair marine",
+            "nauticat",
+            "ovni",
+            "garcia",
+            "pearson",
+            "dehler",
+            "bavaria",
+            "etap",
+            "specification",
+            "tech spec",
+            "tech-spec",
+        )
+    ):
+        return EvidenceType.MANUFACTURER_SPECIFICATION
+    # Narrative press / review sources
     if any(
         k in name
         for k in (
@@ -271,13 +393,14 @@ def _map_evidence_type(tier: str, source_name: str) -> EvidenceType:
             "cruising world",
             "canadian boating",
             "wavetrain",
+            "sailing world",
         )
     ):
         return EvidenceType.NARRATIVE_TEXT
-    # Broker / historical listing
-    if any(k in name for k in ("de valk", "devalk", "boatshed", "lucas", "yachtsnet")):
+    # Brokers / historical listings
+    if any(k in name for k in ("de valk", "devalk", "boatshed", "lucas yachting", "yachtsnet")):
         return EvidenceType.NARRATIVE_TEXT
-    # Community forums
+    # Community forums and owner discussions
     if any(
         k in name
         for k in (
@@ -287,23 +410,53 @@ def _map_evidence_type(tier: str, source_name: str) -> EvidenceType:
             "sailboatowners",
             "ericsonyachts",
             "macgregorsailors",
+            "owner discussion",
+            "owner lineage",
+            "owner construction",
+            "owner community",
         )
     ):
         return EvidenceType.NARRATIVE_TEXT
-    # Tier A defaults to manufacturer
-    if tier == "A":
-        return EvidenceType.MANUFACTURER_SPECIFICATION
-    # Tier A/B, B, C → narrative
+    # Owner/class associations by "owners" keyword (clubs, wikis)
+    if "owners" in name or "association" in name:
+        return EvidenceType.CLASS_OR_OWNER_ASSOCIATION
+    # Generic fallback — cannot infer document type from tier alone
     return EvidenceType.NARRATIVE_TEXT
 
 
 def _map_claim_semantics(field: str, basis: str | None) -> ClaimSemantics:
+    """Map field name and basis string to ClaimSemantics.
+
+    Docstring contract: UNKNOWN must remain valid and fail closed — never
+    default-assign NOMINAL_DESIGN_VALUE when the claim role is not established.
+    """
     basis_lower = (basis or "").lower()
+    # Explicit per-field overrides (class-rule constraint fields)
+    if field in _FIELD_TO_CLAIM:
+        return _FIELD_TO_CLAIM[field]
+    # Identity/chronology fields — always identity regardless of basis
     if field in _IDENTITY_FIELDS:
         return ClaimSemantics.IDENTITY_OR_CHRONOLOGY_CLAIM
-    if field in ("research_note", "appendage_claim", "rudder_claim"):
+    # Known physical-dimension / design-value fields
+    if field in _NOMINAL_DESIGN_FIELDS:
+        # Check basis for more-specific overrides first
+        if any(k in basis_lower for k in ("orc", "certificate", "measurement trim")):
+            return ClaimSemantics.MEASUREMENT_CERTIFICATE_VALUE
+        if any(
+            k in basis_lower
+            for k in ("board up", "boards up", "keel up", "board down", "boards down", "keel down")
+        ):
+            return ClaimSemantics.OPERATING_STATE_VALUE
+        if "individual" in basis_lower:
+            return ClaimSemantics.INDIVIDUAL_HULL_VALUE
+        if any(k in basis_lower for k in ("optional", "option ")):
+            return ClaimSemantics.FACTORY_OPTION_VALUE
         return ClaimSemantics.NOMINAL_DESIGN_VALUE
-    if any(k in basis_lower for k in ("orc", "certificate", "measurement trim", "orc certificate")):
+    # Research/methodology notes — not a design-value claim
+    if field in _OTHER_CLAIM_FIELDS:
+        return ClaimSemantics.OTHER
+    # For any unmapped field, check basis-string signals before failing closed
+    if any(k in basis_lower for k in ("orc", "certificate", "measurement trim")):
         return ClaimSemantics.MEASUREMENT_CERTIFICATE_VALUE
     if any(
         k in basis_lower
@@ -314,7 +467,8 @@ def _map_claim_semantics(field: str, basis: str | None) -> ClaimSemantics:
         return ClaimSemantics.INDIVIDUAL_HULL_VALUE
     if any(k in basis_lower for k in ("optional", "option ")):
         return ClaimSemantics.FACTORY_OPTION_VALUE
-    return ClaimSemantics.NOMINAL_DESIGN_VALUE
+    # Fail closed — do not assign NOMINAL_DESIGN_VALUE for unknown field roles
+    return ClaimSemantics.UNKNOWN
 
 
 def _map_applicability(basis: str | None) -> ObservationApplicability:
@@ -1970,12 +2124,28 @@ def materialize_all() -> dict[str, MaterializationResult]:
             rows = w02_by_design.get(design_id, [])
             finding_statuses = _W02_FINDING_STATUSES
 
-        bundle = _build_legacy_bundle(case_id, rows, rt, finding_statuses, wave)
-        results[case_id] = MaterializationResult(
-            case_id=case_id,
-            status="MATERIALIZED",
-            bundle=bundle,
-        )
+        try:
+            bundle = _build_legacy_bundle(case_id, rows, rt, finding_statuses, wave)
+            if not bundle.observations:
+                results[case_id] = MaterializationResult(
+                    case_id=case_id,
+                    status="REVIEW_REQUIRED",
+                    bundle=bundle,
+                    review_reasons=["no_observations_extracted"],
+                )
+            else:
+                results[case_id] = MaterializationResult(
+                    case_id=case_id,
+                    status="MATERIALIZED",
+                    bundle=bundle,
+                )
+        except Exception as exc:
+            results[case_id] = MaterializationResult(
+                case_id=case_id,
+                status="CANNOT_MATERIALIZE",
+                bundle=None,
+                review_reasons=[str(exc)],
+            )
 
     # Materialize W03-W06 cases
     for case_id, facts in _W03W06_FACTS.items():
@@ -1986,11 +2156,27 @@ def materialize_all() -> dict[str, MaterializationResult]:
             first_built=meta.get("first_built"),
         )
         wave = meta["wave"]
-        bundle = _build_w3w6_bundle(case_id, facts, rt, wave)
-        results[case_id] = MaterializationResult(
-            case_id=case_id,
-            status="MATERIALIZED",
-            bundle=bundle,
-        )
+        try:
+            bundle = _build_w3w6_bundle(case_id, facts, rt, wave)
+            if not bundle.observations:
+                results[case_id] = MaterializationResult(
+                    case_id=case_id,
+                    status="REVIEW_REQUIRED",
+                    bundle=bundle,
+                    review_reasons=["no_observations_extracted"],
+                )
+            else:
+                results[case_id] = MaterializationResult(
+                    case_id=case_id,
+                    status="MATERIALIZED",
+                    bundle=bundle,
+                )
+        except Exception as exc:
+            results[case_id] = MaterializationResult(
+                case_id=case_id,
+                status="CANNOT_MATERIALIZE",
+                bundle=None,
+                review_reasons=[str(exc)],
+            )
 
     return results

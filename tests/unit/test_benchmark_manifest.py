@@ -263,14 +263,35 @@ def test_materialization_produces_50_bundles_without_network(bundles: dict) -> N
     assert len(bundles) == 50
 
 
-def test_materialization_all_50_materialized() -> None:
-    """All 50 cases must have status=MATERIALIZED (no REVIEW_REQUIRED or CANNOT_MATERIALIZE)."""
+def test_materialization_status_derived_from_conversion() -> None:
+    """Status must reflect actual conversion outcome, not be unconditionally MATERIALIZED.
+
+    DISCLAIMER: fixture materialization counts do NOT establish a production automation
+    rate. These bundles are pre-curated benchmark cases — not a random sample of the
+    broader design universe. Automation rate claims require a separate production study.
+    """
     from benchmark.materializer import materialize_all
 
     results = materialize_all()
     assert len(results) == 50
-    non_materialized = {cid: r.status for cid, r in results.items() if r.status != "MATERIALIZED"}
-    assert not non_materialized, f"Cases not materialized: {non_materialized}"
+    materialized = [cid for cid, r in results.items() if r.status == "MATERIALIZED"]
+    review_required = [cid for cid, r in results.items() if r.status == "REVIEW_REQUIRED"]
+    cannot_materialize = [cid for cid, r in results.items() if r.status == "CANNOT_MATERIALIZE"]
+    # MATERIALIZED cases must have non-empty observations in their bundle
+    for cid in materialized:
+        assert results[cid].bundle is not None, f"{cid}: MATERIALIZED but bundle is None"
+        assert len(results[cid].bundle.observations) >= 1, (
+            f"{cid}: MATERIALIZED but no observations"
+        )
+    # REVIEW_REQUIRED cases must carry review_reasons
+    for cid in review_required:
+        assert results[cid].review_reasons, f"{cid}: REVIEW_REQUIRED but no review_reasons"
+    # CANNOT_MATERIALIZE cases must carry review_reasons
+    for cid in cannot_materialize:
+        assert results[cid].review_reasons, f"{cid}: CANNOT_MATERIALIZE but no review_reasons"
+    # Report actual distribution (not an assertion — information for the completion report)
+    total = len(results)
+    assert total == 50, f"Expected 50 cases, got {total}"
 
 
 def test_all_expected_case_ids_in_bundles(bundles: dict) -> None:  # type: ignore[type-arg]
@@ -447,3 +468,73 @@ def test_research_targets_use_manifest_values(manifest: dict, bundles: dict) -> 
         case_id = case["benchmark_case_id"]
         bundle = bundles[case_id]
         assert bundle.research_target.model == case["model"], f"Case {case_id} model mismatch"
+
+
+# ---------------------------------------------------------------------------
+# Claim semantics correctness — fail-closed and explicit classification
+# ---------------------------------------------------------------------------
+
+
+def test_j105_class_rule_constraint(bundles: dict) -> None:  # type: ignore[type-arg]
+    """B06-008 J/105 must produce CLASS_RULE_CONSTRAINT observations for class rule fields."""
+    from hullq.domain.provenance import ClaimSemantics
+
+    bundle = bundles["B06-008"]
+    class_rule_obs = [
+        obs
+        for obs in bundle.observations
+        if obs.claim_semantics == ClaimSemantics.CLASS_RULE_CONSTRAINT
+    ]
+    assert class_rule_obs, (
+        "B06-008 (J/105) has no CLASS_RULE_CONSTRAINT observations; "
+        "class_rule_semantics and class_rules_authority fields must map to CLASS_RULE_CONSTRAINT"
+    )
+
+
+def test_identity_claim_semantics_for_chronology_fields(bundles: dict) -> None:  # type: ignore[type-arg]
+    """Observations from identity/chronology fields must carry IDENTITY_OR_CHRONOLOGY_CLAIM."""
+    from benchmark.materializer import _IDENTITY_FIELDS
+
+    from hullq.domain.provenance import ClaimSemantics
+
+    identity_field_obs: list[tuple[str, str]] = [
+        (case_id, obs.observation_id)
+        for case_id, bundle in bundles.items()
+        for obs in bundle.observations
+        if (
+            obs.intended_field_pointer
+            and obs.intended_field_pointer in _IDENTITY_FIELDS
+            and obs.claim_semantics != ClaimSemantics.IDENTITY_OR_CHRONOLOGY_CLAIM
+        )
+    ]
+    assert not identity_field_obs, (
+        f"Observations from identity/chronology fields do not carry IDENTITY_OR_CHRONOLOGY_CLAIM: "
+        f"{identity_field_obs[:5]}"
+    )
+
+
+def test_unknown_semantics_for_unmapped_field() -> None:
+    """_map_claim_semantics must fail closed to UNKNOWN for an unmapped field with no basis signals."""
+    from benchmark.materializer import _map_claim_semantics
+
+    from hullq.domain.provenance import ClaimSemantics
+
+    result = _map_claim_semantics("completely_unknown_field_xyz", None)
+    assert result == ClaimSemantics.UNKNOWN, (
+        f"Expected UNKNOWN for unmapped field but got {result!r}. "
+        "The docstring explicitly requires fail-closed behaviour."
+    )
+
+
+def test_tier_a_alone_not_manufacturer_specification() -> None:
+    """_map_evidence_type must not classify tier='A' alone as MANUFACTURER_SPECIFICATION."""
+    from benchmark.materializer import _map_evidence_type
+
+    from hullq.domain.provenance import EvidenceType
+
+    # A source with no name keywords — tier A alone must not trigger MANUFACTURER_SPECIFICATION
+    result = _map_evidence_type("A", "Some Generic Tier-A Source")
+    assert result != EvidenceType.MANUFACTURER_SPECIFICATION, (
+        f"Tier 'A' alone must not map to MANUFACTURER_SPECIFICATION (got {result!r}). "
+        "Document type must come from source-name evidence, not authority tier."
+    )

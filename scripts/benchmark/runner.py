@@ -77,7 +77,13 @@ def _pg_version(conn: Any) -> str:
         return "NOT_MEASURED"
 
 
-def _git_sha() -> str:
+def _git_sha(explicit_sha: str | None = None) -> str:
+    """Return the implementation SHA. Prefers HULLQ_IMPL_SHA env var, then explicit arg, then git."""
+    env_sha = os.environ.get("HULLQ_IMPL_SHA", "").strip()
+    if env_sha:
+        return env_sha
+    if explicit_sha:
+        return explicit_sha
     try:
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -91,19 +97,134 @@ def _git_sha() -> str:
         return "NOT_MEASURED"
 
 
+def _compare_observation_semantics(
+    case_id: str,
+    original: Any,
+    fetched: Any,
+) -> list[str]:
+    """Return list of mismatch descriptions comparing all semantic fields of two observations."""
+    mismatches: list[str] = []
+    oid = original.observation_id
+    prefix = f"{case_id}/{oid}"
+
+    def chk(label: str, got: Any, exp: Any) -> None:
+        if got != exp:
+            mismatches.append(f"{prefix}: {label}: got={got!r} expected={exp!r}")
+
+    chk("source_id", fetched.source_id, original.source_id)
+    chk("raw.kind", fetched.raw.kind, original.raw.kind)
+    chk("raw.value", fetched.raw.value, original.raw.value)
+    chk("raw.unit", fetched.raw.unit, original.raw.unit)
+    chk("raw.excerpt", fetched.raw.excerpt, original.raw.excerpt)
+    chk("normalized_candidate", fetched.normalized_candidate, original.normalized_candidate)
+    chk("evidence_type", fetched.evidence_type, original.evidence_type)
+    chk("claim_semantics", fetched.claim_semantics, original.claim_semantics)
+    fa, oa = fetched.applicability, original.applicability
+    for attr in (
+        "first_year",
+        "last_year",
+        "hull_number_from",
+        "hull_number_to",
+        "market_or_region",
+        "named_variant_hint",
+        "design_option_hints",
+        "operating_state_hint",
+        "individual_hull_or_listing_ref",
+        "unknown_or_unbounded",
+    ):
+        chk(f"applicability.{attr}", getattr(fa, attr), getattr(oa, attr))
+    chk("confidence", fetched.confidence, original.confidence)
+    chk("notes", fetched.notes, original.notes)
+    chk("intended_field_pointer", fetched.intended_field_pointer, original.intended_field_pointer)
+    return mismatches
+
+
+def _write_report(result_doc: dict[str, Any], report_path: Path) -> None:
+    """Write a human-readable BENCHMARK-REPORT.md with clearly separated sections."""
+    rec = result_doc.get("recommendation", "UNKNOWN")
+    corpus = result_doc.get("corpus_materialization", {})
+    pers = result_doc.get("persistence", {})
+    hrb = result_doc.get("human_review_burden", {})
+    throughput = result_doc.get("throughput", {})
+
+    lines: list[str] = [
+        "# HullQ SLICE-0014 Benchmark Report",
+        "",
+        f"**Run timestamp:** {result_doc.get('run_timestamp', 'NOT_MEASURED')}  ",
+        f"**Implementation SHA:** {result_doc.get('git_sha', 'NOT_MEASURED')}  ",
+        f"**PostgreSQL version:** {result_doc.get('environment', {}).get('postgresql_version', 'NOT_MEASURED')}",
+        "",
+        "---",
+        "",
+        "## MEASURED FACT",
+        "",
+        "These values were directly observed during the benchmark run.",
+        "",
+        f"- Corpus total cases: **{corpus.get('total_cases', '?')}**",
+        f"- Materialized: **{corpus.get('materialized', '?')}**",
+        f"- Review required: **{corpus.get('review_required', '?')}**",
+        f"- Cannot materialize: **{corpus.get('cannot_materialize', '?')}**",
+        f"- First-pass imported: **{pers.get('first_pass_imported', '?')}**",
+        f"- First-pass conflict: **{pers.get('first_pass_conflict', '?')}**",
+        f"- First-pass error: **{pers.get('first_pass_error', '?')}**",
+        f"- Reimport ALREADY_IMPORTED: **{pers.get('reimport_already_imported', '?')}**",
+        f"- Readback semantic mismatches: **{pers.get('readback_mismatches', '?')}**",
+        f"- Fresh-schema imported: **{pers.get('fresh_run_imported', '?')}**",
+        f"- Fresh-schema semantic mismatches: **{pers.get('fresh_run_semantic_mismatches', '?')}**",
+        f"- Wall-clock import: **{throughput.get('wall_clock_import_seconds', 'NOT_MEASURED')}s**",
+        f"- Review-required cases: **{hrb.get('review_required_cases', '?')}**",
+        f"- Review decisions required: **{hrb.get('review_decisions_required', '?')}**",
+        "",
+        "---",
+        "",
+        "## INTERPRETATION",
+        "",
+        f"Recommendation: **{rec}**",
+        "",
+        result_doc.get("recommendation_rationale", ""),
+        "",
+        result_doc.get("automation_rate_disclaimer", ""),
+        "",
+        "---",
+        "",
+        "## RECOMMENDED NEXT ACTION",
+        "",
+    ]
+    if rec == "G3_CANDIDATE":
+        lines += [
+            "All 50 benchmark cases materialized, imported, and round-tripped with zero",
+            "semantic mismatches. The persistence path is ready for G3 gate review.",
+            "",
+            "Next: proceed to independent SLICE-0014 acceptance review.",
+        ]
+    else:
+        lines += [
+            "One or more acceptance criteria were not met. Review the MEASURED FACT section",
+            "above to identify failing areas before proceeding to SLICE-0015.",
+            "",
+            f"Recommendation: **{rec}** — resolve blockers before advancing the slice.",
+        ]
+
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"Report written to: {report_path}", flush=True)
+
+
 def _validate_result_json(result_doc: dict[str, Any], schema_path: Path) -> None:
-    """Validate result_doc against result_schema.json using jsonschema."""
-    try:
-        import jsonschema
+    """Validate result_doc against result_schema.json using jsonschema. Raises on failure."""
+    import jsonschema
 
-        schema = json.loads(schema_path.read_text(encoding="utf-8"))
-        jsonschema.validate(instance=result_doc, schema=schema)
-        print("  schema validation: PASS", flush=True)
-    except Exception as exc:
-        print(f"  schema validation: FAILED — {exc}", flush=True)
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    jsonschema.validate(instance=result_doc, schema=schema)
+    print("  schema validation: PASS", flush=True)
 
 
-def run_benchmark(db_url: str, output_path: Path = RESULT_DEFAULT) -> dict[str, Any]:
+def run_benchmark(
+    db_url: str,
+    output_path: Path = RESULT_DEFAULT,
+    report_path: Path | None = None,
+    explicit_sha: str | None = None,
+) -> dict[str, Any]:
     """Execute the full benchmark sequence and return the result dict."""
     import hashlib
 
@@ -111,7 +232,6 @@ def run_benchmark(db_url: str, output_path: Path = RESULT_DEFAULT) -> dict[str, 
     from benchmark.materializer import materialize_all
 
     from hullq.persistence._types import ImportStatus
-    from hullq.persistence.fingerprint import fingerprint_bundle
     from hullq.persistence.importer import import_research_evidence_bundle
     from hullq.persistence.migrations import apply_migrations
     from hullq.persistence.readback import fetch_bundle_snapshot
@@ -119,7 +239,7 @@ def run_benchmark(db_url: str, output_path: Path = RESULT_DEFAULT) -> dict[str, 
     print("HullQ SLICE-0014 Benchmark Runner", flush=True)
     print(f"  database: {db_url!r}", flush=True)
 
-    sha = _git_sha()
+    sha = _git_sha(explicit_sha)
     print(f"  git sha: {sha}", flush=True)
 
     # --- Materialize all 50 bundles ---
@@ -173,8 +293,10 @@ def run_benchmark(db_url: str, output_path: Path = RESULT_DEFAULT) -> dict[str, 
         )
         print(f"  wall-clock: {import_elapsed:.3f}s", flush=True)
 
-        # --- Readback fidelity ---
-        print("\nPhase 2: readback fidelity...", flush=True)
+        # --- Readback fidelity (full semantic comparison for all observations) ---
+        print("\nPhase 2: readback fidelity (semantic)...", flush=True)
+        from hullq.persistence.readback import fetch_observation as _fetch_obs
+
         readback_mismatches = 0
         for case_id, bundle in bundles.items():
             try:
@@ -187,7 +309,20 @@ def run_benchmark(db_url: str, output_path: Path = RESULT_DEFAULT) -> dict[str, 
                 got_obs = set(snap.observation_ids)
                 if expected_obs != got_obs:
                     readback_mismatches += 1
-                    print(f"    OBS MISMATCH: {case_id}", flush=True)
+                    print(f"    OBS ID MISMATCH: {case_id}", flush=True)
+                    continue
+                # Full semantic comparison for every observation
+                for original in bundle.observations:
+                    fetched = _fetch_obs(conn1, original.observation_id)
+                    if fetched is None:
+                        readback_mismatches += 1
+                        print(f"    OBS NOT FOUND: {case_id}/{original.observation_id}", flush=True)
+                        continue
+                    diffs = _compare_observation_semantics(case_id, original, fetched)
+                    if diffs:
+                        readback_mismatches += len(diffs)
+                        for d in diffs[:3]:
+                            print(f"    SEMANTIC DIFF: {d}", flush=True)
             except Exception as exc:
                 readback_mismatches += 1
                 print(f"    READBACK ERROR: {case_id}: {exc}", flush=True)
@@ -229,10 +364,14 @@ def run_benchmark(db_url: str, output_path: Path = RESULT_DEFAULT) -> dict[str, 
     conn2 = psycopg.connect(db_url)
     try:
         with conn2.cursor() as cur:
-            cur.execute(f'CREATE SCHEMA IF NOT EXISTS "{schema}"')
+            # DROP first — IF NOT EXISTS is insufficient when a prior interrupted run left state
+            cur.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
+            cur.execute(f'CREATE SCHEMA "{schema}"')
             cur.execute(f'SET search_path TO "{schema}"')
         conn2.commit()
         apply_migrations(conn2)
+
+        from hullq.persistence.readback import fetch_observation as _fetch_obs4
 
         fresh_imported = 0
         fresh_semantic_mismatches = 0
@@ -241,12 +380,21 @@ def run_benchmark(db_url: str, output_path: Path = RESULT_DEFAULT) -> dict[str, 
                 result = import_research_evidence_bundle(conn2, bundle)
                 if result.status == ImportStatus.IMPORTED:
                     fresh_imported += 1
-                    # Compare semantic fingerprint
-                    expected_hash = fingerprint_bundle(bundle)
-                    snap = fetch_bundle_snapshot(conn2, bundle.bundle_id, bundle.bundle_version)
-                    if snap is None or snap.content_hash != expected_hash:
-                        fresh_semantic_mismatches += 1
-                        print(f"    FINGERPRINT MISMATCH: {case_id}", flush=True)
+                    # Full semantic comparison for every observation in fresh schema
+                    for original in bundle.observations:
+                        fetched = _fetch_obs4(conn2, original.observation_id)
+                        if fetched is None:
+                            fresh_semantic_mismatches += 1
+                            print(
+                                f"    FRESH OBS MISSING: {case_id}/{original.observation_id}",
+                                flush=True,
+                            )
+                            continue
+                        diffs = _compare_observation_semantics(case_id, original, fetched)
+                        if diffs:
+                            fresh_semantic_mismatches += len(diffs)
+                            for d in diffs[:3]:
+                                print(f"    FRESH SEMANTIC DIFF: {d}", flush=True)
                 else:
                     fresh_semantic_mismatches += 1
                     print(f"    FRESH IMPORT FAILED: {case_id}: {result.status}", flush=True)
@@ -312,10 +460,15 @@ def run_benchmark(db_url: str, output_path: Path = RESULT_DEFAULT) -> dict[str, 
             "cases_per_second": cases_per_second,
         },
         "human_review_burden": {
-            "review_required_cases": 0,
-            "review_decisions_required": 0,
+            "review_required_cases": review_count,
+            "review_decisions_required": review_count + cannot_count,
             "elapsed_reviewer_minutes": "NOT_MEASURED",
         },
+        "automation_rate_disclaimer": (
+            "Fixture materialization counts do NOT establish a production automation rate. "
+            "These bundles are pre-curated benchmark cases, not a random sample of the broader "
+            "design universe. A production automation rate study requires a separate evaluation."
+        ),
         "recommendation": (
             "G3_CANDIDATE"
             if (
@@ -343,11 +496,15 @@ def run_benchmark(db_url: str, output_path: Path = RESULT_DEFAULT) -> dict[str, 
     print(f"\nResult written to: {output_path}", flush=True)
     print(f"Recommendation: {result_doc['recommendation']}", flush=True)
 
-    # Validate output against result_schema.json
+    # Validate output against result_schema.json (raises on failure)
     schema_path = ROOT / "research" / "benchmark" / "persistence" / "result_schema.json"
     if schema_path.exists():
         print("\nValidating result against result_schema.json...", flush=True)
         _validate_result_json(result_doc, schema_path)
+
+    # Write human-readable report if requested
+    if report_path is not None:
+        _write_report(result_doc, report_path)
 
     return result_doc
 
@@ -356,10 +513,25 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="HullQ SLICE-0014 benchmark runner")
     parser.add_argument("--db-url", default=None, help="PostgreSQL connection URL")
     parser.add_argument("--output", default=str(RESULT_DEFAULT), help="Output JSON path")
+    parser.add_argument(
+        "--report",
+        default=None,
+        help="Path for human-readable BENCHMARK-REPORT.md output",
+    )
+    parser.add_argument(
+        "--sha",
+        default=None,
+        help="Explicit implementation SHA (overridden by HULLQ_IMPL_SHA env var)",
+    )
     args = parser.parse_args()
 
     db_url = _get_db_url(args.db_url)
-    run_benchmark(db_url=db_url, output_path=Path(args.output))
+    run_benchmark(
+        db_url=db_url,
+        output_path=Path(args.output),
+        report_path=Path(args.report) if args.report else None,
+        explicit_sha=args.sha,
+    )
 
 
 if __name__ == "__main__":
