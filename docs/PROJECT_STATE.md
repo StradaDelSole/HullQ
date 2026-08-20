@@ -1,29 +1,24 @@
 # HullQ — Current Project State
 
-**Updated:** 2026-08-19  
-**Current stage:** Stage 2.9 — SLICE-0010 derived metrics engine REVIEW  
+**Updated:** 2026-08-20  
+**Current stage:** Stage 2.10–2.11 — SLICE-0011 controlled real-web benchmark `REVIEW`  
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
-## Completed foundation
+## Canonical project direction
 
-- canonical project context established;
-- broad-coverage / progressive-depth data strategy accepted;
-- 50–100 design corpus defined as research benchmark only;
-- single-repository rule accepted (ADR-0001);
-- docs-to-code method accepted (ADR-0002);
-- broad-coverage strategy captured as ADR-0003;
-- BoatModel / BoatDesign generation / NamedVariant / DesignOption identity accepted (OQ-003 / ADR-0004);
-- Brand/Marque and Organization/Builder identity separation accepted (ADR-0011 / `IDENTITY_MODEL.v0.2.md`);
-- source-rights/clearance model accepted (OQ-007 / ADR-0005);
-- field-level provenance accepted (OQ-004 / ADR-0006);
-- search/SEO as first-class product architecture accepted (ADR-0007);
-- derived metrics methodology accepted (OQ-001 / ADR-0008);
-- Python research toolchain accepted (OQ-010 / ADR-0009);
-- initial application/deployment stack accepted (OQ-008/OQ-011/OQ-012 / ADR-0010);
-- requirements/test/governance baseline established;
-- bounded implementation-slice workflow established under `docs/slices/`;
-- isolated AI worktree/single-writer Windows workflow merged and active.
+HullQ is building an independent, provenance-aware sailboat design universe suitable for search/discovery, later market integration and reproducible derived metrics.
+
+Accepted strategic principles remain:
+
+- broad coverage with progressive verification depth;
+- search architecture and SEO are product architecture, not later marketing;
+- Search stays broadly available while persistence/monitoring are monetization candidates;
+- source data, normalized candidates, canonical resolutions and HullQ-derived values remain distinct;
+- unknown/conflict is preferable to fabricated completeness;
+- one model string is not a reliable technical identity boundary;
+- option/variant/state-sensitive values must not be flattened into one scalar baseline;
+- GitHub `main` is canonical truth; bounded slice/PR review remains mandatory.
 
 ## Accepted application/deployment architecture
 
@@ -46,210 +41,197 @@ Off-VPS backup/artifact direction: Cloudflare R2 when introduced
 Later native mobile: Flutter Android/iOS via the same accepted API boundary
 ```
 
-Auth remains deferred under OQ-014. OQ-006 controls alert cadence/freshness; OQ-015 controls the stable HTTP API/versioning boundary; OQ-018 controls exact public SEO URL/index/rendering/canonicalization/structured-data behavior.
+Auth remains deferred under OQ-014. OQ-006 controls alert cadence/freshness; OQ-015 controls the stable HTTP API/versioning boundary; OQ-018 controls the public SEO/search surface; OQ-009 is required before technical query-engine semantics are frozen.
 
-## Completed evidence gate — SLICE-0002
+## Completed foundation and implementation
 
-SLICE-0002 is `DONE`. Main retained findings:
+### SLICE-0001 — repository bootstrap — DONE
+Repository governance, docs-to-code workflow, locked toolchain and cross-platform quality gates established.
 
-1. Wikidata CC0 is the strongest current broad bootstrap candidate.
-2. No single SailboatData replacement exists; HullQ needs broad open bootstrap plus progressive primary-source enrichment.
-3. Common scalar fields are widely obtainable, but appendage/configuration depth is substantially harder.
-4. Displacement/sail-area basis and option-sensitive values must remain explicit.
-5. Primary sources can conflict; resolution remains field-specific and auditable.
-6. ORC remains blocked for systematic commercial ingestion under reviewed terms absent separate permission/licence.
-7. Rudder/skeg classification is expected to drive disproportionate review cost.
+### SLICE-0002 — real design-data source research — DONE
+Retained findings include broad open bootstrap + progressive independent enrichment, explicit measurement/configuration semantics, conflict preservation and stronger appendage review needs. The old/reference SailboatData material remains research/reference only and MUST NOT become an invisible production-value source.
 
-The reviewed source landscape also established that official manufacturer material frequently exposes appendage/configuration semantics in brochures, manuals, parts pages or factory-option descriptions rather than one flat model record.
+### SLICE-0003 — canonical contract runtime — DONE
+Draft-2020-12 schema registry/validation boundary accepted and merged.
 
-## Completed implementation — SLICE-0003
+### SLICE-0004 — measurement normalization — DONE
+Deterministic exact unit normalization accepted with raw text/semantic-label preservation and no arbitrary-string inference.
 
-### Canonical JSON-Schema Contract Runtime — DONE
+### SLICE-0005 — identity contracts/search labels — DONE
+Accepted Brand/Organization identities, BoatModel/BoatDesign separation, entity-scoped aliases and deterministic search-label projections.
 
-Merged through PR #3 after green Ubuntu/Windows/dependency-audit CI and independent review.
+### SLICE-0006 — provenance/raw observation runtime — DONE
+Accepted FieldEvidence/FieldResolution boundary, immutable raw observations, normalized candidates, conflict/supersession/current-resolution validation and source-impact lookup.
 
-Final merge commit: `b927a6b17e204de43773c8682e36a29db037ab8a`.
+### SLICE-0007 — ResearchJob/source-rights gate — DONE
+Accepted deterministic use-specific rights decisions, fail-closed automated-access gating, extraction telemetry and ResearchJob integration.
 
-## Completed implementation — SLICE-0004
+### SLICE-0008 — first rights-gated real adapter: Wikidata CC0 — DONE
+Accepted bounded Wikidata discovery/entity acquisition with rights gate before network access, qualifier-aware FieldEvidence and deterministic extraction behavior.
 
-### Measurement Observation and Deterministic Unit/Basis Normalization — DONE
+### SLICE-0009 — appendage/configuration normalization — DONE
+Accepted independent keel/rudder/skeg/hull/board axes, exact/explicit-alias normalization, count handling, option/variant/state scope preservation and fail-closed baseline projection.
 
-Merged through PR #4 on 2026-08-18.
-
-Acceptance evidence:
-
-- accepted implementation head: `a473c4778ad134df8ba9f8f803a5f71c5f031132`;
-- GitHub Actions run #65: Ubuntu quality PASS, Windows quality PASS, dependency audit PASS;
-- independent review: ACCEPT, no blocking findings;
-- final merge commit: `ec6ceabbc45970be286adac68cc0095aa2f1f9d1`.
-
-## Completed implementation — SLICE-0005
-
-### Identity Contracts and Deterministic Search Labels — DONE
-
-Merged through PR #10 on 2026-08-18 after independent amendment review.
+### SLICE-0010 — derived metrics engine — DONE
+Accepted methodology `hullq-derived-1.0.0` after independent review/amendment.
 
 Acceptance evidence:
 
-- accepted implementation head: `38520ce0ed12ec4d33f747fe1121c229d3df5279`;
-- GitHub Actions run #77: PASS;
-- final merge commit: `e46857ab9d76a2e83f0ceef9e6878db7f2f66022`.
+- final implementation/PR head: `601af0e859a8c771640f473394b78efa32bf918c`;
+- GitHub Actions run #120: PASS;
+- 915 local tests PASS;
+- 92.62% branch coverage; `derived_metrics.py` 99.50%;
+- repository validator, Ruff/format, strict mypy and pip-audit clean;
+- PR #21 merge commit: `8f9a5ab07f454d6dfbfcb2f133c80c48b14dcc4a`.
 
-The accepted boundary establishes separate first-class Brand and Organization identities, stable entity-scoped aliases, versioned BoatModel/BoatDesign identity contracts, independently addressable Brand↔BoatModel and Organization↔BoatDesign relationships, shared relationship applicability and deterministic non-destructive search-label projections.
+## Current operational position — SLICE-0011 REVIEW
 
-## Completed implementation — SLICE-0006
+SLICE-0011 is the master/ChatGPT-led controlled real-web benchmark. Claude Code was deliberately **not** used as the autonomous web-research agent.
 
-### Provenance and Raw Observation Boundary — DONE
+Research policy:
 
-Merged through PR #14 on 2026-08-19 after multiple precision amendments.
+```text
+broad independent web research
+→ source-linked raw observation/context
+→ corroboration/conflict detection
+→ post-hoc reference comparison
+→ benchmark classification/measurement
+→ persistence requirements derived from evidence
+```
 
-Acceptance evidence:
+Source discovery intentionally spans manufacturer/shipyard material, original brochures/manuals, designers, class/owners associations, archives, specialist publications/databases, broker technical records, forums/owner communities, refit/restoration material and other useful leads.
 
-- accepted implementation head: `c934dc615d306ef8d8ad11a5024925e650933c27`;
-- GitHub Actions run #86: PASS;
-- final merge commit: `c0163795df3c4efb27102163770da0f7ff8cedbb`.
+**Source breadth is intentionally broad; canonical confidence is intentionally strict.**
 
-The accepted boundary provides shared provenance subjects, successor FieldEvidence/FieldResolution contracts, immutable raw source observations separate from normalized candidates, strict RFC 6901 field addressing, append-oriented supersession/current-resolution validation and reverse-impact lookup.
+### SailboatData reference rule
 
-## Completed implementation — SLICE-0007
+SailboatData is used only after independent HullQ research as a QA/reference comparison.
 
-### ResearchJob and Source-Rights Gate — DONE
+- no SailboatData value becomes HullQ FieldEvidence or ResearchObservation;
+- no missing HullQ value is filled from SailboatData;
+- SailboatData does not resolve conflicts;
+- retained wave summaries and legacy structured exports contain comparison outcomes/anomaly classes only, not SailboatData field values.
 
-Merged through PR #17 on 2026-08-19.
+The closure review explicitly sanitized Waves 03–06 to enforce this outcome-only rule consistently.
 
-Acceptance evidence:
+### Research corpus
 
-- accepted implementation head: `8bf3347c7751be1bbf9b364f3d1f44635dd98eef`;
-- GitHub Actions run #96: PASS;
-- final merge commit: `ca5ac38d5d402aa9e1b5d366d30d2ce0b2cdee53`.
+Six waves reached the deliberate minimum corpus:
 
-The accepted boundary provides deterministic use-specific rights decisions, fail-closed overall assessment, independent automated-access checks, machine-visible obligations, source-bound cumulative extraction telemetry, projected-usage limits and ResearchJob/provenance integration.
+| Wave | Designs | Cumulative |
+|---|---:|---:|
+| 01 | 5 | 5 |
+| 02 | 12 | 17 |
+| 03 | 8 | 25 |
+| 04 | 8 | 33 |
+| 05 | 8 | 41 |
+| 06 | 9 | 50 |
 
-## Completed implementation — SLICE-0008
+Detailed evidence is under `research/benchmark/waves/` and the rolling ledger is `research/benchmark/CONTROLLED_BENCHMARK_LEDGER.md`.
 
-### First Rights-Gated Real Adapter: Wikidata — DONE
+The exact pre-contract structured observation exports created during Waves 01/02 are retained losslessly under `research/benchmark/legacy-observations/` with decoded-row counts and SHA-256 hashes. They are migration fixtures only, not canonical contracts.
 
-SLICE-0008 was independently reviewed through four precision amendment rounds and merged through PR #19 on 2026-08-19.
+### Measured 50-design stress benchmark
 
-Acceptance evidence:
+Retained coded analysis:
 
-- accepted final PR head: `491a2db310c75dd6768b15cc1e0dcba57f1a8fc9`;
-- GitHub Actions CI run #108: PASS;
-- final local implementation report: 606 tests PASS, 90.42% branch coverage, Ruff/format clean, strict mypy clean on SLICE-0008 files, pip-audit clean;
-- independent final review: no remaining blockers;
-- merge commit: `e7129cd61145a5a33613a08df5c008555ff569c4`.
+- `research/benchmark/BENCHMARK-50-classification.csv`;
+- `research/benchmark/BENCHMARK-50-analysis.md`.
 
-The accepted boundary provides a reviewed Wikidata CC0 source record, rights gate before external requests, bounded sailboat-class discovery/entity acquisition, qualifier-aware FieldEvidence, strict physical-dimension guards, exact P1092 dimensionless handling, deterministic language fallback and source-quality reporting. It does not create canonical FieldResolution, mutate BoatDesign/BoatModel, perform broad ingestion or solve configuration taxonomy.
+Measured non-exclusive incidences in the intentionally difficult stress corpus:
 
-## Completed implementation — SLICE-0009
+- authoritative/original-document path found: **44/50 (88%)**;
+- appendage/configuration complexity: **42/50 (84%)**;
+- temporal/production applicability mattered: **32/50 (64%)**;
+- identity/generation/lineage semantics mattered: **30/50 (60%)**;
+- option/variant/operating-state semantics mattered: **30/50 (60%)**;
+- secondary/community/broker evidence materially needed: **30/50 (60%)**;
+- post-hoc reference anomaly/incompleteness/definition issue: **28/50 (56%)**;
+- measurement/definition-basis semantics mattered: **22/50 (44%)**;
+- material explicit conflict or unresolved question: **20/50 (40%)**.
 
-### Appendage / Configuration Normalization — DONE
+These values are **not population prevalence estimates**. The corpus was deliberately selected to be difficult.
 
-SLICE-0009 was implemented on `slice/0009-appendage-configuration-normalization`, independently reviewed, amended for scope-safe projection and snapshot-safe raw observations, and merged through PR #20 on 2026-08-19.
+Actual automated-acceptance rate, false-normalization rate, idempotency, machine processing cost and human review minutes cannot be measured from manual research and are intentionally deferred until an executable importer/persistence path exists.
 
-Acceptance evidence:
+## Benchmark-derived architecture decision
 
-- accepted final PR head: `9da6a579881b0451a028426b80a8a7281e6f6a0b`;
-- GitHub Actions CI run #114: PASS;
-- final local implementation report: 792 tests PASS, 91.20% total branch coverage, `configuration.py` 98.88% branch coverage, repository validator PASS, Ruff/format clean, strict mypy clean, pip-audit clean;
-- independent final review: no remaining blockers;
-- merge commit: `001ca87817f37553b463ca01270c64a26b7716b6`.
+The 50-design corpus validates most accepted domain foundations and identifies four concrete lossless-data gaps that should be closed **before** freezing PostgreSQL tables:
 
-The accepted boundary provides:
+1. **pre-canonical observation:** accepted `ResearchJob.target` is deliberately only raw `manufacturer/model/first_built` and may not yet have a stable HullQ subject, while FieldEvidence requires a typed canonical `ProvenanceSubject`; web research therefore needs a pre-canonical `ResearchObservation` boundary;
+2. **claim semantics:** existing `EvidenceType` describes source/document class but does not distinguish nominal design values, factory option values, operating-state values, individual-hull values, class-rule constraints, measurement-certificate values, published calculations or identity/chronology claims;
+3. **observation/evidence applicability:** structured year/hull/variant/option/state/individual-hull scope is needed where known rather than hiding critical applicability in free-text notes;
+4. **research handoff + promotion:** master research needs a versioned machine-ingestible `ResearchEvidenceBundle`; promotion from ResearchObservation to successor FieldEvidence must require an explicit caller-supplied stable canonical subject after identity resolution and must not itself perform identity resolution or FieldResolution.
 
-- runtime vocabularies matching the existing BoatDesign configuration enums;
-- deterministic exact/explicit-alias normalization for keel, rudder, skeg and hull configuration;
-- strict count normalization for hull/rudder/centerboard/daggerboard counts;
-- explicit unsupported/ambiguous/malformed outcomes rather than guessed mappings;
-- independent configuration axes with no twin-rudder/skeg/keel inference;
-- baseline/named-variant/design-option/board-state scope preservation;
-- required scope identity for named variants/design options;
-- fail-closed `baseline_projection()` so non-baseline observations cannot silently become baseline canonical facts;
-- snapshot-safe raw configuration observations;
-- generic `NormalizedCandidate` integration without changing the SLICE-0006 provenance contract.
+The existing identity model, FieldResolution states, independent appendage axes and raw/normalized separation remain directionally correct and should not be redesigned wholesale.
 
-SLICE-0009 does **not** create accepted FieldResolution, mutate BoatDesign, perform source acquisition, persist data or calculate derived metrics.
+Operating-state projection and explicit technical/marketing lineage relationships remain bounded later concerns; they do not justify another broad architecture phase before persistence.
+
+## SLICE-0012 — drafted, BLOCKED
+
+`docs/slices/SLICE-0012-evidence-applicability-research-bundle.md` defines the small benchmark-driven contract hardening boundary.
+
+It is intentionally limited to:
+
+- pre-canonical immutable ResearchObservation;
+- observation claim semantics separate from source/document EvidenceType;
+- structured applicability/scope;
+- successor FieldEvidence without mutating v0.2;
+- explicit deterministic promotion only after caller supplies stable `ProvenanceSubject`;
+- versioned ResearchEvidenceBundle that supports partial/identity-ambiguous research;
+- structurally separate non-provenance reference-crosscheck entries;
+- deterministic runtime/value-object/validation support and benchmark-derived fixtures.
+
+It explicitly excludes PostgreSQL, ORM/migrations, web acquisition/crawling, fuzzy identity resolution, authority ranking, automatic conflict resolution, broad taxonomy expansion, query/API/frontend work and SailboatData ingestion.
+
+SLICE-0012 remains `BLOCKED` until SLICE-0011 is accepted/DONE. No implementation slice is currently `READY`.
+
+## Near-term path
+
+```text
+SLICE-0011  controlled 50-design benchmark + analysis        REVIEW
+      ↓
+SLICE-0012  ResearchObservation + applicability/bundle       BLOCKED
+      ↓
+SLICE-0013  PostgreSQL persistence + deterministic importer  LATER
+      ↓
+identity/promotion + same benchmark through importer/DB      LATER
+      ↓
+measure automation/review/idempotency/cost                   LATER
+      ↓
+1,000-design broad bootstrap                                 NOT AUTHORIZED YET
+```
+
+The benchmark corpus should not be expanded merely to reach a higher count. Additional designs are justified only if later importer execution exposes a materially missing problem class.
 
 ## AI repository workflow — ACTIVE
 
-The project owner normally starts and finishes implementation slices with:
+Implementation slices normally use:
 
 ```text
 START_SLICE.bat
 FINISH_SLICE.bat
 ```
 
-`START_SLICE.bat` synchronizes `main`, creates/reuses an isolated slice worktree/branch and copies Claude's instruction to the clipboard. It refuses any slice whose own slice document is not explicitly `READY`.
+`START_SLICE.bat` synchronizes `main`, creates/reuses an isolated worktree/branch and copies Claude's assignment. It must refuse slices whose own slice document is not explicitly `READY`.
 
-`START_SLICE` deliberately does **not** open, close, reload or switch any VS Code window. The project owner explicitly opens the sibling `HullQ-slice-XXXX` worktree in the desired VS Code window before pasting the prompt.
+GitHub `origin/main` remains canonical truth. Claude owns only its assigned implementation branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-`FINISH_SLICE.bat` synchronizes local `main` and removes the old clean worktree/local branch only after merged-PR confirmation when GitHub CLI is available.
+SLICE-0011 is different: it is master-led DESIGN_RESEARCH and is prepared on `research/0011-controlled-benchmark` through PR #22.
 
-GitHub `origin/main` remains canonical truth. Claude owns only its assigned `slice/...` branch. The master/architect does not write Claude's active implementation branch. No later implementation slice begins automatically.
+## Current closure gates
 
-## Current operational position — SLICE-0010 REVIEW
+SLICE-0011 may become `DONE` only after:
 
-`docs/slices/SLICE-0010-derived-metrics-engine.md` is in `REVIEW` pending CI and independent acceptance.
+- current exact PR head CI passes;
+- independent closure review finds no blocking scope/data-governance issue;
+- explicit project-owner acceptance;
+- PR #22 merge and canonical `main` verification.
 
-OQ-001 / ADR-0008 already froze methodology `hullq-derived-1.0.0`. SLICE-0010 is therefore an execution slice, not a research slice. It must implement exactly:
+Until then:
 
-- Sail Area / Displacement (`sa_displ`);
-- Ballast / Displacement % (`ballast_displ_pct`);
-- Displacement / Length (`displ_length`);
-- Brewer Comfort Ratio (`comfort_ratio`);
-- Capsize Screening Formula (`capsize_screening_formula`);
-- legacy/theoretical Hull Speed (`hull_speed_kn`).
-
-The accepted method already specifies exact Imperial conversion constants, hull applicability, displacement/sail-area basis semantics, status precedence, six-decimal round-half-even canonical precision, and DerivationRecord lineage. `fixtures/ratios/golden_metrics.v0.1.json` and `fixtures/ratios/status_cases.v0.2.json` are compatibility fixtures and must be executed by the runtime tests rather than silently rewritten.
-
-SLICE-0010 must remain bounded:
-
-- consume an explicit caller-supplied effective input snapshot corresponding to accepted `/effective/...` ResolvedConfiguration fields;
-- preserve explicit unresolved-field markers and optional input FieldResolution IDs;
-- do not implement full BoatDesign + NamedVariant + DesignOption configuration resolution;
-- do not resolve source conflicts or choose canonical evidence;
-- produce null values for all noncomputed statuses;
-- produce schema-valid DerivationRecord lineage for every populated metric;
-- do not create fake FieldEvidence for HullQ-calculated outputs;
-- no search/filter semantics, persistence, API/frontend behavior or safety/bluewater scoring.
-
-## Revised near-term path to real data
-
-```text
-SLICE-0005  identity contracts/search labels                 DONE
-      ↓
-SLICE-0006  provenance/raw-observation boundary              DONE
-      ↓
-SLICE-0007  ResearchJob + source-rights clearance gate       DONE
-      ↓
-SLICE-0008  first rights-gated real data — Wikidata CC0      DONE
-      ↓
-SLICE-0009  appendage/configuration normalization            DONE
-      ↓
-SLICE-0010  derived metrics                                  READY
-      ↓
-controlled benchmark                                        NOT AUTHORIZED YET
-```
-
-SLICE-0010 closes the last already-accepted pure calculation boundary needed before the next controlled benchmark wave is refined. The benchmark remains a later slice and must not be started automatically.
-
-## Downstream gates
-
-- broad ingestion is not yet authorized;
-- OQ-009 is required before technical query-engine implementation;
-- OQ-018 is required before the public search/SEO surface;
-- OQ-014 is required before account/auth implementation;
-- OQ-015 is required before exposing the stable public HTTP API;
-- OQ-006 is required before automated alert cadence/freshness is frozen.
-
-## Do not start yet
-
-- controlled benchmark implementation beyond the prepared SLICE-0010 boundary;
-- production broad ingestion;
-- PostgreSQL production schema/application persistence;
-- FastAPI public API;
-- Astro frontend implementation;
-- account/auth implementation;
-- production marketplace adapters;
-- automated alerts;
-- multi-source listing deduplication.
+- do not start SLICE-0012;
+- do not start PostgreSQL persistence;
+- do not start broad production ingestion;
+- do not start unbounded crawler work;
+- do not start query/API/frontend/auth/alert work from this research status.
