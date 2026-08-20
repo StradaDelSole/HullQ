@@ -3,7 +3,8 @@
 **Status:** ACTIVE — SLICE-0011  
 **Updated:** 2026-08-20  
 **Target:** 50–100 deliberately difficult designs  
-**Active re-researched designs:** 41
+**Active re-researched designs:** 50  
+**Minimum corpus gate:** REACHED — benchmark measurement still required
 
 This ledger tracks the controlled benchmark research waves. It is not a production canonical dataset.
 
@@ -26,6 +27,7 @@ This ledger tracks the controlled benchmark research waves. It is not a producti
 | 03 | 8 | 25 | partial skeg, era applicability, official chronology conflict, swing-keel/twin-rudder relationships, sail-area basis ambiguity |
 | 04 | 8 | 33 | reference identity split, legacy multihull generations, rare centreboard/keel options, suffix semantics, weak-primary-source reconstruction |
 | 05 | 8 | 41 | model-family reuse, under-split vs over-split generation risk, manufacturer heritage vs technical identity, malformed authoritative-source units |
+| 06 | 9 | 50 | Mk counterexamples, class-rule semantics, twin-board deployment state, configuration × mass-basis interaction, special/tandem keel |
 
 Detailed evidence summaries are under `research/benchmark/waves/`.
 
@@ -85,6 +87,18 @@ Detailed evidence summaries are under `research/benchmark/waves/`.
 - B05-007 Dehler 34 lineage
 - B05-008 Hunter 37 / Hunter 37 Legend
 
+## Wave 06
+
+- B06-001 C&C 35 Mk I / Mk II
+- B06-002 Hallberg-Rassy 312 Mk I / Mk II
+- B06-003 ETAP 32s standard/tandem-keel configurations
+- B06-004 Pearson 35
+- B06-005 Ericson 35 Mk I / 35-2 / 35-3
+- B06-006 Bristol 35.5 / 35.5C
+- B06-007 Gemini 105Mc
+- B06-008 J/105 builder specification versus class rules
+- B06-009 Bavaria 38 and neighboring 38 identities
+
 ## Current recurring problem classes
 
 1. generation/model-name reuse;
@@ -109,15 +123,21 @@ Detailed evidence summaries are under `research/benchmark/waves/`.
 20. over-splitting Mk/suffix evolutions that retain the same core hull/rig;
 21. manufacturer marketing heritage that links technically unrelated designs;
 22. authoritative-source observations with malformed unit labels;
-23. reference-specific synthetic model names that must not leak into canonical naming.
+23. reference-specific synthetic model names that must not leak into canonical naming;
+24. authoritative class/rule constraints that are not nominal design values;
+25. installed appendage count versus deployed appendage state;
+26. configuration and measurement basis forming independent dimensions of the same physical field.
 
-## Next selection priorities
+## 50-design gate
 
-Reach the 50-design minimum with cases that add information rather than easy coverage, then switch from corpus expansion to measured benchmark analysis:
+The minimum corpus size is reached. Corpus expansion now pauses unless benchmark analysis reveals a missing problem class.
 
-- semi-custom boats where design-level vs hull-specific facts are difficult to separate;
-- class-rule nominal/tolerance values versus builder nominal specifications;
-- documented mid-production appendage/construction changes;
-- additional multihulls with generation-dependent geometry;
-- production boats with multiple concurrent keel/rig packages that alter mass and sail area together;
-- records where primary, archival and community sources materially disagree.
+Next work inside SLICE-0011:
+
+1. measure source coverage and source-class dependence;
+2. classify each design by ambiguity/conflict/review reason;
+3. measure recurring identity/configuration/basis problem frequencies;
+4. identify the minimum persistence/import semantics demanded repeatedly by the corpus;
+5. specify the next bounded implementation slice from these findings.
+
+Broad production ingestion remains unauthorized until that analysis and follow-on implementation gate are complete.
