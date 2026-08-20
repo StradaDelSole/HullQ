@@ -14,6 +14,20 @@ function Normalize-Slice([string]$Value) {
     throw "Enter a slice number such as 5 or 0005."
 }
 
+function Get-PrimarySliceFile([string]$Root, [string]$Number) {
+    $candidates = @(Get-ChildItem (Join-Path $Root 'docs\slices') -Filter "SLICE-$Number-*.md")
+    $primary = @(
+        $candidates | Where-Object {
+            (Get-Content -Raw $_.FullName) -match '(?m)^\*\*Type:\*\*\s*[A-Z_]+\s*$'
+        }
+    )
+    if ($primary.Count -ne 1) {
+        $names = if ($candidates.Count -gt 0) { ($candidates.Name -join ', ') } else { '<none>' }
+        throw "Expected exactly one primary SLICE-$Number document with a **Type:** header; found $($primary.Count). Matching files: $names"
+    }
+    return $primary[0]
+}
+
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 if (-not $Slice) { $Slice = Read-Host 'Slice number (example: 0005)' }
 $sliceNumber = Normalize-Slice $Slice
@@ -30,12 +44,7 @@ Run-Git -GitArgs @('-C', $repoRoot, 'switch', 'main')
 Run-Git -GitArgs @('-C', $repoRoot, 'pull', '--ff-only', 'origin', 'main')
 Run-Git -GitArgs @('-C', $repoRoot, 'worktree', 'prune')
 
-$sliceFiles = @(Get-ChildItem (Join-Path $repoRoot 'docs\slices') -Filter "SLICE-$sliceNumber-*.md")
-if ($sliceFiles.Count -ne 1) {
-    throw "Expected exactly one docs/slices/SLICE-$sliceNumber-*.md file, found $($sliceFiles.Count)."
-}
-
-$sliceFile = $sliceFiles[0]
+$sliceFile = Get-PrimarySliceFile -Root $repoRoot -Number $sliceNumber
 $sliceText = Get-Content -Raw $sliceFile.FullName
 $statusMatch = [regex]::Match($sliceText, '(?m)^\*\*Status:\*\*\s*([A-Z_]+)\s*$')
 if (-not $statusMatch.Success) {
