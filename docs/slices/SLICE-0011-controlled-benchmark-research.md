@@ -60,8 +60,11 @@ The SLICE-0002 seed sample is a selection aid only. Benchmark records are re-res
 | Wave 03 | 8 | 25 | partial skeg, chronology, era applicability, sail-area basis |
 | Wave 04 | 8 | 33 | identity split, suffix semantics, legacy multihull generations, rare keel options |
 | Wave 05 | 8 | 41 | model-family reuse, under/over-splitting risk, technical lineage vs marketing lineage, malformed authoritative observations |
+| Wave 06 | 9 | 50 | Mk counterexamples, rule semantics, twin-board deployment state, special/tandem keel, configuration × mass-basis interaction |
 
-Current actively re-researched benchmark count: **41 designs**.
+**Minimum corpus gate reached: 50 designs.**
+
+Corpus expansion now pauses unless measurement shows a material missing problem class. SLICE-0011 remains `IN_PROGRESS` because the benchmark measurements and follow-on persistence/import specification are still required.
 
 Detailed wave evidence:
 
@@ -70,46 +73,44 @@ Detailed wave evidence:
 - `research/benchmark/waves/WAVE-03-summary.md`
 - `research/benchmark/waves/WAVE-04-summary.md`
 - `research/benchmark/waves/WAVE-05-summary.md`
+- `research/benchmark/waves/WAVE-06-summary.md`
 - `research/benchmark/CONTROLLED_BENCHMARK_LEDGER.md`
 
-### Wave 01
+## Measurements now required
 
-Hallberg-Rassy 36; Westerly Centaur; RM 1180; Najad 34; J/24.
+Track and record at least:
 
-### Wave 02
+- identity-resolution / generation-ambiguity incidence;
+- source-discovery success and primary/authoritative-source coverage;
+- dependence on owners/community/broker/secondary evidence;
+- HullQ-critical-field completeness at useful confidence;
+- explicit unresolved/conflict frequency;
+- source-internal conflict frequency;
+- option/variant/state incidence;
+- appendage ambiguity and relationship complexity;
+- displacement/sail-area/other measurement-basis ambiguity;
+- temporal/applicability-scope incidence;
+- reference-comparison outcomes and anomaly classes;
+- likely human-review reasons and estimated review routing.
 
-Dragonfly 32; OVNI 370; Garcia Exploration 45; Boréal 44.2; Island Packet 349; Corsair 880; Lagoon 42 (2016); Nauticat 33 → 331; Catalina 316; Jeanneau Sun Odyssey 410; CATANA Ocean Class; Pogo 1.
-
-### Wave 03
-
-Hallberg-Rassy 42E; BENETEAU Oceanis 37; Rustler 36; Seafarer 26 (McCurdy & Rhodes); Southerly 110; Contessa 32; AMEL Super Maramu 2000; Moody 33 Mk I / Mk II.
-
-### Wave 04
-
-Sadler 34; Albin Vega / Vega 27; Hallberg-Rassy 35 Rasmus; Vancouver 27; F-27 Sport Cruiser / Corsair F-27; Prout Snowgoose 37 / Snowgoose 37 Elite; Westerly Konsort; Heavenly Twins 26 → New 27 lineage.
-
-### Wave 05
-
-MacGregor 26 D/S/X/M family; BENETEAU First 35 family; Moody 36 families; Hallberg-Rassy 352; Swan 36 versus ClubSwan 36; Catalina 36 Mk I/Mk II; Dehler 34 lineage; Hunter 37/Hunter 37 Legend.
-
-## Measurements to build
-
-Track identity-resolution success, source-discovery success, primary-source coverage, HullQ-critical-field completeness, explicit unresolved rate, conflict rate, source-internal conflict rate, generation/variant ambiguity, appendage ambiguity, measurement-basis ambiguity, dependence on community/secondary evidence, reference-comparison outcomes and estimated review reasons/rates. Add runtime repeatability and false-normalization metrics once an importer executes the corpus.
+Runtime repeatability, automated-acceptance rate, false-normalization rate, processing cost and actual human minutes per review require an executable importer and therefore belong to the next implementation/benchmark-execution wave rather than being invented from manual research.
 
 ## Findings already forcing architecture attention
 
-The first 41 designs repeatedly demonstrate that:
+The 50-design corpus repeatedly demonstrates that:
 
 - one scalar per physical concept is insufficient;
 - generation identity cannot be inferred from model strings alone;
 - model number + builder is not globally unique over time;
-- suffixes may mean fitout-only changes, design evolution or identity-critical unrelated generations;
+- suffixes may mean fitout-only changes, design evolution, configuration, or identity-critical unrelated generations;
 - both under-splitting and over-splitting are real identity risks;
 - manufacturer marketing lineage must remain distinct from technical BoatDesign lineage;
-- configuration options can change displacement/ballast as well as draft;
+- configuration options can change displacement/ballast/sail area as well as draft;
 - rudder, skeg, keel and board axes must remain independent;
+- installed appendage count and deployed operating state are different concepts;
 - multihull folded/sailing geometry and board state are first-class data;
 - source measurement basis must survive normalization;
+- nominal specification, class-rule constraint/tolerance, as-measured value and individual-hull observation are different evidence semantics;
 - current and historical design-level facts need applicability/era context;
 - source authority does not guarantee that every observation is syntactically/semantically valid;
 - reference datasets can contain identity duplication/anomalies as well as useful QA agreement;
@@ -121,4 +122,10 @@ This slice does not authorize broad production ingestion, production PostgreSQL 
 
 ## Exit gate
 
-Close SLICE-0011 only when the 50–100-design corpus covers the intended difficult classes, evidence remains reproducible and source-linked, major ambiguity/conflict classes have measured frequencies, and the next persistence/import slice can be specified from observed evidence rather than assumptions.
+Close SLICE-0011 only when:
+
+1. the corpus covers the intended difficult classes — **minimum size reached**;
+2. evidence remains reproducible and source-linked;
+3. major ambiguity/conflict classes have measured frequencies;
+4. the minimum persistence/import semantics demanded by the evidence are explicitly derived;
+5. the next bounded implementation slice can be specified from observed evidence rather than assumptions.
