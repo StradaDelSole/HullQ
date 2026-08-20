@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/research-evidence-bundle/0.1",
+  "title": "HullQ ResearchEvidenceBundle",
+  "description": "Versioned machine-ingestible bundle for research handoff. Carries source-linked ResearchObservations, unresolved findings, optionally already-promoted FieldEvidence v0.3, and a structurally separate reference-crosscheck section. Does not require canonical BoatModel or BoatDesign IDs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "bundle_version",
+    "research_target",
+    "research_job_id",
+    "activity_id",
+    "observations",
+    "unresolved_findings",
+    "promoted_evidence",
+    "reference_crosschecks"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "bundle_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "bundle_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "research_target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manufacturer", "model", "first_built"],
+      "description": "Raw research target snapshot. Does not assert canonical Brand, BoatModel or BoatDesign identity.",
+      "properties": {
+        "manufacturer": { "type": ["string", "null"] },
+        "model": { "type": "string", "minLength": 1 },
+        "first_built": { "type": ["integer", "null"] }
+      }
+    },
+    "research_job_id": {
+      "type": ["string", "null"]
+    },
+    "activity_id": {
+      "type": ["string", "null"]
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "$ref": "https://hullq.local/schemas/research-observation/0.1"
+      },
+      "description": "Source-linked ResearchObservation records. None require a canonical ProvenanceSubject."
+    },
+    "unresolved_findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/unresolved_finding"
+      },
+      "description": "Explicit unresolved or review findings not yet at FieldResolution stage."
+    },
+    "promoted_evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "https://hullq.local/schemas/field-evidence/0.3"
+      },
+      "description": "Optional FieldEvidence v0.3 records already promoted after explicit identity resolution. Absent when no observations have been promoted yet."
+    },
+    "reference_crosschecks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/reference_crosscheck"
+      },
+      "description": "Reference comparison outcomes in a structurally separate non-provenance section. Cannot be promoted to ResearchObservation or FieldEvidence."
+    }
+  },
+  "$defs": {
+    "unresolved_finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "finding_id",
+        "topic",
+        "description",
+        "related_observation_ids",
+        "severity"
+      ],
+      "properties": {
+        "finding_id": { "type": "string", "minLength": 1 },
+        "topic": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "related_observation_ids": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "severity": {
+          "enum": ["blocking", "review", "informational"]
+        }
+      }
+    },
+    "reference_crosscheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "crosscheck_id",
+        "reference_source_id",
+        "topic_or_field",
+        "outcome",
+        "notes"
+      ],
+      "description": "Reference comparison entry. Structurally separate from ResearchObservation and FieldEvidence. Cannot be promoted to either. Must not store reference field values.",
+      "properties": {
+        "crosscheck_id": { "type": "string", "minLength": 1 },
+        "reference_source_id": { "type": "string", "minLength": 1 },
+        "topic_or_field": { "type": ["string", "null"] },
+        "outcome": {
+          "enum": [
+            "match",
+            "partial_match",
+            "conflict",
+            "definition_or_basis_difference",
+            "identity_disambiguation_required",
+            "reference_incomplete",
+            "no_reference_record_found",
+            "not_checked"
+          ]
+        },
+        "notes": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

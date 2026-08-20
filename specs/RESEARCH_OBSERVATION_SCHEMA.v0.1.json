@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/research-observation/0.1",
+  "title": "HullQ ResearchObservation",
+  "description": "Pre-canonical immutable source-linked observation captured while a ResearchJob target may still be unresolved as a canonical HullQ subject. Does not require a ProvenanceSubject. Claim semantics and applicability are independent of the source/document EvidenceType.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "observation_id",
+    "research_target",
+    "source_id",
+    "source_locator",
+    "observation",
+    "evidence_type",
+    "claim_semantics",
+    "applicability",
+    "producer",
+    "research_context",
+    "observed_at",
+    "confidence",
+    "supersedes_observation_id",
+    "intended_subject_kind_hint",
+    "intended_field_pointer",
+    "notes"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "observation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "research_target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manufacturer", "model", "first_built"],
+      "description": "Snapshot of the raw ResearchJob target. Does not assert a canonical Brand, BoatModel or BoatDesign identity.",
+      "properties": {
+        "manufacturer": {
+          "type": ["string", "null"]
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "first_built": {
+          "type": ["integer", "null"]
+        }
+      }
+    },
+    "source_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_locator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["page", "section", "anchor", "table", "figure", "record_key"],
+      "properties": {
+        "page": { "type": ["integer", "string", "null"] },
+        "section": { "type": ["string", "null"] },
+        "anchor": { "type": ["string", "null"] },
+        "table": { "type": ["string", "null"] },
+        "figure": { "type": ["string", "null"] },
+        "record_key": { "type": ["string", "null"] }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw"],
+      "properties": {
+        "raw": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value", "unit", "excerpt"],
+          "properties": {
+            "kind": {
+              "enum": [
+                "literal",
+                "text_fragment",
+                "visual_classification",
+                "structured_record",
+                "other"
+              ]
+            },
+            "value": {},
+            "unit": { "type": ["string", "null"] },
+            "excerpt": { "type": ["string", "null"] }
+          }
+        },
+        "normalized_candidate": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["value", "unit", "method_id", "method_version"],
+          "properties": {
+            "value": {},
+            "unit": { "type": ["string", "null"] },
+            "method_id": { "type": ["string", "null"] },
+            "method_version": { "type": ["string", "null"] }
+          }
+        }
+      }
+    },
+    "evidence_type": {
+      "description": "Source/document class classification. Independent from claim_semantics.",
+      "enum": [
+        "manufacturer_specification",
+        "brochure",
+        "manual",
+        "technical_drawing",
+        "class_or_owner_association",
+        "structured_dataset",
+        "api_record",
+        "narrative_text",
+        "visual_classification",
+        "user_submission",
+        "other"
+      ]
+    },
+    "claim_semantics": {
+      "$ref": "https://hullq.local/schemas/claim-semantics/0.1",
+      "description": "Semantic role of this observation. Independent from evidence_type."
+    },
+    "applicability": {
+      "$ref": "https://hullq.local/schemas/observation-applicability/0.1"
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "identifier", "version", "model", "prompt_or_rule_version"],
+      "properties": {
+        "kind": {
+          "enum": ["human", "deterministic_tool", "llm", "importer"]
+        },
+        "identifier": { "type": "string", "minLength": 1 },
+        "version": { "type": ["string", "null"] },
+        "model": { "type": ["string", "null"] },
+        "prompt_or_rule_version": { "type": ["string", "null"] }
+      }
+    },
+    "research_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["research_job_id", "activity_id"],
+      "properties": {
+        "research_job_id": { "type": ["string", "null"] },
+        "activity_id": { "type": ["string", "null"] }
+      }
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Retrieval/observation timestamp. Independent from applicability year range."
+    },
+    "confidence": {
+      "enum": ["high", "medium", "low", "unknown"]
+    },
+    "supersedes_observation_id": {
+      "type": ["string", "null"]
+    },
+    "intended_subject_kind_hint": {
+      "type": ["string", "null"],
+      "description": "Optional research hint about likely canonical subject kind. Does not assert canonical identity.",
+      "enum": [
+        "boat_model",
+        "boat_design",
+        "named_variant",
+        "design_option",
+        "brand",
+        "organization",
+        "identity_alias",
+        "brand_model_relationship",
+        "organization_design_relationship",
+        null
+      ]
+    },
+    "intended_field_pointer": {
+      "type": ["string", "null"],
+      "pattern": "^/",
+      "description": "Optional RFC 6901 JSON Pointer hint for the intended canonical field. Research mapping candidate only; not a canonical write."
+    },
+    "notes": {
+      "type": ["string", "null"]
+    }
+  }
+}

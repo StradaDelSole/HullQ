@@ -1,0 +1,59 @@
+{
+  "schema_version": "0.1",
+  "observation_id": "SYNTHETIC-OBS-J105-CLASSRULE-DISP-001",
+  "research_target": {
+    "manufacturer": "J/Boats",
+    "model": "J/105",
+    "first_built": 1992
+  },
+  "source_id": "SYNTHETIC-SRC-J105-CLASS-ASSOC-RULES-REF",
+  "source_locator": {
+    "page": null,
+    "section": null,
+    "anchor": null,
+    "table": null,
+    "figure": null,
+    "record_key": null
+  },
+  "observation": {
+    "raw": {
+      "kind": "text_fragment",
+      "value": "minimum displacement constraint — refer to current J/105 class association rules [synthetic fixture value]",
+      "unit": null,
+      "excerpt": "Class rules specify a minimum displacement constraint [synthetic fixture — refer to current class association rules for authoritative values]"
+    },
+    "normalized_candidate": null
+  },
+  "evidence_type": "class_or_owner_association",
+  "claim_semantics": "class_rule_constraint",
+  "applicability": {
+    "schema_version": "0.1",
+    "first_year": null,
+    "last_year": null,
+    "hull_number_from": null,
+    "hull_number_to": null,
+    "market_or_region": null,
+    "named_variant_hint": null,
+    "design_option_hints": null,
+    "operating_state_hint": null,
+    "individual_hull_or_listing_ref": null,
+    "unknown_or_unbounded": true
+  },
+  "producer": {
+    "kind": "deterministic_tool",
+    "identifier": "slice-0012-fixture-builder",
+    "version": "0.1",
+    "model": null,
+    "prompt_or_rule_version": "slice-0012-fixture-v1"
+  },
+  "research_context": {
+    "research_job_id": "SYNTHETIC-JOB-J105-001",
+    "activity_id": "WAVE-06"
+  },
+  "observed_at": "2026-08-20T00:00:00Z",
+  "confidence": "high",
+  "supersedes_observation_id": null,
+  "intended_subject_kind_hint": "boat_design",
+  "intended_field_pointer": null,
+  "notes": "BENCHMARK CONCEPT: B06-008 Wave 06 — class_rule_constraint claim type distinct from nominal_design_value; J/105 class association rules encode compliance limits, not nominal builder specs. SYNTHETIC SCAFFOLDING: observation value, observation_id, source_id, research_job_id, producer, and observed_at are synthetic contract fixture metadata, not retained benchmark provenance."
+}

@@ -1,0 +1,154 @@
+{
+  "schema_version": "0.1",
+  "bundle_id": "SYNTHETIC-BUNDLE-PRE-CANONICAL-001",
+  "bundle_version": "1.0",
+  "research_target": {
+    "manufacturer": null,
+    "model": "Catalina 316",
+    "first_built": null
+  },
+  "research_job_id": "SYNTHETIC-JOB-CATALINA316-001",
+  "activity_id": "WAVE-02",
+  "observations": [
+    {
+      "schema_version": "0.1",
+      "observation_id": "SYNTHETIC-OBS-CATALINA316-DISP-SHOALBULB-001",
+      "research_target": {
+        "manufacturer": null,
+        "model": "Catalina 316",
+        "first_built": null
+      },
+      "source_id": "SYNTHETIC-SRC-CATALINA316-MFGR-SPEC-REF",
+      "source_locator": {
+        "page": null,
+        "section": null,
+        "anchor": null,
+        "table": null,
+        "figure": null,
+        "record_key": null
+      },
+      "observation": {
+        "raw": {
+          "kind": "literal",
+          "value": "12400",
+          "unit": "lbs",
+          "excerpt": "Displacement – Half Load (Shoal Bulb Keel): 12,400 lbs"
+        },
+        "normalized_candidate": null
+      },
+      "evidence_type": "manufacturer_specification",
+      "claim_semantics": "nominal_design_value",
+      "applicability": {
+        "schema_version": "0.1",
+        "first_year": null,
+        "last_year": null,
+        "hull_number_from": null,
+        "hull_number_to": null,
+        "market_or_region": null,
+        "named_variant_hint": null,
+        "design_option_hints": ["shoal_bulb_keel"],
+        "operating_state_hint": null,
+        "individual_hull_or_listing_ref": null,
+        "unknown_or_unbounded": false
+      },
+      "producer": {
+        "kind": "deterministic_tool",
+        "identifier": "slice-0012-fixture-builder",
+        "version": "0.1",
+        "model": null,
+        "prompt_or_rule_version": "slice-0012-fixture-v1"
+      },
+      "research_context": {
+        "research_job_id": "SYNTHETIC-JOB-CATALINA316-001",
+        "activity_id": "WAVE-02"
+      },
+      "observed_at": "2026-08-20T00:00:00Z",
+      "confidence": "medium",
+      "supersedes_observation_id": null,
+      "intended_subject_kind_hint": "boat_design",
+      "intended_field_pointer": "/displacement_kg",
+      "notes": "BENCHMARK FACT: Catalina 316 Shoal Bulb Keel displacement Half Load — retained B02-009 Wave 02 evidence. Manufacturer identity unresolved (no canonical subject yet). SYNTHETIC SCAFFOLDING: observation_id, source_id, research_job_id, producer, and observed_at are synthetic fixture metadata, not retained benchmark provenance."
+    },
+    {
+      "schema_version": "0.1",
+      "observation_id": "SYNTHETIC-OBS-CATALINA316-DISP-FINKEEL-001",
+      "research_target": {
+        "manufacturer": null,
+        "model": "Catalina 316",
+        "first_built": null
+      },
+      "source_id": "SYNTHETIC-SRC-CATALINA316-MFGR-SPEC-REF",
+      "source_locator": {
+        "page": null,
+        "section": null,
+        "anchor": null,
+        "table": null,
+        "figure": null,
+        "record_key": null
+      },
+      "observation": {
+        "raw": {
+          "kind": "literal",
+          "value": "12000",
+          "unit": "lbs",
+          "excerpt": "Displacement – Half Load (Fin Keel): 12,000 lbs"
+        },
+        "normalized_candidate": null
+      },
+      "evidence_type": "manufacturer_specification",
+      "claim_semantics": "nominal_design_value",
+      "applicability": {
+        "schema_version": "0.1",
+        "first_year": null,
+        "last_year": null,
+        "hull_number_from": null,
+        "hull_number_to": null,
+        "market_or_region": null,
+        "named_variant_hint": null,
+        "design_option_hints": ["fin_keel"],
+        "operating_state_hint": null,
+        "individual_hull_or_listing_ref": null,
+        "unknown_or_unbounded": false
+      },
+      "producer": {
+        "kind": "deterministic_tool",
+        "identifier": "slice-0012-fixture-builder",
+        "version": "0.1",
+        "model": null,
+        "prompt_or_rule_version": "slice-0012-fixture-v1"
+      },
+      "research_context": {
+        "research_job_id": "SYNTHETIC-JOB-CATALINA316-001",
+        "activity_id": "WAVE-02"
+      },
+      "observed_at": "2026-08-20T00:00:00Z",
+      "confidence": "medium",
+      "supersedes_observation_id": null,
+      "intended_subject_kind_hint": "boat_design",
+      "intended_field_pointer": "/displacement_kg",
+      "notes": "BENCHMARK FACT: Catalina 316 Fin Keel displacement Half Load — retained B02-009 Wave 02 evidence. Configuration-sensitive: both keel variants use Half Load basis but differ in displacement value. SYNTHETIC SCAFFOLDING: observation_id, source_id, research_job_id, producer, and observed_at are synthetic fixture metadata, not retained benchmark provenance."
+    }
+  ],
+  "unresolved_findings": [
+    {
+      "finding_id": "SYNTHETIC-FIND-PRE-CANONICAL-001",
+      "topic": "canonical_identity_unresolved",
+      "description": "[SYNTHETIC contract scaffolding — not a retained B02-009 research finding] This bundle exercises pre-canonical ResearchEvidenceBundle behavior: the research target has no canonical HullQ ProvenanceSubject yet and cannot be promoted without explicit identity resolution. The retained benchmark evidence above (Shoal Bulb Keel 12,400 lb and Fin Keel 12,000 lb Half Load) is real; this finding description is synthetic fixture scaffolding to demonstrate the unresolved-identity bundle shape.",
+      "related_observation_ids": [
+        "SYNTHETIC-OBS-CATALINA316-DISP-SHOALBULB-001",
+        "SYNTHETIC-OBS-CATALINA316-DISP-FINKEEL-001"
+      ],
+      "severity": "review"
+    }
+  ],
+  "promoted_evidence": [],
+  "reference_crosschecks": [
+    {
+      "crosscheck_id": "SYNTHETIC-CC-CATALINA316-REF-001",
+      "reference_source_id": "sailboatdata-reference",
+      "topic_or_field": "/displacement_kg",
+      "outcome": "definition_or_basis_difference",
+      "notes": "Reference record does not reflect keel-configuration distinction; basis difference (Half Load vs reference basis) is the likely source of disagreement — no reference field values stored"
+    }
+  ]
+}

@@ -28,13 +28,16 @@ from typing import Any
 _ARRAY_INDEX_RE = re.compile(r"^(0|[1-9][0-9]*)$")
 
 __all__ = [
+    "ClaimSemantics",
     "ConfidenceLevel",
     "EvidenceType",
     "FieldEvidence",
+    "FieldEvidenceV3",
     "FieldResolution",
     "JsonPointer",
     "JsonPointerError",
     "NormalizedCandidate",
+    "ObservationApplicability",
     "ProducerKind",
     "ProducerMetadata",
     "ProvenanceSubject",
@@ -50,6 +53,7 @@ __all__ = [
     "check_canonical_consistency",
     "source_impact_lookup",
     "validate_evidence_invariants",
+    "validate_evidence_v3_invariants",
     "validate_resolution_history",
     "validate_resolution_invariants",
 ]
@@ -817,3 +821,146 @@ def source_impact_lookup(
         r for r in resolution_collection if not affected_ids.isdisjoint(r.considered_evidence_ids)
     ]
     return affected_evidence, affected_resolutions
+
+
+# ---------------------------------------------------------------------------
+# Claim semantics — SLICE-0012
+# Separate from EvidenceType (source/document classification).
+# Matches CLAIM_SEMANTICS_SCHEMA.v0.1.json. Tests enforce parity.
+# ---------------------------------------------------------------------------
+
+
+class ClaimSemantics(StrEnum):
+    """Semantic role of a source observation.
+
+    Distinct from ``EvidenceType`` which classifies the source/document artifact.
+    Does not encode source authority or confidence level.
+
+    ``UNKNOWN`` must remain valid and fail closed — never default-assign
+    ``NOMINAL_DESIGN_VALUE`` when the claim role is not established.
+    """
+
+    NOMINAL_DESIGN_VALUE = "nominal_design_value"
+    FACTORY_OPTION_VALUE = "factory_option_value"
+    OPERATING_STATE_VALUE = "operating_state_value"
+    INDIVIDUAL_HULL_VALUE = "individual_hull_value"
+    CLASS_RULE_CONSTRAINT = "class_rule_constraint"
+    MEASUREMENT_CERTIFICATE_VALUE = "measurement_certificate_value"
+    PUBLISHED_CALCULATION = "published_calculation"
+    IDENTITY_OR_CHRONOLOGY_CLAIM = "identity_or_chronology_claim"
+    OTHER = "other"
+    UNKNOWN = "unknown"
+
+
+# ---------------------------------------------------------------------------
+# Observation applicability — SLICE-0012
+# Matches OBSERVATION_APPLICABILITY_SCHEMA.v0.1.json.
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ObservationApplicability:
+    """Structured applicability scope for an observation or evidence record.
+
+    All boundary fields are nullable; null means unknown, not absent or global.
+    ``unknown_or_unbounded=True`` is explicit unknown — it still does not imply
+    global or all-production applicability.
+
+    ``design_option_hints`` is stored as an immutable tuple; caller-supplied
+    lists or tuples are both accepted and frozen at construction time.
+    """
+
+    first_year: int | None
+    last_year: int | None
+    hull_number_from: str | None
+    hull_number_to: str | None
+    market_or_region: str | None
+    named_variant_hint: str | None
+    design_option_hints: tuple[str, ...] | None
+    operating_state_hint: str | None
+    individual_hull_or_listing_ref: str | None
+    unknown_or_unbounded: bool
+
+    def __post_init__(self) -> None:
+        # Snapshot safety: freeze any mutable sequence passed by caller.
+        if self.design_option_hints is not None:
+            object.__setattr__(self, "design_option_hints", tuple(self.design_option_hints))
+
+        # Year range consistency.
+        if (
+            self.first_year is not None
+            and self.last_year is not None
+            and self.first_year > self.last_year
+        ):
+            raise ValueError(
+                f"ObservationApplicability: first_year {self.first_year} > "
+                f"last_year {self.last_year}"
+            )
+
+        # Non-empty refs when that scope dimension is asserted.
+        _str_fields: tuple[tuple[str, str | None], ...] = (
+            ("hull_number_from", self.hull_number_from),
+            ("hull_number_to", self.hull_number_to),
+            ("market_or_region", self.market_or_region),
+            ("named_variant_hint", self.named_variant_hint),
+            ("operating_state_hint", self.operating_state_hint),
+            ("individual_hull_or_listing_ref", self.individual_hull_or_listing_ref),
+        )
+        for _field_name, _field_val in _str_fields:
+            if _field_val is not None and not _field_val:
+                raise ValueError(
+                    f"ObservationApplicability.{_field_name} must be non-empty when provided"
+                )
+        if self.design_option_hints is not None:
+            for hint in self.design_option_hints:
+                if not hint:
+                    raise ValueError(
+                        "ObservationApplicability.design_option_hints "
+                        "must not contain empty strings"
+                    )
+
+
+# ---------------------------------------------------------------------------
+# FieldEvidenceV3 — SLICE-0012 successor to FieldEvidence v0.2
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class FieldEvidenceV3(FieldEvidence):
+    """Successor to FieldEvidence v0.2.
+
+    Retains every accepted v0.2 provenance invariant and adds:
+    - ``claim_semantics``: semantic role of the observation, independent of
+      ``evidence_type`` (source/document classification);
+    - ``applicability``: structured production/variant/option/state scope.
+
+    Produced only after a stable canonical ``ProvenanceSubject`` has been
+    explicitly supplied by the caller following identity resolution. The
+    promotion path is in ``hullq.research.observations.promote_to_field_evidence``.
+
+    Legacy v0.2 records remain valid under ``FieldEvidence``; no in-place
+    mutation of the v0.2 contract is performed.
+    """
+
+    claim_semantics: ClaimSemantics
+    applicability: ObservationApplicability
+
+
+# ---------------------------------------------------------------------------
+# FieldEvidenceV3 invariant validation
+# ---------------------------------------------------------------------------
+
+
+def validate_evidence_v3_invariants(
+    evidence: FieldEvidenceV3,
+    all_evidence: dict[str, FieldEvidence] | None = None,
+) -> list[str]:
+    """Validate invariants for a FieldEvidenceV3 record.
+
+    Delegates to ``validate_evidence_invariants`` for all v0.2 invariants
+    (supersession consistency, subject/field cross-references). No v0.3
+    field-level invariants beyond those enforced at construction time by
+    ``FieldEvidence.__post_init__`` and ``ObservationApplicability.__post_init__``
+    are added here.
+    """
+    return validate_evidence_invariants(evidence, all_evidence)

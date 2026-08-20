@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/claim-semantics/0.1",
+  "title": "HullQ ClaimSemantics",
+  "description": "Semantic role of a source observation, distinct from the source/document EvidenceType classification. Does not encode source authority or confidence.",
+  "enum": [
+    "nominal_design_value",
+    "factory_option_value",
+    "operating_state_value",
+    "individual_hull_value",
+    "class_rule_constraint",
+    "measurement_certificate_value",
+    "published_calculation",
+    "identity_or_chronology_claim",
+    "other",
+    "unknown"
+  ]
+}
