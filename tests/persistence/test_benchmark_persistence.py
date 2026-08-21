@@ -763,3 +763,173 @@ def test_corpus_wide_semantic_readback_fresh_schema(
         + "\n".join(all_mismatches[:20])
         + ("\n... (truncated)" if len(all_mismatches) > 20 else "")
     )
+
+
+# ---------------------------------------------------------------------------
+# Canonical field pointer persistence roundtrip
+# ---------------------------------------------------------------------------
+
+
+def test_canonical_dimension_field_pointer_survives_roundtrip(
+    benchmark_conn: Any,
+    benchmark_bundles: dict[str, Any],
+    first_pass_results: dict[str, Any],  # ensures first pass has run
+) -> None:
+    """At least one observation with a canonical dimensional field_label and a
+    non-None intended_field_pointer (e.g. loa → /baseline/dimensions/loa_m)
+    must round-trip through PostgreSQL with both attributes preserved.
+    """
+    from benchmark.materializer import _CANONICAL_FIELD_POINTERS
+
+    from hullq.persistence.readback import fetch_observation
+
+    found_and_verified = 0
+    failures: list[str] = []
+
+    for case_id, bundle in benchmark_bundles.items():
+        for obs in bundle.observations:
+            if obs.intended_field_pointer is None:
+                continue
+            if obs.notes is None:
+                continue
+            # Extract field_label from notes
+            field_label: str | None = None
+            for part in obs.notes.split(";"):
+                part = part.strip()
+                if part.startswith("field_label:"):
+                    field_label = part[len("field_label:") :].strip()
+                    break
+            if field_label is None or field_label not in _CANONICAL_FIELD_POINTERS:
+                continue
+            expected_path = _CANONICAL_FIELD_POINTERS[field_label]
+
+            fetched = fetch_observation(benchmark_conn, obs.observation_id)
+            if fetched is None:
+                failures.append(f"{case_id}/{obs.observation_id}: not found after import")
+                continue
+
+            # Verify field_label preserved in notes
+            fetched_label: str | None = None
+            if fetched.notes:
+                for part in fetched.notes.split(";"):
+                    part = part.strip()
+                    if part.startswith("field_label:"):
+                        fetched_label = part[len("field_label:") :].strip()
+                        break
+            if fetched_label != field_label:
+                failures.append(
+                    f"{case_id}/{obs.observation_id}: field_label in notes: "
+                    f"got={fetched_label!r} expected={field_label!r}"
+                )
+
+            # Verify intended_field_pointer preserved
+            fp = fetched.intended_field_pointer
+            if fp is None or str(fp) != expected_path:
+                failures.append(
+                    f"{case_id}/{obs.observation_id}: intended_field_pointer: "
+                    f"got={fp!r} expected={expected_path!r}"
+                )
+
+            found_and_verified += 1
+            if found_and_verified >= 3:
+                break
+        if found_and_verified >= 3:
+            break
+
+    if found_and_verified == 0:
+        pytest.skip("No canonical-dimension observations found in imported bundles")
+
+    assert not failures, (
+        f"{len(failures)} canonical field pointer roundtrip failure(s):\n" + "\n".join(failures)
+    )
+
+
+def test_noncanonical_field_label_no_pointer_survives_roundtrip(
+    benchmark_conn: Any,
+    benchmark_bundles: dict[str, Any],
+    first_pass_results: dict[str, Any],  # ensures first pass has run
+) -> None:
+    """An observation for a non-canonical field must round-trip with:
+    - field_label:<original field> preserved in notes
+    - intended_field_pointer = None
+
+    This confirms that non-canonical fields are not silently promoted.
+    """
+    from benchmark.materializer import _CANONICAL_FIELD_POINTERS
+
+    from hullq.persistence.readback import fetch_observation
+
+    # Fields that must never receive a pointer
+    truly_noncanonical = frozenset(
+        {
+            "air_draft",
+            "freeboard",
+            "sail_area_main",
+            "sail_area_jib",
+            "sail_area_spinnaker",
+            "rig_types",
+            "draft",
+        }
+    )
+
+    found_and_verified = 0
+    failures: list[str] = []
+
+    for case_id, bundle in benchmark_bundles.items():
+        for obs in bundle.observations:
+            if obs.notes is None:
+                continue
+            field_label = None
+            for part in obs.notes.split(";"):
+                part = part.strip()
+                if part.startswith("field_label:"):
+                    field_label = part[len("field_label:") :].strip()
+                    break
+            if field_label is None:
+                continue
+            if field_label in _CANONICAL_FIELD_POINTERS:
+                continue
+            if field_label not in truly_noncanonical:
+                continue
+
+            fetched = fetch_observation(benchmark_conn, obs.observation_id)
+            if fetched is None:
+                failures.append(f"{case_id}/{obs.observation_id}: not found after import")
+                continue
+
+            # field_label must be preserved
+            fetched_label = None
+            if fetched.notes:
+                for part in fetched.notes.split(";"):
+                    part = part.strip()
+                    if part.startswith("field_label:"):
+                        fetched_label = part[len("field_label:") :].strip()
+                        break
+            if fetched_label != field_label:
+                failures.append(
+                    f"{case_id}/{obs.observation_id}: field_label: "
+                    f"got={fetched_label!r} expected={field_label!r}"
+                )
+
+            # intended_field_pointer must be None
+            if fetched.intended_field_pointer is not None:
+                failures.append(
+                    f"{case_id}/{obs.observation_id}: intended_field_pointer should be None, "
+                    f"got {fetched.intended_field_pointer!r} for field {field_label!r}"
+                )
+
+            found_and_verified += 1
+            if found_and_verified >= 3:
+                break
+        if found_and_verified >= 3:
+            break
+
+    if found_and_verified == 0:
+        pytest.skip(
+            "No non-canonical field observations found in imported bundles — "
+            "check that air_draft/freeboard/sail_area_main/etc. are present in corpus"
+        )
+
+    assert not failures, (
+        f"{len(failures)} non-canonical field pointer roundtrip failure(s):\n" + "\n".join(failures)
+    )

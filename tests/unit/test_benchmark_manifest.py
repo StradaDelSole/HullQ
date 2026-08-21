@@ -599,7 +599,7 @@ def test_two_dimensional_observations_are_field_distinguishable(bundles: dict) -
 
 def test_canonical_field_pointer_for_known_dimension(bundles: dict) -> None:  # type: ignore[type-arg]
     """Observations for established canonical fields must have intended_field_pointer set."""
-    from benchmark.materializer import _CANONICAL_POINTER_FIELDS
+    from benchmark.materializer import _CANONICAL_FIELD_POINTERS
 
     from hullq.domain.provenance import JsonPointer
 
@@ -613,7 +613,7 @@ def test_canonical_field_pointer_for_known_dimension(bundles: dict) -> None:  # 
                 if not part.startswith("field_label:"):
                     continue
                 field = part[len("field_label:") :].strip()
-                if field in _CANONICAL_POINTER_FIELDS:
+                if field in _CANONICAL_FIELD_POINTERS:
                     canonical_obs_found.append(
                         (case_id, obs.observation_id, obs.intended_field_pointer)
                     )
@@ -635,7 +635,7 @@ def test_no_guessed_canonical_pointer_for_unknown_fields(bundles: dict) -> None:
     This guards against over-eager pointer assignment that would manufacture
     canonical mappings for research-specific or ambiguous field names.
     """
-    from benchmark.materializer import _CANONICAL_POINTER_FIELDS
+    from benchmark.materializer import _CANONICAL_FIELD_POINTERS
 
     from hullq.domain.provenance import JsonPointer
 
@@ -654,7 +654,7 @@ def test_no_guessed_canonical_pointer_for_unknown_fields(bundles: dict) -> None:
                     if part.startswith("field_label:"):
                         field_from_notes = part[len("field_label:") :].strip()
                         break
-            if field_from_notes and field_from_notes not in _CANONICAL_POINTER_FIELDS:
+            if field_from_notes and field_from_notes not in _CANONICAL_FIELD_POINTERS:
                 wrong.append((case_id, obs.observation_id, field_from_notes))
 
     assert not wrong, (
@@ -679,3 +679,90 @@ def test_generic_specification_source_not_manufacturer_specification() -> None:
             f"Source name {name!r} produced MANUFACTURER_SPECIFICATION via generic keyword guessing. "
             "Document type must come from established manufacturer name evidence, not generic terms."
         )
+
+
+def test_all_populated_field_pointers_are_valid_schema_paths() -> None:
+    """Every JsonPointer produced by _canonical_field_pointer must resolve to a real
+    field in specs/BOAT_DESIGN_SCHEMA.v0.4.json using JSON-Pointer traversal.
+
+    This catches stale or invented paths whenever the schema evolves.
+    """
+    import json
+
+    from benchmark.materializer import _CANONICAL_FIELD_POINTERS
+
+    schema_path = ROOT / "specs" / "BOAT_DESIGN_SCHEMA.v0.4.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+
+    def _path_exists(s: dict[str, Any], pointer: str) -> bool:
+        parts = pointer.lstrip("/").split("/")
+        node: Any = s
+        for part in parts:
+            props = node.get("properties")
+            if props is None or part not in props:
+                return False
+            node = props[part]
+        return True
+
+    bad: list[tuple[str, str]] = [
+        (field, path)
+        for field, path in _CANONICAL_FIELD_POINTERS.items()
+        if not _path_exists(schema, path)
+    ]
+    assert not bad, (
+        f"{len(bad)} canonical field pointer(s) do not resolve in BOAT_DESIGN_SCHEMA.v0.4.json: "
+        f"{bad}"
+    )
+
+
+def test_exact_canonical_field_pointer_mappings() -> None:
+    """The exact required mappings from benchmark field name to BoatDesign v0.4 path must hold."""
+    from benchmark.materializer import _canonical_field_pointer
+
+    from hullq.domain.provenance import JsonPointer
+
+    expected: list[tuple[str, str]] = [
+        ("loa", "/baseline/dimensions/loa_m"),
+        ("lwl", "/baseline/dimensions/lwl_m"),
+        ("beam", "/baseline/dimensions/beam_m"),
+        ("draft_min", "/baseline/dimensions/draft_min_m"),
+        ("draft_max", "/baseline/dimensions/draft_max_m"),
+        ("displacement", "/baseline/dimensions/displacement_kg"),
+        ("ballast", "/baseline/dimensions/ballast_kg"),
+        ("sail_area", "/baseline/dimensions/sail_area_m2"),
+        ("keel_type", "/baseline/configuration/keel_type"),
+        ("rudder_type", "/baseline/configuration/rudder_type"),
+    ]
+    for field, expected_path in expected:
+        ptr = _canonical_field_pointer(field)
+        assert isinstance(ptr, JsonPointer), f"Field {field!r}: expected JsonPointer, got {ptr!r}"
+        assert str(ptr) == expected_path, (
+            f"Field {field!r}: expected path {expected_path!r}, got {str(ptr)!r}"
+        )
+
+
+def test_noncanonical_fields_return_none_pointer() -> None:
+    """Fields without an exact 1:1 canonical match must return None from _canonical_field_pointer.
+
+    Covers: ambiguous fields (draft), absent fields (air_draft, freeboard,
+    sail_area_main, sail_area_jib, sail_area_spinnaker), plural vs singular
+    mismatch (rig_types vs rig_type), and arbitrary unknown fields.
+    """
+    from benchmark.materializer import _canonical_field_pointer
+
+    non_canonical = [
+        "draft",
+        "air_draft",
+        "freeboard",
+        "sail_area_main",
+        "sail_area_jib",
+        "sail_area_spinnaker",
+        "rig_types",
+        "draft_board_up",
+        "draft_max_board_down",
+        "keel_options",
+        "rudder_attachment",
+        "unknown_field",
+    ]
+    wrong = [f for f in non_canonical if _canonical_field_pointer(f) is not None]
+    assert not wrong, f"Non-canonical field(s) produced a non-None intended_field_pointer: {wrong}"

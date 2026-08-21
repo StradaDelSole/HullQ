@@ -243,40 +243,34 @@ _OTHER_CLAIM_FIELDS: frozenset[str] = frozenset(
     }
 )
 
-# Fields for which a canonical JSON-Pointer field path is established in the
-# HullQ domain model. Only well-known physical/design dimensions are included;
-# do not add speculative or research-specific fields.
-_CANONICAL_POINTER_FIELDS: frozenset[str] = frozenset(
-    {
-        "loa",
-        "lwl",
-        "beam",
-        "draft",
-        "draft_min",
-        "draft_max",
-        "air_draft",
-        "freeboard",
-        "displacement",
-        "ballast",
-        "sail_area",
-        "sail_area_main",
-        "sail_area_jib",
-        "sail_area_spinnaker",
-        "keel_type",
-        "rudder_type",
-        "rig_types",
-    }
-)
+# Explicit mapping from retained benchmark field name to an actual accepted
+# canonical path in BoatDesign v0.4 (specs/BOAT_DESIGN_SCHEMA.v0.4.json).
+# Only add an entry when there is an exact 1:1 semantic match. Fields that
+# are ambiguous (e.g. "draft"), absent from the schema, or only partially
+# matched (e.g. "rig_types" vs singular "rig_type") must remain None.
+_CANONICAL_FIELD_POINTERS: dict[str, str] = {
+    "loa": "/baseline/dimensions/loa_m",
+    "lwl": "/baseline/dimensions/lwl_m",
+    "beam": "/baseline/dimensions/beam_m",
+    "draft_min": "/baseline/dimensions/draft_min_m",
+    "draft_max": "/baseline/dimensions/draft_max_m",
+    "displacement": "/baseline/dimensions/displacement_kg",
+    "ballast": "/baseline/dimensions/ballast_kg",
+    "sail_area": "/baseline/dimensions/sail_area_m2",
+    "keel_type": "/baseline/configuration/keel_type",
+    "rudder_type": "/baseline/configuration/rudder_type",
+}
 
 
 def _canonical_field_pointer(field: str) -> JsonPointer | None:
-    """Return a JsonPointer for fields with established canonical domain paths.
+    """Return a JsonPointer for fields with an exact canonical BoatDesign v0.4 path.
 
-    Only fields in _CANONICAL_POINTER_FIELDS receive a pointer. All others
-    return None; their identity must be preserved via notes instead.
+    Looks up _CANONICAL_FIELD_POINTERS. Returns None for any field not in the
+    mapping; identity is preserved via field_label: in notes for all fields.
     """
-    if field in _CANONICAL_POINTER_FIELDS:
-        return JsonPointer(f"/{field}")
+    path = _CANONICAL_FIELD_POINTERS.get(field)
+    if path is not None:
+        return JsonPointer(path)
     return None
 
 
