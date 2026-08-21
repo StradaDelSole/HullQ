@@ -94,14 +94,18 @@ WIKIDATA_SOURCE_ID = "SRC_WIKIDATA_API_2026"
 # This is a bounded-probe ceiling specific to the controlled SLICE-0008 scope.
 SLICE_0008_ITEM_CEILING = 100
 
-# SLICE-0017 broad-bootstrap hard safety ceiling — independent of and does not
-# mutate SLICE_0008_ITEM_CEILING or WikidataAdapterConfig.item_limit, which
-# retain their original SLICE-0008 controlled-probe meaning unchanged. The
-# bootstrap requested candidate limit (1,000) is a runner-level policy choice
-# defined in hullq.bootstrap.wikidata_tier0; this ceiling (1,500) is the
-# adapter-level hard upper bound below which the bootstrap-specific discovery
-# and acquisition methods on WikidataAdapter operate.
-WIKIDATA_BOOTSTRAP_SAFETY_CEILING = 1500
+# Broad-bootstrap hard safety ceiling — independent of and does not mutate
+# SLICE_0008_ITEM_CEILING or WikidataAdapterConfig.item_limit, which retain
+# their original SLICE-0008 controlled-probe meaning unchanged. The bootstrap
+# requested candidate limit is a runner-level policy choice defined in
+# hullq.bootstrap.wikidata_tier0 (SLICE-0017: 1,000) and
+# hullq.bootstrap.wikidata_tier0_sl0018 (SLICE-0018: 2,500); this ceiling is
+# the shared adapter-level hard upper bound below which the bootstrap-specific
+# discovery and acquisition methods on WikidataAdapter operate. Raised from
+# 1,500 (SLICE-0017) to 3,000 to accommodate the SLICE-0018 <=2,500-window
+# expansion's own hard safety ceiling without loosening SLICE-0017's already
+# accepted requested limit/behavior, which remains unchanged at 1,000.
+WIKIDATA_BOOTSTRAP_SAFETY_CEILING = 3000
 
 # ---------------------------------------------------------------------------
 # Internal API constants

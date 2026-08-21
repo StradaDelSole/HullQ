@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0018  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 3.2 — measured identity-universe expansion  
 **Depends on:** SLICE-0017 accepted / DONE  
 **Blocks:** any 5,000-window expansion or decision to add another bootstrap source
@@ -620,3 +620,75 @@ The implementation agent MUST:
 - clearly distinguish local evidence from CI-only PostgreSQL/live evidence.
 
 After implementation review and exact-head CI, only the project owner can accept the slice. Closure/readiness for any later slice remains a separate master workflow step.
+
+## Implementation completion report
+
+### Slice
+
+- Slice ID: `SLICE-0018`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+
+### Changes
+
+- Changed files:
+  - `src/hullq/sources/wikidata.py` — `WIKIDATA_BOOTSTRAP_SAFETY_CEILING` raised 1,500 -> 3,000 (shared adapter-level ceiling; SLICE-0017's own requested-limit behavior of 1,000 is untouched).
+  - `src/hullq/bootstrap/wikidata_tier0.py` — `_search_keys_for_candidate` promoted to public `search_keys_for_candidate` (exported); `_build_observation`/`build_bundle` gained an optional `activity_id` parameter defaulting to the original `"SLICE-0017-BOOTSTRAP"` value (zero behavior change for existing callers/tests).
+  - `src/hullq/bootstrap/wikidata_tier0_sl0018.py` (new) — baseline loading/integrity, expansion-delta computation, baseline/delta-vs-delta collision detection, delta classification, SLICE-0018 manifest builder. Reuses `BootstrapCandidate`/`build_admission`/`mint_hullq_id`/`compute_collision_clusters` unchanged.
+  - `scripts/bootstrap/wikidata_tier0_sl0018_runner.py` (new) — `--live`/`--recompute`/`--replay` runner; replay performs baseline-first then delta-second combined PostgreSQL import/verification in two independent isolated schemas.
+  - `research/bootstrap/wikidata/sl0018-2500/manifest_schema.json` (new) — versioned JSON Schema Draft 2020-12 for the SLICE-0018 retained manifest.
+  - `research/bootstrap/wikidata/sl0018-2500/manifest.json` (new, retained artifact from the one authorized live run).
+  - `research/bootstrap/wikidata/sl0018-2500/REPORT.md` (new, generated report).
+  - `.github/workflows/ci.yml` — added SLICE-0018 manifest schema validation, combined replay, zero-tolerance assertion and artifact-upload steps to the existing `db-integration` job, after the unmodified SLICE-0017 steps.
+  - `tests/unit/test_wikidata_tier0_sl0018_expansion.py` (new, 21 tests).
+  - `tests/persistence/test_wikidata_tier0_sl0018_expansion_integration.py` (new, 2 tests).
+- Requirements implemented: the SLICE-0018 contract's expansion-delta computation, baseline-preserving classification, historical-crosswalk reuse, baseline/delta collision handling, versioned manifest, and baseline-first/delta-second combined PostgreSQL replay with drift detection.
+- Tests/fixtures added: the two files above; no existing SLICE-0017 test was modified.
+
+### Validation
+
+- Local validation: `PASS`
+- Commands run:
+  - `uv run python scripts/validate_repository.py`
+  - `uv run ruff format --check .`
+  - `uv run ruff check .`
+  - `uv run mypy src`
+  - `uv run coverage run -m pytest` (full suite, `HULLQ_TEST_DATABASE_URL` set against a local disposable PostgreSQL 18.6 container) then `uv run coverage report`
+  - `uv run pip-audit`
+  - `uv run python scripts/bootstrap/wikidata_tier0_runner.py --replay ...` (accepted SLICE-0017 baseline prerequisite, run standalone)
+  - `uv run python scripts/bootstrap/wikidata_tier0_sl0018_runner.py --replay ...` (SLICE-0018 combined baseline+delta, run standalone after the full test suite finished, to avoid shared-database lock contention)
+  - `uv run python scripts/bootstrap/wikidata_tier0_sl0018_runner.py --live --user-agent "HullQ/0.1 (SLICE-0018 controlled bootstrap; https://github.com/StradaDelSole/HullQ)" --limit 2500` (the one authorized live acquisition)
+  - `uv run python scripts/bootstrap/wikidata_tier0_sl0018_runner.py --recompute` (offline-only, to correct a cosmetic absolute-path field in the manifest's `baseline_reference.manifest_path` after the live run; reused every retained HullQ ID exactly, `acquired_at` preserved verbatim, `classification_recomputed_at` newly set)
+- Results:
+  - repository validator: PASS (88 requirements / 88 acceptance criteria, 27 active schemas)
+  - Ruff format/lint: PASS (206 files)
+  - mypy strict (`src`, 33 files): PASS
+  - full test suite: **1633 passed, 2 skipped** (the 2 skips are pre-existing live-network smoke tests requiring an explicit `--run-live` flag, unrelated to this slice)
+  - `tests/persistence/` alone (PostgreSQL 18.6): **205 passed**, including the 2 new SLICE-0018 integration tests
+  - coverage: **94.96%** overall (gate is `>=90%`); `src/hullq/bootstrap/wikidata_tier0_sl0018.py` **100%**; `src/hullq/bootstrap/wikidata_tier0.py` 96.27% (unchanged pre-existing gaps)
+  - pip-audit: no known vulnerabilities
+  - **one authorized live Wikidata acquisition** (`--live --limit 2500`): unique QIDs returned **1,829** (target of 2,500 **not reached** — this is the measured direct-instance source ceiling for `Q106179098`, per the slice's explicit "measure whether Wikidata reaches the 2,500 target" requirement; no padding from another source was performed); overlap with the accepted 1,000-QID baseline **1,000** (full baseline still present — zero baseline churn); baseline-absent QIDs **0**; expansion delta **829**; delta `AUTO_ADMIT` **805**, `REVIEW_REQUIRED` **16** (6 baseline collisions, 6 delta-delta collision clusters), `NOT_ADMITTED` **8** (`missing_label`); acquisition failures **0**; retained crosswalk after merge **1,772** (967 baseline + 805 new); expected combined canonical BoatModel count after replay **1,770** (965 baseline + 805 delta)
+  - **local combined PostgreSQL 18.6 replay** (`--replay`, standalone, full ~1,800-candidate scale, both isolated schemas): baseline-first import exactly reproduced 985 bundles / 965 admissions with the accepted baseline's exact canonical ID set and zero readback mismatches, in both passes, both before and after delta application (zero baseline drift); combined (baseline+delta) import: **1,806 bundles / 1,770 admissions imported**, 0 already-present/conflict/error/unexpected-status; 0 combined readback mismatches; 0 unexpected canonical rows for non-admitted candidates; exact combined canonical ID set match; 0 stray Brand/Organization/BoatDesign rows; exact re-import idempotency (**3,576 ALREADY_IMPORTED**, 0 conflict/error) in the same schema; independent fresh-schema rerun reproduced the identical combined graph with the same zero counts; **`all_zero_tolerance_conditions_clear: true`** in both the first pass and the independent fresh-schema pass
+  - retained Stage-2 benchmark: not re-run by this slice (out of scope; CI reruns it unmodified as part of the existing `db-integration` job, which this PR does not touch)
+
+### External verification
+
+- Remote CI: `NOT VERIFIED` — the branch has not yet been pushed/observed on GitHub Actions as of this report; push happens immediately after this report is written.
+- Other external gates: `NOT APPLICABLE`
+
+### Findings
+
+- Unresolved findings: none identified during implementation. One self-caught issue was corrected before commit: the freshly live-acquired manifest's `baseline_reference.manifest_path` field initially recorded a developer-machine absolute Windows path; corrected via a code fix (`_repo_relative_path` helper in the runner) plus one offline `--recompute` pass (no network reacquisition; every retained ID/decision reused exactly, `acquired_at` preserved verbatim) so the committed manifest records a portable repo-relative path.
+- Spec/ADR ambiguities: none blocking. The slice's manifest-layout list is a minimum-fields requirement, not an exact schema; the implemented `sl0018-v1` manifest schema is a superset satisfying every listed field (discovery window, baseline reference + fingerprint, overlap/baseline-absent, delta, delta-vs-baseline and delta-vs-delta collision detail, retained crosswalk, counts).
+- Scope deviations: none. No 5,000 expansion, no other bootstrap source, no resolution of the 0017 review queue, no technical enrichment, and no Brand/Organization/BoatDesign inference were introduced.
+
+### Follow-up
+
+- Recommended next action: push this branch, observe exact-head GitHub Actions CI (Ubuntu/Windows quality, dependency audit, and the extended `db-integration` job including the new SLICE-0018 manifest-schema validation + combined-replay + zero-tolerance-assertion steps), then route to independent review and project-owner acceptance per the normal workflow. Do not begin a 5,000-candidate expansion or another bootstrap source; both remain explicitly out of scope for any later slice until a separate slice authorizes them.
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice was not started automatically.
+- The agent has NOT marked this slice `DONE`.

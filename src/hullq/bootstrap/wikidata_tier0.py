@@ -83,6 +83,7 @@ __all__ = [
     "compute_collision_clusters",
     "load_crosswalk_from_manifest",
     "mint_hullq_id",
+    "search_keys_for_candidate",
     "validate_crosswalk_consistency",
 ]
 
@@ -164,11 +165,16 @@ def _stable_alias_id(name: str) -> str:
     return f"ALIAS-{digest}"
 
 
-def _search_keys_for_candidate(label: str, aliases: Sequence[str]) -> frozenset[str]:
+def search_keys_for_candidate(label: str, aliases: Sequence[str]) -> frozenset[str]:
     """The complete accepted deterministic search-key projection for one
     candidate's label + aliases, reusing the single accepted HullQ projection
     (``hullq.domain.identity.generate_search_keys``) rather than a weaker
     parallel normalization.
+
+    Public (not bootstrap-run-scoped) so a later expansion slice (e.g.
+    SLICE-0018) can compute the identical projection for its own new
+    candidates and for a retained baseline's candidates without
+    reimplementing this normalization.
     """
     alias_objs = tuple(
         IdentityAlias(id=_stable_alias_id(name), alias_class=AliasClass.SOURCE_SPELLING, name=name)
@@ -203,7 +209,7 @@ def compute_collision_clusters(entities: list[WikidataEntityData]) -> list[Colli
     """
     labeled = [e for e in entities if e.label]
     keys_by_qid: dict[str, frozenset[str]] = {
-        e.qid: _search_keys_for_candidate(e.label, e.aliases)  # type: ignore[arg-type]
+        e.qid: search_keys_for_candidate(e.label, e.aliases)  # type: ignore[arg-type]
         for e in labeled
     }
 
@@ -509,7 +515,9 @@ def _unbounded_applicability() -> ObservationApplicability:
     )
 
 
-def _build_observation(candidate: BootstrapCandidate) -> ResearchObservation:
+def _build_observation(
+    candidate: BootstrapCandidate, *, activity_id: str = "SLICE-0017-BOOTSTRAP"
+) -> ResearchObservation:
     assert candidate.preferred_label is not None
     assert candidate.observation_id is not None
     return ResearchObservation(
@@ -532,7 +540,7 @@ def _build_observation(candidate: BootstrapCandidate) -> ResearchObservation:
         claim_semantics=ClaimSemantics.IDENTITY_OR_CHRONOLOGY_CLAIM,
         applicability=_unbounded_applicability(),
         producer=_producer(),
-        research_context=ResearchContext(research_job_id=None, activity_id="SLICE-0017-BOOTSTRAP"),
+        research_context=ResearchContext(research_job_id=None, activity_id=activity_id),
         observed_at=candidate.retrieved_at,
         confidence=ConfidenceLevel.MEDIUM,
         supersedes_observation_id=None,
@@ -542,19 +550,27 @@ def _build_observation(candidate: BootstrapCandidate) -> ResearchObservation:
     )
 
 
-def build_bundle(candidate: BootstrapCandidate) -> ResearchEvidenceBundle | None:
+def build_bundle(
+    candidate: BootstrapCandidate, *, activity_id: str = "SLICE-0017-BOOTSTRAP"
+) -> ResearchEvidenceBundle | None:
     """Build the retained ResearchEvidenceBundle for one candidate.
 
     Returns ``None`` for a candidate with no preserved observation (currently
     only ``MISSING_LABEL`` NOT_ADMITTED candidates, which have no source
     identity claim to record).
+
+    ``activity_id`` defaults to the original SLICE-0017 value so every
+    existing SLICE-0017 caller/test is unaffected; a later expansion slice
+    (e.g. SLICE-0018) passes its own activity_id so its genuinely new
+    evidence/bundles are labeled accurately rather than misattributed to
+    SLICE-0017.
     """
     if candidate.preferred_label is None or candidate.observation_id is None:
         return None
     assert candidate.bundle_id is not None
     assert candidate.bundle_version is not None
 
-    observation = _build_observation(candidate)
+    observation = _build_observation(candidate, activity_id=activity_id)
     findings: tuple[UnresolvedFinding, ...] = ()
     if candidate.decision != BootstrapDecision.AUTO_ADMIT:
         reason_text = ", ".join(str(r) for r in candidate.reason_codes)
@@ -576,7 +592,7 @@ def build_bundle(candidate: BootstrapCandidate) -> ResearchEvidenceBundle | None
         bundle_version=candidate.bundle_version,
         research_target=observation.research_target,
         research_job_id=None,
-        activity_id="SLICE-0017-BOOTSTRAP",
+        activity_id=activity_id,
         observations=(observation,),
         unresolved_findings=findings,
         promoted_evidence=(),

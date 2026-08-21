@@ -172,6 +172,50 @@ jobs:
             research/bootstrap/wikidata/REPLAY-REPORT.md
           if-no-files-found: warn
 
+      - name: Validate SLICE-0018 expansion manifest against schema
+        run: >
+          uv run python -c "
+          import json, jsonschema, pathlib;
+          manifest = json.loads(pathlib.Path('research/bootstrap/wikidata/sl0018-2500/manifest.json').read_text());
+          schema = json.loads(pathlib.Path('research/bootstrap/wikidata/sl0018-2500/manifest_schema.json').read_text());
+          jsonschema.validate(instance=manifest, schema=schema);
+          print('SLICE-0018 manifest.json validates against manifest_schema.json');
+          print(f\"delta_count={manifest['delta']['delta_count']} auto_admit={manifest['counts']['auto_admit']} review_required={manifest['counts']['review_required']} not_admitted={manifest['counts']['not_admitted']}\");
+          print(f\"overlap_with_baseline={manifest['overlap']['overlap_count']} baseline_absent={manifest['overlap']['baseline_absent_count']}\");
+          "
+
+      - name: Replay SLICE-0018 baseline-first/delta-second bootstrap manifest against PostgreSQL 18
+        env:
+          HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
+        run: >
+          uv run python scripts/bootstrap/wikidata_tier0_sl0018_runner.py --replay
+          --db-url postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
+          --baseline-manifest research/bootstrap/wikidata/manifest.json
+          --manifest research/bootstrap/wikidata/sl0018-2500/manifest.json
+          --result research/bootstrap/wikidata/sl0018-2500/REPLAY-RESULT.json
+          --replay-report research/bootstrap/wikidata/sl0018-2500/REPLAY-REPORT.md
+
+      - name: Verify SLICE-0018 replay cleared every zero-tolerance condition
+        run: >
+          uv run python -c "
+          import json, pathlib;
+          result = json.loads(pathlib.Path('research/bootstrap/wikidata/sl0018-2500/REPLAY-RESULT.json').read_text());
+          print(json.dumps(result, indent=2));
+          assert result['all_zero_tolerance_conditions_clear'] is True, 'SLICE-0018 replay left a non-zero-tolerance condition unresolved'
+          "
+
+      - name: Upload SLICE-0018 expansion outputs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sl0018-expansion-outputs
+          path: |
+            research/bootstrap/wikidata/sl0018-2500/manifest.json
+            research/bootstrap/wikidata/sl0018-2500/REPORT.md
+            research/bootstrap/wikidata/sl0018-2500/REPLAY-RESULT.json
+            research/bootstrap/wikidata/sl0018-2500/REPLAY-REPORT.md
+          if-no-files-found: warn
+
   dependency-audit:
     name: dependency audit
     runs-on: ubuntu-latest
