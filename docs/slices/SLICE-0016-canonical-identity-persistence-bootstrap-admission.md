@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0016  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 3.0 — canonical identity persistence prerequisite for controlled broad bootstrap  
 **Depends on:** SLICE-0015 accepted / DONE / Stage-2 G3 PASS  
 **Blocks:** controlled ~1,000-design identity bootstrap
@@ -399,3 +399,168 @@ The implementation agent MUST NOT begin the controlled ~1,000-design bootstrap o
 4. explicit project-owner acceptance.
 
 At completion, use the standard HullQ completion-report structure and clearly distinguish local validation from remote/external verification.
+
+---
+
+## Completion report
+
+### Slice
+
+- Slice ID: `SLICE-0016`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+- Branch: `slice/0016-canonical-identity-persistence-bootstrap-admission`
+- Head commit: `bb3287f`
+
+### Changes
+
+- Changed/added files:
+  - `src/hullq/persistence/sql/002_canonical_identity_schema.sql` — new ordered migration (extends the 001 chain): `canonical_brands`, `canonical_organizations`, `canonical_brand_aliases`, `canonical_organization_aliases`, `canonical_boat_models`, `canonical_boat_model_aliases`, `canonical_brand_model_relationships`, `canonical_boat_designs`, `canonical_organization_design_relationships`, `canonical_admission_evidence_links` (+ 1 index).
+  - `src/hullq/persistence/identity_types.py` — `CanonicalIdentityAdmission`, `CanonicalEvidenceLink`, `CanonicalImportResult`/`CanonicalImportStatus`, `CanonicalPersistenceConflictError`, `CanonicalReferenceError`.
+  - `src/hullq/persistence/identity_fingerprint.py` — per-row deterministic SHA-256 content fingerprints (reuses `persistence.fingerprint`'s canonical-JSON helper).
+  - `src/hullq/persistence/identity_schema.py` — domain-object/payload-dict ↔ accepted-schema-shape and PostgreSQL row-parameter conversion helpers.
+  - `src/hullq/persistence/identity_importer.py` — `import_canonical_identity_admission()`: schema validation before any DB mutation, one atomic transaction, race-safe `INSERT ... ON CONFLICT DO NOTHING` + hash-verify upsert per row, `ForeignKeyViolation` → `CanonicalReferenceError`.
+  - `src/hullq/persistence/identity_readback.py` — `fetch_brand`/`fetch_organization`/`fetch_boat_model`/`fetch_boat_design`/`fetch_brand_model_relationship`/`fetch_organization_design_relationship`/`fetch_evidence_links_for_entity`.
+  - `tests/persistence/conftest.py` — extended the per-test `TRUNCATE` list with the new `canonical_*` tables.
+  - `tests/persistence/test_canonical_identity_integration.py` — 25 real-PostgreSQL integration tests.
+  - `tests/unit/test_canonical_identity_mocked_db.py` — 66 mocked-connection unit tests.
+  - `docs/slices/INDEX.md`, this slice document — status `READY` → `REVIEW`.
+- Requirements implemented: the SLICE-0016 canonical identity persistence/admission boundary (binding rules 1-12; in-scope items A-E) as specified in this document. No requirement outside this slice was touched.
+- Tests/fixtures added: 91 new tests (25 PostgreSQL integration + 66 mocked-connection unit). All existing tests (1252 previously) remain green and unmodified in behavior; only `tests/persistence/conftest.py`'s shared fixture gained new table names.
+
+### Entity/relationship types persisted
+
+Brand, Organization, entity-scoped `IdentityAlias` (Brand/Organization/BoatModel-scoped), BoatModel (Tier-0 identity: id/canonical_name/first_built/last_built; aliases and `boat_design_ids` are child rows / derived at readback, not duplicated in the row), BoatDesign (Tier-0 identity + full accepted technical baseline persisted as JSONB: `generation`, `designers`, `number_built`, `baseline`, `named_variants`, `design_options`, `quality`), standalone `BrandModelRelationship` and `OrganizationDesignRelationship` (extracted from the embedded `brand_relationships` / `relationships.builders` arrays using the enclosing entity's own ID, then independently validated against the standalone `BRAND_MODEL_RELATIONSHIP_SCHEMA.v0.1` / `ORGANIZATION_DESIGN_RELATIONSHIP_SCHEMA.v0.1`).
+
+`NamedVariant`/`DesignOption` are persisted only opaquely inside the BoatDesign row's `named_variants`/`design_options` JSONB columns (required, schema-validated keys) — no normalized/queryable NamedVariant/DesignOption persistence was introduced, per the explicit out-of-scope boundary.
+
+### Idempotency / conflict semantics
+
+Every canonical row (Brand, Organization, alias, BoatModel, BoatDesign, BrandModelRelationship, OrganizationDesignRelationship, evidence link) is independently keyed by its own caller-supplied stable ID and independently content-fingerprinted (SHA-256 of canonical JSON over that row's own comparable fields only — never including child/unordered-collection content, so reordering aliases/relationships/evidence-links never produces a false conflict). `INSERT ... ON CONFLICT (id) DO NOTHING` makes every write race-safe; on `rowcount == 0` the existing row's hash is compared: identical content is a no-op (contributes to `ALREADY_IMPORTED`), differing content raises `CanonicalPersistenceConflictError`, caught by the importer and returned as `CanonicalImportResult(status=CONFLICT, detail=...)` with the full admission rolled back. `import_canonical_identity_admission()` returns `IMPORTED` if at least one row was newly written and nothing conflicted, `ALREADY_IMPORTED` if every row already existed identically, `CONFLICT` on any content collision.
+
+### Provenance-link semantics
+
+`CanonicalEvidenceLink(link_id, entity_kind, entity_id, observation_id | evidence_id, notes)` — the dataclass itself rejects construction unless exactly one of `observation_id`/`evidence_id` is set (defense-in-depth `CHECK` constraint backs this at the DB layer too). `entity_kind` is restricted to the linkable subset of the existing `SubjectKind` vocabulary (brand/organization/boat_model/boat_design/brand_model_relationship/organization_design_relationship). The link's `observation_id`/`evidence_id` column carries a real foreign key into `research_observations`/`research_evidence` (from the accepted SLICE-0013 schema); a missing/invalid reference raises `psycopg.errors.ForeignKeyViolation`, translated to `CanonicalReferenceError` and rolled back — never silently dropped. There is deliberately **no** foreign key into `bundle_reference_crosschecks`: a crosscheck ID cannot satisfy this linkage even if a caller tries to pass one, proven by `test_reference_crosscheck_cannot_satisfy_admission_provenance`.
+
+### PostgreSQL version
+
+PostgreSQL 18, matching the accepted SLICE-0013 baseline and the CI `db-integration` job's `postgres:18` service container. **Not independently confirmed in this session** — see External verification below.
+
+### New persistence tests
+
+91 (25 real-PostgreSQL integration in `tests/persistence/test_canonical_identity_integration.py`, 66 mocked-connection unit in `tests/unit/test_canonical_identity_mocked_db.py`).
+
+### Validation
+
+- Local validation: `PASS` (unit/contract/mocked tests); `PARTIAL` (real-PostgreSQL integration tests — see below)
+- Commands run:
+  - `uv run ruff format --check .`
+  - `uv run ruff check .`
+  - `uv run mypy src`
+  - `uv run python scripts/validate_repository.py`
+  - `uv run coverage run -m pytest` then `uv run coverage report`
+- Results:
+  - `ruff format --check .`: 187 files already formatted.
+  - `ruff check .`: all checks passed.
+  - `mypy src` (strict): no issues found in 30 source files.
+  - `scripts/validate_repository.py`: 27 active schemas, 88 requirements, 88 acceptance criteria, `repository governance validation: PASS`.
+  - `coverage run -m pytest` / `coverage report`: **1343 passed, 189 skipped**, **94.27% branch coverage** (threshold 90%). All 25 new PostgreSQL integration tests in `tests/persistence/test_canonical_identity_integration.py` were among the 189 skipped locally (no `HULLQ_TEST_DATABASE_URL` set in this session) — see External verification.
+  - A PostgreSQL 18 server is installed locally (`C:\Program Files\PostgreSQL\18`) and running, but its `postgres` superuser credentials are not known to this session (password authentication failed; not brute-forced). The 25 real-PostgreSQL integration tests, the migration-application logic, and the SQL DDL itself were therefore **not executed against a live database in this session** — they were only reviewed statically (column/param-order cross-check against every `INSERT`/row-params pair; FK-dependency ordering within the importer; migration-file lexicographic ordering). This is a real gap relative to full local confidence and is explicitly called out rather than presented as verified.
+
+### External verification
+
+- Remote CI: `NOT VERIFIED` (branch not yet pushed as of this report; CI has not run against this exact head)
+- Other external gates: `NOT APPLICABLE`
+
+### Findings
+
+- Unresolved findings: none identified during implementation.
+- Spec/ADR ambiguities: none blocking. One interpretive decision worth flagging for reviewer attention: `BoatModel.boat_design_ids` and the embedded `brand_relationships`/`relationships.builders` `boat_model_id`/`boat_design_id` fields are treated as **derived/redundant** at the persistence boundary — the importer never writes `boat_design_ids` from the caller's payload; it is reconstructed at readback from the normalized `canonical_boat_designs.boat_model_id` foreign key, and the embedded relationship's implicit parent ID is always the enclosing entity's own ID rather than anything read from the embedded dict. This was chosen to avoid two ways to say the same fact diverging, and is exercised by `test_reconstructed_payloads_validate_against_accepted_schemas`, but it is a design choice within "MAY use separate relationship records or an equivalent normalized representation" (IDENTITY_MODEL.v0.2 §3) rather than a literally spelled-out requirement.
+- Scope deviations: none. No `NamedVariant`/`DesignOption` normalized persistence, no fuzzy resolution, no ID minting, no bootstrap, no query engine, no API/frontend work was introduced.
+
+### Follow-up
+
+- Recommended next action: push this branch, open a PR, and let the `db-integration` CI job (real `postgres:18` service container) execute `tests/persistence/` — including the 25 new canonical-identity integration tests — against this exact head. Independent review should specifically re-check the SQL migration and the `INSERT`/row-params column-order pairing that could not be exercised against a live database in this session.
+- Unresolved identity/admission questions carried forward to the actual ~1,000-design bootstrap (explicitly out of scope here, per the slice document): this slice deliberately does not decide how a source candidate becomes an admitted canonical payload — ID minting/resolution policy, duplicate-candidate detection heuristics, and the human-review workflow for ambiguous identity claims all remain open for that later, separately authorized slice.
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice was not started automatically.
+- The agent has NOT marked this slice `DONE`.
+
+---
+
+## Completion report (review round — head 804a148)
+
+### Slice
+
+- Slice ID: `SLICE-0016`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+- Branch: `slice/0016-canonical-identity-persistence-bootstrap-admission`
+- Head commit: `804a148` (previous reviewed head `bb3287f`; `77921d4` added the first completion report; `0eba32f`/`2356565` are reviewer-recovery commits with an empty net tree diff)
+- PR: #33 (draft, existing)
+
+Synchronized first via `git fetch origin` + `git pull --ff-only`, no reset/rebase/force-push.
+
+### What changed in this round
+
+Remote CI #193 against PostgreSQL 18.6 reported 186/187 PostgreSQL persistence tests passing (1 failure), plus two semantic blockers from independent code review. All three are fixed on this branch.
+
+**BLOCKER 1 — invalid upgrade-test cleanup (the CI failure):** `test_upgrade_from_research_only_schema_preserves_data`'s `finally` block deleted `research_observations` directly while `bundle_observation_members` still referenced the row, tripping `fk_bom_observation`. Fixed by deleting in FK-dependency order: `bundle_observation_members` → `research_bundles` → `research_observations`. No production foreign key or referential semantic was changed — only the test's own cleanup order.
+
+**BLOCKER 2 — `CanonicalEvidenceLink` target integrity was not fail-closed:** the importer verified that `observation_id`/`evidence_id` existed but never verified that `(entity_kind, entity_id)` addressed a real canonical row, so a link could be persisted against a nonexistent Brand/Organization/BoatModel/BoatDesign/relationship. Fixed with `_check_evidence_link_target_exists()` in `identity_importer.py`, using a fixed, explicit `dict[SubjectKind, str]` mapping from each of the six linkable kinds to its own literal `SELECT 1 FROM <table> WHERE id = %s` statement — never SQL built from caller-controlled table/column names. The check runs inside the same transaction/cursor as every upsert, so a target created earlier in the *same* admission (including a relationship extracted from an embedded `brand_relationships`/`relationships.builders` array) is already visible; a target ID existing only under a *different* kind's table still fails closed, since each kind queries its own distinct table.
+
+**BLOCKER 3 — `BoatModel.boat_design_ids` was silently discarded:** the importer schema-validated the caller's `boat_design_ids` projection but never compared it against the actual persisted BoatDesign graph, so a self-contradictory payload (e.g. declaring `["BD_A"]` while the real graph contained `["BD_B"]`) was silently accepted. Fixed with `_check_boat_model_design_consistency()`, run once per submitted BoatModel *after* all BoatDesigns in the same admission have been upserted (so same-admission designs are visible), comparing declared vs. actual `boat_design_ids` as `frozenset`s (order-independent). This catches a missing design, an undeclared/extra design, and a design that actually belongs to a *different* BoatModel — all fail closed and roll back the full admission. Existing test fixtures that admitted a BoatModel + BoatDesign together while still declaring `boat_design_ids=[]` were updated to declare the correct ID(s) (`test_builder_change_represented_through_relationship_only`, `test_sparse_tier0_boat_design_accepted_without_invented_values`, `test_boat_design_round_trips_full_technical_baseline`, `test_reconstructed_payloads_validate_against_accepted_schemas`).
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `src/hullq/persistence/identity_importer.py` | `_check_evidence_link_target_exists()`, `_check_boat_model_design_consistency()`, `_EVIDENCE_LINK_TARGET_EXISTENCE_SQL` mapping, `_SELECT_BOAT_DESIGNS_FOR_MODEL`; wired into `_upsert_evidence_link()` and `import_canonical_identity_admission()`; docstrings updated |
+| `tests/persistence/test_canonical_identity_integration.py` | Fixed `test_upgrade_from_research_only_schema_preserves_data` cleanup order; updated 4 fixtures' `boat_design_ids`; added `_evidence()`/`_bundle_with_evidence()` helpers and a `boat_design_ids` parameter on `_boat_model_payload()`; added 12 new tests (6 for BLOCKER 2, 6 for BLOCKER 3) |
+| `tests/unit/test_canonical_identity_mocked_db.py` | Fixed `test_evidence_link_with_evidence_id_only_validates_and_flows_through`'s mock (target-existence check now consumes a `fetchone`); added 11 new mocked tests (target-exists/missing, per-kind SQL routing, design-ids match/mismatch/reorder, direct tests of both new check functions) |
+
+### Validation
+
+- Local validation: `PASS` (unit/contract/mocked tests); `PARTIAL` (real-PostgreSQL integration tests — see below, unchanged from the first round)
+- Commands run: same as the first completion report (`ruff format --check .`, `ruff check .`, `mypy src`, `scripts/validate_repository.py`, `coverage run -m pytest` + `coverage report`)
+- Results:
+  - `ruff format --check .`: 187 files already formatted.
+  - `ruff check .`: all checks passed.
+  - `mypy src` (strict): no issues found in 30 source files.
+  - `scripts/validate_repository.py`: PASS (27 active schemas, 88 requirements, 88 acceptance criteria).
+  - `coverage run -m pytest` / `coverage report`: **1354 passed, 201 skipped**, **94.31% branch coverage** (threshold 90%). All PostgreSQL integration tests (37 in `test_canonical_identity_integration.py`, up from 25) were among the skipped locally.
+- PostgreSQL local result: `NOT VERIFIED`. A PostgreSQL 18 Windows service is installed and running locally (confirmed via `pg_isready` and `Get-Service`), but its `postgres` superuser password is unknown to this session — the one connection attempt failed password authentication and no further attempts were made (no `.pgpass`, no matching environment variable, and `pg_hba.conf` requires `scram-sha-256` for all local/host connections, so brute-forcing or altering system-level auth config was not attempted). All three fixes were verified by full local static/logical review — every `INSERT`/row-params column-order pairing, the transaction-visibility argument for same-admission targets, and each new test's expected mock call sequence were traced by hand — but none of this was exercised against a real PostgreSQL server in this session.
+
+### External verification
+
+- Remote CI: `NOT VERIFIED` for this exact head (`804a148`) — pushed as a fast-forward; CI has not yet reported against it. The previous head (`2356565`) reported CI #193: Ubuntu quality PASS, Windows quality PASS, dependency audit PASS, PostgreSQL persistence suite 186/187 (1 failure, BLOCKER 1 above), benchmark steps skipped as a consequence.
+- Other external gates: `NOT APPLICABLE`
+
+### Explicit resolution of each blocker
+
+- **BLOCKER 1** (invalid upgrade-test cleanup): RESOLVED — cleanup now follows FK-dependency order; no production referential semantics changed.
+- **BLOCKER 2** (evidence-link target integrity not fail-closed): RESOLVED — fixed explicit per-kind existence check added, covering all 6 required test scenarios (nonexistent observation-linked target, nonexistent evidence-linked target, wrong-kind target, same-admission entity target, same-admission relationship target, rollback of earlier canonical entities).
+- **BLOCKER 3** (`boat_design_ids` silently discarded): RESOLVED — order-independent consistency check added after same-admission BoatDesigns are upserted, covering all 6 required test scenarios (consistent set, reordered set, missing design, design claimed by wrong model, rollback on mismatch, readback semantic equality).
+
+### Findings
+
+- Unresolved findings: none newly identified in this round.
+- Spec/ADR ambiguities: none new. The `boat_design_ids`-as-derived-projection design choice noted in the first completion report still stands, now with an explicit consistency guard rather than silent discard — this directly addresses BLOCKER 3's underlying concern.
+- Scope deviations: none. No `NamedVariant`/`DesignOption` normalized persistence, no fuzzy resolution, no ID minting, no ORM, no bootstrap work was introduced. `entity_kind`/`entity_id` existence checking uses a fixed literal-SQL mapping, not a generic polymorphic layer.
+
+### Follow-up
+
+- Recommended next action: observe PR #33 CI against head `804a148`. If PostgreSQL 18 CI passes together with Ubuntu/Windows quality, dependency audit, and benchmark/schema-validation steps, this slice is ready for independent re-review and project-owner acceptance decision.
+- Unresolved identity/admission questions carried forward to the actual ~1,000-design bootstrap: unchanged from the first completion report (ID minting/resolution policy, duplicate-candidate detection, human-review workflow for ambiguous claims all remain open for that later, separately authorized slice).
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice was not started automatically.
+- The ~1,000-design bootstrap was not started.
+- The agent has NOT marked this slice `DONE`.
