@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://hullq.local/schemas/wikidata-tier0-bootstrap-manifest/0017-v1",
+  "$id": "https://hullq.local/schemas/wikidata-tier0-bootstrap-manifest/0017-v2",
   "title": "HullQ SLICE-0017 Wikidata Tier-0 Bootstrap Manifest",
-  "description": "Versioned, replayable record of one controlled Wikidata Tier-0 identity bootstrap run. Retains enough information to audit every candidate's admission decision and to replay the run offline against PostgreSQL without live network access. Does not contain SailboatData values or unrelated third-party content.",
+  "description": "Versioned, replayable record of one controlled Wikidata Tier-0 identity bootstrap run. Retains enough information to audit every candidate's admission decision (including the exact acquisition path/version and complete same-search-key collision clusters) and to replay the run offline against PostgreSQL without live network access. Does not contain SailboatData values or unrelated third-party content.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -14,10 +14,11 @@
     "discovery",
     "usage_metrics",
     "candidates",
+    "collision_clusters",
     "counts"
   ],
   "properties": {
-    "manifest_version": { "const": "0017-v1" },
+    "manifest_version": { "const": "0017-v2" },
     "source_id": { "type": "string", "minLength": 1 },
     "generated_at": { "type": "string", "format": "date-time" },
     "requested_limit": { "type": "integer", "minimum": 1 },
@@ -25,11 +26,27 @@
     "discovery": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["unique_qids_returned", "candidates_processed", "target_reached"],
+      "required": [
+        "unique_qids_returned",
+        "candidates_processed",
+        "fetched_entity_count",
+        "target_reached",
+        "acquisition_failure_count",
+        "sparql_query_version",
+        "sparql_endpoint",
+        "entity_api_endpoint",
+        "entity_api_version"
+      ],
       "properties": {
         "unique_qids_returned": { "type": "integer", "minimum": 0 },
         "candidates_processed": { "type": "integer", "minimum": 0 },
-        "target_reached": { "type": "boolean" }
+        "fetched_entity_count": { "type": "integer", "minimum": 0 },
+        "target_reached": { "type": "boolean" },
+        "acquisition_failure_count": { "type": "integer", "minimum": 0 },
+        "sparql_query_version": { "type": "string", "minLength": 1 },
+        "sparql_endpoint": { "type": "string", "minLength": 1 },
+        "entity_api_endpoint": { "type": "string", "minLength": 1 },
+        "entity_api_version": { "type": "string", "minLength": 1 }
       }
     },
     "usage_metrics": {
@@ -45,6 +62,10 @@
       "type": "array",
       "items": { "$ref": "#/$defs/candidate" }
     },
+    "collision_clusters": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/collision_cluster" }
+    },
     "counts": {
       "type": "object",
       "additionalProperties": false,
@@ -53,7 +74,11 @@
         "auto_admit",
         "review_required",
         "not_admitted",
-        "reason_breakdown"
+        "reason_breakdown",
+        "collision_cluster_count",
+        "retained_crosswalk_count",
+        "research_observation_count",
+        "canonical_evidence_link_count"
       ],
       "properties": {
         "candidates_processed": { "type": "integer", "minimum": 0 },
@@ -63,7 +88,11 @@
         "reason_breakdown": {
           "type": "object",
           "additionalProperties": { "type": "integer", "minimum": 0 }
-        }
+        },
+        "collision_cluster_count": { "type": "integer", "minimum": 0 },
+        "retained_crosswalk_count": { "type": "integer", "minimum": 0 },
+        "research_observation_count": { "type": "integer", "minimum": 0 },
+        "canonical_evidence_link_count": { "type": "integer", "minimum": 0 }
       }
     }
   },
@@ -89,7 +118,10 @@
         "retrieved_at": { "type": "string", "format": "date-time" },
         "preferred_label": { "type": ["string", "null"] },
         "aliases": { "type": "array", "items": { "type": "string" } },
-        "hullq_id": { "type": ["string", "null"] },
+        "hullq_id": {
+          "type": ["string", "null"],
+          "description": "Stable opaque HullQ ID. MAY be non-null even for a review_required/not_admitted candidate: a previously admitted QID that this run newly routes to review retains its historical ID as a reserved record rather than being silently reminted; it does not by itself indicate a current canonical admission (see decision)."
+        },
         "decision": {
           "enum": ["auto_admit", "review_required", "not_admitted"]
         },
@@ -103,6 +135,24 @@
         "bundle_id": { "type": ["string", "null"] },
         "bundle_version": { "type": ["string", "null"] },
         "evidence_link_id": { "type": ["string", "null"] }
+      }
+    },
+    "collision_cluster": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["qids", "shared_keys"],
+      "description": "A complete group of two or more distinct QIDs whose accepted deterministic search-key projection (hullq.domain.identity.generate_search_keys over canonical label + retained aliases) overlaps on at least one key. Every member routes to review_required.",
+      "properties": {
+        "qids": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "type": "string", "pattern": "^Q[1-9][0-9]*$" }
+        },
+        "shared_keys": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        }
       }
     }
   }

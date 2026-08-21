@@ -26,7 +26,12 @@ from typing import Any
 
 import pytest
 
-from hullq.bootstrap.wikidata_tier0 import BootstrapDecision, build_manifest, classify_candidates
+from hullq.bootstrap.wikidata_tier0 import (
+    BootstrapDecision,
+    build_manifest,
+    classify_candidates,
+    compute_collision_clusters,
+)
 from hullq.sources.wikidata import WikidataEntityData
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -46,16 +51,19 @@ def _small_manifest() -> dict[str, Any]:
         _entity("Q1003", "Bootstrap Duplicate Name"),
         _entity("Q1004", "Bootstrap Duplicate Name"),
         _entity("Q1005", None),
+        _entity("Q1006", "Alias Collider", aliases=["Bootstrap Test Yacht One"]),
     ]
     candidates = classify_candidates(entities, retrieved_at=RETRIEVED_AT)
+    clusters = compute_collision_clusters(entities)
     return build_manifest(
         candidates,
         generated_at=RETRIEVED_AT,
-        requested_limit=5,
-        unique_qids_returned=5,
+        requested_limit=6,
+        unique_qids_returned=6,
         retrieval_count=1,
-        extracted_record_count=5,
+        extracted_record_count=6,
         target_reached=False,
+        collision_clusters=clusters,
     )
 
 
@@ -75,23 +83,48 @@ def test_full_manifest_replay_clears_every_zero_tolerance_condition(
     clean_conn.close()  # ensures a clean, truncated schema; replay_manifest opens its own connections
 
     result_path = tmp_path / "REPLAY-RESULT.json"
-    result = replay_manifest(db_url, manifest_path=small_manifest_path, result_path=result_path)
+    report_path = tmp_path / "REPLAY-REPORT.md"
+    result = replay_manifest(
+        db_url, manifest_path=small_manifest_path, result_path=result_path, report_path=report_path
+    )
 
-    assert (
-        result["manifest_auto_admit"] == 2
-    )  # Q1001, Q1002 (Q1003/Q1004 collide, Q1005 missing label)
-    assert result["first_pass"]["bundle_imported"] == 4  # every candidate with a label
-    assert result["first_pass"]["admission_imported"] == 2
+    # Q1002 only: Q1001/Q1006 collide via alias, Q1003/Q1004 collide by name,
+    # Q1005 has no label.
+    assert result["manifest_auto_admit"] == 1
+    assert result["first_pass"]["bundle_imported"] == 5  # every candidate with a label
+    assert result["first_pass"]["admission_imported"] == 1
+    assert result["first_pass"]["admission_reference_error"] == 0
     assert result["readback"]["mismatches"] == 0
     assert result["readback"]["unexpected_canonical_rows_for_non_admitted"] == 0
-    assert result["reimport"]["already_imported"] == 4 + 2  # bundles + admissions
+    assert result["readback"]["canonical_id_set_matches"] is True
+    assert result["readback"]["no_stray_brand_organization_boatdesign_rows"] is True
+    assert result["reimport"]["already_imported"] == 5 + 1  # bundles + admissions
     assert result["reimport"]["conflict"] == 0
     assert result["reimport"]["error"] == 0
-    assert result["fresh_schema_rerun"]["imported"] == 2
+    assert result["fresh_schema_rerun"]["imported"] == 1
     assert result["fresh_schema_rerun"]["semantic_mismatches"] == 0
     assert result["fresh_schema_rerun"]["error"] == 0
+    assert result["fresh_schema_rerun"]["id_set_matches"] is True
     assert result["all_zero_tolerance_conditions_clear"] is True
     assert result_path.exists()
+    assert report_path.exists()
+
+    # Deep semantic proof: the single admitted BoatModel's alias set is exactly
+    # what build_admission expects, not just canonical_name.
+    from hullq.persistence.identity_readback import fetch_boat_model
+
+    manifest = json.loads(small_manifest_path.read_text(encoding="utf-8"))
+    admitted_row = next(c for c in manifest["candidates"] if c["qid"] == "Q1002")
+    import psycopg
+
+    conn = psycopg.connect(db_url)
+    try:
+        fetched = fetch_boat_model(conn, admitted_row["hullq_id"])
+        assert fetched is not None
+        assert fetched["canonical_name"] == "Bootstrap Test Yacht Two"
+        assert fetched["aliases"] == []
+    finally:
+        conn.close()
 
 
 def test_review_required_and_not_admitted_never_persist_as_canonical(

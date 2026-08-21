@@ -145,6 +145,32 @@ def test_wikidata_aliases_preserved_unmutated_as_source_spelling() -> None:
     assert len(ids) == len(set(ids))
 
 
+def test_alias_identity_does_not_depend_on_array_position() -> None:
+    """IDENTITY_MODEL.v0.2 §4: persistent provenance MUST NOT depend on
+    fragile array position. Reordering the same alias set MUST NOT change
+    the ID assigned to any individual alias.
+    """
+    forward = classify_candidates(
+        [_entity("Q42", "Example 36", aliases=["Alpha Alias", "Beta Alias", "Gamma Alias"])],
+        retrieved_at=RETRIEVED_AT,
+    )
+    reversed_order = classify_candidates(
+        [_entity("Q42", "Example 36", aliases=["Gamma Alias", "Beta Alias", "Alpha Alias"])],
+        retrieved_at=RETRIEVED_AT,
+    )
+
+    forward_by_name = {
+        a["name"]: a["id"]
+        for a in build_admission(forward[0]).boat_models[0]["aliases"]  # type: ignore[union-attr]
+    }
+    reversed_by_name = {
+        a["name"]: a["id"]
+        for a in build_admission(reversed_order[0]).boat_models[0]["aliases"]  # type: ignore[union-attr]
+    }
+    assert forward_by_name == reversed_by_name
+    assert forward_by_name["Alpha Alias"] != forward_by_name["Beta Alias"]
+
+
 # ---------------------------------------------------------------------------
 # 12. deterministic same-name collision routes to review, not forced merge
 # ---------------------------------------------------------------------------
@@ -176,6 +202,109 @@ def test_same_name_collision_routes_both_candidates_to_review() -> None:
     assert bundle_q1 is not None
     assert len(bundle_q1.observations) == 1
     assert len(bundle_q1.unresolved_findings) == 1
+
+
+def test_collision_reuses_accepted_generate_search_keys_projection() -> None:
+    """Collision detection must use the single accepted HullQ deterministic
+    search-key projection (hullq.domain.identity.generate_search_keys), not a
+    weaker parallel normalization — proven here via a projection behavior
+    (accepted corporate-suffix stripping) that a bare casefold/whitespace
+    normalizer would not detect.
+    """
+    entities = [
+        _entity("Q1", "Example Boats Ltd."),
+        _entity("Q2", "Example Boats"),  # collides only via suffix-stripped key
+        _entity("Q3", "Completely Different"),
+    ]
+    candidates = classify_candidates(entities, retrieved_at=RETRIEVED_AT)
+    by_qid = {c.qid: c for c in candidates}
+
+    assert by_qid["Q1"].decision == BootstrapDecision.REVIEW_REQUIRED
+    assert by_qid["Q2"].decision == BootstrapDecision.REVIEW_REQUIRED
+    assert by_qid["Q3"].decision == BootstrapDecision.AUTO_ADMIT
+
+
+def test_collision_created_only_through_an_alias() -> None:
+    """A collision may arise purely from one candidate's alias matching
+    another candidate's canonical label (or another candidate's alias) —
+    the full accepted search-key projection covers both label and aliases.
+    """
+    entities = [
+        _entity("Q1", "Voyager 42"),
+        _entity("Q2", "Sea Explorer", aliases=["Voyager 42"]),  # alias-only collision
+        _entity("Q3", "Unrelated Yacht"),
+    ]
+    candidates = classify_candidates(entities, retrieved_at=RETRIEVED_AT)
+    by_qid = {c.qid: c for c in candidates}
+
+    assert by_qid["Q1"].decision == BootstrapDecision.REVIEW_REQUIRED
+    assert by_qid["Q2"].decision == BootstrapDecision.REVIEW_REQUIRED
+    assert by_qid["Q3"].decision == BootstrapDecision.AUTO_ADMIT
+
+
+def test_canonical_name_collision_is_reported_as_a_complete_cluster() -> None:
+    from hullq.bootstrap.wikidata_tier0 import compute_collision_clusters
+
+    entities = [
+        _entity("Q1", "Example 36"),
+        _entity("Q2", "Example 36"),
+        _entity("Q3", "Different 40"),
+    ]
+    clusters = compute_collision_clusters(entities)
+    assert len(clusters) == 1
+    assert clusters[0].qids == ("Q1", "Q2")
+    assert len(clusters[0].shared_keys) >= 1
+
+
+def test_transitive_collision_forms_one_complete_cluster() -> None:
+    """A shares a key with B via one path, B shares a different key with C:
+    all three must form one complete cluster, not two separate pairs.
+    """
+    from hullq.bootstrap.wikidata_tier0 import compute_collision_clusters
+
+    entities = [
+        _entity("Q1", "Example Boats Ltd."),
+        _entity("Q2", "Example Boats", aliases=["Voyager 42"]),
+        _entity("Q3", "Something Else", aliases=["Voyager 42"]),
+        _entity("Q4", "Fully Independent"),
+    ]
+    clusters = compute_collision_clusters(entities)
+    assert len(clusters) == 1
+    assert clusters[0].qids == ("Q1", "Q2", "Q3")
+
+    candidates = classify_candidates(entities, retrieved_at=RETRIEVED_AT)
+    by_qid = {c.qid: c for c in candidates}
+    assert by_qid["Q1"].decision == BootstrapDecision.REVIEW_REQUIRED
+    assert by_qid["Q2"].decision == BootstrapDecision.REVIEW_REQUIRED
+    assert by_qid["Q3"].decision == BootstrapDecision.REVIEW_REQUIRED
+    assert by_qid["Q4"].decision == BootstrapDecision.AUTO_ADMIT
+
+
+def test_distinct_non_colliding_candidates_remain_auto_admit() -> None:
+    entities = [
+        _entity("Q1", "Alpha 30"),
+        _entity("Q2", "Beta 34", aliases=["Beta Thirty-Four"]),
+        _entity("Q3", "Gamma 38"),
+    ]
+    candidates = classify_candidates(entities, retrieved_at=RETRIEVED_AT)
+    assert all(c.decision == BootstrapDecision.AUTO_ADMIT for c in candidates)
+    assert len({c.hullq_id for c in candidates}) == 3
+
+
+def test_collision_preserves_retained_id_as_reserved_not_admitted() -> None:
+    """A QID that was previously admitted with a retained ID, but is now
+    newly caught by broader collision detection, must keep its historical ID
+    visible (never silently reminted) while building no admission for it.
+    """
+    entities = [_entity("Q1", "Example Boats Ltd."), _entity("Q2", "Example Boats")]
+    crosswalk = {"Q1": "BM_WDT0_PRESERVED_HISTORICAL_ID"}
+    candidates = classify_candidates(
+        entities, retrieved_at=RETRIEVED_AT, existing_crosswalk=crosswalk
+    )
+    by_qid = {c.qid: c for c in candidates}
+    assert by_qid["Q1"].decision == BootstrapDecision.REVIEW_REQUIRED
+    assert by_qid["Q1"].hullq_id == "BM_WDT0_PRESERVED_HISTORICAL_ID"
+    assert build_admission(by_qid["Q1"]) is None
 
 
 # ---------------------------------------------------------------------------
@@ -310,6 +439,8 @@ def test_review_required_and_not_admitted_never_build_admission() -> None:
 
 
 def test_manifest_validates_against_schema() -> None:
+    from hullq.bootstrap.wikidata_tier0 import compute_collision_clusters
+
     entities = [
         _entity("Q1", "Example 36", aliases=["Example XXXVI"]),
         _entity("Q2", None),
@@ -317,6 +448,7 @@ def test_manifest_validates_against_schema() -> None:
         _entity("Q4", "Dup Name"),
     ]
     candidates = classify_candidates(entities, retrieved_at=RETRIEVED_AT)
+    clusters = compute_collision_clusters(entities)
     manifest = build_manifest(
         candidates,
         generated_at=RETRIEVED_AT,
@@ -325,6 +457,7 @@ def test_manifest_validates_against_schema() -> None:
         retrieval_count=2,
         extracted_record_count=4,
         target_reached=False,
+        collision_clusters=clusters,
     )
     schema = json.loads(MANIFEST_SCHEMA_PATH.read_text(encoding="utf-8"))
     jsonschema.validate(instance=manifest, schema=schema)
@@ -332,3 +465,5 @@ def test_manifest_validates_against_schema() -> None:
     assert manifest["counts"]["auto_admit"] == 1
     assert manifest["counts"]["review_required"] == 2
     assert manifest["counts"]["not_admitted"] == 1
+    assert manifest["counts"]["collision_cluster_count"] == 1
+    assert manifest["collision_clusters"] == [{"qids": ["Q3", "Q4"], "shared_keys": ["dup name"]}]

@@ -24,12 +24,14 @@ Explicitly does NOT:
 
 from __future__ import annotations
 
-import unicodedata
+import hashlib
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from hullq.domain.identity import AliasClass, IdentityAlias, generate_search_keys
 from hullq.domain.provenance import (
     ClaimSemantics,
     ConfidenceLevel,
@@ -52,7 +54,14 @@ from hullq.research.observations import (
     UnresolvedFinding,
     UnresolvedFindingSeverity,
 )
-from hullq.sources.wikidata import WIKIDATA_SOURCE_ID, WikidataEntityData
+from hullq.sources.wikidata import (
+    BOOTSTRAP_ENTITY_API_ENDPOINT,
+    BOOTSTRAP_ENTITY_API_VERSION,
+    BOOTSTRAP_SPARQL_ENDPOINT,
+    BOOTSTRAP_SPARQL_QUERY_VERSION,
+    WIKIDATA_SOURCE_ID,
+    WikidataEntityData,
+)
 
 __all__ = [
     "BOOTSTRAP_MANIFEST_VERSION",
@@ -63,6 +72,7 @@ __all__ = [
     "BootstrapCandidate",
     "BootstrapDecision",
     "BootstrapReasonCode",
+    "CollisionCluster",
     "CrosswalkConflictError",
     "build_admission",
     "build_bundle",
@@ -70,6 +80,8 @@ __all__ = [
     "candidate_from_manifest_dict",
     "candidate_to_manifest_dict",
     "classify_candidates",
+    "compute_collision_clusters",
+    "load_crosswalk_from_manifest",
     "mint_hullq_id",
     "validate_crosswalk_consistency",
 ]
@@ -85,7 +97,7 @@ BOOTSTRAP_REQUESTED_LIMIT = 1000
 # hullq.sources.wikidata.WIKIDATA_BOOTSTRAP_SAFETY_CEILING.
 BOOTSTRAP_SAFETY_CEILING = 1500
 
-BOOTSTRAP_MANIFEST_VERSION = "0017-v1"
+BOOTSTRAP_MANIFEST_VERSION = "0017-v2"
 BOOTSTRAP_PRODUCER_IDENTIFIER = "hullq-wikidata-bootstrap"
 BOOTSTRAP_PRODUCER_VERSION = "SLICE-0017-v1"
 
@@ -137,14 +149,103 @@ def mint_hullq_id() -> str:
     return f"{_HULLQ_ID_PREFIX}{uuid.uuid4().hex}"
 
 
-def _normalize_label_for_collision(label: str) -> str:
-    """Deterministic case/whitespace-insensitive projection used only to
-    detect same-name/search-projection collisions within one candidate set.
+def _stable_alias_id(name: str) -> str:
+    """Deterministic, content-derived alias ID.
 
-    Never mutates or replaces the preserved raw ``preferred_label``.
+    Depends only on the alias's own text, never on its position within the
+    source alias list or on any other alias's content. Per IDENTITY_MODEL.v0.2
+    §4, persistent provenance MUST NOT depend on fragile array position:
+    reordering the same alias set MUST NOT change the ID assigned to any
+    individual alias. Alias IDs need only be unique within one owning
+    entity's alias table (the persistence layer keys on
+    ``(boat_model_id, alias_id)``), so a content hash is sufficient scope.
     """
-    folded = unicodedata.normalize("NFC", label).casefold()
-    return " ".join(folded.split())
+    digest = hashlib.sha256(name.encode("utf-8")).hexdigest()[:16]
+    return f"ALIAS-{digest}"
+
+
+def _search_keys_for_candidate(label: str, aliases: Sequence[str]) -> frozenset[str]:
+    """The complete accepted deterministic search-key projection for one
+    candidate's label + aliases, reusing the single accepted HullQ projection
+    (``hullq.domain.identity.generate_search_keys``) rather than a weaker
+    parallel normalization.
+    """
+    alias_objs = tuple(
+        IdentityAlias(id=_stable_alias_id(name), alias_class=AliasClass.SOURCE_SPELLING, name=name)
+        for name in aliases
+    )
+    return generate_search_keys(label, alias_objs)
+
+
+@dataclass(frozen=True)
+class CollisionCluster:
+    """A group of two or more distinct QIDs whose accepted deterministic
+    search-key projections overlap on at least one key.
+
+    ``shared_keys`` lists every search key that caused at least one pairwise
+    union inside this cluster, for audit purposes. Every member QID MUST
+    route to ``REVIEW_REQUIRED``; none may be auto-admitted or force-merged.
+    """
+
+    qids: tuple[str, ...]
+    shared_keys: tuple[str, ...]
+
+
+def compute_collision_clusters(entities: list[WikidataEntityData]) -> list[CollisionCluster]:
+    """Deterministically compute complete same-search-key collision clusters.
+
+    Two candidates collide when the accepted deterministic search-key
+    projection (canonical label + retained same-entity aliases, per
+    ``generate_search_keys``) of one overlaps that of the other on at least
+    one key. Collision is transitive: if A collides with B on one key and B
+    collides with C on a different key, A/B/C form one cluster. Candidates
+    with no label are excluded (handled separately as ``MISSING_LABEL``).
+    """
+    labeled = [e for e in entities if e.label]
+    keys_by_qid: dict[str, frozenset[str]] = {
+        e.qid: _search_keys_for_candidate(e.label, e.aliases)  # type: ignore[arg-type]
+        for e in labeled
+    }
+
+    key_to_qids: dict[str, list[str]] = {}
+    for qid, keys in keys_by_qid.items():
+        for key in keys:
+            key_to_qids.setdefault(key, []).append(qid)
+    colliding_keys = {key: qids for key, qids in key_to_qids.items() if len(qids) > 1}
+
+    parent: dict[str, str] = {qid: qid for qid in keys_by_qid}
+
+    def find(x: str) -> str:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a: str, b: str) -> None:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[ra] = rb
+
+    for qids in colliding_keys.values():
+        first = qids[0]
+        for other in qids[1:]:
+            union(first, other)
+
+    members_by_root: dict[str, set[str]] = {}
+    for qid in keys_by_qid:
+        members_by_root.setdefault(find(qid), set()).add(qid)
+
+    keys_by_root: dict[str, set[str]] = {}
+    for key, qids in colliding_keys.items():
+        keys_by_root.setdefault(find(qids[0]), set()).add(key)
+
+    clusters = [
+        CollisionCluster(qids=tuple(sorted(members)), shared_keys=tuple(sorted(keys_by_root[root])))
+        for root, members in members_by_root.items()
+        if len(members) > 1
+    ]
+    clusters.sort(key=lambda c: c.qids)
+    return clusters
 
 
 # ---------------------------------------------------------------------------
@@ -206,34 +307,35 @@ def classify_candidates(
     """Deterministically classify acquired Wikidata entities into bootstrap decisions.
 
     ``existing_crosswalk`` (QID -> HullQ ID) lets a caller reuse previously
-    minted IDs for QIDs it has already admitted in an earlier run; a QID
-    present in the crosswalk always reuses its retained ID rather than
-    minting a new one. New QIDs are minted via ``id_factory`` exactly once.
+    minted IDs for QIDs it has already admitted in an earlier run. A QID
+    present in the crosswalk always reuses its retained ID exactly — it is
+    NEVER silently reminted, even if this run newly routes that QID to
+    ``REVIEW_REQUIRED`` (the ID is preserved as a reserved historical record
+    so a later re-admission after human review still reuses the same stable
+    ID; no admission is built for a non-``AUTO_ADMIT`` candidate regardless).
+    New QIDs are minted via ``id_factory`` exactly once.
 
-    Deterministic same-name/search-projection collisions (case/whitespace
-    normalized) within *entities* route every colliding QID to
-    ``REVIEW_REQUIRED`` rather than a forced merge or an arbitrary pick.
+    Same-search-key collisions (the accepted deterministic HullQ search-key
+    projection from ``hullq.domain.identity.generate_search_keys``, covering
+    the canonical label, case/whitespace normalization, accepted corporate/
+    country-suffix stripping, and retained same-entity aliases) within
+    *entities* route every colliding QID to ``REVIEW_REQUIRED`` rather than a
+    forced merge or an arbitrary pick — see ``compute_collision_clusters``.
 
     An empty/missing preferred label cannot auto-admit and produces no
     observation, per IDENTITY_MODEL.v0.2 and REQ-ID-012: there is no source
     identity claim to preserve.
     """
     crosswalk = dict(existing_crosswalk or {})
-
-    # First pass: detect same-name collisions across the whole candidate set.
-    label_groups: dict[str, list[str]] = {}
-    for entity in entities:
-        if entity.label:
-            key = _normalize_label_for_collision(entity.label)
-            label_groups.setdefault(key, []).append(entity.qid)
     colliding_qids: set[str] = {
-        qid for group in label_groups.values() if len(group) > 1 for qid in group
+        qid for cluster in compute_collision_clusters(entities) for qid in cluster.qids
     }
 
     candidates: list[BootstrapCandidate] = []
     for entity in entities:
         qid = entity.qid
         label = entity.label
+        retained_id = crosswalk.get(qid)
 
         if not label:
             candidates.append(
@@ -242,7 +344,7 @@ def classify_candidates(
                     retrieved_at=retrieved_at,
                     preferred_label=None,
                     aliases=tuple(entity.aliases),
-                    hullq_id=None,
+                    hullq_id=retained_id,
                     decision=BootstrapDecision.NOT_ADMITTED,
                     reason_codes=(BootstrapReasonCode.MISSING_LABEL,),
                     observation_id=None,
@@ -264,7 +366,7 @@ def classify_candidates(
                     retrieved_at=retrieved_at,
                     preferred_label=label,
                     aliases=tuple(entity.aliases),
-                    hullq_id=None,
+                    hullq_id=retained_id,
                     decision=BootstrapDecision.REVIEW_REQUIRED,
                     reason_codes=(BootstrapReasonCode.NAME_COLLISION,),
                     observation_id=observation_id,
@@ -275,10 +377,8 @@ def classify_candidates(
             )
             continue
 
-        hullq_id = crosswalk.get(qid)
-        if hullq_id is None:
-            hullq_id = id_factory()
-            crosswalk[qid] = hullq_id
+        hullq_id = retained_id if retained_id is not None else id_factory()
+        crosswalk[qid] = hullq_id
 
         candidates.append(
             BootstrapCandidate(
@@ -297,6 +397,21 @@ def classify_candidates(
         )
 
     return candidates
+
+
+def load_crosswalk_from_manifest(manifest: dict[str, Any]) -> dict[str, str]:
+    """Extract the retained QID -> HullQ-ID crosswalk from a committed manifest dict.
+
+    Only rows with a non-null ``hullq_id`` contribute. Used to make reruns
+    fail-safe: an existing retained mapping is always reused, never silently
+    reminted (see ``classify_candidates`` / ``run_live_bootstrap``).
+    """
+    crosswalk: dict[str, str] = {}
+    for row in manifest.get("candidates", []):
+        hullq_id = row.get("hullq_id")
+        if hullq_id is not None:
+            crosswalk[row["qid"]] = hullq_id
+    return crosswalk
 
 
 def validate_crosswalk_consistency(candidates: list[BootstrapCandidate]) -> None:
@@ -449,11 +564,11 @@ def build_admission(candidate: BootstrapCandidate) -> CanonicalIdentityAdmission
 
     aliases = [
         {
-            "id": f"ALIAS-{candidate.hullq_id}-{i}",
+            "id": _stable_alias_id(alias_name),
             "alias_class": "source_spelling",
             "name": alias_name,
         }
-        for i, alias_name in enumerate(candidate.aliases)
+        for alias_name in candidate.aliases
     ]
     boat_model_payload: dict[str, Any] = {
         "schema_version": "0.2",
@@ -553,11 +668,23 @@ def build_manifest(
     retrieval_count: int,
     extracted_record_count: int,
     target_reached: bool,
+    collision_clusters: list[CollisionCluster] | None = None,
+    acquisition_failure_count: int = 0,
+    fetched_entity_count: int | None = None,
 ) -> dict[str, Any]:
     """Build the full versioned, JSON-serializable bootstrap manifest document.
 
     Validates crosswalk consistency before returning (fails closed on a
-    conflicting QID -> HullQ-ID mapping).
+    conflicting QID -> HullQ-ID mapping). Retains the exact discovery
+    query/version and acquisition path/version in an auditable, non-ambiguous
+    form (SLICE-0017 manifest/report audit-completeness requirement).
+
+    ``fetched_entity_count`` is the number of entities actually returned by
+    ``fetch_entities_bootstrap`` (distinct from ``candidates_processed``,
+    which reflects post-classification candidate count); it defaults to
+    ``len(candidates)`` when not supplied, which holds by construction since
+    ``classify_candidates`` produces exactly one candidate per acquired
+    entity.
     """
     validate_crosswalk_consistency(candidates)
     counts = _counts(candidates)
@@ -570,18 +697,38 @@ def build_manifest(
         "discovery": {
             "unique_qids_returned": unique_qids_returned,
             "candidates_processed": len(candidates),
+            "fetched_entity_count": (
+                fetched_entity_count if fetched_entity_count is not None else len(candidates)
+            ),
             "target_reached": target_reached,
+            "acquisition_failure_count": acquisition_failure_count,
+            "sparql_query_version": BOOTSTRAP_SPARQL_QUERY_VERSION,
+            "sparql_endpoint": BOOTSTRAP_SPARQL_ENDPOINT,
+            "entity_api_endpoint": BOOTSTRAP_ENTITY_API_ENDPOINT,
+            "entity_api_version": BOOTSTRAP_ENTITY_API_VERSION,
         },
         "usage_metrics": {
             "retrieval_count": retrieval_count,
             "extracted_record_count": extracted_record_count,
         },
         "candidates": [candidate_to_manifest_dict(c) for c in candidates],
+        "collision_clusters": [
+            {"qids": list(c.qids), "shared_keys": list(c.shared_keys)}
+            for c in (collision_clusters or [])
+        ],
         "counts": {
             "candidates_processed": counts.candidates_processed,
             "auto_admit": counts.auto_admit,
             "review_required": counts.review_required,
             "not_admitted": counts.not_admitted,
             "reason_breakdown": counts.reason_breakdown,
+            "collision_cluster_count": len(collision_clusters or []),
+            "retained_crosswalk_count": sum(1 for c in candidates if c.hullq_id is not None),
+            "research_observation_count": sum(
+                1 for c in candidates if c.observation_id is not None
+            ),
+            "canonical_evidence_link_count": sum(
+                1 for c in candidates if c.evidence_link_id is not None
+            ),
         },
     }

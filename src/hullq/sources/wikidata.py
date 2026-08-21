@@ -63,6 +63,10 @@ from hullq.sources.rights import (
 )
 
 __all__ = [
+    "BOOTSTRAP_ENTITY_API_ENDPOINT",
+    "BOOTSTRAP_ENTITY_API_VERSION",
+    "BOOTSTRAP_SPARQL_ENDPOINT",
+    "BOOTSTRAP_SPARQL_QUERY_VERSION",
     "SLICE_0008_ITEM_CEILING",
     "WIKIDATA_BOOTSTRAP_SAFETY_CEILING",
     "WIKIDATA_SOURCE_ID",
@@ -119,6 +123,18 @@ _SPARQL_QUERY_VERSION = "SLICE-0008-v1"
 # controlled-probe query version above; the bootstrap query additionally
 # orders results deterministically before LIMIT.
 _SPARQL_QUERY_VERSION_BOOTSTRAP = "SLICE-0017-bootstrap-v1"
+
+# Public audit-facing aliases of the bootstrap acquisition path identity/version,
+# retained verbatim in the SLICE-0017 bootstrap manifest for reproducibility
+# (docs/slices/SLICE-0017-*.md "manifest + report audit completeness").
+BOOTSTRAP_SPARQL_QUERY_VERSION = _SPARQL_QUERY_VERSION_BOOTSTRAP
+BOOTSTRAP_SPARQL_ENDPOINT = _SPARQL_ENDPOINT
+BOOTSTRAP_ENTITY_API_ENDPOINT = _ENTITY_API_ENDPOINT
+# Documents the exact wbgetentities request shape used for bootstrap entity
+# acquisition (action=wbgetentities, props=labels|aliases|claims, batches of
+# _ENTITY_API_BATCH_SIZE); versioned so a future change to the request shape
+# is auditable from retained manifests alone.
+BOOTSTRAP_ENTITY_API_VERSION = "wbgetentities-labels-aliases-claims-v1"
 
 
 def _build_sparql_query(limit: int) -> str:

@@ -1,13 +1,19 @@
 {
-  "manifest_version": "0017-v1",
+  "manifest_version": "0017-v2",
   "source_id": "SRC_WIKIDATA_API_2026",
-  "generated_at": "2026-08-21T12:52:49.882220+00:00",
+  "generated_at": "2026-08-21T13:45:53.809506+00:00",
   "requested_limit": 1000,
   "safety_ceiling": 1500,
   "discovery": {
     "unique_qids_returned": 1000,
     "candidates_processed": 1000,
-    "target_reached": true
+    "fetched_entity_count": 1000,
+    "target_reached": true,
+    "acquisition_failure_count": 0,
+    "sparql_query_version": "SLICE-0017-bootstrap-v1",
+    "sparql_endpoint": "https://query.wikidata.org/sparql",
+    "entity_api_endpoint": "https://www.wikidata.org/w/api.php",
+    "entity_api_version": "wbgetentities-labels-aliases-claims-v1"
   },
   "usage_metrics": {
     "retrieval_count": 21,
@@ -8188,14 +8194,14 @@
       "preferred_label": "J-80",
       "aliases": [],
       "hullq_id": "BM_WDT0_6221328c32fe4b43b113c0ffc5e0bec9",
-      "decision": "auto_admit",
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "name_collision"
       ],
       "observation_id": "OBS-WD-TIER0-Q109650429",
       "bundle_id": "BUNDLE-WD-TIER0-Q109650429",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q109650429"
+      "evidence_link_id": null
     },
     {
       "qid": "Q109827377",
@@ -12588,14 +12594,14 @@
         "J-80"
       ],
       "hullq_id": "BM_WDT0_25df3c46ed4c45c292c817cf4b7eb0b3",
-      "decision": "auto_admit",
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "name_collision"
       ],
       "observation_id": "OBS-WD-TIER0-Q2461915",
       "bundle_id": "BUNDLE-WD-TIER0-Q2461915",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q2461915"
+      "evidence_link_id": null
     },
     {
       "qid": "Q246762",
@@ -15129,15 +15135,111 @@
       "evidence_link_id": "LINK-WD-TIER0-Q2975943"
     }
   ],
+  "collision_clusters": [
+    {
+      "qids": [
+        "Q10496824",
+        "Q106587830"
+      ],
+      "shared_keys": [
+        "flipper"
+      ]
+    },
+    {
+      "qids": [
+        "Q106436033",
+        "Q106522259"
+      ],
+      "shared_keys": [
+        "etap 28"
+      ]
+    },
+    {
+      "qids": [
+        "Q106453107",
+        "Q1931490"
+      ],
+      "shared_keys": [
+        "micro"
+      ]
+    },
+    {
+      "qids": [
+        "Q106489208",
+        "Q106489209"
+      ],
+      "shared_keys": [
+        "dufour 40 performance"
+      ]
+    },
+    {
+      "qids": [
+        "Q107093883",
+        "Q2943204"
+      ],
+      "shared_keys": [
+        "cavale"
+      ]
+    },
+    {
+      "qids": [
+        "Q107093951",
+        "Q107093955"
+      ],
+      "shared_keys": [
+        "malibu"
+      ]
+    },
+    {
+      "qids": [
+        "Q107093971",
+        "Q107093972"
+      ],
+      "shared_keys": [
+        "magnum nova"
+      ]
+    },
+    {
+      "qids": [
+        "Q107094005",
+        "Q107094007"
+      ],
+      "shared_keys": [
+        "cd1 d2"
+      ]
+    },
+    {
+      "qids": [
+        "Q109650429",
+        "Q2461915"
+      ],
+      "shared_keys": [
+        "j-80"
+      ]
+    },
+    {
+      "qids": [
+        "Q119149935",
+        "Q28162935"
+      ],
+      "shared_keys": [
+        "swan 55 frers"
+      ]
+    }
+  ],
   "counts": {
     "candidates_processed": 1000,
-    "auto_admit": 967,
-    "review_required": 18,
+    "auto_admit": 965,
+    "review_required": 20,
     "not_admitted": 15,
     "reason_breakdown": {
-      "ok": 967,
-      "name_collision": 18,
+      "ok": 965,
+      "name_collision": 20,
       "missing_label": 15
-    }
+    },
+    "collision_cluster_count": 10,
+    "retained_crosswalk_count": 967,
+    "research_observation_count": 985,
+    "canonical_evidence_link_count": 965
   }
 }
