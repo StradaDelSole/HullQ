@@ -97,7 +97,7 @@ BOOTSTRAP_REQUESTED_LIMIT = 1000
 # hullq.sources.wikidata.WIKIDATA_BOOTSTRAP_SAFETY_CEILING.
 BOOTSTRAP_SAFETY_CEILING = 1500
 
-BOOTSTRAP_MANIFEST_VERSION = "0017-v2"
+BOOTSTRAP_MANIFEST_VERSION = "0017-v3"
 BOOTSTRAP_PRODUCER_IDENTIFIER = "hullq-wikidata-bootstrap"
 BOOTSTRAP_PRODUCER_VERSION = "SLICE-0017-v1"
 
@@ -405,13 +405,44 @@ def load_crosswalk_from_manifest(manifest: dict[str, Any]) -> dict[str, str]:
     Only rows with a non-null ``hullq_id`` contribute. Used to make reruns
     fail-safe: an existing retained mapping is always reused, never silently
     reminted (see ``classify_candidates`` / ``run_live_bootstrap``).
+
+    Fails closed via ``CrosswalkConflictError`` if the manifest itself is
+    internally inconsistent in either direction — checked before any row is
+    collapsed into the returned dict, so neither conflict form can be masked
+    by insertion order:
+
+    - the same QID mapped to two different non-null HullQ IDs;
+    - the same HullQ ID addressed by two different QIDs.
+
+    Callers MUST call this (directly or via ``classify_candidates``'s own
+    ``validate_crosswalk_consistency`` pass) before any live network request
+    on a rerun, so a corrupted retained manifest is never silently trusted.
     """
-    crosswalk: dict[str, str] = {}
+    qid_to_id: dict[str, str] = {}
+    id_to_qid: dict[str, str] = {}
     for row in manifest.get("candidates", []):
         hullq_id = row.get("hullq_id")
-        if hullq_id is not None:
-            crosswalk[row["qid"]] = hullq_id
-    return crosswalk
+        if hullq_id is None:
+            continue
+        qid = row["qid"]
+
+        prior_id = qid_to_id.get(qid)
+        if prior_id is not None and prior_id != hullq_id:
+            raise CrosswalkConflictError(
+                f"Retained manifest is internally inconsistent: QID {qid!r} maps to "
+                f"conflicting HullQ IDs {prior_id!r} and {hullq_id!r}."
+            )
+        prior_qid = id_to_qid.get(hullq_id)
+        if prior_qid is not None and prior_qid != qid:
+            raise CrosswalkConflictError(
+                f"Retained manifest is internally inconsistent: HullQ ID {hullq_id!r} is "
+                f"addressed by conflicting QIDs {prior_qid!r} and {qid!r}."
+            )
+
+        qid_to_id[qid] = hullq_id
+        id_to_qid[hullq_id] = qid
+
+    return qid_to_id
 
 
 def validate_crosswalk_consistency(candidates: list[BootstrapCandidate]) -> None:
@@ -671,6 +702,8 @@ def build_manifest(
     collision_clusters: list[CollisionCluster] | None = None,
     acquisition_failure_count: int = 0,
     fetched_entity_count: int | None = None,
+    acquired_at: str | None = None,
+    classification_recomputed_at: str | None = None,
 ) -> dict[str, Any]:
     """Build the full versioned, JSON-serializable bootstrap manifest document.
 
@@ -685,6 +718,16 @@ def build_manifest(
     ``len(candidates)`` when not supplied, which holds by construction since
     ``classify_candidates`` produces exactly one candidate per acquired
     entity.
+
+    ``generated_at`` is when THIS manifest document was (re)written.
+    ``acquired_at`` is the original live Wikidata acquisition timestamp — it
+    MUST be preserved verbatim across every later offline reclassification
+    and MUST NOT be replaced by a recompute's own timestamp; it defaults to
+    ``generated_at`` only for a fresh live run (where they are the same
+    instant) or for callers that do not distinguish the two. A non-``None``
+    ``classification_recomputed_at`` marks this manifest as the product of an
+    offline ``--recompute`` pass rather than (or in addition to) the original
+    live run, holding that recompute's own timestamp.
     """
     validate_crosswalk_consistency(candidates)
     counts = _counts(candidates)
@@ -692,6 +735,8 @@ def build_manifest(
         "manifest_version": BOOTSTRAP_MANIFEST_VERSION,
         "source_id": WIKIDATA_SOURCE_ID,
         "generated_at": generated_at,
+        "acquired_at": acquired_at if acquired_at is not None else generated_at,
+        "classification_recomputed_at": classification_recomputed_at,
         "requested_limit": requested_limit,
         "safety_ceiling": BOOTSTRAP_SAFETY_CEILING,
         "discovery": {

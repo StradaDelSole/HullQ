@@ -1,7 +1,9 @@
 {
-  "manifest_version": "0017-v2",
+  "manifest_version": "0017-v3",
   "source_id": "SRC_WIKIDATA_API_2026",
-  "generated_at": "2026-08-21T13:45:53.809506+00:00",
+  "generated_at": "2026-08-21T14:25:37.703292+00:00",
+  "acquired_at": "2026-08-21T12:52:49.882220+00:00",
+  "classification_recomputed_at": "2026-08-21T14:25:37.703292+00:00",
   "requested_limit": 1000,
   "safety_ceiling": 1500,
   "discovery": {

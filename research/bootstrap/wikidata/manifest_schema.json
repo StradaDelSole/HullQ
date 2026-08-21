@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://hullq.local/schemas/wikidata-tier0-bootstrap-manifest/0017-v2",
+  "$id": "https://hullq.local/schemas/wikidata-tier0-bootstrap-manifest/0017-v3",
   "title": "HullQ SLICE-0017 Wikidata Tier-0 Bootstrap Manifest",
   "description": "Versioned, replayable record of one controlled Wikidata Tier-0 identity bootstrap run. Retains enough information to audit every candidate's admission decision (including the exact acquisition path/version and complete same-search-key collision clusters) and to replay the run offline against PostgreSQL without live network access. Does not contain SailboatData values or unrelated third-party content.",
   "type": "object",
@@ -9,6 +9,8 @@
     "manifest_version",
     "source_id",
     "generated_at",
+    "acquired_at",
+    "classification_recomputed_at",
     "requested_limit",
     "safety_ceiling",
     "discovery",
@@ -18,9 +20,23 @@
     "counts"
   ],
   "properties": {
-    "manifest_version": { "const": "0017-v2" },
+    "manifest_version": { "const": "0017-v3" },
     "source_id": { "type": "string", "minLength": 1 },
-    "generated_at": { "type": "string", "format": "date-time" },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this manifest document was most recently (re)written — a live run or an offline recompute both update this."
+    },
+    "acquired_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "The original live Wikidata acquisition timestamp. MUST be preserved verbatim across every later offline reclassification; MUST NOT be replaced by a recompute's own timestamp."
+    },
+    "classification_recomputed_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Null for a manifest that has never been offline-reclassified since its original live acquisition. Set to the timestamp of the most recent --recompute pass otherwise."
+    },
     "requested_limit": { "type": "integer", "minimum": 1 },
     "safety_ceiling": { "type": "integer", "minimum": 1 },
     "discovery": {

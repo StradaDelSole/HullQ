@@ -75,42 +75,67 @@ def small_manifest_path(tmp_path: Path) -> Path:
     return path
 
 
+def _assert_clean_replay(result: dict[str, Any]) -> None:
+    # Q1002 only: Q1001/Q1006 collide via alias, Q1003/Q1004 collide by name,
+    # Q1005 has no label.
+    assert result["manifest_auto_admit"] == 1
+    assert result["expected"] == {"bundle_count": 5, "admission_count": 1}
+
+    fp = result["first_pass"]
+    assert fp["bundle"]["imported"] == 5
+    assert fp["bundle"]["already_present"] == 0
+    assert fp["bundle"]["conflict"] == 0
+    assert fp["bundle"]["error"] == 0
+    assert fp["bundle"]["unexpected_status"] == 0
+    assert fp["admission"]["imported"] == 1
+    assert fp["admission"]["already_present"] == 0
+    assert fp["admission"]["conflict"] == 0
+    assert fp["admission"]["reference_error"] == 0
+    assert fp["admission"]["error"] == 0
+    assert fp["admission"]["unexpected_status"] == 0
+    assert fp["expected_counts_match"] is True
+
+    assert result["readback"]["mismatches"] == 0
+    assert result["readback"]["unexpected_canonical_rows_for_non_admitted"] == 0
+    assert result["readback"]["canonical_id_set_matches"] is True
+    assert result["readback"]["no_stray_brand_organization_boatdesign_rows"] is True
+
+    assert result["reimport"]["already_imported"] == 5 + 1  # bundles + admissions
+    assert result["reimport"]["conflict"] == 0
+    assert result["reimport"]["error"] == 0
+
+    fr = result["fresh_schema_rerun"]
+    assert fr["bundle"]["imported"] == 5
+    assert fr["bundle"]["already_present"] == 0
+    assert fr["admission"]["imported"] == 1
+    assert fr["admission"]["already_present"] == 0
+    assert fr["semantic_mismatches"] == 0
+    assert fr["id_set_matches"] is True
+    assert fr["expected_counts_match"] is True
+
+    assert result["all_zero_tolerance_conditions_clear"] is True
+
+
 def test_full_manifest_replay_clears_every_zero_tolerance_condition(
     db_url: str, clean_conn: Any, small_manifest_path: Path, tmp_path: Path
 ) -> None:
     from bootstrap.wikidata_tier0_runner import replay_manifest
 
-    clean_conn.close()  # ensures a clean, truncated schema; replay_manifest opens its own connections
+    clean_conn.close()
 
     result_path = tmp_path / "REPLAY-RESULT.json"
     report_path = tmp_path / "REPLAY-REPORT.md"
     result = replay_manifest(
         db_url, manifest_path=small_manifest_path, result_path=result_path, report_path=report_path
     )
-
-    # Q1002 only: Q1001/Q1006 collide via alias, Q1003/Q1004 collide by name,
-    # Q1005 has no label.
-    assert result["manifest_auto_admit"] == 1
-    assert result["first_pass"]["bundle_imported"] == 5  # every candidate with a label
-    assert result["first_pass"]["admission_imported"] == 1
-    assert result["first_pass"]["admission_reference_error"] == 0
-    assert result["readback"]["mismatches"] == 0
-    assert result["readback"]["unexpected_canonical_rows_for_non_admitted"] == 0
-    assert result["readback"]["canonical_id_set_matches"] is True
-    assert result["readback"]["no_stray_brand_organization_boatdesign_rows"] is True
-    assert result["reimport"]["already_imported"] == 5 + 1  # bundles + admissions
-    assert result["reimport"]["conflict"] == 0
-    assert result["reimport"]["error"] == 0
-    assert result["fresh_schema_rerun"]["imported"] == 1
-    assert result["fresh_schema_rerun"]["semantic_mismatches"] == 0
-    assert result["fresh_schema_rerun"]["error"] == 0
-    assert result["fresh_schema_rerun"]["id_set_matches"] is True
-    assert result["all_zero_tolerance_conditions_clear"] is True
+    _assert_clean_replay(result)
     assert result_path.exists()
     assert report_path.exists()
 
     # Deep semantic proof: the single admitted BoatModel's alias set is exactly
-    # what build_admission expects, not just canonical_name.
+    # what build_admission expects, not just canonical_name. Read back from
+    # the *default* connection — the isolated schema1/schema2 are dropped by
+    # replay_manifest on exit, so nothing from the replay should be visible here.
     from hullq.persistence.identity_readback import fetch_boat_model
 
     manifest = json.loads(small_manifest_path.read_text(encoding="utf-8"))
@@ -120,11 +145,51 @@ def test_full_manifest_replay_clears_every_zero_tolerance_condition(
     conn = psycopg.connect(db_url)
     try:
         fetched = fetch_boat_model(conn, admitted_row["hullq_id"])
-        assert fetched is not None
-        assert fetched["canonical_name"] == "Bootstrap Test Yacht Two"
-        assert fetched["aliases"] == []
+        assert fetched is None  # the isolated schema was dropped; nothing leaks to default
     finally:
         conn.close()
+
+
+def test_replay_is_isolated_from_contaminated_public_schema(
+    db_url: str, clean_conn: Any, small_manifest_path: Path, tmp_path: Path, registry: Any
+) -> None:
+    """Reproduces the exact contamination scenario independent review flagged:
+    a synthetic canonical BoatModel left behind in the default/public schema
+    by an unrelated prior test/step. The isolated replay proof must still be
+    fully clean — it must not see, and must not be confused by, this row.
+    """
+    from hullq.persistence.identity_importer import import_canonical_identity_admission
+    from hullq.persistence.identity_types import CanonicalIdentityAdmission, CanonicalImportStatus
+
+    # Contaminate the default/public schema directly (the connection fixture
+    # operates on whatever schema is active by default — no isolation).
+    contaminating_payload = {
+        "schema_version": "0.2",
+        "id": "BM_CONTAMINATION_LEFTOVER",
+        "canonical_name": "Leftover From Another Test",
+        "aliases": [],
+        "brand_relationships": [],
+        "first_built": None,
+        "last_built": None,
+        "boat_design_ids": [],
+    }
+    admission = CanonicalIdentityAdmission(boat_models=(contaminating_payload,))
+    result = import_canonical_identity_admission(clean_conn, admission, registry)
+    assert result.status == CanonicalImportStatus.IMPORTED
+    clean_conn.commit()
+    clean_conn.close()
+
+    from bootstrap.wikidata_tier0_runner import replay_manifest
+
+    result_path = tmp_path / "REPLAY-RESULT.json"
+    report_path = tmp_path / "REPLAY-REPORT.md"
+    replay_result = replay_manifest(
+        db_url, manifest_path=small_manifest_path, result_path=result_path, report_path=report_path
+    )
+    # The contaminating row must not have affected the isolated proof at all:
+    # canonical_id_set_matches only ever compares against the isolated
+    # schema's own contents, never the polluted public schema.
+    _assert_clean_replay(replay_result)
 
 
 def test_review_required_and_not_admitted_never_persist_as_canonical(

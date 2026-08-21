@@ -155,6 +155,57 @@ def test_live_rerun_mints_only_for_genuinely_new_qids(
     assert by_qid["Q2"] != q1_id
 
 
+def test_retained_qid_survives_a_discovery_window_that_omits_it(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Three-run regression: a retained QID must keep its byte-identical
+    HullQ ID even after a later discovery window's first-N result happens
+    not to include it, and must not be reminted when it reappears.
+
+    Run 1: discovery returns Q1 -> mints an ID for Q1.
+    Run 2: discovery returns only Q2 (Q1 absent from this window's first-N)
+           -> Q1 must be carried forward into the new manifest unchanged.
+    Run 3: discovery returns Q1 and Q2 again -> Q1 must reuse the exact
+           original ID from run 1, not a new one.
+    """
+    manifest_path = tmp_path / "manifest.json"
+    report_path = tmp_path / "REPORT.md"
+
+    _patch_httpx_client(monkeypatch, ["Q1"], {"Q1": "Alpha Yacht"})
+    run1 = run_live_bootstrap(
+        user_agent=_USER_AGENT,
+        requested_limit=1,
+        manifest_path=manifest_path,
+        report_path=report_path,
+    )
+    q1_original_id = next(c["hullq_id"] for c in run1["candidates"] if c["qid"] == "Q1")
+    assert q1_original_id is not None
+
+    _patch_httpx_client(monkeypatch, ["Q2"], {"Q2": "Beta Yacht"})
+    run2 = run_live_bootstrap(
+        user_agent=_USER_AGENT,
+        requested_limit=1,
+        manifest_path=manifest_path,
+        report_path=report_path,
+    )
+    run2_by_qid = {c["qid"]: c for c in run2["candidates"]}
+    assert "Q1" in run2_by_qid  # carried forward, not dropped
+    assert run2_by_qid["Q1"]["hullq_id"] == q1_original_id
+    assert run2_by_qid["Q1"]["decision"] == "auto_admit"
+    assert run2_by_qid["Q2"]["hullq_id"] is not None
+
+    _patch_httpx_client(monkeypatch, ["Q1", "Q2"], {"Q1": "Alpha Yacht", "Q2": "Beta Yacht"})
+    run3 = run_live_bootstrap(
+        user_agent=_USER_AGENT,
+        requested_limit=2,
+        manifest_path=manifest_path,
+        report_path=report_path,
+    )
+    run3_by_qid = {c["qid"]: c["hullq_id"] for c in run3["candidates"]}
+    assert run3_by_qid["Q1"] == q1_original_id  # byte-identical, never reminted
+    assert run3_by_qid["Q2"] == run2_by_qid["Q2"]["hullq_id"]
+
+
 def test_recompute_offline_performs_no_network_access(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -346,3 +397,61 @@ def test_recompute_offline_fails_closed_on_conflicting_retained_crosswalk(tmp_pa
 
     # The manifest on disk must not have been overwritten by a failed recompute.
     assert manifest_path.read_text(encoding="utf-8") == before
+
+
+# ---------------------------------------------------------------------------
+# _isolated_schema — offline control-flow proof (no real database)
+# ---------------------------------------------------------------------------
+
+
+class _FakeCursor:
+    def __init__(self, log: list[str]) -> None:
+        self._log = log
+
+    def execute(self, sql: str, *args: object) -> None:
+        self._log.append(sql)
+
+    def __enter__(self) -> _FakeCursor:
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        return None
+
+
+class _FakeConn:
+    def __init__(self) -> None:
+        self.log: list[str] = []
+        self.commits = 0
+
+    def cursor(self) -> _FakeCursor:
+        return _FakeCursor(self.log)
+
+    def commit(self) -> None:
+        self.commits += 1
+
+
+def test_isolated_schema_drops_creates_and_sets_search_path_in_order() -> None:
+    from bootstrap.wikidata_tier0_runner import _isolated_schema
+
+    conn = _FakeConn()
+    with _isolated_schema(conn, "hullq_wdt0_test_schema"):
+        conn.log.append("<<inside>>")
+
+    assert conn.log == [
+        'DROP SCHEMA IF EXISTS "hullq_wdt0_test_schema" CASCADE',
+        'CREATE SCHEMA "hullq_wdt0_test_schema"',
+        'SET search_path TO "hullq_wdt0_test_schema"',
+        "<<inside>>",
+        'DROP SCHEMA IF EXISTS "hullq_wdt0_test_schema" CASCADE',
+    ]
+    assert conn.commits == 2  # once after setup, once after teardown
+
+
+def test_isolated_schema_drops_even_if_body_raises() -> None:
+    from bootstrap.wikidata_tier0_runner import _isolated_schema
+
+    conn = _FakeConn()
+    with pytest.raises(RuntimeError), _isolated_schema(conn, "hullq_wdt0_test_schema"):
+        raise RuntimeError("boom")
+
+    assert conn.log[-1] == 'DROP SCHEMA IF EXISTS "hullq_wdt0_test_schema" CASCADE'

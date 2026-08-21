@@ -118,7 +118,7 @@ jobs:
           print('BENCHMARK-RESULT.json validates against result_schema.json');
           rec = result.get('recommendation', 'MISSING');
           print(f'Recommendation: {rec}');
-          assert rec in ('G3_PASS', 'G3_CANDIDATE', 'HARDEN_FIRST', 'BLOCKED'), f'Unexpected recommendation: {rec}'
+          assert rec == 'G3_PASS', f'Retained Stage-2 benchmark must remain exactly G3_PASS after accepted SLICE-0015 G3 passage; got: {rec}'
           "
 
       - name: Upload benchmark outputs
@@ -169,6 +169,7 @@ jobs:
             research/bootstrap/wikidata/manifest.json
             research/bootstrap/wikidata/REPORT.md
             research/bootstrap/wikidata/REPLAY-RESULT.json
+            research/bootstrap/wikidata/REPLAY-REPORT.md
           if-no-files-found: warn
 
   dependency-audit:

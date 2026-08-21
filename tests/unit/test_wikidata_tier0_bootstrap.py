@@ -402,6 +402,68 @@ def test_build_manifest_raises_on_crosswalk_conflict() -> None:
         )
 
 
+def _minimal_row(qid: str, hullq_id: str | None) -> dict[str, Any]:
+    return {
+        "qid": qid,
+        "retrieved_at": RETRIEVED_AT,
+        "preferred_label": "Whatever",
+        "aliases": [],
+        "hullq_id": hullq_id,
+        "decision": "auto_admit" if hullq_id else "not_admitted",
+        "reason_codes": ["ok"] if hullq_id else ["missing_label"],
+        "observation_id": f"OBS-{qid}" if hullq_id else None,
+        "bundle_id": f"BUNDLE-{qid}" if hullq_id else None,
+        "bundle_version": "1" if hullq_id else None,
+        "evidence_link_id": f"LINK-{qid}" if hullq_id else None,
+    }
+
+
+def test_load_crosswalk_from_manifest_fails_closed_on_same_qid_two_ids() -> None:
+    """Q42 -> BM_A, Q42 -> BM_B: the same QID retained under two different
+    HullQ IDs must fail closed before the rows are collapsed into one dict.
+    """
+    from hullq.bootstrap.wikidata_tier0 import load_crosswalk_from_manifest
+
+    manifest = {
+        "candidates": [
+            _minimal_row("Q42", "BM_WDT0_A"),
+            _minimal_row("Q42", "BM_WDT0_B"),
+        ]
+    }
+    with pytest.raises(CrosswalkConflictError):
+        load_crosswalk_from_manifest(manifest)
+
+
+def test_load_crosswalk_from_manifest_fails_closed_on_same_id_two_qids() -> None:
+    """BM_SHARED addressed by both Q1 and Q2: one HullQ ID retained for two
+    different QIDs must also fail closed.
+    """
+    from hullq.bootstrap.wikidata_tier0 import load_crosswalk_from_manifest
+
+    manifest = {
+        "candidates": [
+            _minimal_row("Q1", "BM_WDT0_SHARED"),
+            _minimal_row("Q2", "BM_WDT0_SHARED"),
+        ]
+    }
+    with pytest.raises(CrosswalkConflictError):
+        load_crosswalk_from_manifest(manifest)
+
+
+def test_load_crosswalk_from_manifest_accepts_consistent_rows() -> None:
+    from hullq.bootstrap.wikidata_tier0 import load_crosswalk_from_manifest
+
+    manifest = {
+        "candidates": [
+            _minimal_row("Q1", "BM_WDT0_A"),
+            _minimal_row("Q2", "BM_WDT0_B"),
+            _minimal_row("Q3", None),
+        ]
+    }
+    crosswalk = load_crosswalk_from_manifest(manifest)
+    assert crosswalk == {"Q1": "BM_WDT0_A", "Q2": "BM_WDT0_B"}
+
+
 # ---------------------------------------------------------------------------
 # 16. every auto-admitted BoatModel has supporting observation/evidence linkage
 # ---------------------------------------------------------------------------
