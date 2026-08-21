@@ -1,7 +1,7 @@
 # HullQ — Retention and Monetization Strategy
 
 **Status:** ACTIVE product strategy
-**Updated:** 2026-08-18
+**Updated:** 2026-08-22
 **Related:** REQ-PROD-004..005, REQ-ALERT-001..002, REQ-SUB-001..006, REQ-MARKET-005..006, OQ-006, OQ-016, OQ-017
 
 ## 1. Retention correction
@@ -116,3 +116,13 @@ Do not judge retention solely by boat purchases. Track at minimum:
 ## 7. Guardrail
 
 HullQ MUST NOT deliberately cripple the free technical search merely to manufacture conversion. Paid value should come from persistent automated work HullQ performs for the user: continued monitoring, faster notification, broader monitoring capacity and additional market-watch intelligence.
+
+## 8. Deferred dealer / broker marketplace opportunity
+
+A separate supply-side commercial hypothesis is retained in `docs/DEALER_MARKETPLACE_OPPORTUNITY.md`.
+
+Public industry evidence shows both material concentration among major marine marketplace brands and documented dealer frustration over escalating marketplace costs. This creates a potentially important future opportunity for HullQ to offer inexpensive, transparent dealer inventory participation linked to technically qualified buyer searches rather than compete as a generic classified portal.
+
+This opportunity is explicitly **not current scope**. It does not alter the accepted Free / Plus / Pro buyer-side thesis, authorize marketplace implementation, or set dealer prices. It should be revisited only after HullQ has a sufficiently broad canonical universe, a working technical query product, measurable buyer intent and at least one permitted market-access path.
+
+Acquisition by an incumbent is retained only as optional strategic upside. HullQ MUST NOT make early product or architecture decisions on the assumption that an incumbent will acquire the project.
