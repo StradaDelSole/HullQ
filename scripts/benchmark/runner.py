@@ -23,8 +23,9 @@ The runner:
 9. Writes a machine-readable result JSON with G3 gate decision.
 
 SLICE-0015 hardening: CANNOT_MATERIALIZE is classified before the recommendation
-is set. BLOCKED is reserved for CONTRACT_GAP failures only. Ordinary validation
-failures and insufficient-retained-fact drive HARDEN_FIRST, not BLOCKED.
+is set. Binding failure-class semantics: CONTRACT_GAP → BLOCKED; VALIDATION_FAILURE
+→ HARDEN_FIRST regardless of percentage; INSUFFICIENT_RETAINED_FACT → rate-based,
+may remain G3-positive when the total cannot-materialize rate is <=10%.
 """
 
 from __future__ import annotations
