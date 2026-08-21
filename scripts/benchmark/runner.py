@@ -1,4 +1,4 @@
-"""Deterministic benchmark runner — SLICE-0014.
+"""Deterministic benchmark runner — SLICE-0015.
 
 Runs the 50 retained benchmark cases through the accepted PostgreSQL
 persistence path and records measured outcomes. Produces a machine-readable
@@ -14,12 +14,18 @@ Environment variable fallback: HULLQ_TEST_DATABASE_URL or HULLQ_DATABASE_URL.
 The runner:
 1. Applies migrations to a clean database.
 2. Materializes all 50 benchmark bundles deterministically.
-3. Runs first-pass import, records results.
-4. Reads back each imported bundle, checks fidelity.
-5. Runs exact re-import, records ALREADY_IMPORTED outcomes.
-6. Drops and recreates schema (fresh DB), runs a second import.
-7. Compares semantic fingerprints between the two fresh-DB runs.
-8. Writes a machine-readable result JSON.
+3. Classifies any CANNOT_MATERIALIZE failures (VALIDATION_FAILURE vs CONTRACT_GAP).
+4. Runs first-pass import, records results.
+5. Reads back each imported bundle, checks fidelity.
+6. Runs exact re-import, records ALREADY_IMPORTED outcomes.
+7. Drops and recreates schema (fresh DB), runs a second import.
+8. Compares semantic fingerprints between the two fresh-DB runs.
+9. Writes a machine-readable result JSON with G3 gate decision.
+
+SLICE-0015 hardening: CANNOT_MATERIALIZE is classified before the recommendation
+is set. Binding failure-class semantics: CONTRACT_GAP → BLOCKED; VALIDATION_FAILURE
+→ HARDEN_FIRST regardless of percentage; INSUFFICIENT_RETAINED_FACT → rate-based,
+may remain G3-positive when the total cannot-materialize rate is <=10%.
 """
 
 from __future__ import annotations
@@ -40,6 +46,13 @@ RESULT_DEFAULT = ROOT / "research" / "benchmark" / "persistence" / "BENCHMARK-RE
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from benchmark.gate import evaluate_g3_gate  # noqa: E402
+from benchmark.materializer import (  # noqa: E402
+    FAILURE_CLASS_CONTRACT_GAP,
+    FAILURE_CLASS_INSUFFICIENT_RETAINED_FACT,
+    FAILURE_CLASS_VALIDATION_FAILURE,
+    classify_cannot_materialize_reasons,
+)
 from benchmark.semantics_compare import (  # noqa: E402
     compare_crosscheck_semantics,
     compare_finding_semantics,
@@ -114,9 +127,42 @@ def _write_report(result_doc: dict[str, Any], report_path: Path) -> None:
     pers = result_doc.get("persistence", {})
     hrb = result_doc.get("human_review_burden", {})
     throughput = result_doc.get("throughput", {})
+    scorecard_items: list[dict[str, Any]] = result_doc.get("g3_scorecard", [])
+
+    # Build G3 SCORECARD table rows
+    scorecard_section: list[str] = [
+        "---",
+        "",
+        "## G3 SCORECARD",
+        "",
+        "Every binding Stage-2 Gate G3 metric with its measured value, threshold and status.",
+        "",
+        "Evidence basis: **DIRECT\\_RUNTIME** = directly observed this run; "
+        "**VERIFIED\\_INVARIANT** = structural guarantee proven by materializer design and tests; "
+        "**NOT\\_MEASURED** = not directly observable from the runner.",
+        "",
+        "| Metric | Measured | Threshold | Status | Evidence |",
+        "|--------|----------|-----------|--------|----------|",
+    ]
+    for m in scorecard_items:
+        name = m.get("name", "?")
+        measured = m.get("measured", "?")
+        threshold = m.get("threshold", "?")
+        status = m.get("status", "?")
+        evidence = m.get("evidence_basis", "?")
+        if status == "PASS":
+            status_str = "PASS"
+        elif status == "FAIL":
+            status_str = "FAIL"
+        else:
+            status_str = str(status)
+        scorecard_section.append(
+            f"| {name} | {measured} | {threshold} | {status_str} | {evidence} |"
+        )
+    scorecard_section.append("")
 
     lines: list[str] = [
-        "# HullQ SLICE-0014 Benchmark Report",
+        "# HullQ SLICE-0015 Benchmark Report — Stage-2 Gate G3",
         "",
         f"**Run timestamp:** {result_doc.get('run_timestamp', 'NOT_MEASURED')}  ",
         f"**Implementation SHA:** {result_doc.get('git_sha', 'NOT_MEASURED')}  ",
@@ -135,7 +181,7 @@ def _write_report(result_doc: dict[str, Any], report_path: Path) -> None:
         f"- First-pass imported: **{pers.get('first_pass_imported', '?')}**",
         f"- First-pass conflict: **{pers.get('first_pass_conflict', '?')}**",
         f"- First-pass error: **{pers.get('first_pass_error', '?')}**",
-        f"- Reimport ALREADY_IMPORTED: **{pers.get('reimport_already_imported', '?')}**",
+        f"- Reimport ALREADY\\_IMPORTED: **{pers.get('reimport_already_imported', '?')}**",
         f"- Readback semantic mismatches: **{pers.get('readback_mismatches', '?')}**",
         f"- Fresh-schema imported: **{pers.get('fresh_run_imported', '?')}**",
         f"- Fresh-schema semantic mismatches: **{pers.get('fresh_run_semantic_mismatches', '?')}**",
@@ -143,6 +189,7 @@ def _write_report(result_doc: dict[str, Any], report_path: Path) -> None:
         f"- Review-required cases: **{hrb.get('review_required_cases', '?')}**",
         f"- Review decisions required: **{hrb.get('review_decisions_required', '?')}**",
         "",
+        *scorecard_section,
         "---",
         "",
         "## INTERPRETATION",
@@ -158,17 +205,59 @@ def _write_report(result_doc: dict[str, Any], report_path: Path) -> None:
         "## RECOMMENDED NEXT ACTION",
         "",
     ]
-    if rec == "G3_CANDIDATE":
+    if rec == "G3_PASS":
+        total_cases_val = corpus.get("total_cases", 0)
+        materialized_val = corpus.get("materialized", 0)
+        cannot_val = corpus.get("cannot_materialize", 0)
+        mat_pct = 100.0 * materialized_val / total_cases_val if total_cases_val > 0 else 0.0
+
+        # Only claim "all N cases materialized" when that is literally true.
+        if materialized_val == total_cases_val:
+            mat_line = (
+                f"All {total_cases_val} benchmark cases materialized, imported, "
+                f"and round-tripped with zero semantic mismatches."
+            )
+        else:
+            cannot_pct = 100.0 * cannot_val / total_cases_val if total_cases_val > 0 else 0.0
+            mat_line = (
+                f"Materialization: {materialized_val}/{total_cases_val} ({mat_pct:.1f}%). "
+                f"Cannot-materialize-without-invention: {cannot_val}/{total_cases_val} "
+                f"({cannot_pct:.1f}%, within the \\u226410% threshold). "
+                f"All imported cases round-tripped with zero semantic mismatches."
+            )
         lines += [
-            "All 50 benchmark cases materialized, imported, and round-tripped with zero",
-            "semantic mismatches. The persistence path is ready for G3 gate review.",
+            "All binding G3 correctness and scale gates are satisfied.",
+            mat_line,
+            "Failure classification is deterministic. Negative-path proofs are in place.",
             "",
-            "Next: proceed to independent SLICE-0014 acceptance review.",
+            "Technical recommendation: **G3_PASS**.",
+            "Stage-2 Gate G3 passage requires independent review and explicit project-owner acceptance.",
+            "No broader bootstrap is authorized until the project owner explicitly accepts this slice.",
+        ]
+    elif rec == "G3_CANDIDATE":
+        total_cases_val = corpus.get("total_cases", 0)
+        materialized_val = corpus.get("materialized", 0)
+        mat_pct = 100.0 * materialized_val / total_cases_val if total_cases_val > 0 else 0.0
+        if materialized_val == total_cases_val:
+            mat_line = (
+                f"All {total_cases_val} benchmark cases materialized, imported, "
+                f"and round-tripped with zero semantic mismatches."
+            )
+        else:
+            mat_line = (
+                f"Materialization: {materialized_val}/{total_cases_val} ({mat_pct:.1f}%). "
+                f"All imported cases round-tripped with zero semantic mismatches."
+            )
+        lines += [
+            mat_line,
+            "The persistence path is ready for G3 gate review.",
+            "",
+            "Next: proceed to independent SLICE-0015 acceptance review.",
         ]
     else:
         lines += [
             "One or more acceptance criteria were not met. Review the MEASURED FACT section",
-            "above to identify failing areas before proceeding to SLICE-0015.",
+            "above to identify failing areas.",
             "",
             f"Recommendation: **{rec}** — resolve blockers before advancing the slice.",
         ]
@@ -204,7 +293,7 @@ def run_benchmark(
     from hullq.persistence.migrations import apply_migrations
     from hullq.persistence.readback import fetch_bundle_snapshot
 
-    print("HullQ SLICE-0014 Benchmark Runner", flush=True)
+    print("HullQ SLICE-0015 Benchmark Runner — Stage-2 Gate G3", flush=True)
     print(f"  database: {db_url!r}", flush=True)
 
     sha = _git_sha(explicit_sha)
@@ -217,19 +306,26 @@ def run_benchmark(
     mat_count = sum(1 for r in mat_results.values() if r.status == "MATERIALIZED")
     review_count = sum(1 for r in mat_results.values() if r.status == "REVIEW_REQUIRED")
     cannot_count = sum(1 for r in mat_results.values() if r.status == "CANNOT_MATERIALIZE")
-    # review_required_reasons must be {failure_class: count} per result_schema.json
-    _REASON_TO_CLASS: dict[str, str] = {
-        "no_observations_extracted": "INSUFFICIENT_RETAINED_FACT",
-    }
+
+    # Classify every non-materialized case deterministically.
+    # Explicit counts are passed to evaluate_g3_gate() so the gate can apply
+    # per-class semantics without inferring classification from exception strings.
     review_reason_counts: dict[str, int] = {}
+    contract_gap_count = 0
+    validation_failure_count = 0
+    insufficient_retained_fact_count = 0
     for r in mat_results.values():
-        if r.status != "MATERIALIZED":
-            for raw_reason in r.review_reasons:
-                cls = _REASON_TO_CLASS.get(raw_reason)
-                if cls is None:
-                    # Classify exception-derived reasons as VALIDATION_FAILURE
-                    cls = "VALIDATION_FAILURE"
-                review_reason_counts[cls] = review_reason_counts.get(cls, 0) + 1
+        if r.status == "MATERIALIZED":
+            continue
+        cls = classify_cannot_materialize_reasons(r.review_reasons)
+        if r.status == "CANNOT_MATERIALIZE":
+            if cls == FAILURE_CLASS_CONTRACT_GAP:
+                contract_gap_count += 1
+            elif cls == FAILURE_CLASS_VALIDATION_FAILURE:
+                validation_failure_count += 1
+            elif cls == FAILURE_CLASS_INSUFFICIENT_RETAINED_FACT:
+                insufficient_retained_fact_count += 1
+        review_reason_counts[cls] = review_reason_counts.get(cls, 0) + 1
     print(
         f"  total={total} materialized={mat_count} review_required={review_count} "
         f"cannot_materialize={cannot_count}",
@@ -388,6 +484,7 @@ def run_benchmark(
 
         fresh_imported = 0
         fresh_semantic_mismatches = 0
+        fresh_error = 0
         for case_id, bundle in bundles.items():
             try:
                 result = import_research_evidence_bundle(conn2, bundle)
@@ -446,13 +543,14 @@ def run_benchmark(
                             for d in diffs[:3]:
                                 print(f"    FRESH CC DIFF: {d}", flush=True)
                 else:
-                    fresh_semantic_mismatches += 1
+                    fresh_error += 1
                     print(f"    FRESH IMPORT FAILED: {case_id}: {result.status}", flush=True)
             except Exception as exc:
-                fresh_semantic_mismatches += 1
+                fresh_error += 1
                 print(f"    FRESH ERROR: {case_id}: {exc}", flush=True)
         print(
-            f"  fresh_imported={fresh_imported} semantic_mismatches={fresh_semantic_mismatches}",
+            f"  fresh_imported={fresh_imported} semantic_mismatches={fresh_semantic_mismatches} "
+            f"fresh_error={fresh_error}",
             flush=True,
         )
     finally:
@@ -472,8 +570,8 @@ def run_benchmark(
     pre_canonical_count = mat_count  # all successfully materialized bundles remain pre-canonical
 
     result_doc: dict[str, Any] = {
-        "schema_version": "0014-v1",
-        "benchmark_version": "0014-v1",
+        "schema_version": "0015-v1",
+        "benchmark_version": "0015-v1",
         "run_timestamp": datetime.now(tz=UTC).isoformat(),
         "git_sha": sha,
         "environment": {
@@ -487,6 +585,10 @@ def run_benchmark(
             "cannot_materialize": cannot_count,
             # review_required_reasons: {failure_class: count} per result_schema.json contract
             "review_required_reasons": review_reason_counts,
+            # Explicit failure-class counts for the G3 gate — required from schema_version 0015-v1
+            "contract_gap_count": contract_gap_count,
+            "validation_failure_count": validation_failure_count,
+            "insufficient_retained_fact_count": insufficient_retained_fact_count,
         },
         "persistence": {
             "valid_bundles_submitted": mat_count,
@@ -499,6 +601,9 @@ def run_benchmark(
             "readback_mismatches": readback_mismatches,
             "fresh_run_imported": fresh_imported,
             "fresh_run_semantic_mismatches": fresh_semantic_mismatches,
+            # fresh_run_error: import failures / exceptions in the fresh-schema phase
+            # (distinct from semantic mismatches among successfully imported bundles)
+            "fresh_run_error": fresh_error,
         },
         "promotion_applicability": {
             "eligible_for_promotion": 0,
@@ -534,53 +639,30 @@ def run_benchmark(
         },
     }
 
-    # Derive recommendation: BLOCKED when contracts cannot represent retained reality
-    # (CANNOT_MATERIALIZE means bundle building threw an exception — the domain contracts
-    # are insufficient for those cases, not just that the evidence is ambiguous).
-    # HARDEN_FIRST for cases where persistence/readback criteria were not met.
-    # G3_CANDIDATE only when all acceptance criteria pass.
-    if cannot_count > 0:
-        recommendation = "BLOCKED"
-        rationale = (
-            f"BLOCKED: {cannot_count} case(s) cannot_materialize — accepted domain contracts "
-            f"cannot represent retained benchmark reality for those cases. "
-            f"materialized={mat_count}/{total}, "
-            f"first_pass_imported={first_imported}/{mat_count}, "
-            f"reimport_already_imported={reimport_already}/{mat_count}, "
-            f"fresh_run_imported={fresh_imported}/{mat_count}, "
-            f"readback_mismatches={readback_mismatches}, "
-            f"semantic_mismatches={fresh_semantic_mismatches}."
-        )
-    elif (
-        mat_count == total
-        and first_imported == mat_count
-        and reimport_already == mat_count
-        and fresh_imported == mat_count
-        and readback_mismatches == 0
-        and fresh_semantic_mismatches == 0
-    ):
-        recommendation = "G3_CANDIDATE"
-        rationale = (
-            f"All acceptance criteria met: materialized={mat_count}/{total}, "
-            f"first_pass_imported={first_imported}/{mat_count}, "
-            f"reimport_already_imported={reimport_already}/{mat_count}, "
-            f"fresh_run_imported={fresh_imported}/{mat_count}, "
-            f"readback_mismatches={readback_mismatches}, "
-            f"semantic_mismatches={fresh_semantic_mismatches}."
-        )
-    else:
-        recommendation = "HARDEN_FIRST"
-        rationale = (
-            f"One or more acceptance criteria not met: materialized={mat_count}/{total}, "
-            f"first_pass_imported={first_imported}/{mat_count}, "
-            f"reimport_already_imported={reimport_already}/{mat_count}, "
-            f"fresh_run_imported={fresh_imported}/{mat_count}, "
-            f"readback_mismatches={readback_mismatches}, "
-            f"semantic_mismatches={fresh_semantic_mismatches}."
-        )
+    # Evaluate G3 gate — delegate entirely to evaluate_g3_gate() so runner and tests
+    # share the same decision function (no inline logic duplication).
+    gate_result = evaluate_g3_gate(
+        total_cases=total,
+        materialized=mat_count,
+        review_required=review_count,
+        contract_gap_count=contract_gap_count,
+        validation_failure_count=validation_failure_count,
+        insufficient_retained_fact_count=insufficient_retained_fact_count,
+        first_pass_imported=first_imported,
+        reimport_already_imported=reimport_already,
+        fresh_run_imported=fresh_imported,
+        readback_mismatches=readback_mismatches,
+        fresh_run_semantic_mismatches=fresh_semantic_mismatches,
+        first_pass_conflict=first_conflict,
+        first_pass_error=first_error,
+        reimport_conflict=reimport_conflict,
+        reimport_error=reimport_error,
+        fresh_run_error=fresh_error,
+    )
 
-    result_doc["recommendation"] = recommendation
-    result_doc["recommendation_rationale"] = rationale
+    result_doc["recommendation"] = gate_result.recommendation
+    result_doc["recommendation_rationale"] = gate_result.rationale
+    result_doc["g3_scorecard"] = gate_result.scorecard_as_dicts()
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(result_doc, indent=2), encoding="utf-8")
@@ -601,7 +683,7 @@ def run_benchmark(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="HullQ SLICE-0014 benchmark runner")
+    parser = argparse.ArgumentParser(description="HullQ SLICE-0015 benchmark runner")
     parser.add_argument("--db-url", default=None, help="PostgreSQL connection URL")
     parser.add_argument("--output", default=str(RESULT_DEFAULT), help="Output JSON path")
     parser.add_argument(

@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0015  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 2.15 — benchmark hardening and Stage-2 G3 decision  
 **Depends on:** SLICE-0014 accepted / DONE  
 **Blocks:** controlled 1,000-design identity bootstrap experiment
@@ -241,3 +241,134 @@ The implementation agent MAY set `IN_PROGRESS`, `BLOCKED` or `REVIEW`, but MUST 
 `DONE` requires verified gates, independent review, an explicit gate recommendation and explicit project-owner acceptance.
 
 The agent MUST NOT automatically begin the 1,000-design bootstrap or any later slice.
+
+---
+
+## Completion report (third correction round — head a725c96)
+
+**Status:** REVIEW  
+**Branch:** `slice/0015-benchmark-hardening-stage-2-g3`  
+**Head commit:** `a725c96`  
+**PR:** #31  
+**Previous exact-head CI:** #186 on `6b9e1b1` PASS  
+**Remote CI for new head:** NOT VERIFIED (CI #187 queued)
+
+### What changed in this round (third correction)
+
+**Report-generation fix — data-driven G3_PASS text:**
+`_write_report()` previously hard-coded "All 50 benchmark cases materialized" for every G3_PASS result, which is only true when `materialized == total_cases`. The accepted gate semantics permit G3_PASS with partial materialization (e.g. 49/50 + 1 INSUFFICIENT_RETAINED_FACT at 2% ≤ 10%). The report now derives the materialization statement from actual result_doc values: only claims "All N cases materialized" when `materialized == total_cases`; otherwise reports actual counts and rate. Same fix applied to the G3_CANDIDATE branch.
+
+**Stale comment corrections:**
+- `materializer.py` `classify_cannot_materialize_reasons()` docstring: "INSUFFICIENT_RETAINED_FACT drive HARDEN_FIRST, not BLOCKED" → corrected to rate-based semantics (may remain G3-positive at ≤10% threshold).
+- `test_negative_path_hardening.py` `test_insufficient_retained_fact_does_not_imply_blocked` docstring: same correction.
+
+**New tests (`tests/unit/test_report_truthfulness.py`):**
+- Case A: 49/50 + 1 INSUFFICIENT_RETAINED_FACT → G3_PASS; report must not claim "All 50 benchmark cases materialized", must reflect 49/50, must state G3_PASS, must retain acceptance/no-bootstrap language.
+- Case B: 50/50 → G3_PASS; report may accurately state all 50 materialized; must state G3_PASS, retain acceptance language.
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `scripts/benchmark/runner.py` | `_write_report()` G3_PASS and G3_CANDIDATE branches data-driven |
+| `scripts/benchmark/materializer.py` | Stale failure-class comment corrected |
+| `tests/unit/test_negative_path_hardening.py` | Stale docstring corrected |
+| `tests/unit/test_report_truthfulness.py` | New file: 2 focused report-truthfulness tests |
+
+### Local quality gates
+
+| Gate | Result |
+|---|---|
+| Report truthfulness tests (2 new) | 2/2 PASS |
+| Full test suite | 1277 passed, 164 skipped |
+| Repository validator | PASS |
+| `ruff check` + `ruff format --check` | CLEAN |
+| `mypy --strict gate.py` | CLEAN |
+| Coverage | 93.66% |
+
+### Constraints respected
+
+- Corpus membership: exactly 50 cases (unchanged)
+- G3 thresholds: ≥65%, ≤10%, ≤35% (unchanged)
+- Gate decision logic: unchanged
+- Real 50/50 benchmark semantics: unchanged
+- Slice status: REVIEW — not DONE, not merged, no bootstrap started
+
+### Agent declaration
+
+All changes address only the third-correction-round blocker (report truthfulness). I have NOT changed gate decision logic, corpus membership, or thresholds. I have NOT marked this slice DONE. I have NOT merged to main. I have NOT started any later slice.
+
+---
+
+## Completion report (second correction round — head a3b3234)
+
+**Status:** REVIEW  
+**Branch:** `slice/0015-benchmark-hardening-stage-2-g3`  
+**Head commit:** `a3b3234`  
+**PR:** #31  
+**Previous reviewed head:** `d5d760a` (CI #184 PASS)  
+**Remote CI for new head:** NOT VERIFIED (push just completed; CI #185 in progress)
+
+### What changed in this round (second correction)
+
+Addresses independent review #4991372937 (two acceptance blockers):
+
+**BLOCKER 1 — VALIDATION_FAILURE must force HARDEN_FIRST regardless of percentage:**
+- `scripts/benchmark/gate.py`: Removed `cannot_materialize` parameter (now derived internally as `validation_failure_count + insufficient_retained_fact_count + contract_gap_count`). Added explicit `validation_failure_count`, `insufficient_retained_fact_count`, `fresh_run_error` parameters. Gate priority 2 fires on any `validation_failure_count > 0` → HARDEN_FIRST before rate gates are evaluated.
+- `scripts/benchmark/runner.py`: Updated classification loop to populate `validation_failure_count` and `insufficient_retained_fact_count` separately; updated `evaluate_g3_gate()` call.
+
+**BLOCKER 2 — Scorecard rows semantically accurate:**
+- `fresh_db_semantic_equality`: PASS now requires BOTH `fresh_run_imported == materialized` AND `fresh_run_semantic_mismatches == 0`.
+- `unexpected_persistence_errors`: Now includes `fresh_run_error` covering all import failures in the fresh-schema phase.
+- `duplicate_membership_anomalies`: Changed to `measured=GUARD_VERIFIED, evidence_basis=VERIFIED_INVARIANT` — established by PostgreSQL integration tests, not a separate runtime counter.
+- Schema (`result_schema.json`): `g3_scorecard` already required. Added `contract_gap_count`, `validation_failure_count`, `insufficient_retained_fact_count` to `corpus_materialization.required`. Added `fresh_run_error` as optional in `persistence`.
+
+**Small cleanup:** Runner argparse description corrected from SLICE-0014 to SLICE-0015.
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `scripts/benchmark/gate.py` | Rewritten: explicit failure-class params, derived cannot_materialize, gate 2 validation_failure, fixed scorecard rows |
+| `scripts/benchmark/runner.py` | Updated: classification loop, fresh_error tracking, evaluate_g3_gate() call, argparse |
+| `research/benchmark/persistence/result_schema.json` | Added failure-class counts to corpus_materialization.required; added fresh_run_error |
+| `tests/unit/test_negative_path_hardening.py` | Updated all tests to use new params; 4 new gate semantics tests added (36 total) |
+
+### Local validation
+
+| Gate | Result |
+|---|---|
+| `test_negative_path_hardening.py` (36 tests) | 36/36 PASS |
+| Full unit test suite | 1023/1023 PASS |
+| Full test suite (unit + integration skipped) | 1275 passed, 164 skipped |
+| Repository validator | PASS |
+| `ruff check` benchmark + test file | CLEAN |
+| `ruff format --check` benchmark + test file | CLEAN |
+| `mypy --strict scripts/benchmark/gate.py` | CLEAN |
+| Coverage (scripts/benchmark + src) | 93.59% |
+
+### New tests added
+
+1. `test_g3_gate_validation_failure_single_case_forces_harden_first` — 1 VALIDATION_FAILURE/50 (2% ≤ 10%) → HARDEN_FIRST; confirms gate 2 fires before rate gate.
+2. `test_g3_gate_insufficient_retained_fact_within_threshold_is_pass` — 1 INSUFFICIENT_RETAINED_FACT/50 (2%) → G3_PASS; confirms rate-based treatment.
+3. `test_g3_gate_fresh_db_semantic_equality_fails_on_mismatch` — import complete but `fresh_run_semantic_mismatches=1` → `fresh_db_semantic_equality` row FAIL.
+4. `test_schema_validation_fails_if_g3_scorecard_omitted` — `jsonschema.validate` raises when `g3_scorecard` is absent.
+
+### Thresholds unchanged
+
+- Mechanical materialization: ≥ 65%
+- Cannot-materialize-without-invention: ≤ 10%
+- Review-required: ≤ 35%
+- Corpus membership: exactly 50 cases (unchanged)
+
+### Unresolved findings
+
+None. All second-correction-round blockers addressed.
+
+### Remote / external verification
+
+Remote CI for head `a3b3234` is **NOT VERIFIED** at report time. CI #184 on `d5d760a` was verified PASS. The second correction round changes are non-semantic with respect to the 50-case benchmark run itself (gate logic only; no corpus change); CI outcome expected to match.
+
+### Agent declaration
+
+I am the implementation agent. I have applied all changes specified in independent review #4991372937. I have NOT marked this slice DONE. I have NOT started the 1,000-design bootstrap or any later slice. I have NOT merged to main. The slice remains in REVIEW pending remote CI verification and project-owner acceptance.
