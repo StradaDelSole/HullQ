@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-21  
-**Current stage:** Stage 2.15 — SLICE-0015 benchmark hardening / Stage-2 G3 `READY`  
+**Current stage:** Stage 3.0 — SLICE-0016 canonical identity persistence / bootstrap-admission boundary `READY`  
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -61,10 +61,11 @@ Auth remains deferred under OQ-014. OQ-006 controls alert cadence/freshness; OQ-
 | SLICE-0010 | `hullq-derived-1.0.0` derived metrics |
 | SLICE-0011 | controlled 50-design real-web benchmark |
 | SLICE-0012 | pre-canonical observations, claim/applicability semantics, research bundle + explicit promotion |
-| SLICE-0013 | PostgreSQL 18 persistence + deterministic transactional importer |
+| SLICE-0013 | PostgreSQL 18 research persistence + deterministic transactional importer |
 | SLICE-0014 | exact 50-design retained benchmark through PostgreSQL; full semantic roundtrip; G3_CANDIDATE |
+| SLICE-0015 | negative-path hardening + fixed Stage-2 G3 scorecard; G3_PASS |
 
-All slices 0001–0014 are `DONE` and owner-accepted.
+All slices 0001–0015 are `DONE` and owner-accepted.
 
 ## SLICE-0011 — benchmark result retained
 
@@ -142,6 +143,8 @@ Accepted persistence semantics include:
 - PostgreSQL-native race-safe concurrent imports;
 - no fuzzy identity resolution, automatic canonical subject creation, automatic promotion or FieldResolution.
 
+Important Stage-3 boundary: the accepted SLICE-0013 schema is explicitly a **research/evidence persistence schema**. It does not provide canonical Brand / Organization / BoatModel / BoatDesign entity tables.
+
 Final closure record: `docs/slices/SLICE-0013-acceptance-closure.md`.
 
 ## SLICE-0014 — DONE / accepted / G3_CANDIDATE
@@ -156,16 +159,7 @@ Implementation PR #29 merge commit:
 
 `71100b50052ed7c2910b096e36b8a5402f757191`
 
-Exact-head CI #178 (`32457026920`) passed with:
-
-- PostgreSQL 18.6;
-- 162 persistence tests PASS;
-- Ubuntu quality PASS;
-- Windows quality PASS;
-- dependency audit PASS;
-- benchmark runner PASS;
-- benchmark schema validation PASS;
-- benchmark artifact upload PASS.
+Exact-head CI #178 (`32457026920`) passed with PostgreSQL 18.6, 162 persistence tests, Ubuntu/Windows quality, dependency audit, benchmark runner/schema validation and artifact upload all green.
 
 Final measured benchmark outcome:
 
@@ -181,8 +175,6 @@ Final measured benchmark outcome:
 recommendation: G3_CANDIDATE
 ```
 
-The accepted path now preserves/compares complete persisted observation semantics plus unresolved findings and reference crosschecks, preserves retained field identity, fails closed on ambiguous claim/evidence semantics, and only emits canonical field pointers through an explicit BoatDesign-v0.4 one-to-one allowlist.
-
 Retained artifact:
 
 - ID `9437591681`;
@@ -190,42 +182,102 @@ Retained artifact:
 
 Final closure record: `docs/slices/SLICE-0014-acceptance-closure.md`.
 
-Important interpretation limit:
+Important interpretation limit: `50/50 materialized` is not a production research automation-rate estimate because the benchmark begins with pre-curated retained HullQ evidence.
 
-`50/50 materialized` is **not** a production research automation-rate estimate. The benchmark starts from pre-curated retained HullQ evidence. It proves the research-contract/materialization/persistence boundary for that corpus, not unknown-design source discovery and acquisition economics.
+## SLICE-0015 — DONE / accepted / Stage-2 G3 PASS
 
-## Current operational position — SLICE-0015 READY
+SLICE-0015 hardened the benchmark's negative paths and applied the fixed pre-committed G3 scorecard without moving the thresholds after seeing the result.
 
-`docs/slices/SLICE-0015-benchmark-hardening-stage-2-g3.md` is the only current READY slice.
+Accepted final head:
 
-Its purpose is to harden the remaining failure paths and make the Stage-2 Gate G3 decision using the fixed scorecard agreed **before** the final benchmark result.
+`022bec43318025bdeb92608bb2fb0445650f081d`
 
-Binding correctness gates remain zero-tolerance:
+Implementation PR #31 merge commit:
+
+`d87490c6103676935768ba57ed41e665225731b8`
+
+Exact-head CI #189 (`32468991110`) passed with:
+
+- PostgreSQL 18 database integration PASS;
+- benchmark runner PASS;
+- benchmark result-schema validation PASS;
+- benchmark artifact upload PASS;
+- Ubuntu quality PASS;
+- Windows quality PASS;
+- dependency audit PASS.
+
+Final measured benchmark outcome remained:
 
 ```text
-readback mismatches                  0
-nondeterministic semantic output     0
-unexpected persistence errors        0
-duplicate/membership anomalies       0
-exact re-import idempotency           100%
-fresh-DB semantic equality            100%
-invented / force-resolved values      0
-SailboatData value contamination      0
+50/50 materialized
+50/50 first-pass imported
+50/50 exact re-import ALREADY_IMPORTED
+50/50 fresh-schema imported
+0 persistence errors/conflicts
+0 semantic readback mismatches
+0 fresh-schema semantic mismatches/errors
+recommendation: G3_PASS
 ```
 
-Binding scale/review interpretation:
+Binding thresholds remain:
 
-- mechanically materializable >=65% required for G3-positive outcome;
-- cannot-materialize-without-invention <=10%;
-- review-required cases <=35%;
-- reviewer timing only where genuinely measurable;
-- no arbitrary PostgreSQL throughput threshold.
+- mechanical materialization `>=65%`;
+- cannot-materialize-without-invention `<=10%`;
+- review-required `<=35%`.
 
-The main known hardening item carried from SLICE-0014 is narrow:
+Accepted failure-class semantics:
 
-`CANNOT_MATERIALIZE` must be classified before recommendation. An ordinary validation/materialization exception must not automatically become architecture `BLOCKED`; `BLOCKED` is reserved for a true recurring representational/contract insufficiency.
+- `CONTRACT_GAP` → `BLOCKED`;
+- `VALIDATION_FAILURE` → `HARDEN_FIRST` regardless of percentage;
+- `INSUFFICIENT_RETAINED_FACT` → rate-based and may remain G3-positive within the `<=10%` threshold.
 
-SLICE-0015 also requires explicit negative-path proof so the benchmark is proven to fail honestly when semantics, validation, idempotency or representability fail.
+Retained exact-head artifact:
+
+- ID `9441784787`;
+- digest `sha256:5f7048b86d2590509e764356283631c960c91988d2961d14e0d270e17b9ed588`.
+
+Final closure record: `docs/slices/SLICE-0015-acceptance-closure.md`.
+
+Stage 2 is now past G3. This authorizes controlled Stage-3 work through explicit slices; it is not blanket authorization for broad/unbounded ingestion.
+
+## Why SLICE-0016 precedes the ~1,000-design canonical bootstrap
+
+The next strategic milestone remains the controlled ~1,000-design identity bootstrap. Repository evidence shows one prerequisite is still missing:
+
+- `src/hullq/domain/identity.py` explicitly contains pure identity value objects/search projections with **no persistence or network resolution**;
+- the accepted PostgreSQL schema persists ResearchEvidenceBundle / ResearchObservation / FieldEvidence and explicitly does **not** require canonical entity tables.
+
+Therefore inserting broad Wikidata/source candidates directly as canonical BoatModels/BoatDesigns would require the implementation agent to invent a canonical persistence/admission boundary during the bootstrap itself. HullQ's docs-to-code/single-authority rules forbid that silent decision.
+
+SLICE-0016 closes only this prerequisite. It does not execute the broad bootstrap.
+
+## Current operational position — SLICE-0016 READY
+
+`docs/slices/SLICE-0016-canonical-identity-persistence-bootstrap-admission.md` is the only current READY slice.
+
+Its purpose is to implement the first canonical Tier-0 identity persistence boundary on PostgreSQL for:
+
+- Brand;
+- Organization;
+- BoatModel;
+- BoatDesign;
+- scoped aliases;
+- Brand ↔ BoatModel relationships;
+- Organization ↔ BoatDesign relationships;
+- auditable supporting-observation/evidence links.
+
+Binding constraints include:
+
+- caller-supplied stable opaque HullQ IDs;
+- no name/QID/source-based ID minting in the persistence layer;
+- no fuzzy identity resolution or silent duplicate collapse;
+- accepted schema validation before database mutation;
+- atomic/idempotent/conflict-safe imports;
+- PostgreSQL-native race safety;
+- lossless semantic readback;
+- existing research persistence preserved.
+
+The actual controlled ~1,000-design bootstrap remains outside SLICE-0016.
 
 ## Near-term path
 
@@ -234,13 +286,15 @@ SLICE-0011  controlled 50-design benchmark + analysis          DONE
       ↓
 SLICE-0012  ResearchObservation + applicability/bundle         DONE
       ↓
-SLICE-0013  PostgreSQL persistence + deterministic importer    DONE
+SLICE-0013  research PostgreSQL persistence                    DONE
       ↓
 SLICE-0014  same 50 cases through importer/database            DONE / G3_CANDIDATE
       ↓
-SLICE-0015  harden negative paths + Stage-2 G3 decision        READY
+SLICE-0015  harden negative paths + Stage-2 G3 decision        DONE / G3 PASS
       ↓
-controlled ~1,000-design identity bootstrap                    NOT AUTHORIZED YET
+SLICE-0016  canonical identity persistence/admission boundary  READY
+      ↓
+controlled ~1,000-design canonical bootstrap                   NOT AUTHORIZED YET
       ↓
 progressive 2.5k / 5k design-universe enrichment               LATER
 ```
@@ -259,8 +313,6 @@ continuous new-model intake
 
 The future continuous track should progressively handle discovery → identity triage → technical intake → validation/persistence → deep enrichment, with explicit maturity such as announced/preliminary/production-confirmed/verified rather than pretending announcement data is final production specification.
 
-This is a future ingestion/maintenance concern and is not implementation scope for SLICE-0015.
-
 ## AI repository workflow — ACTIVE
 
 Implementation/research slices use:
@@ -270,15 +322,18 @@ START_SLICE.bat
 FINISH_SLICE.bat
 ```
 
-`START_SLICE.bat` synchronizes `main`, creates/reuses an isolated worktree/branch and copies Claude's assignment. It must refuse slices whose own primary slice document is not explicitly `READY`.
+`START_SLICE.bat` synchronizes `main`, creates/reuses an isolated worktree/branch and copies Claude's assignment. It refuses slices whose own primary slice document is not explicitly `READY`.
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
+After the closure/readiness PR for SLICE-0015→0016 is merged, the project owner may start SLICE-0016 through the normal `START_SLICE.bat` workflow.
+
 ## Do not start yet
 
-- the 1,000-design bootstrap before SLICE-0015 acceptance / Stage-2 G3 decision;
+- the controlled ~1,000-design canonical bootstrap before SLICE-0016 acceptance;
 - broad production ingestion;
 - unbounded crawler work;
+- automatic fuzzy/canonical identity resolution;
 - query-engine implementation;
 - public FastAPI API;
 - Astro frontend;
