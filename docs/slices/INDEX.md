@@ -23,17 +23,88 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0014 | DESIGN_RESEARCH | DONE | Run the accepted 50-design benchmark through the real PostgreSQL persistence path and measure determinism/review/throughput | SLICE-0013 accepted / DONE |
 | SLICE-0015 | IMPLEMENTATION | DONE | Harden benchmark failure paths and make the Stage-2 Gate G3 decision using the fixed pre-committed scorecard | SLICE-0014 accepted / DONE |
 | SLICE-0016 | IMPLEMENTATION | DONE | Canonical Brand/Organization/BoatModel/BoatDesign PostgreSQL persistence + explicit bootstrap-admission boundary | SLICE-0015 accepted / DONE / G3 PASS |
-| SLICE-0017 | IMPLEMENTATION | REVIEW | Controlled Wikidata Tier-0 identity bootstrap across the first ~1,000 direct sailboat-class candidates | SLICE-0016 accepted / DONE |
+| SLICE-0017 | IMPLEMENTATION | DONE | Controlled Wikidata Tier-0 identity bootstrap across the first 1,000 direct sailboat-class candidates | SLICE-0016 accepted / DONE |
+| SLICE-0018 | IMPLEMENTATION | READY | Baseline-preserving Wikidata Tier-0 expansion to the first <=2,500 direct sailboat-class discovery window | SLICE-0017 accepted / DONE |
 
 ## Current execution rule
 
-`SLICE-0017` is the **only READY slice**.
+`SLICE-0018` is the **only READY slice**.
 
 It may start only through the normal isolated `START_SLICE.bat` workflow after this closure/readiness PR containing its contract is merged to `main`.
 
-SLICE-0017 is the first controlled broad Stage-3 bootstrap. It may process up to the first 1,000 deterministic rights-cleared Wikidata direct-instance candidates and persist only safe Tier-0 canonical BoatModel identities through the accepted SLICE-0016 admission boundary.
+SLICE-0018 is the next measured Stage-3.2 identity-universe step. It extends the rights-cleared deterministic Wikidata discovery window toward 2,500 while preserving the accepted SLICE-0017 baseline as immutable input.
 
-No 2,500/5,000 expansion, broad technical enrichment, query engine, API, frontend, marketplace or monitoring work is authorized by this readiness transition.
+The binding state separation is:
+
+```text
+accepted SLICE-0017 baseline
+        !=
+historical retained crosswalk
+        !=
+current SLICE-0018 discovery window
+        !=
+SLICE-0018 expansion delta
+```
+
+Only QIDs in the current first-<=2,500 discovery window that were not among the accepted 1,000 SLICE-0017 baseline candidate QIDs receive new SLICE-0018 admission/review/non-admission decisions.
+
+No 5,000 expansion, prior-review resolution campaign, broad technical enrichment, query engine, API, frontend, marketplace or monitoring work is authorized by this readiness transition.
+
+## SLICE-0017 acceptance closure
+
+SLICE-0017 is explicitly accepted and `DONE`.
+
+Acceptance evidence:
+
+- final accepted implementation head: `34c2de8fc99ab6babad054a4186cee168cc3a2da`;
+- GitHub Actions CI run #200 (`32499124689`): PASS on the exact accepted head;
+- PostgreSQL **18.6** integration: PASS;
+- persistence suite: PASS with **203** PostgreSQL tests;
+- Ubuntu quality: PASS;
+- Windows quality: PASS;
+- dependency audit: PASS;
+- retained Stage-2 benchmark: exact `G3_PASS`;
+- final retained bootstrap: **1,000 candidates / 965 AUTO_ADMIT / 20 REVIEW_REQUIRED / 15 NOT_ADMITTED**;
+- deterministic collision clusters: **10**;
+- retained historical QID→HullQ-ID mappings: **967**;
+- first production replay: **985/985** ResearchEvidenceBundles and **965/965** canonical admissions imported;
+- first-pass conflicts/errors/unexpected statuses: **0**;
+- deep semantic readback mismatches: **0**;
+- unexpected canonical rows for non-admitted candidates: **0**;
+- Brand/Organization/BoatDesign rows inferred: **0 / 0 / 0**;
+- exact re-import: **1,950 ALREADY_IMPORTED**, 0 conflicts/errors;
+- independent fresh-schema replay: **985** bundles + **965** admissions, 0 semantic mismatches, exact ID set, 0 stray Brand/Organization/BoatDesign rows;
+- `all_zero_tolerance_conditions_clear = true`;
+- bootstrap artifact ID: `9452810477`;
+- bootstrap artifact digest: `sha256:3161e6f43572dcbcafbd6512becc2aea7be44b2f8d1ae56234e49ef37a5eb034`;
+- benchmark artifact ID: `9452803532`;
+- benchmark artifact digest: `sha256:6cb1414ac7b9c90393ba1545c4fd89adb67fbe298d367d42a29c51775c09684c`;
+- implementation-agent final local report: **1,407 passed, 205 skipped**;
+- reported coverage: **94.29%**;
+- repository validator / Ruff / strict mypy / pip-audit: PASS/CLEAN;
+- independent review: all identified blockers corrected; final review found no remaining blocker;
+- explicit project-owner acceptance on 2026-08-21;
+- PR #35 merged on 2026-08-21;
+- merge commit: `e2001d3a926c08706558b6cb97962f235c843379`.
+
+Final closure record: `docs/slices/SLICE-0017-acceptance-closure.md`.
+
+Accepted Stage-3 bootstrap semantics now include:
+
+- rights-gated deterministic direct-instance discovery;
+- safe sparse Tier-0 BoatModel admission only;
+- accepted HullQ search-key semantics for collision detection;
+- stable content-derived alias IDs;
+- stable opaque HullQ IDs not derived from QID/name;
+- historical retained QID→HullQ-ID mapping structurally separate from current candidate rows;
+- fail-closed crosswalk conflict detection in both directions before live network use;
+- preserved acquisition timestamp distinct from later recompute time;
+- isolated PostgreSQL replay from migrations zero;
+- exact first-pass, re-import and independent fresh-schema proof;
+- deep alias/provenance semantic readback;
+- no automatic Brand/Organization/BoatDesign invention;
+- no SailboatData value contamination;
+- retained Stage-2 exact-`G3_PASS` regression gate.
 
 ## SLICE-0016 acceptance closure
 
@@ -212,36 +283,32 @@ harden negative paths + Stage-2 Gate G3           DONE — SLICE-0015 / G3 PASS
         ↓
 canonical identity persistence/admission boundary DONE — SLICE-0016
         ↓
-controlled Wikidata Tier-0 ~1,000 bootstrap       READY — SLICE-0017
+controlled Wikidata Tier-0 1,000 bootstrap        DONE — SLICE-0017
         ↓
-measured next Stage-3 expansion/enrichment        LATER / NOT AUTHORIZED
+baseline-preserving Wikidata <=2,500 expansion    READY — SLICE-0018
+        ↓
+measured next Stage-3 decision                     LATER / NOT AUTHORIZED
 ```
 
-## SLICE-0017 boundary
+## SLICE-0018 boundary
 
-`docs/slices/SLICE-0017-controlled-wikidata-tier0-identity-bootstrap.md` is the controlling READY contract.
+`docs/slices/SLICE-0018-controlled-wikidata-tier0-2500-window-expansion.md` is the controlling READY contract.
 
-The slice is deliberately limited to the first controlled broad identity run:
+The slice is deliberately limited to the next measured Stage-3 identity-universe expansion:
 
-- rights-gated direct Wikidata sailboat-class discovery;
-- up to the first 1,000 candidates in deterministic bounded order;
-- versioned replayable bootstrap manifest + review queue;
-- stable opaque retained HullQ IDs for admitted BoatModels;
-- source-backed ResearchObservation/provenance linkage;
-- safe sparse Tier-0 BoatModel admission through SLICE-0016;
-- real PostgreSQL 18 offline manifest replay, exact re-replay and fresh-schema equality;
-- measured auto-admission/review/non-admission distribution.
+- preserve the accepted SLICE-0017 retained manifest and 965 accepted canonical BoatModels as immutable baseline input;
+- discover the current first <=2,500 direct Wikidata sailboat-class QIDs using the same accepted rights-gated deterministic source path;
+- compute the expansion delta as current discovery QIDs minus all 1,000 accepted SLICE-0017 baseline candidate QIDs;
+- classify/admit only the delta;
+- compare new delta search projections against baseline candidate projections and other delta candidates using accepted HullQ search-key semantics;
+- a new collision with baseline search space routes the new candidate to review and does not demote/delete the accepted baseline entity;
+- retain/reuse the historical QID→HullQ-ID crosswalk without reminting;
+- keep the SLICE-0018 retained artifact separate from the accepted SLICE-0017 artifact;
+- replay accepted baseline first and delta second against isolated PostgreSQL 18 schemas;
+- prove zero accepted-baseline drift/deletion/demotion and zero Brand/Organization/BoatDesign invention;
+- measure whether Wikidata reaches the 2,500 target; if fewer candidates are returned, report the source ceiling and do not pad from another source.
 
-It explicitly forbids treating a Wikidata QID as automatic proof of:
-
-- Brand identity;
-- Organization identity;
-- Brand↔BoatModel relationship from manufacturer label alone;
-- a distinct BoatDesign generation;
-- a NamedVariant/DesignOption;
-- technical-field completeness.
-
-Ambiguity remains visible and review-bound. No post-hoc admission-rate threshold may be invented after seeing the run.
+It explicitly forbids treating the accepted 0017 baseline as a disposable rerun or resolving the 0017 review queue as a side effect of expansion.
 
 ## Retained research rules
 
@@ -252,6 +319,7 @@ Ambiguity remains visible and review-bound. No post-hoc admission-rate threshold
 5. SailboatData remains post-hoc reference crosscheck only; no SailboatData field value becomes HullQ evidence, fallback data or canonical input.
 6. Benchmark outputs are research evidence/stress fixtures, not automatically production canonical data.
 7. Stage-2 G3 passage authorizes controlled Stage-3 work only through explicit bounded slice contracts; it is not a blanket ingestion authorization.
+8. Accepted bootstrap artifacts are immutable baselines for later expansion unless a separate owner-accepted correction/migration slice explicitly changes that policy.
 
 ## Workflow note
 
@@ -259,6 +327,8 @@ Ambiguity remains visible and review-bound. No post-hoc admission-rate threshold
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-After this closure/readiness PR is merged, the project owner may run `START_SLICE.bat` for SLICE-0017. The script synchronizes `main`, creates the isolated worktree/branch, and copies Claude's assignment to the clipboard.
+After this closure/readiness PR is merged, the project owner may run `FINISH_SLICE.bat` for SLICE-0017. The script synchronizes `main`, confirms the merged implementation PR, removes the clean local SLICE-0017 worktree/branch, and leaves canonical truth on `main`.
 
-The SLICE-0017 agent must return the slice in `REVIEW`, `BLOCKED` or `IN_PROGRESS` as appropriate and must not mark it `DONE` or begin 2,500/5,000 expansion or technical enrichment automatically.
+When ready after that, the project owner may run `START_SLICE.bat` for SLICE-0018. The script must find exactly one primary SLICE-0018 document with `**Status:** READY`, create/reuse the isolated worktree/branch, and copy Claude's assignment.
+
+The SLICE-0018 agent must return the slice in `REVIEW`, `BLOCKED` or `IN_PROGRESS` as appropriate and must not mark it `DONE` or begin 5,000 expansion, review-resolution or technical enrichment automatically.
