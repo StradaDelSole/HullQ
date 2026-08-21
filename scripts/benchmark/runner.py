@@ -45,6 +45,7 @@ RESULT_DEFAULT = ROOT / "research" / "benchmark" / "persistence" / "BENCHMARK-RE
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from benchmark.gate import evaluate_g3_gate  # noqa: E402
 from benchmark.materializer import (  # noqa: E402
     FAILURE_CLASS_CONTRACT_GAP,
     classify_cannot_materialize_reasons,
@@ -123,6 +124,39 @@ def _write_report(result_doc: dict[str, Any], report_path: Path) -> None:
     pers = result_doc.get("persistence", {})
     hrb = result_doc.get("human_review_burden", {})
     throughput = result_doc.get("throughput", {})
+    scorecard_items: list[dict[str, Any]] = result_doc.get("g3_scorecard", [])
+
+    # Build G3 SCORECARD table rows
+    scorecard_section: list[str] = [
+        "---",
+        "",
+        "## G3 SCORECARD",
+        "",
+        "Every binding Stage-2 Gate G3 metric with its measured value, threshold and status.",
+        "",
+        "Evidence basis: **DIRECT\\_RUNTIME** = directly observed this run; "
+        "**VERIFIED\\_INVARIANT** = structural guarantee proven by materializer design and tests; "
+        "**NOT\\_MEASURED** = not directly observable from the runner.",
+        "",
+        "| Metric | Measured | Threshold | Status | Evidence |",
+        "|--------|----------|-----------|--------|----------|",
+    ]
+    for m in scorecard_items:
+        name = m.get("name", "?")
+        measured = m.get("measured", "?")
+        threshold = m.get("threshold", "?")
+        status = m.get("status", "?")
+        evidence = m.get("evidence_basis", "?")
+        if status == "PASS":
+            status_str = "PASS"
+        elif status == "FAIL":
+            status_str = "FAIL"
+        else:
+            status_str = str(status)
+        scorecard_section.append(
+            f"| {name} | {measured} | {threshold} | {status_str} | {evidence} |"
+        )
+    scorecard_section.append("")
 
     lines: list[str] = [
         "# HullQ SLICE-0015 Benchmark Report — Stage-2 Gate G3",
@@ -144,7 +178,7 @@ def _write_report(result_doc: dict[str, Any], report_path: Path) -> None:
         f"- First-pass imported: **{pers.get('first_pass_imported', '?')}**",
         f"- First-pass conflict: **{pers.get('first_pass_conflict', '?')}**",
         f"- First-pass error: **{pers.get('first_pass_error', '?')}**",
-        f"- Reimport ALREADY_IMPORTED: **{pers.get('reimport_already_imported', '?')}**",
+        f"- Reimport ALREADY\\_IMPORTED: **{pers.get('reimport_already_imported', '?')}**",
         f"- Readback semantic mismatches: **{pers.get('readback_mismatches', '?')}**",
         f"- Fresh-schema imported: **{pers.get('fresh_run_imported', '?')}**",
         f"- Fresh-schema semantic mismatches: **{pers.get('fresh_run_semantic_mismatches', '?')}**",
@@ -152,6 +186,7 @@ def _write_report(result_doc: dict[str, Any], report_path: Path) -> None:
         f"- Review-required cases: **{hrb.get('review_required_cases', '?')}**",
         f"- Review decisions required: **{hrb.get('review_decisions_required', '?')}**",
         "",
+        *scorecard_section,
         "---",
         "",
         "## INTERPRETATION",
@@ -559,79 +594,28 @@ def run_benchmark(
         },
     }
 
-    # Derive G3 gate recommendation — SLICE-0015 hardened classification.
-    #
-    # BLOCKED: only when CONTRACT_GAP failures are classified. An ordinary
-    #   CANNOT_MATERIALIZE (validation/runtime defect) does NOT automatically
-    #   mean BLOCKED; it must be explicitly classified as CONTRACT_GAP first.
-    # HARDEN_FIRST: correctness intact but scale/review thresholds not met, or
-    #   CANNOT_MATERIALIZE cases classified as VALIDATION_FAILURE or
-    #   INSUFFICIENT_RETAINED_FACT (i.e. repairable, not a contract gap).
-    # G3_PASS: all zero-tolerance correctness gates pass AND mechanical
-    #   materialization >=65% (here: 100%) AND cannot-materialize-without-
-    #   invention <=10% (here: 0%) AND no newly discovered contract gap.
-    all_zero_tolerance_pass = (
-        readback_mismatches == 0
-        and fresh_semantic_mismatches == 0
-        and first_imported == mat_count
-        and reimport_already == mat_count
-        and fresh_imported == mat_count
+    # Evaluate G3 gate — delegate entirely to evaluate_g3_gate() so runner and tests
+    # share the same decision function (no inline logic duplication).
+    gate_result = evaluate_g3_gate(
+        total_cases=total,
+        materialized=mat_count,
+        review_required=review_count,
+        cannot_materialize=cannot_count,
+        contract_gap_count=contract_gap_count,
+        first_pass_imported=first_imported,
+        reimport_already_imported=reimport_already,
+        fresh_run_imported=fresh_imported,
+        readback_mismatches=readback_mismatches,
+        fresh_run_semantic_mismatches=fresh_semantic_mismatches,
+        first_pass_conflict=first_conflict,
+        first_pass_error=first_error,
+        reimport_conflict=reimport_conflict,
+        reimport_error=reimport_error,
     )
 
-    if contract_gap_count > 0:
-        recommendation = "BLOCKED"
-        rationale = (
-            f"BLOCKED: {contract_gap_count} CONTRACT_GAP failure(s) — accepted domain "
-            f"contracts cannot represent retained benchmark reality for those cases. "
-            f"materialized={mat_count}/{total}, cannot_materialize={cannot_count}, "
-            f"contract_gap_count={contract_gap_count}, "
-            f"readback_mismatches={readback_mismatches}, "
-            f"fresh_semantic_mismatches={fresh_semantic_mismatches}."
-        )
-    elif cannot_count > 0 or not all_zero_tolerance_pass:
-        recommendation = "HARDEN_FIRST"
-        rationale = (
-            f"HARDEN_FIRST: one or more acceptance criteria not met. "
-            f"cannot_materialize={cannot_count} (classified as VALIDATION_FAILURE or "
-            f"INSUFFICIENT_RETAINED_FACT, not CONTRACT_GAP). "
-            f"materialized={mat_count}/{total}, "
-            f"first_pass_imported={first_imported}/{mat_count}, "
-            f"reimport_already_imported={reimport_already}/{mat_count}, "
-            f"fresh_run_imported={fresh_imported}/{mat_count}, "
-            f"readback_mismatches={readback_mismatches}, "
-            f"fresh_semantic_mismatches={fresh_semantic_mismatches}."
-        )
-    elif mat_count == total and all_zero_tolerance_pass:
-        recommendation = "G3_PASS"
-        rationale = (
-            f"G3_PASS: all zero-tolerance correctness gates satisfied. "
-            f"materialized={mat_count}/{total} (>= 65% threshold), "
-            f"cannot_materialize={cannot_count} (<= 10% threshold), "
-            f"review_required={review_count} (<= 35% threshold), "
-            f"first_pass_imported={first_imported}/{mat_count}, "
-            f"reimport_already_imported={reimport_already}/{mat_count}, "
-            f"fresh_run_imported={fresh_imported}/{mat_count}, "
-            f"readback_mismatches={readback_mismatches} (required: 0), "
-            f"fresh_semantic_mismatches={fresh_semantic_mismatches} (required: 0), "
-            f"contract_gap_count={contract_gap_count} (required: 0). "
-            f"Reviewer timing: NOT_MEASURED (benchmark uses pre-curated retained evidence). "
-            f"No fundamental contract hole discovered. "
-            f"Technical G3_PASS recommendation only — project-owner acceptance required before "
-            f"operational G3 passage and no broader bootstrap is authorized."
-        )
-    else:
-        recommendation = "HARDEN_FIRST"
-        rationale = (
-            f"One or more acceptance criteria not met: materialized={mat_count}/{total}, "
-            f"first_pass_imported={first_imported}/{mat_count}, "
-            f"reimport_already_imported={reimport_already}/{mat_count}, "
-            f"fresh_run_imported={fresh_imported}/{mat_count}, "
-            f"readback_mismatches={readback_mismatches}, "
-            f"fresh_semantic_mismatches={fresh_semantic_mismatches}."
-        )
-
-    result_doc["recommendation"] = recommendation
-    result_doc["recommendation_rationale"] = rationale
+    result_doc["recommendation"] = gate_result.recommendation
+    result_doc["recommendation_rationale"] = gate_result.rationale
+    result_doc["g3_scorecard"] = gate_result.scorecard_as_dicts()
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(result_doc, indent=2), encoding="utf-8")

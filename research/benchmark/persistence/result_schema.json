@@ -153,6 +153,38 @@
     "recommendation_rationale": {
       "type": "string",
       "description": "Explanation of the recommendation, citing specific measured facts"
+    },
+    "g3_scorecard": {
+      "type": "array",
+      "description": "Structured evaluation of every binding G3 scorecard metric. SLICE-0015 addition.",
+      "items": {
+        "type": "object",
+        "required": ["name", "measured", "threshold", "status", "evidence_basis"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Scorecard metric identifier"
+          },
+          "measured": {
+            "oneOf": [{"type": "number"}, {"type": "string"}],
+            "description": "Measured or evaluated value; GUARD_VERIFIED or NOT_MEASURED for non-runtime metrics"
+          },
+          "threshold": {
+            "type": "string",
+            "description": "Pre-committed threshold expression, e.g. '= 0' or '>= 65%'"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PASS", "FAIL", "NOT_MEASURED"],
+            "description": "Gate outcome for this metric"
+          },
+          "evidence_basis": {
+            "type": "string",
+            "enum": ["DIRECT_RUNTIME", "VERIFIED_INVARIANT", "NOT_MEASURED"],
+            "description": "How the measured value was obtained"
+          }
+        }
+      }
     }
   }
 }
