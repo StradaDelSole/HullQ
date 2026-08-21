@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-21  
-**Current stage:** Stage 3.1–3.2 — SLICE-0017 controlled Wikidata Tier-0 identity bootstrap `READY`  
+**Current stage:** Stage 3.1–3.2 — SLICE-0017 controlled Wikidata Tier-0 identity bootstrap `REVIEW`  
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -268,9 +268,11 @@ Accepted canonical persistence semantics now include:
 
 Final closure record: `docs/slices/SLICE-0016-acceptance-closure.md`.
 
-## Current operational position — SLICE-0017 READY
+## Current operational position — SLICE-0017 REVIEW
 
-`docs/slices/SLICE-0017-controlled-wikidata-tier0-identity-bootstrap.md` is the only current READY slice.
+`docs/slices/SLICE-0017-controlled-wikidata-tier0-identity-bootstrap.md` implementation is in `REVIEW`, pending independent review, `db-integration` CI observation and explicit project-owner acceptance before `DONE`.
+
+The one authorized live Wikidata run executed 2026-08-21: 1,000/1,000 requested candidates processed, 967 auto-admitted, 18 routed to review (name collisions), 15 not admitted (missing label). The retained manifest/report are committed under `research/bootstrap/wikidata/`. Full detail: `docs/slices/SLICE-0017-controlled-wikidata-tier0-identity-bootstrap.md` "Measured results" section.
 
 Its purpose is to execute the first controlled broad Stage-3 identity run:
 
@@ -320,7 +322,7 @@ SLICE-0015  harden negative paths + Stage-2 G3 decision        DONE / G3 PASS
       ↓
 SLICE-0016  canonical identity persistence/admission boundary  DONE
       ↓
-SLICE-0017  controlled Wikidata Tier-0 ~1,000 bootstrap        READY
+SLICE-0017  controlled Wikidata Tier-0 ~1,000 bootstrap        REVIEW
       ↓
 measured next Stage-3 expansion/enrichment                     NOT AUTHORIZED YET
 ```
