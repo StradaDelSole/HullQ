@@ -327,8 +327,9 @@ def classify_cannot_materialize_reasons(reasons: list[str]) -> str:
        evidence, not a contract failure.
     3. VALIDATION_FAILURE — all other cases: ordinary runtime/validation defects.
 
-    BLOCKED is reserved for CONTRACT_GAP only. VALIDATION_FAILURE and
-    INSUFFICIENT_RETAINED_FACT drive HARDEN_FIRST, not BLOCKED.
+    BLOCKED is reserved for CONTRACT_GAP only. VALIDATION_FAILURE drives HARDEN_FIRST
+    regardless of percentage. INSUFFICIENT_RETAINED_FACT is rate-based and may remain
+    G3-positive when the total cannot-materialize rate is within the <=10% threshold.
     """
     for reason in reasons:
         if reason.startswith("CONTRACT_GAP:"):

@@ -180,7 +180,8 @@ def test_insufficient_retained_fact_does_not_imply_blocked() -> None:
     """INSUFFICIENT_RETAINED_FACT must not drive a BLOCKED recommendation.
 
     Sparse retained evidence is a research gap, not a contract failure.
-    The runner must map this to HARDEN_FIRST, not BLOCKED.
+    INSUFFICIENT_RETAINED_FACT is rate-based: within the <=10% cannot-materialize
+    threshold it may remain G3-positive, not BLOCKED.
     """
     from benchmark.materializer import (
         FAILURE_CLASS_CONTRACT_GAP,

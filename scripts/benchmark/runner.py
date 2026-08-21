@@ -205,9 +205,28 @@ def _write_report(result_doc: dict[str, Any], report_path: Path) -> None:
         "",
     ]
     if rec == "G3_PASS":
+        total_cases_val = corpus.get("total_cases", 0)
+        materialized_val = corpus.get("materialized", 0)
+        cannot_val = corpus.get("cannot_materialize", 0)
+        mat_pct = 100.0 * materialized_val / total_cases_val if total_cases_val > 0 else 0.0
+
+        # Only claim "all N cases materialized" when that is literally true.
+        if materialized_val == total_cases_val:
+            mat_line = (
+                f"All {total_cases_val} benchmark cases materialized, imported, "
+                f"and round-tripped with zero semantic mismatches."
+            )
+        else:
+            cannot_pct = 100.0 * cannot_val / total_cases_val if total_cases_val > 0 else 0.0
+            mat_line = (
+                f"Materialization: {materialized_val}/{total_cases_val} ({mat_pct:.1f}%). "
+                f"Cannot-materialize-without-invention: {cannot_val}/{total_cases_val} "
+                f"({cannot_pct:.1f}%, within the \\u226410% threshold). "
+                f"All imported cases round-tripped with zero semantic mismatches."
+            )
         lines += [
-            "All 50 benchmark cases materialized, imported, and round-tripped with zero",
-            "semantic mismatches. All G3 correctness and scale gates are satisfied.",
+            "All binding G3 correctness and scale gates are satisfied.",
+            mat_line,
             "Failure classification is deterministic. Negative-path proofs are in place.",
             "",
             "Technical recommendation: **G3_PASS**.",
@@ -215,9 +234,22 @@ def _write_report(result_doc: dict[str, Any], report_path: Path) -> None:
             "No broader bootstrap is authorized until the project owner explicitly accepts this slice.",
         ]
     elif rec == "G3_CANDIDATE":
+        total_cases_val = corpus.get("total_cases", 0)
+        materialized_val = corpus.get("materialized", 0)
+        mat_pct = 100.0 * materialized_val / total_cases_val if total_cases_val > 0 else 0.0
+        if materialized_val == total_cases_val:
+            mat_line = (
+                f"All {total_cases_val} benchmark cases materialized, imported, "
+                f"and round-tripped with zero semantic mismatches."
+            )
+        else:
+            mat_line = (
+                f"Materialization: {materialized_val}/{total_cases_val} ({mat_pct:.1f}%). "
+                f"All imported cases round-tripped with zero semantic mismatches."
+            )
         lines += [
-            "All 50 benchmark cases materialized, imported, and round-tripped with zero",
-            "semantic mismatches. The persistence path is ready for G3 gate review.",
+            mat_line,
+            "The persistence path is ready for G3 gate review.",
             "",
             "Next: proceed to independent SLICE-0015 acceptance review.",
         ]
