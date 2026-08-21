@@ -98,6 +98,39 @@ jobs:
           HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
         run: uv run pytest tests/persistence/ -v
 
+      - name: Run benchmark runner against PostgreSQL 18
+        env:
+          HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
+          HULLQ_IMPL_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: >
+          uv run python scripts/benchmark/runner.py
+          --db-url postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
+          --output research/benchmark/persistence/BENCHMARK-RESULT.json
+          --report research/benchmark/persistence/BENCHMARK-REPORT.md
+
+      - name: Validate benchmark result against schema
+        run: >
+          uv run python -c "
+          import json, jsonschema, pathlib;
+          result = json.loads(pathlib.Path('research/benchmark/persistence/BENCHMARK-RESULT.json').read_text());
+          schema = json.loads(pathlib.Path('research/benchmark/persistence/result_schema.json').read_text());
+          jsonschema.validate(instance=result, schema=schema);
+          print('BENCHMARK-RESULT.json validates against result_schema.json');
+          rec = result.get('recommendation', 'MISSING');
+          print(f'Recommendation: {rec}');
+          assert rec in ('G3_CANDIDATE', 'HARDEN_FIRST', 'BLOCKED'), f'Unexpected recommendation: {rec}'
+          "
+
+      - name: Upload benchmark outputs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-outputs
+          path: |
+            research/benchmark/persistence/BENCHMARK-RESULT.json
+            research/benchmark/persistence/BENCHMARK-REPORT.md
+          if-no-files-found: warn
+
   dependency-audit:
     name: dependency audit
     runs-on: ubuntu-latest

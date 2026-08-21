@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hullq-benchmark-result-schema.v0014.1.json",
+  "title": "HullQ Benchmark Result",
+  "description": "Machine-readable output schema for SLICE-0014 benchmark runner. Produced by scripts/benchmark/runner.py.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "benchmark_version",
+    "run_timestamp",
+    "git_sha",
+    "environment",
+    "corpus_materialization",
+    "persistence",
+    "promotion_applicability",
+    "throughput",
+    "human_review_burden",
+    "recommendation",
+    "recommendation_rationale"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version string, e.g. '0014-v1'"
+    },
+    "benchmark_version": {
+      "type": "string",
+      "description": "Materializer/runner version tag"
+    },
+    "run_timestamp": {
+      "type": "string",
+      "description": "ISO 8601 UTC timestamp of when the runner executed"
+    },
+    "git_sha": {
+      "type": "string",
+      "description": "Git commit SHA the benchmark ran against, or NOT_MEASURED"
+    },
+    "environment": {
+      "type": "object",
+      "required": ["python_version", "postgresql_version"],
+      "properties": {
+        "python_version": {"type": "string"},
+        "postgresql_version": {
+          "type": "string",
+          "description": "NOT_MEASURED if not available from connection"
+        }
+      }
+    },
+    "corpus_materialization": {
+      "type": "object",
+      "required": [
+        "total_cases",
+        "materialized",
+        "review_required",
+        "cannot_materialize",
+        "review_required_reasons"
+      ],
+      "properties": {
+        "total_cases": {"type": "integer", "minimum": 50, "maximum": 50},
+        "materialized": {"type": "integer"},
+        "review_required": {"type": "integer"},
+        "cannot_materialize": {"type": "integer"},
+        "review_required_reasons": {
+          "type": "object",
+          "description": "Keys are failure class names; values are integer counts",
+          "additionalProperties": {"type": "integer"}
+        }
+      }
+    },
+    "persistence": {
+      "type": "object",
+      "required": [
+        "valid_bundles_submitted",
+        "first_pass_imported",
+        "first_pass_conflict",
+        "first_pass_error",
+        "reimport_already_imported",
+        "reimport_conflict",
+        "reimport_error",
+        "readback_mismatches",
+        "fresh_run_imported",
+        "fresh_run_semantic_mismatches"
+      ],
+      "properties": {
+        "valid_bundles_submitted": {"type": "integer"},
+        "first_pass_imported": {"type": "integer"},
+        "first_pass_conflict": {"type": "integer"},
+        "first_pass_error": {"type": "integer"},
+        "reimport_already_imported": {"type": "integer"},
+        "reimport_conflict": {"type": "integer"},
+        "reimport_error": {"type": "integer"},
+        "readback_mismatches": {"type": "integer"},
+        "fresh_run_imported": {"type": "integer"},
+        "fresh_run_semantic_mismatches": {"type": "integer"}
+      }
+    },
+    "promotion_applicability": {
+      "type": "object",
+      "required": [
+        "eligible_for_promotion",
+        "pre_canonical_unresolved",
+        "promotion_blocked_by_conflict"
+      ],
+      "properties": {
+        "eligible_for_promotion": {"type": "integer"},
+        "pre_canonical_unresolved": {"type": "integer"},
+        "promotion_blocked_by_conflict": {"type": "integer"}
+      }
+    },
+    "throughput": {
+      "type": "object",
+      "required": [
+        "wall_clock_import_seconds",
+        "reimport_seconds",
+        "cases_per_second"
+      ],
+      "properties": {
+        "wall_clock_import_seconds": {
+          "oneOf": [{"type": "number"}, {"type": "string", "const": "NOT_MEASURED"}]
+        },
+        "reimport_seconds": {
+          "oneOf": [{"type": "number"}, {"type": "string", "const": "NOT_MEASURED"}]
+        },
+        "cases_per_second": {
+          "oneOf": [{"type": "number"}, {"type": "string", "const": "NOT_MEASURED"}]
+        }
+      }
+    },
+    "human_review_burden": {
+      "type": "object",
+      "required": [
+        "review_required_cases",
+        "review_decisions_required",
+        "elapsed_reviewer_minutes"
+      ],
+      "properties": {
+        "review_required_cases": {"type": "integer"},
+        "review_decisions_required": {"type": "integer"},
+        "elapsed_reviewer_minutes": {
+          "oneOf": [{"type": "number"}, {"type": "string", "const": "NOT_MEASURED"}]
+        }
+      }
+    },
+    "recommendation": {
+      "type": "string",
+      "enum": ["HARDEN_FIRST", "G3_CANDIDATE", "BLOCKED"],
+      "description": "Outcome recommendation based on measured benchmark evidence"
+    },
+    "recommendation_rationale": {
+      "type": "string",
+      "description": "Explanation of the recommendation, citing specific measured facts"
+    }
+  }
+}

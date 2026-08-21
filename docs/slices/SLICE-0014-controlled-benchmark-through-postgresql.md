@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0014  
 **Type:** DESIGN_RESEARCH  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 2.14 — persistence-path benchmark execution and measurement  
 **Depends on:** SLICE-0013 accepted / DONE  
 **Blocks:** benchmark hardening / Stage-2 Gate G3 decision
@@ -373,3 +373,256 @@ The implementation/research agent MAY set `IN_PROGRESS`, `BLOCKED` or `REVIEW`, 
 `DONE` requires verified local gates, real PostgreSQL remote CI where applicable, independent master review and explicit project-owner acceptance.
 
 The agent MUST NOT automatically begin SLICE-0015 or the 1,000-design bootstrap.
+
+---
+
+## Completion report (Session 1 — superseded by Session 2 below)
+
+### Slice (Session 1)
+
+- Slice ID: `SLICE-0014`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+
+### Changes (Session 1)
+
+**New files created:**
+
+- `research/benchmark/persistence/manifest.json` — deterministic 50-case benchmark manifest
+- `research/benchmark/persistence/result_schema.json` — JSON Schema 2020-12 for runner output artifact
+- `scripts/benchmark/__init__.py` — package marker
+- `scripts/benchmark/materializer.py` — initial materializer (one TEXT_FRAGMENT per design; superseded by Session 2 rewrite)
+- `scripts/benchmark/runner.py` — CLI benchmark runner (hardcoded metrics; superseded by Session 2 fix)
+- `tests/unit/test_benchmark_manifest.py` — 26 offline unit tests (updated in Session 2)
+- `tests/persistence/test_benchmark_persistence.py` — PostgreSQL integration tests (updated in Session 2)
+
+**Session 1 head:** `70d1a96bece8bd3bf921bb03dcf1876883792038`
+**Session 1 CI #171:** PASS (quality Ubuntu/Windows, db-integration PostgreSQL 18, dependency audit)
+
+---
+
+## Completion report (Session 2 — review fixes)
+
+### Slice
+
+- Slice ID: `SLICE-0014`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+
+### Session 2 context
+
+Independent review of PR #29 (head `70d1a96`) found 6 blocking issues. All 6 are addressed in this session's commit (`f9b5adb`).
+
+### Changes (Session 2 — 5 files modified)
+
+**`scripts/benchmark/materializer.py` — complete rewrite:**
+- Added `MaterializationResult` dataclass with `case_id`, `status`, `bundle`, `review_reasons`.
+- `materialize_all()` now returns `dict[str, MaterializationResult]` (was `dict[str, ResearchEvidenceBundle]`).
+- W01/W02: field-level rows from committed legacy JSONL exports auto-migrated into real `ResearchObservation` objects. Each non-research-tier row becomes one observation with independently derived `EvidenceType`, `ClaimSemantics`, `ObservationApplicability`. Research-tier rows used only for finding creation.
+- W03–W06: field-/claim-level retained facts from wave summary `.md` artifacts, embedded as Python data structures (`_W03W06_FACTS`, `_W03W06_CROSSCHECK`, `_W03W06_FINDING`). Explicit per-case crosscheck outcomes from wave summaries.
+- Helpers: `_make_app()`, `_map_confidence()`, `_map_evidence_type()`, `_map_claim_semantics()`, `_map_applicability()`, `_cc_to_outcome()`, `_worst_outcome()`, `_decode_legacy_jsonl()`.
+- Finding creation: evidence_status-based (W01/W02 non-research rows) + research-tier cc-based + conflict_unresolved fallback. All findings use `topic="conflict_or_unresolved_evidence"`.
+- No SailboatData field values. No new web research. All 50 cases produce `status=MATERIALIZED`.
+
+**`scripts/benchmark/runner.py` — real metrics + schema isolation:**
+- Derives `materialized`/`review_required`/`cannot_materialize` counts from actual `MaterializationResult.status`.
+- Extracts bundles from `MaterializationResult` for persistence phases.
+- Phase 4 fresh-DB rerun uses schema isolation (`CREATE SCHEMA + SET search_path + apply_migrations from zero + DROP SCHEMA CASCADE`) instead of TRUNCATE on the already-migrated DB.
+- `G3_CANDIDATE`/`HARDEN_FIRST` recommendation depends on `mat_count == total` in addition to all persistence phase metrics.
+- Calls `_validate_result_json()` after writing output to validate against `result_schema.json`.
+
+**`.github/workflows/ci.yml` — benchmark runner step added:**
+- Added `Run benchmark runner against PostgreSQL 18` step executing `scripts/benchmark/runner.py`.
+- Added `Validate benchmark result against schema` step using jsonschema to validate `BENCHMARK-RESULT.json` against `result_schema.json` and assert recommendation is in `{G3_CANDIDATE, HARDEN_FIRST, BLOCKED}`.
+
+**`tests/unit/test_benchmark_manifest.py` — fixture and test updates:**
+- `bundles` fixture updated: extracts `.bundle` from `MaterializationResult`.
+- `test_bundle_ids_are_deterministic`, `test_bundle_fingerprints_are_stable`, `test_observation_ids_are_deterministic`: second `materialize_all()` call also extracts `.bundle`.
+- Removed `test_observation_source_ids_use_benchmark_prefix` (real URLs won't share synthetic prefix).
+- Removed `test_observation_notes_contain_benchmark_marker` (real observations carry source notes not markers).
+- Added `test_observation_source_ids_are_non_empty` (all `source_id` fields must be non-empty).
+- Added `test_materialization_all_50_materialized` (all 50 cases must have `status=MATERIALIZED`).
+
+**`tests/persistence/test_benchmark_persistence.py` — fixture and test updates:**
+- `benchmark_bundles` fixture updated: extracts `.bundle` from `MaterializationResult`.
+- `fresh_db_results` fixture rewritten to use schema isolation (matches Phase 4 runner approach).
+- Added `test_exhaustive_observation_semantic_readback` — parametrized over 4 representative cases (B01-001, B02-007, B04-003, B05-006), verifying every persisted `ResearchObservation` field against the original: `source_id`, `raw.kind`, `raw.value`, `raw.unit`, `evidence_type`, `claim_semantics`, all 10 `applicability` fields, `confidence`, `notes`.
+
+**No production domain/persistence modules were changed.**
+
+### Validation (Session 2)
+
+- Local validation: `PASS`
+- Commands run:
+  ```
+  uv run ruff format scripts/benchmark/ tests/unit/test_benchmark_manifest.py tests/persistence/test_benchmark_persistence.py
+  uv run ruff check --fix scripts/benchmark/ tests/unit/test_benchmark_manifest.py tests/persistence/test_benchmark_persistence.py
+  uv run mypy scripts/benchmark/materializer.py scripts/benchmark/runner.py --ignore-missing-imports
+  uv run ruff format --check .
+  uv run ruff check .
+  uv run mypy src
+  uv run pytest tests/unit/ -q
+  ```
+- Results:
+  - ruff format: all files formatted or already formatted — PASS
+  - ruff check (fix): 1 import-sort fixed, 0 remaining — PASS
+  - ruff format --check .: 172 files already formatted — PASS
+  - ruff check .: All checks passed — PASS
+  - mypy src: Success, no issues found in 25 source files — PASS
+  - mypy scripts: Success, no issues found in 2 source files — PASS
+  - pytest tests/unit/: **975 passed** in 31.54s — PASS
+
+### Measured benchmark result (local, offline materialization)
+
+- Total benchmark cases: **50**
+- Materialized automatically: **50** (`status=MATERIALIZED` for all 50)
+- Review required: **0**
+- Cannot materialize: **0**
+- Review decisions required: **0** (no human review needed for materialization)
+- Reviewer minutes: `NOT_MEASURED` (all cases materialized mechanically from retained evidence)
+
+### External verification (Session 2)
+
+- Remote CI #173 for head `d871d51` (pre-session-3 state): **VERIFIED PASS** — PostgreSQL 18.6, 158 persistence tests, benchmark runner, Ubuntu, Windows, dependency audit.
+
+### External verification (Session 3 — review #4985913258 fixes)
+
+- Remote CI for new head `ee84e6c`: `NOT VERIFIED` — pushed at time of report; CI must be observed post-push.
+- Coverage threshold (90%): `NOT VERIFIED` — must be observed in CI run.
+
+### Persistence results (local integration tests unavailable — no HULLQ_TEST_DATABASE_URL locally)
+
+- Integration tests (`tests/persistence/`) skipped locally when `HULLQ_TEST_DATABASE_URL` is unset.
+- All persistence outcomes (first_pass_imported, reimport_already_imported, fresh_run_imported, readback_mismatches, semantic_mismatches, recommendation) are `NOT VERIFIED` pending CI db-integration job.
+
+### Session 3 local gate results
+
+- ruff format: PASS (4 files reformatted)
+- ruff check: PASS (All checks passed, after fix for I001/SIM102)
+- mypy src: PASS (no issues in 25 source files)
+- pytest tests/unit/: **979 passed** in 25.92s — PASS (4 new tests added)
+- Coverage (src + scripts): 93.55%
+
+### Scope deviations
+
+- None. All changes within `scripts/benchmark/`, `tests/unit/`, `tests/persistence/`, `.github/workflows/ci.yml` touch points.
+- No production domain/persistence modules modified.
+- No new web research, no SailboatData field values, no fuzzy identity resolution, no automatic promotion, no SLICE-0015 started.
+
+### Findings
+
+- **Blocker 1 resolved (fail-closed semantics):** `_map_claim_semantics` now defaults to `ClaimSemantics.UNKNOWN`; uses `_FIELD_TO_CLAIM`, `_NOMINAL_DESIGN_FIELDS`, `_OTHER_CLAIM_FIELDS` lookup tables. `_map_evidence_type` removes tier-A fallback; classifies via source-name keywords only. B06-008 J/105 class rule fields produce `CLASS_RULE_CONSTRAINT`. Four focused unit tests added.
+- **Blocker 2 resolved (materialization status):** `materialize_all` derives status from actual conversion outcome via try/except; a-priori `test_materialization_all_50_materialized` replaced with `test_materialization_status_derived_from_conversion`; runner `human_review_burden` uses real counts; `automation_rate_disclaimer` added to result doc.
+- **Blocker 3 resolved (corpus-wide semantic readback):** `compare_observation_semantics()` reusable helper covers all semantic fields (source_id, raw, normalized_candidate, evidence_type, claim_semantics, all 10 applicability fields, producer, research_context, confidence, notes, intended_field_pointer). Runner Phase 2 and Phase 4 upgraded to full semantic comparison. `test_corpus_wide_semantic_readback_all_bundles` (50 bundles, first-pass schema) and `test_corpus_wide_semantic_readback_fresh_schema` (fresh DROP+CREATE schema) added to persistence tests.
+- **Blocker 4 resolved (outputs + traceability):** `_validate_result_json` raises on failure (not just prints); Phase 4 uses `DROP SCHEMA IF EXISTS` before `CREATE SCHEMA`; same fix in `fresh_db_results` fixture; `_write_report()` generates `BENCHMARK-REPORT.md` with MEASURED FACT / INTERPRETATION / RECOMMENDED NEXT ACTION sections; `--report` and `--sha` CLI args added; `HULLQ_IMPL_SHA` env var support; CI uploads both `BENCHMARK-RESULT.json` and `BENCHMARK-REPORT.md` as artifacts.
+
+### Benchmark recommendation
+
+Cannot confirm `G3_CANDIDATE` until CI db-integration job runs with new head `ee84e6c` and persistence phase outcomes are observed. Local evidence (all 50 materialized, 979 unit tests pass, determinism proven) is consistent with `G3_CANDIDATE` if persistence phases also succeed. The actual recommendation will be in `BENCHMARK-RESULT.json` produced by CI and uploaded as an artifact.
+
+### Follow-up
+
+- Recommended next action: observe CI for new head `ee84e6c` on PR #29. If both quality and db-integration jobs (including benchmark runner and schema validation) pass, the slice is ready for independent acceptance review.
+- Do NOT start SLICE-0015 or the 1,000-design bootstrap until this slice is explicitly accepted as `DONE` by the project owner.
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice was not started automatically.
+- The agent has NOT marked this slice `DONE`.
+- Remote CI for new head `ee84e6c` is `NOT VERIFIED` at time of this report.
+
+---
+
+## Completion report (Session 4 — final four acceptance fixes)
+
+### Slice
+
+- Slice ID: `SLICE-0014`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+
+### Session 4 context
+
+Four final acceptance issues were fixed in this session against head `0e25af0` (CI #175 VERIFIED PASS). All four were independent correctness requirements from the independent acceptance review.
+
+### Changes (Session 4 — 5 files)
+
+**`scripts/benchmark/semantics_compare.py` (NEW):**
+- Single canonical comparator extracted from runner.py for shared use.
+- `compare_observation_semantics`: ALL persisted ResearchObservation fields — research_target (3), source_id, complete SourceLocator (6), RawObservation (4), normalized_candidate, EvidenceType, ClaimSemantics, all 10 applicability fields, complete ProducerMetadata (5), ResearchContext (both fields with None handling), observed_at, confidence, supersedes_observation_id, intended_subject_kind_hint, intended_field_pointer, notes.
+- `compare_finding_semantics`: 5 UnresolvedFinding fields (finding_id, topic, description, related_observation_ids, severity).
+- `compare_crosscheck_semantics`: 5 ReferenceCrosscheck fields (crosscheck_id, reference_source_id, topic_or_field, outcome, notes).
+
+**`scripts/benchmark/materializer.py`:**
+- Added `_CANONICAL_POINTER_FIELDS` frozenset (17 established physics/rig fields).
+- Added `_canonical_field_pointer(field)` — returns `JsonPointer(f"/{field}")` for canonical fields, `None` otherwise.
+- Added `_field_notes(field, existing_notes)` — always appends `field_label:{field}` tag to notes.
+- All W01/W02 and W03–W06 observations now carry `intended_field_pointer` and `field_label:{field}` in notes.
+- Removed "specification", "tech spec", "tech-spec" from MANUFACTURER_SPECIFICATION keywords — too generic, appear in third-party docs; prefer explicit `evidence_type` from W03–W06 fact dict.
+- W03–W06 observations prefer explicit `evidence_type` from fact dict when present, fall back to `_map_evidence_type` otherwise.
+
+**`scripts/benchmark/runner.py`:**
+- Imports `compare_observation_semantics`, `compare_finding_semantics`, `compare_crosscheck_semantics` from canonical `benchmark.semantics_compare` (local duplicate removed).
+- Phase 2 readback and Phase 4 fresh-schema readback now compare findings and crosschecks via canonical comparators in addition to observations.
+- `review_required_reasons` now `{failure_class: count}` per `result_schema.json` schema (was incorrectly `{case_id: list[str]}`).
+- `recommendation = "BLOCKED"` when `cannot_count > 0`; explicit derivation replacing single-expression ternary.
+- `benchmark_cost` measurement fields added (`researcher_hours`, `compute_cost_usd`, both `NOT_MEASURED` with reasons).
+
+**`tests/persistence/test_benchmark_persistence.py`:**
+- Imports canonical `compare_observation_semantics`, `compare_finding_semantics`, `compare_crosscheck_semantics` (local duplicate removed).
+- `test_corpus_wide_semantic_readback_all_bundles` and `test_corpus_wide_semantic_readback_fresh_schema` now also compare unresolved_findings and reference_crosschecks using canonical comparators.
+
+**`tests/unit/test_benchmark_manifest.py`:**
+- Added `from typing import Any` to module imports.
+- 5 new field identity / evidence-type tests:
+  - `test_field_identity_in_notes_preserves_field_label`: all observations carry `field_label:` in notes.
+  - `test_two_dimensional_observations_are_field_distinguishable`: multiple obs from same source have distinct labels.
+  - `test_canonical_field_pointer_for_known_dimension`: canonical physics fields have `JsonPointer` set.
+  - `test_no_guessed_canonical_pointer_for_unknown_fields`: non-canonical fields have `intended_field_pointer = None`.
+  - `test_generic_specification_source_not_manufacturer_specification`: "Catalina 36 Specification Sheet", "Tech Spec comparison", "Tech-Spec Overview" all NOT → `MANUFACTURER_SPECIFICATION`.
+
+### Validation (Session 4)
+
+- ruff format: PASS (5 files reformatted)
+- ruff check: PASS (6 errors fixed — F821 `Any` missing import, 2× I001 import sort, PERF401 list comprehension)
+- mypy src: PASS (no issues in 25 source files)
+- pytest tests/unit/: **984 passed** in 29.08s — PASS (5 new tests added vs Session 3's 979)
+- Coverage (src + scripts): **93.59%**
+
+### Measured benchmark result (Session 4)
+
+- Total benchmark cases: 50
+- Materialized automatically: **50** (all `status=MATERIALIZED`)
+- Review required: 0
+- Cannot materialize: 0
+- Persistence (from CI #175 at head `0e25af0`): 50/50 imported, 50/50 ALREADY_IMPORTED, 50/50 fresh-schema, 0 semantic mismatches, 0 errors/conflicts
+- Recommendation: consistent with **G3_CANDIDATE** if persistence phases pass with new head
+
+### External verification (Session 4)
+
+- Pushed head: `033c1a2cbdaa8cc873c7dc53c0986ce5c998b583`
+- Remote CI for head `033c1a2`: `NOT VERIFIED` — must be observed after push.
+- CI #175 (prior head `0e25af0`): VERIFIED PASS (reference only).
+
+### Scope deviations
+
+- None. All changes within `scripts/benchmark/`, `tests/unit/`, `tests/persistence/` touch points.
+- No production domain/persistence modules modified.
+- No new web research, no SailboatData field values, no fuzzy identity resolution, no automatic promotion, no SLICE-0015 started.
+
+### Findings
+
+- **Issue 1 resolved (field identity):** `_canonical_field_pointer()` and `_field_notes()` helpers added; every observation now carries `field_label:{field}` in notes; established physics/rig fields receive `JsonPointer`; non-canonical fields preserve `None`.
+- **Issue 2 resolved (single comparator):** `scripts/benchmark/semantics_compare.py` created; both runner.py and persistence tests import from it; local duplicates removed; findings and crosschecks now also compared in both readback phases.
+- **Issue 3 resolved (evidence-type guessing):** Generic keywords "specification", "tech spec", "tech-spec" removed from MANUFACTURER_SPECIFICATION detection; W03–W06 observations prefer explicit `evidence_type` from fact dict; test verifies these sources map to OTHER not MANUFACTURER_SPECIFICATION.
+- **Issue 4 resolved (result/failure contract):** `review_required_reasons` is `{failure_class: count}`; BLOCKED reachable for `cannot_count > 0`; `benchmark_cost` measurement fields added.
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice was not started automatically.
+- The agent has NOT marked this slice `DONE`.
+- Remote CI for new head `033c1a2cbdaa8cc873c7dc53c0986ce5c998b583` is `NOT VERIFIED` at time of this report.
