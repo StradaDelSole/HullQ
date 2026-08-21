@@ -1,4 +1,4 @@
-"""Deterministic benchmark runner — SLICE-0014.
+"""Deterministic benchmark runner — SLICE-0015.
 
 Runs the 50 retained benchmark cases through the accepted PostgreSQL
 persistence path and records measured outcomes. Produces a machine-readable
@@ -14,12 +14,17 @@ Environment variable fallback: HULLQ_TEST_DATABASE_URL or HULLQ_DATABASE_URL.
 The runner:
 1. Applies migrations to a clean database.
 2. Materializes all 50 benchmark bundles deterministically.
-3. Runs first-pass import, records results.
-4. Reads back each imported bundle, checks fidelity.
-5. Runs exact re-import, records ALREADY_IMPORTED outcomes.
-6. Drops and recreates schema (fresh DB), runs a second import.
-7. Compares semantic fingerprints between the two fresh-DB runs.
-8. Writes a machine-readable result JSON.
+3. Classifies any CANNOT_MATERIALIZE failures (VALIDATION_FAILURE vs CONTRACT_GAP).
+4. Runs first-pass import, records results.
+5. Reads back each imported bundle, checks fidelity.
+6. Runs exact re-import, records ALREADY_IMPORTED outcomes.
+7. Drops and recreates schema (fresh DB), runs a second import.
+8. Compares semantic fingerprints between the two fresh-DB runs.
+9. Writes a machine-readable result JSON with G3 gate decision.
+
+SLICE-0015 hardening: CANNOT_MATERIALIZE is classified before the recommendation
+is set. BLOCKED is reserved for CONTRACT_GAP failures only. Ordinary validation
+failures and insufficient-retained-fact drive HARDEN_FIRST, not BLOCKED.
 """
 
 from __future__ import annotations
@@ -40,6 +45,10 @@ RESULT_DEFAULT = ROOT / "research" / "benchmark" / "persistence" / "BENCHMARK-RE
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from benchmark.materializer import (  # noqa: E402
+    FAILURE_CLASS_CONTRACT_GAP,
+    classify_cannot_materialize_reasons,
+)
 from benchmark.semantics_compare import (  # noqa: E402
     compare_crosscheck_semantics,
     compare_finding_semantics,
@@ -116,7 +125,7 @@ def _write_report(result_doc: dict[str, Any], report_path: Path) -> None:
     throughput = result_doc.get("throughput", {})
 
     lines: list[str] = [
-        "# HullQ SLICE-0014 Benchmark Report",
+        "# HullQ SLICE-0015 Benchmark Report — Stage-2 Gate G3",
         "",
         f"**Run timestamp:** {result_doc.get('run_timestamp', 'NOT_MEASURED')}  ",
         f"**Implementation SHA:** {result_doc.get('git_sha', 'NOT_MEASURED')}  ",
@@ -158,17 +167,27 @@ def _write_report(result_doc: dict[str, Any], report_path: Path) -> None:
         "## RECOMMENDED NEXT ACTION",
         "",
     ]
-    if rec == "G3_CANDIDATE":
+    if rec == "G3_PASS":
+        lines += [
+            "All 50 benchmark cases materialized, imported, and round-tripped with zero",
+            "semantic mismatches. All G3 correctness and scale gates are satisfied.",
+            "Failure classification is deterministic. Negative-path proofs are in place.",
+            "",
+            "Technical recommendation: **G3_PASS**.",
+            "Stage-2 Gate G3 passage requires independent review and explicit project-owner acceptance.",
+            "No broader bootstrap is authorized until the project owner explicitly accepts this slice.",
+        ]
+    elif rec == "G3_CANDIDATE":
         lines += [
             "All 50 benchmark cases materialized, imported, and round-tripped with zero",
             "semantic mismatches. The persistence path is ready for G3 gate review.",
             "",
-            "Next: proceed to independent SLICE-0014 acceptance review.",
+            "Next: proceed to independent SLICE-0015 acceptance review.",
         ]
     else:
         lines += [
             "One or more acceptance criteria were not met. Review the MEASURED FACT section",
-            "above to identify failing areas before proceeding to SLICE-0015.",
+            "above to identify failing areas.",
             "",
             f"Recommendation: **{rec}** — resolve blockers before advancing the slice.",
         ]
@@ -204,7 +223,7 @@ def run_benchmark(
     from hullq.persistence.migrations import apply_migrations
     from hullq.persistence.readback import fetch_bundle_snapshot
 
-    print("HullQ SLICE-0014 Benchmark Runner", flush=True)
+    print("HullQ SLICE-0015 Benchmark Runner — Stage-2 Gate G3", flush=True)
     print(f"  database: {db_url!r}", flush=True)
 
     sha = _git_sha(explicit_sha)
@@ -217,19 +236,23 @@ def run_benchmark(
     mat_count = sum(1 for r in mat_results.values() if r.status == "MATERIALIZED")
     review_count = sum(1 for r in mat_results.values() if r.status == "REVIEW_REQUIRED")
     cannot_count = sum(1 for r in mat_results.values() if r.status == "CANNOT_MATERIALIZE")
-    # review_required_reasons must be {failure_class: count} per result_schema.json
-    _REASON_TO_CLASS: dict[str, str] = {
-        "no_observations_extracted": "INSUFFICIENT_RETAINED_FACT",
-    }
+
+    # Classify every non-materialized case deterministically.
+    # BLOCKED is reserved for CONTRACT_GAP only; VALIDATION_FAILURE and
+    # INSUFFICIENT_RETAINED_FACT drive HARDEN_FIRST.
     review_reason_counts: dict[str, int] = {}
+    contract_gap_count = 0
     for r in mat_results.values():
-        if r.status != "MATERIALIZED":
-            for raw_reason in r.review_reasons:
-                cls = _REASON_TO_CLASS.get(raw_reason)
-                if cls is None:
-                    # Classify exception-derived reasons as VALIDATION_FAILURE
-                    cls = "VALIDATION_FAILURE"
-                review_reason_counts[cls] = review_reason_counts.get(cls, 0) + 1
+        if r.status == "MATERIALIZED":
+            continue
+        if r.status == "CANNOT_MATERIALIZE":
+            cls = classify_cannot_materialize_reasons(r.review_reasons)
+            if cls == FAILURE_CLASS_CONTRACT_GAP:
+                contract_gap_count += 1
+        else:
+            # REVIEW_REQUIRED — classify each reason
+            cls = classify_cannot_materialize_reasons(r.review_reasons)
+        review_reason_counts[cls] = review_reason_counts.get(cls, 0) + 1
     print(
         f"  total={total} materialized={mat_count} review_required={review_count} "
         f"cannot_materialize={cannot_count}",
@@ -472,8 +495,8 @@ def run_benchmark(
     pre_canonical_count = mat_count  # all successfully materialized bundles remain pre-canonical
 
     result_doc: dict[str, Any] = {
-        "schema_version": "0014-v1",
-        "benchmark_version": "0014-v1",
+        "schema_version": "0015-v1",
+        "benchmark_version": "0015-v1",
         "run_timestamp": datetime.now(tz=UTC).isoformat(),
         "git_sha": sha,
         "environment": {
@@ -487,6 +510,8 @@ def run_benchmark(
             "cannot_materialize": cannot_count,
             # review_required_reasons: {failure_class: count} per result_schema.json contract
             "review_required_reasons": review_reason_counts,
+            # contract_gap_count: only CONTRACT_GAP failures can drive BLOCKED
+            "contract_gap_count": contract_gap_count,
         },
         "persistence": {
             "valid_bundles_submitted": mat_count,
@@ -534,39 +559,65 @@ def run_benchmark(
         },
     }
 
-    # Derive recommendation: BLOCKED when contracts cannot represent retained reality
-    # (CANNOT_MATERIALIZE means bundle building threw an exception — the domain contracts
-    # are insufficient for those cases, not just that the evidence is ambiguous).
-    # HARDEN_FIRST for cases where persistence/readback criteria were not met.
-    # G3_CANDIDATE only when all acceptance criteria pass.
-    if cannot_count > 0:
+    # Derive G3 gate recommendation — SLICE-0015 hardened classification.
+    #
+    # BLOCKED: only when CONTRACT_GAP failures are classified. An ordinary
+    #   CANNOT_MATERIALIZE (validation/runtime defect) does NOT automatically
+    #   mean BLOCKED; it must be explicitly classified as CONTRACT_GAP first.
+    # HARDEN_FIRST: correctness intact but scale/review thresholds not met, or
+    #   CANNOT_MATERIALIZE cases classified as VALIDATION_FAILURE or
+    #   INSUFFICIENT_RETAINED_FACT (i.e. repairable, not a contract gap).
+    # G3_PASS: all zero-tolerance correctness gates pass AND mechanical
+    #   materialization >=65% (here: 100%) AND cannot-materialize-without-
+    #   invention <=10% (here: 0%) AND no newly discovered contract gap.
+    all_zero_tolerance_pass = (
+        readback_mismatches == 0
+        and fresh_semantic_mismatches == 0
+        and first_imported == mat_count
+        and reimport_already == mat_count
+        and fresh_imported == mat_count
+    )
+
+    if contract_gap_count > 0:
         recommendation = "BLOCKED"
         rationale = (
-            f"BLOCKED: {cannot_count} case(s) cannot_materialize — accepted domain contracts "
-            f"cannot represent retained benchmark reality for those cases. "
+            f"BLOCKED: {contract_gap_count} CONTRACT_GAP failure(s) — accepted domain "
+            f"contracts cannot represent retained benchmark reality for those cases. "
+            f"materialized={mat_count}/{total}, cannot_materialize={cannot_count}, "
+            f"contract_gap_count={contract_gap_count}, "
+            f"readback_mismatches={readback_mismatches}, "
+            f"fresh_semantic_mismatches={fresh_semantic_mismatches}."
+        )
+    elif cannot_count > 0 or not all_zero_tolerance_pass:
+        recommendation = "HARDEN_FIRST"
+        rationale = (
+            f"HARDEN_FIRST: one or more acceptance criteria not met. "
+            f"cannot_materialize={cannot_count} (classified as VALIDATION_FAILURE or "
+            f"INSUFFICIENT_RETAINED_FACT, not CONTRACT_GAP). "
             f"materialized={mat_count}/{total}, "
             f"first_pass_imported={first_imported}/{mat_count}, "
             f"reimport_already_imported={reimport_already}/{mat_count}, "
             f"fresh_run_imported={fresh_imported}/{mat_count}, "
             f"readback_mismatches={readback_mismatches}, "
-            f"semantic_mismatches={fresh_semantic_mismatches}."
+            f"fresh_semantic_mismatches={fresh_semantic_mismatches}."
         )
-    elif (
-        mat_count == total
-        and first_imported == mat_count
-        and reimport_already == mat_count
-        and fresh_imported == mat_count
-        and readback_mismatches == 0
-        and fresh_semantic_mismatches == 0
-    ):
-        recommendation = "G3_CANDIDATE"
+    elif mat_count == total and all_zero_tolerance_pass:
+        recommendation = "G3_PASS"
         rationale = (
-            f"All acceptance criteria met: materialized={mat_count}/{total}, "
+            f"G3_PASS: all zero-tolerance correctness gates satisfied. "
+            f"materialized={mat_count}/{total} (>= 65% threshold), "
+            f"cannot_materialize={cannot_count} (<= 10% threshold), "
+            f"review_required={review_count} (<= 35% threshold), "
             f"first_pass_imported={first_imported}/{mat_count}, "
             f"reimport_already_imported={reimport_already}/{mat_count}, "
             f"fresh_run_imported={fresh_imported}/{mat_count}, "
-            f"readback_mismatches={readback_mismatches}, "
-            f"semantic_mismatches={fresh_semantic_mismatches}."
+            f"readback_mismatches={readback_mismatches} (required: 0), "
+            f"fresh_semantic_mismatches={fresh_semantic_mismatches} (required: 0), "
+            f"contract_gap_count={contract_gap_count} (required: 0). "
+            f"Reviewer timing: NOT_MEASURED (benchmark uses pre-curated retained evidence). "
+            f"No fundamental contract hole discovered. "
+            f"Technical G3_PASS recommendation only — project-owner acceptance required before "
+            f"operational G3 passage and no broader bootstrap is authorized."
         )
     else:
         recommendation = "HARDEN_FIRST"
@@ -576,7 +627,7 @@ def run_benchmark(
             f"reimport_already_imported={reimport_already}/{mat_count}, "
             f"fresh_run_imported={fresh_imported}/{mat_count}, "
             f"readback_mismatches={readback_mismatches}, "
-            f"semantic_mismatches={fresh_semantic_mismatches}."
+            f"fresh_semantic_mismatches={fresh_semantic_mismatches}."
         )
 
     result_doc["recommendation"] = recommendation

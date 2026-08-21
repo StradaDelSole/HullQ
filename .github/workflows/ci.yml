@@ -118,7 +118,7 @@ jobs:
           print('BENCHMARK-RESULT.json validates against result_schema.json');
           rec = result.get('recommendation', 'MISSING');
           print(f'Recommendation: {rec}');
-          assert rec in ('G3_CANDIDATE', 'HARDEN_FIRST', 'BLOCKED'), f'Unexpected recommendation: {rec}'
+          assert rec in ('G3_PASS', 'G3_CANDIDATE', 'HARDEN_FIRST', 'BLOCKED'), f'Unexpected recommendation: {rec}'
           "
 
       - name: Upload benchmark outputs

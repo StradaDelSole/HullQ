@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0015  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 2.15 — benchmark hardening and Stage-2 G3 decision  
 **Depends on:** SLICE-0014 accepted / DONE  
 **Blocks:** controlled 1,000-design identity bootstrap experiment

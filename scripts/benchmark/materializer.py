@@ -293,6 +293,52 @@ def _field_notes(field: str, existing_notes: str | None) -> str | None:
 # ---------------------------------------------------------------------------
 
 
+class ContractGapError(Exception):
+    """Raised when accepted domain contracts cannot faithfully represent a retained fact class.
+
+    Use only when the representation gap is fundamental and recurring — not for sparse
+    evidence, ordinary validation failures, or expected pre-canonical states.
+
+    The exception message must start with "CONTRACT_GAP:" so the classifier can
+    deterministically identify it without string heuristics.
+    """
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(f"CONTRACT_GAP: {detail}")
+
+
+# ---------------------------------------------------------------------------
+# Failure classes — deterministic classification, not exception-string inference
+# ---------------------------------------------------------------------------
+
+FAILURE_CLASS_INSUFFICIENT_RETAINED_FACT = "INSUFFICIENT_RETAINED_FACT"
+FAILURE_CLASS_REVIEW_REQUIRED = "REVIEW_REQUIRED"
+FAILURE_CLASS_VALIDATION_FAILURE = "VALIDATION_FAILURE"
+FAILURE_CLASS_CONTRACT_GAP = "CONTRACT_GAP"
+
+
+def classify_cannot_materialize_reasons(reasons: list[str]) -> str:
+    """Classify a CANNOT_MATERIALIZE failure deterministically.
+
+    Priority (highest first):
+    1. CONTRACT_GAP — reason starts with "CONTRACT_GAP:"; reserved for accepted
+       domain contracts that genuinely cannot represent a retained fact class.
+    2. INSUFFICIENT_RETAINED_FACT — "no_observations_extracted"; sparse retained
+       evidence, not a contract failure.
+    3. VALIDATION_FAILURE — all other cases: ordinary runtime/validation defects.
+
+    BLOCKED is reserved for CONTRACT_GAP only. VALIDATION_FAILURE and
+    INSUFFICIENT_RETAINED_FACT drive HARDEN_FIRST, not BLOCKED.
+    """
+    for reason in reasons:
+        if reason.startswith("CONTRACT_GAP:"):
+            return FAILURE_CLASS_CONTRACT_GAP
+    for reason in reasons:
+        if reason == "no_observations_extracted":
+            return FAILURE_CLASS_INSUFFICIENT_RETAINED_FACT
+    return FAILURE_CLASS_VALIDATION_FAILURE
+
+
 @dataclass
 class MaterializationResult:
     """Outcome of attempting to materialize one benchmark case."""

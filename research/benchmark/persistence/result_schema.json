@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "hullq-benchmark-result-schema.v0014.1.json",
+  "$id": "hullq-benchmark-result-schema.v0015.1.json",
   "title": "HullQ Benchmark Result",
-  "description": "Machine-readable output schema for SLICE-0014 benchmark runner. Produced by scripts/benchmark/runner.py.",
+  "description": "Machine-readable output schema for SLICE-0015 benchmark runner (backwards-compatible with SLICE-0014 v0014-v1 shape). Produced by scripts/benchmark/runner.py.",
   "type": "object",
   "required": [
     "schema_version",
@@ -21,7 +21,7 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "description": "Schema version string, e.g. '0014-v1'"
+      "description": "Schema version string, e.g. '0015-v1'"
     },
     "benchmark_version": {
       "type": "string",
@@ -62,8 +62,12 @@
         "cannot_materialize": {"type": "integer"},
         "review_required_reasons": {
           "type": "object",
-          "description": "Keys are failure class names; values are integer counts",
+          "description": "Keys are failure class names (INSUFFICIENT_RETAINED_FACT, VALIDATION_FAILURE, CONTRACT_GAP, REVIEW_REQUIRED); values are integer counts",
           "additionalProperties": {"type": "integer"}
+        },
+        "contract_gap_count": {
+          "type": "integer",
+          "description": "Number of CANNOT_MATERIALIZE cases classified as CONTRACT_GAP (drives BLOCKED). SLICE-0015 addition."
         }
       }
     },
@@ -143,8 +147,8 @@
     },
     "recommendation": {
       "type": "string",
-      "enum": ["HARDEN_FIRST", "G3_CANDIDATE", "BLOCKED"],
-      "description": "Outcome recommendation based on measured benchmark evidence"
+      "enum": ["HARDEN_FIRST", "G3_CANDIDATE", "G3_PASS", "BLOCKED"],
+      "description": "Outcome recommendation based on measured benchmark evidence. G3_PASS: all gates satisfied — technical recommendation only; project-owner acceptance required. G3_CANDIDATE: predecessor value (SLICE-0014); retained for schema backwards-compatibility."
     },
     "recommendation_rationale": {
       "type": "string",
