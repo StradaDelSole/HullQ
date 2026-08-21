@@ -1,7 +1,7 @@
 # HullQ Slice Index
 
 **Status:** ACTIVE execution board  
-**Updated:** 2026-08-20
+**Updated:** 2026-08-21
 
 The slice index is the canonical operational queue for bounded AI-assisted work. It does not replace `docs/EXECUTION_PLAN.md`, requirements, specs, ADRs or accepted slice contracts.
 
@@ -20,19 +20,63 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0011 | DESIGN_RESEARCH | DONE | Controlled 50-design real-web stress benchmark | SLICE-0010 |
 | SLICE-0012 | IMPLEMENTATION | DONE | Pre-canonical ResearchObservation, claim/applicability semantics, explicit promotion and ResearchEvidenceBundle | SLICE-0011 |
 | SLICE-0013 | IMPLEMENTATION | DONE | PostgreSQL 18 migrations + lossless deterministic ResearchEvidenceBundle importer | SLICE-0012 accepted / DONE |
-| SLICE-0014 | DESIGN_RESEARCH | READY | Run the accepted 50-design benchmark through the real PostgreSQL persistence path and measure determinism/review/throughput | SLICE-0013 accepted / DONE |
+| SLICE-0014 | DESIGN_RESEARCH | DONE | Run the accepted 50-design benchmark through the real PostgreSQL persistence path and measure determinism/review/throughput | SLICE-0013 accepted / DONE |
+| SLICE-0015 | IMPLEMENTATION | READY | Harden benchmark failure paths and make the Stage-2 Gate G3 decision using the fixed pre-committed scorecard | SLICE-0014 accepted / DONE |
 
 ## Current execution rule
 
-`SLICE-0014` is the **only READY slice**.
+`SLICE-0015` is the **only READY slice**.
 
 It may start only through the normal isolated `START_SLICE.bat` workflow after the closure/readiness PR containing its contract is merged to `main`.
 
-No later hardening/G3 slice, broad ingestion, query engine, API, frontend or marketplace work is authorized merely because SLICE-0014 is READY.
+No 1,000-design bootstrap, broad ingestion, query engine, API, frontend or marketplace work is authorized merely because SLICE-0015 is READY.
+
+## SLICE-0014 acceptance closure
+
+SLICE-0014 is explicitly accepted and `DONE`.
+
+Acceptance evidence:
+
+- final accepted implementation head: `98d2e38e42254bba17279945551d53c17b869f5e`;
+- GitHub Actions CI run #178 (`32457026920`): PASS on the exact accepted head;
+- PostgreSQL 18.6 integration: PASS;
+- PostgreSQL persistence tests: **162 passed**;
+- Ubuntu quality: PASS;
+- Windows quality: PASS;
+- dependency audit: PASS;
+- benchmark runner: PASS;
+- benchmark result-schema validation: PASS;
+- retained benchmark artifact ID: `9437591681`;
+- artifact digest: `sha256:de4e6ec1e2b020b3758e5066441d3d068676bf298c0b1707c86b6b7098308f79`;
+- final measured result: 50/50 materialized, 50/50 imported, 50/50 exact re-import `ALREADY_IMPORTED`, 50/50 fresh-schema imported, 0 persistence errors/conflicts, 0 semantic mismatches;
+- implementation-agent local unit report: **987 passed**;
+- reported overall coverage: **93.59%**;
+- independent review: no remaining blocker;
+- explicit project-owner acceptance on 2026-08-21;
+- PR #29 merged on 2026-08-21;
+- merge commit: `71100b50052ed7c2910b096e36b8a5402f757191`;
+- benchmark recommendation: `G3_CANDIDATE`.
+
+Final closure record: `docs/slices/SLICE-0014-acceptance-closure.md`.
+
+`G3_CANDIDATE` does not mean G3 has passed. Stage-2 G3 remains the bounded decision of SLICE-0015.
+
+Review corrections incorporated before acceptance included:
+
+1. field-/claim-level retained benchmark materialization instead of summary TEXT_FRAGMENT flattening;
+2. true fresh-schema migration/import rerun;
+3. real PostgreSQL-18 benchmark runner in CI with retained artifacts;
+4. fail-closed ClaimSemantics and EvidenceType behavior;
+5. derived materialization/review metrics;
+6. one corpus-wide full semantic comparator for observations/findings/crosschecks;
+7. lossless retained field identity;
+8. prevention of generic evidence-type overclaiming;
+9. schema-consistent failure/cost reporting;
+10. explicit true BoatDesign-v0.4 `intended_field_pointer` allowlist with ambiguous fields left unset.
 
 ## SLICE-0013 acceptance closure
 
-SLICE-0013 is explicitly accepted and `DONE`.
+SLICE-0013 remains explicitly accepted and `DONE`.
 
 Acceptance evidence:
 
@@ -55,15 +99,7 @@ Acceptance evidence:
 - PR #27 merged on 2026-08-20;
 - merge commit: `2b8417beeb848507ba0f97c49bbd0f37d647c438`.
 
-The final closure record is `docs/slices/SLICE-0013-acceptance-closure.md`. The original SLICE-0013 implementation document retains its implementation-agent handoff history; the acceptance closure and this index are authoritative for final state.
-
-Review corrections incorporated before acceptance included:
-
-1. globally stable immutable `FieldEvidence.evidence_id` with separate bundle membership;
-2. PostgreSQL-native race-safe import semantics with fail-closed hash verification;
-3. order-insensitive bundle semantic fingerprinting;
-4. final migration baseline folded into a single unreleased `001_initial_schema.sql`;
-5. real two-connection concurrency tests for identical imports, shared observation/evidence identities and conflicting immutable content.
+Final closure record: `docs/slices/SLICE-0013-acceptance-closure.md`.
 
 ## SLICE-0012 acceptance closure
 
@@ -103,41 +139,42 @@ pre-canonical observation + applicability/bundle  DONE — SLICE-0012
         ↓
 PostgreSQL persistence + deterministic importer   DONE — SLICE-0013
         ↓
-run same benchmark through importer/DB            READY — SLICE-0014
+run same benchmark through importer/DB            DONE — SLICE-0014 / G3_CANDIDATE
         ↓
-measure + harden toward Stage-2 Gate G3           LATER / NOT READY
+harden negative paths + Stage-2 Gate G3           READY — SLICE-0015
         ↓
-1,000-design broad bootstrap                      NOT AUTHORIZED YET
+controlled 1,000-design identity bootstrap        NOT AUTHORIZED YET
 ```
 
-## SLICE-0014 boundary
+## SLICE-0015 boundary
 
-`docs/slices/SLICE-0014-controlled-benchmark-through-postgresql.md` is the controlling READY contract.
+`docs/slices/SLICE-0015-benchmark-hardening-stage-2-g3.md` is the controlling READY contract.
 
 It is deliberately limited to:
 
-- the exact accepted 50-design benchmark population;
-- mechanical materialization from already retained HullQ benchmark artifacts;
-- accepted `ResearchEvidenceBundle` validation;
-- execution through the accepted PostgreSQL 18 migration/import/readback path;
-- deterministic exact re-import and fresh-database rerun;
-- measurement of materialization/review burden, import outcomes, readback fidelity and throughput;
-- honest `NOT_MEASURED` handling where timing/cost cannot be observed reliably;
-- an evidence-based recommendation for hardening/G3, without declaring G3 passed.
+- the accepted SLICE-0014 benchmark path and exact 50-design corpus;
+- the pre-committed, fixed G3 scorecard;
+- deterministic failure classification;
+- negative-path proof for review-required, insufficient-retained-fact, validation/materialization failure, true representational contract gap, semantic mismatch and idempotency/conflict behavior;
+- correcting the latent rule that `CANNOT_MATERIALIZE` must not automatically imply architecture `BLOCKED`;
+- re-running the exact 50-case benchmark through real PostgreSQL 18;
+- an explicit `G3_PASS`, `HARDEN_FIRST` or `BLOCKED` recommendation;
+- independent review and project-owner acceptance before DONE/G3 passage.
 
 It explicitly excludes:
 
-- new broad web research/acquisition;
-- SailboatData extraction or field-value persistence;
-- fuzzy/canonical identity resolution;
-- automatic promotion/FieldResolution;
-- broad production ingestion;
 - the 1,000-design bootstrap;
+- new broad web acquisition;
+- crawlers/bulk ingestion;
+- SailboatData extraction/value persistence;
+- fuzzy/canonical identity resolution;
+- automatic FieldResolution;
 - query engine/API/frontend/auth;
 - marketplace/listing ingestion;
 - monitoring/price history;
 - SEO/public pages;
-- distributed infrastructure.
+- distributed infrastructure;
+- HullQ Design Watch implementation.
 
 ## Retained research rules
 
@@ -147,7 +184,7 @@ It explicitly excludes:
 4. Never invent missing values or silently resolve conflicts.
 5. SailboatData remains post-hoc reference crosscheck only; no SailboatData field value becomes HullQ evidence, fallback data or canonical input.
 6. Benchmark outputs are research evidence/stress fixtures, not automatically production canonical data.
-7. SLICE-0014 may only reuse retained benchmark evidence; inability to materialize a case without invention is itself a measured result.
+7. SLICE-0015 is a hardening/gate slice; it must not reinterpret `50/50 materialized` as a production research-automation rate.
 
 ## Workflow note
 
@@ -155,4 +192,4 @@ It explicitly excludes:
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned `slice/...` branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-The SLICE-0014 agent must return the slice in `REVIEW`, `BLOCKED` or `IN_PROGRESS` as appropriate and must not mark it `DONE`.
+The SLICE-0015 agent must return the slice in `REVIEW`, `BLOCKED` or `IN_PROGRESS` as appropriate and must not mark it `DONE`.
