@@ -24,29 +24,29 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0015 | IMPLEMENTATION | DONE | Harden benchmark failure paths and make the Stage-2 Gate G3 decision using the fixed pre-committed scorecard | SLICE-0014 accepted / DONE |
 | SLICE-0016 | IMPLEMENTATION | DONE | Canonical Brand/Organization/BoatModel/BoatDesign PostgreSQL persistence + explicit bootstrap-admission boundary | SLICE-0015 accepted / DONE / G3 PASS |
 | SLICE-0017 | IMPLEMENTATION | DONE | Controlled Wikidata Tier-0 identity bootstrap across the first 1,000 direct sailboat-class candidates | SLICE-0016 accepted / DONE |
-| SLICE-0018 | IMPLEMENTATION | READY | Controlled Wikidata Tier-0 expansion to the first <=2,500 direct sailboat-class discovery window using a baseline-preserving delta | SLICE-0017 accepted / DONE |
+| SLICE-0018 | IMPLEMENTATION | READY | Baseline-preserving Wikidata Tier-0 expansion to the first <=2,500 direct sailboat-class discovery window | SLICE-0017 accepted / DONE |
 
 ## Current execution rule
 
 `SLICE-0018` is the **only READY slice**.
 
-It may start only through the normal isolated `START_SLICE.bat` workflow after this closure/readiness PR is merged to `main`.
+It may start only through the normal isolated `START_SLICE.bat` workflow after this closure/readiness PR containing its contract is merged to `main`.
 
-SLICE-0018 is a measured Stage-3.2 expansion. It extends the rights-cleared deterministic Wikidata discovery window toward 2,500 while preserving the accepted SLICE-0017 baseline as immutable input.
+SLICE-0018 is the next measured Stage-3.2 identity-universe step. It extends the rights-cleared deterministic Wikidata discovery window toward 2,500 while preserving the accepted SLICE-0017 baseline as immutable input.
 
-The key operational rule is:
+The binding state separation is:
 
 ```text
 accepted SLICE-0017 baseline
         !=
+historical retained crosswalk
+        !=
 current SLICE-0018 discovery window
         !=
 SLICE-0018 expansion delta
-        !=
-historical retained crosswalk
 ```
 
-Only QIDs in the current first-<=2,500 discovery window that were **not** among the accepted 1,000 SLICE-0017 baseline candidate QIDs receive new SLICE-0018 admission/review/non-admission decisions.
+Only QIDs in the current first-<=2,500 discovery window that were not among the accepted 1,000 SLICE-0017 baseline candidate QIDs receive new SLICE-0018 admission/review/non-admission decisions.
 
 No 5,000 expansion, prior-review resolution campaign, broad technical enrichment, query engine, API, frontend, marketplace or monitoring work is authorized by this readiness transition.
 
@@ -57,65 +57,206 @@ SLICE-0017 is explicitly accepted and `DONE`.
 Acceptance evidence:
 
 - final accepted implementation head: `34c2de8fc99ab6babad054a4186cee168cc3a2da`;
-- implementation PR: #35;
-- implementation merge commit: `e2001d3a926c08706558b6cb97962f235c843379`;
 - GitHub Actions CI run #200 (`32499124689`): PASS on the exact accepted head;
 - PostgreSQL **18.6** integration: PASS;
-- quality / Ubuntu: PASS;
-- quality / Windows: PASS;
+- persistence suite: PASS with **203** PostgreSQL tests;
+- Ubuntu quality: PASS;
+- Windows quality: PASS;
 - dependency audit: PASS;
 - retained Stage-2 benchmark: exact `G3_PASS`;
-- controlled manifest: **1,000** candidates;
-- final decisions: **965 AUTO_ADMIT / 20 REVIEW_REQUIRED / 15 NOT_ADMITTED**;
+- final retained bootstrap: **1,000 candidates / 965 AUTO_ADMIT / 20 REVIEW_REQUIRED / 15 NOT_ADMITTED**;
 - deterministic collision clusters: **10**;
 - retained historical QID→HullQ-ID mappings: **967**;
-- production replay first pass: **985/985** ResearchEvidenceBundles and **965/965** canonical admissions imported;
+- first production replay: **985/985** ResearchEvidenceBundles and **965/965** canonical admissions imported;
 - first-pass conflicts/errors/unexpected statuses: **0**;
 - deep semantic readback mismatches: **0**;
 - unexpected canonical rows for non-admitted candidates: **0**;
-- stray Brand/Organization/BoatDesign rows: **0 / 0 / 0**;
+- Brand/Organization/BoatDesign rows inferred: **0 / 0 / 0**;
 - exact re-import: **1,950 ALREADY_IMPORTED**, 0 conflicts/errors;
 - independent fresh-schema replay: **985** bundles + **965** admissions, 0 semantic mismatches, exact ID set, 0 stray Brand/Organization/BoatDesign rows;
 - `all_zero_tolerance_conditions_clear = true`;
-- bootstrap CI artifact ID: `9452810477`;
+- bootstrap artifact ID: `9452810477`;
 - bootstrap artifact digest: `sha256:3161e6f43572dcbcafbd6512becc2aea7be44b2f8d1ae56234e49ef37a5eb034`;
 - benchmark artifact ID: `9452803532`;
 - benchmark artifact digest: `sha256:6cb1414ac7b9c90393ba1545c4fd89adb67fbe298d367d42a29c51775c09684c`;
 - implementation-agent final local report: **1,407 passed, 205 skipped**;
 - reported coverage: **94.29%**;
 - repository validator / Ruff / strict mypy / pip-audit: PASS/CLEAN;
-- independent review: all identified blockers corrected;
-- explicit project-owner acceptance on 2026-08-21.
+- independent review: all identified blockers corrected; final review found no remaining blocker;
+- explicit project-owner acceptance on 2026-08-21;
+- PR #35 merged on 2026-08-21;
+- merge commit: `e2001d3a926c08706558b6cb97962f235c843379`.
 
 Final closure record: `docs/slices/SLICE-0017-acceptance-closure.md`.
 
 Accepted Stage-3 bootstrap semantics now include:
 
-- controlled rights-gated deterministic direct-instance discovery;
-- sparse source-backed Tier-0 BoatModel admission only;
+- rights-gated deterministic direct-instance discovery;
+- safe sparse Tier-0 BoatModel admission only;
 - accepted HullQ search-key semantics for collision detection;
 - stable content-derived alias IDs;
-- stable opaque HullQ IDs that do not encode QID/name;
-- historical retained QID→HullQ-ID mapping independent of current candidate rows;
+- stable opaque HullQ IDs not derived from QID/name;
+- historical retained QID→HullQ-ID mapping structurally separate from current candidate rows;
 - fail-closed crosswalk conflict detection in both directions before live network use;
 - preserved acquisition timestamp distinct from later recompute time;
 - isolated PostgreSQL replay from migrations zero;
 - exact first-pass, re-import and independent fresh-schema proof;
 - deep alias/provenance semantic readback;
-- zero automatic Brand/Organization/BoatDesign invention;
+- no automatic Brand/Organization/BoatDesign invention;
 - no SailboatData value contamination;
-- retained Stage-2 `G3_PASS` regression gate.
+- retained Stage-2 exact-`G3_PASS` regression gate.
 
-## Historical acceptance closures
+## SLICE-0016 acceptance closure
 
-The detailed accepted evidence for completed prior slices remains in the dedicated closure records:
+SLICE-0016 is explicitly accepted and `DONE`.
 
-- `docs/slices/SLICE-0012-acceptance-closure.md`;
-- `docs/slices/SLICE-0013-acceptance-closure.md`;
-- `docs/slices/SLICE-0014-acceptance-closure.md`;
-- `docs/slices/SLICE-0015-acceptance-closure.md`;
-- `docs/slices/SLICE-0016-acceptance-closure.md`;
-- `docs/slices/SLICE-0017-acceptance-closure.md`.
+Acceptance evidence:
+
+- final accepted implementation head: `61b500c2de061abb09dd7ddc36a0bfaa724ceece`;
+- GitHub Actions CI run #195 (`32478124648`): PASS on the exact accepted head;
+- PostgreSQL **18.6** integration: PASS;
+- persistence suite: **199 passed**;
+- benchmark runner: PASS;
+- benchmark result-schema validation: PASS;
+- Ubuntu quality: PASS;
+- Windows quality: PASS;
+- dependency audit: PASS;
+- retained benchmark artifact ID: `9445058966`;
+- artifact digest: `sha256:03a190278d9591879d3e3dfd8e7ec6b3c1d51b0c40bfaee843f3ce0eef7ebdc6`;
+- retained Stage-2 benchmark remained 50/50 materialized, 50/50 first-pass imported, 50/50 exact re-import `ALREADY_IMPORTED`, 50/50 fresh-schema imported, 0 persistence conflicts/errors, 0 semantic mismatches and `G3_PASS`;
+- implementation-agent final local report: **1354 passed, 201 skipped**;
+- reported coverage: **94.31%**;
+- repository validator / Ruff / strict mypy: PASS/CLEAN;
+- independent review: initial three blockers corrected; final review found no remaining blocker;
+- explicit project-owner acceptance on 2026-08-21;
+- PR #33 merged on 2026-08-21;
+- merge commit: `ae34363f5db8111a75d108b9b936084f76b56cef`.
+
+Final closure record: `docs/slices/SLICE-0016-acceptance-closure.md`.
+
+Accepted Stage-3 persistence semantics now include:
+
+- canonical Brand/Organization/BoatModel/BoatDesign PostgreSQL persistence;
+- stable caller-supplied opaque HullQ IDs;
+- no persistence-layer name/QID/source-based identity minting;
+- entity-scoped aliases;
+- Brand↔BoatModel and Organization↔BoatDesign relationship separation;
+- schema validation before mutation;
+- fail-closed canonical reference/provenance linkage;
+- order-independent BoatModel `boat_design_ids` consistency against the persisted design graph;
+- atomic/idempotent/conflict-safe imports;
+- PostgreSQL-native race safety;
+- lossless semantic readback;
+- preservation of accepted research persistence.
+
+## SLICE-0015 acceptance closure
+
+SLICE-0015 is explicitly accepted and `DONE`. Stage-2 Gate G3 is passed.
+
+Acceptance evidence:
+
+- final accepted implementation head: `022bec43318025bdeb92608bb2fb0445650f081d`;
+- GitHub Actions CI run #189 (`32468991110`): PASS on the exact accepted head;
+- PostgreSQL 18 integration: PASS;
+- benchmark runner: PASS;
+- benchmark result-schema validation: PASS;
+- Ubuntu quality: PASS;
+- Windows quality: PASS;
+- dependency audit: PASS;
+- retained benchmark artifact ID: `9441784787`;
+- artifact digest: `sha256:5f7048b86d2590509e764356283631c960c91988d2961d14e0d270e17b9ed588`;
+- final measured result: 50/50 materialized, 50/50 first-pass imported, 50/50 exact re-import `ALREADY_IMPORTED`, 50/50 fresh-schema imported, 0 persistence errors/conflicts, 0 semantic mismatches/errors;
+- technical recommendation: `G3_PASS`;
+- fixed thresholds remained `>=65%` materialization, `<=10%` cannot-materialize-without-invention and `<=35%` review-required;
+- implementation-agent final local report: **1277 passed, 164 skipped**;
+- reported coverage: **93.66%**;
+- repository validator / Ruff / strict touched-code mypy: PASS/CLEAN;
+- independent review: no remaining blocker;
+- explicit project-owner acceptance on 2026-08-21;
+- PR #31 merged on 2026-08-21;
+- merge commit: `d87490c6103676935768ba57ed41e665225731b8`.
+
+Final closure record: `docs/slices/SLICE-0015-acceptance-closure.md`.
+
+Accepted failure-class semantics:
+
+- `CONTRACT_GAP` → `BLOCKED`;
+- `VALIDATION_FAILURE` → `HARDEN_FIRST` regardless of percentage;
+- `INSUFFICIENT_RETAINED_FACT` → rate-based and may remain G3-positive within the `<=10%` cannot-materialize threshold.
+
+## SLICE-0014 acceptance closure
+
+SLICE-0014 remains explicitly accepted and `DONE`.
+
+Acceptance evidence:
+
+- final accepted implementation head: `98d2e38e42254bba17279945551d53c17b869f5e`;
+- GitHub Actions CI run #178 (`32457026920`): PASS on the exact accepted head;
+- PostgreSQL 18.6 integration: PASS;
+- PostgreSQL persistence tests: **162 passed**;
+- Ubuntu quality: PASS;
+- Windows quality: PASS;
+- dependency audit: PASS;
+- benchmark runner: PASS;
+- benchmark result-schema validation: PASS;
+- retained benchmark artifact ID: `9437591681`;
+- artifact digest: `sha256:de4e6ec1e2b020b3758e5066441d3d068676bf298c0b1707c86b6b7098308f79`;
+- final measured result: 50/50 materialized, 50/50 imported, 50/50 exact re-import `ALREADY_IMPORTED`, 50/50 fresh-schema imported, 0 persistence errors/conflicts, 0 semantic mismatches;
+- implementation-agent local unit report: **987 passed**;
+- reported overall coverage: **93.59%**;
+- independent review: no remaining blocker;
+- explicit project-owner acceptance on 2026-08-21;
+- PR #29 merged on 2026-08-21;
+- merge commit: `71100b50052ed7c2910b096e36b8a5402f757191`;
+- benchmark recommendation: `G3_CANDIDATE`.
+
+Final closure record: `docs/slices/SLICE-0014-acceptance-closure.md`.
+
+## SLICE-0013 acceptance closure
+
+SLICE-0013 remains explicitly accepted and `DONE`.
+
+Acceptance evidence:
+
+- final accepted implementation head: `2da1ad19717707f3ec48c0ebfd6925d5e2fee043`;
+- GitHub Actions CI run #166: PASS on the exact accepted head;
+- PostgreSQL 18 integration: PASS;
+- Ubuntu quality: PASS;
+- Windows quality: PASS;
+- dependency audit: PASS;
+- technical head `5cd9f9283dd927013925c0b2f66a756cfc27d52e`: 37/37 PostgreSQL 18.6 persistence integration tests PASS under CI #165;
+- 949 local unit tests passed;
+- overall coverage: 93.55%;
+- persistence-module coverage: 95.73%;
+- Ruff/format: clean;
+- strict mypy: clean;
+- repository validator: PASS;
+- pip-audit: no known vulnerabilities;
+- independent review: no remaining blocker;
+- explicit project-owner acceptance on 2026-08-20;
+- PR #27 merged on 2026-08-20;
+- merge commit: `2b8417beeb848507ba0f97c49bbd0f37d647c438`.
+
+Final closure record: `docs/slices/SLICE-0013-acceptance-closure.md`.
+
+## SLICE-0012 acceptance closure
+
+SLICE-0012 remains explicitly accepted and `DONE`.
+
+Acceptance evidence:
+
+- final accepted implementation head: `d2344cd359d296e2483ab074a14b773ae5668952`;
+- GitHub Actions CI run #157: PASS on the exact accepted head;
+- Ubuntu quality: PASS;
+- Windows quality: PASS;
+- dependency audit: PASS;
+- 1084 local tests passed, 2 skipped;
+- branch coverage: 93.33%;
+- independent review: no remaining blocker;
+- explicit project-owner acceptance on 2026-08-20;
+- PR #24 merge commit: `db68e53ddc9cfe4aa53caa3ba900dc6a3daa7324`.
+
+Final closure record: `docs/slices/SLICE-0012-acceptance-closure.md`.
 
 ## Evidence-first sequence
 
@@ -153,21 +294,21 @@ measured next Stage-3 decision                     LATER / NOT AUTHORIZED
 
 `docs/slices/SLICE-0018-controlled-wikidata-tier0-2500-window-expansion.md` is the controlling READY contract.
 
-The slice is deliberately restricted to the next measured identity-universe milestone:
+The slice is deliberately limited to the next measured Stage-3 identity-universe expansion:
 
-- retain the accepted SLICE-0017 manifest as immutable baseline input;
-- discover the current first <=2,500 direct Wikidata sailboat-class QIDs under the accepted rights gate and deterministic ordering;
-- compute the expansion delta as current discovery QIDs minus all 1,000 accepted SLICE-0017 candidate QIDs;
+- preserve the accepted SLICE-0017 retained manifest and 965 accepted canonical BoatModels as immutable baseline input;
+- discover the current first <=2,500 direct Wikidata sailboat-class QIDs using the same accepted rights-gated deterministic source path;
+- compute the expansion delta as current discovery QIDs minus all 1,000 accepted SLICE-0017 baseline candidate QIDs;
 - classify/admit only the delta;
-- compare new delta search projections against retained baseline projections and other delta candidates;
-- preserve accepted baseline BoatModels even when a new candidate collides with them;
-- retain/reuse the historical crosswalk without reminting;
-- keep SLICE-0018 retained artifacts separate from the accepted SLICE-0017 artifact;
-- replay baseline first and delta second against isolated PostgreSQL 18 schemas;
+- compare new delta search projections against baseline candidate projections and other delta candidates using accepted HullQ search-key semantics;
+- a new collision with baseline search space routes the new candidate to review and does not demote/delete the accepted baseline entity;
+- retain/reuse the historical QID→HullQ-ID crosswalk without reminting;
+- keep the SLICE-0018 retained artifact separate from the accepted SLICE-0017 artifact;
+- replay accepted baseline first and delta second against isolated PostgreSQL 18 schemas;
 - prove zero accepted-baseline drift/deletion/demotion and zero Brand/Organization/BoatDesign invention;
-- measure whether Wikidata reaches the 2,500 target; if it returns fewer, report the observed ceiling and do not pad from another source.
+- measure whether Wikidata reaches the 2,500 target; if fewer candidates are returned, report the source ceiling and do not pad from another source.
 
-It explicitly does **not** authorize reclassification/destructive correction of the accepted 0017 baseline or resolution of the 0017 review queue.
+It explicitly forbids treating the accepted 0017 baseline as a disposable rerun or resolving the 0017 review queue as a side effect of expansion.
 
 ## Retained research rules
 
@@ -186,6 +327,8 @@ It explicitly does **not** authorize reclassification/destructive correction of 
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-After this closure/readiness PR is merged, the project owner may first run `FINISH_SLICE.bat` for SLICE-0017 to remove the merged local worktree/branch, then may run `START_SLICE.bat` for SLICE-0018 when ready.
+After this closure/readiness PR is merged, the project owner may run `FINISH_SLICE.bat` for SLICE-0017. The script synchronizes `main`, confirms the merged implementation PR, removes the clean local SLICE-0017 worktree/branch, and leaves canonical truth on `main`.
 
-`START_SLICE.bat` must find exactly one primary SLICE-0018 document with `**Status:** READY`; the implementation agent must return SLICE-0018 in `REVIEW`, `BLOCKED` or `IN_PROGRESS` and must not mark it `DONE` or start the 5,000/enrichment step automatically.
+When ready after that, the project owner may run `START_SLICE.bat` for SLICE-0018. The script must find exactly one primary SLICE-0018 document with `**Status:** READY`, create/reuse the isolated worktree/branch, and copy Claude's assignment.
+
+The SLICE-0018 agent must return the slice in `REVIEW`, `BLOCKED` or `IN_PROGRESS` as appropriate and must not mark it `DONE` or begin 5,000 expansion, review-resolution or technical enrichment automatically.
