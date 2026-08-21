@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import hashlib
 import uuid
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
@@ -97,7 +97,7 @@ BOOTSTRAP_REQUESTED_LIMIT = 1000
 # hullq.sources.wikidata.WIKIDATA_BOOTSTRAP_SAFETY_CEILING.
 BOOTSTRAP_SAFETY_CEILING = 1500
 
-BOOTSTRAP_MANIFEST_VERSION = "0017-v3"
+BOOTSTRAP_MANIFEST_VERSION = "0017-v4"
 BOOTSTRAP_PRODUCER_IDENTIFIER = "hullq-wikidata-bootstrap"
 BOOTSTRAP_PRODUCER_VERSION = "SLICE-0017-v1"
 
@@ -399,80 +399,84 @@ def classify_candidates(
     return candidates
 
 
-def load_crosswalk_from_manifest(manifest: dict[str, Any]) -> dict[str, str]:
-    """Extract the retained QID -> HullQ-ID crosswalk from a committed manifest dict.
-
-    Only rows with a non-null ``hullq_id`` contribute. Used to make reruns
-    fail-safe: an existing retained mapping is always reused, never silently
-    reminted (see ``classify_candidates`` / ``run_live_bootstrap``).
-
-    Fails closed via ``CrosswalkConflictError`` if the manifest itself is
-    internally inconsistent in either direction — checked before any row is
-    collapsed into the returned dict, so neither conflict form can be masked
-    by insertion order:
+def _collapse_qid_id_pairs_fail_closed(
+    pairs: Iterable[tuple[str, str]], *, context: str = "retained manifest"
+) -> dict[str, str]:
+    """Collapse an iterable of ``(qid, hullq_id)`` pairs into a dict, failing
+    closed via ``CrosswalkConflictError`` on either conflict form — checked
+    before any pair is lost, so neither form can be masked by insertion
+    order:
 
     - the same QID mapped to two different non-null HullQ IDs;
     - the same HullQ ID addressed by two different QIDs.
 
-    Callers MUST call this (directly or via ``classify_candidates``'s own
-    ``validate_crosswalk_consistency`` pass) before any live network request
-    on a rerun, so a corrupted retained manifest is never silently trusted.
+    The single shared implementation behind ``load_crosswalk_from_manifest``,
+    ``validate_crosswalk_consistency`` and the current/historical crosswalk
+    merge in ``build_manifest``.
     """
     qid_to_id: dict[str, str] = {}
     id_to_qid: dict[str, str] = {}
-    for row in manifest.get("candidates", []):
-        hullq_id = row.get("hullq_id")
-        if hullq_id is None:
-            continue
-        qid = row["qid"]
-
+    for qid, hullq_id in pairs:
         prior_id = qid_to_id.get(qid)
         if prior_id is not None and prior_id != hullq_id:
             raise CrosswalkConflictError(
-                f"Retained manifest is internally inconsistent: QID {qid!r} maps to "
+                f"{context} is internally inconsistent: QID {qid!r} maps to "
                 f"conflicting HullQ IDs {prior_id!r} and {hullq_id!r}."
             )
         prior_qid = id_to_qid.get(hullq_id)
         if prior_qid is not None and prior_qid != qid:
             raise CrosswalkConflictError(
-                f"Retained manifest is internally inconsistent: HullQ ID {hullq_id!r} is "
+                f"{context} is internally inconsistent: HullQ ID {hullq_id!r} is "
                 f"addressed by conflicting QIDs {prior_qid!r} and {qid!r}."
             )
-
         qid_to_id[qid] = hullq_id
         id_to_qid[hullq_id] = qid
-
     return qid_to_id
 
 
+def load_crosswalk_from_manifest(manifest: dict[str, Any]) -> dict[str, str]:
+    """Extract the full retained QID -> HullQ-ID crosswalk from a committed
+    manifest dict.
+
+    Prefers the explicit top-level ``retained_crosswalk`` field (the complete
+    historical registry, independent of which QIDs are in the current
+    ``candidates`` window). Falls back to deriving a crosswalk from
+    ``candidates`` rows only for migrating a pre-``retained_crosswalk``
+    manifest (schema ``0017-v3`` and earlier) — this fallback is retained
+    solely to load the current real production artifact once; new manifests
+    always carry an explicit ``retained_crosswalk``.
+
+    Used to make reruns fail-safe: an existing retained mapping is always
+    reused, never silently reminted (see ``classify_candidates`` /
+    ``run_live_bootstrap``). Fails closed via ``CrosswalkConflictError`` if
+    the manifest is internally inconsistent in either direction. Callers
+    MUST call this before any live network request on a rerun, so a
+    corrupted retained manifest is never silently trusted.
+    """
+    if "retained_crosswalk" in manifest:
+        pairs = ((row["qid"], row["hullq_id"]) for row in manifest["retained_crosswalk"])
+    else:
+        pairs = (
+            (row["qid"], row["hullq_id"])
+            for row in manifest.get("candidates", [])
+            if row.get("hullq_id") is not None
+        )
+    return _collapse_qid_id_pairs_fail_closed(pairs, context="Retained manifest")
+
+
 def validate_crosswalk_consistency(candidates: list[BootstrapCandidate]) -> None:
-    """Fail closed if the retained QID -> HullQ-ID crosswalk is inconsistent.
+    """Fail closed if the current candidate set's QID -> HullQ-ID mappings
+    are inconsistent.
 
     Raises ``CrosswalkConflictError`` if the same QID appears more than once
     with different non-null ``hullq_id`` values, or if any two distinct QIDs
     share the same ``hullq_id``. An existing QID MUST NOT be silently
     reminted, and a HullQ ID MUST NOT address more than one QID.
     """
-    qid_to_id: dict[str, str] = {}
-    id_to_qid: dict[str, str] = {}
-    for candidate in candidates:
-        if candidate.hullq_id is None:
-            continue
-        prior_id = qid_to_id.get(candidate.qid)
-        if prior_id is not None and prior_id != candidate.hullq_id:
-            raise CrosswalkConflictError(
-                f"QID {candidate.qid!r} maps to conflicting HullQ IDs "
-                f"{prior_id!r} and {candidate.hullq_id!r} in the same manifest."
-            )
-        qid_to_id[candidate.qid] = candidate.hullq_id
-
-        prior_qid = id_to_qid.get(candidate.hullq_id)
-        if prior_qid is not None and prior_qid != candidate.qid:
-            raise CrosswalkConflictError(
-                f"HullQ ID {candidate.hullq_id!r} is addressed by conflicting QIDs "
-                f"{prior_qid!r} and {candidate.qid!r} in the same manifest."
-            )
-        id_to_qid[candidate.hullq_id] = candidate.qid
+    _collapse_qid_id_pairs_fail_closed(
+        ((c.qid, c.hullq_id) for c in candidates if c.hullq_id is not None),
+        context="Candidate set",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -704,13 +708,32 @@ def build_manifest(
     fetched_entity_count: int | None = None,
     acquired_at: str | None = None,
     classification_recomputed_at: str | None = None,
+    historical_crosswalk: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Build the full versioned, JSON-serializable bootstrap manifest document.
 
-    Validates crosswalk consistency before returning (fails closed on a
-    conflicting QID -> HullQ-ID mapping). Retains the exact discovery
-    query/version and acquisition path/version in an auditable, non-ambiguous
-    form (SLICE-0017 manifest/report audit-completeness requirement).
+    ``candidates`` MUST contain only the current bounded discovery/
+    classification window — never QIDs carried forward merely because an
+    earlier run once classified them. ``discovery.candidates_processed``
+    describes only this current set.
+
+    ``historical_crosswalk`` is the full historical QID -> HullQ-ID registry
+    accumulated across every prior run (typically loaded via
+    ``load_crosswalk_from_manifest`` on the previous manifest). It is merged
+    with the current candidates' own mappings — failing closed via
+    ``CrosswalkConflictError`` on any drift between the two — into the
+    manifest's top-level ``retained_crosswalk`` field, which is the single
+    source of truth for ID reuse on a later rerun. A QID absent from the
+    current ``candidates`` window remains visible in ``retained_crosswalk``
+    (so it is never silently reminted if it reappears) but never re-enters
+    ``candidates`` as a stale decision. When omitted, ``retained_crosswalk``
+    is derived from the current candidates alone.
+
+    Validates crosswalk consistency of the current candidate set before
+    returning (fails closed on a conflicting QID -> HullQ-ID mapping).
+    Retains the exact discovery query/version and acquisition path/version
+    in an auditable, non-ambiguous form (SLICE-0017 manifest/report
+    audit-completeness requirement).
 
     ``fetched_entity_count`` is the number of entities actually returned by
     ``fetch_entities_bootstrap`` (distinct from ``candidates_processed``,
@@ -730,6 +753,11 @@ def build_manifest(
     live run, holding that recompute's own timestamp.
     """
     validate_crosswalk_consistency(candidates)
+    current_crosswalk = {c.qid: c.hullq_id for c in candidates if c.hullq_id is not None}
+    full_crosswalk = _collapse_qid_id_pairs_fail_closed(
+        [*(historical_crosswalk or {}).items(), *current_crosswalk.items()],
+        context="historical_crosswalk merge with current candidates",
+    )
     counts = _counts(candidates)
     return {
         "manifest_version": BOOTSTRAP_MANIFEST_VERSION,
@@ -757,6 +785,9 @@ def build_manifest(
             "extracted_record_count": extracted_record_count,
         },
         "candidates": [candidate_to_manifest_dict(c) for c in candidates],
+        "retained_crosswalk": [
+            {"qid": qid, "hullq_id": hullq_id} for qid, hullq_id in sorted(full_crosswalk.items())
+        ],
         "collision_clusters": [
             {"qids": list(c.qids), "shared_keys": list(c.shared_keys)}
             for c in (collision_clusters or [])
@@ -768,7 +799,7 @@ def build_manifest(
             "not_admitted": counts.not_admitted,
             "reason_breakdown": counts.reason_breakdown,
             "collision_cluster_count": len(collision_clusters or []),
-            "retained_crosswalk_count": sum(1 for c in candidates if c.hullq_id is not None),
+            "retained_crosswalk_count": len(full_crosswalk),
             "research_observation_count": sum(
                 1 for c in candidates if c.observation_id is not None
             ),

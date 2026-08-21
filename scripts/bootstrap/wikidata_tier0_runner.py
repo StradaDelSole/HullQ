@@ -138,22 +138,25 @@ def run_live_bootstrap(
     deterministic order, fetches their entity data, classifies every
     candidate, and writes the retained manifest + human-readable report.
 
-    Fail-safe rerun behavior: if *manifest_path* already exists, its
-    retained QID -> HullQ-ID crosswalk is loaded and validated for internal
+    Fail-safe rerun behavior: if *manifest_path* already exists, its full
+    historical ``retained_crosswalk`` is loaded and validated for internal
     consistency BEFORE any network request, and reused exactly — an existing
     retained QID is never silently reminted, and a conflicting retained
     mapping fails closed before any new manifest is written. A retained QID
     that is absent from this run's discovery window (e.g. it fell outside
-    the current first-N SPARQL result) is carried forward into the new
-    manifest unchanged rather than being dropped — it must not later be
-    silently reminted merely because one discovery window missed it.
+    the current first-N SPARQL result) remains visible in the new manifest's
+    ``retained_crosswalk`` — so it is never silently reminted if it
+    reappears later — but is NOT carried into ``candidates``: the current
+    bounded candidate set (and therefore ``candidates_processed``,
+    ``collision_clusters`` and every classification decision) always
+    describes exactly this run's discovery window, never a historical QID
+    this run never actually saw.
     """
     import httpx
 
     from hullq.bootstrap.wikidata_tier0 import (
         BOOTSTRAP_SAFETY_CEILING,
         build_manifest,
-        candidate_from_manifest_dict,
         classify_candidates,
         compute_collision_clusters,
         load_crosswalk_from_manifest,
@@ -171,19 +174,14 @@ def run_live_bootstrap(
         f"  requested_limit={requested_limit} safety_ceiling={BOOTSTRAP_SAFETY_CEILING}", flush=True
     )
 
-    existing_crosswalk: dict[str, str] = {}
-    prior_candidates_by_qid: dict[str, Any] = {}
+    historical_crosswalk: dict[str, str] = {}
     if manifest_path.exists():
         # Validated (fails closed on any internal conflict) before any
         # network request below.
         prior_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        existing_crosswalk = load_crosswalk_from_manifest(prior_manifest)
-        prior_candidates_by_qid = {
-            row["qid"]: candidate_from_manifest_dict(row)
-            for row in prior_manifest.get("candidates", [])
-        }
+        historical_crosswalk = load_crosswalk_from_manifest(prior_manifest)
         print(
-            f"  loaded {len(existing_crosswalk)} retained QID->HullQ-ID mapping(s) from "
+            f"  loaded {len(historical_crosswalk)} retained QID->HullQ-ID mapping(s) from "
             f"existing manifest at {manifest_path}; every already-mapped QID will reuse its "
             "retained ID exactly (never reminted)",
             flush=True,
@@ -208,28 +206,14 @@ def run_live_bootstrap(
         usage = adapter.usage_metrics
 
     retrieved_at = datetime.now(tz=UTC).isoformat()
+    # candidates describes ONLY this run's current discovery/entities window
+    # — never a QID this run did not actually see.
     candidates = classify_candidates(
-        entities, retrieved_at=retrieved_at, existing_crosswalk=existing_crosswalk
+        entities, retrieved_at=retrieved_at, existing_crosswalk=historical_crosswalk
     )
 
-    # Carry forward any retained candidate whose QID is absent from this
-    # run's discovery window, unchanged — never dropped, never reminted.
-    current_qids = {c.qid for c in candidates}
-    carried_forward = [
-        prior_candidates_by_qid[qid]
-        for qid in sorted(prior_candidates_by_qid)
-        if qid not in current_qids
-    ]
-    if carried_forward:
-        print(
-            f"  carrying forward {len(carried_forward)} retained candidate(s) absent from "
-            "this run's discovery window (unchanged, IDs preserved)",
-            flush=True,
-        )
-    candidates = candidates + carried_forward
-
-    # Fail closed before writing anything if the resulting crosswalk is
-    # internally inconsistent (e.g. a corrupted prior manifest).
+    # Fail closed before writing anything if the current window's crosswalk
+    # is internally inconsistent.
     validate_crosswalk_consistency(candidates)
     clusters = compute_collision_clusters(entities)
 
@@ -246,6 +230,10 @@ def run_live_bootstrap(
         fetched_entity_count=fetched_entity_count,
         acquired_at=retrieved_at,
         classification_recomputed_at=None,
+        # Merges with the current candidates' own mappings, failing closed on
+        # drift; a historical QID absent from `candidates` still appears in
+        # the manifest's retained_crosswalk, never in candidates itself.
+        historical_crosswalk=historical_crosswalk,
     )
     _validate_manifest_schema(manifest)
 
@@ -354,6 +342,7 @@ def recompute_manifest_offline(
         fetched_entity_count=discovery.get("fetched_entity_count", len(entities)),
         acquired_at=acquired_at,
         classification_recomputed_at=now_ts,
+        historical_crosswalk=existing_crosswalk,
     )
     _validate_manifest_schema(manifest)
 
@@ -807,6 +796,24 @@ def replay_manifest(
                     flush=True,
                 )
 
+            # --- No stray Brand/Organization/BoatDesign rows (independent proof) ---
+            fresh_stray_row_counts: dict[str, int] = {}
+            with conn2.cursor() as cur:
+                for table in (
+                    "canonical_brands",
+                    "canonical_organizations",
+                    "canonical_boat_designs",
+                ):
+                    cur.execute(f"SELECT COUNT(*) FROM {table}")
+                    fresh_stray_row_counts[table] = cur.fetchone()[0]
+            fresh_no_stray_rows = all(count == 0 for count in fresh_stray_row_counts.values())
+            if not fresh_no_stray_rows:
+                print(
+                    f"    FRESH UNEXPECTED BRAND/ORGANIZATION/BOATDESIGN ROWS: "
+                    f"{fresh_stray_row_counts}",
+                    flush=True,
+                )
+
             fresh_expected_counts_match = (
                 fresh_bundle_counts["imported"] == expected_bundle_count
                 and fresh_admission_counts["imported"] == expected_admission_count
@@ -816,6 +823,7 @@ def replay_manifest(
             print(
                 f"  fresh: semantic_mismatches={fresh_semantic_mismatches} "
                 f"id_set_matches={fresh_id_set_matches} "
+                f"no_stray_rows={fresh_no_stray_rows} "
                 f"expected_counts_match={fresh_expected_counts_match}",
                 flush=True,
             )
@@ -856,6 +864,8 @@ def replay_manifest(
             "admission": fresh_admission_counts,
             "semantic_mismatches": fresh_semantic_mismatches,
             "id_set_matches": fresh_id_set_matches,
+            "no_stray_brand_organization_boatdesign_rows": fresh_no_stray_rows,
+            "stray_row_counts": fresh_stray_row_counts,
             "expected_counts_match": fresh_expected_counts_match,
         },
     }
@@ -887,6 +897,7 @@ def replay_manifest(
         and fresh_admission_counts["unexpected_status"] == 0
         and fresh_semantic_mismatches == 0
         and fresh_id_set_matches
+        and fresh_no_stray_rows
         and fresh_expected_counts_match
     )
 
@@ -945,6 +956,7 @@ def _write_replay_report(result_doc: dict[str, Any], report_path: Path) -> None:
         f"- admission: {fr['admission']}",
         f"- semantic mismatches: {fr['semantic_mismatches']}",
         f"- canonical ID set matches exactly: {fr['id_set_matches']}",
+        f"- zero stray Brand/Organization/BoatDesign rows: {fr['no_stray_brand_organization_boatdesign_rows']} ({fr['stray_row_counts']})",
         f"- expected imported counts match exactly: {fr['expected_counts_match']}",
         "",
         f"## RESULT: all zero-tolerance conditions clear: **{result_doc['all_zero_tolerance_conditions_clear']}**",

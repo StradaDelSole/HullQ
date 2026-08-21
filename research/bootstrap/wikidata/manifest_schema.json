@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://hullq.local/schemas/wikidata-tier0-bootstrap-manifest/0017-v3",
+  "$id": "https://hullq.local/schemas/wikidata-tier0-bootstrap-manifest/0017-v4",
   "title": "HullQ SLICE-0017 Wikidata Tier-0 Bootstrap Manifest",
-  "description": "Versioned, replayable record of one controlled Wikidata Tier-0 identity bootstrap run. Retains enough information to audit every candidate's admission decision (including the exact acquisition path/version and complete same-search-key collision clusters) and to replay the run offline against PostgreSQL without live network access. Does not contain SailboatData values or unrelated third-party content.",
+  "description": "Versioned, replayable record of one controlled Wikidata Tier-0 identity bootstrap run. `candidates` holds only the current bounded discovery/classification window; `retained_crosswalk` is the separate, independent historical QID->HullQ-ID registry that accumulates across runs so a QID absent from one discovery window is never lost or silently reminted. Retains the exact acquisition path/version and complete same-search-key collision clusters for the current window, and replays offline against PostgreSQL without live network access. Does not contain SailboatData values or unrelated third-party content.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,11 +16,12 @@
     "discovery",
     "usage_metrics",
     "candidates",
+    "retained_crosswalk",
     "collision_clusters",
     "counts"
   ],
   "properties": {
-    "manifest_version": { "const": "0017-v3" },
+    "manifest_version": { "const": "0017-v4" },
     "source_id": { "type": "string", "minLength": 1 },
     "generated_at": {
       "type": "string",
@@ -76,7 +77,21 @@
     },
     "candidates": {
       "type": "array",
+      "description": "Only the current bounded discovery/classification window. Never includes a QID carried forward merely because an earlier run once classified it — see retained_crosswalk for that.",
       "items": { "$ref": "#/$defs/candidate" }
+    },
+    "retained_crosswalk": {
+      "type": "array",
+      "description": "The complete historical QID -> HullQ-ID registry, a superset of the current candidates' own mappings. A QID absent from the current candidates window remains here so it is never silently reminted if it reappears in a later run.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["qid", "hullq_id"],
+        "properties": {
+          "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+          "hullq_id": { "type": "string", "minLength": 1 }
+        }
+      }
     },
     "collision_clusters": {
       "type": "array",

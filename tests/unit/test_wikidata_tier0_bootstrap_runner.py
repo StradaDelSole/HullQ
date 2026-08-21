@@ -160,13 +160,21 @@ def test_retained_qid_survives_a_discovery_window_that_omits_it(
 ) -> None:
     """Three-run regression: a retained QID must keep its byte-identical
     HullQ ID even after a later discovery window's first-N result happens
-    not to include it, and must not be reminted when it reappears.
+    not to include it, and must not be reminted when it reappears — while
+    ``candidates`` always describes only the CURRENT discovery window and
+    ``retained_crosswalk`` is the separate historical registry.
 
     Run 1: discovery returns Q1 -> mints an ID for Q1.
     Run 2: discovery returns only Q2 (Q1 absent from this window's first-N)
-           -> Q1 must be carried forward into the new manifest unchanged.
-    Run 3: discovery returns Q1 and Q2 again -> Q1 must reuse the exact
-           original ID from run 1, not a new one.
+           -> candidates contains ONLY Q2; Q1's mapping survives in
+           retained_crosswalk, not as a stale candidate decision.
+    Run 3: discovery returns Q1 and Q2 again -> Q1 reappears in candidates
+           and reuses its exact original ID from run 1, not a new one.
+
+    Covers independent-review requirements (a) candidates-only-current-window,
+    (b) reuse-on-reappearance, (c) candidates_processed excludes
+    historical-only mappings, (e) no stale AUTO_ADMIT candidate decision for
+    an absent QID.
     """
     manifest_path = tmp_path / "manifest.json"
     report_path = tmp_path / "REPORT.md"
@@ -180,6 +188,8 @@ def test_retained_qid_survives_a_discovery_window_that_omits_it(
     )
     q1_original_id = next(c["hullq_id"] for c in run1["candidates"] if c["qid"] == "Q1")
     assert q1_original_id is not None
+    assert [c["qid"] for c in run1["candidates"]] == ["Q1"]
+    assert [row["qid"] for row in run1["retained_crosswalk"]] == ["Q1"]
 
     _patch_httpx_client(monkeypatch, ["Q2"], {"Q2": "Beta Yacht"})
     run2 = run_live_bootstrap(
@@ -188,11 +198,19 @@ def test_retained_qid_survives_a_discovery_window_that_omits_it(
         manifest_path=manifest_path,
         report_path=report_path,
     )
-    run2_by_qid = {c["qid"]: c for c in run2["candidates"]}
-    assert "Q1" in run2_by_qid  # carried forward, not dropped
-    assert run2_by_qid["Q1"]["hullq_id"] == q1_original_id
-    assert run2_by_qid["Q1"]["decision"] == "auto_admit"
-    assert run2_by_qid["Q2"]["hullq_id"] is not None
+    run2_candidate_qids = {c["qid"] for c in run2["candidates"]}
+    # (a) candidates contains ONLY the current window's QIDs.
+    assert run2_candidate_qids == {"Q2"}
+    # (e) no stale AUTO_ADMIT candidate decision leaks in for the absent QID.
+    assert "Q1" not in run2_candidate_qids
+    # (c) candidates_processed describes only the current window.
+    assert run2["discovery"]["candidates_processed"] == 1
+    assert len(run2["candidates"]) == 1
+    # Q1's historical mapping survives independently in retained_crosswalk.
+    run2_crosswalk = {row["qid"]: row["hullq_id"] for row in run2["retained_crosswalk"]}
+    assert run2_crosswalk["Q1"] == q1_original_id
+    assert run2_crosswalk["Q2"] is not None
+    assert len(run2["retained_crosswalk"]) == 2
 
     _patch_httpx_client(monkeypatch, ["Q1", "Q2"], {"Q1": "Alpha Yacht", "Q2": "Beta Yacht"})
     run3 = run_live_bootstrap(
@@ -202,8 +220,44 @@ def test_retained_qid_survives_a_discovery_window_that_omits_it(
         report_path=report_path,
     )
     run3_by_qid = {c["qid"]: c["hullq_id"] for c in run3["candidates"]}
-    assert run3_by_qid["Q1"] == q1_original_id  # byte-identical, never reminted
-    assert run3_by_qid["Q2"] == run2_by_qid["Q2"]["hullq_id"]
+    # (b) Q1 reappears in candidates and reuses its exact original ID.
+    assert run3_by_qid == {"Q1": q1_original_id, "Q2": run2_crosswalk["Q2"]}
+    assert run3["discovery"]["candidates_processed"] == 2
+
+
+def test_recompute_offline_accepts_a_live_produced_manifest_with_historical_mappings(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """(d) A manifest produced by --live that carries historical mappings in
+    retained_crosswalk (for QIDs absent from the current candidates window)
+    must still be --recompute-able offline: candidates always share one
+    uniform retrieved_at because they only ever hold the current window.
+    """
+    manifest_path = tmp_path / "manifest.json"
+    report_path = tmp_path / "REPORT.md"
+
+    _patch_httpx_client(monkeypatch, ["Q1"], {"Q1": "Alpha Yacht"})
+    run_live_bootstrap(
+        user_agent=_USER_AGENT,
+        requested_limit=1,
+        manifest_path=manifest_path,
+        report_path=report_path,
+    )
+    _patch_httpx_client(monkeypatch, ["Q2"], {"Q2": "Beta Yacht"})
+    live_manifest = run_live_bootstrap(
+        user_agent=_USER_AGENT,
+        requested_limit=1,
+        manifest_path=manifest_path,
+        report_path=report_path,
+    )
+    # Sanity: this manifest does carry a historical-only mapping (Q1) not
+    # present in candidates — exactly the scenario that must not break recompute.
+    assert {c["qid"] for c in live_manifest["candidates"]} == {"Q2"}
+    assert {row["qid"] for row in live_manifest["retained_crosswalk"]} == {"Q1", "Q2"}
+
+    recomputed = recompute_manifest_offline(manifest_path=manifest_path, report_path=report_path)
+    assert {c["qid"] for c in recomputed["candidates"]} == {"Q2"}
+    assert {row["qid"] for row in recomputed["retained_crosswalk"]} == {"Q1", "Q2"}
 
 
 def test_recompute_offline_performs_no_network_access(

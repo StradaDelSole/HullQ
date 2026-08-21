@@ -382,6 +382,17 @@ A second review round found two remaining acceptance blockers plus two audit cor
 
 Manifest schema bumped to `0017-v3` (adds `acquired_at`, `classification_recomputed_at`). Local: 1,403 passed, 205 skipped (was 1,397/204); coverage 94.32%; ruff/mypy/validate_repository/pip-audit all clean. The strengthened isolated PostgreSQL replay proof remains pending `db-integration` CI (no local PostgreSQL credentials available to the implementation agent).
 
+## Third independent review — 2026-08-21
+
+A final targeted review found one remaining structural blocker in the historical-crosswalk fix from the second round, plus one gap in the fresh-schema proof, both now addressed without changing the 965/20/15 classification or the 10 collision clusters:
+
+1. **`candidates` no longer conflates the current bootstrap window with the historical registry.** The second round's carry-forward fix incorrectly appended prior-run candidates into `manifest["candidates"]` when their QID was absent from the current discovery set, which could inflate `candidates_processed` beyond the requested first-N window, leave stale `AUTO_ADMIT` decisions in the manifest, and (since carried-forward rows kept their original `retrieved_at`) break `--recompute`'s uniform-timestamp precondition on a manifest `--live` itself had just produced. `candidates` now holds strictly the current bounded discovery/classification window; a new top-level `retained_crosswalk` field (`[{"qid", "hullq_id"}, ...]`) is the separate, independent historical QID→HullQ-ID registry that `build_manifest` merges (failing closed on drift via the same conflict detection as before) from the current candidates' own mappings plus whatever `run_live_bootstrap`/`recompute_manifest_offline` loaded from the prior manifest. `load_crosswalk_from_manifest` now prefers `retained_crosswalk` and falls back to deriving from `candidates` only to migrate a pre-`retained_crosswalk` manifest. Manifest schema bumped to `0017-v4`. Five new/rewritten tests cover: candidates-only-current-window, byte-identical reuse on reappearance, `candidates_processed` excluding historical-only mappings, a `--live`-produced manifest with historical mappings remaining `--recompute`-able offline, and no stale `AUTO_ADMIT` decision for an absent QID.
+2. **Fresh-schema pass now also explicitly verifies zero stray Brand/Organization/BoatDesign rows**, folded into `all_zero_tolerance_conditions_clear` and reported in both `REPLAY-RESULT.json` and `REPLAY-REPORT.md` — previously only the first isolated pass checked this.
+
+The retained manifest was recomputed offline once more (zero network access) to migrate to the `0017-v4` shape: `candidates` remains exactly 1,000 (all current-window, no history to omit yet since this is the artifact's first acquisition), `retained_crosswalk` holds all 967 historical mappings, and classification/IDs are byte-for-byte unchanged (965/20/15, 10 clusters, zero drift, verified programmatically).
+
+Local after this round: 1,404 passed, 205 skipped; coverage 94.29%; ruff/mypy/validate_repository/pip-audit all clean. PostgreSQL CI items remain pending as before.
+
 ## Acceptance criteria
 
 SLICE-0017 is acceptance-ready only when all are true:
@@ -396,11 +407,11 @@ SLICE-0017 is acceptance-ready only when all are true:
 - [ ] every admitted BoatModel has auditable supporting HullQ observation/evidence linkage; — proven at the code/unit level; real-PostgreSQL confirmation pending CI;
 - [ ] exact manifest replay is idempotent with zero unexpected conflicts/errors; — NOT VERIFIED locally (no DB); pending `db-integration` CI;
 - [ ] fresh PostgreSQL 18 replay is semantically equal; — NOT VERIFIED locally; pending `db-integration` CI;
-- [ ] the existing research persistence and canonical identity persistence suites remain green; — unchanged locally (1403 passed, 205 skipped incl. all persistence tests skipped without a DB); pending `db-integration` CI for actual execution;
+- [ ] the existing research persistence and canonical identity persistence suites remain green; — unchanged locally (1404 passed, 205 skipped incl. all persistence tests skipped without a DB); pending `db-integration` CI for actual execution;
 - [ ] the retained 50-design benchmark remains `G3_PASS`; — benchmark code untouched by this slice; NOT VERIFIED locally (no DB); pending CI;
 - [x] normal CI remains offline with respect to external acquisition; — live acquisition is isolated to `--live` mode of `scripts/bootstrap/wikidata_tier0_runner.py`, never invoked by pytest or the `quality`/`db-integration` CI jobs;
 - [ ] exact-head PostgreSQL 18 CI passes; — NOT VERIFIED (not yet observed on the pushed head);
-- [x] repository quality gates pass; — local: `uv lock --check`, `validate_repository.py`, `ruff format --check .`, `ruff check .`, `mypy src`, full pytest (1403 passed/205 skipped), `coverage report` (94.32% ≥ 90%), `pip-audit` all PASS; cross-platform (Windows/Ubuntu) CI confirmation still pending;
+- [x] repository quality gates pass; — local: `uv lock --check`, `validate_repository.py`, `ruff format --check .`, `ruff check .`, `mypy src`, full pytest (1404 passed/205 skipped), `coverage report` (94.29% ≥ 90%), `pip-audit` all PASS; cross-platform (Windows/Ubuntu) CI confirmation still pending;
 - [ ] independent review finds no remaining blocker; — first review round's 7 findings and second review round's 2 blockers + 2 audit corrections all addressed; awaiting re-review;
 - [ ] project owner explicitly accepts before `DONE`.
 

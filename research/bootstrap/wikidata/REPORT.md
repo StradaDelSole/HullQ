@@ -1,8 +1,8 @@
 # HullQ SLICE-0017 Wikidata Tier-0 Bootstrap Report
 
-**Manifest last written (generated_at):** 2026-08-21T14:25:37.703292+00:00  
+**Manifest last written (generated_at):** 2026-08-21T14:52:45.449518+00:00  
 **Original live acquisition (acquired_at):** 2026-08-21T12:52:49.882220+00:00  
-**Last offline reclassification (classification_recomputed_at):** 2026-08-21T14:25:37.703292+00:00  
+**Last offline reclassification (classification_recomputed_at):** 2026-08-21T14:52:45.449518+00:00  
 **Source:** SRC_WIKIDATA_API_2026  
 **Requested limit:** 1000  
 **Safety ceiling:** 1500

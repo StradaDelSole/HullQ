@@ -111,6 +111,7 @@ def _assert_clean_replay(result: dict[str, Any]) -> None:
     assert fr["admission"]["already_present"] == 0
     assert fr["semantic_mismatches"] == 0
     assert fr["id_set_matches"] is True
+    assert fr["no_stray_brand_organization_boatdesign_rows"] is True
     assert fr["expected_counts_match"] is True
 
     assert result["all_zero_tolerance_conditions_clear"] is True
