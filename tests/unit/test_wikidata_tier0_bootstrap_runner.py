@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from bootstrap.wikidata_tier0_runner import (  # noqa: E402
+    _actual_boat_model_aliases,
     recompute_manifest_offline,
     run_live_bootstrap,
 )
@@ -509,3 +510,97 @@ def test_isolated_schema_drops_even_if_body_raises() -> None:
         raise RuntimeError("boom")
 
     assert conn.log[-1] == 'DROP SCHEMA IF EXISTS "hullq_wdt0_test_schema" CASCADE'
+
+
+# ---------------------------------------------------------------------------
+# _actual_boat_model_aliases — exact-head CI run #199 regression
+#
+# Root cause: fetch_boat_model() (hullq.persistence.identity_readback)
+# returns a BOAT_MODEL_SCHEMA.v0.2-shaped plain dict; each entry in its
+# "aliases" list is itself a plain dict produced by _alias_to_embedded_dict()
+# — {"id", "alias_class", "name", "notes"}, alias_class already stringified
+# — never an IdentityAlias object. The prior implementation read a.id /
+# a.alias_class / a.name (attribute access), which raised
+# AttributeError: 'dict' object has no attribute 'id' the first time an
+# actually-admitted candidate had a non-empty alias list during the real
+# PostgreSQL replay (exact-head CI run #199).
+# ---------------------------------------------------------------------------
+
+
+def test_actual_boat_model_aliases_reads_the_real_fetch_boat_model_dict_shape() -> None:
+    """Exercises _actual_boat_model_aliases() against the exact dict shape
+    hullq.persistence.identity_readback.fetch_boat_model() returns for
+    aliases (a list of plain dicts, not IdentityAlias objects). Fails with
+    AttributeError on the pre-fix implementation; passes with the fix.
+    """
+    fetched = {
+        "schema_version": "0.2",
+        "id": "BM_WDT0_EXAMPLE",
+        "canonical_name": "Example 36",
+        "aliases": [
+            {
+                "id": "ALIAS-0123456789abcdef",
+                "alias_class": "source_spelling",
+                "name": "Alt Name One",
+                "notes": None,
+            },
+            {
+                "id": "ALIAS-fedcba9876543210",
+                "alias_class": "source_spelling",
+                "name": "Alt Name Two",
+                "notes": None,
+            },
+        ],
+        "brand_relationships": [],
+        "first_built": None,
+        "last_built": None,
+        "boat_design_ids": [],
+    }
+
+    result = _actual_boat_model_aliases(fetched)
+
+    assert result == {
+        ("ALIAS-0123456789abcdef", "source_spelling", "Alt Name One"),
+        ("ALIAS-fedcba9876543210", "source_spelling", "Alt Name Two"),
+    }
+
+
+def test_actual_boat_model_aliases_empty_list() -> None:
+    assert _actual_boat_model_aliases({"aliases": []}) == set()
+
+
+def test_readback_and_fresh_schema_alias_comparison_uses_matching_dict_shapes(
+    tmp_path: Path,
+) -> None:
+    """End-to-end proof that the runner's expected-vs-actual alias comparison
+    (used identically by both the first-pass and fresh-schema readback) is
+    internally consistent: build_admission()'s own alias payload shape must
+    equal what _actual_boat_model_aliases() expects from a real readback dict
+    carrying the exact same content.
+    """
+    from hullq.bootstrap.wikidata_tier0 import build_admission, classify_candidates
+    from hullq.sources.wikidata import WikidataEntityData
+
+    candidates = classify_candidates(
+        [
+            WikidataEntityData(
+                qid="Q42",
+                label="Example 36",
+                aliases=["Alt Name One"],
+                raw_claims={},
+            )
+        ],
+        retrieved_at="2026-08-21T00:00:00Z",
+    )
+    admission = build_admission(candidates[0])
+    assert admission is not None
+    expected_aliases = admission.boat_models[0]["aliases"]
+
+    # Simulate a readback dict carrying exactly the same alias content —
+    # this is the shape a real fetch_boat_model() call returns.
+    fetched = {"aliases": expected_aliases}
+
+    actual = _actual_boat_model_aliases(fetched)
+    expected = {(a["id"], a["alias_class"], a["name"]) for a in expected_aliases}
+    assert actual == expected
+    assert len(actual) == 1

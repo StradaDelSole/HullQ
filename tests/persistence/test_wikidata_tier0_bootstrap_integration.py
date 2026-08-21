@@ -45,9 +45,16 @@ def _entity(qid: str, label: str | None, aliases: list[str] | None = None) -> Wi
 
 
 def _small_manifest() -> dict[str, Any]:
+    # Q1002 is the sole AUTO_ADMIT candidate below and deliberately carries an
+    # alias: the actual accepted admission/readback path for a non-empty
+    # alias list on an admitted candidate must be exercised against real
+    # PostgreSQL (exact-head CI run #199 regression — AttributeError:
+    # 'dict' object has no attribute 'id' — only manifested once an admitted
+    # candidate had aliases; Q1001's alias never reached readback because
+    # Q1001 collides and is REVIEW_REQUIRED, not admitted).
     entities = [
         _entity("Q1001", "Bootstrap Test Yacht One", aliases=["Alt Name One"]),
-        _entity("Q1002", "Bootstrap Test Yacht Two"),
+        _entity("Q1002", "Bootstrap Test Yacht Two", aliases=["Yacht Two Alt Name"]),
         _entity("Q1003", "Bootstrap Duplicate Name"),
         _entity("Q1004", "Bootstrap Duplicate Name"),
         _entity("Q1005", None),

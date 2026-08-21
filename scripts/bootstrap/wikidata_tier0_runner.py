@@ -434,6 +434,23 @@ def _write_live_report(manifest: dict[str, Any], report_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _actual_boat_model_aliases(fetched: dict[str, Any]) -> set[tuple[str, str, str]]:
+    """Extract the ``(id, alias_class, name)`` tuple set from a
+    ``fetch_boat_model()`` readback dict.
+
+    ``hullq.persistence.identity_readback.fetch_boat_model()`` returns a
+    ``BOAT_MODEL_SCHEMA.v0.2``-shaped plain dict; each entry in its
+    ``"aliases"`` list is itself a plain dict produced by
+    ``_alias_to_embedded_dict()`` — ``{"id", "alias_class", "name", "notes"}``
+    with ``alias_class`` already stringified — never an ``IdentityAlias``
+    object. This must be read via dict-key access (module-level and unit
+    tested precisely because a prior attribute-access implementation raised
+    ``AttributeError: 'dict' object has no attribute 'id'`` against the real
+    readback shape once an admitted candidate actually had aliases).
+    """
+    return {(a["id"], a["alias_class"], a["name"]) for a in fetched.get("aliases", [])}
+
+
 def replay_manifest(
     db_url: str,
     manifest_path: Path = MANIFEST_PATH,
@@ -491,9 +508,6 @@ def replay_manifest(
         if admission is None:
             return set()
         return {(a["id"], a["alias_class"], a["name"]) for a in admission.boat_models[0]["aliases"]}
-
-    def _actual_aliases(fetched: dict[str, Any]) -> set[tuple[str, str, str]]:
-        return {(a.id, str(a.alias_class), a.name) for a in fetched.get("aliases", [])}
 
     def _import_bundle_exhaustive(
         conn: Any, candidate: Any, counters: dict[str, int], *, phase: str
@@ -576,7 +590,7 @@ def replay_manifest(
         if fetched.get("brand_relationships") != [] or fetched.get("boat_design_ids") != []:
             print(f"    {mismatch_prefix} UNEXPECTED RELATIONSHIP: {candidate.qid}", flush=True)
             ok = False
-        if _actual_aliases(fetched) != _expected_aliases(candidate):
+        if _actual_boat_model_aliases(fetched) != _expected_aliases(candidate):
             print(f"    {mismatch_prefix} ALIAS MISMATCH: {candidate.qid}", flush=True)
             ok = False
 
