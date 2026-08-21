@@ -70,6 +70,16 @@ def clean_conn(db_url: str) -> Generator[Any]:
         with conn.cursor() as cur:
             cur.execute("""
                 TRUNCATE TABLE
+                    canonical_admission_evidence_links,
+                    canonical_organization_design_relationships,
+                    canonical_boat_designs,
+                    canonical_brand_model_relationships,
+                    canonical_boat_model_aliases,
+                    canonical_boat_models,
+                    canonical_organization_aliases,
+                    canonical_organizations,
+                    canonical_brand_aliases,
+                    canonical_brands,
                     bundle_evidence_members,
                     bundle_reference_crosschecks,
                     bundle_unresolved_findings,

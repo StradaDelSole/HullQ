@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0016  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 3.0 — canonical identity persistence prerequisite for controlled broad bootstrap  
 **Depends on:** SLICE-0015 accepted / DONE / Stage-2 G3 PASS  
 **Blocks:** controlled ~1,000-design identity bootstrap
