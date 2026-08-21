@@ -244,6 +244,62 @@ The agent MUST NOT automatically begin the 1,000-design bootstrap or any later s
 
 ---
 
+## Completion report (third correction round — head a725c96)
+
+**Status:** REVIEW  
+**Branch:** `slice/0015-benchmark-hardening-stage-2-g3`  
+**Head commit:** `a725c96`  
+**PR:** #31  
+**Previous exact-head CI:** #186 on `6b9e1b1` PASS  
+**Remote CI for new head:** NOT VERIFIED (CI #187 queued)
+
+### What changed in this round (third correction)
+
+**Report-generation fix — data-driven G3_PASS text:**
+`_write_report()` previously hard-coded "All 50 benchmark cases materialized" for every G3_PASS result, which is only true when `materialized == total_cases`. The accepted gate semantics permit G3_PASS with partial materialization (e.g. 49/50 + 1 INSUFFICIENT_RETAINED_FACT at 2% ≤ 10%). The report now derives the materialization statement from actual result_doc values: only claims "All N cases materialized" when `materialized == total_cases`; otherwise reports actual counts and rate. Same fix applied to the G3_CANDIDATE branch.
+
+**Stale comment corrections:**
+- `materializer.py` `classify_cannot_materialize_reasons()` docstring: "INSUFFICIENT_RETAINED_FACT drive HARDEN_FIRST, not BLOCKED" → corrected to rate-based semantics (may remain G3-positive at ≤10% threshold).
+- `test_negative_path_hardening.py` `test_insufficient_retained_fact_does_not_imply_blocked` docstring: same correction.
+
+**New tests (`tests/unit/test_report_truthfulness.py`):**
+- Case A: 49/50 + 1 INSUFFICIENT_RETAINED_FACT → G3_PASS; report must not claim "All 50 benchmark cases materialized", must reflect 49/50, must state G3_PASS, must retain acceptance/no-bootstrap language.
+- Case B: 50/50 → G3_PASS; report may accurately state all 50 materialized; must state G3_PASS, retain acceptance language.
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `scripts/benchmark/runner.py` | `_write_report()` G3_PASS and G3_CANDIDATE branches data-driven |
+| `scripts/benchmark/materializer.py` | Stale failure-class comment corrected |
+| `tests/unit/test_negative_path_hardening.py` | Stale docstring corrected |
+| `tests/unit/test_report_truthfulness.py` | New file: 2 focused report-truthfulness tests |
+
+### Local quality gates
+
+| Gate | Result |
+|---|---|
+| Report truthfulness tests (2 new) | 2/2 PASS |
+| Full test suite | 1277 passed, 164 skipped |
+| Repository validator | PASS |
+| `ruff check` + `ruff format --check` | CLEAN |
+| `mypy --strict gate.py` | CLEAN |
+| Coverage | 93.66% |
+
+### Constraints respected
+
+- Corpus membership: exactly 50 cases (unchanged)
+- G3 thresholds: ≥65%, ≤10%, ≤35% (unchanged)
+- Gate decision logic: unchanged
+- Real 50/50 benchmark semantics: unchanged
+- Slice status: REVIEW — not DONE, not merged, no bootstrap started
+
+### Agent declaration
+
+All changes address only the third-correction-round blocker (report truthfulness). I have NOT changed gate decision logic, corpus membership, or thresholds. I have NOT marked this slice DONE. I have NOT merged to main. I have NOT started any later slice.
+
+---
+
 ## Completion report (second correction round — head a3b3234)
 
 **Status:** REVIEW  
