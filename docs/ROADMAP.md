@@ -135,3 +135,4 @@ After broad ingestion begins:
 - Independent/open-data route remains the baseline.
 - Optional Sailboatdata license inquiry remains separate.
 - Obtain targeted Austrian/EU legal review before commercial use of scraped Sailboatdata values or legally uncertain market-access methods.
+- Retain the documented dealer/broker marketplace opportunity in `docs/DEALER_MARKETPLACE_OPPORTUNITY.md`: concentrated incumbent marketplace ownership plus publicly documented dealer pricing frustration may create a future low-price supply-side opportunity once HullQ has real buyer traffic and qualified technical-search demand. This is deferred strategic research, not current implementation scope.
