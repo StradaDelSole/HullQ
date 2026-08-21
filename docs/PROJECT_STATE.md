@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-21  
-**Current stage:** Stage 3.0 — SLICE-0016 canonical identity persistence / bootstrap-admission boundary `READY`  
+**Current stage:** Stage 3.1–3.2 — SLICE-0017 controlled Wikidata Tier-0 identity bootstrap `READY`  
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -64,8 +64,9 @@ Auth remains deferred under OQ-014. OQ-006 controls alert cadence/freshness; OQ-
 | SLICE-0013 | PostgreSQL 18 research persistence + deterministic transactional importer |
 | SLICE-0014 | exact 50-design retained benchmark through PostgreSQL; full semantic roundtrip; G3_CANDIDATE |
 | SLICE-0015 | negative-path hardening + fixed Stage-2 G3 scorecard; G3_PASS |
+| SLICE-0016 | canonical Tier-0 identity PostgreSQL persistence/admission boundary |
 
-All slices 0001–0015 are `DONE` and owner-accepted.
+All slices 0001–0016 are `DONE` and owner-accepted.
 
 ## SLICE-0011 — benchmark result retained
 
@@ -114,7 +115,7 @@ Final closure record: `docs/slices/SLICE-0012-acceptance-closure.md`.
 
 ## SLICE-0013 — DONE / accepted
 
-SLICE-0013 established the first real physical persistence boundary:
+SLICE-0013 established the first real physical research-persistence boundary:
 
 ```text
 validated ResearchEvidenceBundle
@@ -142,8 +143,6 @@ Accepted persistence semantics include:
 - atomic/idempotent/fail-closed imports;
 - PostgreSQL-native race-safe concurrent imports;
 - no fuzzy identity resolution, automatic canonical subject creation, automatic promotion or FieldResolution.
-
-Important Stage-3 boundary: the accepted SLICE-0013 schema is explicitly a **research/evidence persistence schema**. It does not provide canonical Brand / Organization / BoatModel / BoatDesign entity tables.
 
 Final closure record: `docs/slices/SLICE-0013-acceptance-closure.md`.
 
@@ -196,15 +195,7 @@ Implementation PR #31 merge commit:
 
 `d87490c6103676935768ba57ed41e665225731b8`
 
-Exact-head CI #189 (`32468991110`) passed with:
-
-- PostgreSQL 18 database integration PASS;
-- benchmark runner PASS;
-- benchmark result-schema validation PASS;
-- benchmark artifact upload PASS;
-- Ubuntu quality PASS;
-- Windows quality PASS;
-- dependency audit PASS.
+Exact-head CI #189 (`32468991110`) passed with PostgreSQL 18 integration, benchmark runner/schema validation, Ubuntu/Windows quality and dependency audit green.
 
 Final measured benchmark outcome remained:
 
@@ -231,53 +222,88 @@ Accepted failure-class semantics:
 - `VALIDATION_FAILURE` → `HARDEN_FIRST` regardless of percentage;
 - `INSUFFICIENT_RETAINED_FACT` → rate-based and may remain G3-positive within the `<=10%` threshold.
 
-Retained exact-head artifact:
-
-- ID `9441784787`;
-- digest `sha256:5f7048b86d2590509e764356283631c960c91988d2961d14e0d270e17b9ed588`.
-
 Final closure record: `docs/slices/SLICE-0015-acceptance-closure.md`.
 
-Stage 2 is now past G3. This authorizes controlled Stage-3 work through explicit slices; it is not blanket authorization for broad/unbounded ingestion.
+Stage 2 is past G3. This authorizes controlled Stage-3 work through explicit slices; it is not blanket authorization for broad/unbounded ingestion.
 
-## Why SLICE-0016 precedes the ~1,000-design canonical bootstrap
+## SLICE-0016 — DONE / accepted
 
-The next strategic milestone remains the controlled ~1,000-design identity bootstrap. Repository evidence shows one prerequisite is still missing:
+SLICE-0016 closed the missing canonical Tier-0 identity persistence/admission prerequisite.
 
-- `src/hullq/domain/identity.py` explicitly contains pure identity value objects/search projections with **no persistence or network resolution**;
-- the accepted PostgreSQL schema persists ResearchEvidenceBundle / ResearchObservation / FieldEvidence and explicitly does **not** require canonical entity tables.
+Accepted final head:
 
-Therefore inserting broad Wikidata/source candidates directly as canonical BoatModels/BoatDesigns would require the implementation agent to invent a canonical persistence/admission boundary during the bootstrap itself. HullQ's docs-to-code/single-authority rules forbid that silent decision.
+`61b500c2de061abb09dd7ddc36a0bfaa724ceece`
 
-SLICE-0016 closes only this prerequisite. It does not execute the broad bootstrap.
+Implementation PR #33 merge commit:
 
-## Current operational position — SLICE-0016 READY
+`ae34363f5db8111a75d108b9b936084f76b56cef`
 
-`docs/slices/SLICE-0016-canonical-identity-persistence-bootstrap-admission.md` is the only current READY slice.
+Exact-head CI #195 (`32478124648`) passed with:
 
-Its purpose is to implement the first canonical Tier-0 identity persistence boundary on PostgreSQL for:
+- PostgreSQL **18.6** integration PASS;
+- **199 persistence tests passed**;
+- benchmark runner PASS;
+- benchmark schema validation PASS;
+- Ubuntu quality PASS;
+- Windows quality PASS;
+- dependency audit PASS.
 
-- Brand;
-- Organization;
-- BoatModel;
-- BoatDesign;
-- scoped aliases;
-- Brand ↔ BoatModel relationships;
-- Organization ↔ BoatDesign relationships;
-- auditable supporting-observation/evidence links.
+The retained benchmark still returned `G3_PASS` with 50/50 materialization/import/reimport/fresh-schema behavior and zero semantic mismatches/conflicts/errors.
 
-Binding constraints include:
+Accepted canonical persistence semantics now include:
 
+- Brand / Organization / BoatModel / BoatDesign canonical tables;
+- entity-scoped aliases;
+- Brand↔BoatModel and Organization↔BoatDesign relationship separation;
 - caller-supplied stable opaque HullQ IDs;
-- no name/QID/source-based ID minting in the persistence layer;
-- no fuzzy identity resolution or silent duplicate collapse;
-- accepted schema validation before database mutation;
+- accepted schema validation before mutation;
+- auditable links to retained HullQ observations/evidence;
+- fail-closed exact-kind target validation for provenance links;
+- `BoatModel.boat_design_ids` consistency against the normalized BoatDesign graph;
+- immutable semantic content fingerprints;
 - atomic/idempotent/conflict-safe imports;
-- PostgreSQL-native race safety;
+- PostgreSQL-native race-safe concurrency;
 - lossless semantic readback;
-- existing research persistence preserved.
+- no fuzzy source-candidate resolution or persistence-layer ID minting.
 
-The actual controlled ~1,000-design bootstrap remains outside SLICE-0016.
+Final closure record: `docs/slices/SLICE-0016-acceptance-closure.md`.
+
+## Current operational position — SLICE-0017 READY
+
+`docs/slices/SLICE-0017-controlled-wikidata-tier0-identity-bootstrap.md` is the only current READY slice.
+
+Its purpose is to execute the first controlled broad Stage-3 identity run:
+
+```text
+rights-cleared Wikidata direct sailboat-class candidates
+        ↓
+first <=1,000 in deterministic bounded order
+        ↓
+source-backed Tier-0 identity observations
+        ↓
+safe BoatModel admission OR explicit review/non-admission
+        ↓
+versioned bootstrap manifest/review queue
+        ↓
+SLICE-0013 research persistence + SLICE-0016 canonical admission
+        ↓
+PostgreSQL 18 replay/idempotency/fresh-schema proof
+```
+
+Key binding constraints:
+
+- process up to the first 1,000 direct-instance candidates, all if fewer are returned;
+- retain a replayable CC0-safe bootstrap manifest;
+- mint stable opaque HullQ IDs once and retain the QID→HullQ-ID crosswalk; IDs must not encode/derive from QID or display name;
+- a direct Wikidata class item may safely seed a sparse BoatModel when the source-backed identity claim is unambiguous;
+- manufacturer `P176` does not automatically prove Brand vs Organization;
+- QID existence alone does not prove a distinct BoatDesign generation;
+- same-name/search-projection ambiguity routes to review rather than forced merge/split;
+- every admitted BoatModel has auditable supporting HullQ observation/evidence linkage;
+- normal CI remains offline and replays the retained manifest against PostgreSQL 18;
+- no post-hoc admission-rate threshold is invented after the run.
+
+The measured result of SLICE-0017 will determine the next Stage-3 expansion/hardening/enrichment slice. No later slice is pre-authorized.
 
 ## Near-term path
 
@@ -292,18 +318,18 @@ SLICE-0014  same 50 cases through importer/database            DONE / G3_CANDIDA
       ↓
 SLICE-0015  harden negative paths + Stage-2 G3 decision        DONE / G3 PASS
       ↓
-SLICE-0016  canonical identity persistence/admission boundary  READY
+SLICE-0016  canonical identity persistence/admission boundary  DONE
       ↓
-controlled ~1,000-design canonical bootstrap                   NOT AUTHORIZED YET
+SLICE-0017  controlled Wikidata Tier-0 ~1,000 bootstrap        READY
       ↓
-progressive 2.5k / 5k design-universe enrichment               LATER
+measured next Stage-3 expansion/enrichment                     NOT AUTHORIZED YET
 ```
 
 The benchmark corpus should not be expanded merely to increase its count. Additional stress cases are justified only if a materially new problem class is demonstrated.
 
 ## Continuous new-model intake — accepted future doctrine
 
-Once broad design-universe ingestion is authorized, HullQ should treat historical/bootstrap coverage and ongoing new-model intake as separate tracks:
+Once broad design-universe ingestion is accepted, HullQ should treat historical/bootstrap coverage and ongoing new-model intake as separate tracks:
 
 ```text
 historical / bootstrap universe
@@ -326,14 +352,16 @@ FINISH_SLICE.bat
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-After the closure/readiness PR for SLICE-0015→0016 is merged, the project owner may start SLICE-0016 through the normal `START_SLICE.bat` workflow.
+After the closure/readiness PR for SLICE-0016→0017 is merged, the project owner may start SLICE-0017 through the normal `START_SLICE.bat` workflow.
 
 ## Do not start yet
 
-- the controlled ~1,000-design canonical bootstrap before SLICE-0016 acceptance;
-- broad production ingestion;
+- 2,500 / 5,000 identity expansion before SLICE-0017 acceptance and measurement;
+- broad Tier-1/Tier-2 technical enrichment before the bootstrap result is reviewed;
 - unbounded crawler work;
 - automatic fuzzy/canonical identity resolution;
+- automatic Brand/Organization role inference from manufacturer labels;
+- automatic BoatDesign generation invention from Wikidata QIDs;
 - query-engine implementation;
 - public FastAPI API;
 - Astro frontend;
