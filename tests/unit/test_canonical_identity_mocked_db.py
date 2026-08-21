@@ -30,6 +30,8 @@ from hullq.persistence.identity_fingerprint import (
     fingerprint_organization_row,
 )
 from hullq.persistence.identity_importer import (
+    _check_boat_model_design_consistency,
+    _check_evidence_link_target_exists,
     _upsert_row,
     import_canonical_identity_admission,
 )
@@ -461,6 +463,88 @@ class TestUpsertRow:
 
 
 # ---------------------------------------------------------------------------
+# identity_importer._check_evidence_link_target_exists (mocked cursor)
+# ---------------------------------------------------------------------------
+
+
+class TestCheckEvidenceLinkTargetExists:
+    def test_existing_target_passes_silently(self) -> None:
+        cur = MagicMock()
+        cur.fetchone.return_value = (1,)
+        link = CanonicalEvidenceLink(
+            link_id="L1", entity_kind=SubjectKind.BRAND, entity_id="BR_1", observation_id="OBS-1"
+        )
+        _check_evidence_link_target_exists(cur, link)  # must not raise
+
+    def test_missing_target_raises(self) -> None:
+        cur = MagicMock()
+        cur.fetchone.return_value = None
+        link = CanonicalEvidenceLink(
+            link_id="L1", entity_kind=SubjectKind.BRAND, entity_id="BR_1", observation_id="OBS-1"
+        )
+        with pytest.raises(CanonicalReferenceError, match="BR_1"):
+            _check_evidence_link_target_exists(cur, link)
+
+    def test_queries_the_table_matching_entity_kind(self) -> None:
+        # Each SubjectKind must route to its own distinct fixed SQL statement
+        # (never a caller-controlled table/column name).
+        cur = MagicMock()
+        cur.fetchone.return_value = (1,)
+        for kind, expected_table in (
+            (SubjectKind.BRAND, "canonical_brands"),
+            (SubjectKind.ORGANIZATION, "canonical_organizations"),
+            (SubjectKind.BOAT_MODEL, "canonical_boat_models"),
+            (SubjectKind.BOAT_DESIGN, "canonical_boat_designs"),
+            (SubjectKind.BRAND_MODEL_RELATIONSHIP, "canonical_brand_model_relationships"),
+            (
+                SubjectKind.ORGANIZATION_DESIGN_RELATIONSHIP,
+                "canonical_organization_design_relationships",
+            ),
+        ):
+            cur.reset_mock()
+            link = CanonicalEvidenceLink(
+                link_id="L1", entity_kind=kind, entity_id="X_1", observation_id="OBS-1"
+            )
+            _check_evidence_link_target_exists(cur, link)
+            executed_sql = cur.execute.call_args[0][0]
+            assert expected_table in executed_sql
+
+
+# ---------------------------------------------------------------------------
+# identity_importer._check_boat_model_design_consistency (mocked cursor)
+# ---------------------------------------------------------------------------
+
+
+class TestCheckBoatModelDesignConsistency:
+    def test_matching_set_passes_silently(self) -> None:
+        cur = MagicMock()
+        cur.fetchall.return_value = [("BD_A",), ("BD_B",)]
+        payload = _boat_model_payload(boat_design_ids=["BD_B", "BD_A"])  # order-independent
+        _check_boat_model_design_consistency(cur, payload)  # must not raise
+
+    def test_empty_declared_and_empty_actual_passes(self) -> None:
+        cur = MagicMock()
+        cur.fetchall.return_value = []
+        payload = _boat_model_payload()  # default boat_design_ids=[]
+        _check_boat_model_design_consistency(cur, payload)  # must not raise
+
+    def test_missing_design_raises(self) -> None:
+        cur = MagicMock()
+        cur.fetchall.return_value = []
+        payload = _boat_model_payload(boat_design_ids=["BD_NEVER_ADMITTED"])
+        with pytest.raises(CanonicalReferenceError, match="BD_NEVER_ADMITTED"):
+            _check_boat_model_design_consistency(cur, payload)
+
+    def test_extra_actual_design_raises(self) -> None:
+        # A design silently belongs to this model that the caller didn't declare.
+        cur = MagicMock()
+        cur.fetchall.return_value = [("BD_UNDECLARED",)]
+        payload = _boat_model_payload()  # declared boat_design_ids=[]
+        with pytest.raises(CanonicalReferenceError, match="BD_UNDECLARED"):
+            _check_boat_model_design_consistency(cur, payload)
+
+
+# ---------------------------------------------------------------------------
 # import_canonical_identity_admission — validation-before-DB and control flow
 # ---------------------------------------------------------------------------
 
@@ -527,11 +611,55 @@ class TestImportCanonicalIdentityAdmission:
     def test_evidence_link_with_evidence_id_only_validates_and_flows_through(
         self, registry: ContractRegistry
     ) -> None:
-        mock_conn = _make_mock_conn(rowcount=1)
+        # fetchone_return must be truthy: the evidence-link target-existence
+        # check runs before the (rowcount=1, no-select-needed) upsert.
+        mock_conn = _make_mock_conn(rowcount=1, fetchone_return=(1,))
         link = CanonicalEvidenceLink(
             link_id="L1", entity_kind=SubjectKind.BRAND, entity_id="BR_1", evidence_id="EV-1"
         )
         admission = CanonicalIdentityAdmission(brands=(_brand(),), evidence_links=(link,))
+        result = import_canonical_identity_admission(mock_conn, admission, registry)
+        assert result.status == CanonicalImportStatus.IMPORTED
+
+    def test_evidence_link_missing_target_raises_reference_error(
+        self, registry: ContractRegistry
+    ) -> None:
+        # fetchone_return=None (default): the target-existence check finds no
+        # matching canonical row and must fail closed before any upsert.
+        mock_conn = _make_mock_conn(rowcount=1)
+        link = CanonicalEvidenceLink(
+            link_id="L1",
+            entity_kind=SubjectKind.ORGANIZATION,
+            entity_id="ORG_MISSING",
+            observation_id="OBS-1",
+        )
+        admission = CanonicalIdentityAdmission(evidence_links=(link,))
+        with pytest.raises(CanonicalReferenceError):
+            import_canonical_identity_admission(mock_conn, admission, registry)
+
+    def test_boat_model_design_ids_mismatch_raises_reference_error(
+        self, registry: ContractRegistry
+    ) -> None:
+        # fetchall default [] (no persisted designs) != declared ["BD_X"].
+        mock_conn = _make_mock_conn(rowcount=1)
+        bm = _boat_model_payload(boat_design_ids=["BD_X"])
+        admission = CanonicalIdentityAdmission(boat_models=(bm,))
+        with pytest.raises(CanonicalReferenceError):
+            import_canonical_identity_admission(mock_conn, admission, registry)
+
+    def test_boat_model_design_ids_match_returns_imported(self, registry: ContractRegistry) -> None:
+        mock_conn = _make_mock_conn(rowcount=1, fetchall_return=[("BD_X",)])
+        bm = _boat_model_payload(boat_design_ids=["BD_X"])
+        admission = CanonicalIdentityAdmission(boat_models=(bm,))
+        result = import_canonical_identity_admission(mock_conn, admission, registry)
+        assert result.status == CanonicalImportStatus.IMPORTED
+
+    def test_boat_model_design_ids_match_reordered_returns_imported(
+        self, registry: ContractRegistry
+    ) -> None:
+        mock_conn = _make_mock_conn(rowcount=1, fetchall_return=[("BD_B",), ("BD_A",)])
+        bm = _boat_model_payload(boat_design_ids=["BD_A", "BD_B"])
+        admission = CanonicalIdentityAdmission(boat_models=(bm,))
         result = import_canonical_identity_admission(mock_conn, admission, registry)
         assert result.status == CanonicalImportStatus.IMPORTED
 

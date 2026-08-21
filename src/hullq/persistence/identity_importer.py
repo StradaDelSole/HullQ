@@ -16,6 +16,12 @@ Importer guarantees:
 - a missing/invalid canonical or evidence/observation reference raises
   CanonicalReferenceError (a caller input error, not a content conflict) and
   never leaves a partially admitted graph;
+- a CanonicalEvidenceLink's (entity_kind, entity_id) must address a real
+  canonical row of that exact kind — a nonexistent target, or a target ID
+  that exists only under a different kind, fails closed;
+- a BoatModel's caller-supplied boat_design_ids projection must exactly
+  match (order-independent) the canonical BoatDesign graph actually admitted
+  for it — a missing/extra/misattributed design fails closed;
 - no identity resolution, no automatic ID minting from names/source IDs, no
   automatic Brand/Organization/BoatModel/BoatDesign inference.
 """
@@ -27,6 +33,7 @@ from typing import Any
 
 from hullq.contracts import ContractRegistry
 from hullq.domain.identity import AliasClass, Brand, IdentityAlias, Organization
+from hullq.domain.provenance import SubjectKind
 from hullq.persistence.identity_fingerprint import (
     fingerprint_alias,
     fingerprint_boat_design_row,
@@ -156,6 +163,27 @@ ON CONFLICT (link_id) DO NOTHING
 _SELECT_EVIDENCE_LINK_HASH = (
     "SELECT content_hash FROM canonical_admission_evidence_links WHERE link_id = %s"
 )
+
+_SELECT_BOAT_DESIGNS_FOR_MODEL = "SELECT id FROM canonical_boat_designs WHERE boat_model_id = %s"
+
+# Fixed, explicit per-kind existence check for CanonicalEvidenceLink targets.
+# Never build SQL from caller-controlled table/column names: entity_kind is
+# restricted by CanonicalEvidenceLink.__post_init__ to exactly these six
+# values, so this mapping is total over every value that can reach here.
+# A canonical ID that exists only under a *different* kind's table correctly
+# fails to satisfy the link (each kind queries its own distinct table).
+_EVIDENCE_LINK_TARGET_EXISTENCE_SQL: dict[SubjectKind, str] = {
+    SubjectKind.BRAND: "SELECT 1 FROM canonical_brands WHERE id = %s",
+    SubjectKind.ORGANIZATION: "SELECT 1 FROM canonical_organizations WHERE id = %s",
+    SubjectKind.BOAT_MODEL: "SELECT 1 FROM canonical_boat_models WHERE id = %s",
+    SubjectKind.BOAT_DESIGN: "SELECT 1 FROM canonical_boat_designs WHERE id = %s",
+    SubjectKind.BRAND_MODEL_RELATIONSHIP: (
+        "SELECT 1 FROM canonical_brand_model_relationships WHERE id = %s"
+    ),
+    SubjectKind.ORGANIZATION_DESIGN_RELATIONSHIP: (
+        "SELECT 1 FROM canonical_organization_design_relationships WHERE id = %s"
+    ),
+}
 
 
 # ---------------------------------------------------------------------------
@@ -329,7 +357,50 @@ def _upsert_boat_design(cur: Any, payload: Mapping[str, Any]) -> bool:
     return any_new
 
 
+def _check_evidence_link_target_exists(cur: Any, link: CanonicalEvidenceLink) -> None:
+    """Verify link.entity_id addresses a real row of kind link.entity_kind.
+
+    Runs inside the same transaction/cursor as every other upsert in this
+    admission, so a target Brand/Organization/BoatModel/BoatDesign/
+    relationship created earlier in the *same* admission is already visible
+    here (uncommitted writes are visible to later statements in one
+    PostgreSQL transaction). A target ID that only exists under a different
+    entity_kind's table does not satisfy the link.
+    """
+    exists_sql = _EVIDENCE_LINK_TARGET_EXISTENCE_SQL[link.entity_kind]
+    cur.execute(exists_sql, [link.entity_id])
+    if cur.fetchone() is None:
+        raise CanonicalReferenceError(
+            f"CanonicalEvidenceLink {link.link_id!r} references "
+            f"{link.entity_kind!s} {link.entity_id!r}, which does not exist "
+            "in the canonical identity graph."
+        )
+
+
+def _check_boat_model_design_consistency(cur: Any, payload: Mapping[str, Any]) -> None:
+    """Verify a caller-asserted boat_design_ids projection matches the actual
+    canonical BoatDesign graph for this BoatModel, order-independent.
+
+    Must run only after every BoatDesign in the same admission has already
+    been upserted, so a same-admission BoatDesign is visible in the query.
+    Comparing as sets means reordering the declared list never causes a
+    false mismatch. Also catches a BoatDesign that silently belongs to a
+    *different* BoatModel: such a design is absent from this model's actual
+    set even though its ID might appear in the declared list.
+    """
+    model_id = payload["id"]
+    declared = frozenset(payload.get("boat_design_ids", []))
+    cur.execute(_SELECT_BOAT_DESIGNS_FOR_MODEL, [model_id])
+    actual = frozenset(row[0] for row in cur.fetchall())
+    if declared != actual:
+        raise CanonicalReferenceError(
+            f"BoatModel {model_id!r} boat_design_ids {sorted(declared)!r} does not "
+            f"match the canonical BoatDesign graph {sorted(actual)!r}."
+        )
+
+
 def _upsert_evidence_link(cur: Any, link: CanonicalEvidenceLink) -> bool:
+    _check_evidence_link_target_exists(cur, link)
     content_hash = fingerprint_evidence_link(link)
     return _upsert_row(
         cur,
@@ -417,8 +488,11 @@ def import_canonical_identity_admission(
 
     Raises CanonicalReferenceError if the admission references a canonical
     Brand/Organization/BoatModel/BoatDesign ID or a research
-    observation/evidence ID that does not exist. The triggering transaction
-    is rolled back before this is raised.
+    observation/evidence ID that does not exist, if a CanonicalEvidenceLink's
+    (entity_kind, entity_id) does not address a real canonical row of that
+    exact kind, or if a BoatModel's boat_design_ids projection does not match
+    the actual canonical BoatDesign graph admitted for it. The triggering
+    transaction is rolled back before this is raised.
 
     Performs no identity resolution, no automatic ID minting, and no
     automatic FieldResolution.
@@ -438,6 +512,8 @@ def import_canonical_identity_admission(
                 any_new |= _upsert_boat_model(cur, boat_model)
             for boat_design in admission.boat_designs:
                 any_new |= _upsert_boat_design(cur, boat_design)
+            for boat_model in admission.boat_models:
+                _check_boat_model_design_consistency(cur, boat_model)
             for link in admission.evidence_links:
                 any_new |= _upsert_evidence_link(cur, link)
     except CanonicalPersistenceConflictError as exc:

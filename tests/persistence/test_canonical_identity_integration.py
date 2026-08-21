@@ -24,8 +24,11 @@ from hullq.domain.provenance import (
     ClaimSemantics,
     ConfidenceLevel,
     EvidenceType,
+    FieldEvidenceV3,
+    JsonPointer,
     ProducerKind,
     ProducerMetadata,
+    ProvenanceSubject,
     RawObservation,
     RawObservationKind,
     ResearchContext,
@@ -94,7 +97,14 @@ def _boat_model_payload(
     last_built: int | None = 1998,
     aliases: list[dict[str, Any]] | None = None,
     brand_relationships: list[dict[str, Any]] | None = None,
+    boat_design_ids: list[str] | None = None,
 ) -> dict[str, Any]:
+    """boat_design_ids defaults to [] — correct only when no BoatDesign is
+    admitted for this BoatModel in the same admission. Callers that also
+    admit a BoatDesign for this model must pass its ID(s) explicitly: the
+    importer validates this projection against the actual canonical
+    BoatDesign graph and fails closed on a mismatch.
+    """
     return {
         "schema_version": "0.2",
         "id": model_id,
@@ -103,7 +113,7 @@ def _boat_model_payload(
         "brand_relationships": brand_relationships or [],
         "first_built": first_built,
         "last_built": last_built,
-        "boat_design_ids": [],
+        "boat_design_ids": boat_design_ids or [],
     }
 
 
@@ -267,6 +277,62 @@ def _bundle_with_observation(obs: ResearchObservation) -> ResearchEvidenceBundle
     )
 
 
+def _evidence(ev_id: str = "EV-CANON-001") -> FieldEvidenceV3:
+    return FieldEvidenceV3(
+        evidence_id=ev_id,
+        subject=ProvenanceSubject(kind=SubjectKind.BOAT_MODEL, id="unused-research-subject"),
+        field_pointer=JsonPointer("/canonical_name"),
+        source_id="SRC-001",
+        source_locator=SourceLocator(
+            page=None, section=None, anchor=None, table=None, figure=None, record_key=None
+        ),
+        raw=RawObservation(
+            kind=RawObservationKind.LITERAL, value="Example", unit=None, excerpt=None
+        ),
+        normalized_candidate=None,
+        evidence_type=EvidenceType.MANUFACTURER_SPECIFICATION,
+        claim_semantics=ClaimSemantics.NOMINAL_DESIGN_VALUE,
+        applicability=ObservationApplicability(
+            first_year=None,
+            last_year=None,
+            hull_number_from=None,
+            hull_number_to=None,
+            market_or_region=None,
+            named_variant_hint=None,
+            design_option_hints=None,
+            operating_state_hint=None,
+            individual_hull_or_listing_ref=None,
+            unknown_or_unbounded=True,
+        ),
+        producer=ProducerMetadata(
+            kind=ProducerKind.DETERMINISTIC_TOOL,
+            identifier="slice-0016-test",
+            version="0.1",
+            model=None,
+            prompt_or_rule_version=None,
+        ),
+        research_context=ResearchContext(research_job_id="JOB-1", activity_id="WAVE-1"),
+        observed_at="2026-08-20T00:00:00Z",
+        confidence=ConfidenceLevel.HIGH,
+        supersedes_evidence_id=None,
+        notes=None,
+    )
+
+
+def _bundle_with_evidence(ev: FieldEvidenceV3) -> ResearchEvidenceBundle:
+    return ResearchEvidenceBundle(
+        bundle_id=f"BUNDLE-{ev.evidence_id}",
+        bundle_version="1.0",
+        research_target=ResearchTarget(manufacturer=None, model="Test 35", first_built=None),
+        research_job_id="JOB-1",
+        activity_id="WAVE-1",
+        observations=(),
+        unresolved_findings=(),
+        promoted_evidence=(ev,),
+        reference_crosschecks=(),
+    )
+
+
 # ---------------------------------------------------------------------------
 # 1-2: migration
 # ---------------------------------------------------------------------------
@@ -361,7 +427,21 @@ def test_upgrade_from_research_only_schema_preserves_data(
         canon_result = import_canonical_identity_admission(conn, admission, registry)
         assert canon_result.status == CanonicalImportStatus.IMPORTED
     finally:
+        # Delete in FK-dependency order: bundle_observation_members references
+        # both research_bundles and research_observations; research_bundles
+        # has no other member rows for this bundle_id (no evidence/findings/
+        # crosschecks were added to it). Production referential integrity
+        # (fk_bom_observation / fk_bom_bundle) is left untouched — only the
+        # test's own cleanup order is corrected.
         with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM bundle_observation_members WHERE observation_id = %s",
+                [obs.observation_id],
+            )
+            cur.execute(
+                "DELETE FROM research_bundles WHERE bundle_id = %s",
+                [f"BUNDLE-{obs.observation_id}"],
+            )
             cur.execute(
                 "DELETE FROM research_observations WHERE observation_id = %s", [obs.observation_id]
             )
@@ -493,7 +573,7 @@ def test_builder_change_represented_through_relationship_only(
 ) -> None:
     org_a = _organization("ORG_BUILDER_A")
     org_b = _organization("ORG_BUILDER_B")
-    bm = _boat_model_payload("BM_BUILDER_CHANGE")
+    bm = _boat_model_payload("BM_BUILDER_CHANGE", boat_design_ids=["BD_BUILDER_CHANGE"])
     design = _boat_design_payload(
         "BD_BUILDER_CHANGE",
         "BM_BUILDER_CHANGE",
@@ -752,7 +832,9 @@ def test_transaction_failure_rolls_back_full_dependent_graph(
 def test_sparse_tier0_boat_design_accepted_without_invented_values(
     clean_conn: Any, registry: ContractRegistry
 ) -> None:
-    bm = _boat_model_payload("BM_SPARSE", first_built=None, last_built=None)
+    bm = _boat_model_payload(
+        "BM_SPARSE", first_built=None, last_built=None, boat_design_ids=["BD_SPARSE"]
+    )
     design = _boat_design_payload("BD_SPARSE", "BM_SPARSE", first_built=None, last_built=None)
     result = import_canonical_identity_admission(
         clean_conn, _admission(boat_models=(bm,), boat_designs=(design,)), registry
@@ -800,7 +882,7 @@ def test_no_id_minted_missing_referenced_id_never_silently_created(
 def test_boat_design_round_trips_full_technical_baseline(
     clean_conn: Any, registry: ContractRegistry
 ) -> None:
-    bm = _boat_model_payload("BM_FULL")
+    bm = _boat_model_payload("BM_FULL", boat_design_ids=["BD_FULL"])
     design = _boat_design_payload("BD_FULL", "BM_FULL")
     design["baseline"]["dimensions"]["loa_m"] = 10.97
     design["baseline"]["configuration"]["keel_type"] = "fin"
@@ -832,7 +914,9 @@ def test_reconstructed_payloads_validate_against_accepted_schemas(
     """
     brand = _brand("BR_SCHEMA_RT")
     bm = _boat_model_payload(
-        "BM_SCHEMA_RT", brand_relationships=[_brand_rel("BMR_RT", "BR_SCHEMA_RT")]
+        "BM_SCHEMA_RT",
+        brand_relationships=[_brand_rel("BMR_RT", "BR_SCHEMA_RT")],
+        boat_design_ids=["BD_SCHEMA_RT"],
     )
     org = _organization("ORG_SCHEMA_RT")
     design = _boat_design_payload(
@@ -854,6 +938,241 @@ def test_reconstructed_payloads_validate_against_accepted_schemas(
 
     registry.validator_by_name("BOAT_MODEL_SCHEMA.v0.2.json").validate(fetched_model)
     registry.validator_by_name("BOAT_DESIGN_SCHEMA.v0.5.json").validate(fetched_design)
+
+
+# ---------------------------------------------------------------------------
+# Independent-review BLOCKER 2: CanonicalEvidenceLink target integrity
+# ---------------------------------------------------------------------------
+
+
+def test_evidence_link_observation_target_nonexistent_brand_fails_closed(
+    clean_conn: Any, registry: ContractRegistry
+) -> None:
+    obs = _observation("OBS-LINKTARGET-001")
+    bundle_result = import_research_evidence_bundle(clean_conn, _bundle_with_observation(obs))
+    assert bundle_result.status.value in ("imported", "already_imported")
+
+    link = CanonicalEvidenceLink(
+        link_id="LINK_TARGET_MISSING_1",
+        entity_kind=SubjectKind.BRAND,
+        entity_id="BR_DOES_NOT_EXIST",
+        observation_id="OBS-LINKTARGET-001",
+    )
+    with pytest.raises(CanonicalReferenceError):
+        import_canonical_identity_admission(
+            clean_conn, _admission(evidence_links=(link,)), registry
+        )
+    assert fetch_evidence_links_for_entity(clean_conn, SubjectKind.BRAND, "BR_DOES_NOT_EXIST") == ()
+
+
+def test_evidence_link_evidence_target_nonexistent_organization_fails_closed(
+    clean_conn: Any, registry: ContractRegistry
+) -> None:
+    ev = _evidence("EV-LINKTARGET-001")
+    bundle_result = import_research_evidence_bundle(clean_conn, _bundle_with_evidence(ev))
+    assert bundle_result.status.value in ("imported", "already_imported")
+
+    link = CanonicalEvidenceLink(
+        link_id="LINK_TARGET_MISSING_2",
+        entity_kind=SubjectKind.ORGANIZATION,
+        entity_id="ORG_DOES_NOT_EXIST",
+        evidence_id="EV-LINKTARGET-001",
+    )
+    with pytest.raises(CanonicalReferenceError):
+        import_canonical_identity_admission(
+            clean_conn, _admission(evidence_links=(link,)), registry
+        )
+
+
+def test_evidence_link_target_wrong_entity_kind_fails_closed(
+    clean_conn: Any, registry: ContractRegistry
+) -> None:
+    obs = _observation("OBS-WRONGKIND-001")
+    import_research_evidence_bundle(clean_conn, _bundle_with_observation(obs))
+
+    brand = _brand("BR_WRONGKIND")
+    setup = import_canonical_identity_admission(clean_conn, _admission(brands=(brand,)), registry)
+    assert setup.status == CanonicalImportStatus.IMPORTED
+
+    # BR_WRONGKIND exists — but as a Brand, not an Organization. A canonical
+    # ID existing under the wrong entity_kind must not satisfy the link.
+    link = CanonicalEvidenceLink(
+        link_id="LINK_WRONG_KIND",
+        entity_kind=SubjectKind.ORGANIZATION,
+        entity_id="BR_WRONGKIND",
+        observation_id="OBS-WRONGKIND-001",
+    )
+    with pytest.raises(CanonicalReferenceError):
+        import_canonical_identity_admission(
+            clean_conn, _admission(evidence_links=(link,)), registry
+        )
+
+
+def test_evidence_link_target_created_in_same_admission_succeeds(
+    clean_conn: Any, registry: ContractRegistry
+) -> None:
+    obs = _observation("OBS-SAMEADM-001")
+    import_research_evidence_bundle(clean_conn, _bundle_with_observation(obs))
+
+    brand = _brand("BR_SAMEADM")
+    link = CanonicalEvidenceLink(
+        link_id="LINK_SAMEADM",
+        entity_kind=SubjectKind.BRAND,
+        entity_id="BR_SAMEADM",
+        observation_id="OBS-SAMEADM-001",
+    )
+    result = import_canonical_identity_admission(
+        clean_conn, _admission(brands=(brand,), evidence_links=(link,)), registry
+    )
+    assert result.status == CanonicalImportStatus.IMPORTED
+    links = fetch_evidence_links_for_entity(clean_conn, SubjectKind.BRAND, "BR_SAMEADM")
+    assert len(links) == 1
+
+
+def test_evidence_link_relationship_target_created_in_same_admission_succeeds(
+    clean_conn: Any, registry: ContractRegistry
+) -> None:
+    obs = _observation("OBS-SAMEADM-REL-001")
+    import_research_evidence_bundle(clean_conn, _bundle_with_observation(obs))
+
+    brand = _brand("BR_SAMEADM_REL")
+    bm = _boat_model_payload(
+        "BM_SAMEADM_REL", brand_relationships=[_brand_rel("BMR_SAMEADM_REL", "BR_SAMEADM_REL")]
+    )
+    link = CanonicalEvidenceLink(
+        link_id="LINK_SAMEADM_REL",
+        entity_kind=SubjectKind.BRAND_MODEL_RELATIONSHIP,
+        entity_id="BMR_SAMEADM_REL",
+        observation_id="OBS-SAMEADM-REL-001",
+    )
+    result = import_canonical_identity_admission(
+        clean_conn, _admission(brands=(brand,), boat_models=(bm,), evidence_links=(link,)), registry
+    )
+    assert result.status == CanonicalImportStatus.IMPORTED
+    links = fetch_evidence_links_for_entity(
+        clean_conn, SubjectKind.BRAND_MODEL_RELATIONSHIP, "BMR_SAMEADM_REL"
+    )
+    assert len(links) == 1
+
+
+def test_evidence_link_failure_rolls_back_earlier_canonical_entities(
+    clean_conn: Any, registry: ContractRegistry
+) -> None:
+    obs = _observation("OBS-ROLLBACK-LINK-001")
+    import_research_evidence_bundle(clean_conn, _bundle_with_observation(obs))
+
+    brand = _brand("BR_ROLLBACK_LINK")
+    org = _organization("ORG_ROLLBACK_LINK")
+    bad_link = CanonicalEvidenceLink(
+        link_id="LINK_ROLLBACK",
+        entity_kind=SubjectKind.ORGANIZATION,
+        entity_id="ORG_DOES_NOT_EXIST_ROLLBACK",
+        observation_id="OBS-ROLLBACK-LINK-001",
+    )
+    with pytest.raises(CanonicalReferenceError):
+        import_canonical_identity_admission(
+            clean_conn,
+            _admission(brands=(brand,), organizations=(org,), evidence_links=(bad_link,)),
+            registry,
+        )
+    assert fetch_brand(clean_conn, "BR_ROLLBACK_LINK") is None
+    assert fetch_organization(clean_conn, "ORG_ROLLBACK_LINK") is None
+
+
+# ---------------------------------------------------------------------------
+# Independent-review BLOCKER 3: BoatModel.boat_design_ids consistency
+# ---------------------------------------------------------------------------
+
+
+def test_boat_model_design_ids_consistent_with_graph_succeeds(
+    clean_conn: Any, registry: ContractRegistry
+) -> None:
+    bm = _boat_model_payload(
+        "BM_CONSISTENT", boat_design_ids=["BD_CONSISTENT_A", "BD_CONSISTENT_B"]
+    )
+    design_a = _boat_design_payload("BD_CONSISTENT_A", "BM_CONSISTENT")
+    design_b = _boat_design_payload("BD_CONSISTENT_B", "BM_CONSISTENT")
+    result = import_canonical_identity_admission(
+        clean_conn, _admission(boat_models=(bm,), boat_designs=(design_a, design_b)), registry
+    )
+    assert result.status == CanonicalImportStatus.IMPORTED
+
+
+def test_boat_model_design_ids_reordered_does_not_create_false_mismatch(
+    clean_conn: Any, registry: ContractRegistry
+) -> None:
+    bm = _boat_model_payload("BM_REORDER_DESIGNS", boat_design_ids=["BD_REORDER_B", "BD_REORDER_A"])
+    design_a = _boat_design_payload("BD_REORDER_A", "BM_REORDER_DESIGNS")
+    design_b = _boat_design_payload("BD_REORDER_B", "BM_REORDER_DESIGNS")
+    result = import_canonical_identity_admission(
+        clean_conn, _admission(boat_models=(bm,), boat_designs=(design_a, design_b)), registry
+    )
+    assert result.status == CanonicalImportStatus.IMPORTED
+
+
+def test_boat_model_design_ids_missing_design_fails_closed(
+    clean_conn: Any, registry: ContractRegistry
+) -> None:
+    bm = _boat_model_payload("BM_MISSING_DESIGN", boat_design_ids=["BD_NEVER_ADMITTED"])
+    with pytest.raises(CanonicalReferenceError):
+        import_canonical_identity_admission(clean_conn, _admission(boat_models=(bm,)), registry)
+    assert fetch_boat_model(clean_conn, "BM_MISSING_DESIGN") is None
+
+
+def test_boat_model_claims_design_belonging_to_another_model_fails_closed(
+    clean_conn: Any, registry: ContractRegistry
+) -> None:
+    # Admit BM_OTHER_OWNER first with its own real design BD_ELSEWHERE.
+    bm_other = _boat_model_payload("BM_OTHER_OWNER", boat_design_ids=["BD_ELSEWHERE"])
+    design = _boat_design_payload("BD_ELSEWHERE", "BM_OTHER_OWNER")
+    setup = import_canonical_identity_admission(
+        clean_conn, _admission(boat_models=(bm_other,), boat_designs=(design,)), registry
+    )
+    assert setup.status == CanonicalImportStatus.IMPORTED
+
+    # A second BoatModel wrongly claims that same design as its own; the
+    # design's real boat_model_id still points at BM_OTHER_OWNER.
+    bm_claimant = _boat_model_payload("BM_WRONG_CLAIMANT", boat_design_ids=["BD_ELSEWHERE"])
+    with pytest.raises(CanonicalReferenceError):
+        import_canonical_identity_admission(
+            clean_conn, _admission(boat_models=(bm_claimant,)), registry
+        )
+    assert fetch_boat_model(clean_conn, "BM_WRONG_CLAIMANT") is None
+    # The original owner/design remain untouched by the failed claim.
+    fetched_other = fetch_boat_model(clean_conn, "BM_OTHER_OWNER")
+    assert fetched_other is not None
+    assert fetched_other["boat_design_ids"] == ["BD_ELSEWHERE"]
+
+
+def test_boat_model_design_ids_mismatch_rolls_back_full_admission(
+    clean_conn: Any, registry: ContractRegistry
+) -> None:
+    org = _organization("ORG_MISMATCH_ROLLBACK")
+    bm = _boat_model_payload("BM_MISMATCH_ROLLBACK", boat_design_ids=["BD_MISMATCH_NEVER_ADMITTED"])
+    with pytest.raises(CanonicalReferenceError):
+        import_canonical_identity_admission(
+            clean_conn, _admission(organizations=(org,), boat_models=(bm,)), registry
+        )
+    assert fetch_organization(clean_conn, "ORG_MISMATCH_ROLLBACK") is None
+    assert fetch_boat_model(clean_conn, "BM_MISMATCH_ROLLBACK") is None
+
+
+def test_boat_model_design_ids_readback_semantically_equal_to_input(
+    clean_conn: Any, registry: ContractRegistry
+) -> None:
+    bm = _boat_model_payload(
+        "BM_READBACK_EQ", boat_design_ids=["BD_READBACK_EQ_B", "BD_READBACK_EQ_A"]
+    )
+    design_a = _boat_design_payload("BD_READBACK_EQ_A", "BM_READBACK_EQ")
+    design_b = _boat_design_payload("BD_READBACK_EQ_B", "BM_READBACK_EQ")
+    result = import_canonical_identity_admission(
+        clean_conn, _admission(boat_models=(bm,), boat_designs=(design_a, design_b)), registry
+    )
+    assert result.status == CanonicalImportStatus.IMPORTED
+
+    fetched = fetch_boat_model(clean_conn, "BM_READBACK_EQ")
+    assert fetched is not None
+    assert frozenset(fetched["boat_design_ids"]) == frozenset(bm["boat_design_ids"])
 
 
 # ---------------------------------------------------------------------------
