@@ -23,7 +23,7 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0014 | DESIGN_RESEARCH | DONE | Run the accepted 50-design benchmark through the real PostgreSQL persistence path and measure determinism/review/throughput | SLICE-0013 accepted / DONE |
 | SLICE-0015 | IMPLEMENTATION | DONE | Harden benchmark failure paths and make the Stage-2 Gate G3 decision using the fixed pre-committed scorecard | SLICE-0014 accepted / DONE |
 | SLICE-0016 | IMPLEMENTATION | DONE | Canonical Brand/Organization/BoatModel/BoatDesign PostgreSQL persistence + explicit bootstrap-admission boundary | SLICE-0015 accepted / DONE / G3 PASS |
-| SLICE-0017 | IMPLEMENTATION | READY | Controlled Wikidata Tier-0 identity bootstrap across the first ~1,000 direct sailboat-class candidates | SLICE-0016 accepted / DONE |
+| SLICE-0017 | IMPLEMENTATION | REVIEW | Controlled Wikidata Tier-0 identity bootstrap across the first ~1,000 direct sailboat-class candidates | SLICE-0016 accepted / DONE |
 
 ## Current execution rule
 

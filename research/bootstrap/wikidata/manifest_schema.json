@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/wikidata-tier0-bootstrap-manifest/0017-v1",
+  "title": "HullQ SLICE-0017 Wikidata Tier-0 Bootstrap Manifest",
+  "description": "Versioned, replayable record of one controlled Wikidata Tier-0 identity bootstrap run. Retains enough information to audit every candidate's admission decision and to replay the run offline against PostgreSQL without live network access. Does not contain SailboatData values or unrelated third-party content.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "source_id",
+    "generated_at",
+    "requested_limit",
+    "safety_ceiling",
+    "discovery",
+    "usage_metrics",
+    "candidates",
+    "counts"
+  ],
+  "properties": {
+    "manifest_version": { "const": "0017-v1" },
+    "source_id": { "type": "string", "minLength": 1 },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "requested_limit": { "type": "integer", "minimum": 1 },
+    "safety_ceiling": { "type": "integer", "minimum": 1 },
+    "discovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unique_qids_returned", "candidates_processed", "target_reached"],
+      "properties": {
+        "unique_qids_returned": { "type": "integer", "minimum": 0 },
+        "candidates_processed": { "type": "integer", "minimum": 0 },
+        "target_reached": { "type": "boolean" }
+      }
+    },
+    "usage_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["retrieval_count", "extracted_record_count"],
+      "properties": {
+        "retrieval_count": { "type": "integer", "minimum": 0 },
+        "extracted_record_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/candidate" }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidates_processed",
+        "auto_admit",
+        "review_required",
+        "not_admitted",
+        "reason_breakdown"
+      ],
+      "properties": {
+        "candidates_processed": { "type": "integer", "minimum": 0 },
+        "auto_admit": { "type": "integer", "minimum": 0 },
+        "review_required": { "type": "integer", "minimum": 0 },
+        "not_admitted": { "type": "integer", "minimum": 0 },
+        "reason_breakdown": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "qid",
+        "retrieved_at",
+        "preferred_label",
+        "aliases",
+        "hullq_id",
+        "decision",
+        "reason_codes",
+        "observation_id",
+        "bundle_id",
+        "bundle_version",
+        "evidence_link_id"
+      ],
+      "properties": {
+        "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+        "retrieved_at": { "type": "string", "format": "date-time" },
+        "preferred_label": { "type": ["string", "null"] },
+        "aliases": { "type": "array", "items": { "type": "string" } },
+        "hullq_id": { "type": ["string", "null"] },
+        "decision": {
+          "enum": ["auto_admit", "review_required", "not_admitted"]
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "enum": ["ok", "missing_label", "name_collision", "crosswalk_conflict"]
+          }
+        },
+        "observation_id": { "type": ["string", "null"] },
+        "bundle_id": { "type": ["string", "null"] },
+        "bundle_version": { "type": ["string", "null"] },
+        "evidence_link_id": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

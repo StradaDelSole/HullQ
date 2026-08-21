@@ -64,6 +64,7 @@ from hullq.sources.rights import (
 
 __all__ = [
     "SLICE_0008_ITEM_CEILING",
+    "WIKIDATA_BOOTSTRAP_SAFETY_CEILING",
     "WIKIDATA_SOURCE_ID",
     "WikidataAcquisitionError",
     "WikidataAdapter",
@@ -89,6 +90,15 @@ WIKIDATA_SOURCE_ID = "SRC_WIKIDATA_API_2026"
 # This is a bounded-probe ceiling specific to the controlled SLICE-0008 scope.
 SLICE_0008_ITEM_CEILING = 100
 
+# SLICE-0017 broad-bootstrap hard safety ceiling — independent of and does not
+# mutate SLICE_0008_ITEM_CEILING or WikidataAdapterConfig.item_limit, which
+# retain their original SLICE-0008 controlled-probe meaning unchanged. The
+# bootstrap requested candidate limit (1,000) is a runner-level policy choice
+# defined in hullq.bootstrap.wikidata_tier0; this ceiling (1,500) is the
+# adapter-level hard upper bound below which the bootstrap-specific discovery
+# and acquisition methods on WikidataAdapter operate.
+WIKIDATA_BOOTSTRAP_SAFETY_CEILING = 1500
+
 # ---------------------------------------------------------------------------
 # Internal API constants
 # ---------------------------------------------------------------------------
@@ -105,6 +115,11 @@ _SAILBOAT_CLASS_QID = "Q106179098"
 # Deterministic SPARQL probe — versioned so changes are auditable.
 _SPARQL_QUERY_VERSION = "SLICE-0008-v1"
 
+# SLICE-0017 bootstrap discovery query version — distinct from the SLICE-0008
+# controlled-probe query version above; the bootstrap query additionally
+# orders results deterministically before LIMIT.
+_SPARQL_QUERY_VERSION_BOOTSTRAP = "SLICE-0017-bootstrap-v1"
+
 
 def _build_sparql_query(limit: int) -> str:
     """Build the deterministic SPARQL discovery query for sailboat-class items.
@@ -117,6 +132,24 @@ def _build_sparql_query(limit: int) -> str:
         f"SELECT ?item WHERE {{\n"
         f"  ?item wdt:P31 wd:{_SAILBOAT_CLASS_QID} .\n"
         f"}} LIMIT {limit}\n"
+    )
+
+
+def _build_bootstrap_sparql_query(limit: int) -> str:
+    """Build the deterministic ordered SPARQL discovery query for the
+    SLICE-0017 broad Tier-0 bootstrap.
+
+    Unlike ``_build_sparql_query`` (the SLICE-0008 controlled-probe query,
+    left unchanged), this query adds an explicit stable ``ORDER BY ?item``
+    before ``LIMIT`` so that repeated runs return the same first-N candidates
+    in the same deterministic order, per the SLICE-0017 candidate-set
+    boundary contract.
+    """
+    return (
+        f"# HullQ Wikidata SPARQL bootstrap discovery {_SPARQL_QUERY_VERSION_BOOTSTRAP}\n"
+        f"SELECT ?item WHERE {{\n"
+        f"  ?item wdt:P31 wd:{_SAILBOAT_CLASS_QID} .\n"
+        f"}} ORDER BY ?item LIMIT {limit}\n"
     )
 
 
@@ -537,7 +570,7 @@ def _build_quantity_evidence(
                     method_id="hullq-measurements-1.0",
                     method_version="SLICE-0004-v1",
                 )
-            except ValueError, InvalidOperation:
+            except (ValueError, InvalidOperation):  # fmt: skip
                 normalized = None
 
     # Preserve raw Wikidata quantity/unit representation.  When the statement
@@ -718,6 +751,21 @@ class WikidataAdapter:
             raise WikidataRightsBlocked(decision)
         return decision
 
+    def _check_bulk_bootstrap_rights(self) -> SourceUseDecision:
+        """SLICE-0017: verify BULK_BOOTSTRAP clearance before any bootstrap-scale
+        discovery request.
+
+        This is checked in addition to (not instead of) the AUTOMATED_INGESTION
+        gate that ``_check_rights`` enforces before every HTTP request. The
+        broad Tier-0 bootstrap is explicitly a bulk operation, so its own
+        use-specific clearance (SOURCE_RIGHTS_POLICY.v0.1.md §5) must also be
+        ALLOWED before the bootstrap discovery query is dispatched.
+        """
+        decision = check_source_use(self._source, SourceUse.BULK_BOOTSTRAP)
+        if decision.outcome != DecisionOutcome.ALLOWED:
+            raise WikidataRightsBlocked(decision)
+        return decision
+
     def _headers(self) -> dict[str, str]:
         return {"User-Agent": self._config.user_agent}
 
@@ -815,6 +863,57 @@ class WikidataAdapter:
 
         return qids
 
+    def discover_bootstrap_qids(self, limit: int) -> list[str]:
+        """SLICE-0017: deterministic ordered discovery for the broad Tier-0 bootstrap.
+
+        Bounded by ``WIKIDATA_BOOTSTRAP_SAFETY_CEILING`` — independent of
+        ``config.item_limit`` (the SLICE-0008 <=100 controlled-probe cap,
+        which this method does not read or mutate). Checks BULK_BOOTSTRAP
+        clearance before any HTTP request, in addition to the
+        AUTOMATED_INGESTION check ``_get`` implies via callers. Results are
+        ordered deterministically (``ORDER BY ?item``) so repeated runs
+        return the same first-N candidates in the same order.
+        """
+        if not (1 <= limit <= WIKIDATA_BOOTSTRAP_SAFETY_CEILING):
+            raise ValueError(
+                f"discover_bootstrap_qids limit must be in [1, {WIKIDATA_BOOTSTRAP_SAFETY_CEILING}]; "
+                f"got {limit}"
+            )
+
+        self._check_bulk_bootstrap_rights()
+        self._check_rights()
+
+        query = _build_bootstrap_sparql_query(limit)
+        data = self._get(
+            _SPARQL_ENDPOINT,
+            params={"query": query, "format": "json"},
+            extra_headers={"Accept": "application/sparql-results+json"},
+        )
+
+        bindings = data.get("results", {}).get("bindings", [])
+        if not isinstance(bindings, list):
+            raise WikidataMalformedResponse("SPARQL response: results.bindings is not a list")
+
+        qids: list[str] = []
+        seen: set[str] = set()
+        for binding in bindings:
+            if not isinstance(binding, dict):
+                continue
+            item_obj = binding.get("item", {})
+            if not isinstance(item_obj, dict):
+                continue
+            uri = item_obj.get("value", "")
+            if not isinstance(uri, str):
+                continue
+            m = _ENTITY_URI_RE.match(uri)
+            if m:
+                qid = m.group(1)
+                if qid not in seen:
+                    seen.add(qid)
+                    qids.append(qid)
+
+        return qids
+
     # ------------------------------------------------------------------
     # Entity acquisition
     # ------------------------------------------------------------------
@@ -826,14 +925,24 @@ class WikidataAdapter:
         the documented wbgetentities limit. Checks the rights gate before
         each batch. ``len(qids)`` must not exceed ``config.item_limit``.
         """
+        return self._fetch_entities_impl(qids, self._config.item_limit)
+
+    def fetch_entities_bootstrap(self, qids: list[str]) -> list[WikidataEntityData]:
+        """SLICE-0017: fetch structured entity data at bootstrap scale.
+
+        Identical acquisition semantics to ``fetch_entities`` (QID validation,
+        batching, per-batch rights gate), bounded by
+        ``WIKIDATA_BOOTSTRAP_SAFETY_CEILING`` instead of ``config.item_limit``.
+        """
+        return self._fetch_entities_impl(qids, WIKIDATA_BOOTSTRAP_SAFETY_CEILING)
+
+    def _fetch_entities_impl(self, qids: list[str], max_allowed: int) -> list[WikidataEntityData]:
         invalid = [q for q in qids if not validate_qid(q)]
         if invalid:
             raise ValueError(f"Invalid QID format(s) before network use: {invalid!r}")
 
-        if len(qids) > self._config.item_limit:
-            raise ValueError(
-                f"Requested {len(qids)} QIDs exceeds configured item_limit {self._config.item_limit}"
-            )
+        if len(qids) > max_allowed:
+            raise ValueError(f"Requested {len(qids)} QIDs exceeds allowed limit {max_allowed}")
 
         # Deduplicate preserving order (exact QID identity, no merge).
         seen: set[str] = set()

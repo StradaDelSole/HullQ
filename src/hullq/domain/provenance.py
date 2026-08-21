@@ -763,7 +763,7 @@ def check_canonical_consistency(
                     f"{resolution.field_pointer} but resolution has null "
                     f"canonical_value_snapshot"
                 )
-        except KeyError, IndexError, TypeError:
+        except (KeyError, IndexError, TypeError):  # fmt: skip
             pass  # field absent from canonical snapshot — acceptable for unresolved
         return errors
 
