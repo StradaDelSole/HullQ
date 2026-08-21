@@ -16,7 +16,8 @@
     "throughput",
     "human_review_burden",
     "recommendation",
-    "recommendation_rationale"
+    "recommendation_rationale",
+    "g3_scorecard"
   ],
   "properties": {
     "schema_version": {
@@ -53,7 +54,10 @@
         "materialized",
         "review_required",
         "cannot_materialize",
-        "review_required_reasons"
+        "review_required_reasons",
+        "contract_gap_count",
+        "validation_failure_count",
+        "insufficient_retained_fact_count"
       ],
       "properties": {
         "total_cases": {"type": "integer", "minimum": 50, "maximum": 50},
@@ -67,7 +71,15 @@
         },
         "contract_gap_count": {
           "type": "integer",
-          "description": "Number of CANNOT_MATERIALIZE cases classified as CONTRACT_GAP (drives BLOCKED). SLICE-0015 addition."
+          "description": "Number of CANNOT_MATERIALIZE cases classified as CONTRACT_GAP (drives BLOCKED). Required from schema_version 0015-v1."
+        },
+        "validation_failure_count": {
+          "type": "integer",
+          "description": "Number of CANNOT_MATERIALIZE cases classified as VALIDATION_FAILURE. Drives HARDEN_FIRST regardless of percentage. Required from schema_version 0015-v1."
+        },
+        "insufficient_retained_fact_count": {
+          "type": "integer",
+          "description": "Number of CANNOT_MATERIALIZE cases classified as INSUFFICIENT_RETAINED_FACT. Subject to cannot_pct rate threshold. Required from schema_version 0015-v1."
         }
       }
     },
@@ -95,7 +107,11 @@
         "reimport_error": {"type": "integer"},
         "readback_mismatches": {"type": "integer"},
         "fresh_run_imported": {"type": "integer"},
-        "fresh_run_semantic_mismatches": {"type": "integer"}
+        "fresh_run_semantic_mismatches": {"type": "integer"},
+        "fresh_run_error": {
+          "type": "integer",
+          "description": "Import failures/exceptions during fresh-schema phase. Counted separately from semantic mismatches. Optional for schema backwards-compatibility."
+        }
       }
     },
     "promotion_applicability": {

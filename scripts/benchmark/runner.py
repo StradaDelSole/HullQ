@@ -48,6 +48,8 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from benchmark.gate import evaluate_g3_gate  # noqa: E402
 from benchmark.materializer import (  # noqa: E402
     FAILURE_CLASS_CONTRACT_GAP,
+    FAILURE_CLASS_INSUFFICIENT_RETAINED_FACT,
+    FAILURE_CLASS_VALIDATION_FAILURE,
     classify_cannot_materialize_reasons,
 )
 from benchmark.semantics_compare import (  # noqa: E402
@@ -273,20 +275,23 @@ def run_benchmark(
     cannot_count = sum(1 for r in mat_results.values() if r.status == "CANNOT_MATERIALIZE")
 
     # Classify every non-materialized case deterministically.
-    # BLOCKED is reserved for CONTRACT_GAP only; VALIDATION_FAILURE and
-    # INSUFFICIENT_RETAINED_FACT drive HARDEN_FIRST.
+    # Explicit counts are passed to evaluate_g3_gate() so the gate can apply
+    # per-class semantics without inferring classification from exception strings.
     review_reason_counts: dict[str, int] = {}
     contract_gap_count = 0
+    validation_failure_count = 0
+    insufficient_retained_fact_count = 0
     for r in mat_results.values():
         if r.status == "MATERIALIZED":
             continue
+        cls = classify_cannot_materialize_reasons(r.review_reasons)
         if r.status == "CANNOT_MATERIALIZE":
-            cls = classify_cannot_materialize_reasons(r.review_reasons)
             if cls == FAILURE_CLASS_CONTRACT_GAP:
                 contract_gap_count += 1
-        else:
-            # REVIEW_REQUIRED — classify each reason
-            cls = classify_cannot_materialize_reasons(r.review_reasons)
+            elif cls == FAILURE_CLASS_VALIDATION_FAILURE:
+                validation_failure_count += 1
+            elif cls == FAILURE_CLASS_INSUFFICIENT_RETAINED_FACT:
+                insufficient_retained_fact_count += 1
         review_reason_counts[cls] = review_reason_counts.get(cls, 0) + 1
     print(
         f"  total={total} materialized={mat_count} review_required={review_count} "
@@ -446,6 +451,7 @@ def run_benchmark(
 
         fresh_imported = 0
         fresh_semantic_mismatches = 0
+        fresh_error = 0
         for case_id, bundle in bundles.items():
             try:
                 result = import_research_evidence_bundle(conn2, bundle)
@@ -504,13 +510,14 @@ def run_benchmark(
                             for d in diffs[:3]:
                                 print(f"    FRESH CC DIFF: {d}", flush=True)
                 else:
-                    fresh_semantic_mismatches += 1
+                    fresh_error += 1
                     print(f"    FRESH IMPORT FAILED: {case_id}: {result.status}", flush=True)
             except Exception as exc:
-                fresh_semantic_mismatches += 1
+                fresh_error += 1
                 print(f"    FRESH ERROR: {case_id}: {exc}", flush=True)
         print(
-            f"  fresh_imported={fresh_imported} semantic_mismatches={fresh_semantic_mismatches}",
+            f"  fresh_imported={fresh_imported} semantic_mismatches={fresh_semantic_mismatches} "
+            f"fresh_error={fresh_error}",
             flush=True,
         )
     finally:
@@ -545,8 +552,10 @@ def run_benchmark(
             "cannot_materialize": cannot_count,
             # review_required_reasons: {failure_class: count} per result_schema.json contract
             "review_required_reasons": review_reason_counts,
-            # contract_gap_count: only CONTRACT_GAP failures can drive BLOCKED
+            # Explicit failure-class counts for the G3 gate — required from schema_version 0015-v1
             "contract_gap_count": contract_gap_count,
+            "validation_failure_count": validation_failure_count,
+            "insufficient_retained_fact_count": insufficient_retained_fact_count,
         },
         "persistence": {
             "valid_bundles_submitted": mat_count,
@@ -559,6 +568,9 @@ def run_benchmark(
             "readback_mismatches": readback_mismatches,
             "fresh_run_imported": fresh_imported,
             "fresh_run_semantic_mismatches": fresh_semantic_mismatches,
+            # fresh_run_error: import failures / exceptions in the fresh-schema phase
+            # (distinct from semantic mismatches among successfully imported bundles)
+            "fresh_run_error": fresh_error,
         },
         "promotion_applicability": {
             "eligible_for_promotion": 0,
@@ -600,8 +612,9 @@ def run_benchmark(
         total_cases=total,
         materialized=mat_count,
         review_required=review_count,
-        cannot_materialize=cannot_count,
         contract_gap_count=contract_gap_count,
+        validation_failure_count=validation_failure_count,
+        insufficient_retained_fact_count=insufficient_retained_fact_count,
         first_pass_imported=first_imported,
         reimport_already_imported=reimport_already,
         fresh_run_imported=fresh_imported,
@@ -611,6 +624,7 @@ def run_benchmark(
         first_pass_error=first_error,
         reimport_conflict=reimport_conflict,
         reimport_error=reimport_error,
+        fresh_run_error=fresh_error,
     )
 
     result_doc["recommendation"] = gate_result.recommendation
@@ -636,7 +650,7 @@ def run_benchmark(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="HullQ SLICE-0014 benchmark runner")
+    parser = argparse.ArgumentParser(description="HullQ SLICE-0015 benchmark runner")
     parser.add_argument("--db-url", default=None, help="PostgreSQL connection URL")
     parser.add_argument("--output", default=str(RESULT_DEFAULT), help="Output JSON path")
     parser.add_argument(

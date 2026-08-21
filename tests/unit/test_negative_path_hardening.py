@@ -282,13 +282,14 @@ def test_cannot_materialize_without_contract_gap_does_not_block() -> None:
     )
 
     # Now confirm the REAL gate function produces HARDEN_FIRST (not BLOCKED) for these inputs.
-    # 17 materialized (85%), 3 cannot (15% > 10%), 0 review → HARDEN_FIRST via cannot_pct gate.
+    # 17 materialized (85%), 3 validation_failure (cannot_materialize=3, 15% > 10%),
+    # contract_gap_count=0 → HARDEN_FIRST via gate 2 (validation_failure > 0).
     result: G3GateResult = evaluate_g3_gate(
         total_cases=20,
         materialized=17,
         review_required=0,
-        cannot_materialize=3,
         contract_gap_count=0,
+        validation_failure_count=3,
         first_pass_imported=17,
         reimport_already_imported=17,
         fresh_run_imported=17,
@@ -358,12 +359,11 @@ def test_contract_gap_drives_blocked_recommendation() -> None:
     assert contract_gap_count == 1, "Expected one CONTRACT_GAP failure from ContractGapError"
 
     # Now call the REAL gate function — must produce BLOCKED (highest priority gate).
-    # 19 materialized (95%), 1 cannot (5%), contract_gap_count=1 → BLOCKED.
+    # 19 materialized (95%), contract_gap_count=1 (cannot_materialize derived=1) → BLOCKED.
     result: G3GateResult = evaluate_g3_gate(
         total_cases=20,
         materialized=19,
         review_required=0,
-        cannot_materialize=1,
         contract_gap_count=contract_gap_count,
         first_pass_imported=19,
         reimport_already_imported=19,
@@ -639,8 +639,9 @@ def _base_gate_inputs(**overrides: Any) -> dict[str, Any]:
         "total_cases": 50,
         "materialized": 50,
         "review_required": 0,
-        "cannot_materialize": 0,
         "contract_gap_count": 0,
+        "validation_failure_count": 0,
+        "insufficient_retained_fact_count": 0,
         "first_pass_imported": 50,
         "reimport_already_imported": 50,
         "fresh_run_imported": 50,
@@ -650,6 +651,7 @@ def _base_gate_inputs(**overrides: Any) -> dict[str, Any]:
         "first_pass_error": 0,
         "reimport_conflict": 0,
         "reimport_error": 0,
+        "fresh_run_error": 0,
     }
     base.update(overrides)
     return base
@@ -677,7 +679,6 @@ def test_g3_gate_65_pct_materialization_is_positive() -> None:
             total_cases=20,
             materialized=13,
             review_required=7,
-            cannot_materialize=0,
             first_pass_imported=13,
             reimport_already_imported=13,
             fresh_run_imported=13,
@@ -698,7 +699,6 @@ def test_g3_gate_below_65_pct_materialization_is_harden_first() -> None:
             total_cases=20,
             materialized=12,
             review_required=8,
-            cannot_materialize=0,
             first_pass_imported=12,
             reimport_already_imported=12,
             fresh_run_imported=12,
@@ -720,34 +720,39 @@ def test_g3_gate_exactly_10_pct_cannot_is_acceptable() -> None:
             total_cases=20,
             materialized=18,
             review_required=0,
-            cannot_materialize=2,
+            insufficient_retained_fact_count=2,
             first_pass_imported=18,
             reimport_already_imported=18,
             fresh_run_imported=18,
         )
     )
     assert result.recommendation == "G3_PASS", (
-        f"cannot=2/20 (10.0%) at exactly the <=10% boundary must still be G3_PASS; "
+        f"insufficient_retained_fact=2/20 (10.0%) at exactly the <=10% boundary must still be G3_PASS; "
         f"got {result.recommendation!r}"
     )
     assert result.cannot_pct == 10.0
 
 
 def test_g3_gate_above_10_pct_cannot_is_harden_first() -> None:
-    """Cannot-materialize-without-invention above 10% (3/20=15%) → HARDEN_FIRST."""
+    """Cannot-materialize-without-invention above 10% (3/20=15%) → HARDEN_FIRST.
+
+    Uses insufficient_retained_fact_count=3 (no validation_failure, no contract_gap)
+    so the rate gate (cannot_pct > 10%) is the trigger, not the validation_failure gate.
+    """
     result = evaluate_g3_gate(
         **_base_gate_inputs(
             total_cases=20,
             materialized=17,
             review_required=0,
-            cannot_materialize=3,
+            insufficient_retained_fact_count=3,
             first_pass_imported=17,
             reimport_already_imported=17,
             fresh_run_imported=17,
         )
     )
     assert result.recommendation == "HARDEN_FIRST", (
-        f"cannot=3/20 (15%) > 10% must produce HARDEN_FIRST; got {result.recommendation!r}"
+        f"insufficient_retained_fact=3/20 (15%) > 10% must produce HARDEN_FIRST; "
+        f"got {result.recommendation!r}"
     )
     assert result.cannot_pct == 15.0
 
@@ -763,7 +768,6 @@ def test_g3_gate_above_35_pct_review_is_harden_first() -> None:
             total_cases=100,
             materialized=70,
             review_required=36,
-            cannot_materialize=0,
             first_pass_imported=70,
             reimport_already_imported=70,
             fresh_run_imported=70,
@@ -776,12 +780,14 @@ def test_g3_gate_above_35_pct_review_is_harden_first() -> None:
 
 
 def test_g3_gate_contract_gap_is_blocked() -> None:
-    """contract_gap_count >= 1 → BLOCKED regardless of other metrics."""
+    """contract_gap_count >= 1 → BLOCKED regardless of other metrics.
+
+    cannot_materialize is derived internally as contract_gap_count=1.
+    """
     result = evaluate_g3_gate(
         **_base_gate_inputs(
             total_cases=20,
             materialized=19,
-            cannot_materialize=1,
             contract_gap_count=1,
             first_pass_imported=19,
             reimport_already_imported=19,
@@ -794,17 +800,17 @@ def test_g3_gate_contract_gap_is_blocked() -> None:
 
 
 def test_g3_gate_validation_failure_is_harden_first_not_blocked() -> None:
-    """VALIDATION_FAILURE that pushes cannot_pct > 10% produces HARDEN_FIRST, not BLOCKED.
+    """VALIDATION_FAILURE produces HARDEN_FIRST, not BLOCKED.
 
-    Distinguishes: CONTRACT_GAP → BLOCKED; VALIDATION_FAILURE → HARDEN_FIRST.
+    Distinguishes: CONTRACT_GAP → BLOCKED; VALIDATION_FAILURE → HARDEN_FIRST regardless of rate.
+    3 validation_failure, contract_gap_count=0 → HARDEN_FIRST via gate 2 (validation_failure > 0).
     """
-    # 3/20 cannot (15% > 10%), contract_gap_count=0 → HARDEN_FIRST (cannot_pct gate)
     result = evaluate_g3_gate(
         **_base_gate_inputs(
             total_cases=20,
             materialized=17,
             review_required=0,
-            cannot_materialize=3,
+            validation_failure_count=3,
             contract_gap_count=0,
             first_pass_imported=17,
             reimport_already_imported=17,
@@ -812,7 +818,7 @@ def test_g3_gate_validation_failure_is_harden_first_not_blocked() -> None:
         )
     )
     assert result.recommendation == "HARDEN_FIRST", (
-        f"cannot_pct=15% (>10%) with no CONTRACT_GAP must produce HARDEN_FIRST; "
+        f"validation_failure_count=3 with no CONTRACT_GAP must produce HARDEN_FIRST; "
         f"got {result.recommendation!r}"
     )
     assert result.recommendation != "BLOCKED"
@@ -896,3 +902,171 @@ def test_g3_gate_scorecard_as_dicts_is_json_serialisable() -> None:
         assert required_keys.issubset(d.keys()), (
             f"Scorecard dict missing required keys: {required_keys - d.keys()}"
         )
+
+
+# ---------------------------------------------------------------------------
+# G3 Gate Failure-Class Semantics Tests (SLICE-0015 second correction round)
+#
+# These tests exercise the binding semantics introduced in the second review:
+# - VALIDATION_FAILURE must force HARDEN_FIRST regardless of count/percentage.
+# - INSUFFICIENT_RETAINED_FACT is rate-based: may remain G3-positive if <=10%.
+# - fresh_db_semantic_equality PASS requires BOTH import completeness AND zero mismatches.
+# - Schema must require g3_scorecard for schema_version 0015-v1.
+# ---------------------------------------------------------------------------
+
+
+def test_g3_gate_validation_failure_single_case_forces_harden_first() -> None:
+    """Single VALIDATION_FAILURE in 50 cases → HARDEN_FIRST regardless of low percentage.
+
+    1/50 = 2% cannot_pct, which is well below the 10% rate threshold.
+    The validation_failure gate (gate 2) must fire before the rate gate (gate 5).
+    Confirms that VALIDATION_FAILURE is not treated as rate-based.
+    """
+    result = evaluate_g3_gate(
+        **_base_gate_inputs(
+            total_cases=50,
+            materialized=49,
+            review_required=0,
+            validation_failure_count=1,
+            insufficient_retained_fact_count=0,
+            contract_gap_count=0,
+            first_pass_imported=49,
+            reimport_already_imported=49,
+            fresh_run_imported=49,
+        )
+    )
+    assert result.recommendation == "HARDEN_FIRST", (
+        f"1 VALIDATION_FAILURE in 50 cases (2% < 10%) must still produce HARDEN_FIRST; "
+        f"got {result.recommendation!r}: {result.rationale}"
+    )
+    assert result.validation_failure_count == 1
+    assert result.cannot_pct == 2.0
+
+
+def test_g3_gate_insufficient_retained_fact_within_threshold_is_pass() -> None:
+    """Single INSUFFICIENT_RETAINED_FACT in 50 cases → G3_PASS (2% <= 10% threshold).
+
+    INSUFFICIENT_RETAINED_FACT is rate-based: 1/50 = 2% is within the <=10% threshold.
+    No validation failures, no contract gaps, all correctness gates pass → G3_PASS.
+    Confirms the failure-class distinction: INSUFFICIENT_RETAINED_FACT vs VALIDATION_FAILURE.
+    """
+    result = evaluate_g3_gate(
+        **_base_gate_inputs(
+            total_cases=50,
+            materialized=49,
+            review_required=0,
+            validation_failure_count=0,
+            insufficient_retained_fact_count=1,
+            contract_gap_count=0,
+            first_pass_imported=49,
+            reimport_already_imported=49,
+            fresh_run_imported=49,
+        )
+    )
+    assert result.recommendation == "G3_PASS", (
+        f"1 INSUFFICIENT_RETAINED_FACT in 50 cases (2% <= 10%) with no VALIDATION_FAILURE "
+        f"must produce G3_PASS; got {result.recommendation!r}: {result.rationale}"
+    )
+    assert result.insufficient_retained_fact_count == 1
+    assert result.cannot_pct == 2.0
+
+
+def test_g3_gate_fresh_db_semantic_equality_fails_on_mismatch() -> None:
+    """fresh_db_semantic_equality FAIL when import complete but semantic_mismatches=1.
+
+    The fresh_db_semantic_equality scorecard row must be FAIL even when
+    fresh_run_imported == materialized, if fresh_run_semantic_mismatches > 0.
+    Both conditions must be satisfied for PASS.
+    """
+    result = evaluate_g3_gate(
+        **_base_gate_inputs(
+            fresh_run_imported=50,
+            fresh_run_semantic_mismatches=1,
+        )
+    )
+    scorecard_by_name = {m.name: m for m in result.scorecard}
+    fresh_row = scorecard_by_name.get("fresh_db_semantic_equality")
+    assert fresh_row is not None, "fresh_db_semantic_equality row must be in scorecard"
+    assert fresh_row.status == "FAIL", (
+        f"fresh_db_semantic_equality must be FAIL when semantic_mismatches=1, even if "
+        f"fresh_run_imported==materialized; got status={fresh_row.status!r}"
+    )
+    assert result.recommendation != "G3_PASS", "A fresh semantic mismatch must prevent G3_PASS"
+
+
+def test_schema_validation_fails_if_g3_scorecard_omitted() -> None:
+    """JSON Schema validation must raise when g3_scorecard is omitted from a 0015-v1 result.
+
+    g3_scorecard is required for schema_version 0015-v1 results.
+    """
+    import json
+    from pathlib import Path
+
+    import jsonschema
+
+    schema_path = (
+        Path(__file__).resolve().parents[2]
+        / "research"
+        / "benchmark"
+        / "persistence"
+        / "result_schema.json"
+    )
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+
+    # Minimal result document missing g3_scorecard
+    minimal_result = {
+        "schema_version": "0015-v1",
+        "benchmark_version": "test",
+        "run_timestamp": "2026-01-01T00:00:00Z",
+        "git_sha": "abc123",
+        "environment": {"python_version": "3.14.0", "postgresql_version": "18.0"},
+        "corpus_materialization": {
+            "total_cases": 50,
+            "materialized": 50,
+            "review_required": 0,
+            "cannot_materialize": 0,
+            "review_required_reasons": {},
+            "contract_gap_count": 0,
+            "validation_failure_count": 0,
+            "insufficient_retained_fact_count": 0,
+        },
+        "persistence": {
+            "valid_bundles_submitted": 50,
+            "first_pass_imported": 50,
+            "first_pass_conflict": 0,
+            "first_pass_error": 0,
+            "reimport_already_imported": 50,
+            "reimport_conflict": 0,
+            "reimport_error": 0,
+            "readback_mismatches": 0,
+            "fresh_run_imported": 50,
+            "fresh_run_semantic_mismatches": 0,
+        },
+        "promotion_applicability": {
+            "eligible_for_promotion": 50,
+            "pre_canonical_unresolved": 0,
+            "promotion_blocked_by_conflict": 0,
+        },
+        "throughput": {
+            "wall_clock_import_seconds": "NOT_MEASURED",
+            "reimport_seconds": "NOT_MEASURED",
+            "cases_per_second": "NOT_MEASURED",
+        },
+        "human_review_burden": {
+            "review_required_cases": 0,
+            "review_decisions_required": 0,
+            "elapsed_reviewer_minutes": "NOT_MEASURED",
+        },
+        "recommendation": "G3_PASS",
+        "recommendation_rationale": "All gates pass.",
+        # g3_scorecard intentionally omitted
+    }
+
+    try:
+        jsonschema.validate(minimal_result, schema)
+        raise AssertionError(
+            "jsonschema.validate must raise ValidationError when g3_scorecard is omitted "
+            "from a 0015-v1 result document"
+        )
+    except jsonschema.ValidationError:
+        pass  # Expected: g3_scorecard is required
