@@ -73,6 +73,117 @@ This supports HullQ's core product promise:
 
 The intended advantage is not simply a larger number of filters. It is a more truthful and useful way to navigate technical uncertainty and alternatives.
 
+## Preferred search-building interaction
+
+The default experience SHOULD avoid a permanently visible wall of technical filters. Only criteria the user has selected should consume interface space.
+
+A simple initial state may expose only a small number of high-value fields plus an additive action:
+
+```text
+FIND A BOAT
+
+Length        10–13 m
+Budget        <= EUR 100k
+Market        Europe
+
+[ + Add requirement ]
+[ Search ]
+```
+
+As criteria are added, the active query remains compact:
+
+```text
+10–13 m
+Draft <= 1.80 m
+GRP
+Skeg-hung rudder
+Built after 1985
+Price <= EUR 100k
+
+Preferences: 3
+
+[ + Add criterion ]
+```
+
+### Searchable criterion picker
+
+`+ Add criterion` SHOULD open a searchable, grouped picker rather than reveal every possible technical field at once. A user may browse by domain or search directly for terms such as `rudder`, `tank`, `rig`, or `draft`.
+
+The system may ultimately support a large technical criterion universe without forcing the ordinary user to confront that complexity simultaneously.
+
+### Requirement and Preference editing
+
+A selected criterion may be marked as `Required` or `Preferred`. This distinction should be available when needed but should not create persistent visual noise. Compact chips/rows can summarize the current query and reveal detailed semantics on edit.
+
+## Live search feedback
+
+HullQ SHOULD update result counts interactively as the structured query changes. This is a first-class discovery behavior, not merely UI animation.
+
+Example:
+
+```text
+1,842 known designs
+
+Draft <= 1.80 m
+-> 1,106
+
++ GRP
+-> 827
+
++ Skeg-hung rudder
+-> 214 confirmed
+   96 potential
+```
+
+The purpose is to let the user learn the shape of the market while constructing the query. HullQ should make restrictive criteria visible and, where useful, explain which requirement most constrains the result universe.
+
+A future result explanation may support patterns such as:
+
+```text
+214 confirmed
+96 potential
+
+Most restrictive:
+Skeg-hung rudder
+```
+
+or, where deterministic and explainable:
+
+```text
+Relaxing draft by 8 cm adds 6 nearby candidates.
+```
+
+Live updates after the structured query exists SHOULD be executed by the HullQ query engine and MUST NOT require a generative-AI call for every field edit or keystroke.
+
+## Multiple entry modes, one query model
+
+HullQ may expose multiple ways to construct a search, but they MUST converge on the same structured query contract and deterministic engine.
+
+Conceptually:
+
+```text
+QUICK
+small set of common fields + Add criterion
+
+GUIDED / NATURAL LANGUAGE
+Describe the boat you are looking for
+
+ADVANCED
+explicit Requirements / Preferences / OR groups / detailed controls
+```
+
+These are different interaction surfaces, not different search engines.
+
+```text
+input method
+    ↓
+structured HullQ query
+    ↓
+deterministic query engine
+```
+
+This separation allows the UI to remain approachable while preserving a powerful technical model underneath.
+
 ## UX guardrail
 
 The query engine may support sophisticated criterion-specific rules, OR groups, configuration evaluation, preference scoring and tolerance semantics. The default UI should reveal complexity progressively rather than presenting a dense technical cockpit.
@@ -90,3 +201,7 @@ user-specific discovery ordering/expansion
 ```
 
 and must not collapse the product into an opaque percentage-match score or a conventional Boolean filter system.
+
+The preferred product behavior is therefore:
+
+> **The engine may be complex; the interaction should feel simple, immediate and exploratory.**
