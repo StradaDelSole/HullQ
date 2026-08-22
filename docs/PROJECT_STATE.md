@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-22  
-**Current stage:** Stage 3.2 — SLICE-0018 accepted / DONE; next Stage-3 slice not yet READY  
+**Current stage:** Stage 3.2–3.3 — SLICE-0019 manufacturer/yard universe research `READY`  
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -448,15 +448,17 @@ all_zero_tolerance_conditions_clear = true
 
 Final closure record: `docs/slices/SLICE-0018-acceptance-closure.md`.
 
-## Current operational position — no READY slice
+## Current operational position — SLICE-0019 READY
 
-There is currently no primary slice contract in `READY` state.
+`docs/slices/SLICE-0019-global-series-sailboat-manufacturer-universe-research.md` is the only READY primary slice contract.
 
-SLICE-0018 is accepted and `DONE`. Its measurement must inform the next architecture/research decision rather than trigger an automatic continuation.
+SLICE-0019 is a bounded DESIGN_RESEARCH step, not a production-ingestion step. Its purpose is to map the next breadth/enrichment source layer after the direct-instance Wikidata ceiling measured by SLICE-0018.
 
-No later slice is pre-authorized. Before new Claude implementation/research work begins, the next primary slice must be separately designed, bounded and placed in `READY` state through the normal master workflow.
+The bounded first wave targets approximately **120–160 verified eligible series-sailboat manufacturer/yard research records**, with active and historical entities, global geographic coverage, explicit source provenance and a **20-entity source-yield study**.
 
-Potential next directions may include another rights-cleared bootstrap source or discovery method, manufacturer-universe research (including historical manufacturers), review-resolution work, or technical enrichment. Listing these possibilities does not authorize any of them.
+The research must preserve manufacturer/yard/brand/legal-organization/designer distinctions and assess later systematic-use rights/access separately from public readability.
+
+It creates no canonical HullQ entities and does not authorize a new production source. Its decision output is a ranked evidence-based recommendation for the next bounded Stage-3 slice.
 
 ## Near-term path
 
@@ -477,7 +479,9 @@ SLICE-0017  controlled Wikidata Tier-0 1,000 bootstrap         DONE
       ↓
 SLICE-0018  baseline-preserving Wikidata <=2,500 expansion     DONE / source ceiling 1,829
       ↓
-next bounded Stage-3 decision                                  NOT READY YET
+SLICE-0019  global manufacturer/yard universe source research  READY
+      ↓
+next bounded Stage-3 implementation decision                   NOT AUTHORIZED YET
 ```
 
 The benchmark corpus should not be expanded merely to increase its count. Additional stress cases are justified only if a materially new problem class is demonstrated.
@@ -494,7 +498,7 @@ continuous new-model intake
 
 The future continuous track should progressively handle discovery → identity triage → technical intake → validation/persistence → deep enrichment, with explicit maturity such as announced/preliminary/production-confirmed/verified rather than pretending announcement data is final production specification.
 
-SLICE-0018 completed a historical/bootstrap-universe expansion step and does not itself implement the continuous new-model track.
+SLICE-0019 remains historical/bootstrap/source-strategy research and does not implement the continuous new-model track.
 
 ## AI repository workflow — ACTIVE
 
@@ -509,12 +513,12 @@ FINISH_SLICE.bat
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-After the SLICE-0018 acceptance-closure PR is merged, the project owner may close the SLICE-0018 VS Code window/Claude session/terminals and run `FINISH_SLICE.bat` for SLICE-0018. No `START_SLICE.bat` run for a later slice should occur until a separate primary contract is explicitly `READY`.
+After the SLICE-0019 readiness PR is merged, the project owner may run `START_SLICE.bat` for SLICE-0019, open the resulting SLICE-0019 worktree in its own VS Code window, and paste the generated assignment into Claude. The agent must return SLICE-0019 in `REVIEW`, `BLOCKED` or `IN_PROGRESS` and must not start SLICE-0020 automatically.
 
 ## Do not start yet
 
 - 5,000 identity rerun merely by increasing the accepted SLICE-0018 limit;
-- another bootstrap source or different Wikidata discovery strategy before a separate bounded source/discovery slice is accepted and READY;
+- another production bootstrap source or different Wikidata production discovery strategy before a separate bounded source/discovery implementation slice is accepted and READY;
 - resolution campaign for SLICE-0017/SLICE-0018 review candidates;
 - broad Tier-1/Tier-2 technical enrichment;
 - unbounded crawler work;
