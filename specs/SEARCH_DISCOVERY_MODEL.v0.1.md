@@ -222,7 +222,96 @@ outside one or more explicit requirements but within user-selected discovery tol
 
 Market observations whose canonical identity or technical qualification is unresolved remain a separate market-discovery dimension under the accepted OQ-009/market-discoverability rules.
 
-## 12. Accepted baseline
+## 12. Preferred default UX direction — global flexibility control
+
+The search engine may support criterion-specific tolerance semantics internally, but the default user interface SHOULD NOT expose a separate tolerance control next to every criterion. Engine capability and UI complexity are deliberately decoupled.
+
+The preferred product direction is one compact global flexibility control, initially conceptualized as:
+
+```text
+23 confirmed matches
+17 potential matches
+
+Flexibility: [ Strict | 5% | 10% ]
+
++ 11 boats within 5%
+```
+
+This is intended to provide the same cognitive simplicity as a travel-search `+/- 3 days` option: the user keeps the original query intact while explicitly asking HullQ to reveal nearby alternatives.
+
+### Strict remains the default truth boundary
+
+`Strict` preserves the original Requirements exactly.
+
+Selecting `5%` or `10%` does not rewrite the query and does not turn a hard `NO_MATCH` into a `MATCH`. It only expands the separately identified near-match discovery set.
+
+Example:
+
+```text
+Requirement: draft <= 1.80 m
+Flexibility: 5%
+
+Boat draft 1.84 m
+-> hard state: NO_MATCH
+-> discovery state: NEAR MATCH, within selected flexibility
+```
+
+### The percentage is a UI-level global intent, not blind arithmetic over every field
+
+A global percentage MUST apply only to criteria for which percentage-based tolerance is semantically meaningful and supported by a versioned criterion rule.
+
+Examples that may support percentage-based expansion include:
+
+- LOA / length ranges;
+- draft boundaries;
+- displacement boundaries/ranges;
+- price boundaries where market search permits it;
+- other continuous numeric criteria with accepted distance semantics.
+
+A global percentage MUST NOT be blindly applied to:
+
+- material;
+- keel type;
+- rudder type;
+- hull configuration;
+- builder / brand / designer identities;
+- other categorical criteria;
+- calendar year where percentage arithmetic would be nonsensical.
+
+Such criteria may later have their own explicit alternative/discovery semantics, or may remain unaffected by the global flexibility control.
+
+### Optional advanced control
+
+A later advanced UI MAY expose criterion-specific overrides, for example:
+
+```text
+CUSTOM FLEXIBILITY
+
+Length         10%
+Draft           3%
+Displacement    8%
+Price           5%
+Year            +/- 5 years
+```
+
+This is a power-user path and SHOULD NOT be required for the normal search experience.
+
+### Contextual expansion
+
+HullQ MAY also suggest flexibility after evaluating a strict query, especially when the confirmed result set is small.
+
+Example:
+
+```text
+3 confirmed matches
+
+14 more boats are within 5% of your numeric requirements.
+[ Show nearby alternatives ]
+```
+
+A later implementation may go further and explain which Requirement constrains the search most, but any such recommendation must remain deterministic, explainable and subordinate to the original hard query.
+
+## 13. Accepted baseline
 
 The accepted discovery model is:
 
@@ -230,20 +319,24 @@ The accepted discovery model is:
 2. hard semantic qualification and discovery ranking are separate operations;
 3. unknown preference data is not equivalent to a failed preference;
 4. ranking never overrides a hard semantic state;
-5. users may explicitly enable criterion-specific discovery tolerance analogous to a `+/-` date search;
+5. users may explicitly enable discovery tolerance analogous to a `+/-` date search;
 6. tolerance does not change the original Requirement or relabel a `NO_MATCH` as `MATCH`;
 7. near matches must explain the failed Requirement and exact deviation;
 8. tolerance semantics are criterion-specific and deterministic, not a universal opaque similarity percentage;
 9. tolerance cannot be computed from unknown/conflicting values;
-10. saved/replayed queries must preserve strict-vs-tolerant behavior exactly.
+10. saved/replayed queries must preserve strict-vs-tolerant behavior exactly;
+11. the preferred default UX is a **single global flexibility control** rather than per-criterion tolerance controls;
+12. initial UX presets to test are **Strict / 5% / 10%**, with an optional later `Custom`/advanced path;
+13. the global percentage is translated only through eligible criterion-specific rules and is never blindly applied to categorical fields or semantically unsuitable numeric fields;
+14. result presentation should keep **confirmed**, **potential**, and **within-flexibility/near-match** counts visibly distinct.
 
-## 13. Deferred details
+## 14. Deferred details
 
 This baseline does not yet freeze:
 
-- exact UI controls or wording;
-- default tolerance values;
-- whether tolerances are offered globally, per criterion, or both;
+- exact visual styling or final wording of the flexibility control;
+- whether `Custom` ships in the first public version;
+- exact default tolerance eligibility/rule set per numeric criterion;
 - exact preference weights/ranking formula;
 - exact near-match ranking policy;
 - exact public query JSON/schema syntax;
