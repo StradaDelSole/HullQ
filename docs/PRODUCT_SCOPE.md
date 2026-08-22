@@ -67,6 +67,8 @@ Advanced groups: Dimensions; Hull & Construction; Keel / Rudder / Skeg; Rig; Rat
 
 Comparison is a first-class workflow. Transparent presets are acceptable; an opaque generic “Bluewater Score” is not part of the current product.
 
+HullQ's broader brand/UI/UX direction is recorded in `docs/BRAND_UI_UX_DIRECTION.md`. The product should project authority, control, precision and strength while remaining calm and highly usable. **Strong must not become aggressive:** gaming, military/tactical, cyberpunk and macho visual language are explicitly outside the intended identity. Quality and usability remain higher priorities than visual theatre.
+
 
 ## Persistent market watch and monetization
 
