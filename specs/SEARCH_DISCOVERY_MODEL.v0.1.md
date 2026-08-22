@@ -1,7 +1,7 @@
 # HullQ Search Discovery Model v0.1
 
 **Status:** ACCEPTED DECISION BASELINE  
-**Related:** OQ-009, ADR-0012, `specs/SEARCH_SEMANTICS_SPEC.v0.1.md`
+**Related:** OQ-009, ADR-0012, `specs/SEARCH_SEMANTICS_SPEC.v0.1.md`, `specs/SEARCH_RESULT_RANKING_MODEL.v0.1.md`
 
 ## Purpose
 
@@ -47,6 +47,17 @@ UNKNOWN
 
 Preferences may influence deterministic ranking and explanation only after semantic hard-constraint qualification.
 
+HullQ MUST NOT infer that one preference is more important than another merely from its subject matter. Importance comes only from explicit user input.
+
+The accepted default preference-priority model therefore has two simple non-excluding tiers:
+
+```text
+PREFERRED / IMPORTANT
+NICE TO HAVE / BONUS
+```
+
+Final wording remains a UX decision. No finer mandatory weighting scale is part of the default model. Both tiers remain Preferences and therefore never override or weaken hard Requirements.
+
 The product SHOULD expose enough information to explain preference ordering rather than presenting an opaque generic suitability percentage.
 
 Example:
@@ -60,6 +71,8 @@ PREFERENCES
 1 not met
 1 unknown
 ```
+
+Detailed ranking semantics are defined in `specs/SEARCH_RESULT_RANKING_MODEL.v0.1.md`.
 
 ## 3. Hard qualification and discovery ranking are separate operations
 
@@ -319,26 +332,30 @@ The accepted discovery model is:
 2. hard semantic qualification and discovery ranking are separate operations;
 3. unknown preference data is not equivalent to a failed preference;
 4. ranking never overrides a hard semantic state;
-5. users may explicitly enable discovery tolerance analogous to a `+/-` date search;
-6. tolerance does not change the original Requirement or relabel a `NO_MATCH` as `MATCH`;
-7. near matches must explain the failed Requirement and exact deviation;
-8. tolerance semantics are criterion-specific and deterministic, not a universal opaque similarity percentage;
-9. tolerance cannot be computed from unknown/conflicting values;
-10. saved/replayed queries must preserve strict-vs-tolerant behavior exactly;
-11. the preferred default UX is a **single global flexibility control** rather than per-criterion tolerance controls;
-12. initial UX presets to test are **Strict / 5% / 10%**, with an optional later `Custom`/advanced path;
-13. the global percentage is translated only through eligible criterion-specific rules and is never blindly applied to categorical fields or semantically unsuitable numeric fields;
-14. result presentation should keep **confirmed**, **potential**, and **within-flexibility/near-match** counts visibly distinct.
+5. HullQ does not infer relative importance between Preferences unless the user explicitly supplies it;
+6. the default user-controlled preference model uses exactly two simple priority tiers, with final public wording deferred;
+7. users may explicitly enable discovery tolerance analogous to a `+/-` date search;
+8. tolerance does not change the original Requirement or relabel a `NO_MATCH` as `MATCH`;
+9. near matches must explain the failed Requirement and exact deviation;
+10. tolerance semantics are criterion-specific and deterministic, not a universal opaque similarity percentage;
+11. tolerance cannot be computed from unknown/conflicting values;
+12. saved/replayed queries must preserve strict-vs-tolerant behavior exactly;
+13. the preferred default UX is a **single global flexibility control** rather than per-criterion tolerance controls;
+14. initial UX presets to test are **Strict / 5% / 10%**, with an optional later `Custom`/advanced path;
+15. the global percentage is translated only through eligible criterion-specific rules and is never blindly applied to categorical fields or semantically unsuitable numeric fields;
+16. result presentation should keep **confirmed**, **potential**, and **within-flexibility/near-match** counts visibly distinct.
 
 ## 14. Deferred details
 
 This baseline does not yet freeze:
 
 - exact visual styling or final wording of the flexibility control;
+- final public wording for the two preference tiers;
+- exact numerical ranking weights between the two preference tiers;
 - whether `Custom` ships in the first public version;
 - exact default tolerance eligibility/rule set per numeric criterion;
-- exact preference weights/ranking formula;
-- exact near-match ranking policy;
+- exact deterministic ranking/tie-breaker formula beyond `specs/SEARCH_RESULT_RANKING_MODEL.v0.1.md`;
+- exact near-match multi-failure ranking policy;
 - exact public query JSON/schema syntax;
 - categorical alternative sets;
 - pagination or API representation.
