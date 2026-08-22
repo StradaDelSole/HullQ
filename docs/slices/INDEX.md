@@ -25,18 +25,19 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0016 | IMPLEMENTATION | DONE | Canonical Brand/Organization/BoatModel/BoatDesign PostgreSQL persistence + explicit bootstrap-admission boundary | SLICE-0015 accepted / DONE / G3 PASS |
 | SLICE-0017 | IMPLEMENTATION | DONE | Controlled Wikidata Tier-0 identity bootstrap across the first 1,000 direct sailboat-class candidates | SLICE-0016 accepted / DONE |
 | SLICE-0018 | IMPLEMENTATION | DONE | Baseline-preserving Wikidata Tier-0 expansion to the first <=2,500 direct sailboat-class discovery window | SLICE-0017 accepted / DONE |
+| SLICE-0019 | DESIGN_RESEARCH | READY | Global active+historical series-sailboat manufacturer/yard universe + source-yield study | SLICE-0018 accepted / DONE |
 
 ## Current execution rule
 
-There is currently **no READY slice**.
+`SLICE-0019` is the **only READY slice**.
 
-SLICE-0018 is owner-accepted and `DONE`. No SLICE-0019 or other later slice is authorized by this closure merely because SLICE-0018 completed.
+It may start only through the normal isolated `START_SLICE.bat` workflow after the readiness PR containing its contract is merged to `main`.
 
-The next bounded Stage-3 step must first be designed as its own primary slice contract and explicitly moved to `READY` before `START_SLICE.bat` may create a new implementation/research worktree.
+SLICE-0019 is a DESIGN_RESEARCH slice. It does not ingest a new production dataset. It builds an evidence-backed global active+historical manufacturer/yard research registry and measures which source surfaces can credibly extend HullQ beyond the accepted direct-instance Wikidata ceiling.
 
-The accepted SLICE-0018 measurement is an input to that planning decision: the rights-cleared direct-instance Wikidata source returned **1,829** unique sailboat-class QIDs rather than the requested 2,500, so simply increasing the same query limit is not evidence of further coverage.
+The accepted SLICE-0018 measurement remains the input boundary: **1,829** unique direct-instance Wikidata sailboat-class QIDs, **829** expansion-delta candidates and **1,770** accepted combined sparse canonical BoatModels.
 
-No 5,000 rerun, source padding, prior-review resolution campaign, broad technical enrichment, query engine, API, frontend, marketplace or monitoring work is authorized by this closure.
+No 5,000 rerun, new production-source ingestion, broad technical enrichment, review-queue campaign, query engine, API, frontend, marketplace or monitoring work is authorized merely by making SLICE-0019 READY.
 
 ## SLICE-0018 acceptance closure
 
@@ -146,7 +147,7 @@ Accepted Stage-3 bootstrap semantics now include:
 - stable content-derived alias IDs;
 - stable opaque HullQ IDs not derived from QID/name;
 - historical retained QID→HullQ-ID mapping structurally separate from current candidate rows;
-- fail-closed crosswalk conflict detection in both directions before live network use;
+- fail-closed crosswalk conflict detection in both conflict directions before live network use;
 - preserved acquisition timestamp distinct from later recompute time;
 - isolated PostgreSQL replay from migrations zero;
 - exact first-pass, re-import and independent fresh-schema proof;
@@ -336,7 +337,9 @@ controlled Wikidata Tier-0 1,000 bootstrap        DONE — SLICE-0017
         ↓
 baseline-preserving Wikidata <=2,500 expansion    DONE — SLICE-0018
         ↓
-next measured Stage-3 decision                     NOT READY / NOT AUTHORIZED
+global manufacturer/yard universe + source yield  READY — SLICE-0019
+        ↓
+next measured Stage-3 implementation decision      LATER / NOT AUTHORIZED
 ```
 
 ## SLICE-0018 accepted boundary
@@ -359,6 +362,23 @@ The accepted result is:
 
 A later slice must use this measured result as evidence. It must not turn the 2,500 request into an invented 5,000 continuation without a new discovery/source rationale.
 
+## SLICE-0019 boundary
+
+`docs/slices/SLICE-0019-global-series-sailboat-manufacturer-universe-research.md` is the controlling READY contract.
+
+The slice is deliberately limited to research/source mapping:
+
+- build a broad global research registry of series-sailboat manufacturers/yards;
+- include active and historical/defunct/acquired/renamed entities;
+- preserve manufacturer/yard/brand/legal-organization/designer distinctions;
+- retain source provenance and rights/access assessment;
+- measure a 30-entity source-yield sample;
+- estimate where additional model identities and Tier-1/Tier-2 facts can be obtained;
+- compare to accepted HullQ state only where overlap is exact/unambiguous;
+- recommend the next bounded slice without starting it.
+
+It does not create or modify canonical HullQ entities and does not authorize systematic ingestion from any newly researched source.
+
 ## Retained research rules
 
 1. Research independently across the broad useful web only when an assigned research/acquisition slice explicitly authorizes it.
@@ -376,6 +396,6 @@ A later slice must use this measured result as evidence. It must not turn the 2,
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-After this acceptance-closure PR is merged, the project owner may close the SLICE-0018 VS Code window/Claude session/terminals and run `FINISH_SLICE.bat` for SLICE-0018. The script should synchronize `main`, confirm the merged implementation PR and remove the clean local SLICE-0018 worktree/branch.
+After this readiness PR is merged, the project owner may run `START_SLICE.bat` for SLICE-0019. The script must find exactly one primary SLICE-0019 document with `**Status:** READY`, create/reuse the isolated worktree/branch, and copy Claude's assignment.
 
-No `START_SLICE.bat` run for SLICE-0019 should occur until a separate primary SLICE-0019 contract has been designed, reviewed and placed in `READY` state.
+The SLICE-0019 agent must return the slice in `REVIEW`, `BLOCKED` or `IN_PROGRESS` as appropriate and must not mark it `DONE`, create production canonical entities or begin SLICE-0020 automatically.
