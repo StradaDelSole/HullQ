@@ -231,7 +231,7 @@ Accepted failure-class semantics:
 
 - `CONTRACT_GAP` → `BLOCKED`;
 - `VALIDATION_FAILURE` → `HARDEN_FIRST` regardless of percentage;
-- `INSUFFICIENT_RETAINED_FACT` → rate-based and may remain G3-positive within the `<=10%` threshold.
+- `INSUFFICIENT_RETAINED_FACT` → rate-based and may remain G3-positive within the `<=10%` cannot-materialize threshold.
 
 ## SLICE-0014 acceptance closure
 
