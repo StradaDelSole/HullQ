@@ -1,4 +1,4 @@
-# Temporary external builder/model reference
+# Temporary external builder reference
 
 **Status:** temporary, removable research aid only.
 
@@ -20,23 +20,28 @@ Any manufacturer suggested by this reference still requires independent HullQ re
 
 ## Minimized contents
 
-The uploaded source file is deliberately **not** copied verbatim into the repository. The derivative retains only:
+The uploaded source file is deliberately **not** copied verbatim into the repository. It contains 4,250 model rows. For manufacturer-universe gap analysis, the repository derivative is reduced to one row per non-empty raw builder string with only:
 
 - `builder_raw`
-- `boat_model`
-- `first_built`
+- `model_rows` — number of model rows associated with that exact raw builder string
+- `first_year_min` — earliest surfaced first-built year among those rows
+- `first_year_max` — latest surfaced first-built year among those rows
+- `sample_model` — one example model solely to help disambiguate the raw name
 
-Source-identifying URL fields and all technical specification fields are omitted.
+Source-identifying URL fields and technical specifications are omitted.
 
-Current derivative size: **4,250 model rows** representing **2,173 distinct raw builder strings** before normalization/deduplication.
+Current derivative: **2,172 distinct non-empty raw builder strings before normalization/deduplication**.
 
-The rows are split into five CSV shards solely to keep the temporary reference manageable:
+The index is split into eight CSV shards solely to keep the temporary reference manageable:
 
-- `builder_model_year/part-01.csv`
-- `builder_model_year/part-02.csv`
-- `builder_model_year/part-03.csv`
-- `builder_model_year/part-04.csv`
-- `builder_model_year/part-05.csv`
+- `builder_index/part-01.csv`
+- `builder_index/part-02.csv`
+- `builder_index/part-03.csv`
+- `builder_index/part-04.csv`
+- `builder_index/part-05.csv`
+- `builder_index/part-06.csv`
+- `builder_index/part-07.csv`
+- `builder_index/part-08.csv`
 
 ## Removal
 
