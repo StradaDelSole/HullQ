@@ -231,7 +231,7 @@ Accepted failure-class semantics:
 
 - `CONTRACT_GAP` → `BLOCKED`;
 - `VALIDATION_FAILURE` → `HARDEN_FIRST` regardless of percentage;
-- `INSUFFICIENT_RETAINED_FACT` → rate-based and may remain G3-positive within the `<=10%` cannot-materialize threshold.
+- `INSUFFICIENT_RETAINED_FACT` → rate-based and may remain G3-positive within the `<=10%` threshold.
 
 ## SLICE-0014 acceptance closure
 
@@ -267,7 +267,7 @@ SLICE-0013 remains explicitly accepted and `DONE`.
 
 Acceptance evidence:
 
-- final accepted implementation head: `2da1ad19717707f3ec48c0b2f66a756cfc27d52e`;
+- final accepted implementation head: `2da1ad19717707f3ec48c0ebfd6925d5e2fee043`;
 - GitHub Actions CI run #166: PASS on the exact accepted head;
 - PostgreSQL 18 integration: PASS;
 - Ubuntu quality: PASS;
