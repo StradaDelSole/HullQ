@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0018  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 3.2 — measured identity-universe expansion  
 **Depends on:** SLICE-0017 accepted / DONE  
 **Blocks:** any 5,000-window expansion or decision to add another bootstrap source
@@ -620,3 +620,134 @@ The implementation agent MUST:
 - clearly distinguish local evidence from CI-only PostgreSQL/live evidence.
 
 After implementation review and exact-head CI, only the project owner can accept the slice. Closure/readiness for any later slice remains a separate master workflow step.
+
+## Implementation completion report
+
+### Slice
+
+- Slice ID: `SLICE-0018`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+
+### Changes
+
+- Changed files:
+  - `src/hullq/sources/wikidata.py` — `WIKIDATA_BOOTSTRAP_SAFETY_CEILING` raised 1,500 -> 3,000 (shared adapter-level ceiling; SLICE-0017's own requested-limit behavior of 1,000 is untouched).
+  - `src/hullq/bootstrap/wikidata_tier0.py` — `_search_keys_for_candidate` promoted to public `search_keys_for_candidate` (exported); `_build_observation`/`build_bundle` gained an optional `activity_id` parameter defaulting to the original `"SLICE-0017-BOOTSTRAP"` value (zero behavior change for existing callers/tests).
+  - `src/hullq/bootstrap/wikidata_tier0_sl0018.py` (new) — baseline loading/integrity, expansion-delta computation, baseline/delta-vs-delta collision detection, delta classification, SLICE-0018 manifest builder. Reuses `BootstrapCandidate`/`build_admission`/`mint_hullq_id`/`compute_collision_clusters` unchanged.
+  - `scripts/bootstrap/wikidata_tier0_sl0018_runner.py` (new) — `--live`/`--recompute`/`--replay` runner; replay performs baseline-first then delta-second combined PostgreSQL import/verification in two independent isolated schemas.
+  - `research/bootstrap/wikidata/sl0018-2500/manifest_schema.json` (new) — versioned JSON Schema Draft 2020-12 for the SLICE-0018 retained manifest.
+  - `research/bootstrap/wikidata/sl0018-2500/manifest.json` (new, retained artifact from the one authorized live run).
+  - `research/bootstrap/wikidata/sl0018-2500/REPORT.md` (new, generated report).
+  - `.github/workflows/ci.yml` — added SLICE-0018 manifest schema validation, combined replay, zero-tolerance assertion and artifact-upload steps to the existing `db-integration` job, after the unmodified SLICE-0017 steps.
+  - `tests/unit/test_wikidata_tier0_sl0018_expansion.py` (new, 21 tests).
+  - `tests/persistence/test_wikidata_tier0_sl0018_expansion_integration.py` (new, 2 tests).
+- Requirements implemented: the SLICE-0018 contract's expansion-delta computation, baseline-preserving classification, historical-crosswalk reuse, baseline/delta collision handling, versioned manifest, and baseline-first/delta-second combined PostgreSQL replay with drift detection.
+- Tests/fixtures added: the two files above; no existing SLICE-0017 test was modified.
+
+### Validation
+
+- Local validation: `PASS`
+- Commands run:
+  - `uv run python scripts/validate_repository.py`
+  - `uv run ruff format --check .`
+  - `uv run ruff check .`
+  - `uv run mypy src`
+  - `uv run coverage run -m pytest` (full suite, `HULLQ_TEST_DATABASE_URL` set against a local disposable PostgreSQL 18.6 container) then `uv run coverage report`
+  - `uv run pip-audit`
+  - `uv run python scripts/bootstrap/wikidata_tier0_runner.py --replay ...` (accepted SLICE-0017 baseline prerequisite, run standalone)
+  - `uv run python scripts/bootstrap/wikidata_tier0_sl0018_runner.py --replay ...` (SLICE-0018 combined baseline+delta, run standalone after the full test suite finished, to avoid shared-database lock contention)
+  - `uv run python scripts/bootstrap/wikidata_tier0_sl0018_runner.py --live --user-agent "HullQ/0.1 (SLICE-0018 controlled bootstrap; https://github.com/StradaDelSole/HullQ)" --limit 2500` (the one authorized live acquisition)
+  - `uv run python scripts/bootstrap/wikidata_tier0_sl0018_runner.py --recompute` (offline-only, to correct a cosmetic absolute-path field in the manifest's `baseline_reference.manifest_path` after the live run; reused every retained HullQ ID exactly, `acquired_at` preserved verbatim, `classification_recomputed_at` newly set)
+- Results:
+  - repository validator: PASS (88 requirements / 88 acceptance criteria, 27 active schemas)
+  - Ruff format/lint: PASS (206 files)
+  - mypy strict (`src`, 33 files): PASS
+  - full test suite: **1633 passed, 2 skipped** (the 2 skips are pre-existing live-network smoke tests requiring an explicit `--run-live` flag, unrelated to this slice)
+  - `tests/persistence/` alone (PostgreSQL 18.6): **205 passed**, including the 2 new SLICE-0018 integration tests
+  - coverage: **94.96%** overall (gate is `>=90%`); `src/hullq/bootstrap/wikidata_tier0_sl0018.py` **100%**; `src/hullq/bootstrap/wikidata_tier0.py` 96.27% (unchanged pre-existing gaps)
+  - pip-audit: no known vulnerabilities
+  - **one authorized live Wikidata acquisition** (`--live --limit 2500`): unique QIDs returned **1,829** (target of 2,500 **not reached** — this is the measured direct-instance source ceiling for `Q106179098`, per the slice's explicit "measure whether Wikidata reaches the 2,500 target" requirement; no padding from another source was performed); overlap with the accepted 1,000-QID baseline **1,000** (full baseline still present — zero baseline churn); baseline-absent QIDs **0**; expansion delta **829**; delta `AUTO_ADMIT` **805**, `REVIEW_REQUIRED` **16** (6 baseline collisions, 6 delta-delta collision clusters), `NOT_ADMITTED` **8** (`missing_label`); acquisition failures **0**; retained crosswalk after merge **1,772** (967 baseline + 805 new); expected combined canonical BoatModel count after replay **1,770** (965 baseline + 805 delta)
+  - **local combined PostgreSQL 18.6 replay** (`--replay`, standalone, full ~1,800-candidate scale, both isolated schemas): baseline-first import exactly reproduced 985 bundles / 965 admissions with the accepted baseline's exact canonical ID set and zero readback mismatches, in both passes, both before and after delta application (zero baseline drift); combined (baseline+delta) import: **1,806 bundles / 1,770 admissions imported**, 0 already-present/conflict/error/unexpected-status; 0 combined readback mismatches; 0 unexpected canonical rows for non-admitted candidates; exact combined canonical ID set match; 0 stray Brand/Organization/BoatDesign rows; exact re-import idempotency (**3,576 ALREADY_IMPORTED**, 0 conflict/error) in the same schema; independent fresh-schema rerun reproduced the identical combined graph with the same zero counts; **`all_zero_tolerance_conditions_clear: true`** in both the first pass and the independent fresh-schema pass
+  - retained Stage-2 benchmark: not re-run by this slice (out of scope; CI reruns it unmodified as part of the existing `db-integration` job, which this PR does not touch)
+
+### External verification
+
+- Remote CI: `NOT VERIFIED` — the branch has not yet been pushed/observed on GitHub Actions as of this report; push happens immediately after this report is written.
+- Other external gates: `NOT APPLICABLE`
+
+### Findings
+
+- Unresolved findings: none identified during implementation. One self-caught issue was corrected before commit: the freshly live-acquired manifest's `baseline_reference.manifest_path` field initially recorded a developer-machine absolute Windows path; corrected via a code fix (`_repo_relative_path` helper in the runner) plus one offline `--recompute` pass (no network reacquisition; every retained ID/decision reused exactly, `acquired_at` preserved verbatim) so the committed manifest records a portable repo-relative path.
+- Spec/ADR ambiguities: none blocking. The slice's manifest-layout list is a minimum-fields requirement, not an exact schema; the implemented `sl0018-v1` manifest schema is a superset satisfying every listed field (discovery window, baseline reference + fingerprint, overlap/baseline-absent, delta, delta-vs-baseline and delta-vs-delta collision detail, retained crosswalk, counts).
+- Scope deviations: none. No 5,000 expansion, no other bootstrap source, no resolution of the 0017 review queue, no technical enrichment, and no Brand/Organization/BoatDesign inference were introduced.
+
+### Follow-up
+
+- Recommended next action: push this branch, observe exact-head GitHub Actions CI (Ubuntu/Windows quality, dependency audit, and the extended `db-integration` job including the new SLICE-0018 manifest-schema validation + combined-replay + zero-tolerance-assertion steps), then route to independent review and project-owner acceptance per the normal workflow. Do not begin a 5,000-candidate expansion or another bootstrap source; both remain explicitly out of scope for any later slice until a separate slice authorizes them.
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice was not started automatically.
+- The agent has NOT marked this slice `DONE`.
+
+## Correction round — independent review blockers (post PR #37 review)
+
+Independent review of PR #37 (implementation head `5a1ffd32cdcf4e9ae18218c23b41ad2b2dcd487d`) found five blockers. All five are fixed on this same branch, with adversarial regression tests, using only the already-retained SLICE-0018 acquisition (1,829 discovered QIDs / 829-entry delta) replayed offline. **No live Wikidata network request was made during this correction round.**
+
+### Blocker 1 — retained historical crosswalk was not actually historical
+
+- **Defect:** `build_sl0018_manifest()` reconstructed `retained_crosswalk` from `baseline.crosswalk` plus only the *current* delta candidates' own IDs, silently dropping any previously retained SLICE-0018 mapping for a QID absent from the current delta.
+- **Fix:** `build_sl0018_manifest()` gained an explicit `historical_crosswalk` parameter (the full historical registry loaded before the run); the merge is now `historical_crosswalk ∪ current delta mappings`, failing closed via `CrosswalkConflictError` on drift. `run_live_bootstrap`/`recompute_manifest_offline` in the runner now pass their already-computed `historical_crosswalk` through. A new `merge_crosswalks_fail_closed`-based helper (`_load_baseline`) centralizes baseline loading for all three runner entry points.
+- **Regression tests:** `tests/unit/test_wikidata_tier0_sl0018_expansion.py::test_historical_crosswalk_survives_omission_and_reappearance` (exact required transition: baseline {Q1}, prior SLICE-0018 crosswalk additionally {Q9: BM_OLD}, discovery {Q1,Q3} → candidates={Q3} only, retained_crosswalk⊇{Q1,Q3,Q9}, Q9 reappearing later reuses BM_OLD byte-for-byte) and `::test_omitting_historical_crosswalk_param_falls_back_to_baseline_only`; end-to-end runner-level three-run regression `tests/unit/test_wikidata_tier0_sl0018_expansion_runner.py::test_retained_sl0018_id_survives_a_discovery_window_that_omits_it`.
+
+### Blocker 2 — incomplete entity acquisition could silently drop delta QIDs
+
+- **Defect:** `run_live_bootstrap` never verified that `fetch_entities_bootstrap` returned exactly the requested delta QIDs, and unconditionally recorded `acquisition_failure_count=0`. `overlap_count` was derived as `len(discovery) - len(delta_candidates)` instead of directly from QID sets.
+- **Fix:** new pure functions `verify_entity_acquisition_completeness` (runner, before any classification/manifest write) and `verify_delta_candidate_completeness` (inside `build_sl0018_manifest` itself, independent defense-in-depth) both raise the new `DeltaCompletenessError` on any missing/unexpected/duplicate QID, before any manifest is written or overwritten. `acquisition_failure_count=0` is now reached only after that check passes (derived, not asserted). `overlap_count` is now `len(frozenset(discovery_window_qids) & baseline.candidate_qids)`.
+- **Regression tests:** `test_verify_entity_acquisition_completeness_rejects_{missing,unexpected,duplicate}_qid`, `test_build_sl0018_manifest_independently_rejects_truncated_candidate_set`, `test_overlap_count_computed_directly_from_qid_sets_not_delta_length`; runner-level `test_run_live_bootstrap_fails_closed_on_incomplete_entity_acquisition` (discovery delta [Q3,Q4], entity API returns only Q3 → `DeltaCompletenessError`, manifest file not written).
+
+### Blocker 3 — SLICE-0018 window boundary enforcement (<=2,500)
+
+- **Defect:** the runner could forward `--limit` values up to the shared adapter's 3,000 hard safety ceiling; nothing enforced SLICE-0018's own 2,500 bound before a network request.
+- **Fix:** `run_live_bootstrap` rejects `requested_limit > BOOTSTRAP_REQUESTED_LIMIT_SL0018` (2,500) as its first statement, before `import httpx` or any baseline load. `build_sl0018_manifest` independently re-checks the same bound. The shared adapter ceiling remains 3,000 (unchanged). Manifest schema tightened: `requested_limit` `maximum: 2500`, `safety_ceiling` `const: 3000`, `discovery_window_qids` `maxItems: 2500` + `uniqueItems: true`.
+- **Regression tests:** `test_build_sl0018_manifest_rejects_requested_limit_above_2500`, `test_manifest_schema_itself_rejects_requested_limit_above_2500`, `test_manifest_schema_rejects_wrong_safety_ceiling`, `test_manifest_schema_rejects_discovery_window_above_2500_items`; runner-level `test_run_live_bootstrap_rejects_limit_above_2500_before_any_network_use` (WikidataAdapter monkeypatched to raise if ever constructed — proves the rejection precedes network use) and `test_run_live_bootstrap_accepts_limit_at_exactly_2500_boundary`.
+
+### Blocker 4 — baseline integrity check was not exact enough
+
+- **Defect:** `load_baseline_snapshot` compared only `manifest_version`/aggregate counts, never the retained artifact's actual byte content; a payload/QID/label/alias change with unchanged aggregate counts would pass undetected. Duplicate-candidate-QID detection relied implicitly on `set()` insertion (silent for a duplicate row with a *consistent* `hullq_id`) despite a comment claiming explicit detection existed.
+- **Fix:** new pinned constant `ACCEPTED_0017_MANIFEST_SHA256` (the accepted baseline's exact raw-byte SHA256); `load_baseline_snapshot` compares the freshly computed hash against it as the *first*, primary check, before the manifest-version/count diagnostics (retained as secondary diagnostics, not a substitute). `build_baseline_snapshot_from_manifest` now explicitly rejects a duplicate candidate QID (`if qid in candidate_qids: raise BaselineIntegrityError(...)`) rather than relying on set-insertion silence; the misleading comment was corrected.
+- **Regression tests:** `test_load_baseline_snapshot_fails_closed_on_same_count_content_tampering` (exact required regression: tamper only a candidate's label, leaving `manifest_version` and every aggregate count byte-for-byte unchanged — still fails via the fingerprint), `test_load_baseline_snapshot_fails_closed_on_duplicate_candidate_qid`; the three pre-existing tamper tests updated to assert the new sha256-first priority.
+
+### Blocker 5 — retained report lacked required measurements
+
+- **Defect:** the checked-in `REPORT.md` said PostgreSQL replay evidence was "PENDING" despite a local retained replay having already been executed, and omitted several required measurements (historical-crosswalk before/after, minted/reused ID counts, importer status counts, re-import/fresh-schema counts, stray-row counts, PostgreSQL version, retained Stage-2 benchmark recommendation).
+- **Fix:** `_write_live_report` now renders `historical_crosswalk_count_before`/`newly_minted_id_count`/`reused_historical_id_count` (new manifest `counts` fields, with an explicit note on what "this generation pass" means for a recompute vs the original live acquisition) and accepts an optional already-produced `replay_result`/`stage2_benchmark_recommendation` to embed the full PostgreSQL replay evidence (version, first-pass/fresh-schema importer status, re-import idempotency, stray-row counts, zero-tolerance verdict) and the Stage-2 `G3_PASS` recommendation. New reusable offline entry point `write_report_with_replay_evidence` / CLI `--regenerate-report --replay-result <path> --stage2-benchmark-result <path>` — no network or PostgreSQL access performed by this step itself; it only embeds an already-produced result. The checked-in `research/bootstrap/wikidata/sl0018-2500/REPORT.md` was regenerated this way from a fresh local `--replay` run and a fresh local `scripts/benchmark/runner.py` run (see measurements below).
+
+### Structural invariants added while fixing the above
+
+- `classify_delta_candidates` now rejects (via `DeltaCompletenessError`) a baseline QID accidentally supplied as delta input, and rejects a duplicate delta entity QID, before any classification proceeds — regression tests `test_classify_delta_candidates_rejects_accidental_baseline_qid` / `test_classify_delta_candidates_rejects_duplicate_delta_entity_qid`.
+- `build_sl0018_manifest`'s new `verify_delta_candidate_completeness` call guarantees the manifest's `candidates` always equals the true current expansion delta for any successfully written manifest.
+- No existing accepted SLICE-0017 behavior was weakened: `tests/unit/test_wikidata_tier0_bootstrap.py`, `test_wikidata_tier0_bootstrap_runner.py` and `test_wikidata_bootstrap_adapter.py` all still pass unmodified.
+
+### Re-measured evidence (offline; retained acquisition reused, no new network request)
+
+- Live-acquisition facts (unchanged from before this correction round — no reacquisition performed): unique QIDs returned **1,829** (target 2,500 not reached — measured Wikidata direct-instance source ceiling), overlap with accepted 1,000-QID baseline **1,000** (zero baseline churn), expansion delta **829** (AUTO_ADMIT 805 / REVIEW_REQUIRED 16 / NOT_ADMITTED 8).
+- One offline `--recompute` pass was run after the code fixes to regenerate `manifest.json`/`REPORT.md` under the corrected logic (no network access): produced byte-identical decision/ID content to the pre-correction manifest (expected, since this is the first-ever SLICE-0018 run — no prior manifest existed for the historical-crosswalk-survival fix to visibly change).
+- Local combined PostgreSQL 18.6 replay (`--replay`, standalone, full ~1,800-candidate scale, run after all corrections): baseline-first import exactly reproduced 985 bundles / 965 admissions with the accepted baseline's exact canonical ID set and zero readback mismatches, before and after delta application (zero baseline drift); combined import **1,806 bundles / 1,770 admissions**, 0 already-present/conflict/error/unexpected-status; 0 combined readback mismatches; 0 unexpected canonical rows for non-admitted candidates; exact combined canonical ID set match; 0 stray Brand/Organization/BoatDesign rows; exact re-import idempotency (**3,576 ALREADY_IMPORTED**, 0 conflict/error); independent fresh-schema rerun reproduced the identical combined graph; **`all_zero_tolerance_conditions_clear: true`** in both passes.
+- Retained Stage-2 benchmark (`scripts/benchmark/runner.py`, same local PostgreSQL instance): recommendation **`G3_PASS`** (unchanged).
+- Local quality gate: repository validator PASS (88/88); Ruff format/lint PASS (207 files); mypy strict (`src`, 33 files) PASS; full test suite **1656 passed, 2 skipped** (pre-existing `--run-live` smoke tests, unrelated); `tests/persistence/` alone PASS; coverage **94.88%** overall (`wikidata_tier0_sl0018.py` 97.49%); pip-audit no known vulnerabilities.
+
+### Follow-up (correction round)
+
+- Push this branch, observe exact-head GitHub Actions CI on the corrected head, then route to independent re-review and project-owner acceptance. Slice remains `REVIEW`.
+
+### Agent declaration (correction round)
+
+- No live Wikidata network request was made during this correction round; the already-retained 1,829-QID / 829-delta acquisition was reused offline throughout (one `--recompute` pass, one local `--replay`, one local Stage-2 benchmark run, all against already-committed/locally-provisioned PostgreSQL).
+- No work outside the five blockers plus the requested structural invariants was performed.
+- No unverified acceptance criterion was marked as passed.
+- SLICE-0019 or any other slice was not started.
+- The agent has NOT marked this slice `DONE`.

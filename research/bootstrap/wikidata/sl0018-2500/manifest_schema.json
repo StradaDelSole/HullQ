@@ -1,0 +1,303 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/wikidata-tier0-bootstrap-manifest/0018-v1",
+  "title": "HullQ SLICE-0018 Wikidata Tier-0 2,500-Window Expansion Manifest",
+  "description": "Versioned, replayable record of one controlled SLICE-0018 Wikidata Tier-0 baseline-preserving expansion-delta run. `candidates` holds only the current SLICE-0018 expansion delta (current discovery window minus all 1,000 accepted SLICE-0017 baseline candidate QIDs) — never a baseline QID. `retained_crosswalk` is the complete historical QID->HullQ-ID registry (baseline union delta). `baseline_reference` records the exact accepted SLICE-0017 artifact this run used as immutable input. `delta_collisions` separates delta-vs-baseline collisions from delta-vs-delta collisions. Does not contain SailboatData values or unrelated third-party content, and never mutates the accepted SLICE-0017 retained manifest.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "source_id",
+    "generated_at",
+    "acquired_at",
+    "classification_recomputed_at",
+    "requested_limit",
+    "safety_ceiling",
+    "discovery",
+    "baseline_reference",
+    "overlap",
+    "delta",
+    "usage_metrics",
+    "candidates",
+    "retained_crosswalk",
+    "delta_collisions",
+    "counts"
+  ],
+  "properties": {
+    "manifest_version": { "const": "0018-v1" },
+    "source_id": { "type": "string", "minLength": 1 },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this manifest document was most recently (re)written — a live run or an offline recompute both update this."
+    },
+    "acquired_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "The original live Wikidata acquisition timestamp for this SLICE-0018 run. MUST be preserved verbatim across every later offline reclassification; MUST NOT be replaced by a recompute's own timestamp."
+    },
+    "classification_recomputed_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Null for a manifest that has never been offline-reclassified since its original live acquisition. Set to the timestamp of the most recent --recompute pass otherwise."
+    },
+    "requested_limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2500,
+      "description": "SLICE-0018 bounds the current discovery window to at most 2,500, independent of the shared adapter's larger hard safety ceiling."
+    },
+    "safety_ceiling": {
+      "const": 3000,
+      "description": "The fixed shared adapter-level hard safety ceiling contract for this bootstrap family; not itself SLICE-0018's own 2,500 window bound (see requested_limit)."
+    },
+    "discovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unique_qids_returned",
+        "target_reached",
+        "delta_candidates_processed",
+        "fetched_entity_count",
+        "acquisition_failure_count",
+        "sparql_query_version",
+        "sparql_endpoint",
+        "entity_api_endpoint",
+        "entity_api_version",
+        "discovery_window_qids"
+      ],
+      "properties": {
+        "unique_qids_returned": { "type": "integer", "minimum": 0 },
+        "target_reached": { "type": "boolean" },
+        "delta_candidates_processed": { "type": "integer", "minimum": 0 },
+        "fetched_entity_count": { "type": "integer", "minimum": 0 },
+        "acquisition_failure_count": { "type": "integer", "minimum": 0 },
+        "sparql_query_version": { "type": "string", "minLength": 1 },
+        "sparql_endpoint": { "type": "string", "minLength": 1 },
+        "entity_api_endpoint": { "type": "string", "minLength": 1 },
+        "entity_api_version": { "type": "string", "minLength": 1 },
+        "discovery_window_qids": {
+          "type": "array",
+          "maxItems": 2500,
+          "uniqueItems": true,
+          "description": "The complete deterministic ordered current discovery window (<=2,500 unique QIDs), retained for full replay-auditability of overlap/delta/baseline-absent computations.",
+          "items": { "type": "string", "pattern": "^Q[1-9][0-9]*$" }
+        }
+      }
+    },
+    "baseline_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest_path", "manifest_version", "sha256", "implementation_head", "candidate_count"],
+      "properties": {
+        "manifest_path": { "type": "string", "minLength": 1 },
+        "manifest_version": { "const": "0017-v4" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "implementation_head": { "type": "string", "minLength": 1 },
+        "candidate_count": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "overlap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overlap_count", "baseline_absent_count", "baseline_absent_qids"],
+      "properties": {
+        "overlap_count": { "type": "integer", "minimum": 0 },
+        "baseline_absent_count": { "type": "integer", "minimum": 0 },
+        "baseline_absent_qids": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^Q[1-9][0-9]*$" }
+        }
+      }
+    },
+    "delta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["delta_count"],
+      "properties": {
+        "delta_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "usage_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["retrieval_count", "extracted_record_count"],
+      "properties": {
+        "retrieval_count": { "type": "integer", "minimum": 0 },
+        "extracted_record_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "description": "Only the current SLICE-0018 expansion delta. Never includes a baseline QID and never a QID carried forward merely because an earlier SLICE-0018 run once classified it outside the current discovery window.",
+      "items": { "$ref": "#/$defs/candidate" }
+    },
+    "retained_crosswalk": {
+      "type": "array",
+      "description": "The complete historical QID -> HullQ-ID registry: the accepted SLICE-0017 baseline crosswalk merged with this run's delta mappings. A QID absent from the current delta remains here so it is never silently reminted if it reappears in a later run.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["qid", "hullq_id"],
+        "properties": {
+          "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+          "hullq_id": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "delta_collisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseline", "delta_delta"],
+      "properties": {
+        "baseline": {
+          "type": "array",
+          "description": "Delta candidates whose deterministic search-key projection collided with the retained accepted SLICE-0017 baseline search-key space (admitted or review-bound baseline candidates alike).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["delta_qid", "baseline_qids", "shared_keys"],
+            "properties": {
+              "delta_qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+              "baseline_qids": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "type": "string", "pattern": "^Q[1-9][0-9]*$" }
+              },
+              "shared_keys": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "type": "string" }
+              }
+            }
+          }
+        },
+        "delta_delta": {
+          "type": "array",
+          "description": "Complete transitive same-search-key collision clusters formed entirely within the current SLICE-0018 delta.",
+          "items": { "$ref": "#/$defs/collision_cluster" }
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "delta_candidates_processed",
+        "auto_admit",
+        "review_required",
+        "not_admitted",
+        "reason_breakdown",
+        "baseline_collision_count",
+        "delta_delta_collision_cluster_count",
+        "historical_crosswalk_count_before",
+        "retained_crosswalk_count",
+        "newly_minted_id_count",
+        "reused_historical_id_count",
+        "research_observation_count",
+        "canonical_evidence_link_count",
+        "combined_canonical_boat_model_count_expected"
+      ],
+      "properties": {
+        "delta_candidates_processed": { "type": "integer", "minimum": 0 },
+        "auto_admit": { "type": "integer", "minimum": 0 },
+        "review_required": { "type": "integer", "minimum": 0 },
+        "not_admitted": { "type": "integer", "minimum": 0 },
+        "reason_breakdown": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "baseline_collision_count": { "type": "integer", "minimum": 0 },
+        "delta_delta_collision_cluster_count": { "type": "integer", "minimum": 0 },
+        "historical_crosswalk_count_before": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The full historical QID->HullQ-ID registry size (accepted SLICE-0017 baseline crosswalk merged with every previously retained SLICE-0018 mapping) BEFORE this run's own delta mappings are added."
+        },
+        "retained_crosswalk_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The full historical registry size AFTER merging this run's delta mappings."
+        },
+        "newly_minted_id_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Delta candidates that received a freshly minted HullQ ID this run (QID absent from the historical crosswalk before this run)."
+        },
+        "reused_historical_id_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Delta candidates that reused an already-retained historical HullQ ID exactly (QID present in the historical crosswalk before this run)."
+        },
+        "research_observation_count": { "type": "integer", "minimum": 0 },
+        "canonical_evidence_link_count": { "type": "integer", "minimum": 0 },
+        "combined_canonical_boat_model_count_expected": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "965 accepted SLICE-0017 baseline admissions plus this run's delta auto_admit count."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "qid",
+        "retrieved_at",
+        "preferred_label",
+        "aliases",
+        "hullq_id",
+        "decision",
+        "reason_codes",
+        "observation_id",
+        "bundle_id",
+        "bundle_version",
+        "evidence_link_id"
+      ],
+      "properties": {
+        "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+        "retrieved_at": { "type": "string", "format": "date-time" },
+        "preferred_label": { "type": ["string", "null"] },
+        "aliases": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "hullq_id": { "type": ["string", "null"] },
+        "decision": {
+          "type": "string",
+          "enum": ["auto_admit", "review_required", "not_admitted"]
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["ok", "missing_label", "name_collision", "crosswalk_conflict"]
+          }
+        },
+        "observation_id": { "type": ["string", "null"] },
+        "bundle_id": { "type": ["string", "null"] },
+        "bundle_version": { "type": ["string", "null"] },
+        "evidence_link_id": { "type": ["string", "null"] }
+      }
+    },
+    "collision_cluster": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["qids", "shared_keys"],
+      "properties": {
+        "qids": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "type": "string", "pattern": "^Q[1-9][0-9]*$" }
+        },
+        "shared_keys": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}
