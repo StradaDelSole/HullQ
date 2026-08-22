@@ -126,3 +126,19 @@ Public industry evidence shows both material concentration among major marine ma
 This opportunity is explicitly **not current scope**. It does not alter the accepted Free / Plus / Pro buyer-side thesis, authorize marketplace implementation, or set dealer prices. It should be revisited only after HullQ has a sufficiently broad canonical universe, a working technical query product, measurable buyer intent and at least one permitted market-access path.
 
 Acquisition by an incumbent is retained only as optional strategic upside. HullQ MUST NOT make early product or architecture decisions on the assumption that an incumbent will acquire the project.
+
+## 9. Deferred merchandise / physical brand-extension hypothesis
+
+A small HullQ merchandise shop is retained as a **later, low-priority brand/community extension**, not as a core revenue pillar and not as current implementation scope.
+
+The preferred direction is deliberately narrow and low-maintenance:
+
+- high-quality, restrained apparel or headwear rather than generic novelty sailing merchandise;
+- stickers and a small number of practical marine-adjacent items where they fit the brand;
+- especially HullQ-native technical prints/posters derived from the product's own design and data language, such as model profiles, construction/configuration typologies or well-designed data visualizations;
+- print-on-demand or external fulfilment wherever practical;
+- no inventory-heavy retail operation, warehousing or fulfilment burden unless later demand clearly justifies it.
+
+The strategic purpose is primarily **brand affinity, community identity and modest ancillary revenue**. Even small revenue can be worthwhile if operational cost and maintenance remain negligible.
+
+The sequencing guardrail is explicit: **quality and usability of the HullQ core product come first**. A merchandise shop should only be considered once HullQ has an actual audience and recognizable product/brand identity. Merchandise work MUST NOT delay canonical data quality, the query/search product, market integration or other core product milestones.
