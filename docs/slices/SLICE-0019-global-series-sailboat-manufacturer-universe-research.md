@@ -17,9 +17,11 @@ Before another ingestion implementation is authorized, HullQ needs a structured 
 
 ## Objective
 
-Build a broad, evidence-backed **research registry of global series-sailboat manufacturers/yards — active and historical — and measure the next viable source paths for HullQ identity expansion and technical enrichment.**
+Build the **first bounded global research wave** of a series-sailboat manufacturer/yard universe — active and historical — and measure the next viable source paths for HullQ identity expansion and technical enrichment.
 
 This is a research/source-mapping slice. It does **not** create canonical Brand, Organization, BoatModel or BoatDesign rows and does not ingest a new production dataset.
+
+The long-term coverage direction is global. This slice is deliberately not an attempt to finish the complete global manufacturer universe in one Claude session.
 
 ## Core semantic rule
 
@@ -73,7 +75,7 @@ Historical entities are first-class. HullQ's useful market/design universe is no
 
 ## Coverage target vs completeness claim
 
-The long-term product target is global coverage. **SLICE-0019 must not claim that a finite research pass has found every manufacturer.**
+The long-term product target is global coverage. **SLICE-0019 must not claim that this bounded research wave has found every manufacturer.**
 
 The retained outputs must explicitly distinguish:
 
@@ -180,21 +182,27 @@ The report must summarize at least:
 - notable geographic/historical coverage gaps;
 - a measured recommendation for the **next bounded slice**, without starting it.
 
-## Minimum breadth floors
+## Bounded breadth target
 
-The research should attempt to reach all of the following without padding weak records:
+This is a **first global research wave**, not an unbounded collection exercise.
 
-- **>=250 verified eligible manufacturer/yard research records**;
-- **>=25 countries** represented;
+Target a retained registry of approximately **120–160 verified eligible manufacturer/yard research records**. The slice should stop expanding the count once the minimum evidence/coverage floors and source-yield study below are satisfied; it must not continue toward 250, 500 or “all manufacturers” merely to maximize the number.
+
+Minimum floors:
+
+- **>=120 verified eligible manufacturer/yard research records**;
+- **>=20 countries** represented;
 - coverage across at least **5 geographic macro-regions**;
-- **>=75 historical/defunct/acquired/renamed** eligible records;
-- **>=40** entities with a verified official or recognized model/heritage archive surface.
+- **>=40 historical/defunct/acquired/renamed** eligible records;
+- **>=25** entities with a verified official or recognized model/heritage archive surface.
 
 These are breadth floors, not permission to lower evidence quality. If a floor cannot be reached with defensible evidence during the bounded slice, retain the actual result and return `BLOCKED` or `REVIEW` with the precise gap rather than fabricating or padding entries.
 
+If a high-quality discovery source yields more than 160 eligible names cheaply, additional candidates may be retained as `discovered` leads, but deep verification beyond the bounded verified wave is not required by this slice.
+
 ## Source-yield study
 
-From the registry, select a deliberately varied **30-entity source-yield sample** covering:
+From the verified registry, select a deliberately varied **20-entity source-yield sample** covering:
 
 - active and historical manufacturers;
 - high-volume and specialist builders;
@@ -262,8 +270,8 @@ SLICE-0019 is acceptance-ready only when all of the following are true:
 5. relationships such as acquisition/renaming/production transfer are evidence-backed or explicitly unknown;
 6. source references and retrieval dates are retained;
 7. later systematic-use rights/access are assessed separately from mere public readability;
-8. the minimum breadth floors are met, or the slice explicitly reports the unmet floor without padding;
-9. the 30-entity source-yield study is complete and reproducible from cited evidence;
+8. the bounded minimum breadth floors are met, or the slice explicitly reports the unmet floor without padding;
+9. the 20-entity source-yield study is complete and reproducible from cited evidence;
 10. overlap with existing HullQ identities is exact/unambiguous only — no forced fuzzy crosswalk;
 11. no production canonical entity rows or IDs are created/modified;
 12. no SailboatData value is used as HullQ production evidence;
@@ -276,6 +284,7 @@ SLICE-0019 is acceptance-ready only when all of the following are true:
 
 SLICE-0019 does **not** authorize:
 
+- completing the entire global manufacturer universe in one slice;
 - canonical Brand/Organization creation;
 - canonical BoatModel/BoatDesign admission;
 - remapping or resolving the accepted SLICE-0017/0018 review queues;
@@ -294,4 +303,4 @@ SLICE-0019 does **not** authorize:
 
 Run this slice through the normal isolated worktree workflow. The research agent may use web research necessary to complete the evidence package, subject to the rights/access rules above. Preserve exact source URLs and retrieval dates. Prefer quality and traceability over superficially maximizing record count.
 
-The completion report must state the exact pushed HEAD SHA, changed files, validation/tests, registry counts, breadth-floor results, 30-entity yield-study summary, rights/access findings, unresolved gaps and the recommended next bounded slice.
+The completion report must state the exact pushed HEAD SHA, changed files, validation/tests, registry counts, breadth-floor results, 20-entity yield-study summary, rights/access findings, unresolved gaps and the recommended next bounded slice.
