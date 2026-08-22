@@ -372,7 +372,7 @@ The slice is deliberately limited to research/source mapping:
 - include active and historical/defunct/acquired/renamed entities;
 - preserve manufacturer/yard/brand/legal-organization/designer distinctions;
 - retain source provenance and rights/access assessment;
-- measure a 30-entity source-yield sample;
+- measure a 20-entity source-yield sample;
 - estimate where additional model identities and Tier-1/Tier-2 facts can be obtained;
 - compare to accepted HullQ state only where overlap is exact/unambiguous;
 - recommend the next bounded slice without starting it.
