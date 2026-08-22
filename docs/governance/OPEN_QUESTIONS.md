@@ -14,7 +14,7 @@ This register is canonical for unresolved project decisions. Existing legacy `D-
 | OQ-006 | D-006 | Alert cadence, freshness and cache TTL policy | DEFERRED | Before automated alerts | alert/freshness spec |
 | OQ-007 | D-007 | Required source licensing/rights metadata | DECIDED | Before open-data bootstrap ingestion | `specs/SOURCE_SCHEMA.v0.2.json` + `specs/SOURCE_RIGHTS_POLICY.v0.1.md` + ADR-0005 |
 | OQ-008 | D-008 | Final frontend technology | DECIDED | Before frontend implementation | ADR-0010 + `docs/engineering/APPLICATION_STACK_BASELINE.v0.1.md`: Astro + TypeScript; selective React islands only where state complexity justifies them |
-| OQ-009 | — | Persisted/derived coverage tiers and unknown-data search semantics | OPEN | Before query engine implementation | search semantics spec + tests |
+| OQ-009 | — | Persisted/derived coverage tiers and unknown-data search semantics | DECIDED | Before query engine implementation | `specs/SEARCH_SEMANTICS_SPEC.v0.1.md` + ADR-0012; executable query contract/golden tests follow in the bounded query-engine slice |
 | OQ-010 | — | Python/data-pipeline runtime, dependency and tooling baseline | DECIDED | Before first pipeline code | `docs/engineering/PYTHON_TOOLCHAIN_BASELINE.v0.1.md` + ADR-0009; repository bootstrap follows as Stage 0.3 |
 | OQ-011 | — | Application/backend architecture and whether Strapi remains appropriate | DECIDED | Before application backend implementation | ADR-0010 + application stack baseline: CPython 3.14/FastAPI; Strapi not selected |
 | OQ-012 | — | Database/search persistence technology and indexing strategy | DECIDED | Before production persistence/query implementation | ADR-0010 + application stack baseline: PostgreSQL initial production persistence; no dedicated search engine until measured need |
@@ -33,12 +33,14 @@ The next work SHOULD proceed in this order:
 1. complete/review the canonical contract runtime (`SLICE-0003`);
 2. continue the evidence-derived Stage-2 normalization/provenance/derived/research-job slices in bounded order;
 3. implement and then measure the 50–100-design benchmark;
-4. resolve `OQ-009` unknown-data search semantics before query-engine code;
+4. preserve the accepted OQ-009 epistemic search baseline and implement it only through a dedicated bounded query-engine slice;
 5. introduce production persistence/API/frontend only through their dedicated slices even though the target stack is now accepted.
 
 The application stack was intentionally resolved early on 2026-08-18 to prevent divergent frontend/backend/persistence assumptions while domain code is being built. **ADR-0010 does not authorize premature frontend, PostgreSQL, FastAPI, deployment, account or alert implementation outside an assigned slice.**
 
 The design-data source research in SLICE-0002 is intentionally not represented as a single OQ: it is evidence-gathering work across multiple candidate sources governed by the already accepted OQ-007 source-rights model. Any genuine unresolved semantic/legal/architecture question discovered by that research must become an explicit OQ rather than being solved silently.
+
+`OQ-009` is decided by `specs/SEARCH_SEMANTICS_SPEC.v0.1.md` and ADR-0012. The accepted baseline is three-state epistemic hard-criterion evaluation (`MATCH`, `NO_MATCH`, `INSUFFICIENT_DATA`), decisive confirmed hard failures, configuration-aware evaluation, ranking subordinate to semantic state, and separation of market presence from technical-query confirmation. Exact query grammar, soft-preference semantics, near-miss exploration and ranking weights remain later bounded implementation/design details that must preserve that baseline.
 
 `OQ-019` is not a pre-domain-code gate. If a consolidated persistence-neutral logical model becomes useful before the physical PostgreSQL schema is implemented, resolve it then; do not create one merely because PostgreSQL is now the accepted production technology.
 
