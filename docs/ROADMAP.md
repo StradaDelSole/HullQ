@@ -58,6 +58,8 @@ Track real-market identification/enrichment coverage as a major KPI while also t
 
 Search Architecture and SEO are part of product architecture under ADR-0007. Before the public frontend/search surface, resolve OQ-018 so URL/indexation/faceted-navigation/rendering semantics are designed alongside the query UX rather than retrofitted later.
 
+The visual/product-system direction is retained in `docs/BRAND_UI_UX_DIRECTION.md`: HullQ should project authority, precision, control and strength while remaining calm, accessible and highly usable. Strength must not be expressed through aggressive, gaming, military/tactical or macho aesthetics.
+
 Build the core product against a sufficiently broad database universe:
 
 - curated canonical filters
