@@ -147,7 +147,7 @@ Accepted Stage-3 bootstrap semantics now include:
 - stable content-derived alias IDs;
 - stable opaque HullQ IDs not derived from QID/name;
 - historical retained QID→HullQ-ID mapping structurally separate from current candidate rows;
-- fail-closed crosswalk conflict detection in both conflict directions before live network use;
+- fail-closed crosswalk conflict detection in both directions before live network use;
 - preserved acquisition timestamp distinct from later recompute time;
 - isolated PostgreSQL replay from migrations zero;
 - exact first-pass, re-import and independent fresh-schema proof;
