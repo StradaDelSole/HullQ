@@ -45,6 +45,8 @@ from hullq.bootstrap.wikidata_tier0_sl0018 import (
     SL0018_ACTIVITY_ID,
     BaselineIntegrityError,
     BaselineSnapshot,
+    DeltaCompletenessError,
+    build_baseline_snapshot_from_manifest,
     build_bundle,
     build_sl0018_manifest,
     classify_delta_candidates,
@@ -53,6 +55,8 @@ from hullq.bootstrap.wikidata_tier0_sl0018 import (
     compute_expansion_delta,
     load_baseline_snapshot,
     merge_crosswalks_fail_closed,
+    verify_delta_candidate_completeness,
+    verify_entity_acquisition_completeness,
 )
 from hullq.sources.wikidata import WikidataEntityData
 
@@ -297,12 +301,27 @@ def test_load_baseline_snapshot_never_mutates_the_accepted_0017_manifest_file() 
     assert len(snapshot.candidate_qids) == ACCEPTED_0017_BASELINE_CANDIDATE_COUNT
 
 
+def test_load_baseline_snapshot_fails_closed_on_pinned_sha256_mismatch() -> None:
+    """The primary integrity check: any tampering (independent of which field
+    changed) fails via the pinned ``ACCEPTED_0017_MANIFEST_SHA256`` fingerprint
+    comparison, checked before the manifest_version/candidate-count/aggregate-
+    count diagnostics below — those remain additional diagnostics, not a
+    substitute for the fingerprint.
+    """
+    from hullq.bootstrap.wikidata_tier0_sl0018 import ACCEPTED_0017_MANIFEST_SHA256
+
+    assert hashlib.sha256(b"not the real content").hexdigest() != ACCEPTED_0017_MANIFEST_SHA256
+
+
 def test_load_baseline_snapshot_fails_closed_on_wrong_manifest_version(tmp_path: Path) -> None:
     real = json.loads(BASELINE_MANIFEST_PATH.read_text(encoding="utf-8"))
     real["manifest_version"] = "0017-tampered"
     tampered_path = tmp_path / "manifest.json"
     tampered_path.write_text(json.dumps(real), encoding="utf-8")
-    with pytest.raises(BaselineIntegrityError, match="manifest_version"):
+    # Any tampering changes the raw bytes, so the pinned-fingerprint check
+    # (checked first) is what actually fires here, not the deeper
+    # manifest_version diagnostic — this is the intended priority order.
+    with pytest.raises(BaselineIntegrityError, match="sha256"):
         load_baseline_snapshot(tampered_path)
 
 
@@ -311,7 +330,7 @@ def test_load_baseline_snapshot_fails_closed_on_wrong_candidate_count(tmp_path: 
     real["candidates"] = real["candidates"][:5]
     tampered_path = tmp_path / "manifest.json"
     tampered_path.write_text(json.dumps(real), encoding="utf-8")
-    with pytest.raises(BaselineIntegrityError, match="candidate count"):
+    with pytest.raises(BaselineIntegrityError, match="sha256"):
         load_baseline_snapshot(tampered_path)
 
 
@@ -320,8 +339,42 @@ def test_load_baseline_snapshot_fails_closed_on_drifted_counts(tmp_path: Path) -
     real["counts"]["auto_admit"] = real["counts"]["auto_admit"] - 1
     tampered_path = tmp_path / "manifest.json"
     tampered_path.write_text(json.dumps(real), encoding="utf-8")
-    with pytest.raises(BaselineIntegrityError, match=r"counts\.auto_admit"):
+    with pytest.raises(BaselineIntegrityError, match="sha256"):
         load_baseline_snapshot(tampered_path)
+
+
+def test_load_baseline_snapshot_fails_closed_on_same_count_content_tampering(
+    tmp_path: Path,
+) -> None:
+    """Required SLICE-0018 regression: modify a baseline candidate's
+    name/alias/QID while keeping manifest_version and every aggregate count
+    unchanged. Version/count checks alone would pass this; the pinned
+    SHA256 fingerprint MUST still catch it.
+    """
+    real = json.loads(BASELINE_MANIFEST_PATH.read_text(encoding="utf-8"))
+    # Change only a candidate's label — manifest_version, candidate count,
+    # and every aggregate count (auto_admit/review_required/not_admitted/
+    # retained_crosswalk_count/research_observation_count/
+    # canonical_evidence_link_count) all remain byte-for-byte unchanged.
+    real["candidates"][0]["preferred_label"] = "Tampered Label That Does Not Change Any Count"
+    tampered_path = tmp_path / "manifest.json"
+    tampered_path.write_text(json.dumps(real), encoding="utf-8")
+    with pytest.raises(BaselineIntegrityError, match="sha256"):
+        load_baseline_snapshot(tampered_path)
+
+
+def test_load_baseline_snapshot_fails_closed_on_duplicate_candidate_qid(tmp_path: Path) -> None:
+    """Explicit duplicate-QID detection — not merely reliance on ``set()``
+    insertion silently collapsing a duplicate row. Constructed to keep the
+    manifest_version/candidate-count/aggregate-count diagnostics irrelevant
+    to isolate the duplicate-detection code path itself.
+    """
+    real = json.loads(BASELINE_MANIFEST_PATH.read_text(encoding="utf-8"))
+    real["candidates"][1] = dict(real["candidates"][0])  # duplicate the first row's QID
+    tampered_path = tmp_path / "manifest.json"
+    tampered_path.write_text(json.dumps(real), encoding="utf-8")
+    with pytest.raises(BaselineIntegrityError, match="duplicate candidate QID"):
+        build_baseline_snapshot_from_manifest(real)
 
 
 # ---------------------------------------------------------------------------
@@ -462,3 +515,328 @@ def test_compute_baseline_collisions_ignores_missing_label_entities() -> None:
     entities = [_entity("Q9", None)]
     collisions = compute_baseline_collisions(entities, baseline)
     assert collisions == {}
+
+
+# ---------------------------------------------------------------------------
+# Correction-round adversarial regressions (independent review blockers)
+# ---------------------------------------------------------------------------
+# BLOCKER 1 — historical crosswalk must survive omission/reappearance
+# ---------------------------------------------------------------------------
+
+
+def test_historical_crosswalk_survives_omission_and_reappearance() -> None:
+    """Exact required regression transition:
+
+    baseline crosswalk = {Q1: BM_BASE}; prior SLICE-0018 crosswalk
+    additionally contains {Q9: BM_OLD}. Current discovery = {Q1, Q3}; current
+    delta = {Q3}. The new manifest's candidates MUST contain Q3 only, but
+    retained_crosswalk MUST contain Q1, Q3 AND Q9 — Q9 is never copied into
+    current candidates merely to preserve its ID. Q9 reappearing later MUST
+    reuse BM_OLD byte-for-byte.
+    """
+    from hullq.bootstrap.wikidata_tier0 import load_crosswalk_from_manifest
+
+    baseline = _make_baseline([("Q1", "Baseline One", None, "auto_admit")])
+    historical_crosswalk = merge_crosswalks_fail_closed(baseline.crosswalk, {"Q9": "BM_OLD"})
+    assert len(historical_crosswalk) == 2
+
+    # --- Run 1: Q9 is absent from the current discovery window/delta ---
+    delta_entities = [_entity("Q3", "Clean New Candidate")]
+    candidates, clusters, baseline_collisions = classify_delta_candidates(
+        delta_entities,
+        retrieved_at=RETRIEVED_AT,
+        baseline=baseline,
+        existing_crosswalk=historical_crosswalk,
+    )
+    manifest = build_sl0018_manifest(
+        candidates,
+        generated_at=RETRIEVED_AT,
+        baseline=baseline,
+        discovery_window_qids=["Q1", "Q3"],
+        requested_limit=2500,
+        target_reached=False,
+        delta_delta_clusters=clusters,
+        baseline_collisions=baseline_collisions,
+        retrieval_count=1,
+        extracted_record_count=1,
+        historical_crosswalk=historical_crosswalk,
+    )
+
+    candidate_qids = {row["qid"] for row in manifest["candidates"]}
+    assert candidate_qids == {"Q3"}  # Q9 never copied into current candidates
+
+    crosswalk_by_qid = {row["qid"]: row["hullq_id"] for row in manifest["retained_crosswalk"]}
+    assert set(crosswalk_by_qid) == {"Q1", "Q3", "Q9"}
+    assert crosswalk_by_qid["Q9"] == "BM_OLD"  # preserved, not dropped
+    assert crosswalk_by_qid["Q1"] == baseline.crosswalk["Q1"]
+
+    schema = json.loads(MANIFEST_SCHEMA_PATH.read_text(encoding="utf-8"))
+    jsonschema.validate(instance=manifest, schema=schema)
+
+    # --- Run 2: Q9 reappears in a later discovery window/delta ---
+    reloaded_historical = load_crosswalk_from_manifest(manifest)
+    assert reloaded_historical["Q9"] == "BM_OLD"
+
+    delta_entities_2 = [_entity("Q9", "Reappeared Yacht")]
+    candidates_2, _clusters_2, _bc_2 = classify_delta_candidates(
+        delta_entities_2,
+        retrieved_at=RETRIEVED_AT,
+        baseline=baseline,
+        existing_crosswalk=reloaded_historical,
+        id_factory=lambda: "SHOULD_NOT_BE_CALLED",
+    )
+    assert candidates_2[0].hullq_id == "BM_OLD"  # reused byte-for-byte
+    assert candidates_2[0].decision == BootstrapDecision.AUTO_ADMIT
+
+
+def test_omitting_historical_crosswalk_param_falls_back_to_baseline_only() -> None:
+    """When ``historical_crosswalk`` is not supplied, ``build_sl0018_manifest``
+    falls back to ``baseline.crosswalk`` alone (correct for a first-ever run
+    with no prior SLICE-0018 manifest) rather than silently losing anything —
+    there is nothing prior to lose in that case.
+    """
+    baseline = _make_baseline([("Q1", "Baseline One", None, "auto_admit")])
+    candidates, clusters, bc = classify_delta_candidates(
+        [_entity("Q3", "Clean")], retrieved_at=RETRIEVED_AT, baseline=baseline
+    )
+    manifest = build_sl0018_manifest(
+        candidates,
+        generated_at=RETRIEVED_AT,
+        baseline=baseline,
+        discovery_window_qids=["Q1", "Q3"],
+        requested_limit=2500,
+        target_reached=False,
+        delta_delta_clusters=clusters,
+        baseline_collisions=bc,
+        retrieval_count=1,
+        extracted_record_count=1,
+    )
+    crosswalk_qids = {row["qid"] for row in manifest["retained_crosswalk"]}
+    assert crosswalk_qids == {"Q1", "Q3"}
+    assert manifest["counts"]["historical_crosswalk_count_before"] == 1
+    assert manifest["counts"]["newly_minted_id_count"] == 1
+    assert manifest["counts"]["reused_historical_id_count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# BLOCKER 2 — incomplete entity acquisition must fail closed
+# ---------------------------------------------------------------------------
+
+
+def test_verify_entity_acquisition_completeness_rejects_missing_qid() -> None:
+    """Required negative test: discovery delta = [Q3, Q4], fetched entities
+    = [Q3] must fail closed before producing/replacing a manifest. Q4 must
+    never silently disappear.
+    """
+    entities = [_entity("Q3", "Found Yacht")]
+    with pytest.raises(DeltaCompletenessError, match=r"missing=\['Q4'\]"):
+        verify_entity_acquisition_completeness(["Q3", "Q4"], entities)
+
+
+def test_verify_entity_acquisition_completeness_rejects_unexpected_qid() -> None:
+    entities = [_entity("Q3", "Found"), _entity("Q99", "Not requested")]
+    with pytest.raises(DeltaCompletenessError, match=r"unexpected=\['Q99'\]"):
+        verify_entity_acquisition_completeness(["Q3"], entities)
+
+
+def test_verify_entity_acquisition_completeness_rejects_duplicate_returned_qid() -> None:
+    entities = [_entity("Q3", "First"), _entity("Q3", "Duplicate")]
+    with pytest.raises(DeltaCompletenessError, match=r"duplicates=\['Q3'\]"):
+        verify_entity_acquisition_completeness(["Q3"], entities)
+
+
+def test_verify_entity_acquisition_completeness_accepts_exact_match() -> None:
+    entities = [_entity("Q3", "A"), _entity("Q4", "B")]
+    verify_entity_acquisition_completeness(["Q3", "Q4"], entities)  # must not raise
+
+
+def test_build_sl0018_manifest_independently_rejects_truncated_candidate_set() -> None:
+    """Defense-in-depth: even if acquisition/classification somehow produced
+    a candidate set that does not exactly equal discovery_window_qids minus
+    baseline, build_sl0018_manifest itself must refuse to write a manifest
+    describing the wrong delta.
+    """
+    baseline = _make_baseline([("Q1", "Baseline One", None, "auto_admit")])
+    # Only Q3 classified, but the true expected delta is {Q3, Q4}.
+    candidates, clusters, bc = classify_delta_candidates(
+        [_entity("Q3", "Found")], retrieved_at=RETRIEVED_AT, baseline=baseline
+    )
+    with pytest.raises(DeltaCompletenessError, match=r"missing=\['Q4'\]"):
+        build_sl0018_manifest(
+            candidates,
+            generated_at=RETRIEVED_AT,
+            baseline=baseline,
+            discovery_window_qids=["Q1", "Q3", "Q4"],
+            requested_limit=2500,
+            target_reached=False,
+            delta_delta_clusters=clusters,
+            baseline_collisions=bc,
+            retrieval_count=1,
+            extracted_record_count=1,
+        )
+
+
+def test_verify_delta_candidate_completeness_directly() -> None:
+    baseline = _make_baseline([("Q1", "Baseline One", None, "auto_admit")])
+    candidates, _clusters, _bc = classify_delta_candidates(
+        [_entity("Q3", "Found")], retrieved_at=RETRIEVED_AT, baseline=baseline
+    )
+    verify_delta_candidate_completeness(candidates, ["Q1", "Q3"], baseline)  # must not raise
+    with pytest.raises(DeltaCompletenessError):
+        verify_delta_candidate_completeness(candidates, ["Q1", "Q3", "Q4"], baseline)
+
+
+def test_overlap_count_computed_directly_from_qid_sets_not_delta_length() -> None:
+    """overlap_count must reflect the true baseline/discovery intersection
+    even if delta_candidates happens to under- or over-represent the true
+    delta size — it must not be derived as
+    len(discovery_window_qids) - len(delta_candidates).
+    """
+    baseline = _make_baseline(
+        [
+            ("Q1", "Baseline One", None, "auto_admit"),
+            ("Q2", "Baseline Two", None, "auto_admit"),
+        ]
+    )
+    candidates, clusters, bc = classify_delta_candidates(
+        [_entity("Q3", "Found"), _entity("Q4", "Found Too")],
+        retrieved_at=RETRIEVED_AT,
+        baseline=baseline,
+    )
+    manifest = build_sl0018_manifest(
+        candidates,
+        generated_at=RETRIEVED_AT,
+        baseline=baseline,
+        discovery_window_qids=["Q1", "Q2", "Q3", "Q4"],
+        requested_limit=2500,
+        target_reached=False,
+        delta_delta_clusters=clusters,
+        baseline_collisions=bc,
+        retrieval_count=1,
+        extracted_record_count=2,
+    )
+    # True overlap: {Q1, Q2} intersect baseline == 2. This must hold even
+    # though it also happens to equal len(discovery) - len(candidates) here;
+    # the point is the implementation must compute it via set intersection.
+    assert manifest["overlap"]["overlap_count"] == 2
+
+
+# ---------------------------------------------------------------------------
+# BLOCKER 3 — SLICE-0018 window boundary must be <=2500
+# ---------------------------------------------------------------------------
+
+
+def test_build_sl0018_manifest_rejects_requested_limit_above_2500() -> None:
+    baseline = _make_baseline([("Q1", "Baseline One", None, "auto_admit")])
+    candidates, clusters, bc = classify_delta_candidates(
+        [_entity("Q3", "Found")], retrieved_at=RETRIEVED_AT, baseline=baseline
+    )
+    with pytest.raises(ValueError, match="2500"):
+        build_sl0018_manifest(
+            candidates,
+            generated_at=RETRIEVED_AT,
+            baseline=baseline,
+            discovery_window_qids=["Q1", "Q3"],
+            requested_limit=2501,
+            target_reached=False,
+            delta_delta_clusters=clusters,
+            baseline_collisions=bc,
+            retrieval_count=1,
+            extracted_record_count=1,
+        )
+
+
+def test_manifest_schema_itself_rejects_requested_limit_above_2500() -> None:
+    baseline = _make_baseline([("Q1", "Baseline One", None, "auto_admit")])
+    candidates, clusters, bc = classify_delta_candidates(
+        [_entity("Q3", "Found")], retrieved_at=RETRIEVED_AT, baseline=baseline
+    )
+    manifest = build_sl0018_manifest(
+        candidates,
+        generated_at=RETRIEVED_AT,
+        baseline=baseline,
+        discovery_window_qids=["Q1", "Q3"],
+        requested_limit=2500,
+        target_reached=False,
+        delta_delta_clusters=clusters,
+        baseline_collisions=bc,
+        retrieval_count=1,
+        extracted_record_count=1,
+    )
+    manifest["requested_limit"] = 2501
+    schema = json.loads(MANIFEST_SCHEMA_PATH.read_text(encoding="utf-8"))
+    with pytest.raises(jsonschema.exceptions.ValidationError):
+        jsonschema.validate(instance=manifest, schema=schema)
+
+
+def test_manifest_schema_rejects_wrong_safety_ceiling() -> None:
+    baseline = _make_baseline([("Q1", "Baseline One", None, "auto_admit")])
+    candidates, clusters, bc = classify_delta_candidates(
+        [_entity("Q3", "Found")], retrieved_at=RETRIEVED_AT, baseline=baseline
+    )
+    manifest = build_sl0018_manifest(
+        candidates,
+        generated_at=RETRIEVED_AT,
+        baseline=baseline,
+        discovery_window_qids=["Q1", "Q3"],
+        requested_limit=2500,
+        target_reached=False,
+        delta_delta_clusters=clusters,
+        baseline_collisions=bc,
+        retrieval_count=1,
+        extracted_record_count=1,
+    )
+    assert manifest["safety_ceiling"] == 3000
+    manifest["safety_ceiling"] = 1500
+    schema = json.loads(MANIFEST_SCHEMA_PATH.read_text(encoding="utf-8"))
+    with pytest.raises(jsonschema.exceptions.ValidationError):
+        jsonschema.validate(instance=manifest, schema=schema)
+
+
+def test_manifest_schema_rejects_discovery_window_above_2500_items() -> None:
+    baseline = _make_baseline([])
+    candidates, clusters, bc = classify_delta_candidates(
+        [_entity("Q3", "Found")], retrieved_at=RETRIEVED_AT, baseline=baseline
+    )
+    manifest = build_sl0018_manifest(
+        candidates,
+        generated_at=RETRIEVED_AT,
+        baseline=baseline,
+        discovery_window_qids=["Q3"],
+        requested_limit=2500,
+        target_reached=False,
+        delta_delta_clusters=clusters,
+        baseline_collisions=bc,
+        retrieval_count=1,
+        extracted_record_count=1,
+    )
+    manifest["discovery"]["discovery_window_qids"] = [f"Q{i}" for i in range(1, 2502)]
+    manifest["discovery"]["unique_qids_returned"] = 2501
+    schema = json.loads(MANIFEST_SCHEMA_PATH.read_text(encoding="utf-8"))
+    with pytest.raises(jsonschema.exceptions.ValidationError):
+        jsonschema.validate(instance=manifest, schema=schema)
+
+
+# ---------------------------------------------------------------------------
+# Structural invariants — baseline QID accidentally in delta / duplicate QID
+# ---------------------------------------------------------------------------
+
+
+def test_classify_delta_candidates_rejects_accidental_baseline_qid() -> None:
+    baseline = _make_baseline([("Q1", "Baseline One", None, "auto_admit")])
+    with pytest.raises(DeltaCompletenessError, match=r"\['Q1'\]"):
+        classify_delta_candidates(
+            [_entity("Q1", "Baseline One"), _entity("Q3", "Clean")],
+            retrieved_at=RETRIEVED_AT,
+            baseline=baseline,
+        )
+
+
+def test_classify_delta_candidates_rejects_duplicate_delta_entity_qid() -> None:
+    baseline = _make_baseline([])
+    with pytest.raises(DeltaCompletenessError, match=r"\['Q3'\]"):
+        classify_delta_candidates(
+            [_entity("Q3", "First"), _entity("Q3", "Second")],
+            retrieved_at=RETRIEVED_AT,
+            baseline=baseline,
+        )

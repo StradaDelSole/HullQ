@@ -69,6 +69,7 @@ __all__ = [
     "ACCEPTED_0017_BASELINE_CANDIDATE_COUNT",
     "ACCEPTED_0017_BUNDLES_ON_REPLAY",
     "ACCEPTED_0017_IMPLEMENTATION_HEAD",
+    "ACCEPTED_0017_MANIFEST_SHA256",
     "ACCEPTED_0017_MANIFEST_VERSION",
     "ACCEPTED_0017_NOT_ADMITTED",
     "ACCEPTED_0017_RETAINED_CROSSWALK_COUNT",
@@ -81,6 +82,7 @@ __all__ = [
     "BaselineCollision",
     "BaselineIntegrityError",
     "BaselineSnapshot",
+    "DeltaCompletenessError",
     "build_baseline_snapshot_from_manifest",
     "build_bundle",
     "build_sl0018_manifest",
@@ -90,6 +92,8 @@ __all__ = [
     "compute_expansion_delta",
     "load_baseline_snapshot",
     "merge_crosswalks_fail_closed",
+    "verify_delta_candidate_completeness",
+    "verify_entity_acquisition_completeness",
 ]
 
 # ---------------------------------------------------------------------------
@@ -117,6 +121,13 @@ ACCEPTED_0017_RETAINED_CROSSWALK_COUNT = 967
 ACCEPTED_0017_REVIEW_REQUIRED = 20
 ACCEPTED_0017_NOT_ADMITTED = 15
 
+# Exact raw-byte SHA256 of the accepted SLICE-0017 retained manifest
+# (research/bootstrap/wikidata/manifest.json), pinned so a payload/QID/ID/
+# alias change that happens to preserve every aggregate count above still
+# fails closed. This is the primary integrity check; the aggregate-count
+# checks above remain as additional diagnostics, not a substitute for it.
+ACCEPTED_0017_MANIFEST_SHA256 = "076b0d64441973c4d5b71cf467cd9cdbf46242babb9cb44f788c97a0f33e5845"
+
 
 def build_bundle(candidate: BootstrapCandidate) -> ResearchEvidenceBundle | None:
     """SLICE-0018 delta bundle builder.
@@ -127,6 +138,19 @@ def build_bundle(candidate: BootstrapCandidate) -> ResearchEvidenceBundle | None
     delta evidence is not misattributed to the SLICE-0017 bootstrap run.
     """
     return _build_bundle_0017(candidate, activity_id=SL0018_ACTIVITY_ID)
+
+
+class DeltaCompletenessError(RuntimeError):
+    """Raised when an acquired/classified/assembled SLICE-0018 expansion
+    delta does not exactly correspond to its expected bounded definition.
+
+    Covers every way a delta candidate set could silently drop, duplicate or
+    misattribute a QID: an incomplete Wikidata entity-acquisition response, a
+    baseline QID accidentally supplied as delta input, a duplicate delta
+    entity QID, or a final candidate set that does not exactly equal
+    ``discovery_window_qids`` minus the accepted baseline. SLICE-0018 MUST
+    fail closed rather than silently persist a partial/incorrect delta.
+    """
 
 
 # ---------------------------------------------------------------------------
@@ -169,12 +193,16 @@ def load_baseline_snapshot(manifest_path: Path = BASELINE_MANIFEST_PATH) -> Base
 
     Performs no network access and never mutates *manifest_path*. Fails
     closed via ``BaselineIntegrityError`` if the retained baseline no longer
-    reproduces the accepted SLICE-0017 constants (manifest version, candidate
-    count, decision counts, retained crosswalk count) — SLICE-0018 must not
-    silently proceed against a drifted/corrupted baseline artifact. Also
-    fails closed via ``CrosswalkConflictError`` (propagated from
-    ``load_crosswalk_from_manifest``) if the baseline's own retained
-    crosswalk is internally inconsistent.
+    reproduces the accepted SLICE-0017 semantics. The primary check is an
+    exact raw-byte SHA256 comparison against ``ACCEPTED_0017_MANIFEST_SHA256``
+    — a payload/QID/ID/alias change that happens to preserve every aggregate
+    count below would otherwise pass undetected. The manifest-version and
+    aggregate-count checks remain as additional diagnostics (a more specific
+    failure message than a bare hash mismatch), not a substitute for the
+    fingerprint. Also fails closed via ``CrosswalkConflictError`` (propagated
+    from ``load_crosswalk_from_manifest``) if the baseline's own retained
+    crosswalk is internally inconsistent, and via ``BaselineIntegrityError``
+    if any candidate QID appears more than once.
     """
     raw_bytes = manifest_path.read_bytes()
     sha256 = hashlib.sha256(raw_bytes).hexdigest()
@@ -184,6 +212,9 @@ def load_baseline_snapshot(manifest_path: Path = BASELINE_MANIFEST_PATH) -> Base
         raise BaselineIntegrityError(
             f"Retained SLICE-0017 baseline at {manifest_path} failed integrity check: {msg}"
         )
+
+    if sha256 != ACCEPTED_0017_MANIFEST_SHA256:
+        _fail(f"sha256={sha256!r}, expected {ACCEPTED_0017_MANIFEST_SHA256!r}")
 
     if manifest.get("manifest_version") != ACCEPTED_0017_MANIFEST_VERSION:
         _fail(
@@ -209,9 +240,9 @@ def load_baseline_snapshot(manifest_path: Path = BASELINE_MANIFEST_PATH) -> Base
         if actual != expected:
             _fail(f"counts.{key}={actual!r}, expected {expected!r}")
 
-    # Duplicate-QID and internal crosswalk-inconsistency detection both fail
-    # closed inside build_baseline_snapshot_from_manifest / the crosswalk
-    # loader it calls.
+    # Explicit duplicate-candidate-QID detection and internal
+    # crosswalk-inconsistency detection both fail closed inside
+    # build_baseline_snapshot_from_manifest / the crosswalk loader it calls.
     return build_baseline_snapshot_from_manifest(
         manifest, manifest_path=str(manifest_path), sha256=sha256
     )
@@ -221,7 +252,7 @@ def build_baseline_snapshot_from_manifest(
     manifest: dict[str, Any], *, manifest_path: str = "<in-memory>", sha256: str = ""
 ) -> BaselineSnapshot:
     """Build a ``BaselineSnapshot`` from an already-parsed manifest dict, with
-    NO accepted-constant integrity enforcement (that is
+    NO accepted-constant/fingerprint integrity enforcement (that is
     ``load_baseline_snapshot``'s job for the real retained SLICE-0017
     artifact).
 
@@ -229,7 +260,12 @@ def build_baseline_snapshot_from_manifest(
     exercise the baseline-first/delta-second replay mechanism against a
     small synthetic baseline rather than the full accepted 1,000-candidate
     artifact. Still fails closed via ``CrosswalkConflictError`` if the
-    manifest's own retained crosswalk is internally inconsistent.
+    manifest's own retained crosswalk is internally inconsistent, and via
+    ``BaselineIntegrityError`` if any candidate QID appears more than once —
+    an explicit check, not merely reliance on ``set()`` insertion silently
+    collapsing a duplicate row (two duplicate rows for the same QID with a
+    mutually consistent ``hullq_id`` would otherwise pass the crosswalk
+    loader's conflict check undetected).
     """
     crosswalk = load_crosswalk_from_manifest(manifest)
 
@@ -240,6 +276,11 @@ def build_baseline_snapshot_from_manifest(
     not_admitted_qids: set[str] = set()
     for row in manifest.get("candidates", []):
         qid = row["qid"]
+        if qid in candidate_qids:
+            raise BaselineIntegrityError(
+                f"Baseline manifest at {manifest_path!r} contains duplicate candidate "
+                f"QID {qid!r}; each candidate QID must appear at most once."
+            )
         candidate_qids.add(qid)
 
         decision = row["decision"]
@@ -308,6 +349,65 @@ def compute_baseline_absent_qids(
     """
     discovered = frozenset(discovery_qids)
     return frozenset(qid for qid in baseline.candidate_qids if qid not in discovered)
+
+
+def verify_entity_acquisition_completeness(
+    requested_qids: Sequence[str], entities: Sequence[WikidataEntityData]
+) -> None:
+    """Fail closed unless *entities* covers *requested_qids* exactly.
+
+    Checks, before any classification or manifest work uses the acquired
+    entities:
+
+    - no requested QID is missing from the returned entities;
+    - no unexpected QID appears in the returned entities;
+    - no QID is returned more than once.
+
+    An incomplete or malformed Wikidata ``wbgetentities`` response (a
+    requested QID silently absent from ``entities``) MUST NOT silently drop
+    that QID from the retained SLICE-0018 delta — it must block the run
+    entirely rather than quietly persist a truncated manifest.
+    """
+    requested_set = set(requested_qids)
+    returned_qids = [e.qid for e in entities]
+    returned_set = set(returned_qids)
+
+    duplicates = {qid for qid in returned_set if returned_qids.count(qid) > 1}
+    missing = requested_set - returned_set
+    unexpected = returned_set - requested_set
+
+    if duplicates or missing or unexpected:
+        raise DeltaCompletenessError(
+            "Entity acquisition did not exactly cover the requested expansion delta "
+            f"(requested={len(requested_set)}, returned={len(returned_qids)}): "
+            f"missing={sorted(missing)} unexpected={sorted(unexpected)} "
+            f"duplicates={sorted(duplicates)}. Refusing to classify or persist a "
+            "partial/malformed delta."
+        )
+
+
+def verify_delta_candidate_completeness(
+    delta_candidates: Sequence[BootstrapCandidate],
+    discovery_window_qids: Sequence[str],
+    baseline: BaselineSnapshot,
+) -> None:
+    """Fail closed unless the candidate QID set exactly equals the expected
+    expansion delta (``compute_expansion_delta(discovery_window_qids, baseline)``).
+
+    Independent defense-in-depth check, run inside ``build_sl0018_manifest``
+    itself, so a bug anywhere upstream in the acquisition/classification
+    pipeline cannot silently produce a retained manifest describing a
+    truncated, over-broad, or baseline-contaminated delta.
+    """
+    expected = set(compute_expansion_delta(discovery_window_qids, baseline))
+    actual = {c.qid for c in delta_candidates}
+    if actual != expected:
+        raise DeltaCompletenessError(
+            "SLICE-0018 candidate set does not exactly equal the expected expansion "
+            f"delta (discovery_window_qids minus baseline): missing="
+            f"{sorted(expected - actual)} unexpected={sorted(actual - expected)}. "
+            "Refusing to write a manifest describing an incorrect delta."
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -388,7 +488,34 @@ def classify_delta_candidates(
     merged with any already-minted SLICE-0018 IDs from a prior run) is
     reused exactly for any QID it already maps — never silently reminted,
     mirroring the accepted SLICE-0017 rerun contract.
+
+    Fails closed via ``DeltaCompletenessError`` before any classification if
+    *delta_entities* contains an accepted baseline QID (which MUST NOT be
+    reclassified) or a duplicate QID (which MUST NOT silently collapse into
+    one candidate row).
     """
+    seen_qids: set[str] = set()
+    duplicate_qids: set[str] = set()
+    baseline_qids_in_delta: set[str] = set()
+    for entity in delta_entities:
+        if entity.qid in baseline.candidate_qids:
+            baseline_qids_in_delta.add(entity.qid)
+        if entity.qid in seen_qids:
+            duplicate_qids.add(entity.qid)
+        seen_qids.add(entity.qid)
+
+    if baseline_qids_in_delta:
+        raise DeltaCompletenessError(
+            "classify_delta_candidates received accepted SLICE-0017 baseline QID(s) as "
+            f"delta input; a baseline QID MUST NOT be reclassified: "
+            f"{sorted(baseline_qids_in_delta)}"
+        )
+    if duplicate_qids:
+        raise DeltaCompletenessError(
+            "classify_delta_candidates received duplicate delta entity QID(s), which "
+            f"MUST NOT silently collapse into one candidate row: {sorted(duplicate_qids)}"
+        )
+
     crosswalk = dict(existing_crosswalk or {})
     delta_delta_clusters = compute_collision_clusters(delta_entities)
     delta_colliding_qids = {qid for cluster in delta_delta_clusters for qid in cluster.qids}
@@ -482,25 +609,54 @@ def build_sl0018_manifest(
     fetched_entity_count: int | None = None,
     acquired_at: str | None = None,
     classification_recomputed_at: str | None = None,
+    historical_crosswalk: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Build the full versioned, JSON-serializable SLICE-0018 manifest document.
 
     ``delta_candidates`` MUST contain only the current expansion delta —
     never a baseline QID and never a QID carried forward merely because an
     earlier SLICE-0018 run once classified it outside the current discovery
-    window. ``retained_crosswalk`` is the complete merged historical registry
-    (baseline union delta), computed here by failing closed
-    (``CrosswalkConflictError``) on any drift between the two.
+    window. Verified independently here (fails closed via
+    ``DeltaCompletenessError`` before anything else) against
+    ``discovery_window_qids`` minus ``baseline.candidate_qids``, so a bug
+    anywhere upstream cannot silently produce a manifest describing the
+    wrong delta.
+
+    ``historical_crosswalk`` is the full historical QID -> HullQ-ID registry
+    accumulated across every prior run (accepted SLICE-0017 baseline crosswalk
+    merged with every previously retained SLICE-0018 mapping — typically
+    loaded via ``merge_crosswalks_fail_closed(baseline.crosswalk,
+    load_crosswalk_from_manifest(prior_sl0018_manifest))``). It MUST be
+    supplied whenever a prior SLICE-0018 manifest exists: omitting it falls
+    back to ``baseline.crosswalk`` alone, which would silently drop any
+    previously retained SLICE-0018 mapping for a QID absent from the current
+    delta — the historical crosswalk MUST survive a QID's later omission and
+    still be reused byte-for-byte if that QID reappears. ``retained_crosswalk``
+    is the complete merged registry (historical union current delta),
+    computed here by failing closed (``CrosswalkConflictError``) on any drift
+    between the two. A QID present in ``historical_crosswalk`` but absent
+    from the current ``delta_candidates`` remains in ``retained_crosswalk``
+    — it is never dropped merely because this run did not reclassify it.
     """
+    if requested_limit > BOOTSTRAP_REQUESTED_LIMIT_SL0018:
+        raise ValueError(
+            f"requested_limit={requested_limit} exceeds the SLICE-0018 bounded maximum "
+            f"discovery window of {BOOTSTRAP_REQUESTED_LIMIT_SL0018}"
+        )
+    verify_delta_candidate_completeness(delta_candidates, discovery_window_qids, baseline)
+
     validate_crosswalk_consistency(delta_candidates)
     delta_crosswalk = {c.qid: c.hullq_id for c in delta_candidates if c.hullq_id is not None}
-    full_crosswalk = _collapse_qid_id_pairs_fail_closed(
-        [*baseline.crosswalk.items(), *delta_crosswalk.items()],
-        context="baseline crosswalk merge with SLICE-0018 delta candidates",
+    historical = historical_crosswalk if historical_crosswalk is not None else baseline.crosswalk
+    full_crosswalk = merge_crosswalks_fail_closed(
+        historical,
+        delta_crosswalk,
+        context="historical crosswalk merge with SLICE-0018 delta candidates",
     )
 
     baseline_absent = compute_baseline_absent_qids(discovery_window_qids, baseline)
-    overlap_count = len(discovery_window_qids) - len(delta_candidates)
+    overlap_qids = frozenset(discovery_window_qids) & baseline.candidate_qids
+    overlap_count = len(overlap_qids)
 
     reason_breakdown: dict[str, int] = {}
     for candidate in delta_candidates:
@@ -512,6 +668,17 @@ def build_sl0018_manifest(
         1 for c in delta_candidates if c.decision == BootstrapDecision.REVIEW_REQUIRED
     )
     not_admitted = sum(1 for c in delta_candidates if c.decision == BootstrapDecision.NOT_ADMITTED)
+
+    # Every hullq_id-bearing delta candidate was either reused from the
+    # historical registry (AUTO_ADMIT reusing a retained ID, or a
+    # REVIEW_REQUIRED candidate preserving a reserved historical ID) or
+    # freshly minted this run — mutually exclusive and exhaustive.
+    newly_minted_id_count = sum(
+        1 for c in delta_candidates if c.hullq_id is not None and c.qid not in historical
+    )
+    reused_historical_id_count = sum(
+        1 for c in delta_candidates if c.hullq_id is not None and c.qid in historical
+    )
 
     return {
         "manifest_version": SL0018_MANIFEST_VERSION,
@@ -580,7 +747,10 @@ def build_sl0018_manifest(
             "reason_breakdown": reason_breakdown,
             "baseline_collision_count": len(baseline_collisions),
             "delta_delta_collision_cluster_count": len(delta_delta_clusters),
+            "historical_crosswalk_count_before": len(historical),
             "retained_crosswalk_count": len(full_crosswalk),
+            "newly_minted_id_count": newly_minted_id_count,
+            "reused_historical_id_count": reused_historical_id_count,
             "research_observation_count": sum(
                 1 for c in delta_candidates if c.observation_id is not None
             ),

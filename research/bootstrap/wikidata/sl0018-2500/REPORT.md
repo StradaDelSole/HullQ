@@ -1,8 +1,8 @@
 # HullQ SLICE-0018 Wikidata Tier-0 2,500-Window Expansion Report
 
-**Manifest last written (generated_at):** 2026-08-21T21:09:23.210095+00:00  
+**Manifest last written (generated_at):** 2026-08-21T22:55:38.451938+00:00  
 **Original live acquisition (acquired_at):** 2026-08-21T20:31:34.113774+00:00  
-**Last offline reclassification (classification_recomputed_at):** 2026-08-21T21:09:23.210095+00:00  
+**Last offline reclassification (classification_recomputed_at):** 2026-08-21T22:55:38.451938+00:00  
 **Source:** SRC_WIKIDATA_API_2026  
 **Requested limit:** 2500  
 **Safety ceiling:** 3000
@@ -40,7 +40,11 @@
 - AUTO_ADMIT: **805**
 - REVIEW_REQUIRED: **16**
 - NOT_ADMITTED: **8**
-- Retained QID->HullQ-ID crosswalk count (baseline + delta): **1772**
+- Historical QID->HullQ-ID crosswalk count BEFORE this document's most recent (re)generation: **1772**
+- Retained QID->HullQ-ID crosswalk count AFTER (baseline + delta): **1772**
+- Newly minted HullQ-ID count (this generation pass): **0**
+- Reused historical HullQ-ID count (this generation pass): **805**
+  (Note: the minted/reused split above describes this manifest's most recent generation pass — see `acquired_at` vs `classification_recomputed_at` above. An offline `--recompute` pass legitimately reuses 100% of already-retained IDs by design/invariant; `counts.auto_admit` is the stable total of genuinely new identities this expansion introduced, independent of which pass produced this document.)
 - ResearchObservation count (delta): **821**
 - CanonicalEvidenceLink count (expected on replay, delta): **805**
 - Expected combined canonical BoatModel count after baseline+delta replay: **1770**
@@ -73,5 +77,42 @@
 
 This is the SLICE-0018 measured baseline-preserving expansion delta, not a pre-committed admission-rate target. AUTO_ADMIT delta candidates become sparse Tier-0 BoatModel identities only after offline PostgreSQL replay (see REPLAY-RESULT.json / REPLAY-REPORT.md, produced by --replay).
 
-PostgreSQL version, combined baseline+delta replay counts and fresh-schema semantic mismatch count are PENDING until the retained manifest has been replayed against real PostgreSQL 18 (db-integration CI or a local --replay run).
+## POSTGRESQL REPLAY EVIDENCE — LOCAL (this implementation session)
+
+Evidence below was measured locally by running `scripts/bootstrap/wikidata_tier0_sl0018_runner.py --replay` against a real PostgreSQL 18 instance during implementation, then embedded into this report via `--report` (offline, no network access, no PostgreSQL access performed by the report-writing step itself). Remote GitHub Actions CI independently re-runs the same `--replay` step at the exact pushed head and is the authoritative external verification — this section is local evidence, not a substitute for it.
+
+- PostgreSQL version: `PostgreSQL 18.6 (Debian 18.6-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit`
+- Baseline manifest candidates / AUTO_ADMIT: 1000 / 965
+- Delta manifest candidates / AUTO_ADMIT: 829 / 805
+- Expected combined bundle / admission imports: 1806 / 1770
+
+### First-pass combined import (isolated schema)
+
+- bundle: {'imported': 1806, 'already_present': 0, 'conflict': 0, 'error': 0, 'unexpected_status': 0}
+- admission: {'imported': 1770, 'already_present': 0, 'conflict': 0, 'reference_error': 0, 'error': 0, 'unexpected_status': 0}
+- expected combined imported counts match exactly: True
+- baseline verified before delta applied: {'counts_match': True, 'id_set_matches': True, 'readback_mismatches': 0}
+- combined readback mismatches: 0 (post-delta baseline drift: 0)
+- unexpected canonical rows for non-admitted candidates: 0
+- combined canonical BoatModel ID set matches exactly: True
+- zero stray Brand/Organization/BoatDesign rows: True ({'canonical_brands': 0, 'canonical_organizations': 0, 'canonical_boat_designs': 0})
+- exact re-import (idempotency): already_imported=3576 conflict=0 error=0
+
+### Independent fresh-schema replay (second isolated schema)
+
+- bundle: {'imported': 1806, 'already_present': 0, 'conflict': 0, 'error': 0, 'unexpected_status': 0}
+- admission: {'imported': 1770, 'already_present': 0, 'conflict': 0, 'reference_error': 0, 'error': 0, 'unexpected_status': 0}
+- baseline verified before delta applied: {'counts_match': True, 'id_set_matches': True, 'readback_mismatches': 0}
+- semantic mismatches: 0 (post-delta baseline drift: 0)
+- combined canonical ID set matches exactly: True
+- zero stray Brand/Organization/BoatDesign rows: True ({'canonical_brands': 0, 'canonical_organizations': 0, 'canonical_boat_designs': 0})
+- expected combined imported counts match exactly: True
+
+### RESULT: all zero-tolerance conditions clear (local): **True**
+
+Baseline drift/deletion/demotion count: 0 (post-delta baseline readback mismatches, first pass) — zero required.
+
+## RETAINED STAGE-2 BENCHMARK
+
+- Recommendation: **G3_PASS** (must remain exactly `G3_PASS`; measured by `scripts/benchmark/runner.py` against the same PostgreSQL instance, independent of this bootstrap manifest)
 

@@ -74,6 +74,36 @@ def _repo_relative_path(path: Path) -> str:
         return str(path)
 
 
+def _load_baseline(baseline_manifest_path: Path, *, verify_baseline_integrity: bool = True) -> Any:
+    """Load the SLICE-0018 baseline snapshot for runner use.
+
+    Applies the portable repo-relative ``manifest_path`` fix unconditionally.
+    *verify_baseline_integrity* (the production/CI-safe default) enforces the
+    full accepted-constant/pinned-fingerprint integrity gate against the real
+    retained SLICE-0017 artifact. A caller MAY pass
+    ``verify_baseline_integrity=False`` to exercise the delta/replay
+    mechanism against a small synthetic baseline rather than the full
+    1,000-candidate accepted artifact — used only by tests; every production
+    and CI code path uses the default.
+    """
+    from hullq.bootstrap.wikidata_tier0_sl0018 import (
+        build_baseline_snapshot_from_manifest,
+        load_baseline_snapshot,
+    )
+
+    if verify_baseline_integrity:
+        baseline = load_baseline_snapshot(baseline_manifest_path)
+    else:
+        raw_bytes = baseline_manifest_path.read_bytes()
+        manifest = json.loads(raw_bytes.decode("utf-8"))
+        baseline = build_baseline_snapshot_from_manifest(
+            manifest,
+            manifest_path=str(baseline_manifest_path),
+            sha256=hashlib.sha256(raw_bytes).hexdigest(),
+        )
+    return dataclasses.replace(baseline, manifest_path=_repo_relative_path(baseline_manifest_path))
+
+
 BASELINE_MANIFEST_PATH = ROOT / "research" / "bootstrap" / "wikidata" / "manifest.json"
 
 SL0018_DIR = ROOT / "research" / "bootstrap" / "wikidata" / "sl0018-2500"
@@ -148,6 +178,7 @@ def run_live_bootstrap(
     baseline_manifest_path: Path = BASELINE_MANIFEST_PATH,
     manifest_path: Path = MANIFEST_PATH,
     report_path: Path = REPORT_PATH,
+    verify_baseline_integrity: bool = True,
 ) -> dict[str, Any]:
     """Execute the one controlled SLICE-0018 live Wikidata acquisition run.
 
@@ -157,10 +188,30 @@ def run_live_bootstrap(
     baseline, fetches entity data for the delta only, classifies every delta
     candidate, and writes the retained SLICE-0018 manifest + report.
 
-    Fails closed (raises ``BaselineIntegrityError``) before any network
-    request if the retained baseline artifact does not reproduce its
-    accepted SLICE-0017 semantics.
+    Fails closed before any network request if:
+
+    - ``requested_limit`` exceeds the SLICE-0018 bounded maximum discovery
+      window (2,500) — the shared adapter safety ceiling of 3,000 is a hard
+      upper bound for the underlying adapter, not authorization for a larger
+      SLICE-0018 window;
+    - the retained baseline artifact does not reproduce its accepted
+      SLICE-0017 semantics (raises ``BaselineIntegrityError``).
+
+    After acquisition, fails closed (raises ``DeltaCompletenessError``)
+    rather than writing/overwriting the retained manifest if the fetched
+    entities do not exactly cover the requested expansion delta.
     """
+    from hullq.bootstrap.wikidata_tier0_sl0018 import BOOTSTRAP_REQUESTED_LIMIT_SL0018
+
+    if requested_limit > BOOTSTRAP_REQUESTED_LIMIT_SL0018:
+        raise SystemExit(
+            f"SLICE-0018 requested_limit={requested_limit} exceeds the slice's bounded "
+            f"maximum discovery window of {BOOTSTRAP_REQUESTED_LIMIT_SL0018}; refusing "
+            "before any network use. The shared adapter safety ceiling (3,000) is a hard "
+            "upper bound for the underlying adapter, not authorization for a larger "
+            "SLICE-0018 window."
+        )
+
     import httpx
 
     from hullq.bootstrap.wikidata_tier0 import load_crosswalk_from_manifest
@@ -168,17 +219,17 @@ def run_live_bootstrap(
         build_sl0018_manifest,
         classify_delta_candidates,
         compute_expansion_delta,
-        load_baseline_snapshot,
         merge_crosswalks_fail_closed,
+        verify_entity_acquisition_completeness,
     )
     from hullq.sources.wikidata import WikidataAdapter, WikidataAdapterConfig
 
     print("HullQ SLICE-0018 Wikidata Tier-0 2,500-Window Expansion — LIVE RUN", flush=True)
 
-    # Fails closed before any network request if the baseline has drifted.
-    baseline = dataclasses.replace(
-        load_baseline_snapshot(baseline_manifest_path),
-        manifest_path=_repo_relative_path(baseline_manifest_path),
+    # Fails closed before any network request if the baseline has drifted
+    # (unless verify_baseline_integrity=False, a test-only path).
+    baseline = _load_baseline(
+        baseline_manifest_path, verify_baseline_integrity=verify_baseline_integrity
     )
     print(
         f"  baseline: {len(baseline.candidate_qids)} candidate QIDs, "
@@ -232,6 +283,17 @@ def run_live_bootstrap(
         fetched_entity_count = len(entities)
         print(f"  fetched_entity_count={fetched_entity_count}", flush=True)
 
+        # Fails closed before any classification/manifest work if the
+        # returned entities do not exactly cover the requested delta_qids —
+        # a missing/duplicate/unexpected QID must never silently disappear
+        # from (or contaminate) the retained manifest.
+        verify_entity_acquisition_completeness(delta_qids, entities)
+        # Completeness verified above (fail-closed): every requested delta
+        # QID was returned exactly once, so the acquisition failure count
+        # for this run is provably zero — derived from that check, not
+        # merely asserted.
+        acquisition_failure_count = 0
+
         usage = adapter.usage_metrics
 
     retrieved_at = datetime.now(tz=UTC).isoformat()
@@ -253,10 +315,11 @@ def run_live_bootstrap(
         baseline_collisions=baseline_collisions,
         retrieval_count=usage.retrieval_count,
         extracted_record_count=usage.extracted_record_count,
-        acquisition_failure_count=0,
+        acquisition_failure_count=acquisition_failure_count,
         fetched_entity_count=fetched_entity_count,
         acquired_at=retrieved_at,
         classification_recomputed_at=None,
+        historical_crosswalk=historical_crosswalk,
     )
     _validate_manifest_schema(manifest)
 
@@ -278,6 +341,7 @@ def recompute_manifest_offline(
     baseline_manifest_path: Path = BASELINE_MANIFEST_PATH,
     manifest_path: Path = MANIFEST_PATH,
     report_path: Path = REPORT_PATH,
+    verify_baseline_integrity: bool = True,
 ) -> dict[str, Any]:
     """Reclassify the already-retained SLICE-0018 manifest using current
     classification logic, with zero network access.
@@ -287,20 +351,19 @@ def recompute_manifest_offline(
     Wikidata — reloads the baseline fresh from disk (a local file read, not a
     network request), and reruns ``classify_delta_candidates`` with the
     merged historical crosswalk loaded, so every previously admitted delta
-    QID keeps its exact HullQ ID.
+    QID keeps its exact HullQ ID. *verify_baseline_integrity* behaves exactly
+    as in ``run_live_bootstrap``.
     """
     from hullq.bootstrap.wikidata_tier0 import load_crosswalk_from_manifest
     from hullq.bootstrap.wikidata_tier0_sl0018 import (
         build_sl0018_manifest,
         classify_delta_candidates,
-        load_baseline_snapshot,
         merge_crosswalks_fail_closed,
     )
     from hullq.sources.wikidata import WikidataEntityData
 
-    baseline = dataclasses.replace(
-        load_baseline_snapshot(baseline_manifest_path),
-        manifest_path=_repo_relative_path(baseline_manifest_path),
+    baseline = _load_baseline(
+        baseline_manifest_path, verify_baseline_integrity=verify_baseline_integrity
     )
 
     old_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -374,6 +437,7 @@ def recompute_manifest_offline(
         fetched_entity_count=discovery.get("fetched_entity_count", len(entities)),
         acquired_at=acquired_at,
         classification_recomputed_at=now_ts,
+        historical_crosswalk=historical_crosswalk,
     )
     _validate_manifest_schema(manifest)
 
@@ -383,7 +447,24 @@ def recompute_manifest_offline(
     return manifest
 
 
-def _write_live_report(manifest: dict[str, Any], report_path: Path) -> None:
+def _write_live_report(
+    manifest: dict[str, Any],
+    report_path: Path,
+    *,
+    replay_result: dict[str, Any] | None = None,
+    stage2_benchmark_recommendation: str | None = None,
+) -> None:
+    """Write the human-readable SLICE-0018 report.
+
+    *replay_result* is the already-produced offline PostgreSQL replay result
+    (``REPLAY-RESULT.json`` content from a local or CI ``--replay`` run) when
+    available; when supplied, the report embeds the actual replay evidence
+    (PostgreSQL version, importer status counts, re-import/fresh-schema
+    equality, stray-row counts, zero-tolerance verdict) instead of the
+    "PENDING" placeholder. This function performs no PostgreSQL access
+    itself — the caller obtains *replay_result* separately (see
+    ``--report``) and this function never re-runs a replay.
+    """
     counts = manifest["counts"]
     discovery = manifest["discovery"]
     usage = manifest["usage_metrics"]
@@ -433,7 +514,21 @@ def _write_live_report(manifest: dict[str, Any], report_path: Path) -> None:
         f"- AUTO_ADMIT: **{counts['auto_admit']}**",
         f"- REVIEW_REQUIRED: **{counts['review_required']}**",
         f"- NOT_ADMITTED: **{counts['not_admitted']}**",
-        f"- Retained QID->HullQ-ID crosswalk count (baseline + delta): **{counts['retained_crosswalk_count']}**",
+        f"- Historical QID->HullQ-ID crosswalk count BEFORE this document's most recent "
+        f"(re)generation: **{counts['historical_crosswalk_count_before']}**",
+        f"- Retained QID->HullQ-ID crosswalk count AFTER (baseline + delta): "
+        f"**{counts['retained_crosswalk_count']}**",
+        f"- Newly minted HullQ-ID count (this generation pass): **{counts['newly_minted_id_count']}**",
+        f"- Reused historical HullQ-ID count (this generation pass): "
+        f"**{counts['reused_historical_id_count']}**",
+        (
+            "  (Note: the minted/reused split above describes this manifest's most recent "
+            "generation pass — see `acquired_at` vs `classification_recomputed_at` above. An "
+            "offline `--recompute` pass legitimately reuses 100% of already-retained IDs by "
+            "design/invariant; `counts.auto_admit` is the stable total of genuinely new "
+            "identities this expansion introduced, independent of which pass produced this "
+            "document.)"
+        ),
         f"- ResearchObservation count (delta): **{counts['research_observation_count']}**",
         f"- CanonicalEvidenceLink count (expected on replay, delta): **{counts['canonical_evidence_link_count']}**",
         f"- Expected combined canonical BoatModel count after baseline+delta replay: **{counts['combined_canonical_boat_model_count_expected']}**",
@@ -477,14 +572,130 @@ def _write_live_report(manifest: dict[str, Any], report_path: Path) -> None:
             "REPLAY-RESULT.json / REPLAY-REPORT.md, produced by --replay)."
         ),
         "",
-        "PostgreSQL version, combined baseline+delta replay counts and fresh-schema semantic "
-        "mismatch count are PENDING until the retained manifest has been replayed against real "
-        "PostgreSQL 18 (db-integration CI or a local --replay run).",
+    ]
+    if replay_result is not None:
+        fp = replay_result["first_pass"]
+        fr = replay_result["fresh_schema_rerun"]
+        lines += [
+            "## POSTGRESQL REPLAY EVIDENCE — LOCAL (this implementation session)",
+            "",
+            (
+                "Evidence below was measured locally by running "
+                "`scripts/bootstrap/wikidata_tier0_sl0018_runner.py --replay` against a real "
+                "PostgreSQL 18 instance during implementation, then embedded into this report "
+                "via `--report` (offline, no network access, no PostgreSQL access performed by "
+                "the report-writing step itself). Remote GitHub Actions CI independently "
+                "re-runs the same `--replay` step at the exact pushed head and is the "
+                "authoritative external verification — this section is local evidence, not a "
+                "substitute for it."
+            ),
+            "",
+            f"- PostgreSQL version: `{replay_result['postgresql_version']}`",
+            f"- Baseline manifest candidates / AUTO_ADMIT: "
+            f"{replay_result['baseline_manifest_candidates']} / "
+            f"{replay_result['baseline_manifest_auto_admit']}",
+            f"- Delta manifest candidates / AUTO_ADMIT: "
+            f"{replay_result['delta_manifest_candidates']} / "
+            f"{replay_result['delta_manifest_auto_admit']}",
+            f"- Expected combined bundle / admission imports: "
+            f"{replay_result['expected']['combined_bundle_count']} / "
+            f"{replay_result['expected']['combined_admission_count']}",
+            "",
+            "### First-pass combined import (isolated schema)",
+            "",
+            f"- bundle: {fp['bundle']}",
+            f"- admission: {fp['admission']}",
+            f"- expected combined imported counts match exactly: {fp['expected_counts_match']}",
+            f"- baseline verified before delta applied: {fp['baseline_verified_before_delta']}",
+            f"- combined readback mismatches: {fp['readback']['mismatches']} "
+            f"(post-delta baseline drift: {fp['readback']['post_delta_baseline_drift_mismatches']})",
+            f"- unexpected canonical rows for non-admitted candidates: "
+            f"{fp['readback']['unexpected_canonical_rows_for_non_admitted']}",
+            f"- combined canonical BoatModel ID set matches exactly: "
+            f"{fp['readback']['canonical_id_set_matches']}",
+            f"- zero stray Brand/Organization/BoatDesign rows: "
+            f"{fp['readback']['no_stray_brand_organization_boatdesign_rows']} "
+            f"({fp['readback']['stray_row_counts']})",
+            f"- exact re-import (idempotency): already_imported={fp['reimport']['already_imported']} "
+            f"conflict={fp['reimport']['conflict']} error={fp['reimport']['error']}",
+            "",
+            "### Independent fresh-schema replay (second isolated schema)",
+            "",
+            f"- bundle: {fr['bundle']}",
+            f"- admission: {fr['admission']}",
+            f"- baseline verified before delta applied: {fr['baseline_verified_before_delta']}",
+            f"- semantic mismatches: {fr['readback']['mismatches']} "
+            f"(post-delta baseline drift: {fr['readback']['post_delta_baseline_drift_mismatches']})",
+            f"- combined canonical ID set matches exactly: {fr['readback']['canonical_id_set_matches']}",
+            f"- zero stray Brand/Organization/BoatDesign rows: "
+            f"{fr['readback']['no_stray_brand_organization_boatdesign_rows']} "
+            f"({fr['readback']['stray_row_counts']})",
+            f"- expected combined imported counts match exactly: {fr['expected_counts_match']}",
+            "",
+            f"### RESULT: all zero-tolerance conditions clear (local): "
+            f"**{replay_result['all_zero_tolerance_conditions_clear']}**",
+            "",
+            (
+                "Baseline drift/deletion/demotion count: "
+                f"{fp['readback']['post_delta_baseline_drift_mismatches']} "
+                "(post-delta baseline readback mismatches, first pass) — zero required."
+            ),
+            "",
+        ]
+    else:
+        lines += [
+            "PostgreSQL version, combined baseline+delta replay counts and fresh-schema "
+            "semantic mismatch count are PENDING until the retained manifest has been "
+            "replayed against real PostgreSQL 18 (db-integration CI, a local `--replay` run, "
+            "or `--report --replay-result <path>` to embed an already-produced result).",
+            "",
+        ]
+    lines += [
+        "## RETAINED STAGE-2 BENCHMARK",
+        "",
+        (
+            f"- Recommendation: **{stage2_benchmark_recommendation}** (must remain exactly "
+            "`G3_PASS`; measured by `scripts/benchmark/runner.py` against the same PostgreSQL "
+            "instance, independent of this bootstrap manifest)"
+            if stage2_benchmark_recommendation is not None
+            else "- Recommendation: PENDING (measured separately by `scripts/benchmark/runner.py`; "
+            "must remain exactly `G3_PASS`)"
+        ),
         "",
     ]
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"Report written to: {report_path}", flush=True)
+
+
+def write_report_with_replay_evidence(
+    *,
+    manifest_path: Path = MANIFEST_PATH,
+    replay_result_path: Path = REPLAY_RESULT_PATH,
+    report_path: Path = REPORT_PATH,
+    stage2_benchmark_recommendation: str | None = None,
+) -> None:
+    """Regenerate the checked-in human-readable REPORT.md from the
+    already-retained manifest plus an already-produced offline PostgreSQL
+    replay result, with zero network access and zero PostgreSQL access
+    performed by this function itself.
+
+    Used to keep the committed REPORT.md's replay-evidence section current
+    once a ``--replay`` run (local or CI) has actually produced a
+    REPLAY-RESULT.json, instead of leaving stale "PENDING" boilerplate when
+    better information already exists. *stage2_benchmark_recommendation* is
+    the already-measured retained Stage-2 benchmark recommendation (from
+    ``scripts/benchmark/runner.py``'s own result JSON), embedded verbatim —
+    this function does not run the benchmark itself.
+    """
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    replay_result = json.loads(replay_result_path.read_text(encoding="utf-8"))
+    _write_live_report(
+        manifest,
+        report_path,
+        replay_result=replay_result,
+        stage2_benchmark_recommendation=stage2_benchmark_recommendation,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1088,13 +1299,21 @@ def main() -> None:
         help="Replay accepted baseline first, retained SLICE-0018 delta second, against PostgreSQL",
     )
     parser.add_argument(
+        "--regenerate-report",
+        action="store_true",
+        help="Offline: regenerate the human-readable report from the retained manifest plus an "
+        "already-produced --replay-result, with no network/PostgreSQL access performed by this "
+        "step itself",
+    )
+    parser.add_argument(
         "--user-agent", default=None, help="Wikimedia-policy-compliant User-Agent (live mode)"
     )
     parser.add_argument(
         "--limit",
         type=int,
         default=DEFAULT_REQUESTED_LIMIT,
-        help="Requested discovery-window candidate limit (live mode)",
+        help="Requested discovery-window candidate limit (live mode); must be <=2500, "
+        "rejected before any network request otherwise",
     )
     parser.add_argument("--db-url", default=None, help="PostgreSQL connection URL (replay mode)")
     parser.add_argument(
@@ -1112,11 +1331,24 @@ def main() -> None:
     parser.add_argument(
         "--replay-report", default=str(REPLAY_REPORT_PATH), help="Replay report Markdown path"
     )
+    parser.add_argument(
+        "--replay-result",
+        default=str(REPLAY_RESULT_PATH),
+        help="Already-produced replay result JSON path to embed (--regenerate-report mode)",
+    )
+    parser.add_argument(
+        "--stage2-benchmark-result",
+        default=None,
+        help="Already-produced scripts/benchmark/runner.py result JSON path; its "
+        "'recommendation' field is embedded verbatim (--regenerate-report mode)",
+    )
     args = parser.parse_args()
 
-    modes_selected = sum([args.live, args.recompute, args.replay])
+    modes_selected = sum([args.live, args.recompute, args.replay, args.regenerate_report])
     if modes_selected != 1:
-        raise SystemExit("Specify exactly one of --live, --recompute or --replay")
+        raise SystemExit(
+            "Specify exactly one of --live, --recompute, --replay or --regenerate-report"
+        )
 
     if args.live:
         if not args.user_agent:
@@ -1134,7 +1366,7 @@ def main() -> None:
             manifest_path=Path(args.manifest),
             report_path=Path(args.report),
         )
-    else:
+    elif args.replay:
         db_url = _get_db_url(args.db_url)
         replay_manifest(
             db_url,
@@ -1142,6 +1374,19 @@ def main() -> None:
             manifest_path=Path(args.manifest),
             result_path=Path(args.result),
             report_path=Path(args.replay_report),
+        )
+    else:
+        stage2_recommendation = None
+        if args.stage2_benchmark_result:
+            stage2_result = json.loads(
+                Path(args.stage2_benchmark_result).read_text(encoding="utf-8")
+            )
+            stage2_recommendation = stage2_result.get("recommendation")
+        write_report_with_replay_evidence(
+            manifest_path=Path(args.manifest),
+            replay_result_path=Path(args.replay_result),
+            report_path=Path(args.report),
+            stage2_benchmark_recommendation=stage2_recommendation,
         )
 
 

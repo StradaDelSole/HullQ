@@ -41,8 +41,16 @@
       "format": "date-time",
       "description": "Null for a manifest that has never been offline-reclassified since its original live acquisition. Set to the timestamp of the most recent --recompute pass otherwise."
     },
-    "requested_limit": { "type": "integer", "minimum": 1 },
-    "safety_ceiling": { "type": "integer", "minimum": 1 },
+    "requested_limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2500,
+      "description": "SLICE-0018 bounds the current discovery window to at most 2,500, independent of the shared adapter's larger hard safety ceiling."
+    },
+    "safety_ceiling": {
+      "const": 3000,
+      "description": "The fixed shared adapter-level hard safety ceiling contract for this bootstrap family; not itself SLICE-0018's own 2,500 window bound (see requested_limit)."
+    },
     "discovery": {
       "type": "object",
       "additionalProperties": false,
@@ -70,7 +78,9 @@
         "entity_api_version": { "type": "string", "minLength": 1 },
         "discovery_window_qids": {
           "type": "array",
-          "description": "The complete deterministic ordered current discovery window (<=2,500 QIDs), retained for full replay-auditability of overlap/delta/baseline-absent computations.",
+          "maxItems": 2500,
+          "uniqueItems": true,
+          "description": "The complete deterministic ordered current discovery window (<=2,500 unique QIDs), retained for full replay-auditability of overlap/delta/baseline-absent computations.",
           "items": { "type": "string", "pattern": "^Q[1-9][0-9]*$" }
         }
       }
@@ -180,7 +190,10 @@
         "reason_breakdown",
         "baseline_collision_count",
         "delta_delta_collision_cluster_count",
+        "historical_crosswalk_count_before",
         "retained_crosswalk_count",
+        "newly_minted_id_count",
+        "reused_historical_id_count",
         "research_observation_count",
         "canonical_evidence_link_count",
         "combined_canonical_boat_model_count_expected"
@@ -196,7 +209,26 @@
         },
         "baseline_collision_count": { "type": "integer", "minimum": 0 },
         "delta_delta_collision_cluster_count": { "type": "integer", "minimum": 0 },
-        "retained_crosswalk_count": { "type": "integer", "minimum": 0 },
+        "historical_crosswalk_count_before": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The full historical QID->HullQ-ID registry size (accepted SLICE-0017 baseline crosswalk merged with every previously retained SLICE-0018 mapping) BEFORE this run's own delta mappings are added."
+        },
+        "retained_crosswalk_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The full historical registry size AFTER merging this run's delta mappings."
+        },
+        "newly_minted_id_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Delta candidates that received a freshly minted HullQ ID this run (QID absent from the historical crosswalk before this run)."
+        },
+        "reused_historical_id_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Delta candidates that reused an already-retained historical HullQ ID exactly (QID present in the historical crosswalk before this run)."
+        },
         "research_observation_count": { "type": "integer", "minimum": 0 },
         "canonical_evidence_link_count": { "type": "integer", "minimum": 0 },
         "combined_canonical_boat_model_count_expected": {

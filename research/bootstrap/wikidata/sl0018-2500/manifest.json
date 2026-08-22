@@ -1,9 +1,9 @@
 {
   "manifest_version": "0018-v1",
   "source_id": "SRC_WIKIDATA_API_2026",
-  "generated_at": "2026-08-21T21:09:23.210095+00:00",
+  "generated_at": "2026-08-21T22:55:38.451938+00:00",
   "acquired_at": "2026-08-21T20:31:34.113774+00:00",
-  "classification_recomputed_at": "2026-08-21T21:09:23.210095+00:00",
+  "classification_recomputed_at": "2026-08-21T22:55:38.451938+00:00",
   "requested_limit": 2500,
   "safety_ceiling": 3000,
   "discovery": {
@@ -21609,7 +21609,10 @@
     },
     "baseline_collision_count": 6,
     "delta_delta_collision_cluster_count": 6,
+    "historical_crosswalk_count_before": 1772,
     "retained_crosswalk_count": 1772,
+    "newly_minted_id_count": 0,
+    "reused_historical_id_count": 805,
     "research_observation_count": 821,
     "canonical_evidence_link_count": 805,
     "combined_canonical_boat_model_count_expected": 1770
