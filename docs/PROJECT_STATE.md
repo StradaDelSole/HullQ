@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
-**Updated:** 2026-08-21  
-**Current stage:** Stage 3.2 — SLICE-0018 controlled Wikidata Tier-0 <=2,500-window expansion `READY`  
+**Updated:** 2026-08-22  
+**Current stage:** Stage 3.2 — SLICE-0018 accepted / DONE; next Stage-3 slice not yet READY  
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -66,8 +66,9 @@ Auth remains deferred under OQ-014. OQ-006 controls alert cadence/freshness; OQ-
 | SLICE-0015 | negative-path hardening + fixed Stage-2 G3 scorecard; G3_PASS |
 | SLICE-0016 | canonical Tier-0 identity PostgreSQL persistence/admission boundary |
 | SLICE-0017 | controlled Wikidata Tier-0 1,000-candidate identity bootstrap; accepted broad Stage-3 baseline |
+| SLICE-0018 | baseline-preserving Wikidata first-<=2,500 discovery expansion; measured direct-instance ceiling at 1,829 QIDs; accepted combined Tier-0 universe |
 
-All slices 0001–0017 are `DONE` and owner-accepted.
+All slices 0001–0018 are `DONE` and owner-accepted.
 
 ## SLICE-0011 — benchmark result retained
 
@@ -349,43 +350,113 @@ Accepted bootstrap semantics now include:
 
 Final closure record: `docs/slices/SLICE-0017-acceptance-closure.md`.
 
-## Current operational position — SLICE-0018 READY
+## SLICE-0018 — DONE / accepted
 
-`docs/slices/SLICE-0018-controlled-wikidata-tier0-2500-window-expansion.md` is the only READY primary slice contract.
+SLICE-0018 extended the accepted Stage-3 Tier-0 identity universe without reinterpreting the accepted SLICE-0017 baseline.
 
-SLICE-0018 is intentionally a baseline-preserving **expansion delta**, not a disposable rerun of 0017.
+Accepted final head:
 
-The binding state model is:
+`cbc93582c7ed93aa7a4253ac58868f7e79e266cc`
+
+Implementation PR #37 merge commit:
+
+`213ec3b13769708b1d996b3266a9e9c19fabbb45`
+
+Exact-head CI #208 (`32540170666`) passed with PostgreSQL 18.6, Ubuntu/Windows quality, dependency audit, retained Stage-2 exact `G3_PASS`, accepted SLICE-0017 replay and the combined SLICE-0018 baseline-first/delta-second replay all green.
+
+Final retained live measurement:
 
 ```text
-A. accepted SLICE-0017 baseline
-B. historical retained crosswalk
-C. current SLICE-0018 first-<=2,500 discovery window
-D. SLICE-0018 expansion delta = C minus all 1,000 baseline candidate QIDs
+requested discovery limit                    2,500
+hard safety ceiling                          3,000
+unique discovery QIDs returned               1,829
+target reached                               false
+accepted-baseline overlap                    1,000
+accepted-baseline absent                         0
+expansion delta                                829
+AUTO_ADMIT                                     805
+REVIEW_REQUIRED                                 16
+NOT_ADMITTED                                     8
+baseline collision records                       6
+delta-delta collision clusters                   6
+retained historical QID -> HullQ-ID mappings 1,772
+combined canonical BoatModels                 1,770
+acquisition failures                              0
 ```
 
-Only D receives new SLICE-0018 admission/review/non-admission decisions.
+Final deterministic delta reason counts:
 
-The accepted 965 baseline BoatModels must not be reclassified, demoted, deleted, renamed, re-aliased or reminted merely because a larger live discovery window exposes additional collisions or source churn.
+- `ok`: **805**;
+- `name_collision`: **16**;
+- `missing_label`: **8**.
 
-A new delta candidate that collides with baseline search space is review-bound; the accepted baseline entity remains unchanged.
+The direct-instance Wikidata query therefore established a measured current source ceiling of **1,829** under this discovery definition. The result was retained as fact; it was not padded from another source and was not converted into an artificial 2,500-candidate quota.
 
-The one authorized live Wikidata acquisition for SLICE-0018 is bounded by:
+Accepted SLICE-0018 semantics include:
 
-- same accepted rights-gated direct-instance source;
-- direct instances of `Q106179098` only;
-- deterministic stable ordering;
-- requested limit: **2,500**;
-- hard safety ceiling: **3,000**;
-- no recursive subclass expansion;
-- no source switch;
-- no padding from another source if fewer than 2,500 are returned.
+- exact raw-byte fingerprint protection for the accepted SLICE-0017 baseline before SLICE-0018 work;
+- immutable accepted SLICE-0017 baseline decisions/IDs/payload semantics;
+- separate current discovery window, expansion delta and historical retained crosswalk;
+- stable historical mapping survival across omission/reappearance;
+- fail-closed crosswalk conflict detection in both directions;
+- exact fetched-entity completeness for every expected delta QID;
+- exact manifest candidate-set equality to discovery-minus-baseline;
+- slice-level <=2,500 network boundary enforced before adapter construction while shared safety ceiling remains 3,000;
+- baseline-QID and duplicate-delta rejection before classification;
+- accepted HullQ search-key collision semantics for delta↔baseline and delta↔delta review routing;
+- baseline-first/delta-second PostgreSQL 18 replay from migrations zero;
+- exact baseline verification before delta and zero drift after delta;
+- exact first-pass/importer-status/readback/reimport/fresh-schema proof;
+- no Brand/Organization/BoatDesign inference;
+- no second live acquisition during the correction round;
+- normal CI fully offline with respect to Wikidata.
 
-If the direct-instance source returns fewer than 2,500 candidates, that observed source ceiling is a measured Stage-3 result rather than a reason to bypass the source boundary.
+Remote PostgreSQL 18.6 replay proved:
 
-SLICE-0018 must retain a separate artifact from the accepted `research/bootstrap/wikidata/manifest.json` baseline and must prove the combined baseline-first/delta-second graph against isolated PostgreSQL 18 schemas with exact re-import and independent fresh-schema equality.
+```text
+baseline before delta:
+  985 bundles
+  965 admissions
+  exact canonical ID set
+  0 readback mismatches
 
-No later slice is pre-authorized by this readiness state.
+combined first schema:
+  1,806 bundles imported
+  1,770 admissions imported
+  0 conflicts/errors/unexpected statuses
+  0 semantic readback mismatches
+  0 post-delta baseline drift mismatches
+  exact combined canonical ID set
+  0 unexpected canonical rows for non-admitted candidates
+  0 Brand / Organization / BoatDesign rows
+
+exact re-import:
+  3,576 ALREADY_IMPORTED
+  0 conflicts
+  0 errors
+
+independent fresh schema:
+  1,806 bundles imported
+  1,770 admissions imported
+  0 semantic mismatches
+  0 post-delta baseline drift mismatches
+  exact combined canonical ID set
+  0 Brand / Organization / BoatDesign rows
+
+all_zero_tolerance_conditions_clear = true
+```
+
+Final closure record: `docs/slices/SLICE-0018-acceptance-closure.md`.
+
+## Current operational position — no READY slice
+
+There is currently no primary slice contract in `READY` state.
+
+SLICE-0018 is accepted and `DONE`. Its measurement must inform the next architecture/research decision rather than trigger an automatic continuation.
+
+No later slice is pre-authorized. Before new Claude implementation/research work begins, the next primary slice must be separately designed, bounded and placed in `READY` state through the normal master workflow.
+
+Potential next directions may include another rights-cleared bootstrap source or discovery method, manufacturer-universe research (including historical manufacturers), review-resolution work, or technical enrichment. Listing these possibilities does not authorize any of them.
 
 ## Near-term path
 
@@ -404,9 +475,9 @@ SLICE-0016  canonical identity persistence/admission boundary  DONE
       ↓
 SLICE-0017  controlled Wikidata Tier-0 1,000 bootstrap         DONE
       ↓
-SLICE-0018  baseline-preserving Wikidata <=2,500 expansion     READY
+SLICE-0018  baseline-preserving Wikidata <=2,500 expansion     DONE / source ceiling 1,829
       ↓
-measured 5,000/source/enrichment decision                      NOT AUTHORIZED YET
+next bounded Stage-3 decision                                  NOT READY YET
 ```
 
 The benchmark corpus should not be expanded merely to increase its count. Additional stress cases are justified only if a materially new problem class is demonstrated.
@@ -423,7 +494,7 @@ continuous new-model intake
 
 The future continuous track should progressively handle discovery → identity triage → technical intake → validation/persistence → deep enrichment, with explicit maturity such as announced/preliminary/production-confirmed/verified rather than pretending announcement data is final production specification.
 
-SLICE-0018 remains historical/bootstrap-universe work and does not implement the continuous new-model track.
+SLICE-0018 completed a historical/bootstrap-universe expansion step and does not itself implement the continuous new-model track.
 
 ## AI repository workflow — ACTIVE
 
@@ -438,13 +509,13 @@ FINISH_SLICE.bat
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-After the SLICE-0017 closure / SLICE-0018 readiness PR is merged, the project owner may run `FINISH_SLICE.bat` for SLICE-0017 and then, when ready, `START_SLICE.bat` for SLICE-0018.
+After the SLICE-0018 acceptance-closure PR is merged, the project owner may close the SLICE-0018 VS Code window/Claude session/terminals and run `FINISH_SLICE.bat` for SLICE-0018. No `START_SLICE.bat` run for a later slice should occur until a separate primary contract is explicitly `READY`.
 
 ## Do not start yet
 
-- 5,000 identity expansion before SLICE-0018 acceptance and measurement;
-- another bootstrap source before SLICE-0018 measures whether Wikidata reaches the 2,500 window, unless SLICE-0018 is explicitly `BLOCKED` by the accepted source boundary;
-- resolution campaign for SLICE-0017 review candidates;
+- 5,000 identity rerun merely by increasing the accepted SLICE-0018 limit;
+- another bootstrap source or different Wikidata discovery strategy before a separate bounded source/discovery slice is accepted and READY;
+- resolution campaign for SLICE-0017/SLICE-0018 review candidates;
 - broad Tier-1/Tier-2 technical enrichment;
 - unbounded crawler work;
 - automatic fuzzy/canonical identity resolution;
