@@ -17,8 +17,10 @@ SLICE-0019 reached its bounded breadth floors without claiming global completene
 - Countries represented by strict floor records: **25**
 - Macro-regions represented: **8**
 - Historical/defunct/acquired/renamed strict-floor records: **61**
-- Strict-floor records with a retained official/recognized heritage or archive surface: **107**
+- Strict-floor records with a retained official/recognized heritage or archive surface: **61**
 - Strict-floor records with a retained official current site: **67**
+- Strict-floor records with a normalized discoverable model-identity yield: **9**
+- Strict-floor records with a normalized cumulative production-unit count: **58**
 - Source-yield sample records marked in registry: **20**
 
 The sole retained `needs_review` record is: Columbia Yachts. It remains review-bound because the recovered evidence collapses materially distinct historical/revival identities; the slice does not fabricate a forced reconciliation.
@@ -37,7 +39,7 @@ Source families used included current manufacturer/yard sites, official heritage
 | >=20 countries | 25 | PASS |
 | >=5 macro-regions | 8 | PASS |
 | >=40 historical/defunct/acquired/renamed eligible records | 61 | PASS |
-| >=25 official/recognized heritage/archive surfaces | 107 | PASS |
+| >=25 official/recognized heritage/archive surfaces | 61 | PASS |
 
 Countries represented by the strict floor: Australia, Austria, Belgium, Canada, Croatia, Czech Republic, Denmark, England, Finland, France, Germany, Hong Kong, Italy, Japan, Netherlands, New Zealand, Norway, Poland, Slovenia, South Africa, Spain, Sweden, Taiwan, United States, Wales.
 
@@ -56,6 +58,18 @@ Macro-regions represented: Asia-Pacific, Eastern Europe, Nordics, North America,
 
 Status describes the retained research record's relevant production/company state and is not used to erase historical eligibility. Unknown remains unknown where current operation could not be established.
 
+## Model-yield semantics
+
+The registry retains two separate, unambiguous yield fields per record instead of one mixed field:
+
+- `model_identity_yield` — a count of **discoverable, distinct production-sailboat model identities** (for example, Oyster's official heritage index lists 46 discontinued models). This is never a cumulative hull/unit count.
+- `production_unit_count` — a **cumulative production-unit (hull) count** claimed by a source (for example, Catalina's official history states more than 85,000 Catalinas on the water). This is never a count of distinct model identities.
+
+- Strict-floor records with a normalized `model_identity_yield`: **9**
+- Strict-floor records with a normalized `production_unit_count`: **58**
+
+No numeric value already retained by the source-yield research was reinterpreted to produce this split: each existing figure was routed to exactly one of the two fields based on what its own retained notes describe, and the other field was left explicitly `unknown` rather than guessed.
+
 ## Source and rights observations
 
 The registry retains source-level rights/access assessments separately from factual research confidence. Counts below are **source assessments**, not unique entities and not legal clearance conclusions.
@@ -63,7 +77,7 @@ The registry retains source-level rights/access assessments separately from fact
 | Systematic-use status | Source assessments |
 | --- | ---: |
 | CLEARED | 58 |
-| REQUIRES_REVIEW | 209 |
+| REQUIRES_REVIEW | 218 |
 | BLOCKED | 0 |
 | UNKNOWN | 1 |
 
@@ -91,13 +105,13 @@ The sample is deliberately heterogeneous and is not statistically representative
 | Tillotson-Pearson (TPI) | North America | historical | 20+ reconstructable across brand histories; no safe single-yard total | reconstructed across J/Boats, Freedom, Alerion and other brand histories | partial-strong | partial | partial | low-medium | REQUIRES_REVIEW | high |
 | Oyster Yachts | UK & Ireland | active | 46 heritage models plus current range | explicit official heritage index | strong | strong | partial-strong | high | REQUIRES_REVIEW | low |
 | Westerly Marine | UK & Ireland | historical | 30+ | explicit owner-wiki lists and brochure index | strong | strong | strong on many brochure/model pages | medium-high | REQUIRES_REVIEW | medium |
-| Northshore Yachts | UK & Ireland | historical | 20+ reconstructed across Southerly and Vancouver | reconstructed across brand histories | strong for major ranges | partial | strong for variable-draft/keel concepts; mixed otherwise | medium-low | REQUIRES_REVIEW | high |
+| Northshore Yachts | UK & Ireland | historical | 20+ reconstructed across Southerly and Vancouver | reconstructed across brand histories | strong for major ranges | partial | strong for variable-draft/keel concepts; mixed otherwise | low-medium | REQUIRES_REVIEW | high |
 | Bénéteau | Western Europe | active | 60+ from sampled official heritage generations; broader total higher | explicit official range/generation indexes | strong | strong | partial | high | REQUIRES_REVIEW | low-medium |
 | Fountaine Pajot | Western Europe | active | 20+ | mixed current index plus historical timeline reconstruction | strong | strong for current models; partial historical | partial-strong for current models | medium-high | REQUIRES_REVIEW | medium |
 | Wauquiez | Western Europe | active | 20+ | official timeline plus current model pages | strong | strong current; partial historical | strong current, including keel variants | medium-high | REQUIRES_REVIEW | medium |
 | Kelt (Kelt Marine) | Western Europe | historical | 8 production identities plus one prototype in the measured list | explicit specialist-secondary historical list | strong | weak on the index source | weak | low | REQUIRES_REVIEW | high |
 | Elan d.o.o. | Eastern Europe | active | 20+ | explicit previous-model page plus history/current range | strong | strong current; partial historical | strong current | high | REQUIRES_REVIEW | low-medium |
-| Ostróda Yacht Sp. z o.o. | Eastern Europe | active | not safely countable from yard surface; official site states >30 motor+sail models combined | not enumerated by yard; requires brand-production crosswalk | strong at yard/program level | unknown on yard surface | unknown on yard surface | low for model discovery; high for confirming yard role | REQUIRES_REVIEW | high |
+| Ostróda Yacht Sp. z o.o. | Eastern Europe | active | not safely countable from yard surface; official site states >30 motor+sail models combined | not enumerated by yard; requires brand-production crosswalk | strong at yard/program level | unknown on yard surface | unknown on yard surface | low | REQUIRES_REVIEW | high |
 | Cantiere del Pardo | Southern Europe | active | 20+ | official heritage timeline plus current range | strong | strong current | partial-strong current | medium-high | REQUIRES_REVIEW | medium |
 | Alpa | Southern Europe | historical | 11+ in the >9 m category alone; additional smaller models exist | explicit historical-club category indexes | strong | strong on sampled model pages | partial | medium | REQUIRES_REVIEW | medium |
 | Hallberg-Rassy | Nordics | active | 30+ previous models plus current range | official previous-model pages; recognized dealer index helps navigation | strong | strong | strong relative to sample, with parts/brochure expansion | high | REQUIRES_REVIEW | low-medium |

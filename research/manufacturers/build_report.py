@@ -8,6 +8,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from archive_surface import recognized_archive_surface_count
+
 ROOT = Path(__file__).resolve().parent
 REGISTRY = ROOT / "registry.json"
 STUDY = ROOT / "source_yield_study.json"
@@ -48,12 +50,18 @@ def main() -> None:
     regions = sorted({record["region"] for record in floor_records})
     activity = Counter(record["status"] for record in floor_records)
     historical_count = sum(1 for record in floor_records if record["status"] in HISTORICAL_STATUSES)
-    archive_surface_count = sum(
-        1
-        for record in floor_records
-        if record["official_heritage_archive"] or record["other_archive_sources"]
-    )
+    # Uses the exact same strict definition build_registry.py enforces as the
+    # acceptance floor: an internal HullQ research packet retained only in
+    # other_archive_sources (e.g. RESEARCH-007..009) is never by itself a
+    # recognized external heritage/archive surface.
+    archive_surface_count = recognized_archive_surface_count(floor_records)
     official_current_count = sum(1 for record in floor_records if record["official_current_site"])
+    model_identity_yield_count = sum(
+        1 for record in floor_records if record["model_identity_yield"]["value"] is not None
+    )
+    production_unit_count_count = sum(
+        1 for record in floor_records if record["production_unit_count"]["value"] is not None
+    )
     sample_count = sum(1 for record in records if record["source_yield_sample"])
     assert sample_count == 20
 
@@ -103,6 +111,8 @@ def main() -> None:
             f"- Historical/defunct/acquired/renamed strict-floor records: **{historical_count}**",
             f"- Strict-floor records with a retained official/recognized heritage or archive surface: **{archive_surface_count}**",
             f"- Strict-floor records with a retained official current site: **{official_current_count}**",
+            f"- Strict-floor records with a normalized discoverable model-identity yield: **{model_identity_yield_count}**",
+            f"- Strict-floor records with a normalized cumulative production-unit count: **{production_unit_count_count}**",
             f"- Source-yield sample records marked in registry: **{sample_count}**",
             "",
             "The sole retained `needs_review` record is: "
@@ -153,6 +163,24 @@ def main() -> None:
             "",
             "Status describes the retained research record's relevant production/company state and is not used to "
             "erase historical eligibility. Unknown remains unknown where current operation could not be established.",
+            "",
+            "## Model-yield semantics",
+            "",
+            "The registry retains two separate, unambiguous yield fields per record instead of one mixed field:",
+            "",
+            "- `model_identity_yield` — a count of **discoverable, distinct production-sailboat model identities** "
+            "(for example, Oyster's official heritage index lists 46 discontinued models). This is never a cumulative "
+            "hull/unit count.",
+            "- `production_unit_count` — a **cumulative production-unit (hull) count** claimed by a source (for "
+            "example, Catalina's official history states more than 85,000 Catalinas on the water). This is never a "
+            "count of distinct model identities.",
+            "",
+            f"- Strict-floor records with a normalized `model_identity_yield`: **{model_identity_yield_count}**",
+            f"- Strict-floor records with a normalized `production_unit_count`: **{production_unit_count_count}**",
+            "",
+            "No numeric value already retained by the source-yield research was reinterpreted to produce this split: "
+            "each existing figure was routed to exactly one of the two fields based on what its own retained notes "
+            "describe, and the other field was left explicitly `unknown` rather than guessed.",
             "",
             "## Source and rights observations",
             "",

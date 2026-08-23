@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/manufacturer-research-registry/0019-source-yield-v1",
+  "title": "HullQ SLICE-0019 20-entity source-yield study",
+  "description": "Non-canonical research artifact measuring source-strategy characteristics for a deliberately varied 20-entity sample. See registry_schema.json for the parent research registry.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["study_version", "generated_at", "scope_note", "sample_count", "method", "entities"],
+  "properties": {
+    "study_version": { "const": "0019-source-yield-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "scope_note": { "type": "string" },
+    "sample_count": { "const": 20 },
+    "method": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["field_scale", "automation_scale", "review_burden_scale"],
+      "properties": {
+        "field_scale": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "automation_scale": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "review_burden_scale": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      }
+    },
+    "entities": {
+      "type": "array",
+      "minItems": 20,
+      "maxItems": 20,
+      "items": { "$ref": "#/$defs/sampled_entity" }
+    }
+  },
+  "$defs": {
+    "sampled_entity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preferred_display_name",
+        "region",
+        "activity_class",
+        "production_scale",
+        "hull_form",
+        "sample_reason",
+        "discoverable_model_identity_estimate",
+        "model_list_mode",
+        "production_year_evidence",
+        "core_dimensions_availability",
+        "critical_technical_fields_availability",
+        "expansion_pattern",
+        "source_volatility",
+        "automation_suitability",
+        "systematic_use_status",
+        "human_review_burden",
+        "measurement_note",
+        "probe_model_names",
+        "evidence_urls"
+      ],
+      "properties": {
+        "preferred_display_name": { "type": "string", "minLength": 1 },
+        "region": {
+          "type": "string",
+          "enum": [
+            "North America",
+            "UK & Ireland",
+            "Western Europe",
+            "Nordics",
+            "Southern Europe",
+            "Eastern Europe",
+            "Asia-Pacific",
+            "Rest of World"
+          ]
+        },
+        "activity_class": { "type": "string", "enum": ["active", "historical"] },
+        "production_scale": { "type": "string", "minLength": 1 },
+        "hull_form": { "type": "string", "enum": ["monohull", "multihull", "mixed monohull/multihull", "mixed motor/sail output"] },
+        "sample_reason": { "type": "string", "minLength": 1 },
+        "discoverable_model_identity_estimate": { "type": "string", "minLength": 1 },
+        "model_list_mode": { "type": "string", "minLength": 1 },
+        "production_year_evidence": { "type": "string", "minLength": 1 },
+        "core_dimensions_availability": { "type": "string", "minLength": 1 },
+        "critical_technical_fields_availability": { "type": "string", "minLength": 1 },
+        "expansion_pattern": { "type": "string", "minLength": 1 },
+        "source_volatility": { "type": "string", "minLength": 1 },
+        "automation_suitability": {
+          "type": "string",
+          "enum": ["low", "low-medium", "medium", "medium-high", "high"]
+        },
+        "systematic_use_status": {
+          "type": "string",
+          "enum": ["CLEARED", "REQUIRES_REVIEW", "BLOCKED", "UNKNOWN"]
+        },
+        "human_review_burden": {
+          "type": "string",
+          "enum": ["low", "low-medium", "medium", "medium-high", "high"]
+        },
+        "measurement_note": { "type": "string", "minLength": 1 },
+        "probe_model_names": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "evidence_urls": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        }
+      }
+    }
+  }
+}

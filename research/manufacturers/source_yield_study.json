@@ -6,8 +6,9 @@
   "method": {
     "selection": "Verified manufacturer/yard records chosen to span active and historical entities, high-volume and specialist builders, monohulls and multihulls, multiple macro-regions, strong official archives, contract-yard cases, and difficult archival-only cases.",
     "field_scale": ["strong", "partial", "weak", "unknown"],
-    "automation_scale": ["high", "medium", "low"],
-    "review_burden_scale": ["low", "medium", "high"],
+    "field_scale_note": "core_dimensions_availability and critical_technical_fields_availability are free-text measurements anchored on these reference tokens (they may qualify or combine them, e.g. 'strong current; partial historical') rather than a single strict enum, because the qualifying context is itself part of the measurement.",
+    "automation_scale": ["low", "low-medium", "medium", "medium-high", "high"],
+    "review_burden_scale": ["low", "low-medium", "medium", "medium-high", "high"],
     "rights_rule": "Public readability is discovery evidence only. Unless a separate licence or terms review clears systematic reuse, later systematic use remains REQUIRES_REVIEW.",
     "overlap_probe": "probe_model_names are compared later only by exact preferred-label equality against AUTO_ADMIT candidates in the accepted SLICE-0017 and SLICE-0018 manifests. Alias/case-only signals are reported as unresolved possible overlap, never forced matches."
   },
@@ -151,7 +152,7 @@
       "critical_technical_fields_availability": "strong for variable-draft/keel concepts; mixed otherwise",
       "expansion_pattern": "multi-source brand/yard expansion",
       "source_volatility": "medium",
-      "automation_suitability": "medium-low",
+      "automation_suitability": "low-medium",
       "systematic_use_status": "REQUIRES_REVIEW",
       "human_review_burden": "high",
       "measurement_note": "Southerly history gives a sequence from the 28 through later 32/38/42RST/420/47/49/535/57RS and other models; Vancouver history adds another model family. The main cost is identity/production relationship resolution, not lack of model evidence.",
@@ -299,10 +300,10 @@
       "critical_technical_fields_availability": "unknown on yard surface",
       "expansion_pattern": "yard evidence then external brand/model crosswalk",
       "source_volatility": "low",
-      "automation_suitability": "low for model discovery; high for confirming yard role",
+      "automation_suitability": "low",
       "systematic_use_status": "REQUIRES_REVIEW",
       "human_review_burden": "high",
-      "measurement_note": "The official site states more than 30 motor and sailing models and roughly 4,000 units/year under Jeanneau and Beneteau trademarks, but it does not enumerate the sail-only subset. This source should confirm production relationships, not mint model identities by inference.",
+      "measurement_note": "The official site states more than 30 motor and sailing models and roughly 4,000 units/year under Jeanneau and Beneteau trademarks, but it does not enumerate the sail-only subset. This source should confirm production relationships, not mint model identities by inference. automation_suitability rates model-identity-discovery automation specifically (the sample's core measurement axis) as low; the yard is nonetheless a high-confidence source for confirming a production relationship, which is a separate, non-scale judgment recorded here in prose rather than in the controlled automation_suitability vocabulary.",
       "probe_model_names": [],
       "evidence_urls": [
         "https://ostroda-yacht.com.pl/en/about/",

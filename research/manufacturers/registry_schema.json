@@ -43,7 +43,8 @@
         "other_archive_sources",
         "sources",
         "rights_assessment",
-        "model_yield_estimate",
+        "model_identity_yield",
+        "production_unit_count",
         "research_status",
         "ambiguity_notes",
         "source_yield_sample"
@@ -189,10 +190,22 @@
             }
           }
         },
-        "model_yield_estimate": {
+        "model_identity_yield": {
           "type": "object",
           "additionalProperties": false,
           "required": ["value", "basis", "notes"],
+          "description": "Count of discoverable/distinct production-sailboat model identities (e.g. 'Oyster lists 46 heritage models'). This is never a cumulative hull/unit count; see production_unit_count for that.",
+          "properties": {
+            "value": { "type": ["integer", "null"], "minimum": 0 },
+            "basis": { "type": "string", "enum": ["exact", "estimated", "unknown"] },
+            "notes": { "type": "string" }
+          }
+        },
+        "production_unit_count": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "basis", "notes"],
+          "description": "Cumulative company/model production-unit (hull) count claimed by a source (e.g. 'more than 85,000 Catalinas on the water'). This is never a count of distinct model identities; see model_identity_yield for that.",
           "properties": {
             "value": { "type": ["integer", "null"], "minimum": 0 },
             "basis": { "type": "string", "enum": ["exact", "estimated", "unknown"] },

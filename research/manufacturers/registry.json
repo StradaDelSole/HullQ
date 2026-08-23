@@ -79,15 +79,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 85000,
-        "basis": "estimated",
-        "notes": "Company states more than 85,000 Catalinas on the water (official history page); this is a cumulative company claim, not an independently audited count."
-      },
       "ambiguity_notes": "Sources vary slightly on the exact founding year: official site text says Butler 'established' the company in 1970, but the first model (Catalina 22) was built in 1969 in North Hollywood, CA before the company later based itself in Woodland Hills, CA.",
       "research_record_id": "RSRCH-MFR-0001",
       "research_status": "verified",
-      "source_yield_sample": true
+      "source_yield_sample": true,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 85000,
+        "basis": "estimated",
+        "notes": "Company states more than 85,000 Catalinas on the water (official history page); this is a cumulative company claim, not an independently audited count."
+      }
     },
     {
       "preferred_display_name": "Hunter Marine",
@@ -153,15 +158,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Recorded as a distinct historical entity from Marlow-Hunter (post-2012) per the semantic rule against silently merging a renamed/re-owned company; see relationship entry.",
+      "research_record_id": "RSRCH-MFR-0002",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No independently verified cumulative unit count found; peak annual rate (~2000/yr) reported but no lifetime total located."
       },
-      "ambiguity_notes": "Recorded as a distinct historical entity from Marlow-Hunter (post-2012) per the semantic rule against silently merging a renamed/re-owned company; see relationship entry.",
-      "research_record_id": "RSRCH-MFR-0002",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No independently verified cumulative unit count found; peak annual rate (~2000/yr) reported but no lifetime total located."
+      }
     },
     {
       "preferred_display_name": "Marlow-Hunter",
@@ -246,15 +256,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "The apparent official domain marlow-hunter.com currently redirects (301) to an unrelated restaurant website, which raises real doubt about whether the company is still operating as of this research date; the only evidence of continued activity is a secondary builder-database page whose own 'last updated' date could not be confirmed. Current operational status should be treated as unconfirmed pending a fresher primary source.",
+      "research_record_id": "RSRCH-MFR-0003",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative unit count located for the post-2012 Marlow-Hunter era specifically."
       },
-      "ambiguity_notes": "The apparent official domain marlow-hunter.com currently redirects (301) to an unrelated restaurant website, which raises real doubt about whether the company is still operating as of this research date; the only evidence of continued activity is a secondary builder-database page whose own 'last updated' date could not be confirmed. Current operational status should be treated as unconfirmed pending a fresher primary source.",
-      "research_record_id": "RSRCH-MFR-0003",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative unit count located for the post-2012 Marlow-Hunter era specifically."
+      }
     },
     {
       "preferred_display_name": "J/Boats",
@@ -331,15 +346,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 12000,
-        "basis": "estimated",
-        "notes": "Secondary source states TPI alone built over 5,000 J/24s plus another 7,000 J/Boats from J/22 to J/65; this is a rough cumulative estimate, not an official company figure."
-      },
       "ambiguity_notes": "Verified brand/design/marketing context; physical manufacture is assigned to contract builders such as TPI.",
       "research_record_id": "RSRCH-MFR-0004",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 12000,
+        "basis": "estimated",
+        "notes": "Secondary source states TPI alone built over 5,000 J/24s plus another 7,000 J/Boats from J/22 to J/65; this is a rough cumulative estimate, not an official company figure."
+      }
     },
     {
       "preferred_display_name": "Pacific Seacraft",
@@ -409,15 +429,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Attempted to directly fetch the official site pacificseacraft.com; it returned a 'certificate has expired' TLS error at research time on both http and https, so the current live catalog could not be directly verified even though the domain is confirmed to belong to the company per secondary sources.",
+      "research_record_id": "RSRCH-MFR-0005",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative unit count located."
       },
-      "ambiguity_notes": "Attempted to directly fetch the official site pacificseacraft.com; it returned a 'certificate has expired' TLS error at research time on both http and https, so the current live catalog could not be directly verified even though the domain is confirmed to belong to the company per secondary sources.",
-      "research_record_id": "RSRCH-MFR-0005",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative unit count located."
+      }
     },
     {
       "preferred_display_name": "Island Packet Yachts",
@@ -482,15 +507,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 2500,
-        "basis": "estimated",
-        "notes": "Official heritage page states 'more than 2,500 yachts' built; company self-reported figure."
-      },
       "ambiguity_notes": "The company transitioned in 2017 from higher-volume 'production boat' output to lower-volume semi-custom craftsmanship under new ownership, per the official legacy page.",
       "research_record_id": "RSRCH-MFR-0006",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 2500,
+        "basis": "estimated",
+        "notes": "Official heritage page states 'more than 2,500 yachts' built; company self-reported figure."
+      }
     },
     {
       "preferred_display_name": "Hinckley Yachts",
@@ -558,15 +588,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Company today builds primarily powerboats (e.g. jet-drive picnic boats) alongside a services business; historical fiberglass sailboat series production (1950s-1980s) is well evidenced but current-catalog sailboat production should be checked separately before treating this as an active sailboat line.",
+      "research_record_id": "RSRCH-MFR-0007",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative unit count located; company today is lower-volume/semi-custom plus a large service-yard business."
       },
-      "ambiguity_notes": "Company today builds primarily powerboats (e.g. jet-drive picnic boats) alongside a services business; historical fiberglass sailboat series production (1950s-1980s) is well evidenced but current-catalog sailboat production should be checked separately before treating this as an active sailboat line.",
-      "research_record_id": "RSRCH-MFR-0007",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative unit count located; company today is lower-volume/semi-custom plus a large service-yard business."
+      }
     },
     {
       "preferred_display_name": "Tartan Yachts",
@@ -637,15 +672,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "The company markets continuous heritage back to 1961 (Douglass & McLeod era) though the current corporate entity (Tartan Marine / Fairport Yachts) dates to Charles Britton's 1971 refounding; treated as one continuous record with a predecessor relationship rather than fragmenting further. A dedicated 'company/tartanhistory' URL referenced by secondary sites returned 404 at research time; heritage content is instead embedded on the current homepage.",
+      "research_record_id": "RSRCH-MFR-0008",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative unit count located."
       },
-      "ambiguity_notes": "The company markets continuous heritage back to 1961 (Douglass & McLeod era) though the current corporate entity (Tartan Marine / Fairport Yachts) dates to Charles Britton's 1971 refounding; treated as one continuous record with a predecessor relationship rather than fragmenting further. A dedicated 'company/tartanhistory' URL referenced by secondary sites returned 404 at research time; heritage content is instead embedded on the current homepage.",
-      "research_record_id": "RSRCH-MFR-0008",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative unit count located."
+      }
     },
     {
       "preferred_display_name": "Sabre Yachts",
@@ -709,15 +749,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 588,
-        "basis": "exact",
-        "notes": "588 units of the original Sabre 28 sold 1971-1986 per secondary source; no cumulative total-company figure located."
-      },
       "ambiguity_notes": "Official About Us page (fetched directly) states the company now builds 'motor yachts exclusively' alongside sister company Back Cove Yachts; historical series sailboat production (1970-1989) is well evidenced, but current-day new-build activity appears to be power only. Recorded as status 'active' (the corporate entity/yard is active) with this caveat rather than reclassifying retroactively.",
       "research_record_id": "RSRCH-MFR-0009",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 588,
+        "basis": "exact",
+        "notes": "588 units of the original Sabre 28 sold 1971-1986 per secondary source; no cumulative total-company figure located."
+      }
     },
     {
       "preferred_display_name": "Corsair Marine",
@@ -779,15 +824,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 2500,
-        "basis": "estimated",
-        "notes": "Official page states 'more than 2,500 trimarans built through its global dealership network' as a cumulative company claim."
-      },
       "ambiguity_notes": "Founded and originally headquartered in the United States (San Diego, 1984-2006), but production and ownership are now based in Vietnam/Australia; retained in this North America batch because the company's founding/origin is North American, with status recorded as 'acquired' to reflect the real ownership/location change rather than treating it as still domestically North American.",
       "research_record_id": "RSRCH-MFR-0010",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 2500,
+        "basis": "estimated",
+        "notes": "Official page states 'more than 2,500 trimarans built through its global dealership network' as a cumulative company claim."
+      }
     },
     {
       "preferred_display_name": "Performance Cruising (Gemini Catamarans)",
@@ -852,15 +902,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 1200,
-        "basis": "estimated",
-        "notes": "Secondary source states 'over 1,200 Gemini catamarans' built; company self-description, not independently audited."
-      },
       "ambiguity_notes": "No official current company site or formal closure announcement was located. Multiple secondary sources indicate production stopped during the COVID-19 pandemic (circa 2020) and has not resumed as of this research; end_year is therefore an estimate, and status could alternatively be 'unknown' pending a primary-source confirmation of formal closure or restart. Ownership chain (Tony Smith founder -> Marlow Hunter 2010 -> contract production via Catalina 2014) is reported only in secondary/dealer sources, not an official corporate filing.",
       "research_record_id": "RSRCH-MFR-0011",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 1200,
+        "basis": "estimated",
+        "notes": "Secondary source states 'over 1,200 Gemini catamarans' built; company self-description, not independently audited."
+      }
     },
     {
       "preferred_display_name": "Precision Boat Works",
@@ -915,15 +970,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 5000,
-        "basis": "estimated",
-        "notes": "Secondary source states 'nearly 5,000 sailboats' built 1978-2018."
-      },
       "ambiguity_notes": "The legal entity/website still exists to sell parts for the existing fleet; status recorded as 'defunct' with respect to series sailboat manufacture specifically, not necessarily total corporate dissolution.",
       "research_record_id": "RSRCH-MFR-0012",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 5000,
+        "basis": "estimated",
+        "notes": "Secondary source states 'nearly 5,000 sailboats' built 1978-2018."
+      }
     },
     {
       "preferred_display_name": "MacGregor Yacht Corporation",
@@ -989,15 +1049,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 36000,
-        "basis": "estimated",
-        "notes": "Wikipedia states 'over 36,000 yachts during its lifetime'; another secondary source claims 'close to 50,000' — figures conflict and neither is an audited count."
-      },
       "ambiguity_notes": "Sources disagree on both exact founding year (1961 vs 1964) and founding institution (Stanford vs UC); also disagree on lifetime unit count (36,000 vs ~50,000). Recorded with 'estimated' basis throughout.",
       "research_record_id": "RSRCH-MFR-0013",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 36000,
+        "basis": "estimated",
+        "notes": "Wikipedia states 'over 36,000 yachts during its lifetime'; another secondary source claims 'close to 50,000' — figures conflict and neither is an audited count."
+      }
     },
     {
       "preferred_display_name": "Com-Pac Yachts",
@@ -1056,15 +1121,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "The official website was still live with no visible closure notice on its homepage at research time, despite the Wikipedia-cited official closure announcement quoting company language ('cease operations effective May 1, 2025'); the live-site content is likely stale rather than evidence the closure did not occur.",
+      "research_record_id": "RSRCH-MFR-0014",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative unit count located."
       },
-      "ambiguity_notes": "The official website was still live with no visible closure notice on its homepage at research time, despite the Wikipedia-cited official closure announcement quoting company language ('cease operations effective May 1, 2025'); the live-site content is likely stale rather than evidence the closure did not occur.",
-      "research_record_id": "RSRCH-MFR-0014",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative unit count located."
+      }
     },
     {
       "preferred_display_name": "Freedom Yachts",
@@ -1126,15 +1196,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Verified brand/program context; preserved evidence states TPI manufactured the boats.",
+      "research_record_id": "RSRCH-MFR-0015",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative unit count located; ~20 distinct models reported but not a total unit count."
       },
-      "ambiguity_notes": "Verified brand/program context; preserved evidence states TPI manufactured the boats.",
-      "research_record_id": "RSRCH-MFR-0015",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative unit count located; ~20 distinct models reported but not a total unit count."
+      }
     },
     {
       "preferred_display_name": "Alerion Yachts",
@@ -1225,15 +1300,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Verified brand/program context; Holby Marine, TPI, US Watercraft and Eastman were separate physical builders.",
+      "research_record_id": "RSRCH-MFR-0016",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative unit count located."
       },
-      "ambiguity_notes": "Verified brand/program context; Holby Marine, TPI, US Watercraft and Eastman were separate physical builders.",
-      "research_record_id": "RSRCH-MFR-0016",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative unit count located."
+      }
     },
     {
       "preferred_display_name": "Hinterhoeller Yachts",
@@ -1301,15 +1381,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 975,
-        "basis": "exact",
-        "notes": "975 Nonsuch boats built per secondary sources; does not include earlier pre-1969 Hinterhoeller Limited output or the Niagara line."
-      },
       "ambiguity_notes": "'Nonsuch' is the brand/model-line name for Hinterhoeller Yachts' most famous product; it was never an independently operating manufacturer, so it is recorded here as part of the Hinterhoeller Yachts record (entity_kind includes 'yard') rather than as a separate brand entity, per the instruction to avoid over-fragmenting a brand that only ever had one builder.",
       "research_record_id": "RSRCH-MFR-0017",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 975,
+        "basis": "exact",
+        "notes": "975 Nonsuch boats built per secondary sources; does not include earlier pre-1969 Hinterhoeller Limited output or the Niagara line."
+      }
     },
     {
       "preferred_display_name": "C&C Yachts",
@@ -1400,15 +1485,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "C&C Yachts is recorded as one continuous brand/legal-organization lineage despite multiple ownership changes (original public company -> Fairport Yachts 1996 -> US Watercraft 2013 -> ceased 2017) because secondary sources consistently treat it as the same ongoing brand identity rather than a full re-founding; the four founding component companies are recorded as relationships rather than merged into this record.",
+      "research_record_id": "RSRCH-MFR-0018",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative unit count located across the full multi-decade, multi-owner run."
       },
-      "ambiguity_notes": "C&C Yachts is recorded as one continuous brand/legal-organization lineage despite multiple ownership changes (original public company -> Fairport Yachts 1996 -> US Watercraft 2013 -> ceased 2017) because secondary sources consistently treat it as the same ongoing brand identity rather than a full re-founding; the four founding component companies are recorded as relationships rather than merged into this record.",
-      "research_record_id": "RSRCH-MFR-0018",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative unit count located across the full multi-decade, multi-owner run."
+      }
     },
     {
       "preferred_display_name": "CS Yachts",
@@ -1482,15 +1572,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": null,
+      "research_record_id": "RSRCH-MFR-0019",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "175 boats built in the single best year (1986) is documented; no lifetime cumulative total located."
       },
-      "ambiguity_notes": null,
-      "research_record_id": "RSRCH-MFR-0019",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "175 boats built in the single best year (1986) is documented; no lifetime cumulative total located."
+      }
     },
     {
       "preferred_display_name": "Cape Dory Yachts",
@@ -1561,15 +1656,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 5000,
-        "basis": "estimated",
-        "notes": "Secondary sources state 'over 5,000 vessels' produced 1963-1992."
-      },
       "ambiguity_notes": null,
       "research_record_id": "RSRCH-MFR-0020",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 5000,
+        "basis": "estimated",
+        "notes": "Secondary sources state 'over 5,000 vessels' produced 1963-1992."
+      }
     },
     {
       "preferred_display_name": "Morgan Yachts",
@@ -1649,15 +1749,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 20000,
-        "basis": "estimated",
-        "notes": "Secondary source states 'over 20,000 vessels' produced; not independently audited."
-      },
       "ambiguity_notes": "Sources conflict on the exact acquisition year (1984 vs 1986) and founding year (1962 vs 1963-65 depending on source); recorded acquisition year as 1984 per the official Catalina history page, which should be treated as the more authoritative of the two, but this is flagged for review.",
       "research_record_id": "RSRCH-MFR-0021",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 20000,
+        "basis": "estimated",
+        "notes": "Secondary source states 'over 20,000 vessels' produced; not independently audited."
+      }
     },
     {
       "preferred_display_name": "Irwin Yachts",
@@ -1716,15 +1821,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 6000,
-        "basis": "estimated",
-        "notes": "Secondary source states 'more than 6,000 boats' produced."
-      },
       "ambiguity_notes": null,
       "research_record_id": "RSRCH-MFR-0022",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 6000,
+        "basis": "estimated",
+        "notes": "Secondary source states 'more than 6,000 boats' produced."
+      }
     },
     {
       "preferred_display_name": "O'Day Corp.",
@@ -1791,15 +1901,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 12000,
-        "basis": "estimated",
-        "notes": "More than 12,000 Day Sailers sold specifically; no total-company lifetime figure located."
-      },
       "ambiguity_notes": null,
       "research_record_id": "RSRCH-MFR-0023",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 12000,
+        "basis": "estimated",
+        "notes": "More than 12,000 Day Sailers sold specifically; no total-company lifetime figure located."
+      }
     },
     {
       "preferred_display_name": "Pearson Yachts",
@@ -1884,15 +1999,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Sources give slightly different founding years (1955 vs 1956); recorded as 1956 per the more detailed Wikipedia narrative.",
+      "research_record_id": "RSRCH-MFR-0024",
+      "research_status": "verified",
+      "source_yield_sample": true,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative unit count located."
       },
-      "ambiguity_notes": "Sources give slightly different founding years (1955 vs 1956); recorded as 1956 per the more detailed Wikipedia narrative.",
-      "research_record_id": "RSRCH-MFR-0024",
-      "research_status": "verified",
-      "source_yield_sample": true
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative unit count located."
+      }
     },
     {
       "preferred_display_name": "Ericson Yachts",
@@ -1956,15 +2076,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 1000,
-        "basis": "estimated",
-        "notes": "Secondary source states 'over 1,000 boats across dozens of models.'"
-      },
       "ambiguity_notes": "Founder names and exact founding year conflict between sources (Handy/Jenkins circa 1963 vs a 1965 post-bankruptcy purchase by Mark Pitman/Del Walton per Wikipedia); both accounts agree on Costa Mesa, CA origin and eventual molds transfer to Pacific Seacraft.",
       "research_record_id": "RSRCH-MFR-0025",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 1000,
+        "basis": "estimated",
+        "notes": "Secondary source states 'over 1,000 boats across dozens of models.'"
+      }
     },
     {
       "preferred_display_name": "Cal Yachts",
@@ -2038,15 +2163,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 18000,
-        "basis": "estimated",
-        "notes": "Secondary source states 'over 18,000 boats across more than 50 models.'"
-      },
       "ambiguity_notes": null,
       "research_record_id": "RSRCH-MFR-0026",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 18000,
+        "basis": "estimated",
+        "notes": "Secondary source states 'over 18,000 boats across more than 50 models.'"
+      }
     },
     {
       "preferred_display_name": "Columbia Yachts",
@@ -2143,15 +2273,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Original manufacturer and 2001 revival remain collapsed in one recovered record; lineage must be separated before verification.",
+      "research_record_id": "RSRCH-MFR-0027",
+      "research_status": "needs_review",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No reliable cumulative unit count located; contradictory closure-year evidence undermines confidence in any lifetime total."
       },
-      "ambiguity_notes": "Original manufacturer and 2001 revival remain collapsed in one recovered record; lineage must be separated before verification.",
-      "research_record_id": "RSRCH-MFR-0027",
-      "research_status": "needs_review",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No reliable cumulative unit count located; contradictory closure-year evidence undermines confidence in any lifetime total."
+      }
     },
     {
       "preferred_display_name": "Islander Yachts",
@@ -2210,15 +2345,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "No official Wikipedia page or primary company archive located; evidence relies on specialist secondary/dealer-history sites only, so treated as needing further review despite consistent cross-source agreement on the broad narrative.",
+      "research_record_id": "RSRCH-MFR-0028",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "Earlier weak cumulative-unit estimate is not retained as normalized yield."
       },
-      "ambiguity_notes": "No official Wikipedia page or primary company archive located; evidence relies on specialist secondary/dealer-history sites only, so treated as needing further review despite consistent cross-source agreement on the broad narrative.",
-      "research_record_id": "RSRCH-MFR-0028",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Earlier weak cumulative-unit estimate is not retained as normalized yield."
+      }
     },
     {
       "preferred_display_name": "Ranger Yachts",
@@ -2281,15 +2421,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 739,
-        "basis": "exact",
-        "notes": "739 hulls of the Ranger 23 specifically (1971-1978); no total-brand cumulative figure located."
-      },
       "ambiguity_notes": "Final closure year is approximate (sources describe a phased wind-down between 1981 and 1987 rather than a single closure date).",
       "research_record_id": "RSRCH-MFR-0029",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 739,
+        "basis": "exact",
+        "notes": "739 hulls of the Ranger 23 specifically (1971-1978); no total-brand cumulative figure located."
+      }
     },
     {
       "preferred_display_name": "Bristol Yachts",
@@ -2360,15 +2505,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 4400,
-        "basis": "estimated",
-        "notes": "Secondary source states 'over 4,400 boats' built before closure."
-      },
       "ambiguity_notes": null,
       "research_record_id": "RSRCH-MFR-0030",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 4400,
+        "basis": "estimated",
+        "notes": "Secondary source states 'over 4,400 boats' built before closure."
+      }
     },
     {
       "preferred_display_name": "Westsail Corporation",
@@ -2443,15 +2593,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 830,
-        "basis": "estimated",
-        "notes": "Approximately 830 Westsail 32s built; does not include the smaller number of W28/W39/W42/W43 models built after mold sales."
-      },
       "ambiguity_notes": "Final closure date varies by source (1979 vs 1980 vs 1981); recorded end_year as 1980 as a middle estimate.",
       "research_record_id": "RSRCH-MFR-0031",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 830,
+        "basis": "estimated",
+        "notes": "Approximately 830 Westsail 32s built; does not include the smaller number of W28/W39/W42/W43 models built after mold sales."
+      }
     },
     {
       "preferred_display_name": "Valiant Yachts",
@@ -2515,15 +2670,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Attempting to fetch valiantyachts.com directly resulted in a redirect to an unrelated brokerage (offshoreyachts.com), consistent with the company's confirmed 2011 closure.",
+      "research_record_id": "RSRCH-MFR-0032",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative unit count located."
       },
-      "ambiguity_notes": "Attempting to fetch valiantyachts.com directly resulted in a redirect to an unrelated brokerage (offshoreyachts.com), consistent with the company's confirmed 2011 closure.",
-      "research_record_id": "RSRCH-MFR-0032",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative unit count located."
+      }
     },
     {
       "preferred_display_name": "Little Harbor Yachts",
@@ -2601,15 +2761,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 200,
-        "basis": "estimated",
-        "notes": "Approximately 200 boats built under the Little Harbor name across all sizes/models."
-      },
       "ambiguity_notes": "By the 1990s the company had shifted to building powerboats exclusively; series sailboat eligibility rests on the 1959-1990s era specifically.",
       "research_record_id": "RSRCH-MFR-0033",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 200,
+        "basis": "estimated",
+        "notes": "Approximately 200 boats built under the Little Harbor name across all sizes/models."
+      }
     },
     {
       "preferred_display_name": "Tillotson-Pearson (TPI)",
@@ -2709,15 +2874,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 12000,
-        "basis": "estimated",
-        "notes": "Over 5,000 J/24s plus ~7,000 other J/Boats models built by TPI, per secondary source; excludes Freedom, Alerion, Rampage and Lagoon unit counts, which were not located."
-      },
       "ambiguity_notes": "TPI is a contract-manufacturing yard/legal organization rather than a consumer-facing brand; recorded separately from J/Boats, Freedom Yachts and Alerion Yachts per the semantic rule that a yard building for multiple brands must not be merged with any one of them.",
       "research_record_id": "RSRCH-MFR-0034",
       "research_status": "verified",
-      "source_yield_sample": true
+      "source_yield_sample": true,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 12000,
+        "basis": "estimated",
+        "notes": "Over 5,000 J/24s plus ~7,000 other J/Boats models built by TPI, per secondary source; excludes Freedom, Alerion, Rampage and Lagoon unit counts, which were not located."
+      }
     },
     {
       "preferred_display_name": "Oyster Yachts",
@@ -2820,15 +2990,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Founded as 'Oyster Marine'; the brand/company has traded as 'Oyster Yachts' through several distinct legal-ownership eras (private founder, two private-equity owners, brief 2018 administration, then Richard Hadida) without the boat brand itself being renamed.",
+      "research_record_id": "RSRCH-MFR-0035",
+      "research_status": "verified",
+      "source_yield_sample": true,
+      "model_identity_yield": {
         "value": 46,
         "basis": "estimated",
         "notes": "Official heritage archive lists 46+ discontinued models (Oyster 26 through Oyster 125 Flybridge); current active range not separately counted; total cumulative hull count not confirmed"
       },
-      "ambiguity_notes": "Founded as 'Oyster Marine'; the brand/company has traded as 'Oyster Yachts' through several distinct legal-ownership eras (private founder, two private-equity owners, brief 2018 administration, then Richard Hadida) without the boat brand itself being renamed.",
-      "research_record_id": "RSRCH-MFR-0035",
-      "research_status": "verified",
-      "source_yield_sample": true
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized cumulative production-unit count retained; the retained figure describes discoverable model identities, not production units."
+      }
     },
     {
       "preferred_display_name": "Westerly Marine",
@@ -2911,15 +3086,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": null,
+      "research_record_id": "RSRCH-MFR-0036",
+      "research_status": "verified",
+      "source_yield_sample": true,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "Sources describe a broad cruising-yacht range across multiple factory eras but no cumulative unit total was found"
       },
-      "ambiguity_notes": null,
-      "research_record_id": "RSRCH-MFR-0036",
-      "research_status": "verified",
-      "source_yield_sample": true
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Sources describe a broad cruising-yacht range across multiple factory eras but no cumulative unit total was found"
+      }
     },
     {
       "preferred_display_name": "Moody",
@@ -2998,15 +3178,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 4233,
-        "basis": "estimated",
-        "notes": "Company-published figure covering the full 1973-2006 Marine Projects partnership across 39 models; not independently audited; excludes post-2007 Hanse-built production"
-      },
       "ambiguity_notes": "Verified brand context; Marine Projects historically and HanseYachts later are modeled as physical manufacturers.",
       "research_record_id": "RSRCH-MFR-0037",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 4233,
+        "basis": "estimated",
+        "notes": "Company-published figure covering the full 1973-2006 Marine Projects partnership across 39 models; not independently audited; excludes post-2007 Hanse-built production"
+      }
     },
     {
       "preferred_display_name": "Marine Projects (Plymouth) Ltd",
@@ -3082,15 +3267,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Historical sailboat manufacturer verified; the legal company continued through rename to Princess Yachts rather than disappearing.",
+      "research_record_id": "RSRCH-MFR-0038",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No independent source found giving Marine Projects' own total cumulative output across both the Moody and Sigma brands; component figures exist per-brand (e.g. Sigma 33: 364 hulls)"
       },
-      "ambiguity_notes": "Historical sailboat manufacturer verified; the legal company continued through rename to Princess Yachts rather than disappearing.",
-      "research_record_id": "RSRCH-MFR-0038",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No independent source found giving Marine Projects' own total cumulative output across both the Moody and Sigma brands; component figures exist per-brand (e.g. Sigma 33: 364 hulls)"
+      }
     },
     {
       "preferred_display_name": "Jeremy Rogers Ltd",
@@ -3178,15 +3368,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 750,
-        "basis": "estimated",
-        "notes": "~350 UK-built + ~400 Canada-licensed Contessa 26 units, plus ~650 Contessa 32 units cited by the builder; other Contessa sizes (35/38/39/43) not separately counted"
-      },
       "ambiguity_notes": "Jeremy Rogers founded his boatbuilding business in 1961 (building Folkboats); the Contessa brand/production line began in 1966. The business went through a 1980s receivership (moulds sold) before Rogers reacquired the Contessa 32 moulds in 1995 and re-registered the current company in 2001.",
       "research_record_id": "RSRCH-MFR-0039",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 750,
+        "basis": "estimated",
+        "notes": "~350 UK-built + ~400 Canada-licensed Contessa 26 units, plus ~650 Contessa 32 units cited by the builder; other Contessa sizes (35/38/39/43) not separately counted"
+      }
     },
     {
       "preferred_display_name": "Sadler Yachts",
@@ -3245,15 +3440,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 260,
-        "basis": "estimated",
-        "notes": "260 Sadler 34 units cited by secondary sources; totals for other Sadler models (25/26/29/32) not found"
-      },
       "ambiguity_notes": "Exact founding year of Martin Sadler's own yard was not confirmed by a primary source (he completed boatbuilding training in 1972 and had worked at Jeremy Rogers before founding the yard); end-of-production year (~1995) is also an estimate drawn from secondary sources rather than a company-published closure date.",
       "research_record_id": "RSRCH-MFR-0040",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 260,
+        "basis": "estimated",
+        "notes": "260 Sadler 34 units cited by secondary sources; totals for other Sadler models (25/26/29/32) not found"
+      }
     },
     {
       "preferred_display_name": "Rustler Yachts",
@@ -3342,17 +3542,31 @@
           "discovery_use_acceptable": true,
           "systematic_use_status": "CLEARED",
           "review_date": "2026-08-22"
+        },
+        {
+          "source_url": "https://www.rustleryachts.com/about-rustler/",
+          "public_access": "public",
+          "robots_or_api_notes": "Rights/access assessment backfilled during the SLICE-0019 independent-review amendment; public readability does not by itself authorize systematic commercial ingestion.",
+          "license_evidence": null,
+          "discovery_use_acceptable": true,
+          "systematic_use_status": "REQUIRES_REVIEW",
+          "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Wikipedia states Rustler Yachts was 'established in 1985 in Falmouth,' but the currently active Companies House legal entity (no. 03938066) was only incorporated in 2000 — likely reflecting an earlier unincorporated or differently-registered trading entity prior to the year-2000 legal entity; this was not independently reconciled.",
+      "research_record_id": "RSRCH-MFR-0041",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative unit total found across the seven-model current range; individual model production figures not published by the company"
       },
-      "ambiguity_notes": "Wikipedia states Rustler Yachts was 'established in 1985 in Falmouth,' but the currently active Companies House legal entity (no. 03938066) was only incorporated in 2000 — likely reflecting an earlier unincorporated or differently-registered trading entity prior to the year-2000 legal entity; this was not independently reconciled.",
-      "research_record_id": "RSRCH-MFR-0041",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative unit total found across the seven-model current range; individual model production figures not published by the company"
+      }
     },
     {
       "preferred_display_name": "Bowman Yachts",
@@ -3423,15 +3637,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Verified brand context; production occurred through separate legal manufacturers.",
+      "research_record_id": "RSRCH-MFR-0042",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative unit total found; only individual model names identified"
       },
-      "ambiguity_notes": "Verified brand context; production occurred through separate legal manufacturers.",
-      "research_record_id": "RSRCH-MFR-0042",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative unit total found; only individual model names identified"
+      }
     },
     {
       "preferred_display_name": "Rival Yachts",
@@ -3509,15 +3728,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 200,
-        "basis": "estimated",
-        "notes": "Designer's own history states hull numbering reached at least 200 across all Rival models by 1979; production continued after that date so total is likely higher but unconfirmed"
-      },
       "ambiguity_notes": "Treated as a distinct historical manufacturer/brand from 'Bowman Yachts' and 'Rustler Yachts' despite the 1998 merger and 2002 acquisition, per the semantic rule against merging predecessor/successor entities.",
       "research_record_id": "RSRCH-MFR-0043",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 200,
+        "basis": "estimated",
+        "notes": "Designer's own history states hull numbering reached at least 200 across all Rival models by 1979; production continued after that date so total is likely higher but unconfirmed"
+      }
     },
     {
       "preferred_display_name": "Northshore Yachts",
@@ -3593,15 +3817,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 2000,
-        "basis": "estimated",
-        "notes": "Secondary-source claim of 'more than 2000 boats produced' across the yard's lifetime and brands; not independently itemized"
-      },
       "ambiguity_notes": "Founding account is inconsistent across sources: one describes 'Fairways Marine,' founded 1971 by David Skellon, as Northshore's origin; another says Brian Moffat owned two shipyards (Havant and Itchenor) in the early 1970s that 'later became known as Northshore Yachts'; a third states 'in 1971 a company called Northshore Yachts was created.' The exact corporate lineage was not resolved from the sources checked.",
       "research_record_id": "RSRCH-MFR-0044",
       "research_status": "verified",
-      "source_yield_sample": true
+      "source_yield_sample": true,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 2000,
+        "basis": "estimated",
+        "notes": "Secondary-source claim of 'more than 2000 boats produced' across the yard's lifetime and brands; not independently itemized"
+      }
     },
     {
       "preferred_display_name": "Southerly",
@@ -3710,15 +3939,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Verified brand context; Northshore and Discovery are modeled as physical builders.",
+      "research_record_id": "RSRCH-MFR-0045",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative unit total found for the Southerly range across its Northshore and Discovery production eras"
       },
-      "ambiguity_notes": "Verified brand context; Northshore and Discovery are modeled as physical builders.",
-      "research_record_id": "RSRCH-MFR-0045",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative unit total found for the Southerly range across its Northshore and Discovery production eras"
+      }
     },
     {
       "preferred_display_name": "Discovery Yachts",
@@ -3787,15 +4021,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Original Discovery Shipyard Ltd closed December 2021 in financial difficulty. Companies House shows several related dissolved entities ('DISCOVERY YACHTS LTD' no. 12479652 dissolved 16 May 2023, 'DISCOVERY YACHTS GROUP LTD' dissolved 3 Dec 2024) plus a new active 'DISCOVERY YACHTS LTD' (no. 15610585, incorporated 2 Apr 2024). No independent evidence was found describing what, if anything, the newest entity currently produces, so it is not assumed to be a continuation.",
+      "research_record_id": "RSRCH-MFR-0046",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative unit total found across the Discovery 55/57/58/67 range and catamaran"
       },
-      "ambiguity_notes": "Original Discovery Shipyard Ltd closed December 2021 in financial difficulty. Companies House shows several related dissolved entities ('DISCOVERY YACHTS LTD' no. 12479652 dissolved 16 May 2023, 'DISCOVERY YACHTS GROUP LTD' dissolved 3 Dec 2024) plus a new active 'DISCOVERY YACHTS LTD' (no. 15610585, incorporated 2 Apr 2024). No independent evidence was found describing what, if anything, the newest entity currently produces, so it is not assumed to be a continuation.",
-      "research_record_id": "RSRCH-MFR-0046",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative unit total found across the Discovery 55/57/58/67 range and catamaran"
+      }
     },
     {
       "preferred_display_name": "Camper & Nicholsons",
@@ -3879,15 +4118,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 369,
-        "basis": "exact",
-        "notes": "369 Nicholson 32 hulls (1962-1981) is the best-documented single-model figure; combined total across all GRP series models is higher but not independently summed"
-      },
       "ambiguity_notes": "Camper & Nicholsons was founded in 1782 as a general shipyard and became the world's largest yacht builder 1912-1939 (custom/racing yachts), long before its 1960-2005 era of true series/production GRP sailboats (Nicholson 32 etc.), which is the basis for inclusion here. The company continues today as Camper & Nicholsons International, a yacht brokerage/charter/management business, and is no longer a series sailboat manufacturer; status 'historical' refers specifically to the manufacturing activity.",
       "research_record_id": "RSRCH-MFR-0047",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 369,
+        "basis": "exact",
+        "notes": "369 Nicholson 32 hulls (1962-1981) is the best-documented single-model figure; combined total across all GRP series models is higher but not independently summed"
+      }
     },
     {
       "preferred_display_name": "Colvic Marine",
@@ -3956,15 +4200,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": null,
+      "research_record_id": "RSRCH-MFR-0048",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": 29,
         "basis": "exact",
         "notes": "29 refers to the count of distinct models offered, not cumulative hull count, which was not found"
       },
-      "ambiguity_notes": null,
-      "research_record_id": "RSRCH-MFR-0048",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized cumulative production-unit count retained; the retained figure describes discoverable model identities, not production units."
+      }
     },
     {
       "preferred_display_name": "Cornish Crabbers",
@@ -4049,15 +4298,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Conflicting 2024 status signals were found and are deliberately not resolved here: Wikipedia reports the operating business (associated with 'Cornish Crabbers LLP' / 'Cornish Crabbers Rock Limited', the latter dissolved 18 Jun 2024) filed voluntary liquidation owing roughly £1,000,000 in March 2024; separately, a differently-numbered 'CORNISH CRABBERS LTD' (no. 12622534, incorporated 26 May 2020) shows as Active on Companies House; and other secondary sources report the brand/IP/moulds were acquired by Ben Walker of Blue Lagoon Marine in 2024. Which entity, if any, currently manufactures Cornish Crabber boats was not independently confirmed.",
+      "research_record_id": "RSRCH-MFR-0049",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative unit total found across the full model range"
       },
-      "ambiguity_notes": "Conflicting 2024 status signals were found and are deliberately not resolved here: Wikipedia reports the operating business (associated with 'Cornish Crabbers LLP' / 'Cornish Crabbers Rock Limited', the latter dissolved 18 Jun 2024) filed voluntary liquidation owing roughly £1,000,000 in March 2024; separately, a differently-numbered 'CORNISH CRABBERS LTD' (no. 12622534, incorporated 26 May 2020) shows as Active on Companies House; and other secondary sources report the brand/IP/moulds were acquired by Ben Walker of Blue Lagoon Marine in 2024. Which entity, if any, currently manufactures Cornish Crabber boats was not independently confirmed.",
-      "research_record_id": "RSRCH-MFR-0049",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative unit total found across the full model range"
+      }
     },
     {
       "preferred_display_name": "Swallow Yachts",
@@ -4112,15 +4366,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": null,
+      "research_record_id": "RSRCH-MFR-0050",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative unit total found"
       },
-      "ambiguity_notes": null,
-      "research_record_id": "RSRCH-MFR-0050",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative unit total found"
+      }
     },
     {
       "preferred_display_name": "Hurley Marine",
@@ -4193,15 +4452,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 8000,
-        "basis": "estimated",
-        "notes": "Secondary-source total of 'over 8,000 boats' across the full Hurley range (1962-1974); per-model breakdown only available for Hurley 22 (~1,200) and Silhouette (~2,500)"
-      },
       "ambiguity_notes": null,
       "research_record_id": "RSRCH-MFR-0051",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 8000,
+        "basis": "estimated",
+        "notes": "Secondary-source total of 'over 8,000 boats' across the full Hurley range (1962-1974); per-model breakdown only available for Hurley 22 (~1,200) and Silhouette (~2,500)"
+      }
     },
     {
       "preferred_display_name": "Elizabethan Yachts",
@@ -4268,15 +4532,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 44,
-        "basis": "exact",
-        "notes": "44 total documented for the Elizabethan 31 alone (~40 standard + 4 ketch-rigged); other models' totals not found"
-      },
       "ambiguity_notes": "Peter Webster Ltd is recorded as both the manufacturer (yard) and effectively the sole brand owner of the Elizabethan name; kept as one combined record since no evidence was found of the Elizabethan brand being produced by any other builder as its primary manufacturer (only later, partial continuation of specific moulds like the 31 by Lifeline Mouldings).",
       "research_record_id": "RSRCH-MFR-0052",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 44,
+        "basis": "exact",
+        "notes": "44 total documented for the Elizabethan 31 alone (~40 standard + 4 ketch-rigged); other models' totals not found"
+      }
     },
     {
       "preferred_display_name": "Halcyon Yachts",
@@ -4320,15 +4589,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 1000,
-        "basis": "estimated",
-        "notes": "~1,000 Halcyon 23 units cited; this figure belongs to the model/builder 'Offshore Yachts Limited', not to any confirmed distinct entity named 'Halcyon Yachts'"
-      },
       "ambiguity_notes": "This was a seed lead supplied for verification and could NOT be confirmed as a real, distinct manufacturer/yard entity named 'Halcyon Yachts.' The only concrete evidence found under this name is the Halcyon 23 sailboat design, which was actually built by a company called 'Offshore Yachts Limited.' Separately, an unrelated modern business called 'Halcyon Yachts' appears in search results as a yacht-delivery/brokerage service, not a series-sailboat manufacturer. Excluded rather than fabricating a manufacturer record; 'Offshore Yachts Limited' would be the correct entity to research separately if desired.",
       "research_record_id": "RSRCH-MFR-0053",
       "research_status": "excluded",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 1000,
+        "basis": "estimated",
+        "notes": "~1,000 Halcyon 23 units cited; this figure belongs to the model/builder 'Offshore Yachts Limited', not to any confirmed distinct entity named 'Halcyon Yachts'"
+      }
     },
     {
       "preferred_display_name": "Van de Stadt",
@@ -4386,15 +4660,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "This was a seed lead flagged for verification of whether it 'actually ran a UK production yard, not merely a design office.' Evidence confirms Van de Stadt was Netherlands-based and design-only: it never owned a yard and, per its own history page, sold its Dutch yard to Dehler in 1973 to concentrate fully on design. No evidence was found of Van de Stadt itself ever operating a manufacturing yard in the UK or Ireland. Excluded per the task's explicit instruction to drop this lead if design-only.",
+      "research_record_id": "RSRCH-MFR-0054",
+      "research_status": "excluded",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "Not applicable: this is a design office, not a manufacturer, so no unit-yield figure of its own applies"
       },
-      "ambiguity_notes": "This was a seed lead flagged for verification of whether it 'actually ran a UK production yard, not merely a design office.' Evidence confirms Van de Stadt was Netherlands-based and design-only: it never owned a yard and, per its own history page, sold its Dutch yard to Dehler in 1973 to concentrate fully on design. No evidence was found of Van de Stadt itself ever operating a manufacturing yard in the UK or Ireland. Excluded per the task's explicit instruction to drop this lead if design-only.",
-      "research_record_id": "RSRCH-MFR-0054",
-      "research_status": "excluded",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Not applicable: this is a design office, not a manufacturer, so no unit-yield figure of its own applies"
+      }
     },
     {
       "preferred_display_name": "Bénéteau",
@@ -4475,15 +4754,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Founded 1884 as a wooden fishing-trawler builder in Saint-Gilles-Croix-de-Vie; pivoted to fiberglass recreational sailboats in the 1960s under third-generation leadership (André Bénéteau, Annette Bénéteau Roux). This record is for the Bénéteau brand/yard itself, kept distinct from the parent 'Groupe Bénéteau' holding company per the semantic rule that a manufacturer/brand and its owning group are separate entities.",
+      "research_record_id": "RSRCH-MFR-0055",
+      "research_status": "verified",
+      "source_yield_sample": true,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "Secondary sources describe Bénéteau/Groupe Bénéteau as the world's largest producer of pleasure boats by volume; no single authoritative cumulative model count for the Bénéteau brand alone was found."
       },
-      "ambiguity_notes": "Founded 1884 as a wooden fishing-trawler builder in Saint-Gilles-Croix-de-Vie; pivoted to fiberglass recreational sailboats in the 1960s under third-generation leadership (André Bénéteau, Annette Bénéteau Roux). This record is for the Bénéteau brand/yard itself, kept distinct from the parent 'Groupe Bénéteau' holding company per the semantic rule that a manufacturer/brand and its owning group are separate entities.",
-      "research_record_id": "RSRCH-MFR-0055",
-      "research_status": "verified",
-      "source_yield_sample": true
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Secondary sources describe Bénéteau/Groupe Bénéteau as the world's largest producer of pleasure boats by volume; no single authoritative cumulative model count for the Bénéteau brand alone was found."
+      }
     },
     {
       "preferred_display_name": "Jeanneau",
@@ -4558,15 +4842,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Founded by Henri (Henry) Jeanneau in 1957 in Les Herbiers as a powerboat/runabout builder; first sailboat 1964. Kept distinct from Groupe Bénéteau (owner since 1995) and from Lagoon (a separate brand that originated as Jeanneau's multihull division but is now organized under CNB).",
+      "research_record_id": "RSRCH-MFR-0056",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No single authoritative cumulative hull count found; Sangria alone reported at ~3,000 units by 1970s per official history."
       },
-      "ambiguity_notes": "Founded by Henri (Henry) Jeanneau in 1957 in Les Herbiers as a powerboat/runabout builder; first sailboat 1964. Kept distinct from Groupe Bénéteau (owner since 1995) and from Lagoon (a separate brand that originated as Jeanneau's multihull division but is now organized under CNB).",
-      "research_record_id": "RSRCH-MFR-0056",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No single authoritative cumulative hull count found; Sangria alone reported at ~3,000 units by 1970s per official history."
+      }
     },
     {
       "preferred_display_name": "Dufour Yachts",
@@ -4647,15 +4936,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Founded by Michel Dufour in 1964 under the original name 'Stratifié Industriel' / 'Le Stratifié Industriel'; the Dufour brand also briefly owned Gibert Marine's Gib'Sea line (1996-2009) and co-founded Nautitech (1994-2002) as separate brands, illustrating the manufacturer/brand distinction the registry must preserve.",
+      "research_record_id": "RSRCH-MFR-0057",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No authoritative cumulative hull count found."
       },
-      "ambiguity_notes": "Founded by Michel Dufour in 1964 under the original name 'Stratifié Industriel' / 'Le Stratifié Industriel'; the Dufour brand also briefly owned Gibert Marine's Gib'Sea line (1996-2009) and co-founded Nautitech (1994-2002) as separate brands, illustrating the manufacturer/brand distinction the registry must preserve.",
-      "research_record_id": "RSRCH-MFR-0057",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No authoritative cumulative hull count found."
+      }
     },
     {
       "preferred_display_name": "Amel (Chantiers Amel)",
@@ -4724,15 +5018,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 2000,
-        "basis": "estimated",
-        "notes": "Secondary/official-adjacent sources state 'over 2,000 yachts' produced across the shipyard's history; not independently itemized by model."
-      },
       "ambiguity_notes": "Founder Henri Amel (born Henri Tonet) took over the ARPIN workshop in La Rochelle in 1964; some secondary sources cite 1965 as the formal shipyard founding date. Located in Périgny (La Rochelle) since 1969.",
       "research_record_id": "RSRCH-MFR-0058",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 2000,
+        "basis": "estimated",
+        "notes": "Secondary/official-adjacent sources state 'over 2,000 yachts' produced across the shipyard's history; not independently itemized by model."
+      }
     },
     {
       "preferred_display_name": "Alubat",
@@ -4783,15 +5082,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 1600,
-        "basis": "estimated",
-        "notes": "Official site states 'over 1,600 aluminum vessels' built since 1973, not broken out by individual model."
-      },
       "ambiguity_notes": "Founder identified in secondary sources as Yves Roucher (not confirmed directly on the official site during this research pass). 'Ovni' and 'Cigale' are product-line names under the Alubat yard, not separate legal entities.",
       "research_record_id": "RSRCH-MFR-0059",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 1600,
+        "basis": "estimated",
+        "notes": "Official site states 'over 1,600 aluminum vessels' built since 1973, not broken out by individual model."
+      }
     },
     {
       "preferred_display_name": "Fountaine Pajot",
@@ -4842,15 +5146,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 4000,
-        "basis": "estimated",
-        "notes": "Official company material reports roughly 4,000 Fountaine Pajot cruising catamarans; group totals are excluded."
-      },
       "ambiguity_notes": "Official dedicated heritage/history page could not be located at a stable URL during this research pass (404 on attempted path); founding year and founder names are corroborated by multiple secondary industry-press sources but should be re-verified against an official Fountaine Pajot history page in a follow-up pass.",
       "research_record_id": "RSRCH-MFR-0060",
       "research_status": "verified",
-      "source_yield_sample": true
+      "source_yield_sample": true,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 4000,
+        "basis": "estimated",
+        "notes": "Official company material reports roughly 4,000 Fountaine Pajot cruising catamarans; group totals are excluded."
+      }
     },
     {
       "preferred_display_name": "Lagoon",
@@ -4915,15 +5224,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 7000,
-        "basis": "estimated",
-        "notes": "Industry press reported the 7,000th Lagoon catamaran launch in 2024 (figure discovered via search summary, not independently fetched from a primary source this pass)."
-      },
       "ambiguity_notes": "Verified active brand/program; physical manufacture is within Groupe Bénéteau/CNB facilities.",
       "research_record_id": "RSRCH-MFR-0061",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 7000,
+        "basis": "estimated",
+        "notes": "Industry press reported the 7,000th Lagoon catamaran launch in 2024 (figure discovered via search summary, not independently fetched from a primary source this pass)."
+      }
     },
     {
       "preferred_display_name": "Nautitech",
@@ -4986,15 +5300,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Founder Bruno Voisard is named in secondary sources as the project lead but the official page does not itemize a single named founder; sold by Dufour to Voisard in 2002 before the 2014 Bavaria acquisition.",
+      "research_record_id": "RSRCH-MFR-0062",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative total found; current rate stated as ~50 catamarans/year."
       },
-      "ambiguity_notes": "Founder Bruno Voisard is named in secondary sources as the project lead but the official page does not itemize a single named founder; sold by Dufour to Voisard in 2002 before the 2014 Bavaria acquisition.",
-      "research_record_id": "RSRCH-MFR-0062",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative total found; current rate stated as ~50 catamarans/year."
+      }
     },
     {
       "preferred_display_name": "CNB (Construction Navale Bordeaux)",
@@ -5066,15 +5385,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "CNB is best understood as a manufacturing legal entity/yard housing multiple distinct brands (CNB yachts, Lagoon, Excess) rather than a single-brand series producer; the CNB-branded product line itself leans toward semi-custom/small-series large sailing yachts (60-100ft) rather than high-volume series production, which is why this entity kind includes 'legal_organization' and is flagged needs_review for eligibility-boundary judgment.",
+      "research_record_id": "RSRCH-MFR-0063",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "CNB builds both semi-custom CNB-brand yachts and series Lagoon/Excess catamarans; no single combined figure found and mixing them would conflate distinct brands."
       },
-      "ambiguity_notes": "CNB is best understood as a manufacturing legal entity/yard housing multiple distinct brands (CNB yachts, Lagoon, Excess) rather than a single-brand series producer; the CNB-branded product line itself leans toward semi-custom/small-series large sailing yachts (60-100ft) rather than high-volume series production, which is why this entity kind includes 'legal_organization' and is flagged needs_review for eligibility-boundary judgment.",
-      "research_record_id": "RSRCH-MFR-0063",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "CNB builds both semi-custom CNB-brand yachts and series Lagoon/Excess catamarans; no single combined figure found and mixing them would conflate distinct brands."
+      }
     },
     {
       "preferred_display_name": "Wauquiez",
@@ -5122,15 +5446,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 380,
-        "basis": "exact",
-        "notes": "Figure of 380 units applies only to the Centurion 32 model specifically, not the whole shipyard's output."
-      },
       "ambiguity_notes": "Attempted fetches of both wauquiez.com's official history page and a fountaine-pajot-style history path returned HTTP 404 during this research pass; current operating status (active production vs. dormant/defunct brand) could not be confirmed directly from an official current source this pass and is marked 'unknown' pending re-verification. A dedicated 'Wauquiez Forever' heritage/appreciation association exists, which is itself circumstantial evidence the brand may not be in ordinary active production, but this was not confirmed.",
       "research_record_id": "RSRCH-MFR-0064",
       "research_status": "verified",
-      "source_yield_sample": true
+      "source_yield_sample": true,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 380,
+        "basis": "exact",
+        "notes": "Figure of 380 units applies only to the Centurion 32 model specifically, not the whole shipyard's output."
+      }
     },
     {
       "preferred_display_name": "Gibert Marine (Gib'Sea)",
@@ -5184,15 +5513,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 5000,
-        "basis": "estimated",
-        "notes": "'Over five thousand boats across forty-one models' per a secondary brokerage-history source; not independently confirmed on a primary/official record."
-      },
       "ambiguity_notes": "No official current or archival site was locatable (yard is defunct); relies on secondary brokerage/enthusiast history sources (Murray Yacht Sales, gibsea-club.net) rather than an official or class-association primary source, so flagged needs_review. Founder co-credited in one source to Olivier Gibert together with in-laws connected to Dufour; exact founder attribution should be re-verified.",
       "research_record_id": "RSRCH-MFR-0065",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 5000,
+        "basis": "estimated",
+        "notes": "'Over five thousand boats across forty-one models' per a secondary brokerage-history source; not independently confirmed on a primary/official record."
+      }
     },
     {
       "preferred_display_name": "Kelt (Kelt Marine)",
@@ -5262,15 +5596,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "CONFLICT NOT RESOLVED: boat-specs.com states the shipyard 'stopped activities in 1985' after ~7 models, while other secondary sources describe a 35-year run to a 2009 closure and 4,000+ boats built. Founding year is also given as both 1974 and 1976 by different sources. Recorded here as status 'historical' with an estimated era and the conflict flagged per the rule against silently resolving conflicting sources; needs a class-association or trade-press primary source to resolve.",
+      "research_record_id": "RSRCH-MFR-0066",
+      "research_status": "verified",
+      "source_yield_sample": true,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "Conflicting secondary lifetime-output figures are not normalized."
       },
-      "ambiguity_notes": "CONFLICT NOT RESOLVED: boat-specs.com states the shipyard 'stopped activities in 1985' after ~7 models, while other secondary sources describe a 35-year run to a 2009 closure and 4,000+ boats built. Founding year is also given as both 1974 and 1976 by different sources. Recorded here as status 'historical' with an estimated era and the conflict flagged per the rule against silently resolving conflicting sources; needs a class-association or trade-press primary source to resolve.",
-      "research_record_id": "RSRCH-MFR-0066",
-      "research_status": "verified",
-      "source_yield_sample": true
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Conflicting secondary lifetime-output figures are not normalized."
+      }
     },
     {
       "preferred_display_name": "Kirié (Feeling brand)",
@@ -5333,15 +5672,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "One source traces the Kirié family shipyard itself back to 1912 (as a general boatbuilder before the Feeling range existed), while the 'Feeling' series-production line specifically dates from ~1980; this record's production_era start_year (1980) reflects the series-production evidence requested rather than the older general boatbuilding founding date, which should be re-verified and possibly split into a predecessor relationship in a follow-up pass. Relies only on a single specialist secondary source (mersetbateaux.com); an official Privilège Marine or class-association source was not located this pass.",
+      "research_record_id": "RSRCH-MFR-0067",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative production figure found; only individual model award/race results located."
       },
-      "ambiguity_notes": "One source traces the Kirié family shipyard itself back to 1912 (as a general boatbuilder before the Feeling range existed), while the 'Feeling' series-production line specifically dates from ~1980; this record's production_era start_year (1980) reflects the series-production evidence requested rather than the older general boatbuilding founding date, which should be re-verified and possibly split into a predecessor relationship in a follow-up pass. Relies only on a single specialist secondary source (mersetbateaux.com); an official Privilège Marine or class-association source was not located this pass.",
-      "research_record_id": "RSRCH-MFR-0067",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative production figure found; only individual model award/race results located."
+      }
     },
     {
       "preferred_display_name": "Fora Marine (RM Yachts)",
@@ -5409,15 +5753,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "CONFLICT NOT RESOLVED: sources disagree on the shipyard's founder and origin name/date — one secondary source credits Martin Lepoutre founding 'Fora Marine' in the 1980s in La Rochelle, another states the yard was founded in 1989 by Jean-Claude Audrey under the original name 'Sysba Marine'. Both accounts agree on the La Rochelle location, the Marc Lombard design partnership, the 2016 Lepoutre sale, the 2019 receivership, and the 2020 Grand Large Yachting acquisition. Founding year/founder recorded as estimated pending resolution.",
+      "research_record_id": "RSRCH-MFR-0068",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative figure found; described in secondary sources as 'small-series, quality builds'."
       },
-      "ambiguity_notes": "CONFLICT NOT RESOLVED: sources disagree on the shipyard's founder and origin name/date — one secondary source credits Martin Lepoutre founding 'Fora Marine' in the 1980s in La Rochelle, another states the yard was founded in 1989 by Jean-Claude Audrey under the original name 'Sysba Marine'. Both accounts agree on the La Rochelle location, the Marc Lombard design partnership, the 2016 Lepoutre sale, the 2019 receivership, and the 2020 Grand Large Yachting acquisition. Founding year/founder recorded as estimated pending resolution.",
-      "research_record_id": "RSRCH-MFR-0068",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative figure found; described in secondary sources as 'small-series, quality builds'."
+      }
     },
     {
       "preferred_display_name": "Pogo Structures",
@@ -5461,15 +5810,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 300,
-        "basis": "estimated",
-        "notes": "Official site states 'over 300' Mini 6.50 and Class40 yachts built; broader cruising-line totals not separately given."
-      },
       "ambiguity_notes": null,
       "research_record_id": "RSRCH-MFR-0069",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 300,
+        "basis": "estimated",
+        "notes": "Official site states 'over 300' Mini 6.50 and Class40 yachts built; broader cruising-line totals not separately given."
+      }
     },
     {
       "preferred_display_name": "JPK Composites",
@@ -5511,15 +5865,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 250,
-        "basis": "estimated",
-        "notes": "A separate secondary source (boatindustry.com, discovered via search but not independently fetched this pass) states 'nearly 250 units' launched since sailboat production began; not confirmed on the official history page itself."
-      },
       "ambiguity_notes": null,
       "research_record_id": "RSRCH-MFR-0070",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 250,
+        "basis": "estimated",
+        "notes": "A separate secondary source (boatindustry.com, discovered via search but not independently fetched this pass) states 'nearly 250 units' launched since sailboat production began; not confirmed on the official history page itself."
+      }
     },
     {
       "preferred_display_name": "Allures Yachting",
@@ -5589,15 +5948,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Note the founders' names appear spelled 'Desmarest' (Grand Large Yachting page) vs 'Desmaret' in the Allures history summary; likely the same person (Xavier Desmarest), spelling should be reconciled against an official source.",
+      "research_record_id": "RSRCH-MFR-0071",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative hull count found."
       },
-      "ambiguity_notes": "Note the founders' names appear spelled 'Desmarest' (Grand Large Yachting page) vs 'Desmaret' in the Allures history summary; likely the same person (Xavier Desmarest), spelling should be reconciled against an official source.",
-      "research_record_id": "RSRCH-MFR-0071",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative hull count found."
+      }
     },
     {
       "preferred_display_name": "Garcia Yachts",
@@ -5648,15 +6012,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 300,
-        "basis": "estimated",
-        "notes": "Official/near-official phrasing: 'more than three hundred ocean cruising boats' produced over forty years."
-      },
       "ambiguity_notes": null,
       "research_record_id": "RSRCH-MFR-0072",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 300,
+        "basis": "estimated",
+        "notes": "Official/near-official phrasing: 'more than three hundred ocean cruising boats' produced over forty years."
+      }
     },
     {
       "preferred_display_name": "ETAP Yachting",
@@ -5716,15 +6085,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "CONFLICT NOT RESOLVED: the Wikipedia article marks the company defunct as of a November 2010 date-flag, yet also references boat-design advertising activity resuming by 2021 under the post-2009 ownership (MIC Industries), so current operating status is recorded as 'unknown' rather than a firm 'defunct' pending a primary-source check of whether any entity is presently marketing ETAP-branded boats.",
+      "research_record_id": "RSRCH-MFR-0073",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative hull count found."
       },
-      "ambiguity_notes": "CONFLICT NOT RESOLVED: the Wikipedia article marks the company defunct as of a November 2010 date-flag, yet also references boat-design advertising activity resuming by 2021 under the post-2009 ownership (MIC Industries), so current operating status is recorded as 'unknown' rather than a firm 'defunct' pending a primary-source check of whether any entity is presently marketing ETAP-branded boats.",
-      "research_record_id": "RSRCH-MFR-0073",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative hull count found."
+      }
     },
     {
       "preferred_display_name": "Contest Yachts (Conyplex)",
@@ -5791,17 +6165,31 @@
           "discovery_use_acceptable": true,
           "systematic_use_status": "REQUIRES_REVIEW",
           "review_date": "2026-08-22"
+        },
+        {
+          "source_url": "https://www.sailboat-cruising.com/Contest-Yachts.html",
+          "public_access": "public",
+          "robots_or_api_notes": "Rights/access assessment backfilled during the SLICE-0019 independent-review amendment; public readability does not by itself authorize systematic commercial ingestion.",
+          "license_evidence": null,
+          "discovery_use_acceptable": true,
+          "systematic_use_status": "REQUIRES_REVIEW",
+          "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "One low-quality automated fetch of a De Valk brokerage page incorrectly attributed founding to designer Jan van de Stadt in Zaandam; this is contradicted by three independent sources (Cruising World, sailboat-cruising.com, jorvikrose.com) that consistently credit Ed Conijn founding in Medemblik in 1959, so the De Valk claim is treated as an error and not used.",
+      "research_record_id": "RSRCH-MFR-0074",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative hull count found; current rate ~12-15 boats/year, ~50/year at points in company history per differing secondary sources."
       },
-      "ambiguity_notes": "One low-quality automated fetch of a De Valk brokerage page incorrectly attributed founding to designer Jan van de Stadt in Zaandam; this is contradicted by three independent sources (Cruising World, sailboat-cruising.com, jorvikrose.com) that consistently credit Ed Conijn founding in Medemblik in 1959, so the De Valk claim is treated as an error and not used.",
-      "research_record_id": "RSRCH-MFR-0074",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative hull count found; current rate ~12-15 boats/year, ~50/year at points in company history per differing secondary sources."
+      }
     },
     {
       "preferred_display_name": "Trintella (Jachtwerf Anne Wever / Trintella Shipyard B.V.)",
@@ -5878,15 +6266,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 1000,
-        "basis": "exact",
-        "notes": "Owners'-association source states the 1000th yacht was celebrated in 1978; total lifetime production beyond that point not itemized in sources gathered this pass."
-      },
       "ambiguity_notes": "Brand rights changed hands multiple times after the original shipyard's 2002 closure (to an English shipyard, then an Italian owner, then back to Dutch trademark ownership in 2017); no confirmed current production entity was found, so this record covers the original historical shipyard (1959-2002) rather than any later trademark holder.",
       "research_record_id": "RSRCH-MFR-0075",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 1000,
+        "basis": "exact",
+        "notes": "Owners'-association source states the 1000th yacht was celebrated in 1978; total lifetime production beyond that point not itemized in sources gathered this pass."
+      }
     },
     {
       "preferred_display_name": "Victoire Jachtbouw",
@@ -5933,15 +6326,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Original yard lineage traces to Cor Vader's 1934 Jachtwerf Victoria; Dick Koopmans was principal designer, not founder. Later restarts are successors.",
+      "research_record_id": "RSRCH-MFR-0076",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative hull count found."
       },
-      "ambiguity_notes": "Original yard lineage traces to Cor Vader's 1934 Jachtwerf Victoria; Dick Koopmans was principal designer, not founder. Later restarts are successors.",
-      "research_record_id": "RSRCH-MFR-0076",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative hull count found."
+      }
     },
     {
       "preferred_display_name": "Koopmans",
@@ -5994,15 +6392,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "EXCLUDED per the task's exclusion rule for 'designers/naval architects who never themselves manufactured/marketed a series boat.' Evidence gathered this pass (including an attempted fetch that returned only unrelated information about the separately-founded 'Zeelander Yachts') indicates 'Koopmans' functions primarily as the identity of the Dick Koopmans Sr./Jr. naval-architecture design office, whose designs were built by separate, independently operating yards (e.g. Victoire Jachtbouw). No evidence was found this pass of Koopmans itself operating as a manufacturing yard or as a legal/marketing organization that itself produced or sold a Koopmans-branded series independent of the individual builder yards. Retained in this registry (rather than dropped) so the exclusion decision and its evidence are auditable.",
+      "research_record_id": "RSRCH-MFR-0077",
+      "research_status": "excluded",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No production entity or cumulative count identified; models appear to be built to a common design by varying yards/owners rather than by one series manufacturer."
       },
-      "ambiguity_notes": "EXCLUDED per the task's exclusion rule for 'designers/naval architects who never themselves manufactured/marketed a series boat.' Evidence gathered this pass (including an attempted fetch that returned only unrelated information about the separately-founded 'Zeelander Yachts') indicates 'Koopmans' functions primarily as the identity of the Dick Koopmans Sr./Jr. naval-architecture design office, whose designs were built by separate, independently operating yards (e.g. Victoire Jachtbouw). No evidence was found this pass of Koopmans itself operating as a manufacturing yard or as a legal/marketing organization that itself produced or sold a Koopmans-branded series independent of the individual builder yards. Retained in this registry (rather than dropped) so the exclusion decision and its evidence are auditable.",
-      "research_record_id": "RSRCH-MFR-0077",
-      "research_status": "excluded",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No production entity or cumulative count identified; models appear to be built to a common design by varying yards/owners rather than by one series manufacturer."
+      }
     },
     {
       "preferred_display_name": "Bruynzeel (yacht-design sponsorship activity)",
@@ -6074,17 +6477,31 @@
           "discovery_use_acceptable": true,
           "systematic_use_status": "REQUIRES_REVIEW",
           "review_date": "2026-08-22"
+        },
+        {
+          "source_url": "https://en.wikipedia.org/wiki/Kees_Bruynzeel",
+          "public_access": "public",
+          "robots_or_api_notes": "Rights/access assessment backfilled during the SLICE-0019 independent-review amendment; public readability does not by itself authorize systematic commercial ingestion.",
+          "license_evidence": null,
+          "discovery_use_acceptable": true,
+          "systematic_use_status": "REQUIRES_REVIEW",
+          "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "EXCLUDED: evidence gathered this pass consistently describes Bruynzeel as a door/plywood manufacturer that commissioned and marketed showcase yacht designs (Valk, Zeevalk, Zeeslang) through naval architect E.G. van de Stadt, rather than as an entity that itself operated a shipyard/manufactured the boats. This falls on the excluded side of the manufacturer/brand vs. materials-supplier-plus-designer-collaboration line per the task's semantic rule; retained here (excluded, not dropped) so the boundary judgment and its evidence are auditable. A genuine 'Bruynzeel Jachtwerf' production yard may exist and would justify re-inclusion if located with direct evidence in a follow-up pass.",
+      "research_record_id": "RSRCH-MFR-0078",
+      "research_status": "excluded",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No production entity or cumulative count confirmed as belonging to Bruynzeel itself rather than to the designer's own yard or third-party licensed builders."
       },
-      "ambiguity_notes": "EXCLUDED: evidence gathered this pass consistently describes Bruynzeel as a door/plywood manufacturer that commissioned and marketed showcase yacht designs (Valk, Zeevalk, Zeeslang) through naval architect E.G. van de Stadt, rather than as an entity that itself operated a shipyard/manufactured the boats. This falls on the excluded side of the manufacturer/brand vs. materials-supplier-plus-designer-collaboration line per the task's semantic rule; retained here (excluded, not dropped) so the boundary judgment and its evidence are auditable. A genuine 'Bruynzeel Jachtwerf' production yard may exist and would justify re-inclusion if located with direct evidence in a follow-up pass.",
-      "research_record_id": "RSRCH-MFR-0078",
-      "research_status": "excluded",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No production entity or cumulative count confirmed as belonging to Bruynzeel itself rather than to the designer's own yard or third-party licensed builders."
+      }
     },
     {
       "preferred_display_name": "HanseYachts AG",
@@ -6181,17 +6598,31 @@
           "discovery_use_acceptable": true,
           "systematic_use_status": "CLEARED",
           "review_date": "2026-08-22"
+        },
+        {
+          "source_url": "https://no-frills-sailing.com/hanse-yachts-shipyard-tour-greifswald/",
+          "public_access": "public",
+          "robots_or_api_notes": "Rights/access assessment backfilled during the SLICE-0019 independent-review amendment; public readability does not by itself authorize systematic commercial ingestion.",
+          "license_evidence": null,
+          "discovery_use_acceptable": true,
+          "systematic_use_status": "REQUIRES_REVIEW",
+          "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": null,
+      "research_record_id": "RSRCH-MFR-0079",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "Wikipedia states models ranged 29-67 feet at various points; exact current active model count not captured from sources fetched."
       },
-      "ambiguity_notes": null,
-      "research_record_id": "RSRCH-MFR-0079",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Wikipedia states models ranged 29-67 feet at various points; exact current active model count not captured from sources fetched."
+      }
     },
     {
       "preferred_display_name": "Dehler Yachts",
@@ -6282,17 +6713,31 @@
           "discovery_use_acceptable": true,
           "systematic_use_status": "CLEARED",
           "review_date": "2026-08-22"
+        },
+        {
+          "source_url": "https://www.yachtingmonthly.com/news/hanse-yachts-buy-dehler-11478",
+          "public_access": "public",
+          "robots_or_api_notes": "Rights/access assessment backfilled during the SLICE-0019 independent-review amendment; public readability does not by itself authorize systematic commercial ingestion.",
+          "license_evidence": null,
+          "discovery_use_acceptable": true,
+          "systematic_use_status": "REQUIRES_REVIEW",
+          "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Dehler is a brand/production line now operated as part of HanseYachts AG rather than an independently operating legal entity; retained as its own record because it has a distinct multi-decade production and ownership history prior to acquisition.",
+      "research_record_id": "RSRCH-MFR-0080",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": 6,
         "basis": "exact",
         "notes": "Wikipedia/official history states current lineup is six sailing yacht models, 29-46 feet."
       },
-      "ambiguity_notes": "Dehler is a brand/production line now operated as part of HanseYachts AG rather than an independently operating legal entity; retained as its own record because it has a distinct multi-decade production and ownership history prior to acquisition.",
-      "research_record_id": "RSRCH-MFR-0080",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized cumulative production-unit count retained; the retained figure describes discoverable model identities, not production units."
+      }
     },
     {
       "preferred_display_name": "Bavaria Yachtbau GmbH",
@@ -6378,15 +6823,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "A separate production/assembly presence in Croatia (sometimes referred to loosely online as 'Bavaria Composites Croatia') was investigated but no independent evidentiary source confirming a distinct legal entity or factory was found; not included as a separate record to avoid inventing an entity.",
+      "research_record_id": "RSRCH-MFR-0081",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "estimated",
         "notes": "Historical cumulative production ~3,500 boats by 2006; current active sailboat model count (30-56ft range per one source) not independently itemized from fetched pages."
       },
-      "ambiguity_notes": "A separate production/assembly presence in Croatia (sometimes referred to loosely online as 'Bavaria Composites Croatia') was investigated but no independent evidentiary source confirming a distinct legal entity or factory was found; not included as a separate record to avoid inventing an entity.",
-      "research_record_id": "RSRCH-MFR-0081",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "estimated",
+        "notes": "Historical cumulative production ~3,500 boats by 2006; current active sailboat model count (30-56ft range per one source) not independently itemized from fetched pages."
+      }
     },
     {
       "preferred_display_name": "Elan d.o.o.",
@@ -6464,17 +6914,31 @@
           "discovery_use_acceptable": true,
           "systematic_use_status": "CLEARED",
           "review_date": "2026-08-22"
+        },
+        {
+          "source_url": "https://www.elan-yachts.com/en",
+          "public_access": "public",
+          "robots_or_api_notes": "Rights/access assessment backfilled during the SLICE-0019 independent-review amendment; public readability does not by itself authorize systematic commercial ingestion.",
+          "license_evidence": null,
+          "discovery_use_acceptable": true,
+          "systematic_use_status": "REQUIRES_REVIEW",
+          "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Elan is a multi-division group (skis in Slovenia, snowboards in Austria, motor yachts in Croatia, sailing yachts in Slovenia). This record covers only the sailing-yacht-producing entity/division 'Elan Yachts' under Elan d.o.o., Begunje na Gorenjskem, Slovenia.",
+      "research_record_id": "RSRCH-MFR-0082",
+      "research_status": "verified",
+      "source_yield_sample": true,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "Current model count not itemized in fetched pages; historical peak production >300 boats/year (2006-2007)."
       },
-      "ambiguity_notes": "Elan is a multi-division group (skis in Slovenia, snowboards in Austria, motor yachts in Croatia, sailing yachts in Slovenia). This record covers only the sailing-yacht-producing entity/division 'Elan Yachts' under Elan d.o.o., Begunje na Gorenjskem, Slovenia.",
-      "research_record_id": "RSRCH-MFR-0082",
-      "research_status": "verified",
-      "source_yield_sample": true
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Current model count not itemized in fetched pages; historical peak production >300 boats/year (2006-2007)."
+      }
     },
     {
       "preferred_display_name": "Seascape d.o.o.",
@@ -6553,17 +7017,31 @@
           "discovery_use_acceptable": true,
           "systematic_use_status": "REQUIRES_REVIEW",
           "review_date": "2026-08-22"
+        },
+        {
+          "source_url": "https://www.yacht.de/en/yachts/shipyards/beneteau-takes-over-seascape-first-milestone-for-the-renewal-of-the-first-series/",
+          "public_access": "public",
+          "robots_or_api_notes": "Rights/access assessment backfilled during the SLICE-0019 independent-review amendment; public readability does not by itself authorize systematic commercial ingestion.",
+          "license_evidence": null,
+          "discovery_use_acceptable": true,
+          "systematic_use_status": "REQUIRES_REVIEW",
+          "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Exact current legal/brand status is genuinely ambiguous in available sources: coverage through 2018-2019 shows dual naming ('Seascape/First') during transition, and no fetched source definitively states whether 'Seascape' still exists as an active standalone brand name today or has been fully folded into 'Beneteau First'. Recorded as acquired/production_transferred_to rather than asserting full merger, per instruction not to silently collapse two brand identities.",
+      "research_record_id": "RSRCH-MFR-0083",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": 4,
         "basis": "exact",
         "notes": "Seascape 14, 18, 24, and 27 were the pre-acquisition series models per Beneteau/YACHT coverage."
       },
-      "ambiguity_notes": "Exact current legal/brand status is genuinely ambiguous in available sources: coverage through 2018-2019 shows dual naming ('Seascape/First') during transition, and no fetched source definitively states whether 'Seascape' still exists as an active standalone brand name today or has been fully folded into 'Beneteau First'. Recorded as acquired/production_transferred_to rather than asserting full merger, per instruction not to silently collapse two brand identities.",
-      "research_record_id": "RSRCH-MFR-0083",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized cumulative production-unit count retained; the retained figure describes discoverable model identities, not production units."
+      }
     },
     {
       "preferred_display_name": "AD Boats d.o.o. (Salona Yachts)",
@@ -6643,17 +7121,31 @@
           "discovery_use_acceptable": true,
           "systematic_use_status": "REQUIRES_REVIEW",
           "review_date": "2026-08-22"
+        },
+        {
+          "source_url": "https://en.wikipedia.org/wiki/J%26J_Design",
+          "public_access": "public",
+          "robots_or_api_notes": "Rights/access assessment backfilled during the SLICE-0019 independent-review amendment; public readability does not by itself authorize systematic commercial ingestion.",
+          "license_evidence": null,
+          "discovery_use_acceptable": true,
+          "systematic_use_status": "REQUIRES_REVIEW",
+          "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Could not directly reach the official Salona/AD Boats website (salonayachts.com returned a TLS certificate mismatch for an unrelated hosting domain; salona-yachts.com and ad-boats.com did not resolve). All data therefore comes from secondary specialist sources rather than the manufacturer's own site; official_current_site left null rather than guessed. The claimed Prevent Grupe acquisition is a single unverified secondary claim and is flagged, not asserted as fact.",
+      "research_record_id": "RSRCH-MFR-0084",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": 9,
         "basis": "estimated",
         "notes": "9 named models (33,35,37,38,39,41,44,46,60) listed on a specialist boat database at time of retrieval; not cross-verified against the current official salona site (official domain could not be reached during this research pass due to a TLS certificate mismatch)."
       },
-      "ambiguity_notes": "Could not directly reach the official Salona/AD Boats website (salonayachts.com returned a TLS certificate mismatch for an unrelated hosting domain; salona-yachts.com and ad-boats.com did not resolve). All data therefore comes from secondary specialist sources rather than the manufacturer's own site; official_current_site left null rather than guessed. The claimed Prevent Grupe acquisition is a single unverified secondary claim and is flagged, not asserted as fact.",
-      "research_record_id": "RSRCH-MFR-0084",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized cumulative production-unit count retained; the retained figure describes discoverable model identities, not production units."
+      }
     },
     {
       "preferred_display_name": "Delphia Yachts",
@@ -6728,15 +7220,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Historical Polish series manufacturer verified; weak Sportlake alias is not relied upon.",
+      "research_record_id": "RSRCH-MFR-0085",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "estimated",
         "notes": ">150 units/year production rate reported pre-acquisition; exact current model line count not captured (boat-delphia.com history page could not be retrieved -- returned unrelated hijacked/parked-domain content during this research pass)."
       },
-      "ambiguity_notes": "Historical Polish series manufacturer verified; weak Sportlake alias is not relied upon.",
-      "research_record_id": "RSRCH-MFR-0085",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "estimated",
+        "notes": ">150 units/year production rate reported pre-acquisition; exact current model line count not captured (boat-delphia.com history page could not be retrieved -- returned unrelated hijacked/parked-domain content during this research pass)."
+      }
     },
     {
       "preferred_display_name": "Ostróda Yacht Sp. z o.o.",
@@ -6796,15 +7293,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Ostróda Yacht is the Polish production/legal entity within Groupe Beneteau that also served as the acquiring vehicle for Delphia Yachts; its own output is now overwhelmingly Beneteau-group brands (Jeanneau/Beneteau/etc.) rather than an independent Ostróda-branded product line, so entity_kind includes 'yard' in spirit but the record is kept as a distinct manufacturer/legal_organization because of its 70+ year independent production lineage prior to full group integration.",
+      "research_record_id": "RSRCH-MFR-0086",
+      "research_status": "verified",
+      "source_yield_sample": true,
+      "model_identity_yield": {
         "value": 30,
         "basis": "estimated",
         "notes": "Official page states 'more than 30 models of motor and sailing yachts' at ~4,000 units/year total across all brands produced at the site; sailing-only subset not separately itemized."
       },
-      "ambiguity_notes": "Ostróda Yacht is the Polish production/legal entity within Groupe Beneteau that also served as the acquiring vehicle for Delphia Yachts; its own output is now overwhelmingly Beneteau-group brands (Jeanneau/Beneteau/etc.) rather than an independent Ostróda-branded product line, so entity_kind includes 'yard' in spirit but the record is kept as a distinct manufacturer/legal_organization because of its 70+ year independent production lineage prior to full group integration.",
-      "research_record_id": "RSRCH-MFR-0086",
-      "research_status": "verified",
-      "source_yield_sample": true
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized cumulative production-unit count retained; the retained figure describes discoverable model identities, not production units."
+      }
     },
     {
       "preferred_display_name": "Antila Yachts",
@@ -6847,15 +7349,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "The official site describes the company as built on '30 years of business experience in the private sector' but does not state the shipyard's own founding year; company registry search found a November 4, 2011 registration date in one secondary source, used here as an estimated start_year. No founder name is disclosed on the official site.",
+      "research_record_id": "RSRCH-MFR-0087",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": 5,
         "basis": "exact",
         "notes": "Official site lists 5 current sailboat models: Antila 24.4, 26.2, 28.2, 30.1, 33.3."
       },
-      "ambiguity_notes": "The official site describes the company as built on '30 years of business experience in the private sector' but does not state the shipyard's own founding year; company registry search found a November 4, 2011 registration date in one secondary source, used here as an estimated start_year. No founder name is disclosed on the official site.",
-      "research_record_id": "RSRCH-MFR-0087",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized cumulative production-unit count retained; the retained figure describes discoverable model identities, not production units."
+      }
     },
     {
       "preferred_display_name": "Northman (Maxus Yachts brand)",
@@ -6913,17 +7420,31 @@
           "discovery_use_acceptable": true,
           "systematic_use_status": "REQUIRES_REVIEW",
           "review_date": "2026-08-22"
+        },
+        {
+          "source_url": "https://itboat.com/en/builder/977-maxus-meqbC/for-sale",
+          "public_access": "public",
+          "robots_or_api_notes": "Rights/access assessment backfilled during the SLICE-0019 independent-review amendment; public readability does not by itself authorize systematic commercial ingestion.",
+          "license_evidence": null,
+          "discovery_use_acceptable": true,
+          "systematic_use_status": "REQUIRES_REVIEW",
+          "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Northman is the physical manufacturer/yard; Maxus is its sailing-yacht brand.",
+      "research_record_id": "RSRCH-MFR-0088",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "estimated",
         "notes": "~150 sailing and motor yachts/year combined output across Maxus, Northman, and Nexus brand lines; sailing-only Maxus model count not itemized from fetched pages."
       },
-      "ambiguity_notes": "Northman is the physical manufacturer/yard; Maxus is its sailing-yacht brand.",
-      "research_record_id": "RSRCH-MFR-0088",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "estimated",
+        "notes": "~150 sailing and motor yachts/year combined output across Maxus, Northman, and Nexus brand lines; sailing-only Maxus model count not itemized from fetched pages."
+      }
     },
     {
       "preferred_display_name": "Balt-Yacht",
@@ -6977,15 +7498,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Balt-Yacht produces both own-brand cruising/sailing boats and contract-manufactured motorboats (Quicksilver/Uttern) for Brunswick; the specific proportion of sailboat vs. powerboat models in current production was not confirmed because the official site (baltyacht.pl) could not be retrieved via WebFetch (certificate error). Retained on the strength of the specialist secondary source and prior 'Balt 818 Tytan'/'SunCamper 30' sailing/cruising boat award evidence.",
+      "research_record_id": "RSRCH-MFR-0089",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "Official site fetch failed (TLS certificate error) during this research pass; model count taken only from search-result summaries, not independently itemized."
       },
-      "ambiguity_notes": "Balt-Yacht produces both own-brand cruising/sailing boats and contract-manufactured motorboats (Quicksilver/Uttern) for Brunswick; the specific proportion of sailboat vs. powerboat models in current production was not confirmed because the official site (baltyacht.pl) could not be retrieved via WebFetch (certificate error). Retained on the strength of the specialist secondary source and prior 'Balt 818 Tytan'/'SunCamper 30' sailing/cruising boat award evidence.",
-      "research_record_id": "RSRCH-MFR-0089",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Official site fetch failed (TLS certificate error) during this research pass; model count taken only from search-result summaries, not independently itemized."
+      }
     },
     {
       "preferred_display_name": "Schöchl Yachtbau (Sunbeam Watersports GmbH)",
@@ -7043,15 +7569,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Legal entity name changed to 'Sunbeam Watersports GmbH' in 2021; official current-site URL could not be independently confirmed/fetched in this research pass (only the German Wikipedia article was retrieved), so official_current_site is left null rather than guessed.",
+      "research_record_id": "RSRCH-MFR-0090",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": 3,
         "basis": "estimated",
         "notes": "Current lineup per Wikipedia: Sunbeam 23, Sunbeam 24, Manta 19 (22-32.1 ft range); historical models up to 46 ft also existed."
       },
-      "ambiguity_notes": "Legal entity name changed to 'Sunbeam Watersports GmbH' in 2021; official current-site URL could not be independently confirmed/fetched in this research pass (only the German Wikipedia article was retrieved), so official_current_site is left null rather than guessed.",
-      "research_record_id": "RSRCH-MFR-0090",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized cumulative production-unit count retained; the retained figure describes discoverable model identities, not production units."
+      }
     },
     {
       "preferred_display_name": "AVAR-YACHT, s.r.o.",
@@ -7096,15 +7627,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Direct conflict between sources on founding date: the official website's marketing copy states the brand/tradition dates to 1984, while a company-registry secondary source gives the legal entity's (s.r.o.) registration date as May 12, 2009 (IČO 28337221). Both figures are preserved here rather than silently resolved; production_era.start_year uses the earlier claimed date with basis 'estimated' and this conflict is flagged for human review. It is also unclear from available sources whether these are true fixed series models or semi-custom/build-to-order boats built on repeated hull molds; series_production_evidence reflects the latter possibility explicitly.",
+      "research_record_id": "RSRCH-MFR-0091",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": 7,
         "basis": "exact",
         "notes": "7 named A-series models listed on official site: A45, A35, A34, A32, A29, A25, A23 (Costa)."
       },
-      "ambiguity_notes": "Direct conflict between sources on founding date: the official website's marketing copy states the brand/tradition dates to 1984, while a company-registry secondary source gives the legal entity's (s.r.o.) registration date as May 12, 2009 (IČO 28337221). Both figures are preserved here rather than silently resolved; production_era.start_year uses the earlier claimed date with basis 'estimated' and this conflict is flagged for human review. It is also unclear from available sources whether these are true fixed series models or semi-custom/build-to-order boats built on repeated hull molds; series_production_evidence reflects the latter possibility explicitly.",
-      "research_record_id": "RSRCH-MFR-0091",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized cumulative production-unit count retained; the retained figure describes discoverable model identities, not production units."
+      }
     },
     {
       "preferred_display_name": "Hallberg-Rassy",
@@ -7190,15 +7726,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 9800,
-        "basis": "exact",
-        "notes": "Per official company history page cumulative-yachts-delivered figure (~9,800); a separate secondary source cites ~9,400."
-      },
       "ambiguity_notes": "Hallberg-Rassy is the product of a 1972 merger of two previously independent, competing Orust yards (Hallberg and Rassy) that the company's own history explicitly states 'have never been partners.' Recorded as two predecessor relationships rather than as aliases of one continuous entity.",
       "research_record_id": "RSRCH-MFR-0092",
       "research_status": "verified",
-      "source_yield_sample": true
+      "source_yield_sample": true,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 9800,
+        "basis": "exact",
+        "notes": "Per official company history page cumulative-yachts-delivered figure (~9,800); a separate secondary source cites ~9,400."
+      }
     },
     {
       "preferred_display_name": "Najad Yachts",
@@ -7304,15 +7845,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Active Swedish manufacturer/yard verified; prior combined Najad+Maxi output is not used as a Najad-only yield.",
+      "research_record_id": "RSRCH-MFR-0093",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "Prior combined Najad+Maxi output is not a Najad-only manufacturer yield."
       },
-      "ambiguity_notes": "Active Swedish manufacturer/yard verified; prior combined Najad+Maxi output is not used as a Najad-only yield.",
-      "research_record_id": "RSRCH-MFR-0093",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Prior combined Najad+Maxi output is not a Najad-only manufacturer yield."
+      }
     },
     {
       "preferred_display_name": "Malö Yachts",
@@ -7384,15 +7930,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": null,
+      "research_record_id": "RSRCH-MFR-0094",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative total-boats-built figure located on official site."
       },
-      "ambiguity_notes": null,
-      "research_record_id": "RSRCH-MFR-0094",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative total-boats-built figure located on official site."
+      }
     },
     {
       "preferred_display_name": "Albin Marine",
@@ -7484,15 +8035,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 3389,
-        "basis": "exact",
-        "notes": "Figure specific to the Albin Vega 27 model alone (per goodoldboat.com); total across all Albin sailboat models not established."
-      },
       "ambiguity_notes": "The Albin brand persists today under different (American) ownership building powerboats only; the original Swedish sailboat-manufacturing entity (Albin Marin, Kristinehamn) is treated here as defunct in 1982, distinct from the present-day unrelated powerboat brand use.",
       "research_record_id": "RSRCH-MFR-0095",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 3389,
+        "basis": "exact",
+        "notes": "Figure specific to the Albin Vega 27 model alone (per goodoldboat.com); total across all Albin sailboat models not established."
+      }
     },
     {
       "preferred_display_name": "Maxi Yachts",
@@ -7590,15 +8146,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 16000,
-        "basis": "estimated",
-        "notes": "Figure varies by source between ~13,000 and ~16,000 across the brand's history; treated as approximate."
-      },
       "ambiguity_notes": "Verified production brand context; physical builders are modeled separately.",
       "research_record_id": "RSRCH-MFR-0096",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 16000,
+        "basis": "estimated",
+        "notes": "Figure varies by source between ~13,000 and ~16,000 across the brand's history; treated as approximate."
+      }
     },
     {
       "preferred_display_name": "Arcona Yachts",
@@ -7688,15 +8249,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 1000,
-        "basis": "estimated",
-        "notes": "'Over 1000 boats' per specialist secondary source (itboat-derived interview); not confirmed as an exact figure on the official site."
-      },
       "ambiguity_notes": "Founder identified as Torgny Jansson on the current official site, while historical predecessor Boo Marin is attributed to Ingrid and Bengt Jansson in a specialist secondary source -- likely a family boatbuilding lineage, but the exact family relationship was not independently confirmed.",
       "research_record_id": "RSRCH-MFR-0097",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 1000,
+        "basis": "estimated",
+        "notes": "'Over 1000 boats' per specialist secondary source (itboat-derived interview); not confirmed as an exact figure on the official site."
+      }
     },
     {
       "preferred_display_name": "Marieholms Bruk",
@@ -7786,15 +8352,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 3400,
-        "basis": "estimated",
-        "notes": "One source (UK IF-Boat Association) states 'over 3,000 Marieholm IF-boats built 1969-1977' plus later years to 1984 totaling ~3,400; Swedish association page states 'over 2,000 boats sold in Sweden' alone. Figures not reconciled."
-      },
       "ambiguity_notes": "Manufacturer/yard = Marieholms Bruk (an originally agricultural-machinery/furniture mill); 'IF-boat' and 'International Folkboat' are the model/class brand names, not the legal entity itself. Marieholms Bruk has no surviving official site, so class-association pages are used as the closest available primary-adjacent sources.",
       "research_record_id": "RSRCH-MFR-0098",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 3400,
+        "basis": "estimated",
+        "notes": "One source (UK IF-Boat Association) states 'over 3,000 Marieholm IF-boats built 1969-1977' plus later years to 1984 totaling ~3,400; Swedish association page states 'over 2,000 boats sold in Sweden' alone. Figures not reconciled."
+      }
     },
     {
       "preferred_display_name": "Vindö Marin (Nötesund Varv)",
@@ -7878,15 +8449,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Karl-Erik Andersson (son of founder Carl Andersson) took over management in the early 1960s per one secondary source; exact date of full transition from Nötesund Varv naming to 'Vindö Marin' branding not precisely established.",
+      "research_record_id": "RSRCH-MFR-0099",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative total-boats-built figure located."
       },
-      "ambiguity_notes": "Karl-Erik Andersson (son of founder Carl Andersson) took over management in the early 1960s per one secondary source; exact date of full transition from Nötesund Varv naming to 'Vindö Marin' branding not precisely established.",
-      "research_record_id": "RSRCH-MFR-0099",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative total-boats-built figure located."
+      }
     },
     {
       "preferred_display_name": "Nautor's Swan",
@@ -7961,15 +8537,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 2000,
-        "basis": "estimated",
-        "notes": "Official site states 'a little over 2,000 Swan yachts have been produced' since 1966."
-      },
       "ambiguity_notes": null,
       "research_record_id": "RSRCH-MFR-0100",
       "research_status": "verified",
-      "source_yield_sample": true
+      "source_yield_sample": true,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 2000,
+        "basis": "estimated",
+        "notes": "Official site states 'a little over 2,000 Swan yachts have been produced' since 1966."
+      }
     },
     {
       "preferred_display_name": "Baltic Yachts",
@@ -8071,15 +8652,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Founder names and the specific claim of departure from Nautor's Swan come from secondary sources (finland.fi, YACHT magazine); the company's own official About page confirms only the 1973 founding year and Bosund location.",
+      "research_record_id": "RSRCH-MFR-0101",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No cumulative total-boats-built figure located; company now emphasizes custom/semi-custom, not high-volume series, production."
       },
-      "ambiguity_notes": "Founder names and the specific claim of departure from Nautor's Swan come from secondary sources (finland.fi, YACHT magazine); the company's own official About page confirms only the 1973 founding year and Bosund location.",
-      "research_record_id": "RSRCH-MFR-0101",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No cumulative total-boats-built figure located; company now emphasizes custom/semi-custom, not high-volume series, production."
+      }
     },
     {
       "preferred_display_name": "Nauticat Yachts",
@@ -8170,15 +8756,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 3000,
-        "basis": "estimated",
-        "notes": "'More than 3,000 yachts' over 50+ years per official-site-derived and Wikipedia summaries; figure applies to the original Finnish production era only."
-      },
       "ambiguity_notes": "Record covers the original Finnish Siltala/Nauticat manufacturer through 2018; the 2022 Latvian revival is a separate successor.",
       "research_record_id": "RSRCH-MFR-0102",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 3000,
+        "basis": "estimated",
+        "notes": "'More than 3,000 yachts' over 50+ years per official-site-derived and Wikipedia summaries; figure applies to the original Finnish production era only."
+      }
     },
     {
       "preferred_display_name": "Finngulf Yachts",
@@ -8248,15 +8839,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 900,
-        "basis": "estimated",
-        "notes": "'A grand total of 900 yachts' per official history page content as captured in search snippet."
-      },
       "ambiguity_notes": "Could not independently confirm current (2026) operational status of Finngulf Yachts -- both the official history page and homepage returned server errors on direct WebFetch during this session. All facts derive from WebSearch-result snippets of the official site and a secondary boat-database summary, not a directly verified live fetch of full page content.",
       "research_record_id": "RSRCH-MFR-0103",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 900,
+        "basis": "estimated",
+        "notes": "'A grand total of 900 yachts' per official history page content as captured in search snippet."
+      }
     },
     {
       "preferred_display_name": "Oy Fiskars Ab Boatyard (Finnsailer)",
@@ -8317,15 +8913,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Exact start/end years of Fiskars' fiberglass sailboat (Finnsailer) production line are not precisely established from sources retrieved in this session -- described only as a 'short-lived' 1970s line; both start and end year are estimates. Parent company Fiskars Corporation today is an unrelated consumer-goods business with no boat operations.",
+      "research_record_id": "RSRCH-MFR-0104",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No total-units figure located for the Finnsailer line as a whole."
       },
-      "ambiguity_notes": "Exact start/end years of Fiskars' fiberglass sailboat (Finnsailer) production line are not precisely established from sources retrieved in this session -- described only as a 'short-lived' 1970s line; both start and end year are estimates. Parent company Fiskars Corporation today is an unrelated consumer-goods business with no boat operations.",
-      "research_record_id": "RSRCH-MFR-0104",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No total-units figure located for the Finnsailer line as a whole."
+      }
     },
     {
       "preferred_display_name": "X-Yachts",
@@ -8383,15 +8984,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 6000,
-        "basis": "estimated",
-        "notes": "'Over 6,000 boats' per Wikipedia-sourced summary of company statements; official heritage page frames the figure as 'nearly 60 designs' rather than a unit count."
-      },
       "ambiguity_notes": "Minor discrepancy between sources on the first model: Wikipedia-derived summary identifies the X-79 (1979) as the first model, while the current official heritage page text (as fetched) emphasizes the X-412 without mentioning the X-79; the X-79's 1979 origin and 468-unit run are corroborated by multiple independent secondary sources and treated as the better-evidenced fact.",
       "research_record_id": "RSRCH-MFR-0105",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 6000,
+        "basis": "estimated",
+        "notes": "'Over 6,000 boats' per Wikipedia-sourced summary of company statements; official heritage page frames the figure as 'nearly 60 designs' rather than a unit count."
+      }
     },
     {
       "preferred_display_name": "LM Glasfiber (LM Boats)",
@@ -8476,15 +9082,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 3000,
-        "basis": "estimated",
-        "notes": "'3,000 boats in five models' over ~20 years per secondary-source summary of company history; LM24 alone documented at 659 units per Wikipedia."
-      },
       "ambiguity_notes": null,
       "research_record_id": "RSRCH-MFR-0106",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 3000,
+        "basis": "estimated",
+        "notes": "'3,000 boats in five models' over ~20 years per secondary-source summary of company history; LM24 alone documented at 659 units per Wikipedia."
+      }
     },
     {
       "preferred_display_name": "Faurby Yachts",
@@ -8565,15 +9176,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Founders Erna and Niels Peter Faurby (per WebSearch summary) were not independently confirmed via direct fetch of the current official homepage, which did not surface founder names in the retrieved content.",
+      "research_record_id": "RSRCH-MFR-0107",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "estimated",
         "notes": "'Approximately 10 pieces a year' historical build rate per specialist secondary source; no cumulative lifetime total located."
       },
-      "ambiguity_notes": "Founders Erna and Niels Peter Faurby (per WebSearch summary) were not independently confirmed via direct fetch of the current official homepage, which did not surface founder names in the retrieved content.",
-      "research_record_id": "RSRCH-MFR-0107",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "estimated",
+        "notes": "'Approximately 10 pieces a year' historical build rate per specialist secondary source; no cumulative lifetime total located."
+      }
     },
     {
       "preferred_display_name": "Nordship Yachts",
@@ -8630,15 +9246,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": null,
+      "research_record_id": "RSRCH-MFR-0108",
+      "research_status": "verified",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "Deck Saloon yachts described as 'produced individually to meet client wishes'; no series unit-count figure located."
       },
-      "ambiguity_notes": null,
-      "research_record_id": "RSRCH-MFR-0108",
-      "research_status": "verified",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Deck Saloon yachts described as 'produced individually to meet client wishes'; no series unit-count figure located."
+      }
     },
     {
       "preferred_display_name": "Bringsværd Boat Yard",
@@ -8715,15 +9336,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 1200,
-        "basis": "estimated",
-        "notes": "Direct family history reports roughly 1,200 BB11s; other series are not collapsed into a false exact lifetime total."
-      },
       "ambiguity_notes": "Direct family/yard history confirms continued yard activity to 1984; 1968 marks only an earlier production phase.",
       "research_record_id": "RSRCH-MFR-0109",
       "research_status": "verified",
-      "source_yield_sample": true
+      "source_yield_sample": true,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 1200,
+        "basis": "estimated",
+        "notes": "Direct family history reports roughly 1,200 BB11s; other series are not collapsed into a false exact lifetime total."
+      }
     },
     {
       "preferred_display_name": "Fjord Plast AS",
@@ -8812,15 +9438,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 100,
-        "basis": "estimated",
-        "notes": "'Less than 100 boats have been built' -- figure specific to the Fjord MS 33 motorsailer model only, not the yard's total (mostly-motorboat) output."
-      },
       "ambiguity_notes": "Historical Norwegian manufacturer/yard kept distinct from the current German powerboat-only FJORD brand.",
       "research_record_id": "RSRCH-MFR-0110",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 100,
+        "basis": "estimated",
+        "notes": "'Less than 100 boats have been built' -- figure specific to the Fjord MS 33 motorsailer model only, not the yard's total (mostly-motorboat) output."
+      }
     },
     {
       "preferred_display_name": "Skibsplast",
@@ -8877,15 +9508,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
-        "value": 14000,
-        "basis": "exact",
-        "notes": "'Over 14,000 boats' total lifetime output per Wikipedia; none identified as sailboats."
-      },
       "ambiguity_notes": "Checked and excluded: no evidence found of any series sailboat model in Skibsplast's product line across all sources reviewed; consistently categorized as a motorboat/powerboat manufacturer only, which falls outside this registry's inclusion criteria.",
       "research_record_id": "RSRCH-MFR-0111",
       "research_status": "excluded",
-      "source_yield_sample": false
+      "source_yield_sample": false,
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; the retained figure is a cumulative production-unit count (see production_unit_count)."
+      },
+      "production_unit_count": {
+        "value": 14000,
+        "basis": "exact",
+        "notes": "'Over 14,000 boats' total lifetime output per Wikipedia; none identified as sailboats."
+      }
     },
     {
       "preferred_display_name": "Saga Boats",
@@ -8945,15 +9581,20 @@
           "review_date": "2026-08-22"
         }
       ],
-      "model_yield_estimate": {
+      "ambiguity_notes": "Checked and excluded: Saga Boats is a real, well-documented Norwegian series-production boatbuilder active since 1960, but all evidence found -- including its own official 'About' page -- describes exclusively motorboat/powerboat production; no sailboat model was identified in this research session.",
+      "research_record_id": "RSRCH-MFR-0112",
+      "research_status": "excluded",
+      "source_yield_sample": false,
+      "model_identity_yield": {
         "value": null,
         "basis": "unknown",
         "notes": "No sailboat-specific figures exist since no sailboat production was found; motorboat production figures (e.g. 'more than 700 motorboats produced yearly' in the 1970s) are out of scope for this registry."
       },
-      "ambiguity_notes": "Checked and excluded: Saga Boats is a real, well-documented Norwegian series-production boatbuilder active since 1960, but all evidence found -- including its own official 'About' page -- describes exclusively motorboat/powerboat production; no sailboat model was identified in this research session.",
-      "research_record_id": "RSRCH-MFR-0112",
-      "research_status": "excluded",
-      "source_yield_sample": false
+      "production_unit_count": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No sailboat-specific figures exist since no sailboat production was found; motorboat production figures (e.g. 'more than 700 motorboats produced yearly' in the 1970s) are out of scope for this registry."
+      }
     },
     {
       "research_record_id": "RSRCH-MFR-0113",
@@ -8973,7 +9614,14 @@
         "end_year": null,
         "basis": "exact"
       },
-      "relationships": [],
+      "relationships": [
+        {
+          "type": "other",
+          "related_name": "Grand Soleil",
+          "evidence_note": "Grand Soleil is the sailing-yacht brand/product lineage associated with the physical/legal Cantiere del Pardo yard, not a separate yard.",
+          "source_url": "https://cantieredelpardo.com/it/the-yard/our-heritage/"
+        }
+      ],
       "series_production_evidence": "Independent retained research verifies repeated/series sailing-boat production by this manufacturer/yard; entity-specific facts are in the cited sources and research batch.",
       "official_current_site": "https://cantieredelpardo.com/",
       "official_heritage_archive": "https://cantieredelpardo.com/it/the-yard/our-heritage/",
@@ -9020,7 +9668,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; independent research reports a cumulative production-unit figure instead (see production_unit_count)."
+      },
+      "production_unit_count": {
         "value": 5000,
         "basis": "estimated",
         "notes": "Company material states more than 5,000 boats launched; GS34 alone 290."
@@ -9049,7 +9702,20 @@
         "end_year": null,
         "basis": "exact"
       },
-      "relationships": [],
+      "relationships": [
+        {
+          "type": "formerly_known_as",
+          "related_name": "Sipla",
+          "evidence_note": "The business began in Forlì in 1961 under the name Sipla, producing fiberglass Flying Juniors, and changed its name to Comar after roughly ten years.",
+          "source_url": "https://www.comaryachts.it/en/history/"
+        },
+        {
+          "type": "other",
+          "related_name": "Comet",
+          "evidence_note": "Comet is a model/range brand lineage of the Comar yard (the Comet 910 alone was produced in almost 1,000 units), not a separate manufacturer.",
+          "source_url": "https://www.comaryachts.it/en/history/"
+        }
+      ],
       "series_production_evidence": "Independent retained research verifies repeated/series sailing-boat production by this manufacturer/yard; entity-specific facts are in the cited sources and research batch.",
       "official_current_site": "https://www.comaryachts.it/en/history/",
       "official_heritage_archive": "https://www.comaryachts.it/en/history/",
@@ -9081,7 +9747,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; independent research reports a cumulative production-unit figure instead (see production_unit_count)."
+      },
+      "production_unit_count": {
         "value": 5000,
         "basis": "estimated",
         "notes": "Official history gives several-thousand cumulative output; Comet 910 alone approached 1,000."
@@ -9138,7 +9809,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Current/historical repeated model series verified."
+      },
+      "production_unit_count": {
         "value": null,
         "basis": "unknown",
         "notes": "Current/historical repeated model series verified."
@@ -9163,7 +9839,14 @@
         "end_year": 1979,
         "basis": "estimated"
       },
-      "relationships": [],
+      "relationships": [
+        {
+          "type": "other",
+          "related_name": "Cantiere Zuanelli",
+          "evidence_note": "Zuanelli's official history states that in 1975 it acquired manufacturing know-how from the Alpa operation in Offanengo, corroborating Alpa's industrial sailboat-building role.",
+          "source_url": "https://zuanelli.it/chi-siamo/"
+        }
+      ],
       "series_production_evidence": "Independent retained research verifies repeated/series sailing-boat production by this manufacturer/yard; entity-specific facts are in the cited sources and research batch.",
       "official_current_site": null,
       "official_heritage_archive": "https://www.alpahistorical.org/storia-del-cantiere.html",
@@ -9195,7 +9878,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Historical repeated production verified."
+      },
+      "production_unit_count": {
         "value": null,
         "basis": "unknown",
         "notes": "Historical repeated production verified."
@@ -9220,7 +9908,14 @@
         "end_year": null,
         "basis": "exact"
       },
-      "relationships": [],
+      "relationships": [
+        {
+          "type": "other",
+          "related_name": "Alpa",
+          "evidence_note": "In 1975 the yard acquired manufacturing know-how from the Alpa operation in Offanengo and specialized in fiberglass sailing-yacht construction.",
+          "source_url": "https://zuanelli.it/chi-siamo/"
+        }
+      ],
       "series_production_evidence": "Independent retained research verifies repeated/series sailing-boat production by this manufacturer/yard; entity-specific facts are in the cited sources and research batch.",
       "official_current_site": "https://zuanelli.it/",
       "official_heritage_archive": "https://zuanelli.it/chi-siamo/",
@@ -9252,7 +9947,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Repeated cruising-yacht model line verified."
+      },
+      "production_unit_count": {
         "value": null,
         "basis": "unknown",
         "notes": "Repeated cruising-yacht model line verified."
@@ -9309,7 +10009,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Current repeated performance-cruiser production verified."
+      },
+      "production_unit_count": {
         "value": null,
         "basis": "unknown",
         "notes": "Current repeated performance-cruiser production verified."
@@ -9381,7 +10086,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Historical repeated cruising-yacht production verified."
+      },
+      "production_unit_count": {
         "value": null,
         "basis": "unknown",
         "notes": "Historical repeated cruising-yacht production verified."
@@ -9453,7 +10163,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; independent research reports a cumulative production-unit figure instead (see production_unit_count)."
+      },
+      "production_unit_count": {
         "value": 170,
         "basis": "estimated",
         "notes": "Official history states more than 170 GRP boats; Endurance 35 reached 160 units."
@@ -9510,7 +10225,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Historic production-yacht output verified; Lion 35 alone exceeded 90 across wood and GRP."
+      },
+      "production_unit_count": {
         "value": null,
         "basis": "unknown",
         "notes": "Historic production-yacht output verified; Lion 35 alone exceeded 90 across wood and GRP."
@@ -9537,7 +10257,14 @@
         "end_year": 2020,
         "basis": "exact"
       },
-      "relationships": [],
+      "relationships": [
+        {
+          "type": "other",
+          "related_name": "Tayana",
+          "evidence_note": "Tayana is the product/brand lineage of the Ta Yang physical manufacturer, not a separate yard.",
+          "source_url": "https://www.taiwan-yacht.com.tw/en-members.html"
+        }
+      ],
       "series_production_evidence": "Independent retained research verifies repeated/series sailing-boat production by this manufacturer/yard; entity-specific facts are in the cited sources and research batch.",
       "official_current_site": null,
       "official_heritage_archive": null,
@@ -9569,7 +10296,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; independent research reports a cumulative production-unit figure instead (see production_unit_count)."
+      },
+      "production_unit_count": {
         "value": 1400,
         "basis": "estimated",
         "notes": "Industry sources report more than 1,400 Ta Yang/Tayana cruisers."
@@ -9590,11 +10322,18 @@
       "region": "Asia-Pacific",
       "status": "active",
       "production_era": {
-        "start_year": null,
+        "start_year": 1977,
         "end_year": null,
-        "basis": "unknown"
+        "basis": "exact"
       },
-      "relationships": [],
+      "relationships": [
+        {
+          "type": "predecessor",
+          "related_name": "Shing Sheng boatyard",
+          "evidence_note": "A predecessor boatbuilding lineage under Shing Sheng is commonly traced to 1957; modeled separately from the current legal entity's 1977 registration rather than backdating it.",
+          "source_url": "https://findbiz.nat.gov.tw/fts/company/69559634?fhl=en"
+        }
+      ],
       "series_production_evidence": "Independent retained research verifies repeated/series sailing-boat production by this manufacturer/yard; entity-specific facts are in the cited sources and research batch.",
       "official_current_site": null,
       "official_heritage_archive": null,
@@ -9626,7 +10365,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Extensive repeated OEM and own-line sailboat construction verified."
+      },
+      "production_unit_count": {
         "value": null,
         "basis": "unknown",
         "notes": "Extensive repeated OEM and own-line sailboat construction verified."
@@ -9653,7 +10397,14 @@
         "end_year": null,
         "basis": "unknown"
       },
-      "relationships": [],
+      "relationships": [
+        {
+          "type": "other",
+          "related_name": "Hylas",
+          "evidence_note": "Hylas' own company material states Queen Long Marine is the shipyard, founder and owner of the Hylas brand.",
+          "source_url": "https://www.hylasyachts.com/about/"
+        }
+      ],
       "series_production_evidence": "Independent retained research verifies repeated/series sailing-boat production by this manufacturer/yard; entity-specific facts are in the cited sources and research batch.",
       "official_current_site": "https://www.hylasyachts.com/about/",
       "official_heritage_archive": null,
@@ -9685,7 +10436,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Current repeated Hylas production verified."
+      },
+      "production_unit_count": {
         "value": null,
         "basis": "unknown",
         "notes": "Current repeated Hylas production verified."
@@ -9742,7 +10498,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; independent research reports a cumulative production-unit figure instead (see production_unit_count)."
+      },
+      "production_unit_count": {
         "value": 800,
         "basis": "estimated",
         "notes": "Company states more than 800 yachts built."
@@ -9798,7 +10559,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Broad multi-model historical production series verified."
+      },
+      "production_unit_count": {
         "value": null,
         "basis": "unknown",
         "notes": "Broad multi-model historical production series verified."
@@ -9819,11 +10585,18 @@
       "region": "Asia-Pacific",
       "status": "historical",
       "production_era": {
-        "start_year": null,
-        "end_year": null,
-        "basis": "unknown"
+        "start_year": 1970,
+        "end_year": 1980,
+        "basis": "estimated"
       },
-      "relationships": [],
+      "relationships": [
+        {
+          "type": "predecessor",
+          "related_name": "Far East Yachts / Far East Boat Ltd.",
+          "evidence_note": "Former Far East/TOA personnel established Fuji Yacht Builders; the yards remain distinct entities despite overlapping personnel, site and mould history.",
+          "source_url": "https://www.fujiyachts.net/history/history.html"
+        }
+      ],
       "series_production_evidence": "Independent retained research verifies repeated/series sailing-boat production by this manufacturer/yard; entity-specific facts are in the cited sources and research batch.",
       "official_current_site": null,
       "official_heritage_archive": null,
@@ -9855,7 +10628,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; independent research reports a cumulative production-unit figure instead (see production_unit_count)."
+      },
+      "production_unit_count": {
         "value": 200,
         "basis": "estimated",
         "notes": "Historical sources report more than 200 boats across the Fuji series."
@@ -9880,7 +10658,14 @@
         "end_year": 1971,
         "basis": "estimated"
       },
-      "relationships": [],
+      "relationships": [
+        {
+          "type": "successor",
+          "related_name": "Fuji Yacht Builders",
+          "evidence_note": "Former Far East/TOA personnel later established Fuji Yacht Builders; the yards remain distinct entities despite overlapping personnel, site and mould history.",
+          "source_url": "https://www.fujiyachts.net/history/history.html"
+        }
+      ],
       "series_production_evidence": "Independent retained research verifies repeated/series sailing-boat production by this manufacturer/yard; entity-specific facts are in the cited sources and research batch.",
       "official_current_site": null,
       "official_heritage_archive": null,
@@ -9912,7 +10697,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Historical repeated Mariner-series production verified."
+      },
+      "production_unit_count": {
         "value": null,
         "basis": "unknown",
         "notes": "Historical repeated Mariner-series production verified."
@@ -9984,7 +10774,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; independent research reports a cumulative production-unit figure instead (see production_unit_count)."
+      },
+      "production_unit_count": {
         "value": 150,
         "basis": "estimated",
         "notes": "Company states a fleet of more than 150 yachts 30 ft and above, excluding many smaller series."
@@ -10011,7 +10806,14 @@
         "end_year": 2013,
         "basis": "estimated"
       },
-      "relationships": [],
+      "relationships": [
+        {
+          "type": "production_transferred_to",
+          "related_name": "AD Boats d.o.o. (Salona Yachts)",
+          "evidence_note": "Sydney Yachts' own company page states that since 2013 Sydney Yachts have been built at AD Boats in Croatia; the Australian Bashford/Sydney yard history remains a separate physical-manufacturer lineage.",
+          "source_url": "https://www.sydneyyachts.com/company/sydney-yachts.html"
+        }
+      ],
       "series_production_evidence": "Independent retained research verifies repeated/series sailing-boat production by this manufacturer/yard; entity-specific facts are in the cited sources and research batch.",
       "official_current_site": null,
       "official_heritage_archive": null,
@@ -10043,7 +10845,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Repeated J/Boat, Etchells and Sydney production programs verified."
+      },
+      "production_unit_count": {
         "value": null,
         "basis": "unknown",
         "notes": "Repeated J/Boat, Etchells and Sydney production programs verified."
@@ -10116,7 +10923,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; independent research reports a cumulative production-unit figure instead (see production_unit_count)."
+      },
+      "production_unit_count": {
         "value": 350,
         "basis": "estimated",
         "notes": "Seawind 24 alone exceeded 350 hulls."
@@ -10141,7 +10953,14 @@
         "end_year": null,
         "basis": "exact"
       },
-      "relationships": [],
+      "relationships": [
+        {
+          "type": "acquired_by",
+          "related_name": "Vox Ventures / PPF",
+          "evidence_note": "Corporate ownership relationship; does not alter Robertson & Caine's distinct physical-manufacturer identity.",
+          "source_url": "https://www.robertsonandcaine.com/overview.html"
+        }
+      ],
       "series_production_evidence": "Independent retained research verifies repeated/series sailing-boat production by this manufacturer/yard; entity-specific facts are in the cited sources and research batch.",
       "official_current_site": "https://www.robertsonandcaine.com/",
       "official_heritage_archive": null,
@@ -10188,7 +11007,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; independent research reports a cumulative production-unit figure instead (see production_unit_count)."
+      },
+      "production_unit_count": {
         "value": 3132,
         "basis": "estimated",
         "notes": "Official achievements page reports more than 3,132 catamarans through April 2026."
@@ -10260,7 +11084,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; independent research reports a cumulative production-unit figure instead (see production_unit_count)."
+      },
+      "production_unit_count": {
         "value": 120,
         "basis": "estimated",
         "notes": "Official site states more than 120 boats built."
@@ -10317,7 +11146,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; independent research reports a cumulative production-unit figure instead (see production_unit_count)."
+      },
+      "production_unit_count": {
         "value": 100,
         "basis": "estimated",
         "notes": "Current company material states more than 100 builds."
@@ -10374,7 +11208,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; independent research reports a cumulative production-unit figure instead (see production_unit_count)."
+      },
+      "production_unit_count": {
         "value": 150,
         "basis": "estimated",
         "notes": "Industry material reports well over 150 catamarans historically."
@@ -10399,7 +11238,14 @@
         "end_year": 1979,
         "basis": "estimated"
       },
-      "relationships": [],
+      "relationships": [
+        {
+          "type": "successor",
+          "related_name": "Export Yachts Ltd",
+          "evidence_note": "The original company was damaged by the 1979 New Zealand sales-tax shock and later entered receivership; subsequent Export Yachts Ltd activity is a successor/continuation relationship, not an alias.",
+          "source_url": "https://www.petersmith.net.nz/about/peter.php"
+        }
+      ],
       "series_production_evidence": "Independent retained research verifies repeated/series sailing-boat production by this manufacturer/yard; entity-specific facts are in the cited sources and research batch.",
       "official_current_site": null,
       "official_heritage_archive": null,
@@ -10446,7 +11292,12 @@
           "review_date": "2026-08-23"
         }
       ],
-      "model_yield_estimate": {
+      "model_identity_yield": {
+        "value": null,
+        "basis": "unknown",
+        "notes": "Multiple repeated production series verified; no normalized lifetime total."
+      },
+      "production_unit_count": {
         "value": null,
         "basis": "unknown",
         "notes": "Multiple repeated production series verified; no normalized lifetime total."
