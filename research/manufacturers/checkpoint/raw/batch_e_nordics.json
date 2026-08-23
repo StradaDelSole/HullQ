@@ -1,0 +1,601 @@
+[
+  {
+    "preferred_display_name": "Hallberg-Rassy",
+    "aliases": [],
+    "entity_kind": ["manufacturer", "yard"],
+    "country": "Sweden",
+    "region": "Nordics",
+    "status": "active",
+    "production_era": {"start_year": 1972, "end_year": null, "basis": "exact"},
+    "relationships": [
+      {"type": "predecessor", "related_name": "Harry Hallberg boatyard", "evidence_note": "Harry Hallberg founded a boatyard at Kungsviken, Orust in 1943; later relocated to Ellös. Rassy purchased this yard on Hallberg's retirement in 1972, forming Hallberg-Rassy.", "source_url": "https://www.hallberg-rassy.com/company/company-history"},
+      {"type": "predecessor", "related_name": "Christoph Rassy boatyard", "evidence_note": "Christoph Rassy arrived in Sweden in 1960 and started his own yard in the mid-1960s in the premises Hallberg had vacated at Kungsviken; the two never operated as partners before the 1972 merger.", "source_url": "https://www.hallberg-rassy.com/company/company-history"}
+    ],
+    "series_production_evidence": "Official company history states approximately 9,800 yachts delivered since founding; continuous numbered production-model line (HR 34, 40, 44, 48, 50, 57, etc.) built at Ellös, Orust since 1972.",
+    "official_current_site": "https://www.hallberg-rassy.com/",
+    "official_heritage_archive": "https://www.hallberg-rassy.com/company/company-history",
+    "other_archive_sources": ["https://en.wikipedia.org/wiki/Hallberg-Rassy"],
+    "sources": [
+      {"url": "https://www.hallberg-rassy.com/company/company-history", "title": "Company history | Hallberg-Rassy", "source_type": "official_heritage_archive", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://en.wikipedia.org/wiki/Hallberg-Rassy", "title": "Hallberg-Rassy", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.berthoninternational.com/berthon-blog/a-brief-history-of-hallberg-rassy-yachts/", "title": "A Brief History of Hallberg-Rassy Yachts - Berthon International", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://www.hallberg-rassy.com/company/company-history", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://en.wikipedia.org/wiki/Hallberg-Rassy", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia text license); attribution required for reuse", "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://www.berthoninternational.com/berthon-blog/a-brief-history-of-hallberg-rassy-yachts/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 9800, "basis": "exact", "notes": "Per official company history page cumulative-yachts-delivered figure (~9,800); a separate secondary source cites ~9,400."},
+    "review_status": "verified",
+    "ambiguity_notes": "Hallberg-Rassy is the product of a 1972 merger of two previously independent, competing Orust yards (Hallberg and Rassy) that the company's own history explicitly states 'have never been partners.' Recorded as two predecessor relationships rather than as aliases of one continuous entity."
+  },
+  {
+    "preferred_display_name": "Najad Yachts",
+    "aliases": ["Najadvarvet AB", "Najad AB"],
+    "entity_kind": ["manufacturer", "yard", "brand"],
+    "country": "Sweden",
+    "region": "Nordics",
+    "status": "active",
+    "production_era": {"start_year": 1967, "end_year": null, "basis": "exact"},
+    "relationships": [
+      {"type": "acquired_by", "related_name": "Nord West Yachts / Orust Quality Yachts AB (Hexiron AB)", "evidence_note": "Najadvarvet AB declared bankrupt 9 August 2011; bankruptcy estate purchased by the Nord West motorboat yard; renamed Najad AB in 2014; now owned by Orust Quality Yachts AB, a subsidiary of Hexiron AB in Lund.", "source_url": "https://en.wikipedia.org/wiki/Najad_Yachts"},
+      {"type": "other", "related_name": "Arcona Yachts", "evidence_note": "Arcona Yachts was purchased by Najad in January 2018, forming Arcona Najad Yachts AB; the board split the two brands back into separate companies in 2022.", "source_url": "https://www.yacht.de/en/yachts/shipyards/shipyard-takeover-najad-has-a-new-owner/"}
+    ],
+    "series_production_evidence": "Official site states continuous yacht production since 1971; peak of ~80 yachts/year with 160 employees in 2005; ongoing numbered model series (N395, N410, N451, N505, N570) in current production from Henån, Orust.",
+    "official_current_site": "https://najad.se/",
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://en.wikipedia.org/wiki/Najad_Yachts", "https://www.berthoninternational.com/berthon-blog/quality-swedish-craftsmanship-a-brief-history-of-najad-yachts/"],
+    "sources": [
+      {"url": "https://najad.se/", "title": "Najad Yachts official site", "source_type": "official_site", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://en.wikipedia.org/wiki/Najad_Yachts", "title": "Najad Yachts", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.yacht.de/en/yachts/shipyards/shipyard-takeover-najad-has-a-new-owner/", "title": "Shipyard takeover: Najad has a new owner | YACHT", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.berthoninternational.com/berthon-blog/quality-swedish-craftsmanship-a-brief-history-of-najad-yachts/", "title": "A Brief History of Najad Yachts - Berthon International", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://najad.se/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://en.wikipedia.org/wiki/Najad_Yachts", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia text license)", "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://www.yacht.de/en/yachts/shipyards/shipyard-takeover-najad-has-a-new-owner/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://www.berthoninternational.com/berthon-blog/quality-swedish-craftsmanship-a-brief-history-of-najad-yachts/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 2000, "basis": "estimated", "notes": "One secondary source (Berthon/boats.com) states 'over 2,000 yachts launched under the Najad and Maxi brand names' across Najad's 40-year history; not independently confirmed on najad.se."},
+    "review_status": "needs_review",
+    "ambiguity_notes": "A secondary source (boats.com/Berthon) states yachts were launched 'under the Najad and Maxi brand names' during Najad's history, implying some production overlap between Najad and Maxi. However, Maxi Yachts' documented origin is via designer Pelle Petterson and builder Molnlycke Marin (1971/72) -- a separate lineage. This conflict between sources is preserved here rather than silently resolved; flagged needs_review."
+  },
+  {
+    "preferred_display_name": "Malö Yachts",
+    "aliases": ["Olsöners Båtbyggen"],
+    "entity_kind": ["manufacturer", "yard", "brand"],
+    "country": "Sweden",
+    "region": "Nordics",
+    "status": "active",
+    "production_era": {"start_year": 1939, "end_year": null, "basis": "exact"},
+    "relationships": [
+      {"type": "formerly_known_as", "related_name": "Olsöners Båtbyggen", "evidence_note": "Founded 1939 by Johannes Olsson as Olsöners Båtbyggen in Kungsviken, building wooden yachts for 30 years before transitioning to GRP as Malö Yachts.", "source_url": "https://www.maloyachts.se/about/"},
+      {"type": "brand_owned_by", "related_name": "Sweden Yachts Group", "evidence_note": "Since 2017 Malö is part of the Sweden Yachts Group, which also includes Sweden Yachts, CR Yachts and Regina of Vindö.", "source_url": "https://www.maloyachts.se/about/"}
+    ],
+    "series_production_evidence": "Continuous series production since first GRP Malö launched 1969; numbered model line (Malö 36, 37, 40, 42, 45) with Malö 37 named Cruising World Yacht of the Year 2009.",
+    "official_current_site": "https://www.maloyachts.se/",
+    "official_heritage_archive": "https://www.maloyachts.se/archives/",
+    "other_archive_sources": [],
+    "sources": [
+      {"url": "https://www.maloyachts.se/about/", "title": "About - Malö Yachts", "source_type": "official_site", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.maloyachts.se/archives/", "title": "Archives - Malö Yachts", "source_type": "official_heritage_archive", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://www.maloyachts.se/about/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://www.maloyachts.se/archives/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": null, "basis": "unknown", "notes": "No cumulative total-boats-built figure located on official site."},
+    "review_status": "verified",
+    "ambiguity_notes": null
+  },
+  {
+    "preferred_display_name": "Albin Marine",
+    "aliases": ["Albin Motors", "Albin Marin", "Nya Albin Marin"],
+    "entity_kind": ["manufacturer", "yard", "brand"],
+    "country": "Sweden",
+    "region": "Nordics",
+    "status": "defunct",
+    "production_era": {"start_year": 1965, "end_year": 1982, "basis": "exact"},
+    "relationships": [
+      {"type": "successor", "related_name": "Nya Albin Marin", "evidence_note": "After the 1982 bankruptcy, assets were purchased to establish Nya Albin Marin.", "source_url": "https://en.wikipedia.org/wiki/Albin_Marine"},
+      {"type": "acquired_by", "related_name": "US powerboat company (2008 brand acquisition)", "evidence_note": "In 2008 an American company acquired the Albin brand and redirected it toward powerboat manufacturing, ending the Swedish sailboat-production line.", "source_url": "https://en.wikipedia.org/wiki/Albin_Marine"}
+    ],
+    "series_production_evidence": "Series sailboat models Albin Vega 27 (~3,389 built 1965-1980), Nova 33, Scampi 30 and others, designed by Per Brohäll and Peter Norlin, built at Kristinehamn, Sweden.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://en.wikipedia.org/wiki/Albin_Vega", "https://goodoldboat.com/saildata/boat/albin-vega-27/"],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/Albin_Marine", "title": "Albin Marine", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://en.wikipedia.org/wiki/Albin_Vega", "title": "Albin Vega", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://goodoldboat.com/saildata/boat/albin-vega-27/", "title": "Albin Vega 27 - Sailboat Data & Sail Specifications", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/Albin_Marine", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia text license)", "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://en.wikipedia.org/wiki/Albin_Vega", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia text license)", "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://goodoldboat.com/saildata/boat/albin-vega-27/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 3389, "basis": "exact", "notes": "Figure specific to the Albin Vega 27 model alone (per goodoldboat.com); total across all Albin sailboat models not established."},
+    "review_status": "verified",
+    "ambiguity_notes": "The Albin brand persists today under different (American) ownership building powerboats only; the original Swedish sailboat-manufacturing entity (Albin Marin, Kristinehamn) is treated here as defunct in 1982, distinct from the present-day unrelated powerboat brand use."
+  },
+  {
+    "preferred_display_name": "Maxi Yachts",
+    "aliases": [],
+    "entity_kind": ["brand", "manufacturer"],
+    "country": "Sweden",
+    "region": "Nordics",
+    "status": "acquired",
+    "production_era": {"start_year": 1971, "end_year": 2014, "basis": "estimated"},
+    "relationships": [
+      {"type": "other", "related_name": "Mölnlycke Marin", "evidence_note": "Wikipedia states the Maxi 77 model (3,750 units, 1972-1982) 'were built by Mölnlycke Marin', identifying the hull builder distinct from the Petterson-founded brand.", "source_url": "https://en.wikipedia.org/wiki/Maxi_77"},
+      {"type": "acquired_by", "related_name": "Linnea Yacht Group", "evidence_note": "Maxi Yachts could not remain independent through the European industry crisis and was first bought by the Dutch Linnea Yacht Group.", "source_url": "https://www.lifeofsailing.com/post/swedish-sailboat-brands"},
+      {"type": "acquired_by", "related_name": "Delphia Yachts", "evidence_note": "In 2012 Maxi Yachts was taken over by Polish yacht builder Delphia Yachts.", "source_url": "https://www.lifeofsailing.com/post/swedish-sailboat-brands"},
+      {"type": "acquired_by", "related_name": "Beneteau (via Delphia)", "evidence_note": "In 2018 Beneteau bought 80% of Delphia's shares, gaining control of the Maxi Yachts brand; production was moved to Delphia's own shipyards in Poland.", "source_url": "https://www.lifeofsailing.com/post/swedish-sailboat-brands"}
+    ],
+    "series_production_evidence": "Over 16,000 boats produced under the Maxi brand from the Maxi 77 (1972) through the Maxi 1300, all designed by Olympic medalist Pelle Petterson; production originally at Petterson's own yard, later moved to Poland under Delphia/Beneteau.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://www.maxi-club.net/", "https://maxiowners.net/"],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/Maxi_77", "title": "Maxi 77", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.lifeofsailing.com/post/swedish-sailboat-brands", "title": "Swedish Sailboat Brands (Complete List) - Life of Sailing", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.maxi-club.net/", "title": "Maxi Club: Maxi Yachts | Petterson Cruisers", "source_type": "class_or_owners_association", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/Maxi_77", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia text license)", "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://www.lifeofsailing.com/post/swedish-sailboat-brands", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://www.maxi-club.net/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 16000, "basis": "estimated", "notes": "Figure varies by source between ~13,000 and ~16,000 across the brand's history; treated as approximate."},
+    "review_status": "needs_review",
+    "ambiguity_notes": "Brand vs. manufacturer distinction is blurred: 'Maxi Yachts' functions primarily as a design/brand marque created by Pelle Petterson, while at least one model (Maxi 77) is documented as built by a separate legal entity, Mölnlycke Marin. Current (2026) production status under Beneteau/Delphia ownership could not be confirmed via an official primary source in this session; founding year varies 1971 vs. 1972 across sources."
+  },
+  {
+    "preferred_display_name": "Arcona Yachts",
+    "aliases": ["Boo Marin"],
+    "entity_kind": ["manufacturer", "yard", "brand"],
+    "country": "Sweden",
+    "region": "Nordics",
+    "status": "active",
+    "production_era": {"start_year": 1982, "end_year": null, "basis": "exact"},
+    "relationships": [
+      {"type": "predecessor", "related_name": "Boo Marin", "evidence_note": "Boo Marin shipyard founded at the end of the 1960s by Ingrid and Bengt Jansson, initially producing small sailing boats for beginners, before launching the own-brand Arcona 32 in 1982.", "source_url": "https://no-frills-sailing.com/arcona-yachts-interview-torgny-jansson/"},
+      {"type": "acquired_by", "related_name": "Najad Yachts (Arcona Najad Yachts AB)", "evidence_note": "Arcona purchased by Najad Yachts in January 2018; the two brands split into separate companies again in 2022.", "source_url": "https://www.yacht.de/en/yachts/shipyards/shipyard-takeover-najad-has-a-new-owner/"}
+    ],
+    "series_production_evidence": "Over 1,000 boats produced since 1982 across numbered Arcona models (32 through 50/465 Mk II); Arcona 50 named European Yacht of the Year 2024; official site confirms Henån, Sweden location and current 6-model lineup.",
+    "official_current_site": "https://arconayachts.se/",
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://seyachts.com/our-yachts/arcona/arcona-heritage/", "https://www.arcona-club.net/"],
+    "sources": [
+      {"url": "https://arconayachts.se/", "title": "Arcona Yachts official site", "source_type": "official_site", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://no-frills-sailing.com/arcona-yachts-interview-torgny-jansson/", "title": "Swift and fast: Arcona Yachts of Sweden - no-frills-sailing.com", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.yacht.de/en/yachts/shipyards/shipyard-takeover-najad-has-a-new-owner/", "title": "Shipyard takeover: Najad has a new owner | YACHT", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://arconayachts.se/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://no-frills-sailing.com/arcona-yachts-interview-torgny-jansson/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://www.yacht.de/en/yachts/shipyards/shipyard-takeover-najad-has-a-new-owner/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 1000, "basis": "estimated", "notes": "'Over 1000 boats' per specialist secondary source (itboat-derived interview); not confirmed as an exact figure on the official site."},
+    "review_status": "verified",
+    "ambiguity_notes": "Founder identified as Torgny Jansson on the current official site, while historical predecessor Boo Marin is attributed to Ingrid and Bengt Jansson in a specialist secondary source -- likely a family boatbuilding lineage, but the exact family relationship was not independently confirmed."
+  },
+  {
+    "preferred_display_name": "Marieholms Bruk",
+    "aliases": ["Marieholm Bruk", "Marieholm Boats"],
+    "entity_kind": ["manufacturer", "yard"],
+    "country": "Sweden",
+    "region": "Nordics",
+    "status": "defunct",
+    "production_era": {"start_year": 1967, "end_year": 1986, "basis": "exact"},
+    "relationships": [
+      {"type": "other", "related_name": "IF-boat / International Folkboat class", "evidence_note": "Designer Tord Sundén approached Marieholms Bruk to modernize the Nordic Folkboat design into a fiberglass, carvel-hulled production boat; production ran 1967-1984 (last hull, sail no. 3488, sold 28 Dec 1984).", "source_url": "https://ifboat.uk/if-boat-history"},
+      {"type": "other", "related_name": "Dutch builder (unnamed)", "evidence_note": "After the business ceased operations in 1986, the Marieholm brand was sold to a Dutch builder.", "source_url": "https://ifboat.uk/if-boat-history"}
+    ],
+    "series_production_evidence": "Sources vary between ~2,000 and ~3,400 IF-boat/International Folkboat hulls built 1967-1984, exported to Germany, Norway, Denmark, USA, Switzerland and Austria; originally an agricultural-machinery manufacturer that pivoted to small GRP powerboats then sailboats after a late-1940s change of ownership.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://www.ifboat.se/in-english", "https://en.wikipedia.org/wiki/IF-boat"],
+    "sources": [
+      {"url": "https://www.ifboat.se/in-english/48-in-english/12-about-the-if-boat", "title": "About the IF-boat - Svenska IF-båtförbundet", "source_type": "class_or_owners_association", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://ifboat.uk/if-boat-history", "title": "IF-Boat history | UK IF-Boat Association", "source_type": "class_or_owners_association", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://en.wikipedia.org/wiki/IF-boat", "title": "IF-boat", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://www.ifboat.se/in-english/48-in-english/12-about-the-if-boat", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://ifboat.uk/if-boat-history", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://en.wikipedia.org/wiki/IF-boat", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia text license)", "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 3400, "basis": "estimated", "notes": "One source (UK IF-Boat Association) states 'over 3,000 Marieholm IF-boats built 1969-1977' plus later years to 1984 totaling ~3,400; Swedish association page states 'over 2,000 boats sold in Sweden' alone. Figures not reconciled."},
+    "review_status": "verified",
+    "ambiguity_notes": "Manufacturer/yard = Marieholms Bruk (an originally agricultural-machinery/furniture mill); 'IF-boat' and 'International Folkboat' are the model/class brand names, not the legal entity itself. Marieholms Bruk has no surviving official site, so class-association pages are used as the closest available primary-adjacent sources."
+  },
+  {
+    "preferred_display_name": "Vindö Marin (Nötesund Varv)",
+    "aliases": ["Nötesund Varv", "Vindökryssare"],
+    "entity_kind": ["manufacturer", "yard"],
+    "country": "Sweden",
+    "region": "Nordics",
+    "status": "defunct",
+    "production_era": {"start_year": 1926, "end_year": 1988, "basis": "exact"},
+    "relationships": [
+      {"type": "successor", "related_name": "Vindö Marin (present-day service boatyard)", "evidence_note": "The Vindö 995 was the last new boat built before the original yard went bankrupt in 1988; the present-day Vindö Marin operates only as a winter-storage/service boatyard, not a boat manufacturer.", "source_url": "https://vindomarin.se/en/home/"}
+    ],
+    "series_production_evidence": "Series-built long-keeled GRP sailboats 28-38 ft (Vindö 32, 40, 45, 50, 995) from the yard's 1965 conversion from wood to GRP through 1988; wooden-boat tradition at the site traced to Nötesund's Shipyard founded 1926 by Carl Andersson.",
+    "official_current_site": "https://vindomarin.se/en/home/",
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://seilivestavind.com/the-vindo-boats/", "https://en.wikipedia.org/wiki/Vind%C3%B6_(boat)"],
+    "sources": [
+      {"url": "https://seilivestavind.com/the-vindo-boats/", "title": "The Vindø boats - Seil i vestavind", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://vindomarin.se/en/home/", "title": "Vindö Marin: Boatyard for winter storage and full service", "source_type": "official_site", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://en.wikipedia.org/wiki/Vind%C3%B6_(boat)", "title": "Vindö (boat)", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://seilivestavind.com/the-vindo-boats/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://vindomarin.se/en/home/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://en.wikipedia.org/wiki/Vind%C3%B6_(boat)", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia text license)", "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": null, "basis": "unknown", "notes": "No cumulative total-boats-built figure located."},
+    "review_status": "verified",
+    "ambiguity_notes": "Karl-Erik Andersson (son of founder Carl Andersson) took over management in the early 1960s per one secondary source; exact date of full transition from Nötesund Varv naming to 'Vindö Marin' branding not precisely established."
+  },
+  {
+    "preferred_display_name": "Nautor's Swan",
+    "aliases": ["Oy Nautor AB", "Nautor Swan"],
+    "entity_kind": ["manufacturer", "yard", "brand"],
+    "country": "Finland",
+    "region": "Nordics",
+    "status": "active",
+    "production_era": {"start_year": 1966, "end_year": null, "basis": "exact"},
+    "relationships": [
+      {"type": "acquired_by", "related_name": "Leonardo Ferragamo", "evidence_note": "In 1998 Leonardo Ferragamo became sole owner, initiating a period of continuous innovation.", "source_url": "https://www.nautorswan.com/company/heritage/"},
+      {"type": "acquired_by", "related_name": "Sanlorenzo Group", "evidence_note": "In 2024 Nautor Swan joined the Sanlorenzo Group, described by the company as 'a new chapter' while preserving core values.", "source_url": "https://www.nautorswan.com/company/heritage/"}
+    ],
+    "series_production_evidence": "Over 2,000 Swan yachts produced since founding in 1966, ranging from the original Swan 36 to current 131-foot models; Sparkman & Stephens designed roughly the first 1,000 hulls (Swan 38, Swan 47, etc.).",
+    "official_current_site": "https://www.nautorswan.com/",
+    "official_heritage_archive": "https://www.nautorswan.com/company/heritage/",
+    "other_archive_sources": ["https://en.wikipedia.org/wiki/Nautor's_Swan"],
+    "sources": [
+      {"url": "https://www.nautorswan.com/company/heritage/", "title": "Nautor Swan: Swan Heritage", "source_type": "official_heritage_archive", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://en.wikipedia.org/wiki/Nautor's_Swan", "title": "Nautor's Swan", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://www.nautorswan.com/company/heritage/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://en.wikipedia.org/wiki/Nautor's_Swan", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia text license)", "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 2000, "basis": "estimated", "notes": "Official site states 'a little over 2,000 Swan yachts have been produced' since 1966."},
+    "review_status": "verified",
+    "ambiguity_notes": null
+  },
+  {
+    "preferred_display_name": "Baltic Yachts",
+    "aliases": [],
+    "entity_kind": ["manufacturer", "yard"],
+    "country": "Finland",
+    "region": "Nordics",
+    "status": "active",
+    "production_era": {"start_year": 1973, "end_year": null, "basis": "exact"},
+    "relationships": [
+      {"type": "other", "related_name": "Nautor's Swan", "evidence_note": "Secondary sourcing (finland.fi) states five founders (Per-Göran Johansson, Tor Hinders, Nils Luoma, Ingmar Sundelin, Jan-Erik Nyfelt) left Nautor's Swan to found Baltic Yachts in 1973; the official company About page confirms only the founding year and Bosund location, not the founder names or Nautor departure.", "source_url": "https://finland.fi/business-innovation/how-finlands-west-coast-became-a-global-boatbuilding-hub/"},
+      {"type": "acquired_by", "related_name": "Hollming Ltd", "evidence_note": "After delivering its first custom yacht in 1975, the shipyard was acquired two years later (~1977) by Finnish shipbuilder Hollming Ltd, enabling worldwide marketing expansion.", "source_url": "https://www.yacht.de/en/shipyards/shipyard-from-finland-baltic-yachts-celebrates-its-50th-birthday/"}
+    ],
+    "series_production_evidence": "Official company site confirms founding in Bosund in 1973; launched the production sailing-yacht series Baltic 46 and Baltic 33 before moving into custom/semi-custom composite yacht building; opened a second waterfront yard in Jakobstad in 2010.",
+    "official_current_site": "https://www.balticyachts.fi/",
+    "official_heritage_archive": "https://www.balticyachts.fi/about-us/",
+    "other_archive_sources": ["https://en.wikipedia.org/wiki/Baltic_Yachts", "https://www.seahorsemagazine.com/article/april-2023/half-a-century-at-the-cutting-edge"],
+    "sources": [
+      {"url": "https://www.balticyachts.fi/about-us/", "title": "About us | Baltic Yachts", "source_type": "official_heritage_archive", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://finland.fi/business-innovation/how-finlands-west-coast-became-a-global-boatbuilding-hub/", "title": "How Finland's west coast became a global boatbuilding hub", "source_type": "industry_association", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.yacht.de/en/shipyards/shipyard-from-finland-baltic-yachts-celebrates-its-50th-birthday/", "title": "Shipyard from Finland: Baltic Yachts celebrates its 50th birthday | YACHT", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://en.wikipedia.org/wiki/Baltic_Yachts", "title": "Baltic Yachts", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://www.balticyachts.fi/about-us/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://finland.fi/business-innovation/how-finlands-west-coast-became-a-global-boatbuilding-hub/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://www.yacht.de/en/shipyards/shipyard-from-finland-baltic-yachts-celebrates-its-50th-birthday/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://en.wikipedia.org/wiki/Baltic_Yachts", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia text license)", "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": null, "basis": "unknown", "notes": "No cumulative total-boats-built figure located; company now emphasizes custom/semi-custom, not high-volume series, production."},
+    "review_status": "verified",
+    "ambiguity_notes": "Founder names and the specific claim of departure from Nautor's Swan come from secondary sources (finland.fi, YACHT magazine); the company's own official About page confirms only the 1973 founding year and Bosund location."
+  },
+  {
+    "preferred_display_name": "Nauticat Yachts",
+    "aliases": ["Siltala Yachts", "Siltala Yachts Oy"],
+    "entity_kind": ["manufacturer", "yard", "brand"],
+    "country": "Finland",
+    "region": "Nordics",
+    "status": "renamed",
+    "production_era": {"start_year": 1961, "end_year": 2018, "basis": "exact"},
+    "relationships": [
+      {"type": "formerly_known_as", "related_name": "Siltala Yachts", "evidence_note": "Company originally known as Siltala Yachts; renamed to Nauticat (the name of its main range) in 2005 per a specialist secondary source.", "source_url": "https://www.nautipedia.it/index.php/SILTALA_STORY"},
+      {"type": "successor", "related_name": "NAUTICAT YACHTS SIA (Latvia)", "evidence_note": "Original Finnish shipyard Nauticat Yachts Oy declared bankruptcy 16 May 2018; in 2022 a group of Latvian entrepreneurs revived production under NAUTICAT YACHTS SIA (CEO Dmitry Muratov), with main production now based in Latvia.", "source_url": "https://nauticat.com/"}
+    ],
+    "series_production_evidence": "Founded as a family shipyard by Pentti Siltala in 1961 with the Nauticat 33; over 50 years built more than 3,000 yachts across 10+ models (33-53 ft) at Riihikoski/Turku area, Finland.",
+    "official_current_site": "https://nauticat.com/",
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://www.nautipedia.it/index.php/SILTALA_STORY", "https://en.wikipedia.org/wiki/Nauticat_Yachts"],
+    "sources": [
+      {"url": "https://nauticat.com/", "title": "Nauticat official site", "source_type": "official_site", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.nautipedia.it/index.php/SILTALA_STORY", "title": "Siltala Story - Nautipedia", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://en.wikipedia.org/wiki/Nauticat_Yachts", "title": "Nauticat Yachts", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://nauticat.com/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://www.nautipedia.it/index.php/SILTALA_STORY", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://en.wikipedia.org/wiki/Nauticat_Yachts", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia text license)", "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 3000, "basis": "estimated", "notes": "'More than 3,000 yachts' over 50+ years per official-site-derived and Wikipedia summaries; figure applies to the original Finnish production era only."},
+    "review_status": "needs_review",
+    "ambiguity_notes": "Nauticat's manufacturing base has moved from Finland (original Siltala Yachts / Nauticat Yachts Oy, founded 1961, bankrupt 2018) to Latvia (NAUTICAT YACHTS SIA, 2022 revival). Recorded here as the historical Finnish entity with a successor relationship; the current producing entity is technically outside the Nordics region for manufacturing purposes, though brand/design heritage remains Finnish. The 2005 renaming date is sourced only from a specialist secondary site, not confirmed on the current official site."
+  },
+  {
+    "preferred_display_name": "Finngulf Yachts",
+    "aliases": ["Finngulf Marin Ky", "Oy Finngulf-Tresjord Ab"],
+    "entity_kind": ["manufacturer", "yard", "brand"],
+    "country": "Finland",
+    "region": "Nordics",
+    "status": "unknown",
+    "production_era": {"start_year": 1981, "end_year": null, "basis": "unknown"},
+    "relationships": [
+      {"type": "other", "related_name": "AS Saare Paat (Estonia)", "evidence_note": "In 1997 a manufacturing cooperation was established with AS Saare Paat in Nasva, Estonia.", "source_url": "https://itboat.com/shipyards/1032-finngulf"}
+    ],
+    "series_production_evidence": "Approximately 900 yachts built across the numbered Finngulf model line (34, 36, 39/391 -- a 23-year production run from 1982-2005 -- and the flagship 44 from 1990); began as a yacht brokerage (Finngulf Marin Ky) before starting own-brand production in 1981 with the Finngulf 34, designed by Håkan Södergren for the 3/4 Ton World Cup.",
+    "official_current_site": "https://www.finngulf.fi/en/",
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://sailwiki.com/shipyard/finngulf-yachts/", "https://itboat.com/shipyards/1032-finngulf"],
+    "sources": [
+      {"url": "https://www.finngulf.fi/en/oy-finngulf-tresjord-ab/history", "title": "History - Finngulf", "source_type": "official_heritage_archive", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://itboat.com/shipyards/1032-finngulf", "title": "Finngulf: Models, Price Lists & Sales - itBoat", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://www.finngulf.fi/en/oy-finngulf-tresjord-ab/history", "public_access": "unknown", "robots_or_api_notes": "Direct WebFetch attempts to this URL returned HTTP 500 errors twice in this session; facts derive from a WebSearch result snippet of this page rather than a directly verified live fetch.", "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://itboat.com/shipyards/1032-finngulf", "public_access": "unknown", "robots_or_api_notes": "Direct WebFetch returned HTTP 403 Forbidden; facts derive from a WebSearch snippet only.", "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 900, "basis": "estimated", "notes": "'A grand total of 900 yachts' per official history page content as captured in search snippet."},
+    "review_status": "needs_review",
+    "ambiguity_notes": "Could not independently confirm current (2026) operational status of Finngulf Yachts -- both the official history page and homepage returned server errors on direct WebFetch during this session. All facts derive from WebSearch-result snippets of the official site and a secondary boat-database summary, not a directly verified live fetch of full page content."
+  },
+  {
+    "preferred_display_name": "Oy Fiskars Ab Boatyard (Finnsailer)",
+    "aliases": ["Finnsailer"],
+    "entity_kind": ["manufacturer", "yard", "brand"],
+    "country": "Finland",
+    "region": "Nordics",
+    "status": "defunct",
+    "production_era": {"start_year": 1970, "end_year": 1979, "basis": "estimated"},
+    "relationships": [],
+    "series_production_evidence": "Oy Fiskars Ab Boatyard is described as the first yard in Finland and Scandinavia purpose-built for volume GRP boat production; produced the Finnsailer motorsailer series (34/35/38, e.g. Finnsailer 38 from 1976) as part of what secondary sources call Fiskars' 'short-lived fiberglass yacht line' of the 1970s.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://www.seamagazine.com/boats/fiskars", "https://finnsailer35.wordpress.com/"],
+    "sources": [
+      {"url": "https://goodoldboat.com/saildata/boat/finnsailer-38/", "title": "Finnsailer 38 - Sailboat Data & Sail Specifications", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.seamagazine.com/boats/fiskars", "title": "Fiskars Boats - Seamagazine", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://goodoldboat.com/saildata/boat/finnsailer-38/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://www.seamagazine.com/boats/fiskars", "public_access": "unknown", "robots_or_api_notes": "Direct WebFetch returned HTTP 500; facts derive from a WebSearch snippet only.", "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": null, "basis": "unknown", "notes": "No total-units figure located for the Finnsailer line as a whole."},
+    "review_status": "needs_review",
+    "ambiguity_notes": "Exact start/end years of Fiskars' fiberglass sailboat (Finnsailer) production line are not precisely established from sources retrieved in this session -- described only as a 'short-lived' 1970s line; both start and end year are estimates. Parent company Fiskars Corporation today is an unrelated consumer-goods business with no boat operations."
+  },
+  {
+    "preferred_display_name": "X-Yachts",
+    "aliases": [],
+    "entity_kind": ["manufacturer", "yard"],
+    "country": "Denmark",
+    "region": "Nordics",
+    "status": "active",
+    "production_era": {"start_year": 1979, "end_year": null, "basis": "exact"},
+    "relationships": [],
+    "series_production_evidence": "468 X-79 built 1979-1994; over 6,000 boats built in total since 1979 across numbered production series (X-79 through XR41, Xc/Xp cruising lines); official heritage page states ~150 boats built per year currently from Haderslev, Denmark, with moulding also done in Poland.",
+    "official_current_site": "https://www.x-yachts.com/",
+    "official_heritage_archive": "https://www.x-yachts.com/en/about/heritage/",
+    "other_archive_sources": ["https://en.wikipedia.org/wiki/X-Yachts"],
+    "sources": [
+      {"url": "https://www.x-yachts.com/en/about/heritage/", "title": "Heritage | X-Yachts", "source_type": "official_heritage_archive", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://en.wikipedia.org/wiki/X-Yachts", "title": "X-Yachts", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://www.x-yachts.com/en/about/heritage/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://en.wikipedia.org/wiki/X-Yachts", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia text license)", "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 6000, "basis": "estimated", "notes": "'Over 6,000 boats' per Wikipedia-sourced summary of company statements; official heritage page frames the figure as 'nearly 60 designs' rather than a unit count."},
+    "review_status": "verified",
+    "ambiguity_notes": "Minor discrepancy between sources on the first model: Wikipedia-derived summary identifies the X-79 (1979) as the first model, while the current official heritage page text (as fetched) emphasizes the X-412 without mentioning the X-79; the X-79's 1979 origin and 468-unit run are corroborated by multiple independent secondary sources and treated as the better-evidenced fact."
+  },
+  {
+    "preferred_display_name": "LM Glasfiber (LM Boats)",
+    "aliases": ["Lunderskov Møbelfabrik", "LM Boats"],
+    "entity_kind": ["manufacturer", "yard", "legal_organization"],
+    "country": "Denmark",
+    "region": "Nordics",
+    "status": "defunct",
+    "production_era": {"start_year": 1969, "end_year": 1995, "basis": "exact"},
+    "relationships": [
+      {"type": "successor", "related_name": "LM Wind Power", "evidence_note": "In 1995 LM stopped building boats and concentrated on fabricating wind-turbine blades, becoming the LM Wind Power Group.", "source_url": "https://www.lmwindpower.com/en/about/heritage"}
+    ],
+    "series_production_evidence": "Founded 1940 as a furniture factory (Lunderskov Møbelfabrik) by Ejner Lorentzen and Aage Skouboe; began GRP speedboats in 1954, first fiberglass sailboat (LM27) in 1972; built roughly 3,000 boats across five sailboat models (24-32 ft) over 20 years, including the LM24 (659 units, 1972-1984, per Wikipedia) and the LM27, described as Europe's most-produced motorsailer of its time.",
+    "official_current_site": null,
+    "official_heritage_archive": "https://www.lmwindpower.com/en/about/heritage",
+    "other_archive_sources": ["https://en.wikipedia.org/wiki/LM_24", "https://www.practical-sailor.com/sailboat-reviews/used_sailboats/used-boat-review-lm32-pilothouse-sloop/"],
+    "sources": [
+      {"url": "https://www.lmwindpower.com/en/about/heritage", "title": "From LM to LM Wind Power | LM Wind Power", "source_type": "official_heritage_archive", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://en.wikipedia.org/wiki/LM_24", "title": "LM 24", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.practical-sailor.com/sailboat-reviews/used_sailboats/used-boat-review-lm32-pilothouse-sloop/", "title": "Used Boat Review: LM32 Pilothouse Sloop - Practical Sailor", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://www.lmwindpower.com/en/about/heritage", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://en.wikipedia.org/wiki/LM_24", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia text license)", "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://www.practical-sailor.com/sailboat-reviews/used_sailboats/used-boat-review-lm32-pilothouse-sloop/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 3000, "basis": "estimated", "notes": "'3,000 boats in five models' over ~20 years per secondary-source summary of company history; LM24 alone documented at 659 units per Wikipedia."},
+    "review_status": "verified",
+    "ambiguity_notes": null
+  },
+  {
+    "preferred_display_name": "Faurby Yachts",
+    "aliases": [],
+    "entity_kind": ["manufacturer", "yard"],
+    "country": "Denmark",
+    "region": "Nordics",
+    "status": "active",
+    "production_era": {"start_year": 1976, "end_year": null, "basis": "exact"},
+    "relationships": [
+      {"type": "other", "related_name": "Nordship Yachts", "evidence_note": "Since 2018 Faurby Yacht has been part of the True Boat Builders group alongside Nordship Yachts and Nordic Cruiser; in 2025 Nordship's Deck Saloon range began being produced and marketed under the Faurby name.", "source_url": "https://www.nordship.dk/en/history"}
+    ],
+    "series_production_evidence": "Official site confirms roots dating to 1976 and current location Lunderskov, Denmark; approximately 10 semi-custom yachts/year built historically (33-46 ft E-series), plus the 2025-onward Deck Saloon (DS) line inherited from Nordship.",
+    "official_current_site": "https://faurby.dk/",
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://www.yacht.de/en/yachts/shipyards/faurby-yachts-integration-in-danish-nordship-becomes-faurby/", "https://www.boatnews.com/story/49181/nordship-becomes-faurby-continuity-and-upmarket-for-danish-deck-saloons"],
+    "sources": [
+      {"url": "https://faurby.dk/", "title": "Faurby Yacht | Faurby Sailing Yachts", "source_type": "official_site", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.yacht.de/en/yachts/shipyards/faurby-yachts-integration-in-danish-nordship-becomes-faurby/", "title": "Faurby Yachts: Integration in Danish. Nordship becomes Faurby | YACHT", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.nordship.dk/en/history", "title": "The History of Nordship Yachts", "source_type": "official_heritage_archive", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://faurby.dk/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://www.yacht.de/en/yachts/shipyards/faurby-yachts-integration-in-danish-nordship-becomes-faurby/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://www.nordship.dk/en/history", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": null, "basis": "estimated", "notes": "'Approximately 10 pieces a year' historical build rate per specialist secondary source; no cumulative lifetime total located."},
+    "review_status": "verified",
+    "ambiguity_notes": "Founders Erna and Niels Peter Faurby (per WebSearch summary) were not independently confirmed via direct fetch of the current official homepage, which did not surface founder names in the retrieved content."
+  },
+  {
+    "preferred_display_name": "Nordship Yachts",
+    "aliases": ["Buchwald Yachtværft"],
+    "entity_kind": ["manufacturer", "yard", "brand"],
+    "country": "Denmark",
+    "region": "Nordics",
+    "status": "acquired",
+    "production_era": {"start_year": 1978, "end_year": 2025, "basis": "exact"},
+    "relationships": [
+      {"type": "formerly_known_as", "related_name": "Buchwald Yachtværft", "evidence_note": "Founded 1978 by Lars Buchwald as Buchwald Yachtværft, initially doing accommodation fit-out and subcontract work for other Danish yards; renamed Nordship Yachts ApS in 1988 after acquiring rights to the Nordship boat program.", "source_url": "https://www.nordship.dk/en/history"},
+      {"type": "production_transferred_to", "related_name": "Faurby Yachts", "evidence_note": "In 2025 Nordship Yachts fully joined forces with Faurby Yachts; Nordship's Deck Saloon models (360/420/450/500/570 DS) continue as the DS line under the Faurby name.", "source_url": "https://www.nordship.dk/en/history"}
+    ],
+    "series_production_evidence": "Official history page confirms 1978 founding, 1988 rename, introduction of deck-saloon yachts in the early 1990s, 2008 relocation to Lunderskov, 2018 merger into True Boat Builders ApS (with Faurby and Nordic Cruiser), and full 2025 integration into Faurby.",
+    "official_current_site": "https://www.nordship.dk/en",
+    "official_heritage_archive": "https://www.nordship.dk/en/history",
+    "other_archive_sources": [],
+    "sources": [
+      {"url": "https://www.nordship.dk/en/history", "title": "The History of Nordship Yachts", "source_type": "official_heritage_archive", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://www.nordship.dk/en/history", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": null, "basis": "unknown", "notes": "Deck Saloon yachts described as 'produced individually to meet client wishes'; no series unit-count figure located."},
+    "review_status": "verified",
+    "ambiguity_notes": null
+  },
+  {
+    "preferred_display_name": "Bringsværd Boat Yard",
+    "aliases": ["BB Boatyard", "Børge Bringsværd"],
+    "entity_kind": ["manufacturer", "yard"],
+    "country": "Norway",
+    "region": "Nordics",
+    "status": "defunct",
+    "production_era": {"start_year": 1956, "end_year": 1968, "basis": "estimated"},
+    "relationships": [],
+    "series_production_evidence": "Approximately 1,300 BB11 (BB1) mahogany sailboats built in series 1956-1968 at Husvikholmen, Drøbak, Norway, of which ~850 were exported worldwide; used as a sail-trainer at the Royal Norwegian Naval Academy (Haakonsvern). One specialist secondary source additionally lists BB17 (~350 built) and small-series BB35 (3 built).",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://bb17.org/", "https://en.wikipedia.org/wiki/BB_10_(keelboat)"],
+    "sources": [
+      {"url": "https://www.dailyscandinavian.com/the-little-norwegian-sailboat/", "title": "The Little Norwegian Sailboat - Daily Scandinavian", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://bb17.org/wp-content/uploads/Brief-von-BB-junior.pdf", "title": "The BB boats from Borge Bringsvaerd boat yard, Drøbak, Norway: general overview", "source_type": "class_or_owners_association", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://en.wikipedia.org/wiki/BB_10_(keelboat)", "title": "BB 10 (keelboat)", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://www.dailyscandinavian.com/the-little-norwegian-sailboat/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://bb17.org/wp-content/uploads/Brief-von-BB-junior.pdf", "public_access": "public", "robots_or_api_notes": "File is a binary PDF (FlateDecode stream) that could not be parsed as text by the fetch tool in this session; located and confirmed to exist, but its specific factual claims (BB17/BB35 counts) were not independently re-verified from its actual text content.", "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://en.wikipedia.org/wiki/BB_10_(keelboat)", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia text license)", "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 1300, "basis": "estimated", "notes": "'More than 1300 of the little Norwegian sailboat BB1s built' per Daily Scandinavian secondary source; figure applies to the BB11/BB1 model specifically, not the yard's full output."},
+    "review_status": "needs_review",
+    "ambiguity_notes": "Sources conflict on the yard's operating span: the readable secondary source states series production of the BB1/BB11 ran 1956-1968, while an unverified fragment referenced founder Bringsværd's 1982 death and a 1984 yard closure that could not be re-confirmed from readable text in this session (the only source for that claim was an unparseable PDF). Both figures are preserved rather than silently resolved. Additional models BB17/BB35 come from that same PDF source and should be re-verified with an OCR-capable tool."
+  },
+  {
+    "preferred_display_name": "Fjord Plast AS",
+    "aliases": ["Fjord Boats (historical sailboat era)"],
+    "entity_kind": ["manufacturer", "yard", "brand"],
+    "country": "Norway",
+    "region": "Nordics",
+    "status": "acquired",
+    "production_era": {"start_year": 1960, "end_year": 1979, "basis": "estimated"},
+    "relationships": [
+      {"type": "other", "related_name": "Ree Marine (Denmark)", "evidence_note": "After Fjord Plast got into financial trouble, molds for the Fjord MS 33 motorsailer were sold to Denmark and further boats were produced by Ree Marine into the mid-1980s.", "source_url": "https://fjordms33.wordpress.com/2013/12/19/fjord-ms-33-history/"},
+      {"type": "acquired_by", "related_name": "HanseYachts (Germany)", "evidence_note": "The Fjord brand was taken over by HanseYachts in 2008; the present-day Fjord brand builds only motorboats/powerboats, made in Germany, with the official current site showing no connection to the original Norwegian sailboat/motorsailer production.", "source_url": "https://www.fjordboats.com/"}
+    ],
+    "series_production_evidence": "The motorsailer Fjord MS 33 (designed by Norwegian naval architect Eivind Amble) was built by Fjord Plast AS of Arendal, Norway (later also Rjukan) through the 1970s and into the early 1980s, though fewer than 100 units of that specific model were built; one specialist secondary source (dynamicboats.com) states the company was founded in 1960 by Alf Richard Bjercke to build 'strong, reliable sailing yachts for coastal cruising' before it grew into a major motorboat producer.",
+    "official_current_site": "https://www.fjordboats.com/",
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://www.yachtingart.com/2021/04/style-has-the-fjord-brand-created-a-new-segment-of-pleasure-boats.html", "https://dynamicboats.com/fjord-boats/fjord-boats-story/"],
+    "sources": [
+      {"url": "https://fjordms33.wordpress.com/2013/12/19/fjord-ms-33-history/", "title": "Fjord MS 33 History", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.fjordboats.com/", "title": "Fjord Boats official site", "source_type": "official_site", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://dynamicboats.com/fjord-boats/fjord-boats-story/", "title": "Fjord Boats Story - Dynamic Boats", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://fjordms33.wordpress.com/2013/12/19/fjord-ms-33-history/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://www.fjordboats.com/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://dynamicboats.com/fjord-boats/fjord-boats-story/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 100, "basis": "estimated", "notes": "'Less than 100 boats have been built' -- figure specific to the Fjord MS 33 motorsailer model only, not the yard's total (mostly-motorboat) output."},
+    "review_status": "needs_review",
+    "ambiguity_notes": "Significant continuity break: the original Fjord Plast AS (Arendal, Norway; sailing yachts/motorsailers from ~1960s-1970s) and the present-day 'Fjord' brand (German-built motorboats/powerboats only, owned by HanseYachts since 2008) share only a name and a licensing/mold lineage, not the same manufacturing operation or product category -- confirmed directly on the current official site, which shows no sailboats at all. Founder attribution to Alf Richard Bjercke and the exact 1960 founding year come from a single specialist secondary source (dynamicboats.com) and were not independently corroborated by a second source in this session."
+  },
+  {
+    "preferred_display_name": "Skibsplast",
+    "aliases": [],
+    "entity_kind": ["manufacturer"],
+    "country": "Norway",
+    "region": "Nordics",
+    "status": "defunct",
+    "production_era": {"start_year": 1957, "end_year": 2012, "basis": "exact"},
+    "relationships": [],
+    "series_production_evidence": "No evidence of series sailboat (sailing boat) production found. All identified sources (Norwegian Wikipedia, Setesdalswiki local historical archive, industry directories) categorize Skibsplast exclusively as a motorboat/speedboat ('plastbåt'/'motorbåtprodusent') producer across its 14,000+ boat lifetime output from Evje, Norway.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://www.setesdalswiki.no/wiki/Skibsplast"],
+    "sources": [
+      {"url": "https://no.wikipedia.org/wiki/Skibsplast", "title": "Skibsplast - Wikipedia", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.setesdalswiki.no/wiki/Skibsplast", "title": "Skibsplast - Setesdalswiki", "source_type": "museum_or_archive", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://no.wikipedia.org/wiki/Skibsplast", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia text license)", "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://www.setesdalswiki.no/wiki/Skibsplast", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 14000, "basis": "exact", "notes": "'Over 14,000 boats' total lifetime output per Wikipedia; none identified as sailboats."},
+    "review_status": "excluded",
+    "ambiguity_notes": "Checked and excluded: no evidence found of any series sailboat model in Skibsplast's product line across all sources reviewed; consistently categorized as a motorboat/powerboat manufacturer only, which falls outside this registry's inclusion criteria."
+  },
+  {
+    "preferred_display_name": "Saga Boats",
+    "aliases": ["Sba Boats", "Saga Trading"],
+    "entity_kind": ["manufacturer"],
+    "country": "Norway",
+    "region": "Nordics",
+    "status": "active",
+    "production_era": {"start_year": 1960, "end_year": null, "basis": "exact"},
+    "relationships": [],
+    "series_production_evidence": "No evidence of sailboat production found. The official company site's own 'About' page explicitly frames its entire history and current model range around motorboats/planing motor hulls (e.g. Saga 20 from 1967, Saga 27 from 1970), with no sailboat model referenced anywhere in the retrieved content.",
+    "official_current_site": "https://www.sagaboats.no/en/",
+    "official_heritage_archive": "https://www.sagaboats.no/en/about-saga-boats/",
+    "other_archive_sources": ["https://www.nautipedia.it/index.php/SAGA_BOATS_HISTORY_(ENGLISH)"],
+    "sources": [
+      {"url": "https://www.sagaboats.no/en/about-saga-boats/", "title": "Saga Boats | About Saga Boats", "source_type": "official_heritage_archive", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.nautipedia.it/index.php/SAGA_BOATS_HISTORY_(ENGLISH)", "title": "Saga Boats History (English) - Nautipedia", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://www.sagaboats.no/en/about-saga-boats/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://www.nautipedia.it/index.php/SAGA_BOATS_HISTORY_(ENGLISH)", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": null, "basis": "unknown", "notes": "No sailboat-specific figures exist since no sailboat production was found; motorboat production figures (e.g. 'more than 700 motorboats produced yearly' in the 1970s) are out of scope for this registry."},
+    "review_status": "excluded",
+    "ambiguity_notes": "Checked and excluded: Saga Boats is a real, well-documented Norwegian series-production boatbuilder active since 1960, but all evidence found -- including its own official 'About' page -- describes exclusively motorboat/powerboat production; no sailboat model was identified in this research session."
+  }
+]

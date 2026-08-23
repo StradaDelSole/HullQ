@@ -1,0 +1,948 @@
+[
+  {
+    "preferred_display_name": "Catalina Yachts",
+    "aliases": [],
+    "entity_kind": ["manufacturer"],
+    "country": "United States",
+    "region": "North America",
+    "status": "active",
+    "production_era": {"start_year": 1969, "end_year": null, "basis": "exact"},
+    "relationships": [
+      {"type": "other", "related_name": "Morgan Yachts", "evidence_note": "Catalina acquired Morgan Yachts in May 1984, Largo FL, operating it as the Morgan Division; select Morgan/Catalina-Morgan models continued into early 2000s before the Morgan name was retired.", "source_url": "https://www.catalinayachts.com/history/"}
+    ],
+    "series_production_evidence": "Official company history states the first model (Catalina 22) was built in 1969; company describes itself as the largest builder of fiberglass production sailboats in the US with more than 85,000 boats built; current site lists an active multi-model production catalog.",
+    "official_current_site": "https://www.catalinayachts.com/",
+    "official_heritage_archive": "https://www.catalinayachts.com/history/",
+    "other_archive_sources": [],
+    "sources": [
+      {"url": "https://www.catalinayachts.com/history/", "title": "History – Catalina Yachts", "source_type": "official_heritage_archive", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://en.wikipedia.org/wiki/Frank_Butler_(founder)", "title": "Frank Butler (founder)", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.cruisingworld.com/story/people/eight-bells-frank-butler-founder-of-catalina-yachts/", "title": "Eight Bells: Frank Butler, Founder of Catalina Yachts", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://www.catalinayachts.com/history/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://en.wikipedia.org/wiki/Frank_Butler_(founder)", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://www.cruisingworld.com/story/people/eight-bells-frank-butler-founder-of-catalina-yachts/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 85000, "basis": "estimated", "notes": "Company states more than 85,000 Catalinas on the water (official history page); this is a cumulative company claim, not an independently audited count."},
+    "review_status": "verified",
+    "ambiguity_notes": "Sources vary slightly on the exact founding year: official site text says Butler 'established' the company in 1970, but the first model (Catalina 22) was built in 1969 in North Hollywood, CA before the company later based itself in Woodland Hills, CA."
+  },
+  {
+    "preferred_display_name": "Hunter Marine",
+    "aliases": ["Hunter Marine Corporation"],
+    "entity_kind": ["manufacturer"],
+    "country": "United States",
+    "region": "North America",
+    "status": "renamed",
+    "production_era": {"start_year": 1973, "end_year": 2012, "basis": "exact"},
+    "relationships": [
+      {"type": "successor", "related_name": "Marlow-Hunter", "evidence_note": "Hunter Marine filed for bankruptcy; David Marlow acquired the company in 2012 and rebranded it Marlow-Hunter.", "source_url": "https://en.wikipedia.org/wiki/Hunter_Marine"}
+    ],
+    "series_production_evidence": "Founded 1973 by Warren Luhrs in Alachua, FL; first model Hunter 25 designed by John Cherubini; at peak mid-2000s reputed to produce over 2000 boats/year across a multi-model line.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://goodoldboat.com/saildata/builder/79/"],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/Hunter_Marine", "title": "Hunter Marine", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://goodoldboat.com/saildata/builder/79/", "title": "Hunter Marine (USA) - Sailboat Builder | Complete Production History", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/Hunter_Marine", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://goodoldboat.com/saildata/builder/79/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": null, "basis": "unknown", "notes": "No independently verified cumulative unit count found; peak annual rate (~2000/yr) reported but no lifetime total located."},
+    "review_status": "verified",
+    "ambiguity_notes": "Recorded as a distinct historical entity from Marlow-Hunter (post-2012) per the semantic rule against silently merging a renamed/re-owned company; see relationship entry."
+  },
+  {
+    "preferred_display_name": "Marlow-Hunter",
+    "aliases": [],
+    "entity_kind": ["manufacturer"],
+    "country": "United States",
+    "region": "North America",
+    "status": "active",
+    "production_era": {"start_year": 2012, "end_year": null, "basis": "exact"},
+    "relationships": [
+      {"type": "predecessor", "related_name": "Hunter Marine", "evidence_note": "David Marlow acquired Hunter Marine's assets after its 2012 bankruptcy and rebranded the company Marlow-Hunter, refocused on vacuum-infusion/Kevlar construction.", "source_url": "https://en.wikipedia.org/wiki/Hunter_Marine"},
+      {"type": "acquired_by", "related_name": "Performance Cruising / Gemini Catamarans", "evidence_note": "Secondary source states ownership of Performance Cruising (Gemini catamarans) transitioned to Marlow Hunter in 2010.", "source_url": "https://murrayyachtsales.com/gemini-company-history-catamaran-models/"}
+    ],
+    "series_production_evidence": "Secondary source (Good Old Boat builder database) states the company 'continues to deliver family-friendly, shorthanded sailboats' with 'a current lineup of five models from 33 to 50 feet.'",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://goodoldboat.com/saildata/builder/368/"],
+    "sources": [
+      {"url": "https://goodoldboat.com/saildata/builder/368/", "title": "Marlow-Hunter - Sailboat Builder | Complete Production History", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://en.wikipedia.org/wiki/Hunter_Marine", "title": "Hunter Marine", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://murrayyachtsales.com/gemini-company-history-catamaran-models/", "title": "Gemini Company History & Catamaran Models - Murray Yacht Sales", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://goodoldboat.com/saildata/builder/368/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://en.wikipedia.org/wiki/Hunter_Marine", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://murrayyachtsales.com/gemini-company-history-catamaran-models/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": null, "basis": "unknown", "notes": "No cumulative unit count located for the post-2012 Marlow-Hunter era specifically."},
+    "review_status": "needs_review",
+    "ambiguity_notes": "The apparent official domain marlow-hunter.com currently redirects (301) to an unrelated restaurant website, which raises real doubt about whether the company is still operating as of this research date; the only evidence of continued activity is a secondary builder-database page whose own 'last updated' date could not be confirmed. Current operational status should be treated as unconfirmed pending a fresher primary source."
+  },
+  {
+    "preferred_display_name": "J/Boats",
+    "aliases": [],
+    "entity_kind": ["manufacturer", "brand"],
+    "country": "United States",
+    "region": "North America",
+    "status": "active",
+    "production_era": {"start_year": 1977, "end_year": null, "basis": "exact"},
+    "relationships": [
+      {"type": "other", "related_name": "Tillotson-Pearson (TPI)", "evidence_note": "J/Boats designs boats but historically had them built by contract manufacturer Tillotson-Pearson (Everett Pearson), beginning with the J/24 in the late 1970s.", "source_url": "https://goodoldboat.com/across-the-bar-everett-pearson/"}
+    ],
+    "series_production_evidence": "Official site (jboats.com) is live and actively marketing current production models (e.g. 'NEW J/7', 'NEW J/40' as of 2026); by end of 1977 the order book for the first J/24 had grown to 700 boats.",
+    "official_current_site": "https://www.jboats.com/",
+    "official_heritage_archive": null,
+    "other_archive_sources": [],
+    "sources": [
+      {"url": "https://www.jboats.com/", "title": "J/Boats official site", "source_type": "official_site", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://en.wikipedia.org/wiki/Rod_Johnstone", "title": "Rod Johnstone", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://mysticseaport.org/america-sea/rod-and-bob-johnstone-jboats-2016-2/", "title": "Rod and Bob Johnstone – J/Boats: 2016", "source_type": "museum_or_archive", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://www.jboats.com/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://en.wikipedia.org/wiki/Rod_Johnstone", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://mysticseaport.org/america-sea/rod-and-bob-johnstone-jboats-2016-2/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 12000, "basis": "estimated", "notes": "Secondary source states TPI alone built over 5,000 J/24s plus another 7,000 J/Boats from J/22 to J/65; this is a rough cumulative estimate, not an official company figure."},
+    "review_status": "verified",
+    "ambiguity_notes": "J/Boats is the design/brand/marketing entity founded by Rod and Bob Johnstone; actual manufacturing was historically contracted to Tillotson-Pearson/TPI (a separate legal yard) — recorded as a relationship rather than merged."
+  },
+  {
+    "preferred_display_name": "Pacific Seacraft",
+    "aliases": ["Pacific Seacraft Corporation"],
+    "entity_kind": ["manufacturer"],
+    "country": "United States",
+    "region": "North America",
+    "status": "active",
+    "production_era": {"start_year": 1975, "end_year": null, "basis": "exact"},
+    "relationships": [
+      {"type": "acquired_by", "related_name": "Stephen Brodie (private buyer)", "evidence_note": "Company filed Chapter 11 in May 2007; assets purchased at bankruptcy auction September 2007 by Stephen Brodie and relocated from California to Washington, NC; production restarted 2008.", "source_url": "https://en.wikipedia.org/wiki/Pacific_Seacraft"},
+      {"type": "other", "related_name": "Ericson Yachts", "evidence_note": "Pacific Seacraft (via parent Singmarine) acquired several Ericson Yachts molds after Ericson ceased operations in 1990.", "source_url": "https://en.wikipedia.org/wiki/Ericson_Yachts"}
+    ],
+    "series_production_evidence": "Founded 1975 by Mike Howarth and Henry Mohrschladt with the Pacific Seacraft 25; company continues producing the Crealock-designed fiberglass monohull cruising line from Washington, North Carolina.",
+    "official_current_site": "https://www.pacificseacraft.com/",
+    "official_heritage_archive": null,
+    "other_archive_sources": [],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/Pacific_Seacraft", "title": "Pacific Seacraft", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.practical-sailor.com/sailboat-reviews/pacific-seacraft-34-and-37/", "title": "Pacific Seacraft 34 and 37 - Practical Sailor", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/Pacific_Seacraft", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://www.practical-sailor.com/sailboat-reviews/pacific-seacraft-34-and-37/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": null, "basis": "unknown", "notes": "No cumulative unit count located."},
+    "review_status": "needs_review",
+    "ambiguity_notes": "Attempted to directly fetch the official site pacificseacraft.com; it returned a 'certificate has expired' TLS error at research time on both http and https, so the current live catalog could not be directly verified even though the domain is confirmed to belong to the company per secondary sources."
+  },
+  {
+    "preferred_display_name": "Island Packet Yachts",
+    "aliases": ["Traditional Watercraft Inc.", "Island Packet and Seaward Yachts"],
+    "entity_kind": ["manufacturer"],
+    "country": "United States",
+    "region": "North America",
+    "status": "active",
+    "production_era": {"start_year": 1979, "end_year": null, "basis": "exact"},
+    "relationships": [
+      {"type": "acquired_by", "related_name": "Darrell and Leslie Allen", "evidence_note": "In January 2017 Darrell and Leslie Allen (former Island Packet dealers) took ownership; company now also operates as Island Packet and Seaward Yachts.", "source_url": "https://ipy.com/legacy-vision/"}
+    ],
+    "series_production_evidence": "Founded 1979 by naval architect Bob Johnson (initially as Traditional Watercraft Inc., building the Bombay Express 25 / Island Packet 27); official site states over 2,500 yachts built; current models (e.g. IP 349, IP 439) have won Cruising World awards in 2019 and 2021.",
+    "official_current_site": "https://ipy.com/",
+    "official_heritage_archive": "https://ipy.com/legacy-vision/",
+    "other_archive_sources": [],
+    "sources": [
+      {"url": "https://ipy.com/legacy-vision/", "title": "Our Legacy and Vision | Island Packet Yachts", "source_type": "official_heritage_archive", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.cruisingworld.com/man-ivory-boat/", "title": "The Man in the Ivory Boat | Cruising World", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://ipy.com/legacy-vision/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://www.cruisingworld.com/man-ivory-boat/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 2500, "basis": "estimated", "notes": "Official heritage page states 'more than 2,500 yachts' built; company self-reported figure."},
+    "review_status": "verified",
+    "ambiguity_notes": "The company transitioned in 2017 from higher-volume 'production boat' output to lower-volume semi-custom craftsmanship under new ownership, per the official legacy page."
+  },
+  {
+    "preferred_display_name": "Hinckley Yachts",
+    "aliases": ["Manset Boatyard", "Henry R. Hinckley & Co."],
+    "entity_kind": ["manufacturer", "yard"],
+    "country": "United States",
+    "region": "North America",
+    "status": "active",
+    "production_era": {"start_year": 1928, "end_year": null, "basis": "exact"},
+    "relationships": [
+      {"type": "acquired_by", "related_name": "Little Harbor Yachts (Ted Hood)", "evidence_note": "Hinckley Yachts acquired Ted Hood's Little Harbor Custom Yachts in 1999.", "source_url": "https://en.wikipedia.org/wiki/Ted_Hood"}
+    ],
+    "series_production_evidence": "Founded 1928 as Manset Boatyard by Benjamin B. Hinckley; son Henry R. Hinckley built the company's first sailboat, a 28-foot Sparkman & Stephens sloop, in 1938, going on to build 20 of them as the company's 'first mass production line'; still actively selling current models via official site.",
+    "official_current_site": "https://www.hinckleyyachts.com/",
+    "official_heritage_archive": "https://www.hinckleyyachts.com/history/",
+    "other_archive_sources": ["https://shipbuildinghistory.njscuba.net/us-yacht-large/hinckley/"],
+    "sources": [
+      {"url": "https://www.hinckleyyachts.com/history/", "title": "Our History I Company I Hinckley Yachts", "source_type": "official_heritage_archive", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://shipbuildinghistory.njscuba.net/us-yacht-large/hinckley/", "title": "Henry R. Hinckley & Co. ~ Shipbuilding History", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://www.hinckleyyachts.com/history/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://shipbuildinghistory.njscuba.net/us-yacht-large/hinckley/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": null, "basis": "unknown", "notes": "No cumulative unit count located; company today is lower-volume/semi-custom plus a large service-yard business."},
+    "review_status": "verified",
+    "ambiguity_notes": "Company today builds primarily powerboats (e.g. jet-drive picnic boats) alongside a services business; historical fiberglass sailboat series production (1950s-1980s) is well evidenced but current-catalog sailboat production should be checked separately before treating this as an active sailboat line."
+  },
+  {
+    "preferred_display_name": "Tartan Yachts",
+    "aliases": ["Tartan Marine", "Douglass & McLeod"],
+    "entity_kind": ["manufacturer"],
+    "country": "United States",
+    "region": "North America",
+    "status": "active",
+    "production_era": {"start_year": 1961, "end_year": null, "basis": "exact"},
+    "relationships": [
+      {"type": "predecessor", "related_name": "Douglass & McLeod", "evidence_note": "Tartan's first model, the Tartan 27, was built in 1960-61 by Douglass & McLeod of Grand River, Ohio, in collaboration with Sparkman & Stephens; the company was refounded by Charles Britton in 1971 after a 1971 factory fire destroyed Douglass & McLeod.", "source_url": "https://tartanyachts.com/"},
+      {"type": "other", "related_name": "C&C Yachts", "evidence_note": "Tartan's parent, Fairport Yachts, acquired the C&C Yachts brand/IP in 1996 after C&C's 1994 factory fire, and produced new C&C models (C&C 99/110/115/121) starting 1997 until 2013.", "source_url": "https://en.wikipedia.org/wiki/C%26C_Yachts"}
+    ],
+    "series_production_evidence": "Official current site (tartanyachts.com) is live, marketing a six-model current production line (Tartan 27 through 53) and states 'Quality Since 1961' and 'Now Accepting Build Spots for 2027'.",
+    "official_current_site": "https://tartanyachts.com/",
+    "official_heritage_archive": null,
+    "other_archive_sources": [],
+    "sources": [
+      {"url": "https://tartanyachts.com/", "title": "Tartan Yachts official site", "source_type": "official_site", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://en.wikipedia.org/wiki/Tartan_Marine", "title": "Tartan Marine", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://tartanyachts.com/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://en.wikipedia.org/wiki/Tartan_Marine", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": null, "basis": "unknown", "notes": "No cumulative unit count located."},
+    "review_status": "verified",
+    "ambiguity_notes": "The company markets continuous heritage back to 1961 (Douglass & McLeod era) though the current corporate entity (Tartan Marine / Fairport Yachts) dates to Charles Britton's 1971 refounding; treated as one continuous record with a predecessor relationship rather than fragmenting further. A dedicated 'company/tartanhistory' URL referenced by secondary sites returned 404 at research time; heritage content is instead embedded on the current homepage."
+  },
+  {
+    "preferred_display_name": "Sabre Yachts",
+    "aliases": [],
+    "entity_kind": ["manufacturer"],
+    "country": "United States",
+    "region": "North America",
+    "status": "active",
+    "production_era": {"start_year": 1970, "end_year": null, "basis": "exact"},
+    "relationships": [
+      {"type": "acquired_by", "related_name": "Daniel Zilkha and Ed Miller", "evidence_note": "Founder Roger Hewson retired in the early 1990s; the company was acquired by Daniel Zilkha and Ed Miller.", "source_url": "https://bluewateryachtsales.com/news/sabres-storied-50-year-history-and-unwavering-success/"}
+    ],
+    "series_production_evidence": "Founded 1970 by Roger Hewson in Raymond, Maine; first 28-foot fiberglass sailing yacht launched at the 1971 Newport Boat Show, with 588 sold over the next 15 years. Official 'About Us' page confirms continuous operation and Maine manufacturing 50+ years later.",
+    "official_current_site": "https://www.sabreyachts.com/",
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://mainebuiltboats.com/sabre-yachts/"],
+    "sources": [
+      {"url": "https://www.sabreyachts.com/about-us", "title": "Sabre Yachts of Maine - 50+ Years as American Yacht Builders", "source_type": "official_site", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://mainebuiltboats.com/sabre-yachts/", "title": "Sabre Yachts - Maine Built Boats", "source_type": "industry_association", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://www.sabreyachts.com/about-us", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://mainebuiltboats.com/sabre-yachts/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 588, "basis": "exact", "notes": "588 units of the original Sabre 28 sold 1971-1986 per secondary source; no cumulative total-company figure located."},
+    "review_status": "verified",
+    "ambiguity_notes": "Official About Us page (fetched directly) states the company now builds 'motor yachts exclusively' alongside sister company Back Cove Yachts; historical series sailboat production (1970-1989) is well evidenced, but current-day new-build activity appears to be power only. Recorded as status 'active' (the corporate entity/yard is active) with this caveat rather than reclassifying retroactively."
+  },
+  {
+    "preferred_display_name": "Corsair Marine",
+    "aliases": [],
+    "entity_kind": ["manufacturer"],
+    "country": "United States",
+    "region": "North America",
+    "status": "acquired",
+    "production_era": {"start_year": 1984, "end_year": 2010, "basis": "exact"},
+    "relationships": [
+      {"type": "acquired_by", "related_name": "Seawind Catamarans (Australia)", "evidence_note": "Corsair Marine was acquired by Seawind Catamarans in 2010; production had already relocated from San Diego to Ho Chi Minh City, Vietnam in 2006.", "source_url": "https://corsairmarine.com/history/"}
+    ],
+    "series_production_evidence": "Founded 1984 in San Diego, CA by John Walton to build the Ian Farrier-designed Corsair F-27 folding trailerable trimaran; official heritage page states over 2,500 trimarans built across a multi-model line (24-37 ft).",
+    "official_current_site": "https://corsairmarine.com/",
+    "official_heritage_archive": "https://corsairmarine.com/history/",
+    "other_archive_sources": [],
+    "sources": [
+      {"url": "https://corsairmarine.com/history/", "title": "History | Corsair Marine - Trimarans For Performance Sailing", "source_type": "official_heritage_archive", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://en.wikipedia.org/wiki/Corsair_Marine", "title": "Corsair Marine", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://corsairmarine.com/history/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://en.wikipedia.org/wiki/Corsair_Marine", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 2500, "basis": "estimated", "notes": "Official page states 'more than 2,500 trimarans built through its global dealership network' as a cumulative company claim."},
+    "review_status": "verified",
+    "ambiguity_notes": "Founded and originally headquartered in the United States (San Diego, 1984-2006), but production and ownership are now based in Vietnam/Australia; retained in this North America batch because the company's founding/origin is North American, with status recorded as 'acquired' to reflect the real ownership/location change rather than treating it as still domestically North American."
+  },
+  {
+    "preferred_display_name": "Performance Cruising (Gemini Catamarans)",
+    "aliases": ["Gemini Catamarans"],
+    "entity_kind": ["manufacturer", "brand"],
+    "country": "United States",
+    "region": "North America",
+    "status": "historical",
+    "production_era": {"start_year": 1980, "end_year": 2020, "basis": "estimated"},
+    "relationships": [
+      {"type": "acquired_by", "related_name": "Marlow-Hunter", "evidence_note": "Secondary source states ownership of Performance Cruising transitioned to Marlow Hunter in 2010; production later contracted to Catalina Yachts' Largo, FL plant circa 2014.", "source_url": "https://murrayyachtsales.com/gemini-company-history-catamaran-models/"}
+    ],
+    "series_production_evidence": "Founded 1980 by Tony Smith (Chesapeake, MD area); Gemini catamaran line began 1981 with the 'Phoenix'; over 1,200-plus Gemini catamarans built across models from the 3000 to the Legacy 35, per secondary sources.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": [],
+    "sources": [
+      {"url": "https://murrayyachtsales.com/gemini-company-history-catamaran-models/", "title": "Gemini Company History & Catamaran Models - Murray Yacht Sales", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.cruisingworld.com/sailboats/gemini-catamarans-move/", "title": "Gemini Catamarans on the Move | Cruising World", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://murrayyachtsales.com/gemini-company-history-catamaran-models/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://www.cruisingworld.com/sailboats/gemini-catamarans-move/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 1200, "basis": "estimated", "notes": "Secondary source states 'over 1,200 Gemini catamarans' built; company self-description, not independently audited."},
+    "review_status": "needs_review",
+    "ambiguity_notes": "No official current company site or formal closure announcement was located. Multiple secondary sources indicate production stopped during the COVID-19 pandemic (circa 2020) and has not resumed as of this research; end_year is therefore an estimate, and status could alternatively be 'unknown' pending a primary-source confirmation of formal closure or restart. Ownership chain (Tony Smith founder -> Marlow Hunter 2010 -> contract production via Catalina 2014) is reported only in secondary/dealer sources, not an official corporate filing."
+  },
+  {
+    "preferred_display_name": "Precision Boat Works",
+    "aliases": [],
+    "entity_kind": ["manufacturer"],
+    "country": "United States",
+    "region": "North America",
+    "status": "defunct",
+    "production_era": {"start_year": 1978, "end_year": 2018, "basis": "estimated"},
+    "relationships": [],
+    "series_production_evidence": "Founded 1978 by brothers Richard and Bill Porter in Palmetto, FL (later Sarasota, FL); built nearly 5,000 fiberglass sailboats from 13 to 28 feet, many designed by Jim Taylor, before ceasing sailboat manufacture in 2018 and continuing only as a parts supplier for its existing fleet.",
+    "official_current_site": "https://www.precisionboatworks.com/customer_support/company.php",
+    "official_heritage_archive": null,
+    "other_archive_sources": [],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/Precision_Boat_Works", "title": "Precision Boat Works", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.precisionboatworks.com/customer_support/company.php", "title": "Precision Boat Works (company page)", "source_type": "official_site", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/Precision_Boat_Works", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://www.precisionboatworks.com/customer_support/company.php", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 5000, "basis": "estimated", "notes": "Secondary source states 'nearly 5,000 sailboats' built 1978-2018."},
+    "review_status": "verified",
+    "ambiguity_notes": "The legal entity/website still exists to sell parts for the existing fleet; status recorded as 'defunct' with respect to series sailboat manufacture specifically, not necessarily total corporate dissolution."
+  },
+  {
+    "preferred_display_name": "MacGregor Yacht Corporation",
+    "aliases": ["MacGregor Yachts"],
+    "entity_kind": ["manufacturer"],
+    "country": "United States",
+    "region": "North America",
+    "status": "acquired",
+    "production_era": {"start_year": 1961, "end_year": 2013, "basis": "estimated"},
+    "relationships": [
+      {"type": "successor", "related_name": "Tattoo Yachts", "evidence_note": "When Roger MacGregor retired and closed the Costa Mesa, CA factory in 2013, his daughter Laura MacGregor Sharp incorporated Tattoo Yachts in Stuart, FL, which acquired tooling for the MacGregor 26M and now produces the similar Tattoo 26.", "source_url": "https://en.wikipedia.org/wiki/MacGregor_Yacht_Corporation"}
+    ],
+    "series_production_evidence": "Founded as a Stanford/UC MBA class project by Roger MacGregor in the early 1960s; produced trailerable sailboats from 15 to 26 feet plus larger models; secondary sources credit the company with roughly 36,000-50,000 boats built over its lifetime.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://www.nautipedia.it/index.php/MACGREGOR_YACHT_CORPORATION_HISTORY"],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/MacGregor_Yacht_Corporation", "title": "MacGregor Yacht Corporation", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://48north.com/boats-and-gear/jolly-roger-macgregor-and-the-pirates-of-the-south-coast/", "title": "Jolly Roger MacGregor and the Pirates of the South Coast - 48° North", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/MacGregor_Yacht_Corporation", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://48north.com/boats-and-gear/jolly-roger-macgregor-and-the-pirates-of-the-south-coast/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 36000, "basis": "estimated", "notes": "Wikipedia states 'over 36,000 yachts during its lifetime'; another secondary source claims 'close to 50,000' — figures conflict and neither is an audited count."},
+    "review_status": "needs_review",
+    "ambiguity_notes": "Sources disagree on both exact founding year (1961 vs 1964) and founding institution (Stanford vs UC); also disagree on lifetime unit count (36,000 vs ~50,000). Recorded with 'estimated' basis throughout."
+  },
+  {
+    "preferred_display_name": "Com-Pac Yachts",
+    "aliases": ["Hutchins Co., Inc.", "The Hutchins Company"],
+    "entity_kind": ["manufacturer", "legal_organization"],
+    "country": "United States",
+    "region": "North America",
+    "status": "defunct",
+    "production_era": {"start_year": 1970, "end_year": 2025, "basis": "exact"},
+    "relationships": [],
+    "series_production_evidence": "Hutchins Co., Inc. founded 1957 by W.L. 'Les' Hutchins Sr. as a metal-stamping shop; began building sailboats 1970, adopted the Com-Pac name in 1974 with the Com-Pac 16 (design by Clark Mills); ceased operations effective May 1, 2025 per the company's own closure announcement, citing the death of Gerry Hutchins and retirement of Richard Hutchins.",
+    "official_current_site": "https://www.com-pacyachts.com/",
+    "official_heritage_archive": null,
+    "other_archive_sources": [],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/Com-Pac_Yachts", "title": "Com-Pac Yachts", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.com-pacyachts.com/", "title": "Com-Pac Yachts / Hutchins Co. official site", "source_type": "official_site", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/Com-Pac_Yachts", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://www.com-pacyachts.com/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": null, "basis": "unknown", "notes": "No cumulative unit count located."},
+    "review_status": "verified",
+    "ambiguity_notes": "The official website was still live with no visible closure notice on its homepage at research time, despite the Wikipedia-cited official closure announcement quoting company language ('cease operations effective May 1, 2025'); the live-site content is likely stale rather than evidence the closure did not occur."
+  },
+  {
+    "preferred_display_name": "Freedom Yachts",
+    "aliases": [],
+    "entity_kind": ["manufacturer", "brand"],
+    "country": "United States",
+    "region": "North America",
+    "status": "defunct",
+    "production_era": {"start_year": 1976, "end_year": 2008, "basis": "exact"},
+    "relationships": [
+      {"type": "other", "related_name": "Tillotson-Pearson (TPI)", "evidence_note": "Founder Garry Hoyt sold Freedom Yachts to Tillotson-Pearson in 1985; all Freedom boats were manufactured by TPI throughout the company's existence.", "source_url": "https://en.wikipedia.org/wiki/Freedom_Yachts"}
+    ],
+    "series_production_evidence": "Founded 1976 by Garry Hoyt (Newport, RI) with the unstayed-rig Freedom 40; approximately 20 different models (20-45 ft) produced over three decades before ceasing operations in 2008.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": [],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/Freedom_Yachts", "title": "Freedom Yachts", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://thesailingmuseum.org/inductee/hoyt-garry/", "title": "John \"Garry\" Garrison Hoyt - The Sailing Museum & National Sailing Hall of Fame", "source_type": "museum_or_archive", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/Freedom_Yachts", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://thesailingmuseum.org/inductee/hoyt-garry/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": null, "basis": "unknown", "notes": "No cumulative unit count located; ~20 distinct models reported but not a total unit count."},
+    "review_status": "verified",
+    "ambiguity_notes": null
+  },
+  {
+    "preferred_display_name": "Alerion Yachts",
+    "aliases": ["Alerion Express"],
+    "entity_kind": ["manufacturer", "brand"],
+    "country": "United States",
+    "region": "North America",
+    "status": "active",
+    "production_era": {"start_year": 1988, "end_year": null, "basis": "estimated"},
+    "relationships": [
+      {"type": "other", "related_name": "Holby Marine", "evidence_note": "First production Alerion Express 28 run (7 boats) built by Holby Marine beginning 1991 before TPI acquired the molds in 1992.", "source_url": "https://www.windcheckmagazine.com/article/alerion-past-present-and-future-perfect-part-ii-the-big-bird-rises-alerion-iii-reborn-in-new-england-1977-to-present/"},
+      {"type": "other", "related_name": "Tillotson-Pearson (TPI) / US Watercraft", "evidence_note": "TPI built the majority of the Alerion Express fleet after 1992 before yielding to US Watercraft, which went into receivership/'went under' in 2018.", "source_url": "https://www.windcheckmagazine.com/article/alerion-past-present-and-future-perfect-part-ii-the-big-bird-rises-alerion-iii-reborn-in-new-england-1977-to-present/"},
+      {"type": "acquired_by", "related_name": "Peter Johnstone (2017), then Peter Eastman (2019)", "evidence_note": "Peter Johnstone became new owner in November 2017; ownership transferred again to Peter Eastman (Eastman Boats/Howard Boats) in December 2019.", "source_url": "https://www.sailingscuttlebutt.com/2019/12/17/acquisition-of-alerion-yachts/"}
+    ],
+    "series_production_evidence": "Brand launched 1991 with the Carl Schumacher-designed Alerion Express 28 (drawing on Nathanael Herreshoff's 1912 Alerion III); multi-model line (Express 20, 28, 30, 33, 41) built across several successive owner/builders; new smaller models (Alerion 15, XL 13) introduced in 2020 under Eastman ownership.",
+    "official_current_site": "https://alerionyachts.com/",
+    "official_heritage_archive": null,
+    "other_archive_sources": [],
+    "sources": [
+      {"url": "https://www.windcheckmagazine.com/article/alerion-past-present-and-future-perfect-part-ii-the-big-bird-rises-alerion-iii-reborn-in-new-england-1977-to-present/", "title": "Alerion: Past, Present and Future Perfect Part II - WindCheck Magazine", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.sailingscuttlebutt.com/2019/12/17/acquisition-of-alerion-yachts/", "title": "Acquisition of Alerion Yachts - Scuttlebutt Sailing News", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://maineboats.com/blog/2020/new-owner-alerion-yachts", "title": "New owner for Alerion Yachts | Maine Boats Homes & Harbors", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://www.windcheckmagazine.com/article/alerion-past-present-and-future-perfect-part-ii-the-big-bird-rises-alerion-iii-reborn-in-new-england-1977-to-present/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://www.sailingscuttlebutt.com/2019/12/17/acquisition-of-alerion-yachts/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://maineboats.com/blog/2020/new-owner-alerion-yachts", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": null, "basis": "unknown", "notes": "No cumulative unit count located."},
+    "review_status": "needs_review",
+    "ambiguity_notes": "Attempting to fetch the official site alerionyachts.com directly returned an HTTP 403 (bot-blocked) rather than confirming live content, so current 2025-2026 status rests on 2019-2020 ownership-change articles; no more recent primary confirmation of continued production was found. Ownership/builder chain (Holby Marine -> TPI -> US Watercraft -> Johnstone -> Eastman) is unusually complex and each link should be treated as a distinct relationship, not a merge."
+  },
+  {
+    "preferred_display_name": "Hinterhoeller Yachts",
+    "aliases": ["Hinterhoeller Limited"],
+    "entity_kind": ["manufacturer", "yard"],
+    "country": "Canada",
+    "region": "North America",
+    "status": "defunct",
+    "production_era": {"start_year": 1956, "end_year": 1995, "basis": "exact"},
+    "relationships": [
+      {"type": "other", "related_name": "C&C Yachts", "evidence_note": "George Hinterhoeller was a founding partner of C&C Yachts in 1969 (his original company was absorbed into it); he sold his shares and left in 1975, then restarted independently in 1977.", "source_url": "https://en.wikipedia.org/wiki/Hinterhoeller_Yachts"}
+    ],
+    "series_production_evidence": "Founded 1956 in Niagara-on-the-Lake, Ontario by George Hinterhoeller; after leaving C&C, relaunched 1977 in St. Catharines, Ontario and produced the Nonsuch catboat-rig cruiser line (975 units built, 1978-mid-1990s) plus the Niagara 35, before entering receivership in 1989 and closing in November 1995.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://pbase.com/nonsuch/hinterhoeller_george", "https://klacko.ca/hinterhoeller-niagara-nonsuch-parts/"],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/Hinterhoeller_Yachts", "title": "Hinterhoeller Yachts", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://goodoldboat.com/nonsuch-36/", "title": "Nonsuch 36 - Good Old Boat", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/Hinterhoeller_Yachts", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://goodoldboat.com/nonsuch-36/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 975, "basis": "exact", "notes": "975 Nonsuch boats built per secondary sources; does not include earlier pre-1969 Hinterhoeller Limited output or the Niagara line."},
+    "review_status": "verified",
+    "ambiguity_notes": "'Nonsuch' is the brand/model-line name for Hinterhoeller Yachts' most famous product; it was never an independently operating manufacturer, so it is recorded here as part of the Hinterhoeller Yachts record (entity_kind includes 'yard') rather than as a separate brand entity, per the instruction to avoid over-fragmenting a brand that only ever had one builder."
+  },
+  {
+    "preferred_display_name": "C&C Yachts",
+    "aliases": ["C&C Yachts Limited"],
+    "entity_kind": ["manufacturer", "legal_organization"],
+    "country": "Canada",
+    "region": "North America",
+    "status": "defunct",
+    "production_era": {"start_year": 1969, "end_year": 2017, "basis": "exact"},
+    "relationships": [
+      {"type": "other", "related_name": "Belleville Marine Yard", "evidence_note": "One of the founding component companies merged into C&C Yachts Limited on 26 September 1969.", "source_url": "https://en.wikipedia.org/wiki/C%26C_Yachts"},
+      {"type": "other", "related_name": "Hinterhoeller Yachts (Hinterhoeller Ltd.)", "evidence_note": "Founding component company; George Hinterhoeller directed production before leaving in 1975.", "source_url": "https://en.wikipedia.org/wiki/C%26C_Yachts"},
+      {"type": "other", "related_name": "Bruckmann Manufacturing", "evidence_note": "Founding component company (custom work), led by Erich Bruckmann.", "source_url": "https://en.wikipedia.org/wiki/C%26C_Yachts"},
+      {"type": "acquired_by", "related_name": "Fairport Yachts (Tartan Yachts)", "evidence_note": "After a devastating April 1994 factory fire in Niagara-on-the-Lake destroyed ~40 molds and records, the C&C brand/IP was sold in 1996 to Fairport Yachts, which relocated production to Fairport, Ohio and issued new designs from 1997 (C&C 99/110/115/121).", "source_url": "https://en.wikipedia.org/wiki/C%26C_Yachts"},
+      {"type": "acquired_by", "related_name": "US Watercraft", "evidence_note": "US Watercraft acquired the C&C brand in 2013; C&C ceased production in 2017 after US Watercraft entered receivership. Final models were the Redline 41 and C&C 30 One Design.", "source_url": "https://en.wikipedia.org/wiki/C%26C_Yachts"}
+    ],
+    "series_production_evidence": "Formed 26 September 1969 as a public holding company merging Belleville Marine Yard, Hinterhoeller Ltd. and Bruckmann Manufacturing with design firm Cuthbertson & Cassian; at its peak supplied 50% of the Canadian sailboat market and 20% of the US market; continued as a distinct production brand through several ownership changes until 2017.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["http://c-c-37-40.blogspot.com/p/the-history-of-c-yachts.html"],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/C%26C_Yachts", "title": "C&C Yachts", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://murrayyachtsales.com/history-of-cc-yachts/", "title": "History of C&C Yachts - Murray Yacht Sales", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/C%26C_Yachts", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://murrayyachtsales.com/history-of-cc-yachts/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": null, "basis": "unknown", "notes": "No cumulative unit count located across the full multi-decade, multi-owner run."},
+    "review_status": "verified",
+    "ambiguity_notes": "C&C Yachts is recorded as one continuous brand/legal-organization lineage despite multiple ownership changes (original public company -> Fairport Yachts 1996 -> US Watercraft 2013 -> ceased 2017) because secondary sources consistently treat it as the same ongoing brand identity rather than a full re-founding; the four founding component companies are recorded as relationships rather than merged into this record."
+  },
+  {
+    "preferred_display_name": "CS Yachts",
+    "aliases": ["Canadian Sailcraft"],
+    "entity_kind": ["manufacturer"],
+    "country": "Canada",
+    "region": "North America",
+    "status": "defunct",
+    "production_era": {"start_year": 1963, "end_year": 1992, "basis": "exact"},
+    "relationships": [],
+    "series_production_evidence": "Founded 1963 in Brampton, Ontario by Paul Tennyson as 'Canadian Sailcraft' (initially building the Cornice dinghy); shifted to keelboats and renamed CS Yachts in 1970; peak year 1986 saw 175 boats (30s/33s/36s) built; wound down and closed 1992.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://nauticapedia.ca/Articles/Vessel_Builders_CS_Yachts.php"],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/CS_Yachts", "title": "CS Yachts", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://nauticapedia.ca/Articles/Vessel_Builders_CS_Yachts.php", "title": "Vessels Built by C.S. Yachts Co. Ltd.", "source_type": "museum_or_archive", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://boatingindustry.ca/people/eight-bells-paul-tennyson-founder-cs-yachts/", "title": "Eight bells: Paul Tennyson, founder CS Yachts - Boating Industry Canada", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/CS_Yachts", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://nauticapedia.ca/Articles/Vessel_Builders_CS_Yachts.php", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://boatingindustry.ca/people/eight-bells-paul-tennyson-founder-cs-yachts/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": null, "basis": "unknown", "notes": "175 boats built in the single best year (1986) is documented; no lifetime cumulative total located."},
+    "review_status": "verified",
+    "ambiguity_notes": null
+  },
+  {
+    "preferred_display_name": "Cape Dory Yachts",
+    "aliases": [],
+    "entity_kind": ["manufacturer"],
+    "country": "United States",
+    "region": "North America",
+    "status": "defunct",
+    "production_era": {"start_year": 1963, "end_year": 1992, "basis": "exact"},
+    "relationships": [
+      {"type": "other", "related_name": "Newport Shipyards", "evidence_note": "When Cape Dory folded in 1992 it sold a number of its designs to New York's Newport Shipyards, which itself ceased operations in 1996.", "source_url": "https://en.wikipedia.org/wiki/Cape_Dory_Yachts"},
+      {"type": "successor", "related_name": "Robinhood Marine", "evidence_note": "Founder Andrew Vavolotis's Robinhood Marine (Robinhood, Maine) subsequently acquired hull molds/designs for several Cape Dory models, offering them as semi-custom yachts.", "source_url": "https://en.wikipedia.org/wiki/Cape_Dory_Yachts"}
+    ],
+    "series_production_evidence": "Founded 1963 by Andrew Vavolotis, initially building the fiberglass Cape Dory 10 dinghy in Bridgewater, MA before relocating to East Taunton, MA; produced over 5,000 vessels (dinghies to 45-foot cruisers, many designed by Carl Alberg) from 1963 to 1992.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://capedorycruisers.com/history", "https://capedoryhistory.com/"],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/Cape_Dory_Yachts", "title": "Cape Dory Yachts", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.pointseast.com/the-saga-of-an-american-boatbuilder/", "title": "The saga of an American boatbuilder - Points East Magazine", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/Cape_Dory_Yachts", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://www.pointseast.com/the-saga-of-an-american-boatbuilder/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 5000, "basis": "estimated", "notes": "Secondary sources state 'over 5,000 vessels' produced 1963-1992."},
+    "review_status": "verified",
+    "ambiguity_notes": null
+  },
+  {
+    "preferred_display_name": "Morgan Yachts",
+    "aliases": ["Morgan Yacht Corporation"],
+    "entity_kind": ["manufacturer", "brand"],
+    "country": "United States",
+    "region": "North America",
+    "status": "acquired",
+    "production_era": {"start_year": 1962, "end_year": 2000, "basis": "estimated"},
+    "relationships": [
+      {"type": "acquired_by", "related_name": "Catalina Yachts", "evidence_note": "Catalina acquired Morgan Yachts in May 1984 (Largo, FL), operating it as the Morgan Division/Catalina-Morgan brand; the redesigned Morgan Out Island 41 was sold 1986-1993, with the Morgan name eventually retired in the early 2000s.", "source_url": "https://www.catalinayachts.com/history/"}
+    ],
+    "series_production_evidence": "Founded by Charley Morgan (Morgan Yacht Corporation, 1962-1965, St. Petersburg, FL) following the racing success of his 40-foot centerboard yawl Paper Tiger; produced over 20,000 vessels according to secondary sources before acquisition.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": [],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/Charley_Morgan", "title": "Charley Morgan", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.eskimo.com/~mighetto/murrelet/Wordpress/archives/24518", "title": "Catalina Yachts Bankruptcy | Cruising Log of the Murrelet", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.catalinayachts.com/history/", "title": "History – Catalina Yachts", "source_type": "official_heritage_archive", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/Charley_Morgan", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://www.eskimo.com/~mighetto/murrelet/Wordpress/archives/24518", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://www.catalinayachts.com/history/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 20000, "basis": "estimated", "notes": "Secondary source states 'over 20,000 vessels' produced; not independently audited."},
+    "review_status": "needs_review",
+    "ambiguity_notes": "Sources conflict on the exact acquisition year (1984 vs 1986) and founding year (1962 vs 1963-65 depending on source); recorded acquisition year as 1984 per the official Catalina history page, which should be treated as the more authoritative of the two, but this is flagged for review."
+  },
+  {
+    "preferred_display_name": "Irwin Yachts",
+    "aliases": ["Irwin Yacht and Marine Corporation"],
+    "entity_kind": ["manufacturer"],
+    "country": "United States",
+    "region": "North America",
+    "status": "defunct",
+    "production_era": {"start_year": 1966, "end_year": 1992, "basis": "exact"},
+    "relationships": [],
+    "series_production_evidence": "Founded 1966 by Ted Irwin in St. Petersburg, FL; became one of the largest US sailboat producers with more than 6,000 boats built, many aimed at the Caribbean charter market (e.g. Irwin 42, 52, 65); closed in 1992 after a succession of bankruptcies and name changes.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://www.nautipedia.it/index.php/TED_IRWIN_STORY"],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/Irwin_Yachts", "title": "Irwin Yachts", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.waterwayguide.com/knowledge-center/news-post/4764/yacht-builder-ted-irwin-dies-from-cancer", "title": "Waterway Guide | Yacht builder Ted Irwin dies from cancer", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/Irwin_Yachts", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://www.waterwayguide.com/knowledge-center/news-post/4764/yacht-builder-ted-irwin-dies-from-cancer", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 6000, "basis": "estimated", "notes": "Secondary source states 'more than 6,000 boats' produced."},
+    "review_status": "verified",
+    "ambiguity_notes": null
+  },
+  {
+    "preferred_display_name": "O'Day Corp.",
+    "aliases": ["O'Day Corporation"],
+    "entity_kind": ["manufacturer", "brand"],
+    "country": "United States",
+    "region": "North America",
+    "status": "defunct",
+    "production_era": {"start_year": 1958, "end_year": 1989, "basis": "exact"},
+    "relationships": [
+      {"type": "acquired_by", "related_name": "Bangor Punta Corporation", "evidence_note": "George O'Day sold the company to Bangor Punta in 1966; Bangor Punta was later acquired by Lear Siegler, under which O'Day went out of business in 1989.", "source_url": "https://en.wikipedia.org/wiki/O'Day_Corp."}
+    ],
+    "series_production_evidence": "Founded 1958 by Olympic sailor George O'Day; acquisition of Marscot Plastics in 1958 moved the company into fiberglass; co-designed (with Uffa Fox) the Day Sailer, of which more than 12,000 were sold; company was for a period the largest sailboat producer in the US.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://www.fiberglassics.com/library/index.php?title=O'Day"],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/O'Day_Corp.", "title": "O'Day Corp.", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://thesailingmuseum.org/inductee/oday-george-dyer/", "title": "George Dyer O'Day - The Sailing Museum & National Sailing Hall of Fame", "source_type": "museum_or_archive", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/O'Day_Corp.", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://thesailingmuseum.org/inductee/oday-george-dyer/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 12000, "basis": "estimated", "notes": "More than 12,000 Day Sailers sold specifically; no total-company lifetime figure located."},
+    "review_status": "verified",
+    "ambiguity_notes": null
+  },
+  {
+    "preferred_display_name": "Pearson Yachts",
+    "aliases": [],
+    "entity_kind": ["manufacturer"],
+    "country": "United States",
+    "region": "North America",
+    "status": "defunct",
+    "production_era": {"start_year": 1956, "end_year": 1991, "basis": "exact"},
+    "relationships": [
+      {"type": "other", "related_name": "Bristol Yachts", "evidence_note": "Co-founder Clinton Pearson left Pearson in the 1960s and separately founded Bristol Yacht Company in 1964.", "source_url": "https://en.wikipedia.org/wiki/Bristol_Yachts"},
+      {"type": "other", "related_name": "Tillotson-Pearson (TPI)", "evidence_note": "Co-founder Everett Pearson later co-founded the separate contract-manufacturing company Tillotson-Pearson in 1968.", "source_url": "https://goodoldboat.com/across-the-bar-everett-pearson/"}
+    ],
+    "series_production_evidence": "Founded 1956 in Bristol, RI by cousins Everett and Clint Pearson with Fred Heald; the 1959 Triton 28 (design: Carl Alberg) was an instant success; Grumman Allied Industries took a controlling interest in 1961; company filed Chapter 11 bankruptcy in 1991 and ceased production.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://www.pearsonyachts.org/pearson-yachts-history.html"],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/Pearson_Yachts", "title": "Pearson Yachts", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.pearsonyachts.org/pearson-yachts-history.html", "title": "Pearson Yachts History", "source_type": "class_or_owners_association", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://thesailingmuseum.org/inductee/pearson-everett/", "title": "Everett A. Pearson - The Sailing Museum & National Sailing Hall of Fame", "source_type": "museum_or_archive", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/Pearson_Yachts", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://www.pearsonyachts.org/pearson-yachts-history.html", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://thesailingmuseum.org/inductee/pearson-everett/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": null, "basis": "unknown", "notes": "No cumulative unit count located."},
+    "review_status": "verified",
+    "ambiguity_notes": "Sources give slightly different founding years (1955 vs 1956); recorded as 1956 per the more detailed Wikipedia narrative."
+  },
+  {
+    "preferred_display_name": "Ericson Yachts",
+    "aliases": [],
+    "entity_kind": ["manufacturer"],
+    "country": "United States",
+    "region": "North America",
+    "status": "acquired",
+    "production_era": {"start_year": 1963, "end_year": 1990, "basis": "estimated"},
+    "relationships": [
+      {"type": "acquired_by", "related_name": "Pacific Seacraft (via Singmarine)", "evidence_note": "After Ericson ceased operations and liquidated in 1990, Pacific Seacraft (a Singmarine Corp subsidiary at the time) purchased several Ericson molds (E-26, E-28, E-32, E-34, E-38, E-43) and continued limited production of some models until 1999.", "source_url": "https://en.wikipedia.org/wiki/Ericson_Yachts"}
+    ],
+    "series_production_evidence": "Founded circa 1963-1965 in Costa Mesa, CA by former Columbia Yachts employees (Handy and Jenkins per one source; Pitman and Walton per Wikipedia's account of a 1965 post-bankruptcy purchase); produced over 1,000 boats across dozens of models designed largely by Bruce King before ceasing operations in 1990.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://ericsonyachts.org/ie/threads/a-partial-armchair-history-of-ericson-yachts.17568/"],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/Ericson_Yachts", "title": "Ericson Yachts", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://ericsonyachts.org/ie/threads/a-partial-armchair-history-of-ericson-yachts.17568/", "title": "A Partial Armchair History of Ericson Yachts | EY.o Information Exchange", "source_type": "class_or_owners_association", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/Ericson_Yachts", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://ericsonyachts.org/ie/threads/a-partial-armchair-history-of-ericson-yachts.17568/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 1000, "basis": "estimated", "notes": "Secondary source states 'over 1,000 boats across dozens of models.'"},
+    "review_status": "needs_review",
+    "ambiguity_notes": "Founder names and exact founding year conflict between sources (Handy/Jenkins circa 1963 vs a 1965 post-bankruptcy purchase by Mark Pitman/Del Walton per Wikipedia); both accounts agree on Costa Mesa, CA origin and eventual molds transfer to Pacific Seacraft."
+  },
+  {
+    "preferred_display_name": "Cal Yachts",
+    "aliases": ["Jensen Marine Corporation", "Jensen Marine/Cal Boats"],
+    "entity_kind": ["manufacturer", "brand"],
+    "country": "United States",
+    "region": "North America",
+    "status": "defunct",
+    "production_era": {"start_year": 1957, "end_year": 1989, "basis": "exact"},
+    "relationships": [
+      {"type": "acquired_by", "related_name": "Bangor Punta Corporation", "evidence_note": "Jack Jensen sold the company to Bangor Punta in 1968; the Cal factory later moved to Tampa, FL in January 1981.", "source_url": "https://en.wikipedia.org/wiki/Cal_Yachts"},
+      {"type": "other", "related_name": "Ranger Yachts", "evidence_note": "Jack Jensen separately founded Ranger Yachts in 1970 as an East Coast-focused sister brand under the same ownership group.", "source_url": "https://en.wikipedia.org/wiki/Ranger_Yachts"}
+    ],
+    "series_production_evidence": "Founded 1957 in Costa Mesa, CA by Jack Jensen as Jensen Marine Corporation, building Bill Lapworth-designed racer-cruisers; renamed Cal (California -> Cal); over its run produced over 18,000 boats across 50+ models including the celebrated Cal 40 (1963); ceased production in 1989.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://www.cal25.org/home/the-cal25/"],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/Cal_Yachts", "title": "Cal Yachts", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.cal25.org/home/the-cal25/", "title": "The Cal 25 & History | CAL25", "source_type": "class_or_owners_association", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/Cal_Yachts", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://www.cal25.org/home/the-cal25/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 18000, "basis": "estimated", "notes": "Secondary source states 'over 18,000 boats across more than 50 models.'"},
+    "review_status": "verified",
+    "ambiguity_notes": null
+  },
+  {
+    "preferred_display_name": "Columbia Yachts",
+    "aliases": ["Glas Laminates", "Glass Marine Industries (GMI)", "Hughes-Columbia"],
+    "entity_kind": ["manufacturer", "brand"],
+    "country": "United States",
+    "region": "North America",
+    "status": "historical",
+    "production_era": {"start_year": 1958, "end_year": 2011, "basis": "estimated"},
+    "relationships": [
+      {"type": "acquired_by", "related_name": "Whittaker Corporation", "evidence_note": "Valdes and Threinen sold the company to NYSE-listed Whittaker in the late 1960s.", "source_url": "https://en.wikipedia.org/wiki/Columbia_Yachts"},
+      {"type": "acquired_by", "related_name": "Hughes Boat Works (Ontario, Canada)", "evidence_note": "Columbia molds/assets sold to Hughes Boat Works in 1979, produced afterward as Hughes-Columbia; Aura Yachts held it from 1982.", "source_url": "https://en.wikipedia.org/wiki/Columbia_Yachts"},
+      {"type": "successor", "related_name": "Columbia Yacht Corporation (2001 revival)", "evidence_note": "A new Columbia Yacht Corporation was incorporated in September 2001 with founder Dick Valdes's son Vincent Valdes as President, representing a brand revival rather than continuous operation; ultimately became defunct by 2011.", "source_url": "https://en.wikipedia.org/wiki/Columbia_Yachts"}
+    ],
+    "series_production_evidence": "Founded 1958 as Glas Laminates by Dick Valdes and Maurice Threinen in Southern California; renamed Columbia in 1965; by the late 1960s was, per secondary sources, 'the world's largest fiberglass sailboat manufacturer' (e.g. the 1965 Columbia 50); original operations wound down 1975-1979 across several owners.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["http://www.columbia-yachts.com/history.html", "https://columbia50.weebly.com/builder.html"],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/Columbia_Yachts", "title": "Columbia Yachts", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "http://www.columbia-yachts.com/history.html", "title": "An Unofficial History of Columbia Sailboats", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://goodoldboat.com/a-brief-history-of-columbia-yachts/", "title": "A brief history of Columbia Yachts", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/Columbia_Yachts", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "http://www.columbia-yachts.com/history.html", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://goodoldboat.com/a-brief-history-of-columbia-yachts/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": null, "basis": "unknown", "notes": "No reliable cumulative unit count located; contradictory closure-year evidence undermines confidence in any lifetime total."},
+    "review_status": "needs_review",
+    "ambiguity_notes": "Sources materially conflict on when original Columbia operations actually ended: one source states the 1975 Virginia relocation, another says the company 'closed its doors in 1978,' and Wikipedia states the (later-revived) corporate entity became 'defunct on September 28, 2011.' This record captures the full 1958-2011 span as a single lineage per the dominant secondary narrative, but the internal chronology needs independent reconciliation before being treated as production-grade."
+  },
+  {
+    "preferred_display_name": "Islander Yachts",
+    "aliases": ["Islander / Tradewind Yachts"],
+    "entity_kind": ["manufacturer"],
+    "country": "United States",
+    "region": "North America",
+    "status": "defunct",
+    "production_era": {"start_year": 1961, "end_year": 1986, "basis": "estimated"},
+    "relationships": [],
+    "series_production_evidence": "Begun mid-1950s by Joseph McGlasson with a wooden 24-foot 'Islander' sailboat in Costa Mesa, CA; fiberglass production from 1961 in partnership with Glas Laminates; produced over 1,000 boats across 20+ models (designers included Bruce King, Alan Gurney, Robert Perry); production moved to Costa Rica in 1984, company went bankrupt 1986.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://www.nautipedia.it/index.php/ISLANDER_YACHTS_STORY"],
+    "sources": [
+      {"url": "https://goodoldboat.com/saildata/builder/164/", "title": "Islander Yachts - Sailboat Builder | Complete Production History", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://blog.getboat.com/news/islander-sailboats-history-design/", "title": "Islander Sailboats: Exploring the Legacy of a West Coast Classic", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://goodoldboat.com/saildata/builder/164/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://blog.getboat.com/news/islander-sailboats-history-design/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 1000, "basis": "estimated", "notes": "Secondary source states 'over 1,000 boats across 20+ models.'"},
+    "review_status": "needs_review",
+    "ambiguity_notes": "No official Wikipedia page or primary company archive located; evidence relies on specialist secondary/dealer-history sites only, so treated as needing further review despite consistent cross-source agreement on the broad narrative."
+  },
+  {
+    "preferred_display_name": "Ranger Yachts",
+    "aliases": [],
+    "entity_kind": ["manufacturer", "brand"],
+    "country": "United States",
+    "region": "North America",
+    "status": "defunct",
+    "production_era": {"start_year": 1970, "end_year": 1987, "basis": "estimated"},
+    "relationships": [
+      {"type": "other", "related_name": "Cal Yachts / Jensen Marine", "evidence_note": "Ranger Yachts was founded by Jack Jensen in 1970 as an East Coast-focused sister line to his existing Cal Boats business, sharing ownership history through Bangor Punta and later Lear Siegler.", "source_url": "https://en.wikipedia.org/wiki/Ranger_Yachts"}
+    ],
+    "series_production_evidence": "Founded 1970 by Jack Jensen specifically to contract designer Gary Mull; six Ranger models (22-37 ft) built, including 739 hulls of the Ranger 23 (1971-1978); acquired by Bangor Punta in 1973, later part of Lear Siegler, production wound down by 1987.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": [],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/Ranger_Yachts", "title": "Ranger Yachts", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.practical-sailor.com/sailboat-reviews/used_sailboats/ranger-23/", "title": "Ranger 23 - Practical Sailor", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/Ranger_Yachts", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://www.practical-sailor.com/sailboat-reviews/used_sailboats/ranger-23/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 739, "basis": "exact", "notes": "739 hulls of the Ranger 23 specifically (1971-1978); no total-brand cumulative figure located."},
+    "review_status": "verified",
+    "ambiguity_notes": "Final closure year is approximate (sources describe a phased wind-down between 1981 and 1987 rather than a single closure date)."
+  },
+  {
+    "preferred_display_name": "Bristol Yachts",
+    "aliases": ["Bristol Yacht Company", "Sailstar"],
+    "entity_kind": ["manufacturer"],
+    "country": "United States",
+    "region": "North America",
+    "status": "defunct",
+    "production_era": {"start_year": 1964, "end_year": 1997, "basis": "exact"},
+    "relationships": [
+      {"type": "predecessor", "related_name": "Sailstar", "evidence_note": "Clinton Pearson bought out the troubled Sailstar boatworks in West Warwick, RI in 1964 and renamed it Bristol Yacht Company in 1966, phasing out the Sailstar brand.", "source_url": "https://en.wikipedia.org/wiki/Bristol_Yachts"},
+      {"type": "other", "related_name": "Pearson Yachts", "evidence_note": "Founder Clinton Pearson had earlier co-founded Pearson Yachts with cousin Everett Pearson in the 1950s before leaving to found Bristol.", "source_url": "https://en.wikipedia.org/wiki/Pearson_Yachts"}
+    ],
+    "series_production_evidence": "Founded 1964 (as successor to Sailstar) by Clinton Pearson, based at the former Herreshoff boatyard on Popasquash Road, Bristol, RI; first boat the Carl Alberg-designed Bristol 27; built over 4,400 boats (up to 72 feet) before closing due to bankruptcy in 1997.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": [],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/Bristol_Yachts", "title": "Bristol Yachts", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://goodoldboat.com/bristol-32/", "title": "Bristol 32 - Good Old Boat", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/Bristol_Yachts", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://goodoldboat.com/bristol-32/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 4400, "basis": "estimated", "notes": "Secondary source states 'over 4,400 boats' built before closure."},
+    "review_status": "verified",
+    "ambiguity_notes": null
+  },
+  {
+    "preferred_display_name": "Westsail Corporation",
+    "aliases": ["Westsail International"],
+    "entity_kind": ["manufacturer"],
+    "country": "United States",
+    "region": "North America",
+    "status": "defunct",
+    "production_era": {"start_year": 1971, "end_year": 1980, "basis": "estimated"},
+    "relationships": [],
+    "series_production_evidence": "Snyder Vick bought the Kendall 32 molds and had designer W.I.B. Crealock redesign the deck/interior, forming Westsail Corporation and launching the Westsail 32 in 1971 (widely publicized by a 1973 Time magazine feature); approximately 830 built (1971-1980, about half in kit form); the company filed for bankruptcy in 1977, continued briefly as Westsail International under Hans Weerman, and closed for good circa 1979-1980.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://www.westsail.org/westsailcorporation", "https://www.nereus32.com/the-boat/history-of-westsail/"],
+    "sources": [
+      {"url": "https://www.westsail.org/westsailcorporation", "title": "Westsail Owners Association - Westsail Corporation", "source_type": "class_or_owners_association", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://en.wikipedia.org/wiki/Westsail_32", "title": "Westsail 32", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://goodoldboat.com/westsail-the-dream-factory/", "title": "Westsail, the dream factory", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://www.westsail.org/westsailcorporation", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://en.wikipedia.org/wiki/Westsail_32", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://goodoldboat.com/westsail-the-dream-factory/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 830, "basis": "estimated", "notes": "Approximately 830 Westsail 32s built; does not include the smaller number of W28/W39/W42/W43 models built after mold sales."},
+    "review_status": "verified",
+    "ambiguity_notes": "Final closure date varies by source (1979 vs 1980 vs 1981); recorded end_year as 1980 as a middle estimate."
+  },
+  {
+    "preferred_display_name": "Valiant Yachts",
+    "aliases": [],
+    "entity_kind": ["manufacturer"],
+    "country": "United States",
+    "region": "North America",
+    "status": "defunct",
+    "production_era": {"start_year": 1973, "end_year": 2011, "basis": "exact"},
+    "relationships": [
+      {"type": "other", "related_name": "Uniflite", "evidence_note": "Valiant Yachts was founded in 1973 by designer Robert Perry in partnership with Uniflite, which built the boats in Bellingham, WA.", "source_url": "https://en.wikipedia.org/wiki/Valiant_40"}
+    ],
+    "series_production_evidence": "Founded 1973 by Robert Perry with the Valiant 40, credited with founding the 'performance cruiser' category; in 1984 dealer Rich Worstell bought the company and relocated it to Texas; production of Valiant Yachts ended in 2011.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": ["https://perryboat.com/productionboats/productionboats.html"],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/Valiant_40", "title": "Valiant 40", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://en.wikipedia.org/wiki/Robert_Perry_(yacht_designer)", "title": "Robert Perry (yacht designer)", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/Valiant_40", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://en.wikipedia.org/wiki/Robert_Perry_(yacht_designer)", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": null, "basis": "unknown", "notes": "No cumulative unit count located."},
+    "review_status": "verified",
+    "ambiguity_notes": "Attempting to fetch valiantyachts.com directly resulted in a redirect to an unrelated brokerage (offshoreyachts.com), consistent with the company's confirmed 2011 closure."
+  },
+  {
+    "preferred_display_name": "Little Harbor Yachts",
+    "aliases": ["Little Harbor Custom Yachts", "Little Harbor Marine"],
+    "entity_kind": ["manufacturer", "brand"],
+    "country": "United States",
+    "region": "North America",
+    "status": "acquired",
+    "production_era": {"start_year": 1959, "end_year": 1999, "basis": "exact"},
+    "relationships": [
+      {"type": "acquired_by", "related_name": "Hinckley Yachts", "evidence_note": "Ted Hood sold Little Harbor Custom Yachts to Hinckley Yachts in 1999.", "source_url": "https://en.wikipedia.org/wiki/Ted_Hood"},
+      {"type": "successor", "related_name": "Ted Hood Yachts, LLC", "evidence_note": "After the Hinckley sale, Ted Hood started a new, separate company, Ted Hood Yachts LLC, located within the Hinckley/Melville Marina complex in Portsmouth, RI, offering power yacht designs built in Xiamen, China.", "source_url": "https://en.wikipedia.org/wiki/Ted_Hood"},
+      {"type": "other", "related_name": "CW Hood Yachts", "evidence_note": "A separate company, CW Hood Yachts, was founded in 1991 by Ted Hood's nephew Chris Hood and Chris Stirling out of the Little Harbor marine complex before relocating independently to Marblehead, MA; it is a distinct entity, not a renaming of Little Harbor.", "source_url": "https://en.wikipedia.org/wiki/CW_Hood_Yachts"}
+    ],
+    "series_production_evidence": "Founded 1959 by yacht designer/sailmaker Ted Hood; built boats in Japan, then the Netherlands (Franz Maas), then Taiwan (Lien Hwa); moved to the purpose-built Ted Hood Marine Complex in Portsmouth, RI in 1985; approximately 200 boats built under the Little Harbor name (35-100 ft) before the line shifted to powerboats exclusively in the 1990s and the company was sold in 1999.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": [],
+    "sources": [
+      {"url": "https://en.wikipedia.org/wiki/Ted_Hood", "title": "Ted Hood", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://www.wellingtonyachts.com/article/little-harbor-yachts/", "title": "Little Harbor Yachts: Premium Sailing Yachts for Exceptional Performance - Wellington Yacht Partners", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://en.wikipedia.org/wiki/Ted_Hood", "public_access": "public", "robots_or_api_notes": null, "license_evidence": "CC BY-SA (Wikipedia standard license)", "discovery_use_acceptable": true, "systematic_use_status": "CLEARED", "review_date": "2026-08-22"},
+      {"source_url": "https://www.wellingtonyachts.com/article/little-harbor-yachts/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 200, "basis": "estimated", "notes": "Approximately 200 boats built under the Little Harbor name across all sizes/models."},
+    "review_status": "verified",
+    "ambiguity_notes": "By the 1990s the company had shifted to building powerboats exclusively; series sailboat eligibility rests on the 1959-1990s era specifically."
+  },
+  {
+    "preferred_display_name": "Tillotson-Pearson (TPI)",
+    "aliases": ["Tillotson-Pearson Inc.", "TPI Composites"],
+    "entity_kind": ["manufacturer", "yard", "legal_organization"],
+    "country": "United States",
+    "region": "North America",
+    "status": "renamed",
+    "production_era": {"start_year": 1968, "end_year": 2001, "basis": "exact"},
+    "relationships": [
+      {"type": "other", "related_name": "J/Boats", "evidence_note": "TPI was the contract builder for J/Boats designs starting with the J/24 (over 5,000 built) through the J/65.", "source_url": "https://goodoldboat.com/across-the-bar-everett-pearson/"},
+      {"type": "other", "related_name": "Freedom Yachts", "evidence_note": "TPI acquired and built all Freedom Yachts boats after purchasing the brand from Garry Hoyt in 1985.", "source_url": "https://en.wikipedia.org/wiki/Freedom_Yachts"},
+      {"type": "other", "related_name": "Alerion Yachts", "evidence_note": "TPI acquired the Alerion Express molds in 1992 and built the majority of the fleet before the line passed to US Watercraft.", "source_url": "https://www.windcheckmagazine.com/article/alerion-past-present-and-future-perfect-part-ii-the-big-bird-rises-alerion-iii-reborn-in-new-england-1977-to-present/"},
+      {"type": "renamed", "related_name": "TPI Composites, Inc.", "evidence_note": "The company rebranded as TPI Composites in 2001 and shifted its core business from marine composites to wind-turbine blade manufacturing, exiting sailboat construction.", "source_url": "https://growthsharematrix.com/blogs/brief-history/tpicomposites"}
+    ],
+    "series_production_evidence": "Founded 9 July 1968 in Warren, RI by Everett 'Bud' Pearson and J. Britton Tillotson as a contract fiberglass boatbuilding shop; built the J/24 (over 5,000 units), all Freedom Yachts, most of the Alerion Express fleet, Rampage sportfishermen, and Jeanneau's Lagoon catamarans under contract, before rebranding in 2001 and leaving the marine industry.",
+    "official_current_site": null,
+    "official_heritage_archive": null,
+    "other_archive_sources": [],
+    "sources": [
+      {"url": "https://goodoldboat.com/across-the-bar-everett-pearson/", "title": "Across the Bar: Everett Pearson", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "http://soundingsonline.com/news/everett-pearson-fiberglass-pioneer-boatbuilding-legend/", "title": "Everett Pearson: Fiberglass Pioneer, Boatbuilding Legend - Soundings Online", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"},
+      {"url": "https://growthsharematrix.com/blogs/brief-history/tpicomposites", "title": "What is Brief History of TPI Company? – GrowthShareMatrix.com", "source_type": "specialist_secondary", "retrieved_at": "2026-08-22T00:00:00Z"}
+    ],
+    "rights_assessment": [
+      {"source_url": "https://goodoldboat.com/across-the-bar-everett-pearson/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "http://soundingsonline.com/news/everett-pearson-fiberglass-pioneer-boatbuilding-legend/", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"},
+      {"source_url": "https://growthsharematrix.com/blogs/brief-history/tpicomposites", "public_access": "public", "robots_or_api_notes": null, "license_evidence": null, "discovery_use_acceptable": true, "systematic_use_status": "REQUIRES_REVIEW", "review_date": "2026-08-22"}
+    ],
+    "model_yield_estimate": {"value": 12000, "basis": "estimated", "notes": "Over 5,000 J/24s plus ~7,000 other J/Boats models built by TPI, per secondary source; excludes Freedom, Alerion, Rampage and Lagoon unit counts, which were not located."},
+    "review_status": "verified",
+    "ambiguity_notes": "TPI is a contract-manufacturing yard/legal organization rather than a consumer-facing brand; recorded separately from J/Boats, Freedom Yachts and Alerion Yachts per the semantic rule that a yard building for multiple brands must not be merged with any one of them."
+  }
+]

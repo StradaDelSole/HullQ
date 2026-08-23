@@ -1,0 +1,460 @@
+{
+  "result_version": "0019-overlap-v1",
+  "generated_at": "2026-08-23T01:30:00Z",
+  "method": "Bounded source-yield probe only. Exact overlap requires exact, case-sensitive equality between a source-derived probe_model_name and the preferred_label of an AUTO_ADMIT candidate in the accepted SLICE-0017/0018 manifests. Exact alias or case-only signals are retained as unresolved possible overlap and never counted as overlap. No fuzzy matching is performed.",
+  "interpretation_guardrail": "clearly_new_candidate_count means absent from the accepted exact preferred-label set and from the retained alias/case-only hint sets within this bounded probe. It does not prove global novelty or authorize canonical admission.",
+  "accepted_universe": {
+    "auto_admit_qid_count": 1770,
+    "expected_canonical_boatmodel_count": 1770,
+    "manifest_paths": [
+      "research/bootstrap/wikidata/manifest.json",
+      "research/bootstrap/wikidata/sl0018-2500/manifest.json"
+    ]
+  },
+  "probe_summary": {
+    "sample_entity_count": 20,
+    "probe_model_identity_count": 57,
+    "exact_overlap_count": 8,
+    "unresolved_possible_overlap_count": 0,
+    "clearly_new_candidate_count": 49
+  },
+  "per_entity": [
+    {
+      "preferred_display_name": "Catalina Yachts",
+      "probe_count": 3,
+      "exact_overlap_count": 2,
+      "unresolved_possible_overlap_count": 0,
+      "clearly_new_candidate_count": 1
+    },
+    {
+      "preferred_display_name": "Pearson Yachts",
+      "probe_count": 3,
+      "exact_overlap_count": 2,
+      "unresolved_possible_overlap_count": 0,
+      "clearly_new_candidate_count": 1
+    },
+    {
+      "preferred_display_name": "Tillotson-Pearson (TPI)",
+      "probe_count": 3,
+      "exact_overlap_count": 2,
+      "unresolved_possible_overlap_count": 0,
+      "clearly_new_candidate_count": 1
+    },
+    {
+      "preferred_display_name": "Oyster Yachts",
+      "probe_count": 3,
+      "exact_overlap_count": 0,
+      "unresolved_possible_overlap_count": 0,
+      "clearly_new_candidate_count": 3
+    },
+    {
+      "preferred_display_name": "Westerly Marine",
+      "probe_count": 3,
+      "exact_overlap_count": 0,
+      "unresolved_possible_overlap_count": 0,
+      "clearly_new_candidate_count": 3
+    },
+    {
+      "preferred_display_name": "Northshore Yachts",
+      "probe_count": 3,
+      "exact_overlap_count": 0,
+      "unresolved_possible_overlap_count": 0,
+      "clearly_new_candidate_count": 3
+    },
+    {
+      "preferred_display_name": "Bénéteau",
+      "probe_count": 3,
+      "exact_overlap_count": 0,
+      "unresolved_possible_overlap_count": 0,
+      "clearly_new_candidate_count": 3
+    },
+    {
+      "preferred_display_name": "Fountaine Pajot",
+      "probe_count": 3,
+      "exact_overlap_count": 0,
+      "unresolved_possible_overlap_count": 0,
+      "clearly_new_candidate_count": 3
+    },
+    {
+      "preferred_display_name": "Wauquiez",
+      "probe_count": 3,
+      "exact_overlap_count": 0,
+      "unresolved_possible_overlap_count": 0,
+      "clearly_new_candidate_count": 3
+    },
+    {
+      "preferred_display_name": "Kelt (Kelt Marine)",
+      "probe_count": 3,
+      "exact_overlap_count": 0,
+      "unresolved_possible_overlap_count": 0,
+      "clearly_new_candidate_count": 3
+    },
+    {
+      "preferred_display_name": "Elan d.o.o.",
+      "probe_count": 3,
+      "exact_overlap_count": 0,
+      "unresolved_possible_overlap_count": 0,
+      "clearly_new_candidate_count": 3
+    },
+    {
+      "preferred_display_name": "Ostróda Yacht Sp. z o.o.",
+      "probe_count": 0,
+      "exact_overlap_count": 0,
+      "unresolved_possible_overlap_count": 0,
+      "clearly_new_candidate_count": 0
+    },
+    {
+      "preferred_display_name": "Cantiere del Pardo",
+      "probe_count": 3,
+      "exact_overlap_count": 0,
+      "unresolved_possible_overlap_count": 0,
+      "clearly_new_candidate_count": 3
+    },
+    {
+      "preferred_display_name": "Alpa",
+      "probe_count": 3,
+      "exact_overlap_count": 0,
+      "unresolved_possible_overlap_count": 0,
+      "clearly_new_candidate_count": 3
+    },
+    {
+      "preferred_display_name": "Hallberg-Rassy",
+      "probe_count": 3,
+      "exact_overlap_count": 0,
+      "unresolved_possible_overlap_count": 0,
+      "clearly_new_candidate_count": 3
+    },
+    {
+      "preferred_display_name": "Nautor's Swan",
+      "probe_count": 3,
+      "exact_overlap_count": 2,
+      "unresolved_possible_overlap_count": 0,
+      "clearly_new_candidate_count": 1
+    },
+    {
+      "preferred_display_name": "Bringsværd Boat Yard",
+      "probe_count": 3,
+      "exact_overlap_count": 0,
+      "unresolved_possible_overlap_count": 0,
+      "clearly_new_candidate_count": 3
+    },
+    {
+      "preferred_display_name": "Seawind Catamarans",
+      "probe_count": 3,
+      "exact_overlap_count": 0,
+      "unresolved_possible_overlap_count": 0,
+      "clearly_new_candidate_count": 3
+    },
+    {
+      "preferred_display_name": "Robertson & Caine",
+      "probe_count": 3,
+      "exact_overlap_count": 0,
+      "unresolved_possible_overlap_count": 0,
+      "clearly_new_candidate_count": 3
+    },
+    {
+      "preferred_display_name": "Cavalier Yachts",
+      "probe_count": 3,
+      "exact_overlap_count": 0,
+      "unresolved_possible_overlap_count": 0,
+      "clearly_new_candidate_count": 3
+    }
+  ],
+  "exact_overlap": [
+    {
+      "manufacturer_sample": "Catalina Yachts",
+      "probe_model_name": "Catalina 22",
+      "accepted_matches": [
+        {
+          "qid": "Q5051252",
+          "preferred_label": "Catalina 22",
+          "aliases": [],
+          "manifest": "research/bootstrap/wikidata/sl0018-2500/manifest.json"
+        }
+      ]
+    },
+    {
+      "manufacturer_sample": "Catalina Yachts",
+      "probe_model_name": "Catalina 30",
+      "accepted_matches": [
+        {
+          "qid": "Q5051253",
+          "preferred_label": "Catalina 30",
+          "aliases": [],
+          "manifest": "research/bootstrap/wikidata/sl0018-2500/manifest.json"
+        }
+      ]
+    },
+    {
+      "manufacturer_sample": "Pearson Yachts",
+      "probe_model_name": "Pearson 26",
+      "accepted_matches": [
+        {
+          "qid": "Q56282581",
+          "preferred_label": "Pearson 26",
+          "aliases": [],
+          "manifest": "research/bootstrap/wikidata/sl0018-2500/manifest.json"
+        }
+      ]
+    },
+    {
+      "manufacturer_sample": "Pearson Yachts",
+      "probe_model_name": "Pearson 30",
+      "accepted_matches": [
+        {
+          "qid": "Q112741289",
+          "preferred_label": "Pearson 30",
+          "aliases": [],
+          "manifest": "research/bootstrap/wikidata/manifest.json"
+        }
+      ]
+    },
+    {
+      "manufacturer_sample": "Tillotson-Pearson (TPI)",
+      "probe_model_name": "J/24",
+      "accepted_matches": [
+        {
+          "qid": "Q1676446",
+          "preferred_label": "J/24",
+          "aliases": [],
+          "manifest": "research/bootstrap/wikidata/manifest.json"
+        }
+      ]
+    },
+    {
+      "manufacturer_sample": "Tillotson-Pearson (TPI)",
+      "probe_model_name": "Alerion Express 28",
+      "accepted_matches": [
+        {
+          "qid": "Q107434265",
+          "preferred_label": "Alerion Express 28",
+          "aliases": [],
+          "manifest": "research/bootstrap/wikidata/manifest.json"
+        }
+      ]
+    },
+    {
+      "manufacturer_sample": "Nautor's Swan",
+      "probe_model_name": "Swan 38",
+      "accepted_matches": [
+        {
+          "qid": "Q28233874",
+          "preferred_label": "Swan 38",
+          "aliases": [],
+          "manifest": "research/bootstrap/wikidata/manifest.json"
+        }
+      ]
+    },
+    {
+      "manufacturer_sample": "Nautor's Swan",
+      "probe_model_name": "Swan 65",
+      "accepted_matches": [
+        {
+          "qid": "Q15616199",
+          "preferred_label": "Swan 65",
+          "aliases": [],
+          "manifest": "research/bootstrap/wikidata/manifest.json"
+        }
+      ]
+    }
+  ],
+  "unresolved_possible_overlap": [],
+  "clearly_new_candidates": [
+    {
+      "manufacturer_sample": "Catalina Yachts",
+      "probe_model_name": "Catalina 42"
+    },
+    {
+      "manufacturer_sample": "Pearson Yachts",
+      "probe_model_name": "Pearson 36"
+    },
+    {
+      "manufacturer_sample": "Tillotson-Pearson (TPI)",
+      "probe_model_name": "Freedom 40"
+    },
+    {
+      "manufacturer_sample": "Oyster Yachts",
+      "probe_model_name": "Oyster 26"
+    },
+    {
+      "manufacturer_sample": "Oyster Yachts",
+      "probe_model_name": "Oyster 53"
+    },
+    {
+      "manufacturer_sample": "Oyster Yachts",
+      "probe_model_name": "Oyster 56"
+    },
+    {
+      "manufacturer_sample": "Westerly Marine",
+      "probe_model_name": "Westerly Centaur"
+    },
+    {
+      "manufacturer_sample": "Westerly Marine",
+      "probe_model_name": "Westerly Fulmar"
+    },
+    {
+      "manufacturer_sample": "Westerly Marine",
+      "probe_model_name": "Westerly Oceanlord"
+    },
+    {
+      "manufacturer_sample": "Northshore Yachts",
+      "probe_model_name": "Southerly 28"
+    },
+    {
+      "manufacturer_sample": "Northshore Yachts",
+      "probe_model_name": "Southerly 115"
+    },
+    {
+      "manufacturer_sample": "Northshore Yachts",
+      "probe_model_name": "Vancouver 34"
+    },
+    {
+      "manufacturer_sample": "Bénéteau",
+      "probe_model_name": "First 305"
+    },
+    {
+      "manufacturer_sample": "Bénéteau",
+      "probe_model_name": "Oceanis 411"
+    },
+    {
+      "manufacturer_sample": "Bénéteau",
+      "probe_model_name": "First 36.7"
+    },
+    {
+      "manufacturer_sample": "Fountaine Pajot",
+      "probe_model_name": "Louisiane 37"
+    },
+    {
+      "manufacturer_sample": "Fountaine Pajot",
+      "probe_model_name": "Fidji 39"
+    },
+    {
+      "manufacturer_sample": "Fountaine Pajot",
+      "probe_model_name": "Lavezzi 40"
+    },
+    {
+      "manufacturer_sample": "Wauquiez",
+      "probe_model_name": "Centurion 32"
+    },
+    {
+      "manufacturer_sample": "Wauquiez",
+      "probe_model_name": "Pretorien 35"
+    },
+    {
+      "manufacturer_sample": "Wauquiez",
+      "probe_model_name": "Pilot Saloon 42"
+    },
+    {
+      "manufacturer_sample": "Kelt (Kelt Marine)",
+      "probe_model_name": "Kelt 7.60"
+    },
+    {
+      "manufacturer_sample": "Kelt (Kelt Marine)",
+      "probe_model_name": "Kelt 8.50"
+    },
+    {
+      "manufacturer_sample": "Kelt (Kelt Marine)",
+      "probe_model_name": "Kelt 39"
+    },
+    {
+      "manufacturer_sample": "Elan d.o.o.",
+      "probe_model_name": "Elan 31"
+    },
+    {
+      "manufacturer_sample": "Elan d.o.o.",
+      "probe_model_name": "Elan 333"
+    },
+    {
+      "manufacturer_sample": "Elan d.o.o.",
+      "probe_model_name": "Elan Impression 45"
+    },
+    {
+      "manufacturer_sample": "Cantiere del Pardo",
+      "probe_model_name": "Grand Soleil 34"
+    },
+    {
+      "manufacturer_sample": "Cantiere del Pardo",
+      "probe_model_name": "Grand Soleil 39"
+    },
+    {
+      "manufacturer_sample": "Cantiere del Pardo",
+      "probe_model_name": "Grand Soleil 46"
+    },
+    {
+      "manufacturer_sample": "Alpa",
+      "probe_model_name": "Alpa 9"
+    },
+    {
+      "manufacturer_sample": "Alpa",
+      "probe_model_name": "Alpa 9.50"
+    },
+    {
+      "manufacturer_sample": "Alpa",
+      "probe_model_name": "Alpa 11.50"
+    },
+    {
+      "manufacturer_sample": "Hallberg-Rassy",
+      "probe_model_name": "Hallberg-Rassy 352"
+    },
+    {
+      "manufacturer_sample": "Hallberg-Rassy",
+      "probe_model_name": "Hallberg-Rassy 42E"
+    },
+    {
+      "manufacturer_sample": "Hallberg-Rassy",
+      "probe_model_name": "Hallberg-Rassy 53"
+    },
+    {
+      "manufacturer_sample": "Nautor's Swan",
+      "probe_model_name": "Swan 36"
+    },
+    {
+      "manufacturer_sample": "Bringsværd Boat Yard",
+      "probe_model_name": "BB11"
+    },
+    {
+      "manufacturer_sample": "Bringsværd Boat Yard",
+      "probe_model_name": "BB17"
+    },
+    {
+      "manufacturer_sample": "Bringsværd Boat Yard",
+      "probe_model_name": "BB35"
+    },
+    {
+      "manufacturer_sample": "Seawind Catamarans",
+      "probe_model_name": "Seawind 24"
+    },
+    {
+      "manufacturer_sample": "Seawind Catamarans",
+      "probe_model_name": "Seawind 1000"
+    },
+    {
+      "manufacturer_sample": "Seawind Catamarans",
+      "probe_model_name": "Seawind 1160"
+    },
+    {
+      "manufacturer_sample": "Robertson & Caine",
+      "probe_model_name": "Leopard 42"
+    },
+    {
+      "manufacturer_sample": "Robertson & Caine",
+      "probe_model_name": "Leopard 46"
+    },
+    {
+      "manufacturer_sample": "Robertson & Caine",
+      "probe_model_name": "Leopard 52"
+    },
+    {
+      "manufacturer_sample": "Cavalier Yachts",
+      "probe_model_name": "Cavalier 32"
+    },
+    {
+      "manufacturer_sample": "Cavalier Yachts",
+      "probe_model_name": "Cavalier 36"
+    },
+    {
+      "manufacturer_sample": "Cavalier Yachts",
+      "probe_model_name": "Cavalier 39"
+    }
+  ]
+}
