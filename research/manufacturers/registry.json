@@ -87,7 +87,7 @@
       "ambiguity_notes": "Sources vary slightly on the exact founding year: official site text says Butler 'established' the company in 1970, but the first model (Catalina 22) was built in 1969 in North Hollywood, CA before the company later based itself in Woodland Hills, CA.",
       "research_record_id": "RSRCH-MFR-0001",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": true
     },
     {
       "preferred_display_name": "Hunter Marine",
@@ -1892,7 +1892,7 @@
       "ambiguity_notes": "Sources give slightly different founding years (1955 vs 1956); recorded as 1956 per the more detailed Wikipedia narrative.",
       "research_record_id": "RSRCH-MFR-0024",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": true
     },
     {
       "preferred_display_name": "Ericson Yachts",
@@ -2717,7 +2717,7 @@
       "ambiguity_notes": "TPI is a contract-manufacturing yard/legal organization rather than a consumer-facing brand; recorded separately from J/Boats, Freedom Yachts and Alerion Yachts per the semantic rule that a yard building for multiple brands must not be merged with any one of them.",
       "research_record_id": "RSRCH-MFR-0034",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": true
     },
     {
       "preferred_display_name": "Oyster Yachts",
@@ -2828,7 +2828,7 @@
       "ambiguity_notes": "Founded as 'Oyster Marine'; the brand/company has traded as 'Oyster Yachts' through several distinct legal-ownership eras (private founder, two private-equity owners, brief 2018 administration, then Richard Hadida) without the boat brand itself being renamed.",
       "research_record_id": "RSRCH-MFR-0035",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": true
     },
     {
       "preferred_display_name": "Westerly Marine",
@@ -2919,7 +2919,7 @@
       "ambiguity_notes": null,
       "research_record_id": "RSRCH-MFR-0036",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": true
     },
     {
       "preferred_display_name": "Moody",
@@ -3601,7 +3601,7 @@
       "ambiguity_notes": "Founding account is inconsistent across sources: one describes 'Fairways Marine,' founded 1971 by David Skellon, as Northshore's origin; another says Brian Moffat owned two shipyards (Havant and Itchenor) in the early 1970s that 'later became known as Northshore Yachts'; a third states 'in 1971 a company called Northshore Yachts was created.' The exact corporate lineage was not resolved from the sources checked.",
       "research_record_id": "RSRCH-MFR-0044",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": true
     },
     {
       "preferred_display_name": "Southerly",
@@ -4483,7 +4483,7 @@
       "ambiguity_notes": "Founded 1884 as a wooden fishing-trawler builder in Saint-Gilles-Croix-de-Vie; pivoted to fiberglass recreational sailboats in the 1960s under third-generation leadership (André Bénéteau, Annette Bénéteau Roux). This record is for the Bénéteau brand/yard itself, kept distinct from the parent 'Groupe Bénéteau' holding company per the semantic rule that a manufacturer/brand and its owning group are separate entities.",
       "research_record_id": "RSRCH-MFR-0055",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": true
     },
     {
       "preferred_display_name": "Jeanneau",
@@ -4850,7 +4850,7 @@
       "ambiguity_notes": "Official dedicated heritage/history page could not be located at a stable URL during this research pass (404 on attempted path); founding year and founder names are corroborated by multiple secondary industry-press sources but should be re-verified against an official Fountaine Pajot history page in a follow-up pass.",
       "research_record_id": "RSRCH-MFR-0060",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": true
     },
     {
       "preferred_display_name": "Lagoon",
@@ -5130,7 +5130,7 @@
       "ambiguity_notes": "Attempted fetches of both wauquiez.com's official history page and a fountaine-pajot-style history path returned HTTP 404 during this research pass; current operating status (active production vs. dormant/defunct brand) could not be confirmed directly from an official current source this pass and is marked 'unknown' pending re-verification. A dedicated 'Wauquiez Forever' heritage/appreciation association exists, which is itself circumstantial evidence the brand may not be in ordinary active production, but this was not confirmed.",
       "research_record_id": "RSRCH-MFR-0064",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": true
     },
     {
       "preferred_display_name": "Gibert Marine (Gib'Sea)",
@@ -5270,7 +5270,7 @@
       "ambiguity_notes": "CONFLICT NOT RESOLVED: boat-specs.com states the shipyard 'stopped activities in 1985' after ~7 models, while other secondary sources describe a 35-year run to a 2009 closure and 4,000+ boats built. Founding year is also given as both 1974 and 1976 by different sources. Recorded here as status 'historical' with an estimated era and the conflict flagged per the rule against silently resolving conflicting sources; needs a class-association or trade-press primary source to resolve.",
       "research_record_id": "RSRCH-MFR-0066",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": true
     },
     {
       "preferred_display_name": "Kirié (Feeling brand)",
@@ -6474,7 +6474,7 @@
       "ambiguity_notes": "Elan is a multi-division group (skis in Slovenia, snowboards in Austria, motor yachts in Croatia, sailing yachts in Slovenia). This record covers only the sailing-yacht-producing entity/division 'Elan Yachts' under Elan d.o.o., Begunje na Gorenjskem, Slovenia.",
       "research_record_id": "RSRCH-MFR-0082",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": true
     },
     {
       "preferred_display_name": "Seascape d.o.o.",
@@ -6804,7 +6804,7 @@
       "ambiguity_notes": "Ostróda Yacht is the Polish production/legal entity within Groupe Beneteau that also served as the acquiring vehicle for Delphia Yachts; its own output is now overwhelmingly Beneteau-group brands (Jeanneau/Beneteau/etc.) rather than an independent Ostróda-branded product line, so entity_kind includes 'yard' in spirit but the record is kept as a distinct manufacturer/legal_organization because of its 70+ year independent production lineage prior to full group integration.",
       "research_record_id": "RSRCH-MFR-0086",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": true
     },
     {
       "preferred_display_name": "Antila Yachts",
@@ -7198,7 +7198,7 @@
       "ambiguity_notes": "Hallberg-Rassy is the product of a 1972 merger of two previously independent, competing Orust yards (Hallberg and Rassy) that the company's own history explicitly states 'have never been partners.' Recorded as two predecessor relationships rather than as aliases of one continuous entity.",
       "research_record_id": "RSRCH-MFR-0092",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": true
     },
     {
       "preferred_display_name": "Najad Yachts",
@@ -7969,7 +7969,7 @@
       "ambiguity_notes": null,
       "research_record_id": "RSRCH-MFR-0100",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": true
     },
     {
       "preferred_display_name": "Baltic Yachts",
@@ -8723,7 +8723,7 @@
       "ambiguity_notes": "Direct family/yard history confirms continued yard activity to 1984; 1968 marks only an earlier production phase.",
       "research_record_id": "RSRCH-MFR-0109",
       "research_status": "verified",
-      "source_yield_sample": false
+      "source_yield_sample": true
     },
     {
       "preferred_display_name": "Fjord Plast AS",
@@ -9027,7 +9027,7 @@
       },
       "research_status": "verified",
       "ambiguity_notes": null,
-      "source_yield_sample": false
+      "source_yield_sample": true
     },
     {
       "research_record_id": "RSRCH-MFR-0114",
@@ -9202,7 +9202,7 @@
       },
       "research_status": "verified",
       "ambiguity_notes": null,
-      "source_yield_sample": false
+      "source_yield_sample": true
     },
     {
       "research_record_id": "RSRCH-MFR-0117",
@@ -10123,7 +10123,7 @@
       },
       "research_status": "verified",
       "ambiguity_notes": "Current primary production is in Vietnam with additional production in Türkiye.",
-      "source_yield_sample": false
+      "source_yield_sample": true
     },
     {
       "research_record_id": "RSRCH-MFR-0132",
@@ -10195,7 +10195,7 @@
       },
       "research_status": "verified",
       "ambiguity_notes": null,
-      "source_yield_sample": false
+      "source_yield_sample": true
     },
     {
       "research_record_id": "RSRCH-MFR-0133",
@@ -10453,7 +10453,7 @@
       },
       "research_status": "verified",
       "ambiguity_notes": null,
-      "source_yield_sample": false
+      "source_yield_sample": true
     }
   ]
 }

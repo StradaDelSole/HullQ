@@ -47,17 +47,13 @@ def main() -> None:
     )
     regions = sorted({record["region"] for record in floor_records})
     activity = Counter(record["status"] for record in floor_records)
-    historical_count = sum(
-        1 for record in floor_records if record["status"] in HISTORICAL_STATUSES
-    )
+    historical_count = sum(1 for record in floor_records if record["status"] in HISTORICAL_STATUSES)
     archive_surface_count = sum(
         1
         for record in floor_records
         if record["official_heritage_archive"] or record["other_archive_sources"]
     )
-    official_current_count = sum(
-        1 for record in floor_records if record["official_current_site"]
-    )
+    official_current_count = sum(1 for record in floor_records if record["official_current_site"])
     sample_count = sum(1 for record in records if record["source_yield_sample"])
     assert sample_count == 20
 
@@ -147,8 +143,10 @@ def main() -> None:
             "| --- | ---: |",
         ]
     )
-    for status in ["active", "historical", "defunct", "acquired", "renamed", "unknown"]:
-        lines.append(f"| {status} | {activity[status]} |")
+    lines.extend(
+        f"| {status} | {activity[status]} |"
+        for status in ["active", "historical", "defunct", "acquired", "renamed", "unknown"]
+    )
 
     lines.extend(
         [
@@ -165,8 +163,10 @@ def main() -> None:
             "| --- | ---: |",
         ]
     )
-    for status in ["CLEARED", "REQUIRES_REVIEW", "BLOCKED", "UNKNOWN"]:
-        lines.append(f"| {status} | {rights[status]} |")
+    lines.extend(
+        f"| {status} | {rights[status]} |"
+        for status in ["CLEARED", "REQUIRES_REVIEW", "BLOCKED", "UNKNOWN"]
+    )
 
     lines.extend(
         [
@@ -196,23 +196,23 @@ def main() -> None:
             "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
         ]
     )
-    for entity in entities:
-        lines.append(
-            "| {name} | {region} | {activity} | {yield_} | {mode} | {years} | {dims} | "
-            "{critical} | {automation} | {rights} | {burden} |".format(
-                name=entity["preferred_display_name"].replace("|", "\\|"),
-                region=entity["region"],
-                activity=entity["activity_class"],
-                yield_=entity["discoverable_model_identity_estimate"].replace("|", "\\|"),
-                mode=entity["model_list_mode"].replace("|", "\\|"),
-                years=entity["production_year_evidence"],
-                dims=entity["core_dimensions_availability"],
-                critical=entity["critical_technical_fields_availability"],
-                automation=entity["automation_suitability"],
-                rights=entity["systematic_use_status"],
-                burden=entity["human_review_burden"],
-            )
+    lines.extend(
+        "| {name} | {region} | {activity} | {yield_} | {mode} | {years} | {dims} | "
+        "{critical} | {automation} | {rights} | {burden} |".format(
+            name=entity["preferred_display_name"].replace("|", "\\|"),
+            region=entity["region"],
+            activity=entity["activity_class"],
+            yield_=entity["discoverable_model_identity_estimate"].replace("|", "\\|"),
+            mode=entity["model_list_mode"].replace("|", "\\|"),
+            years=entity["production_year_evidence"],
+            dims=entity["core_dimensions_availability"],
+            critical=entity["critical_technical_fields_availability"],
+            automation=entity["automation_suitability"],
+            rights=entity["systematic_use_status"],
+            burden=entity["human_review_burden"],
         )
+        for entity in entities
+    )
 
     lines.extend(
         [
@@ -351,9 +351,7 @@ def main() -> None:
         f"records={len(records)} verified={statuses['verified']} "
         f"manufacturer_yard_floor={len(floor_records)} countries={len(countries)}"
     )
-    print(
-        f"overlap_probe={probe_total} exact={exact} possible={possible} clearly_new={new}"
-    )
+    print(f"overlap_probe={probe_total} exact={exact} possible={possible} clearly_new={new}")
 
 
 if __name__ == "__main__":

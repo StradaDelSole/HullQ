@@ -46,9 +46,7 @@ def accepted_candidates(path: Path) -> list[dict[str, Any]]:
                     "qid": qid,
                     "preferred_label": label,
                     "aliases": [
-                        alias
-                        for alias in item.get("aliases", [])
-                        if isinstance(alias, str)
+                        alias for alias in item.get("aliases", []) if isinstance(alias, str)
                     ],
                     "manifest": str(path.relative_to(ROOT)).replace("\\", "/"),
                 }
