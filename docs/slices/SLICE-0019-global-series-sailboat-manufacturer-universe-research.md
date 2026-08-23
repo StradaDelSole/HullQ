@@ -2,10 +2,10 @@
 
 **ID:** SLICE-0019  
 **Type:** DESIGN_RESEARCH  
-**Status:** REVIEW — research execution complete and merged to `main`; not yet owner-accepted. An independent-review amendment may exist on its own branch to correct findings without broadening scope. Not `DONE`; does not authorize SLICE-0020.
-**Stage:** 3.2–3.3 — post-Wikidata breadth strategy / source-yield research  
+**Status:** DONE — owner-accepted 2026-08-23. Independent-review verdict: ACCEPT. Final accepted amendment head: `98a8916b7634250cf6540ea21abe497b2d664234`. See `docs/slices/SLICE-0019-acceptance-closure.md` for the full closure record. Does not authorize SLICE-0020.
+**Stage:** 3.2–3.3 — post-Wikidata breadth strategy / source-yield research — COMPLETE
 **Depends on:** SLICE-0018 accepted / DONE  
-**Blocks:** the next bounded identity-expansion and/or technical-enrichment slice
+**Blocks:** the next bounded identity-expansion and/or technical-enrichment slice (not yet authorized; see closure record)
 
 ## Why this slice exists
 
