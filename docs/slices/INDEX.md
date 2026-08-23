@@ -1,7 +1,7 @@
 # HullQ Slice Index
 
 **Status:** ACTIVE execution board  
-**Updated:** 2026-08-22
+**Updated:** 2026-08-23
 
 The slice index is the canonical operational queue for bounded AI-assisted work. It does not replace `docs/EXECUTION_PLAN.md`, requirements, specs, ADRs or accepted slice contracts.
 
@@ -25,17 +25,41 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0016 | IMPLEMENTATION | DONE | Canonical Brand/Organization/BoatModel/BoatDesign PostgreSQL persistence + explicit bootstrap-admission boundary | SLICE-0015 accepted / DONE / G3 PASS |
 | SLICE-0017 | IMPLEMENTATION | DONE | Controlled Wikidata Tier-0 identity bootstrap across the first 1,000 direct sailboat-class candidates | SLICE-0016 accepted / DONE |
 | SLICE-0018 | IMPLEMENTATION | DONE | Baseline-preserving Wikidata Tier-0 expansion to the first <=2,500 direct sailboat-class discovery window | SLICE-0017 accepted / DONE |
-| SLICE-0019 | DESIGN_RESEARCH | REVIEW | Global active+historical series-sailboat manufacturer/yard universe + source-yield study | SLICE-0018 accepted / DONE |
+| SLICE-0019 | DESIGN_RESEARCH | DONE | Global active+historical series-sailboat manufacturer/yard universe + source-yield study | SLICE-0018 accepted / DONE |
 
 ## Current execution rule
 
-`SLICE-0019` research execution is **complete and merged to `main`, but not yet owner-accepted**. It is `REVIEW`, not `DONE`, and remains under independent review; a bounded independent-review amendment branch may exist to correct findings without broadening scope. No later slice (including SLICE-0020) may become READY as a consequence of SLICE-0019 research being merged — that requires explicit owner acceptance of SLICE-0019 first.
+**No slice is currently `READY`.** SLICE-0001 through SLICE-0019 are accepted / `DONE`. SLICE-0020 has not been created or started and is not authorized by SLICE-0019's closure. The next bounded Stage-3 step requires its own bounded contract, explicit acceptance criteria and the normal `START_SLICE.bat` workflow before it may become `READY`.
 
-SLICE-0019 is a DESIGN_RESEARCH slice. It does not ingest a new production dataset. It builds an evidence-backed global active+historical manufacturer/yard research registry and measures which source surfaces can credibly extend HullQ beyond the accepted direct-instance Wikidata ceiling.
+SLICE-0019 was a DESIGN_RESEARCH slice. It did not ingest a new production dataset. It built an evidence-backed global active+historical manufacturer/yard research registry and measured which source surfaces can credibly extend HullQ beyond the accepted direct-instance Wikidata ceiling.
 
 The accepted SLICE-0018 measurement remains the input boundary: **1,829** unique direct-instance Wikidata sailboat-class QIDs, **829** expansion-delta candidates and **1,770** accepted combined sparse canonical BoatModels.
 
-No 5,000 rerun, new production-source ingestion, broad technical enrichment, review-queue campaign, query engine, API, frontend, marketplace or monitoring work is authorized merely by SLICE-0019 research being merged for review.
+No 5,000 rerun, new production-source ingestion, broad technical enrichment, review-queue campaign, query engine, API, frontend, marketplace or monitoring work is authorized merely by SLICE-0019's closure.
+
+## SLICE-0019 acceptance closure
+
+SLICE-0019 is explicitly accepted and `DONE`.
+
+Acceptance evidence:
+
+- independent-review verdict: **ACCEPT** — all 16 SLICE-0019 acceptance criteria PASS;
+- original research PR #42, merged as `dd4caebb4859ef3404afbc8e8d107cfcccd22969`;
+- independent-review amendment PR #43, final reviewed head `98a8916b7634250cf6540ea21abe497b2d664234`;
+- amendment merge commit: `0f8b94609c6d0886b72caa521f6ee9d5258f0d0f`;
+- post-merge CI run ID `32653479069`: SUCCESS;
+- retained registry: **136** total records, **129** verified, **1** needs_review, **6** excluded;
+- strict verified manufacturer/yard floor: **121** (>=120 floor: PASS);
+- countries: **25** (>=20 floor: PASS); macro-regions: **8** (>=5 floor: PASS);
+- historical/defunct/acquired/renamed strict-floor records: **61** (>=40 floor: PASS);
+- recognized heritage/archive surfaces under the corrected strict definition: **61** (>=25 floor: PASS);
+- 20-entity source-yield sample: complete;
+- overlap probe: **57** model identities / **8** exact overlap / **0** unresolved possible overlap / **49** clearly new;
+- no canonical Brand/Organization/BoatModel/BoatDesign rows created or modified;
+- no SailboatData value used as HullQ production evidence;
+- explicit project-owner acceptance on 2026-08-23.
+
+Final closure record: `docs/slices/SLICE-0019-acceptance-closure.md`.
 
 ## SLICE-0018 acceptance closure
 
@@ -335,7 +359,7 @@ controlled Wikidata Tier-0 1,000 bootstrap        DONE — SLICE-0017
         ↓
 baseline-preserving Wikidata <=2,500 expansion    DONE — SLICE-0018
         ↓
-global manufacturer/yard universe + source yield  REVIEW — SLICE-0019 (merged, not yet accepted)
+global manufacturer/yard universe + source yield  DONE — SLICE-0019
         ↓
 next measured Stage-3 implementation decision      LATER / NOT AUTHORIZED
 ```
@@ -362,9 +386,9 @@ A later slice must use this measured result as evidence. It must not turn the 2,
 
 ## SLICE-0019 boundary
 
-`docs/slices/SLICE-0019-global-series-sailboat-manufacturer-universe-research.md` is the controlling contract. Research execution against it is complete and merged to `main`; the slice is `REVIEW`, pending independent review and owner acceptance.
+`docs/slices/SLICE-0019-global-series-sailboat-manufacturer-universe-research.md` is the controlling contract. It is accepted and `DONE`; see `docs/slices/SLICE-0019-acceptance-closure.md` for the closure record.
 
-The slice is deliberately limited to research/source mapping:
+The slice was deliberately limited to research/source mapping:
 
 - build a broad global research registry of series-sailboat manufacturers/yards;
 - include active and historical/defunct/acquired/renamed entities;
@@ -375,7 +399,7 @@ The slice is deliberately limited to research/source mapping:
 - compare to accepted HullQ state only where overlap is exact/unambiguous;
 - recommend the next bounded slice without starting it.
 
-It does not create or modify canonical HullQ entities and does not authorize systematic ingestion from any newly researched source.
+It created and modified no canonical HullQ entities and did not authorize systematic ingestion from any newly researched source.
 
 ## Retained research rules
 
@@ -394,4 +418,4 @@ It does not create or modify canonical HullQ entities and does not authorize sys
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-SLICE-0019 research execution has already occurred and is merged to `main` in `REVIEW`. The SLICE-0019 agent(s) must return the slice in `REVIEW`, `BLOCKED` or `IN_PROGRESS` as appropriate and must not mark it `DONE`, create production canonical entities or begin SLICE-0020 automatically. Only the project owner can move SLICE-0019 to `DONE`.
+SLICE-0019 is closed and accepted `DONE` (see `docs/slices/SLICE-0019-acceptance-closure.md`). No slice is currently `READY`. SLICE-0020 has not been created or started; it requires its own bounded contract and explicit readiness decision before `START_SLICE.bat` may be used for it.

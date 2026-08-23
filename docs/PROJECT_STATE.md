@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
-**Updated:** 2026-08-22  
-**Current stage:** Stage 3.2–3.3 — SLICE-0019 manufacturer/yard universe research `REVIEW` (executed, merged to `main`, not yet owner-accepted)
+**Updated:** 2026-08-23
+**Current stage:** Stage 3.2–3.3 — SLICE-0019 manufacturer/yard universe research `DONE` (owner-accepted 2026-08-23). No slice is currently `READY`.
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -448,17 +448,17 @@ all_zero_tolerance_conditions_clear = true
 
 Final closure record: `docs/slices/SLICE-0018-acceptance-closure.md`.
 
-## Current operational position — SLICE-0019 REVIEW
+## Current operational position — SLICE-0019 DONE
 
-`docs/slices/SLICE-0019-global-series-sailboat-manufacturer-universe-research.md` is the controlling primary slice contract. Research execution against it is **complete and merged to `main`**, but the slice remains `REVIEW` — it is not owner-accepted and must not be treated as `DONE`. A bounded independent-review amendment may exist on its own branch to correct findings without broadening scope. No later slice (including SLICE-0020) may become READY as a consequence of this merge.
+`docs/slices/SLICE-0019-global-series-sailboat-manufacturer-universe-research.md` is the controlling primary slice contract. It is **explicitly owner-accepted and closed `DONE`** on 2026-08-23; see `docs/slices/SLICE-0019-acceptance-closure.md` for the full closure record. **No later slice (including SLICE-0020) is made `READY` by this closure** — no slice is currently `READY`.
 
-SLICE-0019 is a bounded DESIGN_RESEARCH step, not a production-ingestion step. Its purpose is to map the next breadth/enrichment source layer after the direct-instance Wikidata ceiling measured by SLICE-0018.
+SLICE-0019 was a bounded DESIGN_RESEARCH step, not a production-ingestion step. Its purpose was to map the next breadth/enrichment source layer after the direct-instance Wikidata ceiling measured by SLICE-0018.
 
-The bounded first wave targets approximately **120–160 verified eligible series-sailboat manufacturer/yard research records**, with active and historical entities, global geographic coverage, explicit source provenance and a **20-entity source-yield study**.
+The bounded first wave targeted approximately **120–160 verified eligible series-sailboat manufacturer/yard research records** and landed at **121** verified eligible manufacturer/yard records, with active and historical entities, global geographic coverage (25 countries, 8 macro-regions), explicit source provenance and a completed **20-entity source-yield study**.
 
-The research must preserve manufacturer/yard/brand/legal-organization/designer distinctions and assess later systematic-use rights/access separately from public readability.
+The research preserved manufacturer/yard/brand/legal-organization/designer distinctions and assessed later systematic-use rights/access separately from public readability.
 
-It creates no canonical HullQ entities and does not authorize a new production source. Its decision output is a ranked evidence-based recommendation for the next bounded Stage-3 slice.
+It created no canonical HullQ entities and did not authorize a new production source. Its decision output was a ranked evidence-based recommendation for the next bounded Stage-3 slice, which remains not authorized/TBD pending a separate readiness decision.
 
 ## Near-term path
 
@@ -479,7 +479,7 @@ SLICE-0017  controlled Wikidata Tier-0 1,000 bootstrap         DONE
       ↓
 SLICE-0018  baseline-preserving Wikidata <=2,500 expansion     DONE / source ceiling 1,829
       ↓
-SLICE-0019  global manufacturer/yard universe source research  REVIEW (merged, not yet accepted)
+SLICE-0019  global manufacturer/yard universe source research  DONE / source-yield floor 121
       ↓
 next bounded Stage-3 implementation decision                   NOT AUTHORIZED YET
 ```
@@ -498,7 +498,7 @@ continuous new-model intake
 
 The future continuous track should progressively handle discovery → identity triage → technical intake → validation/persistence → deep enrichment, with explicit maturity such as announced/preliminary/production-confirmed/verified rather than pretending announcement data is final production specification.
 
-SLICE-0019 remains historical/bootstrap/source-strategy research and does not implement the continuous new-model track.
+SLICE-0019 (now `DONE`) remains historical/bootstrap/source-strategy research and does not implement the continuous new-model track.
 
 ## AI repository workflow — ACTIVE
 
@@ -513,7 +513,7 @@ FINISH_SLICE.bat
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-SLICE-0019 research is already executed and merged to `main` in `REVIEW`. Any further SLICE-0019 work (e.g. an independent-review amendment) must occur on its own dedicated branch/worktree, must not touch unrelated review/closure branches, and must return SLICE-0019 in `REVIEW` or `BLOCKED`. Only the project owner may move SLICE-0019 to `DONE`, and doing so does not itself make SLICE-0020 (or any later slice) READY.
+SLICE-0001 through SLICE-0019 are accepted / `DONE`. SLICE-0019's closure does not itself make SLICE-0020 (or any later slice) `READY`. SLICE-0020 has not been created or started; it requires its own bounded contract, explicit acceptance criteria and readiness decision before `START_SLICE.bat` may be used for it.
 
 ## Do not start yet
 
