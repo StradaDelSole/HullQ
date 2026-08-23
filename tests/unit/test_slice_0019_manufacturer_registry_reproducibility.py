@@ -76,10 +76,18 @@ def test_generator_chain_reproduces_committed_artifacts(manufacturers_path_prefi
 
     after = {path: path.read_bytes() for path in ARTIFACTS}
 
+    def normalize_newlines(data: bytes) -> bytes:
+        # Python's default text-mode write translates outgoing "\n" to the
+        # platform line separator (CRLF on Windows), while a checked-out git
+        # blob's line endings depend on the runner's checkout/gitattributes
+        # configuration. Normalizing both sides isolates genuine content
+        # drift from this incidental, OS-specific text-mode representation.
+        return data.replace(b"\r\n", b"\n")
+
     for path in ARTIFACTS:
-        assert after[path] == before[path], (
+        assert normalize_newlines(after[path]) == normalize_newlines(before[path]), (
             f"{path.name} regenerated from the committed generator chain does not match the "
-            "committed artifact byte-for-byte"
+            "committed artifact (content, ignoring line-ending style)"
         )
 
 
