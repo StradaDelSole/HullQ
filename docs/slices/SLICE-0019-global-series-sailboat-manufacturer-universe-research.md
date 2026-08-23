@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0019  
 **Type:** DESIGN_RESEARCH  
-**Status:** READY  
+**Status:** REVIEW — research execution complete and merged to `main`; not yet owner-accepted. An independent-review amendment may exist on its own branch to correct findings without broadening scope. Not `DONE`; does not authorize SLICE-0020.
 **Stage:** 3.2–3.3 — post-Wikidata breadth strategy / source-yield research  
 **Depends on:** SLICE-0018 accepted / DONE  
 **Blocks:** the next bounded identity-expansion and/or technical-enrichment slice

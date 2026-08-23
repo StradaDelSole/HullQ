@@ -11,10 +11,12 @@ never read.
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter
 from pathlib import Path
 
 import jsonschema
+from archive_surface import recognized_archive_surface_count
 
 ROOT = Path(__file__).resolve().parent
 RAW = ROOT / "checkpoint" / "raw"
@@ -232,6 +234,190 @@ ALIAS_PATCH = {
     ],
 }
 CLEAR_OFFICIAL_SITE = {"Delphia Yachts"}
+
+# Records whose retained non-null numeric yield figure describes discoverable
+# distinct model identities (e.g. "5 current sailboat models"), not a
+# cumulative production-unit/hull count. Every other non-null figure in the
+# recovered/independent research is a production-unit claim (e.g. "more than
+# 85,000 Catalinas on the water") and is routed to production_unit_count
+# instead. This mapping was derived by reading each record's retained
+# model_yield_estimate.notes text; no numeric value is reinterpreted.
+MODEL_IDENTITY_YIELD_NAMES = {
+    "Oyster Yachts",
+    "Colvic Marine",
+    "Dehler Yachts",
+    "Seascape d.o.o.",
+    "AD Boats d.o.o. (Salona Yachts)",
+    "Ostróda Yacht Sp. z o.o.",
+    "Antila Yachts",
+    "Schöchl Yachtbau (Sunbeam Watersports GmbH)",
+    "AVAR-YACHT, s.r.o.",
+}
+
+
+def split_yield(name: str, yield_estimate: dict) -> tuple[dict, dict]:
+    """Split the legacy mixed model_yield_estimate into two unambiguous fields.
+
+    Returns (model_identity_yield, production_unit_count). No existing numeric
+    value is changed; each retained value is routed to exactly one of the two
+    fields based on what its own notes text describes, and the other field is
+    left explicitly unknown.
+    """
+    if yield_estimate["value"] is None:
+        unknown = dict(yield_estimate)
+        return unknown, dict(unknown)
+    if name in MODEL_IDENTITY_YIELD_NAMES:
+        identity = dict(yield_estimate)
+        units = {
+            "value": None,
+            "basis": "unknown",
+            "notes": "No normalized cumulative production-unit count retained; "
+            "the retained figure describes discoverable model identities, not production units.",
+        }
+        return identity, units
+    units = dict(yield_estimate)
+    identity = {
+        "value": None,
+        "basis": "unknown",
+        "notes": "No normalized discoverable model-identity count retained; "
+        "the retained figure is a cumulative production-unit count (see production_unit_count).",
+    }
+    return identity, units
+
+
+# Evidence-backed relationships for the 24 independently researched
+# RESEARCH-007..009 records, drawn only from those retained packets. Records
+# not listed here have no evidence-backed relationship and keep relationships: [].
+NEW_RELATIONSHIPS = {
+    "Cantiere del Pardo": [
+        {
+            "type": "other",
+            "related_name": "Grand Soleil",
+            "evidence_note": "Grand Soleil is the sailing-yacht brand/product lineage associated with the "
+            "physical/legal Cantiere del Pardo yard, not a separate yard.",
+            "source_url": "https://cantieredelpardo.com/it/the-yard/our-heritage/",
+        }
+    ],
+    "Comar Yachts / Sipla": [
+        {
+            "type": "formerly_known_as",
+            "related_name": "Sipla",
+            "evidence_note": "The business began in Forlì in 1961 under the name Sipla, producing fiberglass "
+            "Flying Juniors, and changed its name to Comar after roughly ten years.",
+            "source_url": "https://www.comaryachts.it/en/history/",
+        },
+        {
+            "type": "other",
+            "related_name": "Comet",
+            "evidence_note": "Comet is a model/range brand lineage of the Comar yard (the Comet 910 alone was "
+            "produced in almost 1,000 units), not a separate manufacturer.",
+            "source_url": "https://www.comaryachts.it/en/history/",
+        },
+    ],
+    "Alpa": [
+        {
+            "type": "other",
+            "related_name": "Cantiere Zuanelli",
+            "evidence_note": "Zuanelli's official history states that in 1975 it acquired manufacturing "
+            "know-how from the Alpa operation in Offanengo, corroborating Alpa's industrial sailboat-building role.",
+            "source_url": "https://zuanelli.it/chi-siamo/",
+        }
+    ],
+    "Cantiere Zuanelli": [
+        {
+            "type": "other",
+            "related_name": "Alpa",
+            "evidence_note": "In 1975 the yard acquired manufacturing know-how from the Alpa operation in "
+            "Offanengo and specialized in fiberglass sailing-yacht construction.",
+            "source_url": "https://zuanelli.it/chi-siamo/",
+        }
+    ],
+    "Ta Yang Yacht Building Co., Ltd.": [
+        {
+            "type": "other",
+            "related_name": "Tayana",
+            "evidence_note": "Tayana is the product/brand lineage of the Ta Yang physical manufacturer, not a "
+            "separate yard.",
+            "source_url": "https://www.taiwan-yacht.com.tw/en-members.html",
+        }
+    ],
+    "Ta Shing Yacht Building": [
+        {
+            "type": "predecessor",
+            "related_name": "Shing Sheng boatyard",
+            "evidence_note": "A predecessor boatbuilding lineage under Shing Sheng is commonly traced to 1957; "
+            "modeled separately from the current legal entity's 1977 registration rather than backdating it.",
+            "source_url": "https://findbiz.nat.gov.tw/fts/company/69559634?fhl=en",
+        }
+    ],
+    "Queen Long Marine": [
+        {
+            "type": "other",
+            "related_name": "Hylas",
+            "evidence_note": "Hylas' own company material states Queen Long Marine is the shipyard, founder and "
+            "owner of the Hylas brand.",
+            "source_url": "https://www.hylasyachts.com/about/",
+        }
+    ],
+    "Fuji Yacht Builders": [
+        {
+            "type": "predecessor",
+            "related_name": "Far East Yachts / Far East Boat Ltd.",
+            "evidence_note": "Former Far East/TOA personnel established Fuji Yacht Builders; the yards remain "
+            "distinct entities despite overlapping personnel, site and mould history.",
+            "source_url": "https://www.fujiyachts.net/history/history.html",
+        }
+    ],
+    "Far East Yachts / Far East Boat Ltd.": [
+        {
+            "type": "successor",
+            "related_name": "Fuji Yacht Builders",
+            "evidence_note": "Former Far East/TOA personnel later established Fuji Yacht Builders; the yards "
+            "remain distinct entities despite overlapping personnel, site and mould history.",
+            "source_url": "https://www.fujiyachts.net/history/history.html",
+        }
+    ],
+    "Bashford Boats / Bashford International": [
+        {
+            "type": "production_transferred_to",
+            "related_name": "AD Boats d.o.o. (Salona Yachts)",
+            "evidence_note": "Sydney Yachts' own company page states that since 2013 Sydney Yachts have been "
+            "built at AD Boats in Croatia; the Australian Bashford/Sydney yard history remains a separate "
+            "physical-manufacturer lineage.",
+            "source_url": "https://www.sydneyyachts.com/company/sydney-yachts.html",
+        }
+    ],
+    "Robertson & Caine": [
+        {
+            "type": "acquired_by",
+            "related_name": "Vox Ventures / PPF",
+            "evidence_note": "Corporate ownership relationship; does not alter Robertson & Caine's distinct "
+            "physical-manufacturer identity.",
+            "source_url": "https://www.robertsonandcaine.com/overview.html",
+        }
+    ],
+    "Cavalier Yachts": [
+        {
+            "type": "successor",
+            "related_name": "Export Yachts Ltd",
+            "evidence_note": "The original company was damaged by the 1979 New Zealand sales-tax shock and "
+            "later entered receivership; subsequent Export Yachts Ltd activity is a successor/continuation "
+            "relationship, not an alias.",
+            "source_url": "https://www.petersmith.net.nz/about/peter.php",
+        }
+    ],
+}
+
+# Losslessly retain two evidenced production-era facts from the RESEARCH-008
+# packet that the original registry integration dropped to unknown/unknown.
+NEW_ERA_OVERRIDE = {
+    # "The present legal entity registered in 1977" (RESEARCH-008 #3).
+    "Ta Shing Yacht Building": (1977, None, "exact"),
+    # "Launched the Fuji production-yacht line beginning ... in the early
+    # 1970s" through "ceased operations around the turn of the 1980s"
+    # (RESEARCH-008 #7).
+    "Fuji Yacht Builders": (1970, 1980, "estimated"),
+}
 
 # New records: name, aliases, kinds, country, region, status, start, end, basis,
 # current site, heritage surface, source URLs, yield value/basis/notes, ambiguity.
@@ -751,10 +937,36 @@ def normalize_raw(raw: dict, rid: str) -> dict:
     rec.setdefault("official_current_site", None)
     rec.setdefault("official_heritage_archive", None)
     rec.setdefault("ambiguity_notes", None)
+
+    # A small number of recovered records retain a source URL with no
+    # corresponding rights/access assessment. Backfill the same conservative
+    # default already used for independently researched sources: this is a
+    # structural gap closure, not new factual research, and never upgrades
+    # any source to CLEARED.
+    assessed_urls = {a["source_url"] for a in rec["rights_assessment"]}
+    for src in rec["sources"]:
+        url = src["url"]
+        if url.startswith("http") and url not in assessed_urls:
+            rec["rights_assessment"].append(
+                {
+                    "source_url": url,
+                    "public_access": "public",
+                    "robots_or_api_notes": "Rights/access assessment backfilled during the SLICE-0019 "
+                    "independent-review amendment; public readability does not by itself authorize "
+                    "systematic commercial ingestion.",
+                    "license_evidence": None,
+                    "discovery_use_acceptable": True,
+                    "systematic_use_status": "REQUIRES_REVIEW",
+                    "review_date": "2026-08-23",
+                }
+            )
+            assessed_urls.add(url)
     rec.setdefault(
         "model_yield_estimate",
         {"value": None, "basis": "unknown", "notes": "No normalized yield retained."},
     )
+    legacy_yield = rec.pop("model_yield_estimate")
+    rec["model_identity_yield"], rec["production_unit_count"] = split_yield(name, legacy_yield)
     return rec
 
 
@@ -801,6 +1013,22 @@ def make_new(row: tuple, rid: str, packet: str) -> dict:
         }
         for u in urls
     ]
+    if name in NEW_ERA_OVERRIDE:
+        start, end, basis = NEW_ERA_OVERRIDE[name]
+    if yield_value is None:
+        model_identity_yield = {"value": None, "basis": yield_basis, "notes": yield_notes}
+        production_unit_count = {"value": None, "basis": yield_basis, "notes": yield_notes}
+    else:
+        # Every non-null NEW-record yield figure is a cumulative
+        # production-unit/hull claim (see RESEARCH-007..009); none describes a
+        # discoverable model-identity count.
+        model_identity_yield = {
+            "value": None,
+            "basis": "unknown",
+            "notes": "No normalized discoverable model-identity count retained; independent research reports "
+            "a cumulative production-unit figure instead (see production_unit_count).",
+        }
+        production_unit_count = {"value": yield_value, "basis": yield_basis, "notes": yield_notes}
     return {
         "research_record_id": rid,
         "preferred_display_name": name,
@@ -810,14 +1038,15 @@ def make_new(row: tuple, rid: str, packet: str) -> dict:
         "region": region,
         "status": status,
         "production_era": {"start_year": start, "end_year": end, "basis": basis},
-        "relationships": [],
+        "relationships": NEW_RELATIONSHIPS.get(name, []),
         "series_production_evidence": "Independent retained research verifies repeated/series sailing-boat production by this manufacturer/yard; entity-specific facts are in the cited sources and research batch.",
         "official_current_site": site,
         "official_heritage_archive": heritage,
         "other_archive_sources": [packet],
         "sources": sources,
         "rights_assessment": rights,
-        "model_yield_estimate": {"value": yield_value, "basis": yield_basis, "notes": yield_notes},
+        "model_identity_yield": model_identity_yield,
+        "production_unit_count": production_unit_count,
         "research_status": "verified",
         "ambiguity_notes": ambiguity,
         "source_yield_sample": False,
@@ -887,18 +1116,12 @@ def validate(registry: dict) -> None:
     countries = {r["country"] for r in floor if r["country"]}
     regions = {r["region"] for r in floor}
     historical = sum(r["status"] in {"historical", "defunct", "acquired", "renamed"} for r in floor)
-    recognized_types = {
-        "official_heritage_archive",
-        "designer_archive",
-        "class_or_owners_association",
-        "museum_or_archive",
-    }
-    archives = sum(
-        bool(r["official_heritage_archive"])
-        or any(s["source_type"] in recognized_types for s in r["sources"])
-        for r in records
-        if r["research_status"] == "verified"
-    )
+    # Strict floor: an internal HullQ research packet (e.g. RESEARCH-007..009,
+    # retained only in other_archive_sources for provenance) never counts as an
+    # external official/recognized heritage/archive surface. build_report.py
+    # imports this exact helper so the enforced floor and the reported count
+    # can never diverge.
+    archives = recognized_archive_surface_count(floor)
 
     assert len(countries) >= 20, len(countries)
     assert len(regions) >= 5, len(regions)
@@ -906,10 +1129,59 @@ def validate(registry: dict) -> None:
     assert archives >= 25, archives
     assert sum(r["source_yield_sample"] for r in records) == 0
 
+    validate_verified_invariants(records)
+
     print("registry schema: PASS")
     print(f"records={len(records)} statuses={dict(statuses)}")
     print(f"manufacturer_yard_floor={len(floor)} countries={len(countries)} regions={len(regions)}")
     print(f"historical_like={historical} recognized_archive_surfaces={archives}")
+
+
+ID_PATTERN = re.compile(r"^RSRCH-MFR-[0-9]{4}$")
+
+
+def validate_verified_invariants(records: list[dict]) -> None:
+    """Deterministic evidence invariants required for every verified record.
+
+    Every research_status == "verified" manufacturer/yard record must retain:
+    non-empty series-production evidence; at least one retained source
+    supporting eligibility; a source URL and retrieval date on each source;
+    a research-only identifier that is never accidentally reused as a
+    canonical HullQ ID; and rights/access coverage for every external URL
+    that may later be considered for systematic use.
+    """
+    for r in records:
+        if r["research_status"] != "verified":
+            continue
+        name = r["preferred_display_name"]
+        assert ID_PATTERN.fullmatch(r["research_record_id"]), (
+            f"{name}: research_record_id {r['research_record_id']!r} is not a valid "
+            "research-only identifier (must never be an accidental canonical HullQ ID)"
+        )
+        assert r["series_production_evidence"].strip(), (
+            f"{name}: missing series-production evidence"
+        )
+        assert r["sources"], f"{name}: verified record retains no source"
+        for src in r["sources"]:
+            assert src["url"].strip(), f"{name}: source is missing a URL"
+            assert src["retrieved_at"].strip(), f"{name}: source is missing a retrieval date"
+
+        external_urls = {src["url"] for src in r["sources"] if src["url"].startswith("http")}
+        assessed_urls = {a["source_url"] for a in r["rights_assessment"]}
+        missing_rights = sorted(external_urls - assessed_urls)
+        assert not missing_rights, (
+            f"{name}: external source(s) {missing_rights} have no rights/access assessment "
+            "for possible later systematic use"
+        )
+        for assessment in r["rights_assessment"]:
+            assert (
+                assessment["public_access"] != "public"
+                or assessment["systematic_use_status"] != "CLEARED"
+                or (assessment["license_evidence"])
+            ), (
+                f"{name}: {assessment['source_url']} is marked CLEARED for systematic use without retained "
+                "license/terms evidence; mere public readability must never imply systematic-use clearance"
+            )
 
 
 def main() -> None:

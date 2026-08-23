@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parent
 REGISTRY = ROOT / "registry.json"
 SCHEMA = ROOT / "registry_schema.json"
 STUDY = ROOT / "source_yield_study.json"
+STUDY_SCHEMA = ROOT / "source_yield_study_schema.json"
 
 
 def load_json(path: Path) -> object:
@@ -28,6 +29,9 @@ def main() -> None:
     assert isinstance(schema, dict)
     assert isinstance(study, dict)
 
+    study_schema = load_json(STUDY_SCHEMA)
+    jsonschema.validate(instance=study, schema=study_schema)
+
     records = registry["records"]
     entities = study["entities"]
     assert isinstance(records, list)
@@ -40,6 +44,17 @@ def main() -> None:
     by_name = {record["preferred_display_name"]: record for record in records}
     missing = sorted(set(sample_names) - set(by_name))
     assert not missing, f"source-yield sample names missing from registry: {missing}"
+
+    for entity in entities:
+        name = entity["preferred_display_name"]
+        assert len(entity["probe_model_names"]) == len(set(entity["probe_model_names"])), (
+            f"{name}: duplicate probe_model_names"
+        )
+        assert entity["evidence_urls"], f"{name}: evidence claimed but evidence_urls is empty"
+        target = by_name[name]
+        assert {"manufacturer", "yard"} & set(target["entity_kind"]), (
+            f"{name}: source-yield sample entity is not a manufacturer/yard in the registry"
+        )
 
     for record in records:
         record["source_yield_sample"] = record["preferred_display_name"] in sample_names

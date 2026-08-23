@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-22  
-**Current stage:** Stage 3.2–3.3 — SLICE-0019 manufacturer/yard universe research `READY`  
+**Current stage:** Stage 3.2–3.3 — SLICE-0019 manufacturer/yard universe research `REVIEW` (executed, merged to `main`, not yet owner-accepted)
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -448,9 +448,9 @@ all_zero_tolerance_conditions_clear = true
 
 Final closure record: `docs/slices/SLICE-0018-acceptance-closure.md`.
 
-## Current operational position — SLICE-0019 READY
+## Current operational position — SLICE-0019 REVIEW
 
-`docs/slices/SLICE-0019-global-series-sailboat-manufacturer-universe-research.md` is the only READY primary slice contract.
+`docs/slices/SLICE-0019-global-series-sailboat-manufacturer-universe-research.md` is the controlling primary slice contract. Research execution against it is **complete and merged to `main`**, but the slice remains `REVIEW` — it is not owner-accepted and must not be treated as `DONE`. A bounded independent-review amendment may exist on its own branch to correct findings without broadening scope. No later slice (including SLICE-0020) may become READY as a consequence of this merge.
 
 SLICE-0019 is a bounded DESIGN_RESEARCH step, not a production-ingestion step. Its purpose is to map the next breadth/enrichment source layer after the direct-instance Wikidata ceiling measured by SLICE-0018.
 
@@ -479,7 +479,7 @@ SLICE-0017  controlled Wikidata Tier-0 1,000 bootstrap         DONE
       ↓
 SLICE-0018  baseline-preserving Wikidata <=2,500 expansion     DONE / source ceiling 1,829
       ↓
-SLICE-0019  global manufacturer/yard universe source research  READY
+SLICE-0019  global manufacturer/yard universe source research  REVIEW (merged, not yet accepted)
       ↓
 next bounded Stage-3 implementation decision                   NOT AUTHORIZED YET
 ```
@@ -513,7 +513,7 @@ FINISH_SLICE.bat
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-After the SLICE-0019 readiness PR is merged, the project owner may run `START_SLICE.bat` for SLICE-0019, open the resulting SLICE-0019 worktree in its own VS Code window, and paste the generated assignment into Claude. The agent must return SLICE-0019 in `REVIEW`, `BLOCKED` or `IN_PROGRESS` and must not start SLICE-0020 automatically.
+SLICE-0019 research is already executed and merged to `main` in `REVIEW`. Any further SLICE-0019 work (e.g. an independent-review amendment) must occur on its own dedicated branch/worktree, must not touch unrelated review/closure branches, and must return SLICE-0019 in `REVIEW` or `BLOCKED`. Only the project owner may move SLICE-0019 to `DONE`, and doing so does not itself make SLICE-0020 (or any later slice) READY.
 
 ## Do not start yet
 
