@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-24
-**Current stage:** Stage 3.3 — SLICE-0019 manufacturer/yard universe research `DONE` (owner-accepted 2026-08-23). SLICE-0020 archive source-clearance + bounded identity pilot is `DONE` (owner-accepted 2026-08-24; 0 `ADAPTER_READY` / 9 `RESEARCH_ONLY`/`REVIEW_REQUIRED` / 1 `BLOCKED`). **SLICE-0021 alternative Wikidata sailboat-class discovery-semantics pilot is `DONE` and owner-accepted 2026-08-24**: R0 reproduced the retained 1,829-QID universe with zero drift; R1 found 53 incremental QIDs, R2 found 0, R3 found 4; all three alternative routes were mutually disjoint. Final independent-review verdict `ACCEPT`, exact-head CI #260 / `32759454547` SUCCESS, implementation/research merge `c562b1c8f082f60823e084b1fb24c9f5c6f6ba00`. No SLICE-0022 or later slice is currently `READY`.
+**Current stage:** Stage 3.2 — canonical identity breadth / bounded admission proof. SLICE-0019 manufacturer/yard universe research, SLICE-0020 archive source-clearance + identity pilot, and SLICE-0021 alternative Wikidata discovery-semantics pilot are all `DONE` and owner-accepted. **SLICE-0022 is the only `READY` slice**: an offline Tier-0 admission-safety pilot over the exact 57 retained SLICE-0021 candidates (53 R1, 4 R3), with zero live acquisition and no production-discovery change. The earlier Stage 3.3 label was premature: Stage 3.3 Tier-1/basic-searchable enrichment has not begun. No SLICE-0023 or later slice is currently `READY`.
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -71,7 +71,7 @@ Auth remains deferred under OQ-014. OQ-006 controls alert cadence/freshness; OQ-
 | SLICE-0020 | manufacturer/archive source clearance + bounded identity pilot; 0 ADAPTER_READY / 9 REVIEW_REQUIRED / 1 BLOCKED |
 | SLICE-0021 | alternative Wikidata class-discovery semantics pilot; R0 zero drift / R1 +53 / R2 +0 / R3 +4; accepted research follow-up signals |
 
-All slices 0001–0021 are `DONE` and owner-accepted.
+All slices 0001–0021 are `DONE` and owner-accepted. SLICE-0022 is `READY` but has not started and is not accepted.
 
 ## SLICE-0011 — benchmark result retained
 
@@ -451,7 +451,7 @@ all_zero_tolerance_conditions_clear = true
 
 Final closure record: `docs/slices/SLICE-0018-acceptance-closure.md`.
 
-## Current operational position — SLICE-0019 DONE, SLICE-0020 DONE, SLICE-0021 DONE
+## Current operational position — SLICE-0019 DONE, SLICE-0020 DONE, SLICE-0021 DONE, SLICE-0022 READY
 
 `docs/slices/SLICE-0019-global-series-sailboat-manufacturer-universe-research.md` is **explicitly owner-accepted and closed `DONE`** on 2026-08-23; see `docs/slices/SLICE-0019-acceptance-closure.md` for the full closure record.
 
@@ -482,7 +482,9 @@ The accepted one-shot measurement used exactly four rights-cleared Wikidata stru
 
 Independent review required two hardening rounds. Round 1 added fail-closed live entity-detail completeness and structural/offline tamper checks and corrected exact-head CI provenance wording. Round 2 added exact full-set validation for drift/incremental/overlap QID sets and the sampled-candidate accepted-universe references. The retained live measurement was not rerun or altered during either round. Final reviewed head `2cf0ab437d2347a574fd5a01b3e5577ca4c6b521` received **ACCEPT**; exact-head CI #260 (`32759454547`) passed all four jobs; PR #50 merged as `c562b1c8f082f60823e084b1fb24c9f5c6f6ba00`; owner acceptance followed on 2026-08-24.
 
-The R1/R3 `FOLLOWUP_DISCOVERY_CANDIDATE` dispositions remain research recommendations only. No canonical HullQ row or ID was created, no production Wikidata discovery query was changed, and no SLICE-0022 was created or started.
+The R1/R3 `FOLLOWUP_DISCOVERY_CANDIDATE` dispositions remain research recommendations only. No canonical HullQ row or ID was created and no production Wikidata discovery query was changed.
+
+**SLICE-0022 — `docs/slices/SLICE-0022-retained-alternative-route-tier0-admission-safety-pilot.md` — is `READY` and not started.** It uses only the accepted retained SLICE-0021 candidate set, pinned to the accepted `sampled_candidates.json` and `discovery_probe.json` Git blobs. Exactly 57 candidates are in scope: 53 R1 and four R3. It performs zero external acquisition, reuses accepted SLICE-0017/0018 search-projection/collision/Tier-0 admission and historical-ID semantics, forces R3 away from auto-admission, and proves any admission delta by offline PostgreSQL baseline-first replay, exact re-import and independent fresh-schema replay. It does not adopt R1/R3 as production discovery routes.
 
 ## Near-term path
 
@@ -509,7 +511,9 @@ SLICE-0020  archive source clearance + bounded identity pilot  DONE / 0 ADAPTER_
       ↓
 SLICE-0021  alternative Wikidata discovery-semantics pilot     DONE / R0 zero drift, R1+53, R2+0, R3+4
       ↓
-next measured Stage-3 production decision                      NOT AUTHORIZED YET
+SLICE-0022  retained alternative-route Tier-0 admission pilot  READY / zero live acquisition
+      ↓
+production route decision / further identity breadth           NOT AUTHORIZED YET
 ```
 
 The benchmark corpus should not be expanded merely to increase its count. Additional stress cases are justified only if a materially new problem class is demonstrated.
@@ -537,17 +541,17 @@ START_SLICE.bat
 FINISH_SLICE.bat
 ```
 
-`START_SLICE.bat` synchronizes `main`, creates/reuses an isolated worktree/branch and copies Claude's assignment. It refuses slices whose own primary slice document is not explicitly `READY`.
+`START_SLICE.bat` synchronizes `main`, creates/reuses an isolated worktree/branch and copies Claude's assignment. It refuses slices whose own primary slice document is not explicitly `READY`. The workflow prompt now requires Claude's complete `SLICE_TEMPLATE` completion report directly in the final operator-facing chat response and avoids follow-up commits merely to record final exact-head CI.
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-SLICE-0001 through SLICE-0021 are accepted / `DONE`. No SLICE-0022 or later slice is currently `READY`.
+SLICE-0001 through SLICE-0021 are accepted / `DONE`. SLICE-0022 is the only `READY` slice and is not started. No SLICE-0023 or later slice is currently `READY`.
 
 ## Do not start yet
 
 - 5,000 identity rerun merely by increasing the accepted SLICE-0018 direct-query limit;
 - any production adapter, automated fetch, or bulk/automated ingestion from any SLICE-0020 archive-clearance source before a separate bounded, explicitly `ADAPTER_READY`-evidenced implementation slice is accepted and READY;
-- any production adoption/change of alternative Wikidata discovery semantics before a separate production implementation slice based on the accepted SLICE-0021 evidence is explicitly made READY;
+- any production adoption/change of alternative Wikidata discovery semantics before SLICE-0022 is executed, independently reviewed and owner-accepted and a separate production-route implementation slice is explicitly made `READY`;
 - another production bootstrap source before a separate bounded source/discovery implementation slice is accepted and READY;
 - resolution campaign for SLICE-0017/SLICE-0018 review candidates;
 - broad Tier-1/Tier-2 technical enrichment;
