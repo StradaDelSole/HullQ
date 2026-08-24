@@ -36,6 +36,19 @@ before any later slice is allowed to propose an actual production adapter.
 6. **Identity hazards stay explicit, never silently resolved.** Reused model numbers/names across manufacturers or across a manufacturer's own history, generation/lineage ambiguity and brand-vs-yard relationships (the same hazards SLICE-0019 already documented) remain open review hazards. They are never force-collapsed to produce a cleaner-looking overlap number.
 7. **No subjective suitability labels.** No `bluewater` / `offshore` / `luxury` or comparable marketing/suitability classification may be introduced anywhere in this slice's outputs, consistent with the SLICE-0019 exclusion.
 
+## Research ownership and orchestration boundary
+
+SLICE-0020 splits research and repository work across two explicit roles:
+
+- **ChatGPT is the external research/orchestration layer for this slice.** It conducts the actual source-clearance and archive/identity web research described below (visiting manufacturer/archive sites, reading terms/robots/licence evidence, discovering model identities) and supplies the resulting evidence/results into the repository workflow.
+- **Claude Code is the repository implementation/integration layer.** It may create and validate schemas, write deterministic helper scripts/tests if the accepted contract later needs them, run repository quality gates, and integrate the research evidence/results supplied through the orchestration workflow into the retained package described below.
+- **Claude Code MUST NOT autonomously substitute its own broad external web research for the ChatGPT-led research pass.** Claude does not independently browse/research the ten archive sources to produce clearance or identity-pilot findings on its own initiative.
+- Repository-local inspection, validation, transformation and testing by Claude remain allowed and expected (e.g. validating supplied JSON against schema, running `scripts/validate_repository.py`, formatting/lint/tests, checking internal consistency of supplied evidence against this contract's rules).
+- Any additional external research performed by Claude beyond repository-local work requires an explicit project-owner/orchestrator instruction; it is never assumed by this contract.
+- The slice's completion report MUST distinguish, as separate sections, the external research result (what ChatGPT found/supplied) from the repository integration/validation work (what Claude did with it).
+
+This division does not change the existing single-writer/worktree workflow: it does not authorize ChatGPT, or any other external role, to write directly into Claude's active `slice/0020-...` worktree/branch. Research evidence/results reach the repository only through the normal handoff into Claude's assigned branch, not through a second writer on that branch.
+
 ## Precommitted fixed source sample
 
 Assess exactly this fixed sample of ten manufacturer/yard archive surfaces:
@@ -81,9 +94,24 @@ For each of the ten sources:
 - run **exact/unambiguous-first overlap only** against the accepted SLICE-0017/0018 union of 1,770 AUTO_ADMIT BoatModels: a match counts only when the retained model name matches an accepted preferred label or an already-recorded alias exactly (case-insensitive exact match is acceptable; nothing fuzzier);
 - do **not** perform fuzzy matching, manufacturer-name-prefix stripping, token reordering, or any other normalization that would manufacture a match the exact string comparison does not support;
 - do **not** silently collapse reused model numbers/names, generations, or ambiguous brand-vs-yard production relationships to force a cleaner-looking match or non-match — record them as explicit review hazards instead;
-- report, per source and in total: identities retained, exact overlaps found, clearly-new candidates, and unresolved-possible-overlap cases requiring later identity resolution (mirroring the SLICE-0019 overlap-reporting categories).
+- report, per source and in total: identities retained, exact overlaps found, `no_exact_overlap_signal` candidates, and unresolved-possible-overlap cases requiring later identity resolution (mirroring the SLICE-0019 overlap-reporting categories).
 
 At most 200 model identities are retained across the whole pilot (10 sources × 20 cap). This pilot does not attempt to be exhaustive for any source.
+
+### `no_exact_overlap_signal` — narrow definition
+
+The category previously called "clearly new" in SLICE-0019-style reporting means, in this slice, **only**:
+
+> No exact/unambiguous overlap signal was found against the accepted comparison universe under this slice's exact-match rules.
+
+It MUST NOT be interpreted, reported, or relied upon downstream as meaning any of the following:
+
+- the model identity is globally novel;
+- the model identity is safe for canonical admission;
+- proof that no matching HullQ BoatModel exists (only that this bounded exact-match probe did not find one);
+- permission to mint or create a canonical identity.
+
+Machine-readable artifacts (`archive_identity_pilot.json`) MUST use the label `no_exact_overlap_signal` for this category rather than `clearly_new`, to avoid the stronger connotation. If a human-readable report retains the phrase "clearly new" for continuity with SLICE-0019's report prose, it MUST carry this exact narrow definition immediately adjacent to the first use of that phrase, and MUST NOT use the phrase unqualified elsewhere in the document.
 
 ## Required retained outputs
 
@@ -105,7 +133,7 @@ A strict schema and matching data file recording, per assessed source, the field
 
 ### `archive_identity_pilot.json`
 
-Per-source retained model-identity records (name, source surface, minimal discriminating context) plus the overlap classification for each, and an aggregate summary block (totals retained / exact overlap / clearly new / unresolved-possible-overlap), consistent with the bounded pilot rules above.
+Per-source retained model-identity records (name, source surface, minimal discriminating context) plus the overlap classification for each (`exact_overlap` / `no_exact_overlap_signal` / `unresolved_possible_overlap`), and an aggregate summary block (totals retained / exact overlap / `no_exact_overlap_signal` / unresolved-possible-overlap), consistent with the bounded pilot rules above and the narrow `no_exact_overlap_signal` definition.
 
 ### `ARCHIVE_SOURCE_CLEARANCE_REPORT.md`
 
@@ -117,14 +145,22 @@ Must summarize at least:
 - the bounded identity-pilot results (per source and aggregate);
 - identity hazards observed (reused names/numbers, generation ambiguity, brand-vs-yard relationships) and which sources they affect;
 - an explicit statement of how many sources (possibly zero) are `ADAPTER_READY`, without padding or manufacturing clearance to avoid a zero result;
-- a bounded, evidence-derived recommendation for the next slice, which may only recommend building a production adapter over sources whose `identity_seed` + `automated_ingestion` + relevant `bulk_bootstrap`/volume conditions are demonstrably compatible with `SOURCE_RIGHTS_POLICY.v0.1`; the recommendation must not start that next slice.
+- a bounded, evidence-derived recommendation for the next slice, which may only recommend building a production adapter over sources classified `ADAPTER_READY` under the "Classification vocabulary" test below (`identity_seed = allowed` and `automated_ingestion = allowed`, no contradictory access/permission field, and either `bulk_bootstrap = allowed` or documented compatible bounded/non-bulk volume/telemetry conditions); the recommendation must not start that next slice.
 
 ## Classification vocabulary
 
 Each assessed source resolves to exactly one of:
 
-- **`ADAPTER_READY`** — `identity_seed` (and, if applicable to the recommended next use, `automated_ingestion`/`bulk_bootstrap`) are `allowed` with retained supporting evidence, and no independently relevant access/permission field contradicts that clearance.
-- **`RESEARCH_ONLY` / `REVIEW_REQUIRED`** — usable for `research_reference`/`research_lead`/bounded discovery, but `identity_seed`, `automated_ingestion` or `bulk_bootstrap` remain `conditional`, `legal_review_required`, or otherwise not demonstrably cleared.
+- **`ADAPTER_READY`** — ALL of the following hold, with retained supporting evidence:
+  1. `identity_seed = allowed`;
+  2. `automated_ingestion = allowed`;
+  3. no independently relevant access/permission field contradicts either clearance (mirroring the SLICE-0007 permission-conflict checks, e.g. an automation prohibition or a `store_canonical_values`/`automated_extract`-style contradiction);
+  4. AND either:
+     - (a) `bulk_bootstrap = allowed`, if the later adapter being evaluated would be a bulk adapter; OR
+     - (b) if the later adapter being evaluated is explicitly bounded/non-bulk, the retained assessment identifies the specific compatible source volume/telemetry conditions (e.g. a defensible per-source extraction threshold) required by the accepted SLICE-0007 `ExtractionBudget`/cumulative-extraction boundary, rather than leaving that condition unaddressed.
+
+  `conditional`, `legal_review_required`, `prohibited` or `unknown` for `identity_seed` or `automated_ingestion` MUST NOT produce `ADAPTER_READY` under any circumstance — there is no partial-credit or "probably fine" path to this classification.
+- **`RESEARCH_ONLY` / `REVIEW_REQUIRED`** — usable for `research_reference`/`research_lead`/bounded discovery, but `identity_seed`, `automated_ingestion` or `bulk_bootstrap` remain `conditional`, `legal_review_required`, or otherwise not demonstrably cleared per the `ADAPTER_READY` test above.
 - **`BLOCKED`** — an explicit `prohibited` clearance, or an access/automation prohibition, blocks the relevant use outright.
 
 A truthful result of **zero `ADAPTER_READY` sources is a fully valid, acceptable outcome** of this slice. This slice imposes no minimum-cleared-source acceptance floor, and the agent MUST NOT manufacture or round up clearance to avoid reporting that outcome.
@@ -153,13 +189,16 @@ This slice does **not** authorize:
 - [ ] unknown or ambiguous rights fail closed (never rounded up to `allowed`/`CLEARED`).
 - [ ] the bounded identity pilot stays within the precommitted cap (<=20 retained model identities per source, <=200 total).
 - [ ] overlap measurement against the accepted 1,770 AUTO_ADMIT BoatModel universe uses exact/unambiguous-first matching only — no fuzzy matching, manufacturer-prefix stripping, or silent generation collapsing.
+- [ ] the `no_exact_overlap_signal` category (previously "clearly new") is used only with its narrow defined meaning — absence of an exact-match signal in this bounded probe — and is never presented as global novelty, safety for canonical admission, or minting permission.
 - [ ] reused model numbers/generations and brand-vs-yard relationship hazards are preserved as explicit review notes, not silently resolved.
 - [ ] no canonical Brand/Organization/BoatModel/BoatDesign row is created, modified or admitted.
 - [ ] no production adapter, automated fetch, or broad automated ingestion is built, staged or executed.
+- [ ] any source classified `ADAPTER_READY` satisfies the full hardened test in "Classification vocabulary" (`identity_seed = allowed`, `automated_ingestion = allowed`, no contradictory access/permission field, and either `bulk_bootstrap = allowed` or documented compatible bounded/non-bulk volume/telemetry conditions); no source with `conditional`/`legal_review_required`/`prohibited`/`unknown` `identity_seed` or `automated_ingestion` is classified `ADAPTER_READY`.
 - [ ] no SailboatData value is used as production/identity evidence anywhere in this slice's outputs.
 - [ ] no subjective `bluewater`/offshore/luxury suitability classification appears in any retained output.
 - [ ] the report's next-slice recommendation is evidence-derived from this slice's own measured results and is explicitly bounded (it does not start that next slice).
 - [ ] repository validation/quality gates applicable to retained structured artifacts (schema validation, `scripts/validate_repository.py`, formatting/lint where applicable) pass.
+- [ ] the actual source-clearance/archive/identity web research was performed by the ChatGPT-led orchestration pass, not substituted by Claude's own autonomous external research, and the completion report distinguishes the external research result from Claude's repository integration/validation work.
 - [ ] the agent hands the slice off in `REVIEW`, `BLOCKED` or `IN_PROGRESS` and never self-marks it `DONE`.
 - [ ] SLICE-0021 is not automatically created or started.
 
@@ -218,4 +257,4 @@ A successful agent completion normally hands the slice off in `REVIEW`.
 
 Run this slice through the normal isolated `START_SLICE.bat` / `FINISH_SLICE.bat` worktree workflow once it is accepted as `READY`. Preserve exact source URLs and retrieval/review dates for every rights/access claim. Prefer a truthful, possibly disappointing clearance result over a padded one — a slice that finds zero `ADAPTER_READY` sources has still done its job if the evidence is real and the report says so plainly.
 
-The completion report must state the exact pushed HEAD SHA, changed files, validation/test results, the ten-source clearance classification, the bounded identity-pilot totals (retained / exact overlap / clearly new / unresolved), unresolved findings, and the recommended next bounded slice — without starting it.
+The completion report must state the exact pushed HEAD SHA, changed files, validation/test results, the ten-source clearance classification, the bounded identity-pilot totals (retained / exact overlap / `no_exact_overlap_signal` / unresolved), unresolved findings, and the recommended next bounded slice — without starting it. It must also separately identify what was supplied by the ChatGPT-led research pass versus what Claude did as repository integration/validation work, per "Research ownership and orchestration boundary" above.
