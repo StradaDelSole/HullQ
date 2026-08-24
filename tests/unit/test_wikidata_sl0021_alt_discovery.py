@@ -40,6 +40,8 @@ from hullq.bootstrap.wikidata_sl0021_alt_discovery import (
     SAMPLE_CAP_GLOBAL,
     SAMPLE_CAP_PER_ROUTE,
     AcceptedIdentity,
+    CrossRouteOverlap,
+    DriftResult,
     IdentitySignalCategory,
     ImmutableInputIntegrityError,
     RouteDisposition,
@@ -60,6 +62,8 @@ from hullq.bootstrap.wikidata_sl0021_alt_discovery import (
     qid_list_digest,
     qid_sort_key,
     select_entity_detail_sample,
+    verify_accepted_universe_reference_self_consistency,
+    verify_discovery_probe_derived_sets_self_consistency,
     verify_immutable_inputs_self_consistency,
     verify_route_record_self_consistency,
     verify_sample_entity_detail_completeness,
@@ -912,3 +916,268 @@ def test_verify_sample_entity_detail_completeness_does_not_modify_retained_facts
     verify_sample_entity_detail_completeness(selected, fetched)
     assert selected == ["Q1", "Q2"]
     assert fetched == ["Q1", "Q2"]
+
+
+# ---------------------------------------------------------------------------
+# AMENDMENT ROUND 2 (independent re-review): full retained derived QID-SET
+# comparisons, not merely counts. drift.*_qids, incremental.<route>.qids,
+# cross_route_overlap pairwise/union/unique-contribution QID lists, and the
+# sampled_candidates.json accepted_universe_reference block.
+# ---------------------------------------------------------------------------
+
+
+def _consistent_derived_sets_fixture() -> tuple[
+    dict[str, Any], DriftResult, dict[str, frozenset[str]], CrossRouteOverlap
+]:
+    """A small, non-trivial (includes real pairwise overlap) synthetic
+    discovery_probe-shaped ``drift``/``incremental``/``cross_route_overlap``
+    document, serialized exactly as ``build_discovery_probe_document`` would.
+    """
+    retained = frozenset({"Q1", "Q2", "Q3"})
+    current_r0 = ["Q2", "Q3", "Q4"]
+    drift = compute_r0_drift(retained, current_r0)
+
+    route_qids = {"R1": ["Q4", "Q5", "Q10"], "R2": ["Q5", "Q6"], "R3": []}
+    incremental_by_route = {
+        rid: compute_incremental_yield(qids, current_r0) for rid, qids in route_qids.items()
+    }
+    cross_route_overlap = compute_cross_route_overlap(incremental_by_route)
+
+    doc: dict[str, Any] = {
+        "drift": {
+            "retained_direct_count": drift.retained_direct_count,
+            "retained_direct_absent_now_qids": list(drift.retained_direct_absent_now_qids),
+            "new_current_direct_since_sl0018_qids": list(
+                drift.new_current_direct_since_sl0018_qids
+            ),
+        },
+        "incremental": {
+            rid: {"count": len(qids), "qids": sorted(qids, key=qid_sort_key)}
+            for rid, qids in incremental_by_route.items()
+        },
+        "cross_route_overlap": {
+            "pairwise": [
+                {"routes": list(pair), "count": len(qids), "qids": sorted(qids, key=qid_sort_key)}
+                for pair, qids in sorted(cross_route_overlap.pairwise.items())
+            ],
+            "total_union_count": len(cross_route_overlap.total_union),
+            "total_union_qids": sorted(cross_route_overlap.total_union, key=qid_sort_key),
+            "unique_contribution": {
+                rid: {"count": len(qids), "qids": sorted(qids, key=qid_sort_key)}
+                for rid, qids in cross_route_overlap.unique_contribution.items()
+            },
+        },
+    }
+    return doc, drift, incremental_by_route, cross_route_overlap
+
+
+def test_derived_sets_fixture_has_real_pairwise_overlap() -> None:
+    """Sanity-check the fixture itself: R1 and R2 must share at least one
+    incremental QID so the pairwise-overlap tamper tests below are
+    meaningful (not vacuously true on an always-empty pair).
+    """
+    _doc, _drift, incremental_by_route, cross = _consistent_derived_sets_fixture()
+    assert incremental_by_route["R1"] & incremental_by_route["R2"]
+    assert cross.pairwise[("R1", "R2")]
+
+
+def test_verify_discovery_probe_derived_sets_self_consistency_passes_on_consistent_doc() -> None:
+    doc, drift, incremental_by_route, cross = _consistent_derived_sets_fixture()
+    assert (
+        verify_discovery_probe_derived_sets_self_consistency(
+            doc,
+            drift=drift,
+            incremental_by_route=incremental_by_route,
+            cross_route_overlap=cross,
+        )
+        == []
+    )
+
+
+def test_verify_discovery_probe_derived_sets_detects_tampered_drift_retained_direct_count() -> None:
+    doc, drift, incremental_by_route, cross = _consistent_derived_sets_fixture()
+    doc["drift"]["retained_direct_count"] = 999999
+    mismatches = verify_discovery_probe_derived_sets_self_consistency(
+        doc, drift=drift, incremental_by_route=incremental_by_route, cross_route_overlap=cross
+    )
+    assert any("retained_direct_count" in m for m in mismatches)
+
+
+def test_verify_discovery_probe_derived_sets_detects_tampered_drift_absent_qids() -> None:
+    doc, drift, incremental_by_route, cross = _consistent_derived_sets_fixture()
+    doc["drift"]["retained_direct_absent_now_qids"] = ["Q999999"]
+    mismatches = verify_discovery_probe_derived_sets_self_consistency(
+        doc, drift=drift, incremental_by_route=incremental_by_route, cross_route_overlap=cross
+    )
+    assert any("retained_direct_absent_now_qids" in m for m in mismatches)
+
+
+def test_verify_discovery_probe_derived_sets_detects_tampered_drift_new_qids() -> None:
+    doc, drift, incremental_by_route, cross = _consistent_derived_sets_fixture()
+    doc["drift"]["new_current_direct_since_sl0018_qids"] = ["Q999999"]
+    mismatches = verify_discovery_probe_derived_sets_self_consistency(
+        doc, drift=drift, incremental_by_route=incremental_by_route, cross_route_overlap=cross
+    )
+    assert any("new_current_direct_since_sl0018_qids" in m for m in mismatches)
+
+
+def test_verify_discovery_probe_derived_sets_detects_tampered_incremental_qids_with_unchanged_count() -> (
+    None
+):
+    """The exact failure mode the reviewer named: a tampered QID list whose
+    length (and therefore whose retained ``count``) is unchanged must still
+    be caught by the exact-qids comparison.
+    """
+    doc, drift, incremental_by_route, cross = _consistent_derived_sets_fixture()
+    original = doc["incremental"]["R1"]["qids"]
+    assert len(original) == 2
+    doc["incremental"]["R1"]["qids"] = ["Q999998", "Q999999"]  # same length, wrong QIDs
+    mismatches = verify_discovery_probe_derived_sets_self_consistency(
+        doc, drift=drift, incremental_by_route=incremental_by_route, cross_route_overlap=cross
+    )
+    assert any("incremental.R1.qids" in m for m in mismatches)
+    # Count itself was not touched, proving the earlier count-only check
+    # alone would have missed this tamper.
+    assert doc["incremental"]["R1"]["count"] == len(original)
+
+
+def test_verify_discovery_probe_derived_sets_detects_tampered_pairwise_qids_and_count() -> None:
+    doc, drift, incremental_by_route, cross = _consistent_derived_sets_fixture()
+    for entry in doc["cross_route_overlap"]["pairwise"]:
+        if set(entry["routes"]) == {"R1", "R2"}:
+            entry["qids"] = ["Q999999"]
+            entry["count"] = 1
+    mismatches = verify_discovery_probe_derived_sets_self_consistency(
+        doc, drift=drift, incremental_by_route=incremental_by_route, cross_route_overlap=cross
+    )
+    assert any("pairwise" in m and "qids" in m for m in mismatches)
+
+
+def test_verify_discovery_probe_derived_sets_detects_missing_pairwise_route_pair() -> None:
+    doc, drift, incremental_by_route, cross = _consistent_derived_sets_fixture()
+    doc["cross_route_overlap"]["pairwise"] = [
+        e for e in doc["cross_route_overlap"]["pairwise"] if set(e["routes"]) != {"R1", "R3"}
+    ]
+    mismatches = verify_discovery_probe_derived_sets_self_consistency(
+        doc, drift=drift, incremental_by_route=incremental_by_route, cross_route_overlap=cross
+    )
+    assert any("route-pair coverage" in m for m in mismatches)
+
+
+def test_verify_discovery_probe_derived_sets_detects_tampered_total_union_qids() -> None:
+    doc, drift, incremental_by_route, cross = _consistent_derived_sets_fixture()
+    doc["cross_route_overlap"]["total_union_qids"] = ["Q999999"]
+    mismatches = verify_discovery_probe_derived_sets_self_consistency(
+        doc, drift=drift, incremental_by_route=incremental_by_route, cross_route_overlap=cross
+    )
+    assert any("total_union_qids" in m for m in mismatches)
+
+
+def test_verify_discovery_probe_derived_sets_detects_tampered_total_union_count() -> None:
+    doc, drift, incremental_by_route, cross = _consistent_derived_sets_fixture()
+    doc["cross_route_overlap"]["total_union_count"] = 999999
+    mismatches = verify_discovery_probe_derived_sets_self_consistency(
+        doc, drift=drift, incremental_by_route=incremental_by_route, cross_route_overlap=cross
+    )
+    assert any("total_union_count" in m for m in mismatches)
+
+
+def test_verify_discovery_probe_derived_sets_detects_tampered_unique_contribution_qids() -> None:
+    doc, drift, incremental_by_route, cross = _consistent_derived_sets_fixture()
+    doc["cross_route_overlap"]["unique_contribution"]["R1"]["qids"] = ["Q999999"]
+    mismatches = verify_discovery_probe_derived_sets_self_consistency(
+        doc, drift=drift, incremental_by_route=incremental_by_route, cross_route_overlap=cross
+    )
+    assert any("unique_contribution.R1.qids" in m for m in mismatches)
+
+
+def test_verify_discovery_probe_derived_sets_passes_against_real_retained_artifact() -> None:
+    """The actual committed discovery_probe.json (R0 zero-drift, R1+53,
+    R2+0, R3+4) must pass every full-derived-set check unchanged.
+    """
+    discovery_probe = json.loads((SL0021_DIR / "discovery_probe.json").read_text(encoding="utf-8"))
+    accepted_universe = load_and_fingerprint_immutable_inputs()
+    route_qids = {rid: rec["qids"] for rid, rec in discovery_probe["routes"].items()}
+    r0_qids = route_qids["R0"]
+    drift = compute_r0_drift(accepted_universe.retained_direct_discovery_qids, r0_qids)
+    incremental_by_route = {
+        rid: compute_incremental_yield(route_qids[rid], r0_qids) for rid in ("R1", "R2", "R3")
+    }
+    cross = compute_cross_route_overlap(incremental_by_route)
+    assert (
+        verify_discovery_probe_derived_sets_self_consistency(
+            discovery_probe,
+            drift=drift,
+            incremental_by_route=incremental_by_route,
+            cross_route_overlap=cross,
+        )
+        == []
+    )
+
+
+# ---------------------------------------------------------------------------
+# verify_accepted_universe_reference_self_consistency
+# ---------------------------------------------------------------------------
+
+
+def _accepted_universe_reference_doc(universe: Any) -> dict[str, Any]:
+    return {
+        "accepted_universe_reference": {
+            "sl0017_sha256": universe.sl0017_sha256,
+            "sl0018_sha256": universe.sl0018_sha256,
+            "accepted_auto_admit_count": len(universe.accepted_auto_admit_identities),
+        }
+    }
+
+
+def test_verify_accepted_universe_reference_self_consistency_passes_on_real_accepted_artifacts() -> (
+    None
+):
+    universe = load_and_fingerprint_immutable_inputs()
+    doc = _accepted_universe_reference_doc(universe)
+    assert verify_accepted_universe_reference_self_consistency(doc, universe) == []
+
+
+def test_verify_accepted_universe_reference_self_consistency_detects_sl0017_sha256_mismatch() -> (
+    None
+):
+    universe = load_and_fingerprint_immutable_inputs()
+    doc = _accepted_universe_reference_doc(universe)
+    doc["accepted_universe_reference"]["sl0017_sha256"] = "0" * 64
+    mismatches = verify_accepted_universe_reference_self_consistency(doc, universe)
+    assert any("sl0017_sha256" in m for m in mismatches)
+
+
+def test_verify_accepted_universe_reference_self_consistency_detects_sl0018_sha256_mismatch() -> (
+    None
+):
+    universe = load_and_fingerprint_immutable_inputs()
+    doc = _accepted_universe_reference_doc(universe)
+    doc["accepted_universe_reference"]["sl0018_sha256"] = "0" * 64
+    mismatches = verify_accepted_universe_reference_self_consistency(doc, universe)
+    assert any("sl0018_sha256" in m for m in mismatches)
+
+
+def test_verify_accepted_universe_reference_self_consistency_detects_auto_admit_count_mismatch() -> (
+    None
+):
+    universe = load_and_fingerprint_immutable_inputs()
+    doc = _accepted_universe_reference_doc(universe)
+    doc["accepted_universe_reference"]["accepted_auto_admit_count"] = 1
+    mismatches = verify_accepted_universe_reference_self_consistency(doc, universe)
+    assert any("accepted_auto_admit_count" in m for m in mismatches)
+
+
+def test_verify_accepted_universe_reference_passes_against_real_retained_artifact() -> None:
+    """The actual committed sampled_candidates.json's own
+    accepted_universe_reference block must agree with what is actually
+    (re-)loaded.
+    """
+    sampled_candidates = json.loads(
+        (SL0021_DIR / "sampled_candidates.json").read_text(encoding="utf-8")
+    )
+    accepted_universe = load_and_fingerprint_immutable_inputs()
+    assert (
+        verify_accepted_universe_reference_self_consistency(sampled_candidates, accepted_universe)
+        == []
+    )

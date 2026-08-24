@@ -27,10 +27,16 @@ Two independent modes:
     ``query_text``/``query_sha256``/``result_count``/``hard_limit``/
     ``possibly_truncated``/``qid_list_digest``; immutable-input manifest
     SHA256 references and 1,829/1,770 counts against what was actually
-    (re-)loaded; drift; incremental yield; cross-route overlap; sample
-    selection; exact candidate-vs-selected-QID-set equality (no missing/
-    extra/duplicate candidate row); every candidate's route membership;
-    recomputed ``category_totals``; identity-signal classification; and route
+    (re-)loaded (checked independently on both the ``discovery_probe.json``
+    and ``sampled_candidates.json`` sides); drift — including the FULL
+    ``retained_direct_absent_now_qids``/``new_current_direct_since_sl0018_qids``
+    lists, not merely their counts; incremental yield — including each
+    route's full ``qids`` list; cross-route overlap — including exact
+    pairwise QID lists for all three route pairs, ``total_union_qids``, and
+    each route's ``unique_contribution`` QID list; sample selection; exact
+    candidate-vs-selected-QID-set equality (no missing/extra/duplicate
+    candidate row); every candidate's route membership; recomputed
+    ``category_totals``; identity-signal classification; and route
     dispositions. Fails loudly (nonzero exit, listing every mismatch) on any
     inconsistency. This is what normal CI runs to prove the retained result
     is offline-reproducible and internally consistent.
@@ -313,6 +319,8 @@ def run_verify() -> None:
         determine_route_disposition,
         load_and_fingerprint_immutable_inputs,
         select_entity_detail_sample,
+        verify_accepted_universe_reference_self_consistency,
+        verify_discovery_probe_derived_sets_self_consistency,
         verify_immutable_inputs_self_consistency,
         verify_route_record_self_consistency,
         verify_sampled_candidates_self_consistency,
@@ -410,6 +418,30 @@ def run_verify() -> None:
             len(qids),
             discovery_probe["cross_route_overlap"]["unique_contribution"][rid]["count"],
         )
+
+    # Full derived-set self-consistency: drift.*_qids, incremental.<route>.qids,
+    # cross_route_overlap pairwise/union/unique-contribution QID lists (not
+    # merely their counts, which the _check() calls above already cover) must
+    # exactly equal what compute_r0_drift/compute_incremental_yield/
+    # compute_cross_route_overlap recompute from the document's own retained
+    # per-route qids.
+    mismatches.extend(
+        verify_discovery_probe_derived_sets_self_consistency(
+            discovery_probe,
+            drift=drift,
+            incremental_by_route=incremental_by_route,
+            cross_route_overlap=cross_route_overlap,
+        )
+    )
+
+    # sampled_candidates.json's own accepted-universe reference (SHA256s +
+    # accepted_auto_admit_count) must independently agree with what was
+    # actually loaded — checked separately from discovery_probe.json's
+    # immutable_inputs block above; neither document is authoritative for
+    # the other.
+    mismatches.extend(
+        verify_accepted_universe_reference_self_consistency(sampled_candidates, accepted_universe)
+    )
 
     sample = select_entity_detail_sample(incremental_by_route)
     stored_selection = sampled_candidates["selection"]

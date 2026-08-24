@@ -80,6 +80,8 @@ __all__ = [
     "qid_list_digest",
     "qid_sort_key",
     "select_entity_detail_sample",
+    "verify_accepted_universe_reference_self_consistency",
+    "verify_discovery_probe_derived_sets_self_consistency",
     "verify_immutable_inputs_self_consistency",
     "verify_route_record_self_consistency",
     "verify_sample_entity_detail_completeness",
@@ -1050,6 +1052,114 @@ def verify_immutable_inputs_self_consistency(
     return mismatches
 
 
+def verify_discovery_probe_derived_sets_self_consistency(
+    discovery_probe: dict[str, Any],
+    *,
+    drift: DriftResult,
+    incremental_by_route: dict[str, frozenset[str]],
+    cross_route_overlap: CrossRouteOverlap,
+) -> list[str]:
+    """Compare every RETAINED derived QID set/list in a ``discovery_probe.json``
+    document against freshly recomputed values, exactly — not merely by count.
+
+    The round-1 amendment's self-consistency checks recomputed structural
+    fields (route identity, immutable-input references, sampled-candidate
+    selection/membership/category totals) but only compared drift and
+    incremental-yield COUNTS, leaving the retained ``drift.*_qids``,
+    ``incremental.<route>.qids``, and ``cross_route_overlap`` QID lists
+    checked only indirectly. This function closes that gap.
+
+    Callers pass *drift*/*incremental_by_route*/*cross_route_overlap* already
+    recomputed (via ``compute_r0_drift``/``compute_incremental_yield``/
+    ``compute_cross_route_overlap``) from the document's OWN retained
+    per-route ``qids`` lists — this function only checks that the document's
+    recorded derived fields exactly match those recomputations, serialized in
+    the same deterministic ascending-numeric-QID order used by
+    ``build_discovery_probe_document``.
+    """
+    mismatches: list[str] = []
+
+    stored_drift = discovery_probe.get("drift", {})
+    if stored_drift.get("retained_direct_count") != drift.retained_direct_count:
+        mismatches.append(
+            f"drift.retained_direct_count={stored_drift.get('retained_direct_count')!r} != "
+            f"recomputed {drift.retained_direct_count!r}"
+        )
+    expected_absent = list(drift.retained_direct_absent_now_qids)
+    if stored_drift.get("retained_direct_absent_now_qids") != expected_absent:
+        mismatches.append("drift.retained_direct_absent_now_qids does not match the recomputed set")
+    expected_new = list(drift.new_current_direct_since_sl0018_qids)
+    if stored_drift.get("new_current_direct_since_sl0018_qids") != expected_new:
+        mismatches.append(
+            "drift.new_current_direct_since_sl0018_qids does not match the recomputed set"
+        )
+
+    stored_incremental = discovery_probe.get("incremental", {})
+    for rid, qids in incremental_by_route.items():
+        expected_qids = sorted(qids, key=qid_sort_key)
+        stored = stored_incremental.get(rid, {})
+        if stored.get("qids") != expected_qids:
+            mismatches.append(f"incremental.{rid}.qids does not match the recomputed set")
+        if stored.get("count") != len(expected_qids):
+            mismatches.append(
+                f"incremental.{rid}.count={stored.get('count')!r} != "
+                f"recomputed {len(expected_qids)!r}"
+            )
+
+    stored_cross = discovery_probe.get("cross_route_overlap", {})
+    expected_pairwise: dict[tuple[str, ...], frozenset[str]] = {
+        tuple(sorted(k)): v for k, v in cross_route_overlap.pairwise.items()
+    }
+    stored_pairwise_list = stored_cross.get("pairwise", [])
+    seen_pair_keys: set[tuple[str, ...]] = set()
+    for entry in stored_pairwise_list:
+        routes = entry.get("routes", [])
+        pair_key = tuple(sorted(routes))
+        seen_pair_keys.add(pair_key)
+        expected_qids = sorted(expected_pairwise.get(pair_key, frozenset()), key=qid_sort_key)
+        if entry.get("qids") != expected_qids:
+            mismatches.append(
+                f"cross_route_overlap.pairwise[{routes}].qids does not match the recomputed set"
+            )
+        if entry.get("count") != len(expected_qids):
+            mismatches.append(
+                f"cross_route_overlap.pairwise[{routes}].count={entry.get('count')!r} != "
+                f"recomputed {len(expected_qids)!r}"
+            )
+    expected_pair_keys = set(expected_pairwise.keys())
+    if seen_pair_keys != expected_pair_keys:
+        mismatches.append(
+            f"cross_route_overlap.pairwise route-pair coverage={sorted(seen_pair_keys)!r} != "
+            f"expected {sorted(expected_pair_keys)!r}"
+        )
+
+    expected_union_qids = sorted(cross_route_overlap.total_union, key=qid_sort_key)
+    if stored_cross.get("total_union_qids") != expected_union_qids:
+        mismatches.append("cross_route_overlap.total_union_qids does not match the recomputed set")
+    if stored_cross.get("total_union_count") != len(expected_union_qids):
+        mismatches.append(
+            f"cross_route_overlap.total_union_count={stored_cross.get('total_union_count')!r} "
+            f"!= recomputed {len(expected_union_qids)!r}"
+        )
+
+    stored_unique = stored_cross.get("unique_contribution", {})
+    for rid, qids in cross_route_overlap.unique_contribution.items():
+        expected_qids = sorted(qids, key=qid_sort_key)
+        entry = stored_unique.get(rid, {})
+        if entry.get("qids") != expected_qids:
+            mismatches.append(
+                f"cross_route_overlap.unique_contribution.{rid}.qids does not match the "
+                "recomputed set"
+            )
+        if entry.get("count") != len(expected_qids):
+            mismatches.append(
+                f"cross_route_overlap.unique_contribution.{rid}.count={entry.get('count')!r} "
+                f"!= recomputed {len(expected_qids)!r}"
+            )
+
+    return mismatches
+
+
 def verify_sampled_candidates_self_consistency(
     sampled_doc: dict[str, Any], incremental_by_route: dict[str, frozenset[str]]
 ) -> list[str]:
@@ -1115,5 +1225,38 @@ def verify_sampled_candidates_self_consistency(
         mismatches.append(
             f"category_totals={sampled_doc.get('category_totals')!r} != recomputed "
             f"{recomputed_totals!r}"
+        )
+    return mismatches
+
+
+def verify_accepted_universe_reference_self_consistency(
+    sampled_doc: dict[str, Any], accepted_universe: AcceptedUniverse
+) -> list[str]:
+    """Compare a retained ``sampled_candidates.json`` document's
+    ``accepted_universe_reference`` block against a freshly (re-)loaded
+    ``AcceptedUniverse`` — the sampled-candidates-side counterpart of
+    ``verify_immutable_inputs_self_consistency`` (which checks the same
+    facts on the ``discovery_probe.json`` side). Both documents' references
+    to the accepted universe must independently agree with what was actually
+    loaded; neither is treated as authoritative for the other.
+    """
+    mismatches: list[str] = []
+    ref = sampled_doc.get("accepted_universe_reference", {})
+    if ref.get("sl0017_sha256") != accepted_universe.sl0017_sha256:
+        mismatches.append(
+            f"accepted_universe_reference.sl0017_sha256={ref.get('sl0017_sha256')!r} != "
+            f"actual loaded {accepted_universe.sl0017_sha256!r}"
+        )
+    if ref.get("sl0018_sha256") != accepted_universe.sl0018_sha256:
+        mismatches.append(
+            f"accepted_universe_reference.sl0018_sha256={ref.get('sl0018_sha256')!r} != "
+            f"actual loaded {accepted_universe.sl0018_sha256!r}"
+        )
+    actual_auto_admit_count = len(accepted_universe.accepted_auto_admit_identities)
+    if ref.get("accepted_auto_admit_count") != actual_auto_admit_count:
+        mismatches.append(
+            "accepted_universe_reference.accepted_auto_admit_count="
+            f"{ref.get('accepted_auto_admit_count')!r} != actual loaded "
+            f"{actual_auto_admit_count!r}"
         )
     return mismatches
