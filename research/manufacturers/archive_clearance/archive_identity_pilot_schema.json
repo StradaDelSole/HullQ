@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/archive-identity-pilot/0020-v1",
+  "title": "HullQ SLICE-0020 Bounded Manufacturer Archive Identity-Yield Pilot Result",
+  "description": "Non-canonical research artifact. Records here are a bounded, research-only exact/unambiguous-first overlap probe of up to 200 source-presented model identities (10 sources x <=20 each) against the accepted SLICE-0017/0018 union of AUTO_ADMIT BoatModel candidates. This document does not read, resolve or write any canonical HullQ table, and no_exact_overlap_signal MUST NOT be interpreted as global novelty, safety for canonical admission, or minting permission -- see no_exact_overlap_signal_definition.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "pilot_version",
+    "slice_id",
+    "generated_at",
+    "method",
+    "no_exact_overlap_signal_definition",
+    "accepted_universe",
+    "pilot_bounds",
+    "totals",
+    "per_source",
+    "records"
+  ],
+  "properties": {
+    "pilot_version": { "const": "0020-identity-pilot-v1" },
+    "slice_id": { "const": "SLICE-0020" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "method": { "type": "string", "minLength": 1 },
+    "no_exact_overlap_signal_definition": { "type": "string", "minLength": 1 },
+    "accepted_universe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["auto_admit_hullq_id_count", "expected_canonical_boatmodel_count", "manifest_paths"],
+      "properties": {
+        "auto_admit_hullq_id_count": { "const": 1770 },
+        "expected_canonical_boatmodel_count": { "const": 1770 },
+        "manifest_paths": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "pilot_bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_count", "per_source_cap", "per_source_retained", "total_cap", "total_retained"],
+      "properties": {
+        "source_count": { "const": 10 },
+        "per_source_cap": { "const": 20 },
+        "per_source_retained": { "const": 10 },
+        "total_cap": { "const": 200 },
+        "total_retained": { "const": 100 }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["retained", "exact_overlap", "no_exact_overlap_signal", "unresolved_possible_overlap"],
+      "properties": {
+        "retained": { "const": 100 },
+        "exact_overlap": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "no_exact_overlap_signal": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "unresolved_possible_overlap": { "type": "integer", "minimum": 0, "maximum": 100 }
+      }
+    },
+    "per_source": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_key",
+          "source_display_name",
+          "retained_count",
+          "exact_overlap_count",
+          "no_exact_overlap_signal_count",
+          "unresolved_possible_overlap_count"
+        ],
+        "properties": {
+          "source_key": { "type": "string", "minLength": 1 },
+          "source_display_name": { "type": "string", "minLength": 1 },
+          "retained_count": { "const": 10 },
+          "exact_overlap_count": { "type": "integer", "minimum": 0, "maximum": 10 },
+          "no_exact_overlap_signal_count": { "type": "integer", "minimum": 0, "maximum": 10 },
+          "unresolved_possible_overlap_count": { "type": "integer", "minimum": 0, "maximum": 10 }
+        }
+      }
+    },
+    "records": {
+      "type": "array",
+      "minItems": 100,
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/pilot_record" }
+    }
+  },
+  "$defs": {
+    "pilot_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_key",
+        "source_display_name",
+        "model_name",
+        "source_surface",
+        "discriminating_context",
+        "classification",
+        "matched_hullq_ids",
+        "matched_preferred_labels"
+      ],
+      "properties": {
+        "source_key": { "type": "string", "minLength": 1 },
+        "source_display_name": { "type": "string", "minLength": 1 },
+        "model_name": { "type": "string", "minLength": 1 },
+        "source_surface": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "discriminating_context": { "type": "string", "minLength": 1 },
+        "classification": {
+          "type": "string",
+          "enum": ["exact_overlap", "no_exact_overlap_signal", "unresolved_possible_overlap"]
+        },
+        "matched_hullq_ids": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "matched_preferred_labels": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    }
+  }
+}

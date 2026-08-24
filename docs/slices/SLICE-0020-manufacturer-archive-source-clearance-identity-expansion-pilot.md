@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0020
 **Type:** DESIGN_RESEARCH
-**Status:** READY
+**Status:** REVIEW
 **Stage:** 3.3 — post-manufacturer-universe source clearance / bounded identity-yield pilot
 **Depends on:** SLICE-0019 accepted / DONE
 **Blocks:** any later controlled manufacturer-archive identity-expansion adapter slice (not yet authorized; a later slice must use this pilot's measured result as evidence)
@@ -182,25 +182,25 @@ This slice does **not** authorize:
 
 ## Acceptance criteria
 
-- [ ] all 10 fixed targets are assessed, or an unavailable target is explicitly substituted with documented repository-evidence justification.
-- [ ] rights/access evidence (access status, terms/licence evidence, robots/API/automation evidence, review date, evidence URLs) is retained per target.
-- [ ] use-specific clearance decisions use exactly the accepted HullQ vocabulary (`research_reference`, `research_lead`, `identity_seed`, `production_value` where relevant, `automated_ingestion`, `bulk_bootstrap`, `artifact_redistribution`) and clearance states (`allowed`, `conditional`, `legal_review_required`, `prohibited`, `unknown`).
-- [ ] access/automation evidence and reuse/rights evidence are recorded and assessed as visibly separate fields, never merged into one judgment.
-- [ ] unknown or ambiguous rights fail closed (never rounded up to `allowed`/`CLEARED`).
-- [ ] the bounded identity pilot stays within the precommitted cap (<=20 retained model identities per source, <=200 total).
-- [ ] overlap measurement against the accepted 1,770 AUTO_ADMIT BoatModel universe uses exact/unambiguous-first matching only — no fuzzy matching, manufacturer-prefix stripping, or silent generation collapsing.
-- [ ] the `no_exact_overlap_signal` category (previously "clearly new") is used only with its narrow defined meaning — absence of an exact-match signal in this bounded probe — and is never presented as global novelty, safety for canonical admission, or minting permission.
-- [ ] reused model numbers/generations and brand-vs-yard relationship hazards are preserved as explicit review notes, not silently resolved.
-- [ ] no canonical Brand/Organization/BoatModel/BoatDesign row is created, modified or admitted.
-- [ ] no production adapter, automated fetch, or broad automated ingestion is built, staged or executed.
-- [ ] any source classified `ADAPTER_READY` satisfies the full hardened test in "Classification vocabulary" (`identity_seed = allowed`, `automated_ingestion = allowed`, no contradictory access/permission field, and either `bulk_bootstrap = allowed` or documented compatible bounded/non-bulk volume/telemetry conditions); no source with `conditional`/`legal_review_required`/`prohibited`/`unknown` `identity_seed` or `automated_ingestion` is classified `ADAPTER_READY`.
-- [ ] no SailboatData value is used as production/identity evidence anywhere in this slice's outputs.
-- [ ] no subjective `bluewater`/offshore/luxury suitability classification appears in any retained output.
-- [ ] the report's next-slice recommendation is evidence-derived from this slice's own measured results and is explicitly bounded (it does not start that next slice).
-- [ ] repository validation/quality gates applicable to retained structured artifacts (schema validation, `scripts/validate_repository.py`, formatting/lint where applicable) pass.
-- [ ] the actual source-clearance/archive/identity web research was performed by the ChatGPT-led orchestration pass, not substituted by Claude's own autonomous external research, and the completion report distinguishes the external research result from Claude's repository integration/validation work.
-- [ ] the agent hands the slice off in `REVIEW`, `BLOCKED` or `IN_PROGRESS` and never self-marks it `DONE`.
-- [ ] SLICE-0021 is not automatically created or started.
+- [x] all 10 fixed targets are assessed, or an unavailable target is explicitly substituted with documented repository-evidence justification. (All 10 assessed; no substitution needed.)
+- [x] rights/access evidence (access status, terms/licence evidence, robots/API/automation evidence, review date, evidence URLs) is retained per target.
+- [x] use-specific clearance decisions use exactly the accepted HullQ vocabulary (`research_reference`, `research_lead`, `identity_seed`, `production_value` where relevant, `automated_ingestion`, `bulk_bootstrap`, `artifact_redistribution`) and clearance states (`allowed`, `conditional`, `legal_review_required`, `prohibited`, `unknown`). (Schema-enforced, `additionalProperties: false`.)
+- [x] access/automation evidence and reuse/rights evidence are recorded and assessed as visibly separate fields, never merged into one judgment.
+- [x] unknown or ambiguous rights fail closed (never rounded up to `allowed`/`CLEARED`). (No source reaches `CLEARED`; verified by test.)
+- [x] the bounded identity pilot stays within the precommitted cap (<=20 retained model identities per source, <=200 total). (Exactly 10/source, 100 total.)
+- [x] overlap measurement against the accepted 1,770 AUTO_ADMIT BoatModel universe uses exact/unambiguous-first matching only — no fuzzy matching, manufacturer-prefix stripping, or silent generation collapsing. (Verified by regression tests including the "First 26" and "GS" guards.)
+- [x] the `no_exact_overlap_signal` category (previously "clearly new") is used only with its narrow defined meaning — absence of an exact-match signal in this bounded probe — and is never presented as global novelty, safety for canonical admission, or minting permission.
+- [x] reused model numbers/generations and brand-vs-yard relationship hazards are preserved as explicit review notes, not silently resolved. (See report "Identity hazards observed".)
+- [x] no canonical Brand/Organization/BoatModel/BoatDesign row is created, modified or admitted.
+- [x] no production adapter, automated fetch, or broad automated ingestion is built, staged or executed.
+- [x] any source classified `ADAPTER_READY` satisfies the full hardened test in "Classification vocabulary" (`identity_seed = allowed`, `automated_ingestion = allowed`, no contradictory access/permission field, and either `bulk_bootstrap = allowed` or documented compatible bounded/non-bulk volume/telemetry conditions); no source with `conditional`/`legal_review_required`/`prohibited`/`unknown` `identity_seed` or `automated_ingestion` is classified `ADAPTER_READY`. (0 sources classified `ADAPTER_READY`; test enforces the fail-closed rule.)
+- [x] no SailboatData value is used as production/identity evidence anywhere in this slice's outputs.
+- [x] no subjective `bluewater`/offshore/luxury suitability classification appears in any retained output. (HullQ-authored classification fields checked; one supplied research finding truthfully quotes Oyster's own marketing self-description, consistent with existing SLICE-0019 `registry.json` precedent — see report.)
+- [x] the report's next-slice recommendation is evidence-derived from this slice's own measured results and is explicitly bounded (it does not start that next slice).
+- [x] repository validation/quality gates applicable to retained structured artifacts (schema validation, `scripts/validate_repository.py`, formatting/lint where applicable) pass. (Also ran mypy and the full `pytest`/coverage suite; all pass locally.)
+- [x] the actual source-clearance/archive/identity web research was performed by the ChatGPT-led orchestration pass, not substituted by Claude's own autonomous external research, and the completion report distinguishes the external research result from Claude's repository integration/validation work.
+- [x] the agent hands the slice off in `REVIEW`, `BLOCKED` or `IN_PROGRESS` and never self-marks it `DONE`. (Handed off in `REVIEW`.)
+- [x] SLICE-0021 is not automatically created or started.
 
 An implementation/research agent MUST NOT check any of the above before it has actually been verified.
 
