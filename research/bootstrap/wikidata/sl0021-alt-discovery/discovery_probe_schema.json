@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/wikidata-sl0021-discovery-probe/v1",
+  "title": "HullQ SLICE-0021 Alternative Wikidata Discovery Probe",
+  "description": "Retained record of the four fixed SLICE-0021 R0-R3 live query routes: per-route acquisition, current-R0 drift versus the retained historical 1,829-QID direct-discovery universe, alternative-route incremental yield versus CURRENT R0, and cross-route overlap. Contains no canonical HullQ mutation and no SailboatData values.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "source_id",
+    "rights_gate",
+    "immutable_inputs",
+    "routes",
+    "drift",
+    "incremental",
+    "cross_route_overlap"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0021-discovery-probe-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "source_id": { "type": "string", "minLength": 1 },
+    "rights_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["automated_ingestion", "bulk_bootstrap"],
+      "properties": {
+        "automated_ingestion": { "const": "allowed" },
+        "bulk_bootstrap": { "const": "allowed" }
+      }
+    },
+    "immutable_inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sl0017_manifest",
+        "sl0018_manifest",
+        "retained_direct_discovery_count",
+        "accepted_auto_admit_count"
+      ],
+      "properties": {
+        "sl0017_manifest": { "$ref": "#/$defs/manifest_ref" },
+        "sl0018_manifest": { "$ref": "#/$defs/manifest_ref" },
+        "retained_direct_discovery_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Must equal 1829 for the real accepted retained artifact; enforced by hullq.bootstrap.wikidata_sl0021_alt_discovery.load_and_fingerprint_immutable_inputs (ImmutableInputIntegrityError), not repeated here as a schema const so synthetic/test documents remain schema-valid."
+        },
+        "accepted_auto_admit_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Must equal 1770 for the real accepted retained artifact; enforced by hullq.bootstrap.wikidata_sl0021_alt_discovery.load_and_fingerprint_immutable_inputs (ImmutableInputIntegrityError), not repeated here as a schema const so synthetic/test documents remain schema-valid."
+        }
+      }
+    },
+    "routes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["R0", "R1", "R2", "R3"],
+      "properties": {
+        "R0": { "$ref": "#/$defs/route_record" },
+        "R1": { "$ref": "#/$defs/route_record" },
+        "R2": { "$ref": "#/$defs/route_record" },
+        "R3": { "$ref": "#/$defs/route_record" }
+      }
+    },
+    "drift": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "retained_direct_count",
+        "current_direct_count",
+        "retained_direct_still_present_count",
+        "retained_direct_absent_now_count",
+        "new_current_direct_since_sl0018_count",
+        "retained_direct_absent_now_qids",
+        "new_current_direct_since_sl0018_qids"
+      ],
+      "properties": {
+        "retained_direct_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Must equal 1829 for the real accepted retained artifact; see immutable_inputs.retained_direct_discovery_count."
+        },
+        "current_direct_count": { "type": "integer", "minimum": 0 },
+        "retained_direct_still_present_count": { "type": "integer", "minimum": 0 },
+        "retained_direct_absent_now_count": { "type": "integer", "minimum": 0 },
+        "new_current_direct_since_sl0018_count": { "type": "integer", "minimum": 0 },
+        "retained_direct_absent_now_qids": { "type": "array", "items": { "$ref": "#/$defs/qid" } },
+        "new_current_direct_since_sl0018_qids": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/qid" }
+        }
+      }
+    },
+    "incremental": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["R1", "R2", "R3"],
+      "properties": {
+        "R1": { "$ref": "#/$defs/qid_count_set" },
+        "R2": { "$ref": "#/$defs/qid_count_set" },
+        "R3": { "$ref": "#/$defs/qid_count_set" }
+      }
+    },
+    "cross_route_overlap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pairwise", "total_union_count", "total_union_qids", "unique_contribution"],
+      "properties": {
+        "pairwise": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["routes", "count", "qids"],
+            "properties": {
+              "routes": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "items": { "type": "string", "enum": ["R1", "R2", "R3"] }
+              },
+              "count": { "type": "integer", "minimum": 0 },
+              "qids": { "type": "array", "items": { "$ref": "#/$defs/qid" } }
+            }
+          }
+        },
+        "total_union_count": { "type": "integer", "minimum": 0 },
+        "total_union_qids": { "type": "array", "items": { "$ref": "#/$defs/qid" } },
+        "unique_contribution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["R1", "R2", "R3"],
+          "properties": {
+            "R1": { "$ref": "#/$defs/qid_count_set" },
+            "R2": { "$ref": "#/$defs/qid_count_set" },
+            "R3": { "$ref": "#/$defs/qid_count_set" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+    "manifest_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "qid_count_set": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "qids"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "qids": { "type": "array", "items": { "$ref": "#/$defs/qid" } }
+      }
+    },
+    "route_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "route_id",
+        "version",
+        "query_text",
+        "query_sha256",
+        "hard_limit",
+        "result_count",
+        "possibly_truncated",
+        "qids",
+        "qid_list_digest",
+        "acquired_at",
+        "http_request_count",
+        "throttle_count",
+        "retry_count",
+        "error_count",
+        "malformed_response_count"
+      ],
+      "properties": {
+        "route_id": {
+          "type": "string",
+          "enum": [
+            "current_direct_control",
+            "sailboat_class_closure",
+            "legacy_sailboat_class_closure",
+            "misclassified_sailboat_class_description"
+          ]
+        },
+        "version": { "type": "string", "minLength": 1 },
+        "query_text": { "type": "string", "minLength": 1 },
+        "query_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "hard_limit": { "const": 3000 },
+        "result_count": { "type": "integer", "minimum": 0, "maximum": 3000 },
+        "possibly_truncated": { "type": "boolean" },
+        "qids": {
+          "type": "array",
+          "maxItems": 3000,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/qid" }
+        },
+        "qid_list_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "acquired_at": { "type": "string", "format": "date-time" },
+        "http_request_count": { "type": "integer", "minimum": 0 },
+        "throttle_count": { "type": "integer", "minimum": 0 },
+        "retry_count": { "type": "integer", "minimum": 0 },
+        "error_count": { "type": "integer", "minimum": 0 },
+        "malformed_response_count": { "type": "integer", "minimum": 0 },
+        "item_descriptions": {
+          "type": "object",
+          "description": "R3 only: raw schema:description text keyed by QID, retained as review evidence only.",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    }
+  }
+}

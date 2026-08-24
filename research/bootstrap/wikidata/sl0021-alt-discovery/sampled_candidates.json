@@ -1,0 +1,1271 @@
+{
+  "schema_version": "sl0021-sampled-candidates-v1",
+  "generated_at": "2026-08-24T15:29:04.154534+00:00",
+  "selection": {
+    "cap_per_route": 75,
+    "cap_global": 200,
+    "per_route_pre_global_cap": {
+      "R1": [
+        "Q232393",
+        "Q1638809",
+        "Q1662367",
+        "Q1913784",
+        "Q2816929",
+        "Q3321276",
+        "Q3334777",
+        "Q4564080",
+        "Q5470264",
+        "Q10397376",
+        "Q10404347",
+        "Q10405576",
+        "Q10405577",
+        "Q10417274",
+        "Q10443255",
+        "Q10478080",
+        "Q10518647",
+        "Q10552991",
+        "Q10555133",
+        "Q10555135",
+        "Q10561683",
+        "Q10578706",
+        "Q10578709",
+        "Q10578710",
+        "Q10578711",
+        "Q10578712",
+        "Q10586324",
+        "Q10602060",
+        "Q10608006",
+        "Q10609560",
+        "Q10609561",
+        "Q10614462",
+        "Q10648230",
+        "Q10655904",
+        "Q10681251",
+        "Q10681424",
+        "Q10693607",
+        "Q10701406",
+        "Q10704615",
+        "Q10706438",
+        "Q10706946",
+        "Q10711989",
+        "Q10716022",
+        "Q18448502",
+        "Q18449521",
+        "Q18452269",
+        "Q18454564",
+        "Q31888504",
+        "Q56377229",
+        "Q105111126",
+        "Q106541126",
+        "Q133733814",
+        "Q137537140"
+      ],
+      "R2": [],
+      "R3": [
+        "Q19060217",
+        "Q117468602",
+        "Q117569839",
+        "Q121872268"
+      ]
+    },
+    "selected_qids": [
+      "Q232393",
+      "Q1638809",
+      "Q1662367",
+      "Q1913784",
+      "Q2816929",
+      "Q3321276",
+      "Q3334777",
+      "Q4564080",
+      "Q5470264",
+      "Q10397376",
+      "Q10404347",
+      "Q10405576",
+      "Q10405577",
+      "Q10417274",
+      "Q10443255",
+      "Q10478080",
+      "Q10518647",
+      "Q10552991",
+      "Q10555133",
+      "Q10555135",
+      "Q10561683",
+      "Q10578706",
+      "Q10578709",
+      "Q10578710",
+      "Q10578711",
+      "Q10578712",
+      "Q10586324",
+      "Q10602060",
+      "Q10608006",
+      "Q10609560",
+      "Q10609561",
+      "Q10614462",
+      "Q10648230",
+      "Q10655904",
+      "Q10681251",
+      "Q10681424",
+      "Q10693607",
+      "Q10701406",
+      "Q10704615",
+      "Q10706438",
+      "Q10706946",
+      "Q10711989",
+      "Q10716022",
+      "Q18448502",
+      "Q18449521",
+      "Q18452269",
+      "Q18454564",
+      "Q19060217",
+      "Q31888504",
+      "Q56377229",
+      "Q105111126",
+      "Q106541126",
+      "Q117468602",
+      "Q117569839",
+      "Q121872268",
+      "Q133733814",
+      "Q137537140"
+    ],
+    "selected_count": 57
+  },
+  "accepted_universe_reference": {
+    "sl0017_sha256": "076b0d64441973c4d5b71cf467cd9cdbf46242babb9cb44f788c97a0f33e5845",
+    "sl0018_sha256": "41ef238c217e31cfbe03329e226a1a3dfff849061df93b8f2523a1e72493821f",
+    "accepted_auto_admit_count": 1770
+  },
+  "candidates": [
+    {
+      "qid": "Q232393",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Zweier-Canadier",
+      "aliases": [],
+      "description_en": "German term: a boat class in Canoeing",
+      "p31_qids": [
+        "Q893182"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q1638809",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Libera",
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q893182"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q1662367",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Inferno 29",
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q474161",
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q1913784",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Maxi 68",
+      "aliases": [],
+      "description_en": "ship type",
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q2816929",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "49er FX",
+      "aliases": [],
+      "description_en": "Olympic sailing class",
+      "p31_qids": [
+        "Q893182"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [
+        "Q1711955"
+      ],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q3321276",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Chatou one-design dinghy",
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q97225127"
+      ],
+      "p279_qids": [
+        "Q239617"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q3334777",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Nacra 17",
+      "aliases": [],
+      "description_en": "Olympic sailing class",
+      "p31_qids": [
+        "Q893182"
+      ],
+      "p279_qids": [
+        "Q2941651"
+      ],
+      "p176_qids": [
+        "Q48995769"
+      ],
+      "p287_qids": [
+        "Q106436209"
+      ],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q4564080",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "OE 36",
+      "aliases": [],
+      "description_en": "ship type",
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [
+        "Q2020958"
+      ],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q5470264",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Formula 16",
+      "aliases": [],
+      "description_en": "5 metre catamaran",
+      "p31_qids": [
+        "Q3511280"
+      ],
+      "p279_qids": [
+        "Q2265995"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10397376",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "707",
+      "aliases": [],
+      "description_en": "boat model",
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10404347",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Albin Delta",
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [
+        "Q6016960"
+      ],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10405576",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10405577",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10417274",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Arcona 40 DS",
+      "aliases": [],
+      "description_en": "Swedish sailboat type",
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10443255",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Carrera Helmsman",
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [
+        "Q6201893"
+      ],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10478080",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10518647",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [
+        "Q19931510"
+      ],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10552991",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [
+        "Q6201893"
+      ],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10555133",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [
+        "Q1811291"
+      ],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10555135",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [
+        "Q1811291"
+      ],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10561683",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Lill-Scampi",
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [
+        "Q6016960"
+      ],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10578706",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Maxi 33",
+      "aliases": [],
+      "description_en": "ship type",
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10578709",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Maxi 800",
+      "aliases": [],
+      "description_en": "ship type",
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10578710",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Maxi 900",
+      "aliases": [],
+      "description_en": "ship type",
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10578711",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Maxi Fenix",
+      "aliases": [],
+      "description_en": "ship type",
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10578712",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Maxi Racer",
+      "aliases": [],
+      "description_en": "ship type",
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10586324",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Hallberg-Rassy 24",
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [
+        "Q2020958"
+      ],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10602060",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Nordisk Familjeb\u00e5t",
+      "aliases": [
+        "NF"
+      ],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10608006",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10609560",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Omega 30",
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10609561",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10614462",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10648230",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10655904",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10681251",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10681424",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10693607",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10701406",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10704615",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Trissjolle",
+      "aliases": [],
+      "description_en": "sailing dinghy",
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [
+        "Q5587164"
+      ],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10706438",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10706946",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10711989",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [
+        "Q19931374"
+      ],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q10716022",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Virus 20",
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q7832806",
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q18448502",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q18449521",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [
+        "Q19931374"
+      ],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q18452269",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [
+        "Q2020958"
+      ],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q18454564",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Allegro 33",
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q19060217",
+      "route_membership": [
+        "R3"
+      ],
+      "label": "Lagoon 380",
+      "aliases": [],
+      "description_en": "sailboat class",
+      "p31_qids": [
+        "Q1075310"
+      ],
+      "p279_qids": [],
+      "p176_qids": [],
+      "p287_qids": [
+        "Q3554426"
+      ],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q31888504",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q1075310"
+      ],
+      "p176_qids": [],
+      "p287_qids": [
+        "Q2020958"
+      ],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q56377229",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": "competition class of sailing boats",
+      "p31_qids": [
+        "Q893182"
+      ],
+      "p279_qids": [
+        "Q1075310",
+        "Q190403",
+        "Q657819"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q105111126",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "Dragonfly",
+      "aliases": [],
+      "description_en": "classic 14' wooden clinker racing dinghy",
+      "p31_qids": [
+        "Q1307792"
+      ],
+      "p279_qids": [
+        "Q13573011"
+      ],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q106541126",
+      "route_membership": [
+        "R1"
+      ],
+      "label": "K1",
+      "aliases": [],
+      "description_en": "sport catamaran class from Topcat",
+      "p31_qids": [
+        "Q3511280"
+      ],
+      "p279_qids": [
+        "Q2941651"
+      ],
+      "p176_qids": [
+        "Q106541650"
+      ],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q117468602",
+      "route_membership": [
+        "R3"
+      ],
+      "label": "Lagoon 500",
+      "aliases": [],
+      "description_en": "sailboat class",
+      "p31_qids": [
+        "Q1075310"
+      ],
+      "p279_qids": [],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q117569839",
+      "route_membership": [
+        "R3"
+      ],
+      "label": "Lagoon 560",
+      "aliases": [],
+      "description_en": "sailboat class",
+      "p31_qids": [
+        "Q1075310"
+      ],
+      "p279_qids": [],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q121872268",
+      "route_membership": [
+        "R3"
+      ],
+      "label": "Beneteau Evasion 25",
+      "aliases": [],
+      "description_en": "French sailboat class",
+      "p31_qids": [
+        "Q1075310"
+      ],
+      "p279_qids": [],
+      "p176_qids": [
+        "Q962626"
+      ],
+      "p287_qids": [
+        "Q99482617"
+      ],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q133733814",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q3511280"
+      ],
+      "p279_qids": [],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    },
+    {
+      "qid": "Q137537140",
+      "route_membership": [
+        "R1"
+      ],
+      "label": null,
+      "aliases": [],
+      "description_en": null,
+      "p31_qids": [
+        "Q3511280"
+      ],
+      "p279_qids": [],
+      "p176_qids": [],
+      "p287_qids": [],
+      "identity_signal_category": "no_exact_identity_signal",
+      "identity_signal_owner_qids": []
+    }
+  ],
+  "category_totals": {
+    "accepted_qid_overlap": 0,
+    "exact_identity_signal_other_qid": 0,
+    "no_exact_identity_signal": 57,
+    "unresolved_exact_identity_signal": 0
+  },
+  "route_dispositions": {
+    "R1": "FOLLOWUP_DISCOVERY_CANDIDATE",
+    "R2": "NO_INCREMENTAL_YIELD",
+    "R3": "FOLLOWUP_DISCOVERY_CANDIDATE"
+  },
+  "r3_fail_closed_notice": "Every R3 (misclassified_sailboat_class_description) candidate remains a review/repair signal only in SLICE-0021 regardless of its identity-signal category or description quality. R3 membership never directly authorizes canonical admission or a production classification rule; a structured English description containing 'sailboat class' does not itself prove the item is correctly modeled as a HullQ BoatModel.",
+  "no_exact_signal_notice": "no_exact_identity_signal means only that this bounded exact probe found no exact QID/label/alias signal. It does not prove global novelty, does not prove no corresponding HullQ identity exists, and does not authorize canonical admission."
+}

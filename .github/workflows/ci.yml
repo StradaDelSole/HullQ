@@ -216,6 +216,39 @@ jobs:
             research/bootstrap/wikidata/sl0018-2500/REPLAY-REPORT.md
           if-no-files-found: warn
 
+      - name: Validate SLICE-0021 alternative-discovery documents against schema
+        run: >
+          uv run python -c "
+          import json, jsonschema, pathlib;
+          base = pathlib.Path('research/bootstrap/wikidata/sl0021-alt-discovery');
+          probe = json.loads((base / 'discovery_probe.json').read_text());
+          probe_schema = json.loads((base / 'discovery_probe_schema.json').read_text());
+          jsonschema.validate(instance=probe, schema=probe_schema);
+          print('discovery_probe.json validates against discovery_probe_schema.json');
+          sampled = json.loads((base / 'sampled_candidates.json').read_text());
+          sampled_schema = json.loads((base / 'sampled_candidates_schema.json').read_text());
+          jsonschema.validate(instance=sampled, schema=sampled_schema);
+          print('sampled_candidates.json validates against sampled_candidates_schema.json');
+          print(f\"R0={probe['drift']['current_direct_count']} drift_absent={probe['drift']['retained_direct_absent_now_count']} drift_new={probe['drift']['new_current_direct_since_sl0018_count']}\");
+          print(f\"incremental: R1={probe['incremental']['R1']['count']} R2={probe['incremental']['R2']['count']} R3={probe['incremental']['R3']['count']}\");
+          print(f\"route_dispositions={sampled['route_dispositions']}\");
+          "
+
+      - name: Offline-verify SLICE-0021 retained documents reproduce deterministically (no network)
+        run: >
+          uv run python scripts/bootstrap/wikidata_sl0021_alt_discovery_runner.py --verify
+
+      - name: Upload SLICE-0021 alternative-discovery outputs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sl0021-alt-discovery-outputs
+          path: |
+            research/bootstrap/wikidata/sl0021-alt-discovery/discovery_probe.json
+            research/bootstrap/wikidata/sl0021-alt-discovery/sampled_candidates.json
+            research/bootstrap/wikidata/sl0021-alt-discovery/REPORT.md
+          if-no-files-found: warn
+
   dependency-audit:
     name: dependency audit
     runs-on: ubuntu-latest

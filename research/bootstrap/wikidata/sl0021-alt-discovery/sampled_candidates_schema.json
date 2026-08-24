@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/wikidata-sl0021-sampled-candidates/v1",
+  "title": "HullQ SLICE-0021 Alternative Discovery Sampled Candidates",
+  "description": "Retained bounded entity-detail sample (<=75/alternative route, <=200 unique globally) drawn from R1/R2/R3 incremental yield, with exact-only identity-signal classification against the accepted 1,770 AUTO_ADMIT universe. Research-only; no canonical HullQ mutation, no fuzzy/heuristic matching, and R3 membership never authorizes admission.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "selection",
+    "accepted_universe_reference",
+    "candidates",
+    "category_totals",
+    "route_dispositions",
+    "r3_fail_closed_notice",
+    "no_exact_signal_notice"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0021-sampled-candidates-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cap_per_route", "cap_global", "per_route_pre_global_cap", "selected_qids", "selected_count"],
+      "properties": {
+        "cap_per_route": { "const": 75 },
+        "cap_global": { "const": 200 },
+        "per_route_pre_global_cap": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["R1", "R2", "R3"],
+          "properties": {
+            "R1": { "$ref": "#/$defs/qid_array_75" },
+            "R2": { "$ref": "#/$defs/qid_array_75" },
+            "R3": { "$ref": "#/$defs/qid_array_75" }
+          }
+        },
+        "selected_qids": {
+          "type": "array",
+          "maxItems": 200,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/qid" }
+        },
+        "selected_count": { "type": "integer", "minimum": 0, "maximum": 200 }
+      }
+    },
+    "accepted_universe_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sl0017_sha256", "sl0018_sha256", "accepted_auto_admit_count"],
+      "properties": {
+        "sl0017_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "sl0018_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "accepted_auto_admit_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Must equal 1770 for the real accepted retained artifact; enforced by hullq.bootstrap.wikidata_sl0021_alt_discovery.load_and_fingerprint_immutable_inputs (ImmutableInputIntegrityError), not repeated here as a schema const so synthetic/test documents remain schema-valid."
+        }
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "maxItems": 200,
+      "items": { "$ref": "#/$defs/candidate" }
+    },
+    "category_totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accepted_qid_overlap",
+        "exact_identity_signal_other_qid",
+        "no_exact_identity_signal",
+        "unresolved_exact_identity_signal"
+      ],
+      "properties": {
+        "accepted_qid_overlap": { "type": "integer", "minimum": 0 },
+        "exact_identity_signal_other_qid": { "type": "integer", "minimum": 0 },
+        "no_exact_identity_signal": { "type": "integer", "minimum": 0 },
+        "unresolved_exact_identity_signal": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "route_dispositions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["R1", "R2", "R3"],
+      "properties": {
+        "R1": { "$ref": "#/$defs/disposition" },
+        "R2": { "$ref": "#/$defs/disposition" },
+        "R3": { "$ref": "#/$defs/disposition" }
+      }
+    },
+    "r3_fail_closed_notice": { "type": "string", "minLength": 1 },
+    "no_exact_signal_notice": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+    "qid_array_75": {
+      "type": "array",
+      "maxItems": 75,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^Q[1-9][0-9]*$" }
+    },
+    "disposition": {
+      "type": "string",
+      "enum": ["NO_INCREMENTAL_YIELD", "RESEARCH_ONLY_SIGNAL", "FOLLOWUP_DISCOVERY_CANDIDATE"]
+    },
+    "identity_signal_category": {
+      "type": "string",
+      "enum": [
+        "accepted_qid_overlap",
+        "exact_identity_signal_other_qid",
+        "no_exact_identity_signal",
+        "unresolved_exact_identity_signal"
+      ]
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "qid",
+        "route_membership",
+        "label",
+        "aliases",
+        "description_en",
+        "p31_qids",
+        "p279_qids",
+        "p176_qids",
+        "p287_qids",
+        "identity_signal_category",
+        "identity_signal_owner_qids"
+      ],
+      "properties": {
+        "qid": { "$ref": "#/$defs/qid" },
+        "route_membership": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "enum": ["R1", "R2", "R3"] }
+        },
+        "label": { "type": ["string", "null"] },
+        "aliases": { "type": "array", "items": { "type": "string" } },
+        "description_en": { "type": ["string", "null"] },
+        "p31_qids": { "type": "array", "items": { "$ref": "#/$defs/qid" } },
+        "p279_qids": { "type": "array", "items": { "$ref": "#/$defs/qid" } },
+        "p176_qids": { "type": "array", "items": { "$ref": "#/$defs/qid" } },
+        "p287_qids": { "type": "array", "items": { "$ref": "#/$defs/qid" } },
+        "identity_signal_category": { "$ref": "#/$defs/identity_signal_category" },
+        "identity_signal_owner_qids": { "type": "array", "items": { "$ref": "#/$defs/qid" } }
+      }
+    }
+  }
+}
