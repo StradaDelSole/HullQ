@@ -6,9 +6,14 @@
 ## Amendment note (PR #47 independent-review AMEND verdict)
 
 This report and its retained artifacts were amended after an independent-review AMEND verdict on
-PR #47. All corrections below are provenance/wording-only, supplied by the same ChatGPT-led
-research/review pass; no independent external research was performed by Claude and no rights
-classification changed:
+PR #47, supplied by the same ChatGPT-led research/review pass; no independent external research
+was performed by Claude. Corrections 1–4 below are provenance/wording corrections to retained
+evidence text (source-surface citations and hazard-note wording). Correction 5 is not a wording
+change: it tightens `compute_overlap.py`'s deterministic exact-match implementation itself so
+that it actually conforms to the slice's accepted exact-match semantics (surrounding-whitespace
+trimming only, no internal-whitespace collapsing). No rights classification changed as a result
+of any of the five corrections, and the regenerated overlap totals remained unchanged after
+correction 5's implementation change was applied:
 
 1. **Elan source-surface provenance** — nine of the ten Elan pilot identities (`Elan 31`, `Elan
    33`, `Elan 39`, `Elan 43`, `Elan 35 Performance`, `Elan 333`, `Elan 340`, `Impression 344`,
@@ -28,9 +33,12 @@ classification changed:
    so the hazard claim has been removed. Their source-presented names and exact-match results are
    unchanged. The Bénéteau rights result is unchanged: `automated_ingestion = prohibited`,
    `bulk_bootstrap = prohibited`, `adapter_classification = BLOCKED`.
-5. **Strict exact-match whitespace semantics** — `compute_overlap.py`'s `normalize()` now trims
-   only surrounding whitespace and lowercases (`value.strip().casefold()`); it no longer collapses
-   internal whitespace. This is a stricter, not looser, exact-match rule.
+5. **Exact-match implementation correction (not wording-only)** — `compute_overlap.py`'s
+   `normalize()` previously collapsed internal whitespace, which was broader than the slice's
+   accepted exact-match rule. It now trims only surrounding whitespace and lowercases
+   (`value.strip().casefold()`); internal whitespace is never collapsed. This is a stricter, not
+   looser, exact-match rule, and a regression test now proves internal whitespace cannot
+   manufacture a match.
 
 The overall slice result is unchanged by these corrections: 10 sources, 100 pilot identities, 0
 `ADAPTER_READY` / 9 `RESEARCH_ONLY`/`REVIEW_REQUIRED` / 1 `BLOCKED` (Bénéteau), and 9
