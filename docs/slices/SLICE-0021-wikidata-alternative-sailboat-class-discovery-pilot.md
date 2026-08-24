@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0021
 **Type:** DESIGN_RESEARCH
-**Status:** REVIEW
+**Status:** DONE
 **Stage:** 3.2 — rights-cleared alternative identity discovery after the direct-instance Wikidata ceiling
 **Depends on:** SLICE-0020 accepted / DONE
 **Blocks:** any later change to the production Wikidata discovery semantics based on alternative class routes
@@ -433,9 +433,9 @@ The normal single-writer slice-worktree rule remains in force.
 - [x] retained live results can be validated/recomputed offline;
 - [x] zero incremental yield is explicitly accepted as a valid result;
 - [x] the completion report distinguishes current-direct drift from alternative-route yield and gives an evidence-derived disposition for R1–R3;
-- [ ] independent review is completed before owner acceptance;
+- [x] independent review is completed before owner acceptance;
 - [x] the slice remains `REVIEW`, `BLOCKED` or `IN_PROGRESS` at implementation handoff and is never self-marked `DONE`;
-- [ ] explicit project-owner acceptance is required before closure to `DONE`;
+- [x] explicit project-owner acceptance is required before closure to `DONE`;
 - [x] SLICE-0022 is not created or started.
 
 ## Mandatory completion report
