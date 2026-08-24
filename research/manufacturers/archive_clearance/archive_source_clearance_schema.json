@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/archive-source-clearance/0020-v1",
+  "title": "HullQ SLICE-0020 Manufacturer Archive Source Clearance Assessment",
+  "description": "Non-canonical research artifact. Records here are use-specific rights/access clearance judgments for a fixed sample of ten manufacturer/heritage archive surfaces, per SOURCE_RIGHTS_POLICY.v0.1 and the SLICE-0007 fail-closed rights gate. This schema and its records MUST NOT be interpreted as, or reused as, canonical HullQ Brand/Organization/BoatModel/BoatDesign identity, and MUST NOT be treated as legal advice. No field here authorizes production ingestion, automated fetch, or bulk acquisition by itself; see each record's use_specific_decisions and adapter_classification for the actual, conservative, fail-closed result.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "slice_id", "review_date", "source_note", "sources"],
+  "properties": {
+    "schema_version": { "const": "0020-v1" },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this clearance document was most recently (re)written."
+    },
+    "slice_id": { "const": "SLICE-0020" },
+    "review_date": {
+      "type": "string",
+      "format": "date",
+      "description": "The single external-research review date applicable to all ten source assessments in this document."
+    },
+    "source_note": {
+      "type": "string",
+      "description": "Short human-readable note on research ownership: the ChatGPT-led external research pass performed the source-clearance research; Claude performed repository integration, schema validation and deterministic overlap computation only."
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/source_clearance_record" }
+    }
+  },
+  "$defs": {
+    "evidence_surface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["host", "path", "url"],
+      "properties": {
+        "host": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "url": { "type": "string", "format": "uri", "pattern": "^https://" }
+      }
+    },
+    "clearance_state": {
+      "type": "string",
+      "enum": ["allowed", "conditional", "legal_review_required", "prohibited", "unknown"]
+    },
+    "use_specific_decisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "research_reference",
+        "research_lead",
+        "identity_seed",
+        "production_value",
+        "automated_ingestion",
+        "bulk_bootstrap",
+        "artifact_redistribution"
+      ],
+      "properties": {
+        "research_reference": { "$ref": "#/$defs/clearance_state" },
+        "research_lead": { "$ref": "#/$defs/clearance_state" },
+        "identity_seed": { "$ref": "#/$defs/clearance_state" },
+        "production_value": { "$ref": "#/$defs/clearance_state" },
+        "automated_ingestion": { "$ref": "#/$defs/clearance_state" },
+        "bulk_bootstrap": { "$ref": "#/$defs/clearance_state" },
+        "artifact_redistribution": { "$ref": "#/$defs/clearance_state" }
+      }
+    },
+    "source_clearance_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_key",
+        "source_display_name",
+        "evidence_surfaces",
+        "access_evidence",
+        "rights_evidence",
+        "automation_evidence",
+        "review_date",
+        "research_finding_note",
+        "use_specific_decisions",
+        "systematic_use_status",
+        "adapter_classification",
+        "adapter_ready_test"
+      ],
+      "properties": {
+        "source_key": { "type": "string", "minLength": 1, "pattern": "^[a-z0-9_]+$" },
+        "source_display_name": { "type": "string", "minLength": 1 },
+        "evidence_surfaces": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/evidence_surface" }
+        },
+        "access_evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["public_access", "note", "evidence_urls"],
+          "description": "Public-readability/access evidence only, kept separate from rights/reuse evidence per SR-001.",
+          "properties": {
+            "public_access": {
+              "type": "string",
+              "enum": ["public", "registration_required", "paywalled", "unknown"]
+            },
+            "note": { "type": "string" },
+            "evidence_urls": {
+              "type": "array",
+              "items": { "type": "string", "format": "uri", "pattern": "^https://" }
+            }
+          }
+        },
+        "rights_evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["terms_or_licence_evidence", "note", "evidence_urls"],
+          "description": "Terms-of-service / licence / copyright-notice evidence only, kept separate from access and automation evidence per SR-001.",
+          "properties": {
+            "terms_or_licence_evidence": { "type": ["string", "null"] },
+            "note": { "type": "string" },
+            "evidence_urls": {
+              "type": "array",
+              "items": { "type": "string", "format": "uri", "pattern": "^https://" }
+            }
+          }
+        },
+        "automation_evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["robots_or_api_status", "note"],
+          "description": "robots.txt / API / automation-relevant evidence only, kept separate from access and rights evidence per SR-001. Individual robots.txt contents were not retained as reliable evidence during the ChatGPT-led research pass; absent explicit terms-based automation evidence, this MUST record unknown_unretrieved rather than an inferred permission.",
+          "properties": {
+            "robots_or_api_status": {
+              "type": "string",
+              "enum": [
+                "unknown_unretrieved",
+                "not_applicable",
+                "explicit_prohibition_via_terms",
+                "explicit_permission"
+              ]
+            },
+            "note": { "type": "string" }
+          }
+        },
+        "review_date": { "type": "string", "format": "date" },
+        "research_finding_note": {
+          "type": "string",
+          "description": "Free-text summary of the external research pass's finding for this source, as supplied."
+        },
+        "use_specific_decisions": { "$ref": "#/$defs/use_specific_decisions" },
+        "systematic_use_status": {
+          "type": "string",
+          "enum": ["CLEARED", "REQUIRES_REVIEW", "BLOCKED", "UNKNOWN"],
+          "description": "MUST NOT be CLEARED merely because a page is publicly viewable."
+        },
+        "adapter_classification": {
+          "type": "string",
+          "enum": ["ADAPTER_READY", "RESEARCH_ONLY / REVIEW_REQUIRED", "BLOCKED"]
+        },
+        "adapter_ready_test": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "identity_seed_allowed",
+            "automated_ingestion_allowed",
+            "no_contradictory_access_permission_field",
+            "bulk_bootstrap_allowed_or_bounded_conditions_documented",
+            "result"
+          ],
+          "description": "Explicit, recomputed evaluation of the SLICE-0020 ADAPTER_READY test for this source, so adapter_classification is never asserted without a checkable basis.",
+          "properties": {
+            "identity_seed_allowed": { "type": "boolean" },
+            "automated_ingestion_allowed": { "type": "boolean" },
+            "no_contradictory_access_permission_field": { "type": "boolean" },
+            "bulk_bootstrap_allowed_or_bounded_conditions_documented": { "type": "boolean" },
+            "result": { "type": "boolean" }
+          }
+        }
+      }
+    }
+  }
+}

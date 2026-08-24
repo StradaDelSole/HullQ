@@ -1,0 +1,1148 @@
+{
+  "pilot_version": "0020-identity-pilot-v1",
+  "slice_id": "SLICE-0020",
+  "generated_at": "2026-08-24T00:00:00Z",
+  "method": "Bounded, research-only identity-yield pilot. Exact/unambiguous-first overlap only: a match counts when a source-presented model name equals (case-insensitive with surrounding-whitespace trimming only -- internal whitespace is never collapsed or otherwise normalized) an accepted SLICE-0017/0018 AUTO_ADMIT candidate's preferred_label or an already-recorded alias. No fuzzy matching, manufacturer-prefix insertion/removal, token reordering, punctuation rewriting or generation collapsing was performed. A name whose exact-match signal resolves to more than one distinct accepted identity is unresolved_possible_overlap, never forced to a single match.",
+  "no_exact_overlap_signal_definition": "no_exact_overlap_signal means only that no exact/unambiguous overlap signal was found against the accepted comparison universe under this slice's exact-match rules. It does NOT mean the model identity is globally novel, safe for canonical admission, proof that no matching HullQ BoatModel exists, or permission to mint or create a canonical identity.",
+  "accepted_universe": {
+    "auto_admit_hullq_id_count": 1770,
+    "expected_canonical_boatmodel_count": 1770,
+    "manifest_paths": [
+      "research/bootstrap/wikidata/manifest.json",
+      "research/bootstrap/wikidata/sl0018-2500/manifest.json"
+    ]
+  },
+  "pilot_bounds": {
+    "source_count": 10,
+    "per_source_cap": 20,
+    "per_source_retained": 10,
+    "total_cap": 200,
+    "total_retained": 100
+  },
+  "totals": {
+    "retained": 100,
+    "exact_overlap": 9,
+    "no_exact_overlap_signal": 91,
+    "unresolved_possible_overlap": 0
+  },
+  "per_source": [
+    {
+      "source_key": "catalina_yachts",
+      "source_display_name": "Catalina Yachts",
+      "retained_count": 10,
+      "exact_overlap_count": 5,
+      "no_exact_overlap_signal_count": 5,
+      "unresolved_possible_overlap_count": 0
+    },
+    {
+      "source_key": "pearson_yachts",
+      "source_display_name": "Pearson Yachts",
+      "retained_count": 10,
+      "exact_overlap_count": 3,
+      "no_exact_overlap_signal_count": 7,
+      "unresolved_possible_overlap_count": 0
+    },
+    {
+      "source_key": "oyster_yachts",
+      "source_display_name": "Oyster Yachts",
+      "retained_count": 10,
+      "exact_overlap_count": 0,
+      "no_exact_overlap_signal_count": 10,
+      "unresolved_possible_overlap_count": 0
+    },
+    {
+      "source_key": "westerly_marine",
+      "source_display_name": "Westerly Marine / Westerly Owners Association",
+      "retained_count": 10,
+      "exact_overlap_count": 0,
+      "no_exact_overlap_signal_count": 10,
+      "unresolved_possible_overlap_count": 0
+    },
+    {
+      "source_key": "beneteau",
+      "source_display_name": "Bénéteau",
+      "retained_count": 10,
+      "exact_overlap_count": 0,
+      "no_exact_overlap_signal_count": 10,
+      "unresolved_possible_overlap_count": 0
+    },
+    {
+      "source_key": "wauquiez",
+      "source_display_name": "Wauquiez",
+      "retained_count": 10,
+      "exact_overlap_count": 0,
+      "no_exact_overlap_signal_count": 10,
+      "unresolved_possible_overlap_count": 0
+    },
+    {
+      "source_key": "elan",
+      "source_display_name": "Elan",
+      "retained_count": 10,
+      "exact_overlap_count": 0,
+      "no_exact_overlap_signal_count": 10,
+      "unresolved_possible_overlap_count": 0
+    },
+    {
+      "source_key": "cantiere_del_pardo_grand_soleil",
+      "source_display_name": "Cantiere del Pardo / Grand Soleil",
+      "retained_count": 10,
+      "exact_overlap_count": 0,
+      "no_exact_overlap_signal_count": 10,
+      "unresolved_possible_overlap_count": 0
+    },
+    {
+      "source_key": "hallberg_rassy",
+      "source_display_name": "Hallberg-Rassy",
+      "retained_count": 10,
+      "exact_overlap_count": 1,
+      "no_exact_overlap_signal_count": 9,
+      "unresolved_possible_overlap_count": 0
+    },
+    {
+      "source_key": "seawind_catamarans",
+      "source_display_name": "Seawind Catamarans",
+      "retained_count": 10,
+      "exact_overlap_count": 0,
+      "no_exact_overlap_signal_count": 10,
+      "unresolved_possible_overlap_count": 0
+    }
+  ],
+  "records": [
+    {
+      "source_key": "catalina_yachts",
+      "source_display_name": "Catalina Yachts",
+      "model_name": "Catalina 16.5",
+      "source_surface": "https://www.catalinayachts.com/brochure-archives/",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented",
+      "classification": "exact_overlap",
+      "matched_hullq_ids": [
+        "BM_WDT0_333d7c0c3c6245cca203747da7da364b"
+      ],
+      "matched_preferred_labels": [
+        "Catalina 16.5"
+      ]
+    },
+    {
+      "source_key": "catalina_yachts",
+      "source_display_name": "Catalina Yachts",
+      "model_name": "Catalina 18",
+      "source_surface": "https://www.catalinayachts.com/brochure-archives/",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented",
+      "classification": "exact_overlap",
+      "matched_hullq_ids": [
+        "BM_WDT0_2140840f34fd4e7d8555c82ddb2e38c0"
+      ],
+      "matched_preferred_labels": [
+        "Catalina 18"
+      ]
+    },
+    {
+      "source_key": "catalina_yachts",
+      "source_display_name": "Catalina Yachts",
+      "model_name": "Catalina 22 Capri",
+      "source_surface": "https://www.catalinayachts.com/brochure-archives/",
+      "discriminating_context": "monohull sailboat; explicit variant marker 'Capri' as presented in archive listing",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "catalina_yachts",
+      "source_display_name": "Catalina Yachts",
+      "model_name": "Catalina 22 Sport",
+      "source_surface": "https://www.catalinayachts.com/sport-series/",
+      "discriminating_context": "monohull sailboat; explicit variant marker 'Sport' as presented in archive listing",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "catalina_yachts",
+      "source_display_name": "Catalina Yachts",
+      "model_name": "Catalina 25",
+      "source_surface": "https://www.catalinayachts.com/brochure-archives/",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented",
+      "classification": "exact_overlap",
+      "matched_hullq_ids": [
+        "BM_WDT0_d1e32c72047b4e238ce1b108315bc16f"
+      ],
+      "matched_preferred_labels": [
+        "Catalina 25"
+      ]
+    },
+    {
+      "source_key": "catalina_yachts",
+      "source_display_name": "Catalina Yachts",
+      "model_name": "Catalina 27",
+      "source_surface": "https://www.catalinayachts.com/brochure-archives/",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented",
+      "classification": "exact_overlap",
+      "matched_hullq_ids": [
+        "BM_WDT0_7d14ed612cb84bd28783665c8e61d71a"
+      ],
+      "matched_preferred_labels": [
+        "Catalina 27"
+      ]
+    },
+    {
+      "source_key": "catalina_yachts",
+      "source_display_name": "Catalina Yachts",
+      "model_name": "Catalina 28",
+      "source_surface": "https://www.catalinayachts.com/brochure-archives/",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented",
+      "classification": "exact_overlap",
+      "matched_hullq_ids": [
+        "BM_WDT0_525ab27bdfd94397914ca8806ca8822f"
+      ],
+      "matched_preferred_labels": [
+        "Catalina 28"
+      ]
+    },
+    {
+      "source_key": "catalina_yachts",
+      "source_display_name": "Catalina Yachts",
+      "model_name": "Catalina 30 MKI",
+      "source_surface": "https://www.catalinayachts.com/brochure-archives/",
+      "discriminating_context": "monohull sailboat; explicit generation marker 'MKI' as presented in archive listing",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "catalina_yachts",
+      "source_display_name": "Catalina Yachts",
+      "model_name": "Catalina 320mkII",
+      "source_surface": "https://www.catalinayachts.com/brochure-archives/",
+      "discriminating_context": "monohull sailboat; explicit generation marker 'mkII' as presented in archive listing",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "catalina_yachts",
+      "source_display_name": "Catalina Yachts",
+      "model_name": "Catalina 350mkII",
+      "source_surface": "https://www.catalinayachts.com/brochure-archives/",
+      "discriminating_context": "monohull sailboat; explicit generation marker 'mkII' as presented in archive listing",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "pearson_yachts",
+      "source_display_name": "Pearson Yachts",
+      "model_name": "Pearson 26",
+      "source_surface": "https://www.pearsonyachts.org/pearson-sailboats.html",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented",
+      "classification": "exact_overlap",
+      "matched_hullq_ids": [
+        "BM_WDT0_5985144d072d44a9954a8535ab014f06"
+      ],
+      "matched_preferred_labels": [
+        "Pearson 26"
+      ]
+    },
+    {
+      "source_key": "pearson_yachts",
+      "source_display_name": "Pearson Yachts",
+      "model_name": "Pearson 26OD",
+      "source_surface": "https://www.pearsonyachts.org/models/pearson-26od.html",
+      "discriminating_context": "monohull sailboat; explicit variant marker 'OD' as presented on dedicated model page",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "pearson_yachts",
+      "source_display_name": "Pearson Yachts",
+      "model_name": "Pearson 26W",
+      "source_surface": "https://www.pearsonyachts.org/pearson-sailboats.html",
+      "discriminating_context": "monohull sailboat; explicit variant marker 'W' as presented in all-model table",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "pearson_yachts",
+      "source_display_name": "Pearson Yachts",
+      "model_name": "Pearson 35",
+      "source_surface": "https://www.pearsonyachts.org/pearson-sailboats.html",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "pearson_yachts",
+      "source_display_name": "Pearson Yachts",
+      "model_name": "Pearson 30",
+      "source_surface": "https://www.pearsonyachts.org/pearson-sailboats.html",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented",
+      "classification": "exact_overlap",
+      "matched_hullq_ids": [
+        "BM_WDT0_c79957873aa446d69f1624c33b7da0a8"
+      ],
+      "matched_preferred_labels": [
+        "Pearson 30"
+      ]
+    },
+    {
+      "source_key": "pearson_yachts",
+      "source_display_name": "Pearson Yachts",
+      "model_name": "Pearson 36",
+      "source_surface": "https://www.pearsonyachts.org/pearson-sailboats.html",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "pearson_yachts",
+      "source_display_name": "Pearson Yachts",
+      "model_name": "Pearson 303",
+      "source_surface": "https://www.pearsonyachts.org/pearson-sailboats.html",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented",
+      "classification": "exact_overlap",
+      "matched_hullq_ids": [
+        "BM_WDT0_6d6f48250a2b45a8b76820a3f8c52ce6"
+      ],
+      "matched_preferred_labels": [
+        "Pearson 303"
+      ]
+    },
+    {
+      "source_key": "pearson_yachts",
+      "source_display_name": "Pearson Yachts",
+      "model_name": "Pearson 422",
+      "source_surface": "https://www.pearsonyachts.org/pearson-sailboats.html",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "pearson_yachts",
+      "source_display_name": "Pearson Yachts",
+      "model_name": "Pearson 385",
+      "source_surface": "https://www.pearsonyachts.org/pearson-sailboats.html",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "pearson_yachts",
+      "source_display_name": "Pearson Yachts",
+      "model_name": "Pearson 36-2",
+      "source_surface": "https://www.pearsonyachts.org/pearson-sailboats.html",
+      "discriminating_context": "monohull sailboat; explicit generation marker '-2' as presented in all-model table",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "oyster_yachts",
+      "source_display_name": "Oyster Yachts",
+      "model_name": "Oyster 625",
+      "source_surface": "https://oysteryachts.com/heritage-yachts/",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "oyster_yachts",
+      "source_display_name": "Oyster Yachts",
+      "model_name": "Oyster 62",
+      "source_surface": "https://oysteryachts.com/heritage-yachts/",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "oyster_yachts",
+      "source_display_name": "Oyster Yachts",
+      "model_name": "Oyster 61",
+      "source_surface": "https://oysteryachts.com/heritage-yachts/",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "oyster_yachts",
+      "source_display_name": "Oyster Yachts",
+      "model_name": "Oyster 575",
+      "source_surface": "https://oysteryachts.com/heritage-yachts/",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "oyster_yachts",
+      "source_display_name": "Oyster Yachts",
+      "model_name": "Oyster 56",
+      "source_surface": "https://oysteryachts.com/heritage-yachts/",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "oyster_yachts",
+      "source_display_name": "Oyster Yachts",
+      "model_name": "Oyster 545",
+      "source_surface": "https://oysteryachts.com/heritage-yachts/oyster-545/",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented, dedicated model page",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "oyster_yachts",
+      "source_display_name": "Oyster Yachts",
+      "model_name": "Oyster 54",
+      "source_surface": "https://oysteryachts.com/heritage-yachts/",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "oyster_yachts",
+      "source_display_name": "Oyster Yachts",
+      "model_name": "Oyster 53",
+      "source_surface": "https://oysteryachts.com/heritage-yachts/",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "oyster_yachts",
+      "source_display_name": "Oyster Yachts",
+      "model_name": "Oyster 495",
+      "source_surface": "https://oysteryachts.com/heritage-yachts/",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "oyster_yachts",
+      "source_display_name": "Oyster Yachts",
+      "model_name": "Oyster 49",
+      "source_surface": "https://oysteryachts.com/heritage-yachts/",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "westerly_marine",
+      "source_display_name": "Westerly Marine / Westerly Owners Association",
+      "model_name": "Berwick",
+      "source_surface": "https://wiki.westerly-owners.co.uk/index.php?title=Main_Page",
+      "discriminating_context": "monohull sailboat; name preserved exactly as presented on the owners-association wiki, manufacturer-prefix not added per slice rule",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "westerly_marine",
+      "source_display_name": "Westerly Marine / Westerly Owners Association",
+      "model_name": "Centaur",
+      "source_surface": "https://wiki.westerly-owners.co.uk/index.php?title=Main_Page",
+      "discriminating_context": "monohull sailboat; name preserved exactly as presented on the owners-association wiki, manufacturer-prefix not added per slice rule",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "westerly_marine",
+      "source_display_name": "Westerly Marine / Westerly Owners Association",
+      "model_name": "Chieftain",
+      "source_surface": "https://wiki.westerly-owners.co.uk/index.php?title=Main_Page",
+      "discriminating_context": "monohull sailboat; name preserved exactly as presented on the owners-association wiki, manufacturer-prefix not added per slice rule",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "westerly_marine",
+      "source_display_name": "Westerly Marine / Westerly Owners Association",
+      "model_name": "Cirrus",
+      "source_surface": "https://wiki.westerly-owners.co.uk/index.php?title=Main_Page",
+      "discriminating_context": "monohull sailboat; name preserved exactly as presented on the owners-association wiki, manufacturer-prefix not added per slice rule",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "westerly_marine",
+      "source_display_name": "Westerly Marine / Westerly Owners Association",
+      "model_name": "Conway",
+      "source_surface": "https://wiki.westerly-owners.co.uk/index.php?title=Main_Page",
+      "discriminating_context": "monohull sailboat; name preserved exactly as presented on the owners-association wiki, manufacturer-prefix not added per slice rule",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "westerly_marine",
+      "source_display_name": "Westerly Marine / Westerly Owners Association",
+      "model_name": "Corsair 36",
+      "source_surface": "https://wiki.westerly-owners.co.uk/index.php?title=Main_Page",
+      "discriminating_context": "monohull sailboat; explicit model-number marker '36' as presented on the owners-association wiki, manufacturer-prefix not added per slice rule",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "westerly_marine",
+      "source_display_name": "Westerly Marine / Westerly Owners Association",
+      "model_name": "Falcon 34",
+      "source_surface": "https://wiki.westerly-owners.co.uk/index.php?title=Main_Page",
+      "discriminating_context": "monohull sailboat; explicit model-number marker '34' as presented on the owners-association wiki, manufacturer-prefix not added per slice rule",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "westerly_marine",
+      "source_display_name": "Westerly Marine / Westerly Owners Association",
+      "model_name": "Fulmar",
+      "source_surface": "https://wiki.westerly-owners.co.uk/index.php?title=Main_Page",
+      "discriminating_context": "monohull sailboat; name preserved exactly as presented on the owners-association wiki, manufacturer-prefix not added per slice rule",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "westerly_marine",
+      "source_display_name": "Westerly Marine / Westerly Owners Association",
+      "model_name": "Griffon 26",
+      "source_surface": "https://wiki.westerly-owners.co.uk/index.php?title=Main_Page",
+      "discriminating_context": "monohull sailboat; explicit model-number marker '26' as presented on the owners-association wiki, manufacturer-prefix not added per slice rule",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "westerly_marine",
+      "source_display_name": "Westerly Marine / Westerly Owners Association",
+      "model_name": "Konsort",
+      "source_surface": "https://wiki.westerly-owners.co.uk/index.php?title=Main_Page",
+      "discriminating_context": "monohull sailboat; name preserved exactly as presented on the owners-association wiki, manufacturer-prefix not added per slice rule",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "beneteau",
+      "source_display_name": "Bénéteau",
+      "model_name": "First 18",
+      "source_surface": "https://www.beneteau.com/en-us/first-1977-1983/first-18",
+      "discriminating_context": "monohull sailboat; sourced from heritage era index labeled 'First 1977-1983', dedicated model page",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "beneteau",
+      "source_display_name": "Bénéteau",
+      "model_name": "First 22",
+      "source_surface": "https://www.beneteau.com/en-us/heritage-sailing-yachts/first-1977-1983",
+      "discriminating_context": "monohull sailboat; sourced from heritage era index labeled 'First 1977-1983'",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "beneteau",
+      "source_display_name": "Bénéteau",
+      "model_name": "First 24",
+      "source_surface": "https://www.beneteau.com/en-us/heritage-sailing-yachts/first-1977-1983",
+      "discriminating_context": "monohull sailboat; sourced from heritage era index labeled 'First 1977-1983'",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "beneteau",
+      "source_display_name": "Bénéteau",
+      "model_name": "First 25",
+      "source_surface": "https://www.beneteau.com/en-us/heritage-sailing-yachts/first-1977-1983",
+      "discriminating_context": "monohull sailboat; sourced from heritage era index labeled 'First 1977-1983'",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "beneteau",
+      "source_display_name": "Bénéteau",
+      "model_name": "First 26",
+      "source_surface": "https://www.beneteau.com/en-us/heritage-sailing-yachts/first-1977-1983",
+      "discriminating_context": "monohull sailboat; sourced from heritage era index labeled 'First 1977-1983'; exact label 'First 26' preserved, no manufacturer prefix added or stripped per slice overlap-guard rule",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "beneteau",
+      "source_display_name": "Bénéteau",
+      "model_name": "First 27",
+      "source_surface": "https://www.beneteau.com/en-us/heritage-sailing-yachts/first-1977-1983",
+      "discriminating_context": "monohull sailboat; sourced from heritage era index labeled 'First 1977-1983'",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "beneteau",
+      "source_display_name": "Bénéteau",
+      "model_name": "First 28",
+      "source_surface": "https://www.beneteau.com/en-us/heritage-sailing-yachts/first-1977-1983",
+      "discriminating_context": "monohull sailboat; sourced from heritage era index labeled 'First 1977-1983'",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "beneteau",
+      "source_display_name": "Bénéteau",
+      "model_name": "First 29",
+      "source_surface": "https://www.beneteau.com/en-us/heritage-sailing-yachts/first-1977-1983",
+      "discriminating_context": "monohull sailboat; sourced from heritage era index labeled 'First 1977-1983'",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "beneteau",
+      "source_display_name": "Bénéteau",
+      "model_name": "First 32",
+      "source_surface": "https://www.beneteau.com/en-us/heritage-sailing-yachts/first-1977-1983",
+      "discriminating_context": "monohull sailboat; sourced from heritage era index labeled 'First 1977-1983'",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "beneteau",
+      "source_display_name": "Bénéteau",
+      "model_name": "First 38",
+      "source_surface": "https://www.beneteau.com/en-us/heritage-sailing-yachts/first-1977-1983",
+      "discriminating_context": "monohull sailboat; sourced from heritage era index labeled 'First 1977-1983'",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "wauquiez",
+      "source_display_name": "Wauquiez",
+      "model_name": "CENTURION 32",
+      "source_surface": "https://www.wauquiez.com/une-grande-histoire/",
+      "discriminating_context": "monohull sailboat; explicit range name 'CENTURION' as presented on historical timeline",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "wauquiez",
+      "source_display_name": "Wauquiez",
+      "model_name": "PRETORIEN",
+      "source_surface": "https://www.wauquiez.com/une-grande-histoire/",
+      "discriminating_context": "monohull sailboat; name preserved exactly as presented on historical timeline",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "wauquiez",
+      "source_display_name": "Wauquiez",
+      "model_name": "PILOT SALOON 60",
+      "source_surface": "https://www.wauquiez.com/une-grande-histoire/",
+      "discriminating_context": "monohull sailboat; explicit range name 'PILOT SALOON' as presented on historical timeline",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "wauquiez",
+      "source_display_name": "Wauquiez",
+      "model_name": "PILOT SALOON 54",
+      "source_surface": "https://www.wauquiez.com/une-grande-histoire/",
+      "discriminating_context": "monohull sailboat; explicit range name 'PILOT SALOON' as presented on historical timeline",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "wauquiez",
+      "source_display_name": "Wauquiez",
+      "model_name": "CENTURION 41S",
+      "source_surface": "https://www.wauquiez.com/une-grande-histoire/",
+      "discriminating_context": "monohull sailboat; explicit range name 'CENTURION' and variant suffix 'S' as presented on historical timeline",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "wauquiez",
+      "source_display_name": "Wauquiez",
+      "model_name": "CENTURION 48S",
+      "source_surface": "https://www.wauquiez.com/une-grande-histoire/",
+      "discriminating_context": "monohull sailboat; explicit range name 'CENTURION' and variant suffix 'S' as presented on historical timeline",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "wauquiez",
+      "source_display_name": "Wauquiez",
+      "model_name": "PILOT SALOON 48",
+      "source_surface": "https://www.wauquiez.com/une-grande-histoire/",
+      "discriminating_context": "monohull sailboat; explicit range name 'PILOT SALOON' as presented on historical timeline",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "wauquiez",
+      "source_display_name": "Wauquiez",
+      "model_name": "PILOT SALOON 43",
+      "source_surface": "https://www.wauquiez.com/une-grande-histoire/",
+      "discriminating_context": "monohull sailboat; explicit range name 'PILOT SALOON' as presented on historical timeline",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "wauquiez",
+      "source_display_name": "Wauquiez",
+      "model_name": "PILOT SALOON 40",
+      "source_surface": "https://www.wauquiez.com/une-grande-histoire/",
+      "discriminating_context": "monohull sailboat; explicit range name 'PILOT SALOON' as presented on historical timeline",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "wauquiez",
+      "source_display_name": "Wauquiez",
+      "model_name": "CENTURION 40S",
+      "source_surface": "https://www.wauquiez.com/une-grande-histoire/",
+      "discriminating_context": "monohull sailboat; explicit range name 'CENTURION' and variant suffix 'S' as presented on historical timeline",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "elan",
+      "source_display_name": "Elan",
+      "model_name": "Elan 31",
+      "source_surface": "https://www.elan-yachts.com/en/carbon/history",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented; sourced from official History page",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "elan",
+      "source_display_name": "Elan",
+      "model_name": "Elan 33",
+      "source_surface": "https://www.elan-yachts.com/en/carbon/history",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented; sourced from official History page",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "elan",
+      "source_display_name": "Elan",
+      "model_name": "Elan 39",
+      "source_surface": "https://www.elan-yachts.com/en/carbon/history",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented; sourced from official History page",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "elan",
+      "source_display_name": "Elan",
+      "model_name": "Elan 43",
+      "source_surface": "https://www.elan-yachts.com/en/carbon/history",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented; sourced from official History page",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "elan",
+      "source_display_name": "Elan",
+      "model_name": "Elan 35 Performance",
+      "source_surface": "https://www.elan-yachts.com/en/carbon/history",
+      "discriminating_context": "monohull sailboat; explicit variant marker 'Performance' as presented; sourced from official History page",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "elan",
+      "source_display_name": "Elan",
+      "model_name": "Elan 333",
+      "source_surface": "https://www.elan-yachts.com/en/carbon/history",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented; sourced from official History page",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "elan",
+      "source_display_name": "Elan",
+      "model_name": "Elan 340",
+      "source_surface": "https://www.elan-yachts.com/en/carbon/history",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented; sourced from official History page",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "elan",
+      "source_display_name": "Elan",
+      "model_name": "Impression 344",
+      "source_surface": "https://www.elan-yachts.com/en/carbon/history",
+      "discriminating_context": "monohull sailboat; distinct sub-line name 'Impression' rather than 'Elan' prefix, as presented; sourced from official History page",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "elan",
+      "source_display_name": "Elan",
+      "model_name": "Elan 350",
+      "source_surface": "https://www.elan-yachts.com/en/carbon/history",
+      "discriminating_context": "monohull sailboat; no additional generation/variant marker beyond model number as presented; sourced from official History page",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "elan",
+      "source_display_name": "Elan",
+      "model_name": "Elan E3",
+      "source_surface": "https://www.elan-yachts.com/en/previous-models",
+      "discriminating_context": "monohull sailboat; presented on the official 'Previous Models' surface, carrying the explicit 'E3' model designation",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "cantiere_del_pardo_grand_soleil",
+      "source_display_name": "Cantiere del Pardo / Grand Soleil",
+      "model_name": "Grand Soleil 34",
+      "source_surface": "https://old2.grandsoleil.net/history/",
+      "discriminating_context": "monohull sailboat; full 'Grand Soleil' name form as presented on heritage history page",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "cantiere_del_pardo_grand_soleil",
+      "source_display_name": "Cantiere del Pardo / Grand Soleil",
+      "model_name": "GS 35",
+      "source_surface": "https://old2.grandsoleil.net/history/",
+      "discriminating_context": "monohull sailboat; abbreviated 'GS' name form as presented on heritage history page, not expanded per slice rule",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "cantiere_del_pardo_grand_soleil",
+      "source_display_name": "Cantiere del Pardo / Grand Soleil",
+      "model_name": "GS 41",
+      "source_surface": "https://old2.grandsoleil.net/history/",
+      "discriminating_context": "monohull sailboat; abbreviated 'GS' name form as presented on heritage history page, not expanded per slice rule",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "cantiere_del_pardo_grand_soleil",
+      "source_display_name": "Cantiere del Pardo / Grand Soleil",
+      "model_name": "GS 39",
+      "source_surface": "https://old2.grandsoleil.net/history/",
+      "discriminating_context": "monohull sailboat; abbreviated 'GS' name form as presented on heritage history page, not expanded per slice rule",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "cantiere_del_pardo_grand_soleil",
+      "source_display_name": "Cantiere del Pardo / Grand Soleil",
+      "model_name": "GS 343",
+      "source_surface": "https://old2.grandsoleil.net/history/",
+      "discriminating_context": "monohull sailboat; abbreviated 'GS' name form as presented on heritage history page, not expanded per slice rule",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "cantiere_del_pardo_grand_soleil",
+      "source_display_name": "Cantiere del Pardo / Grand Soleil",
+      "model_name": "GS 46",
+      "source_surface": "https://old2.grandsoleil.net/history/",
+      "discriminating_context": "monohull sailboat; abbreviated 'GS' name form as presented on heritage history page, not expanded per slice rule",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "cantiere_del_pardo_grand_soleil",
+      "source_display_name": "Cantiere del Pardo / Grand Soleil",
+      "model_name": "GS 42",
+      "source_surface": "https://old2.grandsoleil.net/history/",
+      "discriminating_context": "monohull sailboat; abbreviated 'GS' name form as presented on heritage history page, not expanded per slice rule",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "cantiere_del_pardo_grand_soleil",
+      "source_display_name": "Cantiere del Pardo / Grand Soleil",
+      "model_name": "GS 45",
+      "source_surface": "https://old2.grandsoleil.net/history/",
+      "discriminating_context": "monohull sailboat; abbreviated 'GS' name form as presented on heritage history page, not expanded per slice rule",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "cantiere_del_pardo_grand_soleil",
+      "source_display_name": "Cantiere del Pardo / Grand Soleil",
+      "model_name": "GS 52",
+      "source_surface": "https://old2.grandsoleil.net/history/",
+      "discriminating_context": "monohull sailboat; abbreviated 'GS' name form as presented on heritage history page, not expanded per slice rule",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "cantiere_del_pardo_grand_soleil",
+      "source_display_name": "Cantiere del Pardo / Grand Soleil",
+      "model_name": "GS 40",
+      "source_surface": "https://old2.grandsoleil.net/history/",
+      "discriminating_context": "monohull sailboat; abbreviated 'GS' name form as presented on heritage history page, not expanded per slice rule",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "hallberg_rassy",
+      "source_display_name": "Hallberg-Rassy",
+      "model_name": "Hallberg-Rassy 29",
+      "source_surface": "https://oldshop.hallberg-rassy.com/contents/en-us/d291_Hallberg-Rassy-Elvstrom-Zippack-System.html",
+      "discriminating_context": "monohull sailboat; listed on the official Hallberg-Rassy Parts surface alongside the other retained pilot models; no additional generation marker",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "hallberg_rassy",
+      "source_display_name": "Hallberg-Rassy",
+      "model_name": "Hallberg-Rassy 31",
+      "source_surface": "https://oldshop.hallberg-rassy.com/contents/en-us/d291_Hallberg-Rassy-Elvstrom-Zippack-System.html",
+      "discriminating_context": "monohull sailboat; listed on the official Hallberg-Rassy Parts surface alongside the other retained pilot models; no additional generation marker",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "hallberg_rassy",
+      "source_display_name": "Hallberg-Rassy",
+      "model_name": "Hallberg-Rassy 310",
+      "source_surface": "https://oldshop.hallberg-rassy.com/contents/en-us/d291_Hallberg-Rassy-Elvstrom-Zippack-System.html",
+      "discriminating_context": "monohull sailboat; listed on the official Hallberg-Rassy Parts surface alongside the other retained pilot models; no additional generation marker",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "hallberg_rassy",
+      "source_display_name": "Hallberg-Rassy",
+      "model_name": "Hallberg-Rassy 34",
+      "source_surface": "https://oldshop.hallberg-rassy.com/contents/en-us/d291_Hallberg-Rassy-Elvstrom-Zippack-System.html",
+      "discriminating_context": "monohull sailboat; listed on the official Hallberg-Rassy Parts surface alongside the other retained pilot models; no additional generation marker",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "hallberg_rassy",
+      "source_display_name": "Hallberg-Rassy",
+      "model_name": "Hallberg-Rassy 340",
+      "source_surface": "https://oldshop.hallberg-rassy.com/contents/en-us/d291_Hallberg-Rassy-Elvstrom-Zippack-System.html",
+      "discriminating_context": "monohull sailboat; listed on the official Hallberg-Rassy Parts surface alongside the other retained pilot models; no additional generation marker",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "hallberg_rassy",
+      "source_display_name": "Hallberg-Rassy",
+      "model_name": "Hallberg-Rassy 342",
+      "source_surface": "https://oldshop.hallberg-rassy.com/contents/en-us/d291_Hallberg-Rassy-Elvstrom-Zippack-System.html",
+      "discriminating_context": "monohull sailboat; listed on the official Hallberg-Rassy Parts surface alongside the other retained pilot models; no additional generation marker",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "hallberg_rassy",
+      "source_display_name": "Hallberg-Rassy",
+      "model_name": "Hallberg-Rassy 352",
+      "source_surface": "https://oldshop.hallberg-rassy.com/contents/en-us/d291_Hallberg-Rassy-Elvstrom-Zippack-System.html",
+      "discriminating_context": "monohull sailboat; listed on the official Hallberg-Rassy Parts surface alongside the other retained pilot models; no additional generation marker",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "hallberg_rassy",
+      "source_display_name": "Hallberg-Rassy",
+      "model_name": "Hallberg-Rassy 372",
+      "source_surface": "https://oldshop.hallberg-rassy.com/contents/en-us/d291_Hallberg-Rassy-Elvstrom-Zippack-System.html",
+      "discriminating_context": "monohull sailboat; listed on the official Hallberg-Rassy Parts surface alongside the other retained pilot models; no additional generation marker",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "hallberg_rassy",
+      "source_display_name": "Hallberg-Rassy",
+      "model_name": "Hallberg-Rassy 40",
+      "source_surface": "https://oldshop.hallberg-rassy.com/contents/en-us/d291_Hallberg-Rassy-Elvstrom-Zippack-System.html",
+      "discriminating_context": "monohull sailboat; listed on the official Hallberg-Rassy Parts surface alongside the other retained pilot models; no additional generation marker",
+      "classification": "exact_overlap",
+      "matched_hullq_ids": [
+        "BM_WDT0_dd09fbf2d0eb46eba890a2fe339dfec6"
+      ],
+      "matched_preferred_labels": [
+        "Hallberg-Rassy 40"
+      ]
+    },
+    {
+      "source_key": "hallberg_rassy",
+      "source_display_name": "Hallberg-Rassy",
+      "model_name": "Hallberg-Rassy 412",
+      "source_surface": "https://oldshop.hallberg-rassy.com/contents/en-us/d291_Hallberg-Rassy-Elvstrom-Zippack-System.html",
+      "discriminating_context": "monohull sailboat; listed on the official Hallberg-Rassy Parts surface alongside the other retained pilot models; no additional generation marker",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "seawind_catamarans",
+      "source_display_name": "Seawind Catamarans",
+      "model_name": "Seawind 1600",
+      "source_surface": "https://www.seawindcats.com/blog/seawind-catamarans-40-years-of-sailing-excellence/",
+      "discriminating_context": "catamaran; no additional generation/variant marker beyond model number as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "seawind_catamarans",
+      "source_display_name": "Seawind Catamarans",
+      "model_name": "Seawind 1370",
+      "source_surface": "https://www.seawindcats.com/blog/seawind-catamarans-40-years-of-sailing-excellence/",
+      "discriminating_context": "catamaran; no additional generation/variant marker beyond model number as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "seawind_catamarans",
+      "source_display_name": "Seawind Catamarans",
+      "model_name": "Seawind 1270",
+      "source_surface": "https://www.seawindcats.com/blog/seawind-catamarans-40-years-of-sailing-excellence/",
+      "discriminating_context": "catamaran; no additional generation/variant marker beyond model number as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "seawind_catamarans",
+      "source_display_name": "Seawind Catamarans",
+      "model_name": "Seawind 1170",
+      "source_surface": "https://www.seawindcats.com/blog/seawind-catamarans-40-years-of-sailing-excellence/",
+      "discriminating_context": "catamaran; no additional generation/variant marker beyond model number as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "seawind_catamarans",
+      "source_display_name": "Seawind Catamarans",
+      "model_name": "Seawind 1160XL",
+      "source_surface": "https://www.seawindcats.com/blog/seawind-catamarans-40-years-of-sailing-excellence/",
+      "discriminating_context": "catamaran; explicit variant marker 'XL' as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "seawind_catamarans",
+      "source_display_name": "Seawind Catamarans",
+      "model_name": "Seawind 1160 Resort",
+      "source_surface": "https://www.seawindcats.com/blog/seawind-catamarans-40-years-of-sailing-excellence/",
+      "discriminating_context": "catamaran; explicit variant marker 'Resort' as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "seawind_catamarans",
+      "source_display_name": "Seawind Catamarans",
+      "model_name": "Seawind 1000",
+      "source_surface": "https://www.seawindcats.com/blog/seawind-catamarans-40-years-of-sailing-excellence/",
+      "discriminating_context": "catamaran; no additional generation/variant marker beyond model number as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "seawind_catamarans",
+      "source_display_name": "Seawind Catamarans",
+      "model_name": "Seawind 1200",
+      "source_surface": "https://www.seawindcats.com/blog/seawind-catamarans-40-years-of-sailing-excellence/",
+      "discriminating_context": "catamaran; no additional generation/variant marker beyond model number as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "seawind_catamarans",
+      "source_display_name": "Seawind Catamarans",
+      "model_name": "Seawind 1000XL",
+      "source_surface": "https://www.seawindcats.com/blog/seawind-catamarans-40-years-of-sailing-excellence/",
+      "discriminating_context": "catamaran; explicit variant marker 'XL' as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    },
+    {
+      "source_key": "seawind_catamarans",
+      "source_display_name": "Seawind Catamarans",
+      "model_name": "Seawind 1250",
+      "source_surface": "https://www.seawindcats.com/blog/seawind-catamarans-40-years-of-sailing-excellence/",
+      "discriminating_context": "catamaran; no additional generation/variant marker beyond model number as presented",
+      "classification": "no_exact_overlap_signal",
+      "matched_hullq_ids": [],
+      "matched_preferred_labels": []
+    }
+  ]
+}

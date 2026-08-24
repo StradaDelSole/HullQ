@@ -26,13 +26,13 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0017 | IMPLEMENTATION | DONE | Controlled Wikidata Tier-0 identity bootstrap across the first 1,000 direct sailboat-class candidates | SLICE-0016 accepted / DONE |
 | SLICE-0018 | IMPLEMENTATION | DONE | Baseline-preserving Wikidata Tier-0 expansion to the first <=2,500 direct sailboat-class discovery window | SLICE-0017 accepted / DONE |
 | SLICE-0019 | DESIGN_RESEARCH | DONE | Global active+historical series-sailboat manufacturer/yard universe + source-yield study | SLICE-0018 accepted / DONE |
-| SLICE-0020 | DESIGN_RESEARCH | READY | Manufacturer archive source-clearance assessment + bounded (<=20/source) identity-yield pilot over a fixed 10-source sample | SLICE-0019 accepted / DONE |
+| SLICE-0020 | DESIGN_RESEARCH | REVIEW | Manufacturer archive source-clearance assessment + bounded (<=20/source) identity-yield pilot over a fixed 10-source sample | SLICE-0019 accepted / DONE |
 
 ## Current execution rule
 
-**SLICE-0020 is the sole `READY` slice.** SLICE-0001 through SLICE-0019 are accepted / `DONE`. SLICE-0020's contract is `docs/slices/SLICE-0020-manufacturer-archive-source-clearance-identity-expansion-pilot.md`.
+**SLICE-0020 is in `REVIEW`.** SLICE-0001 through SLICE-0019 are accepted / `DONE`. SLICE-0020's contract is `docs/slices/SLICE-0020-manufacturer-archive-source-clearance-identity-expansion-pilot.md`.
 
-SLICE-0020 is a bounded DESIGN_RESEARCH slice. It assesses use-specific rights/access clearance for a fixed, precommitted sample of ten manufacturer/heritage archive surfaces and runs a strictly bounded (<=20 model identities per source, <=200 total), research-only identity-yield pilot against those same surfaces. It does not authorize, build or stage a production adapter, does not perform automated/bulk acquisition, and does not create or modify any canonical Brand/Organization/BoatModel/BoatDesign row. A truthful result of zero `ADAPTER_READY` sources is an acceptable outcome; the slice must not manufacture clearance to avoid reporting it.
+SLICE-0020 is a bounded DESIGN_RESEARCH slice. It assessed use-specific rights/access clearance for a fixed, precommitted sample of ten manufacturer/heritage archive surfaces and ran a strictly bounded (<=20 model identities per source, <=200 total), research-only identity-yield pilot against those same surfaces. It did not authorize, build or stage a production adapter, did not perform automated/bulk acquisition, and did not create or modify any canonical Brand/Organization/BoatModel/BoatDesign row. The measured result is a truthful zero `ADAPTER_READY` sources (9 `RESEARCH_ONLY`/`REVIEW_REQUIRED`, 1 `BLOCKED` — Bénéteau); this was not padded or rounded up. See `research/manufacturers/archive_clearance/ARCHIVE_SOURCE_CLEARANCE_REPORT.md`.
 
 SLICE-0020 does not authorize SLICE-0021. No later slice is made `READY` merely by SLICE-0020 reaching `REVIEW`.
 
@@ -366,7 +366,7 @@ baseline-preserving Wikidata <=2,500 expansion    DONE — SLICE-0018
         ↓
 global manufacturer/yard universe + source yield  DONE — SLICE-0019
         ↓
-archive source clearance + identity pilot         READY — SLICE-0020
+archive source clearance + identity pilot         REVIEW — SLICE-0020
         ↓
 next measured Stage-3 implementation decision      LATER / NOT AUTHORIZED
 ```
@@ -425,4 +425,4 @@ It created and modified no canonical HullQ entities and did not authorize system
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-SLICE-0019 is closed and accepted `DONE` (see `docs/slices/SLICE-0019-acceptance-closure.md`). SLICE-0020 is `READY` (see `docs/slices/SLICE-0020-manufacturer-archive-source-clearance-identity-expansion-pilot.md`) and may now use the normal `START_SLICE.bat` workflow. No slice beyond SLICE-0020 has been created or started.
+SLICE-0019 is closed and accepted `DONE` (see `docs/slices/SLICE-0019-acceptance-closure.md`). SLICE-0020 is implemented and in `REVIEW` (see `docs/slices/SLICE-0020-manufacturer-archive-source-clearance-identity-expansion-pilot.md` and `research/manufacturers/archive_clearance/ARCHIVE_SOURCE_CLEARANCE_REPORT.md`), pending independent review and project-owner acceptance; it is not `DONE`. No slice beyond SLICE-0020 has been created or started.
