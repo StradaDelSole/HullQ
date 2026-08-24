@@ -465,6 +465,15 @@ It MUST NOT merge its own PR, mark the slice `DONE`, create/start SLICE-0022, or
 
 ## Completion report (implementation handoff)
 
+### Amendment note (independent review round 1)
+
+Independent review of PR #50 returned **AMEND** on the first implementation head (`9168400511d8c19944c15c78692d23a81a918fac`, later superseded by docs-only commit `a11b06a590bc30438511460c889dac46fabc06b2`). The measured live result itself (R0 zero drift; R1 +53; R2 +0; R3 +4; total alternative union 57; no canonical writes) was accepted provisionally and was NOT rerun or altered. Two amendment findings were corrected on top of that same retained measurement:
+
+1. **Hardened offline reproducibility / fail-closed checks.** `--verify` previously recomputed drift/incremental/cross-route-overlap/sample-selection/identity-signal/disposition but did not independently recompute every structurally-derivable retained field (route_id/version/query_text/query_sha256/result_count/hard_limit/possibly_truncated/qid_list_digest per route; immutable-input manifest SHA256 references and 1,829/1,770 counts against what was actually loaded; exact candidate-vs-selected-QID-set equality; route_membership; category_totals). Added `verify_route_record_self_consistency`, `verify_immutable_inputs_self_consistency`, `verify_sampled_candidates_self_consistency` to `wikidata_sl0021_alt_discovery.py`, wired into `--verify`. Added `SampleCompletenessError` / `verify_sample_entity_detail_completeness`, wired into `--live` immediately after `fetch_sampled_entity_details` and before any retained document is written, so a missing/duplicate/unexpected/incomplete entity-detail fetch aborts the run rather than silently retaining a partial sample. Added 30 new tamper-detection unit tests (73 total in the pure-logic test file), each proving the specific check fails on a tampered field. The already-retained live measurement was re-verified against the hardened checks and passes unchanged (see Validation below) — it was not regenerated.
+2. **Removed the self-referential exact-head CI claim.** The prior External-verification section recorded CI PASS on head `9168400...`, but that head was superseded by a same-PR follow-up commit before the report was read, making the "current exact head" claim stale by construction. The wording below now describes that run as prior/pre-amendment implementation-head evidence. The final exact-head CI result for this amendment round is reported to the operator in the final chat response only, per the reviewer's explicit instruction, and is not committed to this file.
+
+Recommended slice state remains `REVIEW`; scope remains complete (`YES`) — this is a correction/hardening pass on already-complete scope, not new scope.
+
 ### Slice
 
 - Slice ID: `SLICE-0021`
@@ -479,11 +488,12 @@ It MUST NOT merge its own PR, mark the slice `DONE`, create/start SLICE-0022, or
   - `scripts/bootstrap/wikidata_sl0021_alt_discovery_runner.py` (new — `--live` one-shot acquisition runner, `--verify` offline recompute/validation runner)
   - `research/bootstrap/wikidata/sl0021-alt-discovery/discovery_probe_schema.json`, `sampled_candidates_schema.json` (new JSON Schema Draft 2020-12 contracts)
   - `research/bootstrap/wikidata/sl0021-alt-discovery/discovery_probe.json`, `sampled_candidates.json`, `REPORT.md` (new — the one retained live-acquisition result)
-  - `tests/unit/test_wikidata_sl0021_alt_discovery.py`, `tests/unit/test_wikidata_sl0021_adapter.py` (new — 59 tests)
+  - `tests/unit/test_wikidata_sl0021_alt_discovery.py`, `tests/unit/test_wikidata_sl0021_adapter.py` (89 tests: 73 pure-logic incl. 30 amendment tamper-detection tests, 16 adapter)
   - `.github/workflows/ci.yml` (extended — offline schema validation + `--verify` step for the retained SLICE-0021 documents; no live Wikidata request added to CI)
   - `docs/slices/SLICE-0021-wikidata-alternative-sailboat-class-discovery-pilot.md`, `docs/slices/INDEX.md`, `docs/PROJECT_STATE.md` (status/index updates)
 - Requirements implemented or researched: this slice's own controlling contract (bounded discovery-semantics measurement); no `REQ-*` IDs were added (DESIGN_RESEARCH slice, no new normative behavior).
-- Tests/fixtures added: 59 new unit tests (43 pure-logic, 16 adapter), 2 new JSON Schemas, 2 retained JSON result documents.
+- Tests/fixtures added: 89 unit tests total (43 original pure-logic + 30 amendment tamper-detection pure-logic + 16 adapter), 2 JSON Schemas, 2 retained JSON result documents (unchanged by the amendment).
+- **Amendment delta (this round, on top of the original implementation commit):** `src/hullq/bootstrap/wikidata_sl0021_alt_discovery.py` — added `SampleCompletenessError`, `verify_sample_entity_detail_completeness`, `verify_route_record_self_consistency`, `verify_immutable_inputs_self_consistency`, `verify_sampled_candidates_self_consistency`. `scripts/bootstrap/wikidata_sl0021_alt_discovery_runner.py` — wired the four new checks into `--verify`, and `verify_sample_entity_detail_completeness` into `--live` immediately after `fetch_sampled_entity_details`. `tests/unit/test_wikidata_sl0021_alt_discovery.py` — added 30 tamper-detection tests. `docs/slices/SLICE-0021-wikidata-alternative-sailboat-class-discovery-pilot.md` — added the amendment note above and corrected the External-verification CI wording. No change to `discovery_probe.json`, `sampled_candidates.json`, the JSON schemas, `src/hullq/sources/wikidata.py`, `docs/slices/INDEX.md`, or `docs/PROJECT_STATE.md` in this round.
 
 ### Validation
 
@@ -494,13 +504,13 @@ It MUST NOT merge its own PR, mark the slice `DONE`, create/start SLICE-0022, or
   - `uv run mypy src`
   - `uv run coverage run -m pytest` then `uv run coverage report`
   - `uv run python scripts/validate_repository.py`
-  - `uv run python scripts/bootstrap/wikidata_sl0021_alt_discovery_runner.py --live --user-agent "HullQ/0.1 (research@stradadelsole.dev; https://github.com/StradaDelSole/HullQ)"` (the one bounded live acquisition)
-  - `uv run python scripts/bootstrap/wikidata_sl0021_alt_discovery_runner.py --verify` (offline reproducibility)
+  - `uv run python scripts/bootstrap/wikidata_sl0021_alt_discovery_runner.py --verify` (offline reproducibility, re-run against the hardened checks; **no live acquisition was rerun in this amendment round**)
 - Results:
   - Ruff format/check: clean.
   - mypy strict on `src`: no issues (34 source files).
-  - pytest: **1535 passed, 207 skipped** (skips are the pre-existing PostgreSQL/live-network integration tests that require `HULLQ_TEST_DATABASE_URL`/`--run-live`, unrelated to this slice), 0 failed.
-  - Coverage: **94.03%** overall branch coverage (repo `fail_under=90`); new pure-logic module at 95.77%, new adapter code paths exercised by 16 dedicated tests.
+  - pytest: **1565 passed, 207 skipped** (skips are the pre-existing PostgreSQL/live-network integration tests that require `HULLQ_TEST_DATABASE_URL`/`--run-live`, unrelated to this slice), 0 failed.
+  - Coverage: **94.16%** overall branch coverage (repo `fail_under=90`); new pure-logic module at 96.52%.
+  - Hardened offline `--verify`: **PASS** — every recomputed value (including the newly added structural self-consistency checks) matches the already-retained `discovery_probe.json`/`sampled_candidates.json` documents exactly; those two files are byte-unchanged by this amendment (`git diff` empty).
   - Repository validator: PASS (27 active schemas, 88 requirements/88 acceptance criteria, no draft artifacts).
   - Rights gate before the first network request: `automated_ingestion=allowed`, `bulk_bootstrap=allowed` — both confirmed ALLOWED before any HTTP request was dispatched.
   - Immutable inputs fingerprinted and hard-asserted before acquisition: SLICE-0017 manifest sha256 `076b0d64...` (1,000 candidates), SLICE-0018 manifest sha256 `41ef238c...` (829 delta candidates); combined retained direct-discovery universe **1,829** QIDs exactly; combined AUTO_ADMIT universe **1,770** identities exactly. Both retained manifests remain byte-unchanged (git shows no diff on either path).
@@ -517,12 +527,12 @@ It MUST NOT merge its own PR, mark the slice `DONE`, create/start SLICE-0022, or
 
 ### External verification
 
-- Remote CI: `PASS` — observed on the exact pushed head `9168400511d8c19944c15c78692d23a81a918fac` (PR #50, https://github.com/StradaDelSole/HullQ/pull/50, run `32749212070`): `quality (ubuntu-latest)` PASS, `quality (windows-latest)` PASS, `dependency audit` PASS, `db integration (PostgreSQL 18)` PASS (this job also ran the new SLICE-0021 schema-validation + offline `--verify` step, which passed).
-- Other external gates: `NOT APPLICABLE` beyond the CI run above.
+- Remote CI: **prior/pre-amendment implementation-head evidence, not verification of the current exact head.** CI run `32749212070` on PR #50 passed all four jobs (`quality (ubuntu-latest)`, `quality (windows-latest)`, `dependency audit`, `db integration (PostgreSQL 18)`) against the then-current implementation head `9168400511d8c19944c15c78692d23a81a918fac`. That head was superseded within the same PR by a later commit before this amendment, so it is recorded here only as evidence that the original implementation passed CI at the time it was produced — it does NOT describe the exact head this amendment round produces. The exact-head CI result for this amendment round is reported to the operator in the final chat response for this round, not committed to this file (per explicit reviewer instruction, to avoid recreating the same self-referential-head problem this finding corrects).
+- Other external gates: `NOT APPLICABLE` beyond the CI run(s) referenced above.
 
 ### Findings
 
-- Unresolved findings: none identified during implementation.
+- Unresolved findings: none identified during implementation. Independent review round 1 returned **AMEND** with two findings; both are addressed by this amendment (see "Amendment note" above): (1) offline `--verify` hardened with structural self-consistency recomputation and a fail-closed live-run entity-detail completeness check; (2) the completion report's CI wording no longer claims the superseded head as the current exact head.
 - Spec/ADR ambiguities: the controlling slice's disposition vocabulary (`RouteDisposition`) leaves the exact NO_INCREMENTAL_YIELD/RESEARCH_ONLY_SIGNAL/FOLLOWUP_DISCOVERY_CANDIDATE boundary as an "evidence-derived recommendation," not a precise formula. This implementation adopted a documented, deterministic heuristic (`determine_route_disposition`): zero incremental yield → `NO_INCREMENTAL_YIELD`; incremental yield where every sampled candidate is an exact accepted-QID overlap → `RESEARCH_ONLY_SIGNAL`; incremental yield containing at least one non-overlap signal (new, ambiguous, or other-QID-matching) → `FOLLOWUP_DISCOVERY_CANDIDATE`. This is a recommendation-only computation with no production consequence; independent review may wish to confirm the heuristic's reasoning.
 - Scope deviations: none. No production Wikidata discovery-query change, no canonical mutation, no SLICE-0022 creation, no additional discovery route beyond R0–R3, no manufacturer-archive/Wikipedia/PetScan/DBpedia acquisition.
 

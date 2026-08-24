@@ -9,19 +9,31 @@ Two independent modes:
     alternative-route incremental yield against CURRENT R0, cross-route
     overlap, a deterministic hard-capped entity-detail sample, exact-only
     identity-signal classification against the accepted 1,770 AUTO_ADMIT
-    universe, and evidence-derived route dispositions. Writes
+    universe, and evidence-derived route dispositions. Fails closed
+    (``SampleCompletenessError``) before any retained document is written if
+    the fetched entity-detail response does not exactly cover the selected
+    sample (missing, duplicate, or unexpected QID). Writes
     ``discovery_probe.json`` + ``sampled_candidates.json`` + ``REPORT.md``
     under ``research/bootstrap/wikidata/sl0021-alt-discovery/``. Requires
     network access and is NOT part of normal CI.
 
 ``--verify``
     Fully offline (zero network access): reloads the already-retained
-    ``discovery_probe.json`` + ``sampled_candidates.json``, recomputes every
-    derived measurement (drift, incremental yield, cross-route overlap,
-    sample selection, identity-signal classification, route dispositions)
-    purely from the retained raw QID/entity-detail facts, and fails loudly on
-    any mismatch against the committed documents. This is what normal CI runs
-    to prove the retained result is offline-reproducible.
+    ``discovery_probe.json`` + ``sampled_candidates.json`` and recomputes
+    EVERY structurally-derivable field and every derived measurement purely
+    from the documents' own retained raw facts (never from each document's
+    own already-computed summary fields, so a tampered summary field cannot
+    silently validate itself): per-route ``route_id``/``version``/
+    ``query_text``/``query_sha256``/``result_count``/``hard_limit``/
+    ``possibly_truncated``/``qid_list_digest``; immutable-input manifest
+    SHA256 references and 1,829/1,770 counts against what was actually
+    (re-)loaded; drift; incremental yield; cross-route overlap; sample
+    selection; exact candidate-vs-selected-QID-set equality (no missing/
+    extra/duplicate candidate row); every candidate's route membership;
+    recomputed ``category_totals``; identity-signal classification; and route
+    dispositions. Fails loudly (nonzero exit, listing every mismatch) on any
+    inconsistency. This is what normal CI runs to prove the retained result
+    is offline-reproducible and internally consistent.
 
 Usage::
 
@@ -91,6 +103,7 @@ def run_live(*, user_agent: str) -> tuple[dict[str, Any], dict[str, Any]]:
         determine_route_disposition,
         load_and_fingerprint_immutable_inputs,
         select_entity_detail_sample,
+        verify_sample_entity_detail_completeness,
     )
     from hullq.sources.rights import DecisionOutcome, SourceUse, check_source_use
     from hullq.sources.wikidata import WIKIDATA_SOURCE_ID, WikidataAdapter, WikidataAdapterConfig
@@ -208,6 +221,15 @@ def run_live(*, user_agent: str) -> tuple[dict[str, Any], dict[str, Any]]:
         )
         print(f"  fetched_entity_detail_count={len(details)}", flush=True)
 
+        # Fail closed before any candidate-row/document assembly if the
+        # fetched entity details do not exactly cover the selected sample —
+        # a missing, duplicate, or unexpected QID (including one that
+        # silently resolved to a non-item or absent entity) MUST abort the
+        # run rather than silently retain a partial/contaminated sample.
+        verify_sample_entity_detail_completeness(
+            sample.selected_qids, [detail.qid for detail in details]
+        )
+
     accepted_label_index = build_accepted_label_index(
         accepted_universe.accepted_auto_admit_identities
     )
@@ -291,6 +313,9 @@ def run_verify() -> None:
         determine_route_disposition,
         load_and_fingerprint_immutable_inputs,
         select_entity_detail_sample,
+        verify_immutable_inputs_self_consistency,
+        verify_route_record_self_consistency,
+        verify_sampled_candidates_self_consistency,
     )
 
     print(
@@ -309,19 +334,28 @@ def run_verify() -> None:
             mismatches.append(f"{label}: recomputed={actual!r} != retained={expected!r}")
 
     accepted_universe = load_and_fingerprint_immutable_inputs()
-    _check(
-        "retained_direct_discovery_count",
-        len(accepted_universe.retained_direct_discovery_qids),
-        discovery_probe["immutable_inputs"]["retained_direct_discovery_count"],
-    )
-    _check(
-        "accepted_auto_admit_count",
-        len(accepted_universe.accepted_auto_admit_identities),
-        discovery_probe["immutable_inputs"]["accepted_auto_admit_count"],
+
+    # Immutable-inputs self-consistency: retained manifest SHA256 references
+    # and retained 1,829/1,770 counts must equal what was ACTUALLY loaded
+    # (load_and_fingerprint_immutable_inputs itself already fails closed if
+    # the loaded universe has drifted from the accepted constants).
+    mismatches.extend(
+        verify_immutable_inputs_self_consistency(
+            discovery_probe["immutable_inputs"], accepted_universe
+        )
     )
 
     route_qids = {rid: rec["qids"] for rid, rec in discovery_probe["routes"].items()}
     r0_qids = route_qids["R0"]
+
+    # Per-route self-consistency: route_id/version/query_text/query_sha256/
+    # result_count/hard_limit/possibly_truncated/qid_list_digest all
+    # recomputed from the fixed R0-R3 definitions and the record's own
+    # retained qids — never re-derived from the record's own summary fields.
+    for route_key in ("R0", "R1", "R2", "R3"):
+        mismatches.extend(
+            verify_route_record_self_consistency(route_key, discovery_probe["routes"][route_key])
+        )
 
     drift = compute_r0_drift(accepted_universe.retained_direct_discovery_qids, r0_qids)
     stored_drift = discovery_probe["drift"]
@@ -355,6 +389,14 @@ def run_verify() -> None:
             len(incremental_by_route[rid]),
             discovery_probe["incremental"][rid]["count"],
         )
+
+    # Sampled-candidates structural self-consistency: selection-count
+    # arithmetic, exact candidate-vs-selected-QID-set equality (no missing/
+    # extra/duplicate row), every candidate's route_membership recomputed
+    # from the FULL incremental sets, and recomputed category_totals.
+    mismatches.extend(
+        verify_sampled_candidates_self_consistency(sampled_candidates, incremental_by_route)
+    )
 
     cross_route_overlap = compute_cross_route_overlap(incremental_by_route)
     _check(

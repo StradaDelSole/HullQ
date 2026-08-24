@@ -62,6 +62,7 @@ __all__ = [
     "ImmutableInputIntegrityError",
     "Route",
     "RouteDisposition",
+    "SampleCompletenessError",
     "SampleSelection",
     "build_accepted_label_index",
     "build_accepted_universe",
@@ -79,6 +80,10 @@ __all__ = [
     "qid_list_digest",
     "qid_sort_key",
     "select_entity_detail_sample",
+    "verify_immutable_inputs_self_consistency",
+    "verify_route_record_self_consistency",
+    "verify_sample_entity_detail_completeness",
+    "verify_sampled_candidates_self_consistency",
 ]
 
 # ---------------------------------------------------------------------------
@@ -861,3 +866,254 @@ def build_sampled_candidates_document(
         "r3_fail_closed_notice": R3_FAIL_CLOSED_NOTICE,
         "no_exact_signal_notice": NO_EXACT_SIGNAL_NOTICE,
     }
+
+
+# ---------------------------------------------------------------------------
+# Fail-closed completeness check — live entity-detail fetch vs selected sample
+# ---------------------------------------------------------------------------
+
+
+class SampleCompletenessError(RuntimeError):
+    """Raised when the live entity-detail fetch for the selected SLICE-0021
+    sample does not exactly cover the selected sample QID set.
+
+    A missing, duplicate, or unexpected QID in the ``wbgetentities`` response
+    (including a QID silently absent because it resolved to a non-item or
+    missing entity) MUST fail the run closed before any retained document is
+    written, rather than silently persist a partial or contaminated sample —
+    mirrors the accepted SLICE-0018 ``DeltaCompletenessError`` /
+    ``verify_entity_acquisition_completeness`` contract.
+    """
+
+
+def verify_sample_entity_detail_completeness(
+    selected_qids: Sequence[str], fetched_qids: Sequence[str]
+) -> None:
+    """Fail closed unless *fetched_qids* covers *selected_qids* exactly.
+
+    Checks, before any candidate-row or document assembly uses the fetched
+    entity details:
+
+    - no selected QID is missing from the fetched QIDs (including a QID that
+      silently resolved to a non-item or absent entity);
+    - no unexpected QID appears among the fetched QIDs;
+    - no QID is fetched more than once.
+
+    Callers pass the plain QID list extracted from the adapter's
+    ``fetch_sampled_entity_details`` result (``[d.qid for d in details]``);
+    this function stays decoupled from ``hullq.sources.wikidata`` so it
+    remains pure/offline-testable.
+    """
+    selected_set = set(selected_qids)
+    fetched_list = list(fetched_qids)
+    fetched_set = set(fetched_list)
+
+    duplicates = {qid for qid in fetched_set if fetched_list.count(qid) > 1}
+    missing = selected_set - fetched_set
+    unexpected = fetched_set - selected_set
+
+    if duplicates or missing or unexpected:
+        raise SampleCompletenessError(
+            "Entity-detail fetch did not exactly cover the selected SLICE-0021 sample "
+            f"(selected={len(selected_set)}, fetched={len(fetched_list)}): "
+            f"missing={sorted(missing, key=qid_sort_key)} "
+            f"unexpected={sorted(unexpected, key=qid_sort_key)} "
+            f"duplicates={sorted(duplicates, key=qid_sort_key)}. Refusing to retain a "
+            "partial/contaminated entity-detail sample."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Offline self-consistency verification of already-retained documents
+# ---------------------------------------------------------------------------
+#
+# These functions recompute every structurally-derivable field of a retained
+# discovery_probe.json / sampled_candidates.json document from the document's
+# OWN retained raw facts (QID lists, candidate rows) plus the fixed R0-R3
+# route definitions and a freshly (re-)loaded AcceptedUniverse — never from
+# the document's own already-computed summary fields — so a tampered summary
+# field cannot silently validate itself. Each returns a list of
+# human-readable mismatch descriptions; an empty list means fully
+# self-consistent. Pure and offline: no network access.
+
+_ROUTE_BY_KEY: dict[str, Route] = {"R0": R0, "R1": R1, "R2": R2, "R3": R3}
+
+
+def verify_route_record_self_consistency(route_key: str, record: dict[str, Any]) -> list[str]:
+    """Recompute one retained route record's ``route_id``/``version``/
+    ``query_text``/``query_sha256``/``result_count``/``hard_limit``/
+    ``possibly_truncated``/``qid_list_digest`` from the fixed route
+    definition for *route_key* and the record's own retained ``qids`` list.
+    """
+    if route_key not in _ROUTE_BY_KEY:
+        return [f"unknown route key {route_key!r}"]
+    expected = _ROUTE_BY_KEY[route_key]
+    mismatches: list[str] = []
+
+    if record.get("route_id") != expected.route_id:
+        mismatches.append(
+            f"{route_key}.route_id={record.get('route_id')!r} != expected {expected.route_id!r}"
+        )
+    if record.get("version") != expected.version:
+        mismatches.append(
+            f"{route_key}.version={record.get('version')!r} != expected {expected.version!r}"
+        )
+    if record.get("query_text") != expected.query_text:
+        mismatches.append(f"{route_key}.query_text does not match the fixed route definition")
+
+    expected_sha256 = compute_query_sha256(expected)
+    if record.get("query_sha256") != expected_sha256:
+        mismatches.append(
+            f"{route_key}.query_sha256={record.get('query_sha256')!r} != recomputed "
+            f"{expected_sha256!r}"
+        )
+
+    qids = record.get("qids", [])
+    if len(qids) != len(set(qids)):
+        mismatches.append(f"{route_key}.qids contains duplicate QID(s)")
+    if record.get("result_count") != len(qids):
+        mismatches.append(
+            f"{route_key}.result_count={record.get('result_count')!r} != len(qids)={len(qids)}"
+        )
+    if record.get("hard_limit") != ROUTE_HARD_LIMIT:
+        mismatches.append(
+            f"{route_key}.hard_limit={record.get('hard_limit')!r} != {ROUTE_HARD_LIMIT}"
+        )
+    expected_truncated = len(qids) >= ROUTE_HARD_LIMIT
+    if record.get("possibly_truncated") != expected_truncated:
+        mismatches.append(
+            f"{route_key}.possibly_truncated={record.get('possibly_truncated')!r} != "
+            f"expected {expected_truncated!r}"
+        )
+    expected_digest = qid_list_digest(qids)
+    if record.get("qid_list_digest") != expected_digest:
+        mismatches.append(
+            f"{route_key}.qid_list_digest={record.get('qid_list_digest')!r} != recomputed "
+            f"{expected_digest!r}"
+        )
+    return mismatches
+
+
+def verify_immutable_inputs_self_consistency(
+    immutable_inputs: dict[str, Any], accepted_universe: AcceptedUniverse
+) -> list[str]:
+    """Compare a retained ``discovery_probe.json`` document's
+    ``immutable_inputs`` block against a freshly (re-)loaded
+    ``AcceptedUniverse`` (typically from ``load_and_fingerprint_immutable_inputs``,
+    which already fails closed on its own if the loaded universe itself has
+    drifted from the accepted SHA256/1,829/1,770 constants).
+
+    Also independently re-asserts the accepted-constant counts here as
+    defense-in-depth: a caller supplying an ``AcceptedUniverse`` built by any
+    other path (bypassing the fail-closed loader) still cannot pass this
+    check with a wrong-sized universe.
+    """
+    mismatches: list[str] = []
+    sl0017 = immutable_inputs.get("sl0017_manifest", {})
+    sl0018 = immutable_inputs.get("sl0018_manifest", {})
+    if sl0017.get("sha256") != accepted_universe.sl0017_sha256:
+        mismatches.append(
+            f"immutable_inputs.sl0017_manifest.sha256={sl0017.get('sha256')!r} != actual "
+            f"loaded {accepted_universe.sl0017_sha256!r}"
+        )
+    if sl0018.get("sha256") != accepted_universe.sl0018_sha256:
+        mismatches.append(
+            f"immutable_inputs.sl0018_manifest.sha256={sl0018.get('sha256')!r} != actual "
+            f"loaded {accepted_universe.sl0018_sha256!r}"
+        )
+
+    actual_direct_count = len(accepted_universe.retained_direct_discovery_qids)
+    retained_direct_discovery_count = immutable_inputs.get("retained_direct_discovery_count")
+    if retained_direct_discovery_count != actual_direct_count:
+        mismatches.append(
+            f"immutable_inputs.retained_direct_discovery_count={retained_direct_discovery_count!r} "
+            f"!= actual loaded {actual_direct_count!r}"
+        )
+    if actual_direct_count != RETAINED_DIRECT_DISCOVERY_COUNT:
+        mismatches.append(
+            f"actual loaded retained_direct_discovery_count={actual_direct_count!r} != accepted "
+            f"constant {RETAINED_DIRECT_DISCOVERY_COUNT!r}"
+        )
+
+    actual_auto_admit_count = len(accepted_universe.accepted_auto_admit_identities)
+    accepted_auto_admit_count = immutable_inputs.get("accepted_auto_admit_count")
+    if accepted_auto_admit_count != actual_auto_admit_count:
+        mismatches.append(
+            f"immutable_inputs.accepted_auto_admit_count={accepted_auto_admit_count!r} != "
+            f"actual loaded {actual_auto_admit_count!r}"
+        )
+    if actual_auto_admit_count != ACCEPTED_AUTO_ADMIT_COUNT:
+        mismatches.append(
+            f"actual loaded accepted_auto_admit_count={actual_auto_admit_count!r} != accepted "
+            f"constant {ACCEPTED_AUTO_ADMIT_COUNT!r}"
+        )
+    return mismatches
+
+
+def verify_sampled_candidates_self_consistency(
+    sampled_doc: dict[str, Any], incremental_by_route: dict[str, frozenset[str]]
+) -> list[str]:
+    """Structural self-consistency checks over a retained
+    ``sampled_candidates.json`` document.
+
+    Checks selection-count arithmetic, exact candidate-vs-selected-QID-set
+    equality (no missing/extra/duplicate candidate row), every candidate's
+    ``route_membership`` recomputed from the FULL (not per-route-capped)
+    ``incremental_by_route`` sets, and recomputed ``category_totals``. Does
+    NOT recompute identity-signal categories themselves — callers should
+    additionally run ``classify_identity_signal`` per candidate for that
+    (kept separate so this function needs no accepted-universe lookup).
+    """
+    mismatches: list[str] = []
+    selection = sampled_doc.get("selection", {})
+    selected_qids = selection.get("selected_qids", [])
+    if selection.get("selected_count") != len(selected_qids):
+        mismatches.append(
+            f"selection.selected_count={selection.get('selected_count')!r} != "
+            f"len(selected_qids)={len(selected_qids)}"
+        )
+    if len(selected_qids) != len(set(selected_qids)):
+        mismatches.append("selection.selected_qids contains duplicate QID(s)")
+    selected_set = frozenset(selected_qids)
+
+    candidates = sampled_doc.get("candidates", [])
+    candidate_qids = [c["qid"] for c in candidates]
+    if len(candidate_qids) != len(set(candidate_qids)):
+        mismatches.append("candidates contains duplicate QID row(s)")
+    candidate_set = frozenset(candidate_qids)
+    missing = selected_set - candidate_set
+    extra = candidate_set - selected_set
+    if missing:
+        mismatches.append(
+            f"candidates missing selected QID(s): {sorted(missing, key=qid_sort_key)}"
+        )
+    if extra:
+        mismatches.append(
+            f"candidates contains unexpected QID(s) not in selected_qids: "
+            f"{sorted(extra, key=qid_sort_key)}"
+        )
+
+    for row in candidates:
+        qid = row["qid"]
+        expected_membership = sorted(
+            rid
+            for rid in ROUTE_ALT_IDS
+            if qid in incremental_by_route.get(rid, frozenset()) and qid in selected_set
+        )
+        if row.get("route_membership") != expected_membership:
+            mismatches.append(
+                f"candidate[{qid}].route_membership={row.get('route_membership')!r} != "
+                f"recomputed {expected_membership!r}"
+            )
+
+    recomputed_totals: dict[str, int] = {str(c): 0 for c in IdentitySignalCategory}
+    for row in candidates:
+        category = row.get("identity_signal_category")
+        if category in recomputed_totals:
+            recomputed_totals[category] += 1
+    if recomputed_totals != sampled_doc.get("category_totals"):
+        mismatches.append(
+            f"category_totals={sampled_doc.get('category_totals')!r} != recomputed "
+            f"{recomputed_totals!r}"
+        )
+    return mismatches

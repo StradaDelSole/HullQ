@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import jsonschema
 import pytest
@@ -42,6 +43,7 @@ from hullq.bootstrap.wikidata_sl0021_alt_discovery import (
     IdentitySignalCategory,
     ImmutableInputIntegrityError,
     RouteDisposition,
+    SampleCompletenessError,
     build_accepted_label_index,
     build_accepted_universe,
     build_discovery_probe_document,
@@ -58,6 +60,10 @@ from hullq.bootstrap.wikidata_sl0021_alt_discovery import (
     qid_list_digest,
     qid_sort_key,
     select_entity_detail_sample,
+    verify_immutable_inputs_self_consistency,
+    verify_route_record_self_consistency,
+    verify_sample_entity_detail_completeness,
+    verify_sampled_candidates_self_consistency,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -616,3 +622,293 @@ def test_build_sampled_candidates_document_rejects_wrong_disposition_keys() -> N
             candidate_rows=[],
             route_dispositions={"R1": "x"},
         )
+
+
+# ---------------------------------------------------------------------------
+# AMENDMENT (independent review round 1): hardened offline self-consistency
+# and fail-closed live-run completeness checks. These prove every retained
+# summary field is independently recomputed from the document's own raw
+# facts — a tampered summary field must never silently validate itself.
+# ---------------------------------------------------------------------------
+
+_ACQUIRED_AT = "2026-08-24T00:00:00+00:00"
+
+
+def test_verify_route_record_self_consistency_passes_on_untampered_record() -> None:
+    record = build_route_record(R1, ["Q1", "Q2"], acquired_at=_ACQUIRED_AT, http_request_count=1)
+    assert verify_route_record_self_consistency("R1", record) == []
+
+
+def test_verify_route_record_self_consistency_detects_tampered_qid_list_digest() -> None:
+    record = build_route_record(R0, ["Q1", "Q2"], acquired_at=_ACQUIRED_AT, http_request_count=1)
+    record["qid_list_digest"] = "0" * 64
+    mismatches = verify_route_record_self_consistency("R0", record)
+    assert any("qid_list_digest" in m for m in mismatches)
+
+
+def test_verify_route_record_self_consistency_detects_tampered_result_count() -> None:
+    record = build_route_record(R0, ["Q1", "Q2"], acquired_at=_ACQUIRED_AT, http_request_count=1)
+    record["result_count"] = 999
+    mismatches = verify_route_record_self_consistency("R0", record)
+    assert any("result_count" in m for m in mismatches)
+
+
+def test_verify_route_record_self_consistency_detects_tampered_route_id() -> None:
+    record = build_route_record(R0, ["Q1"], acquired_at=_ACQUIRED_AT, http_request_count=1)
+    record["route_id"] = "some_other_route_id"
+    mismatches = verify_route_record_self_consistency("R0", record)
+    assert any("route_id" in m for m in mismatches)
+
+
+def test_verify_route_record_self_consistency_detects_tampered_version() -> None:
+    record = build_route_record(R1, ["Q1"], acquired_at=_ACQUIRED_AT, http_request_count=1)
+    record["version"] = "SLICE-0021-R1-v2-fake"
+    mismatches = verify_route_record_self_consistency("R1", record)
+    assert any(".version=" in m for m in mismatches)
+
+
+def test_verify_route_record_self_consistency_detects_tampered_query_text() -> None:
+    record = build_route_record(R2, ["Q1"], acquired_at=_ACQUIRED_AT, http_request_count=1)
+    record["query_text"] = "SELECT DISTINCT ?item WHERE { ?item wdt:P31 wd:Q999999 . }"
+    mismatches = verify_route_record_self_consistency("R2", record)
+    assert any("query_text" in m for m in mismatches)
+
+
+def test_verify_route_record_self_consistency_detects_tampered_query_sha256() -> None:
+    record = build_route_record(R3, ["Q1"], acquired_at=_ACQUIRED_AT, http_request_count=1)
+    record["query_sha256"] = "f" * 64
+    mismatches = verify_route_record_self_consistency("R3", record)
+    assert any("query_sha256" in m for m in mismatches)
+
+
+def test_verify_route_record_self_consistency_detects_tampered_possibly_truncated() -> None:
+    record = build_route_record(R0, ["Q1"], acquired_at=_ACQUIRED_AT, http_request_count=1)
+    record["possibly_truncated"] = True
+    mismatches = verify_route_record_self_consistency("R0", record)
+    assert any("possibly_truncated" in m for m in mismatches)
+
+
+def test_verify_route_record_self_consistency_detects_tampered_hard_limit() -> None:
+    record = build_route_record(R0, ["Q1"], acquired_at=_ACQUIRED_AT, http_request_count=1)
+    record["hard_limit"] = 5000
+    mismatches = verify_route_record_self_consistency("R0", record)
+    assert any("hard_limit" in m for m in mismatches)
+
+
+def test_verify_route_record_self_consistency_detects_duplicate_qids_in_raw_dict() -> None:
+    """Even a hand-crafted dict (bypassing build_route_record's own dedup
+    guard) must be independently caught by the self-consistency recompute.
+    """
+    record = build_route_record(R0, ["Q1", "Q2"], acquired_at=_ACQUIRED_AT, http_request_count=1)
+    record["qids"] = ["Q1", "Q1", "Q2"]
+    mismatches = verify_route_record_self_consistency("R0", record)
+    assert any("duplicate" in m for m in mismatches)
+
+
+def test_verify_route_record_self_consistency_unknown_route_key() -> None:
+    assert verify_route_record_self_consistency("R99", {}) == ["unknown route key 'R99'"]
+
+
+# ---------------------------------------------------------------------------
+# verify_immutable_inputs_self_consistency
+# ---------------------------------------------------------------------------
+
+
+def _immutable_inputs_doc(universe: Any) -> dict[str, Any]:
+    u = universe
+    return {
+        "sl0017_manifest": {"path": u.sl0017_manifest_path, "sha256": u.sl0017_sha256},
+        "sl0018_manifest": {"path": u.sl0018_manifest_path, "sha256": u.sl0018_sha256},
+        "retained_direct_discovery_count": len(u.retained_direct_discovery_qids),
+        "accepted_auto_admit_count": len(u.accepted_auto_admit_identities),
+    }
+
+
+def test_verify_immutable_inputs_self_consistency_passes_on_real_accepted_artifacts() -> None:
+    universe = load_and_fingerprint_immutable_inputs()
+    doc = _immutable_inputs_doc(universe)
+    assert verify_immutable_inputs_self_consistency(doc, universe) == []
+
+
+def test_verify_immutable_inputs_self_consistency_detects_sl0017_sha256_reference_mismatch() -> (
+    None
+):
+    universe = load_and_fingerprint_immutable_inputs()
+    doc = _immutable_inputs_doc(universe)
+    doc["sl0017_manifest"]["sha256"] = "0" * 64
+    mismatches = verify_immutable_inputs_self_consistency(doc, universe)
+    assert any("sl0017_manifest.sha256" in m for m in mismatches)
+
+
+def test_verify_immutable_inputs_self_consistency_detects_sl0018_sha256_reference_mismatch() -> (
+    None
+):
+    universe = load_and_fingerprint_immutable_inputs()
+    doc = _immutable_inputs_doc(universe)
+    doc["sl0018_manifest"]["sha256"] = "0" * 64
+    mismatches = verify_immutable_inputs_self_consistency(doc, universe)
+    assert any("sl0018_manifest.sha256" in m for m in mismatches)
+
+
+def test_verify_immutable_inputs_self_consistency_detects_direct_discovery_count_reference_mismatch() -> (
+    None
+):
+    universe = load_and_fingerprint_immutable_inputs()
+    doc = _immutable_inputs_doc(universe)
+    doc["retained_direct_discovery_count"] = 1
+    mismatches = verify_immutable_inputs_self_consistency(doc, universe)
+    assert any("retained_direct_discovery_count" in m for m in mismatches)
+
+
+def test_verify_immutable_inputs_self_consistency_detects_auto_admit_count_reference_mismatch() -> (
+    None
+):
+    universe = load_and_fingerprint_immutable_inputs()
+    doc = _immutable_inputs_doc(universe)
+    doc["accepted_auto_admit_count"] = 1
+    mismatches = verify_immutable_inputs_self_consistency(doc, universe)
+    assert any("accepted_auto_admit_count" in m for m in mismatches)
+
+
+def test_verify_immutable_inputs_self_consistency_detects_undersized_synthetic_universe() -> None:
+    """Defense-in-depth: even if a caller supplies an AcceptedUniverse that
+    bypassed the fail-closed loader (e.g. a bug elsewhere), a universe whose
+    own counts do not equal the accepted 1,829/1,770 constants is flagged.
+    """
+    small_universe = build_accepted_universe(
+        retained_direct_discovery_qids=frozenset({"Q1", "Q2"}),
+        accepted_auto_admit_identities=(AcceptedIdentity(qid="Q1", label="Foo", aliases=()),),
+    )
+    doc = _immutable_inputs_doc(small_universe)
+    mismatches = verify_immutable_inputs_self_consistency(doc, small_universe)
+    assert any(f"!= accepted constant {RETAINED_DIRECT_DISCOVERY_COUNT}" in m for m in mismatches)
+    assert any(f"!= accepted constant {ACCEPTED_AUTO_ADMIT_COUNT}" in m for m in mismatches)
+
+
+# ---------------------------------------------------------------------------
+# verify_sampled_candidates_self_consistency
+# ---------------------------------------------------------------------------
+
+
+def _consistent_sampled_doc() -> tuple[dict[str, Any], dict[str, frozenset[str]]]:
+    incremental_by_route = {
+        "R1": frozenset({"Q1", "Q2"}),
+        "R2": frozenset({"Q2"}),
+        "R3": frozenset(),
+    }
+    sample = select_entity_detail_sample(incremental_by_route)
+    candidates = [
+        {
+            "qid": qid,
+            "route_membership": sorted(
+                rid for rid in ("R1", "R2", "R3") if qid in incremental_by_route[rid]
+            ),
+            "identity_signal_category": str(IdentitySignalCategory.NO_EXACT_IDENTITY_SIGNAL),
+        }
+        for qid in sample.selected_qids
+    ]
+    category_totals = {str(c): 0 for c in IdentitySignalCategory}
+    for c in candidates:
+        category_totals[c["identity_signal_category"]] += 1
+    doc = {
+        "selection": {
+            "selected_qids": list(sample.selected_qids),
+            "selected_count": len(sample.selected_qids),
+        },
+        "candidates": candidates,
+        "category_totals": category_totals,
+    }
+    return doc, incremental_by_route
+
+
+def test_verify_sampled_candidates_self_consistency_passes_on_consistent_doc() -> None:
+    doc, incremental_by_route = _consistent_sampled_doc()
+    assert verify_sampled_candidates_self_consistency(doc, incremental_by_route) == []
+
+
+def test_verify_sampled_candidates_self_consistency_detects_wrong_selected_count() -> None:
+    doc, incremental_by_route = _consistent_sampled_doc()
+    doc["selection"]["selected_count"] = 999
+    mismatches = verify_sampled_candidates_self_consistency(doc, incremental_by_route)
+    assert any("selected_count" in m for m in mismatches)
+
+
+def test_verify_sampled_candidates_self_consistency_detects_missing_candidate_row() -> None:
+    doc, incremental_by_route = _consistent_sampled_doc()
+    doc["candidates"] = doc["candidates"][1:]
+    mismatches = verify_sampled_candidates_self_consistency(doc, incremental_by_route)
+    assert any("missing selected QID" in m for m in mismatches)
+
+
+def test_verify_sampled_candidates_self_consistency_detects_extra_candidate_row() -> None:
+    doc, incremental_by_route = _consistent_sampled_doc()
+    doc["candidates"].append(
+        {
+            "qid": "Q999",
+            "route_membership": [],
+            "identity_signal_category": str(IdentitySignalCategory.NO_EXACT_IDENTITY_SIGNAL),
+        }
+    )
+    mismatches = verify_sampled_candidates_self_consistency(doc, incremental_by_route)
+    assert any("unexpected QID" in m for m in mismatches)
+
+
+def test_verify_sampled_candidates_self_consistency_detects_duplicate_candidate_row() -> None:
+    doc, incremental_by_route = _consistent_sampled_doc()
+    doc["candidates"].append(dict(doc["candidates"][0]))
+    mismatches = verify_sampled_candidates_self_consistency(doc, incremental_by_route)
+    assert any("duplicate" in m for m in mismatches)
+
+
+def test_verify_sampled_candidates_self_consistency_detects_wrong_route_membership() -> None:
+    doc, incremental_by_route = _consistent_sampled_doc()
+    doc["candidates"][0]["route_membership"] = ["R3"]
+    mismatches = verify_sampled_candidates_self_consistency(doc, incremental_by_route)
+    assert any("route_membership" in m for m in mismatches)
+
+
+def test_verify_sampled_candidates_self_consistency_detects_wrong_category_totals() -> None:
+    doc, incremental_by_route = _consistent_sampled_doc()
+    doc["category_totals"]["no_exact_identity_signal"] = 999
+    mismatches = verify_sampled_candidates_self_consistency(doc, incremental_by_route)
+    assert any("category_totals" in m for m in mismatches)
+
+
+# ---------------------------------------------------------------------------
+# verify_sample_entity_detail_completeness / SampleCompletenessError
+# ---------------------------------------------------------------------------
+
+
+def test_verify_sample_entity_detail_completeness_passes_on_exact_match() -> None:
+    verify_sample_entity_detail_completeness(["Q1", "Q2"], ["Q1", "Q2"])
+
+
+def test_verify_sample_entity_detail_completeness_passes_on_empty() -> None:
+    verify_sample_entity_detail_completeness([], [])
+
+
+def test_verify_sample_entity_detail_completeness_raises_on_missing_qid() -> None:
+    with pytest.raises(SampleCompletenessError, match="missing"):
+        verify_sample_entity_detail_completeness(["Q1", "Q2"], ["Q1"])
+
+
+def test_verify_sample_entity_detail_completeness_raises_on_unexpected_qid() -> None:
+    with pytest.raises(SampleCompletenessError, match="unexpected"):
+        verify_sample_entity_detail_completeness(["Q1"], ["Q1", "Q2"])
+
+
+def test_verify_sample_entity_detail_completeness_raises_on_duplicate_qid() -> None:
+    with pytest.raises(SampleCompletenessError, match="duplicates"):
+        verify_sample_entity_detail_completeness(["Q1", "Q2"], ["Q1", "Q1", "Q2"])
+
+
+def test_verify_sample_entity_detail_completeness_does_not_modify_retained_facts() -> None:
+    """The check is purely a read-only comparison; it must never mutate its
+    inputs (the retained live QID/entity facts must remain unchanged even
+    when this check is exercised repeatedly).
+    """
+    selected = ["Q1", "Q2"]
+    fetched = ["Q1", "Q2"]
+    verify_sample_entity_detail_completeness(selected, fetched)
+    assert selected == ["Q1", "Q2"]
+    assert fetched == ["Q1", "Q2"]
