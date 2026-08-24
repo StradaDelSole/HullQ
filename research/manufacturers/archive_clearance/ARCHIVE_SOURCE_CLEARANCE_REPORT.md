@@ -3,6 +3,41 @@
 **Review date:** 2026-08-24
 **Slice status at handoff:** REVIEW
 
+## Amendment note (PR #47 independent-review AMEND verdict)
+
+This report and its retained artifacts were amended after an independent-review AMEND verdict on
+PR #47. All corrections below are provenance/wording-only, supplied by the same ChatGPT-led
+research/review pass; no independent external research was performed by Claude and no rights
+classification changed:
+
+1. **Elan source-surface provenance** — nine of the ten Elan pilot identities (`Elan 31`, `Elan
+   33`, `Elan 39`, `Elan 43`, `Elan 35 Performance`, `Elan 333`, `Elan 340`, `Impression 344`,
+   `Elan 350`) now cite the official History page (`www.elan-yachts.com/en/carbon/history`) as
+   `source_surface` instead of the Previous Models page, which the review found more accurate for
+   those historical identities. `Elan E3` retains `www.elan-yachts.com/en/previous-models`, since
+   the manufacturer explicitly lists it there.
+2. **Removed speculative Elan E3 hazard** — the claim that `Elan E3`'s placement on Previous
+   Models was a timeline/identity hazard has been removed; its `discriminating_context` is now
+   minimal and factual.
+3. **Hallberg-Rassy exact source surface** — all ten pilot identities now cite the official
+   Hallberg-Rassy Parts surface (`oldshop.hallberg-rassy.com/contents/en-us/d291_...html`), which
+   explicitly lists all ten retained models, replacing the previous weaker manufacturer-homepage
+   provenance. This correction is provenance-only; it does not alter any rights classification.
+4. **Removed unsupported Bénéteau "First 32"/"First 38" era-mismatch hazard** — the official
+   Bénéteau heritage page titled "First (1977 - 1983)" explicitly lists both models in that range,
+   so the hazard claim has been removed. Their source-presented names and exact-match results are
+   unchanged. The Bénéteau rights result is unchanged: `automated_ingestion = prohibited`,
+   `bulk_bootstrap = prohibited`, `adapter_classification = BLOCKED`.
+5. **Strict exact-match whitespace semantics** — `compute_overlap.py`'s `normalize()` now trims
+   only surrounding whitespace and lowercases (`value.strip().casefold()`); it no longer collapses
+   internal whitespace. This is a stricter, not looser, exact-match rule.
+
+The overall slice result is unchanged by these corrections: 10 sources, 100 pilot identities, 0
+`ADAPTER_READY` / 9 `RESEARCH_ONLY`/`REVIEW_REQUIRED` / 1 `BLOCKED` (Bénéteau), and 9
+`exact_overlap` / 91 `no_exact_overlap_signal` / 0 `unresolved_possible_overlap` — recomputed and
+confirmed unchanged, not assumed. See `git log` on this file's containing directory for the prior
+version if a byte-level diff is needed.
+
 ## Research ownership boundary
 
 This slice splits research and repository work across two explicit roles, per
@@ -197,11 +232,12 @@ requirements — this slice performed its own use-specific assessment for all te
 
 Exactly 10 source-presented model identities were retained per source (100 total), within the
 20-per-source / 200-total contract cap. Matching used exact/unambiguous-first comparison only
-(case-insensitive, whitespace-normalized) against the accepted SLICE-0017/0018 union of
-**1,770** AUTO_ADMIT BoatModel candidates (965 from `research/bootstrap/wikidata/manifest.json` +
-805 from `research/bootstrap/wikidata/sl0018-2500/manifest.json`, verified disjoint by
-`hullq_id`). No fuzzy matching, manufacturer-prefix insertion/removal, token reordering,
-punctuation rewriting, or generation collapsing was performed.
+(case-insensitive, with surrounding-whitespace trimming only — internal whitespace is never
+collapsed or otherwise normalized) against the accepted SLICE-0017/0018 union of **1,770**
+AUTO_ADMIT BoatModel candidates (965 from `research/bootstrap/wikidata/manifest.json` + 805 from
+`research/bootstrap/wikidata/sl0018-2500/manifest.json`, verified disjoint by `hullq_id`). No
+fuzzy matching, manufacturer-prefix insertion/removal, token reordering, punctuation rewriting,
+internal-whitespace collapsing, or generation collapsing was performed.
 
 | Source | Retained | `exact_overlap` | `no_exact_overlap_signal` | `unresolved_possible_overlap` |
 | --- | --- | --- | --- | --- |
@@ -268,16 +304,6 @@ a larger or differently sampled pilot could surface ambiguous cases.
   could collide with unrelated non-sailboat Wikidata entries in a differently scoped comparison;
   no such collision was found in this bounded exact-match probe against the accepted universe, but
   the hazard (name genericity) is noted for any future broader resolution pass.
-- **Elan "E3" on the "Previous Models" archive surface** — the retained pilot item `Elan E3` was
-  found on Elan's "Previous Models" archive page, despite an "E3" designation that plausibly
-  denotes a more recent/different production line than the surrounding historical models on that
-  same page. This is flagged as an explicit timeline/identity hazard in the retained record's
-  `discriminating_context` rather than silently treated as either historical or current.
-- **Bénéteau "First 32" / "First 38" era-label mismatch** — these two pilot items were listed
-  alongside Bénéteau's heritage index page labeled "First 1977-1983", but their hull sizes are
-  larger than the other First-1977-1983-era boats in the sample; per-model era was not
-  independently confirmed beyond the page label, and this is recorded explicitly rather than
-  assumed.
 - **Pearson mixed-rightsholder archive** — `pearsonyachts.org` explicitly blends original factory
   documentation with owner-contributed research; this slice's `production_value` clearance for
   Pearson is `legal_review_required` (not merely `conditional`) specifically because of this

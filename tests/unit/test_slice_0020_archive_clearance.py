@@ -327,14 +327,93 @@ def test_no_unresolved_possible_overlap_forced_to_exact_or_new():
     assert data["totals"]["unresolved_possible_overlap"] == 0
 
 
-def test_identity_hazard_notes_are_preserved_not_silently_resolved():
+def test_no_speculative_elan_e3_hazard():
+    """PR #47 AMEND correction 2: the manufacturer explicitly lists Elan E3 on its
+    own Previous Models page, so this pilot no longer speculates that its
+    placement there is a timeline/identity hazard."""
+
     data = _load_json(ARCHIVE_CLEARANCE / "archive_identity_pilot.json")
     by_name = {(r["source_key"], r["model_name"]): r for r in data["records"]}
 
     elan_e3 = by_name[("elan", "Elan E3")]
-    assert "hazard" in elan_e3["discriminating_context"].lower()
+    context = elan_e3["discriminating_context"].lower()
+    assert "hazard" not in context
+    assert "more recent" not in context
+    assert "previous models" in context
+    assert "e3" in context
+
+
+def test_no_unsupported_beneteau_era_mismatch_hazard():
+    """PR #47 AMEND correction 4: the official Bénéteau 'First (1977 - 1983)' heritage
+    page explicitly lists First 32 and First 38, so this pilot no longer claims an
+    era-label mismatch for them."""
+
+    data = _load_json(ARCHIVE_CLEARANCE / "archive_identity_pilot.json")
+    by_name = {(r["source_key"], r["model_name"]): r for r in data["records"]}
 
     first_32 = by_name[("beneteau", "First 32")]
     first_38 = by_name[("beneteau", "First 38")]
-    assert "not independently confirmed" in first_32["discriminating_context"]
-    assert "not independently confirmed" in first_38["discriminating_context"]
+    assert "not independently confirmed" not in first_32["discriminating_context"]
+    assert "not independently confirmed" not in first_38["discriminating_context"]
+    # exact-match results for these two identities are unaffected by the wording change
+    assert first_32["classification"] == "no_exact_overlap_signal"
+    assert first_38["classification"] == "no_exact_overlap_signal"
+
+
+def test_beneteau_rights_classification_unchanged_by_wording_amendments():
+    """PR #47 AMEND correction 4 is provenance/wording-only; the BLOCKED rights
+    result must remain untouched."""
+
+    data = _load_json(ARCHIVE_CLEARANCE / "archive_source_clearance.json")
+    beneteau = next(s for s in data["sources"] if s["source_key"] == "beneteau")
+    assert beneteau["adapter_classification"] == "BLOCKED"
+    assert beneteau["use_specific_decisions"]["automated_ingestion"] == "prohibited"
+    assert beneteau["use_specific_decisions"]["bulk_bootstrap"] == "prohibited"
+
+
+def test_elan_source_surface_provenance_corrected():
+    """PR #47 AMEND correction 1: nine of the ten Elan identities cite the official
+    History page; Elan E3 alone retains the Previous Models page."""
+
+    data = _load_json(ARCHIVE_CLEARANCE / "archive_identity_pilot.json")
+    elan_records = {r["model_name"]: r for r in data["records"] if r["source_key"] == "elan"}
+    assert len(elan_records) == 10
+
+    for name, record in elan_records.items():
+        if name == "Elan E3":
+            assert record["source_surface"] == "https://www.elan-yachts.com/en/previous-models"
+        else:
+            assert record["source_surface"] == "https://www.elan-yachts.com/en/carbon/history"
+
+
+def test_hallberg_rassy_source_surface_corrected():
+    """PR #47 AMEND correction 3: all ten Hallberg-Rassy identities now cite the
+    official Parts surface that explicitly lists them, replacing the previous
+    manufacturer-homepage placeholder provenance."""
+
+    data = _load_json(ARCHIVE_CLEARANCE / "archive_identity_pilot.json")
+    hr_records = [r for r in data["records"] if r["source_key"] == "hallberg_rassy"]
+    assert len(hr_records) == 10
+
+    expected_surface = (
+        "https://oldshop.hallberg-rassy.com/contents/en-us/"
+        "d291_Hallberg-Rassy-Elvstrom-Zippack-System.html"
+    )
+    for record in hr_records:
+        assert record["source_surface"] == expected_surface
+        assert "not retained" not in record["discriminating_context"]
+
+
+def test_normalize_trims_surrounding_whitespace_only_not_internal(archive_clearance_path_prefix):
+    """PR #47 AMEND correction 5: compute_overlap.normalize must be case-insensitive
+    with surrounding-whitespace trimming only. Internal whitespace differences must
+    never manufacture an exact match."""
+
+    compute_overlap = _load_module(
+        "slice0020_compute_overlap_normalize_check", ARCHIVE_CLEARANCE / "compute_overlap.py"
+    )
+    normalize = compute_overlap.normalize
+
+    assert normalize("  First 26  ") == normalize("first 26")
+    assert normalize("First  26") != normalize("First 26")
+    assert normalize("First\t26") != normalize("First 26")

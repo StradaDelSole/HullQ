@@ -6,9 +6,9 @@ the 100 source-presented model identities supplied by the ChatGPT-led external
 research pass and the accepted SLICE-0017/0018 union of AUTO_ADMIT BoatModel
 candidates (1,770 records). No fuzzy matching, no manufacturer-prefix
 insertion/removal, no token reordering, no punctuation rewriting, no
-generation collapsing. Matching allows case-insensitive exact comparison and
-deterministic surrounding-whitespace normalization only, per SLICE-0020's
-bounded identity-yield pilot rules.
+generation collapsing. Matching is case-insensitive with surrounding-whitespace
+trimming only -- internal whitespace is never collapsed or otherwise
+normalized, per SLICE-0020's bounded identity-yield pilot rules.
 
 This script performs no external research and reads only already-accepted
 repository artifacts (research/bootstrap/wikidata/manifest.json and
@@ -42,7 +42,14 @@ def load_json(path: Path) -> Any:
 
 
 def normalize(value: str) -> str:
-    return " ".join(value.strip().split()).casefold()
+    """Case-insensitive with surrounding-whitespace trimming only.
+
+    Internal whitespace is deliberately NOT collapsed or otherwise touched:
+    "First  26" (double internal space) must remain distinct from "First 26"
+    under this slice's exact-match rule.
+    """
+
+    return value.strip().casefold()
 
 
 def build_accepted_universe() -> tuple[dict[str, dict[str, Any]], dict[str, set[str]]]:
@@ -174,13 +181,14 @@ def main() -> None:
         "generated_at": "2026-08-24T00:00:00Z",
         "method": (
             "Bounded, research-only identity-yield pilot. Exact/unambiguous-first overlap "
-            "only: a match counts when a source-presented model name equals (case-insensitive, "
-            "whitespace-normalized) an accepted SLICE-0017/0018 AUTO_ADMIT candidate's "
-            "preferred_label or an already-recorded alias. No fuzzy matching, manufacturer-"
-            "prefix insertion/removal, token reordering, punctuation rewriting or generation "
-            "collapsing was performed. A name whose exact-match signal resolves to more than "
-            "one distinct accepted identity is unresolved_possible_overlap, never forced to a "
-            "single match."
+            "only: a match counts when a source-presented model name equals (case-insensitive "
+            "with surrounding-whitespace trimming only -- internal whitespace is never "
+            "collapsed or otherwise normalized) an accepted SLICE-0017/0018 AUTO_ADMIT "
+            "candidate's preferred_label or an already-recorded alias. No fuzzy matching, "
+            "manufacturer-prefix insertion/removal, token reordering, punctuation rewriting or "
+            "generation collapsing was performed. A name whose exact-match signal resolves to "
+            "more than one distinct accepted identity is unresolved_possible_overlap, never "
+            "forced to a single match."
         ),
         "no_exact_overlap_signal_definition": (
             "no_exact_overlap_signal means only that no exact/unambiguous overlap signal was "
