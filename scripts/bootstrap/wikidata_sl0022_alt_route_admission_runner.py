@@ -63,18 +63,46 @@ SL0022_DIR = ROOT / "research" / "bootstrap" / "wikidata" / "sl0022-alt-route-ad
 MANIFEST_PATH = SL0022_DIR / "manifest.json"
 MANIFEST_SCHEMA_PATH = SL0022_DIR / "manifest_schema.json"
 REPORT_PATH = SL0022_DIR / "REPORT.md"
+ARTIFACT_DIGESTS_PATH = SL0022_DIR / "ARTIFACT-DIGESTS.json"
+ARTIFACT_DIGESTS_SCHEMA_PATH = SL0022_DIR / "artifact_digests_schema.json"
 REPLAY_RESULT_PATH = SL0022_DIR / "REPLAY-RESULT.json"
 REPLAY_REPORT_PATH = SL0022_DIR / "REPLAY-REPORT.md"
 
 
-def _validate_manifest_schema(manifest: dict[str, Any]) -> None:
-    if not MANIFEST_SCHEMA_PATH.exists():
+def _validate_json_schema(instance: dict[str, Any], schema_path: Path, *, label: str) -> None:
+    if not schema_path.exists():
         return
     import jsonschema
 
-    schema = json.loads(MANIFEST_SCHEMA_PATH.read_text(encoding="utf-8"))
-    jsonschema.validate(instance=manifest, schema=schema)
-    print("SLICE-0022 manifest schema validation: PASS", flush=True)
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    jsonschema.validate(instance=instance, schema=schema)
+    print(f"{label} schema validation: PASS", flush=True)
+
+
+def _schema_validation_mismatches(
+    instance: dict[str, Any], schema_path: Path, *, label: str
+) -> list[str]:
+    """Same check as ``_validate_json_schema``, but returns a (possibly
+    empty) list of mismatch strings instead of raising — so a fail-closed
+    gate that also runs other checks (self-consistency, artifact digests) can
+    report every problem together via one consistent SystemExit(1) path
+    rather than an uncaught ``jsonschema.exceptions.ValidationError``.
+    """
+    if not schema_path.exists():
+        return []
+    import jsonschema
+
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    try:
+        jsonschema.validate(instance=instance, schema=schema)
+    except jsonschema.exceptions.ValidationError as exc:
+        return [f"{label} failed schema validation: {exc.message} (path={list(exc.absolute_path)})"]
+    print(f"{label} schema validation: PASS", flush=True)
+    return []
+
+
+def _validate_manifest_schema(manifest: dict[str, Any]) -> None:
+    _validate_json_schema(manifest, MANIFEST_SCHEMA_PATH, label="SLICE-0022 manifest")
 
 
 # ---------------------------------------------------------------------------
@@ -83,15 +111,26 @@ def _validate_manifest_schema(manifest: dict[str, Any]) -> None:
 
 
 def run_classify(
-    *, manifest_path: Path = MANIFEST_PATH, report_path: Path = REPORT_PATH
+    *,
+    manifest_path: Path = MANIFEST_PATH,
+    report_path: Path = REPORT_PATH,
+    artifact_digests_path: Path = ARTIFACT_DIGESTS_PATH,
 ) -> dict[str, Any]:
     """Offline classification of the 57 retained SLICE-0021 candidates —
     zero network access.
 
     Fails closed (``ImmutableInputIntegrityError``) before any classification
     if any retained input has drifted from its accepted fingerprint/count.
+
+    Candidate ``retrieved_at`` / manifest ``acquired_at`` are always the
+    accepted retained SLICE-0021 source-fact acquisition timestamp
+    (``inputs.sl0021_generated_at``) — never this run's own wall-clock time.
+    Only ``generated_at`` (this document's write time) and
+    ``classification_recomputed_at`` (set on a rerun) reflect when this
+    SLICE-0022 computation actually happened.
     """
     from hullq.bootstrap.wikidata_sl0022_alt_route_admission import (
+        build_artifact_digests,
         build_sl0022_manifest,
         classify_sl0022_candidates,
         load_and_fingerprint_immutable_inputs,
@@ -110,12 +149,12 @@ def run_classify(
         f"  immutable inputs verified: baseline candidates={len(inputs.baseline.candidate_qids)} "
         f"auto_admit={len(inputs.baseline.auto_admit_qids)} "
         f"historical_crosswalk={len(inputs.baseline.crosswalk)} "
-        f"retained SLICE-0021 candidates={len(inputs.retained_candidate_rows)}",
+        f"retained SLICE-0021 candidates={len(inputs.retained_candidate_rows)} "
+        f"source-fact acquisition time={inputs.sl0021_generated_at}",
         flush=True,
     )
 
     historical_crosswalk = dict(inputs.baseline.crosswalk)
-    acquired_at: str | None = None
     classification_recomputed_at: str | None = None
     now_ts = datetime.now(tz=UTC).isoformat()
 
@@ -127,7 +166,6 @@ def run_classify(
             prior_crosswalk,
             context="baseline crosswalk merge with prior retained SLICE-0022 manifest",
         )
-        acquired_at = prior_manifest.get("acquired_at")
         classification_recomputed_at = now_ts
         print(
             f"  loaded {len(prior_crosswalk)} retained QID->HullQ-ID mapping(s) from existing "
@@ -135,12 +173,10 @@ def run_classify(
             f"{len(historical_crosswalk)} entries",
             flush=True,
         )
-    else:
-        acquired_at = now_ts
 
     candidates, within_57_clusters, baseline_collisions = classify_sl0022_candidates(
         list(inputs.retained_candidate_rows),
-        retrieved_at=now_ts,
+        retrieved_at=inputs.sl0021_generated_at,
         baseline=inputs.baseline,
         existing_crosswalk=historical_crosswalk,
     )
@@ -154,7 +190,6 @@ def run_classify(
         inputs=inputs,
         retrieval_count=0,
         extracted_record_count=len(candidates),
-        acquired_at=acquired_at,
         classification_recomputed_at=classification_recomputed_at,
         historical_crosswalk=historical_crosswalk,
     )
@@ -166,6 +201,22 @@ def run_classify(
     print(f"  counts: {manifest['counts']}", flush=True)
 
     _write_report(manifest, report_path)
+
+    # ARTIFACT-DIGESTS.json is written last, once manifest.json/
+    # manifest_schema.json/REPORT.md are all final on disk for this pass, so
+    # its own recorded digests are accurate for the files as committed.
+    digest_paths = {
+        "manifest.json": manifest_path,
+        "manifest_schema.json": MANIFEST_SCHEMA_PATH,
+        "REPORT.md": report_path,
+    }
+    digests_doc = build_artifact_digests(generated_at=now_ts, paths=digest_paths)
+    _validate_json_schema(
+        digests_doc, ARTIFACT_DIGESTS_SCHEMA_PATH, label="SLICE-0022 artifact digests"
+    )
+    artifact_digests_path.write_text(json.dumps(digests_doc, indent=2), encoding="utf-8")
+    print(f"Artifact digests written to: {artifact_digests_path}", flush=True)
+
     return manifest
 
 
@@ -174,9 +225,27 @@ def run_classify(
 # ---------------------------------------------------------------------------
 
 
-def run_verify(*, manifest_path: Path = MANIFEST_PATH) -> None:
+def run_verify(
+    *,
+    manifest_path: Path = MANIFEST_PATH,
+    report_path: Path = REPORT_PATH,
+    artifact_digests_path: Path = ARTIFACT_DIGESTS_PATH,
+) -> None:
+    """Fully offline (zero network access) hardened verification.
+
+    Schema validation is itself part of this fail-closed path (not merely a
+    side effect of ``--classify``): the retained manifest AND the retained
+    artifact-digest record are both schema-validated here before their
+    content is trusted for recomputation/comparison. Then every
+    structurally-derivable manifest field is recomputed from freshly
+    (re-)loaded/fingerprinted immutable inputs and compared
+    (``verify_sl0022_manifest_self_consistency``), and the retained
+    ``ARTIFACT-DIGESTS.json`` (if present) is recomputed and compared against
+    the actual on-disk retained files (``verify_artifact_digests``).
+    """
     from hullq.bootstrap.wikidata_sl0022_alt_route_admission import (
         load_and_fingerprint_immutable_inputs,
+        verify_artifact_digests,
         verify_sl0022_manifest_self_consistency,
     )
 
@@ -186,9 +255,29 @@ def run_verify(*, manifest_path: Path = MANIFEST_PATH) -> None:
         flush=True,
     )
 
-    inputs = load_and_fingerprint_immutable_inputs()
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    mismatches = verify_sl0022_manifest_self_consistency(manifest, inputs=inputs)
+    mismatches = _schema_validation_mismatches(
+        manifest, MANIFEST_SCHEMA_PATH, label="SLICE-0022 manifest"
+    )
+
+    inputs = load_and_fingerprint_immutable_inputs()
+    mismatches.extend(verify_sl0022_manifest_self_consistency(manifest, inputs=inputs))
+
+    if artifact_digests_path.exists():
+        digests_doc = json.loads(artifact_digests_path.read_text(encoding="utf-8"))
+        mismatches.extend(
+            _schema_validation_mismatches(
+                digests_doc, ARTIFACT_DIGESTS_SCHEMA_PATH, label="SLICE-0022 artifact digests"
+            )
+        )
+        digest_paths = {
+            "manifest.json": manifest_path,
+            "manifest_schema.json": MANIFEST_SCHEMA_PATH,
+            "REPORT.md": report_path,
+        }
+        mismatches.extend(verify_artifact_digests(digests_doc, paths=digest_paths))
+    else:
+        mismatches.append(f"required ARTIFACT-DIGESTS.json not found at {artifact_digests_path}")
 
     if mismatches:
         print("\nOFFLINE VERIFY FAILED:", flush=True)
@@ -197,7 +286,8 @@ def run_verify(*, manifest_path: Path = MANIFEST_PATH) -> None:
         raise SystemExit(1)
 
     print(
-        "\nOFFLINE VERIFY: PASS — every recomputed value matches the retained manifest.",
+        "\nOFFLINE VERIFY: PASS — every recomputed value matches the retained manifest and "
+        "artifact digests.",
         flush=True,
     )
 
@@ -221,7 +311,7 @@ def _write_report(
         "# HullQ SLICE-0022 Retained Alternative-Route Tier-0 Admission Safety Pilot Report",
         "",
         f"**Manifest last written (generated_at):** {manifest['generated_at']}  ",
-        f"**First classification (acquired_at):** {manifest['acquired_at']}  ",
+        f"**Retained SLICE-0021 source-fact acquisition time (acquired_at):** {manifest['acquired_at']}  ",
         f"**Last offline reclassification (classification_recomputed_at):** {manifest['classification_recomputed_at']}  ",
         f"**Source:** {manifest['source_id']}",
         "",
@@ -302,11 +392,16 @@ def _write_report(
         f"- SLICE-0022 AUTO_ADMIT count: **{counts['auto_admit']}**",
         f"- Expected combined canonical BoatModel count after replay: **{counts['combined_canonical_boat_model_count_expected']}**",
         "",
-        "## R3 FAIL-CLOSED RULE",
+        "## R1/R3 ADMISSION GOVERNANCE RULE",
         "",
-        "Every structurally usable R3 (misclassified_sailboat_class_description) candidate is "
-        "`REVIEW_REQUIRED` with reason `r3_repair_signal_requires_review`, regardless of its own "
-        "collision status. No R3 candidate may ever be `AUTO_ADMIT` in SLICE-0022.",
+        "Per the SLICE-0022 R1 admission governance amendment "
+        "(`docs/slices/SLICE-0022-r1-admission-governance-amendment.md`), R1 route membership "
+        "alone is discovery-authoritative but never admission-authoritative: every structurally "
+        "usable R1 (sailboat-class P31/P279* closure) candidate is `REVIEW_REQUIRED` with reason "
+        "`r1_alternative_route_requires_review`, regardless of its own collision status. Every "
+        "structurally usable R3 (misclassified_sailboat_class_description) candidate remains "
+        "`REVIEW_REQUIRED` with reason `r3_repair_signal_requires_review`. No candidate in "
+        "SLICE-0022 may ever be `AUTO_ADMIT` from either route.",
         "",
         "## INTERPRETATION",
         "",
@@ -403,8 +498,11 @@ def replay_manifest(
     sl0017_manifest_path: Path | None = None,
     sl0018_manifest_path: Path | None = None,
     manifest_path: Path = MANIFEST_PATH,
+    retained_report_path: Path = REPORT_PATH,
+    artifact_digests_path: Path = ARTIFACT_DIGESTS_PATH,
     result_path: Path = REPLAY_RESULT_PATH,
     report_path: Path = REPLAY_REPORT_PATH,
+    verify_before_mutation: bool = True,
 ) -> dict[str, Any]:
     """Offline replay: accepted SLICE-0017 baseline, accepted SLICE-0018
     delta, retained SLICE-0022 delta — in that order — against real
@@ -412,13 +510,30 @@ def replay_manifest(
     idempotent-reimport, then an independent fresh-schema rerun).
 
     Performs no network access.
+
+    Before any PostgreSQL mutation, *verify_before_mutation* (the production/
+    CI-safe default) runs the full replay-safety gate against the retained
+    SLICE-0022 manifest at *manifest_path*: schema validation, a fresh
+    fail-closed reload/fingerprint of every immutable input (accepted
+    SLICE-0017/0018/0021 artifacts), the complete offline self-consistency
+    recompute-and-diff, and artifact-digest verification. A tampered manifest
+    (or a manifest whose retained artifact digests no longer match the files
+    on disk) MUST NEVER reach the database. A caller MAY pass
+    ``verify_before_mutation=False`` to exercise the replay mechanism itself
+    against small synthetic SLICE-0017/0018/0022 manifests rather than the
+    real accepted/retained artifacts — used only by the
+    ``tests/persistence/`` unit-level integration test; every production and
+    CI code path uses the default.
     """
     import psycopg
 
     from hullq.bootstrap.wikidata_sl0022_alt_route_admission import (
         SL0017_MANIFEST_PATH,
         SL0018_MANIFEST_PATH,
+        load_and_fingerprint_immutable_inputs,
         sl0022_candidate_from_manifest_dict,
+        verify_artifact_digests,
+        verify_sl0022_manifest_self_consistency,
     )
     from hullq.bootstrap.wikidata_sl0022_alt_route_admission import (
         build_bundle as build_bundle_sl0022,
@@ -445,11 +560,64 @@ def replay_manifest(
     sl0017_manifest_path = sl0017_manifest_path or SL0017_MANIFEST_PATH
     sl0018_manifest_path = sl0018_manifest_path or SL0018_MANIFEST_PATH
 
+    sl0022_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    if verify_before_mutation:
+        print(
+            "  replay-safety gate: schema validation + immutable-input reload + offline "
+            "self-consistency + artifact digests (before any PostgreSQL mutation)...",
+            flush=True,
+        )
+        gate_mismatches = _schema_validation_mismatches(
+            sl0022_manifest, MANIFEST_SCHEMA_PATH, label="SLICE-0022 manifest (pre-replay)"
+        )
+        gate_inputs = load_and_fingerprint_immutable_inputs()
+        gate_mismatches.extend(
+            verify_sl0022_manifest_self_consistency(sl0022_manifest, inputs=gate_inputs)
+        )
+        if artifact_digests_path.exists():
+            digests_doc = json.loads(artifact_digests_path.read_text(encoding="utf-8"))
+            gate_mismatches.extend(
+                _schema_validation_mismatches(
+                    digests_doc,
+                    ARTIFACT_DIGESTS_SCHEMA_PATH,
+                    label="SLICE-0022 artifact digests (pre-replay)",
+                )
+            )
+            gate_mismatches.extend(
+                verify_artifact_digests(
+                    digests_doc,
+                    paths={
+                        "manifest.json": manifest_path,
+                        "manifest_schema.json": MANIFEST_SCHEMA_PATH,
+                        "REPORT.md": retained_report_path,
+                    },
+                )
+            )
+        else:
+            gate_mismatches.append(
+                f"required ARTIFACT-DIGESTS.json not found at {artifact_digests_path}"
+            )
+
+        if gate_mismatches:
+            print(
+                "\nREPLAY SAFETY GATE FAILED — aborting before any PostgreSQL mutation:", flush=True
+            )
+            for m in gate_mismatches:
+                print(f"  - {m}", flush=True)
+            raise SystemExit(1)
+        print("  replay-safety gate: PASS", flush=True)
+    else:
+        print(
+            "  replay-safety gate SKIPPED (verify_before_mutation=False; test-only path against "
+            "synthetic manifests)",
+            flush=True,
+        )
+
     sl0017_manifest = json.loads(sl0017_manifest_path.read_text(encoding="utf-8"))
     sl0017_candidates = [candidate_from_manifest_dict(row) for row in sl0017_manifest["candidates"]]
     sl0018_manifest = json.loads(sl0018_manifest_path.read_text(encoding="utf-8"))
     sl0018_candidates = [candidate_from_manifest_dict(row) for row in sl0018_manifest["candidates"]]
-    sl0022_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     sl0022_candidates = [
         sl0022_candidate_from_manifest_dict(row) for row in sl0022_manifest["candidates"]
     ]
@@ -1023,15 +1191,36 @@ def write_report_with_replay_evidence(
     manifest_path: Path = MANIFEST_PATH,
     replay_result_path: Path = REPLAY_RESULT_PATH,
     report_path: Path = REPORT_PATH,
+    artifact_digests_path: Path = ARTIFACT_DIGESTS_PATH,
 ) -> None:
     """Regenerate the checked-in human-readable REPORT.md from the
     already-retained manifest plus an already-produced offline PostgreSQL
     replay result, with zero network/PostgreSQL access performed by this
     function itself.
+
+    Also regenerates ``ARTIFACT-DIGESTS.json`` afterward so its retained
+    REPORT.md digest covers the final replay-evidence-embedded content —
+    otherwise a subsequent ``--verify`` would (correctly) flag REPORT.md as
+    having drifted from its own recorded digest.
     """
+    from hullq.bootstrap.wikidata_sl0022_alt_route_admission import build_artifact_digests
+
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     replay_result = json.loads(replay_result_path.read_text(encoding="utf-8"))
     _write_report(manifest, report_path, replay_result=replay_result)
+
+    now_ts = datetime.now(tz=UTC).isoformat()
+    digest_paths = {
+        "manifest.json": manifest_path,
+        "manifest_schema.json": MANIFEST_SCHEMA_PATH,
+        "REPORT.md": report_path,
+    }
+    digests_doc = build_artifact_digests(generated_at=now_ts, paths=digest_paths)
+    _validate_json_schema(
+        digests_doc, ARTIFACT_DIGESTS_SCHEMA_PATH, label="SLICE-0022 artifact digests"
+    )
+    artifact_digests_path.write_text(json.dumps(digests_doc, indent=2), encoding="utf-8")
+    print(f"Artifact digests written to: {artifact_digests_path}", flush=True)
 
 
 def _get_db_url(cli_url: str | None) -> str:
@@ -1073,6 +1262,11 @@ def main() -> None:
     )
     parser.add_argument("--manifest", default=str(MANIFEST_PATH), help="SLICE-0022 manifest path")
     parser.add_argument("--report", default=str(REPORT_PATH), help="Human-readable report path")
+    parser.add_argument(
+        "--artifact-digests",
+        default=str(ARTIFACT_DIGESTS_PATH),
+        help="Retained artifact-digests JSON path",
+    )
     parser.add_argument("--db-url", default=None, help="PostgreSQL connection URL (replay mode)")
     parser.add_argument("--result", default=str(REPLAY_RESULT_PATH), help="Replay result JSON path")
     parser.add_argument(
@@ -1092,14 +1286,24 @@ def main() -> None:
         )
 
     if args.classify:
-        run_classify(manifest_path=Path(args.manifest), report_path=Path(args.report))
+        run_classify(
+            manifest_path=Path(args.manifest),
+            report_path=Path(args.report),
+            artifact_digests_path=Path(args.artifact_digests),
+        )
     elif args.verify:
-        run_verify(manifest_path=Path(args.manifest))
+        run_verify(
+            manifest_path=Path(args.manifest),
+            report_path=Path(args.report),
+            artifact_digests_path=Path(args.artifact_digests),
+        )
     elif args.replay:
         db_url = _get_db_url(args.db_url)
         replay_manifest(
             db_url,
             manifest_path=Path(args.manifest),
+            retained_report_path=Path(args.report),
+            artifact_digests_path=Path(args.artifact_digests),
             result_path=Path(args.result),
             report_path=Path(args.replay_report),
         )
@@ -1108,6 +1312,7 @@ def main() -> None:
             manifest_path=Path(args.manifest),
             replay_result_path=Path(args.replay_result),
             report_path=Path(args.report),
+            artifact_digests_path=Path(args.artifact_digests),
         )
 
 

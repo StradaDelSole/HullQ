@@ -1,14 +1,14 @@
 {
   "schema_version": "0022-replay-v1",
-  "run_timestamp": "2026-08-24T21:04:49.734222+00:00",
+  "run_timestamp": "2026-08-24T23:01:06.726289+00:00",
   "postgresql_version": "PostgreSQL 18.6 on x86_64-windows, compiled by msvc-19.44.35228, 64-bit",
   "prior_baseline_candidates": 1829,
   "prior_baseline_auto_admit": 1770,
   "sl0022_candidates": 57,
-  "sl0022_auto_admit": 27,
+  "sl0022_auto_admit": 0,
   "expected": {
     "combined_bundle_count": 1837,
-    "combined_admission_count": 1797
+    "combined_admission_count": 1770
   },
   "first_pass": {
     "bundle": {
@@ -19,7 +19,7 @@
       "unexpected_status": 0
     },
     "admission": {
-      "imported": 1797,
+      "imported": 1770,
       "already_present": 0,
       "conflict": 0,
       "reference_error": 0,
@@ -45,12 +45,12 @@
       }
     },
     "reimport": {
-      "already_imported": 3634,
+      "already_imported": 3607,
       "conflict": 0,
       "error": 0,
-      "wall_clock_seconds": 8.8573
+      "wall_clock_seconds": 9.0625
     },
-    "wall_clock_seconds": 7.0541
+    "wall_clock_seconds": 9.1264
   },
   "fresh_schema_rerun": {
     "bundle": {
@@ -61,7 +61,7 @@
       "unexpected_status": 0
     },
     "admission": {
-      "imported": 1797,
+      "imported": 1770,
       "already_present": 0,
       "conflict": 0,
       "reference_error": 0,
@@ -87,12 +87,12 @@
       }
     },
     "reimport": {
-      "already_imported": 3634,
+      "already_imported": 3607,
       "conflict": 0,
       "error": 0,
-      "wall_clock_seconds": 8.7882
+      "wall_clock_seconds": 9.9015
     },
-    "wall_clock_seconds": 7.7115
+    "wall_clock_seconds": 15.1377
   },
   "all_zero_tolerance_conditions_clear": true
 }

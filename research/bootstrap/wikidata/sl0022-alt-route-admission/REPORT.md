@@ -1,7 +1,7 @@
 # HullQ SLICE-0022 Retained Alternative-Route Tier-0 Admission Safety Pilot Report
 
-**Manifest last written (generated_at):** 2026-08-24T20:23:28.519373+00:00  
-**First classification (acquired_at):** 2026-08-24T20:23:28.519373+00:00  
+**Manifest last written (generated_at):** 2026-08-24T22:53:40.392691+00:00  
+**Retained SLICE-0021 source-fact acquisition time (acquired_at):** 2026-08-24T15:29:04.154534+00:00  
 **Last offline reclassification (classification_recomputed_at):** None  
 **Source:** SRC_WIKIDATA_API_2026
 
@@ -29,14 +29,14 @@ This pilot performs no WDQS/wbgetentities/manufacturer-archive/search-engine req
 
 ## DECISION TOTALS
 
-- AUTO_ADMIT: **27** (all R1: **27**; R3: **0**, must always be 0)
-- REVIEW_REQUIRED: **4**
+- AUTO_ADMIT: **0** (all R1: **0**; R3: **0**, must always be 0)
+- REVIEW_REQUIRED: **31**
 - NOT_ADMITTED: **26**
 
 ### Reason breakdown
 
 - `missing_label`: 26
-- `ok`: 27
+- `r1_alternative_route_requires_review`: 27
 - `r3_repair_signal_requires_review`: 4
 
 ## COLLISIONS AGAINST THE ACCEPTED 1,829-CANDIDATE BASELINE (0)
@@ -50,19 +50,19 @@ This pilot performs no WDQS/wbgetentities/manufacturer-archive/search-engine req
 ## HISTORICAL CROSSWALK
 
 - Historical crosswalk entries BEFORE this run: **1772**
-- Retained crosswalk entries AFTER this run: **1799**
-- Newly minted HullQ-ID count (this generation pass): **27**
+- Retained crosswalk entries AFTER this run: **1772**
+- Newly minted HullQ-ID count (this generation pass): **0**
 - Reused historical HullQ-ID count (this generation pass): **0**
 
 ## CANONICAL ADMISSION EXPECTATION
 
 - Accepted baseline canonical BoatModel count: **1770**
-- SLICE-0022 AUTO_ADMIT count: **27**
-- Expected combined canonical BoatModel count after replay: **1797**
+- SLICE-0022 AUTO_ADMIT count: **0**
+- Expected combined canonical BoatModel count after replay: **1770**
 
-## R3 FAIL-CLOSED RULE
+## R1/R3 ADMISSION GOVERNANCE RULE
 
-Every structurally usable R3 (misclassified_sailboat_class_description) candidate is `REVIEW_REQUIRED` with reason `r3_repair_signal_requires_review`, regardless of its own collision status. No R3 candidate may ever be `AUTO_ADMIT` in SLICE-0022.
+Per the SLICE-0022 R1 admission governance amendment (`docs/slices/SLICE-0022-r1-admission-governance-amendment.md`), R1 route membership alone is discovery-authoritative but never admission-authoritative: every structurally usable R1 (sailboat-class P31/P279* closure) candidate is `REVIEW_REQUIRED` with reason `r1_alternative_route_requires_review`, regardless of its own collision status. Every structurally usable R3 (misclassified_sailboat_class_description) candidate remains `REVIEW_REQUIRED` with reason `r3_repair_signal_requires_review`. No candidate in SLICE-0022 may ever be `AUTO_ADMIT` from either route.
 
 ## INTERPRETATION
 
@@ -73,24 +73,24 @@ This is a bounded admission-safety pilot over retained SLICE-0021 evidence, not 
 Evidence below was measured locally by running `scripts/bootstrap/wikidata_sl0022_alt_route_admission_runner.py --replay` against a real PostgreSQL 18 instance during implementation. Remote GitHub Actions CI independently re-runs the same `--replay` step at the exact pushed head and is the authoritative external verification.
 
 - PostgreSQL version: `PostgreSQL 18.6 on x86_64-windows, compiled by msvc-19.44.35228, 64-bit`
-- Expected combined bundle / admission imports: 1837 / 1797
+- Expected combined bundle / admission imports: 1837 / 1770
 
 ### First-pass combined import (isolated schema)
 
 - bundle: {'imported': 1837, 'already_present': 0, 'conflict': 0, 'error': 0, 'unexpected_status': 0}
-- admission: {'imported': 1797, 'already_present': 0, 'conflict': 0, 'reference_error': 0, 'error': 0, 'unexpected_status': 0}
+- admission: {'imported': 1770, 'already_present': 0, 'conflict': 0, 'reference_error': 0, 'error': 0, 'unexpected_status': 0}
 - expected combined imported counts match exactly: True
 - prior-baseline (0017+0018) verified before 0022 applied: {'counts_match': True, 'id_set_matches': True, 'readback_mismatches': 0}
 - combined readback mismatches: 0 (prior-baseline drift: 0)
 - unexpected canonical rows for non-admitted candidates: 0
 - combined canonical BoatModel ID set matches exactly: True
 - zero stray Brand/Organization/BoatDesign rows: True ({'canonical_brands': 0, 'canonical_organizations': 0, 'canonical_boat_designs': 0})
-- exact re-import (idempotency): already_imported=3634 conflict=0 error=0
+- exact re-import (idempotency): already_imported=3607 conflict=0 error=0
 
 ### Independent fresh-schema replay (second isolated schema)
 
 - bundle: {'imported': 1837, 'already_present': 0, 'conflict': 0, 'error': 0, 'unexpected_status': 0}
-- admission: {'imported': 1797, 'already_present': 0, 'conflict': 0, 'reference_error': 0, 'error': 0, 'unexpected_status': 0}
+- admission: {'imported': 1770, 'already_present': 0, 'conflict': 0, 'reference_error': 0, 'error': 0, 'unexpected_status': 0}
 - semantic mismatches: 0 (prior-baseline drift: 0)
 - combined canonical ID set matches exactly: True
 - zero stray Brand/Organization/BoatDesign rows: True ({'canonical_brands': 0, 'canonical_organizations': 0, 'canonical_boat_designs': 0})

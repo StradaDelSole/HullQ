@@ -263,6 +263,17 @@ jobs:
           print(f\"combined_canonical_boat_model_count_expected={manifest['counts']['combined_canonical_boat_model_count_expected']}\");
           "
 
+      - name: Validate SLICE-0022 retained artifact digests against schema
+        run: >
+          uv run python -c "
+          import json, jsonschema, pathlib;
+          base = pathlib.Path('research/bootstrap/wikidata/sl0022-alt-route-admission');
+          digests = json.loads((base / 'ARTIFACT-DIGESTS.json').read_text());
+          schema = json.loads((base / 'artifact_digests_schema.json').read_text());
+          jsonschema.validate(instance=digests, schema=schema);
+          print('SLICE-0022 ARTIFACT-DIGESTS.json validates against artifact_digests_schema.json');
+          "
+
       - name: Offline-verify SLICE-0022 retained manifest reproduces deterministically (no network)
         run: >
           uv run python scripts/bootstrap/wikidata_sl0022_alt_route_admission_runner.py --verify
@@ -294,6 +305,7 @@ jobs:
           path: |
             research/bootstrap/wikidata/sl0022-alt-route-admission/manifest.json
             research/bootstrap/wikidata/sl0022-alt-route-admission/REPORT.md
+            research/bootstrap/wikidata/sl0022-alt-route-admission/ARTIFACT-DIGESTS.json
             research/bootstrap/wikidata/sl0022-alt-route-admission/REPLAY-RESULT.json
             research/bootstrap/wikidata/sl0022-alt-route-admission/REPLAY-REPORT.md
           if-no-files-found: warn

@@ -14,11 +14,19 @@ CI job invoking the runner script directly against the real committed
 
 Skipped automatically when HULLQ_TEST_DATABASE_URL is not set (see conftest.py).
 
-Covers the SLICE-0022 required PostgreSQL replay scenario:
-  baseline (0017+0018) import followed by SLICE-0022 delta import preserves
-  the baseline graph and adds only the expected new BoatModels/evidence
-  links, with every REVIEW_REQUIRED/NOT_ADMITTED SLICE-0022 candidate
-  (including every R3 candidate) absent as a canonical row.
+Covers the SLICE-0022 required PostgreSQL replay scenario under the R1
+admission governance amendment: baseline (0017+0018) import followed by
+SLICE-0022 delta import preserves the baseline graph exactly and adds ZERO
+new canonical BoatModels — every SLICE-0022 candidate (R1 and R3 alike) is
+REVIEW_REQUIRED or NOT_ADMITTED and is absent as a canonical row, even though
+research evidence bundles are still retained for every labeled candidate.
+
+Uses ``verify_before_mutation=False`` throughout: these fixtures are small
+synthetic manifests, not the real accepted/retained artifacts, so the
+replay-safety gate's fail-closed immutable-input/self-consistency checks
+(which are pinned to the real committed SLICE-0017/0018/0021 files) would
+correctly reject them. The gate itself is exercised separately in
+tests/unit against the real retained artifacts.
 """
 
 from __future__ import annotations
@@ -113,12 +121,17 @@ def _combined_baseline(sl0017_manifest: dict[str, Any], sl0018_manifest: dict[st
 def _small_sl0022_manifest(
     sl0017_manifest: dict[str, Any], sl0018_manifest: dict[str, Any]
 ) -> dict[str, Any]:
-    """A small synthetic SLICE-0022 delta:
+    """A small synthetic SLICE-0022 delta under the R1 admission governance
+    amendment (no candidate may ever be AUTO_ADMIT):
 
-    - D1 (R1) is a clean new candidate -> AUTO_ADMIT.
+    - D1 (R1) is a clean candidate with no collision -> REVIEW_REQUIRED
+      (r1_alternative_route_requires_review) — R1 route membership alone
+      never auto-admits, collision or not.
     - D2 (R1) collides (same search key) with the combined baseline's
-      auto-admitted SL0017 Q9001 -> REVIEW_REQUIRED; Q9001 itself untouched.
-    - D3/D4 (R1) collide with each other (within-57) -> both REVIEW_REQUIRED.
+      auto-admitted SL0017 Q9001 -> REVIEW_REQUIRED
+      (r1_alternative_route_requires_review); Q9001 itself untouched.
+    - D3/D4 (R1) collide with each other (within-57) -> both REVIEW_REQUIRED
+      (r1_alternative_route_requires_review).
     - D5 (R1) has no label -> NOT_ADMITTED.
     - D6 (R3) has a usable label and no collision -> REVIEW_REQUIRED
       (r3_repair_signal_requires_review), never AUTO_ADMIT.
@@ -195,11 +208,11 @@ def _assert_clean_combined_replay(result: dict[str, Any]) -> None:
     assert result["prior_baseline_candidates"] == 2  # Q9001 (0017) + Q9101 (0018)
     assert result["prior_baseline_auto_admit"] == 2
     assert result["sl0022_candidates"] == 7
-    assert result["sl0022_auto_admit"] == 1  # only Q9201
+    assert result["sl0022_auto_admit"] == 0  # R1 governance amendment: never AUTO_ADMIT
 
     assert result["expected"] == {
         "combined_bundle_count": 2 + 5,  # 2 prior + 5 labeled sl0022 (Q9201-Q9204, Q9206)
-        "combined_admission_count": 2 + 1,
+        "combined_admission_count": 2 + 0,
     }
 
     for pass_result in (result["first_pass"], result["fresh_schema_rerun"]):
@@ -207,7 +220,7 @@ def _assert_clean_combined_replay(result: dict[str, Any]) -> None:
         assert pass_result["bundle"]["already_present"] == 0
         assert pass_result["bundle"]["conflict"] == 0
         assert pass_result["bundle"]["error"] == 0
-        assert pass_result["admission"]["imported"] == 3
+        assert pass_result["admission"]["imported"] == 2
         assert pass_result["admission"]["already_present"] == 0
         assert pass_result["admission"]["conflict"] == 0
         assert pass_result["admission"]["reference_error"] == 0
@@ -248,19 +261,21 @@ def test_prior_baseline_then_sl0022_replay_clears_every_zero_tolerance_condition
         manifest_path=sl0022_path,
         result_path=result_path,
         report_path=report_path,
+        verify_before_mutation=False,
     )
     _assert_clean_combined_replay(result)
     assert result_path.exists()
     assert report_path.exists()
 
 
-def test_replay_never_persists_review_or_not_admitted_sl0022_candidates(
+def test_replay_never_persists_any_sl0022_candidate_under_r1_governance_amendment(
     db_url: str, clean_conn: Any, small_manifests: tuple[Path, Path, Path], tmp_path: Path
 ) -> None:
-    """Q9202 (baseline collision), Q9203/Q9204 (within-57 collision), Q9205
-    (missing label), Q9206 (R3 fail-closed review) and Q9207 (R3 missing
-    label) must never appear as canonical BoatModel rows — only Q9001
-    (0017), Q9101 (0018) and Q9201 (0022) are admitted.
+    """Under the R1 admission governance amendment every SLICE-0022
+    candidate — including the collision-free R1 candidate Q9201 that would
+    have auto-admitted under the pre-amendment rule — is REVIEW_REQUIRED or
+    NOT_ADMITTED and must never appear as a canonical BoatModel row. Only
+    Q9001 (0017) and Q9101 (0018) are admitted.
     """
     from bootstrap.wikidata_sl0022_alt_route_admission_runner import replay_manifest
 
@@ -270,7 +285,7 @@ def test_replay_never_persists_review_or_not_admitted_sl0022_candidates(
     non_admitted_qids = {
         row["qid"] for row in sl0022_manifest["candidates"] if row["decision"] != "auto_admit"
     }
-    assert non_admitted_qids == {"Q9202", "Q9203", "Q9204", "Q9205", "Q9206", "Q9207"}
+    assert non_admitted_qids == {"Q9201", "Q9202", "Q9203", "Q9204", "Q9205", "Q9206", "Q9207"}
     r3_qids = {
         row["qid"] for row in sl0022_manifest["candidates"] if row["route_membership"] == ["R3"]
     }
@@ -285,6 +300,7 @@ def test_replay_never_persists_review_or_not_admitted_sl0022_candidates(
         manifest_path=sl0022_path,
         result_path=result_path,
         report_path=report_path,
+        verify_before_mutation=False,
     )
     assert result["first_pass"]["readback"]["unexpected_canonical_rows_for_non_admitted"] == 0
     assert result["all_zero_tolerance_conditions_clear"] is True

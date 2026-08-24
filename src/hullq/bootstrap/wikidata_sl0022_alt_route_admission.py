@@ -2,7 +2,10 @@
 
 Implements the pure, deterministic classification/materialization logic
 described in
-``docs/slices/SLICE-0022-retained-alternative-route-tier0-admission-safety-pilot.md``.
+``docs/slices/SLICE-0022-retained-alternative-route-tier0-admission-safety-pilot.md``
+as controlled by the R1 admission governance amendment in
+``docs/slices/SLICE-0022-r1-admission-governance-amendment.md``. Where the two
+conflict, the governance amendment controls.
 
 This module performs no network acquisition and no database access. Its only
 inputs are already-committed, immutable, retained artifacts:
@@ -20,22 +23,35 @@ Given those retained facts, it:
 - fails closed (``ImmutableInputIntegrityError``) before any classification if
   any pinned fingerprint, count or cross-document consistency check does not
   hold exactly;
-- classifies each of the 57 retained candidates using the accepted Tier-0
-  ``AUTO_ADMIT`` / ``REVIEW_REQUIRED`` / ``NOT_ADMITTED`` vocabulary, reusing
-  the accepted ``hullq.domain.identity.generate_search_keys`` search-key
-  projection (via ``hullq.bootstrap.wikidata_tier0.search_keys_for_candidate``)
-  for collision detection against both the complete 1,829-candidate baseline
-  identity space and the other 56 SLICE-0022 candidates;
-- forces every structurally usable R3 candidate to ``REVIEW_REQUIRED`` with
-  the new ``r3_repair_signal_requires_review`` reason, regardless of its own
-  collision status — R3 membership can never itself produce ``AUTO_ADMIT``;
-- mints stable opaque HullQ IDs for genuinely new ``AUTO_ADMIT`` candidates
-  and reuses the accepted historical QID -> HullQ-ID crosswalk exactly for
-  any QID it already maps, failing closed on any conflict;
-- materializes the sparse Tier-0 ResearchObservation / ResearchEvidenceBundle
-  / CanonicalIdentityAdmission objects needed for PostgreSQL replay, reusing
-  ``hullq.bootstrap.wikidata_tier0.build_admission`` unchanged and labeling
-  new evidence with the SLICE-0022 activity ID.
+- classifies each of the 57 retained candidates under the governance-amended
+  rule: **R1 route membership alone can never produce ``AUTO_ADMIT``** — a
+  labeled R1 candidate is always ``REVIEW_REQUIRED`` /
+  ``r1_alternative_route_requires_review``, and a labeled R3 candidate is
+  always ``REVIEW_REQUIRED`` / ``r3_repair_signal_requires_review``; a
+  candidate with no usable retained label is ``NOT_ADMITTED`` /
+  ``missing_label`` regardless of route. No candidate in SLICE-0022 can ever
+  reach ``AUTO_ADMIT``;
+- still computes and retains search-key collision evidence (against the
+  complete 1,829-candidate baseline identity space, reusing
+  ``hullq.domain.identity.generate_search_keys`` via
+  ``hullq.bootstrap.wikidata_tier0.search_keys_for_candidate``, and among the
+  57 candidates themselves) for audit/review context, even though collision
+  status no longer changes any SLICE-0022 decision;
+- never mints a new HullQ ID (no candidate reaches ``AUTO_ADMIT``); reuses an
+  already-retained historical HullQ ID exactly if the accepted crosswalk
+  already maps a QID (defense-in-depth only — no retained SLICE-0022 QID is
+  ever part of the accepted historical crosswalk by construction);
+- materializes sparse ResearchObservation / ResearchEvidenceBundle research
+  evidence for every labeled candidate (reusing
+  ``hullq.bootstrap.wikidata_tier0.build_admission`` unchanged, which returns
+  ``None`` for any non-``AUTO_ADMIT`` candidate — so SLICE-0022 creates zero
+  canonical BoatModels and zero canonical evidence links);
+- preserves the accepted SLICE-0021 retained source-fact acquisition
+  timestamp (``sampled_candidates.json``'s own ``generated_at``) as every
+  candidate's ``retrieved_at`` / ``ResearchObservation.observed_at`` — never
+  a SLICE-0022 computation timestamp;
+- offers a full offline recompute-and-diff self-consistency verifier and a
+  non-self-referential retained artifact-digest record.
 
 Explicitly does NOT:
 - perform any live Wikidata (or other) network request;
@@ -43,11 +59,12 @@ Explicitly does NOT:
   artifacts;
 - infer Brand, Organization, BoatDesign generation, NamedVariant or
   DesignOption identity from any Wikidata statement;
-- perform fuzzy/heuristic identity resolution, punctuation rewriting,
-  manufacturer-prefix manipulation, token reordering, generation collapsing
-  or semantic inference;
+- perform fuzzy/heuristic identity resolution, description-keyword
+  classification, QID blacklisting, punctuation rewriting, manufacturer-prefix
+  manipulation, token reordering, generation collapsing or semantic inference;
 - resolve the accepted SLICE-0017/0018 review/non-admitted queues;
-- change production Wikidata discovery semantics.
+- change production Wikidata discovery semantics;
+- mint any new canonical BoatModel identity.
 """
 
 from __future__ import annotations
@@ -64,10 +81,11 @@ from hullq.bootstrap.wikidata_tier0 import (
     BootstrapDecision,
     BootstrapReasonCode,
     CollisionCluster,
+    CrosswalkConflictError,
+    _collapse_qid_id_pairs_fail_closed,
     candidate_from_manifest_dict,
     candidate_to_manifest_dict,
     compute_collision_clusters,
-    mint_hullq_id,
     validate_crosswalk_consistency,
 )
 from hullq.bootstrap.wikidata_tier0 import (
@@ -92,19 +110,23 @@ __all__ = [
     "ACCEPTED_SL0021_DISCOVERY_PROBE_BLOB_SHA1",
     "ACCEPTED_SL0021_IMPLEMENTATION_HEAD",
     "ACCEPTED_SL0021_SAMPLED_CANDIDATES_BLOB_SHA1",
+    "ARTIFACT_DIGESTS_SCHEMA_VERSION",
     "EXPECTED_R1_COUNT",
     "EXPECTED_R2_COUNT",
     "EXPECTED_R3_COUNT",
     "EXPECTED_TOTAL_CANDIDATES",
+    "RETAINED_DIGEST_FILENAMES",
     "SL0017_MANIFEST_PATH",
     "SL0018_MANIFEST_PATH",
     "SL0021_DISCOVERY_PROBE_PATH",
     "SL0021_SAMPLED_CANDIDATES_PATH",
     "SL0022_ACTIVITY_ID",
+    "SL0022_DIR",
     "SL0022_MANIFEST_VERSION",
     "ImmutableInputIntegrityError",
     "Sl0022Candidate",
     "Sl0022ImmutableInputs",
+    "build_artifact_digests",
     "build_bundle",
     "build_sl0022_manifest",
     "classify_sl0022_candidates",
@@ -112,6 +134,7 @@ __all__ = [
     "load_and_fingerprint_immutable_inputs",
     "sl0022_candidate_from_manifest_dict",
     "sl0022_candidate_to_manifest_dict",
+    "verify_artifact_digests",
     "verify_sl0022_manifest_self_consistency",
 ]
 
@@ -119,7 +142,10 @@ __all__ = [
 # Fixed identity / bounds
 # ---------------------------------------------------------------------------
 
-SL0022_MANIFEST_VERSION = "0022-v1"
+# v2: R1 admission governance amendment (docs/slices/SLICE-0022-r1-admission-
+# governance-amendment.md) — R1 route membership alone can never produce
+# AUTO_ADMIT; full offline verifier/artifact-digest/replay-safety hardening.
+SL0022_MANIFEST_VERSION = "0022-v2"
 SL0022_ACTIVITY_ID = "SLICE-0022-ALT-ROUTE-ADMISSION"
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -130,6 +156,7 @@ SL0018_MANIFEST_PATH = (
 SL0021_DIR = ROOT / "research" / "bootstrap" / "wikidata" / "sl0021-alt-discovery"
 SL0021_SAMPLED_CANDIDATES_PATH = SL0021_DIR / "sampled_candidates.json"
 SL0021_DISCOVERY_PROBE_PATH = SL0021_DIR / "discovery_probe.json"
+SL0022_DIR = ROOT / "research" / "bootstrap" / "wikidata" / "sl0022-alt-route-admission"
 
 # Accepted immutable retained-input fingerprints (docs/slices/SLICE-0022-*.md
 # "Immutable retained inputs"). MUST NOT change; a drifted retained artifact
@@ -192,6 +219,14 @@ def _repo_relative(path: Path) -> str:
 class Sl0022ImmutableInputs:
     """Every immutable retained fact SLICE-0022 classification depends on,
     loaded and fail-closed-validated once before any classification.
+
+    ``sl0021_generated_at`` is the accepted SLICE-0021 retained source-fact
+    acquisition timestamp (``sampled_candidates.json``'s own top-level
+    ``generated_at``) — the single retained instant at which the live
+    ``wbgetentities`` entity-detail sample underlying every one of the 57
+    candidate rows was fetched. SLICE-0022 MUST use this value (never its own
+    computation time) as every candidate's ``retrieved_at`` /
+    ``ResearchObservation.observed_at``.
     """
 
     baseline: BaselineSnapshot
@@ -204,6 +239,7 @@ class Sl0022ImmutableInputs:
     sl0021_sampled_candidates_sha1: str
     sl0021_discovery_probe_path: str
     sl0021_discovery_probe_sha1: str
+    sl0021_generated_at: str
 
 
 def load_and_fingerprint_immutable_inputs(
@@ -233,7 +269,9 @@ def load_and_fingerprint_immutable_inputs(
       facts (R1/R2/R3 incremental counts, total union count, zero pairwise
       route overlap) do not exactly corroborate ``sampled_candidates.json``;
     - any retained SLICE-0022 candidate QID is already part of the accepted
-      1,829-candidate direct-discovery identity space.
+      1,829-candidate direct-discovery identity space;
+    - ``sampled_candidates.json`` has no usable top-level ``generated_at``
+      retained source-fact timestamp.
 
     Never writes to any of the four input files.
     """
@@ -309,6 +347,13 @@ def load_and_fingerprint_immutable_inputs(
             f"{ACCEPTED_SL0021_DISCOVERY_PROBE_BLOB_SHA1!r}"
         )
     probe_doc = json.loads(probe_bytes.decode("utf-8"))
+
+    sl0021_generated_at = sampled_doc.get("generated_at")
+    if not sl0021_generated_at or not isinstance(sl0021_generated_at, str):
+        raise ImmutableInputIntegrityError(
+            "Retained SLICE-0021 sampled_candidates.json has no usable top-level "
+            f"'generated_at' retained source-fact timestamp: {sl0021_generated_at!r}"
+        )
 
     rows = sampled_doc["candidates"]
     if len(rows) != EXPECTED_TOTAL_CANDIDATES:
@@ -393,6 +438,7 @@ def load_and_fingerprint_immutable_inputs(
         sl0021_sampled_candidates_sha1=sampled_sha1,
         sl0021_discovery_probe_path=_repo_relative(sl0021_discovery_probe_path),
         sl0021_discovery_probe_sha1=probe_sha1,
+        sl0021_generated_at=sl0021_generated_at,
     )
 
 
@@ -457,7 +503,11 @@ def build_bundle(candidate: Sl0022Candidate) -> ResearchEvidenceBundle | None:
     Thin wrapper over the accepted ``build_bundle`` that labels the produced
     ``ResearchObservation``/``ResearchEvidenceBundle`` with the genuine
     SLICE-0022 ``activity_id`` instead of the SLICE-0017 default, so this
-    evidence is not misattributed to the SLICE-0017 bootstrap run.
+    evidence is not misattributed to the SLICE-0017 bootstrap run. Returns a
+    bundle for any candidate with a usable label (``REVIEW_REQUIRED`` or
+    ``NOT_ADMITTED`` alike) — SLICE-0022 retains research evidence for
+    review-bound candidates even though it mints no canonical admission for
+    them; only a missing-label candidate yields ``None``.
     """
     return _build_bundle_0017(candidate.base, activity_id=SL0022_ACTIVITY_ID)
 
@@ -467,43 +517,50 @@ def classify_sl0022_candidates(
     *,
     retrieved_at: str,
     baseline: BaselineSnapshot,
-    id_factory: Any = mint_hullq_id,
     existing_crosswalk: dict[str, str] | None = None,
 ) -> tuple[list[Sl0022Candidate], list[CollisionCluster], dict[str, BaselineCollision]]:
-    """Deterministically classify the retained SLICE-0022 candidate rows.
+    """Deterministically classify the retained SLICE-0022 candidate rows
+    under the R1 admission governance amendment
+    (``docs/slices/SLICE-0022-r1-admission-governance-amendment.md``).
 
     Each *retained_rows* entry MUST carry ``qid``, ``route_membership``
     (exactly ``["R1"]`` or ``["R3"]``), ``label`` and ``aliases`` — the exact
-    shape of a ``sampled_candidates.json`` candidate row.
+    shape of a ``sampled_candidates.json`` candidate row. *retrieved_at* MUST
+    be the accepted retained SLICE-0021 source-fact acquisition timestamp
+    (``Sl0022ImmutableInputs.sl0021_generated_at``) — SLICE-0022 performs zero
+    live acquisition and must never invent a new retrieval time.
 
-    Reuses the accepted SLICE-0017/0018 collision machinery unmodified:
+    Still reuses the accepted SLICE-0017/0018 collision machinery unmodified,
+    purely for retained audit/review evidence (collision status no longer
+    changes any decision):
 
     - ``compute_collision_clusters`` for same-search-key collisions among the
       57 SLICE-0022 candidates themselves ("within-57" collisions);
     - ``compute_baseline_collisions`` for same-search-key collisions against
-      the complete accepted 1,829-candidate baseline identity space (covering
-      baseline AUTO_ADMIT and REVIEW_REQUIRED candidates alike, since both
-      retain a usable label).
+      the complete accepted 1,829-candidate baseline identity space.
 
-    Decision rules, in order:
+    Decision rules (governance-amended — R1 route membership alone can never
+    produce ``AUTO_ADMIT``, and no candidate in SLICE-0022 can ever reach
+    ``AUTO_ADMIT``):
 
-    1. no usable retained label -> ``NOT_ADMITTED`` / ``missing_label``
-       (matches accepted Tier-0 semantics exactly; applies to both R1 and R3
-       candidates uniformly — R3 membership does not exempt a label-less
-       candidate from this rule, nor does it change its result).
-    2. R3 membership (route_membership == ("R3",)) with a usable label ->
-       always ``REVIEW_REQUIRED`` / ``r3_repair_signal_requires_review``,
-       regardless of collision status. R3 candidates never reach the
-       collision check below and can never become ``AUTO_ADMIT``.
-    3. collision against the baseline identity space OR against another of
-       the 57 candidates -> ``REVIEW_REQUIRED`` / ``name_collision``.
-    4. otherwise -> ``AUTO_ADMIT`` / ``ok``, reusing an already-retained
-       HullQ ID from *existing_crosswalk* exactly if present, else minting a
-       new one via *id_factory*.
+    1. no usable retained label -> ``NOT_ADMITTED`` / ``missing_label``,
+       regardless of route (R1 or R3 alike).
+    2. R3 membership with a usable label -> ``REVIEW_REQUIRED`` /
+       ``r3_repair_signal_requires_review``.
+    3. R1 membership with a usable label -> ``REVIEW_REQUIRED`` /
+       ``r1_alternative_route_requires_review``. This route is
+       discovery-authoritative but not admission-authoritative: it never
+       auto-admits regardless of collision status, and the reason MUST NOT be
+       read as implying the candidate is invalid, non-sailing, a duplicate or
+       globally novel.
 
-    ``existing_crosswalk`` (typically the combined baseline crosswalk merged
-    with any already-minted SLICE-0022 IDs from a prior run) is reused
-    exactly for any QID it already maps — never silently reminted.
+    ``existing_crosswalk`` (typically the combined SLICE-0017+0018 baseline
+    crosswalk) is consulted only to reuse an already-retained HullQ ID exactly
+    if one already exists for a QID — defense-in-depth only, since no
+    retained SLICE-0022 QID is ever part of the accepted historical crosswalk
+    by construction (enforced below and by
+    ``load_and_fingerprint_immutable_inputs``). No new HullQ ID is ever
+    minted here: nothing in SLICE-0022 reaches ``AUTO_ADMIT``.
 
     Fails closed via ``ValueError`` before any classification if any row's
     QID is already part of *baseline*'s 1,829-candidate identity space (a
@@ -534,8 +591,10 @@ def classify_sl0022_candidates(
         )
 
     crosswalk = dict(existing_crosswalk or {})
+    # Retained purely for audit/review evidence (see the "collisions" section
+    # of the retained manifest) — collision status no longer gates any
+    # SLICE-0022 decision under the R1 governance amendment.
     within_57_clusters = compute_collision_clusters(entities)
-    within_57_colliding_qids = {qid for cluster in within_57_clusters for qid in cluster.qids}
     baseline_collisions = compute_baseline_collisions(entities, baseline)
 
     candidates: list[Sl0022Candidate] = []
@@ -565,55 +624,23 @@ def classify_sl0022_candidates(
         observation_id = f"OBS-WD-TIER0-{qid}"
         bundle_id = f"BUNDLE-WD-TIER0-{qid}"
         bundle_version = "1"
-
-        if route_membership == ("R3",):
-            base = BootstrapCandidate(
-                qid=qid,
-                retrieved_at=retrieved_at,
-                preferred_label=label,
-                aliases=tuple(entity.aliases),
-                hullq_id=retained_id,
-                decision=BootstrapDecision.REVIEW_REQUIRED,
-                reason_codes=(BootstrapReasonCode.R3_REPAIR_SIGNAL_REQUIRES_REVIEW,),
-                observation_id=observation_id,
-                bundle_id=bundle_id,
-                bundle_version=bundle_version,
-                evidence_link_id=None,
-            )
-            candidates.append(Sl0022Candidate(base=base, route_membership=route_membership))
-            continue
-
-        if qid in baseline_collisions or qid in within_57_colliding_qids:
-            base = BootstrapCandidate(
-                qid=qid,
-                retrieved_at=retrieved_at,
-                preferred_label=label,
-                aliases=tuple(entity.aliases),
-                hullq_id=retained_id,
-                decision=BootstrapDecision.REVIEW_REQUIRED,
-                reason_codes=(BootstrapReasonCode.NAME_COLLISION,),
-                observation_id=observation_id,
-                bundle_id=bundle_id,
-                bundle_version=bundle_version,
-                evidence_link_id=None,
-            )
-            candidates.append(Sl0022Candidate(base=base, route_membership=route_membership))
-            continue
-
-        hullq_id = retained_id if retained_id is not None else id_factory()
-        crosswalk[qid] = hullq_id
+        reason = (
+            BootstrapReasonCode.R3_REPAIR_SIGNAL_REQUIRES_REVIEW
+            if route_membership == ("R3",)
+            else BootstrapReasonCode.R1_ALTERNATIVE_ROUTE_REQUIRES_REVIEW
+        )
         base = BootstrapCandidate(
             qid=qid,
             retrieved_at=retrieved_at,
             preferred_label=label,
             aliases=tuple(entity.aliases),
-            hullq_id=hullq_id,
-            decision=BootstrapDecision.AUTO_ADMIT,
-            reason_codes=(BootstrapReasonCode.OK,),
+            hullq_id=retained_id,
+            decision=BootstrapDecision.REVIEW_REQUIRED,
+            reason_codes=(reason,),
             observation_id=observation_id,
             bundle_id=bundle_id,
             bundle_version=bundle_version,
-            evidence_link_id=f"LINK-WD-TIER0-{qid}",
+            evidence_link_id=None,
         )
         candidates.append(Sl0022Candidate(base=base, route_membership=route_membership))
 
@@ -635,17 +662,25 @@ def build_sl0022_manifest(
     inputs: Sl0022ImmutableInputs,
     retrieval_count: int = 0,
     extracted_record_count: int = 0,
-    acquired_at: str | None = None,
     classification_recomputed_at: str | None = None,
     historical_crosswalk: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Build the full versioned, JSON-serializable SLICE-0022 manifest.
 
+    ``acquired_at`` (the retained SLICE-0021 source-fact acquisition
+    timestamp) is always taken verbatim from ``inputs.sl0021_generated_at`` —
+    it is never a caller-supplied SLICE-0022 computation time. ``generated_at``
+    is this document's own write time and legitimately varies across reruns;
+    ``classification_recomputed_at`` is ``None`` on the first classification
+    pass and set to the recompute's own timestamp on a later rerun.
+
     Fails closed via ``ValueError`` before returning anything if:
 
     - *candidates* is not exactly the expected 57-candidate universe split
       53 R1 / 4 R3;
-    - any R3 candidate is ``AUTO_ADMIT`` (the R3 fail-closed rule);
+    - any candidate is ``AUTO_ADMIT`` (the R1 governance amendment forbids
+      admission from either route; no SLICE-0022 candidate may ever reach
+      ``AUTO_ADMIT``);
     - the current candidate set's own QID -> HullQ-ID mappings are internally
       inconsistent, or conflict with *historical_crosswalk* (both checked via
       the accepted ``validate_crosswalk_consistency`` /
@@ -655,7 +690,10 @@ def build_sl0022_manifest(
     accumulated across every prior run (the combined SLICE-0017+0018 baseline
     crosswalk merged with any already-retained SLICE-0022 mapping from a
     prior classification pass). It defaults to ``baseline.crosswalk`` alone,
-    which is correct for the very first SLICE-0022 classification pass.
+    which is correct for the very first SLICE-0022 classification pass. Under
+    the R1 governance amendment this is expected to remain byte-identical to
+    the combined baseline crosswalk forever, since no SLICE-0022 candidate
+    ever mints a new mapping.
     """
     if len(candidates) != EXPECTED_TOTAL_CANDIDATES:
         raise ValueError(
@@ -669,12 +707,12 @@ def build_sl0022_manifest(
             f"SLICE-0022 candidate route split must be exactly {EXPECTED_R1_COUNT} R1 / "
             f"{EXPECTED_R3_COUNT} R3; got {len(r1_candidates)} R1 / {len(r3_candidates)} R3"
         )
-    r3_auto_admitted = [c for c in r3_candidates if c.base.decision == BootstrapDecision.AUTO_ADMIT]
-    if r3_auto_admitted:
+    auto_admitted = [c for c in candidates if c.base.decision == BootstrapDecision.AUTO_ADMIT]
+    if auto_admitted:
         raise ValueError(
-            "R3 fail-closed rule violated: the following R3 candidate(s) were classified "
-            f"AUTO_ADMIT, which SLICE-0022 MUST NEVER permit: "
-            f"{sorted(c.base.qid for c in r3_auto_admitted)}"
+            "R1 admission governance amendment violated: the following candidate(s) were "
+            "classified AUTO_ADMIT, which SLICE-0022 MUST NEVER permit from either route: "
+            f"{sorted(c.base.qid for c in auto_admitted)}"
         )
 
     bases = [c.base for c in candidates]
@@ -694,12 +732,10 @@ def build_sl0022_manifest(
         for reason in c.base.reason_codes:
             reason_breakdown[str(reason)] = reason_breakdown.get(str(reason), 0) + 1
 
-    auto_admit = sum(1 for c in candidates if c.base.decision == BootstrapDecision.AUTO_ADMIT)
     review_required = sum(
         1 for c in candidates if c.base.decision == BootstrapDecision.REVIEW_REQUIRED
     )
     not_admitted = sum(1 for c in candidates if c.base.decision == BootstrapDecision.NOT_ADMITTED)
-    auto_admit_r1 = sum(1 for c in r1_candidates if c.base.decision == BootstrapDecision.AUTO_ADMIT)
 
     newly_minted_id_count = sum(
         1 for c in candidates if c.base.hullq_id is not None and c.base.qid not in historical
@@ -712,7 +748,7 @@ def build_sl0022_manifest(
         "manifest_version": SL0022_MANIFEST_VERSION,
         "source_id": WIKIDATA_SOURCE_ID,
         "generated_at": generated_at,
-        "acquired_at": acquired_at if acquired_at is not None else generated_at,
+        "acquired_at": inputs.sl0021_generated_at,
         "classification_recomputed_at": classification_recomputed_at,
         "immutable_inputs": {
             "sl0017_manifest": {
@@ -766,8 +802,8 @@ def build_sl0022_manifest(
         },
         "counts": {
             "candidates_processed": len(candidates),
-            "auto_admit": auto_admit,
-            "auto_admit_r1": auto_admit_r1,
+            "auto_admit": 0,
+            "auto_admit_r1": 0,
             "auto_admit_r3": 0,
             "review_required": review_required,
             "not_admitted": not_admitted,
@@ -785,15 +821,110 @@ def build_sl0022_manifest(
                 1 for c in candidates if c.base.evidence_link_id is not None
             ),
             "accepted_baseline_canonical_boat_model_count": len(baseline.auto_admit_qids),
-            "combined_canonical_boat_model_count_expected": len(baseline.auto_admit_qids)
-            + auto_admit,
+            "combined_canonical_boat_model_count_expected": len(baseline.auto_admit_qids),
         },
     }
 
 
 # ---------------------------------------------------------------------------
+# Retained artifact digests — non-self-referential
+# ---------------------------------------------------------------------------
+
+ARTIFACT_DIGESTS_SCHEMA_VERSION = "sl0022-artifact-digests-v1"
+
+# The retained SLICE-0022 output files this digest record covers. Excludes
+# ARTIFACT-DIGESTS.json itself (would create a self-referential digest loop)
+# and excludes PostgreSQL replay evidence (REPLAY-RESULT.json /
+# REPLAY-REPORT.md), which is produced only by a separate --replay run
+# requiring database access and is verified by its own replay-safety gate
+# instead (see wikidata_sl0022_alt_route_admission_runner.replay_manifest).
+RETAINED_DIGEST_FILENAMES: tuple[str, ...] = ("manifest.json", "manifest_schema.json", "REPORT.md")
+
+
+def build_artifact_digests(*, generated_at: str, paths: dict[str, Path]) -> dict[str, Any]:
+    """Build the retained, non-self-referential ``ARTIFACT-DIGESTS.json``
+    document: deterministic SHA256 digests of the files named by *paths*.
+
+    *paths* MUST have exactly the keys in ``RETAINED_DIGEST_FILENAMES``
+    (``"manifest.json"``, ``"manifest_schema.json"``, ``"REPORT.md"``),
+    mapped to the actual on-disk path for each — the caller supplies the real
+    paths (which may differ from the default retained-package layout in a
+    test, e.g. under ``tmp_path``) rather than this function assuming a fixed
+    directory.
+
+    Fails closed (``FileNotFoundError``) if any covered file is missing —
+    ARTIFACT-DIGESTS.json must never silently omit or fabricate a digest.
+    """
+    if set(paths) != set(RETAINED_DIGEST_FILENAMES):
+        raise ValueError(
+            f"build_artifact_digests paths keys must be exactly {RETAINED_DIGEST_FILENAMES}; got "
+            f"{sorted(paths)}"
+        )
+    digests: dict[str, str] = {}
+    for name in RETAINED_DIGEST_FILENAMES:
+        data = paths[name].read_bytes()
+        digests[name] = f"sha256:{hashlib.sha256(data).hexdigest()}"
+    return {
+        "schema_version": ARTIFACT_DIGESTS_SCHEMA_VERSION,
+        "generated_at": generated_at,
+        "excludes_self": "ARTIFACT-DIGESTS.json",
+        "digests": digests,
+    }
+
+
+def verify_artifact_digests(document: dict[str, Any], *, paths: dict[str, Path]) -> list[str]:
+    """Recompute SHA256 digests of the files named by *paths* (same shape as
+    ``build_artifact_digests``) and compare against *document*'s own retained
+    ``digests`` map, returning human-readable mismatch descriptions (empty ==
+    fully self-consistent). Also rejects a digest entry for a file outside
+    the covered set (an unexplained extra entry) or a missing target file on
+    disk.
+    """
+    mismatches: list[str] = []
+    recorded = document.get("digests", {})
+    for name in RETAINED_DIGEST_FILENAMES:
+        path = paths.get(name)
+        if path is None or not path.exists():
+            mismatches.append(f"ARTIFACT-DIGESTS.json target file missing on disk: {name}")
+            continue
+        actual = f"sha256:{hashlib.sha256(path.read_bytes()).hexdigest()}"
+        if recorded.get(name) != actual:
+            mismatches.append(
+                f"ARTIFACT-DIGESTS.json digests[{name}]={recorded.get(name)!r} != recomputed "
+                f"{actual!r}"
+            )
+    extra = set(recorded) - set(RETAINED_DIGEST_FILENAMES)
+    if extra:
+        mismatches.append(
+            f"ARTIFACT-DIGESTS.json contains unexpected digest entries outside the covered set: "
+            f"{sorted(extra)}"
+        )
+    return mismatches
+
+
+# ---------------------------------------------------------------------------
 # Offline self-consistency verification of an already-retained manifest
 # ---------------------------------------------------------------------------
+
+
+def _parse_retained_crosswalk_fail_closed(
+    manifest: dict[str, Any],
+) -> tuple[dict[str, str], str | None]:
+    """Parse ``manifest["retained_crosswalk"]`` into a QID -> HullQ-ID dict
+    using the accepted fail-closed dedup/bijection collapse (never a naive
+    dict-comprehension, which would silently let a later duplicate row
+    overwrite an earlier one). Returns ``(crosswalk, error_message)``: on a
+    ``CrosswalkConflictError`` the crosswalk is empty and *error_message*
+    holds the human-readable failure instead of raising, so a caller
+    collecting mismatch strings can keep going.
+    """
+    pairs = ((row["qid"], row["hullq_id"]) for row in manifest.get("retained_crosswalk", []))
+    try:
+        return _collapse_qid_id_pairs_fail_closed(
+            pairs, context="retained manifest crosswalk"
+        ), None
+    except CrosswalkConflictError as exc:
+        return {}, str(exc)
 
 
 def verify_sl0022_manifest_self_consistency(
@@ -807,26 +938,39 @@ def verify_sl0022_manifest_self_consistency(
     Recomputation reuses the manifest's own retained HullQ-ID assignments via
     ``existing_crosswalk`` (so legitimate ID reuse across runs never counts as
     a mismatch) and independently re-derives every other field: per-candidate
-    decision/reason codes/route membership/observation/bundle/evidence-link
-    IDs, collision memberships (baseline and within-57), aggregate counts,
-    and the R3-never-``AUTO_ADMIT`` invariant — never trusting the manifest's
-    own already-computed summary fields as ground truth for themselves.
+    decision/reason codes/route membership/timestamps/observation/bundle/
+    evidence-link IDs (in exact retained order, not merely set membership),
+    complete collision records (not only membership), every aggregate count,
+    crosswalk bijection/preservation against the accepted baseline, static/
+    usage semantics, and the never-``AUTO_ADMIT`` invariant — never trusting
+    the manifest's own already-computed summary fields as ground truth for
+    themselves.
     """
     mismatches: list[str] = []
 
     retained_rows = manifest.get("candidates", [])
-    retrieved_at_values = {row["retrieved_at"] for row in retained_rows}
-    if len(retrieved_at_values) != 1:
-        mismatches.append(
-            "manifest.candidates do not share one uniform retrieved_at timestamp; cannot "
-            "deterministically recompute"
-        )
-        return mismatches
-    retrieved_at = next(iter(retrieved_at_values))
+    retained_qids = [row.get("qid") for row in retained_rows]
+    if len(set(retained_qids)) != len(retained_qids):
+        duplicates = sorted({q for q in retained_qids if retained_qids.count(q) > 1})
+        mismatches.append(f"manifest.candidates contains duplicate QID row(s): {duplicates}")
 
-    retained_crosswalk = {
-        row["qid"]: row["hullq_id"] for row in manifest.get("retained_crosswalk", [])
-    }
+    retrieved_at_values = {row.get("retrieved_at") for row in retained_rows}
+    if retrieved_at_values != {inputs.sl0021_generated_at}:
+        mismatches.append(
+            "manifest.candidates retrieved_at value(s) "
+            f"{sorted(v for v in retrieved_at_values if v is not None)!r} != the single accepted "
+            f"retained SLICE-0021 source-fact timestamp {inputs.sl0021_generated_at!r}"
+        )
+        # retrieved_at is unreliable; still attempt the rest of the checks
+        # using the accepted source-fact timestamp so a tampered
+        # retrieved_at cannot mask every other check.
+    retrieved_at = inputs.sl0021_generated_at
+
+    retained_crosswalk, crosswalk_error = _parse_retained_crosswalk_fail_closed(manifest)
+    if crosswalk_error is not None:
+        mismatches.append(
+            f"manifest.retained_crosswalk failed fail-closed parsing: {crosswalk_error}"
+        )
 
     recomputed_candidates, within_57_clusters, baseline_collisions = classify_sl0022_candidates(
         list(inputs.retained_candidate_rows),
@@ -836,12 +980,21 @@ def verify_sl0022_manifest_self_consistency(
     )
 
     recomputed_by_qid = {c.base.qid: c for c in recomputed_candidates}
-    retained_by_qid = {row["qid"]: row for row in retained_rows}
+    retained_by_qid = {row["qid"]: row for row in retained_rows if "qid" in row}
 
     if set(recomputed_by_qid) != set(retained_by_qid):
         mismatches.append(
             f"candidate QID set mismatch: recomputed={sorted(recomputed_by_qid)!r} != "
             f"retained={sorted(retained_by_qid)!r}"
+        )
+
+    # Exact ordered sequence, not merely set equality — a reordering of the
+    # same 57 QIDs must be detectable.
+    expected_order = [c.base.qid for c in recomputed_candidates]
+    if retained_qids != expected_order and set(retained_qids) == set(expected_order):
+        mismatches.append(
+            f"manifest.candidates order does not match the deterministic recomputed order: "
+            f"retained={retained_qids!r} != recomputed={expected_order!r}"
         )
 
     for qid, recomputed in recomputed_by_qid.items():
@@ -851,6 +1004,7 @@ def verify_sl0022_manifest_self_consistency(
         expected_row = sl0022_candidate_to_manifest_dict(recomputed)
         compared_fields = (
             "route_membership",
+            "retrieved_at",
             "preferred_label",
             "aliases",
             "hullq_id",
@@ -868,49 +1022,125 @@ def verify_sl0022_manifest_self_consistency(
             if retained_row.get(field) != expected_row.get(field)
         )
 
-    # R3-never-AUTO_ADMIT invariant, re-checked directly against the retained
+    # Never-AUTO_ADMIT invariant, re-checked directly against the retained
     # document (defense-in-depth: not merely implied by the field-by-field
     # comparison above, which already would have flagged the decision).
     mismatches.extend(
-        f"candidate[{row.get('qid')}] is R3 and AUTO_ADMIT, which the R3 fail-closed "
-        "rule must never permit"
+        f"candidate[{row.get('qid')}] is AUTO_ADMIT, which the R1 admission governance "
+        "amendment must never permit from either route"
         for row in retained_rows
-        if row.get("route_membership") == ["R3"] and row.get("decision") == "auto_admit"
+        if row.get("decision") == "auto_admit"
     )
 
-    expected_baseline_collision_qids = set(baseline_collisions)
-    retained_baseline_collision_qids = {
-        entry["candidate_qid"] for entry in manifest.get("collisions", {}).get("baseline", [])
+    # Complete collision records (not only membership): exact baseline_qids
+    # and shared_keys per candidate_qid, exact within-57 cluster qids and
+    # shared_keys.
+    expected_baseline_by_qid = {
+        bc.delta_qid: {
+            "candidate_qid": bc.delta_qid,
+            "baseline_qids": list(bc.baseline_qids),
+            "shared_keys": list(bc.shared_keys),
+        }
+        for bc in baseline_collisions.values()
     }
-    if expected_baseline_collision_qids != retained_baseline_collision_qids:
+    retained_baseline_by_qid = {
+        entry.get("candidate_qid"): entry
+        for entry in manifest.get("collisions", {}).get("baseline", [])
+    }
+    if set(expected_baseline_by_qid) != set(retained_baseline_by_qid):
         mismatches.append(
             "collisions.baseline candidate-QID set does not match recomputed baseline collisions: "
-            f"retained={sorted(retained_baseline_collision_qids)!r} != recomputed="
-            f"{sorted(expected_baseline_collision_qids)!r}"
+            f"retained={sorted(retained_baseline_by_qid)!r} != recomputed="
+            f"{sorted(expected_baseline_by_qid)!r}"
         )
+    for qid, expected_entry in expected_baseline_by_qid.items():
+        retained_entry = retained_baseline_by_qid.get(qid)
+        if retained_entry is not None and retained_entry != expected_entry:
+            mismatches.append(
+                f"collisions.baseline[{qid}]={retained_entry!r} != recomputed {expected_entry!r}"
+            )
 
-    expected_within_57_clusters = {c.qids for c in within_57_clusters}
-    retained_within_57_clusters = {
-        tuple(entry["qids"]) for entry in manifest.get("collisions", {}).get("within_57", [])
+    expected_within_57 = {
+        tuple(c.qids): {"qids": list(c.qids), "shared_keys": list(c.shared_keys)}
+        for c in within_57_clusters
     }
-    if expected_within_57_clusters != retained_within_57_clusters:
+    retained_within_57 = {
+        tuple(entry.get("qids", [])): entry
+        for entry in manifest.get("collisions", {}).get("within_57", [])
+    }
+    if set(expected_within_57) != set(retained_within_57):
         mismatches.append(
             "collisions.within_57 cluster set does not match recomputed within-57 clusters: "
-            f"retained={sorted(retained_within_57_clusters)!r} != recomputed="
-            f"{sorted(expected_within_57_clusters)!r}"
+            f"retained={sorted(retained_within_57)!r} != recomputed={sorted(expected_within_57)!r}"
         )
+    for cluster_key, expected_cluster_entry in expected_within_57.items():
+        retained_entry = retained_within_57.get(cluster_key)
+        if retained_entry is not None and retained_entry != expected_cluster_entry:
+            mismatches.append(
+                f"collisions.within_57[{cluster_key}]={retained_entry!r} != recomputed "
+                f"{expected_cluster_entry!r}"
+            )
+
+    # Every retained counts.* field, recomputed independently.
+    recomputed_reason_breakdown: dict[str, int] = {}
+    for c in recomputed_candidates:
+        for reason in c.base.reason_codes:
+            recomputed_reason_breakdown[str(reason)] = (
+                recomputed_reason_breakdown.get(str(reason), 0) + 1
+            )
+    recomputed_review_required = sum(
+        1 for c in recomputed_candidates if c.base.decision == BootstrapDecision.REVIEW_REQUIRED
+    )
+    recomputed_not_admitted = sum(
+        1 for c in recomputed_candidates if c.base.decision == BootstrapDecision.NOT_ADMITTED
+    )
+    recomputed_current_crosswalk = {
+        c.base.qid: c.base.hullq_id for c in recomputed_candidates if c.base.hullq_id is not None
+    }
+    recomputed_newly_minted = sum(
+        1
+        for c in recomputed_candidates
+        if c.base.hullq_id is not None and c.base.qid not in retained_crosswalk
+    )
+    recomputed_reused_historical = sum(
+        1
+        for c in recomputed_candidates
+        if c.base.hullq_id is not None and c.base.qid in retained_crosswalk
+    )
+    try:
+        recomputed_full_crosswalk_count = len(
+            merge_crosswalks_fail_closed(
+                retained_crosswalk,
+                recomputed_current_crosswalk,
+                context="verify_sl0022_manifest_self_consistency crosswalk recompute",
+            )
+        )
+    except CrosswalkConflictError as exc:
+        mismatches.append(f"recomputed crosswalk merge failed closed: {exc}")
+        recomputed_full_crosswalk_count = -1
 
     recomputed_counts = {
         "candidates_processed": len(recomputed_candidates),
-        "auto_admit": sum(
-            1 for c in recomputed_candidates if c.base.decision == BootstrapDecision.AUTO_ADMIT
+        "auto_admit": 0,
+        "auto_admit_r1": 0,
+        "auto_admit_r3": 0,
+        "review_required": recomputed_review_required,
+        "not_admitted": recomputed_not_admitted,
+        "reason_breakdown": recomputed_reason_breakdown,
+        "baseline_collision_count": len(baseline_collisions),
+        "within_57_collision_cluster_count": len(within_57_clusters),
+        "historical_crosswalk_count_before": len(retained_crosswalk),
+        "retained_crosswalk_count": recomputed_full_crosswalk_count,
+        "newly_minted_id_count": recomputed_newly_minted,
+        "reused_historical_id_count": recomputed_reused_historical,
+        "research_observation_count": sum(
+            1 for c in recomputed_candidates if c.base.observation_id is not None
         ),
-        "review_required": sum(
-            1 for c in recomputed_candidates if c.base.decision == BootstrapDecision.REVIEW_REQUIRED
+        "canonical_evidence_link_count": sum(
+            1 for c in recomputed_candidates if c.base.evidence_link_id is not None
         ),
-        "not_admitted": sum(
-            1 for c in recomputed_candidates if c.base.decision == BootstrapDecision.NOT_ADMITTED
-        ),
+        "accepted_baseline_canonical_boat_model_count": len(inputs.baseline.auto_admit_qids),
+        "combined_canonical_boat_model_count_expected": len(inputs.baseline.auto_admit_qids),
     }
     retained_counts = manifest.get("counts", {})
     for key, expected in recomputed_counts.items():
@@ -919,15 +1149,46 @@ def verify_sl0022_manifest_self_consistency(
                 f"counts.{key}={retained_counts.get(key)!r} != recomputed {expected!r}"
             )
 
-    expected_combined = len(inputs.baseline.auto_admit_qids) + recomputed_counts["auto_admit"]
-    if retained_counts.get("combined_canonical_boat_model_count_expected") != expected_combined:
+    # Crosswalk bijection/preservation: under the R1 governance amendment the
+    # retained crosswalk must remain byte-identical to the accepted combined
+    # SLICE-0017+0018 baseline crosswalk — no SLICE-0022 candidate ever mints
+    # a new mapping, and none may silently drop or alter an accepted one.
+    if crosswalk_error is None and retained_crosswalk != inputs.baseline.crosswalk:
+        missing = {
+            k: v for k, v in inputs.baseline.crosswalk.items() if retained_crosswalk.get(k) != v
+        }
+        extra = {
+            k: v for k, v in retained_crosswalk.items() if inputs.baseline.crosswalk.get(k) != v
+        }
         mismatches.append(
-            "counts.combined_canonical_boat_model_count_expected="
-            f"{retained_counts.get('combined_canonical_boat_model_count_expected')!r} != "
-            f"recomputed {expected_combined!r}"
+            "manifest.retained_crosswalk is not byte-identical to the accepted combined "
+            f"SLICE-0017+0018 baseline crosswalk: missing/altered={missing!r} extra/altered={extra!r}"
         )
 
+    # Immutable input references: exact path + fingerprint, not only counts.
     immutable_inputs = manifest.get("immutable_inputs", {})
+    expected_immutable_refs = {
+        ("sl0017_manifest", "path"): inputs.sl0017_manifest_path,
+        ("sl0017_manifest", "sha256"): inputs.sl0017_sha256,
+        ("sl0018_manifest", "path"): inputs.sl0018_manifest_path,
+        ("sl0018_manifest", "sha256"): inputs.sl0018_sha256,
+        ("sl0021_sampled_candidates", "path"): inputs.sl0021_sampled_candidates_path,
+        ("sl0021_sampled_candidates", "git_blob_sha1"): inputs.sl0021_sampled_candidates_sha1,
+        ("sl0021_discovery_probe", "path"): inputs.sl0021_discovery_probe_path,
+        ("sl0021_discovery_probe", "git_blob_sha1"): inputs.sl0021_discovery_probe_sha1,
+    }
+    for (section, field), expected in expected_immutable_refs.items():
+        actual = immutable_inputs.get(section, {}).get(field)
+        if actual != expected:
+            mismatches.append(
+                f"immutable_inputs.{section}.{field}={actual!r} != actual loaded {expected!r}"
+            )
+    if immutable_inputs.get("sl0021_implementation_head") != ACCEPTED_SL0021_IMPLEMENTATION_HEAD:
+        mismatches.append(
+            "immutable_inputs.sl0021_implementation_head="
+            f"{immutable_inputs.get('sl0021_implementation_head')!r} != accepted "
+            f"{ACCEPTED_SL0021_IMPLEMENTATION_HEAD!r}"
+        )
     expected_immutable_counts = {
         "retained_direct_discovery_count": len(inputs.baseline.candidate_qids),
         "accepted_auto_admit_count": len(inputs.baseline.auto_admit_qids),
@@ -936,19 +1197,8 @@ def verify_sl0022_manifest_self_consistency(
     for key, expected in expected_immutable_counts.items():
         if immutable_inputs.get(key) != expected:
             mismatches.append(
-                f"immutable_inputs.{key}={immutable_inputs.get(key)!r} != actual loaded "
-                f"{expected!r}"
+                f"immutable_inputs.{key}={immutable_inputs.get(key)!r} != actual loaded {expected!r}"
             )
-    if (
-        immutable_inputs.get("sl0021_sampled_candidates", {}).get("git_blob_sha1")
-        != inputs.sl0021_sampled_candidates_sha1
-    ):
-        mismatches.append("immutable_inputs.sl0021_sampled_candidates.git_blob_sha1 mismatch")
-    if (
-        immutable_inputs.get("sl0021_discovery_probe", {}).get("git_blob_sha1")
-        != inputs.sl0021_discovery_probe_sha1
-    ):
-        mismatches.append("immutable_inputs.sl0021_discovery_probe.git_blob_sha1 mismatch")
 
     candidate_universe = manifest.get("candidate_universe", {})
     expected_universe = {
@@ -962,5 +1212,32 @@ def verify_sl0022_manifest_self_consistency(
             mismatches.append(
                 f"candidate_universe.{key}={candidate_universe.get(key)!r} != expected {expected!r}"
             )
+
+    # Static / usage semantics.
+    if manifest.get("manifest_version") != SL0022_MANIFEST_VERSION:
+        mismatches.append(
+            f"manifest_version={manifest.get('manifest_version')!r} != expected "
+            f"{SL0022_MANIFEST_VERSION!r}"
+        )
+    if manifest.get("source_id") != WIKIDATA_SOURCE_ID:
+        mismatches.append(
+            f"source_id={manifest.get('source_id')!r} != expected {WIKIDATA_SOURCE_ID!r}"
+        )
+    usage = manifest.get("usage_metrics", {})
+    if usage.get("retrieval_count") != 0:
+        mismatches.append(
+            f"usage_metrics.retrieval_count={usage.get('retrieval_count')!r} != expected 0 "
+            "(SLICE-0022 performs zero live acquisition)"
+        )
+    if usage.get("extracted_record_count") != len(inputs.retained_candidate_rows):
+        mismatches.append(
+            f"usage_metrics.extracted_record_count={usage.get('extracted_record_count')!r} != "
+            f"expected {len(inputs.retained_candidate_rows)!r}"
+        )
+    if manifest.get("acquired_at") != inputs.sl0021_generated_at:
+        mismatches.append(
+            f"acquired_at={manifest.get('acquired_at')!r} != the accepted retained SLICE-0021 "
+            f"source-fact timestamp {inputs.sl0021_generated_at!r}"
+        )
 
     return mismatches

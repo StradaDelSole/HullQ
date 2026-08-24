@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/wikidata-sl0022-alt-route-admission-artifact-digests/v1",
+  "title": "HullQ SLICE-0022 Retained Artifact Digests",
+  "description": "Deterministic, non-self-referential SHA256 digests of the SLICE-0022 offline retained output files (manifest.json, manifest_schema.json, REPORT.md). Excludes ARTIFACT-DIGESTS.json itself to avoid a self-referential digest loop, and excludes PostgreSQL replay evidence (REPLAY-RESULT.json/REPLAY-REPORT.md), which is produced only by a separate --replay run and is verified by the replay-safety gate instead.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "excludes_self", "digests"],
+  "properties": {
+    "schema_version": { "const": "sl0022-artifact-digests-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "excludes_self": { "const": "ARTIFACT-DIGESTS.json" },
+    "digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest.json", "manifest_schema.json", "REPORT.md"],
+      "properties": {
+        "manifest.json": { "$ref": "#/$defs/sha256_digest" },
+        "manifest_schema.json": { "$ref": "#/$defs/sha256_digest" },
+        "REPORT.md": { "$ref": "#/$defs/sha256_digest" }
+      }
+    }
+  },
+  "$defs": {
+    "sha256_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

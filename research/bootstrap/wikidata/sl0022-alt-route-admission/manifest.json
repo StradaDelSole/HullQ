@@ -1,8 +1,8 @@
 {
-  "manifest_version": "0022-v1",
+  "manifest_version": "0022-v2",
   "source_id": "SRC_WIKIDATA_API_2026",
-  "generated_at": "2026-08-24T20:23:28.519373+00:00",
-  "acquired_at": "2026-08-24T20:23:28.519373+00:00",
+  "generated_at": "2026-08-24T22:53:40.392691+00:00",
+  "acquired_at": "2026-08-24T15:29:04.154534+00:00",
   "classification_recomputed_at": null,
   "immutable_inputs": {
     "sl0017_manifest": {
@@ -39,205 +39,205 @@
   "candidates": [
     {
       "qid": "Q232393",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Zweier-Canadier",
       "aliases": [],
-      "hullq_id": "BM_WDT0_81668584bcfa4b1cb4535c6d6340989d",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q232393",
       "bundle_id": "BUNDLE-WD-TIER0-Q232393",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q232393",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q1638809",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Libera",
       "aliases": [],
-      "hullq_id": "BM_WDT0_f0f8a68c7e5342b2bc4fafc14bca44ce",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q1638809",
       "bundle_id": "BUNDLE-WD-TIER0-Q1638809",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q1638809",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q1662367",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Inferno 29",
       "aliases": [],
-      "hullq_id": "BM_WDT0_47d21015f1414962876d8f8cef67285d",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q1662367",
       "bundle_id": "BUNDLE-WD-TIER0-Q1662367",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q1662367",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q1913784",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Maxi 68",
       "aliases": [],
-      "hullq_id": "BM_WDT0_e11de3c9e9d5473fa8f9c5fdf45b7f6a",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q1913784",
       "bundle_id": "BUNDLE-WD-TIER0-Q1913784",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q1913784",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q2816929",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "49er FX",
       "aliases": [],
-      "hullq_id": "BM_WDT0_d4cd6fe22bdc4cfabf63e16fbe06cfe1",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q2816929",
       "bundle_id": "BUNDLE-WD-TIER0-Q2816929",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q2816929",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q3321276",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Chatou one-design dinghy",
       "aliases": [],
-      "hullq_id": "BM_WDT0_1799395c7f004e89b2daf5021b90725e",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q3321276",
       "bundle_id": "BUNDLE-WD-TIER0-Q3321276",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q3321276",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q3334777",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Nacra 17",
       "aliases": [],
-      "hullq_id": "BM_WDT0_3944f7de9faf4232bc315e39376f7954",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q3334777",
       "bundle_id": "BUNDLE-WD-TIER0-Q3334777",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q3334777",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q4564080",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "OE 36",
       "aliases": [],
-      "hullq_id": "BM_WDT0_c1e6f3be08dd4a2bb8369b8da507be24",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q4564080",
       "bundle_id": "BUNDLE-WD-TIER0-Q4564080",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q4564080",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q5470264",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Formula 16",
       "aliases": [],
-      "hullq_id": "BM_WDT0_2ba7da948f8048eaad85892510f90445",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q5470264",
       "bundle_id": "BUNDLE-WD-TIER0-Q5470264",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q5470264",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q10397376",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "707",
       "aliases": [],
-      "hullq_id": "BM_WDT0_c3e27f9a89f643548824673749704253",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q10397376",
       "bundle_id": "BUNDLE-WD-TIER0-Q10397376",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q10397376",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q10404347",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Albin Delta",
       "aliases": [],
-      "hullq_id": "BM_WDT0_e2a6bf44858249418fb8072d862f537d",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q10404347",
       "bundle_id": "BUNDLE-WD-TIER0-Q10404347",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q10404347",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q10405576",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -255,7 +255,7 @@
     },
     {
       "qid": "Q10405577",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -273,43 +273,43 @@
     },
     {
       "qid": "Q10417274",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Arcona 40 DS",
       "aliases": [],
-      "hullq_id": "BM_WDT0_40291d1410bf4688894985e560d4e58f",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q10417274",
       "bundle_id": "BUNDLE-WD-TIER0-Q10417274",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q10417274",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q10443255",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Carrera Helmsman",
       "aliases": [],
-      "hullq_id": "BM_WDT0_104b94ee5d18475e83fe84213950587a",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q10443255",
       "bundle_id": "BUNDLE-WD-TIER0-Q10443255",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q10443255",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q10478080",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -327,7 +327,7 @@
     },
     {
       "qid": "Q10518647",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -345,7 +345,7 @@
     },
     {
       "qid": "Q10552991",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -363,7 +363,7 @@
     },
     {
       "qid": "Q10555133",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -381,7 +381,7 @@
     },
     {
       "qid": "Q10555135",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -399,153 +399,153 @@
     },
     {
       "qid": "Q10561683",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Lill-Scampi",
       "aliases": [],
-      "hullq_id": "BM_WDT0_2b24507219b84ae6acf2494b70272549",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q10561683",
       "bundle_id": "BUNDLE-WD-TIER0-Q10561683",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q10561683",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q10578706",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Maxi 33",
       "aliases": [],
-      "hullq_id": "BM_WDT0_1e6f5d766793483eb73b37c5e0c18804",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q10578706",
       "bundle_id": "BUNDLE-WD-TIER0-Q10578706",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q10578706",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q10578709",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Maxi 800",
       "aliases": [],
-      "hullq_id": "BM_WDT0_899435eb081a46f5ad01452c842970c0",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q10578709",
       "bundle_id": "BUNDLE-WD-TIER0-Q10578709",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q10578709",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q10578710",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Maxi 900",
       "aliases": [],
-      "hullq_id": "BM_WDT0_00ef55ad45014ba79fb69fa5ee3a2196",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q10578710",
       "bundle_id": "BUNDLE-WD-TIER0-Q10578710",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q10578710",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q10578711",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Maxi Fenix",
       "aliases": [],
-      "hullq_id": "BM_WDT0_e7ac8699cb964ae6801571fb451991b2",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q10578711",
       "bundle_id": "BUNDLE-WD-TIER0-Q10578711",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q10578711",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q10578712",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Maxi Racer",
       "aliases": [],
-      "hullq_id": "BM_WDT0_287ad1332b1443babac6018be6f81643",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q10578712",
       "bundle_id": "BUNDLE-WD-TIER0-Q10578712",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q10578712",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q10586324",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Hallberg-Rassy 24",
       "aliases": [],
-      "hullq_id": "BM_WDT0_3cb447325abd4527814ffc7cbc42d394",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q10586324",
       "bundle_id": "BUNDLE-WD-TIER0-Q10586324",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q10586324",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q10602060",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Nordisk Familjeb\u00e5t",
       "aliases": [
         "NF"
       ],
-      "hullq_id": "BM_WDT0_eb4a6cd67add47a29a1535fe3fbf729b",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q10602060",
       "bundle_id": "BUNDLE-WD-TIER0-Q10602060",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q10602060",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q10608006",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -563,25 +563,25 @@
     },
     {
       "qid": "Q10609560",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Omega 30",
       "aliases": [],
-      "hullq_id": "BM_WDT0_e6664b73fc5d40f5a2999762c28a9137",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q10609560",
       "bundle_id": "BUNDLE-WD-TIER0-Q10609560",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q10609560",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q10609561",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -599,7 +599,7 @@
     },
     {
       "qid": "Q10614462",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -617,7 +617,7 @@
     },
     {
       "qid": "Q10648230",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -635,7 +635,7 @@
     },
     {
       "qid": "Q10655904",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -653,7 +653,7 @@
     },
     {
       "qid": "Q10681251",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -671,7 +671,7 @@
     },
     {
       "qid": "Q10681424",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -689,7 +689,7 @@
     },
     {
       "qid": "Q10693607",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -707,7 +707,7 @@
     },
     {
       "qid": "Q10701406",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -725,25 +725,25 @@
     },
     {
       "qid": "Q10704615",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Trissjolle",
       "aliases": [],
-      "hullq_id": "BM_WDT0_66f4362e65c5422bb3eb724906878eea",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q10704615",
       "bundle_id": "BUNDLE-WD-TIER0-Q10704615",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q10704615",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q10706438",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -761,7 +761,7 @@
     },
     {
       "qid": "Q10706946",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -779,7 +779,7 @@
     },
     {
       "qid": "Q10711989",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -797,25 +797,25 @@
     },
     {
       "qid": "Q10716022",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Virus 20",
       "aliases": [],
-      "hullq_id": "BM_WDT0_046bbdeaf04247f2b5ab34b1430b87e3",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q10716022",
       "bundle_id": "BUNDLE-WD-TIER0-Q10716022",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q10716022",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q18448502",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -833,7 +833,7 @@
     },
     {
       "qid": "Q18449521",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -851,7 +851,7 @@
     },
     {
       "qid": "Q18452269",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -869,25 +869,25 @@
     },
     {
       "qid": "Q18454564",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Allegro 33",
       "aliases": [],
-      "hullq_id": "BM_WDT0_bbbd75dd9e354f23a6c731bdffcbf420",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q18454564",
       "bundle_id": "BUNDLE-WD-TIER0-Q18454564",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q18454564",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q19060217",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Lagoon 380",
       "aliases": [],
       "hullq_id": null,
@@ -905,7 +905,7 @@
     },
     {
       "qid": "Q31888504",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -923,7 +923,7 @@
     },
     {
       "qid": "Q56377229",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -941,43 +941,43 @@
     },
     {
       "qid": "Q105111126",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Dragonfly",
       "aliases": [],
-      "hullq_id": "BM_WDT0_f1b59aae92f54191a035fde35ff02d62",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q105111126",
       "bundle_id": "BUNDLE-WD-TIER0-Q105111126",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q105111126",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q106541126",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "K1",
       "aliases": [],
-      "hullq_id": "BM_WDT0_fccb62824c6545caa93a0ef9258c4a0b",
-      "decision": "auto_admit",
+      "hullq_id": null,
+      "decision": "review_required",
       "reason_codes": [
-        "ok"
+        "r1_alternative_route_requires_review"
       ],
       "observation_id": "OBS-WD-TIER0-Q106541126",
       "bundle_id": "BUNDLE-WD-TIER0-Q106541126",
       "bundle_version": "1",
-      "evidence_link_id": "LINK-WD-TIER0-Q106541126",
+      "evidence_link_id": null,
       "route_membership": [
         "R1"
       ]
     },
     {
       "qid": "Q117468602",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Lagoon 500",
       "aliases": [],
       "hullq_id": null,
@@ -995,7 +995,7 @@
     },
     {
       "qid": "Q117569839",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Lagoon 560",
       "aliases": [],
       "hullq_id": null,
@@ -1013,7 +1013,7 @@
     },
     {
       "qid": "Q121872268",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": "Beneteau Evasion 25",
       "aliases": [],
       "hullq_id": null,
@@ -1031,7 +1031,7 @@
     },
     {
       "qid": "Q133733814",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -1049,7 +1049,7 @@
     },
     {
       "qid": "Q137537140",
-      "retrieved_at": "2026-08-24T20:23:28.519373+00:00",
+      "retrieved_at": "2026-08-24T15:29:04.154534+00:00",
       "preferred_label": null,
       "aliases": [],
       "hullq_id": null,
@@ -1160,10 +1160,6 @@
       "hullq_id": "BM_WDT0_6eb302ef25dd40f38e049c9f8f965ca0"
     },
     {
-      "qid": "Q10397376",
-      "hullq_id": "BM_WDT0_c3e27f9a89f643548824673749704253"
-    },
-    {
       "qid": "Q103982535",
       "hullq_id": "BM_WDT0_676f59d29e634cc68c5166c8657627f6"
     },
@@ -1174,10 +1170,6 @@
     {
       "qid": "Q10404346",
       "hullq_id": "BM_WDT0_ac61c9b810d14cb3abe866722b810344"
-    },
-    {
-      "qid": "Q10404347",
-      "hullq_id": "BM_WDT0_e2a6bf44858249418fb8072d862f537d"
     },
     {
       "qid": "Q10404348",
@@ -1200,10 +1192,6 @@
       "hullq_id": "BM_WDT0_b59cfe96682145b3a8b40b3e97e1467d"
     },
     {
-      "qid": "Q10417274",
-      "hullq_id": "BM_WDT0_40291d1410bf4688894985e560d4e58f"
-    },
-    {
       "qid": "Q104233881",
       "hullq_id": "BM_WDT0_a2b15c5980244bcdaeb09b916817a366"
     },
@@ -1222,10 +1210,6 @@
     {
       "qid": "Q104399097",
       "hullq_id": "BM_WDT0_74ccf72f4e45497a9a16773d310877b9"
-    },
-    {
-      "qid": "Q10443255",
-      "hullq_id": "BM_WDT0_104b94ee5d18475e83fe84213950587a"
     },
     {
       "qid": "Q104543351",
@@ -1504,10 +1488,6 @@
       "hullq_id": "BM_WDT0_b3c781cd418b4cd8b24cf6073e753509"
     },
     {
-      "qid": "Q105111126",
-      "hullq_id": "BM_WDT0_f1b59aae92f54191a035fde35ff02d62"
-    },
-    {
       "qid": "Q105123572",
       "hullq_id": "BM_WDT0_aea0880c18e14afc82e85ce171f5b869"
     },
@@ -1596,10 +1576,6 @@
       "hullq_id": "BM_WDT0_95ba689096224703bb261cb71c0736bb"
     },
     {
-      "qid": "Q10561683",
-      "hullq_id": "BM_WDT0_2b24507219b84ae6acf2494b70272549"
-    },
-    {
       "qid": "Q105625313",
       "hullq_id": "BM_WDT0_d8ee247e043f4ce698f17f8410802572"
     },
@@ -1648,28 +1624,8 @@
       "hullq_id": "BM_WDT0_c54ee8e8e6264566934c2eaccc9e6aa3"
     },
     {
-      "qid": "Q10578706",
-      "hullq_id": "BM_WDT0_1e6f5d766793483eb73b37c5e0c18804"
-    },
-    {
       "qid": "Q10578708",
       "hullq_id": "BM_WDT0_11597a06286a42b2bd028cc202657f4c"
-    },
-    {
-      "qid": "Q10578709",
-      "hullq_id": "BM_WDT0_899435eb081a46f5ad01452c842970c0"
-    },
-    {
-      "qid": "Q10578710",
-      "hullq_id": "BM_WDT0_00ef55ad45014ba79fb69fa5ee3a2196"
-    },
-    {
-      "qid": "Q10578711",
-      "hullq_id": "BM_WDT0_e7ac8699cb964ae6801571fb451991b2"
-    },
-    {
-      "qid": "Q10578712",
-      "hullq_id": "BM_WDT0_287ad1332b1443babac6018be6f81643"
     },
     {
       "qid": "Q105834544",
@@ -1678,10 +1634,6 @@
     {
       "qid": "Q105847233",
       "hullq_id": "BM_WDT0_eaf8a4753c864ac4971c2b9f264c9835"
-    },
-    {
-      "qid": "Q10586324",
-      "hullq_id": "BM_WDT0_3cb447325abd4527814ffc7cbc42d394"
     },
     {
       "qid": "Q10593126",
@@ -1712,20 +1664,12 @@
       "hullq_id": "BM_WDT0_7cd0c5ac413748258d8fc394e45b42be"
     },
     {
-      "qid": "Q10602060",
-      "hullq_id": "BM_WDT0_eb4a6cd67add47a29a1535fe3fbf729b"
-    },
-    {
       "qid": "Q106040781",
       "hullq_id": "BM_WDT0_bb5533213938408ba14493375c21bba7"
     },
     {
       "qid": "Q106075875",
       "hullq_id": "BM_WDT0_0e8528d46b5b44caa5e2eae217215c8a"
-    },
-    {
-      "qid": "Q10609560",
-      "hullq_id": "BM_WDT0_e6664b73fc5d40f5a2999762c28a9137"
     },
     {
       "qid": "Q106103921",
@@ -2144,10 +2088,6 @@
       "hullq_id": "BM_WDT0_694a8ba628f74edb874f66497ed354df"
     },
     {
-      "qid": "Q106541126",
-      "hullq_id": "BM_WDT0_fccb62824c6545caa93a0ef9258c4a0b"
-    },
-    {
       "qid": "Q106541127",
       "hullq_id": "BM_WDT0_b441d690c2964875ab14290b0ebd521d"
     },
@@ -2298,10 +2238,6 @@
     {
       "qid": "Q107040841",
       "hullq_id": "BM_WDT0_0ad9c9202b5548538c466d8121b3f60f"
-    },
-    {
-      "qid": "Q10704615",
-      "hullq_id": "BM_WDT0_66f4362e65c5422bb3eb724906878eea"
     },
     {
       "qid": "Q107050318",
@@ -2802,10 +2738,6 @@
     {
       "qid": "Q107122156",
       "hullq_id": "BM_WDT0_a7693374a9f249c4ab1d4ca0c7debc64"
-    },
-    {
-      "qid": "Q10716022",
-      "hullq_id": "BM_WDT0_046bbdeaf04247f2b5ab34b1430b87e3"
     },
     {
       "qid": "Q107176425",
@@ -3772,10 +3704,6 @@
       "hullq_id": "BM_WDT0_c96d151ae96844dc95d9ae1146619258"
     },
     {
-      "qid": "Q1638809",
-      "hullq_id": "BM_WDT0_f0f8a68c7e5342b2bc4fafc14bca44ce"
-    },
-    {
       "qid": "Q1639639",
       "hullq_id": "BM_WDT0_a11f43ca63104d059cef5b40a00004ca"
     },
@@ -3790,10 +3718,6 @@
     {
       "qid": "Q1660547",
       "hullq_id": "BM_WDT0_babb980fe8f54b4181cd5c3c367d8492"
-    },
-    {
-      "qid": "Q1662367",
-      "hullq_id": "BM_WDT0_47d21015f1414962876d8f8cef67285d"
     },
     {
       "qid": "Q1666297",
@@ -3976,10 +3900,6 @@
       "hullq_id": "BM_WDT0_bac2632b018141698f9fa461fb51fce0"
     },
     {
-      "qid": "Q18454564",
-      "hullq_id": "BM_WDT0_bbbd75dd9e354f23a6c731bdffcbf420"
-    },
-    {
       "qid": "Q1853455",
       "hullq_id": "BM_WDT0_9845af0593854a3593e913932c8bca79"
     },
@@ -3998,10 +3918,6 @@
     {
       "qid": "Q1898420",
       "hullq_id": "BM_WDT0_d377732e6ee14c429e6e1bd1792cfb55"
-    },
-    {
-      "qid": "Q1913784",
-      "hullq_id": "BM_WDT0_e11de3c9e9d5473fa8f9c5fdf45b7f6a"
     },
     {
       "qid": "Q19576887",
@@ -4308,10 +4224,6 @@
       "hullq_id": "BM_WDT0_68672b0ceae84332a666646395e7dbc7"
     },
     {
-      "qid": "Q232393",
-      "hullq_id": "BM_WDT0_81668584bcfa4b1cb4535c6d6340989d"
-    },
-    {
       "qid": "Q2330194",
       "hullq_id": "BM_WDT0_7b9e063b9be046fbaf812fa290cc40f5"
     },
@@ -4586,10 +4498,6 @@
     {
       "qid": "Q28162951",
       "hullq_id": "BM_WDT0_53458c9379e34f4991e0e199be2bd385"
-    },
-    {
-      "qid": "Q2816929",
-      "hullq_id": "BM_WDT0_d4cd6fe22bdc4cfabf63e16fbe06cfe1"
     },
     {
       "qid": "Q2817907",
@@ -5360,20 +5268,12 @@
       "hullq_id": "BM_WDT0_96ee8cb1f23142b2b63dbea34e25ee71"
     },
     {
-      "qid": "Q3321276",
-      "hullq_id": "BM_WDT0_1799395c7f004e89b2daf5021b90725e"
-    },
-    {
       "qid": "Q3327644",
       "hullq_id": "BM_WDT0_698697c50b424a998c2a15c2046b625b"
     },
     {
       "qid": "Q3327656",
       "hullq_id": "BM_WDT0_b60703167e624bbc9b543580d3f44ffa"
-    },
-    {
-      "qid": "Q3334777",
-      "hullq_id": "BM_WDT0_3944f7de9faf4232bc315e39376f7954"
     },
     {
       "qid": "Q3337191",
@@ -5646,10 +5546,6 @@
     {
       "qid": "Q4557534",
       "hullq_id": "BM_WDT0_ffef1e294aed4d9a89aee3d9b3a22531"
-    },
-    {
-      "qid": "Q4564080",
-      "hullq_id": "BM_WDT0_c1e6f3be08dd4a2bb8369b8da507be24"
     },
     {
       "qid": "Q4634291",
@@ -6054,10 +5950,6 @@
     {
       "qid": "Q5467429",
       "hullq_id": "BM_WDT0_ff7930435c524f15ae05e928a7f68460"
-    },
-    {
-      "qid": "Q5470264",
-      "hullq_id": "BM_WDT0_2ba7da948f8048eaad85892510f90445"
     },
     {
       "qid": "Q54933312",
@@ -8270,25 +8162,25 @@
   },
   "counts": {
     "candidates_processed": 57,
-    "auto_admit": 27,
-    "auto_admit_r1": 27,
+    "auto_admit": 0,
+    "auto_admit_r1": 0,
     "auto_admit_r3": 0,
-    "review_required": 4,
+    "review_required": 31,
     "not_admitted": 26,
     "reason_breakdown": {
-      "ok": 27,
+      "r1_alternative_route_requires_review": 27,
       "missing_label": 26,
       "r3_repair_signal_requires_review": 4
     },
     "baseline_collision_count": 0,
     "within_57_collision_cluster_count": 0,
     "historical_crosswalk_count_before": 1772,
-    "retained_crosswalk_count": 1799,
-    "newly_minted_id_count": 27,
+    "retained_crosswalk_count": 1772,
+    "newly_minted_id_count": 0,
     "reused_historical_id_count": 0,
     "research_observation_count": 31,
-    "canonical_evidence_link_count": 27,
+    "canonical_evidence_link_count": 0,
     "accepted_baseline_canonical_boat_model_count": 1770,
-    "combined_canonical_boat_model_count_expected": 1797
+    "combined_canonical_boat_model_count_expected": 1770
   }
 }
