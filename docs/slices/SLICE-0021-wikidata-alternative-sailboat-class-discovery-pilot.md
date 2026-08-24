@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0021
 **Type:** DESIGN_RESEARCH
-**Status:** READY
+**Status:** REVIEW
 **Stage:** 3.2 — rights-cleared alternative identity discovery after the direct-instance Wikidata ceiling
 **Depends on:** SLICE-0020 accepted / DONE
 **Blocks:** any later change to the production Wikidata discovery semantics based on alternative class routes
@@ -406,37 +406,37 @@ The normal single-writer slice-worktree rule remains in force.
 
 ## Acceptance criteria
 
-- [ ] exactly four fixed live query routes R0–R3 are implemented and no additional discovery route is executed;
-- [ ] the existing Wikidata source-rights gate passes before the first network request, or the slice performs zero requests and becomes `BLOCKED`;
-- [ ] no source other than Wikidata structured data is acquired;
-- [ ] every route is hard-capped at 3,000 results and a ceiling hit is explicitly marked possibly truncated;
-- [ ] accepted SLICE-0017/0018 manifests are fingerprinted before acquisition and remain byte-unchanged;
-- [ ] the retained historical direct-discovery universe is hard-asserted at exactly 1,829 QIDs;
-- [ ] the accepted AUTO_ADMIT comparison universe is hard-asserted at exactly 1,770 BoatModels;
-- [ ] current R0 drift versus the historical 1,829 set is measured and reported separately;
-- [ ] R1/R2/R3 incremental yield is computed against **current R0**, not merely the historical 1,829 set;
-- [ ] full bounded QID sets are retained for R0–R3 with deterministic digests;
-- [ ] exact query text/version/digests and acquisition/access telemetry are retained;
-- [ ] pairwise/cross-route overlap and unique alternative-route contributions are measured;
-- [ ] entity-detail acquisition is deterministic and capped at <=75/alternative route and <=200 unique QIDs globally;
-- [ ] sampled entity acquisition contains identity-relevant structured fields only;
-- [ ] identity-signal matching uses QID first, then exact retained labels/aliases only;
-- [ ] string normalization is exactly surrounding-whitespace trim + casefold;
-- [ ] no fuzzy matching, internal-whitespace collapsing, punctuation rewriting, manufacturer-prefix manipulation, token reordering or generation collapsing occurs;
-- [ ] ambiguous exact signals remain unresolved rather than forced;
-- [ ] `no_exact_identity_signal` is explicitly documented as not proving global novelty/admission safety;
-- [ ] every R3 candidate remains repair/review-bound in this slice;
-- [ ] no canonical HullQ row is created/modified/deleted and no HullQ ID is minted for incremental candidates;
-- [ ] no accepted SLICE-0017/0018 crosswalk or retained artifact is modified;
-- [ ] the production Wikidata adapter's accepted default discovery query remains unchanged;
-- [ ] normal CI performs no live Wikidata acquisition;
-- [ ] retained live results can be validated/recomputed offline;
-- [ ] zero incremental yield is explicitly accepted as a valid result;
-- [ ] the completion report distinguishes current-direct drift from alternative-route yield and gives an evidence-derived disposition for R1–R3;
+- [x] exactly four fixed live query routes R0–R3 are implemented and no additional discovery route is executed;
+- [x] the existing Wikidata source-rights gate passes before the first network request, or the slice performs zero requests and becomes `BLOCKED`;
+- [x] no source other than Wikidata structured data is acquired;
+- [x] every route is hard-capped at 3,000 results and a ceiling hit is explicitly marked possibly truncated;
+- [x] accepted SLICE-0017/0018 manifests are fingerprinted before acquisition and remain byte-unchanged;
+- [x] the retained historical direct-discovery universe is hard-asserted at exactly 1,829 QIDs;
+- [x] the accepted AUTO_ADMIT comparison universe is hard-asserted at exactly 1,770 BoatModels;
+- [x] current R0 drift versus the historical 1,829 set is measured and reported separately;
+- [x] R1/R2/R3 incremental yield is computed against **current R0**, not merely the historical 1,829 set;
+- [x] full bounded QID sets are retained for R0–R3 with deterministic digests;
+- [x] exact query text/version/digests and acquisition/access telemetry are retained;
+- [x] pairwise/cross-route overlap and unique alternative-route contributions are measured;
+- [x] entity-detail acquisition is deterministic and capped at <=75/alternative route and <=200 unique QIDs globally;
+- [x] sampled entity acquisition contains identity-relevant structured fields only;
+- [x] identity-signal matching uses QID first, then exact retained labels/aliases only;
+- [x] string normalization is exactly surrounding-whitespace trim + casefold;
+- [x] no fuzzy matching, internal-whitespace collapsing, punctuation rewriting, manufacturer-prefix manipulation, token reordering or generation collapsing occurs;
+- [x] ambiguous exact signals remain unresolved rather than forced;
+- [x] `no_exact_identity_signal` is explicitly documented as not proving global novelty/admission safety;
+- [x] every R3 candidate remains repair/review-bound in this slice;
+- [x] no canonical HullQ row is created/modified/deleted and no HullQ ID is minted for incremental candidates;
+- [x] no accepted SLICE-0017/0018 crosswalk or retained artifact is modified;
+- [x] the production Wikidata adapter's accepted default discovery query remains unchanged;
+- [x] normal CI performs no live Wikidata acquisition;
+- [x] retained live results can be validated/recomputed offline;
+- [x] zero incremental yield is explicitly accepted as a valid result;
+- [x] the completion report distinguishes current-direct drift from alternative-route yield and gives an evidence-derived disposition for R1–R3;
 - [ ] independent review is completed before owner acceptance;
-- [ ] the slice remains `REVIEW`, `BLOCKED` or `IN_PROGRESS` at implementation handoff and is never self-marked `DONE`;
+- [x] the slice remains `REVIEW`, `BLOCKED` or `IN_PROGRESS` at implementation handoff and is never self-marked `DONE`;
 - [ ] explicit project-owner acceptance is required before closure to `DONE`;
-- [ ] SLICE-0022 is not created or started.
+- [x] SLICE-0022 is not created or started.
 
 ## Mandatory completion report
 
@@ -462,3 +462,106 @@ At handoff, report at minimum:
 Claude Code may hand SLICE-0021 back only as `REVIEW`, `BLOCKED` or `IN_PROGRESS`.
 
 It MUST NOT merge its own PR, mark the slice `DONE`, create/start SLICE-0022, or begin a later production expansion automatically.
+
+## Completion report (implementation handoff)
+
+### Amendment note (independent review round 1)
+
+Independent review of PR #50 returned **AMEND** on the first implementation head (`9168400511d8c19944c15c78692d23a81a918fac`, later superseded by docs-only commit `a11b06a590bc30438511460c889dac46fabc06b2`). The measured live result itself (R0 zero drift; R1 +53; R2 +0; R3 +4; total alternative union 57; no canonical writes) was accepted provisionally and was NOT rerun or altered. Two amendment findings were corrected on top of that same retained measurement:
+
+1. **Hardened offline reproducibility / fail-closed checks.** `--verify` previously recomputed drift/incremental/cross-route-overlap/sample-selection/identity-signal/disposition but did not independently recompute every structurally-derivable retained field (route_id/version/query_text/query_sha256/result_count/hard_limit/possibly_truncated/qid_list_digest per route; immutable-input manifest SHA256 references and 1,829/1,770 counts against what was actually loaded; exact candidate-vs-selected-QID-set equality; route_membership; category_totals). Added `verify_route_record_self_consistency`, `verify_immutable_inputs_self_consistency`, `verify_sampled_candidates_self_consistency` to `wikidata_sl0021_alt_discovery.py`, wired into `--verify`. Added `SampleCompletenessError` / `verify_sample_entity_detail_completeness`, wired into `--live` immediately after `fetch_sampled_entity_details` and before any retained document is written, so a missing/duplicate/unexpected/incomplete entity-detail fetch aborts the run rather than silently retaining a partial sample. Added 30 new tamper-detection unit tests (73 total in the pure-logic test file), each proving the specific check fails on a tampered field. The already-retained live measurement was re-verified against the hardened checks and passes unchanged (see Validation below) — it was not regenerated.
+2. **Removed the self-referential exact-head CI claim.** The prior External-verification section recorded CI PASS on head `9168400...`, but that head was superseded by a same-PR follow-up commit before the report was read, making the "current exact head" claim stale by construction. The wording below now describes that run as prior/pre-amendment implementation-head evidence. The final exact-head CI result for this amendment round is reported to the operator in the final chat response only, per the reviewer's explicit instruction, and is not committed to this file.
+
+Recommended slice state remains `REVIEW`; scope remains complete (`YES`) — this is a correction/hardening pass on already-complete scope, not new scope.
+
+### Amendment note (independent review round 2)
+
+Independent re-review of PR #50 returned **AMEND ROUND 2** on the round-1 amendment head (`b2b22706bb0d74a8c311d45776fa7f6c5c31bc72`), confirming that round 1's fixes (route-record structural verification, immutable-input SHA/count verification, candidate-vs-selected sample completeness, route membership, category totals, live entity-detail completeness, and the CI-report wording fix) were correct, and identifying one remaining narrow gap: several retained derived QID sets/lists were still checked only indirectly via their counts rather than compared exactly. The measured live result was again accepted provisionally and was NOT rerun or altered.
+
+One amendment finding was corrected:
+
+**Hardened `--verify` to compare full retained derived QID sets exactly, not merely their counts.** Added `verify_discovery_probe_derived_sets_self_consistency` (recomputes `drift.retained_direct_count` and the FULL `drift.retained_direct_absent_now_qids`/`drift.new_current_direct_since_sl0018_qids` lists; each alternative route's full `incremental.<route>.qids` list; all three `cross_route_overlap.pairwise` route-pair QID lists and counts, with route-pair coverage checked exhaustively; `cross_route_overlap.total_union_qids`; and every `cross_route_overlap.unique_contribution.<route>.qids` list — all against freshly recomputed `DriftResult`/`compute_incremental_yield`/`CrossRouteOverlap` values derived from the document's own retained per-route `qids`) and `verify_accepted_universe_reference_self_consistency` (validates `sampled_candidates.json`'s own `accepted_universe_reference.sl0017_sha256`/`sl0018_sha256`/`accepted_auto_admit_count` against a freshly (re-)loaded `AcceptedUniverse`, independently of the equivalent `discovery_probe.json`-side check). Both are wired into `--verify`. 17 new tamper-detection tests were added (90 total in the pure-logic test file), including two tests that run the new checks directly against the real committed `discovery_probe.json`/`sampled_candidates.json` and confirm they pass unchanged, and one test proving a tampered QID list with an unchanged count (the exact failure mode named by the reviewer) is still caught.
+
+The already-retained live measurement was re-verified against the fully hardened checks and passes unchanged; `discovery_probe.json`, `sampled_candidates.json` and `REPORT.md` were NOT regenerated (`git diff` confirms zero bytes changed on all three).
+
+Recommended slice state remains `REVIEW`; scope remains complete (`YES`) — this is a second correction/hardening pass on already-complete scope, not new scope.
+
+### Slice
+
+- Slice ID: `SLICE-0021`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+
+### Changes
+
+- Changed/added files:
+  - `src/hullq/bootstrap/wikidata_sl0021_alt_discovery.py` (new — pure-logic route definitions, immutable-input fingerprinting, drift, incremental yield, cross-route overlap, sample selection, exact identity-signal classification, disposition heuristic, document assembly)
+  - `src/hullq/sources/wikidata.py` (extended — `run_alt_discovery_item_query`, `run_alt_discovery_item_desc_query`, `fetch_sampled_entity_details`, `SampledEntityDetail`; no change to the existing production `discover_sailboat_qids`/`discover_bootstrap_qids` default discovery query)
+  - `scripts/bootstrap/wikidata_sl0021_alt_discovery_runner.py` (new — `--live` one-shot acquisition runner, `--verify` offline recompute/validation runner)
+  - `research/bootstrap/wikidata/sl0021-alt-discovery/discovery_probe_schema.json`, `sampled_candidates_schema.json` (new JSON Schema Draft 2020-12 contracts)
+  - `research/bootstrap/wikidata/sl0021-alt-discovery/discovery_probe.json`, `sampled_candidates.json`, `REPORT.md` (new — the one retained live-acquisition result)
+  - `tests/unit/test_wikidata_sl0021_alt_discovery.py`, `tests/unit/test_wikidata_sl0021_adapter.py` (106 tests: 90 pure-logic incl. 47 amendment tamper-detection tests across both rounds, 16 adapter)
+  - `.github/workflows/ci.yml` (extended — offline schema validation + `--verify` step for the retained SLICE-0021 documents; no live Wikidata request added to CI)
+  - `docs/slices/SLICE-0021-wikidata-alternative-sailboat-class-discovery-pilot.md`, `docs/slices/INDEX.md`, `docs/PROJECT_STATE.md` (status/index updates)
+- Requirements implemented or researched: this slice's own controlling contract (bounded discovery-semantics measurement); no `REQ-*` IDs were added (DESIGN_RESEARCH slice, no new normative behavior).
+- Tests/fixtures added: 106 unit tests total (43 original pure-logic + 30 round-1 amendment tamper-detection + 17 round-2 amendment tamper-detection pure-logic + 16 adapter), 2 JSON Schemas, 2 retained JSON result documents (unchanged by either amendment round).
+- **Amendment delta, round 1** (commit `b2b2270` on top of the original implementation commit): `src/hullq/bootstrap/wikidata_sl0021_alt_discovery.py` — added `SampleCompletenessError`, `verify_sample_entity_detail_completeness`, `verify_route_record_self_consistency`, `verify_immutable_inputs_self_consistency`, `verify_sampled_candidates_self_consistency`. `scripts/bootstrap/wikidata_sl0021_alt_discovery_runner.py` — wired the four new checks into `--verify`, and `verify_sample_entity_detail_completeness` into `--live` immediately after `fetch_sampled_entity_details`. `tests/unit/test_wikidata_sl0021_alt_discovery.py` — added 30 tamper-detection tests. Slice doc — added the round-1 amendment note and corrected the External-verification CI wording.
+- **Amendment delta, round 2** (this commit): `src/hullq/bootstrap/wikidata_sl0021_alt_discovery.py` — added `verify_discovery_probe_derived_sets_self_consistency` (full `drift.*_qids`, `incremental.<route>.qids`, `cross_route_overlap` pairwise/union/unique-contribution QID lists, not merely counts) and `verify_accepted_universe_reference_self_consistency` (`sampled_candidates.json`'s own accepted-universe SHA256/count reference). `scripts/bootstrap/wikidata_sl0021_alt_discovery_runner.py` — wired both new checks into `--verify`; updated module docstring. `tests/unit/test_wikidata_sl0021_alt_discovery.py` — added 17 tamper-detection tests, including two that run the new checks directly against the real committed retained documents. Slice doc — added this round-2 amendment note and updated the External-verification CI wording to also list the round-1 amendment head as prior evidence.
+- **No change in either round** to `discovery_probe.json`, `sampled_candidates.json`, `REPORT.md`, the JSON schemas, `src/hullq/sources/wikidata.py`, `docs/slices/INDEX.md`, or `docs/PROJECT_STATE.md`.
+
+### Validation
+
+- Local validation: `PASS`
+- Commands run:
+  - `uv run ruff format --check .`
+  - `uv run ruff check .`
+  - `uv run mypy src`
+  - `uv run coverage run -m pytest` then `uv run coverage report`
+  - `uv run python scripts/validate_repository.py`
+  - `uv run python scripts/bootstrap/wikidata_sl0021_alt_discovery_runner.py --verify` (offline reproducibility, re-run against the round-2-hardened checks; **no live acquisition was rerun in either amendment round**)
+- Results:
+  - Ruff format/check: clean.
+  - mypy strict on `src`: no issues (34 source files).
+  - pytest: **1582 passed, 207 skipped** (skips are the pre-existing PostgreSQL/live-network integration tests that require `HULLQ_TEST_DATABASE_URL`/`--run-live`, unrelated to this slice), 0 failed.
+  - Coverage: **94.15%** overall branch coverage (repo `fail_under=90`); `wikidata_sl0021_alt_discovery.py` at 96.02%.
+  - Hardened offline `--verify`: **PASS** — every recomputed value, including the round-2 full-derived-QID-set comparisons (`drift.*_qids`, `incremental.<route>.qids`, `cross_route_overlap` pairwise/union/unique-contribution QID lists, and `sampled_candidates.json`'s `accepted_universe_reference`), matches the already-retained `discovery_probe.json`/`sampled_candidates.json` documents exactly; those two files (and `REPORT.md`) are byte-unchanged by either amendment round (`git diff` empty on all three).
+  - Repository validator: PASS (27 active schemas, 88 requirements/88 acceptance criteria, no draft artifacts).
+  - Rights gate before the first network request: `automated_ingestion=allowed`, `bulk_bootstrap=allowed` — both confirmed ALLOWED before any HTTP request was dispatched.
+  - Immutable inputs fingerprinted and hard-asserted before acquisition: SLICE-0017 manifest sha256 `076b0d64...` (1,000 candidates), SLICE-0018 manifest sha256 `41ef238c...` (829 delta candidates); combined retained direct-discovery universe **1,829** QIDs exactly; combined AUTO_ADMIT universe **1,770** identities exactly. Both retained manifests remain byte-unchanged (git shows no diff on either path).
+  - **R0 (current direct control):** 1,829 results, `possibly_truncated=false`. Drift vs the retained 1,829: **zero** — `retained_direct_still_present_count=1829`, `retained_direct_absent_now_count=0`, `new_current_direct_since_sl0018_count=0`.
+  - **R1 (sailboat-class P31/P279\* closure):** 1,882 results, `possibly_truncated=false`; incremental vs current R0: **53**.
+  - **R2 (legacy sailboat-class closure, Q57303455):** 0 results; incremental: **0** (a valid, correctly-measured zero-yield result — no padding).
+  - **R3 (misclassification/repair signal):** 4 results, `possibly_truncated=false`; incremental: **4**.
+  - Cross-route overlap: all three pairwise intersections (R1∩R2, R1∩R3, R2∩R3) are **0**; total alternative-route union **57**; each route's unique contribution equals its own incremental count (53/0/4) — the three routes found entirely disjoint candidate sets.
+  - Entity-detail sample: **57** selected (well under the 75/route and 200-global caps, since total incremental yield was only 57); 57/57 entity details fetched successfully via `wbgetentities`.
+  - Identity-signal category totals: `accepted_qid_overlap=0`, `exact_identity_signal_other_qid=0`, `no_exact_identity_signal=57`, `unresolved_exact_identity_signal=0`.
+  - Retained artifact paths: `research/bootstrap/wikidata/sl0021-alt-discovery/{discovery_probe.json, sampled_candidates.json, REPORT.md, discovery_probe_schema.json, sampled_candidates_schema.json}`. Deterministic per-route `qid_list_digest` (SHA256) and `query_sha256` values are recorded inside `discovery_probe.json` for every route.
+  - Confirmed: no accepted SLICE-0017/0018 artifact was modified (both remain byte-identical, verified by re-hashing against the pinned constants); no canonical Brand/Organization/BoatModel/BoatDesign row was created/modified/deleted; no HullQ ID was minted; the production `WikidataAdapter.discover_sailboat_qids`/`discover_bootstrap_qids` default discovery queries are unchanged.
+  - Evidence-derived dispositions: **R1 = FOLLOWUP_DISCOVERY_CANDIDATE**, **R2 = NO_INCREMENTAL_YIELD**, **R3 = FOLLOWUP_DISCOVERY_CANDIDATE** (recommendations only; not production authorization). Notably, R3 surfaced four real, plausible misclassification/repair candidates (e.g. `Q19060217` "Lagoon 380", `Q117468602` "Lagoon 500", `Q117569839` "Lagoon 560", `Q121872268` "Beneteau Evasion 25" — all carrying an English description containing "sailboat class" while modeled as instances of Q1075310 "sailboat" rather than Q106179098 "sailboat class"), consistent with the WikiProject Sailing repair-query rationale; every one remains review-bound only per the R3 fail-closed rule.
+
+### External verification
+
+- Remote CI: **prior/pre-amendment implementation-head evidence only, not verification of the current exact head.** Every CI run listed below passed all four jobs (`quality (ubuntu-latest)`, `quality (windows-latest)`, `dependency audit`, `db integration (PostgreSQL 18)`) on PR #50, and each corresponding head was subsequently superseded by a later commit before the next report was written:
+  - run `32749212070` (GitHub Actions run #257) on implementation head `9168400511d8c19944c15c78692d23a81a918fac`;
+  - run `32749571380` (run #258) on docs-only head `a11b06a590bc30438511460c889dac46fabc06b2`;
+  - run `32756963257` (run #259) on round-1-amendment head `b2b22706bb0d74a8c311d45776fa7f6c5c31bc72`.
+
+  None of the above describes the exact head this round-2 amendment produces. Per explicit reviewer instruction (to avoid recreating the same self-referential-head problem repeatedly), the exact-head CI result for round 2 is reported to the operator in the final chat response for this round only, and is not committed to this file.
+- Other external gates: `NOT APPLICABLE` beyond the CI run(s) referenced above.
+
+### Findings
+
+- Unresolved findings: none identified during implementation. Independent review round 1 returned **AMEND** with two findings, both addressed (offline `--verify` hardened with structural self-consistency recomputation and a fail-closed live-run entity-detail completeness check; the completion report's CI wording no longer claims a superseded head as the current exact head). Independent re-review round 2 returned **AMEND ROUND 2** confirming round 1's fixes and identifying one remaining narrow gap — several retained derived QID sets were checked only by count, not exactly — addressed by `verify_discovery_probe_derived_sets_self_consistency` and `verify_accepted_universe_reference_self_consistency` (see "Amendment note (independent review round 2)" above).
+- Spec/ADR ambiguities: the controlling slice's disposition vocabulary (`RouteDisposition`) leaves the exact NO_INCREMENTAL_YIELD/RESEARCH_ONLY_SIGNAL/FOLLOWUP_DISCOVERY_CANDIDATE boundary as an "evidence-derived recommendation," not a precise formula. This implementation adopted a documented, deterministic heuristic (`determine_route_disposition`): zero incremental yield → `NO_INCREMENTAL_YIELD`; incremental yield where every sampled candidate is an exact accepted-QID overlap → `RESEARCH_ONLY_SIGNAL`; incremental yield containing at least one non-overlap signal (new, ambiguous, or other-QID-matching) → `FOLLOWUP_DISCOVERY_CANDIDATE`. This is a recommendation-only computation with no production consequence; independent review may wish to confirm the heuristic's reasoning.
+- Scope deviations: none. No production Wikidata discovery-query change, no canonical mutation, no SLICE-0022 creation, no additional discovery route beyond R0–R3, no manufacturer-archive/Wikipedia/PetScan/DBpedia acquisition.
+
+### Follow-up
+
+- Recommended next action: independent re-review (round 3) of this round-2 amendment, confirming the remaining finding is resolved as described, followed by project-owner acceptance. Per `docs/PROJECT_STATE.md` "Do not start yet," no production adoption of R1/R3 as a discovery route, no manufacturer-archive adapter work, and no SLICE-0022 may begin until this slice is independently reviewed and explicitly owner-accepted.
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice (SLICE-0022) was not started automatically.
+- The agent has NOT marked this slice `DONE`.

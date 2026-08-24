@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-24
-**Current stage:** Stage 3.3 — SLICE-0019 manufacturer/yard universe research `DONE` (owner-accepted 2026-08-23). SLICE-0020 archive source-clearance + bounded identity pilot is `DONE` (owner-accepted 2026-08-24; 0 `ADAPTER_READY` / 9 `RESEARCH_ONLY`/`REVIEW_REQUIRED` / 1 `BLOCKED`). **SLICE-0021 is the sole `READY` slice**: a bounded alternative Wikidata sailboat-class discovery-semantics pilot over four fixed rights-cleared query routes.
+**Current stage:** Stage 3.3 — SLICE-0019 manufacturer/yard universe research `DONE` (owner-accepted 2026-08-23). SLICE-0020 archive source-clearance + bounded identity pilot is `DONE` (owner-accepted 2026-08-24; 0 `ADAPTER_READY` / 9 `RESEARCH_ONLY`/`REVIEW_REQUIRED` / 1 `BLOCKED`). **SLICE-0021 implementation is complete and in `REVIEW`**: a bounded alternative Wikidata sailboat-class discovery-semantics pilot over four fixed rights-cleared query routes. Live measurement: R0 reproduced the retained 1,829-QID universe with zero drift; R1 found 53 incremental QIDs, R2 found 0, R3 found 4 (including plausible catamaran-series repair candidates); all three alternative routes were mutually disjoint. Pending independent review and project-owner acceptance.
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -450,7 +450,7 @@ all_zero_tolerance_conditions_clear = true
 
 Final closure record: `docs/slices/SLICE-0018-acceptance-closure.md`.
 
-## Current operational position — SLICE-0019 DONE, SLICE-0020 DONE, SLICE-0021 READY
+## Current operational position — SLICE-0019 DONE, SLICE-0020 DONE, SLICE-0021 REVIEW
 
 `docs/slices/SLICE-0019-global-series-sailboat-manufacturer-universe-research.md` is **explicitly owner-accepted and closed `DONE`** on 2026-08-23; see `docs/slices/SLICE-0019-acceptance-closure.md` for the full closure record.
 
@@ -475,7 +475,9 @@ Retained package: `research/manufacturers/archive_clearance/` (`archive_source_c
 
 Independent review initially returned **AMEND**; a first amendment (`44ed42c`) corrected Elan/Hallberg-Rassy source-surface provenance, removed the unsupported Elan E3 and Bénéteau First 32/38 hazards, and tightened the exact-match whitespace semantics, and a second docs-only amendment (`ced1880`) corrected the report's own characterization of that implementation correction. The final reviewed head `ced18800c20a6a2c328794d3af5cb0686d59c20d` received an independent-review **ACCEPT** verdict. Implementation/research PR #47 merged as `5c2a9cc40a05fbaebe2a4db2bcfff7d3498a58d9`; exact-head CI run #250 (`32727915597`) was **SUCCESS** on all jobs. The project owner explicitly accepted SLICE-0020 on 2026-08-24.
 
-**SLICE-0021 — `docs/slices/SLICE-0021-wikidata-alternative-sailboat-class-discovery-pilot.md` — is now the sole `READY` slice.** It exists because the manufacturer-archive route produced zero `ADAPTER_READY` sources while Wikidata structured data remains an already-cleared CC0 source. The slice measures exactly four fixed routes: a current direct-`P31` control, current sailboat-class `P31/P279*` closure, legacy sailboat-class closure, and a structured misclassification/repair signal. It separates current direct-source drift from alternative-route incremental yield, caps each route at 3,000, caps deterministic entity-detail sampling at <=75 per alternative route / <=200 unique total, preserves exact-only identity-signal semantics, performs no canonical admission and does not change the production Wikidata discovery query.
+**SLICE-0021 — `docs/slices/SLICE-0021-wikidata-alternative-sailboat-class-discovery-pilot.md` — implementation is complete and in `REVIEW`.** It exists because the manufacturer-archive route produced zero `ADAPTER_READY` sources while Wikidata structured data remains an already-cleared CC0 source. The slice measures exactly four fixed routes: a current direct-`P31` control, current sailboat-class `P31/P279*` closure, legacy sailboat-class closure, and a structured misclassification/repair signal. It separates current direct-source drift from alternative-route incremental yield, caps each route at 3,000, caps deterministic entity-detail sampling at <=75 per alternative route / <=200 unique total, preserves exact-only identity-signal semantics, performs no canonical admission and does not change the production Wikidata discovery query.
+
+The one bounded live acquisition measured: R0 (current direct control) **1,829** results with **zero drift** against the retained 1,829-QID universe; R1 (sailboat-class `P31/P279*` closure) **1,882** results, **53** incremental vs current R0; R2 (legacy sailboat-class closure) **0** results (valid zero-yield); R3 (misclassification/repair signal) **4** results, all incremental. The three alternative routes were mutually disjoint (zero pairwise overlap). All 57 incremental QIDs were sampled (well under the 75/route, 200-global caps) and classified: 0 `accepted_qid_overlap`, 0 `exact_identity_signal_other_qid`, 57 `no_exact_identity_signal`, 0 `unresolved_exact_identity_signal`. Evidence-derived dispositions: R1 and R3 `FOLLOWUP_DISCOVERY_CANDIDATE`, R2 `NO_INCREMENTAL_YIELD` — recommendations only, not production authorization. R3 surfaced plausible real repair candidates (e.g. Lagoon 380/500/560, Beneteau Evasion 25) modeled as generic "sailboat" (Q1075310) rather than "sailboat class" (Q106179098), remaining review-bound per the R3 fail-closed rule. No canonical HullQ row was created and the production Wikidata discovery query was not changed. Pending independent review and project-owner acceptance before any `DONE` closure.
 
 ## Near-term path
 
@@ -500,7 +502,7 @@ SLICE-0019  global manufacturer/yard universe source research  DONE / source-yie
       ↓
 SLICE-0020  archive source clearance + bounded identity pilot  DONE / 0 ADAPTER_READY, 9 REVIEW_REQUIRED, 1 BLOCKED
       ↓
-SLICE-0021  alternative Wikidata discovery-semantics pilot     READY / four fixed routes, no canonical admission
+SLICE-0021  alternative Wikidata discovery-semantics pilot     REVIEW / R0 zero drift, R1+53, R2+0, R3+4
       ↓
 next measured Stage-3 production decision                      NOT AUTHORIZED YET
 ```
@@ -534,7 +536,7 @@ FINISH_SLICE.bat
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-SLICE-0001 through SLICE-0020 are accepted / `DONE`. SLICE-0021 is the sole `READY` slice and has not yet been started. No SLICE-0022 or later slice is currently `READY`.
+SLICE-0001 through SLICE-0020 are accepted / `DONE`. SLICE-0021 implementation is complete and in `REVIEW`, pending independent review and project-owner acceptance. No SLICE-0022 or later slice is currently `READY`.
 
 ## Do not start yet
 

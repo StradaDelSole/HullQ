@@ -70,6 +70,7 @@ __all__ = [
     "SLICE_0008_ITEM_CEILING",
     "WIKIDATA_BOOTSTRAP_SAFETY_CEILING",
     "WIKIDATA_SOURCE_ID",
+    "SampledEntityDetail",
     "WikidataAcquisitionError",
     "WikidataAdapter",
     "WikidataAdapterConfig",
@@ -177,6 +178,8 @@ def _build_bootstrap_sparql_query(limit: int) -> str:
 # Wikidata property identifiers
 # ---------------------------------------------------------------------------
 
+_PROP_INSTANCE_OF = "P31"
+_PROP_SUBCLASS_OF = "P279"
 _PROP_MANUFACTURER = "P176"
 _PROP_DESIGNER = "P287"
 _PROP_LENGTH = "P2043"
@@ -369,6 +372,35 @@ class WikidataEntityData:
         object.__setattr__(self, "aliases", list(self.aliases))
 
 
+@dataclass(frozen=True)
+class SampledEntityDetail:
+    """SLICE-0021 bounded entity-detail sample record.
+
+    Deliberately narrower than ``WikidataEntityData``: carries only the
+    identity-relevant structured fields the controlling slice authorizes for
+    entity-detail sampling (QID, labels, aliases, descriptions, P31, P279,
+    P176 if present, P287 if present) — no LOA/LWL/beam/draft/displacement,
+    keel/rudder/material/rig or other broad technical specification is
+    collected.
+    """
+
+    qid: str
+    label: str | None
+    aliases: list[str]
+    description_en: str | None
+    p31_qids: list[str]
+    p279_qids: list[str]
+    p176_qids: list[str]
+    p287_qids: list[str]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "aliases", list(self.aliases))
+        object.__setattr__(self, "p31_qids", list(self.p31_qids))
+        object.__setattr__(self, "p279_qids", list(self.p279_qids))
+        object.__setattr__(self, "p176_qids", list(self.p176_qids))
+        object.__setattr__(self, "p287_qids", list(self.p287_qids))
+
+
 @dataclass
 class WikidataQualityReport:
     """Coverage/quality metrics for a controlled Wikidata probe run.
@@ -474,6 +506,35 @@ def _claim_unit_qid(claim: dict[str, Any]) -> str | None:
     if not isinstance(unit_uri, str):
         return None
     return _extract_unit_qid(unit_uri)
+
+
+def _extract_entity_id_claim_values(claims: dict[str, Any], prop_id: str) -> list[str]:
+    """Extract every value-type ``wikibase-entityid`` QID from *prop_id*'s
+    statements in *claims*, in statement order, silently skipping
+    novalue/somevalue/malformed statements (no malformed-count telemetry —
+    SLICE-0021 entity-detail sampling only requires the identity-relevant
+    QID lists themselves, not per-statement acquisition quality metrics).
+    """
+    result: list[str] = []
+    prop_claims = claims.get(prop_id, [])
+    if not isinstance(prop_claims, list):
+        return result
+    for claim in prop_claims:
+        if not isinstance(claim, dict):
+            continue
+        mainsnak = claim.get("mainsnak")
+        if not isinstance(mainsnak, dict) or mainsnak.get("snaktype") != "value":
+            continue
+        datavalue = mainsnak.get("datavalue")
+        if not isinstance(datavalue, dict) or datavalue.get("type") != "wikibase-entityid":
+            continue
+        val = datavalue.get("value")
+        if not isinstance(val, dict):
+            continue
+        entity_qid = val.get("id")
+        if isinstance(entity_qid, str) and entity_qid:
+            result.append(entity_qid)
+    return result
 
 
 def _make_evidence_id(qid: str, prop: str, stmt_id: str | None, index: int) -> str:
@@ -933,6 +994,200 @@ class WikidataAdapter:
                     qids.append(qid)
 
         return qids
+
+    # ------------------------------------------------------------------
+    # SLICE-0021: fixed alternative-discovery route execution (R0-R3)
+    # ------------------------------------------------------------------
+
+    def run_alt_discovery_item_query(self, query_text: str) -> list[str]:
+        """Dispatch one already-fully-built, fixed SLICE-0021 single-``?item``
+        SPARQL query text (R0, R1 or R2 — see
+        ``hullq.bootstrap.wikidata_sl0021_alt_discovery.ROUTES``) and return
+        the deduplicated, order-preserved QID list.
+
+        This method does not build or vary the query itself — it exists so
+        the exact, precommitted route query text (owned by the pure-logic
+        bootstrap module) is the single source of truth, while this adapter
+        remains the sole place that dispatches HTTP requests. Checks
+        BULK_BOOTSTRAP and AUTOMATED_INGESTION rights before any request, and
+        never sends more than one route query per call.
+        """
+        self._check_bulk_bootstrap_rights()
+        self._check_rights()
+
+        data = self._get(
+            _SPARQL_ENDPOINT,
+            params={"query": query_text, "format": "json"},
+            extra_headers={"Accept": "application/sparql-results+json"},
+        )
+        bindings = data.get("results", {}).get("bindings", [])
+        if not isinstance(bindings, list):
+            raise WikidataMalformedResponse("SPARQL response: results.bindings is not a list")
+
+        qids: list[str] = []
+        seen: set[str] = set()
+        for binding in bindings:
+            if not isinstance(binding, dict):
+                continue
+            item_obj = binding.get("item", {})
+            if not isinstance(item_obj, dict):
+                continue
+            uri = item_obj.get("value", "")
+            if not isinstance(uri, str):
+                continue
+            m = _ENTITY_URI_RE.match(uri)
+            if m:
+                qid = m.group(1)
+                if qid not in seen:
+                    seen.add(qid)
+                    qids.append(qid)
+        return qids
+
+    def run_alt_discovery_item_desc_query(self, query_text: str) -> list[tuple[str, str]]:
+        """Dispatch the fixed SLICE-0021 R3 ``?item ?desc`` SPARQL query text
+        and return deduplicated ``(qid, description)`` pairs in result order.
+
+        Identical rights-gating and single-dispatch contract to
+        ``run_alt_discovery_item_query``. If the same item QID appears more
+        than once with a different description, only the first-seen
+        description is retained (first-seen is deterministic given the
+        route's ``ORDER BY ?item``).
+        """
+        self._check_bulk_bootstrap_rights()
+        self._check_rights()
+
+        data = self._get(
+            _SPARQL_ENDPOINT,
+            params={"query": query_text, "format": "json"},
+            extra_headers={"Accept": "application/sparql-results+json"},
+        )
+        bindings = data.get("results", {}).get("bindings", [])
+        if not isinstance(bindings, list):
+            raise WikidataMalformedResponse("SPARQL response: results.bindings is not a list")
+
+        pairs: list[tuple[str, str]] = []
+        seen: set[str] = set()
+        for binding in bindings:
+            if not isinstance(binding, dict):
+                continue
+            item_obj = binding.get("item", {})
+            desc_obj = binding.get("desc", {})
+            if not isinstance(item_obj, dict) or not isinstance(desc_obj, dict):
+                continue
+            uri = item_obj.get("value", "")
+            desc = desc_obj.get("value", "")
+            if not isinstance(uri, str) or not isinstance(desc, str):
+                continue
+            m = _ENTITY_URI_RE.match(uri)
+            if m:
+                qid = m.group(1)
+                if qid not in seen:
+                    seen.add(qid)
+                    pairs.append((qid, desc))
+        return pairs
+
+    def fetch_sampled_entity_details(self, qids: list[str]) -> list[SampledEntityDetail]:
+        """Fetch the bounded SLICE-0021 entity-detail sample via official
+        ``wbgetentities``, restricted to identity-relevant fields only (QID,
+        labels, aliases, descriptions, P31, P279, P176 if present, P287 if
+        present).
+
+        Identical validation/batching/rights-gating contract to
+        ``_fetch_entities_impl`` (bounded by ``WIKIDATA_BOOTSTRAP_SAFETY_CEILING``);
+        the SLICE-0021-specific <=75/<=200 sample caps are enforced by the
+        caller (``hullq.bootstrap.wikidata_sl0021_alt_discovery.select_entity_detail_sample``)
+        before *qids* ever reaches this method, not here.
+        """
+        invalid = [q for q in qids if not validate_qid(q)]
+        if invalid:
+            raise ValueError(f"Invalid QID format(s) before network use: {invalid!r}")
+        if len(qids) > WIKIDATA_BOOTSTRAP_SAFETY_CEILING:
+            raise ValueError(
+                f"Requested {len(qids)} QIDs exceeds allowed limit "
+                f"{WIKIDATA_BOOTSTRAP_SAFETY_CEILING}"
+            )
+
+        seen: set[str] = set()
+        deduped: list[str] = []
+        for q in qids:
+            if q not in seen:
+                seen.add(q)
+                deduped.append(q)
+
+        details: list[SampledEntityDetail] = []
+        for i in range(0, len(deduped), _ENTITY_API_BATCH_SIZE):
+            batch = deduped[i : i + _ENTITY_API_BATCH_SIZE]
+            self._check_bulk_bootstrap_rights()
+            self._check_rights()
+            data = self._get(
+                _ENTITY_API_ENDPOINT,
+                params={
+                    "action": "wbgetentities",
+                    "ids": "|".join(batch),
+                    "format": "json",
+                    "languages": "en",
+                    "props": "labels|aliases|descriptions|claims",
+                },
+            )
+            raw_entities = data.get("entities")
+            if not isinstance(raw_entities, dict):
+                raise WikidataMalformedResponse("wbgetentities response missing 'entities' object")
+            for qid in batch:
+                entity_raw = raw_entities.get(qid)
+                if not isinstance(entity_raw, dict):
+                    continue
+                if entity_raw.get("type") != "item":
+                    continue
+                details.append(self._parse_sampled_entity(qid, entity_raw))
+                self._usage = self._usage.add(extracted_delta=1)
+
+        return details
+
+    def _parse_sampled_entity(self, qid: str, raw: dict[str, Any]) -> SampledEntityDetail:
+        labels = raw.get("labels", {})
+        if not isinstance(labels, dict):
+            labels = {}
+        label_obj = labels.get("en")
+        label: str | None = None
+        if isinstance(label_obj, dict):
+            lv = label_obj.get("value")
+            label = lv if isinstance(lv, str) else None
+
+        aliases_raw = raw.get("aliases") or {}
+        if not isinstance(aliases_raw, dict):
+            aliases_raw = {}
+        lang_aliases = aliases_raw.get("en", [])
+        if not isinstance(lang_aliases, list):
+            lang_aliases = []
+        aliases = [
+            a["value"]
+            for a in lang_aliases
+            if isinstance(a, dict) and isinstance(a.get("value"), str)
+        ]
+
+        descriptions = raw.get("descriptions") or {}
+        if not isinstance(descriptions, dict):
+            descriptions = {}
+        desc_obj = descriptions.get("en")
+        description_en: str | None = None
+        if isinstance(desc_obj, dict):
+            dv = desc_obj.get("value")
+            description_en = dv if isinstance(dv, str) else None
+
+        claims = raw.get("claims", {})
+        if not isinstance(claims, dict):
+            claims = {}
+
+        return SampledEntityDetail(
+            qid=qid,
+            label=label,
+            aliases=aliases,
+            description_en=description_en,
+            p31_qids=_extract_entity_id_claim_values(claims, _PROP_INSTANCE_OF),
+            p279_qids=_extract_entity_id_claim_values(claims, _PROP_SUBCLASS_OF),
+            p176_qids=_extract_entity_id_claim_values(claims, _PROP_MANUFACTURER),
+            p287_qids=_extract_entity_id_claim_values(claims, _PROP_DESIGNER),
+        )
 
     # ------------------------------------------------------------------
     # Entity acquisition
