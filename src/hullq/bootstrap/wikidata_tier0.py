@@ -129,6 +129,12 @@ class BootstrapReasonCode(StrEnum):
     MISSING_LABEL = "missing_label"
     NAME_COLLISION = "name_collision"
     CROSSWALK_CONFLICT = "crosswalk_conflict"
+    R3_REPAIR_SIGNAL_REQUIRES_REVIEW = "r3_repair_signal_requires_review"
+    """SLICE-0022: an R3 (misclassified_sailboat_class_description) retained
+    candidate is fail-closed review-bound regardless of collision status; see
+    ``docs/slices/SLICE-0022-retained-alternative-route-tier0-admission-safety-pilot.md``
+    "R3 fail-closed rule". Never implies the candidate is a valid BoatModel.
+    """
 
 
 class CrosswalkConflictError(ValueError):

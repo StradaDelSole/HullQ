@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-24
-**Current stage:** Stage 3.2 — canonical identity breadth / bounded admission proof. SLICE-0019 manufacturer/yard universe research, SLICE-0020 archive source-clearance + identity pilot, and SLICE-0021 alternative Wikidata discovery-semantics pilot are all `DONE` and owner-accepted. **SLICE-0022 is the only `READY` slice**: an offline Tier-0 admission-safety pilot over the exact 57 retained SLICE-0021 candidates (53 R1, 4 R3), with zero live acquisition and no production-discovery change. The earlier Stage 3.3 label was premature: Stage 3.3 Tier-1/basic-searchable enrichment has not begun. No SLICE-0023 or later slice is currently `READY`.
+**Current stage:** Stage 3.2 — canonical identity breadth / bounded admission proof. SLICE-0019 manufacturer/yard universe research, SLICE-0020 archive source-clearance + identity pilot, and SLICE-0021 alternative Wikidata discovery-semantics pilot are all `DONE` and owner-accepted. **SLICE-0022 — the offline Tier-0 admission-safety pilot over the exact 57 retained SLICE-0021 candidates (53 R1, 4 R3) — has been implemented and is handed off `REVIEW`** (not `DONE`): zero live acquisition, no production-discovery change, measured result 27 AUTO_ADMIT / 4 REVIEW_REQUIRED / 26 NOT_ADMITTED, expected combined canonical BoatModel count 1,797 pending remote CI observation and owner acceptance. The earlier Stage 3.3 label was premature: Stage 3.3 Tier-1/basic-searchable enrichment has not begun. No SLICE-0023 or later slice is currently `READY`.
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -71,7 +71,7 @@ Auth remains deferred under OQ-014. OQ-006 controls alert cadence/freshness; OQ-
 | SLICE-0020 | manufacturer/archive source clearance + bounded identity pilot; 0 ADAPTER_READY / 9 REVIEW_REQUIRED / 1 BLOCKED |
 | SLICE-0021 | alternative Wikidata class-discovery semantics pilot; R0 zero drift / R1 +53 / R2 +0 / R3 +4; accepted research follow-up signals |
 
-All slices 0001–0021 are `DONE` and owner-accepted. SLICE-0022 is `READY` but has not started and is not accepted.
+All slices 0001–0021 are `DONE` and owner-accepted. SLICE-0022 has been implemented and is handed off `REVIEW`; it is not yet accepted.
 
 ## SLICE-0011 — benchmark result retained
 
@@ -451,7 +451,7 @@ all_zero_tolerance_conditions_clear = true
 
 Final closure record: `docs/slices/SLICE-0018-acceptance-closure.md`.
 
-## Current operational position — SLICE-0019 DONE, SLICE-0020 DONE, SLICE-0021 DONE, SLICE-0022 READY
+## Current operational position — SLICE-0019 DONE, SLICE-0020 DONE, SLICE-0021 DONE, SLICE-0022 REVIEW (implemented, not yet accepted)
 
 `docs/slices/SLICE-0019-global-series-sailboat-manufacturer-universe-research.md` is **explicitly owner-accepted and closed `DONE`** on 2026-08-23; see `docs/slices/SLICE-0019-acceptance-closure.md` for the full closure record.
 
@@ -484,7 +484,7 @@ Independent review required two hardening rounds. Round 1 added fail-closed live
 
 The R1/R3 `FOLLOWUP_DISCOVERY_CANDIDATE` dispositions remain research recommendations only. No canonical HullQ row or ID was created and no production Wikidata discovery query was changed.
 
-**SLICE-0022 — `docs/slices/SLICE-0022-retained-alternative-route-tier0-admission-safety-pilot.md` — is `READY` and not started.** It uses only the accepted retained SLICE-0021 candidate set, pinned to the accepted `sampled_candidates.json` and `discovery_probe.json` Git blobs. Exactly 57 candidates are in scope: 53 R1 and four R3. It performs zero external acquisition, reuses accepted SLICE-0017/0018 search-projection/collision/Tier-0 admission and historical-ID semantics, forces R3 away from auto-admission, and proves any admission delta by offline PostgreSQL baseline-first replay, exact re-import and independent fresh-schema replay. It does not adopt R1/R3 as production discovery routes.
+**SLICE-0022 — `docs/slices/SLICE-0022-retained-alternative-route-tier0-admission-safety-pilot.md` — has been implemented and is handed off `REVIEW`, not `DONE`.** It uses only the accepted retained SLICE-0021 candidate set, pinned to the accepted `sampled_candidates.json` and `discovery_probe.json` Git blobs. Exactly 57 candidates were in scope: 53 R1 and four R3. It performed zero external acquisition, reused accepted SLICE-0017/0018 search-projection/collision/Tier-0 admission and historical-ID semantics, forced every R3 candidate away from auto-admission, and measured **27 AUTO_ADMIT / 4 REVIEW_REQUIRED / 26 NOT_ADMITTED** (zero search-projection collisions against the baseline or within the 57). Offline recompute-and-diff self-consistency verification passed, and a local PostgreSQL 18 baseline-first (SLICE-0017+0018, 1,770) then SLICE-0022-delta-second replay reached the expected combined canonical BoatModel count of **1,797** with all zero-tolerance conditions clear, exact re-import and an independent fresh-schema rerun — this local replay evidence is not a substitute for the required remote CI observation. It does not adopt R1/R3 as production discovery routes.
 
 ## Near-term path
 
@@ -511,7 +511,7 @@ SLICE-0020  archive source clearance + bounded identity pilot  DONE / 0 ADAPTER_
       ↓
 SLICE-0021  alternative Wikidata discovery-semantics pilot     DONE / R0 zero drift, R1+53, R2+0, R3+4
       ↓
-SLICE-0022  retained alternative-route Tier-0 admission pilot  READY / zero live acquisition
+SLICE-0022  retained alternative-route Tier-0 admission pilot  REVIEW / 27 AUTO_ADMIT, zero live acquisition
       ↓
 production route decision / further identity breadth           NOT AUTHORIZED YET
 ```
@@ -545,7 +545,7 @@ FINISH_SLICE.bat
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-SLICE-0001 through SLICE-0021 are accepted / `DONE`. SLICE-0022 is the only `READY` slice and is not started. No SLICE-0023 or later slice is currently `READY`.
+SLICE-0001 through SLICE-0021 are accepted / `DONE`. SLICE-0022 has been implemented and is handed off `REVIEW` (not yet accepted). No SLICE-0023 or later slice is currently `READY`.
 
 ## Do not start yet
 

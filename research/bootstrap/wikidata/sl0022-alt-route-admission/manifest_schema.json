@@ -1,0 +1,261 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/wikidata-sl0022-alt-route-admission-manifest/v1",
+  "title": "HullQ SLICE-0022 Retained Alternative-Route Tier-0 Admission Safety Pilot Manifest",
+  "description": "Versioned, replayable record of the SLICE-0022 offline Tier-0 admission-safety pilot over the exact 57 retained SLICE-0021 alternative-route candidates (53 R1, 0 R2, 4 R3). Performs zero live network acquisition; every fact is classified from already-committed immutable retained inputs (accepted SLICE-0017/0018 baseline manifests, accepted SLICE-0021 sampled_candidates.json/discovery_probe.json). Every structurally usable R3 candidate is REVIEW_REQUIRED with reason r3_repair_signal_requires_review and can never be AUTO_ADMIT. Does not contain SailboatData values or unrelated third-party content, and never mutates any accepted SLICE-0017/0018/0021 retained artifact.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "source_id",
+    "generated_at",
+    "acquired_at",
+    "classification_recomputed_at",
+    "immutable_inputs",
+    "candidate_universe",
+    "usage_metrics",
+    "candidates",
+    "retained_crosswalk",
+    "collisions",
+    "counts"
+  ],
+  "properties": {
+    "manifest_version": { "const": "0022-v1" },
+    "source_id": { "type": "string", "minLength": 1 },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this manifest document was most recently (re)written."
+    },
+    "acquired_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "The original SLICE-0022 classification timestamp. MUST be preserved verbatim across every later offline reclassification."
+    },
+    "classification_recomputed_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Null for a manifest that has never been reclassified since its original generation. Set to the timestamp of the most recent --classify rerun otherwise."
+    },
+    "immutable_inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sl0017_manifest",
+        "sl0018_manifest",
+        "sl0021_sampled_candidates",
+        "sl0021_discovery_probe",
+        "sl0021_implementation_head",
+        "retained_direct_discovery_count",
+        "accepted_auto_admit_count",
+        "accepted_historical_crosswalk_count"
+      ],
+      "properties": {
+        "sl0017_manifest": { "$ref": "#/$defs/sha256_reference" },
+        "sl0018_manifest": { "$ref": "#/$defs/sha256_reference" },
+        "sl0021_sampled_candidates": { "$ref": "#/$defs/sha1_reference" },
+        "sl0021_discovery_probe": { "$ref": "#/$defs/sha1_reference" },
+        "sl0021_implementation_head": { "type": "string", "minLength": 1 },
+        "retained_direct_discovery_count": { "const": 1829 },
+        "accepted_auto_admit_count": { "const": 1770 },
+        "accepted_historical_crosswalk_count": { "const": 1772 }
+      }
+    },
+    "candidate_universe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "r1_count", "r2_count", "r3_count"],
+      "properties": {
+        "total": { "const": 57 },
+        "r1_count": { "const": 53 },
+        "r2_count": { "const": 0 },
+        "r3_count": { "const": 4 }
+      }
+    },
+    "usage_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["retrieval_count", "extracted_record_count"],
+      "properties": {
+        "retrieval_count": { "const": 0, "description": "SLICE-0022 performs zero network requests." },
+        "extracted_record_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 57,
+      "maxItems": 57,
+      "items": { "$ref": "#/$defs/candidate" }
+    },
+    "retained_crosswalk": {
+      "type": "array",
+      "description": "The complete historical QID -> HullQ-ID registry: the combined accepted SLICE-0017+0018 crosswalk merged with SLICE-0022's own new mappings.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["qid", "hullq_id"],
+        "properties": {
+          "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+          "hullq_id": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "collisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseline", "within_57"],
+      "properties": {
+        "baseline": {
+          "type": "array",
+          "description": "SLICE-0022 candidates whose deterministic search-key projection collided with the complete accepted 1,829-candidate baseline search-key space.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["candidate_qid", "baseline_qids", "shared_keys"],
+            "properties": {
+              "candidate_qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+              "baseline_qids": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "type": "string", "pattern": "^Q[1-9][0-9]*$" }
+              },
+              "shared_keys": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+            }
+          }
+        },
+        "within_57": {
+          "type": "array",
+          "description": "Complete transitive same-search-key collision clusters formed entirely within the 57 SLICE-0022 candidates.",
+          "items": { "$ref": "#/$defs/collision_cluster" }
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidates_processed",
+        "auto_admit",
+        "auto_admit_r1",
+        "auto_admit_r3",
+        "review_required",
+        "not_admitted",
+        "reason_breakdown",
+        "baseline_collision_count",
+        "within_57_collision_cluster_count",
+        "historical_crosswalk_count_before",
+        "retained_crosswalk_count",
+        "newly_minted_id_count",
+        "reused_historical_id_count",
+        "research_observation_count",
+        "canonical_evidence_link_count",
+        "accepted_baseline_canonical_boat_model_count",
+        "combined_canonical_boat_model_count_expected"
+      ],
+      "properties": {
+        "candidates_processed": { "const": 57 },
+        "auto_admit": { "type": "integer", "minimum": 0, "maximum": 53 },
+        "auto_admit_r1": { "type": "integer", "minimum": 0, "maximum": 53 },
+        "auto_admit_r3": { "const": 0, "description": "R3 fail-closed rule: an R3 candidate must never be AUTO_ADMIT." },
+        "review_required": { "type": "integer", "minimum": 4 },
+        "not_admitted": { "type": "integer", "minimum": 0 },
+        "reason_breakdown": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "baseline_collision_count": { "type": "integer", "minimum": 0 },
+        "within_57_collision_cluster_count": { "type": "integer", "minimum": 0 },
+        "historical_crosswalk_count_before": { "type": "integer", "minimum": 1772 },
+        "retained_crosswalk_count": { "type": "integer", "minimum": 1772 },
+        "newly_minted_id_count": { "type": "integer", "minimum": 0 },
+        "reused_historical_id_count": { "type": "integer", "minimum": 0 },
+        "research_observation_count": { "type": "integer", "minimum": 0 },
+        "canonical_evidence_link_count": { "type": "integer", "minimum": 0 },
+        "accepted_baseline_canonical_boat_model_count": { "const": 1770 },
+        "combined_canonical_boat_model_count_expected": {
+          "type": "integer",
+          "minimum": 1770,
+          "description": "1770 accepted baseline admissions plus this manifest's SLICE-0022 auto_admit count."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "sha1_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "git_blob_sha1"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "git_blob_sha1": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "qid",
+        "route_membership",
+        "retrieved_at",
+        "preferred_label",
+        "aliases",
+        "hullq_id",
+        "decision",
+        "reason_codes",
+        "observation_id",
+        "bundle_id",
+        "bundle_version",
+        "evidence_link_id"
+      ],
+      "properties": {
+        "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+        "route_membership": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": { "type": "string", "enum": ["R1", "R3"] }
+        },
+        "retrieved_at": { "type": "string", "format": "date-time" },
+        "preferred_label": { "type": ["string", "null"] },
+        "aliases": { "type": "array", "items": { "type": "string" } },
+        "hullq_id": { "type": ["string", "null"] },
+        "decision": { "type": "string", "enum": ["auto_admit", "review_required", "not_admitted"] },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "missing_label",
+              "name_collision",
+              "crosswalk_conflict",
+              "r3_repair_signal_requires_review"
+            ]
+          }
+        },
+        "observation_id": { "type": ["string", "null"] },
+        "bundle_id": { "type": ["string", "null"] },
+        "bundle_version": { "type": ["string", "null"] },
+        "evidence_link_id": { "type": ["string", "null"] }
+      }
+    },
+    "collision_cluster": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["qids", "shared_keys"],
+      "properties": {
+        "qids": { "type": "array", "minItems": 2, "items": { "type": "string", "pattern": "^Q[1-9][0-9]*$" } },
+        "shared_keys": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    }
+  }
+}
