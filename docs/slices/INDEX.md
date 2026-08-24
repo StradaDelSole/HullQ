@@ -1,7 +1,7 @@
 # HullQ Slice Index
 
 **Status:** ACTIVE execution board  
-**Updated:** 2026-08-24
+**Updated:** 2026-08-24 (SLICE-0020 owner-accepted / DONE)
 
 The slice index is the canonical operational queue for bounded AI-assisted work. It does not replace `docs/EXECUTION_PLAN.md`, requirements, specs, ADRs or accepted slice contracts.
 
@@ -26,21 +26,42 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0017 | IMPLEMENTATION | DONE | Controlled Wikidata Tier-0 identity bootstrap across the first 1,000 direct sailboat-class candidates | SLICE-0016 accepted / DONE |
 | SLICE-0018 | IMPLEMENTATION | DONE | Baseline-preserving Wikidata Tier-0 expansion to the first <=2,500 direct sailboat-class discovery window | SLICE-0017 accepted / DONE |
 | SLICE-0019 | DESIGN_RESEARCH | DONE | Global active+historical series-sailboat manufacturer/yard universe + source-yield study | SLICE-0018 accepted / DONE |
-| SLICE-0020 | DESIGN_RESEARCH | REVIEW | Manufacturer archive source-clearance assessment + bounded (<=20/source) identity-yield pilot over a fixed 10-source sample | SLICE-0019 accepted / DONE |
+| SLICE-0020 | DESIGN_RESEARCH | DONE | Manufacturer archive source-clearance assessment + bounded (<=20/source) identity-yield pilot over a fixed 10-source sample | SLICE-0019 accepted / DONE |
 
 ## Current execution rule
 
-**SLICE-0020 is in `REVIEW`.** SLICE-0001 through SLICE-0019 are accepted / `DONE`. SLICE-0020's contract is `docs/slices/SLICE-0020-manufacturer-archive-source-clearance-identity-expansion-pilot.md`.
+**SLICE-0001 through SLICE-0020 are accepted / `DONE`.** SLICE-0020's contract is `docs/slices/SLICE-0020-manufacturer-archive-source-clearance-identity-expansion-pilot.md`; its closure record is `docs/slices/SLICE-0020-acceptance-closure.md`.
 
 SLICE-0020 is a bounded DESIGN_RESEARCH slice. It assessed use-specific rights/access clearance for a fixed, precommitted sample of ten manufacturer/heritage archive surfaces and ran a strictly bounded (<=20 model identities per source, <=200 total), research-only identity-yield pilot against those same surfaces. It did not authorize, build or stage a production adapter, did not perform automated/bulk acquisition, and did not create or modify any canonical Brand/Organization/BoatModel/BoatDesign row. The measured result is a truthful zero `ADAPTER_READY` sources (9 `RESEARCH_ONLY`/`REVIEW_REQUIRED`, 1 `BLOCKED` — Bénéteau); this was not padded or rounded up. See `research/manufacturers/archive_clearance/ARCHIVE_SOURCE_CLEARANCE_REPORT.md`.
 
-SLICE-0020 does not authorize SLICE-0021. No later slice is made `READY` merely by SLICE-0020 reaching `REVIEW`.
+SLICE-0020's acceptance does not authorize SLICE-0021. **No later slice is currently `READY`.**
 
 SLICE-0019 was a DESIGN_RESEARCH slice. It did not ingest a new production dataset. It built an evidence-backed global active+historical manufacturer/yard research registry and measured which source surfaces can credibly extend HullQ beyond the accepted direct-instance Wikidata ceiling.
 
 The accepted SLICE-0018 measurement remains the input boundary: **1,829** unique direct-instance Wikidata sailboat-class QIDs, **829** expansion-delta candidates and **1,770** accepted combined sparse canonical BoatModels.
 
 No 5,000 rerun, new production-source ingestion, broad technical enrichment, review-queue campaign, query engine, API, frontend, marketplace or monitoring work is authorized merely by SLICE-0019's closure.
+
+## SLICE-0020 acceptance closure
+
+SLICE-0020 is explicitly accepted and `DONE`.
+
+Acceptance evidence:
+
+- independent-review verdict: **ACCEPT**;
+- original implementation/research PR #47, initial head `1ca06c3`;
+- independent review returned **AMEND**; amendment `44ed42c` corrected Elan/Hallberg-Rassy provenance, removed the unsupported Elan E3 and Bénéteau First 32/38 hazards, and tightened the exact-match whitespace semantics; a second docs-only amendment `ced1880` corrected the report's own characterization of that implementation correction;
+- final reviewed / accepted head: `ced18800c20a6a2c328794d3af5cb0686d59c20d`;
+- implementation/research merge commit: `5c2a9cc40a05fbaebe2a4db2bcfff7d3498a58d9` (PR #47);
+- exact-head CI run #250 (`32727915597`): SUCCESS — quality (ubuntu-latest), quality (windows-latest), db integration (PostgreSQL 18), dependency audit all SUCCESS;
+- fixed sources assessed: **10**; source-clearance result: **0** `ADAPTER_READY` / **9** `RESEARCH_ONLY`/`REVIEW_REQUIRED` / **1** `BLOCKED` (Bénéteau);
+- bounded identity pilot: **100** total identities (10 per source); exact-overlap result: **9** `exact_overlap` / **91** `no_exact_overlap_signal` / **0** `unresolved_possible_overlap`;
+- no canonical Brand/Organization/BoatModel/BoatDesign rows created or modified;
+- no SailboatData value used as HullQ production evidence;
+- research ownership: ChatGPT performed the external research/orchestration pass; Claude performed repository integration/deterministic computation/validation only;
+- explicit project-owner acceptance on 2026-08-24.
+
+Final closure record: `docs/slices/SLICE-0020-acceptance-closure.md`.
 
 ## SLICE-0019 acceptance closure
 
@@ -366,7 +387,7 @@ baseline-preserving Wikidata <=2,500 expansion    DONE — SLICE-0018
         ↓
 global manufacturer/yard universe + source yield  DONE — SLICE-0019
         ↓
-archive source clearance + identity pilot         REVIEW — SLICE-0020
+archive source clearance + identity pilot         DONE — SLICE-0020
         ↓
 next measured Stage-3 implementation decision      LATER / NOT AUTHORIZED
 ```
@@ -425,4 +446,4 @@ It created and modified no canonical HullQ entities and did not authorize system
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-SLICE-0019 is closed and accepted `DONE` (see `docs/slices/SLICE-0019-acceptance-closure.md`). SLICE-0020 is implemented and in `REVIEW` (see `docs/slices/SLICE-0020-manufacturer-archive-source-clearance-identity-expansion-pilot.md` and `research/manufacturers/archive_clearance/ARCHIVE_SOURCE_CLEARANCE_REPORT.md`), pending independent review and project-owner acceptance; it is not `DONE`. No slice beyond SLICE-0020 has been created or started.
+SLICE-0019 is closed and accepted `DONE` (see `docs/slices/SLICE-0019-acceptance-closure.md`). SLICE-0020 is closed and accepted `DONE` (see `docs/slices/SLICE-0020-acceptance-closure.md` and `research/manufacturers/archive_clearance/ARCHIVE_SOURCE_CLEARANCE_REPORT.md`). No slice beyond SLICE-0020 has been created or started, and no later slice is currently `READY`.
