@@ -1,6 +1,6 @@
 # HullQ SLICE-0022 Retained Alternative-Route Tier-0 Admission Safety Pilot Report
 
-**Manifest last written (generated_at):** 2026-08-24T22:53:40.392691+00:00  
+**Manifest last written (generated_at):** 2026-08-24T23:23:13.400563+00:00  
 **Retained SLICE-0021 source-fact acquisition time (acquired_at):** 2026-08-24T15:29:04.154534+00:00  
 **Last offline reclassification (classification_recomputed_at):** None  
 **Source:** SRC_WIKIDATA_API_2026

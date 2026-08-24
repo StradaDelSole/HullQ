@@ -69,6 +69,22 @@ REPLAY_RESULT_PATH = SL0022_DIR / "REPLAY-RESULT.json"
 REPLAY_REPORT_PATH = SL0022_DIR / "REPLAY-REPORT.md"
 
 
+def _write_text_lf(path: Path, text: str) -> None:
+    """Write *text* as UTF-8 bytes with no newline translation.
+
+    ``Path.write_text`` applies the platform's universal-newlines encoder on
+    write (``\\n`` -> ``os.linesep``), so on Windows it silently produces
+    CRLF line endings. ``.gitattributes`` (``* text=auto eol=lf``) then
+    normalizes those to LF when the file is committed, so a SHA256 computed
+    from the just-written local file (CRLF) would not match the digest of
+    the actually-committed/checked-out bytes (LF) — exactly the mismatch a
+    retained artifact digest exists to catch. Writing raw LF-only bytes
+    directly keeps the local file byte-identical to what git stores on every
+    platform, so retained-artifact digests are stable cross-platform.
+    """
+    path.write_bytes(text.encode("utf-8"))
+
+
 def _validate_json_schema(instance: dict[str, Any], schema_path: Path, *, label: str) -> None:
     if not schema_path.exists():
         return
@@ -196,7 +212,7 @@ def run_classify(
     _validate_manifest_schema(manifest)
 
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    _write_text_lf(manifest_path, json.dumps(manifest, indent=2))
     print(f"\nManifest written to: {manifest_path}", flush=True)
     print(f"  counts: {manifest['counts']}", flush=True)
 
@@ -214,7 +230,7 @@ def run_classify(
     _validate_json_schema(
         digests_doc, ARTIFACT_DIGESTS_SCHEMA_PATH, label="SLICE-0022 artifact digests"
     )
-    artifact_digests_path.write_text(json.dumps(digests_doc, indent=2), encoding="utf-8")
+    _write_text_lf(artifact_digests_path, json.dumps(digests_doc, indent=2))
     print(f"Artifact digests written to: {artifact_digests_path}", flush=True)
 
     return manifest
@@ -482,7 +498,7 @@ def _write_report(
         "",
     ]
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    _write_text_lf(report_path, "\n".join(lines) + "\n")
     print(f"Report written to: {report_path}", flush=True)
 
 
@@ -1119,7 +1135,7 @@ def replay_manifest(
     result_doc["all_zero_tolerance_conditions_clear"] = _pass_clear(pass1) and _pass_clear(pass2)
 
     result_path.parent.mkdir(parents=True, exist_ok=True)
-    result_path.write_text(json.dumps(result_doc, indent=2), encoding="utf-8")
+    _write_text_lf(result_path, json.dumps(result_doc, indent=2))
     print(f"\nReplay result written to: {result_path}", flush=True)
     print(
         f"All zero-tolerance conditions clear: {result_doc['all_zero_tolerance_conditions_clear']}",
@@ -1182,7 +1198,7 @@ def _write_replay_report(result_doc: dict[str, Any], report_path: Path) -> None:
         "",
     ]
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    _write_text_lf(report_path, "\n".join(lines) + "\n")
     print(f"Replay report written to: {report_path}", flush=True)
 
 
@@ -1219,7 +1235,7 @@ def write_report_with_replay_evidence(
     _validate_json_schema(
         digests_doc, ARTIFACT_DIGESTS_SCHEMA_PATH, label="SLICE-0022 artifact digests"
     )
-    artifact_digests_path.write_text(json.dumps(digests_doc, indent=2), encoding="utf-8")
+    _write_text_lf(artifact_digests_path, json.dumps(digests_doc, indent=2))
     print(f"Artifact digests written to: {artifact_digests_path}", flush=True)
 
 

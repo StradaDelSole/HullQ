@@ -1,6 +1,6 @@
 # HullQ SLICE-0022 Retained Alternative-Route Tier-0 Admission Safety Pilot Replay Report
 
-**Run timestamp:** 2026-08-24T23:01:06.726289+00:00  
+**Run timestamp:** 2026-08-24T23:26:46.497818+00:00  
 **PostgreSQL version:** PostgreSQL 18.6 on x86_64-windows, compiled by msvc-19.44.35228, 64-bit  
 **Prior baseline (0017+0018) candidates/auto_admit:** 1829/1770  
 **SLICE-0022 candidates/auto_admit:** 57/0  
@@ -14,7 +14,7 @@ Both passes below import the accepted SLICE-0017 baseline then the accepted SLIC
 - admission (combined): {'imported': 1770, 'already_present': 0, 'conflict': 0, 'reference_error': 0, 'error': 0, 'unexpected_status': 0}
 - expected combined imported counts match exactly: True
 - prior baseline (0017+0018) verified before 0022 applied: {'counts_match': True, 'id_set_matches': True, 'readback_mismatches': 0}
-- wall clock: 9.1264s
+- wall clock: 7.5908s
 
 ## DEEP READBACK VERIFICATION (same isolated schema as pass 1)
 
@@ -27,7 +27,7 @@ Both passes below import the accepted SLICE-0017 baseline then the accepted SLIC
 ## EXACT RE-REPLAY (IDEMPOTENCY, same isolated schema)
 
 - already_imported/conflict/error: 3607/0/0
-- wall clock: 9.0625s
+- wall clock: 11.0559s
 
 ## PASS 2 — INDEPENDENT FRESH-SCHEMA REPLAY (second isolated schema, full combined semantic graph equality)
 
