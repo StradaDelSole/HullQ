@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-24
-**Current stage:** Stage 3.3 — SLICE-0019 manufacturer/yard universe research `DONE` (owner-accepted 2026-08-23). SLICE-0020 (archive source clearance + bounded identity pilot) is implemented and in `REVIEW`, pending independent review/owner acceptance; measured result is 0 `ADAPTER_READY` / 9 `RESEARCH_ONLY`/`REVIEW_REQUIRED` / 1 `BLOCKED` (Bénéteau).
+**Current stage:** Stage 3.3 — SLICE-0019 manufacturer/yard universe research `DONE` (owner-accepted 2026-08-23). SLICE-0020 (archive source clearance + bounded identity pilot) is `DONE` (owner-accepted 2026-08-24); measured result is 0 `ADAPTER_READY` / 9 `RESEARCH_ONLY`/`REVIEW_REQUIRED` / 1 `BLOCKED` (Bénéteau). No later slice is currently `READY`.
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -448,7 +448,7 @@ all_zero_tolerance_conditions_clear = true
 
 Final closure record: `docs/slices/SLICE-0018-acceptance-closure.md`.
 
-## Current operational position — SLICE-0019 DONE, SLICE-0020 REVIEW
+## Current operational position — SLICE-0019 DONE, SLICE-0020 DONE
 
 `docs/slices/SLICE-0019-global-series-sailboat-manufacturer-universe-research.md` is **explicitly owner-accepted and closed `DONE`** on 2026-08-23; see `docs/slices/SLICE-0019-acceptance-closure.md` for the full closure record.
 
@@ -460,7 +460,7 @@ The research preserved manufacturer/yard/brand/legal-organization/designer disti
 
 It created no canonical HullQ entities and did not authorize a new production source. Its decision output was a ranked evidence-based recommendation for the next bounded Stage-3 slice, which SLICE-0020 now bounds into an explicit contract.
 
-**SLICE-0020 — `docs/slices/SLICE-0020-manufacturer-archive-source-clearance-identity-expansion-pilot.md` — is implemented and in `REVIEW`.** It is a bounded DESIGN_RESEARCH step:
+**SLICE-0020 — `docs/slices/SLICE-0020-manufacturer-archive-source-clearance-identity-expansion-pilot.md` — is explicitly owner-accepted and closed `DONE`** on 2026-08-24; see `docs/slices/SLICE-0020-acceptance-closure.md` for the full closure record. It was a bounded DESIGN_RESEARCH step:
 
 - assessed use-specific rights/access clearance (`research_reference`, `research_lead`, `identity_seed`, `production_value` where relevant, `automated_ingestion`, `bulk_bootstrap`, `artifact_redistribution`) for the fixed, precommitted 10-source manufacturer/heritage archive sample (Catalina, Pearson, Oyster, Westerly, Bénéteau, Wauquiez, Elan, Cantiere del Pardo/Grand Soleil, Hallberg-Rassy, Seawind);
 - ran a strictly bounded, research-only identity-yield pilot (exactly 10 model identities per source, 100 total, within the <=20/source and <=200-total contract cap) with exact/unambiguous-first overlap only against the accepted 1,770 AUTO_ADMIT BoatModel universe, finding 9 `exact_overlap`, 91 `no_exact_overlap_signal`, 0 `unresolved_possible_overlap`;
@@ -469,7 +469,9 @@ It created no canonical HullQ entities and did not authorize a new production so
 - the external source-clearance/identity research was performed by a ChatGPT-led external research pass; Claude performed repository integration (schema/data transcription, deterministic overlap computation, validation, tests, report) and no independent external research;
 - does not authorize or start SLICE-0021.
 
-Retained package: `research/manufacturers/archive_clearance/` (`archive_source_clearance_schema.json`, `archive_source_clearance.json`, `archive_identity_pilot_schema.json`, `archive_identity_pilot.json`, `ARCHIVE_SOURCE_CLEARANCE_REPORT.md`). SLICE-0020 is pending independent review and explicit project-owner acceptance before it can be marked `DONE`.
+Retained package: `research/manufacturers/archive_clearance/` (`archive_source_clearance_schema.json`, `archive_source_clearance.json`, `archive_identity_pilot_schema.json`, `archive_identity_pilot.json`, `ARCHIVE_SOURCE_CLEARANCE_REPORT.md`).
+
+Independent review initially returned **AMEND**; a first amendment (`44ed42c`) corrected Elan/Hallberg-Rassy source-surface provenance, removed the unsupported Elan E3 and Bénéteau First 32/38 hazards, and tightened the exact-match whitespace semantics, and a second docs-only amendment (`ced1880`) corrected the report's own characterization of that implementation correction. The final reviewed head `ced18800c20a6a2c328794d3af5cb0686d59c20d` received an independent-review **ACCEPT** verdict. Implementation/research PR #47 merged as `5c2a9cc40a05fbaebe2a4db2bcfff7d3498a58d9`; exact-head CI run #250 (`32727915597`) was **SUCCESS** on all jobs. The project owner explicitly accepted SLICE-0020 on 2026-08-24. **No later slice is currently `READY`**; SLICE-0021 was not created or started.
 
 ## Near-term path
 
@@ -492,7 +494,7 @@ SLICE-0018  baseline-preserving Wikidata <=2,500 expansion     DONE / source cei
       ↓
 SLICE-0019  global manufacturer/yard universe source research  DONE / source-yield floor 121
       ↓
-SLICE-0020  archive source clearance + bounded identity pilot  REVIEW / 0 ADAPTER_READY, 9 REVIEW_REQUIRED, 1 BLOCKED
+SLICE-0020  archive source clearance + bounded identity pilot  DONE / 0 ADAPTER_READY, 9 REVIEW_REQUIRED, 1 BLOCKED
       ↓
 next bounded Stage-3 implementation decision                   NOT AUTHORIZED YET
 ```
@@ -526,7 +528,7 @@ FINISH_SLICE.bat
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-SLICE-0001 through SLICE-0019 are accepted / `DONE`. SLICE-0020 (`docs/slices/SLICE-0020-manufacturer-archive-source-clearance-identity-expansion-pilot.md`) is implemented and in `REVIEW`, pending independent review and project-owner acceptance; it is not `DONE`. SLICE-0020's `REVIEW` status does not make SLICE-0021 or any later slice `READY`.
+SLICE-0001 through SLICE-0020 are accepted / `DONE`. SLICE-0020's closure record is `docs/slices/SLICE-0020-acceptance-closure.md`. SLICE-0020's acceptance does not make SLICE-0021 or any later slice `READY`; no later slice is currently `READY`.
 
 ## Do not start yet
 

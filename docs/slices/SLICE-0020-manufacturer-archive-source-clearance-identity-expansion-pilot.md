@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0020
 **Type:** DESIGN_RESEARCH
-**Status:** REVIEW
+**Status:** DONE
 **Stage:** 3.3 — post-manufacturer-universe source clearance / bounded identity-yield pilot
 **Depends on:** SLICE-0019 accepted / DONE
 **Blocks:** any later controlled manufacturer-archive identity-expansion adapter slice (not yet authorized; a later slice must use this pilot's measured result as evidence)
