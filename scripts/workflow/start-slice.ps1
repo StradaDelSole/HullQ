@@ -98,6 +98,15 @@ Do not modify main.
 Do not start another slice.
 At completion, push this same branch to GitHub and leave the slice in REVIEW or BLOCKED.
 Do not merge to main.
+
+FINAL OPERATOR HANDOFF IS MANDATORY:
+- Your FINAL chat response to the operator MUST contain the COMPLETE completion report using the exact structure from docs/slices/SLICE_TEMPLATE.md.
+- Do not replace that report with a summary or executive summary.
+- A completion report stored in the repository, PR body, comment, or another artifact does NOT substitute for the complete operator-facing final response.
+- Distinguish local validation from remote/external verification and report the exact final branch HEAD SHA.
+- Observe required remote CI on that exact final HEAD before the final response when the slice requires remote CI.
+- After observing final exact-head CI, do NOT make another repository commit merely to record that CI result; report it in the final operator response unless the controlling slice explicitly requires otherwise.
+- After the final handoff, stop. Do not mark the slice DONE and do not begin the next slice.
 "@
 
 try {

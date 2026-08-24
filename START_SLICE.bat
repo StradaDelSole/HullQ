@@ -2,8 +2,13 @@
 setlocal
 cd /d "%~dp0"
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\workflow\start-slice.ps1"
-if errorlevel 1 (
-  echo.
+set "exitcode=%errorlevel%"
+echo.
+if not "%exitcode%"=="0" (
   echo Something went wrong. See the message above.
-  pause
+) else (
+  echo START_SLICE finished successfully.
 )
+echo Press any key to close this window.
+pause >nul
+exit /b %exitcode%

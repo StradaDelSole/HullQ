@@ -52,10 +52,31 @@ if (-not (Test-Path $worktree)) {
     exit 0
 }
 
-$dirty = & git -C $worktree status --porcelain
+$statusLines = @(& git -C $worktree status --porcelain=v1 --untracked-files=all)
 if ($LASTEXITCODE -ne 0) { throw "Could not inspect slice worktree." }
-if ($dirty) {
-    Write-Host "Local main is current, but the slice worktree has uncommitted changes. It was NOT removed."
+
+if ($statusLines.Count -gt 0) {
+    $hasUntracked = @($statusLines | Where-Object { $_ -like '??*' }).Count -gt 0
+
+    & git -C $worktree diff --ignore-space-at-eol --quiet --
+    $hasSubstantiveUnstaged = ($LASTEXITCODE -ne 0)
+
+    & git -C $worktree diff --cached --ignore-space-at-eol --quiet --
+    $hasSubstantiveStaged = ($LASTEXITCODE -ne 0)
+
+    if (-not $hasUntracked -and -not $hasSubstantiveUnstaged -and -not $hasSubstantiveStaged) {
+        Write-Host "Only line-ending / end-of-line whitespace normalization changes were detected."
+        Write-Host "Restoring those non-semantic working-copy changes to the committed state."
+        Run-Git -GitArgs @('-C', $worktree, 'restore', '--staged', '--worktree', '--', '.')
+        $statusLines = @(& git -C $worktree status --porcelain=v1 --untracked-files=all)
+        if ($LASTEXITCODE -ne 0) { throw "Could not re-inspect slice worktree after normalization cleanup." }
+    }
+}
+
+if ($statusLines.Count -gt 0) {
+    Write-Host "Local main is current, but the slice worktree has substantive uncommitted/untracked changes."
+    Write-Host "It was NOT removed. Review these paths first:"
+    foreach ($line in $statusLines) { Write-Host "  $line" }
     exit 0
 }
 
@@ -80,6 +101,17 @@ if ($LASTEXITCODE -eq 0) {
     Run-Git -GitArgs @('-C', $repoRoot, 'branch', '-D', $branch)
 }
 Run-Git -GitArgs @('-C', $repoRoot, 'worktree', 'prune')
+
+& git -C $repoRoot ls-remote --exit-code --heads origin "refs/heads/$branch" *> $null
+if ($LASTEXITCODE -eq 0) {
+    & gh api --method DELETE "repos/StradaDelSole/HullQ/git/refs/heads/$branch" *> $null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "The merged remote slice branch was removed."
+    } else {
+        Write-Host "Remote slice branch cleanup could not be completed automatically; local cleanup is still complete."
+    }
+}
+
 Run-Git -GitArgs @('-C', $repoRoot, 'fetch', '--prune', 'origin')
 
 Write-Host ""
