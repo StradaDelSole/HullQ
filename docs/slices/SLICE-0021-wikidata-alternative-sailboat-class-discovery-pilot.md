@@ -517,8 +517,8 @@ It MUST NOT merge its own PR, mark the slice `DONE`, create/start SLICE-0022, or
 
 ### External verification
 
-- Remote CI: `NOT VERIFIED` — not yet observed on the pushed head; GitHub Actions has not run against this exact commit yet at the time of this report.
-- Other external gates: `NOT APPLICABLE` (no PostgreSQL/db-integration surface is touched by this slice; the new CI step added is itself schema validation + offline `--verify`, which was exercised locally with identical commands).
+- Remote CI: `PASS` — observed on the exact pushed head `9168400511d8c19944c15c78692d23a81a918fac` (PR #50, https://github.com/StradaDelSole/HullQ/pull/50, run `32749212070`): `quality (ubuntu-latest)` PASS, `quality (windows-latest)` PASS, `dependency audit` PASS, `db integration (PostgreSQL 18)` PASS (this job also ran the new SLICE-0021 schema-validation + offline `--verify` step, which passed).
+- Other external gates: `NOT APPLICABLE` beyond the CI run above.
 
 ### Findings
 
