@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
-**Updated:** 2026-08-23
-**Current stage:** Stage 3.2–3.3 — SLICE-0019 manufacturer/yard universe research `DONE` (owner-accepted 2026-08-23). No slice is currently `READY`.
+**Updated:** 2026-08-24
+**Current stage:** Stage 3.3 — SLICE-0019 manufacturer/yard universe research `DONE` (owner-accepted 2026-08-23). SLICE-0020 (archive source clearance + bounded identity pilot) is the sole `READY` slice.
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -448,9 +448,9 @@ all_zero_tolerance_conditions_clear = true
 
 Final closure record: `docs/slices/SLICE-0018-acceptance-closure.md`.
 
-## Current operational position — SLICE-0019 DONE
+## Current operational position — SLICE-0019 DONE, SLICE-0020 READY
 
-`docs/slices/SLICE-0019-global-series-sailboat-manufacturer-universe-research.md` is the controlling primary slice contract. It is **explicitly owner-accepted and closed `DONE`** on 2026-08-23; see `docs/slices/SLICE-0019-acceptance-closure.md` for the full closure record. **No later slice (including SLICE-0020) is made `READY` by this closure** — no slice is currently `READY`.
+`docs/slices/SLICE-0019-global-series-sailboat-manufacturer-universe-research.md` is **explicitly owner-accepted and closed `DONE`** on 2026-08-23; see `docs/slices/SLICE-0019-acceptance-closure.md` for the full closure record.
 
 SLICE-0019 was a bounded DESIGN_RESEARCH step, not a production-ingestion step. Its purpose was to map the next breadth/enrichment source layer after the direct-instance Wikidata ceiling measured by SLICE-0018.
 
@@ -458,7 +458,17 @@ The bounded first wave targeted approximately **120–160 verified eligible seri
 
 The research preserved manufacturer/yard/brand/legal-organization/designer distinctions and assessed later systematic-use rights/access separately from public readability.
 
-It created no canonical HullQ entities and did not authorize a new production source. Its decision output was a ranked evidence-based recommendation for the next bounded Stage-3 slice, which remains not authorized/TBD pending a separate readiness decision.
+It created no canonical HullQ entities and did not authorize a new production source. Its decision output was a ranked evidence-based recommendation for the next bounded Stage-3 slice, which SLICE-0020 now bounds into an explicit contract.
+
+**SLICE-0020 — `docs/slices/SLICE-0020-manufacturer-archive-source-clearance-identity-expansion-pilot.md` — is now the sole `READY` slice.** It is a bounded DESIGN_RESEARCH readiness step, not yet started:
+
+- assesses use-specific rights/access clearance (`research_reference`, `research_lead`, `identity_seed`, `production_value` where relevant, `automated_ingestion`, `bulk_bootstrap`, `artifact_redistribution`) for a fixed, precommitted 10-source manufacturer/heritage archive sample (Catalina, Pearson, Oyster, Westerly, Bénéteau, Wauquiez, Elan, Cantiere del Pardo/Grand Soleil, Hallberg-Rassy, Seawind);
+- runs a strictly bounded, research-only identity-yield pilot (<=20 model identities per source, <=200 total) with exact/unambiguous-first overlap only against the accepted 1,770 AUTO_ADMIT BoatModel universe;
+- classifies each source `ADAPTER_READY`, `RESEARCH_ONLY`/`REVIEW_REQUIRED`, or `BLOCKED`, with a truthful zero-`ADAPTER_READY` outcome explicitly acceptable;
+- performs no automated/bulk acquisition and creates/modifies no canonical Brand/Organization/BoatModel/BoatDesign row;
+- does not authorize or start SLICE-0021.
+
+SLICE-0020 has not been implemented yet as of this update; only its readiness contract and governance-document updates exist.
 
 ## Near-term path
 
@@ -480,6 +490,8 @@ SLICE-0017  controlled Wikidata Tier-0 1,000 bootstrap         DONE
 SLICE-0018  baseline-preserving Wikidata <=2,500 expansion     DONE / source ceiling 1,829
       ↓
 SLICE-0019  global manufacturer/yard universe source research  DONE / source-yield floor 121
+      ↓
+SLICE-0020  archive source clearance + bounded identity pilot  READY / not started
       ↓
 next bounded Stage-3 implementation decision                   NOT AUTHORIZED YET
 ```
@@ -513,11 +525,12 @@ FINISH_SLICE.bat
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-SLICE-0001 through SLICE-0019 are accepted / `DONE`. SLICE-0019's closure does not itself make SLICE-0020 (or any later slice) `READY`. SLICE-0020 has not been created or started; it requires its own bounded contract, explicit acceptance criteria and readiness decision before `START_SLICE.bat` may be used for it.
+SLICE-0001 through SLICE-0019 are accepted / `DONE`. SLICE-0020 (`docs/slices/SLICE-0020-manufacturer-archive-source-clearance-identity-expansion-pilot.md`) is `READY` and may now use `START_SLICE.bat`. SLICE-0020 has not been started/implemented; only its contract and these governance-document updates exist. SLICE-0020's own readiness does not make SLICE-0021 or any later slice `READY`.
 
 ## Do not start yet
 
 - 5,000 identity rerun merely by increasing the accepted SLICE-0018 limit;
+- any production adapter, automated fetch, or bulk/automated ingestion from any SLICE-0020 archive-clearance source before a separate bounded, explicitly `ADAPTER_READY`-evidenced implementation slice is accepted and READY;
 - another production bootstrap source or different Wikidata production discovery strategy before a separate bounded source/discovery implementation slice is accepted and READY;
 - resolution campaign for SLICE-0017/SLICE-0018 review candidates;
 - broad Tier-1/Tier-2 technical enrichment;
