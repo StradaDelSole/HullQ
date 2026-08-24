@@ -70,7 +70,7 @@ ChatGPT performed the external research/orchestration pass — visiting the ten 
 - Final reviewed / accepted head: `ced18800c20a6a2c328794d3af5cb0686d59c20d`.
 - Independent-review verdict on the final head: **ACCEPT**.
 - Implementation/research PR #47 merged into `main` as `5c2a9cc40a05fbaebe2a4db2bcfff7d3498a58d9`.
-- Exact-head CI on `main`: GitHub Actions run #250, run ID `32727915597`, conclusion **SUCCESS** — quality (ubuntu-latest) SUCCESS, quality (windows-latest) SUCCESS, db integration (PostgreSQL 18) SUCCESS, dependency audit SUCCESS.
+- Exact-head CI on the final accepted implementation/research head `ced18800c20a6a2c328794d3af5cb0686d59c20d`: GitHub Actions run #250, run ID `32727915597`, conclusion **SUCCESS** — quality (ubuntu-latest) SUCCESS, quality (windows-latest) SUCCESS, db integration (PostgreSQL 18) SUCCESS, dependency audit SUCCESS.
 - Project owner acceptance: 2026-08-24.
 
 ## Next boundary
