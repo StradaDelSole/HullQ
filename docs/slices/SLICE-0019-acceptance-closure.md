@@ -1,7 +1,6 @@
 # SLICE-0019 — Acceptance Closure
 
 **ID:** SLICE-0019  
-**Type:** DESIGN_RESEARCH  
 **Final status:** DONE  
 **Owner accepted:** 2026-08-23  
 **Independent-review verdict:** ACCEPT — all 16 SLICE-0019 acceptance criteria PASS  
