@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/wikimedia-sl0023-source-assessment/v1",
+  "title": "HullQ SLICE-0023 Source-Rights/Access Assessment",
+  "description": "Retained SLICE-0023 source-rights/access assessment summary referencing the reviewed Wikipedia and Wikidata Source records, evidence URLs and rights-gate/request-ceiling results.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "sources",
+    "rights_evidence_urls",
+    "user_agent_used",
+    "rights_gate_result",
+    "request_ceilings",
+    "no_wikipedia_prose_infobox_content_retained",
+    "no_canonical_mutation"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0023-source-assessment-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wikipedia", "wikidata"],
+      "properties": {
+        "wikipedia": { "$ref": "#/$defs/source_summary" },
+        "wikidata": { "$ref": "#/$defs/source_summary" }
+      }
+    },
+    "rights_evidence_urls": {
+      "type": "array",
+      "items": { "type": "string", "format": "uri" },
+      "minItems": 4
+    },
+    "user_agent_used": { "const": true },
+    "rights_gate_result": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "request_ceilings": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "no_wikipedia_prose_infobox_content_retained": { "const": true },
+    "no_canonical_mutation": { "const": true }
+  },
+  "$defs": {
+    "source_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "rights_basis", "license_expression", "clearance", "review_date"],
+      "properties": {
+        "source_id": { "type": "string", "minLength": 1 },
+        "rights_basis": { "type": "string" },
+        "license_expression": { "type": ["string", "null"] },
+        "clearance": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "review_date": { "type": "string" }
+      }
+    }
+  }
+}

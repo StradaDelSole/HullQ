@@ -1,0 +1,2231 @@
+{
+  "schema_version": "sl0023-quality-sample-v1",
+  "generated_at": "2026-08-25T14:32:12.529177+00:00",
+  "accepted_universe_reference": {
+    "sl0017_sha256": "076b0d64441973c4d5b71cf467cd9cdbf46242babb9cb44f788c97a0f33e5845",
+    "sl0018_sha256": "41ef238c217e31cfbe03329e226a1a3dfff849061df93b8f2523a1e72493821f",
+    "accepted_auto_admit_count": 1770
+  },
+  "selection_reference": {
+    "selected_qids": [
+      "Q177286",
+      "Q380129",
+      "Q630415",
+      "Q671137",
+      "Q816723",
+      "Q1129854",
+      "Q1316407",
+      "Q1547730",
+      "Q3124481",
+      "Q3302443",
+      "Q3326971",
+      "Q3539212",
+      "Q3548153",
+      "Q4826103",
+      "Q4875837",
+      "Q5146242",
+      "Q5172926",
+      "Q5504414",
+      "Q5641755",
+      "Q7367876",
+      "Q7617435",
+      "Q7697854",
+      "Q17148364",
+      "Q19576865",
+      "Q19577027",
+      "Q19577109",
+      "Q19577221",
+      "Q19577230",
+      "Q19578061",
+      "Q19578068",
+      "Q19578088",
+      "Q19578127",
+      "Q19578131",
+      "Q19578249",
+      "Q19608222",
+      "Q20642333",
+      "Q21427576",
+      "Q22570174",
+      "Q28162944",
+      "Q30681833",
+      "Q48988735",
+      "Q49142754",
+      "Q65084201",
+      "Q85757212",
+      "Q92475330",
+      "Q96376339",
+      "Q104851951",
+      "Q109973516",
+      "Q110127838",
+      "Q110413472",
+      "Q110443173",
+      "Q110517371",
+      "Q110536054",
+      "Q110588937",
+      "Q110722712",
+      "Q110722940",
+      "Q111165567",
+      "Q111169986",
+      "Q111945630",
+      "Q111946208",
+      "Q111947098",
+      "Q112078215",
+      "Q112109195",
+      "Q112132130",
+      "Q112169061",
+      "Q112632201",
+      "Q113380245",
+      "Q113428758",
+      "Q113555094",
+      "Q113561684",
+      "Q113758116",
+      "Q113876491",
+      "Q113961874",
+      "Q113987990",
+      "Q114069597",
+      "Q114258061",
+      "Q114353855",
+      "Q114415084",
+      "Q114451609",
+      "Q114568600",
+      "Q114568605",
+      "Q114585904",
+      "Q114585950",
+      "Q114608345",
+      "Q114608409",
+      "Q115518176",
+      "Q115518504",
+      "Q115805019",
+      "Q115813161",
+      "Q115813745",
+      "Q115815035",
+      "Q115816240",
+      "Q115816259",
+      "Q115816804",
+      "Q115818013",
+      "Q115818830",
+      "Q115819565",
+      "Q115819870",
+      "Q115821338",
+      "Q115907880",
+      "Q115945816",
+      "Q115959847",
+      "Q116007147",
+      "Q116030305",
+      "Q116158453",
+      "Q116205467",
+      "Q116507981",
+      "Q116549990",
+      "Q116610898",
+      "Q116636519",
+      "Q116636545",
+      "Q116814703",
+      "Q116814704",
+      "Q116873417",
+      "Q116894108",
+      "Q116909767",
+      "Q116947894",
+      "Q116955056",
+      "Q116973712",
+      "Q116986988",
+      "Q117020579",
+      "Q117149949",
+      "Q117196258",
+      "Q117210119",
+      "Q117219804",
+      "Q117286520",
+      "Q117305729",
+      "Q117391067",
+      "Q117422047",
+      "Q117444191",
+      "Q117445312",
+      "Q117462175",
+      "Q117475495",
+      "Q117531611",
+      "Q117706088",
+      "Q118904819",
+      "Q119806101",
+      "Q119854144",
+      "Q119855214",
+      "Q120069170",
+      "Q120532579",
+      "Q120535525",
+      "Q121027514",
+      "Q121047470",
+      "Q121667282",
+      "Q121775335",
+      "Q121878989",
+      "Q122144001",
+      "Q122699417",
+      "Q137258237"
+    ],
+    "selected_count": 150
+  },
+  "wikidata_context": [
+    {
+      "qid": "Q104851951",
+      "label": "River-class ferry",
+      "description_en": "model of ferry operating in Sydney, Australia",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q109973516",
+      "label": "S2 9.1",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q110127838",
+      "label": "S2 35",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q110413472",
+      "label": "Seafarer 45",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q110443173",
+      "label": "Seafarer 46",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q110517371",
+      "label": "Seafarer 48",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q110536054",
+      "label": "Seafarer 38",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q110588937",
+      "label": "Seafarer 34",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q110722712",
+      "label": "Sou'wester 51",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q110722940",
+      "label": "Sou'wester 59",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q111165567",
+      "label": "Antares 17",
+      "description_en": "Sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q111169986",
+      "label": "Seidelmann 295",
+      "description_en": "Sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q111945630",
+      "label": "Laguna 26",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q111946208",
+      "label": "MacGregor 21",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q111947098",
+      "label": "Laguna 24S",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q112078215",
+      "label": "Farrier F-24",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q112109195",
+      "label": "F-24 Sport Cruiser",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q112132130",
+      "label": "Cooper 416",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q112169061",
+      "label": "Maple Leaf 54",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q112632201",
+      "label": "Sea Bird 37 MS",
+      "description_en": "Canadian sailboat",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q1129854",
+      "label": "USA 17",
+      "description_en": "racing trimaran to challenge for the 2010 America's Cup",
+      "p31_qids": [
+        "Q630415"
+      ],
+      "p176_qids": [
+        "Q796658"
+      ],
+      "p287_qids": [
+        "Q3554426"
+      ]
+    },
+    {
+      "qid": "Q113380245",
+      "label": "Catalina Catamaran",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q113428758",
+      "label": "Harbor 14",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q113555094",
+      "label": "Polynesian Concept",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q113561684",
+      "label": "Santana 228",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q113758116",
+      "label": "Tartan 27-2",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q113876491",
+      "label": "Newport 27-1",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q113961874",
+      "label": "Newport 27S",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q113987990",
+      "label": "Newport 28-2",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q114069597",
+      "label": "Newport 41S",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q114258061",
+      "label": "Rush Royale 31",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q114353855",
+      "label": "Ba\u00f1aderos Express",
+      "description_en": "ship launched in 2021",
+      "p31_qids": [
+        "Q1617851"
+      ],
+      "p176_qids": [
+        "Q131628529"
+      ],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q114415084",
+      "label": "Sun Odyssey 32i",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q114451609",
+      "label": "Alize 20",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q114568600",
+      "label": "Espace 990",
+      "description_en": "French sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q114568605",
+      "label": "Gin Fizz 37",
+      "description_en": "French sailboat",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q114585904",
+      "label": "Jeanneau Beniguet",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q114585950",
+      "label": "Jeanneau Cape Breton",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q114608345",
+      "label": "Jeanneau Love Love",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q114608409",
+      "label": "Jeanneau Brin de Folie",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q115518176",
+      "label": "Espace 1100",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q115518504",
+      "label": "Aquila 27",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q115805019",
+      "label": "RS21",
+      "description_en": "class of keelboat",
+      "p31_qids": [],
+      "p176_qids": [
+        "Q7277789"
+      ],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q115813161",
+      "label": "Voyage 11.2",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q115813745",
+      "label": "Voyage 12.5",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q115815035",
+      "label": "Legende 1 Ton",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q115816240",
+      "label": "Sun Odyssey 39",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q115816259",
+      "label": "Sun Charm 39",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q115816804",
+      "label": "Sun Fast 1/2 Ton",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q115818013",
+      "label": "Sun Kiss 45",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q115818830",
+      "label": "Sun Kiss 47",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q115819565",
+      "label": "Sun Way 28",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q115819870",
+      "label": "Sun Odyssey 440",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q115821338",
+      "label": "Sun Dream 28",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q115907880",
+      "label": "Sun Odyssey 33",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q115945816",
+      "label": "Sun Odyssey 42",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q115959847",
+      "label": "Lagoon 37",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q116007147",
+      "label": "Sun Fast 31",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q116030305",
+      "label": "Sun Odyssey 31",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q116158453",
+      "label": "Sun Odyssey 34",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q116205467",
+      "label": "Sun Fast 52",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q116507981",
+      "label": "Sun Fast 42",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q116549990",
+      "label": "Sun Odyssey 42 CC",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q116610898",
+      "label": "Sun Odyssey 42i",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q116636519",
+      "label": "Sun Odyssey 42 DS",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q116636545",
+      "label": "Lagoon 410",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q116814703",
+      "label": "Sun Odyssey 29.2",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q116814704",
+      "label": "Sun Fast 26",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q116873417",
+      "label": "Sun Odyssey 40.3",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q116894108",
+      "label": "Sun Odyssey 39i",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q116909767",
+      "label": "Jeanneau Yachts 57",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q116947894",
+      "label": "Jeanneau Yachts 51",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q116955056",
+      "label": "Jeanneau Yachts 54",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q116973712",
+      "label": "Jeanneau Yachts 60",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q116986988",
+      "label": "Jeanneau Yachts 65",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q117020579",
+      "label": "Sun Odyssey 33i",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q117149949",
+      "label": "Sun Odyssey 409",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q117196258",
+      "label": "Sun Odyssey 439",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q117210119",
+      "label": "Sun Odyssey 50 DS",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q117219804",
+      "label": "Sun Fast 3600",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q117286520",
+      "label": "Sun Odyssey 509",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q117305729",
+      "label": "Sun Odyssey 449",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q117391067",
+      "label": "Lagoon 39",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q117422047",
+      "label": "Lagoon 42",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q117444191",
+      "label": "Lagoon 47",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q117445312",
+      "label": "Lagoon 42-2",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q117462175",
+      "label": "Lagoon 440",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q117475495",
+      "label": "Lagoon 420",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q117531611",
+      "label": "Lagoon 52",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q117706088",
+      "label": "Lagoon 40",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q118904819",
+      "label": "Lagoon 55",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q119806101",
+      "label": "Swan 105 RS",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q119854144",
+      "label": "Swan 65 Frers",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q119855214",
+      "label": "Beneteau 1 Ton",
+      "description_en": "French sailboat design",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q120069170",
+      "label": "Swan 70",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q120532579",
+      "label": "Parramatta-class ferry",
+      "description_en": "type of ferry",
+      "p31_qids": [
+        "Q559026"
+      ],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q120535525",
+      "label": "Beneteau 34.7",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q121027514",
+      "label": "Beneteau 42 CC",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q121047470",
+      "label": "Beneteau 423",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q121667282",
+      "label": "Beneteau First 42",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q121775335",
+      "label": "Beneteau Cabochard",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q121878989",
+      "label": "Beneteau California 5.20",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q122144001",
+      "label": "Beneteau Cyclades 51.5",
+      "description_en": "sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q122699417",
+      "label": "Nacra F16",
+      "description_en": "Dutch catamaran sailboat class",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q1316407",
+      "label": "Type 22 missile boat",
+      "description_en": "catamaran missile boat class of the People's Liberation Army Navy",
+      "p31_qids": [
+        "Q559026"
+      ],
+      "p176_qids": [
+        "Q15411288"
+      ],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q137258237",
+      "label": "RV Marcelle Melosira",
+      "description_en": "American university research vessel",
+      "p31_qids": [
+        "Q11446"
+      ],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q1547730",
+      "label": "Groupama 3",
+      "description_en": "Ultime - Offshore Sailing Trimaran",
+      "p31_qids": [
+        "Q630415"
+      ],
+      "p176_qids": [
+        "Q58456899"
+      ],
+      "p287_qids": [
+        "Q3554426"
+      ]
+    },
+    {
+      "qid": "Q17148364",
+      "label": "Ljungstrom sailboat",
+      "description_en": "Swedish sailboat",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q177286",
+      "label": "Independence-class littoral combat ship",
+      "description_en": "2008 class of American littoral combat ships",
+      "p31_qids": [
+        "Q559026"
+      ],
+      "p176_qids": [
+        "Q4822844"
+      ],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q19576865",
+      "label": "Amatasi 27",
+      "description_en": null,
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q19577027",
+      "label": "Dict Robert",
+      "description_en": "50-foot waterline length trimaran",
+      "p31_qids": [
+        "Q630415"
+      ],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q19577109",
+      "label": "Gauliosis IV",
+      "description_en": null,
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q19577221",
+      "label": "Kriter IV",
+      "description_en": null,
+      "p31_qids": [
+        "Q1753652"
+      ],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q19577230",
+      "label": "VSD 2",
+      "description_en": null,
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q19578061",
+      "label": "Thamakau",
+      "description_en": "traditional\u00a0Fijian watercraft",
+      "p31_qids": [
+        "Q16103215"
+      ],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q19578068",
+      "label": "Third Turtle",
+      "description_en": "boat",
+      "p31_qids": [
+        "Q1753652"
+      ],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q19578088",
+      "label": "Tipairua",
+      "description_en": "Tahitian canoe",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q19578127",
+      "label": "Trice",
+      "description_en": "trimaran sailboat designed by Dick Newick",
+      "p31_qids": [
+        "Q630415"
+      ],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q19578131",
+      "label": "Trio",
+      "description_en": "sailboat designed by Lock Crowther in 1962",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q19578249",
+      "label": "William Saurin",
+      "description_en": null,
+      "p31_qids": [
+        "Q630415"
+      ],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q19608222",
+      "label": "HSC Condor Liberation",
+      "description_en": "fast ferry built in 2015",
+      "p31_qids": [
+        "Q1617851",
+        "Q630415"
+      ],
+      "p176_qids": [
+        "Q780696"
+      ],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q20642333",
+      "label": "Philippines Hobie Challenge",
+      "description_en": "long distance catamaran race",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q21427576",
+      "label": "Ultim Armand Thiery",
+      "description_en": "2015 trimaran",
+      "p31_qids": [
+        "Q630415"
+      ],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q22570174",
+      "label": "Gautier II",
+      "description_en": "trimaran that was sailed across the Atlantic ocean in 1981",
+      "p31_qids": [
+        "Q630415"
+      ],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q28162944",
+      "label": "Swan 90",
+      "description_en": "sailboat class",
+      "p31_qids": [
+        "Q35872"
+      ],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q30681833",
+      "label": "Emerald-class ferry",
+      "description_en": "ship class",
+      "p31_qids": [
+        "Q559026"
+      ],
+      "p176_qids": [
+        "Q913741"
+      ],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q3124481",
+      "label": "Geronimo",
+      "description_en": "French trimaran",
+      "p31_qids": [
+        "Q630415"
+      ],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q3302443",
+      "label": "Banque Populaire V",
+      "description_en": "130ft Offshore Racing Trimaran (2008)",
+      "p31_qids": [
+        "Q630415"
+      ],
+      "p176_qids": [
+        "Q2931199",
+        "Q16644259"
+      ],
+      "p287_qids": [
+        "Q3554426"
+      ]
+    },
+    {
+      "qid": "Q3326971",
+      "label": "Moxie",
+      "description_en": "ship",
+      "p31_qids": [
+        "Q11446"
+      ],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q3539212",
+      "label": "Trimaran IDEC",
+      "description_en": null,
+      "p31_qids": [
+        "Q1753652"
+      ],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q3548153",
+      "label": "vinta",
+      "description_en": "traditional outrigger boat from the Philippine island of Mindanao",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q380129",
+      "label": "MY Ady Gil",
+      "description_en": "ship",
+      "p31_qids": [
+        "Q630415"
+      ],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q4826103",
+      "label": "Auto Express 86 Class",
+      "description_en": "high-speed catamaran ferry",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q4875837",
+      "label": "Beachcat",
+      "description_en": "small sailing catamaran",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q48988735",
+      "label": "Miss Nylex catamaran",
+      "description_en": null,
+      "p31_qids": [
+        "Q1753652"
+      ],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q49142754",
+      "label": "Acapella",
+      "description_en": "trimaran",
+      "p31_qids": [
+        "Q170483"
+      ],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q5146242",
+      "label": "Colleen Class",
+      "description_en": "type of boat",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q5172926",
+      "label": "Corribee",
+      "description_en": "sailing yacht model",
+      "p31_qids": [
+        "Q1753652"
+      ],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q5504414",
+      "label": "Friendship Sloop",
+      "description_en": "[[Gaff rig|Gaff-rigged]] sailboat",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q5641755",
+      "label": "Half Ton Class",
+      "description_en": "offshore sailing class",
+      "p31_qids": [
+        "Q1744559"
+      ],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q630415",
+      "label": "trimaran",
+      "description_en": "vessel with three hulls",
+      "p31_qids": [
+        "Q16335899"
+      ],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q65084201",
+      "label": "Brady catamarans",
+      "description_en": null,
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q671137",
+      "label": "MV Brigitte Bardot",
+      "description_en": "motor-driven trimaran yacht",
+      "p31_qids": [
+        "Q402092",
+        "Q630415"
+      ],
+      "p176_qids": [
+        "Q2506669"
+      ],
+      "p287_qids": [
+        "Q7032477"
+      ]
+    },
+    {
+      "qid": "Q7367876",
+      "label": "Rose-No\u00eblle",
+      "description_en": "trimaran that capsized on June 4, 1989",
+      "p31_qids": [
+        "Q630415"
+      ],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q7617435",
+      "label": "Stingray catamaran",
+      "description_en": null,
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q7697854",
+      "label": "Telstar trimaran",
+      "description_en": "trailerable sailboat, designed by Tony Smith and built from 1971\u20131981 in United Kingdom and then from 2003\u20132009 in United States",
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q816723",
+      "label": "Benchijigua Express",
+      "description_en": "Spanish ferry built in 2005",
+      "p31_qids": [
+        "Q1617851"
+      ],
+      "p176_qids": [
+        "Q780696"
+      ],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q85757212",
+      "label": "Djenging",
+      "description_en": null,
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q92475330",
+      "label": "Oceanis 37",
+      "description_en": "French sailboat",
+      "p31_qids": [
+        "Q1753652"
+      ],
+      "p176_qids": [
+        "Q962626"
+      ],
+      "p287_qids": []
+    },
+    {
+      "qid": "Q96376339",
+      "label": "Diamond Keelboat",
+      "description_en": null,
+      "p31_qids": [],
+      "p176_qids": [],
+      "p287_qids": []
+    }
+  ],
+  "quality_review": [
+    {
+      "qid": "Q177286",
+      "quality_tag": "obvious_out_of_scope",
+      "rationale": "Retained description '2008 class of American littoral combat ships' identifies this as a military craft, an explicitly out-of-scope subject."
+    },
+    {
+      "qid": "Q380129",
+      "quality_tag": "ambiguous",
+      "rationale": "Retained description is the single generic word 'ship'; retained facts are insufficient to confirm either category despite the trimaran P31."
+    },
+    {
+      "qid": "Q630415",
+      "quality_tag": "obvious_out_of_scope",
+      "rationale": "Retained description 'vessel with three hulls' is the generic hull-configuration concept article itself, matching the 'generic concept' out-of-scope category rather than a named model/class."
+    },
+    {
+      "qid": "Q671137",
+      "quality_tag": "obvious_out_of_scope",
+      "rationale": "Retained description explicitly states this is a 'motor-driven trimaran yacht', placing it outside HullQ's sailboat scope regardless of hull form."
+    },
+    {
+      "qid": "Q816723",
+      "quality_tag": "obvious_out_of_scope",
+      "rationale": "Retained description 'Spanish ferry built in 2005' identifies this as a ferry, an explicitly out-of-scope subject."
+    },
+    {
+      "qid": "Q1129854",
+      "quality_tag": "obvious_out_of_scope",
+      "rationale": "Retained description states this trimaran was built specifically 'to challenge for the 2010 America's Cup', identifying it as an individual campaign vessel rather than a reusable production class."
+    },
+    {
+      "qid": "Q1316407",
+      "quality_tag": "obvious_out_of_scope",
+      "rationale": "Retained description 'catamaran missile boat class of the People's Liberation Army Navy' identifies this as a military craft, an explicitly out-of-scope subject."
+    },
+    {
+      "qid": "Q1547730",
+      "quality_tag": "obvious_out_of_scope",
+      "rationale": "Retained description names this an 'Offshore Sailing Trimaran' with a sponsor-style proper name and no production-run/date-range evidence; the single named designer/builder pairing is consistent with a one-off racing vessel rather than a reusable production class."
+    },
+    {
+      "qid": "Q3124481",
+      "quality_tag": "ambiguous",
+      "rationale": "Retained facts state only nationality and trimaran hull type for a uniquely named vessel, with no production-series/class or single-event indicator; insufficient to classify confidently."
+    },
+    {
+      "qid": "Q3302443",
+      "quality_tag": "obvious_out_of_scope",
+      "rationale": "Retained facts show a specific named designer/builder pairing for one 130ft racing trimaran tied to a 2008 build year with a sponsor-style proper name, consistent with a one-off racing vessel rather than a reusable production class."
+    },
+    {
+      "qid": "Q3326971",
+      "quality_tag": "ambiguous",
+      "rationale": "Retained description is the single generic word 'ship' with a unique proper name; insufficient detail to classify confidently."
+    },
+    {
+      "qid": "Q3539212",
+      "quality_tag": "ambiguous",
+      "rationale": "No description is retained beyond a generic sailing-yacht P31; insufficient facts to classify."
+    },
+    {
+      "qid": "Q3548153",
+      "quality_tag": "ambiguous",
+      "rationale": "Retained description 'traditional outrigger boat from the Philippine island of Mindanao' names a traditional regional craft; retained facts do not establish production-sailboat model/class status within HullQ's scope."
+    },
+    {
+      "qid": "Q4826103",
+      "quality_tag": "obvious_out_of_scope",
+      "rationale": "Retained description 'high-speed catamaran ferry' identifies this as a ferry, an explicitly out-of-scope subject."
+    },
+    {
+      "qid": "Q4875837",
+      "quality_tag": "obvious_out_of_scope",
+      "rationale": "Retained description 'small sailing catamaran' is a generic descriptive concept for a broad category of small catamarans, not one named production model/class or manufacturer."
+    },
+    {
+      "qid": "Q5146242",
+      "quality_tag": "ambiguous",
+      "rationale": "Retained description 'type of boat' is generic and does not confirm sailboat-specific class/model status."
+    },
+    {
+      "qid": "Q5172926",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailing yacht model' explicitly identifies this as a named sailboat model."
+    },
+    {
+      "qid": "Q5504414",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description names a recognized traditional gaff-rigged sailboat design-family, matching the explicit inclusion of 'design-family identity' in the plausible-lead definition."
+    },
+    {
+      "qid": "Q5641755",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'offshore sailing class' explicitly classifies this as a named racing class."
+    },
+    {
+      "qid": "Q7367876",
+      "quality_tag": "obvious_out_of_scope",
+      "rationale": "Retained description ties this vessel to one specific 1989 capsize incident, indicating an individual notable vessel rather than a reusable class."
+    },
+    {
+      "qid": "Q7617435",
+      "quality_tag": "ambiguous",
+      "rationale": "No description or P31/P176/P287 signal is retained; insufficient facts to classify."
+    },
+    {
+      "qid": "Q7697854",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description explicitly documents a multi-decade, multi-country production run ('built from 1971-1981...and then from 2003-2009'), confirming a production sailboat class."
+    },
+    {
+      "qid": "Q17148364",
+      "quality_tag": "ambiguous",
+      "rationale": "Retained description 'Swedish sailboat' is generic and does not state whether this is a class/model or an individual vessel; retained facts are insufficient to classify confidently."
+    },
+    {
+      "qid": "Q19576865",
+      "quality_tag": "ambiguous",
+      "rationale": "No description or P31/P176/P287 signal is retained; the numbered label alone is insufficient to classify."
+    },
+    {
+      "qid": "Q19577027",
+      "quality_tag": "ambiguous",
+      "rationale": "Retained facts state only a hull-waterline dimension and trimaran type, with no class/production or individual-event indicator either way."
+    },
+    {
+      "qid": "Q19577109",
+      "quality_tag": "ambiguous",
+      "rationale": "No description or P31/P176/P287 signal is retained; insufficient facts to classify."
+    },
+    {
+      "qid": "Q19577221",
+      "quality_tag": "ambiguous",
+      "rationale": "No description is retained beyond a generic sailing-yacht P31; insufficient facts to classify."
+    },
+    {
+      "qid": "Q19577230",
+      "quality_tag": "ambiguous",
+      "rationale": "No description or P31/P176/P287 signal is retained; insufficient facts to classify."
+    },
+    {
+      "qid": "Q19578061",
+      "quality_tag": "ambiguous",
+      "rationale": "Retained description 'traditional Fijian watercraft' names a traditional regional craft; retained facts do not establish production-sailboat model/class status within HullQ's monohull/catamaran/trimaran scope."
+    },
+    {
+      "qid": "Q19578068",
+      "quality_tag": "ambiguous",
+      "rationale": "Retained description is the single generic word 'boat' with an individual proper name; insufficient detail to classify confidently either way."
+    },
+    {
+      "qid": "Q19578088",
+      "quality_tag": "ambiguous",
+      "rationale": "Retained description 'Tahitian canoe' names a traditional regional craft; retained facts do not establish production-sailboat model/class status."
+    },
+    {
+      "qid": "Q19578127",
+      "quality_tag": "ambiguous",
+      "rationale": "Retained description confirms a named designer and trimaran hull type but does not state whether this is a one-off prototype or a production class/series."
+    },
+    {
+      "qid": "Q19578131",
+      "quality_tag": "ambiguous",
+      "rationale": "Retained description confirms a named designer and year but no production-series/class indicator."
+    },
+    {
+      "qid": "Q19578249",
+      "quality_tag": "ambiguous",
+      "rationale": "No description is retained beyond a generic trimaran P31; insufficient facts to classify."
+    },
+    {
+      "qid": "Q19608222",
+      "quality_tag": "obvious_out_of_scope",
+      "rationale": "Retained description 'fast ferry built in 2015' identifies this as a ferry, an explicitly out-of-scope subject."
+    },
+    {
+      "qid": "Q20642333",
+      "quality_tag": "obvious_out_of_scope",
+      "rationale": "Retained description 'long distance catamaran race' identifies this as a sailing event/regatta, not a boat model or class."
+    },
+    {
+      "qid": "Q21427576",
+      "quality_tag": "ambiguous",
+      "rationale": "Retained facts state only a year and trimaran hull type; insufficient production-series/class or individual-campaign detail to classify confidently."
+    },
+    {
+      "qid": "Q22570174",
+      "quality_tag": "obvious_out_of_scope",
+      "rationale": "Retained description ties this vessel to one specific 1981 Atlantic-crossing event, indicating an individual notable vessel rather than a reusable class."
+    },
+    {
+      "qid": "Q28162944",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q30681833",
+      "quality_tag": "obvious_out_of_scope",
+      "rationale": "Retained description 'ship class' with the label explicitly naming a ferry class ('Emerald-class ferry') identifies this as a ferry, an explicitly out-of-scope subject."
+    },
+    {
+      "qid": "Q48988735",
+      "quality_tag": "ambiguous",
+      "rationale": "No description is retained beyond a generic sailing-yacht P31; the unique proper name alone is insufficient to classify."
+    },
+    {
+      "qid": "Q49142754",
+      "quality_tag": "ambiguous",
+      "rationale": "Retained description is the single generic word 'trimaran'; insufficient detail to classify confidently."
+    },
+    {
+      "qid": "Q65084201",
+      "quality_tag": "ambiguous",
+      "rationale": "No description or P31/P176/P287 signal is retained; insufficient facts to classify."
+    },
+    {
+      "qid": "Q85757212",
+      "quality_tag": "ambiguous",
+      "rationale": "No description or P31/P176/P287 signal is retained; insufficient facts to classify."
+    },
+    {
+      "qid": "Q92475330",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained numbered model label 'Oceanis 37' matches the well-established production-model naming pattern confirmed elsewhere in this sample, with explicit 'French sailboat' description."
+    },
+    {
+      "qid": "Q96376339",
+      "quality_tag": "ambiguous",
+      "rationale": "No description is retained; the label 'Diamond Keelboat' is suggestive but not confirmed as a specific class/model."
+    },
+    {
+      "qid": "Q104851951",
+      "quality_tag": "obvious_out_of_scope",
+      "rationale": "Retained description 'model of ferry operating in Sydney, Australia' identifies this as a ferry, an explicitly out-of-scope subject."
+    },
+    {
+      "qid": "Q109973516",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q110127838",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q110413472",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q110443173",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q110517371",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q110536054",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q110588937",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q110722712",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q110722940",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q111165567",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'Sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q111169986",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'Sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q111945630",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q111946208",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q111947098",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q112078215",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q112109195",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q112132130",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q112169061",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q112632201",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained numbered model label 'Sea Bird 37 MS' plus explicit 'Canadian sailboat' description matches the confirmed numbered-model naming pattern seen throughout this sample."
+    },
+    {
+      "qid": "Q113380245",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q113428758",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q113555094",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q113561684",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q113758116",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q113876491",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q113961874",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q113987990",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q114069597",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q114258061",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q114353855",
+      "quality_tag": "obvious_out_of_scope",
+      "rationale": "Retained description 'ship launched in 2021' ties this vessel to a single launch event; the 'Express' naming pattern and P31 match the ferry-class entries elsewhere in this sample."
+    },
+    {
+      "qid": "Q114415084",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q114451609",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q114568600",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'French sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q114568605",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained numbered model label 'Gin Fizz 37' plus explicit 'French sailboat' description matches the confirmed numbered-model naming pattern seen throughout this sample."
+    },
+    {
+      "qid": "Q114585904",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q114585950",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q114608345",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q114608409",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q115518176",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q115518504",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q115805019",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'class of keelboat' explicitly classifies this as a named keelboat class."
+    },
+    {
+      "qid": "Q115813161",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q115813745",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q115815035",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q115816240",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q115816259",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q115816804",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q115818013",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q115818830",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q115819565",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q115819870",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q115821338",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q115907880",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q115945816",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q115959847",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q116007147",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q116030305",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q116158453",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q116205467",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q116507981",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q116549990",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q116610898",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q116636519",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q116636545",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q116814703",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q116814704",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q116873417",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q116894108",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q116909767",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q116947894",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q116955056",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q116973712",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q116986988",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q117020579",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q117149949",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q117196258",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q117210119",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q117219804",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q117286520",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q117305729",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q117391067",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q117422047",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q117444191",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q117445312",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q117462175",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q117475495",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q117531611",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q117706088",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q118904819",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q119806101",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q119854144",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q119855214",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'French sailboat design' plus numbered model label matches the confirmed production-model naming pattern seen throughout this sample."
+    },
+    {
+      "qid": "Q120069170",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q120532579",
+      "quality_tag": "obvious_out_of_scope",
+      "rationale": "Retained description 'type of ferry' identifies this as a ferry, an explicitly out-of-scope subject."
+    },
+    {
+      "qid": "Q120535525",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q121027514",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q121047470",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q121667282",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q121775335",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q121878989",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q122144001",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class."
+    },
+    {
+      "qid": "Q122699417",
+      "quality_tag": "plausible_model_or_class_lead",
+      "rationale": "Retained description 'Dutch catamaran sailboat class' explicitly classifies this as a named catamaran sailboat class."
+    },
+    {
+      "qid": "Q137258237",
+      "quality_tag": "obvious_out_of_scope",
+      "rationale": "Retained description 'American university research vessel' identifies an individual non-sailing research vessel, not a production sailboat model/class."
+    }
+  ],
+  "quality_tag_counts": {
+    "plausible_model_or_class_lead": 106,
+    "obvious_out_of_scope": 19,
+    "ambiguous": 25
+  },
+  "quality_tag_percentages": {
+    "plausible_model_or_class_lead": 70.6667,
+    "obvious_out_of_scope": 12.6667,
+    "ambiguous": 16.6667
+  },
+  "total_sampled": 150,
+  "rights_access_ok": true,
+  "unique_incremental_qid_lead_count": 409,
+  "recommendation": "FOLLOWUP_VERIFICATION_CANDIDATE"
+}

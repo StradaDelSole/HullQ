@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/wikimedia-sl0023-artifact-digests/v1",
+  "title": "HullQ SLICE-0023 Retained Artifact Digests",
+  "description": "Deterministic, non-self-referential SHA256 digests of the SLICE-0023 retained output files. Excludes ARTIFACT-DIGESTS.json itself to avoid a self-referential digest loop.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "excludes_self", "digests"],
+  "properties": {
+    "schema_version": { "const": "sl0023-artifact-digests-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "excludes_self": { "const": "ARTIFACT-DIGESTS.json" },
+    "digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_assessment.json",
+        "source_assessment_schema.json",
+        "discovery_manifest.json",
+        "discovery_manifest_schema.json",
+        "quality_sample.json",
+        "quality_sample_schema.json",
+        "REPORT.md"
+      ],
+      "properties": {
+        "source_assessment.json": { "$ref": "#/$defs/sha256_digest" },
+        "source_assessment_schema.json": { "$ref": "#/$defs/sha256_digest" },
+        "discovery_manifest.json": { "$ref": "#/$defs/sha256_digest" },
+        "discovery_manifest_schema.json": { "$ref": "#/$defs/sha256_digest" },
+        "quality_sample.json": { "$ref": "#/$defs/sha256_digest" },
+        "quality_sample_schema.json": { "$ref": "#/$defs/sha256_digest" },
+        "REPORT.md": { "$ref": "#/$defs/sha256_digest" }
+      }
+    }
+  },
+  "$defs": {
+    "sha256_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}
