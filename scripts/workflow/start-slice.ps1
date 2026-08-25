@@ -86,27 +86,32 @@ if (Test-Path $worktree) {
 
 $relativeSliceFile = "docs/slices/$($sliceFile.Name)"
 $prompt = @"
-Implement SLICE-$sliceNumber.
+Implement SLICE-$sliceNumber on branch `$branch`.
 
-Read the repository from this synchronized local worktree.
-Follow CLAUDE.md and $relativeSliceFile exactly.
+TOKEN/CONTEXT DISCIPLINE:
+- This slice should run in a fresh Claude conversation.
+- Read CLAUDE.md, then read $relativeSliceFile FIRST.
+- Read only controlling artifacts explicitly named by the slice and implementation files needed for the concrete task.
+- Do NOT preload README, PROJECT_CONTEXT, PROJECT_STATE, full REQUIREMENTS, OPEN_QUESTIONS, slice INDEX, ROADMAP, or unrelated history merely for orientation.
+- Prefer targeted search/narrow reads over whole large files.
+- Use the synchronized local checkout; do not repeatedly fetch ordinary local files through GitHub/API tooling.
+- Do not restate the contract or narrate routine exploration.
+- If this same-slice session becomes very large, ask the operator to run /compact before continuing; preserve the slice contract, decisions, changed files, validation state and unresolved blockers, not exploratory history/logs.
 
-Work only on branch:
-$branch
+EXECUTION:
+- Follow CLAUDE.md and $relativeSliceFile exactly.
+- Work only on `$branch`; do not modify main or another branch.
+- Do not broaden scope or start another slice.
+- Push this same branch to GitHub at completion.
+- Leave the slice in REVIEW or BLOCKED; never mark DONE and never merge to main.
 
-Do not modify main.
-Do not start another slice.
-At completion, push this same branch to GitHub and leave the slice in REVIEW or BLOCKED.
-Do not merge to main.
-
-FINAL OPERATOR HANDOFF IS MANDATORY:
-- Your FINAL chat response to the operator MUST contain the COMPLETE completion report using the exact structure from docs/slices/SLICE_TEMPLATE.md.
-- Do not replace that report with a summary or executive summary.
-- A completion report stored in the repository, PR body, comment, or another artifact does NOT substitute for the complete operator-facing final response.
-- Distinguish local validation from remote/external verification and report the exact final branch HEAD SHA.
-- Observe required remote CI on that exact final HEAD before the final response when the slice requires remote CI.
-- After observing final exact-head CI, do NOT make another repository commit merely to record that CI result; report it in the final operator response unless the controlling slice explicitly requires otherwise.
-- After the final handoff, stop. Do not mark the slice DONE and do not begin the next slice.
+FINAL OPERATOR HANDOFF:
+- Your FINAL response MUST use the completion-report structure in docs/slices/SLICE_TEMPLATE.md.
+- Keep it concise but complete: summarize results; do not paste full logs, diffs, repeated acceptance text, or project-history recaps unless needed to explain a failure/blocker.
+- Include changed files, requirements/research addressed, tests/fixtures, local validation commands + summarized results, exact final branch HEAD SHA, remote/external verification state, unresolved findings/ambiguities/scope deviations, next action, and agent declaration.
+- Observe required remote CI on that exact final HEAD when the slice requires remote CI.
+- After observing final exact-head CI, do NOT commit merely to record the CI result unless the slice explicitly requires it.
+- After the final handoff, stop.
 "@
 
 try {
@@ -122,5 +127,10 @@ Write-Host "READY"
 Write-Host "Worktree: $worktree"
 Write-Host "Branch:   $branch"
 Write-Host ""
+Write-Host "TOKEN-EFFICIENT CLAUDE START:"
+Write-Host "1. Open this slice worktree in the intended VS Code window."
+Write-Host "2. Start a fresh Claude conversation. If reusing the current Claude Code session, run /clear first."
+Write-Host "3. Paste the copied prompt only; do not paste the previous slice report/history."
+Write-Host "4. During a long same-slice session, use /context and /compact when directed by the project master."
+Write-Host ""
 Write-Host "START_SLICE did NOT open, close, reload, or switch any VS Code window."
-Write-Host "When you are ready, open the worktree in the VS Code window you want Claude to use, then paste the copied prompt."
