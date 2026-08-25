@@ -1,243 +1,182 @@
 # HullQ — Instructions for Coding / Research Agents
 
-Before changing the project, read in this order:
+HullQ uses bounded docs-to-code slices with strict single-writer ownership and independent acceptance.
 
-1. `README.md`
-2. `PROJECT_CONTEXT.md`
-3. `docs/PROJECT_STATE.md`
-4. `docs/DOCS_TO_CODE_METHOD.md`
-5. `specs/REQUIREMENTS.md`
-6. `docs/governance/OPEN_QUESTIONS.md`
-7. `docs/slices/INDEX.md`
-8. the explicitly assigned slice under `docs/slices/`
-9. relevant versioned specs / accepted ADRs / operational docs named by that slice
-10. `docs/engineering/AI_SLICE_WORKFLOW.md` for local/GitHub ownership rules
+## Token-efficient reading order
 
-## Repository access convention
+Do **not** preload the whole repository for orientation.
 
-For normal implementation work, read repository files from the **local checkout** after synchronizing `main`. Do not repeatedly fetch ordinary repo files through GitHub/API tooling when the synchronized local checkout already contains them; this wastes context/tokens and creates no additional authority.
+For an assigned slice:
 
-GitHub remains the canonical shared state for:
+1. read this file (normally loaded automatically);
+2. read the assigned primary `docs/slices/SLICE-XXXX-*.md` contract first;
+3. read only the controlling specs, ADRs, protocols and implementation files explicitly named by that slice or required to answer a concrete implementation question;
+4. consult broader project documents (`PROJECT_STATE`, `OPEN_QUESTIONS`, `REQUIREMENTS`, slice `INDEX`, roadmap/history) only when the slice references them or a real conflict/blocker requires them.
 
-- pushed slice branches;
-- pull requests;
-- CI/external verification;
-- review/acceptance handoff;
-- accepted `main`.
+When only one section/symbol of a large file is needed, prefer targeted search/narrow reads over loading the entire file.
 
-Before starting a new slice locally, use the repository's `START_SLICE.bat` workflow unless the project owner explicitly instructs otherwise. The helper creates an isolated worktree from current `origin/main` and keeps the normal HullQ checkout on `main`.
+Use the synchronized local checkout for ordinary repository reads. Do not repeatedly fetch local files through GitHub/API tooling when the local checkout already contains canonical synchronized content.
 
-If manual recovery is required, synchronize the normal main checkout only with:
-
-```bash
-git switch main
-git pull --ff-only origin main
-```
-
-Never use `git pull origin main` from an old feature branch merely to refresh local `main`; that attempts to merge `main` into the current branch and may create avoidable conflicts.
-
-Implementation work occurs in the assigned local worktree, but the completed slice branch MUST be pushed to GitHub for review. Do not merge it to `main` yourself unless the user/project-owner explicitly changes the acceptance workflow.
-
-## Single-writer branch ownership
-
-HullQ uses a strict single-writer workflow to prevent multiple AI agents from overwriting or silently diverging from one another.
-
-### Canonical truth
-
-`origin/main` is the only accepted canonical repository truth. Local checkouts, worktrees, feature branches and review branches are temporary working state.
-
-### Branch ownership
-
-For an active implementation slice:
-
-- Claude owns exactly the assigned `slice/...` branch/worktree and MUST write only there.
-- Claude MUST NOT push directly to `main`.
-- Claude MUST NOT write to `master/...`, `review/...`, or another agent's branch.
-- The master/architect/reviewer MUST NOT write to Claude's active `slice/...` branch.
-- Review findings are returned to Claude; Claude applies fixes on the same slice branch.
-- Force-push to an active shared slice branch is forbidden unless the project owner explicitly authorizes recovery.
-
-### Main freeze while a slice is active
-
-Once an implementation slice has started from current `origin/main`, `main` is treated as frozen until that slice reaches review/acceptance/merge.
-
-The master/architect MAY during that time:
-
-- read repository state;
-- research future decisions;
-- review the active PR;
-- comment findings;
-- prepare future work on a separate `master/...` branch.
-
-The master/architect MUST NOT merge unrelated changes to `main` while Claude is actively implementing a slice. If a newly discovered issue is a genuine blocker that requires changing controlling specs/ADRs, stop the slice deliberately, resolve the blocker through a separate reviewed change, then restart/rebase the slice explicitly.
-
-### Slice boundary synchronization
-
-After a slice is accepted and merged:
-
-1. synchronize the normal local `main` from `origin/main`;
-2. remove the completed worktree only after merge is confirmed and the worktree is clean;
-3. start the next slice from the newly synchronized `origin/main`;
-4. never carry an old slice worktree forward as the base for a new slice.
-
-Use `START_SLICE.bat` and `FINISH_SLICE.bat` for this normal lifecycle.
+Operational token rules are in `docs/engineering/AI_TOKEN_EFFICIENCY.md`.
 
 ## Authority
 
-1. normative `specs/`
-2. accepted ADRs in `architecture/decisions/`
-3. architecture contracts in `architecture/`
-4. operational `research/` protocols
-5. governance/engineering standards
-6. `PROJECT_CONTEXT.md` / strategy docs
-7. `reference/`
+When artifacts conflict, authority is:
 
-Slices are operational work contracts. They never override the authority order above.
+1. normative `specs/`;
+2. accepted ADRs in `architecture/decisions/`;
+3. architecture contracts in `architecture/`;
+4. operational `research/` protocols;
+5. governance/engineering standards;
+6. `PROJECT_CONTEXT.md` / strategy docs;
+7. `reference/`.
 
-Do not turn a **DRAFT**, **PROPOSED** or **BLOCKED** item into a production rule without an explicit project decision.
+Slices are operational work contracts and do not override this order. Never turn DRAFT/PROPOSED/BLOCKED material into production semantics without an explicit decision.
 
 ## Slice execution
 
-HullQ uses bounded implementation/research slices defined under `docs/slices/`.
+- Work only on the explicitly assigned slice.
+- Do not broaden scope because adjacent work looks convenient.
+- `DESIGN_RESEARCH` does not authorize domain implementation unless explicitly stated.
+- `IMPLEMENTATION` implements only accepted semantics identified by its controlling artifacts.
+- If required semantics are unresolved or controlling artifacts materially conflict, stop and report `BLOCKED` rather than inventing policy.
+- Do not automatically begin another slice after `REVIEW` or `BLOCKED`.
+- Prefer small coherent edits and focused tests while iterating; run the full validation required by the slice at handoff.
 
-- Work only on the slice explicitly assigned by the user/operator.
-- Do not automatically start the next slice after completion.
-- Do not broaden scope because adjacent work appears convenient.
-- A `DESIGN_RESEARCH` slice may produce research/spec/architecture artifacts but MUST NOT introduce domain implementation unless explicitly authorized.
-- An `IMPLEMENTATION` slice may implement only already accepted semantics identified by its controlling artifacts.
-- If the assigned slice depends on an unresolved OQ, stop and report it.
-- If repository truth conflicts with the slice, repository truth wins and the slice must be corrected.
-- Move an assigned slice to `IN_PROGRESS`, `BLOCKED`, or `REVIEW` only when justified by the actual state and evidence.
-- Do not automatically begin another slice after reaching `REVIEW` or `BLOCKED`.
+The operational queue is `docs/slices/INDEX.md`; read it only when queue/status context is actually needed.
 
-The canonical operational queue is `docs/slices/INDEX.md`.
+## Repository and branch ownership
 
-## Slice status authority and completion reports
+`origin/main` is accepted canonical repository truth.
 
-The implementation/research agent does **not** own final acceptance.
+For an active implementation/research slice:
 
-An agent MAY move its assigned slice among:
+- Claude owns exactly the assigned `slice/...` branch/worktree;
+- never push directly to `main`;
+- never write another agent's branch/worktree;
+- the project master/reviewer does not write Claude's active slice branch;
+- review findings return to Claude, who fixes the same slice branch;
+- force-push is forbidden unless the project owner explicitly authorizes recovery.
+
+Use `START_SLICE.bat` and `FINISH_SLICE.bat` for the normal lifecycle. Never carry an old slice worktree forward as the next slice base.
+
+While Claude is actively implementing, unrelated changes should not be merged to `main`; blocker-resolution is a deliberate separate workflow.
+
+See `docs/engineering/AI_SLICE_WORKFLOW.md` when workflow details are needed.
+
+## Status and acceptance
+
+Claude may move the assigned slice among:
 
 ```text
 READY → IN_PROGRESS → REVIEW
                  ↘ BLOCKED
 ```
 
-An agent MUST NOT mark a slice `DONE`.
+Claude MUST NOT mark a slice `DONE`.
 
-`DONE` is a project acceptance state. It may be set only after all of the following are true:
+`DONE` requires all of:
 
-1. every required acceptance criterion has actually been verified;
-2. required remote/external checks have actually been observed and passed, or are explicitly not applicable;
-3. independent review is complete;
-4. the user/project owner accepts the slice.
+1. required acceptance criteria actually verified;
+2. required remote/external checks actually observed and passed (or explicitly not applicable);
+3. independent review complete;
+4. explicit project-owner acceptance;
+5. closure completed through the project workflow.
 
-Never mark an acceptance checkbox as passed when its evidence was not actually observed. In particular, a locally green implementation is not evidence that remote GitHub CI passed. If an external check cannot be observed, record it as `NOT VERIFIED` and recommend `REVIEW`, not `DONE`.
+Never treat local green tests as proof of remote CI. If an external gate cannot be observed, report `NOT VERIFIED`.
 
-At the end of every assigned slice, use the exact completion-report structure defined in `docs/slices/SLICE_TEMPLATE.md`. The report MUST distinguish local validation from remote/external verification and MUST include unresolved findings, scope deviations, and an explicit agent declaration.
+At handoff, use the structure in `docs/slices/SLICE_TEMPLATE.md`. Keep it concise: summarize commands/results; do not paste full logs/diffs or repeat the entire slice contract unless needed to explain a failure/blocker. Include the exact final branch HEAD SHA.
 
-Default successful agent handoff state is `REVIEW`. Default unsuccessful/incomplete handoff state is `BLOCKED`.
+## Core product guardrail
 
-## Product guardrail
-
-HullQ exists to strengthen:
+HullQ strengthens:
 
 ```text
 FIND DESIGN → FIND BOAT FOR SALE → COMPARE / SAVE → ALERT
 ```
 
-Do not broaden it into a generic boating super-app.
+Do not broaden it into a generic boating super-app without an accepted scope decision.
 
-## Data rules
+## Core data/identity/provenance guardrails
 
 - Never invent missing boat data.
-- No production value without provenance.
-- Preserve input identity separately from verified identity.
-- Preserve raw source values when normalization occurs.
-- Do not silently resolve conflicting authoritative sources.
+- Missing/unknown is not evidence that a characteristic is absent.
+- No accepted production value without provenance.
+- Preserve input identity separately from verified canonical identity.
+- Preserve raw source representation when normalization occurs.
+- Do not silently resolve conflicting authoritative evidence.
 - Keel, rudder and skeg are independent dimensions.
 - Monohulls, catamarans and trimarans are first-class.
 - Canonical physical storage uses SI where practical.
-- Derived ratios require an approved versioned formula spec.
-- The imported Sailboatdata scrape/context is never an invisible production-data fallback.
-- Build for broad design-universe coverage from the outset; the 50–100 research set is only a benchmark corpus.
-- Breadth and verification depth are independent. Partial/sparse production records are valid when provenance is retained and missing fields remain explicit.
-- Missing/unknown data is never evidence that a characteristic is absent.
-- Appropriately licensed/open sources may bootstrap common fields; do not re-research every ordinary fact from zero without reason.
-- Optimize research for high-throughput automation and exception-based human review.
+- Derived metrics require the accepted versioned methodology and lineage.
+- Do not force ambiguous model/generation/variant identities into one canonical identity.
+- Brand and builder/manufacturer Organization are distinct identity concepts when evidence requires it.
+- The SailboatData reference scrape is never an invisible production-data fallback.
+- Build for broad design-universe coverage with progressive verification depth; sparse valid records are allowed when unknowns/provenance remain explicit.
+- Source access and source reuse rights are separate; production/bulk/automation use fails closed unless cleared by accepted source-rights policy.
 
-## Pre-code source-evidence rule
+Read the exact controlling identity/provenance/source-rights/metric specs when the slice touches those domains.
 
-Before meaningful HullQ research-pipeline/domain implementation begins, execute the assigned design-data source-research slice and study **real sailboat data from independently usable sources**.
+## Research behavior
 
-Do not build extraction or normalization behavior only from imagined source formats. The source-research slice must establish actual source availability, rights/clearance, field coverage, generation/option representation, conflicts, missing-data patterns and likely human-review needs using a representative real-boat evidence sample.
+Use real source evidence rather than imagined source formats. Prefer authoritative/primary sources according to `research/RESEARCH_WORKFLOW.md` when the assigned research requires external verification.
 
-SailboatData may remain a reference/prototype aid under the accepted source-rights policy, but must not become an invisible production-value source.
+Appropriately licensed/open structured data may bootstrap common facts when provenance is explicit. Use `null`, `unknown`, `needs_review` or `conflict` when evidence is insufficient.
 
-The initial application/deployment stack is now accepted by ADR-0010, but this does not authorize premature persistence/API/frontend/deployment work outside an assigned slice.
+Read `docs/DATABASE_COVERAGE_STRATEGY.md` before changing ingestion/coverage/search semantics.
 
-## Accepted application architecture guardrail
+## Application architecture guardrail
 
-Before any application/backend/persistence/frontend/deployment work, read:
+Application/backend/persistence/frontend/deployment work is authorized only by the relevant slice.
+
+Accepted baseline is defined by:
 
 - `architecture/decisions/ADR-0010-vps-first-application-stack.md`;
 - `docs/engineering/APPLICATION_STACK_BASELINE.v0.1.md`;
 - `architecture/SYSTEM_ARCHITECTURE.md`.
 
-Accepted baseline:
+Read these only when the assigned slice touches that architecture.
 
-- initial hosting provider: **Contabo VPS**, while targeting a portable commodity Linux VPS;
-- public edge: Cloudflare DNS/proxy/CDN/TLS/basic WAF; R2 optional for backups/HullQ-owned artifacts;
-- backend/application runtime: CPython 3.14 + **FastAPI** when OQ-015/API work is reached;
-- production relational persistence: **PostgreSQL**;
-- no dedicated search engine initially; add one only from measured need;
-- web: **Astro + TypeScript**;
-- React + TypeScript only as selective Astro islands where interaction/state complexity justifies it; do not turn HullQ into a client-only React SPA;
-- Strapi, Next.js, Flutter Web, D1 as canonical production DB, and a second TypeScript business-logic backend are not the accepted baseline;
-- responsive web/PWA first; **Flutter** is the preferred later Android/iOS client consuming the same accepted API boundary;
-- simple VPS deployment is preferred; do not introduce Kubernetes, broker/distributed scheduler or paid managed-service dependencies without an accepted slice/decision.
+Key baseline: CPython/FastAPI backend, PostgreSQL production persistence, Astro + TypeScript web with selective React islands, simple portable Linux VPS deployment, responsive web/PWA first and later Flutter consuming the same API. Do not introduce a second business-logic stack, client-only SPA, dedicated search engine or distributed infrastructure without an accepted decision.
 
-Critical deferred boundaries:
+Open decisions remain open: do not silently choose auth/session (OQ-014), alert cadence (OQ-006), public API/versioning (OQ-015), or detailed public SEO surface mechanics (OQ-018).
 
-- **OQ-014 remains unresolved**: do not choose JWT vs server sessions, auth library/provider, password/OAuth flow, email verification/reset or privacy/security mechanics before the dedicated account/auth decision;
-- OQ-006 still controls alert cadence/freshness;
-- OQ-015 still controls the stable public HTTP/API/versioning boundary;
-- OQ-018 still controls exact public SEO URL/index/rendering/canonical/structured-data behavior.
+## Search / SEO / internationalization
 
-SavedQuery, Monitor and Alert remain separate concepts. The application architecture must support them, but agents MUST NOT implement accounts/alerts merely because PostgreSQL/FastAPI are selected.
+Search Architecture and SEO are first-class product architecture (ADR-0007). Before changing public routing, indexable page types, filters/facets, canonicalization, rendering, metadata, sitemap behavior or structured data, read:
 
-## Research behavior
+- `architecture/SEARCH_AND_SEO_ARCHITECTURE.md`;
+- `docs/PRODUCT_LED_SEO_STRATEGY.md`;
+- OQ-018 and any slice-specific SEO contract.
 
-Prefer primary/authoritative sources for deep verification in the order documented in `research/RESEARCH_WORKFLOW.md`. Appropriately licensed/open structured data may bootstrap identity/common facts when provenance is explicit. Use `null`, `unknown`, `needs_review` or `conflict` when evidence is insufficient. Read `docs/DATABASE_COVERAGE_STRATEGY.md` before changing ingestion or search semantics.
+Do not turn arbitrary faceted search states into an uncontrolled indexable URL universe.
 
-Research source accessibility, rights and HullQ clearance separately. A technically accessible page or API is not automatically cleared for bulk ingestion, persistence or redistribution.
-
-## Search / SEO architecture
-
-Search Architecture and SEO are first-class product architecture (ADR-0007). Before changing public routing, filter URLs, canonical/indexable page types, rendering or metadata, read `architecture/SEARCH_AND_SEO_ARCHITECTURE.md` and check OQ-018. Do not turn arbitrary faceted filter combinations into an uncontrolled indexable URL space. Do not make SEO semantics an implicit frontend implementation detail.
+HullQ's required public languages are English, German, French, Portuguese and Spanish. Canonical data/identity/query semantics remain language-neutral; localization rules are governed by `docs/PRODUCT_LANGUAGE_AND_I18N_REQUIREMENT.md` and future OQ-018 implementation decisions.
 
 ## Market integrations
 
-Keep each marketplace in its own adapter. Before implementation, verify permitted API/feed/partner/access method and current terms. Return only the canonical market-listing contract to the rest of HullQ. Historical price/listing retention is not implied by live access; OQ-017 and source rights govern price-history persistence.
+Keep each marketplace behind its own adapter. Verify permitted API/feed/partner/access terms before implementation. Historical price/listing retention is governed separately by source rights and OQ-017.
 
-## Docs-to-code behavior
+## Docs-to-code / engineering behavior
 
-- Do not implement behavior that lacks an accepted requirement/specification when one is needed.
+- Do not implement behavior that lacks an accepted requirement/spec when one is required.
 - Do not silently resolve an `OQ-*` blocker.
-- Significant architectural decisions require an ADR.
+- Significant architecture decisions require an ADR.
 - Behavioral requirements must be traceable to tests.
 - Update spec + tests + code atomically when semantics change.
-- Keep all first-party HullQ assets in this single repository.
-
-## Engineering behavior
-
-- Prefer small, testable changes.
-- Add validation tests when adding or changing a rule.
+- Keep first-party HullQ assets in this repository.
+- Prefer small, testable changes and existing helpers/contracts.
 - Keep raw imports immutable.
-- Do not couple UI filters to raw source field names.
-- Do not encode multiple technical concepts into a single legacy field.
-- Do not make frontend assumptions from the existing Tabulator prototype; use the accepted Astro/TypeScript baseline only when a frontend slice authorizes frontend work.
+- Do not couple public filters to arbitrary raw-source fields.
+- Do not encode multiple technical concepts into one legacy field.
 
-## Open decisions
+## Context / session discipline
 
-Consult canonical `docs/governance/OPEN_QUESTIONS.md` (`docs/DECISIONS_REQUIRED.md` is only a historical legacy-ID compatibility map). If a task depends on an unresolved question, work on or surface that decision rather than silently deciding it.
+- One Claude session normally equals one slice.
+- Start each new slice in a fresh conversation; if reusing the Claude Code UI, `/clear` before the new START_SLICE prompt.
+- Use `/context` when context growth is unclear.
+- Use `/compact` during a long same-slice task before context becomes excessive; preserve controlling contract, decisions, changed files, validation state and unresolved blockers, not exploratory history/logs.
+- Do not carry previous slice reports/discussion into a new slice unless explicitly required.
+- After final handoff, stop; the next slice starts fresh.
+
+Full operational guidance: `docs/engineering/AI_TOKEN_EFFICIENCY.md`.
