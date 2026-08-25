@@ -83,6 +83,7 @@ __all__ = [
     "TOTAL_REQUEST_CEILING",
     "TRIMARANS",
     "WIKIDATA_REQUEST_CEILING",
+    "WIKIPEDIA_PAGEPROPS_BATCH_SIZE",
     "WIKIPEDIA_REQUEST_CEILING",
     "CategoryPage",
     "CategoryRoute",
@@ -102,6 +103,7 @@ __all__ = [
     "build_discovery_manifest_document",
     "build_incremental_by_stratum",
     "build_quality_sample_document",
+    "build_request_breakdown",
     "build_request_ceiling_summary",
     "build_unique_pages",
     "canonical_page_url",
@@ -114,15 +116,18 @@ __all__ = [
     "determine_recommendation",
     "git_blob_sha1",
     "load_and_verify_immutable_boundaries",
+    "recompute_rights_access_ok",
     "reconstruct_unique_pages_from_manifest",
     "select_deterministic_sample",
     "verify_category_record_self_consistency",
     "verify_discovery_manifest_derived_sets_self_consistency",
     "verify_immutable_boundaries_reference_self_consistency",
     "verify_quality_sample_self_consistency",
+    "verify_request_breakdown_self_consistency",
     "verify_sample_selection_self_consistency",
     "verify_title_signal_rows_self_consistency",
     "verify_unique_pages_reconstruction_self_consistency",
+    "verify_wikidata_context_coverage_self_consistency",
 ]
 
 # ---------------------------------------------------------------------------
@@ -159,6 +164,13 @@ SAMPLE_TOTAL_CAP = 150
 WIKIPEDIA_REQUEST_CEILING = 75
 WIKIDATA_REQUEST_CEILING = 10
 TOTAL_REQUEST_CEILING = 85
+
+# Must match hullq.sources.wikimedia's private _PAGEPROPS_BATCH_SIZE exactly
+# (cross-checked by a dedicated unit test); duplicated here rather than
+# imported to preserve the established decoupling between this pure module
+# and the network-adapter module (see hullq.bootstrap.wikidata_sl0021_alt_discovery
+# for the same convention).
+WIKIPEDIA_PAGEPROPS_BATCH_SIZE = 50
 
 LOW_YIELD_THRESHOLD = 100
 NOISE_THRESHOLD_PCT = 50.0
@@ -762,6 +774,45 @@ def build_request_ceiling_summary(
     }
 
 
+def build_request_breakdown(
+    *,
+    category_records: dict[str, dict[str, Any]],
+    pageprops_request_count: int,
+    unique_page_count: int,
+) -> dict[str, Any]:
+    """Build the retained per-phase Wikipedia request breakdown, tying the
+    aggregate ``wikipedia_request_count`` to independently-checkable
+    structural facts rather than leaving it as an opaque total.
+
+    ``pageprops_request_count`` MUST equal
+    ``ceil(unique_page_count / WIKIPEDIA_PAGEPROPS_BATCH_SIZE)`` — the exact
+    number of batched ``prop=pageprops`` requests the live run's own
+    unique-page count implies — and the reconciled total (each fixed
+    category's own retained ``request_count`` plus this pageprops-phase
+    count) MUST equal the retained aggregate ``wikipedia_request_count``.
+    Fails closed via ``ValueError`` if either check does not hold, so a
+    fabricated or drifted breakdown can never be retained.
+    """
+    expected_pageprops = (
+        -(-unique_page_count // WIKIPEDIA_PAGEPROPS_BATCH_SIZE) if unique_page_count else 0
+    )
+    if pageprops_request_count != expected_pageprops:
+        raise ValueError(
+            f"pageprops_request_count={pageprops_request_count} != expected "
+            f"ceil({unique_page_count}/{WIKIPEDIA_PAGEPROPS_BATCH_SIZE})={expected_pageprops}"
+        )
+    category_requests = {
+        name: category_records[name]["request_count"] for name in CATEGORY_ROUTES_BY_NAME
+    }
+    reconciled_total = sum(category_requests.values()) + pageprops_request_count
+    return {
+        "category_requests": category_requests,
+        "pageprops_request_count": pageprops_request_count,
+        "pageprops_batch_size": WIKIPEDIA_PAGEPROPS_BATCH_SIZE,
+        "reconciled_wikipedia_request_count": reconciled_total,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Retained document assembly — JSON-primitive, pure (no network/DB access)
 # ---------------------------------------------------------------------------
@@ -785,6 +836,7 @@ def build_discovery_manifest_document(
     incremental_by_stratum: dict[str, frozenset[str]],
     sample: SampleSelection,
     request_ceiling_summary: dict[str, Any],
+    pageprops_request_count: int,
 ) -> dict[str, Any]:
     """Assemble the retained ``discovery_manifest.json`` document."""
     if set(category_records) != {r.name for r in CATEGORY_ROUTES}:
@@ -801,6 +853,21 @@ def build_discovery_manifest_document(
     title_signal_totals: dict[str, int] = {str(c): 0 for c in TitleSignalCategory}
     for row in title_signal_rows:
         title_signal_totals[row["title_signal_category"]] += 1
+
+    request_breakdown = build_request_breakdown(
+        category_records=category_records,
+        pageprops_request_count=pageprops_request_count,
+        unique_page_count=len(unique_pages),
+    )
+    if request_breakdown["reconciled_wikipedia_request_count"] != request_ceiling_summary.get(
+        "wikipedia_request_count"
+    ):
+        raise ValueError(
+            "request_breakdown.reconciled_wikipedia_request_count="
+            f"{request_breakdown['reconciled_wikipedia_request_count']!r} != "
+            f"request_ceiling_summary.wikipedia_request_count="
+            f"{request_ceiling_summary.get('wikipedia_request_count')!r}"
+        )
 
     return {
         "schema_version": DISCOVERY_MANIFEST_SCHEMA_VERSION,
@@ -820,6 +887,7 @@ def build_discovery_manifest_document(
             "sl0021_sampled_candidates_git_blob_sha1": boundaries.sl0021_sampled_candidates_blob_sha1,
         },
         "request_ceilings": request_ceiling_summary,
+        "request_breakdown": request_breakdown,
         "categories": {name: category_records[name] for name in CATEGORY_ROUTES_BY_NAME},
         "cross_category_duplicate_pageids": cross_category_duplicate_pageids,
         "unique_page_count": len(unique_pages),
@@ -913,6 +981,22 @@ def build_quality_sample_document(
             "quality_rows does not exactly cover the selected sample: "
             f"missing={sorted(missing, key=qid_sort_key)} extra={sorted(extra, key=qid_sort_key)}"
         )
+
+    context_qid_list = [row["qid"] for row in wikidata_context_rows]
+    context_qid_set = frozenset(context_qid_list)
+    if len(context_qid_list) != len(context_qid_set):
+        duplicates = sorted(
+            {q for q in context_qid_list if context_qid_list.count(q) > 1}, key=qid_sort_key
+        )
+        raise ValueError(f"wikidata_context_rows contains duplicate QID(s): {duplicates}")
+    if context_qid_set != selected_set:
+        missing = selected_set - context_qid_set
+        extra = context_qid_set - selected_set
+        raise ValueError(
+            "wikidata_context_rows does not exactly cover the selected sample: "
+            f"missing={sorted(missing, key=qid_sort_key)} extra={sorted(extra, key=qid_sort_key)}"
+        )
+
     valid_tags = {str(t) for t in QualityTag}
     for row in quality_rows:
         if row["quality_tag"] not in valid_tags:
@@ -1053,6 +1137,96 @@ def verify_category_record_self_consistency(name: str, record: dict[str, Any]) -
     return mismatches
 
 
+def verify_request_breakdown_self_consistency(discovery_manifest: dict[str, Any]) -> list[str]:
+    """Structurally verify the retained request-count summary, not merely
+    that each count is individually below its ceiling.
+
+    Recomputes, purely from the document's own retained facts (never from
+    its own already-computed summary fields):
+
+    - ``request_breakdown.category_requests`` from each fixed category's own
+      retained ``request_count``;
+    - ``request_breakdown.pageprops_request_count`` must equal
+      ``ceil(unique_page_count / WIKIPEDIA_PAGEPROPS_BATCH_SIZE)``;
+    - ``request_breakdown.reconciled_wikipedia_request_count`` (category
+      requests + pageprops requests) must equal
+      ``request_ceilings.wikipedia_request_count``;
+    - ``request_ceilings.total_request_count`` must equal
+      ``wikipedia_request_count + wikidata_request_count``;
+    - every fixed ceiling must equal its accepted constant (75/10/85).
+
+    This closes the gap where a tampered ``wikipedia_request_count`` could
+    previously pass merely by staying under its ceiling, with no link back
+    to the independently retained per-category/pageprops-phase facts.
+    """
+    mismatches: list[str] = []
+    categories = discovery_manifest.get("categories", {})
+    unique_page_count = discovery_manifest.get("unique_page_count", 0)
+    stored_breakdown = discovery_manifest.get("request_breakdown", {})
+    stored_ceilings = discovery_manifest.get("request_ceilings", {})
+
+    expected_category_requests = {
+        name: categories.get(name, {}).get("request_count") for name in CATEGORY_ROUTES_BY_NAME
+    }
+    if stored_breakdown.get("category_requests") != expected_category_requests:
+        mismatches.append(
+            "request_breakdown.category_requests does not match the retained "
+            "categories.*.request_count values"
+        )
+
+    expected_pageprops = (
+        -(-unique_page_count // WIKIPEDIA_PAGEPROPS_BATCH_SIZE) if unique_page_count else 0
+    )
+    stored_pageprops = stored_breakdown.get("pageprops_request_count")
+    if stored_pageprops != expected_pageprops:
+        mismatches.append(
+            f"request_breakdown.pageprops_request_count={stored_pageprops!r} != recomputed "
+            f"ceil({unique_page_count}/{WIKIPEDIA_PAGEPROPS_BATCH_SIZE})={expected_pageprops!r}"
+        )
+    if stored_breakdown.get("pageprops_batch_size") != WIKIPEDIA_PAGEPROPS_BATCH_SIZE:
+        mismatches.append(
+            f"request_breakdown.pageprops_batch_size={stored_breakdown.get('pageprops_batch_size')!r} "
+            f"!= {WIKIPEDIA_PAGEPROPS_BATCH_SIZE!r}"
+        )
+
+    category_sum = sum(v for v in expected_category_requests.values() if isinstance(v, int))
+    reconciled_total = category_sum + (stored_pageprops if isinstance(stored_pageprops, int) else 0)
+    if stored_breakdown.get("reconciled_wikipedia_request_count") != reconciled_total:
+        mismatches.append(
+            "request_breakdown.reconciled_wikipedia_request_count="
+            f"{stored_breakdown.get('reconciled_wikipedia_request_count')!r} != recomputed "
+            f"{reconciled_total!r}"
+        )
+    if stored_ceilings.get("wikipedia_request_count") != reconciled_total:
+        mismatches.append(
+            "request_ceilings.wikipedia_request_count="
+            f"{stored_ceilings.get('wikipedia_request_count')!r} != reconciled breakdown total "
+            f"{reconciled_total!r}"
+        )
+
+    wp = stored_ceilings.get("wikipedia_request_count")
+    wd = stored_ceilings.get("wikidata_request_count")
+    if isinstance(wp, int) and isinstance(wd, int):
+        expected_total = wp + wd
+        if stored_ceilings.get("total_request_count") != expected_total:
+            mismatches.append(
+                f"request_ceilings.total_request_count={stored_ceilings.get('total_request_count')!r} "
+                f"!= wikipedia_request_count + wikidata_request_count = {expected_total!r}"
+            )
+    fixed_ceilings = {
+        "wikipedia_request_ceiling": WIKIPEDIA_REQUEST_CEILING,
+        "wikidata_request_ceiling": WIKIDATA_REQUEST_CEILING,
+        "total_request_ceiling": TOTAL_REQUEST_CEILING,
+    }
+    for key, expected in fixed_ceilings.items():
+        if stored_ceilings.get(key) != expected:
+            mismatches.append(
+                f"request_ceilings.{key}={stored_ceilings.get(key)!r} != {expected!r}"
+            )
+
+    return mismatches
+
+
 def verify_discovery_manifest_derived_sets_self_consistency(
     discovery_manifest: dict[str, Any],
     *,
@@ -1158,15 +1332,99 @@ def verify_sample_selection_self_consistency(
     return mismatches
 
 
+def verify_wikidata_context_coverage_self_consistency(quality_sample: dict[str, Any]) -> list[str]:
+    """Independently verify that a retained ``quality_sample.json``
+    document's ``wikidata_context`` rows exactly cover
+    ``selection_reference.selected_qids`` — no missing, extra or duplicate
+    QID — rather than trusting that the two lists were built consistently.
+    """
+    mismatches: list[str] = []
+    selected = quality_sample.get("selection_reference", {}).get("selected_qids", [])
+    selected_set = frozenset(selected)
+    context_qids = [row.get("qid") for row in quality_sample.get("wikidata_context", [])]
+    context_set = frozenset(context_qids)
+    if len(context_qids) != len(context_set):
+        duplicates = sorted({q for q in context_qids if context_qids.count(q) > 1})
+        mismatches.append(f"wikidata_context contains duplicate QID(s): {duplicates}")
+    if context_set != selected_set:
+        missing = selected_set - context_set
+        extra = context_set - selected_set
+        mismatches.append(
+            f"wikidata_context does not exactly cover selected_qids: missing={sorted(missing)} "
+            f"extra={sorted(extra)}"
+        )
+    return mismatches
+
+
+def recompute_rights_access_ok(
+    *,
+    rights_gate: dict[str, str],
+    wikipedia_source: dict[str, Any],
+    wikidata_source: dict[str, Any],
+) -> bool:
+    """Independently recompute whether SLICE-0023 rights/access were
+    truthfully ALLOWED, from the reviewed Source records themselves — never
+    from a retained self-declared ``quality_sample.rights_access_ok`` flag.
+
+    Re-runs the SLICE-0007 ``research_lead`` gate live against
+    *wikipedia_source* and directly reads the automated-ingestion/
+    bulk-bootstrap clearance fields (mirroring exactly the checks the live
+    runner performs before dispatch — see
+    ``scripts/bootstrap/wikimedia_sl0023_category_leads_runner.run_live``),
+    then cross-checks that the retained ``discovery_manifest.rights_gate``
+    summary agrees with what was actually re-derived. A retained
+    ``rights_gate`` that disagrees with the live Source records is itself
+    treated as untrustworthy (returns ``False``), so a coherent tamper of
+    ``rights_access_ok`` together with the stored ``rights_gate`` cannot
+    silently pass.
+    """
+    from hullq.sources.rights import DecisionOutcome, SourceUse, check_source_use
+
+    research_lead_decision = check_source_use(wikipedia_source, SourceUse.RESEARCH_LEAD)
+    wikipedia_automated_ingestion = wikipedia_source["rights"]["clearance"]["automated_ingestion"]
+    wikidata_bulk_bootstrap = wikidata_source["rights"]["clearance"]["bulk_bootstrap"]
+    wikidata_automated_ingestion = wikidata_source["rights"]["clearance"]["automated_ingestion"]
+
+    expected_rights_gate = {
+        "wikipedia_research_lead": str(research_lead_decision.outcome),
+        "wikipedia_automated_ingestion_clearance": wikipedia_automated_ingestion,
+        "wikidata_bulk_bootstrap": wikidata_bulk_bootstrap,
+        "wikidata_automated_ingestion": wikidata_automated_ingestion,
+    }
+    if rights_gate != expected_rights_gate:
+        return False
+
+    return (
+        research_lead_decision.outcome == DecisionOutcome.ALLOWED
+        and wikipedia_automated_ingestion == "allowed"
+        and wikidata_bulk_bootstrap == "allowed"
+        and wikidata_automated_ingestion == "allowed"
+    )
+
+
 def verify_quality_sample_self_consistency(
-    quality_sample: dict[str, Any], *, unique_incremental_count: int
+    quality_sample: dict[str, Any],
+    *,
+    unique_incremental_count: int,
+    recomputed_rights_access_ok: bool,
 ) -> list[str]:
     """Recompute quality-tag totals/percentages and the mechanical
     recommendation from a retained ``quality_sample.json`` document's own
     ``quality_review`` rows, and compare against the document's stored
     summary fields.
+
+    ``recomputed_rights_access_ok`` MUST be independently derived (via
+    ``recompute_rights_access_ok``) from the live reviewed Source records and
+    the retained ``discovery_manifest.rights_gate`` — never read from this
+    document's own ``rights_access_ok`` field, which is untrusted input being
+    verified, not a source of truth.
     """
     mismatches: list[str] = []
+    if bool(quality_sample.get("rights_access_ok")) != recomputed_rights_access_ok:
+        mismatches.append(
+            f"rights_access_ok={quality_sample.get('rights_access_ok')!r} != independently "
+            f"recomputed {recomputed_rights_access_ok!r}"
+        )
     rows = quality_sample.get("quality_review", [])
     valid_tags = {str(t) for t in QualityTag}
     recomputed_counts: dict[str, int] = {str(t): 0 for t in QualityTag}
@@ -1203,7 +1461,7 @@ def verify_quality_sample_self_consistency(
 
     recomputed_recommendation = str(
         determine_recommendation(
-            rights_access_ok=bool(quality_sample.get("rights_access_ok")),
+            rights_access_ok=recomputed_rights_access_ok,
             unique_incremental_count=unique_incremental_count,
             quality_tag_counts=recomputed_counts,
         )

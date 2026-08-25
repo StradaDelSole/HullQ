@@ -20721,5 +20721,15 @@
       "Q137258237"
     ],
     "selected_count": 150
+  },
+  "request_breakdown": {
+    "category_requests": {
+      "Keelboats": 2,
+      "Catamarans": 1,
+      "Trimarans": 1
+    },
+    "pageprops_request_count": 23,
+    "pageprops_batch_size": 50,
+    "reconciled_wikipedia_request_count": 27
   }
 }

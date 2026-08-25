@@ -45,6 +45,7 @@ from hullq.bootstrap.wikimedia_sl0023_category_leads import (
     TOTAL_REQUEST_CEILING,
     TRIMARANS,
     WIKIDATA_REQUEST_CEILING,
+    WIKIPEDIA_PAGEPROPS_BATCH_SIZE,
     WIKIPEDIA_REQUEST_CEILING,
     CategoryCapExceededError,
     CategoryPage,
@@ -63,6 +64,7 @@ from hullq.bootstrap.wikimedia_sl0023_category_leads import (
     build_discovery_manifest_document,
     build_incremental_by_stratum,
     build_quality_sample_document,
+    build_request_breakdown,
     build_request_ceiling_summary,
     build_unique_pages,
     canonical_page_url,
@@ -75,15 +77,18 @@ from hullq.bootstrap.wikimedia_sl0023_category_leads import (
     determine_recommendation,
     git_blob_sha1,
     load_and_verify_immutable_boundaries,
+    recompute_rights_access_ok,
     reconstruct_unique_pages_from_manifest,
     select_deterministic_sample,
     verify_category_record_self_consistency,
     verify_discovery_manifest_derived_sets_self_consistency,
     verify_immutable_boundaries_reference_self_consistency,
     verify_quality_sample_self_consistency,
+    verify_request_breakdown_self_consistency,
     verify_sample_selection_self_consistency,
     verify_title_signal_rows_self_consistency,
     verify_unique_pages_reconstruction_self_consistency,
+    verify_wikidata_context_coverage_self_consistency,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -657,8 +662,10 @@ def _build_minimal_discovery_manifest() -> tuple[dict[str, object], tuple]:  # t
         overlap_sets.incremental_qid_lead, multiplicity, unique_pages
     )
     sample = select_deterministic_sample(incremental_by_stratum)
+    # 3 fixed categories each with request_count=1 (via the _record helper) =
+    # 3, plus 1 pageprops-phase request (ceil(3 unique pages / 50) == 1) == 4.
     request_ceiling_summary = build_request_ceiling_summary(
-        wikipedia_request_count=5, wikidata_request_count=1
+        wikipedia_request_count=4, wikidata_request_count=1
     )
 
     document = build_discovery_manifest_document(
@@ -675,6 +682,7 @@ def _build_minimal_discovery_manifest() -> tuple[dict[str, object], tuple]:  # t
         incremental_by_stratum=incremental_by_stratum,
         sample=sample,
         request_ceiling_summary=request_ceiling_summary,
+        pageprops_request_count=1,
     )
     return document, (
         boundaries,
@@ -795,7 +803,7 @@ def test_build_quality_sample_document_rejects_invalid_tag() -> None:
             generated_at="x",
             boundaries=boundaries,
             sample=sample,
-            wikidata_context_rows=[],
+            wikidata_context_rows=[{"qid": "Q900"}],
             quality_rows=[{"qid": "Q900", "quality_tag": "not_a_real_tag", "rationale": "x"}],
             rights_access_ok=True,
             unique_incremental_count=1,
@@ -810,9 +818,43 @@ def test_build_quality_sample_document_rejects_empty_rationale() -> None:
             generated_at="x",
             boundaries=boundaries,
             sample=sample,
-            wikidata_context_rows=[],
+            wikidata_context_rows=[{"qid": "Q900"}],
             quality_rows=[
                 {"qid": "Q900", "quality_tag": str(QualityTag.AMBIGUOUS), "rationale": "   "}
+            ],
+            rights_access_ok=True,
+            unique_incremental_count=1,
+        )
+
+
+def test_build_quality_sample_document_requires_exact_wikidata_context_coverage() -> None:
+    boundaries = _synthetic_boundaries()
+    sample = SampleSelection(selected_by_stratum={TRIMARANS: ("Q900",)}, selected_qids=("Q900",))
+    with pytest.raises(ValueError, match="wikidata_context_rows does not exactly cover"):
+        build_quality_sample_document(
+            generated_at="x",
+            boundaries=boundaries,
+            sample=sample,
+            wikidata_context_rows=[{"qid": "Q901"}],
+            quality_rows=[
+                {"qid": "Q900", "quality_tag": str(QualityTag.AMBIGUOUS), "rationale": "unclear"}
+            ],
+            rights_access_ok=True,
+            unique_incremental_count=1,
+        )
+
+
+def test_build_quality_sample_document_rejects_duplicate_wikidata_context_qid() -> None:
+    boundaries = _synthetic_boundaries()
+    sample = SampleSelection(selected_by_stratum={TRIMARANS: ("Q900",)}, selected_qids=("Q900",))
+    with pytest.raises(ValueError, match="duplicate QID"):
+        build_quality_sample_document(
+            generated_at="x",
+            boundaries=boundaries,
+            sample=sample,
+            wikidata_context_rows=[{"qid": "Q900"}, {"qid": "Q900"}],
+            quality_rows=[
+                {"qid": "Q900", "quality_tag": str(QualityTag.AMBIGUOUS), "rationale": "unclear"}
             ],
             rights_access_ok=True,
             unique_incremental_count=1,
@@ -847,7 +889,12 @@ def test_build_and_verify_quality_sample_document_round_trip() -> None:
     )
     assert document["quality_tag_counts"][str(QualityTag.PLAUSIBLE_MODEL_OR_CLASS_LEAD)] == 1
     assert document["recommendation"] == str(Recommendation.FOLLOWUP_VERIFICATION_CANDIDATE)
-    assert verify_quality_sample_self_consistency(document, unique_incremental_count=150) == []
+    assert (
+        verify_quality_sample_self_consistency(
+            document, unique_incremental_count=150, recomputed_rights_access_ok=True
+        )
+        == []
+    )
 
 
 def test_verify_quality_sample_rejects_tampered_recommendation() -> None:
@@ -857,7 +904,7 @@ def test_verify_quality_sample_rejects_tampered_recommendation() -> None:
         generated_at="x",
         boundaries=boundaries,
         sample=sample,
-        wikidata_context_rows=[],
+        wikidata_context_rows=[{"qid": "Q900"}],
         quality_rows=[
             {"qid": "Q900", "quality_tag": str(QualityTag.AMBIGUOUS), "rationale": "unclear"}
         ],
@@ -865,5 +912,248 @@ def test_verify_quality_sample_rejects_tampered_recommendation() -> None:
         unique_incremental_count=50,
     )
     document["recommendation"] = str(Recommendation.FOLLOWUP_VERIFICATION_CANDIDATE)
-    mismatches = verify_quality_sample_self_consistency(document, unique_incremental_count=50)
+    mismatches = verify_quality_sample_self_consistency(
+        document, unique_incremental_count=50, recomputed_rights_access_ok=True
+    )
     assert any("recommendation" in m for m in mismatches)
+
+
+def test_verify_quality_sample_rejects_untrustworthy_rights_access_flag() -> None:
+    """Even if internally coherent, the stored rights_access_ok flag must
+    match the independently recomputed value.
+    """
+    boundaries = _synthetic_boundaries()
+    sample = SampleSelection(selected_by_stratum={TRIMARANS: ("Q900",)}, selected_qids=("Q900",))
+    document = build_quality_sample_document(
+        generated_at="x",
+        boundaries=boundaries,
+        sample=sample,
+        wikidata_context_rows=[{"qid": "Q900"}],
+        quality_rows=[
+            {"qid": "Q900", "quality_tag": str(QualityTag.AMBIGUOUS), "rationale": "unclear"}
+        ],
+        rights_access_ok=True,
+        unique_incremental_count=200,
+    )
+    mismatches = verify_quality_sample_self_consistency(
+        document, unique_incremental_count=200, recomputed_rights_access_ok=False
+    )
+    assert any("rights_access_ok" in m for m in mismatches)
+
+
+# ---------------------------------------------------------------------------
+# Independent-review amendment: recompute_rights_access_ok
+# ---------------------------------------------------------------------------
+
+WIKIPEDIA_SOURCE_FIXTURE = ROOT / "fixtures" / "sources" / "wikipedia_source.json"
+WIKIDATA_SOURCE_FIXTURE = ROOT / "fixtures" / "sources" / "wikidata_source.json"
+
+
+def _load_real_sources() -> tuple[dict, dict]:  # type: ignore[type-arg]
+    import json
+
+    wikipedia_source = json.loads(WIKIPEDIA_SOURCE_FIXTURE.read_text(encoding="utf-8"))
+    wikidata_source = json.loads(WIKIDATA_SOURCE_FIXTURE.read_text(encoding="utf-8"))
+    return wikipedia_source, wikidata_source
+
+
+def _true_rights_gate(wikipedia_source: dict, wikidata_source: dict) -> dict[str, str]:  # type: ignore[type-arg]
+    return {
+        "wikipedia_research_lead": "allowed",
+        "wikipedia_automated_ingestion_clearance": wikipedia_source["rights"]["clearance"][
+            "automated_ingestion"
+        ],
+        "wikidata_bulk_bootstrap": wikidata_source["rights"]["clearance"]["bulk_bootstrap"],
+        "wikidata_automated_ingestion": wikidata_source["rights"]["clearance"][
+            "automated_ingestion"
+        ],
+    }
+
+
+def test_recompute_rights_access_ok_true_for_real_reviewed_sources() -> None:
+    wikipedia_source, wikidata_source = _load_real_sources()
+    rights_gate = _true_rights_gate(wikipedia_source, wikidata_source)
+    assert (
+        recompute_rights_access_ok(
+            rights_gate=rights_gate,
+            wikipedia_source=wikipedia_source,
+            wikidata_source=wikidata_source,
+        )
+        is True
+    )
+
+
+def test_recompute_rights_access_ok_false_when_rights_gate_disagrees_with_sources() -> None:
+    wikipedia_source, wikidata_source = _load_real_sources()
+    rights_gate = _true_rights_gate(wikipedia_source, wikidata_source)
+    rights_gate["wikipedia_automated_ingestion_clearance"] = "prohibited"
+    assert (
+        recompute_rights_access_ok(
+            rights_gate=rights_gate,
+            wikipedia_source=wikipedia_source,
+            wikidata_source=wikidata_source,
+        )
+        is False
+    )
+
+
+def test_recompute_rights_access_ok_false_when_clearance_not_allowed() -> None:
+    import json
+
+    wikipedia_source, wikidata_source = _load_real_sources()
+    wikipedia_source = json.loads(json.dumps(wikipedia_source))
+    wikipedia_source["rights"]["clearance"]["automated_ingestion"] = "prohibited"
+    rights_gate = _true_rights_gate(wikipedia_source, wikidata_source)
+    assert (
+        recompute_rights_access_ok(
+            rights_gate=rights_gate,
+            wikipedia_source=wikipedia_source,
+            wikidata_source=wikidata_source,
+        )
+        is False
+    )
+
+
+def test_recompute_rights_access_ok_never_trusts_a_stored_flag_directly() -> None:
+    """A stored ``rights_access_ok`` flag is never an input to this function
+    at all — it is derived purely from the live Source records and the
+    retained rights_gate, proving a coherent tamper of a stored flag cannot
+    influence the recomputed truth.
+    """
+    wikipedia_source, wikidata_source = _load_real_sources()
+    rights_gate = _true_rights_gate(wikipedia_source, wikidata_source)
+    import inspect
+
+    assert "rights_access_ok" not in inspect.signature(recompute_rights_access_ok).parameters
+    assert (
+        recompute_rights_access_ok(
+            rights_gate=rights_gate,
+            wikipedia_source=wikipedia_source,
+            wikidata_source=wikidata_source,
+        )
+        is True
+    )
+
+
+# ---------------------------------------------------------------------------
+# Independent-review amendment: request-count structural reconciliation
+# ---------------------------------------------------------------------------
+
+
+def test_build_request_breakdown_reconciles_category_and_pageprops_counts() -> None:
+    category_records = {
+        KEELBOATS: {"request_count": 2},
+        CATAMARANS: {"request_count": 1},
+        TRIMARANS: {"request_count": 1},
+    }
+    breakdown = build_request_breakdown(
+        category_records=category_records, pageprops_request_count=23, unique_page_count=1131
+    )
+    assert breakdown["category_requests"] == {KEELBOATS: 2, CATAMARANS: 1, TRIMARANS: 1}
+    assert breakdown["pageprops_request_count"] == 23
+    assert breakdown["pageprops_batch_size"] == WIKIPEDIA_PAGEPROPS_BATCH_SIZE
+    assert breakdown["reconciled_wikipedia_request_count"] == 27
+
+
+def test_build_request_breakdown_fails_closed_on_wrong_pageprops_count() -> None:
+    category_records = {
+        KEELBOATS: {"request_count": 2},
+        CATAMARANS: {"request_count": 1},
+        TRIMARANS: {"request_count": 1},
+    }
+    with pytest.raises(ValueError, match="pageprops_request_count"):
+        build_request_breakdown(
+            category_records=category_records, pageprops_request_count=99, unique_page_count=1131
+        )
+
+
+def test_verify_request_breakdown_self_consistency_passes_for_real_retained_document() -> None:
+    import json
+
+    real_manifest = json.loads(
+        (
+            ROOT
+            / "research"
+            / "bootstrap"
+            / "wikimedia"
+            / "sl0023-category-leads"
+            / "discovery_manifest.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert verify_request_breakdown_self_consistency(real_manifest) == []
+
+
+def test_verify_request_breakdown_self_consistency_rejects_tampered_wikipedia_count() -> None:
+    import json
+
+    real_manifest = json.loads(
+        (
+            ROOT
+            / "research"
+            / "bootstrap"
+            / "wikimedia"
+            / "sl0023-category-leads"
+            / "discovery_manifest.json"
+        ).read_text(encoding="utf-8")
+    )
+    real_manifest["request_ceilings"]["wikipedia_request_count"] += 1
+    mismatches = verify_request_breakdown_self_consistency(real_manifest)
+    assert mismatches
+
+
+def test_verify_request_breakdown_self_consistency_rejects_tampered_pageprops_count() -> None:
+    import json
+
+    real_manifest = json.loads(
+        (
+            ROOT
+            / "research"
+            / "bootstrap"
+            / "wikimedia"
+            / "sl0023-category-leads"
+            / "discovery_manifest.json"
+        ).read_text(encoding="utf-8")
+    )
+    real_manifest["request_breakdown"]["pageprops_request_count"] += 1
+    mismatches = verify_request_breakdown_self_consistency(real_manifest)
+    assert mismatches
+
+
+# ---------------------------------------------------------------------------
+# Independent-review amendment: wikidata_context exact-coverage verification
+# ---------------------------------------------------------------------------
+
+
+def test_verify_wikidata_context_coverage_passes_when_exact() -> None:
+    quality_sample = {
+        "selection_reference": {"selected_qids": ["Q1", "Q2"]},
+        "wikidata_context": [{"qid": "Q1"}, {"qid": "Q2"}],
+    }
+    assert verify_wikidata_context_coverage_self_consistency(quality_sample) == []
+
+
+def test_verify_wikidata_context_coverage_rejects_missing_qid() -> None:
+    quality_sample = {
+        "selection_reference": {"selected_qids": ["Q1", "Q2"]},
+        "wikidata_context": [{"qid": "Q1"}],
+    }
+    mismatches = verify_wikidata_context_coverage_self_consistency(quality_sample)
+    assert any("does not exactly cover" in m for m in mismatches)
+
+
+def test_verify_wikidata_context_coverage_rejects_extra_qid() -> None:
+    quality_sample = {
+        "selection_reference": {"selected_qids": ["Q1"]},
+        "wikidata_context": [{"qid": "Q1"}, {"qid": "Q2"}],
+    }
+    mismatches = verify_wikidata_context_coverage_self_consistency(quality_sample)
+    assert any("does not exactly cover" in m for m in mismatches)
+
+
+def test_verify_wikidata_context_coverage_rejects_duplicate_qid() -> None:
+    quality_sample = {
+        "selection_reference": {"selected_qids": ["Q1"]},
+        "wikidata_context": [{"qid": "Q1"}, {"qid": "Q1"}],
+    }
+    mismatches = verify_wikidata_context_coverage_self_consistency(quality_sample)
+    assert any("duplicate" in m for m in mismatches)

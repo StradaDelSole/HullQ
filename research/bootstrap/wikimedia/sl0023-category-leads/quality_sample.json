@@ -1,6 +1,6 @@
 {
   "schema_version": "sl0023-quality-sample-v1",
-  "generated_at": "2026-08-25T14:32:12.529177+00:00",
+  "generated_at": "2026-08-25T15:30:21.160832+00:00",
   "accepted_universe_reference": {
     "sl0017_sha256": "076b0d64441973c4d5b71cf467cd9cdbf46242babb9cb44f788c97a0f33e5845",
     "sl0018_sha256": "41ef238c217e31cfbe03329e226a1a3dfff849061df93b8f2523a1e72493821f",
@@ -1685,8 +1685,8 @@
     },
     {
       "qid": "Q92475330",
-      "quality_tag": "plausible_model_or_class_lead",
-      "rationale": "Retained numbered model label 'Oceanis 37' matches the well-established production-model naming pattern confirmed elsewhere in this sample, with explicit 'French sailboat' description."
+      "quality_tag": "ambiguous",
+      "rationale": "Retained description 'French sailboat' states only nationality and vessel type; it does not explicitly establish model/class/design-family status for this entry on its own retained facts."
     },
     {
       "qid": "Q96376339",
@@ -1790,8 +1790,8 @@
     },
     {
       "qid": "Q112632201",
-      "quality_tag": "plausible_model_or_class_lead",
-      "rationale": "Retained numbered model label 'Sea Bird 37 MS' plus explicit 'Canadian sailboat' description matches the confirmed numbered-model naming pattern seen throughout this sample."
+      "quality_tag": "ambiguous",
+      "rationale": "Retained description 'Canadian sailboat' states only nationality and vessel type; it does not explicitly establish model/class/design-family status for this entry on its own retained facts."
     },
     {
       "qid": "Q113380245",
@@ -1846,7 +1846,7 @@
     {
       "qid": "Q114353855",
       "quality_tag": "obvious_out_of_scope",
-      "rationale": "Retained description 'ship launched in 2021' ties this vessel to a single launch event; the 'Express' naming pattern and P31 match the ferry-class entries elsewhere in this sample."
+      "rationale": "Retained description 'ship launched in 2021' ties this vessel to a single launch event, identifying an individual vessel rather than a reusable production class."
     },
     {
       "qid": "Q114415084",
@@ -1865,8 +1865,8 @@
     },
     {
       "qid": "Q114568605",
-      "quality_tag": "plausible_model_or_class_lead",
-      "rationale": "Retained numbered model label 'Gin Fizz 37' plus explicit 'French sailboat' description matches the confirmed numbered-model naming pattern seen throughout this sample."
+      "quality_tag": "ambiguous",
+      "rationale": "Retained description 'French sailboat' states only nationality and vessel type; it does not explicitly establish model/class/design-family status for this entry on its own retained facts."
     },
     {
       "qid": "Q114585904",
@@ -2155,8 +2155,8 @@
     },
     {
       "qid": "Q119855214",
-      "quality_tag": "plausible_model_or_class_lead",
-      "rationale": "Retained description 'French sailboat design' plus numbered model label matches the confirmed production-model naming pattern seen throughout this sample."
+      "quality_tag": "ambiguous",
+      "rationale": "Retained description 'French sailboat design' states nationality and 'design' but does not explicitly state model/class/production-series status for this entry on its own retained facts."
     },
     {
       "qid": "Q120069170",
@@ -2215,14 +2215,14 @@
     }
   ],
   "quality_tag_counts": {
-    "plausible_model_or_class_lead": 106,
+    "plausible_model_or_class_lead": 102,
     "obvious_out_of_scope": 19,
-    "ambiguous": 25
+    "ambiguous": 29
   },
   "quality_tag_percentages": {
-    "plausible_model_or_class_lead": 70.6667,
+    "plausible_model_or_class_lead": 68.0,
     "obvious_out_of_scope": 12.6667,
-    "ambiguous": 16.6667
+    "ambiguous": 19.3333
   },
   "total_sampled": 150,
   "rights_access_ok": true,

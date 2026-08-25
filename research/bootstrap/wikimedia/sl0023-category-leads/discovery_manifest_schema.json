@@ -12,6 +12,7 @@
     "rights_gate",
     "immutable_boundaries",
     "request_ceilings",
+    "request_breakdown",
     "categories",
     "cross_category_duplicate_pageids",
     "unique_page_count",
@@ -72,6 +73,31 @@
         "wikidata_request_ceiling": { "const": 10 },
         "total_request_count": { "type": "integer", "minimum": 0, "maximum": 85 },
         "total_request_ceiling": { "const": 85 }
+      }
+    },
+    "request_breakdown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "category_requests",
+        "pageprops_request_count",
+        "pageprops_batch_size",
+        "reconciled_wikipedia_request_count"
+      ],
+      "properties": {
+        "category_requests": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["Keelboats", "Catamarans", "Trimarans"],
+          "properties": {
+            "Keelboats": { "type": "integer", "minimum": 0 },
+            "Catamarans": { "type": "integer", "minimum": 0 },
+            "Trimarans": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "pageprops_request_count": { "type": "integer", "minimum": 0 },
+        "pageprops_batch_size": { "const": 50 },
+        "reconciled_wikipedia_request_count": { "type": "integer", "minimum": 0, "maximum": 75 }
       }
     },
     "categories": {

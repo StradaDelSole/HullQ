@@ -1,14 +1,14 @@
 {
   "schema_version": "sl0023-artifact-digests-v1",
-  "generated_at": "2026-08-25T14:32:12.830655+00:00",
+  "generated_at": "2026-08-25T15:30:21.414031+00:00",
   "excludes_self": "ARTIFACT-DIGESTS.json",
   "digests": {
-    "source_assessment.json": "sha256:9fb8bf4f3e128952d1ebfcea4dd597a4c8a5810b240509984ca242365d4def20",
+    "source_assessment.json": "sha256:14fd4bbd8ee5984ed5811bc4650b62b3c1c09aece2988b32668b43da43aef09d",
     "source_assessment_schema.json": "sha256:6fb72ff7e5f4c442c8fba9a0b44c903b6897ee152aa27e19835c66d48404ca59",
-    "discovery_manifest.json": "sha256:6ba82fa888804e9a1f675fd283dc94d866ae884a6b4689392b0d99bc05ebfe61",
-    "discovery_manifest_schema.json": "sha256:ad6499485487056343b1592d884f5e428e607adf455ae9b6f287399d3457a4d9",
-    "quality_sample.json": "sha256:9ef4981b034f39280cc7ad2fc2a92273e0a1df2c9cea078f5ea7aae78461efe3",
+    "discovery_manifest.json": "sha256:8505e3455975186672abf636ac9904315d5c62507a8f885cb4c176655bfff1f6",
+    "discovery_manifest_schema.json": "sha256:56bd4b89e70afb16f6b524e203adf3d98007f2e609ed7b4731dc7506d5c2e66e",
+    "quality_sample.json": "sha256:127e77404cab9c1f277964ae4f71b0fc5dbf9203061c08b8f83a128d29da4ad1",
     "quality_sample_schema.json": "sha256:63dea4ddfcdf6f793f9bc8f4c7c4a037485a754ecec6b2e2526c018cf76818ba",
-    "REPORT.md": "sha256:ab552a19f734a75a4c416ac105c3537059aee74cd56bbb0df73a3d84e589b2f6"
+    "REPORT.md": "sha256:7abe9ab2db0dc210f6f68fed281d2764424f851677b2791d03f54d5d689b705c"
   }
 }

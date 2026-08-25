@@ -46,9 +46,9 @@
 
 ## QUALITY REVIEW TOTALS
 
-- `ambiguous`: 25 (16.6667%)
+- `ambiguous`: 29 (19.3333%)
 - `obvious_out_of_scope`: 19 (12.6667%)
-- `plausible_model_or_class_lead`: 106 (70.6667%)
+- `plausible_model_or_class_lead`: 102 (68.0%)
 
 - total_sampled: **150**
 

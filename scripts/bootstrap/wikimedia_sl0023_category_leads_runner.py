@@ -207,8 +207,10 @@ def run_live(*, user_agent: str, scratch_context_path: Path) -> None:
         all_pageids = sorted(unique_pages)
         print(f"\nUnique pages across all categories: {len(all_pageids)}", flush=True)
 
+        category_request_total = total_wikipedia_requests
         pageid_to_qid = wikipedia_adapter.fetch_pageprops_wikibase_items(all_pageids)
         total_wikipedia_requests = wikipedia_adapter.usage_metrics.retrieval_count
+        pageprops_request_count = total_wikipedia_requests - category_request_total
         print(
             f"  pages with linked QID: {len(pageid_to_qid)} "
             f"(total wikipedia_request_count={total_wikipedia_requests})",
@@ -312,6 +314,7 @@ def run_live(*, user_agent: str, scratch_context_path: Path) -> None:
         incremental_by_stratum=incremental_by_stratum,
         sample=sample,
         request_ceiling_summary=request_ceiling_summary,
+        pageprops_request_count=pageprops_request_count,
     )
     _validate_schema(
         discovery_manifest, DISCOVERY_MANIFEST_SCHEMA_PATH, label="discovery_manifest.json"
@@ -361,6 +364,7 @@ def run_assemble(*, scratch_context_path: Path, quality_tags_path: Path) -> None
         SampleSelection,
         build_quality_sample_document,
         load_and_verify_immutable_boundaries,
+        recompute_rights_access_ok,
     )
 
     print(
@@ -382,9 +386,12 @@ def run_assemble(*, scratch_context_path: Path, quality_tags_path: Path) -> None
         selected_qids=tuple(selection["selected_qids"]),
     )
 
-    rights_gate = discovery_manifest["rights_gate"]
-    rights_access_ok = all(
-        value in ("allowed", "clearance_allowed") for value in rights_gate.values()
+    wikipedia_source = json.loads(WIKIPEDIA_SOURCE_PATH.read_text(encoding="utf-8"))
+    wikidata_source = json.loads(WIKIDATA_SOURCE_PATH.read_text(encoding="utf-8"))
+    rights_access_ok = recompute_rights_access_ok(
+        rights_gate=discovery_manifest["rights_gate"],
+        wikipedia_source=wikipedia_source,
+        wikidata_source=wikidata_source,
     )
     unique_incremental_count = discovery_manifest["overlap_sets"]["incremental_qid_lead"]["count"]
 
@@ -463,15 +470,18 @@ def run_verify() -> None:
         compute_overlap_sets,
         compute_qid_multiplicity,
         load_and_verify_immutable_boundaries,
+        recompute_rights_access_ok,
         reconstruct_unique_pages_from_manifest,
         select_deterministic_sample,
         verify_category_record_self_consistency,
         verify_discovery_manifest_derived_sets_self_consistency,
         verify_immutable_boundaries_reference_self_consistency,
         verify_quality_sample_self_consistency,
+        verify_request_breakdown_self_consistency,
         verify_sample_selection_self_consistency,
         verify_title_signal_rows_self_consistency,
         verify_unique_pages_reconstruction_self_consistency,
+        verify_wikidata_context_coverage_self_consistency,
     )
 
     print(
@@ -544,11 +554,27 @@ def run_verify() -> None:
     )
 
     unique_incremental_count = discovery_manifest["overlap_sets"]["incremental_qid_lead"]["count"]
+
+    # Rights-access truth is re-derived independently from the live reviewed
+    # Source records + the retained discovery_manifest.rights_gate — NEVER
+    # trusted from the retained quality_sample.rights_access_ok flag itself,
+    # so a coherent tamper of rights_access_ok + recommendation (even one
+    # that also regenerates ARTIFACT-DIGESTS.json to match) cannot pass.
+    wikipedia_source = json.loads(WIKIPEDIA_SOURCE_PATH.read_text(encoding="utf-8"))
+    wikidata_source = json.loads(WIKIDATA_SOURCE_PATH.read_text(encoding="utf-8"))
+    recomputed_rights_access_ok = recompute_rights_access_ok(
+        rights_gate=discovery_manifest["rights_gate"],
+        wikipedia_source=wikipedia_source,
+        wikidata_source=wikidata_source,
+    )
     mismatches.extend(
         verify_quality_sample_self_consistency(
-            quality_sample, unique_incremental_count=unique_incremental_count
+            quality_sample,
+            unique_incremental_count=unique_incremental_count,
+            recomputed_rights_access_ok=recomputed_rights_access_ok,
         )
     )
+    mismatches.extend(verify_wikidata_context_coverage_self_consistency(quality_sample))
 
     stored_selection = discovery_manifest["sample_selection"]
     reconstructed_sample = SampleSelection(
@@ -569,13 +595,12 @@ def run_verify() -> None:
             "sample selection"
         )
 
-    request_ceilings = discovery_manifest["request_ceilings"]
-    if request_ceilings["wikipedia_request_count"] > request_ceilings["wikipedia_request_ceiling"]:
-        mismatches.append("request_ceilings.wikipedia_request_count exceeds its ceiling")
-    if request_ceilings["wikidata_request_count"] > request_ceilings["wikidata_request_ceiling"]:
-        mismatches.append("request_ceilings.wikidata_request_count exceeds its ceiling")
-    if request_ceilings["total_request_count"] > request_ceilings["total_request_ceiling"]:
-        mismatches.append("request_ceilings.total_request_count exceeds its ceiling")
+    # Structural request-count reconciliation: not merely "count <= ceiling",
+    # but that the retained aggregate wikipedia_request_count is exactly tied
+    # back to each fixed category's own retained request_count plus a
+    # pageprops-phase batch count independently derivable from
+    # unique_page_count, and that total == wikipedia + wikidata.
+    mismatches.extend(verify_request_breakdown_self_consistency(discovery_manifest))
 
     for name, route_cap in (("Keelboats", 2000), ("Catamarans", 250), ("Trimarans", 200)):
         record = discovery_manifest["categories"][name]

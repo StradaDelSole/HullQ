@@ -1,6 +1,6 @@
 {
   "schema_version": "sl0023-source-assessment-v1",
-  "generated_at": "2026-08-25T14:32:12.529177+00:00",
+  "generated_at": "2026-08-25T15:30:21.160832+00:00",
   "sources": {
     "wikipedia": {
       "source_id": "SRC_WIKIPEDIA_API_2026",

@@ -195,3 +195,120 @@ def test_run_verify_fails_closed_on_artifact_digests_tamper(runner: Any, tmp_pat
 
     with pytest.raises(SystemExit):
         runner.run_verify()
+
+
+# ---------------------------------------------------------------------------
+# Independent-review amendment tamper tests (2026-08-25 AMEND round)
+# ---------------------------------------------------------------------------
+
+
+def test_run_verify_fails_closed_on_tampered_qid_mapping(runner: Any, tmp_path: Path) -> None:
+    """A tampered page->QID mapping must be caught by overlap-set recompute,
+    not merely by title/category consistency.
+    """
+    _copy_retained_package(runner, tmp_path)
+    manifest_path = tmp_path / "discovery_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    first_pageid = next(
+        pid for pid, info in manifest["unique_pages"].items() if info.get("qid") is not None
+    )
+    manifest["unique_pages"][first_pageid]["qid"] = "Q999999999999"
+    _write_json(manifest_path, manifest)
+
+    with pytest.raises(SystemExit):
+        runner.run_verify()
+
+
+def test_run_verify_fails_closed_on_wikidata_context_missing_row(
+    runner: Any, tmp_path: Path
+) -> None:
+    _copy_retained_package(runner, tmp_path)
+    quality_path = tmp_path / "quality_sample.json"
+    quality = json.loads(quality_path.read_text(encoding="utf-8"))
+    quality["wikidata_context"].pop()
+    _write_json(quality_path, quality)
+
+    with pytest.raises((SystemExit, jsonschema.exceptions.ValidationError)):
+        runner.run_verify()
+
+
+def test_run_verify_fails_closed_on_wikidata_context_duplicate_row(
+    runner: Any, tmp_path: Path
+) -> None:
+    _copy_retained_package(runner, tmp_path)
+    quality_path = tmp_path / "quality_sample.json"
+    quality = json.loads(quality_path.read_text(encoding="utf-8"))
+    quality["wikidata_context"].append(quality["wikidata_context"][0])
+    _write_json(quality_path, quality)
+
+    with pytest.raises((SystemExit, jsonschema.exceptions.ValidationError)):
+        runner.run_verify()
+
+
+def test_run_verify_fails_closed_on_request_breakdown_tamper(runner: Any, tmp_path: Path) -> None:
+    _copy_retained_package(runner, tmp_path)
+    manifest_path = tmp_path / "discovery_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["request_ceilings"]["wikipedia_request_count"] += 1
+    manifest["request_ceilings"]["total_request_count"] += 1
+    _write_json(manifest_path, manifest)
+
+    with pytest.raises(SystemExit):
+        runner.run_verify()
+
+
+def test_run_verify_fails_closed_on_pageprops_request_count_tamper(
+    runner: Any, tmp_path: Path
+) -> None:
+    _copy_retained_package(runner, tmp_path)
+    manifest_path = tmp_path / "discovery_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["request_breakdown"]["pageprops_request_count"] += 1
+    manifest["request_breakdown"]["reconciled_wikipedia_request_count"] += 1
+    manifest["request_ceilings"]["wikipedia_request_count"] += 1
+    manifest["request_ceilings"]["total_request_count"] += 1
+    _write_json(manifest_path, manifest)
+
+    with pytest.raises(SystemExit):
+        runner.run_verify()
+
+
+def test_run_verify_fails_closed_on_coherent_rights_access_and_recommendation_tamper(
+    runner: Any, tmp_path: Path
+) -> None:
+    """A sophisticated tamper that edits ``rights_access_ok`` AND
+    ``recommendation`` together (so they remain internally coherent with each
+    other) AND regenerates ``ARTIFACT-DIGESTS.json`` to match must still fail,
+    because rights-access truth is independently re-derived from the live
+    reviewed Source records and the retained ``discovery_manifest.rights_gate``
+    — never trusted from the document's own stored flag.
+    """
+    _copy_retained_package(runner, tmp_path)
+    quality_path = tmp_path / "quality_sample.json"
+    quality = json.loads(quality_path.read_text(encoding="utf-8"))
+    quality["rights_access_ok"] = False
+    quality["recommendation"] = "RIGHTS_OR_ACCESS_BLOCKED"
+    _write_json(quality_path, quality)
+
+    # Simulate an attacker who also correctly regenerates the digest file
+    # after tampering — artifact-digest matching alone must not be sufficient.
+    runner._write_artifact_digests(runner.ARTIFACT_DIGESTS_PATH)
+
+    with pytest.raises(SystemExit):
+        runner.run_verify()
+
+
+def test_run_verify_fails_closed_on_tampered_rights_gate_disagreeing_with_sources(
+    runner: Any, tmp_path: Path
+) -> None:
+    """A retained ``rights_gate`` that disagrees with the actual reviewed
+    Source records must itself be treated as untrustworthy.
+    """
+    _copy_retained_package(runner, tmp_path)
+    manifest_path = tmp_path / "discovery_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["rights_gate"]["wikipedia_automated_ingestion_clearance"] = "prohibited"
+    _write_json(manifest_path, manifest)
+
+    with pytest.raises(SystemExit):
+        runner.run_verify()
