@@ -83,9 +83,8 @@ def main() -> None:
     assert statuses == Counter({"verified": 129, "excluded": 6, "needs_review": 1})
     assert floor == 121
 
-    REGISTRY.write_text(
-        json.dumps(registry, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
+    REGISTRY.write_bytes(
+        (json.dumps(registry, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
     )
     print("registry.json source-yield sample finalized")
     print("sample_count=20")
