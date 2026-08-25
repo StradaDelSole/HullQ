@@ -239,9 +239,9 @@ RESEARCH_LOG: dict[str, dict[str, Any]] = {
                 "503 service unavailable",
             ),
         ],
-        "subject_outcome": "in_scope_identity",
+        "subject_outcome": "out_of_scope",
         "evidence_strength": "strong_source",
-        "outcome_rationale": "Jeanneau Owners Network (owners' association) directly confirms the Legende/Sun Legende One Ton racing derivative as a Jeanneau production design family from 1984.",
+        "outcome_rationale": "On independent re-review, the Jeanneau Owners Network account describes 'Legende'/'Legend' as a custom, modified-mould One Tonner racing conversion that preceded and is distinct from the later production Sun Legende 41 -- an individual prototype/racing boat rather than a named reusable production model, class or design-family. Reclassified conservatively from an earlier in_scope_identity determination that overstated this as a production design family; the retained qualifying evidence does not directly support that exact reusable identity level for this candidate subject.",
     },
     "Q116909767": {  # Jeanneau Yachts 57
         "searches": ["Jeanneau Yachts 57 official specifications"],
@@ -672,6 +672,7 @@ RESEARCH_LOG: dict[str, dict[str, Any]] = {
         "searches": [
             'Beneteau "First 40.7" OR "Beneteau 1 Ton" 1990s One Ton Cup racer',
             'beneteau.com "1 Ton" first 40 evolution 1983 archive heritage',
+            'Groupe Finot "Beneteau" "1 Ton" OR "First 40 Evolution" design portfolio',
         ],
         "evaluations": [
             _cite(
@@ -695,7 +696,7 @@ RESEARCH_LOG: dict[str, dict[str, Any]] = {
         ],
         "subject_outcome": "unresolved",
         "evidence_strength": "insufficient",
-        "outcome_rationale": "No qualifying source page was accessible within the 2-query budget. A promising Finot-Conq (designer) lead was found only via a third, over-budget query and was deliberately excluded from this determination as a self-corrected process deviation (see process_deviations).",
+        "outcome_rationale": "No qualifying source page was accessible within the evaluated queries' results. A third discovery-search query was also actually issued (see process_deviations) and is truthfully retained/counted here; its surfaced lead (a Finot-Conq designer-site redirect) was not fetched/evaluated and forms no part of the evidence basis for this determination.",
     },
     "Q19578127": {  # Trice (trimaran)
         "searches": [
@@ -760,9 +761,9 @@ RESEARCH_LOG: dict[str, dict[str, Any]] = {
                 "official Greene Marine page: 'Greene Marine began in 1978 with the building of Walter Greene's trimaran design Acapella'; raced 1978 Round Britain (1st in class) then sailed by Mike Birch (renamed Olympus Photo) to win the first Route du Rhum",
             ),
         ],
-        "subject_outcome": "in_scope_identity",
+        "subject_outcome": "out_of_scope",
         "evidence_strength": "strong_source",
-        "outcome_rationale": "Greene Marine's own official history page (manufacturer/shipyard) directly and unambiguously identifies Acapella as Walter Greene's 1978 trimaran design.",
+        "outcome_rationale": "On independent re-review, Greene Marine's own official history page identifies Acapella as one individual 1978 trimaran hull (Walter Greene's design), later raced under the name Olympus Photo by Mike Birch to win the first Route du Rhum -- this documents a single vessel's build/racing/ownership history, not a named reusable production model, class or design-family. Reclassified from an earlier in_scope_identity determination that treated the family of related Newick/Greene designs rather than this exact candidate subject; matches the out-of-scope individual-vessel pattern (as with Q21427576/Q1129854 in this same sample).",
     },
     "Q19576865": {  # Amatasi 27
         "searches": [
@@ -1018,6 +1019,7 @@ RESEARCH_LOG: dict[str, dict[str, Any]] = {
         "searches": [
             '"Emerald-class ferry" Washington State Ferries official',
             '"Emerald-class ferry" ship class builder',
+            "Birdon official site Emerald-class ferry Sydney",
         ],
         "evaluations": [
             _cite(
@@ -1050,7 +1052,7 @@ RESEARCH_LOG: dict[str, dict[str, Any]] = {
         ],
         "subject_outcome": "out_of_scope",
         "evidence_strength": "insufficient",
-        "outcome_rationale": "A specialist maritime trade publication unambiguously confirms this is a passenger catamaran ferry class, not a sailboat; only one independent specialist source was accessible within the (self-corrected, see process_deviations) 2-query budget.",
+        "outcome_rationale": "A specialist maritime trade publication unambiguously confirms this is a passenger catamaran ferry class, not a sailboat; only one independent specialist source was accessible. A third discovery-search query was also actually issued (see process_deviations) and is truthfully retained/counted here; its surfaced lead (Birdon's official site) was not fetched/evaluated and forms no part of the evidence basis for this determination.",
     },
     "Q1129854": {  # USA 17
         "searches": ['"USA 17" BMW Oracle Racing trimaran America\'s Cup 2010'],
@@ -1075,22 +1077,34 @@ PROCESS_DEVIATIONS = [
     {
         "qid": "Q119855214",
         "description": (
-            'A third discovery-search query (\'Groupe Finot "Beneteau" "1 Ton" OR "First 40 '
-            "Evolution\" design portfolio') was issued before the 2-query-per-candidate cap was "
-            "noticed. Its lead (a Finot-Conq designer-site redirect) was not fetched and is not "
-            "relied upon in this candidate's retained determination, which uses only the first 2 "
-            "queries and their resulting source-page evaluations."
+            "Three discovery-search queries were actually issued for this candidate -- one more "
+            "than the fixed 2-query-per-candidate ceiling in the controlling slice's external "
+            "research boundary. This was not caught during original assembly (which incorrectly "
+            "excluded the third query from the retained action ledger) and was corrected during "
+            "independent review. All three queries are now retained and mechanically counted in "
+            "this row's search_query_count/combined_action_count and in the global action totals "
+            "below; this candidate's per-candidate search-query ceiling is exceeded "
+            "(search_query_count=3 > 2). The third query's surfaced lead (a Finot-Conq "
+            "designer-site redirect) was never fetched/evaluated and forms no part of the "
+            "evidence basis for this candidate's subject_outcome/evidence_strength."
         ),
+        "actual_search_query_count": 3,
     },
     {
         "qid": "Q30681833",
         "description": (
-            "A third discovery-search query ('Birdon official site Emerald-class ferry Sydney') "
-            "was issued before the 2-query-per-candidate cap was noticed. Its lead (Birdon's "
-            "official site) was not fetched and is not relied upon in this candidate's retained "
-            "determination, which uses only the first 2 queries and their resulting source-page "
-            "evaluations."
+            "Three discovery-search queries were actually issued for this candidate -- one more "
+            "than the fixed 2-query-per-candidate ceiling in the controlling slice's external "
+            "research boundary. This was not caught during original assembly (which incorrectly "
+            "excluded the third query from the retained action ledger) and was corrected during "
+            "independent review. All three queries are now retained and mechanically counted in "
+            "this row's search_query_count/combined_action_count and in the global action totals "
+            "below; this candidate's per-candidate search-query ceiling is exceeded "
+            "(search_query_count=3 > 2). The third query's surfaced lead (Birdon's official site) "
+            "was never fetched/evaluated and forms no part of the evidence basis for this "
+            "candidate's subject_outcome/evidence_strength."
         ),
+        "actual_search_query_count": 3,
     },
 ]
 
@@ -1254,6 +1268,17 @@ def _build_report(verification_sample: dict[str, Any], verification_results: dic
         f"- access-blocked source-page count: {m['access_blocked_source_page_count']}",
         f"- conflicts/unresolved count: {m['conflicts_and_unresolved_count']}",
         "",
+        "## Per-candidate research-action ceiling compliance",
+        "",
+        f"- any_per_candidate_ceiling_exceeded: **{m['any_per_candidate_ceiling_exceeded']}**",
+    ]
+    if m["per_candidate_ceiling_violations"]:
+        for violation in m["per_candidate_ceiling_violations"]:
+            lines.append(f"  - `{violation['qid']}`: {'; '.join(violation['problems'])}")
+    else:
+        lines.append("  - none")
+    lines += [
+        "",
         "## Source-class distribution",
         "",
     ]
@@ -1298,6 +1323,7 @@ def run_verify() -> None:
         load_and_verify_immutable_boundaries,
         verify_artifact_digests_self_consistency,
         verify_metrics_self_consistency,
+        verify_process_deviations_self_consistency,
         verify_recommendation_self_consistency,
         verify_result_row_self_consistency,
         verify_sample_selection_self_consistency,
@@ -1330,13 +1356,18 @@ def run_verify() -> None:
 
     problems.extend(verify_metrics_self_consistency(verification_results))
     problems.extend(verify_recommendation_self_consistency(verification_results))
+    problems.extend(verify_process_deviations_self_consistency(verification_results))
 
-    if verification_results["recommendation"] != "FULL_409_VERIFICATION_CAMPAIGN_CANDIDATE":
+    if verification_results["metrics"].get("any_per_candidate_ceiling_exceeded"):
+        violations = verification_results["metrics"].get("per_candidate_ceiling_violations", [])
         print(
-            f"note: recommendation is {verification_results['recommendation']!r}, not the "
-            "FULL_409_VERIFICATION_CAMPAIGN_CANDIDATE this package was assembled with",
+            "note: per-candidate research-action ceiling was exceeded for "
+            f"{[v['qid'] for v in violations]!r} -- this is truthfully retained and reflected in "
+            "the mechanical recommendation below, not hidden",
             flush=True,
         )
+
+    print(f"recommendation: {verification_results['recommendation']}", flush=True)
 
     artifact_digests = json.loads(ARTIFACT_DIGESTS_PATH.read_bytes().decode("utf-8"))
     _validate_schema(artifact_digests, ARTIFACT_DIGESTS_SCHEMA_PATH, label="artifact_digests")

@@ -21,8 +21,8 @@
 
 ## Subject outcome totals
 
-- `in_scope_identity`: 13
-- `out_of_scope`: 6
+- `in_scope_identity`: 11
+- `out_of_scope`: 8
 - `conflict`: 0
 - `unresolved`: 11
 
@@ -34,18 +34,24 @@
 
 ## Threshold set (24 prior plausible+ambiguous candidates)
 
-- independently supported in_scope_identity: **13** (threshold >=12)
-- strong_source in_scope_identity: **12** (threshold >=8)
+- independently supported in_scope_identity: **11** (threshold >=12)
+- strong_source in_scope_identity: **10** (threshold >=8)
 - median combined actions (independently supported): **2.0** (ceiling <=4)
 
 ## Research-action totals
 
-- search_query_count_total: **48** (ceiling 60)
+- search_query_count_total: **50** (ceiling 60)
 - source_page_evaluation_count_total: **71** (ceiling 120)
-- combined_research_action_count_total: **119** (ceiling 180)
-- count hitting per-candidate budget cap: 8
+- combined_research_action_count_total: **121** (ceiling 180)
+- count hitting per-candidate budget cap: 9
 - access-blocked source-page count: 29
 - conflicts/unresolved count: 11
+
+## Per-candidate research-action ceiling compliance
+
+- any_per_candidate_ceiling_exceeded: **True**
+  - `Q119855214`: search_query_count=3 exceeds ceiling 2
+  - `Q30681833`: search_query_count=3 exceeds ceiling 2
 
 ## Source-class distribution
 
@@ -59,12 +65,12 @@
 
 ## Recommendation (precommitted, mechanical rule)
 
-- **FULL_409_VERIFICATION_CAMPAIGN_CANDIDATE**
+- **LOW_INDEPENDENT_VERIFICATION_YIELD**
 
 ## Process deviations
 
-- `Q119855214`: A third discovery-search query ('Groupe Finot "Beneteau" "1 Ton" OR "First 40 Evolution" design portfolio') was issued before the 2-query-per-candidate cap was noticed. Its lead (a Finot-Conq designer-site redirect) was not fetched and is not relied upon in this candidate's retained determination, which uses only the first 2 queries and their resulting source-page evaluations.
-- `Q30681833`: A third discovery-search query ('Birdon official site Emerald-class ferry Sydney') was issued before the 2-query-per-candidate cap was noticed. Its lead (Birdon's official site) was not fetched and is not relied upon in this candidate's retained determination, which uses only the first 2 queries and their resulting source-page evaluations.
+- `Q119855214`: Three discovery-search queries were actually issued for this candidate -- one more than the fixed 2-query-per-candidate ceiling in the controlling slice's external research boundary. This was not caught during original assembly (which incorrectly excluded the third query from the retained action ledger) and was corrected during independent review. All three queries are now retained and mechanically counted in this row's search_query_count/combined_action_count and in the global action totals below; this candidate's per-candidate search-query ceiling is exceeded (search_query_count=3 > 2). The third query's surfaced lead (a Finot-Conq designer-site redirect) was never fetched/evaluated and forms no part of the evidence basis for this candidate's subject_outcome/evidence_strength.
+- `Q30681833`: Three discovery-search queries were actually issued for this candidate -- one more than the fixed 2-query-per-candidate ceiling in the controlling slice's external research boundary. This was not caught during original assembly (which incorrectly excluded the third query from the retained action ledger) and was corrected during independent review. All three queries are now retained and mechanically counted in this row's search_query_count/combined_action_count and in the global action totals below; this candidate's per-candidate search-query ceiling is exceeded (search_query_count=3 > 2). The third query's surfaced lead (Birdon's official site) was never fetched/evaluated and forms no part of the evidence basis for this candidate's subject_outcome/evidence_strength.
 
 ## Scope confirmation
 

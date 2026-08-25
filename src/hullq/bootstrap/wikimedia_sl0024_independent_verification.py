@@ -90,13 +90,16 @@ __all__ = [
     "compute_evidence_strength_from_citations",
     "compute_metrics",
     "compute_qid_sha256",
+    "detect_action_ceiling_violations",
     "determine_recommendation",
     "load_and_verify_immutable_boundaries",
     "select_deterministic_sample",
     "validate_action_ceilings",
+    "validate_action_count_arithmetic",
     "validate_outcome_evidence_consistency",
     "verify_artifact_digests_self_consistency",
     "verify_metrics_self_consistency",
+    "verify_process_deviations_self_consistency",
     "verify_recommendation_self_consistency",
     "verify_result_row_self_consistency",
     "verify_sample_selection_self_consistency",
@@ -541,11 +544,40 @@ GLOBAL_SOURCE_EVALUATION_CEILING = 120
 GLOBAL_COMBINED_ACTION_CEILING = 180
 
 
-def validate_action_ceilings(
+def validate_action_count_arithmetic(
     *, search_query_count: int, source_page_evaluation_count: int, combined_action_count: int
 ) -> list[str]:
-    """Validate one candidate's retained action counts against the fixed
-    per-candidate ceilings and internal arithmetic consistency."""
+    """Hard data-integrity check only: ``combined_action_count`` must equal
+    the sum of ``search_query_count`` and ``source_page_evaluation_count``.
+
+    Unlike a per-candidate ceiling being exceeded (see
+    ``detect_action_ceiling_violations``), an arithmetic mismatch is never a
+    truthfully-retained real-world outcome -- it is an internally impossible
+    (corrupted or fabricated) action count and must fail closed wherever it
+    is found."""
+    if combined_action_count != search_query_count + source_page_evaluation_count:
+        return [
+            f"combined_action_count={combined_action_count} != search_query_count"
+            f"({search_query_count}) + source_page_evaluation_count({source_page_evaluation_count})"
+        ]
+    return []
+
+
+def detect_action_ceiling_violations(
+    *, search_query_count: int, source_page_evaluation_count: int, combined_action_count: int
+) -> list[str]:
+    """Detect (never raise) whether one candidate's *actually retained*
+    action counts exceed a fixed per-candidate ceiling.
+
+    A real research action that was actually executed must still be
+    truthfully retained and mechanically counted even when it pushes a
+    candidate over its ceiling -- it must never be hidden, discarded from the
+    ledger, or excluded merely because its lead went unused. This function
+    only *detects* such a violation for downstream reporting/metrics/
+    recommendation purposes; see ``build_verification_results_document`` and
+    ``compute_metrics`` for how a detected violation is retained and flows
+    into the precommitted recommendation rule instead of hard-failing
+    assembly."""
     problems: list[str] = []
     if search_query_count > MAX_SEARCH_QUERIES_PER_CANDIDATE:
         problems.append(
@@ -562,12 +594,31 @@ def validate_action_ceilings(
             f"combined_action_count={combined_action_count} exceeds ceiling "
             f"{MAX_COMBINED_ACTIONS_PER_CANDIDATE}"
         )
-    if combined_action_count != search_query_count + source_page_evaluation_count:
-        problems.append(
-            f"combined_action_count={combined_action_count} != search_query_count"
-            f"({search_query_count}) + source_page_evaluation_count({source_page_evaluation_count})"
-        )
     return problems
+
+
+def validate_action_ceilings(
+    *, search_query_count: int, source_page_evaluation_count: int, combined_action_count: int
+) -> list[str]:
+    """Full report of one candidate's retained action-count problems: both
+    per-candidate ceiling exceedances (see ``detect_action_ceiling_violations``)
+    and arithmetic inconsistency (see ``validate_action_count_arithmetic``),
+    combined for convenience/reporting. Most call sites that need to treat
+    these two categories differently (a real ceiling breach is retained and
+    reported, never hard-failed; an arithmetic mismatch always hard-fails)
+    should call the two more specific functions directly instead."""
+    return [
+        *detect_action_ceiling_violations(
+            search_query_count=search_query_count,
+            source_page_evaluation_count=source_page_evaluation_count,
+            combined_action_count=combined_action_count,
+        ),
+        *validate_action_count_arithmetic(
+            search_query_count=search_query_count,
+            source_page_evaluation_count=source_page_evaluation_count,
+            combined_action_count=combined_action_count,
+        ),
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -620,6 +671,7 @@ def compute_metrics(results: Sequence[dict[str, Any]]) -> dict[str, Any]:
     combined_total = 0
     hit_cap_count = 0
     per_candidate_actions: list[int] = []
+    per_candidate_ceiling_violations: list[dict[str, Any]] = []
 
     independently_supported_actions_24: list[int] = []
     independently_supported_count_24 = 0
@@ -646,6 +698,16 @@ def compute_metrics(results: Sequence[dict[str, Any]]) -> dict[str, Any]:
         per_candidate_actions.append(row["combined_action_count"])
         if row.get("hit_budget_cap"):
             hit_cap_count += 1
+
+        row_ceiling_problems = detect_action_ceiling_violations(
+            search_query_count=row["search_query_count"],
+            source_page_evaluation_count=row["source_page_evaluation_count"],
+            combined_action_count=row["combined_action_count"],
+        )
+        if row_ceiling_problems:
+            per_candidate_ceiling_violations.append(
+                {"qid": row["qid"], "problems": row_ceiling_problems}
+            )
 
         is_independently_supported_in_scope = outcome == str(
             SubjectOutcome.IN_SCOPE_IDENTITY
@@ -701,6 +763,8 @@ def compute_metrics(results: Sequence[dict[str, Any]]) -> dict[str, Any]:
         "count_hitting_per_candidate_budget_cap": hit_cap_count,
         "access_blocked_source_page_count": access_blocked_count,
         "conflicts_and_unresolved_count": conflicts_unresolved_count,
+        "per_candidate_ceiling_violations": per_candidate_ceiling_violations,
+        "any_per_candidate_ceiling_exceeded": bool(per_candidate_ceiling_violations),
     }
 
 
@@ -725,6 +789,7 @@ def determine_recommendation(
         metrics["search_query_count_total"] > GLOBAL_SEARCH_QUERY_CEILING
         or metrics["source_page_evaluation_count_total"] > GLOBAL_SOURCE_EVALUATION_CEILING
         or metrics["combined_research_action_count_total"] > GLOBAL_COMBINED_ACTION_CEILING
+        or bool(metrics.get("any_per_candidate_ceiling_exceeded", False))
     )
     if median_actions > MAX_MEDIAN_ACTIONS_FOR_FULL_CAMPAIGN or ceiling_exceeded:
         return Recommendation.TOO_EXPENSIVE_FOR_FULL_CAMPAIGN
@@ -783,9 +848,19 @@ def build_verification_results_document(
     """Assemble the retained ``verification_results.json`` document.
 
     Validates that ``results`` exactly covers the selected sample (no
-    missing/extra/duplicate QIDs), that every row's action ceilings and
-    outcome/evidence-strength consistency hold, then mechanically computes
-    metrics and the precommitted recommendation.
+    missing/extra/duplicate QIDs), that every row's retained action-count
+    fields are arithmetically consistent with its own actually-issued
+    search-query/evidence-citation lists, and that outcome/evidence-strength
+    consistency holds, then mechanically computes metrics (including any
+    per-candidate/global research-action ceiling violations) and the
+    precommitted recommendation.
+
+    A candidate whose *actually issued* action counts truthfully exceed a
+    fixed per-candidate ceiling is NOT rejected here -- the actions really
+    happened and must be retained and mechanically counted, never hidden or
+    discarded (see ``detect_action_ceiling_violations``/
+    ``compute_metrics``). Only an internally impossible (arithmetically
+    inconsistent) action count fails closed at assembly time.
     """
     selected_set = frozenset(sample.selected_qids)
     result_qids = [row["qid"] for row in results]
@@ -802,13 +877,27 @@ def build_verification_results_document(
         )
 
     for row in results:
-        problems = validate_action_ceilings(
+        arithmetic_problems = validate_action_count_arithmetic(
             search_query_count=row["search_query_count"],
             source_page_evaluation_count=row["source_page_evaluation_count"],
             combined_action_count=row["combined_action_count"],
         )
-        if problems:
-            raise ResearchActionCeilingError(f"candidate {row['qid']}: {'; '.join(problems)}")
+        if arithmetic_problems:
+            raise ResearchActionCeilingError(
+                f"candidate {row['qid']}: {'; '.join(arithmetic_problems)}"
+            )
+        if len(row.get("search_queries", [])) != row["search_query_count"]:
+            raise ValueError(
+                f"candidate {row['qid']}: search_query_count={row['search_query_count']} != "
+                f"len(search_queries)={len(row.get('search_queries', []))} -- every actually "
+                "issued query must be machine-addressable and mechanically counted"
+            )
+        if len(row.get("evidence_citations", [])) != row["source_page_evaluation_count"]:
+            raise ValueError(
+                f"candidate {row['qid']}: source_page_evaluation_count="
+                f"{row['source_page_evaluation_count']} != len(evidence_citations)="
+                f"{len(row.get('evidence_citations', []))}"
+            )
         recomputed_strength = compute_evidence_strength_from_citations(
             row.get("evidence_citations", [])
         )
@@ -822,6 +911,23 @@ def build_verification_results_document(
         )
         if consistency_problems:
             raise ValueError(f"candidate {row['qid']}: {'; '.join(consistency_problems)}")
+
+    results_by_qid = {row["qid"]: row for row in results}
+    for deviation in process_deviations:
+        dev_qid = deviation["qid"]
+        dev_row = results_by_qid.get(dev_qid)
+        if dev_row is None:
+            raise ValueError(f"process_deviations references unknown qid {dev_qid!r}")
+        actual_search_query_count = deviation.get("actual_search_query_count")
+        if (
+            actual_search_query_count is not None
+            and actual_search_query_count != dev_row["search_query_count"]
+        ):
+            raise ValueError(
+                f"process_deviations for {dev_qid}: actual_search_query_count="
+                f"{actual_search_query_count} != retained results row "
+                f"search_query_count={dev_row['search_query_count']}"
+            )
 
     metrics = compute_metrics(results)
     if metrics["search_query_count_total"] > GLOBAL_SEARCH_QUERY_CEILING:
@@ -914,15 +1020,37 @@ def verify_sample_selection_self_consistency(
 
 
 def verify_result_row_self_consistency(row: dict[str, Any]) -> list[str]:
-    """Recompute one retained result row's action-ceiling and
-    outcome/evidence-strength consistency independently."""
+    """Recompute one retained result row's action-count arithmetic and
+    outcome/evidence-strength consistency independently.
+
+    A per-candidate ceiling being exceeded is intentionally NOT treated as a
+    row-level mismatch here (an actually-executed over-cap action is a
+    truthful fact, not a self-consistency defect) -- it is instead
+    mechanically detected via ``compute_metrics``/``verify_metrics_self_consistency``
+    and must correctly flow into the retained recommendation (see
+    ``verify_recommendation_self_consistency``). What IS checked here is that
+    every actually issued action is honestly reflected in the counted
+    fields: an over-budget query cannot be silently omitted by simply
+    understating ``search_query_count`` relative to the real
+    ``search_queries``/``evidence_citations`` lists.
+    """
     mismatches = list(
-        validate_action_ceilings(
+        validate_action_count_arithmetic(
             search_query_count=row["search_query_count"],
             source_page_evaluation_count=row["source_page_evaluation_count"],
             combined_action_count=row["combined_action_count"],
         )
     )
+    if len(row.get("search_queries", [])) != row["search_query_count"]:
+        mismatches.append(
+            f"search_query_count={row['search_query_count']} != "
+            f"len(search_queries)={len(row.get('search_queries', []))}"
+        )
+    if len(row.get("evidence_citations", [])) != row["source_page_evaluation_count"]:
+        mismatches.append(
+            f"source_page_evaluation_count={row['source_page_evaluation_count']} != "
+            f"len(evidence_citations)={len(row.get('evidence_citations', []))}"
+        )
     recomputed_strength = compute_evidence_strength_from_citations(
         row.get("evidence_citations", [])
     )
@@ -970,6 +1098,33 @@ def verify_recommendation_self_consistency(verification_results: dict[str, Any])
     stored = verification_results.get("recommendation")
     if stored != str(recomputed):
         mismatches.append(f"recommendation={stored!r} != recomputed {str(recomputed)!r}")
+    return mismatches
+
+
+def verify_process_deviations_self_consistency(verification_results: dict[str, Any]) -> list[str]:
+    """Cross-check every retained ``process_deviations`` entry against its
+    corresponding ``results`` row so a process deviation cannot silently
+    disagree with the actually-counted action ledger (e.g. a note claiming a
+    query was issued while the row's own ``search_query_count`` says
+    otherwise)."""
+    mismatches: list[str] = []
+    results_by_qid = {row["qid"]: row for row in verification_results.get("results", [])}
+    for deviation in verification_results.get("process_deviations", []):
+        qid = deviation.get("qid")
+        row = results_by_qid.get(qid)
+        if row is None:
+            mismatches.append(f"process_deviations references unknown qid {qid!r}")
+            continue
+        actual_search_query_count = deviation.get("actual_search_query_count")
+        if (
+            actual_search_query_count is not None
+            and actual_search_query_count != row["search_query_count"]
+        ):
+            mismatches.append(
+                f"process_deviations for {qid}: actual_search_query_count="
+                f"{actual_search_query_count} != retained results row "
+                f"search_query_count={row['search_query_count']}"
+            )
     return mismatches
 
 

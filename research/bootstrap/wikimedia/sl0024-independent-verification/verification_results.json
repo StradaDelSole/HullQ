@@ -166,9 +166,9 @@
       "source_page_evaluation_count": 2,
       "combined_action_count": 4,
       "hit_budget_cap": false,
-      "subject_outcome": "in_scope_identity",
+      "subject_outcome": "out_of_scope",
       "evidence_strength": "strong_source",
-      "outcome_rationale": "Jeanneau Owners Network (owners' association) directly confirms the Legende/Sun Legende One Ton racing derivative as a Jeanneau production design family from 1984."
+      "outcome_rationale": "On independent re-review, the Jeanneau Owners Network account describes 'Legende'/'Legend' as a custom, modified-mould One Tonner racing conversion that preceded and is distinct from the later production Sun Legende 41 -- an individual prototype/racing boat rather than a named reusable production model, class or design-family. Reclassified conservatively from an earlier in_scope_identity determination that overstated this as a production design family; the retained qualifying evidence does not directly support that exact reusable identity level for this candidate subject."
     },
     {
       "qid": "Q116909767",
@@ -802,9 +802,10 @@
       "prior_tag": "ambiguous",
       "search_queries": [
         "Beneteau \"First 40.7\" OR \"Beneteau 1 Ton\" 1990s One Ton Cup racer",
-        "beneteau.com \"1 Ton\" first 40 evolution 1983 archive heritage"
+        "beneteau.com \"1 Ton\" first 40 evolution 1983 archive heritage",
+        "Groupe Finot \"Beneteau\" \"1 Ton\" OR \"First 40 Evolution\" design portfolio"
       ],
-      "search_query_count": 2,
+      "search_query_count": 3,
       "evidence_citations": [
         {
           "citation_id": "Q119855214-c1",
@@ -832,11 +833,11 @@
         }
       ],
       "source_page_evaluation_count": 2,
-      "combined_action_count": 4,
+      "combined_action_count": 5,
       "hit_budget_cap": false,
       "subject_outcome": "unresolved",
       "evidence_strength": "insufficient",
-      "outcome_rationale": "No qualifying source page was accessible within the 2-query budget. A promising Finot-Conq (designer) lead was found only via a third, over-budget query and was deliberately excluded from this determination as a self-corrected process deviation (see process_deviations)."
+      "outcome_rationale": "No qualifying source page was accessible within the evaluated queries' results. A third discovery-search query was also actually issued (see process_deviations) and is truthfully retained/counted here; its surfaced lead (a Finot-Conq designer-site redirect) was not fetched/evaluated and forms no part of the evidence basis for this determination."
     },
     {
       "qid": "Q19578127",
@@ -928,9 +929,9 @@
       "source_page_evaluation_count": 2,
       "combined_action_count": 4,
       "hit_budget_cap": false,
-      "subject_outcome": "in_scope_identity",
+      "subject_outcome": "out_of_scope",
       "evidence_strength": "strong_source",
-      "outcome_rationale": "Greene Marine's own official history page (manufacturer/shipyard) directly and unambiguously identifies Acapella as Walter Greene's 1978 trimaran design."
+      "outcome_rationale": "On independent re-review, Greene Marine's own official history page identifies Acapella as one individual 1978 trimaran hull (Walter Greene's design), later raced under the name Olympus Photo by Mike Birch to win the first Route du Rhum -- this documents a single vessel's build/racing/ownership history, not a named reusable production model, class or design-family. Reclassified from an earlier in_scope_identity determination that treated the family of related Newick/Greene designs rather than this exact candidate subject; matches the out-of-scope individual-vessel pattern (as with Q21427576/Q1129854 in this same sample)."
     },
     {
       "qid": "Q19576865",
@@ -1293,9 +1294,10 @@
       "prior_tag": "obvious_out_of_scope",
       "search_queries": [
         "\"Emerald-class ferry\" Washington State Ferries official",
-        "\"Emerald-class ferry\" ship class builder"
+        "\"Emerald-class ferry\" ship class builder",
+        "Birdon official site Emerald-class ferry Sydney"
       ],
-      "search_query_count": 2,
+      "search_query_count": 3,
       "evidence_citations": [
         {
           "citation_id": "Q30681833-c1",
@@ -1335,11 +1337,11 @@
         }
       ],
       "source_page_evaluation_count": 3,
-      "combined_action_count": 5,
-      "hit_budget_cap": false,
+      "combined_action_count": 6,
+      "hit_budget_cap": true,
       "subject_outcome": "out_of_scope",
       "evidence_strength": "insufficient",
-      "outcome_rationale": "A specialist maritime trade publication unambiguously confirms this is a passenger catamaran ferry class, not a sailboat; only one independent specialist source was accessible within the (self-corrected, see process_deviations) 2-query budget."
+      "outcome_rationale": "A specialist maritime trade publication unambiguously confirms this is a passenger catamaran ferry class, not a sailboat; only one independent specialist source was accessible. A third discovery-search query was also actually issued (see process_deviations) and is truthfully retained/counted here; its surfaced lead (Birdon's official site) was not fetched/evaluated and forms no part of the evidence basis for this determination."
     },
     {
       "qid": "Q1129854",
@@ -1377,21 +1379,21 @@
       "obvious_out_of_scope": 6
     },
     "subject_outcome_counts": {
-      "in_scope_identity": 13,
-      "out_of_scope": 6,
+      "in_scope_identity": 11,
+      "out_of_scope": 8,
       "conflict": 0,
       "unresolved": 11
     },
     "subject_outcome_counts_by_prior_tag": {
       "plausible_model_or_class_lead": {
-        "in_scope_identity": 12,
-        "out_of_scope": 0,
+        "in_scope_identity": 11,
+        "out_of_scope": 1,
         "conflict": 0,
         "unresolved": 6
       },
       "ambiguous": {
-        "in_scope_identity": 1,
-        "out_of_scope": 2,
+        "in_scope_identity": 0,
+        "out_of_scope": 3,
         "conflict": 0,
         "unresolved": 3
       },
@@ -1424,10 +1426,10 @@
         "insufficient": 5
       }
     },
-    "independently_supported_in_scope_count": 13,
-    "strong_source_in_scope_count": 12,
-    "threshold_set_independently_supported_in_scope_count": 13,
-    "threshold_set_strong_source_in_scope_count": 12,
+    "independently_supported_in_scope_count": 11,
+    "strong_source_in_scope_count": 10,
+    "threshold_set_independently_supported_in_scope_count": 11,
+    "threshold_set_strong_source_in_scope_count": 10,
     "source_class_counts": {
       "manufacturer_shipyard": 17,
       "original_manufacturer_brochure": 0,
@@ -1439,9 +1441,9 @@
       "high_quality_specialist_documentation": 14,
       "non_qualifying": 25
     },
-    "search_query_count_total": 48,
+    "search_query_count_total": 50,
     "source_page_evaluation_count_total": 71,
-    "combined_research_action_count_total": 119,
+    "combined_research_action_count_total": 121,
     "per_candidate_research_action_counts": [
       6,
       5,
@@ -1461,7 +1463,7 @@
       2,
       2,
       6,
-      4,
+      5,
       5,
       4,
       6,
@@ -1471,23 +1473,40 @@
       4,
       6,
       5,
-      5,
+      6,
       2
     ],
     "median_combined_actions_independently_supported_threshold_set": 2.0,
-    "count_hitting_per_candidate_budget_cap": 8,
+    "count_hitting_per_candidate_budget_cap": 9,
     "access_blocked_source_page_count": 29,
-    "conflicts_and_unresolved_count": 11
+    "conflicts_and_unresolved_count": 11,
+    "per_candidate_ceiling_violations": [
+      {
+        "qid": "Q119855214",
+        "problems": [
+          "search_query_count=3 exceeds ceiling 2"
+        ]
+      },
+      {
+        "qid": "Q30681833",
+        "problems": [
+          "search_query_count=3 exceeds ceiling 2"
+        ]
+      }
+    ],
+    "any_per_candidate_ceiling_exceeded": true
   },
-  "recommendation": "FULL_409_VERIFICATION_CAMPAIGN_CANDIDATE",
+  "recommendation": "LOW_INDEPENDENT_VERIFICATION_YIELD",
   "process_deviations": [
     {
       "qid": "Q119855214",
-      "description": "A third discovery-search query ('Groupe Finot \"Beneteau\" \"1 Ton\" OR \"First 40 Evolution\" design portfolio') was issued before the 2-query-per-candidate cap was noticed. Its lead (a Finot-Conq designer-site redirect) was not fetched and is not relied upon in this candidate's retained determination, which uses only the first 2 queries and their resulting source-page evaluations."
+      "description": "Three discovery-search queries were actually issued for this candidate -- one more than the fixed 2-query-per-candidate ceiling in the controlling slice's external research boundary. This was not caught during original assembly (which incorrectly excluded the third query from the retained action ledger) and was corrected during independent review. All three queries are now retained and mechanically counted in this row's search_query_count/combined_action_count and in the global action totals below; this candidate's per-candidate search-query ceiling is exceeded (search_query_count=3 > 2). The third query's surfaced lead (a Finot-Conq designer-site redirect) was never fetched/evaluated and forms no part of the evidence basis for this candidate's subject_outcome/evidence_strength.",
+      "actual_search_query_count": 3
     },
     {
       "qid": "Q30681833",
-      "description": "A third discovery-search query ('Birdon official site Emerald-class ferry Sydney') was issued before the 2-query-per-candidate cap was noticed. Its lead (Birdon's official site) was not fetched and is not relied upon in this candidate's retained determination, which uses only the first 2 queries and their resulting source-page evaluations."
+      "description": "Three discovery-search queries were actually issued for this candidate -- one more than the fixed 2-query-per-candidate ceiling in the controlling slice's external research boundary. This was not caught during original assembly (which incorrectly excluded the third query from the retained action ledger) and was corrected during independent review. All three queries are now retained and mechanically counted in this row's search_query_count/combined_action_count and in the global action totals below; this candidate's per-candidate search-query ceiling is exceeded (search_query_count=3 > 2). The third query's surfaced lead (Birdon's official site) was never fetched/evaluated and forms no part of the evidence basis for this candidate's subject_outcome/evidence_strength.",
+      "actual_search_query_count": 3
     }
   ]
 }

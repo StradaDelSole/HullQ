@@ -17,11 +17,15 @@ from hullq.bootstrap.wikimedia_sl0024_independent_verification import (
     compute_evidence_strength_from_citations,
     compute_metrics,
     compute_qid_sha256,
+    detect_action_ceiling_violations,
     determine_recommendation,
     load_and_verify_immutable_boundaries,
     select_deterministic_sample,
     validate_action_ceilings,
+    validate_action_count_arithmetic,
     validate_outcome_evidence_consistency,
+    verify_process_deviations_self_consistency,
+    verify_result_row_self_consistency,
 )
 
 
@@ -299,6 +303,7 @@ def _result_row(
     return {
         "qid": qid,
         "prior_tag": tag,
+        "search_queries": [f"{qid} query {i}" for i in range(search)],
         "search_query_count": search,
         "source_page_evaluation_count": evals,
         "combined_action_count": combined,
@@ -470,7 +475,13 @@ def test_build_verification_results_document_fails_closed_on_missing_result() ->
         )
 
 
-def test_build_verification_results_document_fails_closed_on_ceiling_breach() -> None:
+def test_build_verification_results_document_records_per_candidate_ceiling_violation_without_raising() -> (
+    None
+):
+    """An actually-issued over-budget query must be truthfully retained and
+    mechanically counted, never hidden or discarded -- so a per-candidate
+    ceiling breach does not by itself raise; it is recorded in metrics and
+    must feed the precommitted recommendation instead."""
     row = _result_row(
         "Q1",
         "plausible_model_or_class_lead",
@@ -479,6 +490,32 @@ def test_build_verification_results_document_fails_closed_on_ceiling_breach() ->
         search=3,
         evals=0,
     )
+    doc = build_verification_results_document(
+        generated_at="2026-01-01T00:00:00Z",
+        sample=_sample_stub(),
+        results=[row],
+        rights_access_ok=True,
+        process_deviations=[],
+    )
+    assert doc["metrics"]["any_per_candidate_ceiling_exceeded"] is True
+    assert doc["metrics"]["per_candidate_ceiling_violations"] == [
+        {"qid": "Q1", "problems": ["search_query_count=3 exceeds ceiling 2"]}
+    ]
+
+
+def test_build_verification_results_document_fails_closed_on_arithmetic_mismatch() -> None:
+    """Unlike a mere ceiling breach, an internally impossible action count
+    (combined != search + evaluations) is a data-integrity defect and always
+    hard-fails at assembly."""
+    row = _result_row(
+        "Q1",
+        "plausible_model_or_class_lead",
+        str(SubjectOutcome.UNRESOLVED),
+        str(EvidenceStrength.INSUFFICIENT),
+        search=1,
+        evals=1,
+    )
+    row["combined_action_count"] = 5
     with pytest.raises(ResearchActionCeilingError):
         build_verification_results_document(
             generated_at="2026-01-01T00:00:00Z",
@@ -489,6 +526,121 @@ def test_build_verification_results_document_fails_closed_on_ceiling_breach() ->
         )
 
 
+def test_build_verification_results_document_fails_closed_on_omitted_search_query() -> None:
+    """An actually issued query cannot be silently omitted from the counted
+    ledger by understating search_query_count relative to search_queries."""
+    row = _result_row(
+        "Q1",
+        "plausible_model_or_class_lead",
+        str(SubjectOutcome.UNRESOLVED),
+        str(EvidenceStrength.INSUFFICIENT),
+        search=2,
+        evals=0,
+    )
+    row["search_queries"] = row["search_queries"][:1]  # 2 issued, only 1 retained
+    with pytest.raises(ValueError):
+        build_verification_results_document(
+            generated_at="2026-01-01T00:00:00Z",
+            sample=_sample_stub(),
+            results=[row],
+            rights_access_ok=True,
+            process_deviations=[],
+        )
+
+
+def test_build_verification_results_document_fails_closed_on_process_deviation_ledger_disagreement() -> (
+    None
+):
+    row = _result_row(
+        "Q1",
+        "plausible_model_or_class_lead",
+        str(SubjectOutcome.UNRESOLVED),
+        str(EvidenceStrength.INSUFFICIENT),
+        search=3,
+        evals=0,
+    )
+    with pytest.raises(ValueError):
+        build_verification_results_document(
+            generated_at="2026-01-01T00:00:00Z",
+            sample=_sample_stub(),
+            results=[row],
+            rights_access_ok=True,
+            process_deviations=[{"qid": "Q1", "description": "x", "actual_search_query_count": 2}],
+        )
+
+
+def test_determine_recommendation_too_expensive_on_per_candidate_ceiling() -> None:
+    """A per-candidate ceiling violation must feed the precommitted
+    recommendation rule exactly like a global ceiling violation, even when
+    yield/strong-source thresholds and the median are otherwise fine."""
+    metrics = {
+        "threshold_set_independently_supported_in_scope_count": 12,
+        "threshold_set_strong_source_in_scope_count": 8,
+        "median_combined_actions_independently_supported_threshold_set": 1,
+        "search_query_count_total": 1,
+        "source_page_evaluation_count_total": 1,
+        "combined_research_action_count_total": 2,
+        "any_per_candidate_ceiling_exceeded": True,
+    }
+    assert (
+        determine_recommendation(rights_access_ok=True, metrics=metrics)
+        == Recommendation.TOO_EXPENSIVE_FOR_FULL_CAMPAIGN
+    )
+
+
+def test_detect_action_ceiling_violations_never_reports_arithmetic() -> None:
+    """detect_action_ceiling_violations only reports over-cap policy
+    breaches, never the arithmetic-consistency defect (that is
+    validate_action_count_arithmetic's job)."""
+    assert (
+        detect_action_ceiling_violations(
+            search_query_count=1, source_page_evaluation_count=1, combined_action_count=5
+        )
+        == []
+    )
+    assert (
+        validate_action_count_arithmetic(
+            search_query_count=1, source_page_evaluation_count=1, combined_action_count=5
+        )
+        != []
+    )
+
+
+def test_verify_result_row_self_consistency_does_not_flag_truthful_ceiling_breach() -> None:
+    """A row whose actually-issued actions truly exceed the per-candidate
+    ceiling is not a row-level self-consistency defect (it's a real fact);
+    only mismatches between the counted fields and the actual lists, or
+    arithmetic inconsistency, are row-level mismatches."""
+    row = _result_row(
+        "Q1",
+        "plausible_model_or_class_lead",
+        str(SubjectOutcome.UNRESOLVED),
+        str(EvidenceStrength.INSUFFICIENT),
+        search=3,
+        evals=0,
+    )
+    assert verify_result_row_self_consistency(row) == []
+
+
+def test_verify_process_deviations_self_consistency_detects_ledger_disagreement() -> None:
+    verification_results = {
+        "results": [
+            _result_row(
+                "Q1",
+                "plausible_model_or_class_lead",
+                str(SubjectOutcome.UNRESOLVED),
+                str(EvidenceStrength.INSUFFICIENT),
+                search=3,
+                evals=0,
+            )
+        ],
+        "process_deviations": [{"qid": "Q1", "description": "x", "actual_search_query_count": 2}],
+    }
+    mismatches = verify_process_deviations_self_consistency(verification_results)
+    assert mismatches
+    assert "Q1" in mismatches[0]
+
+
 def test_build_verification_results_document_fails_closed_on_evidence_mismatch() -> None:
     row = _result_row(
         "Q1",
@@ -496,7 +648,8 @@ def test_build_verification_results_document_fails_closed_on_evidence_mismatch()
         str(SubjectOutcome.IN_SCOPE_IDENTITY),
         str(EvidenceStrength.STRONG_SOURCE),
     )
-    row["evidence_citations"] = []  # claims strong_source but has no supporting citation
+    # claims strong_source but the retained citation does not actually support identity
+    row["evidence_citations"][0]["supports_identity"] = False
     with pytest.raises(ValueError):
         build_verification_results_document(
             generated_at="2026-01-01T00:00:00Z",

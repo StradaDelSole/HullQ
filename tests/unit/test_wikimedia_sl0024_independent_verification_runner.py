@@ -296,3 +296,62 @@ def test_run_verify_fails_closed_on_missing_result_row(runner: Any, tmp_path: Pa
 
     with pytest.raises((SystemExit, jsonschema.exceptions.ValidationError)):
         runner.run_verify()
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0024 BLOCK amendment: truthful action accounting cannot be hidden
+# ---------------------------------------------------------------------------
+
+
+def test_run_verify_fails_closed_on_omitted_over_budget_query(runner: Any, tmp_path: Path) -> None:
+    """A real over-budget query cannot be hidden by understating
+    search_query_count relative to the actually-retained search_queries
+    list, even when combined_action_count is adjusted to stay internally
+    "consistent" with the understated count."""
+    _copy_retained_package(runner, tmp_path)
+    results_path = tmp_path / "verification_results.json"
+    results_doc = json.loads(results_path.read_text(encoding="utf-8"))
+    row = _first_result(results_doc, "Q119855214")  # actually has 3 retained search_queries
+    assert len(row["search_queries"]) == 3
+    row["search_query_count"] = 2
+    row["combined_action_count"] = 2 + row["source_page_evaluation_count"]
+    _write_json(results_path, results_doc)
+
+    with pytest.raises(SystemExit):
+        runner.run_verify()
+
+
+def test_run_verify_fails_closed_on_process_deviation_ledger_disagreement(
+    runner: Any, tmp_path: Path
+) -> None:
+    """A process_deviations note claiming a different actual_search_query_count
+    than the row's own retained search_query_count must be rejected."""
+    _copy_retained_package(runner, tmp_path)
+    results_path = tmp_path / "verification_results.json"
+    results_doc = json.loads(results_path.read_text(encoding="utf-8"))
+    dev = next(d for d in results_doc["process_deviations"] if d["qid"] == "Q119855214")
+    dev["actual_search_query_count"] = 2  # row truthfully retains 3
+    _write_json(results_path, results_doc)
+
+    with pytest.raises(SystemExit):
+        runner.run_verify()
+
+
+def test_run_verify_fails_closed_on_per_candidate_ceiling_flag_manipulation(
+    runner: Any, tmp_path: Path
+) -> None:
+    """A per-candidate research-action ceiling violation cannot be hidden by
+    tampering the retained ``any_per_candidate_ceiling_exceeded`` metrics
+    flag -- the offline verifier must mechanically recompute it fresh from
+    the actual per-row action counts and reject any drift, since this flag
+    also feeds the precommitted recommendation rule."""
+    _copy_retained_package(runner, tmp_path)
+    results_path = tmp_path / "verification_results.json"
+    results_doc = json.loads(results_path.read_text(encoding="utf-8"))
+    assert results_doc["metrics"]["any_per_candidate_ceiling_exceeded"] is True
+    results_doc["metrics"]["any_per_candidate_ceiling_exceeded"] = False
+    results_doc["metrics"]["per_candidate_ceiling_violations"] = []
+    _write_json(results_path, results_doc)
+
+    with pytest.raises(SystemExit):
+        runner.run_verify()

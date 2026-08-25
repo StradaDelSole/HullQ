@@ -2,10 +2,34 @@
 
 **ID:** SLICE-0024  
 **Type:** DESIGN_RESEARCH  
-**Status:** REVIEW  
+**Status:** BLOCKED  
 **Stage:** 3.2 — canonical identity breadth / independent lead verification economics  
 **Depends on:** SLICE-0023 accepted / DONE  
 **Blocks:** any full verification/admission campaign over the 409 SLICE-0023 incremental Wikimedia QID leads
+
+## Independent-review block (2026-08-25)
+
+Independent review found the original implementation handoff (`REVIEW`) was not defensible as delivered:
+
+1. two candidates (`Q119855214`, `Q30681833`) actually issued a third discovery-search query beyond the fixed 2-query-per-candidate ceiling, but the original assembly excluded those actually-issued queries from the mechanically counted action ledger instead of retaining/counting them;
+2. two evidence judgments overstated their retained qualifying evidence: `Q49142754` ("Acapella") documents one individual 1978 trimaran hull, not a reusable production model/class/design-family; `Q115815035` ("Legende 1 Ton") documents a custom modified-mould One Tonner racing conversion/prototype that preceded the (distinct) production Sun Legende 41, not a production design family in its own right.
+
+The retained package, offline verifier and tests were amended to: truthfully retain and mechanically count every actually-issued research action (never discard an executed action because its lead went unused); mechanically detect per-candidate (not just global) research-action ceiling violations and feed them into the precommitted recommendation rule; reclassify the two candidates above to `out_of_scope` per the individual-vessel/prototype exclusion; and recompute every metric, the prior-tag matrix and the recommendation from scratch. No new external web/search research was performed for this amendment.
+
+Corrected measured result (supersedes the original `REVIEW` handoff numbers below in the "Current next boundary" narrative in `docs/PROJECT_STATE.md`/`docs/slices/INDEX.md`):
+
+```text
+subject_outcome        in_scope_identity 11 / out_of_scope 8 / conflict 0 / unresolved 11
+threshold set (24 prior plausible+ambiguous candidates):
+  independently supported in_scope_identity   11  (>=12 required -- NOT MET)
+  of those, strong_source                     10  (>=8 required)
+  median combined actions (supported in-scope) 2.0  (<=4 required)
+global research actions   50 searches / 71 evaluations / 121 combined  (ceilings 60/120/180)
+per-candidate ceiling violations   Q119855214, Q30681833 (search_query_count=3 > 2 each)
+recommendation  LOW_INDEPENDENT_VERIFICATION_YIELD
+```
+
+The deterministic 18/6/6 sample selection, the pinned SLICE-0023/0018 boundaries, and 28 of the 30 candidates' original research/citations are unchanged. This slice does not satisfy its own acceptance criterion that "all 30 candidates receive a bounded research result without exceeding per-candidate/global action ceilings" (two candidates truthfully exceeded the per-candidate search-query ceiling), so the slice is handed off `BLOCKED`, not `REVIEW`. `LOW_INDEPENDENT_VERIFICATION_YIELD` is a research-only signal and does not itself authorize or forbid any future slice.
 
 ## Objective
 
