@@ -22,20 +22,47 @@ The GitHub ruleset protects `main` by requiring a pull request, the existing Ubu
 2. Enter the slice number, for example `0005`.
 3. The script synchronizes local `main` with `origin/main`, creates/reuses an isolated Git worktree and slice branch, and copies the Claude Code instruction to the clipboard.
 4. The script deliberately does **not** open, close, reload, or switch any VS Code window.
-5. When ready, explicitly open the sibling worktree (for example `HullQ-slice-0005`) in the VS Code window that should host Claude Code, then paste the copied instruction.
+5. Explicitly open the sibling worktree (for example `HullQ-slice-0005`) in the VS Code window that should host Claude Code.
+6. Start a **fresh Claude conversation**. If reusing the current Claude Code session/UI, run `/clear` first.
+7. Paste only the copied START_SLICE instruction. Do not paste the previous slice report/history unless the new slice explicitly requires it.
 
 The normal HullQ folder stays on `main`. Claude works in a sibling folder such as `HullQ-slice-0005`.
 
 Why VS Code opening is manual: Claude Code UI/session state can be tied to the current VS Code workspace. Automatically reusing a window can replace the current workspace and interrupt an existing Claude session; automatically opening a second window may also be unwanted. The workflow therefore prepares Git state only and leaves the UI decision to the project owner.
 
+### Token/context discipline during a slice
+
+HullQ uses one Claude session per slice by default.
+
+- Use `/context` when it is useful to see what is consuming context.
+- If the same slice becomes large, use `/compact` before continuing rather than carrying excessive exploratory history/logs through every subsequent turn.
+- A useful compact instruction preserves the controlling slice, decisions already made, changed files/current implementation state, validation/CI state, unresolved blockers and exact handoff requirements.
+- Do **not** `/clear` casually mid-slice; it is primarily a slice/task-boundary command.
+- Do not ask Claude to reread full project history merely for reassurance. The controlling slice identifies the required dependencies.
+
+Detailed rules: `docs/engineering/AI_TOKEN_EFFICIENCY.md`.
+
+### Review and amendments
+
+Independent review happens after Claude's pushed handoff.
+
+If an amendment is required:
+
+- continue in the same slice branch;
+- if the Claude context is already large, run `/compact` before pasting the amendment;
+- do not reload previous project background that is unrelated to the finding;
+- Claude applies only the requested amendment plus necessary tests/validation and reports a new exact HEAD.
+
 ### Finish a slice
 
-Only after the slice PR has been merged:
+Only after the slice PR has been merged, explicit owner acceptance has been recorded, and the separate closure is complete:
 
 1. Double-click `FINISH_SLICE.bat`.
 2. Enter the slice number.
 
 The script synchronizes local `main`. If GitHub CLI can confirm that the slice PR was merged and the worktree is clean, it also removes the old worktree and local slice branch. If merge status cannot be confirmed, nothing is deleted.
+
+After finishing, the next slice starts with a fresh Claude conversation; do not carry the completed slice chat forward.
 
 ## Single-writer rules
 
@@ -44,9 +71,9 @@ The script synchronizes local `main`. If GitHub CLI can confirm that the slice P
 - The master/architect does not write Claude's branch.
 - Claude does not write `main`, `master/...`, `review/...`, or another agent's branch.
 - While Claude is implementing an active slice, `main` is treated as frozen except for a deliberate blocker-resolution workflow.
-- Future architecture/spec work may be prepared on a separate `master/...` branch but is not merged while the implementation slice is active.
+- Future architecture/spec work may be prepared on a separate `master/...` or docs/maintenance branch but is not merged while the implementation slice is active.
 - Review findings go back to Claude; Claude fixes them on the same slice branch.
-- All implementation reaches `main` through PR, required CI, independent review, and project-owner acceptance.
+- All implementation reaches `main` through PR, required CI, independent review, explicit project-owner acceptance, and closure.
 - Never use `git pull origin main` from a feature branch merely to update local `main`.
 - Never use an old slice worktree as the base for the next slice.
 
@@ -58,7 +85,7 @@ The helper scripts are intentionally fail-safe:
 - they use `git pull --ff-only` for local main;
 - they never push or merge to `main`;
 - `START_SLICE.bat` never manipulates VS Code windows;
-- the finish script does not delete a worktree with uncommitted changes;
+- the finish script does not delete a worktree with substantive uncommitted changes;
 - cleanup is skipped unless a merged PR can be confirmed through GitHub CLI;
 - the setup script verifies the canonical repository before changing GitHub rules;
 - the setup script creates/updates one named ruleset and does not touch source files or branches.
