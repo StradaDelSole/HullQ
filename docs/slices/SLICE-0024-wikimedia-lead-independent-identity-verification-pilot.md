@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0024  
 **Type:** DESIGN_RESEARCH  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 3.2 — canonical identity breadth / independent lead verification economics  
 **Depends on:** SLICE-0023 accepted / DONE  
 **Blocks:** any full verification/admission campaign over the 409 SLICE-0023 incremental Wikimedia QID leads

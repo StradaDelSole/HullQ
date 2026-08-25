@@ -1,0 +1,607 @@
+{
+  "schema_version": "sl0024-verification-sample-v1",
+  "generated_at": "2026-08-25T00:00:00+00:00",
+  "pinned_inputs": {
+    "quality_sample_git_blob_sha1": "e26fde36c487f54344e4392ed7f3d7e735f07abf",
+    "discovery_manifest_git_blob_sha1": "9ddc5483d8b3d34e97aa36d5d72bd28fefe19c0e",
+    "source_assessment_git_blob_sha1": "d025ca31574d38b2bab03fd8211859c10440dd4b",
+    "unique_incremental_qid_lead_count": 409,
+    "quality_sample_total": 150,
+    "quality_tag_counts": {
+      "plausible_model_or_class_lead": 102,
+      "obvious_out_of_scope": 19,
+      "ambiguous": 29
+    },
+    "canonical_boat_model_count": 1770,
+    "historical_crosswalk_count": 1772
+  },
+  "stratum_caps": {
+    "plausible_model_or_class_lead": 18,
+    "ambiguous": 6,
+    "obvious_out_of_scope": 6
+  },
+  "sample_total": 30,
+  "selected_by_stratum_sha256_order": {
+    "plausible_model_or_class_lead": [
+      "Q110127838",
+      "Q113428758",
+      "Q115815035",
+      "Q116909767",
+      "Q117462175",
+      "Q120535525",
+      "Q114568600",
+      "Q113987990",
+      "Q114069597",
+      "Q122144001",
+      "Q111947098",
+      "Q115805019",
+      "Q114415084",
+      "Q116007147",
+      "Q116814703",
+      "Q115813745",
+      "Q116973712",
+      "Q122699417"
+    ],
+    "ambiguous": [
+      "Q119855214",
+      "Q19578127",
+      "Q49142754",
+      "Q19576865",
+      "Q21427576",
+      "Q3548153"
+    ],
+    "obvious_out_of_scope": [
+      "Q22570174",
+      "Q114353855",
+      "Q104851951",
+      "Q4826103",
+      "Q30681833",
+      "Q1129854"
+    ]
+  },
+  "selected_qids": [
+    "Q110127838",
+    "Q113428758",
+    "Q115815035",
+    "Q116909767",
+    "Q117462175",
+    "Q120535525",
+    "Q114568600",
+    "Q113987990",
+    "Q114069597",
+    "Q122144001",
+    "Q111947098",
+    "Q115805019",
+    "Q114415084",
+    "Q116007147",
+    "Q116814703",
+    "Q115813745",
+    "Q116973712",
+    "Q122699417",
+    "Q119855214",
+    "Q19578127",
+    "Q49142754",
+    "Q19576865",
+    "Q21427576",
+    "Q3548153",
+    "Q22570174",
+    "Q114353855",
+    "Q104851951",
+    "Q4826103",
+    "Q30681833",
+    "Q1129854"
+  ],
+  "selected_count": 30,
+  "candidates": [
+    {
+      "qid": "Q110127838",
+      "sha256": "005e7364e26859fbbacabbdd222a52d998b2150bb49a1f6df556c55230eaf21d",
+      "prior_tag": "plausible_model_or_class_lead",
+      "prior_rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class.",
+      "wikidata_label": "S2 35",
+      "wikidata_description_en": "sailboat class",
+      "sl0023_pages": [
+        {
+          "title": "S2 35",
+          "canonical_url": "https://en.wikipedia.org/wiki/S2_35",
+          "categories": [
+            "Keelboats"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q113428758",
+      "sha256": "00f8096885f41017c73d73b9aef3c27ceda587704906d02e79911b26d39abe43",
+      "prior_tag": "plausible_model_or_class_lead",
+      "prior_rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class.",
+      "wikidata_label": "Harbor 14",
+      "wikidata_description_en": "sailboat class",
+      "sl0023_pages": [
+        {
+          "title": "Harbor 14",
+          "canonical_url": "https://en.wikipedia.org/wiki/Harbor_14",
+          "categories": [
+            "Keelboats"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q115815035",
+      "sha256": "028f0f7e220d1e754766eb0edef84dec6bb21cfa57e85aa27bb9b5408503cb61",
+      "prior_tag": "plausible_model_or_class_lead",
+      "prior_rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class.",
+      "wikidata_label": "Legende 1 Ton",
+      "wikidata_description_en": "sailboat class",
+      "sl0023_pages": [
+        {
+          "title": "Legende 1 Ton",
+          "canonical_url": "https://en.wikipedia.org/wiki/Legende_1_Ton",
+          "categories": [
+            "Keelboats"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q116909767",
+      "sha256": "030b4368d7064efc1ee092eb061c5d2fc45fcb3e5be81d33b54fc32d27284abc",
+      "prior_tag": "plausible_model_or_class_lead",
+      "prior_rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class.",
+      "wikidata_label": "Jeanneau Yachts 57",
+      "wikidata_description_en": "sailboat class",
+      "sl0023_pages": [
+        {
+          "title": "Jeanneau Yachts 57",
+          "canonical_url": "https://en.wikipedia.org/wiki/Jeanneau_Yachts_57",
+          "categories": [
+            "Keelboats"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q117462175",
+      "sha256": "046464636eac3ba1c259e59d58402479376e25c530aa4f03aba313572cd1dab6",
+      "prior_tag": "plausible_model_or_class_lead",
+      "prior_rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class.",
+      "wikidata_label": "Lagoon 440",
+      "wikidata_description_en": "sailboat class",
+      "sl0023_pages": [
+        {
+          "title": "Lagoon 440",
+          "canonical_url": "https://en.wikipedia.org/wiki/Lagoon_440",
+          "categories": [
+            "Catamarans"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q120535525",
+      "sha256": "048f5ec17e24b4a1697034a018bf832ece7e5afd7e007ba42c406c41412f2cf0",
+      "prior_tag": "plausible_model_or_class_lead",
+      "prior_rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class.",
+      "wikidata_label": "Beneteau 34.7",
+      "wikidata_description_en": "sailboat class",
+      "sl0023_pages": [
+        {
+          "title": "Beneteau 34.7",
+          "canonical_url": "https://en.wikipedia.org/wiki/Beneteau_34.7",
+          "categories": [
+            "Keelboats"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q114568600",
+      "sha256": "057eb0486ff32e8fce6a70012b8b7b47c9f039eff88ab4d33d3993fc73ab5b78",
+      "prior_tag": "plausible_model_or_class_lead",
+      "prior_rationale": "Retained description 'French sailboat class' explicitly classifies this as a named sailboat class.",
+      "wikidata_label": "Espace 990",
+      "wikidata_description_en": "French sailboat class",
+      "sl0023_pages": [
+        {
+          "title": "Espace 990",
+          "canonical_url": "https://en.wikipedia.org/wiki/Espace_990",
+          "categories": [
+            "Keelboats"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q113987990",
+      "sha256": "05a3cc40438dea018ea264bdcde808425a65802efcb9e0e46a52282be5e72012",
+      "prior_tag": "plausible_model_or_class_lead",
+      "prior_rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class.",
+      "wikidata_label": "Newport 28-2",
+      "wikidata_description_en": "sailboat class",
+      "sl0023_pages": [
+        {
+          "title": "Newport 28-2",
+          "canonical_url": "https://en.wikipedia.org/wiki/Newport_28-2",
+          "categories": [
+            "Keelboats"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q114069597",
+      "sha256": "06ef2d495d739184f0a35217942f705deb24a9b6603c2188aa32cfb923ad7105",
+      "prior_tag": "plausible_model_or_class_lead",
+      "prior_rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class.",
+      "wikidata_label": "Newport 41S",
+      "wikidata_description_en": "sailboat class",
+      "sl0023_pages": [
+        {
+          "title": "Newport 41S",
+          "canonical_url": "https://en.wikipedia.org/wiki/Newport_41S",
+          "categories": [
+            "Keelboats"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q122144001",
+      "sha256": "0817ea82925ba33fe9f08628c53ebd5eb9f55c86f367edef4900ae19416fd66a",
+      "prior_tag": "plausible_model_or_class_lead",
+      "prior_rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class.",
+      "wikidata_label": "Beneteau Cyclades 51.5",
+      "wikidata_description_en": "sailboat class",
+      "sl0023_pages": [
+        {
+          "title": "Beneteau Cyclades 51.5",
+          "canonical_url": "https://en.wikipedia.org/wiki/Beneteau_Cyclades_51.5",
+          "categories": [
+            "Keelboats"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q111947098",
+      "sha256": "08aac0e26db9ab2ffebcca23ad6cfeea14bd7eba004a4e127e5deb99249895ae",
+      "prior_tag": "plausible_model_or_class_lead",
+      "prior_rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class.",
+      "wikidata_label": "Laguna 24S",
+      "wikidata_description_en": "sailboat class",
+      "sl0023_pages": [
+        {
+          "title": "Laguna 24S",
+          "canonical_url": "https://en.wikipedia.org/wiki/Laguna_24S",
+          "categories": [
+            "Keelboats"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q115805019",
+      "sha256": "08f4789443e5ae8843220e9d046e9909421573377dd71107e9c2786ce8b921b5",
+      "prior_tag": "plausible_model_or_class_lead",
+      "prior_rationale": "Retained description 'class of keelboat' explicitly classifies this as a named keelboat class.",
+      "wikidata_label": "RS21",
+      "wikidata_description_en": "class of keelboat",
+      "sl0023_pages": [
+        {
+          "title": "RS21",
+          "canonical_url": "https://en.wikipedia.org/wiki/RS21",
+          "categories": [
+            "Keelboats"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q114415084",
+      "sha256": "098c62953be99747b6ed8bc0c699d79f08b66ec527e449c5ab41bd4f3dd450a9",
+      "prior_tag": "plausible_model_or_class_lead",
+      "prior_rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class.",
+      "wikidata_label": "Sun Odyssey 32i",
+      "wikidata_description_en": "sailboat class",
+      "sl0023_pages": [
+        {
+          "title": "Sun Odyssey 32i",
+          "canonical_url": "https://en.wikipedia.org/wiki/Sun_Odyssey_32i",
+          "categories": [
+            "Keelboats"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q116007147",
+      "sha256": "09b991fa47621c793e8328ad5ca98dc48f347908cc58b6cef6d5b46b59635bf6",
+      "prior_tag": "plausible_model_or_class_lead",
+      "prior_rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class.",
+      "wikidata_label": "Sun Fast 31",
+      "wikidata_description_en": "sailboat class",
+      "sl0023_pages": [
+        {
+          "title": "Sun Fast 31",
+          "canonical_url": "https://en.wikipedia.org/wiki/Sun_Fast_31",
+          "categories": [
+            "Keelboats"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q116814703",
+      "sha256": "0a2da58a553f600ad09ea65b4d3977735972f2cf3cbfae482b7cfdf751d06cd4",
+      "prior_tag": "plausible_model_or_class_lead",
+      "prior_rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class.",
+      "wikidata_label": "Sun Odyssey 29.2",
+      "wikidata_description_en": "sailboat class",
+      "sl0023_pages": [
+        {
+          "title": "Sun Odyssey 29.2",
+          "canonical_url": "https://en.wikipedia.org/wiki/Sun_Odyssey_29.2",
+          "categories": [
+            "Keelboats"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q115813745",
+      "sha256": "0b60fb55d3295d859a282f899ba21252d0ab2ab70079237cf6b7089700dd534a",
+      "prior_tag": "plausible_model_or_class_lead",
+      "prior_rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class.",
+      "wikidata_label": "Voyage 12.5",
+      "wikidata_description_en": "sailboat class",
+      "sl0023_pages": [
+        {
+          "title": "Voyage 12.5",
+          "canonical_url": "https://en.wikipedia.org/wiki/Voyage_12.5",
+          "categories": [
+            "Keelboats"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q116973712",
+      "sha256": "0c1dfe5ac162c99e2a366fa5166a6537e535fcf41a765001c5b7cd10f76f768b",
+      "prior_tag": "plausible_model_or_class_lead",
+      "prior_rationale": "Retained description 'sailboat class' explicitly classifies this as a named sailboat class.",
+      "wikidata_label": "Jeanneau Yachts 60",
+      "wikidata_description_en": "sailboat class",
+      "sl0023_pages": [
+        {
+          "title": "Jeanneau Yachts 60",
+          "canonical_url": "https://en.wikipedia.org/wiki/Jeanneau_Yachts_60",
+          "categories": [
+            "Keelboats"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q122699417",
+      "sha256": "0e36215370ed7a68444a36b6722bb91e874251f824ceed36e72bdc17cde29371",
+      "prior_tag": "plausible_model_or_class_lead",
+      "prior_rationale": "Retained description 'Dutch catamaran sailboat class' explicitly classifies this as a named catamaran sailboat class.",
+      "wikidata_label": "Nacra F16",
+      "wikidata_description_en": "Dutch catamaran sailboat class",
+      "sl0023_pages": [
+        {
+          "title": "Nacra F16",
+          "canonical_url": "https://en.wikipedia.org/wiki/Nacra_F16",
+          "categories": [
+            "Catamarans"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q119855214",
+      "sha256": "02c0a747aeb0dbb5469fe4877a53d54e6b1645f8afec1729eaf24e4c516145fa",
+      "prior_tag": "ambiguous",
+      "prior_rationale": "Retained description 'French sailboat design' states nationality and 'design' but does not explicitly state model/class/production-series status for this entry on its own retained facts.",
+      "wikidata_label": "Beneteau 1 Ton",
+      "wikidata_description_en": "French sailboat design",
+      "sl0023_pages": [
+        {
+          "title": "Beneteau 1 Ton",
+          "canonical_url": "https://en.wikipedia.org/wiki/Beneteau_1_Ton",
+          "categories": [
+            "Keelboats"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q19578127",
+      "sha256": "121325a495e1dc4d99e790394c3be39fb9f5a4fb087be3c01658f07c2777a80c",
+      "prior_tag": "ambiguous",
+      "prior_rationale": "Retained description confirms a named designer and trimaran hull type but does not state whether this is a one-off prototype or a production class/series.",
+      "wikidata_label": "Trice",
+      "wikidata_description_en": "trimaran sailboat designed by Dick Newick",
+      "sl0023_pages": [
+        {
+          "title": "Trice (trimaran)",
+          "canonical_url": "https://en.wikipedia.org/wiki/Trice_(trimaran)",
+          "categories": [
+            "Trimarans"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q49142754",
+      "sha256": "122353c3dd5129e79b59d1f5f175b8b273b6878a21f9f9719bd40d4cdf3bd973",
+      "prior_tag": "ambiguous",
+      "prior_rationale": "Retained description is the single generic word 'trimaran'; insufficient detail to classify confidently.",
+      "wikidata_label": "Acapella",
+      "wikidata_description_en": "trimaran",
+      "sl0023_pages": [
+        {
+          "title": "Acapella (trimaran)",
+          "canonical_url": "https://en.wikipedia.org/wiki/Acapella_(trimaran)",
+          "categories": [
+            "Trimarans"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q19576865",
+      "sha256": "137e62cc050b5830b628c02ec248acc985ea429c323c35de137e109997646ce8",
+      "prior_tag": "ambiguous",
+      "prior_rationale": "No description or P31/P176/P287 signal is retained; the numbered label alone is insufficient to classify.",
+      "wikidata_label": "Amatasi 27",
+      "wikidata_description_en": null,
+      "sl0023_pages": [
+        {
+          "title": "Amatasi 27",
+          "canonical_url": "https://en.wikipedia.org/wiki/Amatasi_27",
+          "categories": [
+            "Catamarans"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q21427576",
+      "sha256": "155d711e6776d896f37830f7f7c979edda3bda72eceac8de0c6425b51593f3af",
+      "prior_tag": "ambiguous",
+      "prior_rationale": "Retained facts state only a year and trimaran hull type; insufficient production-series/class or individual-campaign detail to classify confidently.",
+      "wikidata_label": "Ultim Armand Thiery",
+      "wikidata_description_en": "2015 trimaran",
+      "sl0023_pages": [
+        {
+          "title": "Macif (trimaran)",
+          "canonical_url": "https://en.wikipedia.org/wiki/Macif_(trimaran)",
+          "categories": [
+            "Trimarans"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q3548153",
+      "sha256": "16063afe1d9dc9d8dadc51b550d3eb34e67b7015968b48eae0b48ff7e7b5e24c",
+      "prior_tag": "ambiguous",
+      "prior_rationale": "Retained description 'traditional outrigger boat from the Philippine island of Mindanao' names a traditional regional craft; retained facts do not establish production-sailboat model/class status within HullQ's scope.",
+      "wikidata_label": "vinta",
+      "wikidata_description_en": "traditional outrigger boat from the Philippine island of Mindanao",
+      "sl0023_pages": [
+        {
+          "title": "Vinta",
+          "canonical_url": "https://en.wikipedia.org/wiki/Vinta",
+          "categories": [
+            "Trimarans"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q22570174",
+      "sha256": "001d4979a32425ef8e2a850bf9ca57970dbee450fa050205fbf8227547efc7c7",
+      "prior_tag": "obvious_out_of_scope",
+      "prior_rationale": "Retained description ties this vessel to one specific 1981 Atlantic-crossing event, indicating an individual notable vessel rather than a reusable class.",
+      "wikidata_label": "Gautier II",
+      "wikidata_description_en": "trimaran that was sailed across the Atlantic ocean in 1981",
+      "sl0023_pages": [
+        {
+          "title": "Gautier II",
+          "canonical_url": "https://en.wikipedia.org/wiki/Gautier_II",
+          "categories": [
+            "Trimarans"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q114353855",
+      "sha256": "03035f90cb2a8c15d9a0d5d351dbc851281059f8df86d22583c50ad28b76a6b4",
+      "prior_tag": "obvious_out_of_scope",
+      "prior_rationale": "Retained description 'ship launched in 2021' ties this vessel to a single launch event, identifying an individual vessel rather than a reusable production class.",
+      "wikidata_label": "Ba\u00f1aderos Express",
+      "wikidata_description_en": "ship launched in 2021",
+      "sl0023_pages": [
+        {
+          "title": "Ba\u00f1aderos Express",
+          "canonical_url": "https://en.wikipedia.org/wiki/Ba\u00f1aderos_Express",
+          "categories": [
+            "Trimarans"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q104851951",
+      "sha256": "0722f60738566b6f72c7a5e4c8e495be67efe23b6dc17544f9af37d113104045",
+      "prior_tag": "obvious_out_of_scope",
+      "prior_rationale": "Retained description 'model of ferry operating in Sydney, Australia' identifies this as a ferry, an explicitly out-of-scope subject.",
+      "wikidata_label": "River-class ferry",
+      "wikidata_description_en": "model of ferry operating in Sydney, Australia",
+      "sl0023_pages": [
+        {
+          "title": "River-class ferry",
+          "canonical_url": "https://en.wikipedia.org/wiki/River-class_ferry",
+          "categories": [
+            "Catamarans"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q4826103",
+      "sha256": "0a4655fe11a6c2d36591dcd213807d80cfd25faf32836670ba311ce8abd2ab07",
+      "prior_tag": "obvious_out_of_scope",
+      "prior_rationale": "Retained description 'high-speed catamaran ferry' identifies this as a ferry, an explicitly out-of-scope subject.",
+      "wikidata_label": "Auto Express 86 Class",
+      "wikidata_description_en": "high-speed catamaran ferry",
+      "sl0023_pages": [
+        {
+          "title": "Auto Express 86-class ferry",
+          "canonical_url": "https://en.wikipedia.org/wiki/Auto_Express_86-class_ferry",
+          "categories": [
+            "Catamarans"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q30681833",
+      "sha256": "0b527bc0c468ffb82f46795c2674b1651102708d2a40fc007290276003028a0b",
+      "prior_tag": "obvious_out_of_scope",
+      "prior_rationale": "Retained description 'ship class' with the label explicitly naming a ferry class ('Emerald-class ferry') identifies this as a ferry, an explicitly out-of-scope subject.",
+      "wikidata_label": "Emerald-class ferry",
+      "wikidata_description_en": "ship class",
+      "sl0023_pages": [
+        {
+          "title": "Emerald-class ferry",
+          "canonical_url": "https://en.wikipedia.org/wiki/Emerald-class_ferry",
+          "categories": [
+            "Catamarans"
+          ]
+        }
+      ]
+    },
+    {
+      "qid": "Q1129854",
+      "sha256": "10eec7c283d6bd99b62f55e4d07179f011830163847ab3c3ca5ed956eaafdbed",
+      "prior_tag": "obvious_out_of_scope",
+      "prior_rationale": "Retained description states this trimaran was built specifically 'to challenge for the 2010 America's Cup', identifying it as an individual campaign vessel rather than a reusable production class.",
+      "wikidata_label": "USA 17",
+      "wikidata_description_en": "racing trimaran to challenge for the 2010 America's Cup",
+      "sl0023_pages": [
+        {
+          "title": "USA 17",
+          "canonical_url": "https://en.wikipedia.org/wiki/USA_17",
+          "categories": [
+            "Trimarans"
+          ]
+        }
+      ]
+    }
+  ]
+}

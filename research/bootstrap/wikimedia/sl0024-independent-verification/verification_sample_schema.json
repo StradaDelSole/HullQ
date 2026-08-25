@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/wikimedia-sl0024-verification-sample/v1",
+  "title": "HullQ SLICE-0024 Deterministic Verification Sample",
+  "description": "Retained SLICE-0024 deterministic 18/6/6 SHA256-ordered verification sample, selected from the pinned SLICE-0023 quality-sample strata, with per-candidate audit context.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "pinned_inputs",
+    "stratum_caps",
+    "sample_total",
+    "selected_by_stratum_sha256_order",
+    "selected_qids",
+    "selected_count",
+    "candidates"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0024-verification-sample-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "pinned_inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "quality_sample_git_blob_sha1",
+        "discovery_manifest_git_blob_sha1",
+        "source_assessment_git_blob_sha1",
+        "unique_incremental_qid_lead_count",
+        "quality_sample_total",
+        "quality_tag_counts",
+        "canonical_boat_model_count",
+        "historical_crosswalk_count"
+      ],
+      "properties": {
+        "quality_sample_git_blob_sha1": { "const": "e26fde36c487f54344e4392ed7f3d7e735f07abf" },
+        "discovery_manifest_git_blob_sha1": { "const": "9ddc5483d8b3d34e97aa36d5d72bd28fefe19c0e" },
+        "source_assessment_git_blob_sha1": { "const": "d025ca31574d38b2bab03fd8211859c10440dd4b" },
+        "unique_incremental_qid_lead_count": { "const": 409 },
+        "quality_sample_total": { "const": 150 },
+        "quality_tag_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["plausible_model_or_class_lead", "obvious_out_of_scope", "ambiguous"],
+          "properties": {
+            "plausible_model_or_class_lead": { "const": 102 },
+            "obvious_out_of_scope": { "const": 19 },
+            "ambiguous": { "const": 29 }
+          }
+        },
+        "canonical_boat_model_count": { "const": 1770 },
+        "historical_crosswalk_count": { "const": 1772 }
+      }
+    },
+    "stratum_caps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plausible_model_or_class_lead", "obvious_out_of_scope", "ambiguous"],
+      "properties": {
+        "plausible_model_or_class_lead": { "const": 18 },
+        "obvious_out_of_scope": { "const": 6 },
+        "ambiguous": { "const": 6 }
+      }
+    },
+    "sample_total": { "const": 30 },
+    "selected_by_stratum_sha256_order": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plausible_model_or_class_lead", "obvious_out_of_scope", "ambiguous"],
+      "properties": {
+        "plausible_model_or_class_lead": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+          "minItems": 18,
+          "maxItems": 18,
+          "uniqueItems": true
+        },
+        "obvious_out_of_scope": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+          "minItems": 6,
+          "maxItems": 6,
+          "uniqueItems": true
+        },
+        "ambiguous": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+          "minItems": 6,
+          "maxItems": 6,
+          "uniqueItems": true
+        }
+      }
+    },
+    "selected_qids": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+      "minItems": 30,
+      "maxItems": 30,
+      "uniqueItems": true
+    },
+    "selected_count": { "const": 30 },
+    "candidates": {
+      "type": "array",
+      "minItems": 30,
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "qid",
+          "sha256",
+          "prior_tag",
+          "prior_rationale",
+          "wikidata_label",
+          "wikidata_description_en",
+          "sl0023_pages"
+        ],
+        "properties": {
+          "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "prior_tag": {
+            "enum": ["plausible_model_or_class_lead", "obvious_out_of_scope", "ambiguous"]
+          },
+          "prior_rationale": { "type": "string", "minLength": 1 },
+          "wikidata_label": { "type": ["string", "null"] },
+          "wikidata_description_en": { "type": ["string", "null"] },
+          "sl0023_pages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["title", "canonical_url", "categories"],
+              "properties": {
+                "title": { "type": "string" },
+                "canonical_url": { "type": "string" },
+                "categories": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/wikimedia-sl0024-verification-results/v1",
+  "title": "HullQ SLICE-0024 Independent Verification Results",
+  "description": "Retained SLICE-0024 bounded external-research outcomes, evidence citations, aggregate metrics and precommitted recommendation for the 30-candidate deterministic sample.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "research_boundary",
+    "rights_access_ok",
+    "results",
+    "metrics",
+    "recommendation",
+    "process_deviations"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0024-verification-results-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "research_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_search_queries_per_candidate",
+        "max_source_evaluations_per_candidate",
+        "max_combined_actions_per_candidate",
+        "global_search_query_ceiling",
+        "global_source_evaluation_ceiling",
+        "global_combined_action_ceiling"
+      ],
+      "properties": {
+        "max_search_queries_per_candidate": { "const": 2 },
+        "max_source_evaluations_per_candidate": { "const": 4 },
+        "max_combined_actions_per_candidate": { "const": 6 },
+        "global_search_query_ceiling": { "const": 60 },
+        "global_source_evaluation_ceiling": { "const": 120 },
+        "global_combined_action_ceiling": { "const": 180 }
+      }
+    },
+    "rights_access_ok": { "type": "boolean" },
+    "results": {
+      "type": "array",
+      "minItems": 30,
+      "maxItems": 30,
+      "items": { "$ref": "#/$defs/result_row" }
+    },
+    "metrics": { "$ref": "#/$defs/metrics" },
+    "recommendation": {
+      "enum": [
+        "RIGHTS_OR_ACCESS_BLOCKED",
+        "LOW_INDEPENDENT_VERIFICATION_YIELD",
+        "STRONG_SOURCE_COVERAGE_TOO_WEAK",
+        "TOO_EXPENSIVE_FOR_FULL_CAMPAIGN",
+        "FULL_409_VERIFICATION_CAMPAIGN_CANDIDATE"
+      ]
+    },
+    "process_deviations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["qid", "description"],
+        "properties": {
+          "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+          "description": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "source_class": {
+      "enum": [
+        "manufacturer_shipyard",
+        "original_manufacturer_brochure",
+        "owners_technical_manual",
+        "designer_naval_architect",
+        "class_association",
+        "owners_association",
+        "museum_archive",
+        "high_quality_specialist_documentation",
+        "non_qualifying"
+      ]
+    },
+    "evidence_citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "citation_id",
+        "url",
+        "domain",
+        "source_class",
+        "access_timestamp",
+        "accessible",
+        "supports_identity",
+        "discrete_fact",
+        "independent_of",
+        "research_reference_only"
+      ],
+      "properties": {
+        "citation_id": { "type": "string", "minLength": 1 },
+        "url": { "type": "string", "minLength": 1 },
+        "domain": { "type": "string", "minLength": 1 },
+        "source_class": { "$ref": "#/$defs/source_class" },
+        "access_timestamp": { "type": "string" },
+        "accessible": { "type": "boolean" },
+        "supports_identity": { "type": "boolean" },
+        "discrete_fact": { "type": "string", "minLength": 1 },
+        "independent_of": { "type": "array", "items": { "type": "string" } },
+        "research_reference_only": { "const": true }
+      }
+    },
+    "result_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "qid",
+        "prior_tag",
+        "search_queries",
+        "search_query_count",
+        "evidence_citations",
+        "source_page_evaluation_count",
+        "combined_action_count",
+        "hit_budget_cap",
+        "subject_outcome",
+        "evidence_strength",
+        "outcome_rationale"
+      ],
+      "properties": {
+        "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+        "prior_tag": {
+          "enum": ["plausible_model_or_class_lead", "obvious_out_of_scope", "ambiguous"]
+        },
+        "search_queries": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "maxItems": 2
+        },
+        "search_query_count": { "type": "integer", "minimum": 0, "maximum": 2 },
+        "evidence_citations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/evidence_citation" },
+          "maxItems": 4
+        },
+        "source_page_evaluation_count": { "type": "integer", "minimum": 0, "maximum": 4 },
+        "combined_action_count": { "type": "integer", "minimum": 0, "maximum": 6 },
+        "hit_budget_cap": { "type": "boolean" },
+        "subject_outcome": {
+          "enum": ["in_scope_identity", "out_of_scope", "conflict", "unresolved"]
+        },
+        "evidence_strength": {
+          "enum": ["strong_source", "two_independent_specialist_sources", "insufficient"]
+        },
+        "outcome_rationale": { "type": "string", "minLength": 1 }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sample_counts_by_prior_tag",
+        "subject_outcome_counts",
+        "subject_outcome_counts_by_prior_tag",
+        "evidence_strength_counts",
+        "evidence_strength_counts_by_prior_tag",
+        "independently_supported_in_scope_count",
+        "strong_source_in_scope_count",
+        "threshold_set_independently_supported_in_scope_count",
+        "threshold_set_strong_source_in_scope_count",
+        "source_class_counts",
+        "search_query_count_total",
+        "source_page_evaluation_count_total",
+        "combined_research_action_count_total",
+        "per_candidate_research_action_counts",
+        "median_combined_actions_independently_supported_threshold_set",
+        "count_hitting_per_candidate_budget_cap",
+        "access_blocked_source_page_count",
+        "conflicts_and_unresolved_count"
+      ],
+      "properties": {
+        "sample_counts_by_prior_tag": { "type": "object" },
+        "subject_outcome_counts": { "type": "object" },
+        "subject_outcome_counts_by_prior_tag": { "type": "object" },
+        "evidence_strength_counts": { "type": "object" },
+        "evidence_strength_counts_by_prior_tag": { "type": "object" },
+        "independently_supported_in_scope_count": { "type": "integer", "minimum": 0 },
+        "strong_source_in_scope_count": { "type": "integer", "minimum": 0 },
+        "threshold_set_independently_supported_in_scope_count": { "type": "integer", "minimum": 0 },
+        "threshold_set_strong_source_in_scope_count": { "type": "integer", "minimum": 0 },
+        "source_class_counts": { "type": "object" },
+        "search_query_count_total": { "type": "integer", "minimum": 0, "maximum": 60 },
+        "source_page_evaluation_count_total": { "type": "integer", "minimum": 0, "maximum": 120 },
+        "combined_research_action_count_total": { "type": "integer", "minimum": 0, "maximum": 180 },
+        "per_candidate_research_action_counts": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0, "maximum": 6 }
+        },
+        "median_combined_actions_independently_supported_threshold_set": { "type": "number" },
+        "count_hitting_per_candidate_budget_cap": { "type": "integer", "minimum": 0 },
+        "access_blocked_source_page_count": { "type": "integer", "minimum": 0 },
+        "conflicts_and_unresolved_count": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}
