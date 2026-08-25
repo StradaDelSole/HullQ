@@ -1,0 +1,100 @@
+{
+  "source_id": "SRC_WIKIPEDIA_API_2026",
+  "title": "English Wikipedia — Wikimedia Foundation",
+  "publisher": "Wikimedia Foundation",
+  "source_type": "encyclopedia",
+  "url": "https://en.wikipedia.org/",
+  "document_identifier": null,
+  "publication_date": null,
+  "accessed_at": "2026-08-25",
+  "notes": "This source record covers the official English Wikipedia MediaWiki Action API (https://en.wikipedia.org/w/api.php) for SLICE-0023: bounded list=categorymembers acquisition (cmnamespace=0, main-namespace only) over exactly three fixed category roots (Category:Keelboats, Category:Catamarans, Category:Trimarans) plus page-properties acquisition of the linked wikibase_item QID. English Wikipedia is treated strictly as a research-lead surface: category name, page ID, namespace, page title, canonical page URL and linked Wikidata QID are the only retained facts. Wikipedia article prose/infobox/table/image/reference content is explicitly out of scope for this source record and MUST NOT be extracted, stored or treated as canonical evidence under this clearance. Wikipedia text is licensed CC BY-SA 4.0 (share-alike, attribution required) and is NOT equivalent to Wikidata's CC0 structured data (see specs/SOURCE_RIGHTS_POLICY.v0.1.md section 8); bulk canonical ingestion from Wikipedia text/infobox material remains conditional/legal-review-required until reuse/attribution/share-alike implications are explicitly resolved by a separate decision. The Wikimedia User-Agent policy requires a descriptive User-Agent string identifying the project and providing a contact identifier.",
+  "rights": {
+    "assessment_status": "assessed",
+    "rights_basis": "standard_license",
+    "rights_holder": "Wikipedia contributors",
+    "license_expression": "CC-BY-SA-4.0",
+    "license_name": "Creative Commons Attribution-ShareAlike 4.0 International",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "license_scope": ["text", "database_structure"],
+    "access": {
+      "method": "api",
+      "public_access": true,
+      "automated_access": "allowed",
+      "terms_url": "https://foundation.wikimedia.org/wiki/Policy:Terms_of_Use",
+      "terms_reviewed_at": "2026-08-25",
+      "tdm_reservation": "not_applicable",
+      "rate_limit_notes": "Wikimedia User-Agent policy (https://meta.wikimedia.org/wiki/User-Agent_policy) requires a descriptive User-Agent with project name and contact identifier. API etiquette (https://www.mediawiki.org/wiki/API:Etiquette) and the Wikimedia APIs access policy (https://www.mediawiki.org/wiki/Wikimedia_APIs/Access_policy) apply: serial, conservatively batched, non-concurrent requests; observe HTTP 429/Retry-After. list=categorymembers: cmlimit up to 500 for unauthenticated clients, main-namespace only (cmnamespace=0), no subcategory recursion. SLICE-0023 additionally bounds this source record's use to <=75 Wikipedia/MediaWiki HTTP requests for one bounded acquisition run."
+    },
+    "permissions": {
+      "commercial_use": "allowed",
+      "extract_facts": "allowed",
+      "normalize": "allowed",
+      "store_canonical_values": "conditional",
+      "bulk_ingest": "conditional",
+      "automated_extract": "allowed",
+      "redistribute_source_material": "prohibited",
+      "publish_derived_database": "conditional"
+    },
+    "obligations": {
+      "attribution_required": "yes",
+      "share_alike": "yes",
+      "notice_required": "yes",
+      "attribution_instructions": "Any future publication of Wikipedia-derived expressive content must attribute Wikipedia contributors per CC BY-SA 4.0 and satisfy share-alike obligations. Retention of minimal non-expressive lead metadata (category name, page ID, namespace, title, canonical URL, linked QID) for internal bounded research-lead measurement does not itself trigger publication-level attribution, but no such value may be published as HullQ canonical/production content without resolving these obligations first.",
+      "other_conditions": [
+        "Wikimedia User-Agent policy requires a descriptive User-Agent string with project name and a contact identifier (see https://meta.wikimedia.org/wiki/User-Agent_policy); generic library User-Agents are not acceptable.",
+        "Observe documented API rate limits and HTTP 429/Retry-After signals; do not send uncontrolled concurrent requests (https://www.mediawiki.org/wiki/API:Etiquette).",
+        "Wikipedia article prose/infobox/table/image/reference content is a distinct expressive content layer from Wikidata's CC0 structured statements and MUST NOT be treated as canonical evidence under this source record (specs/SOURCE_RIGHTS_POLICY.v0.1.md section 8).",
+        "Bulk canonical ingestion from Wikipedia text/infobox material MUST remain conditional/legal-review-required until reuse/attribution/share-alike implications are explicitly resolved by a separate rights/architecture decision."
+      ]
+    },
+    "clearance": {
+      "research_reference": "allowed",
+      "research_lead": "allowed",
+      "identity_seed": "legal_review_required",
+      "production_value": "legal_review_required",
+      "bulk_bootstrap": "legal_review_required",
+      "automated_ingestion": "allowed",
+      "artifact_redistribution": "legal_review_required"
+    },
+    "rights_evidence": [
+      {
+        "evidence_type": "terms_page",
+        "url": "https://foundation.wikimedia.org/wiki/Terms_of_Use",
+        "document_identifier": null,
+        "accessed_at": "2026-08-25",
+        "sha256": null,
+        "notes": "Wikimedia Foundation Terms of Use govern access to and reuse of Wikipedia content, including programmatic API access."
+      },
+      {
+        "evidence_type": "other",
+        "url": "https://www.mediawiki.org/wiki/Wikimedia_APIs/Access_policy",
+        "document_identifier": null,
+        "accessed_at": "2026-08-25",
+        "sha256": null,
+        "notes": "Documents the Wikimedia APIs access policy: rate limiting, User-Agent requirements and acceptable automated-access behavior for the MediaWiki Action API."
+      },
+      {
+        "evidence_type": "other",
+        "url": "https://www.mediawiki.org/wiki/API:Categorymembers",
+        "document_identifier": null,
+        "accessed_at": "2026-08-25",
+        "sha256": null,
+        "notes": "Official documentation for the list=categorymembers MediaWiki Action API module used for SLICE-0023 category acquisition (cmnamespace=0, main-namespace pages only, continuation-based paging)."
+      },
+      {
+        "evidence_type": "license_page",
+        "url": "https://www.mediawiki.org/wiki/API:Licensing",
+        "document_identifier": "CC-BY-SA-4.0",
+        "accessed_at": "2026-08-25",
+        "sha256": null,
+        "notes": "Confirms English Wikipedia text is licensed CC BY-SA 4.0 (with GFDL as a secondary option for older content); structured statements/metadata retained by SLICE-0023 (category name, page ID, namespace, title, canonical URL, linked QID) are non-expressive facts, but the underlying article content remains share-alike/attribution licensed and is explicitly excluded from ingestion under this source record."
+      }
+    ],
+    "review": {
+      "reviewed_at": "2026-08-25",
+      "reviewer": "HullQ-SLICE-0023",
+      "rationale": "English Wikipedia text is CC BY-SA 4.0, a share-alike license distinct from Wikidata's CC0 structured data (specs/SOURCE_RIGHTS_POLICY.v0.1.md section 8; SR-004 facts do not imply database-extraction rights). Automated technical access via the official MediaWiki Action API is explicitly permitted by Wikimedia policy subject to rate limits and a descriptive User-Agent, so automated_ingestion is allowed subject to REQ-RESEARCH-008 cumulative-extraction telemetry because bulk_bootstrap is not itself cleared. research_lead is allowed because SLICE-0023 retains only minimal non-expressive lead metadata (never article prose/infobox/table/image/reference content) strictly for bounded research-lead measurement, never as canonical/production evidence. identity_seed, production_value, bulk_bootstrap and artifact_redistribution remain legal_review_required pending a dedicated rights/architecture decision on attribution and share-alike compatibility for any future broader reuse.",
+      "next_review_at": null
+    }
+  }
+}

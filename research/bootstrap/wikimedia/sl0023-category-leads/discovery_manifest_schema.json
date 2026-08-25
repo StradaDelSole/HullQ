@@ -1,0 +1,318 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/wikimedia-sl0023-discovery-manifest/v1",
+  "title": "HullQ SLICE-0023 Wikimedia Category Discovery Manifest",
+  "description": "Retained SLICE-0023 category-membership acquisition, immutable-boundary verification, overlap categorization, exact title-signal probe, multi-category primary-stratum assignment and deterministic quality-sample selection.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "source_id",
+    "rights_gate",
+    "immutable_boundaries",
+    "request_ceilings",
+    "request_breakdown",
+    "categories",
+    "cross_category_duplicate_pageids",
+    "unique_page_count",
+    "unique_pages",
+    "page_qid_mapping",
+    "overlap_sets",
+    "title_signal",
+    "primary_stratum_assignment",
+    "sample_selection"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0023-discovery-manifest-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "source_id": { "type": "string", "minLength": 1 },
+    "rights_gate": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "immutable_boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accepted_direct_discovery_count",
+        "accepted_auto_admit_count",
+        "retained_historical_crosswalk_count",
+        "accepted_alternative_union_count",
+        "sl0017_manifest_sha256",
+        "sl0018_manifest_sha256",
+        "sl0021_discovery_probe_git_blob_sha1",
+        "sl0021_sampled_candidates_git_blob_sha1"
+      ],
+      "properties": {
+        "accepted_direct_discovery_count": { "const": 1829 },
+        "accepted_auto_admit_count": { "const": 1770 },
+        "retained_historical_crosswalk_count": { "const": 1772 },
+        "accepted_alternative_union_count": { "const": 57 },
+        "sl0017_manifest_sha256": { "type": "string", "pattern": "^[0-9a-f]{64,66}$" },
+        "sl0018_manifest_sha256": { "type": "string", "pattern": "^[0-9a-f]{64,66}$" },
+        "sl0021_discovery_probe_git_blob_sha1": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "sl0021_sampled_candidates_git_blob_sha1": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+      }
+    },
+    "request_ceilings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wikipedia_request_count",
+        "wikipedia_request_ceiling",
+        "wikidata_request_count",
+        "wikidata_request_ceiling",
+        "total_request_count",
+        "total_request_ceiling"
+      ],
+      "properties": {
+        "wikipedia_request_count": { "type": "integer", "minimum": 0, "maximum": 75 },
+        "wikipedia_request_ceiling": { "const": 75 },
+        "wikidata_request_count": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "wikidata_request_ceiling": { "const": 10 },
+        "total_request_count": { "type": "integer", "minimum": 0, "maximum": 85 },
+        "total_request_ceiling": { "const": 85 }
+      }
+    },
+    "request_breakdown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "category_requests",
+        "pageprops_request_count",
+        "pageprops_batch_size",
+        "reconciled_wikipedia_request_count"
+      ],
+      "properties": {
+        "category_requests": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["Keelboats", "Catamarans", "Trimarans"],
+          "properties": {
+            "Keelboats": { "type": "integer", "minimum": 0 },
+            "Catamarans": { "type": "integer", "minimum": 0 },
+            "Trimarans": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "pageprops_request_count": { "type": "integer", "minimum": 0 },
+        "pageprops_batch_size": { "const": 50 },
+        "reconciled_wikipedia_request_count": { "type": "integer", "minimum": 0, "maximum": 75 }
+      }
+    },
+    "categories": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Keelboats", "Catamarans", "Trimarans"],
+      "properties": {
+        "Keelboats": { "$ref": "#/$defs/category_record" },
+        "Catamarans": { "$ref": "#/$defs/category_record" },
+        "Trimarans": { "$ref": "#/$defs/category_record" }
+      }
+    },
+    "cross_category_duplicate_pageids": {
+      "type": "array",
+      "items": { "type": "integer" }
+    },
+    "unique_page_count": { "type": "integer", "minimum": 0 },
+    "unique_pages": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/unique_page" }
+    },
+    "page_qid_mapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pages_with_qid_count",
+        "unique_qid_count",
+        "no_qid_pageid_count",
+        "duplicate_qids"
+      ],
+      "properties": {
+        "pages_with_qid_count": { "type": "integer", "minimum": 0 },
+        "unique_qid_count": { "type": "integer", "minimum": 0 },
+        "no_qid_pageid_count": { "type": "integer", "minimum": 0 },
+        "duplicate_qids": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "overlap_sets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accepted_direct_qid_overlap",
+        "retained_alternative_qid_overlap",
+        "incremental_qid_lead",
+        "no_wikidata_qid"
+      ],
+      "properties": {
+        "accepted_direct_qid_overlap": { "$ref": "#/$defs/qid_count_set" },
+        "retained_alternative_qid_overlap": { "$ref": "#/$defs/qid_count_set" },
+        "incremental_qid_lead": { "$ref": "#/$defs/qid_count_set" },
+        "no_wikidata_qid": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["count", "pageids"],
+          "properties": {
+            "count": { "type": "integer", "minimum": 0 },
+            "pageids": { "type": "array", "items": { "type": "integer" } }
+          }
+        }
+      }
+    },
+    "title_signal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["totals", "rows"],
+      "properties": {
+        "totals": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["exact_signal_other_qid", "no_exact_signal", "unresolved_structural"],
+          "properties": {
+            "exact_signal_other_qid": { "type": "integer", "minimum": 0 },
+            "no_exact_signal": { "type": "integer", "minimum": 0 },
+            "unresolved_structural": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["pageid", "qid", "title", "title_signal_category", "owner_qids"],
+            "properties": {
+              "pageid": { "type": "integer" },
+              "qid": { "type": ["string", "null"] },
+              "title": { "type": "string" },
+              "title_signal_category": {
+                "enum": ["exact_signal_other_qid", "no_exact_signal", "unresolved_structural"]
+              },
+              "owner_qids": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "primary_stratum_assignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Trimarans", "Catamarans", "Keelboats"],
+      "properties": {
+        "Trimarans": { "$ref": "#/$defs/qid_count_set" },
+        "Catamarans": { "$ref": "#/$defs/qid_count_set" },
+        "Keelboats": { "$ref": "#/$defs/qid_count_set" }
+      }
+    },
+    "sample_selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cap_by_stratum",
+        "total_cap",
+        "selected_by_stratum_sha256_order",
+        "selected_qids",
+        "selected_count"
+      ],
+      "properties": {
+        "cap_by_stratum": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["Trimarans", "Catamarans", "Keelboats"],
+          "properties": {
+            "Trimarans": { "const": 30 },
+            "Catamarans": { "const": 30 },
+            "Keelboats": { "const": 90 }
+          }
+        },
+        "total_cap": { "const": 150 },
+        "selected_by_stratum_sha256_order": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["Trimarans", "Catamarans", "Keelboats"],
+          "properties": {
+            "Trimarans": { "type": "array", "items": { "type": "string" }, "maxItems": 30 },
+            "Catamarans": { "type": "array", "items": { "type": "string" }, "maxItems": 30 },
+            "Keelboats": { "type": "array", "items": { "type": "string" }, "maxItems": 90 }
+          }
+        },
+        "selected_qids": {
+          "type": "array",
+          "items": { "type": "string" },
+          "maxItems": 150,
+          "uniqueItems": true
+        },
+        "selected_count": { "type": "integer", "minimum": 0, "maximum": 150 }
+      }
+    }
+  },
+  "$defs": {
+    "category_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "category",
+        "hard_cap",
+        "member_count",
+        "cap_exceeded",
+        "complete",
+        "members",
+        "acquired_at",
+        "request_count",
+        "continuation_count"
+      ],
+      "properties": {
+        "category": { "type": "string" },
+        "hard_cap": { "type": "integer" },
+        "member_count": { "type": "integer", "minimum": 0 },
+        "cap_exceeded": { "const": false },
+        "complete": { "const": true },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["pageid", "title", "ns", "canonical_url"],
+            "properties": {
+              "pageid": { "type": "integer" },
+              "title": { "type": "string" },
+              "ns": { "const": 0 },
+              "canonical_url": { "type": "string", "format": "uri" }
+            }
+          }
+        },
+        "acquired_at": { "type": "string" },
+        "request_count": { "type": "integer", "minimum": 0 },
+        "continuation_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "unique_page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "canonical_url", "categories", "qid"],
+      "properties": {
+        "title": { "type": "string" },
+        "canonical_url": { "type": "string" },
+        "categories": {
+          "type": "array",
+          "items": { "enum": ["Keelboats", "Catamarans", "Trimarans"] }
+        },
+        "qid": { "type": ["string", "null"] }
+      }
+    },
+    "qid_count_set": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "qids"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "qids": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

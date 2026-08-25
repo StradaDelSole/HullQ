@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-25
-**Current stage:** Stage 3.2 — canonical identity breadth / bounded admission proof. SLICE-0019 manufacturer/yard universe research, SLICE-0020 archive source-clearance + identity pilot, SLICE-0021 alternative Wikidata discovery-semantics pilot, and **SLICE-0022 — the offline Tier-0 admission-safety pilot over the exact 57 retained SLICE-0021 candidates (53 R1, 4 R3) — are all `DONE` and owner-accepted**. SLICE-0022 accepted result: zero live acquisition, no production-discovery change, **0 AUTO_ADMIT / 31 REVIEW_REQUIRED / 26 NOT_ADMITTED**, retained historical crosswalk unchanged at **1,772**, combined canonical BoatModel count unchanged at **1,770**. Final reviewed head `912fe8d0542459df7f260eeccd840bb92c00e8d1` received independent-review `ACCEPT`; exact-head CI run `32843428842` passed all required jobs; PR #55 merged as `5d68399e0efb4f6b34b8dae65817b7ced0ca3d07`; owner acceptance followed on 2026-08-25. The earlier Stage 3.3 label was premature: Stage 3.3 Tier-1/basic-searchable enrichment has not begun. No SLICE-0023 or later slice is currently `READY`.
+**Current stage:** Stage 3.2 — canonical identity breadth / bounded admission proof. SLICE-0019 manufacturer/yard universe research, SLICE-0020 archive source-clearance + identity pilot, SLICE-0021 alternative Wikidata discovery-semantics pilot, and **SLICE-0022 — the offline Tier-0 admission-safety pilot over the exact 57 retained SLICE-0021 candidates (53 R1, 4 R3) — are all `DONE` and owner-accepted**. SLICE-0022 accepted result: zero live acquisition, no production-discovery change, **0 AUTO_ADMIT / 31 REVIEW_REQUIRED / 26 NOT_ADMITTED**, retained historical crosswalk unchanged at **1,772**, combined canonical BoatModel count unchanged at **1,770**. Final reviewed head `912fe8d0542459df7f260eeccd840bb92c00e8d1` received independent-review `ACCEPT`; exact-head CI run `32843428842` passed all required jobs; PR #55 merged as `5d68399e0efb4f6b34b8dae65817b7ced0ca3d07`; owner acceptance followed on 2026-08-25. The earlier Stage 3.3 label was premature: Stage 3.3 Tier-1/basic-searchable enrichment has not begun. **SLICE-0023 — the bounded English-Wikipedia category identity-lead discovery pilot (`Category:Keelboats`/`Catamarans`/`Trimarans`) — was made `READY` by its own separate readiness decision, and its implementation is now complete and handed off as `REVIEW`, pending independent review and project-owner acceptance.** The one bounded live measurement found 409 unique `incremental_qid_lead` QIDs (well above the 1,829/1,770/1,772/57 immutable boundaries, which all reproduced exactly), a 150-QID deterministic quality sample with 70.67% `plausible_model_or_class_lead`, and a mechanical recommendation of `FOLLOWUP_VERIFICATION_CANDIDATE`; see `research/bootstrap/wikimedia/sl0023-category-leads/REPORT.md`. No canonical HullQ row was created and production Wikidata discovery is unchanged. No SLICE-0024 or later slice is currently `READY`.
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -518,6 +518,8 @@ SLICE-0021  alternative Wikidata discovery-semantics pilot     DONE / R0 zero dr
       ↓
 SLICE-0022  retained alternative-route Tier-0 admission pilot  DONE / 0 AUTO_ADMIT, 31 REVIEW_REQUIRED, 26 NOT_ADMITTED
       ↓
+SLICE-0023  Wikimedia category identity-lead discovery pilot   REVIEW / FOLLOWUP_VERIFICATION_CANDIDATE (not yet accepted)
+      ↓
 production route decision / further identity breadth           NOT AUTHORIZED YET
 ```
 
@@ -550,7 +552,7 @@ FINISH_SLICE.bat
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-SLICE-0001 through SLICE-0022 are accepted / `DONE`. No SLICE-0023 or later slice is currently `READY`.
+SLICE-0001 through SLICE-0022 are accepted / `DONE`. SLICE-0023 implementation is complete and handed off as `REVIEW`; it is not yet accepted/`DONE`. No SLICE-0024 or later slice is currently `READY`.
 
 ## Do not start yet
 

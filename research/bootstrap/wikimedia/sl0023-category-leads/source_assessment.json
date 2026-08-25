@@ -1,0 +1,59 @@
+{
+  "schema_version": "sl0023-source-assessment-v1",
+  "generated_at": "2026-08-25T15:30:21.160832+00:00",
+  "sources": {
+    "wikipedia": {
+      "source_id": "SRC_WIKIPEDIA_API_2026",
+      "rights_basis": "standard_license",
+      "license_expression": "CC-BY-SA-4.0",
+      "clearance": {
+        "research_reference": "allowed",
+        "research_lead": "allowed",
+        "identity_seed": "legal_review_required",
+        "production_value": "legal_review_required",
+        "bulk_bootstrap": "legal_review_required",
+        "automated_ingestion": "allowed",
+        "artifact_redistribution": "legal_review_required"
+      },
+      "review_date": "2026-08-25"
+    },
+    "wikidata": {
+      "source_id": "SRC_WIKIDATA_API_2026",
+      "rights_basis": "public_domain",
+      "license_expression": "CC0-1.0",
+      "clearance": {
+        "research_reference": "allowed",
+        "research_lead": "allowed",
+        "identity_seed": "allowed",
+        "production_value": "allowed",
+        "bulk_bootstrap": "allowed",
+        "automated_ingestion": "allowed",
+        "artifact_redistribution": "allowed"
+      },
+      "review_date": "2026-08-19"
+    }
+  },
+  "rights_evidence_urls": [
+    "https://foundation.wikimedia.org/wiki/Terms_of_Use",
+    "https://www.mediawiki.org/wiki/Wikimedia_APIs/Access_policy",
+    "https://www.mediawiki.org/wiki/API:Categorymembers",
+    "https://www.mediawiki.org/wiki/API:Licensing"
+  ],
+  "user_agent_used": true,
+  "rights_gate_result": {
+    "wikipedia_research_lead": "allowed",
+    "wikipedia_automated_ingestion_clearance": "allowed",
+    "wikidata_bulk_bootstrap": "allowed",
+    "wikidata_automated_ingestion": "allowed"
+  },
+  "request_ceilings": {
+    "wikipedia_request_count": 27,
+    "wikipedia_request_ceiling": 75,
+    "wikidata_request_count": 3,
+    "wikidata_request_ceiling": 10,
+    "total_request_count": 30,
+    "total_request_ceiling": 85
+  },
+  "no_wikipedia_prose_infobox_content_retained": true,
+  "no_canonical_mutation": true
+}

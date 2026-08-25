@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0023  
 **Type:** DESIGN_RESEARCH  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 3.2 — canonical identity breadth / alternative research-lead discovery  
 **Depends on:** SLICE-0022 accepted / DONE  
 **Blocks:** any production use of Wikipedia/Wikimedia category discovery for HullQ identity intake
