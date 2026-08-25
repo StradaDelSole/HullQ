@@ -1,0 +1,14 @@
+{
+  "schema_version": "sl0023-artifact-digests-v1",
+  "generated_at": "2026-08-25T15:30:21.414031+00:00",
+  "excludes_self": "ARTIFACT-DIGESTS.json",
+  "digests": {
+    "source_assessment.json": "sha256:14fd4bbd8ee5984ed5811bc4650b62b3c1c09aece2988b32668b43da43aef09d",
+    "source_assessment_schema.json": "sha256:6fb72ff7e5f4c442c8fba9a0b44c903b6897ee152aa27e19835c66d48404ca59",
+    "discovery_manifest.json": "sha256:8505e3455975186672abf636ac9904315d5c62507a8f885cb4c176655bfff1f6",
+    "discovery_manifest_schema.json": "sha256:56bd4b89e70afb16f6b524e203adf3d98007f2e609ed7b4731dc7506d5c2e66e",
+    "quality_sample.json": "sha256:127e77404cab9c1f277964ae4f71b0fc5dbf9203061c08b8f83a128d29da4ad1",
+    "quality_sample_schema.json": "sha256:63dea4ddfcdf6f793f9bc8f4c7c4a037485a754ecec6b2e2526c018cf76818ba",
+    "REPORT.md": "sha256:7abe9ab2db0dc210f6f68fed281d2764424f851677b2791d03f54d5d689b705c"
+  }
+}

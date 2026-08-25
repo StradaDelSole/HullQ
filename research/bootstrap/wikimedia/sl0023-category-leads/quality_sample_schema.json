@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/wikimedia-sl0023-quality-sample/v1",
+  "title": "HullQ SLICE-0023 Deterministic Quality Sample",
+  "description": "Retained SLICE-0023 deterministic <=150-QID Wikidata CC0 quality-sample context, manual research-only quality-tag review and the precommitted mechanical source-level recommendation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "accepted_universe_reference",
+    "selection_reference",
+    "wikidata_context",
+    "quality_review",
+    "quality_tag_counts",
+    "quality_tag_percentages",
+    "total_sampled",
+    "rights_access_ok",
+    "unique_incremental_qid_lead_count",
+    "recommendation"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0023-quality-sample-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "accepted_universe_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sl0017_sha256", "sl0018_sha256", "accepted_auto_admit_count"],
+      "properties": {
+        "sl0017_sha256": { "type": "string", "pattern": "^[0-9a-f]{64,66}$" },
+        "sl0018_sha256": { "type": "string", "pattern": "^[0-9a-f]{64,66}$" },
+        "accepted_auto_admit_count": { "const": 1770 }
+      }
+    },
+    "selection_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selected_qids", "selected_count"],
+      "properties": {
+        "selected_qids": {
+          "type": "array",
+          "items": { "type": "string" },
+          "maxItems": 150,
+          "uniqueItems": true
+        },
+        "selected_count": { "type": "integer", "minimum": 0, "maximum": 150 }
+      }
+    },
+    "wikidata_context": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["qid", "label", "description_en", "p31_qids", "p176_qids", "p287_qids"],
+        "properties": {
+          "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+          "label": { "type": ["string", "null"] },
+          "description_en": { "type": ["string", "null"] },
+          "p31_qids": { "type": "array", "items": { "type": "string" } },
+          "p176_qids": { "type": "array", "items": { "type": "string" } },
+          "p287_qids": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "quality_review": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["qid", "quality_tag", "rationale"],
+        "properties": {
+          "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+          "quality_tag": {
+            "enum": ["plausible_model_or_class_lead", "obvious_out_of_scope", "ambiguous"]
+          },
+          "rationale": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "quality_tag_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plausible_model_or_class_lead", "obvious_out_of_scope", "ambiguous"],
+      "properties": {
+        "plausible_model_or_class_lead": { "type": "integer", "minimum": 0 },
+        "obvious_out_of_scope": { "type": "integer", "minimum": 0 },
+        "ambiguous": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "quality_tag_percentages": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plausible_model_or_class_lead", "obvious_out_of_scope", "ambiguous"],
+      "properties": {
+        "plausible_model_or_class_lead": { "type": "number", "minimum": 0, "maximum": 100 },
+        "obvious_out_of_scope": { "type": "number", "minimum": 0, "maximum": 100 },
+        "ambiguous": { "type": "number", "minimum": 0, "maximum": 100 }
+      }
+    },
+    "total_sampled": { "type": "integer", "minimum": 0, "maximum": 150 },
+    "rights_access_ok": { "type": "boolean" },
+    "unique_incremental_qid_lead_count": { "type": "integer", "minimum": 0 },
+    "recommendation": {
+      "enum": [
+        "FOLLOWUP_VERIFICATION_CANDIDATE",
+        "LOW_INCREMENTAL_YIELD",
+        "TOO_NOISY_FOR_FOLLOWUP",
+        "RIGHTS_OR_ACCESS_BLOCKED"
+      ]
+    }
+  }
+}
