@@ -373,7 +373,7 @@ def main() -> None:
         ]
     )
 
-    OUT.write_text("\n".join(lines), encoding="utf-8")
+    OUT.write_bytes("\n".join(lines).encode("utf-8"))
     print("SLICE-0019 REPORT.md generated")
     print(
         f"records={len(records)} verified={statuses['verified']} "

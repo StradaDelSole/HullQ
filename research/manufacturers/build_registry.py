@@ -1187,7 +1187,7 @@ def validate_verified_invariants(records: list[dict]) -> None:
 def main() -> None:
     registry = build()
     validate(registry)
-    OUT.write_text(json.dumps(registry, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    OUT.write_bytes((json.dumps(registry, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
     print(f"wrote={OUT}")
 
 
