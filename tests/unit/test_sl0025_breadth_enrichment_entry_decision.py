@@ -23,7 +23,9 @@ from typing import Any
 
 import pytest
 
+import hullq.bootstrap.sl0025_breadth_enrichment_entry_decision as sl0025
 from hullq.bootstrap.sl0025_breadth_enrichment_entry_decision import (
+    ARTIFACT_DIGEST_COVERED_FILENAMES,
     FIXED_ACCEPTED_BOUNDARY,
     KNOWN_BREADTH_PATH_CANDIDATES,
     AcceptedBoundaryIntegrityError,
@@ -33,12 +35,14 @@ from hullq.bootstrap.sl0025_breadth_enrichment_entry_decision import (
     build_decision_input_document,
     build_decision_result_document,
     build_known_breadth_path_candidates,
+    candidate_to_dict,
     determine_decision,
     evaluate_boundary_consistency,
     evaluate_parallel_readiness,
     find_qualifying_breadth_path,
     load_reproduced_boundary,
     verify_artifact_digests_self_consistency,
+    verify_decision_input_self_consistency,
     verify_decision_result_self_consistency,
 )
 
@@ -109,6 +113,34 @@ def test_evaluate_boundary_consistency_accepts_explicit_fixed_mapping() -> None:
     custom_fixed = {"accepted_canonical_boat_models": 42}
     assert evaluate_boundary_consistency({"accepted_canonical_boat_models": 42}, custom_fixed) == []
     assert evaluate_boundary_consistency({"accepted_canonical_boat_models": 43}, custom_fixed) != []
+
+
+# ---------------------------------------------------------------------------
+# sl0024_threshold_required: the fixed side must be a self-contained literal,
+# not the same mutable constant reproduced on the other side, so a drift in
+# the shared upstream SLICE-0024 constant is actually detectable.
+# ---------------------------------------------------------------------------
+
+
+def test_fixed_accepted_boundary_threshold_required_is_the_accepted_literal_12() -> None:
+    assert FIXED_ACCEPTED_BOUNDARY["sl0024_threshold_required"] == 12
+
+
+def test_load_reproduced_boundary_threshold_required_tracks_sl0024_module_constant(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Simulate drift/tamper in the upstream accepted SLICE-0024 module
+    # constant that the reproduced side (deliberately) still reads. The fixed
+    # side must NOT move in lockstep -- it is a self-contained literal.
+    monkeypatch.setattr(sl0025, "IN_SCOPE_MIN_INDEPENDENT_SUPPORTED", 5)
+    reproduced = load_reproduced_boundary()
+    assert reproduced["sl0024_threshold_required"] == 5
+
+    mismatches = evaluate_boundary_consistency(reproduced)
+    assert any(
+        "sl0024_threshold_required" in m and "expected 12" in m and "reproduced 5" in m
+        for m in mismatches
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -364,11 +396,22 @@ def test_verify_artifact_digests_self_consistency_clean_on_real_committed_packag
     assert mismatches == []
 
 
+def _real_digests_with(package_dir: Path, **overrides: str) -> dict[str, Any]:
+    """The real committed digest set for every ``ARTIFACT_DIGEST_COVERED_FILENAMES``
+    entry, with selected entries overridden -- used so filename-set-drift
+    tests exercise only the intended tamper, not an incidental hash
+    mismatch."""
+    artifact_digests = json.loads((package_dir / "ARTIFACT-DIGESTS.json").read_bytes())
+    digests = dict(artifact_digests["digests"])
+    digests.update(overrides)
+    return digests
+
+
 def test_verify_artifact_digests_self_consistency_detects_tamper(tmp_path: Path) -> None:
+    for name in ARTIFACT_DIGEST_COVERED_FILENAMES:
+        (tmp_path / name).write_bytes((SL0025_DIR / name).read_bytes())
     (tmp_path / "decision_result.json").write_text('{"tampered": true}', encoding="utf-8")
-    artifact_digests = {
-        "digests": {"decision_result.json": "sha256:" + "0" * 64},
-    }
+    artifact_digests = {"digests": _real_digests_with(SL0025_DIR)}
     mismatches = verify_artifact_digests_self_consistency(
         artifact_digests=artifact_digests, package_dir=tmp_path
     )
@@ -377,10 +420,149 @@ def test_verify_artifact_digests_self_consistency_detects_tamper(tmp_path: Path)
 
 
 def test_verify_artifact_digests_self_consistency_detects_missing_file(tmp_path: Path) -> None:
-    artifact_digests = {
-        "digests": {"missing.json": "sha256:" + "0" * 64},
-    }
+    for name in ARTIFACT_DIGEST_COVERED_FILENAMES:
+        if name == "decision_result.json":
+            continue
+        (tmp_path / name).write_bytes((SL0025_DIR / name).read_bytes())
+    artifact_digests = {"digests": _real_digests_with(SL0025_DIR)}
     mismatches = verify_artifact_digests_self_consistency(
         artifact_digests=artifact_digests, package_dir=tmp_path
     )
-    assert "does not exist" in mismatches[0]
+    assert any("decision_result.json" in m and "does not exist" in m for m in mismatches)
+
+
+# ---------------------------------------------------------------------------
+# verify_artifact_digests_self_consistency: exact covered-filename-set
+# enforcement (independent of JSON Schema)
+# ---------------------------------------------------------------------------
+
+
+def test_artifact_digest_covered_filenames_matches_real_committed_package() -> None:
+    on_disk = {
+        p.name for p in SL0025_DIR.iterdir() if p.is_file() and p.name != "ARTIFACT-DIGESTS.json"
+    }
+    assert set(ARTIFACT_DIGEST_COVERED_FILENAMES) == on_disk
+
+
+def test_verify_artifact_digests_self_consistency_detects_missing_digest_entry(
+    tmp_path: Path,
+) -> None:
+    for name in ARTIFACT_DIGEST_COVERED_FILENAMES:
+        (tmp_path / name).write_bytes((SL0025_DIR / name).read_bytes())
+    digests = _real_digests_with(SL0025_DIR)
+    del digests["REPORT.md"]
+    mismatches = verify_artifact_digests_self_consistency(
+        artifact_digests={"digests": digests}, package_dir=tmp_path
+    )
+    assert any("file-name set" in m and "REPORT.md" in m for m in mismatches)
+
+
+def test_verify_artifact_digests_self_consistency_detects_unexpected_digest_entry(
+    tmp_path: Path,
+) -> None:
+    for name in ARTIFACT_DIGEST_COVERED_FILENAMES:
+        (tmp_path / name).write_bytes((SL0025_DIR / name).read_bytes())
+    digests = _real_digests_with(SL0025_DIR, **{"unexpected-file.json": "sha256:" + "0" * 64})
+    mismatches = verify_artifact_digests_self_consistency(
+        artifact_digests={"digests": digests}, package_dir=tmp_path
+    )
+    assert any("file-name set" in m and "unexpected-file.json" in m for m in mismatches)
+
+
+# ---------------------------------------------------------------------------
+# verify_decision_input_self_consistency (independent candidate/boundary
+# rebuild -- never trusts retained candidate fields as verification inputs)
+# ---------------------------------------------------------------------------
+
+
+def test_candidate_to_dict_matches_real_committed_decision_input_candidates() -> None:
+    reproduced = load_reproduced_boundary()
+    rebuilt = [candidate_to_dict(c) for c in build_known_breadth_path_candidates(reproduced)]
+    decision_input = json.loads((SL0025_DIR / "decision_input.json").read_bytes())
+    assert rebuilt == decision_input["known_breadth_path_candidates"]
+
+
+def test_verify_decision_input_self_consistency_clean_on_real_committed_package() -> None:
+    reproduced = load_reproduced_boundary()
+    decision_input = json.loads((SL0025_DIR / "decision_input.json").read_bytes())
+    assert (
+        verify_decision_input_self_consistency(reproduced=reproduced, decision_input=decision_input)
+        == []
+    )
+
+
+def test_verify_decision_input_self_consistency_detects_tampered_fixed_boundary() -> None:
+    reproduced = load_reproduced_boundary()
+    decision_input = json.loads((SL0025_DIR / "decision_input.json").read_bytes())
+    tampered = copy.deepcopy(decision_input)
+    tampered["fixed_accepted_boundary"]["accepted_canonical_boat_models"] = 1771
+    mismatches = verify_decision_input_self_consistency(
+        reproduced=reproduced, decision_input=tampered
+    )
+    assert any("fixed_accepted_boundary" in m for m in mismatches)
+
+
+def test_verify_decision_input_self_consistency_detects_tampered_boundary_mismatches() -> None:
+    reproduced = load_reproduced_boundary()
+    decision_input = json.loads((SL0025_DIR / "decision_input.json").read_bytes())
+    tampered = copy.deepcopy(decision_input)
+    tampered["boundary_mismatches"] = ["fabricated: this drift was never actually detected"]
+    mismatches = verify_decision_input_self_consistency(
+        reproduced=reproduced, decision_input=tampered
+    )
+    assert any("boundary_mismatches" in m for m in mismatches)
+
+
+def test_verify_decision_input_self_consistency_detects_single_field_candidate_tamper() -> None:
+    # A tamper that alters only one candidate field (here, a yield bump that
+    # does not by itself flip the candidate's ``qualifies()`` result) must
+    # still be caught, because the whole candidate is independently rebuilt
+    # and compared -- not just re-derived fields that happen to change the
+    # decision.
+    reproduced = load_reproduced_boundary()
+    decision_input = json.loads((SL0025_DIR / "decision_input.json").read_bytes())
+    tampered = copy.deepcopy(decision_input)
+    tampered["known_breadth_path_candidates"][0]["likely_incremental_yield"] += 1
+    mismatches = verify_decision_input_self_consistency(
+        reproduced=reproduced, decision_input=tampered
+    )
+    assert any("known_breadth_path_candidates" in m for m in mismatches)
+
+
+def test_verify_decision_input_self_consistency_detects_coherent_tamper() -> None:
+    # The core coherence attack: alter a candidate's raw fields so it now
+    # *qualifies* (flipping what rule 2 would decide), while every other
+    # part of decision_input stays byte-identical to the real accepted
+    # package. verify_decision_result_self_consistency alone cannot catch
+    # this -- it only checks that decision_result agrees with whatever
+    # decision_input already says. This function must catch it because it
+    # independently rebuilds the candidate from the live reproduced boundary.
+    reproduced = load_reproduced_boundary()
+    decision_input = json.loads((SL0025_DIR / "decision_input.json").read_bytes())
+    tampered = copy.deepcopy(decision_input)
+    alt_route = next(
+        c
+        for c in tampered["known_breadth_path_candidates"]
+        if c["name"] == "sl0021_sl0022_alternative_wikidata_route"
+    )
+    alt_route["already_executed"] = False
+    alt_route["likely_incremental_yield"] = 150
+    alt_route["qualifies"] = True
+
+    mismatches = verify_decision_input_self_consistency(
+        reproduced=reproduced, decision_input=tampered
+    )
+    assert any("known_breadth_path_candidates" in m for m in mismatches)
+
+    # And the tampered candidate really would flip the mechanical decision,
+    # confirming this is exactly the coherent-tamper scenario, not a no-op.
+    real_candidate = next(
+        c
+        for c in KNOWN_BREADTH_PATH_CANDIDATES
+        if c.name == "sl0021_sl0022_alternative_wikidata_route"
+    )
+    assert real_candidate.qualifies() is False
+    tampered_candidate = BreadthPathCandidate(
+        **{**real_candidate.__dict__, "already_executed": False, "likely_incremental_yield": 150}
+    )
+    assert tampered_candidate.qualifies() is True

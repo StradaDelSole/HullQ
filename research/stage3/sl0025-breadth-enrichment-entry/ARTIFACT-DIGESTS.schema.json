@@ -12,11 +12,23 @@
     "excludes_self": { "const": "ARTIFACT-DIGESTS.json" },
     "digests": {
       "type": "object",
-      "additionalProperties": {
-        "type": "string",
-        "pattern": "^sha256:[0-9a-f]{64}$"
-      },
-      "minProperties": 5
+      "additionalProperties": false,
+      "required": [
+        "decision_input.json",
+        "decision_input_schema.json",
+        "decision_result.json",
+        "decision_result_schema.json",
+        "REPORT.md",
+        "ARTIFACT-DIGESTS.schema.json"
+      ],
+      "properties": {
+        "decision_input.json": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "decision_input_schema.json": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "decision_result.json": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "decision_result_schema.json": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "REPORT.md": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "ARTIFACT-DIGESTS.schema.json": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      }
     }
   }
 }

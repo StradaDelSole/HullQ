@@ -62,8 +62,13 @@ def _write_text_lf(path: Path, text: str) -> None:
 
 
 def _validate_schema(instance: dict[str, Any], schema_path: Path, *, label: str) -> None:
+    """Validate ``instance`` against the JSON Schema at ``schema_path``.
+
+    Fails closed: a required schema file that does not exist is a
+    verification failure, not a silently skipped check.
+    """
     if not schema_path.exists():
-        return
+        raise FileNotFoundError(f"{label} schema is required but missing: {schema_path}")
     import jsonschema
 
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
@@ -78,6 +83,7 @@ def _validate_schema(instance: dict[str, Any], schema_path: Path, *, label: str)
 
 def run_assemble() -> None:
     from hullq.bootstrap.sl0025_breadth_enrichment_entry_decision import (
+        ARTIFACT_DIGEST_COVERED_FILENAMES,
         build_decision_input_document,
         build_decision_result_document,
         build_known_breadth_path_candidates,
@@ -103,15 +109,8 @@ def run_assemble() -> None:
     report = _build_report(decision_input, decision_result)
     _write_text_lf(REPORT_PATH, report)
 
-    digest_files = [
-        "decision_input.json",
-        "decision_input_schema.json",
-        "decision_result.json",
-        "decision_result_schema.json",
-        "REPORT.md",
-    ]
     digests = {}
-    for name in digest_files:
+    for name in ARTIFACT_DIGEST_COVERED_FILENAMES:
         path = SL0025_DIR / name
         digests[name] = "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
     artifact_digests = {
@@ -215,11 +214,25 @@ def _build_report(decision_input: dict[str, Any], decision_result: dict[str, Any
 # ---------------------------------------------------------------------------
 
 
+def _validate_schema_fail_closed(
+    instance: dict[str, Any], schema_path: Path, *, label: str, problems: list[str]
+) -> None:
+    """Like ``_validate_schema``, but a missing/unreadable required schema is
+    recorded as a verification problem (so the run still reaches the normal
+    aggregated ``VERIFICATION FAILED`` report and fails closed) instead of
+    raising an unhandled exception mid-run."""
+    try:
+        _validate_schema(instance, schema_path, label=label)
+    except FileNotFoundError as exc:
+        problems.append(str(exc))
+
+
 def run_verify() -> None:
     from hullq.bootstrap.sl0025_breadth_enrichment_entry_decision import (
         evaluate_boundary_consistency,
         load_reproduced_boundary,
         verify_artifact_digests_self_consistency,
+        verify_decision_input_self_consistency,
         verify_decision_result_self_consistency,
     )
 
@@ -235,14 +248,21 @@ def run_verify() -> None:
     )
 
     decision_input = json.loads(DECISION_INPUT_PATH.read_bytes().decode("utf-8"))
-    _validate_schema(decision_input, DECISION_INPUT_SCHEMA_PATH, label="decision_input")
-    if decision_input["reproduced_accepted_boundary"] != reproduced:
-        problems.append(
-            "retained decision_input.reproduced_accepted_boundary != live re-reproduction"
-        )
+    _validate_schema_fail_closed(
+        decision_input, DECISION_INPUT_SCHEMA_PATH, label="decision_input", problems=problems
+    )
+    # Never trusts decision_input's own retained fixed_accepted_boundary,
+    # boundary_mismatches or known_breadth_path_candidates as verification
+    # inputs -- every one of those is independently rebuilt from the live
+    # reproduced boundary and the canonical builders and compared below.
+    problems.extend(
+        verify_decision_input_self_consistency(reproduced=reproduced, decision_input=decision_input)
+    )
 
     decision_result = json.loads(DECISION_RESULT_PATH.read_bytes().decode("utf-8"))
-    _validate_schema(decision_result, DECISION_RESULT_SCHEMA_PATH, label="decision_result")
+    _validate_schema_fail_closed(
+        decision_result, DECISION_RESULT_SCHEMA_PATH, label="decision_result", problems=problems
+    )
     problems.extend(
         verify_decision_result_self_consistency(
             decision_input=decision_input, decision_result=decision_result
@@ -252,7 +272,9 @@ def run_verify() -> None:
     print(f"decision: {decision_result['decision']}", flush=True)
 
     artifact_digests = json.loads(ARTIFACT_DIGESTS_PATH.read_bytes().decode("utf-8"))
-    _validate_schema(artifact_digests, ARTIFACT_DIGESTS_SCHEMA_PATH, label="artifact_digests")
+    _validate_schema_fail_closed(
+        artifact_digests, ARTIFACT_DIGESTS_SCHEMA_PATH, label="artifact_digests", problems=problems
+    )
     problems.extend(
         verify_artifact_digests_self_consistency(
             artifact_digests=artifact_digests, package_dir=SL0025_DIR

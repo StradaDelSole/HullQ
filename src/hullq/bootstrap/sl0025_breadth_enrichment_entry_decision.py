@@ -44,6 +44,7 @@ from hullq.bootstrap.wikimedia_sl0024_independent_verification import (
 )
 
 __all__ = [
+    "ARTIFACT_DIGEST_COVERED_FILENAMES",
     "BOUNDED_SUBSET_STRUCTURALLY_ACHIEVABLE",
     "FIXED_ACCEPTED_BOUNDARY",
     "KNOWN_BREADTH_PATH_CANDIDATES",
@@ -61,12 +62,14 @@ __all__ = [
     "build_decision_input_document",
     "build_decision_result_document",
     "build_known_breadth_path_candidates",
+    "candidate_to_dict",
     "determine_decision",
     "evaluate_boundary_consistency",
     "evaluate_parallel_readiness",
     "find_qualifying_breadth_path",
     "load_reproduced_boundary",
     "verify_artifact_digests_self_consistency",
+    "verify_decision_input_self_consistency",
     "verify_decision_result_self_consistency",
 ]
 
@@ -88,7 +91,15 @@ FIXED_ACCEPTED_BOUNDARY: dict[str, Any] = {
     "sl0022_not_admitted": 26,
     "sl0023_incremental_wikimedia_qid_leads": 409,
     "sl0024_threshold_set_independently_supported_in_scope": 11,
-    "sl0024_threshold_required": IN_SCOPE_MIN_INDEPENDENT_SUPPORTED,
+    # Contractually accepted literal per the SLICE-0024 acceptance closure
+    # ("required >=12"). Deliberately NOT imported from
+    # ``wikimedia_sl0024_independent_verification.IN_SCOPE_MIN_INDEPENDENT_SUPPORTED``:
+    # ``load_reproduced_boundary`` below reproduces the *other* side of this
+    # comparison from that same accepted SLICE-0024 module. If this fixed
+    # side reused the identical constant, a drift/tamper in that shared
+    # constant would silently agree with itself on both sides and never be
+    # detected by ``evaluate_boundary_consistency``.
+    "sl0024_threshold_required": 12,
     "sl0024_final_recommendation": "LOW_INDEPENDENT_VERIFICATION_YIELD",
 }
 
@@ -191,6 +202,11 @@ def load_reproduced_boundary(
             "sl0024_threshold_set_independently_supported_in_scope": sl0024["metrics"][
                 "threshold_set_independently_supported_in_scope_count"
             ],
+            # Independently accepted SLICE-0024 evidence: the precommitted
+            # recommendation-rule constant from the accepted SLICE-0024
+            # module, not a value re-typed by this slice. See the comment on
+            # ``FIXED_ACCEPTED_BOUNDARY["sl0024_threshold_required"]`` for why
+            # the two sides of this comparison must not share one constant.
             "sl0024_threshold_required": IN_SCOPE_MIN_INDEPENDENT_SUPPORTED,
             "sl0024_final_recommendation": sl0024["recommendation"],
             "zero_tolerance_conditions_clear": bool(
@@ -488,7 +504,13 @@ DECISION_INPUT_SCHEMA_VERSION = "sl0025-decision-input-v1"
 DECISION_RESULT_SCHEMA_VERSION = "sl0025-decision-result-v1"
 
 
-def _candidate_to_dict(candidate: BreadthPathCandidate) -> dict[str, Any]:
+def candidate_to_dict(candidate: BreadthPathCandidate) -> dict[str, Any]:
+    """Canonical JSON-primitive representation of one breadth-path candidate.
+
+    Used both to assemble retained documents and, in
+    ``verify_decision_input_self_consistency``, to independently rebuild the
+    expected candidate representation from a freshly reproduced accepted
+    boundary -- never from retained/potentially-tampered candidate fields."""
     return {
         "name": candidate.name,
         "source_slices": candidate.source_slices,
@@ -513,7 +535,7 @@ def build_decision_input_document(
         "fixed_accepted_boundary": dict(FIXED_ACCEPTED_BOUNDARY),
         "reproduced_accepted_boundary": dict(reproduced),
         "boundary_mismatches": evaluate_boundary_consistency(reproduced),
-        "known_breadth_path_candidates": [_candidate_to_dict(c) for c in candidates],
+        "known_breadth_path_candidates": [candidate_to_dict(c) for c in candidates],
     }
 
 
@@ -560,7 +582,7 @@ def build_decision_result_document(
         "generated_at": generated_at,
         "boundary_mismatches": boundary_mismatches,
         "qualifying_breadth_path": (
-            _candidate_to_dict(qualifying_breadth_path)
+            candidate_to_dict(qualifying_breadth_path)
             if qualifying_breadth_path is not None
             else None
         ),
@@ -578,6 +600,60 @@ def build_decision_result_document(
 # ---------------------------------------------------------------------------
 # Offline self-consistency verification of already-retained documents
 # ---------------------------------------------------------------------------
+
+
+def verify_decision_input_self_consistency(
+    *, reproduced: Mapping[str, Any], decision_input: Mapping[str, Any]
+) -> list[str]:
+    """Independently rebuild every derivable field of a retained
+    ``decision_input.json`` purely from a freshly reproduced accepted
+    boundary and the canonical builders (``FIXED_ACCEPTED_BOUNDARY``,
+    ``evaluate_boundary_consistency``, ``build_known_breadth_path_candidates``),
+    and compare against what is retained.
+
+    Deliberately never trusts a retained candidate/boundary field as a
+    verification input itself -- a coherent tamper that alters a candidate
+    and consistently regenerates ``decision_result``/``REPORT.md``/digests to
+    match would otherwise pass ``verify_decision_result_self_consistency``
+    (which only checks that ``decision_result`` agrees with whatever
+    ``decision_input`` already says) and the digest check (which only checks
+    that retained bytes match retained digests). This function is what
+    catches that case, by rebuilding the candidates from scratch.
+    """
+    problems: list[str] = []
+
+    if dict(decision_input.get("fixed_accepted_boundary", {})) != dict(FIXED_ACCEPTED_BOUNDARY):
+        problems.append(
+            "retained decision_input.fixed_accepted_boundary != live FIXED_ACCEPTED_BOUNDARY "
+            "constant"
+        )
+
+    if dict(decision_input.get("reproduced_accepted_boundary", {})) != dict(reproduced):
+        problems.append(
+            "retained decision_input.reproduced_accepted_boundary != live re-reproduction"
+        )
+
+    live_boundary_mismatches = evaluate_boundary_consistency(reproduced)
+    if list(decision_input.get("boundary_mismatches", [])) != live_boundary_mismatches:
+        problems.append(
+            "retained decision_input.boundary_mismatches != independently recomputed "
+            f"evaluate_boundary_consistency(reproduced): retained="
+            f"{decision_input.get('boundary_mismatches')!r} "
+            f"recomputed={live_boundary_mismatches!r}"
+        )
+
+    rebuilt_candidates = [
+        candidate_to_dict(c) for c in build_known_breadth_path_candidates(reproduced)
+    ]
+    retained_candidates = list(decision_input.get("known_breadth_path_candidates", []))
+    if rebuilt_candidates != retained_candidates:
+        problems.append(
+            "retained decision_input.known_breadth_path_candidates != independently rebuilt "
+            "candidates from the live reproduced boundary via "
+            "build_known_breadth_path_candidates -- a candidate field was tampered"
+        )
+
+    return problems
 
 
 def verify_decision_result_self_consistency(
@@ -603,14 +679,46 @@ def verify_decision_result_self_consistency(
     ]
 
 
+# Every retained SLICE-0025 package file that must carry an integrity digest,
+# i.e. every file under the package directory except ARTIFACT-DIGESTS.json
+# itself. Single source of truth for both the assemble step (which file list
+# to hash) and the verify step (which exact file-name set must be present) --
+# used instead of ``artifact_digests["digests"].keys()`` so a retained
+# digests document cannot silently omit a file to dodge detection.
+ARTIFACT_DIGEST_COVERED_FILENAMES: tuple[str, ...] = (
+    "decision_input.json",
+    "decision_input_schema.json",
+    "decision_result.json",
+    "decision_result_schema.json",
+    "REPORT.md",
+    "ARTIFACT-DIGESTS.schema.json",
+)
+
+
 def verify_artifact_digests_self_consistency(
     *, artifact_digests: Mapping[str, Any], package_dir: Path
 ) -> list[str]:
     """Recompute the SHA256 digest of every retained package file and
     compare against a retained ``ARTIFACT-DIGESTS.json`` document (``digests``
-    maps filename -> ``"sha256:<hex>"``, excluding the digests file itself)."""
+    maps filename -> ``"sha256:<hex>"``, excluding the digests file itself).
+
+    Independently enforces the exact expected covered-file-name set
+    (``ARTIFACT_DIGEST_COVERED_FILENAMES``) rather than trusting whatever
+    file-name keys happen to be present in the retained document -- a missing
+    or extra digest entry is itself a failure, in addition to any per-file
+    hash mismatch.
+    """
     mismatches: list[str] = []
-    for filename, stored in artifact_digests.get("digests", {}).items():
+    digests = artifact_digests.get("digests", {})
+    retained_names = set(digests)
+    expected_names = set(ARTIFACT_DIGEST_COVERED_FILENAMES)
+    if retained_names != expected_names:
+        mismatches.append(
+            "digests file-name set != expected covered-file set: "
+            f"missing={sorted(expected_names - retained_names)!r}, "
+            f"unexpected={sorted(retained_names - expected_names)!r}"
+        )
+    for filename, stored in digests.items():
         file_path = package_dir / filename
         if not file_path.is_file():
             mismatches.append(f"digest entry {filename!r}: file does not exist")

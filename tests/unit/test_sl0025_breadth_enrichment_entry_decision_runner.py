@@ -14,6 +14,7 @@ reproduces the real committed retained package byte-for-byte.
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import sys
@@ -177,6 +178,140 @@ def test_run_verify_fails_closed_when_decision_changes_without_relevant_input_ch
 def test_run_verify_fails_closed_on_artifact_digest_tampering(runner: Any, tmp_path: Path) -> None:
     _copy_retained_package(runner, tmp_path)
     runner.REPORT_PATH.write_bytes(runner.REPORT_PATH.read_bytes() + b"\ntampered\n")
+
+    with pytest.raises(SystemExit):
+        runner.run_verify()
+
+
+# ---------------------------------------------------------------------------
+# Coherent tamper: a candidate is altered so the mechanical decision itself
+# would change, and every dependent retained document (decision_result,
+# REPORT.md, ARTIFACT-DIGESTS.json) is regenerated to stay internally
+# consistent with that tamper -- proving --verify still fails because the
+# retained candidate derivation disagrees with the independently rebuilt
+# candidate set, not merely because some byte happens not to match.
+# ---------------------------------------------------------------------------
+
+
+def test_run_verify_fails_closed_on_coherent_candidate_tamper(
+    runner: Any, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from hullq.bootstrap.sl0025_breadth_enrichment_entry_decision import (
+        ARTIFACT_DIGEST_COVERED_FILENAMES,
+        build_decision_result_document,
+    )
+
+    _copy_retained_package(runner, tmp_path)
+
+    decision_input = json.loads(runner.DECISION_INPUT_PATH.read_bytes())
+    alt_route = next(
+        c
+        for c in decision_input["known_breadth_path_candidates"]
+        if c["name"] == "sl0021_sl0022_alternative_wikidata_route"
+    )
+    # Flip the two fields that gate qualification for this candidate: no
+    # longer "already executed", and a yield comfortably above the >=100
+    # threshold. Every other candidate/boundary field is left byte-identical
+    # to the real accepted package.
+    alt_route["already_executed"] = False
+    alt_route["likely_incremental_yield"] = 150
+    alt_route["qualifies"] = True
+    _write_json(runner.DECISION_INPUT_PATH, decision_input)
+
+    generated_at = decision_input["generated_at"]
+    decision_result = build_decision_result_document(
+        generated_at=generated_at, decision_input=decision_input
+    )
+    # The tamper really does flip the mechanical decision -- otherwise this
+    # would not be testing the coherence attack described in the amendment.
+    assert decision_result["decision"] == "CONTINUE_STAGE_3_2_ONLY"
+    assert decision_result["qualifying_breadth_path"]["name"] == (
+        "sl0021_sl0022_alternative_wikidata_route"
+    )
+    _write_json(runner.DECISION_RESULT_PATH, decision_result)
+
+    report = runner._build_report(decision_input, decision_result)
+    runner.REPORT_PATH.write_bytes(report.encode("utf-8"))
+
+    digests = {}
+    for name in ARTIFACT_DIGEST_COVERED_FILENAMES:
+        digests[name] = "sha256:" + hashlib.sha256((tmp_path / name).read_bytes()).hexdigest()
+    artifact_digests = {
+        "schema_version": "sl0025-artifact-digests-v1",
+        "generated_at": generated_at,
+        "excludes_self": "ARTIFACT-DIGESTS.json",
+        "digests": digests,
+    }
+    _write_json(runner.ARTIFACT_DIGESTS_PATH, artifact_digests)
+
+    with pytest.raises(SystemExit):
+        runner.run_verify()
+
+    output = capsys.readouterr().out
+    assert "known_breadth_path_candidates" in output
+
+
+# ---------------------------------------------------------------------------
+# sl0024_threshold_required source-drift: the reproduced side reads the
+# accepted SLICE-0024 module constant independently of the fixed literal --
+# a drift there must still be caught by --verify.
+# ---------------------------------------------------------------------------
+
+
+def test_run_verify_fails_closed_on_threshold_required_source_drift(
+    runner: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import hullq.bootstrap.sl0025_breadth_enrichment_entry_decision as sl0025_module
+
+    _copy_retained_package(runner, tmp_path)
+    monkeypatch.setattr(sl0025_module, "IN_SCOPE_MIN_INDEPENDENT_SUPPORTED", 5)
+
+    with pytest.raises(SystemExit):
+        runner.run_verify()
+
+
+# ---------------------------------------------------------------------------
+# Digest-schema hardening: missing schema fails closed instead of silently
+# skipping validation; digest file-name-set drift is caught independently of
+# the schema (a permissive/tampered schema must not defeat it).
+# ---------------------------------------------------------------------------
+
+
+def test_run_verify_fails_closed_on_missing_artifact_digests_schema(
+    runner: Any, tmp_path: Path
+) -> None:
+    _copy_retained_package(runner, tmp_path)
+    runner.ARTIFACT_DIGESTS_SCHEMA_PATH.unlink()
+
+    with pytest.raises(SystemExit):
+        runner.run_verify()
+
+
+def test_run_verify_fails_closed_on_missing_decision_input_schema(
+    runner: Any, tmp_path: Path
+) -> None:
+    _copy_retained_package(runner, tmp_path)
+    runner.DECISION_INPUT_SCHEMA_PATH.unlink()
+
+    with pytest.raises(SystemExit):
+        runner.run_verify()
+
+
+def test_run_verify_fails_closed_on_digest_set_drift_even_with_permissive_schema(
+    runner: Any, tmp_path: Path
+) -> None:
+    _copy_retained_package(runner, tmp_path)
+
+    # Weaken the digest schema to accept any object shape -- proving the
+    # file-name-set check does not depend on the schema being strict.
+    runner.ARTIFACT_DIGESTS_SCHEMA_PATH.write_text(
+        json.dumps({"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object"}),
+        encoding="utf-8",
+    )
+
+    artifact_digests = json.loads(runner.ARTIFACT_DIGESTS_PATH.read_bytes())
+    del artifact_digests["digests"]["REPORT.md"]
+    _write_json(runner.ARTIFACT_DIGESTS_PATH, artifact_digests)
 
     with pytest.raises(SystemExit):
         runner.run_verify()
