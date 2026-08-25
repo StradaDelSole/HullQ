@@ -1,0 +1,1512 @@
+{
+  "schema_version": "sl0024-verification-results-v1",
+  "generated_at": "2026-08-25T00:00:00+00:00",
+  "research_boundary": {
+    "max_search_queries_per_candidate": 2,
+    "max_source_evaluations_per_candidate": 4,
+    "max_combined_actions_per_candidate": 6,
+    "global_search_query_ceiling": 60,
+    "global_source_evaluation_ceiling": 120,
+    "global_combined_action_ceiling": 180
+  },
+  "rights_access_ok": true,
+  "results": [
+    {
+      "qid": "Q110127838",
+      "prior_tag": "plausible_model_or_class_lead",
+      "search_queries": [
+        "S2 35 sailboat S2 Yachts specifications",
+        "S2 Yachts owners association S2 35"
+      ],
+      "search_query_count": 2,
+      "evidence_citations": [
+        {
+          "citation_id": "Q110127838-c1",
+          "url": "https://sailboat.guide/s2/35",
+          "domain": "sailboat.guide",
+          "source_class": "high_quality_specialist_documentation",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "page did not render content on two attempts",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q110127838-c2",
+          "url": "http://www.stationr.org/water/S2/S235C.htm",
+          "domain": "stationr.org",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": false,
+          "discrete_fact": "personal owner blog for hull #32, not an association/specialist publication",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q110127838-c3",
+          "url": "https://goodoldboat.com/saildata/boat/s2-35/",
+          "domain": "goodoldboat.com",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "404 not found",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q110127838-c4",
+          "url": "https://sailboat.guide/s2/35",
+          "domain": "sailboat.guide",
+          "source_class": "high_quality_specialist_documentation",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "retry, page did not render content",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 4,
+      "combined_action_count": 6,
+      "hit_budget_cap": true,
+      "subject_outcome": "unresolved",
+      "evidence_strength": "insufficient",
+      "outcome_rationale": "No qualifying strong or independently-corroborated specialist source was accessible within budget; the only accessible independent page was a personal owner blog, not a qualifying source class."
+    },
+    {
+      "qid": "Q113428758",
+      "prior_tag": "plausible_model_or_class_lead",
+      "search_queries": [
+        "Harbor 14 sailboat class specifications",
+        "W.D. Schock Corp Harbor 14 sailboat manufacturer"
+      ],
+      "search_query_count": 2,
+      "evidence_citations": [
+        {
+          "citation_id": "Q113428758-c1",
+          "url": "https://wdschockcorp.com/harbor-14",
+          "domain": "wdschockcorp.com",
+          "source_class": "manufacturer_shipyard",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "404 not found",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q113428758-c2",
+          "url": "https://wdschockcorp.com/about-us",
+          "domain": "wdschockcorp.com",
+          "source_class": "manufacturer_shipyard",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": false,
+          "discrete_fact": "official current model lineup lists Harbor 20/25/Santana 20/Schock 40; Harbor 14 not present (consistent with a discontinued model, not disconfirming)",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q113428758-c3",
+          "url": "https://goodoldboat.com/saildata/boat/harbor-14/",
+          "domain": "goodoldboat.com",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "404 not found",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 3,
+      "combined_action_count": 5,
+      "hit_budget_cap": false,
+      "subject_outcome": "unresolved",
+      "evidence_strength": "insufficient",
+      "outcome_rationale": "The manufacturer's current official site does not list this discontinued model (absence is not disconfirming) and no other qualifying source page was accessible within budget."
+    },
+    {
+      "qid": "Q115815035",
+      "prior_tag": "plausible_model_or_class_lead",
+      "search_queries": [
+        "\"Legende 1 Ton\" voilier voile",
+        "Jeanneau \"Legende\" One Ton class history archive"
+      ],
+      "search_query_count": 2,
+      "evidence_citations": [
+        {
+          "citation_id": "Q115815035-c1",
+          "url": "https://www.jeanneauowners.com/history/",
+          "domain": "jeanneauowners.com",
+          "source_class": "owners_association",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "Jeanneau Owners Network (7000+ members) history article: Doug Peterson developed the Sun Legende 41 in 1984; a special One Tonner race version 'Legend' in a modified mould/high-tech fibres was campaigned in 1980s/90s SORC and PHRF",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q115815035-c2",
+          "url": "http://www.histoiredeshalfs.com/One%20Tonner/OP%2013%20Legende.htm",
+          "domain": "histoiredeshalfs.com",
+          "source_class": "high_quality_specialist_documentation",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "503 service unavailable",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 2,
+      "combined_action_count": 4,
+      "hit_budget_cap": false,
+      "subject_outcome": "out_of_scope",
+      "evidence_strength": "strong_source",
+      "outcome_rationale": "On independent re-review, the Jeanneau Owners Network account describes 'Legende'/'Legend' as a custom, modified-mould One Tonner racing conversion that preceded and is distinct from the later production Sun Legende 41 -- an individual prototype/racing boat rather than a named reusable production model, class or design-family. Reclassified conservatively from an earlier in_scope_identity determination that overstated this as a production design family; the retained qualifying evidence does not directly support that exact reusable identity level for this candidate subject."
+    },
+    {
+      "qid": "Q116909767",
+      "prior_tag": "plausible_model_or_class_lead",
+      "search_queries": [
+        "Jeanneau Yachts 57 official specifications"
+      ],
+      "search_query_count": 1,
+      "evidence_citations": [
+        {
+          "citation_id": "Q116909767-c1",
+          "url": "https://www.jeanneau.com/boats/sailboat/4-jeanneau-yachts/44-jeanneau-yachts-57",
+          "domain": "jeanneau.com",
+          "source_class": "manufacturer_shipyard",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "official Jeanneau product page for Jeanneau Yachts 57, designer Vittorio Garroni",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 1,
+      "combined_action_count": 2,
+      "hit_budget_cap": false,
+      "subject_outcome": "in_scope_identity",
+      "evidence_strength": "strong_source",
+      "outcome_rationale": "Official Jeanneau manufacturer page directly confirms the model."
+    },
+    {
+      "qid": "Q117462175",
+      "prior_tag": "plausible_model_or_class_lead",
+      "search_queries": [
+        "Lagoon 440 catamaran official specifications",
+        "\"cata-lagoon.com\" OR \"catamaran-lagoon.com\" Lagoon 440 official archive"
+      ],
+      "search_query_count": 2,
+      "evidence_citations": [
+        {
+          "citation_id": "Q117462175-c1",
+          "url": "https://www.multihulls-world.com/technical-specifications/lagoon-catamarans/lagoon-440",
+          "domain": "multihulls-world.com",
+          "source_class": "high_quality_specialist_documentation",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "Multihulls World (specialist multihull magazine, ~40yr test archive) confirms Lagoon 440 built by Lagoon Catamarans, designer VPLP",
+          "independent_of": [
+            "Q117462175-c2"
+          ],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q117462175-c2",
+          "url": "https://www.katamarans.com/product-tag/lagoon/",
+          "domain": "katamarans.com",
+          "source_class": "high_quality_specialist_documentation",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "Katamarans.com (specialist catamaran documentation/history site) confirms Lagoon 440's panoramic-saloon/flybridge design",
+          "independent_of": [
+            "Q117462175-c1"
+          ],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 2,
+      "combined_action_count": 4,
+      "hit_budget_cap": false,
+      "subject_outcome": "in_scope_identity",
+      "evidence_strength": "two_independent_specialist_sources",
+      "outcome_rationale": "Two independently-published specialist multihull documentation sources directly and consistently confirm the same model identity."
+    },
+    {
+      "qid": "Q120535525",
+      "prior_tag": "plausible_model_or_class_lead",
+      "search_queries": [
+        "Beneteau 34.7 official specifications",
+        "\"First 34.7\" class association Beneteau one-design"
+      ],
+      "search_query_count": 2,
+      "evidence_citations": [
+        {
+          "citation_id": "Q120535525-c1",
+          "url": "https://www.beneteau.com/first-2004-2006/first-347",
+          "domain": "beneteau.com",
+          "source_class": "manufacturer_shipyard",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "official Beneteau heritage page confirms First 34.7 (Beneteau 34.7), designer Bruce Farr, 2004-2016",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 1,
+      "combined_action_count": 3,
+      "hit_budget_cap": false,
+      "subject_outcome": "in_scope_identity",
+      "evidence_strength": "strong_source",
+      "outcome_rationale": "Official Beneteau manufacturer heritage page directly confirms the model."
+    },
+    {
+      "qid": "Q114568600",
+      "prior_tag": "plausible_model_or_class_lead",
+      "search_queries": [
+        "\"Espace 990\" voilier Jeanneau OR Beneteau sailboat class"
+      ],
+      "search_query_count": 1,
+      "evidence_citations": [
+        {
+          "citation_id": "Q114568600-c1",
+          "url": "https://www.jeanneau.com/en-us/boats/sailboat/36-autres-modeles-voile/562-espace-990",
+          "domain": "jeanneau.com",
+          "source_class": "manufacturer_shipyard",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "official Jeanneau page confirms Espace 990, designer Philippe Briand",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 1,
+      "combined_action_count": 2,
+      "hit_budget_cap": false,
+      "subject_outcome": "in_scope_identity",
+      "evidence_strength": "strong_source",
+      "outcome_rationale": "Official Jeanneau manufacturer page directly confirms the model."
+    },
+    {
+      "qid": "Q113987990",
+      "prior_tag": "plausible_model_or_class_lead",
+      "search_queries": [
+        "\"Newport 28-2\" sailboat Capital Yachts",
+        "Laguna Yachts owners association OR Newport sailboat association Capital Yachts"
+      ],
+      "search_query_count": 2,
+      "evidence_citations": [
+        {
+          "citation_id": "Q113987990-c1",
+          "url": "https://sailboat.guide/capital-yachts-info-class-association",
+          "domain": "sailboat.guide",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "page did not render content",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q113987990-c2",
+          "url": "https://goodoldboat.com/saildata/boat/newport-28-ii/",
+          "domain": "goodoldboat.com",
+          "source_class": "high_quality_specialist_documentation",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "Good Old Boat saildata confirms Newport 28 Mk II built by Capital Yachts 1982-1987, designer C&C Design",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q113987990-c3",
+          "url": "https://www.boat-specs.com/sailing/sailboats/capital-yachts/newport-28-mkii",
+          "domain": "boat-specs.com",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "page returned an error, no content",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q113987990-c4",
+          "url": "https://en.wikipedia.org/wiki/Newport_28-2",
+          "domain": "en.wikipedia.org",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": false,
+          "discrete_fact": "discovery-only: cites sailboatdata.com, sailboat.guide, and a Practical Sailor review without live fetchable URLs",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 4,
+      "combined_action_count": 6,
+      "hit_budget_cap": true,
+      "subject_outcome": "unresolved",
+      "evidence_strength": "insufficient",
+      "outcome_rationale": "Only one accessible specialist source (Good Old Boat) was found; a second independent specialist (Practical Sailor) was identified only via discovery and the budget was exhausted before it could be evaluated."
+    },
+    {
+      "qid": "Q114069597",
+      "prior_tag": "plausible_model_or_class_lead",
+      "search_queries": [
+        "\"Newport 41S\" sailboat Capital Yachts",
+        "Laguna Yachts owners association OR Newport sailboat association Capital Yachts"
+      ],
+      "search_query_count": 2,
+      "evidence_citations": [
+        {
+          "citation_id": "Q114069597-c1",
+          "url": "https://sailboat.guide/capital/newport-41s",
+          "domain": "sailboat.guide",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "page did not render content",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q114069597-c2",
+          "url": "https://en.wikipedia.org/wiki/Newport_41S",
+          "domain": "en.wikipedia.org",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": false,
+          "discrete_fact": "discovery-only: cites sailboatdata.com, sailboat.guide, and a print book (Sherwood, Field Guide to Sailboats of North America); no accessible qualifying URL",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q114069597-c3",
+          "url": "https://goodoldboat.com/saildata/boat/newport-41s/",
+          "domain": "goodoldboat.com",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "404 not found",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q114069597-c4",
+          "url": "https://sailboat.guide/capital/newport-41s",
+          "domain": "sailboat.guide",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "retry, page did not render content",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 4,
+      "combined_action_count": 6,
+      "hit_budget_cap": true,
+      "subject_outcome": "unresolved",
+      "evidence_strength": "insufficient",
+      "outcome_rationale": "No qualifying source page was accessible within budget."
+    },
+    {
+      "qid": "Q122144001",
+      "prior_tag": "plausible_model_or_class_lead",
+      "search_queries": [
+        "Beneteau Cyclades 51.5 official specifications",
+        "beneteau.com Cyclades 51.5 archive former sailboats"
+      ],
+      "search_query_count": 2,
+      "evidence_citations": [
+        {
+          "citation_id": "Q122144001-c1",
+          "url": "https://www.mauripro.com/collections/sailboat-data-beneteau-cyclades-515",
+          "domain": "mauripro.com",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": false,
+          "discrete_fact": "MauriPro Sailing is primarily a retail/e-commerce marketplace; sailboat data is a supplementary parts-finder tool, not qualifying specialist documentation",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q122144001-c2",
+          "url": "https://www.beneteau.com/cyclades-2005-2010/cyclades-515",
+          "domain": "beneteau.com",
+          "source_class": "manufacturer_shipyard",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "404 not found",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q122144001-c3",
+          "url": "https://sailboat.guide/beneteau/cyclades-515",
+          "domain": "sailboat.guide",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "page did not render content",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q122144001-c4",
+          "url": "https://boatsector.com/specifications-cyclades-50-5-beneteau/",
+          "domain": "boatsector.com",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": false,
+          "discrete_fact": "wrong model (Cyclades 50.5, not 51.5); also a marketplace platform",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 4,
+      "combined_action_count": 6,
+      "hit_budget_cap": true,
+      "subject_outcome": "unresolved",
+      "evidence_strength": "insufficient",
+      "outcome_rationale": "No qualifying source page directly confirming this exact model was accessible within budget."
+    },
+    {
+      "qid": "Q111947098",
+      "prior_tag": "plausible_model_or_class_lead",
+      "search_queries": [
+        "\"Laguna 24\" sailboat class manufacturer",
+        "Laguna Yachts owners association OR Newport sailboat association Capital Yachts"
+      ],
+      "search_query_count": 2,
+      "evidence_citations": [
+        {
+          "citation_id": "Q111947098-c1",
+          "url": "https://goodoldboat.com/saildata/boat/laguna-24/",
+          "domain": "goodoldboat.com",
+          "source_class": "high_quality_specialist_documentation",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "Good Old Boat saildata confirms Laguna 24S/24T built by Laguna Yachts (California), designer W. Shad Turner, ~350 units",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q111947098-c2",
+          "url": "https://sailboat.guide/laguna/24s",
+          "domain": "sailboat.guide",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "page did not render content",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q111947098-c3",
+          "url": "https://www.boat-specs.com/sailing/sailboats/laguna/laguna-24s",
+          "domain": "boat-specs.com",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "page returned an error, no content",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q111947098-c4",
+          "url": "https://en.wikipedia.org/wiki/Laguna_Yachts",
+          "domain": "en.wikipedia.org",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": false,
+          "discrete_fact": "discovery-only: cites sailboatdata.com and sailboat.guide (both excluded/inaccessible) and a print book",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 4,
+      "combined_action_count": 6,
+      "hit_budget_cap": true,
+      "subject_outcome": "unresolved",
+      "evidence_strength": "insufficient",
+      "outcome_rationale": "Only one accessible specialist source (Good Old Boat) was found; no second independent specialist or strong source was accessible within budget."
+    },
+    {
+      "qid": "Q115805019",
+      "prior_tag": "plausible_model_or_class_lead",
+      "search_queries": [
+        "RS21 keelboat RS Sailing official"
+      ],
+      "search_query_count": 1,
+      "evidence_citations": [
+        {
+          "citation_id": "Q115805019-c1",
+          "url": "https://www.rssailing.com/project/rs21/",
+          "domain": "rssailing.com",
+          "source_class": "manufacturer_shipyard",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "official RS Sailing page confirms RS21 one-design keelboat",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 1,
+      "combined_action_count": 2,
+      "hit_budget_cap": false,
+      "subject_outcome": "in_scope_identity",
+      "evidence_strength": "strong_source",
+      "outcome_rationale": "Official RS Sailing manufacturer page directly confirms the model."
+    },
+    {
+      "qid": "Q114415084",
+      "prior_tag": "plausible_model_or_class_lead",
+      "search_queries": [
+        "Jeanneau Sun Odyssey 32i official jeanneau.com"
+      ],
+      "search_query_count": 1,
+      "evidence_citations": [
+        {
+          "citation_id": "Q114415084-c1",
+          "url": "https://www.jeanneau.com/en-us/boats/sailboat/2-sun-odyssey/493-sun-odyssey-32i",
+          "domain": "jeanneau.com",
+          "source_class": "manufacturer_shipyard",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "official Jeanneau page confirms Sun Odyssey 32i, designer Philippe Briand",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 1,
+      "combined_action_count": 2,
+      "hit_budget_cap": false,
+      "subject_outcome": "in_scope_identity",
+      "evidence_strength": "strong_source",
+      "outcome_rationale": "Official Jeanneau manufacturer page directly confirms the model."
+    },
+    {
+      "qid": "Q116007147",
+      "prior_tag": "plausible_model_or_class_lead",
+      "search_queries": [
+        "Jeanneau Sun Fast 31 official jeanneau.com"
+      ],
+      "search_query_count": 1,
+      "evidence_citations": [
+        {
+          "citation_id": "Q116007147-c1",
+          "url": "https://www.jeanneau.com/en-us/boats/sailboat/1-sun-fast/452-sun-fast-31",
+          "domain": "jeanneau.com",
+          "source_class": "manufacturer_shipyard",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "official Jeanneau page confirms Sun Fast 31 specifications",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 1,
+      "combined_action_count": 2,
+      "hit_budget_cap": false,
+      "subject_outcome": "in_scope_identity",
+      "evidence_strength": "strong_source",
+      "outcome_rationale": "Official Jeanneau manufacturer page directly confirms the model."
+    },
+    {
+      "qid": "Q116814703",
+      "prior_tag": "plausible_model_or_class_lead",
+      "search_queries": [
+        "Jeanneau Sun Odyssey 29.2 official jeanneau.com"
+      ],
+      "search_query_count": 1,
+      "evidence_citations": [
+        {
+          "citation_id": "Q116814703-c1",
+          "url": "https://www.jeanneau.com/boats/sailboat/2-sun-odyssey/487-sun-odyssey-29-2",
+          "domain": "jeanneau.com",
+          "source_class": "manufacturer_shipyard",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "official Jeanneau page confirms Sun Odyssey 29.2, designer Jacques Fauroux",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 1,
+      "combined_action_count": 2,
+      "hit_budget_cap": false,
+      "subject_outcome": "in_scope_identity",
+      "evidence_strength": "strong_source",
+      "outcome_rationale": "Official Jeanneau manufacturer page directly confirms the model."
+    },
+    {
+      "qid": "Q115813745",
+      "prior_tag": "plausible_model_or_class_lead",
+      "search_queries": [
+        "\"Voyage 12.5\" catamaran Voyage Yachts official"
+      ],
+      "search_query_count": 1,
+      "evidence_citations": [
+        {
+          "citation_id": "Q115813745-c1",
+          "url": "https://www.jeanneauowners.com/history/",
+          "domain": "jeanneauowners.com",
+          "source_class": "owners_association",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "Jeanneau Owners Network history confirms 'Voyage 1120 and 1250' passage-making designs by Guy Ribadeau Dumas alongside the Trinidad 48, in the 1980s Jeanneau ocean-cruiser portfolio",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 1,
+      "combined_action_count": 2,
+      "hit_budget_cap": false,
+      "subject_outcome": "in_scope_identity",
+      "evidence_strength": "strong_source",
+      "outcome_rationale": "Jeanneau Owners Network (owners' association) directly confirms the Voyage 1250/12.5 design as a Jeanneau production model."
+    },
+    {
+      "qid": "Q116973712",
+      "prior_tag": "plausible_model_or_class_lead",
+      "search_queries": [
+        "Jeanneau Yachts 60 official jeanneau.com"
+      ],
+      "search_query_count": 1,
+      "evidence_citations": [
+        {
+          "citation_id": "Q116973712-c1",
+          "url": "https://www.jeanneau.com/boats/sailboat/4-jeanneau-yachts/653-jeanneau-yachts-60",
+          "domain": "jeanneau.com",
+          "source_class": "manufacturer_shipyard",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "official Jeanneau page confirms Jeanneau Yachts 60, designers Philippe Briand/Andrew Winch, first built 2021",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 1,
+      "combined_action_count": 2,
+      "hit_budget_cap": false,
+      "subject_outcome": "in_scope_identity",
+      "evidence_strength": "strong_source",
+      "outcome_rationale": "Official Jeanneau manufacturer page directly confirms the model."
+    },
+    {
+      "qid": "Q122699417",
+      "prior_tag": "plausible_model_or_class_lead",
+      "search_queries": [
+        "Nacra F16 catamaran official Nacra Sailing",
+        "Nacra F16 class association official site"
+      ],
+      "search_query_count": 2,
+      "evidence_citations": [
+        {
+          "citation_id": "Q122699417-c1",
+          "url": "http://www.nacra.com.au/race/nacra-f16",
+          "domain": "nacra.com.au",
+          "source_class": "manufacturer_shipyard",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "certificate expired / could not connect",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q122699417-c2",
+          "url": "https://www.sailing.org/classesandequipment/F16.php",
+          "domain": "sailing.org",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "404 not found",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q122699417-c3",
+          "url": "https://www.ausnacra.com.au/international-classes/nacra-international",
+          "domain": "ausnacra.com.au",
+          "source_class": "class_association",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "Nacra Association of Australia (official national class association) confirms Formula 16 as a World-Sailing-linked multi-manufacturer beach-catamaran class and discusses Nacra's role/proprietary designs within it",
+          "independent_of": [
+            "Q122699417-c4"
+          ],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q122699417-c4",
+          "url": "https://www.boat-specs.com/sailing/sailboats/nacra/nacra-f16",
+          "domain": "boat-specs.com",
+          "source_class": "high_quality_specialist_documentation",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "boat-specs.com confirms 'Nacra F16', builder Nacra, designer Morrelli & Melvin, built since 2012, still in production",
+          "independent_of": [
+            "Q122699417-c3"
+          ],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 4,
+      "combined_action_count": 6,
+      "hit_budget_cap": true,
+      "subject_outcome": "in_scope_identity",
+      "evidence_strength": "strong_source",
+      "outcome_rationale": "Nacra Association of Australia (class association, a strong source class) directly documents the Formula 16 class family that Nacra actively builds under the 'Nacra F16' name, independently corroborated by boat-specs.com's product-level confirmation."
+    },
+    {
+      "qid": "Q119855214",
+      "prior_tag": "ambiguous",
+      "search_queries": [
+        "Beneteau \"First 40.7\" OR \"Beneteau 1 Ton\" 1990s One Ton Cup racer",
+        "beneteau.com \"1 Ton\" first 40 evolution 1983 archive heritage",
+        "Groupe Finot \"Beneteau\" \"1 Ton\" OR \"First 40 Evolution\" design portfolio"
+      ],
+      "search_query_count": 3,
+      "evidence_citations": [
+        {
+          "citation_id": "Q119855214-c1",
+          "url": "https://www.beneteau.com/en-us/first-1983-1985/first-40-evolution",
+          "domain": "beneteau.com",
+          "source_class": "manufacturer_shipyard",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "404 not found",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q119855214-c2",
+          "url": "https://en.wikipedia.org/wiki/Beneteau_1_Ton",
+          "domain": "en.wikipedia.org",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "503 service unavailable",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 2,
+      "combined_action_count": 5,
+      "hit_budget_cap": false,
+      "subject_outcome": "unresolved",
+      "evidence_strength": "insufficient",
+      "outcome_rationale": "No qualifying source page was accessible within the evaluated queries' results. A third discovery-search query was also actually issued (see process_deviations) and is truthfully retained/counted here; its surfaced lead (a Finot-Conq designer-site redirect) was not fetched/evaluated and forms no part of the evidence basis for this determination."
+    },
+    {
+      "qid": "Q19578127",
+      "prior_tag": "ambiguous",
+      "search_queries": [
+        "Dick Newick \"Trice\" trimaran design history",
+        "\"dicknewickboats.com\" Trice Acapella"
+      ],
+      "search_query_count": 2,
+      "evidence_citations": [
+        {
+          "citation_id": "Q19578127-c1",
+          "url": "http://dicknewickboats.com/",
+          "domain": "dicknewickboats.com",
+          "source_class": "designer_naval_architect",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": false,
+          "discrete_fact": "official Dick Newick designer site lists many named designs (Tremolino, Cheers, Moxie, Val, etc.); 'Trice' is not among the names shown on this page",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q19578127-c2",
+          "url": "http://www.dicknewickboats.com/tricia/",
+          "domain": "dicknewickboats.com",
+          "source_class": "designer_naval_architect",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": false,
+          "discrete_fact": "page describes a distinct 36ft 1970 design named 'Tricia' (not 'Trice'); does not confirm 'Trice' as a separately listed design",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q19578127-c3",
+          "url": "http://dicknewickboats.com/about/",
+          "domain": "dicknewickboats.com",
+          "source_class": "designer_naval_architect",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": false,
+          "discrete_fact": "names only Moxie and Rogue Wave; mentions early-1960s St. Croix charter-trade trimarans without naming 'Trice' specifically",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 3,
+      "combined_action_count": 5,
+      "hit_budget_cap": false,
+      "subject_outcome": "unresolved",
+      "evidence_strength": "insufficient",
+      "outcome_rationale": "The designer's own official site does not clearly confirm a design named 'Trice' as distinct from the similarly-named 'Tricia'; this naming ambiguity could not be resolved within budget."
+    },
+    {
+      "qid": "Q49142754",
+      "prior_tag": "ambiguous",
+      "search_queries": [
+        "\"Acapella\" trimaran Piver OR Newick OR Kelsall design history",
+        "\"Acapella\" 31 foot trimaran Mike Birch designer builder"
+      ],
+      "search_query_count": 2,
+      "evidence_citations": [
+        {
+          "citation_id": "Q49142754-c1",
+          "url": "http://dicknewickboats.com/",
+          "domain": "dicknewickboats.com",
+          "source_class": "designer_naval_architect",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": false,
+          "discrete_fact": "'Acapella' not listed among named Newick designs shown on this page",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q49142754-c2",
+          "url": "https://greene-marine.com/about-maritime-history.htm",
+          "domain": "greene-marine.com",
+          "source_class": "manufacturer_shipyard",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "official Greene Marine page: 'Greene Marine began in 1978 with the building of Walter Greene's trimaran design Acapella'; raced 1978 Round Britain (1st in class) then sailed by Mike Birch (renamed Olympus Photo) to win the first Route du Rhum",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 2,
+      "combined_action_count": 4,
+      "hit_budget_cap": false,
+      "subject_outcome": "out_of_scope",
+      "evidence_strength": "strong_source",
+      "outcome_rationale": "On independent re-review, Greene Marine's own official history page identifies Acapella as one individual 1978 trimaran hull (Walter Greene's design), later raced under the name Olympus Photo by Mike Birch to win the first Route du Rhum -- this documents a single vessel's build/racing/ownership history, not a named reusable production model, class or design-family. Reclassified from an earlier in_scope_identity determination that treated the family of related Newick/Greene designs rather than this exact candidate subject; matches the out-of-scope individual-vessel pattern (as with Q21427576/Q1129854 in this same sample)."
+    },
+    {
+      "qid": "Q19576865",
+      "prior_tag": "ambiguous",
+      "search_queries": [
+        "\"Amatasi 27\" catamaran manufacturer",
+        "Classic Boat magazine Amatasi Wharram design competition 2010 award"
+      ],
+      "search_query_count": 2,
+      "evidence_citations": [
+        {
+          "citation_id": "Q19576865-c1",
+          "url": "https://www.wharram.com/gallery/ethnic-designs/amatasi",
+          "domain": "wharram.com",
+          "source_class": "designer_naval_architect",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "403 forbidden",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q19576865-c2",
+          "url": "https://www.wharram.com/shop/study-plans/amatasi",
+          "domain": "wharram.com",
+          "source_class": "designer_naval_architect",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "403 forbidden",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q19576865-c3",
+          "url": "https://www.wharram.com/self-build-boats/ethnic-designs/",
+          "domain": "wharram.com",
+          "source_class": "designer_naval_architect",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "403 forbidden",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q19576865-c4",
+          "url": "https://proafile.com/multihull-boats/article/james-wharram-designs-win-design-competition-for-eco-fishing-boat",
+          "domain": "proafile.com",
+          "source_class": "high_quality_specialist_documentation",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "specialist multihull publication confirms James Wharram Designs' 27ft Amatasi double canoe won a 2010 Classic Boat magazine eco-fishing-boat design competition",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 4,
+      "combined_action_count": 6,
+      "hit_budget_cap": true,
+      "subject_outcome": "unresolved",
+      "evidence_strength": "insufficient",
+      "outcome_rationale": "The designer's own official site (wharram.com) consistently blocked access (403) across all attempted paths; only one specialist source was accessible, short of the two-independent-specialist bar."
+    },
+    {
+      "qid": "Q21427576",
+      "prior_tag": "ambiguous",
+      "search_queries": [
+        "\"Macif\" OR \"Ultim Armand Thiery\" trimaran VPLP design ocean racing"
+      ],
+      "search_query_count": 1,
+      "evidence_citations": [
+        {
+          "citation_id": "Q21427576-c1",
+          "url": "https://www.vplp.fr/course/macif-100-actual-ultim-3/",
+          "domain": "vplp.fr",
+          "source_class": "designer_naval_architect",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "official VPLP Design page documents one individual 2015-built Ultim-class trimaran commissioned for Francois Gabart, later transferred and renamed: Macif (2015-2021) -> Actual Ultim 3 (2021-2026) -> Armand Thiery (2026-present), tracking one hull's ownership/sponsor history, not a repeated production series",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 1,
+      "combined_action_count": 2,
+      "hit_budget_cap": false,
+      "subject_outcome": "out_of_scope",
+      "evidence_strength": "strong_source",
+      "outcome_rationale": "The naval-architecture firm's own page documents a single individual racing trimaran renamed across sponsor changes, matching the out-of-scope 'individual vessel/campaign' pattern rather than a reusable production model/class."
+    },
+    {
+      "qid": "Q3548153",
+      "prior_tag": "ambiguous",
+      "search_queries": [
+        "vinta Philippine outrigger boat museum National Museum Philippines"
+      ],
+      "search_query_count": 1,
+      "evidence_citations": [
+        {
+          "citation_id": "Q3548153-c1",
+          "url": "https://philippinestudies.uk/mapping/items/show/27657",
+          "domain": "philippinestudies.uk",
+          "source_class": "museum_archive",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "403 forbidden",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q3548153-c2",
+          "url": "https://guides.library.manoa.hawaii.edu/c.php?g=105238&p=685462",
+          "domain": "guides.library.manoa.hawaii.edu",
+          "source_class": "high_quality_specialist_documentation",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "University of Hawaii at Manoa Library maritime-heritage research guide states the vinta 'is a variant of the Visayan paraw... the difference is the type of sail rather than the hull', categorizing vinta as a traditional regional vessel-type category rather than a specific production model/class",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 2,
+      "combined_action_count": 3,
+      "hit_budget_cap": false,
+      "subject_outcome": "out_of_scope",
+      "evidence_strength": "insufficient",
+      "outcome_rationale": "An academic library maritime-heritage research guide confirms vinta is a generic traditional Philippine outrigger-boat type category, not a specific production sailboat model/class/design-family; treated conservatively as insufficient (a single specialist-tier source, not one of the seven strong classes) rather than strong_source."
+    },
+    {
+      "qid": "Q22570174",
+      "prior_tag": "obvious_out_of_scope",
+      "search_queries": [
+        "\"Gautier II\" trimaran 1981 Atlantic crossing history",
+        "\"Gautier II\" trimaran naufrage OR record traversee Atlantique 1981"
+      ],
+      "search_query_count": 2,
+      "evidence_citations": [
+        {
+          "citation_id": "Q22570174-c1",
+          "url": "https://timeline.museedelaplaisance.com/en/collection/racing-multihulls-trimarans-unstoppable-rise",
+          "domain": "museedelaplaisance.com",
+          "source_class": "museum_archive",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": false,
+          "discrete_fact": "French boating museum timeline page accessible but does not mention Gautier II specifically",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q22570174-c2",
+          "url": "https://en.wikipedia.org/wiki/Gautier_II",
+          "domain": "en.wikipedia.org",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": false,
+          "discrete_fact": "discovery-only: single citation is a print book (Marchaj, Sail Performance, 2003) with no URL",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q22570174-c3",
+          "url": "https://www.auxbulles.com/passion-bateaux-voile_record_traversee_atlantique_nord.html",
+          "domain": "auxbulles.com",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": false,
+          "discrete_fact": "general recreational water-sports site; does not mention Gautier II",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 3,
+      "combined_action_count": 5,
+      "hit_budget_cap": false,
+      "subject_outcome": "unresolved",
+      "evidence_strength": "insufficient",
+      "outcome_rationale": "No qualifying source page directly confirming Gautier II's identity was found or accessible within budget."
+    },
+    {
+      "qid": "Q114353855",
+      "prior_tag": "obvious_out_of_scope",
+      "search_queries": [
+        "\"Banaderos Express\" ferry 2021 shipyard builder"
+      ],
+      "search_query_count": 1,
+      "evidence_citations": [
+        {
+          "citation_id": "Q114353855-c1",
+          "url": "https://www.marinelink.com/news/austal-philippines-delivers-new-ferry-485643",
+          "domain": "marinelink.com",
+          "source_class": "high_quality_specialist_documentation",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "maritime trade publication confirms Banaderos Express (Austal Hull 395) is a 118m high-speed catamaran/trimaran vehicle-passenger ferry built by Austal Philippines for Fred. Olsen Express, launched 2021",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q114353855-c2",
+          "url": "https://www.austal.com/vessels/banaderos-express",
+          "domain": "austal.com",
+          "source_class": "manufacturer_shipyard",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "404 not found",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q114353855-c3",
+          "url": "https://www.marinelink.com/news/fred-olsens-new-ferry-completes-sea-490114",
+          "domain": "marinelink.com",
+          "source_class": "high_quality_specialist_documentation",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "same publisher (marinelink.com) as c1 -- NOT independent; confirms sea-trial completion, sister ship to Bajamar Express",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 3,
+      "combined_action_count": 4,
+      "hit_budget_cap": false,
+      "subject_outcome": "out_of_scope",
+      "evidence_strength": "insufficient",
+      "outcome_rationale": "A specialist maritime trade publication unambiguously confirms this is a passenger/vehicle ferry hull, not a sailboat; the only other accessible confirming citation is from the same publisher and is not independent, so evidence_strength is recorded as insufficient despite the clear out-of-scope subject matter."
+    },
+    {
+      "qid": "Q104851951",
+      "prior_tag": "obvious_out_of_scope",
+      "search_queries": [
+        "\"River-class ferry\" Sydney Transport NSW official",
+        "Incat Crowther \"River class\" Sydney Ferries catamaran design"
+      ],
+      "search_query_count": 2,
+      "evidence_citations": [
+        {
+          "citation_id": "Q104851951-c1",
+          "url": "https://www.nsw.gov.au/media-releases/new-parramatta-river-class-ferry-arrives-sydney-ready-to-begin-service",
+          "domain": "nsw.gov.au",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": false,
+          "discrete_fact": "confirms the related but distinct 'Parramatta River Class' (generation 2, built by Richardson Devine Marine) -- not this exact QID's original 'River Class' (Incat Crowther design, 2020-2021)",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q104851951-c2",
+          "url": "https://www.incatcrowther.com/vessels/river-class-ferry",
+          "domain": "incatcrowther.com",
+          "source_class": "designer_naval_architect",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "404 not found",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q104851951-c3",
+          "url": "https://www.transport.nsw.gov.au/news-and-events/media-releases/first-river-class-ferry-now-service",
+          "domain": "transport.nsw.gov.au",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "403 forbidden",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q104851951-c4",
+          "url": "https://en.wikipedia.org/wiki/River-class_ferry",
+          "domain": "en.wikipedia.org",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": false,
+          "discrete_fact": "discovery-only: reference list (Transport for NSW, SMH, Canberra Times, Nine News, PS News) mostly archived/paywalled; no directly fetchable exact-match qualifying page found within budget",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 4,
+      "combined_action_count": 6,
+      "hit_budget_cap": true,
+      "subject_outcome": "unresolved",
+      "evidence_strength": "insufficient",
+      "outcome_rationale": "The exact 'River Class' (as distinct from the newer, related 'Parramatta River Class') could not be confirmed by an accessible qualifying source within budget."
+    },
+    {
+      "qid": "Q4826103",
+      "prior_tag": "obvious_out_of_scope",
+      "search_queries": [
+        "\"Auto Express 86\" ferry shipyard builder class",
+        "Austal \"Auto Express 86\" class ferry official austal.com"
+      ],
+      "search_query_count": 2,
+      "evidence_citations": [
+        {
+          "citation_id": "Q4826103-c1",
+          "url": "https://www.austal.com/vessels/auto-express-86",
+          "domain": "austal.com",
+          "source_class": "manufacturer_shipyard",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "404 not found",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q4826103-c2",
+          "url": "https://en.wikipedia.org/wiki/Auto_Express_86-class_ferry",
+          "domain": "en.wikipedia.org",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": false,
+          "discrete_fact": "discovery-only: citations are archive.org-mirrored Austal ASX announcement and Austal PDF spec sheet, not directly fetchable",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q4826103-c3",
+          "url": "https://magazines.marinelink.com/Magazines/MaritimeReporter/200401/content/ferries-market-austal-208451",
+          "domain": "marinelink.com",
+          "source_class": "high_quality_specialist_documentation",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "Maritime Reporter & Engineering News (est. 1881, specialist maritime trade journal) confirms Austal built its 'seventh Auto Express 86 catamaran' for Canadian American Transportation Systems, operating Lake Ontario",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 3,
+      "combined_action_count": 5,
+      "hit_budget_cap": false,
+      "subject_outcome": "out_of_scope",
+      "evidence_strength": "insufficient",
+      "outcome_rationale": "A specialist maritime trade journal unambiguously confirms this is a class of high-speed catamaran ferries, not a sailboat; only one independent specialist source was accessible within budget."
+    },
+    {
+      "qid": "Q30681833",
+      "prior_tag": "obvious_out_of_scope",
+      "search_queries": [
+        "\"Emerald-class ferry\" Washington State Ferries official",
+        "\"Emerald-class ferry\" ship class builder",
+        "Birdon official site Emerald-class ferry Sydney"
+      ],
+      "search_query_count": 3,
+      "evidence_citations": [
+        {
+          "citation_id": "Q30681833-c1",
+          "url": "https://www.ship-technology.com/news/first-emerald-class-ferry-fairlight/",
+          "domain": "ship-technology.com",
+          "source_class": "high_quality_specialist_documentation",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "specialist maritime/shipping trade publication (GlobalData) confirms Emerald-class ferries built by Birdon for Sydney Ferries/Transdev, operating the Circular Quay-Manly route",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q30681833-c2",
+          "url": "https://en.wikipedia.org/wiki/Emerald-class_ferry",
+          "domain": "en.wikipedia.org",
+          "source_class": "non_qualifying",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "503 service unavailable",
+          "independent_of": [],
+          "research_reference_only": true
+        },
+        {
+          "citation_id": "Q30681833-c3",
+          "url": "https://www.incat.com.au/vessels/emerald-class",
+          "domain": "incat.com.au",
+          "source_class": "manufacturer_shipyard",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": false,
+          "supports_identity": false,
+          "discrete_fact": "404 not found",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 3,
+      "combined_action_count": 6,
+      "hit_budget_cap": true,
+      "subject_outcome": "out_of_scope",
+      "evidence_strength": "insufficient",
+      "outcome_rationale": "A specialist maritime trade publication unambiguously confirms this is a passenger catamaran ferry class, not a sailboat; only one independent specialist source was accessible. A third discovery-search query was also actually issued (see process_deviations) and is truthfully retained/counted here; its surfaced lead (Birdon's official site) was not fetched/evaluated and forms no part of the evidence basis for this determination."
+    },
+    {
+      "qid": "Q1129854",
+      "prior_tag": "obvious_out_of_scope",
+      "search_queries": [
+        "\"USA 17\" BMW Oracle Racing trimaran America's Cup 2010"
+      ],
+      "search_query_count": 1,
+      "evidence_citations": [
+        {
+          "citation_id": "Q1129854-c1",
+          "url": "https://www.vplp.fr/en/racing/usa17/",
+          "domain": "vplp.fr",
+          "source_class": "designer_naval_architect",
+          "access_timestamp": "2026-08-25T00:00:00Z",
+          "accessible": true,
+          "supports_identity": true,
+          "discrete_fact": "official VPLP Design page confirms USA 17 (BMW Oracle Racing 90) was a bespoke one-off trimaran commissioned by Russell Coutts specifically for the 2010 America's Cup, with no production-class/serial-variant mention",
+          "independent_of": [],
+          "research_reference_only": true
+        }
+      ],
+      "source_page_evaluation_count": 1,
+      "combined_action_count": 2,
+      "hit_budget_cap": false,
+      "subject_outcome": "out_of_scope",
+      "evidence_strength": "strong_source",
+      "outcome_rationale": "The naval-architecture firm's own official page directly confirms this was a bespoke one-off racing vessel, not a production class."
+    }
+  ],
+  "metrics": {
+    "sample_counts_by_prior_tag": {
+      "plausible_model_or_class_lead": 18,
+      "ambiguous": 6,
+      "obvious_out_of_scope": 6
+    },
+    "subject_outcome_counts": {
+      "in_scope_identity": 11,
+      "out_of_scope": 8,
+      "conflict": 0,
+      "unresolved": 11
+    },
+    "subject_outcome_counts_by_prior_tag": {
+      "plausible_model_or_class_lead": {
+        "in_scope_identity": 11,
+        "out_of_scope": 1,
+        "conflict": 0,
+        "unresolved": 6
+      },
+      "ambiguous": {
+        "in_scope_identity": 0,
+        "out_of_scope": 3,
+        "conflict": 0,
+        "unresolved": 3
+      },
+      "obvious_out_of_scope": {
+        "in_scope_identity": 0,
+        "out_of_scope": 4,
+        "conflict": 0,
+        "unresolved": 2
+      }
+    },
+    "evidence_strength_counts": {
+      "strong_source": 14,
+      "two_independent_specialist_sources": 1,
+      "insufficient": 15
+    },
+    "evidence_strength_counts_by_prior_tag": {
+      "plausible_model_or_class_lead": {
+        "strong_source": 11,
+        "two_independent_specialist_sources": 1,
+        "insufficient": 6
+      },
+      "ambiguous": {
+        "strong_source": 2,
+        "two_independent_specialist_sources": 0,
+        "insufficient": 4
+      },
+      "obvious_out_of_scope": {
+        "strong_source": 1,
+        "two_independent_specialist_sources": 0,
+        "insufficient": 5
+      }
+    },
+    "independently_supported_in_scope_count": 11,
+    "strong_source_in_scope_count": 10,
+    "threshold_set_independently_supported_in_scope_count": 11,
+    "threshold_set_strong_source_in_scope_count": 10,
+    "source_class_counts": {
+      "manufacturer_shipyard": 17,
+      "original_manufacturer_brochure": 0,
+      "owners_technical_manual": 0,
+      "designer_naval_architect": 10,
+      "class_association": 1,
+      "owners_association": 2,
+      "museum_archive": 2,
+      "high_quality_specialist_documentation": 14,
+      "non_qualifying": 25
+    },
+    "search_query_count_total": 50,
+    "source_page_evaluation_count_total": 71,
+    "combined_research_action_count_total": 121,
+    "per_candidate_research_action_counts": [
+      6,
+      5,
+      4,
+      2,
+      4,
+      3,
+      2,
+      6,
+      6,
+      6,
+      6,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      6,
+      5,
+      5,
+      4,
+      6,
+      2,
+      3,
+      5,
+      4,
+      6,
+      5,
+      6,
+      2
+    ],
+    "median_combined_actions_independently_supported_threshold_set": 2.0,
+    "count_hitting_per_candidate_budget_cap": 9,
+    "access_blocked_source_page_count": 29,
+    "conflicts_and_unresolved_count": 11,
+    "per_candidate_ceiling_violations": [
+      {
+        "qid": "Q119855214",
+        "problems": [
+          "search_query_count=3 exceeds ceiling 2"
+        ]
+      },
+      {
+        "qid": "Q30681833",
+        "problems": [
+          "search_query_count=3 exceeds ceiling 2"
+        ]
+      }
+    ],
+    "any_per_candidate_ceiling_exceeded": true
+  },
+  "recommendation": "LOW_INDEPENDENT_VERIFICATION_YIELD",
+  "process_deviations": [
+    {
+      "qid": "Q119855214",
+      "description": "Three discovery-search queries were actually issued for this candidate -- one more than the fixed 2-query-per-candidate ceiling in the controlling slice's external research boundary. This was not caught during original assembly (which incorrectly excluded the third query from the retained action ledger) and was corrected during independent review. All three queries are now retained and mechanically counted in this row's search_query_count/combined_action_count and in the global action totals below; this candidate's per-candidate search-query ceiling is exceeded (search_query_count=3 > 2). The third query's surfaced lead (a Finot-Conq designer-site redirect) was never fetched/evaluated and forms no part of the evidence basis for this candidate's subject_outcome/evidence_strength.",
+      "actual_search_query_count": 3
+    },
+    {
+      "qid": "Q30681833",
+      "description": "Three discovery-search queries were actually issued for this candidate -- one more than the fixed 2-query-per-candidate ceiling in the controlling slice's external research boundary. This was not caught during original assembly (which incorrectly excluded the third query from the retained action ledger) and was corrected during independent review. All three queries are now retained and mechanically counted in this row's search_query_count/combined_action_count and in the global action totals below; this candidate's per-candidate search-query ceiling is exceeded (search_query_count=3 > 2). The third query's surfaced lead (Birdon's official site) was never fetched/evaluated and forms no part of the evidence basis for this candidate's subject_outcome/evidence_strength.",
+      "actual_search_query_count": 3
+    }
+  ]
+}

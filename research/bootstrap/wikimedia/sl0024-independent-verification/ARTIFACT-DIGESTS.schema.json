@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/wikimedia-sl0024-artifact-digests/v1",
+  "title": "HullQ SLICE-0024 Retained Artifact Digests",
+  "description": "Deterministic, non-self-referential SHA256 digests of the SLICE-0024 retained output files. Excludes ARTIFACT-DIGESTS.json itself to avoid a self-referential digest loop.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "excludes_self", "digests"],
+  "properties": {
+    "schema_version": { "const": "sl0024-artifact-digests-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "excludes_self": { "const": "ARTIFACT-DIGESTS.json" },
+    "digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verification_sample.json",
+        "verification_sample_schema.json",
+        "verification_results.json",
+        "verification_results_schema.json",
+        "REPORT.md"
+      ],
+      "properties": {
+        "verification_sample.json": { "$ref": "#/$defs/sha256_digest" },
+        "verification_sample_schema.json": { "$ref": "#/$defs/sha256_digest" },
+        "verification_results.json": { "$ref": "#/$defs/sha256_digest" },
+        "verification_results_schema.json": { "$ref": "#/$defs/sha256_digest" },
+        "REPORT.md": { "$ref": "#/$defs/sha256_digest" }
+      }
+    }
+  },
+  "$defs": {
+    "sha256_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}
