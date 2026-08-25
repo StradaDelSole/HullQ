@@ -4,9 +4,11 @@ Offline and deterministic: no web/network calls. Executes the full retained
 generator chain in-process (build_registry -> finalize_source_yield ->
 analyze_overlap -> build_report) against the committed inputs and asserts the
 regenerated structured outputs/report are byte-identical to what is committed
-in the repository. This is the proof required by the SLICE-0019 independent
-review that the generator chain documented in REPORT.md actually reproduces
-the retained artifacts, rather than merely having run once by hand.
+in the repository.
+
+The test snapshots and restores every retained artifact in a ``finally`` block.
+A test run must never leave tracked research artifacts modified in a developer
+or slice worktree, even when reproduction fails part-way through.
 
 Also pins the accepted SLICE-0017/0018 AUTO_ADMIT union at exactly 1,770 QIDs
 and the bounded exact-only overlap semantics (57 probes, no fuzzy matching),
@@ -58,37 +60,39 @@ ARTIFACTS = [
 def test_generator_chain_reproduces_committed_artifacts(manufacturers_path_prefix):
     before = {path: path.read_bytes() for path in ARTIFACTS}
 
-    build_registry = _load_module("slice0019_build_registry", MANUFACTURERS / "build_registry.py")
-    build_registry.main()
-
-    finalize_source_yield = _load_module(
-        "slice0019_finalize_source_yield", MANUFACTURERS / "finalize_source_yield.py"
-    )
-    finalize_source_yield.main()
-
-    analyze_overlap = _load_module(
-        "slice0019_analyze_overlap", MANUFACTURERS / "analyze_overlap.py"
-    )
-    analyze_overlap.main()
-
-    build_report = _load_module("slice0019_build_report", MANUFACTURERS / "build_report.py")
-    build_report.main()
-
-    after = {path: path.read_bytes() for path in ARTIFACTS}
-
-    def normalize_newlines(data: bytes) -> bytes:
-        # Python's default text-mode write translates outgoing "\n" to the
-        # platform line separator (CRLF on Windows), while a checked-out git
-        # blob's line endings depend on the runner's checkout/gitattributes
-        # configuration. Normalizing both sides isolates genuine content
-        # drift from this incidental, OS-specific text-mode representation.
-        return data.replace(b"\r\n", b"\n")
-
-    for path in ARTIFACTS:
-        assert normalize_newlines(after[path]) == normalize_newlines(before[path]), (
-            f"{path.name} regenerated from the committed generator chain does not match the "
-            "committed artifact (content, ignoring line-ending style)"
+    try:
+        build_registry = _load_module(
+            "slice0019_build_registry", MANUFACTURERS / "build_registry.py"
         )
+        build_registry.main()
+
+        finalize_source_yield = _load_module(
+            "slice0019_finalize_source_yield", MANUFACTURERS / "finalize_source_yield.py"
+        )
+        finalize_source_yield.main()
+
+        analyze_overlap = _load_module(
+            "slice0019_analyze_overlap", MANUFACTURERS / "analyze_overlap.py"
+        )
+        analyze_overlap.main()
+
+        build_report = _load_module(
+            "slice0019_build_report", MANUFACTURERS / "build_report.py"
+        )
+        build_report.main()
+
+        after = {path: path.read_bytes() for path in ARTIFACTS}
+        for path in ARTIFACTS:
+            assert after[path] == before[path], (
+                f"{path.name} regenerated from the committed generator chain does not match "
+                "the committed artifact byte-for-byte"
+            )
+    finally:
+        # Never let a reproducibility test mutate the caller's working tree.
+        # Raw bytes preserve the exact pre-test representation, including any
+        # platform-specific checkout state that existed before the test ran.
+        for path, data in before.items():
+            path.write_bytes(data)
 
 
 def test_overlap_union_and_probe_semantics_pinned(manufacturers_path_prefix):
