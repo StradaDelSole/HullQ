@@ -2,7 +2,8 @@
 
 **Status:** ACCEPTED ARCHITECTURAL BASELINE  
 **Decision:** ADR-0007  
-**Detailed public-surface implementation gate:** OQ-018
+**Detailed public-surface implementation gate:** OQ-018  
+**Accepted product-led distribution strategy:** `docs/PRODUCT_LED_SEO_STRATEGY.md`
 
 ## Core principle
 
@@ -117,3 +118,24 @@ Frontend or routing code MUST NOT silently decide SEO semantics. Changes affecti
 ## 12. External guidance baseline
 
 The baseline is informed by current primary guidance registered in `research/evidence/SOURCE_REGISTER.md`, including Google Search Central guidance on URL structure/faceted navigation, JavaScript SEO, canonicalization, sitemaps and structured data, plus web.dev Core Web Vitals guidance. Exact implementation rules MUST be re-verified when OQ-018 is resolved and before public launch because search-engine guidance can change.
+
+The 2026 product-led SEO research refresh is retained in `docs/research/OQ-018_PRODUCT_LED_SEO_RESEARCH_2026-08-25.md` and includes current Google guidance for faceted navigation, generative-AI search features, Search Console, metadata, internationalization and Core Web Vitals plus Bing/IndexNow discovery guidance.
+
+## 13. Product-led organic-distribution doctrine
+
+ADR-0007's architectural principle is operationalized by `docs/PRODUCT_LED_SEO_STRATEGY.md`.
+
+The accepted strategic direction is:
+
+- HullQ's canonical data/query engine is the primary organic-content moat;
+- Product-Led SEO is a primary zero-budget distribution strategy;
+- indexability is an intentional promoted page state, not a side effect of generating a route or serializing a user query;
+- arbitrary faceted search remains a product feature while only selected stable intents become public organic landing pages;
+- Search Console/internal-search demand should later feed landing-page promotion and data-enrichment priorities;
+- programmatic pages must provide distinct user utility and must not rely on generic AI filler or doorway behavior;
+- segmented sitemaps should support both discovery and page-class indexation measurement;
+- AI-search visibility should be pursued through normal search quality, unique data, clear semantics and provenance rather than a speculative separate GEO content layer;
+- multilingual expansion must be designed before translation and must not become thin machine-translated index growth;
+- zero-budget authority should compound through original HullQ data, shareable search/compare/entity pages, methodology transparency and legitimate community/earned-media use.
+
+These principles do **not** resolve OQ-018's exact URL grammar, indexability thresholds, robots/noindex rules, page taxonomy, schema mapping, language choice or release budgets. Those remain explicit pre-public implementation decisions.
