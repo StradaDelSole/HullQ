@@ -374,7 +374,7 @@ NEW_RELATIONSHIPS = {
             "related_name": "Fuji Yacht Builders",
             "evidence_note": "Former Far East/TOA personnel later established Fuji Yacht Builders; the yards "
             "remain distinct entities despite overlapping personnel, site and mould history.",
-            "source_url": "https://www.fujiyachts.net/history/takao.html",
+            "source_url": "https://www.fujiyachts.net/history/history.html",
         }
     ],
     "Bashford Boats / Bashford International": [
