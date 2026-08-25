@@ -3,7 +3,7 @@
 **Updated:** 2026-08-25  
 **Current stage:** Stage 3.2 — canonical identity breadth / bounded discovery and admission proof  
 **Accepted slices:** SLICE-0001 through SLICE-0023 are owner-accepted / `DONE`  
-**Current queue:** no SLICE-0024 or later slice is `READY`
+**Current queue:** SLICE-0024 is `READY`; no later slice is authorized
 
 This is a **compact current-state document**. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Do not use this file as a substitute for normative specs or accepted ADRs.
 
@@ -89,7 +89,7 @@ Acceptance evidence:
 
 Stage 3.3 has **not** begun.
 
-The project is still completing breadth/verification rationale for the canonical sailboat identity universe. SLICE-0023 establishes that the bounded Wikimedia path has useful incremental research-lead yield, but any verification campaign over those 409 leads requires a separate readiness contract and slice.
+The project is still completing breadth/verification rationale for the canonical sailboat identity universe. SLICE-0023 establishes that the bounded Wikimedia path has useful incremental research-lead yield, but any verification/admission campaign over those 409 leads requires separately accepted evidence and governance.
 
 Do not infer that `FOLLOWUP_VERIFICATION_CANDIDATE` means:
 
@@ -97,8 +97,9 @@ Do not infer that `FOLLOWUP_VERIFICATION_CANDIDATE` means:
 - identity admission;
 - review-queue resolution;
 - Tier-1/Tier-2 technical enrichment;
-- query-engine/API/frontend authorization;
-- automatic SLICE-0024 readiness.
+- query-engine/API/frontend authorization.
+
+SLICE-0024 is now separately `READY`, but remains only a bounded verification-source pilot over 30 deterministic candidates.
 
 ## Accepted foundation
 
@@ -257,19 +258,37 @@ Binding files:
 
 The project master/reviewer should explicitly direct the operator with `NOW: /clear` or `NOW: /compact` when appropriate.
 
-## Current next boundary
+## Current next boundary — SLICE-0024 READY
 
-No next slice is authorized by this file.
+SLICE-0024 is the only authorized next slice.
 
-The accepted SLICE-0023 result supports considering a **separate bounded verification step** for the 409 incremental Wikimedia QID leads, but readiness must still decide whether that is the best next Stage-3.2 action versus another breadth source or a justified transition boundary.
+It performs a deterministic **30-QID independent identity-verification/source-cost pilot** over the final accepted SLICE-0023 quality sample:
 
-A later slice requires:
+```text
+prior plausible   18
+prior ambiguous    6
+prior out-of-scope 6
+```
 
-1. explicit readiness analysis;
-2. a bounded primary slice contract set to `READY`;
-3. normal `START_SLICE.bat` isolated-worktree creation;
-4. one fresh Claude session;
-5. independent review, explicit owner acceptance and closure before `DONE`.
+The prior tags are calibration metadata, not truth. Each selected candidate is researched under strict per-candidate/global action ceilings. Qualifying evidence comes from the accepted strong source hierarchy or, secondarily, two genuinely independent high-quality specialist sources. Wikipedia/Wikidata context, search snippets and SailboatData cannot qualify the outcome.
+
+The slice measures independent verification yield, strong-source coverage and bounded research effort. Its precommitted recommendation may say whether a **later** full-409 verification campaign is worth considering, but SLICE-0024 itself:
+
+- creates no canonical identity;
+- mints no HullQ ID;
+- changes no historical crosswalk;
+- grants no new production source clearance;
+- begins no Stage-3.3 enrichment;
+- does not create/start SLICE-0025.
+
+Primary contract: `docs/slices/SLICE-0024-wikimedia-lead-independent-identity-verification-pilot.md`.
+
+Execution requires:
+
+1. normal `START_SLICE.bat` isolated-worktree creation from current `origin/main`;
+2. one fresh Claude conversation;
+3. slice-first/dependency-on-demand reading;
+4. independent review, explicit owner acceptance and closure before `DONE`.
 
 Operational queue: `docs/slices/INDEX.md`.
 
