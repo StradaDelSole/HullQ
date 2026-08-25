@@ -175,9 +175,8 @@ def main() -> None:
         "clearly_new_candidates": new_candidates,
     }
 
-    OUT.write_text(
-        json.dumps(result, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
+    OUT.write_bytes(
+        (json.dumps(result, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
     )
     summary = result["probe_summary"]
     print("SLICE-0019 exact-label overlap probe complete")
