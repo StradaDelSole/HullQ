@@ -189,9 +189,12 @@ def test_run_verify_fails_closed_when_artifact_digests_missing(tmp_path: Path) -
 
 
 def test_run_verify_passes_against_real_committed_manifest() -> None:
-    """The actual retained SLICE-0022 manifest/report/artifact-digests
-    committed to the repository must themselves pass offline verification —
-    the same check normal CI runs.
+    """The actual retained SLICE-0022 manifest/report/artifact-digests/
+    replay-evidence committed to the repository must themselves pass offline
+    verification — the same check normal CI runs. ``replay_result_path``/
+    ``replay_report_path`` default to the real committed
+    REPLAY-RESULT.json/REPLAY-REPORT.md, so this also exercises the checked-in
+    replay-evidence verification path end to end.
     """
     from bootstrap.wikidata_sl0022_alt_route_admission_runner import (
         ARTIFACT_DIGESTS_PATH,
@@ -204,3 +207,195 @@ def test_run_verify_passes_against_real_committed_manifest() -> None:
         report_path=REPORT_PATH,
         artifact_digests_path=ARTIFACT_DIGESTS_PATH,
     )  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# Checked-in PostgreSQL replay-evidence verification (--verify and the
+# --replay pre-mutation gate)
+# ---------------------------------------------------------------------------
+
+
+def _run_classify_with_real_replay_evidence(
+    tmp_path: Path,
+) -> tuple[dict, Path, Path, Path, Path, Path]:
+    """Freshly --classify into *tmp_path*, then copy the real checked-in
+    REPLAY-RESULT.json/REPLAY-REPORT.md alongside it.
+
+    Safe because classification is fully deterministic from the immutable
+    retained inputs (no IDs are ever minted under the R1 governance
+    amendment), so a fresh manifest in *tmp_path* has byte-identical
+    candidate/decision/count content to the real committed manifest.json —
+    only ``generated_at`` differs (wall-clock write time), which the replay
+    verifier never inspects. The real replay evidence is therefore valid
+    against this fresh manifest too.
+    """
+    from bootstrap.wikidata_sl0022_alt_route_admission_runner import (
+        REPLAY_REPORT_PATH,
+        REPLAY_RESULT_PATH,
+    )
+
+    manifest, manifest_path, report_path, artifact_digests_path = _run_classify(tmp_path)
+    replay_result_path = tmp_path / "REPLAY-RESULT.json"
+    replay_report_path = tmp_path / "REPLAY-REPORT.md"
+    replay_result_path.write_bytes(REPLAY_RESULT_PATH.read_bytes())
+    replay_report_path.write_bytes(REPLAY_REPORT_PATH.read_bytes())
+    return (
+        manifest,
+        manifest_path,
+        report_path,
+        artifact_digests_path,
+        replay_result_path,
+        replay_report_path,
+    )
+
+
+def test_run_verify_passes_with_copied_real_replay_evidence(tmp_path: Path) -> None:
+    (
+        _,
+        manifest_path,
+        report_path,
+        artifact_digests_path,
+        replay_result_path,
+        replay_report_path,
+    ) = _run_classify_with_real_replay_evidence(tmp_path)
+
+    run_verify(
+        manifest_path=manifest_path,
+        report_path=report_path,
+        artifact_digests_path=artifact_digests_path,
+        replay_result_path=replay_result_path,
+        replay_report_path=replay_report_path,
+    )  # must not raise
+
+
+def test_run_verify_fails_closed_on_tampered_replay_result_auto_admit(tmp_path: Path) -> None:
+    (
+        _,
+        manifest_path,
+        report_path,
+        artifact_digests_path,
+        replay_result_path,
+        replay_report_path,
+    ) = _run_classify_with_real_replay_evidence(tmp_path)
+
+    replay_result = json.loads(replay_result_path.read_text(encoding="utf-8"))
+    replay_result["sl0022_auto_admit"] = 1
+    replay_result_path.write_text(json.dumps(replay_result), encoding="utf-8")
+
+    with pytest.raises(SystemExit):
+        run_verify(
+            manifest_path=manifest_path,
+            report_path=report_path,
+            artifact_digests_path=artifact_digests_path,
+            replay_result_path=replay_result_path,
+            replay_report_path=replay_report_path,
+        )
+
+
+def test_run_verify_fails_closed_when_replay_report_changed_independently_of_result(
+    tmp_path: Path,
+) -> None:
+    (
+        _,
+        manifest_path,
+        report_path,
+        artifact_digests_path,
+        replay_result_path,
+        replay_report_path,
+    ) = _run_classify_with_real_replay_evidence(tmp_path)
+
+    replay_report_path.write_text("this report text was hand-edited", encoding="utf-8")
+
+    with pytest.raises(SystemExit):
+        run_verify(
+            manifest_path=manifest_path,
+            report_path=report_path,
+            artifact_digests_path=artifact_digests_path,
+            replay_result_path=replay_result_path,
+            replay_report_path=replay_report_path,
+        )
+
+
+def test_run_verify_fails_closed_when_replay_result_changed_while_report_stale(
+    tmp_path: Path,
+) -> None:
+    (
+        _,
+        manifest_path,
+        report_path,
+        artifact_digests_path,
+        replay_result_path,
+        replay_report_path,
+    ) = _run_classify_with_real_replay_evidence(tmp_path)
+
+    replay_result = json.loads(replay_result_path.read_text(encoding="utf-8"))
+    replay_result["first_pass"]["readback"]["stray_row_counts"]["canonical_brands"] = 1
+    replay_result_path.write_text(json.dumps(replay_result), encoding="utf-8")
+    # replay_report_path is intentionally left untouched (now stale relative
+    # to the just-tampered REPLAY-RESULT.json).
+
+    with pytest.raises(SystemExit):
+        run_verify(
+            manifest_path=manifest_path,
+            report_path=report_path,
+            artifact_digests_path=artifact_digests_path,
+            replay_result_path=replay_result_path,
+            replay_report_path=replay_report_path,
+        )
+
+
+def test_run_verify_passes_when_no_replay_evidence_has_ever_been_produced(tmp_path: Path) -> None:
+    """A freshly-classified manifest with no REPLAY-RESULT.json yet (no
+    --replay has ever run) is NOT itself a --verify failure — replay evidence
+    is validated only if present."""
+    _, manifest_path, report_path, artifact_digests_path = _run_classify(tmp_path)
+
+    run_verify(
+        manifest_path=manifest_path,
+        report_path=report_path,
+        artifact_digests_path=artifact_digests_path,
+        replay_result_path=tmp_path / "REPLAY-RESULT.json",
+        replay_report_path=tmp_path / "REPLAY-REPORT.md",
+    )  # must not raise
+
+
+def test_replay_gate_aborts_before_db_mutation_for_tampered_checked_in_replay_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The --replay pre-mutation safety gate must reject tampered checked-in
+    replay evidence and abort BEFORE any PostgreSQL connection is attempted —
+    proven here by making a connection attempt itself fail the test."""
+    import psycopg
+    from bootstrap.wikidata_sl0022_alt_route_admission_runner import (
+        ARTIFACT_DIGESTS_PATH,
+        MANIFEST_PATH,
+        REPLAY_REPORT_PATH,
+        REPLAY_RESULT_PATH,
+        REPORT_PATH,
+        replay_manifest,
+    )
+
+    def _must_not_connect(*args: object, **kwargs: object) -> None:
+        raise AssertionError(
+            "psycopg.connect must not be called when the pre-mutation replay-safety gate "
+            "rejects tampered checked-in replay evidence"
+        )
+
+    monkeypatch.setattr(psycopg, "connect", _must_not_connect)
+
+    tampered_result = json.loads(REPLAY_RESULT_PATH.read_text(encoding="utf-8"))
+    tampered_result["all_zero_tolerance_conditions_clear"] = False
+    tampered_result_path = tmp_path / "REPLAY-RESULT.json"
+    tampered_result_path.write_text(json.dumps(tampered_result), encoding="utf-8")
+    copied_report_path = tmp_path / "REPLAY-REPORT.md"
+    copied_report_path.write_bytes(REPLAY_REPORT_PATH.read_bytes())
+
+    with pytest.raises(SystemExit):
+        replay_manifest(
+            "postgresql://this-host-must-never-be-contacted.invalid/db",
+            manifest_path=MANIFEST_PATH,
+            retained_report_path=REPORT_PATH,
+            artifact_digests_path=ARTIFACT_DIGESTS_PATH,
+            result_path=tampered_result_path,
+            report_path=copied_report_path,
+        )

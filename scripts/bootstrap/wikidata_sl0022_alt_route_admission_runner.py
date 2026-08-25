@@ -246,6 +246,8 @@ def run_verify(
     manifest_path: Path = MANIFEST_PATH,
     report_path: Path = REPORT_PATH,
     artifact_digests_path: Path = ARTIFACT_DIGESTS_PATH,
+    replay_result_path: Path = REPLAY_RESULT_PATH,
+    replay_report_path: Path = REPLAY_REPORT_PATH,
 ) -> None:
     """Fully offline (zero network access) hardened verification.
 
@@ -258,10 +260,24 @@ def run_verify(
     (``verify_sl0022_manifest_self_consistency``), and the retained
     ``ARTIFACT-DIGESTS.json`` (if present) is recomputed and compared against
     the actual on-disk retained files (``verify_artifact_digests``).
+
+    If a checked-in ``REPLAY-RESULT.json`` already exists (normal state once
+    a ``--replay`` has ever been run and committed), it is also validated:
+    every structurally-derivable field is recomputed against the
+    already-verified manifest and the accepted combined SLICE-0017+0018
+    baseline (``verify_replay_result_self_consistency``), and the checked-in
+    ``REPLAY-REPORT.md`` is required to be byte-for-byte what
+    ``render_replay_report`` deterministically produces from that same
+    retained result — so neither file can drift from the other, or from the
+    manifest/baseline it claims to describe, without ``--verify`` catching
+    it. A manifest that has never been replayed (no ``REPLAY-RESULT.json``
+    yet) is not itself a ``--verify`` failure — replay evidence is validated
+    if present, not required to exist before the first ``--replay``.
     """
     from hullq.bootstrap.wikidata_sl0022_alt_route_admission import (
         load_and_fingerprint_immutable_inputs,
         verify_artifact_digests,
+        verify_replay_result_self_consistency,
         verify_sl0022_manifest_self_consistency,
     )
 
@@ -294,6 +310,32 @@ def run_verify(
         mismatches.extend(verify_artifact_digests(digests_doc, paths=digest_paths))
     else:
         mismatches.append(f"required ARTIFACT-DIGESTS.json not found at {artifact_digests_path}")
+
+    if replay_result_path.exists():
+        replay_result = json.loads(replay_result_path.read_text(encoding="utf-8"))
+        mismatches.extend(
+            verify_replay_result_self_consistency(
+                replay_result, manifest=manifest, baseline=inputs.baseline
+            )
+        )
+        if replay_report_path.exists():
+            expected_report_text = render_replay_report(replay_result)
+            actual_report_text = replay_report_path.read_text(encoding="utf-8")
+            if actual_report_text != expected_report_text:
+                mismatches.append(
+                    "REPLAY-REPORT.md does not match the deterministic rendering of the "
+                    "retained REPLAY-RESULT.json (checked-in report/result pair is inconsistent)"
+                )
+        else:
+            mismatches.append(
+                f"REPLAY-RESULT.json exists but REPLAY-REPORT.md not found at {replay_report_path}"
+            )
+    else:
+        print(
+            "  REPLAY-RESULT.json not found: no PostgreSQL replay has been retained yet; not "
+            "treated as an offline-verify failure",
+            flush=True,
+        )
 
     if mismatches:
         print("\nOFFLINE VERIFY FAILED:", flush=True)
@@ -549,6 +591,7 @@ def replay_manifest(
         load_and_fingerprint_immutable_inputs,
         sl0022_candidate_from_manifest_dict,
         verify_artifact_digests,
+        verify_replay_result_self_consistency,
         verify_sl0022_manifest_self_consistency,
     )
     from hullq.bootstrap.wikidata_sl0022_alt_route_admission import (
@@ -613,6 +656,36 @@ def replay_manifest(
         else:
             gate_mismatches.append(
                 f"required ARTIFACT-DIGESTS.json not found at {artifact_digests_path}"
+            )
+
+        if result_path.exists():
+            checked_in_replay_result = json.loads(result_path.read_text(encoding="utf-8"))
+            gate_mismatches.extend(
+                verify_replay_result_self_consistency(
+                    checked_in_replay_result,
+                    manifest=sl0022_manifest,
+                    baseline=gate_inputs.baseline,
+                )
+            )
+            if report_path.exists():
+                expected_replay_report_text = render_replay_report(checked_in_replay_result)
+                actual_replay_report_text = report_path.read_text(encoding="utf-8")
+                if actual_replay_report_text != expected_replay_report_text:
+                    gate_mismatches.append(
+                        "checked-in REPLAY-REPORT.md does not match the deterministic rendering "
+                        "of the checked-in REPLAY-RESULT.json (report/result pair is inconsistent "
+                        "prior to this replay)"
+                    )
+            else:
+                gate_mismatches.append(
+                    f"REPLAY-RESULT.json exists at {result_path} but REPLAY-REPORT.md not found "
+                    f"at {report_path}"
+                )
+        else:
+            print(
+                "  no checked-in REPLAY-RESULT.json found at "
+                f"{result_path}; this is the first replay, nothing to validate before it",
+                flush=True,
             )
 
         if gate_mismatches:
@@ -1145,7 +1218,19 @@ def replay_manifest(
     return result_doc
 
 
-def _write_replay_report(result_doc: dict[str, Any], report_path: Path) -> None:
+def render_replay_report(result_doc: dict[str, Any]) -> str:
+    """Pure rendering of REPLAY-REPORT.md's exact text from a
+    REPLAY-RESULT.json-shaped dict — no I/O, no PostgreSQL access, no
+    randomness. Used both to write the retained report and, by
+    ``verify_replay_evidence_consistency``, to prove the checked-in
+    REPLAY-REPORT.md is byte-for-byte what its own checked-in
+    REPLAY-RESULT.json would produce: re-rendering the SAME retained
+    result dict always reproduces the SAME text (including the
+    ``run_timestamp``/``postgresql_version``/``wall_clock_seconds`` values
+    that were themselves already fixed inside that dict), so this comparison
+    is fully deterministic and requires no runtime-variable exclusions of
+    its own.
+    """
     exp = result_doc["expected"]
     fp = result_doc["first_pass"]
     fr = result_doc["fresh_schema_rerun"]
@@ -1197,8 +1282,12 @@ def _write_replay_report(result_doc: dict[str, Any], report_path: Path) -> None:
         f"## RESULT: all zero-tolerance conditions clear: **{result_doc['all_zero_tolerance_conditions_clear']}**",
         "",
     ]
+    return "\n".join(lines) + "\n"
+
+
+def _write_replay_report(result_doc: dict[str, Any], report_path: Path) -> None:
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    _write_text_lf(report_path, "\n".join(lines) + "\n")
+    _write_text_lf(report_path, render_replay_report(result_doc))
     print(f"Replay report written to: {report_path}", flush=True)
 
 

@@ -115,6 +115,7 @@ __all__ = [
     "EXPECTED_R2_COUNT",
     "EXPECTED_R3_COUNT",
     "EXPECTED_TOTAL_CANDIDATES",
+    "REPLAY_RESULT_SCHEMA_VERSION",
     "RETAINED_DIGEST_FILENAMES",
     "SL0017_MANIFEST_PATH",
     "SL0018_MANIFEST_PATH",
@@ -135,6 +136,7 @@ __all__ = [
     "sl0022_candidate_from_manifest_dict",
     "sl0022_candidate_to_manifest_dict",
     "verify_artifact_digests",
+    "verify_replay_result_self_consistency",
     "verify_sl0022_manifest_self_consistency",
 ]
 
@@ -1238,6 +1240,238 @@ def verify_sl0022_manifest_self_consistency(
         mismatches.append(
             f"acquired_at={manifest.get('acquired_at')!r} != the accepted retained SLICE-0021 "
             f"source-fact timestamp {inputs.sl0021_generated_at!r}"
+        )
+
+    return mismatches
+
+
+# ---------------------------------------------------------------------------
+# Offline self-consistency verification of already-retained PostgreSQL
+# replay evidence (REPLAY-RESULT.json) against the already-verified manifest
+# ---------------------------------------------------------------------------
+
+REPLAY_RESULT_SCHEMA_VERSION = "0022-replay-v1"
+
+# Every replay-pass counter that must be exactly zero on a clean replay,
+# grouped by the sub-object it lives under in a REPLAY-RESULT.json pass
+# ("first_pass" / "fresh_schema_rerun"). Kept as one explicit table so the
+# verifier and any future pass-shape change stay in lock-step.
+_ZERO_TOLERANCE_BUNDLE_FIELDS = ("already_present", "conflict", "error", "unexpected_status")
+_ZERO_TOLERANCE_ADMISSION_FIELDS = (
+    "already_present",
+    "conflict",
+    "reference_error",
+    "error",
+    "unexpected_status",
+)
+
+
+def _expected_combined_bundle_count(manifest: dict[str, Any], baseline: BaselineSnapshot) -> int:
+    """The deterministic expected combined (accepted baseline + SLICE-0022)
+    ResearchEvidenceBundle count: one bundle per labeled candidate on either
+    side (bundles are built for any candidate with a usable label,
+    regardless of decision — see ``build_bundle``/``wikidata_tier0.build_bundle``).
+    """
+    baseline_labeled = len(baseline.auto_admit_qids) + len(baseline.review_required_qids)
+    sl0022_labeled = sum(
+        1 for row in manifest.get("candidates", []) if row.get("preferred_label") is not None
+    )
+    return baseline_labeled + sl0022_labeled
+
+
+def _verify_replay_pass_self_consistency(
+    pass_name: str,
+    pass_result: dict[str, Any],
+    *,
+    expected_bundle_count: int,
+    expected_admission_count: int,
+) -> list[str]:
+    """Recompute every zero-tolerance invariant for one replay pass
+    (``first_pass`` or ``fresh_schema_rerun``) against deterministic
+    expectations, returning mismatch descriptions. Runtime-variable fields
+    (``wall_clock_seconds``) are intentionally not checked against any fixed
+    value.
+    """
+    mismatches: list[str] = []
+
+    bundle = pass_result.get("bundle", {})
+    if bundle.get("imported") != expected_bundle_count:
+        mismatches.append(
+            f"{pass_name}.bundle.imported={bundle.get('imported')!r} != expected "
+            f"{expected_bundle_count!r}"
+        )
+    mismatches.extend(
+        f"{pass_name}.bundle.{field}={bundle.get(field)!r} != expected 0"
+        for field in _ZERO_TOLERANCE_BUNDLE_FIELDS
+        if bundle.get(field) != 0
+    )
+
+    admission = pass_result.get("admission", {})
+    if admission.get("imported") != expected_admission_count:
+        mismatches.append(
+            f"{pass_name}.admission.imported={admission.get('imported')!r} != expected "
+            f"{expected_admission_count!r}"
+        )
+    mismatches.extend(
+        f"{pass_name}.admission.{field}={admission.get(field)!r} != expected 0"
+        for field in _ZERO_TOLERANCE_ADMISSION_FIELDS
+        if admission.get(field) != 0
+    )
+
+    if pass_result.get("expected_counts_match") is not True:
+        mismatches.append(
+            f"{pass_name}.expected_counts_match={pass_result.get('expected_counts_match')!r} "
+            "!= expected True"
+        )
+
+    pbv = pass_result.get("prior_baseline_verified_before_sl0022", {})
+    if pbv.get("counts_match") is not True:
+        mismatches.append(
+            f"{pass_name}.prior_baseline_verified_before_sl0022.counts_match="
+            f"{pbv.get('counts_match')!r} != expected True"
+        )
+    if pbv.get("id_set_matches") is not True:
+        mismatches.append(
+            f"{pass_name}.prior_baseline_verified_before_sl0022.id_set_matches="
+            f"{pbv.get('id_set_matches')!r} != expected True"
+        )
+    if pbv.get("readback_mismatches") != 0:
+        mismatches.append(
+            f"{pass_name}.prior_baseline_verified_before_sl0022.readback_mismatches="
+            f"{pbv.get('readback_mismatches')!r} != expected 0"
+        )
+
+    rb = pass_result.get("readback", {})
+    if rb.get("mismatches") != 0:
+        mismatches.append(f"{pass_name}.readback.mismatches={rb.get('mismatches')!r} != expected 0")
+    if rb.get("prior_baseline_drift_mismatches") != 0:
+        mismatches.append(
+            f"{pass_name}.readback.prior_baseline_drift_mismatches="
+            f"{rb.get('prior_baseline_drift_mismatches')!r} != expected 0"
+        )
+    if rb.get("unexpected_canonical_rows_for_non_admitted") != 0:
+        mismatches.append(
+            f"{pass_name}.readback.unexpected_canonical_rows_for_non_admitted="
+            f"{rb.get('unexpected_canonical_rows_for_non_admitted')!r} != expected 0"
+        )
+    if rb.get("canonical_id_set_matches") is not True:
+        mismatches.append(
+            f"{pass_name}.readback.canonical_id_set_matches={rb.get('canonical_id_set_matches')!r} "
+            "!= expected True"
+        )
+    if rb.get("no_stray_brand_organization_boatdesign_rows") is not True:
+        mismatches.append(
+            f"{pass_name}.readback.no_stray_brand_organization_boatdesign_rows="
+            f"{rb.get('no_stray_brand_organization_boatdesign_rows')!r} != expected True"
+        )
+    stray_row_counts = rb.get("stray_row_counts", {})
+    for table, count in stray_row_counts.items():
+        if count != 0:
+            mismatches.append(
+                f"{pass_name}.readback.stray_row_counts[{table}]={count!r} != expected 0"
+            )
+
+    reimport = pass_result.get("reimport", {})
+    if reimport.get("conflict") != 0:
+        mismatches.append(
+            f"{pass_name}.reimport.conflict={reimport.get('conflict')!r} != expected 0"
+        )
+    if reimport.get("error") != 0:
+        mismatches.append(f"{pass_name}.reimport.error={reimport.get('error')!r} != expected 0")
+
+    return mismatches
+
+
+def verify_replay_result_self_consistency(
+    replay_result: dict[str, Any], *, manifest: dict[str, Any], baseline: BaselineSnapshot
+) -> list[str]:
+    """Recompute every structurally-derivable field of an already-retained
+    ``REPLAY-RESULT.json`` document against the already-verified SLICE-0022
+    manifest and the accepted combined SLICE-0017+0018 baseline, returning
+    human-readable mismatch descriptions (empty == fully self-consistent).
+
+    Covers: ``schema_version``; ``prior_baseline_candidates``/
+    ``prior_baseline_auto_admit`` against the accepted baseline;
+    ``sl0022_candidates``/``sl0022_auto_admit`` against the manifest's own
+    candidate-universe/counts; ``expected.combined_admission_count``/
+    ``expected.combined_bundle_count`` recomputed deterministically; every
+    zero-tolerance counter/flag in both ``first_pass`` and
+    ``fresh_schema_rerun``; and the top-level
+    ``all_zero_tolerance_conditions_clear`` flag. Deliberately excludes
+    genuinely runtime-variable metadata (``run_timestamp``,
+    ``postgresql_version``, ``wall_clock_seconds``) from equality checks —
+    those are accepted as non-deterministic and are not compared to fixed
+    literal values.
+
+    Callers MUST have already validated *manifest* itself (schema +
+    ``verify_sl0022_manifest_self_consistency``) before trusting the
+    baseline/candidate-derived expectations computed here.
+    """
+    mismatches: list[str] = []
+
+    if replay_result.get("schema_version") != REPLAY_RESULT_SCHEMA_VERSION:
+        mismatches.append(
+            f"schema_version={replay_result.get('schema_version')!r} != expected "
+            f"{REPLAY_RESULT_SCHEMA_VERSION!r}"
+        )
+
+    expected_prior_candidates = len(baseline.candidate_qids)
+    if replay_result.get("prior_baseline_candidates") != expected_prior_candidates:
+        mismatches.append(
+            f"prior_baseline_candidates={replay_result.get('prior_baseline_candidates')!r} != "
+            f"expected {expected_prior_candidates!r}"
+        )
+    expected_prior_auto_admit = len(baseline.auto_admit_qids)
+    if replay_result.get("prior_baseline_auto_admit") != expected_prior_auto_admit:
+        mismatches.append(
+            f"prior_baseline_auto_admit={replay_result.get('prior_baseline_auto_admit')!r} != "
+            f"expected {expected_prior_auto_admit!r}"
+        )
+
+    expected_sl0022_candidates = manifest.get("candidate_universe", {}).get("total")
+    if replay_result.get("sl0022_candidates") != expected_sl0022_candidates:
+        mismatches.append(
+            f"sl0022_candidates={replay_result.get('sl0022_candidates')!r} != manifest "
+            f"candidate_universe.total {expected_sl0022_candidates!r}"
+        )
+    expected_sl0022_auto_admit = manifest.get("counts", {}).get("auto_admit")
+    if replay_result.get("sl0022_auto_admit") != expected_sl0022_auto_admit:
+        mismatches.append(
+            f"sl0022_auto_admit={replay_result.get('sl0022_auto_admit')!r} != manifest "
+            f"counts.auto_admit {expected_sl0022_auto_admit!r}"
+        )
+
+    expected_combined_admission = manifest.get("counts", {}).get(
+        "combined_canonical_boat_model_count_expected"
+    )
+    expected_combined_bundle = _expected_combined_bundle_count(manifest, baseline)
+    exp = replay_result.get("expected", {})
+    if exp.get("combined_admission_count") != expected_combined_admission:
+        mismatches.append(
+            f"expected.combined_admission_count={exp.get('combined_admission_count')!r} != "
+            f"manifest counts.combined_canonical_boat_model_count_expected "
+            f"{expected_combined_admission!r}"
+        )
+    if exp.get("combined_bundle_count") != expected_combined_bundle:
+        mismatches.append(
+            f"expected.combined_bundle_count={exp.get('combined_bundle_count')!r} != recomputed "
+            f"{expected_combined_bundle!r}"
+        )
+
+    for pass_name in ("first_pass", "fresh_schema_rerun"):
+        mismatches.extend(
+            _verify_replay_pass_self_consistency(
+                pass_name,
+                replay_result.get(pass_name, {}),
+                expected_bundle_count=expected_combined_bundle,
+                expected_admission_count=expected_combined_admission or 0,
+            )
+        )
+
+    if replay_result.get("all_zero_tolerance_conditions_clear") is not True:
+        mismatches.append(
+            "all_zero_tolerance_conditions_clear="
+            f"{replay_result.get('all_zero_tolerance_conditions_clear')!r} != expected True"
         )
 
     return mismatches

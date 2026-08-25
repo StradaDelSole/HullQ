@@ -19,7 +19,11 @@ Covers:
 - offline self-consistency verification and its tamper resistance across
   every hardened category (ordering, timestamps, collision records, full
   counts, crosswalk bijection, static/usage semantics, immutable references);
-- retained non-self-referential artifact digests.
+- retained non-self-referential artifact digests;
+- offline self-consistency verification of checked-in PostgreSQL replay
+  evidence (REPLAY-RESULT.json) against the already-verified manifest and
+  accepted baseline, and tamper resistance across its zero-tolerance
+  invariants.
 """
 
 from __future__ import annotations
@@ -50,6 +54,7 @@ from hullq.bootstrap.wikidata_sl0022_alt_route_admission import (
     sl0022_candidate_from_manifest_dict,
     sl0022_candidate_to_manifest_dict,
     verify_artifact_digests,
+    verify_replay_result_self_consistency,
     verify_sl0022_manifest_self_consistency,
 )
 from hullq.bootstrap.wikidata_tier0 import (
@@ -1047,3 +1052,202 @@ def test_verify_artifact_digests_detects_unexpected_extra_entry(tmp_path: Path) 
     doc["digests"]["EXTRA.json"] = "sha256:" + "0" * 64
     mismatches = verify_artifact_digests(doc, paths=paths)
     assert any("unexpected digest entries" in m for m in mismatches)
+
+
+# ---------------------------------------------------------------------------
+# verify_replay_result_self_consistency — checked-in PostgreSQL replay
+# evidence, tamper resistance
+# ---------------------------------------------------------------------------
+
+
+def _valid_replay_pass(expected_bundle_count: int, expected_admission_count: int) -> dict[str, Any]:
+    return {
+        "bundle": {
+            "imported": expected_bundle_count,
+            "already_present": 0,
+            "conflict": 0,
+            "error": 0,
+            "unexpected_status": 0,
+        },
+        "admission": {
+            "imported": expected_admission_count,
+            "already_present": 0,
+            "conflict": 0,
+            "reference_error": 0,
+            "error": 0,
+            "unexpected_status": 0,
+        },
+        "expected_counts_match": True,
+        "prior_baseline_verified_before_sl0022": {
+            "counts_match": True,
+            "id_set_matches": True,
+            "readback_mismatches": 0,
+        },
+        "readback": {
+            "mismatches": 0,
+            "prior_baseline_drift_mismatches": 0,
+            "unexpected_canonical_rows_for_non_admitted": 0,
+            "canonical_id_set_matches": True,
+            "no_stray_brand_organization_boatdesign_rows": True,
+            "stray_row_counts": {
+                "canonical_brands": 0,
+                "canonical_organizations": 0,
+                "canonical_boat_designs": 0,
+            },
+        },
+        "reimport": {
+            "already_imported": expected_bundle_count + expected_admission_count,
+            "conflict": 0,
+            "error": 0,
+            "wall_clock_seconds": 0.01,
+        },
+        "wall_clock_seconds": 0.01,
+    }
+
+
+def _valid_replay_result(manifest: dict[str, Any], baseline: Any) -> dict[str, Any]:
+    baseline_labeled = len(baseline.auto_admit_qids) + len(baseline.review_required_qids)
+    sl0022_labeled = sum(
+        1 for row in manifest["candidates"] if row.get("preferred_label") is not None
+    )
+    expected_bundle_count = baseline_labeled + sl0022_labeled
+    expected_admission_count = len(baseline.auto_admit_qids) + manifest["counts"]["auto_admit"]
+    return {
+        "schema_version": "0022-replay-v1",
+        "run_timestamp": "2026-08-25T00:00:00+00:00",
+        "postgresql_version": "PostgreSQL 18.6 test",
+        "prior_baseline_candidates": len(baseline.candidate_qids),
+        "prior_baseline_auto_admit": len(baseline.auto_admit_qids),
+        "sl0022_candidates": manifest["candidate_universe"]["total"],
+        "sl0022_auto_admit": manifest["counts"]["auto_admit"],
+        "expected": {
+            "combined_bundle_count": expected_bundle_count,
+            "combined_admission_count": expected_admission_count,
+        },
+        "first_pass": _valid_replay_pass(expected_bundle_count, expected_admission_count),
+        "fresh_schema_rerun": _valid_replay_pass(expected_bundle_count, expected_admission_count),
+        "all_zero_tolerance_conditions_clear": True,
+    }
+
+
+def test_verify_replay_result_passes_on_untampered_result() -> None:
+    manifest, inputs = _valid_manifest_and_inputs()
+    replay_result = _valid_replay_result(manifest, inputs.baseline)
+    assert (
+        verify_replay_result_self_consistency(
+            replay_result, manifest=manifest, baseline=inputs.baseline
+        )
+        == []
+    )
+
+
+def test_verify_replay_result_passes_against_real_committed_artifacts() -> None:
+    """The actual checked-in SLICE-0022 manifest.json + REPLAY-RESULT.json
+    must themselves be self-consistent — the same check normal CI runs."""
+    inputs = load_and_fingerprint_immutable_inputs()
+    base = ROOT / "research" / "bootstrap" / "wikidata" / "sl0022-alt-route-admission"
+    manifest = json.loads((base / "manifest.json").read_text(encoding="utf-8"))
+    replay_result = json.loads((base / "REPLAY-RESULT.json").read_text(encoding="utf-8"))
+    assert (
+        verify_replay_result_self_consistency(
+            replay_result, manifest=manifest, baseline=inputs.baseline
+        )
+        == []
+    )
+
+
+def test_verify_replay_result_detects_sl0022_auto_admit_changed() -> None:
+    manifest, inputs = _valid_manifest_and_inputs()
+    replay_result = _valid_replay_result(manifest, inputs.baseline)
+    replay_result["sl0022_auto_admit"] = 1
+    mismatches = verify_replay_result_self_consistency(
+        replay_result, manifest=manifest, baseline=inputs.baseline
+    )
+    assert any("sl0022_auto_admit" in m for m in mismatches)
+
+
+def test_verify_replay_result_detects_expected_combined_admission_count_changed() -> None:
+    manifest, inputs = _valid_manifest_and_inputs()
+    replay_result = _valid_replay_result(manifest, inputs.baseline)
+    replay_result["expected"]["combined_admission_count"] += 1
+    mismatches = verify_replay_result_self_consistency(
+        replay_result, manifest=manifest, baseline=inputs.baseline
+    )
+    assert any("expected.combined_admission_count" in m for m in mismatches)
+
+
+def test_verify_replay_result_detects_expected_combined_bundle_count_changed() -> None:
+    manifest, inputs = _valid_manifest_and_inputs()
+    replay_result = _valid_replay_result(manifest, inputs.baseline)
+    replay_result["expected"]["combined_bundle_count"] += 1
+    mismatches = verify_replay_result_self_consistency(
+        replay_result, manifest=manifest, baseline=inputs.baseline
+    )
+    assert any("expected.combined_bundle_count" in m for m in mismatches)
+
+
+def test_verify_replay_result_detects_all_zero_tolerance_flag_changed() -> None:
+    manifest, inputs = _valid_manifest_and_inputs()
+    replay_result = _valid_replay_result(manifest, inputs.baseline)
+    replay_result["all_zero_tolerance_conditions_clear"] = False
+    mismatches = verify_replay_result_self_consistency(
+        replay_result, manifest=manifest, baseline=inputs.baseline
+    )
+    assert any("all_zero_tolerance_conditions_clear" in m for m in mismatches)
+
+
+def test_verify_replay_result_detects_first_pass_counter_changed() -> None:
+    manifest, inputs = _valid_manifest_and_inputs()
+    replay_result = _valid_replay_result(manifest, inputs.baseline)
+    replay_result["first_pass"]["bundle"]["conflict"] = 1
+    mismatches = verify_replay_result_self_consistency(
+        replay_result, manifest=manifest, baseline=inputs.baseline
+    )
+    assert any("first_pass.bundle.conflict" in m for m in mismatches)
+
+
+def test_verify_replay_result_detects_fresh_schema_counter_changed() -> None:
+    manifest, inputs = _valid_manifest_and_inputs()
+    replay_result = _valid_replay_result(manifest, inputs.baseline)
+    replay_result["fresh_schema_rerun"]["readback"]["mismatches"] = 1
+    mismatches = verify_replay_result_self_consistency(
+        replay_result, manifest=manifest, baseline=inputs.baseline
+    )
+    assert any("fresh_schema_rerun.readback.mismatches" in m for m in mismatches)
+
+
+def test_verify_replay_result_detects_stray_row_count_changed() -> None:
+    manifest, inputs = _valid_manifest_and_inputs()
+    replay_result = _valid_replay_result(manifest, inputs.baseline)
+    replay_result["first_pass"]["readback"]["stray_row_counts"]["canonical_brands"] = 1
+    mismatches = verify_replay_result_self_consistency(
+        replay_result, manifest=manifest, baseline=inputs.baseline
+    )
+    assert any("stray_row_counts[canonical_brands]" in m for m in mismatches)
+
+
+def test_verify_replay_result_detects_schema_version_changed() -> None:
+    manifest, inputs = _valid_manifest_and_inputs()
+    replay_result = _valid_replay_result(manifest, inputs.baseline)
+    replay_result["schema_version"] = "0022-replay-v0"
+    mismatches = verify_replay_result_self_consistency(
+        replay_result, manifest=manifest, baseline=inputs.baseline
+    )
+    assert any("schema_version" in m for m in mismatches)
+
+
+def test_verify_replay_result_ignores_runtime_variable_fields() -> None:
+    """run_timestamp/postgresql_version/wall_clock_seconds are accepted as
+    non-deterministic metadata and must never be compared to a fixed value."""
+    manifest, inputs = _valid_manifest_and_inputs()
+    replay_result = _valid_replay_result(manifest, inputs.baseline)
+    replay_result["run_timestamp"] = "1999-01-01T00:00:00+00:00"
+    replay_result["postgresql_version"] = "some other string entirely"
+    replay_result["first_pass"]["wall_clock_seconds"] = 999.0
+    replay_result["first_pass"]["reimport"]["wall_clock_seconds"] = 999.0
+    assert (
+        verify_replay_result_self_consistency(
+            replay_result, manifest=manifest, baseline=inputs.baseline
+        )
+        == []
+    )
