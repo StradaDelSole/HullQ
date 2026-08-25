@@ -1,0 +1,10 @@
+{
+  "schema_version": "sl0022-artifact-digests-v1",
+  "generated_at": "2026-08-25T11:32:01.453804+00:00",
+  "excludes_self": "ARTIFACT-DIGESTS.json",
+  "digests": {
+    "manifest.json": "sha256:7e15e3392dda82646cd2753248d716edd04dfe8fd24abe620d80f272091474b4",
+    "manifest_schema.json": "sha256:c75270ee29239b7ccbca3499e76f73d202f5a4a153abe031bdfd9e46448440a5",
+    "REPORT.md": "sha256:18fb26811aa329eb2a1dc2641cb1741f12159383d612f7375b0032a4a816e21f"
+  }
+}

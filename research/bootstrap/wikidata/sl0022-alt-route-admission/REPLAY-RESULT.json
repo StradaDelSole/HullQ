@@ -1,0 +1,98 @@
+{
+  "schema_version": "0022-replay-v1",
+  "run_timestamp": "2026-08-25T11:31:50.175822+00:00",
+  "postgresql_version": "PostgreSQL 18.6 on x86_64-windows, compiled by msvc-19.44.35228, 64-bit",
+  "prior_baseline_candidates": 1829,
+  "prior_baseline_auto_admit": 1770,
+  "sl0022_candidates": 57,
+  "sl0022_auto_admit": 0,
+  "expected": {
+    "combined_bundle_count": 1837,
+    "combined_admission_count": 1770
+  },
+  "first_pass": {
+    "bundle": {
+      "imported": 1837,
+      "already_present": 0,
+      "conflict": 0,
+      "error": 0,
+      "unexpected_status": 0
+    },
+    "admission": {
+      "imported": 1770,
+      "already_present": 0,
+      "conflict": 0,
+      "reference_error": 0,
+      "error": 0,
+      "unexpected_status": 0
+    },
+    "expected_counts_match": true,
+    "prior_baseline_verified_before_sl0022": {
+      "counts_match": true,
+      "id_set_matches": true,
+      "readback_mismatches": 0
+    },
+    "readback": {
+      "mismatches": 0,
+      "prior_baseline_drift_mismatches": 0,
+      "unexpected_canonical_rows_for_non_admitted": 0,
+      "canonical_id_set_matches": true,
+      "no_stray_brand_organization_boatdesign_rows": true,
+      "stray_row_counts": {
+        "canonical_brands": 0,
+        "canonical_organizations": 0,
+        "canonical_boat_designs": 0
+      }
+    },
+    "reimport": {
+      "already_imported": 3607,
+      "conflict": 0,
+      "error": 0,
+      "wall_clock_seconds": 9.988
+    },
+    "wall_clock_seconds": 9.4025
+  },
+  "fresh_schema_rerun": {
+    "bundle": {
+      "imported": 1837,
+      "already_present": 0,
+      "conflict": 0,
+      "error": 0,
+      "unexpected_status": 0
+    },
+    "admission": {
+      "imported": 1770,
+      "already_present": 0,
+      "conflict": 0,
+      "reference_error": 0,
+      "error": 0,
+      "unexpected_status": 0
+    },
+    "expected_counts_match": true,
+    "prior_baseline_verified_before_sl0022": {
+      "counts_match": true,
+      "id_set_matches": true,
+      "readback_mismatches": 0
+    },
+    "readback": {
+      "mismatches": 0,
+      "prior_baseline_drift_mismatches": 0,
+      "unexpected_canonical_rows_for_non_admitted": 0,
+      "canonical_id_set_matches": true,
+      "no_stray_brand_organization_boatdesign_rows": true,
+      "stray_row_counts": {
+        "canonical_brands": 0,
+        "canonical_organizations": 0,
+        "canonical_boat_designs": 0
+      }
+    },
+    "reimport": {
+      "already_imported": 3607,
+      "conflict": 0,
+      "error": 0,
+      "wall_clock_seconds": 11.6271
+    },
+    "wall_clock_seconds": 10.8142
+  },
+  "all_zero_tolerance_conditions_clear": true
+}

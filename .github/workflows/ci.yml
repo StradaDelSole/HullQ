@@ -249,6 +249,67 @@ jobs:
             research/bootstrap/wikidata/sl0021-alt-discovery/REPORT.md
           if-no-files-found: warn
 
+      - name: Validate SLICE-0022 retained admission manifest against schema
+        run: >
+          uv run python -c "
+          import json, jsonschema, pathlib;
+          base = pathlib.Path('research/bootstrap/wikidata/sl0022-alt-route-admission');
+          manifest = json.loads((base / 'manifest.json').read_text());
+          schema = json.loads((base / 'manifest_schema.json').read_text());
+          jsonschema.validate(instance=manifest, schema=schema);
+          print('SLICE-0022 manifest.json validates against manifest_schema.json');
+          print(f\"candidate_universe={manifest['candidate_universe']}\");
+          print(f\"auto_admit={manifest['counts']['auto_admit']} review_required={manifest['counts']['review_required']} not_admitted={manifest['counts']['not_admitted']}\");
+          print(f\"combined_canonical_boat_model_count_expected={manifest['counts']['combined_canonical_boat_model_count_expected']}\");
+          "
+
+      - name: Validate SLICE-0022 retained artifact digests against schema
+        run: >
+          uv run python -c "
+          import json, jsonschema, pathlib;
+          base = pathlib.Path('research/bootstrap/wikidata/sl0022-alt-route-admission');
+          digests = json.loads((base / 'ARTIFACT-DIGESTS.json').read_text());
+          schema = json.loads((base / 'artifact_digests_schema.json').read_text());
+          jsonschema.validate(instance=digests, schema=schema);
+          print('SLICE-0022 ARTIFACT-DIGESTS.json validates against artifact_digests_schema.json');
+          "
+
+      - name: Offline-verify SLICE-0022 retained manifest reproduces deterministically (no network)
+        run: >
+          uv run python scripts/bootstrap/wikidata_sl0022_alt_route_admission_runner.py --verify
+
+      - name: Replay SLICE-0022 baseline-first (0017+0018) / delta-second manifest against PostgreSQL 18
+        env:
+          HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
+        run: >
+          uv run python scripts/bootstrap/wikidata_sl0022_alt_route_admission_runner.py --replay
+          --db-url postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
+          --manifest research/bootstrap/wikidata/sl0022-alt-route-admission/manifest.json
+          --result research/bootstrap/wikidata/sl0022-alt-route-admission/REPLAY-RESULT.json
+          --replay-report research/bootstrap/wikidata/sl0022-alt-route-admission/REPLAY-REPORT.md
+
+      - name: Verify SLICE-0022 replay cleared every zero-tolerance condition
+        run: >
+          uv run python -c "
+          import json, pathlib;
+          result = json.loads(pathlib.Path('research/bootstrap/wikidata/sl0022-alt-route-admission/REPLAY-RESULT.json').read_text());
+          print(json.dumps(result, indent=2));
+          assert result['all_zero_tolerance_conditions_clear'] is True, 'SLICE-0022 replay left a non-zero-tolerance condition unresolved'
+          "
+
+      - name: Upload SLICE-0022 admission-pilot outputs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sl0022-alt-route-admission-outputs
+          path: |
+            research/bootstrap/wikidata/sl0022-alt-route-admission/manifest.json
+            research/bootstrap/wikidata/sl0022-alt-route-admission/REPORT.md
+            research/bootstrap/wikidata/sl0022-alt-route-admission/ARTIFACT-DIGESTS.json
+            research/bootstrap/wikidata/sl0022-alt-route-admission/REPLAY-RESULT.json
+            research/bootstrap/wikidata/sl0022-alt-route-admission/REPLAY-REPORT.md
+          if-no-files-found: warn
+
   dependency-audit:
     name: dependency audit
     runs-on: ubuntu-latest

@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0022  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 3.2 — canonical identity breadth / bounded admission proof  
 **Depends on:** SLICE-0021 accepted / DONE  
 **Blocks:** any production adoption of alternative Wikidata discovery semantics or broader alternative-route bootstrap
