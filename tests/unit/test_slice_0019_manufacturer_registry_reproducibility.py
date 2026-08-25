@@ -76,9 +76,7 @@ def test_generator_chain_reproduces_committed_artifacts(manufacturers_path_prefi
         )
         analyze_overlap.main()
 
-        build_report = _load_module(
-            "slice0019_build_report", MANUFACTURERS / "build_report.py"
-        )
+        build_report = _load_module("slice0019_build_report", MANUFACTURERS / "build_report.py")
         build_report.main()
 
         after = {path: path.read_bytes() for path in ARTIFACTS}
