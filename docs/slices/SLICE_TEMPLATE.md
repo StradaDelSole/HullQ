@@ -76,11 +76,14 @@ A successful agent completion therefore normally hands the slice off in `REVIEW`
 
 Use this structure exactly at the end of the assigned slice.
 
+**Token-efficiency rule:** the structure is mandatory, but the report SHOULD be concise. Summarize command/test/CI results rather than pasting logs. Do not repeat the full slice contract, acceptance criteria, repository history, code diff, or speculative next-slice plan unless needed to explain a failure, blocker, ambiguity, or scope deviation.
+
 ### Slice
 
 - Slice ID: `SLICE-XXXX`
 - Recommended slice state: `REVIEW` | `BLOCKED`
 - Scope completed: `YES` | `NO`
+- Exact final branch HEAD SHA:
 
 ### Changes
 
