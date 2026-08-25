@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0025-decision-result/v1",
+  "title": "HullQ SLICE-0025 Breadth/Enrichment Entry Decision Result",
+  "description": "The mechanically derived SLICE-0025 recommendation, produced by applying the precommitted decision rule to a retained decision_input.json document.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "boundary_mismatches",
+    "qualifying_breadth_path",
+    "parallel_readiness_conditions",
+    "decision",
+    "interpretation"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0025-decision-result-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "boundary_mismatches": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "qualifying_breadth_path": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/breadth_path_candidate" }
+      ]
+    },
+    "parallel_readiness_conditions": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "zero_tolerance_identity_foundation_accepted",
+            "canonical_count_at_least_1000",
+            "canonical_count_at_least_1770",
+            "no_qualifying_breadth_path_pending",
+            "sl0022_zero_auto_admit_established",
+            "sl0024_below_yield_threshold",
+            "bounded_subset_and_provenance_preservable",
+            "all_met"
+          ],
+          "properties": {
+            "zero_tolerance_identity_foundation_accepted": { "type": "boolean" },
+            "canonical_count_at_least_1000": { "type": "boolean" },
+            "canonical_count_at_least_1770": { "type": "boolean" },
+            "no_qualifying_breadth_path_pending": { "type": "boolean" },
+            "sl0022_zero_auto_admit_established": { "type": "boolean" },
+            "sl0024_below_yield_threshold": { "type": "boolean" },
+            "bounded_subset_and_provenance_preservable": { "type": "boolean" },
+            "all_met": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "decision": {
+      "enum": [
+        "CONTINUE_STAGE_3_2_ONLY",
+        "BEGIN_BOUNDED_STAGE_3_3_IN_PARALLEL",
+        "BLOCKED_ON_ACCEPTED_STATE"
+      ]
+    },
+    "interpretation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "declares_stage_3_2_complete",
+        "declares_g4_pass",
+        "authorizes_broad_enrichment",
+        "stage_3_2_remains_open"
+      ],
+      "properties": {
+        "declares_stage_3_2_complete": { "const": false },
+        "declares_g4_pass": { "const": false },
+        "authorizes_broad_enrichment": { "const": false },
+        "stage_3_2_remains_open": { "const": true }
+      }
+    }
+  },
+  "$defs": {
+    "breadth_path_candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "source_slices",
+        "already_executed",
+        "production_bulk_cleared",
+        "materially_different_from_sl0018",
+        "likely_incremental_yield",
+        "requires_full_wikimedia_campaign",
+        "requires_upstream_governance_decision",
+        "qualifies",
+        "rationale"
+      ],
+      "properties": {
+        "name": { "type": "string" },
+        "source_slices": { "type": "string" },
+        "already_executed": { "type": "boolean" },
+        "production_bulk_cleared": { "type": "boolean" },
+        "materially_different_from_sl0018": { "type": "boolean" },
+        "likely_incremental_yield": { "type": "integer", "minimum": 0 },
+        "requires_full_wikimedia_campaign": { "type": "boolean" },
+        "requires_upstream_governance_decision": { "type": "boolean" },
+        "qualifies": { "type": "boolean" },
+        "rationale": { "type": "string" }
+      }
+    }
+  }
+}

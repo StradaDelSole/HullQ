@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0025-artifact-digests/v1",
+  "title": "HullQ SLICE-0025 Artifact Digests",
+  "description": "SHA256 integrity digests of every other retained SLICE-0025 package file, excluding this file itself.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "excludes_self", "digests"],
+  "properties": {
+    "schema_version": { "const": "sl0025-artifact-digests-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "excludes_self": { "const": "ARTIFACT-DIGESTS.json" },
+    "digests": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "minProperties": 5
+    }
+  }
+}
