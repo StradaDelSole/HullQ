@@ -1,7 +1,7 @@
 # HullQ Slice Index
 
 **Status:** ACTIVE execution board  
-**Updated:** 2026-08-24 (SLICE-0022 implemented, handed off `REVIEW` — retained alternative-route admission safety pilot)
+**Updated:** 2026-08-25 (SLICE-0022 accepted / `DONE` — retained alternative-route admission safety pilot)
 
 The slice index is the canonical operational queue for bounded AI-assisted work. It does not replace `docs/EXECUTION_PLAN.md`, requirements, specs, ADRs or accepted slice contracts.
 
@@ -28,39 +28,49 @@ The slice index is the canonical operational queue for bounded AI-assisted work.
 | SLICE-0019 | DESIGN_RESEARCH | DONE | Global active+historical series-sailboat manufacturer/yard universe + source-yield study | SLICE-0018 accepted / DONE |
 | SLICE-0020 | DESIGN_RESEARCH | DONE | Manufacturer archive source-clearance assessment + bounded (<=20/source) identity-yield pilot over a fixed 10-source sample | SLICE-0019 accepted / DONE |
 | SLICE-0021 | DESIGN_RESEARCH | DONE | Bounded alternative Wikidata sailboat-class discovery-semantics pilot over four fixed rights-cleared query routes | SLICE-0020 accepted / DONE |
-| SLICE-0022 | IMPLEMENTATION | REVIEW | Offline Tier-0 admission-safety pilot over the exact 57 retained SLICE-0021 alternative-route candidates | SLICE-0021 accepted / DONE |
+| SLICE-0022 | IMPLEMENTATION | DONE | Offline Tier-0 admission-safety pilot over the exact 57 retained SLICE-0021 alternative-route candidates | SLICE-0021 accepted / DONE |
 
 ## Current execution rule
 
-**SLICE-0001 through SLICE-0021 are accepted / `DONE`. SLICE-0022 is implemented and handed off `REVIEW`, pending remote CI observation, independent review and explicit project-owner acceptance before it may become `DONE`. No SLICE-0023 or later slice is currently `READY`.** Its controlling contract is `docs/slices/SLICE-0022-retained-alternative-route-tier0-admission-safety-pilot.md`.
+**SLICE-0001 through SLICE-0022 are accepted / `DONE`. No SLICE-0023 or later slice is currently `READY`.** SLICE-0022 is closed by `docs/slices/SLICE-0022-acceptance-closure.md` after independent-review `ACCEPT`, exact-head CI success, PR #55 merge and explicit project-owner acceptance on 2026-08-25.
 
-SLICE-0022 is deliberately offline and bounded to the exact accepted 57-candidate SLICE-0021 retained set: 53 R1 candidates and four R3 repair signals. It reuses the accepted SLICE-0017/0018 Tier-0 admission, collision, provenance and PostgreSQL replay boundaries. It performs zero live Wikidata acquisition, keeps every R3 candidate fail-closed from auto-admission, and does not change HullQ's production Wikidata discovery query.
+SLICE-0022 was deliberately offline and bounded to the exact accepted 57-candidate SLICE-0021 retained set: 53 R1 candidates and four R3 repair signals. It reused the accepted SLICE-0017/0018 Tier-0 admission, collision, provenance and PostgreSQL replay boundaries, performed zero live Wikidata acquisition and did not change HullQ's production Wikidata discovery query.
 
 The accepted SLICE-0021 live measurement remains retained under `research/bootstrap/wikidata/sl0021-alt-discovery/` (`discovery_probe.json`, `sampled_candidates.json`, `REPORT.md`). R0 (current direct control) reproduced the retained 1,829-QID universe with **zero drift**; R1 (sailboat-class `P31/P279*` closure) found **53** incremental QIDs; R2 (legacy sailboat-class closure) found **0**; R3 (misclassification/repair signal) found **4**, including plausible repair candidates such as Lagoon 380/500/560 and Beneteau Evasion 25 modeled under the generic "sailboat" class rather than "sailboat class." All three alternative routes were mutually disjoint (zero pairwise overlap). No canonical HullQ row was created and no production Wikidata discovery query was changed.
 
-SLICE-0022 has now classified all 57 alternative-route QIDs under the accepted Tier-0 admission boundary **as controlled by the R1 admission governance amendment** (`docs/slices/SLICE-0022-r1-admission-governance-amendment.md`): a first implementation pass auto-admitted 27 R1 candidates under the unmodified SLICE-0017/0018 label/collision rule, but independent review found a retained counterexample (`Q232393`, "Zweier-Canadier", a German canoe-class term whose only distinguishing structured fact from legitimate Olympic sailing-class candidates was free-text description — not a safe automatic-admission signal) proving R1 route membership alone is discovery-authoritative but not admission-authoritative. The governance amendment authorizes exactly one new rule: R1 route membership can never itself produce `AUTO_ADMIT`. The corrected result is **0 AUTO_ADMIT**, **31 REVIEW_REQUIRED** (27 R1 with reason `r1_alternative_route_requires_review`, 4 R3 with reason `r3_repair_signal_requires_review`, neither ever auto-admitted), **26 NOT_ADMITTED** (missing label), **0** search-projection collisions against the accepted baseline or within the 57 (still computed/retained for audit; no longer decision-gating for R1). `no_exact_identity_signal` (the SLICE-0021 probe) never itself authorized any outcome — it was only the retained input. R1/R3 `FOLLOWUP_DISCOVERY_CANDIDATE` dispositions remain recommendation-only and do not authorize production route adoption.
+SLICE-0022 classified all 57 alternative-route QIDs under the accepted Tier-0 admission boundary **as controlled by the R1 admission governance amendment** (`docs/slices/SLICE-0022-r1-admission-governance-amendment.md`): a first implementation pass auto-admitted 27 R1 candidates under the unmodified SLICE-0017/0018 label/collision rule, but independent review found a retained counterexample (`Q232393`, "Zweier-Canadier", a German canoe-class term whose only distinguishing structured fact from legitimate Olympic sailing-class candidates was free-text description — not a safe automatic-admission signal) proving R1 route membership alone is discovery-authoritative but not admission-authoritative. The governance amendment authorizes exactly one new rule: R1 route membership can never itself produce `AUTO_ADMIT`. The accepted result is **0 AUTO_ADMIT**, **31 REVIEW_REQUIRED** (27 R1 with reason `r1_alternative_route_requires_review`, 4 R3 with reason `r3_repair_signal_requires_review`, neither ever auto-admitted), **26 NOT_ADMITTED** (missing label), **0** search-projection collisions against the accepted baseline or within the 57. `no_exact_identity_signal` (the SLICE-0021 probe) never itself authorized any outcome — it was only the retained input. R1/R3 `FOLLOWUP_DISCOVERY_CANDIDATE` dispositions remain recommendation-only and do not authorize production route adoption.
 
-The accepted SLICE-0018 measurement remains an immutable input boundary: **1,829** unique direct-instance Wikidata sailboat-class QIDs, **1,770** accepted combined sparse canonical BoatModels and **1,772** retained historical QID→HullQ-ID mappings. Because SLICE-0022 now admits zero new candidates from either route, its retained crosswalk remains byte-identical to the accepted combined 1,772-entry baseline crosswalk, and offline-verified PostgreSQL replay of the combined 1,829/1,770/1,772 baseline plus the SLICE-0022 delta reaches an expected combined canonical BoatModel count of exactly **1,770** (unchanged from the accepted baseline) — measured locally against a real PostgreSQL 18 instance and independently reproduced by remote CI at the exact pushed head.
+The accepted SLICE-0018 measurement remains an immutable input boundary: **1,829** unique direct-instance Wikidata sailboat-class QIDs, **1,770** accepted combined sparse canonical BoatModels and **1,772** retained historical QID→HullQ-ID mappings. Because SLICE-0022 admits zero new candidates from either route, its retained crosswalk remains byte-identical to the accepted combined 1,772-entry baseline crosswalk, and offline-verified PostgreSQL replay of the combined 1,829/1,770/1,772 baseline plus the SLICE-0022 delta reaches a combined canonical BoatModel count of exactly **1,770** — measured locally against PostgreSQL 18 and independently reproduced by exact-head remote CI.
 
-No production Wikidata query change, manufacturer archive ingestion, broad technical enrichment, review-queue campaign, query engine, API, frontend, marketplace or monitoring work is authorized by SLICE-0022's implementation or its `REVIEW` handoff.
+No production Wikidata query change, manufacturer archive ingestion, broad technical enrichment, review-queue campaign, query engine, API, frontend, marketplace or monitoring work is authorized by SLICE-0022's acceptance closure.
 
-## SLICE-0022 readiness (implemented, `REVIEW`)
+## SLICE-0022 acceptance closure
 
-SLICE-0022 was `READY` as the next bounded Stage-3.2 identity-breadth step and has now been implemented; it is handed off `REVIEW`, not `DONE`.
+SLICE-0022 is explicitly accepted and `DONE`.
 
-Readiness rationale:
+Acceptance evidence:
 
-- SLICE-0018 established the accepted direct-instance boundary at **1,829 QIDs / 1,770 canonical BoatModels**;
-- SLICE-0020 found no manufacturer archive source `ADAPTER_READY` for immediate systematic ingestion;
-- SLICE-0021 then found **57** incremental rights-cleared Wikidata structured-data signals: **53 R1** and **4 R3**, with zero pairwise route overlap;
-- SLICE-0021 intentionally stopped before canonical admission and labeled R1/R3 only `FOLLOWUP_DISCOVERY_CANDIDATE`;
-- the smallest next proof is therefore to run those exact retained candidates through the already accepted Tier-0 admission/collision/provenance/replay machinery before any production discovery-route decision.
+- final independent-review verdict: **ACCEPT**;
+- implementation PR #55;
+- final reviewed / accepted implementation head: `912fe8d0542459df7f260eeccd840bb92c00e8d1`;
+- implementation merge commit: `5d68399e0efb4f6b34b8dae65817b7ced0ca3d07`;
+- exact-head CI run ID `32843428842`: SUCCESS — quality (ubuntu-latest), quality (windows-latest), db integration (PostgreSQL 18), dependency audit all SUCCESS;
+- immutable baseline assertions: **1,829** candidate QIDs / **1,770** canonical BoatModels / **1,772** historical QID→HullQ-ID mappings;
+- exact retained candidate universe: **57** unique QIDs = **53 R1 / 0 R2 / 4 R3**;
+- accepted final decisions: **0 AUTO_ADMIT / 31 REVIEW_REQUIRED / 26 NOT_ADMITTED**;
+- R1 result: **27 REVIEW_REQUIRED / 26 NOT_ADMITTED**, with no R1 auto-admission;
+- R3 result: **4 REVIEW_REQUIRED**, with no R3 auto-admission;
+- `Q232393` remains review-bound with `hullq_id: null`;
+- retained crosswalk remains exactly **1,772** and canonical BoatModel universe remains exactly **1,770**;
+- PostgreSQL replay/re-import/fresh-schema proof: zero conflicts, errors, stray rows or semantic drift, `all_zero_tolerance_conditions_clear = true`;
+- final amendment added fail-closed retained `REPLAY-RESULT.json` / `REPLAY-REPORT.md` verification before any fresh replay may overwrite them, with pre-`psycopg.connect()` tamper rejection;
+- zero live external acquisition;
+- production Wikidata discovery query unchanged;
+- explicit project-owner acceptance on **2026-08-25**.
 
-The immutable SLICE-0021 inputs are pinned to accepted Git blobs `5b56851f0c719b8dcf830fcd0416471c6c60596c` (`sampled_candidates.json`) and `16af426991214c445a3c152aacbe56b8088958d6` (`discovery_probe.json`), plus the accepted SLICE-0017/0018 manifest SHA256 values. The slice performs **zero external network requests**. R3 is never auto-admitted; structurally usable R3 candidates are explicitly review-bound. The production Wikidata discovery rule remains unchanged.
+Final closure record: `docs/slices/SLICE-0022-acceptance-closure.md`.
 
-SLICE-0022 produced zero new canonical admissions under the R1 admission governance amendment (see the "SLICE-0022 has now classified..." paragraph above) and does not itself authorize production adoption of R1/R3, Stage-3.3 technical enrichment or any later application work.
-
-No SLICE-0023 or later slice was made `READY` by this readiness decision or by SLICE-0022's implementation.
+No SLICE-0023 or later slice is made `READY` by the SLICE-0022 closure.
 
 ## SLICE-0021 acceptance closure
 
@@ -87,7 +97,7 @@ Acceptance evidence:
 
 Final closure record: `docs/slices/SLICE-0021-acceptance-closure.md`.
 
-No SLICE-0022 or later slice was made `READY` by the SLICE-0021 closure itself; SLICE-0022 is authorized separately by the readiness decision recorded above.
+No SLICE-0022 or later slice was made `READY` by the SLICE-0021 closure itself; SLICE-0022 was authorized separately by its readiness decision and is now accepted / `DONE`.
 
 ## SLICE-0020 acceptance closure
 
@@ -438,7 +448,7 @@ archive source clearance + identity pilot         DONE — SLICE-0020
         ↓
 alternative Wikidata class-discovery semantics    DONE — SLICE-0021
         ↓
-retained alternative-route Tier-0 admission       REVIEW — SLICE-0022 (implemented)
+retained alternative-route Tier-0 admission       DONE — SLICE-0022
         ↓
 production route decision / further breadth       LATER / NOT AUTHORIZED
 ```
@@ -497,4 +507,4 @@ It created and modified no canonical HullQ entities and did not authorize system
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-SLICE-0019 is closed and accepted `DONE` (see `docs/slices/SLICE-0019-acceptance-closure.md`). SLICE-0020 is closed and accepted `DONE` (see `docs/slices/SLICE-0020-acceptance-closure.md` and `research/manufacturers/archive_clearance/ARCHIVE_SOURCE_CLEARANCE_REPORT.md`). SLICE-0021 is closed and accepted `DONE` (see `docs/slices/SLICE-0021-acceptance-closure.md` and `research/bootstrap/wikidata/sl0021-alt-discovery/REPORT.md`). SLICE-0022 has been implemented and handed off `REVIEW` (not `DONE`); no SLICE-0023 or later slice has been created or made `READY`.
+SLICE-0019 is closed and accepted `DONE` (see `docs/slices/SLICE-0019-acceptance-closure.md`). SLICE-0020 is closed and accepted `DONE` (see `docs/slices/SLICE-0020-acceptance-closure.md` and `research/manufacturers/archive_clearance/ARCHIVE_SOURCE_CLEARANCE_REPORT.md`). SLICE-0021 is closed and accepted `DONE` (see `docs/slices/SLICE-0021-acceptance-closure.md` and `research/bootstrap/wikidata/sl0021-alt-discovery/REPORT.md`). SLICE-0022 is closed and accepted `DONE` (see `docs/slices/SLICE-0022-acceptance-closure.md` and `research/bootstrap/wikidata/sl0022-alt-route-admission/REPORT.md`). No SLICE-0023 or later slice has been created or made `READY`.
