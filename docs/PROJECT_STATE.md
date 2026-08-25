@@ -1,580 +1,276 @@
 # HullQ — Current Project State
 
-**Updated:** 2026-08-25
-**Current stage:** Stage 3.2 — canonical identity breadth / bounded admission proof. SLICE-0019 manufacturer/yard universe research, SLICE-0020 archive source-clearance + identity pilot, SLICE-0021 alternative Wikidata discovery-semantics pilot, and **SLICE-0022 — the offline Tier-0 admission-safety pilot over the exact 57 retained SLICE-0021 candidates (53 R1, 4 R3) — are all `DONE` and owner-accepted**. SLICE-0022 accepted result: zero live acquisition, no production-discovery change, **0 AUTO_ADMIT / 31 REVIEW_REQUIRED / 26 NOT_ADMITTED**, retained historical crosswalk unchanged at **1,772**, combined canonical BoatModel count unchanged at **1,770**. Final reviewed head `912fe8d0542459df7f260eeccd840bb92c00e8d1` received independent-review `ACCEPT`; exact-head CI run `32843428842` passed all required jobs; PR #55 merged as `5d68399e0efb4f6b34b8dae65817b7ced0ca3d07`; owner acceptance followed on 2026-08-25. The earlier Stage 3.3 label was premature: Stage 3.3 Tier-1/basic-searchable enrichment has not begun. **SLICE-0023 — the bounded English-Wikipedia category identity-lead discovery pilot (`Category:Keelboats`/`Catamarans`/`Trimarans`) — was made `READY` by its own separate readiness decision, and its implementation is now complete and handed off as `REVIEW`, pending independent review and project-owner acceptance.** The one bounded live measurement found 409 unique `incremental_qid_lead` QIDs (well above the 1,829/1,770/1,772/57 immutable boundaries, which all reproduced exactly), a 150-QID deterministic quality sample with 70.67% `plausible_model_or_class_lead`, and a mechanical recommendation of `FOLLOWUP_VERIFICATION_CANDIDATE`; see `research/bootstrap/wikimedia/sl0023-category-leads/REPORT.md`. No canonical HullQ row was created and production Wikidata discovery is unchanged. No SLICE-0024 or later slice is currently `READY`.
-**Execution plan:** `docs/EXECUTION_PLAN.md`  
-**Operational work queue:** `docs/slices/INDEX.md`
+**Updated:** 2026-08-25  
+**Current stage:** Stage 3.2 — canonical identity breadth / bounded discovery and admission proof  
+**Accepted slices:** SLICE-0001 through SLICE-0023 are owner-accepted / `DONE`  
+**Current queue:** no SLICE-0024 or later slice is `READY`
 
-## Canonical project direction
+This is a **compact current-state document**. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Do not use this file as a substitute for normative specs or accepted ADRs.
 
-HullQ is building an independent, provenance-aware sailboat design universe suitable for technical search/discovery, later market integration and reproducible derived metrics.
+## Current project direction
 
-Accepted strategic principles remain:
+HullQ is building an independent, provenance-aware sailboat design universe for technical search/discovery, later market integration and reproducible derived metrics.
+
+Primary product loop:
+
+```text
+FIND DESIGN -> FIND BOAT FOR SALE -> COMPARE / SAVE -> ALERT
+```
+
+HullQ is not intended to become a generic boating super-app.
+
+## Current accepted identity boundary
+
+Accepted canonical identity state remains:
+
+```text
+retained direct Wikidata discovery candidates   1,829 QIDs
+accepted canonical BoatModels                   1,770
+retained historical QID -> HullQ-ID mappings    1,772
+SLICE-0021 alternative-route union                  57 QIDs
+SLICE-0022 new canonical admissions                  0
+SLICE-0023 incremental Wikimedia QID leads          409
+```
+
+SLICE-0023 did **not** admit any of its 409 leads. Canonical BoatModels therefore remain exactly **1,770** and the historical crosswalk exactly **1,772**.
+
+## Latest accepted result — SLICE-0023
+
+SLICE-0023 performed one bounded English-Wikipedia category research-lead pilot over exactly:
+
+- `Category:Keelboats`;
+- `Category:Catamarans`;
+- `Category:Trimarans`.
+
+Accepted measurement:
+
+```text
+category memberships before dedup       1,132
+unique pages                             1,131
+accepted-direct QID overlap                717
+retained-alternative QID overlap             4
+incremental QID leads                      409
+no Wikidata QID                              1
+
+quality sample                              150
+plausible_model_or_class_lead               102  (68.00%)
+obvious_out_of_scope                         19  (12.67%)
+ambiguous                                    29  (19.33%)
+
+recommendation   FOLLOWUP_VERIFICATION_CANDIDATE
+```
+
+The recommendation is research-only. It authorizes neither production Wikipedia/Wikimedia discovery nor canonical admission.
+
+Source/request boundary:
+
+```text
+Wikipedia requests       27 / 75
+  category requests       4
+  pageprops requests     23 = ceil(1,131 / 50)
+Wikidata requests         3 / 10
+total requests           30 / 85
+```
+
+Wikipedia article prose, infobox values, tables, images and references remained outside HullQ evidence. Wikidata CC0 context was limited to the deterministic <=150-QID quality sample.
+
+Acceptance evidence:
+
+- implementation PR #61;
+- final reviewed implementation head `92dc0320e995542226199509fc7236f29a75a254`;
+- exact-head CI `32867281346`: SUCCESS;
+- manufacturer reproducibility `32867282317`: SUCCESS;
+- implementation merge `ac2868d978f33f42ccc7e9cc2b1885bfa86b23bb`;
+- independent-review verdict **ACCEPT**;
+- owner acceptance 2026-08-25;
+- closure: `docs/slices/SLICE-0023-acceptance-closure.md`.
+
+## Stage interpretation
+
+Stage 3.3 has **not** begun.
+
+The project is still completing breadth/verification rationale for the canonical sailboat identity universe. SLICE-0023 establishes that the bounded Wikimedia path has useful incremental research-lead yield, but any verification campaign over those 409 leads requires a separate readiness contract and slice.
+
+Do not infer that `FOLLOWUP_VERIFICATION_CANDIDATE` means:
+
+- production-source approval;
+- identity admission;
+- review-queue resolution;
+- Tier-1/Tier-2 technical enrichment;
+- query-engine/API/frontend authorization;
+- automatic SLICE-0024 readiness.
+
+## Accepted foundation
+
+| Slice | Accepted result |
+|---|---|
+| 0001 | repository bootstrap, locked toolchain, Linux/Windows CI |
+| 0002 | independent sailboat-source research + seed evidence |
+| 0003 | canonical JSON-Schema contract runtime |
+| 0004 | measurement observation + deterministic normalization |
+| 0005 | Brand/Organization + BoatModel/BoatDesign identity contracts |
+| 0006 | FieldEvidence/FieldResolution provenance boundary |
+| 0007 | ResearchJob + deterministic source-rights gate |
+| 0008 | rights-gated Wikidata CC0 adapter |
+| 0009 | appendage/configuration normalization |
+| 0010 | versioned HullQ derived metrics |
+| 0011 | controlled 50-design real-web stress benchmark |
+| 0012 | pre-canonical observations + explicit promotion + ResearchEvidenceBundle |
+| 0013 | PostgreSQL 18 research persistence + deterministic importer |
+| 0014 | retained benchmark through real PostgreSQL persistence |
+| 0015 | negative-path hardening + Stage-2 G3 PASS |
+| 0016 | canonical identity persistence + Tier-0 admission boundary |
+| 0017 | controlled Wikidata Tier-0 identity bootstrap |
+| 0018 | baseline-preserving direct-discovery expansion; 1,829/1,770/1,772 boundary |
+| 0019 | global manufacturer/yard universe + source-yield research |
+| 0020 | archive-source clearance pilot; 0 adapter-ready in fixed sample |
+| 0021 | alternative Wikidata routes; +57 discovery signals |
+| 0022 | admission-safety proof; 0 auto-admissions from the 57 alternatives |
+| 0023 | Wikimedia category lead pilot; +409 research leads, follow-up candidate |
+
+For exact amendments, hashes, CI runs and acceptance reasoning, read the corresponding `docs/slices/SLICE-XXXX-acceptance-closure.md` and retained package instead of expanding this document.
+
+## Accepted product/data principles
 
 - broad coverage with progressive verification depth;
-- search architecture and SEO are product architecture, not later marketing;
-- Search stays broadly available while persistence/monitoring are monetization candidates;
-- source data, normalized candidates, canonical resolutions and HullQ-derived values remain distinct;
+- breadth and verification depth are independent;
 - unknown/conflict is preferable to fabricated completeness;
+- source observations, normalized candidates, canonical resolutions and derived values remain distinct;
+- provenance is mandatory for accepted production values;
 - one model string is not a reliable technical identity boundary;
-- option/variant/state-sensitive values must not be flattened into one scalar baseline;
-- source breadth is intentionally broad while canonical confidence remains strict;
-- SailboatData is outcome-only post-hoc reference QA, never HullQ evidence/fallback data;
-- GitHub `main` is canonical truth; bounded slice/PR review remains mandatory.
+- configuration/option/year/state-sensitive values must not be flattened into one scalar baseline;
+- Brand and builder/manufacturer Organization remain distinct identity concepts;
+- keel, rudder and skeg remain independent dimensions;
+- monohulls, catamarans and trimarans are first-class;
+- SailboatData remains outcome-only post-hoc QA/reference material, never invisible production evidence;
+- source access and source reuse rights are separate and fail closed when production/bulk use is not cleared;
+- GitHub `main` is canonical shared repository truth;
+- bounded slice/PR review + explicit owner acceptance remains mandatory.
+
+## Search, SEO and growth direction
+
+Search architecture and SEO are **product architecture**, not later marketing.
+
+Product-Led SEO is the primary zero-budget acquisition strategy. Binding strategic inputs:
+
+- `docs/PRODUCT_LED_SEO_STRATEGY.md`;
+- `docs/research/OQ-018_PRODUCT_LED_SEO_RESEARCH_2026-08-25.md`;
+- `architecture/SEARCH_AND_SEO_ARCHITECTURE.md`;
+- ADR-0007;
+- OQ-018 remains the detailed implementation gate.
+
+Key rule: **indexability is a promoted product state**. Arbitrary faceted-search combinations are not automatically SEO pages. Canonical entity, intentional technical-discovery, comparison, methodology and original-data pages must pass explicit quality/indexability gates.
+
+Search Console is intended as both SEO telemetry and a product/data-enrichment feedback source.
+
+## Mandatory public languages
+
+HullQ's public product must support:
+
+- English;
+- German;
+- French;
+- Portuguese;
+- Spanish.
+
+Canonical IDs, technical values, provenance and query semantics remain language-neutral. UI/content/metadata are localized. Exact locale/URL/hreflang/fallback mechanics remain an OQ-018 implementation decision.
+
+Binding requirement: `docs/PRODUCT_LANGUAGE_AND_I18N_REQUIREMENT.md`.
+
+## Monetization direction
+
+Search remains broadly open. Persistence/monitoring/intelligence are preferred monetization surfaces.
+
+Current strategic framing:
+
+```text
+HullQ Free — Search everything. Save 5 searches.
+```
+
+Potential Pro value includes saved-search expansion, monitoring/alerts and, subject to rights/technical feasibility, listing-price history, price-change alerts, model/generation/configuration market trends, Days-on-Market and price-reduction signals.
 
 ## Accepted application/deployment architecture
-
-Target baseline remains:
 
 ```text
 Cloudflare edge
       |
       v
-Contabo Linux VPS
+portable Linux VPS baseline (initial provider: Contabo)
       |
       +-- Astro + TypeScript web
-      |     \-- React islands only where state complexity justifies them
+      |     \-- React islands only where justified
       +-- FastAPI / CPython 3.14
       +-- PostgreSQL
-      +-- background/scheduled Python worker when needed
+      +-- scheduled/background Python worker when justified
       \-- simple VPS deployment / Caddy baseline
 
 Off-VPS backup/artifact direction: Cloudflare R2 when introduced
 Later native mobile: Flutter Android/iOS via the same accepted API boundary
 ```
 
-Auth remains deferred under OQ-014. OQ-006 controls alert cadence/freshness; OQ-015 controls the stable HTTP API/versioning boundary; OQ-018 controls the public SEO/search surface; OQ-009 must be resolved before technical query-engine semantics are frozen.
+Do not introduce a client-only SPA, second business-logic backend, dedicated search engine, Kubernetes/distributed infrastructure or paid managed dependency without measured need + accepted decision.
 
-## Accepted foundation
+Important deferred boundaries:
 
-| Slice | Result |
-|---|---|
-| SLICE-0001 | repository bootstrap, locked toolchain, Linux/Windows CI |
-| SLICE-0002 | independent source research + seed evidence |
-| SLICE-0003 | canonical JSON-Schema contract runtime |
-| SLICE-0004 | measurement observation + exact normalization |
-| SLICE-0005 | Brand/Organization + BoatModel/BoatDesign identity contracts |
-| SLICE-0006 | FieldEvidence/FieldResolution provenance boundary |
-| SLICE-0007 | ResearchJob + deterministic source-rights gate |
-| SLICE-0008 | rights-gated Wikidata CC0 adapter |
-| SLICE-0009 | appendage/configuration normalization |
-| SLICE-0010 | `hullq-derived-1.0.0` derived metrics |
-| SLICE-0011 | controlled 50-design real-web benchmark |
-| SLICE-0012 | pre-canonical observations, claim/applicability semantics, research bundle + explicit promotion |
-| SLICE-0013 | PostgreSQL 18 research persistence + deterministic transactional importer |
-| SLICE-0014 | exact 50-design retained benchmark through PostgreSQL; full semantic roundtrip; G3_CANDIDATE |
-| SLICE-0015 | negative-path hardening + fixed Stage-2 G3 scorecard; G3_PASS |
-| SLICE-0016 | canonical Tier-0 identity PostgreSQL persistence/admission boundary |
-| SLICE-0017 | controlled Wikidata Tier-0 1,000-candidate identity bootstrap; accepted broad Stage-3 baseline |
-| SLICE-0018 | baseline-preserving Wikidata first-<=2,500 discovery expansion; measured direct-instance ceiling at 1,829 QIDs; accepted combined Tier-0 universe |
-| SLICE-0019 | global active+historical series-sailboat manufacturer/yard research universe + source-yield study |
-| SLICE-0020 | manufacturer/archive source clearance + bounded identity pilot; 0 ADAPTER_READY / 9 REVIEW_REQUIRED / 1 BLOCKED |
-| SLICE-0021 | alternative Wikidata class-discovery semantics pilot; R0 zero drift / R1 +53 / R2 +0 / R3 +4; accepted research follow-up signals |
-| SLICE-0022 | retained alternative-route Tier-0 admission-safety pilot; 0 AUTO_ADMIT / 31 REVIEW_REQUIRED / 26 NOT_ADMITTED; canonical BoatModel universe unchanged at 1,770 |
+- OQ-009: technical query-engine semantics;
+- OQ-014: auth/session/provider mechanics;
+- OQ-015: stable public HTTP/API/versioning boundary;
+- OQ-018: detailed public Search/SEO URL/index/rendering/canonical/i18n behavior;
+- OQ-006: alert cadence/freshness.
 
-All slices 0001–0022 are `DONE` and owner-accepted.
+## PostgreSQL environment separation
 
-## SLICE-0011 — benchmark result retained
-
-The controlled benchmark covered 50 deliberately difficult designs across six waves.
-
-Measured non-exclusive stress-corpus incidences:
-
-- authoritative/original-document path found: **44/50 (88%)**;
-- appendage/configuration complexity: **42/50 (84%)**;
-- temporal/production applicability mattered: **32/50 (64%)**;
-- identity/generation/lineage semantics mattered: **30/50 (60%)**;
-- option/variant/operating-state semantics mattered: **30/50 (60%)**;
-- secondary/community/broker evidence materially needed: **30/50 (60%)**;
-- post-hoc reference anomaly/incompleteness/definition issue: **28/50 (56%)**;
-- measurement/definition-basis semantics mattered: **22/50 (44%)**;
-- material explicit conflict or unresolved question: **20/50 (40%)**.
-
-These are stress-corpus incidences, not population prevalence estimates.
-
-Research policy remains:
+Development/database environments stay separate:
 
 ```text
-broad independent web research
-→ source-linked raw observation/context
-→ corroboration/conflict detection
-→ post-hoc reference comparison
-→ benchmark classification/measurement
-→ persistence requirements derived from evidence
+permanent local PostgreSQL 18
+→ durable HullQ development environment / DBeaver / later local data
+
+temporary Claude/test PostgreSQL
+→ isolated destructive/replay/integration work, optionally on another port
+
+GitHub Actions PostgreSQL 18
+→ ephemeral CI-only service, unrelated to the local development DB
 ```
 
-SailboatData remains outcome-only post-hoc QA/reference comparison. No SailboatData field value becomes HullQ ResearchObservation, FieldEvidence, fallback value or canonical resolution input.
+Tests/replays should not unnecessarily mutate the permanent local development DB.
 
-## SLICE-0012 — DONE / accepted
+## AI-assisted development workflow
 
-SLICE-0012 closed the benchmark-proven pre-persistence data gaps:
+Current workflow is token-efficient and slice-first:
 
-- `ResearchObservation` can exist before canonical identity resolution;
-- source/document `EvidenceType` is distinct from claim semantics;
-- applicability preserves year/hull/market/variant/option/state/individual-hull scope;
-- FieldEvidence v0.3 adds claim/applicability without mutating v0.2;
-- promotion requires an explicit caller-supplied stable `ProvenanceSubject`;
-- ResearchEvidenceBundle supports partial/unresolved identity research;
-- reference crosschecks remain structurally outside evidence/provenance.
+- one Claude conversation per slice;
+- fresh conversation or `/clear` at a new-slice boundary;
+- read the slice contract first;
+- load only explicitly required dependencies/sections;
+- use `/context` to diagnose context growth;
+- use `/compact` for a long same-slice continuation/amendment when directed;
+- concise but complete handoff reports;
+- full validation only at the required handoff boundary rather than repeatedly without reason.
 
-Final closure record: `docs/slices/SLICE-0012-acceptance-closure.md`.
+Binding files:
 
-## SLICE-0013 — DONE / accepted
+- `CLAUDE.md`;
+- `docs/engineering/AI_TOKEN_EFFICIENCY.md`;
+- `docs/engineering/AI_SLICE_WORKFLOW.md`;
+- `scripts/workflow/start-slice.ps1`.
 
-SLICE-0013 established the first real physical research-persistence boundary:
+The project master/reviewer should explicitly direct the operator with `NOW: /clear` or `NOW: /compact` when appropriate.
 
-```text
-validated ResearchEvidenceBundle
-        ↓
-deterministic semantic fingerprint
-        ↓
-transactional PostgreSQL 18 import
-        ↓
-immutable persisted research/evidence records
-        ↓
-round-trip/readback verification
-```
+## Current next boundary
 
-Accepted persistence semantics include:
+No next slice is authorized by this file.
 
-- reproducible PostgreSQL 18 schema creation from empty database;
-- external environment-driven connection configuration;
-- immutable `(bundle_id, bundle_version)` identity;
-- globally stable immutable `ResearchObservation.observation_id`;
-- globally stable immutable `FieldEvidence.evidence_id`;
-- separate bundle membership for global observations/evidence;
-- lossless raw/normalized/claim/applicability snapshots;
-- crosschecks structurally outside evidence;
-- deterministic order-insensitive bundle fingerprinting;
-- atomic/idempotent/fail-closed imports;
-- PostgreSQL-native race-safe concurrent imports;
-- no fuzzy identity resolution, automatic canonical subject creation, automatic promotion or FieldResolution.
+The accepted SLICE-0023 result supports considering a **separate bounded verification step** for the 409 incremental Wikimedia QID leads, but readiness must still decide whether that is the best next Stage-3.2 action versus another breadth source or a justified transition boundary.
 
-Final closure record: `docs/slices/SLICE-0013-acceptance-closure.md`.
+A later slice requires:
 
-## SLICE-0014 — DONE / accepted / G3_CANDIDATE
+1. explicit readiness analysis;
+2. a bounded primary slice contract set to `READY`;
+3. normal `START_SLICE.bat` isolated-worktree creation;
+4. one fresh Claude session;
+5. independent review, explicit owner acceptance and closure before `DONE`.
 
-SLICE-0014 ran the exact retained 50-design stress corpus through the accepted ResearchEvidenceBundle/PostgreSQL boundary and hardened the benchmark until the result was semantically meaningful rather than merely green.
+Operational queue: `docs/slices/INDEX.md`.
 
-Accepted final head:
-
-`98d2e38e42254bba17279945551d53c17b869f5e`
-
-Implementation PR #29 merge commit:
-
-`71100b50052ed7c2910b096e36b8a5402f757191`
-
-Exact-head CI #178 (`32457026920`) passed with PostgreSQL 18.6, 162 persistence tests, Ubuntu/Windows quality, dependency audit, benchmark runner/schema validation and artifact upload all green.
-
-Final measured benchmark outcome:
-
-```text
-50/50 materialized
-50/50 first-pass imported
-50/50 exact re-import ALREADY_IMPORTED
-50/50 fresh-schema imported
-0 persistence errors
-0 conflicts
-0 semantic readback mismatches
-0 fresh-schema semantic mismatches
-recommendation: G3_CANDIDATE
-```
-
-Retained artifact:
-
-- ID `9437591681`;
-- digest `sha256:de4e6ec1e2b020b3758e5066441d3d068676bf298c0b1707c86b6b7098308f79`.
-
-Final closure record: `docs/slices/SLICE-0014-acceptance-closure.md`.
-
-Important interpretation limit: `50/50 materialized` is not a production research automation-rate estimate because the benchmark begins with pre-curated retained HullQ evidence.
-
-## SLICE-0015 — DONE / accepted / Stage-2 G3 PASS
-
-SLICE-0015 hardened the benchmark's negative paths and applied the fixed pre-committed G3 scorecard without moving the thresholds after seeing the result.
-
-Accepted final head:
-
-`022bec43318025bdeb92608bb2fb0445650f081d`
-
-Implementation PR #31 merge commit:
-
-`d87490c6103676935768ba57ed41e665225731b8`
-
-Exact-head CI #189 (`32468991110`) passed with PostgreSQL 18 integration, benchmark runner/schema validation, Ubuntu/Windows quality and dependency audit green.
-
-Final measured benchmark outcome remained:
-
-```text
-50/50 materialized
-50/50 first-pass imported
-50/50 exact re-import ALREADY_IMPORTED
-50/50 fresh-schema imported
-0 persistence errors/conflicts
-0 semantic readback mismatches
-0 fresh-schema semantic mismatches/errors
-recommendation: G3_PASS
-```
-
-Binding thresholds remain:
-
-- mechanical materialization `>=65%`;
-- cannot-materialize-without-invention `<=10%`;
-- review-required `<=35%`.
-
-Accepted failure-class semantics:
-
-- `CONTRACT_GAP` → `BLOCKED`;
-- `VALIDATION_FAILURE` → `HARDEN_FIRST` regardless of percentage;
-- `INSUFFICIENT_RETAINED_FACT` → rate-based and may remain G3-positive within the `<=10%` threshold.
-
-Final closure record: `docs/slices/SLICE-0015-acceptance-closure.md`.
-
-Stage 2 is past G3. This authorizes controlled Stage-3 work through explicit slices; it is not blanket authorization for broad/unbounded ingestion.
-
-## SLICE-0016 — DONE / accepted
-
-SLICE-0016 closed the missing canonical Tier-0 identity persistence/admission prerequisite.
-
-Accepted final head:
-
-`61b500c2de061abb09dd7ddc36a0bfaa724ceece`
-
-Implementation PR #33 merge commit:
-
-`ae34363f5db8111a75d108b9b936084f76b56cef`
-
-Exact-head CI #195 (`32478124648`) passed with:
-
-- PostgreSQL **18.6** integration PASS;
-- **199 persistence tests passed**;
-- benchmark runner PASS;
-- benchmark schema validation PASS;
-- Ubuntu quality PASS;
-- Windows quality PASS;
-- dependency audit PASS.
-
-The retained benchmark still returned `G3_PASS` with 50/50 materialization/import/reimport/fresh-schema behavior and zero semantic mismatches/conflicts/errors.
-
-Accepted canonical persistence semantics now include:
-
-- Brand / Organization / BoatModel / BoatDesign canonical tables;
-- entity-scoped aliases;
-- Brand↔BoatModel and Organization↔BoatDesign relationship separation;
-- caller-supplied stable opaque HullQ IDs;
-- accepted schema validation before mutation;
-- auditable links to retained HullQ observations/evidence;
-- fail-closed exact-kind target validation for provenance links;
-- `BoatModel.boat_design_ids` consistency against the normalized BoatDesign graph;
-- immutable semantic content fingerprints;
-- atomic/idempotent/conflict-safe imports;
-- PostgreSQL-native race-safe concurrency;
-- lossless semantic readback;
-- no fuzzy source-candidate resolution or persistence-layer ID minting.
-
-Final closure record: `docs/slices/SLICE-0016-acceptance-closure.md`.
-
-## SLICE-0017 — DONE / accepted
-
-SLICE-0017 executed HullQ's first controlled broad Stage-3 identity bootstrap against the first 1,000 deterministic rights-cleared direct Wikidata sailboat-class candidates.
-
-Accepted final head:
-
-`34c2de8fc99ab6babad054a4186cee168cc3a2da`
-
-Implementation PR #35 merge commit:
-
-`e2001d3a926c08706558b6cb97962f235c843379`
-
-Exact-head CI #200 (`32499124689`) passed with PostgreSQL 18.6, Ubuntu/Windows quality, dependency audit, retained Stage-2 exact `G3_PASS`, production bootstrap replay and every zero-tolerance assertion green.
-
-Final retained live measurement:
-
-```text
-requested candidates                         1,000
-unique candidates processed                  1,000
-AUTO_ADMIT                                     965
-REVIEW_REQUIRED                                 20
-NOT_ADMITTED                                    15
-collision clusters                              10
-retained historical QID -> HullQ-ID mappings   967
-ResearchEvidenceBundles on replay              985
-canonical BoatModel admissions                 965
-acquisition failures                             0
-live retrievals                                 21
-```
-
-Final deterministic reason counts:
-
-- `ok`: **965**;
-- `name_collision`: **20**;
-- `missing_label`: **15**.
-
-Production PostgreSQL 18.6 replay proved:
-
-```text
-first isolated schema:
-  985/985 bundles imported
-  965/965 admissions imported
-  0 conflicts/errors/unexpected statuses
-  0 semantic readback mismatches
-  exact canonical BoatModel ID set
-  0 unexpected canonical rows for non-admitted candidates
-  0 Brand / Organization / BoatDesign rows
-
-exact re-import:
-  1,950 ALREADY_IMPORTED
-  0 conflicts
-  0 errors
-
-independent fresh schema:
-  985 bundles imported
-  965 admissions imported
-  0 semantic mismatches
-  exact canonical BoatModel ID set
-  0 Brand / Organization / BoatDesign rows
-
-all_zero_tolerance_conditions_clear = true
-```
-
-Accepted bootstrap semantics now include:
-
-- accepted HullQ search-key semantics for collision detection;
-- stable content-derived alias IDs;
-- opaque once-minted HullQ IDs independent of QID/name;
-- historical retained crosswalk structurally separate from the current candidate set;
-- fail-closed crosswalk validation in both conflict directions before live network use;
-- stable mappings across discovery-window omission/reappearance;
-- original acquisition time preserved separately from later recompute time;
-- current candidate rows describe only the current bounded acquisition;
-- isolated PostgreSQL replay from migrations zero;
-- exact first-pass/importer-status/readback/reimport/fresh-schema proof;
-- no Brand/Organization/BoatDesign inference;
-- normal CI remains fully offline with respect to Wikidata.
-
-Final closure record: `docs/slices/SLICE-0017-acceptance-closure.md`.
-
-## SLICE-0018 — DONE / accepted
-
-SLICE-0018 extended the accepted Stage-3 Tier-0 identity universe without reinterpreting the accepted SLICE-0017 baseline.
-
-Accepted final head:
-
-`cbc93582c7ed93aa7a4253ac58868f7e79e266cc`
-
-Implementation PR #37 merge commit:
-
-`213ec3b13769708b1d996b3266a9e9c19fabbb45`
-
-Exact-head CI #208 (`32540170666`) passed with PostgreSQL 18.6, Ubuntu/Windows quality, dependency audit, retained Stage-2 exact `G3_PASS`, accepted SLICE-0017 replay and the combined SLICE-0018 baseline-first/delta-second replay all green.
-
-Final retained live measurement:
-
-```text
-requested discovery limit                    2,500
-hard safety ceiling                          3,000
-unique discovery QIDs returned               1,829
-target reached                               false
-accepted-baseline overlap                    1,000
-accepted-baseline absent                         0
-expansion delta                                829
-AUTO_ADMIT                                     805
-REVIEW_REQUIRED                                 16
-NOT_ADMITTED                                     8
-baseline collision records                       6
-delta-delta collision clusters                   6
-retained historical QID -> HullQ-ID mappings 1,772
-combined canonical BoatModels                 1,770
-acquisition failures                              0
-```
-
-Final deterministic delta reason counts:
-
-- `ok`: **805**;
-- `name_collision`: **16**;
-- `missing_label`: **8**.
-
-The direct-instance Wikidata query therefore established a measured current source ceiling of **1,829** under this discovery definition. The result was retained as fact; it was not padded from another source and was not converted into an artificial 2,500-candidate quota.
-
-Accepted SLICE-0018 semantics include:
-
-- exact raw-byte fingerprint protection for the accepted SLICE-0017 baseline before SLICE-0018 work;
-- immutable accepted SLICE-0017 baseline decisions/IDs/payload semantics;
-- separate current discovery window, expansion delta and historical retained crosswalk;
-- stable historical mapping survival across omission/reappearance;
-- fail-closed crosswalk conflict detection in both directions;
-- exact fetched-entity completeness for every expected delta QID;
-- exact manifest candidate-set equality to discovery-minus-baseline;
-- slice-level <=2,500 network boundary enforced before adapter construction while shared safety ceiling remains 3,000;
-- baseline-QID and duplicate-delta rejection before classification;
-- accepted HullQ search-key collision semantics for delta↔baseline and delta↔delta review routing;
-- baseline-first/delta-second PostgreSQL 18 replay from migrations zero;
-- exact baseline verification before delta and zero drift after delta;
-- exact first-pass/importer-status/readback/reimport/fresh-schema proof;
-- no Brand/Organization/BoatDesign inference;
-- no second live acquisition during the correction round;
-- normal CI fully offline with respect to Wikidata.
-
-Remote PostgreSQL 18.6 replay proved:
-
-```text
-baseline before delta:
-  985 bundles
-  965 admissions
-  exact canonical ID set
-  0 readback mismatches
-
-combined first schema:
-  1,806 bundles imported
-  1,770 admissions imported
-  0 conflicts/errors/unexpected statuses
-  0 semantic readback mismatches
-  0 post-delta baseline drift mismatches
-  exact combined canonical ID set
-  0 unexpected canonical rows for non-admitted candidates
-  0 Brand / Organization / BoatDesign rows
-
-exact re-import:
-  3,576 ALREADY_IMPORTED
-  0 conflicts
-  0 errors
-
-independent fresh schema:
-  1,806 bundles imported
-  1,770 admissions imported
-  0 semantic mismatches
-  0 post-delta baseline drift mismatches
-  exact combined canonical ID set
-  0 Brand / Organization / BoatDesign rows
-
-all_zero_tolerance_conditions_clear = true
-```
-
-Final closure record: `docs/slices/SLICE-0018-acceptance-closure.md`.
-
-## Current operational position — SLICE-0019 DONE, SLICE-0020 DONE, SLICE-0021 DONE, SLICE-0022 DONE
-
-`docs/slices/SLICE-0019-global-series-sailboat-manufacturer-universe-research.md` is **explicitly owner-accepted and closed `DONE`** on 2026-08-23; see `docs/slices/SLICE-0019-acceptance-closure.md` for the full closure record.
-
-SLICE-0019 was a bounded DESIGN_RESEARCH step, not a production-ingestion step. Its purpose was to map the next breadth/enrichment source layer after the direct-instance Wikidata ceiling measured by SLICE-0018.
-
-The bounded first wave targeted approximately **120–160 verified eligible series-sailboat manufacturer/yard research records** and landed at **121** verified eligible manufacturer/yard records, with active and historical entities, global geographic coverage (25 countries, 8 macro-regions), explicit source provenance and a completed **20-entity source-yield study**.
-
-The research preserved manufacturer/yard/brand/legal-organization/designer distinctions and assessed later systematic-use rights/access separately from public readability.
-
-It created no canonical HullQ entities and did not authorize a new production source. Its decision output was a ranked evidence-based recommendation for the next bounded Stage-3 slice, which SLICE-0020 bounded into an explicit contract.
-
-**SLICE-0020 — `docs/slices/SLICE-0020-manufacturer-archive-source-clearance-identity-expansion-pilot.md` — is explicitly owner-accepted and closed `DONE`** on 2026-08-24; see `docs/slices/SLICE-0020-acceptance-closure.md` for the full closure record. It was a bounded DESIGN_RESEARCH step:
-
-- assessed use-specific rights/access clearance (`research_reference`, `research_lead`, `identity_seed`, `production_value` where relevant, `automated_ingestion`, `bulk_bootstrap`, `artifact_redistribution`) for the fixed, precommitted 10-source manufacturer/heritage archive sample (Catalina, Pearson, Oyster, Westerly, Bénéteau, Wauquiez, Elan, Cantiere del Pardo/Grand Soleil, Hallberg-Rassy, Seawind);
-- ran a strictly bounded, research-only identity-yield pilot (exactly 10 model identities per source, 100 total, within the <=20/source and <=200-total contract cap) with exact/unambiguous-first overlap only against the accepted 1,770 AUTO_ADMIT BoatModel universe, finding 9 `exact_overlap`, 91 `no_exact_overlap_signal`, 0 `unresolved_possible_overlap`;
-- classified each source: **0 `ADAPTER_READY`**, **9 `RESEARCH_ONLY`/`REVIEW_REQUIRED`**, **1 `BLOCKED`** (Bénéteau — retained Terms of Use explicitly prohibit technical-protocol indexing/extraction without prior written consent). This truthful zero-`ADAPTER_READY` outcome was not padded or rounded up;
-- performed no automated/bulk acquisition and created/modified no canonical Brand/Organization/BoatModel/BoatDesign row;
-- the external source-clearance/identity research was performed by a ChatGPT-led external research pass; Claude performed repository integration (schema/data transcription, deterministic overlap computation, validation, tests, report) and no independent external research;
-- did not create or start SLICE-0021 during its execution.
-
-Retained package: `research/manufacturers/archive_clearance/` (`archive_source_clearance_schema.json`, `archive_source_clearance.json`, `archive_identity_pilot_schema.json`, `archive_identity_pilot.json`, `ARCHIVE_SOURCE_CLEARANCE_REPORT.md`).
-
-Independent review initially returned **AMEND**; a first amendment (`44ed42c`) corrected Elan/Hallberg-Rassy source-surface provenance, removed the unsupported Elan E3 and Bénéteau First 32/38 hazards, and tightened the exact-match whitespace semantics, and a second docs-only amendment (`ced1880`) corrected the report's own characterization of that implementation correction. The final reviewed head `ced18800c20a6a2c328794d3af5cb0686d59c20d` received an independent-review **ACCEPT** verdict. Implementation/research PR #47 merged as `5c2a9cc40a05fbaebe2a4db2bcfff7d3498a58d9`; exact-head CI run #250 (`32727915597`) was **SUCCESS** on all jobs. The project owner explicitly accepted SLICE-0020 on 2026-08-24.
-
-**SLICE-0021 — `docs/slices/SLICE-0021-wikidata-alternative-sailboat-class-discovery-pilot.md` — is explicitly owner-accepted and closed `DONE`** on 2026-08-24; see `docs/slices/SLICE-0021-acceptance-closure.md` for the full closure record.
-
-The accepted one-shot measurement used exactly four rights-cleared Wikidata structured-data routes. R0 returned **1,829** with **zero drift** against the retained direct universe. R1 returned **1,882**, giving **53** incremental QIDs versus current R0. R2 returned **0**. R3 returned **4** structured repair signals. The alternative union is **57**, with zero pairwise cross-route overlap. All 57 were deterministically sampled and fetched successfully within the hard caps.
-
-Independent review required two hardening rounds. Round 1 added fail-closed live entity-detail completeness and structural/offline tamper checks and corrected exact-head CI provenance wording. Round 2 added exact full-set validation for drift/incremental/overlap QID sets and the sampled-candidate accepted-universe references. The retained live measurement was not rerun or altered during either round. Final reviewed head `2cf0ab437d2347a574fd5a01b3e5577ca4c6b521` received **ACCEPT**; exact-head CI #260 (`32759454547`) passed all four jobs; PR #50 merged as `c562b1c8f082f60823e084b1fb24c9f5c6f6ba00`; owner acceptance followed on 2026-08-24.
-
-The R1/R3 `FOLLOWUP_DISCOVERY_CANDIDATE` dispositions remain research recommendations only. No canonical HullQ row or ID was created and no production Wikidata discovery query was changed.
-
-**SLICE-0022 — `docs/slices/SLICE-0022-retained-alternative-route-tier0-admission-safety-pilot.md` — is explicitly owner-accepted and closed `DONE`** on 2026-08-25; see `docs/slices/SLICE-0022-acceptance-closure.md` for the full closure record.
-
-The accepted slice used only the retained SLICE-0021 candidate set, pinned to the accepted `sampled_candidates.json` and `discovery_probe.json` Git blobs. Exactly 57 candidates were in scope: 53 R1 and four R3. A first implementation pass reused the unmodified SLICE-0017/0018 label/collision Tier-0 rule and auto-admitted 27 R1 candidates; independent review found a retained counterexample (`Q232393`, a German canoe-class term structurally indistinguishable from legitimate Olympic sailing classes on every accepted retained fact except free-text description) and required the controlling governance amendment, `docs/slices/SLICE-0022-r1-admission-governance-amendment.md`: **R1 route membership alone can never produce `AUTO_ADMIT`** (reason `r1_alternative_route_requires_review`), mirroring the existing R3 fail-closed rule. The accepted final result is **0 AUTO_ADMIT / 31 REVIEW_REQUIRED / 26 NOT_ADMITTED**, with zero search-projection collisions against the baseline or within the 57. The retained crosswalk is byte-identical to the accepted 1,772-entry combined baseline crosswalk and the canonical BoatModel count remains exactly **1,770**.
-
-Offline recompute-and-diff self-consistency verification covers ordered candidate sequence, complete collision records, counts, crosswalk bijection, immutable-input references and retained artifact digests. The final replay-evidence amendment additionally verifies checked-in `REPLAY-RESULT.json` / `REPLAY-REPORT.md` before any fresh replay may overwrite them and aborts tampered retained evidence before the first `psycopg.connect()` call. PostgreSQL 18 baseline-first replay, exact re-import and independent fresh-schema replay all clear every zero-tolerance condition. Final reviewed head `912fe8d0542459df7f260eeccd840bb92c00e8d1` received **ACCEPT**; exact-head CI run `32843428842` passed quality on Ubuntu and Windows, PostgreSQL 18 integration and dependency audit; PR #55 merged as `5d68399e0efb4f6b34b8dae65817b7ced0ca3d07`; owner acceptance followed on 2026-08-25. Production Wikidata discovery remains unchanged and no candidate from R1/R3 was canonically admitted.
-
-## Near-term path
-
-```text
-SLICE-0011  controlled 50-design benchmark + analysis          DONE
-      ↓
-SLICE-0012  ResearchObservation + applicability/bundle         DONE
-      ↓
-SLICE-0013  research PostgreSQL persistence                    DONE
-      ↓
-SLICE-0014  same 50 cases through importer/database            DONE / G3_CANDIDATE
-      ↓
-SLICE-0015  harden negative paths + Stage-2 G3 decision        DONE / G3 PASS
-      ↓
-SLICE-0016  canonical identity persistence/admission boundary  DONE
-      ↓
-SLICE-0017  controlled Wikidata Tier-0 1,000 bootstrap         DONE
-      ↓
-SLICE-0018  baseline-preserving Wikidata <=2,500 expansion     DONE / direct-P31 ceiling 1,829
-      ↓
-SLICE-0019  global manufacturer/yard universe source research  DONE / source-yield floor 121
-      ↓
-SLICE-0020  archive source clearance + bounded identity pilot  DONE / 0 ADAPTER_READY, 9 REVIEW_REQUIRED, 1 BLOCKED
-      ↓
-SLICE-0021  alternative Wikidata discovery-semantics pilot     DONE / R0 zero drift, R1+53, R2+0, R3+4
-      ↓
-SLICE-0022  retained alternative-route Tier-0 admission pilot  DONE / 0 AUTO_ADMIT, 31 REVIEW_REQUIRED, 26 NOT_ADMITTED
-      ↓
-SLICE-0023  Wikimedia category identity-lead discovery pilot   REVIEW / FOLLOWUP_VERIFICATION_CANDIDATE (not yet accepted)
-      ↓
-production route decision / further identity breadth           NOT AUTHORIZED YET
-```
-
-The benchmark corpus should not be expanded merely to increase its count. Additional stress cases are justified only if a materially new problem class is demonstrated.
-
-## Continuous new-model intake — accepted future doctrine
-
-Once broad design-universe ingestion is accepted, HullQ should treat historical/bootstrap coverage and ongoing new-model intake as separate tracks:
-
-```text
-historical / bootstrap universe
-        +
-continuous new-model intake
-```
-
-The future continuous track should progressively handle discovery → identity triage → technical intake → validation/persistence → deep enrichment, with explicit maturity such as announced/preliminary/production-confirmed/verified rather than pretending announcement data is final production specification.
-
-SLICE-0019 (now `DONE`) remains historical/bootstrap/source-strategy research and does not implement the continuous new-model track.
-
-## AI repository workflow — ACTIVE
-
-Implementation/research slices use:
-
-```text
-START_SLICE.bat
-FINISH_SLICE.bat
-```
-
-`START_SLICE.bat` synchronizes `main`, creates/reuses an isolated worktree/branch and copies Claude's assignment. It refuses slices whose own primary slice document is not explicitly `READY`. The workflow prompt now requires Claude's complete `SLICE_TEMPLATE` completion report directly in the final operator-facing chat response and avoids follow-up commits merely to record final exact-head CI.
-
-GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
-
-SLICE-0001 through SLICE-0022 are accepted / `DONE`. SLICE-0023 implementation is complete and handed off as `REVIEW`; it is not yet accepted/`DONE`. No SLICE-0024 or later slice is currently `READY`.
-
-## Do not start yet
-
-- 5,000 identity rerun merely by increasing the accepted SLICE-0018 direct-query limit;
-- any production adapter, automated fetch, or bulk/automated ingestion from any SLICE-0020 archive-clearance source before a separate bounded, explicitly `ADAPTER_READY`-evidenced implementation slice is accepted and READY;
-- any production adoption/change of alternative Wikidata discovery semantics before a separate production-route implementation slice based on the accepted SLICE-0021/0022 evidence is explicitly made `READY`;
-- another production bootstrap source before a separate bounded source/discovery implementation slice is accepted and READY;
-- resolution campaign for SLICE-0017/SLICE-0018 review candidates;
-- broad Tier-1/Tier-2 technical enrichment;
-- unbounded crawler work;
-- automatic fuzzy/canonical identity resolution;
-- destructive canonical correction/retraction framework;
-- automatic Brand/Organization role inference from manufacturer labels;
-- automatic BoatDesign generation invention from Wikidata QIDs;
-- query-engine implementation;
-- public FastAPI API;
-- Astro frontend;
-- account/auth;
-- marketplace adapters;
-- alerts/monitoring execution;
-- multi-source listing deduplication;
-- price-history pipeline;
-- SEO/public-page implementation;
-- HullQ Design Watch implementation;
-- Powerboat expansion.
+No later slice starts automatically.
