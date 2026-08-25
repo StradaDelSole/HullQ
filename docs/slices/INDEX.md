@@ -1,7 +1,7 @@
 # HullQ Slice Index
 
 **Status:** ACTIVE execution board  
-**Updated:** 2026-08-25 — SLICE-0023 accepted / `DONE`; no later slice is `READY`
+**Updated:** 2026-08-25 — SLICE-0023 accepted / `DONE`; SLICE-0024 `READY`
 
 This file is the **compact operational queue**, not the historical evidence archive. Detailed implementation/review history belongs in each slice contract, acceptance-closure document, retained research package and Git history. Agents should read this file only when queue/status context is actually needed.
 
@@ -30,14 +30,34 @@ This file is the **compact operational queue**, not the historical evidence arch
 | SLICE-0021 | DESIGN_RESEARCH | DONE | Alternative Wikidata sailboat-class discovery-semantics pilot | SLICE-0020 |
 | SLICE-0022 | IMPLEMENTATION | DONE | Offline admission-safety pilot over exact 57 retained alternative-route candidates | SLICE-0021 |
 | SLICE-0023 | DESIGN_RESEARCH | DONE | Bounded English-Wikipedia category identity-lead discovery pilot | SLICE-0022 |
+| SLICE-0024 | DESIGN_RESEARCH | READY | Deterministic 30-QID independent identity-verification/source-cost pilot over accepted SLICE-0023 leads | SLICE-0023 accepted / DONE |
 
 ## Current execution rule
 
-**SLICE-0001 through SLICE-0023 are accepted / `DONE`. No SLICE-0024 or later slice is currently `READY`.**
+**SLICE-0001 through SLICE-0023 are accepted / `DONE`. SLICE-0024 is the only `READY` slice. No later slice is authorized.**
 
-A later slice begins only after a separate readiness decision creates one primary slice contract with `Status: READY`, followed by the normal `START_SLICE.bat` workflow. Nothing in an acceptance closure automatically authorizes the next slice.
+SLICE-0024 starts only through the normal `START_SLICE.bat` workflow from current `origin/main`, in a fresh isolated worktree and fresh Claude conversation. Nothing in SLICE-0024 readiness authorizes SLICE-0025.
 
 For an already completed slice, its `*-acceptance-closure.md` is the final acceptance-state record. A primary slice contract may still show its historical implementation handoff state (`REVIEW`); the acceptance closure plus this operational queue control the final operational `DONE` state.
+
+## Current READY boundary — SLICE-0024
+
+SLICE-0024 is a bounded `DESIGN_RESEARCH` verification-source pilot. It does **not** research all 409 Wikimedia leads.
+
+It selects exactly 30 candidates from the final accepted SLICE-0023 150-QID quality sample using deterministic SHA256 ordering within the prior review strata:
+
+```text
+prior plausible_model_or_class_lead   18
+prior ambiguous                         6
+prior obvious_out_of_scope              6
+total                                  30
+```
+
+For each candidate it measures whether independent non-Wikipedia evidence can support an in-scope identity, which source class is required, and how many bounded research actions are needed. Search results, Wikipedia/Wikidata context and SailboatData are discovery/context only and cannot qualify as verification evidence.
+
+The precommitted result can recommend a later full-409 verification campaign only if independent verification yield, strong-source coverage and research-action economics meet the fixed thresholds. SLICE-0024 itself performs **zero canonical admission** and no Stage-3.3 work.
+
+Primary contract: `docs/slices/SLICE-0024-wikimedia-lead-independent-identity-verification-pilot.md`.
 
 ## Latest accepted boundary — SLICE-0023
 
@@ -70,7 +90,7 @@ historical QID -> HullQ-ID mappings  1,772
 SLICE-0021 alternative-route union      57
 ```
 
-The accepted recommendation is research-only. SLICE-0023 does **not** authorize production Wikipedia/Wikimedia discovery, canonical admission of the 409 leads, Stage-3.3 enrichment, query-engine/API/frontend work or SLICE-0024.
+The accepted recommendation is research-only. SLICE-0023 does **not** authorize production Wikipedia/Wikimedia discovery, canonical admission of the 409 leads, Stage-3.3 enrichment, query-engine/API/frontend work or any later slice except where separately readied.
 
 Acceptance evidence:
 
