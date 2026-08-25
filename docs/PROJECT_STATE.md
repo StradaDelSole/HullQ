@@ -1,7 +1,7 @@
 # HullQ — Current Project State
 
-**Updated:** 2026-08-24
-**Current stage:** Stage 3.2 — canonical identity breadth / bounded admission proof. SLICE-0019 manufacturer/yard universe research, SLICE-0020 archive source-clearance + identity pilot, and SLICE-0021 alternative Wikidata discovery-semantics pilot are all `DONE` and owner-accepted. **SLICE-0022 — the offline Tier-0 admission-safety pilot over the exact 57 retained SLICE-0021 candidates (53 R1, 4 R3) — has been implemented and is handed off `REVIEW`** (not `DONE`), under the R1 admission governance amendment (`docs/slices/SLICE-0022-r1-admission-governance-amendment.md`, merged to `main`): zero live acquisition, no production-discovery change, measured result **0 AUTO_ADMIT / 31 REVIEW_REQUIRED / 26 NOT_ADMITTED**, combined canonical BoatModel count unchanged at **1,770**, pending owner acceptance. The earlier Stage 3.3 label was premature: Stage 3.3 Tier-1/basic-searchable enrichment has not begun. No SLICE-0023 or later slice is currently `READY`.
+**Updated:** 2026-08-25
+**Current stage:** Stage 3.2 — canonical identity breadth / bounded admission proof. SLICE-0019 manufacturer/yard universe research, SLICE-0020 archive source-clearance + identity pilot, SLICE-0021 alternative Wikidata discovery-semantics pilot, and **SLICE-0022 — the offline Tier-0 admission-safety pilot over the exact 57 retained SLICE-0021 candidates (53 R1, 4 R3) — are all `DONE` and owner-accepted**. SLICE-0022 accepted result: zero live acquisition, no production-discovery change, **0 AUTO_ADMIT / 31 REVIEW_REQUIRED / 26 NOT_ADMITTED**, retained historical crosswalk unchanged at **1,772**, combined canonical BoatModel count unchanged at **1,770**. Final reviewed head `912fe8d0542459df7f260eeccd840bb92c00e8d1` received independent-review `ACCEPT`; exact-head CI run `32843428842` passed all required jobs; PR #55 merged as `5d68399e0efb4f6b34b8dae65817b7ced0ca3d07`; owner acceptance followed on 2026-08-25. The earlier Stage 3.3 label was premature: Stage 3.3 Tier-1/basic-searchable enrichment has not begun. No SLICE-0023 or later slice is currently `READY`.
 **Execution plan:** `docs/EXECUTION_PLAN.md`  
 **Operational work queue:** `docs/slices/INDEX.md`
 
@@ -70,8 +70,9 @@ Auth remains deferred under OQ-014. OQ-006 controls alert cadence/freshness; OQ-
 | SLICE-0019 | global active+historical series-sailboat manufacturer/yard research universe + source-yield study |
 | SLICE-0020 | manufacturer/archive source clearance + bounded identity pilot; 0 ADAPTER_READY / 9 REVIEW_REQUIRED / 1 BLOCKED |
 | SLICE-0021 | alternative Wikidata class-discovery semantics pilot; R0 zero drift / R1 +53 / R2 +0 / R3 +4; accepted research follow-up signals |
+| SLICE-0022 | retained alternative-route Tier-0 admission-safety pilot; 0 AUTO_ADMIT / 31 REVIEW_REQUIRED / 26 NOT_ADMITTED; canonical BoatModel universe unchanged at 1,770 |
 
-All slices 0001–0021 are `DONE` and owner-accepted. SLICE-0022 has been implemented and is handed off `REVIEW`; it is not yet accepted.
+All slices 0001–0022 are `DONE` and owner-accepted.
 
 ## SLICE-0011 — benchmark result retained
 
@@ -451,7 +452,7 @@ all_zero_tolerance_conditions_clear = true
 
 Final closure record: `docs/slices/SLICE-0018-acceptance-closure.md`.
 
-## Current operational position — SLICE-0019 DONE, SLICE-0020 DONE, SLICE-0021 DONE, SLICE-0022 REVIEW (implemented, not yet accepted)
+## Current operational position — SLICE-0019 DONE, SLICE-0020 DONE, SLICE-0021 DONE, SLICE-0022 DONE
 
 `docs/slices/SLICE-0019-global-series-sailboat-manufacturer-universe-research.md` is **explicitly owner-accepted and closed `DONE`** on 2026-08-23; see `docs/slices/SLICE-0019-acceptance-closure.md` for the full closure record.
 
@@ -484,7 +485,11 @@ Independent review required two hardening rounds. Round 1 added fail-closed live
 
 The R1/R3 `FOLLOWUP_DISCOVERY_CANDIDATE` dispositions remain research recommendations only. No canonical HullQ row or ID was created and no production Wikidata discovery query was changed.
 
-**SLICE-0022 — `docs/slices/SLICE-0022-retained-alternative-route-tier0-admission-safety-pilot.md` — has been implemented and is handed off `REVIEW`, not `DONE`.** It uses only the accepted retained SLICE-0021 candidate set, pinned to the accepted `sampled_candidates.json` and `discovery_probe.json` Git blobs. Exactly 57 candidates were in scope: 53 R1 and four R3. A first implementation pass reused the unmodified SLICE-0017/0018 label/collision Tier-0 rule and auto-admitted 27 R1 candidates; independent review found a retained counterexample (`Q232393`, a German canoe-class term structurally indistinguishable from legitimate Olympic sailing classes on every accepted retained fact except free-text description) and required a controlling governance amendment, `docs/slices/SLICE-0022-r1-admission-governance-amendment.md` (merged to `main` at `7c528e9c1cf951be45356ed82cad50f4d7d0a2f1`): **R1 route membership alone can never produce `AUTO_ADMIT`** (new reason `r1_alternative_route_requires_review`), mirroring the existing R3 fail-closed rule. Under the amended rule the measured result is **0 AUTO_ADMIT / 31 REVIEW_REQUIRED / 26 NOT_ADMITTED** (zero search-projection collisions against the baseline or within the 57, still computed/retained for audit). The retained crosswalk is now byte-identical to the accepted 1,772-entry combined baseline crosswalk. Offline recompute-and-diff self-consistency verification (hardened to cover ordered candidate sequence, complete collision records, every counts field, crosswalk bijection, immutable-input references and static/usage semantics), retained non-self-referential artifact digests (`ARTIFACT-DIGESTS.json`), and a replay-safety gate (schema validation + full self-consistency + digest verification before any PostgreSQL mutation) were all added. A local PostgreSQL 18 baseline-first (SLICE-0017+0018, 1,770) then SLICE-0022-delta-second replay reached the expected combined canonical BoatModel count of exactly **1,770** (unchanged) with all zero-tolerance conditions clear, exact re-import and an independent fresh-schema rerun, independently reproduced by remote CI at the exact pushed head. It does not adopt R1/R3 as production discovery routes.
+**SLICE-0022 — `docs/slices/SLICE-0022-retained-alternative-route-tier0-admission-safety-pilot.md` — is explicitly owner-accepted and closed `DONE`** on 2026-08-25; see `docs/slices/SLICE-0022-acceptance-closure.md` for the full closure record.
+
+The accepted slice used only the retained SLICE-0021 candidate set, pinned to the accepted `sampled_candidates.json` and `discovery_probe.json` Git blobs. Exactly 57 candidates were in scope: 53 R1 and four R3. A first implementation pass reused the unmodified SLICE-0017/0018 label/collision Tier-0 rule and auto-admitted 27 R1 candidates; independent review found a retained counterexample (`Q232393`, a German canoe-class term structurally indistinguishable from legitimate Olympic sailing classes on every accepted retained fact except free-text description) and required the controlling governance amendment, `docs/slices/SLICE-0022-r1-admission-governance-amendment.md`: **R1 route membership alone can never produce `AUTO_ADMIT`** (reason `r1_alternative_route_requires_review`), mirroring the existing R3 fail-closed rule. The accepted final result is **0 AUTO_ADMIT / 31 REVIEW_REQUIRED / 26 NOT_ADMITTED**, with zero search-projection collisions against the baseline or within the 57. The retained crosswalk is byte-identical to the accepted 1,772-entry combined baseline crosswalk and the canonical BoatModel count remains exactly **1,770**.
+
+Offline recompute-and-diff self-consistency verification covers ordered candidate sequence, complete collision records, counts, crosswalk bijection, immutable-input references and retained artifact digests. The final replay-evidence amendment additionally verifies checked-in `REPLAY-RESULT.json` / `REPLAY-REPORT.md` before any fresh replay may overwrite them and aborts tampered retained evidence before the first `psycopg.connect()` call. PostgreSQL 18 baseline-first replay, exact re-import and independent fresh-schema replay all clear every zero-tolerance condition. Final reviewed head `912fe8d0542459df7f260eeccd840bb92c00e8d1` received **ACCEPT**; exact-head CI run `32843428842` passed quality on Ubuntu and Windows, PostgreSQL 18 integration and dependency audit; PR #55 merged as `5d68399e0efb4f6b34b8dae65817b7ced0ca3d07`; owner acceptance followed on 2026-08-25. Production Wikidata discovery remains unchanged and no candidate from R1/R3 was canonically admitted.
 
 ## Near-term path
 
@@ -511,7 +516,7 @@ SLICE-0020  archive source clearance + bounded identity pilot  DONE / 0 ADAPTER_
       ↓
 SLICE-0021  alternative Wikidata discovery-semantics pilot     DONE / R0 zero drift, R1+53, R2+0, R3+4
       ↓
-SLICE-0022  retained alternative-route Tier-0 admission pilot  REVIEW / 0 AUTO_ADMIT (R1 governance amendment), zero live acquisition
+SLICE-0022  retained alternative-route Tier-0 admission pilot  DONE / 0 AUTO_ADMIT, 31 REVIEW_REQUIRED, 26 NOT_ADMITTED
       ↓
 production route decision / further identity breadth           NOT AUTHORIZED YET
 ```
@@ -545,13 +550,13 @@ FINISH_SLICE.bat
 
 GitHub `origin/main` remains canonical truth. Claude owns only its assigned slice branch. The master/architect does not write Claude's active implementation branch. No later slice begins automatically.
 
-SLICE-0001 through SLICE-0021 are accepted / `DONE`. SLICE-0022 has been implemented and is handed off `REVIEW` (not yet accepted). No SLICE-0023 or later slice is currently `READY`.
+SLICE-0001 through SLICE-0022 are accepted / `DONE`. No SLICE-0023 or later slice is currently `READY`.
 
 ## Do not start yet
 
 - 5,000 identity rerun merely by increasing the accepted SLICE-0018 direct-query limit;
 - any production adapter, automated fetch, or bulk/automated ingestion from any SLICE-0020 archive-clearance source before a separate bounded, explicitly `ADAPTER_READY`-evidenced implementation slice is accepted and READY;
-- any production adoption/change of alternative Wikidata discovery semantics before SLICE-0022 is executed, independently reviewed and owner-accepted and a separate production-route implementation slice is explicitly made `READY`;
+- any production adoption/change of alternative Wikidata discovery semantics before a separate production-route implementation slice based on the accepted SLICE-0021/0022 evidence is explicitly made `READY`;
 - another production bootstrap source before a separate bounded source/discovery implementation slice is accepted and READY;
 - resolution campaign for SLICE-0017/SLICE-0018 review candidates;
 - broad Tier-1/Tier-2 technical enrichment;
