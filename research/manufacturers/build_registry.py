@@ -374,7 +374,7 @@ NEW_RELATIONSHIPS = {
             "related_name": "Fuji Yacht Builders",
             "evidence_note": "Former Far East/TOA personnel later established Fuji Yacht Builders; the yards "
             "remain distinct entities despite overlapping personnel, site and mould history.",
-            "source_url": "https://www.fujiyachts.net/history/history.html",
+            "source_url": "https://www.fujiyachts.net/history/takao.html",
         }
     ],
     "Bashford Boats / Bashford International": [
@@ -1187,7 +1187,9 @@ def validate_verified_invariants(records: list[dict]) -> None:
 def main() -> None:
     registry = build()
     validate(registry)
-    OUT.write_text(json.dumps(registry, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    OUT.write_bytes(
+        (json.dumps(registry, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+    )
     print(f"wrote={OUT}")
 
 
