@@ -1,9 +1,9 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-26  
-**Current stage:** Stage 3.2 — canonical identity breadth / bounded discovery and admission proof (remains open; SLICE-0025 additionally permitted a bounded Stage-3.3 pilot in parallel, now underway via SLICE-0026/0027)  
+**Current stage:** Stage 3.2 — canonical identity breadth / bounded discovery and admission proof (remains open; SLICE-0025 additionally permitted a bounded Stage-3.3 pilot in parallel, now underway via SLICE-0026/0027/0028)  
 **Accepted slices:** SLICE-0001 through SLICE-0026 are owner-accepted / `DONE`  
-**Current queue:** SLICE-0027 corrects the bounded Wikidata adapter qualifier-property semantics exposed by SLICE-0026 (evidence-backed P518/P3831 alternate carriers for already-accepted LOA/LWL/draft/displacement concept QIDs, on top of the existing accepted P642 path) and replays the exact same retained 100-BoatModel sample offline; it is handed off `REVIEW`, not yet independently reviewed or project-owner accepted. No later slice is authorized.
+**Current queue:** SLICE-0027 (qualifier-semantics correction over the retained 100-BoatModel sample) and SLICE-0028 (full-boundary rollout of that corrected evidence path to all 1,770 canonical BoatModels) are both handed off `REVIEW`, neither independently reviewed nor project-owner accepted. No later slice is authorized.
 
 This is a **compact current-state document**. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Do not use this file as a substitute for normative specs or accepted ADRs.
 
@@ -306,7 +306,17 @@ Retained package: `research/stage3/sl0027-wikidata-qualifier-semantics/` (`quali
 
 Primary contract: `docs/slices/SLICE-0027-wikidata-qualifier-semantics-correction-offline-replay.md`.
 
-This entry records the implementation agent's own measurement and does not constitute independent review or project-owner acceptance. SLICE-0027 is `REVIEW`; it is not `DONE`. No SLICE-0028 or later slice is currently `READY` or authorized.
+This entry records the implementation agent's own measurement and does not constitute independent review or project-owner acceptance. SLICE-0027 is `REVIEW`; it is not `DONE`.
+
+## Current queue — SLICE-0028 `REVIEW`
+
+SLICE-0028 scales the SLICE-0027-corrected Wikidata Tier-1 evidence path from the retained 100-BoatModel pilot to the **entire accepted 1,770-canonical-BoatModel / 1,772-historical-mapping identity boundary**. It reproduces that boundary from the retained SLICE-0017/0018 manifests (fail-closed on drift), derives a full-boundary QID -> canonical-BoatModel linkage (structurally safe for a BoatModel with more than one accepted QID, though every BoatModel maps to exactly one accepted QID in the real boundary today), and fetches all 1,770 distinct linkage-derived QIDs via the existing rights-gated `wbgetentities` adapter (no discovery query). Acquisition completeness was independently verified (1,770 of 1,770 requested QIDs returned, zero acquisition failures) before any coverage was computed, so a retrieval gap could never be silently reported as missing boat data. It measures per-field coverage for the five allowed pointers (LOA/LWL/beam/draft/displacement) at both source-QID and canonical-BoatModel level (strongest-available-evidence precedence over every QID mapped to one BoatModel — a coverage classification only), retains candidate-multiplicity/value-disagreement diagnostics (none were observed at 1:1 QID cardinality), and computes the explicitly non-canonical `basic_searchable_evidence_precursor` diagnostic: 607 of 1,770 BoatModels (34.29%) have normalized-candidate evidence for LOA + beam + (draft or displacement). It created/mutated no canonical BoatModel/BoatDesign row, minted no BoatDesign ID and created no FieldResolution; the SLICE-0026/0027 retained packages are untouched.
+
+Retained package: `research/stage3/sl0028-wikidata-tier1-full-boundary/` (`linkage.json`, `evidence_manifest.json`, `coverage.json`, `disagreement_diagnostics.json`, `basic_searchable_evidence_precursor.json`, `REPORT.md`, `ARTIFACT-DIGESTS.json`, `REPLAY-RESULT.json`/`REPLAY-REPORT.md` plus JSON schemas), reproducible offline via `scripts/bootstrap/wikidata_sl0028_full_boundary_evidence_runner.py --verify`.
+
+Primary contract: `docs/slices/SLICE-0028-full-boundary-wikidata-tier1-evidence-rollout.md`.
+
+This entry records the implementation agent's own measurement and does not constitute independent review or project-owner acceptance. SLICE-0028 is `REVIEW`; it is not `DONE`. `basic_searchable_evidence_precursor` is explicitly non-canonical and MUST NOT be read as CAL-01 D2 launch-readiness coverage. No SLICE-0029 or later slice is currently `READY` or authorized.
 
 Operational queue: `docs/slices/INDEX.md`.
 

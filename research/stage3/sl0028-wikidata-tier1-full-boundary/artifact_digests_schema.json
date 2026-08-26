@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0028-artifact-digests/v1",
+  "title": "HullQ SLICE-0028 Artifact Digests",
+  "description": "SHA256 integrity digests covering every retained SLICE-0028 package file except this document itself.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "digests"],
+  "properties": {
+    "schema_version": { "const": "sl0028-artifact-digests-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Covers every retained package file except ARTIFACT-DIGESTS.json itself, discovered dynamically from the package directory (never a hardcoded allowlist) by hullq.bootstrap.wikidata_sl0028_full_boundary_evidence.build_artifact_digests / verify_artifact_digests_self_consistency. The base entries are always present once --live has run. REPLAY-RESULT.json/REPLAY-REPORT.md are additionally required once --persist has run (the committed final package state); they are absent (and therefore not required here) in the intermediate post---live-only state.",
+      "required": [
+        "linkage.json",
+        "linkage_schema.json",
+        "evidence_manifest.json",
+        "evidence_manifest_schema.json",
+        "coverage.json",
+        "coverage_schema.json",
+        "disagreement_diagnostics.json",
+        "disagreement_schema.json",
+        "basic_searchable_evidence_precursor.json",
+        "basic_searchable_evidence_precursor_schema.json",
+        "REPORT.md",
+        "artifact_digests_schema.json"
+      ],
+      "properties": {
+        "linkage.json": { "$ref": "#/$defs/digest" },
+        "linkage_schema.json": { "$ref": "#/$defs/digest" },
+        "evidence_manifest.json": { "$ref": "#/$defs/digest" },
+        "evidence_manifest_schema.json": { "$ref": "#/$defs/digest" },
+        "coverage.json": { "$ref": "#/$defs/digest" },
+        "coverage_schema.json": { "$ref": "#/$defs/digest" },
+        "disagreement_diagnostics.json": { "$ref": "#/$defs/digest" },
+        "disagreement_schema.json": { "$ref": "#/$defs/digest" },
+        "basic_searchable_evidence_precursor.json": { "$ref": "#/$defs/digest" },
+        "basic_searchable_evidence_precursor_schema.json": { "$ref": "#/$defs/digest" },
+        "REPORT.md": { "$ref": "#/$defs/digest" },
+        "artifact_digests_schema.json": { "$ref": "#/$defs/digest" },
+        "REPLAY-RESULT.json": { "$ref": "#/$defs/digest" },
+        "REPLAY-REPORT.md": { "$ref": "#/$defs/digest" }
+      }
+    }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0028-disagreement/v1",
+  "title": "HullQ SLICE-0028 Candidate-Multiplicity / Value-Disagreement Diagnostics",
+  "description": "Every (BoatModel, field) case with more than one normalized candidate, more than one distinct normalized value, evidence arriving through more than one accepted mapped QID, or unsupported/malformed evidence coexisting with a normalized candidate. Diagnostic only -- no canonical value is chosen and no case is silently resolved.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "note", "flagged_case_count", "cases"],
+  "properties": {
+    "schema_version": { "const": "sl0028-disagreement-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "note": { "type": "string", "minLength": 1 },
+    "flagged_case_count": { "type": "integer", "minimum": 0 },
+    "cases": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/case" }
+    }
+  },
+  "$defs": {
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hullq_id",
+        "field_pointer",
+        "normalized_candidate_count",
+        "distinct_normalized_values",
+        "contributing_qid_count",
+        "unsupported_coexists_with_normalized"
+      ],
+      "properties": {
+        "hullq_id": { "type": "string", "minLength": 1 },
+        "field_pointer": { "type": "string", "pattern": "^/baseline/dimensions/" },
+        "normalized_candidate_count": { "type": "integer", "minimum": 0 },
+        "distinct_normalized_values": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "contributing_qid_count": { "type": "integer", "minimum": 0 },
+        "unsupported_coexists_with_normalized": { "type": "boolean" }
+      }
+    }
+  }
+}

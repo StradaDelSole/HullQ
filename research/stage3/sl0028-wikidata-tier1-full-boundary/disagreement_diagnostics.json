@@ -1,0 +1,7 @@
+{
+  "schema_version": "sl0028-disagreement-v1",
+  "generated_at": "2026-08-26T21:52:46.681006+00:00",
+  "note": "Every (BoatModel, field) case with more than one normalized candidate, more than one distinct normalized value, evidence arriving through more than one accepted mapped QID, or unsupported/malformed evidence coexisting with a normalized candidate. Diagnostic only: no canonical value is chosen and no case is silently resolved by majority or first-seen value. Absence of a (BoatModel, field) pair here means none of the four conditions applied to it.",
+  "flagged_case_count": 0,
+  "cases": []
+}
