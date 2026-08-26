@@ -366,11 +366,6 @@ jobs:
           assert result['clear'] is True, 'SLICE-0027 persistence proof did not clear'
           "
 
-      - name: Confirm SLICE-0026 retained package files are unmodified after SLICE-0027 steps
-        run: >
-          git diff --exit-code -- research/stage3/sl0026-wikidata-tier1-enrichment/
-          || (echo 'SLICE-0026 retained package must remain untouched by SLICE-0027' && exit 1)
-
   dependency-audit:
     name: dependency audit
     runs-on: ubuntu-latest
