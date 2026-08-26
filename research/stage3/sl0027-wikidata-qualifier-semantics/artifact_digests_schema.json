@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0027-artifact-digests/v1",
+  "title": "HullQ SLICE-0027 Artifact Digests",
+  "description": "SHA256 integrity digests covering every retained SLICE-0027 package file except this document itself.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "digests"],
+  "properties": {
+    "schema_version": { "const": "sl0027-artifact-digests-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Covers every retained package file except ARTIFACT-DIGESTS.json itself, discovered dynamically from the package directory (never a hardcoded allowlist). The five base entries are always present once --build has run. REPLAY-RESULT.json/REPLAY-REPORT.md are additionally required once --persist has run.",
+      "required": [
+        "qualifier_shape_analysis.json",
+        "qualifier_shape_analysis_schema.json",
+        "coverage_before_after.json",
+        "coverage_before_after_schema.json",
+        "REPORT.md",
+        "artifact_digests_schema.json"
+      ],
+      "properties": {
+        "qualifier_shape_analysis.json": { "$ref": "#/$defs/digest" },
+        "qualifier_shape_analysis_schema.json": { "$ref": "#/$defs/digest" },
+        "coverage_before_after.json": { "$ref": "#/$defs/digest" },
+        "coverage_before_after_schema.json": { "$ref": "#/$defs/digest" },
+        "REPORT.md": { "$ref": "#/$defs/digest" },
+        "artifact_digests_schema.json": { "$ref": "#/$defs/digest" },
+        "REPLAY-RESULT.json": { "$ref": "#/$defs/digest" },
+        "REPLAY-REPORT.md": { "$ref": "#/$defs/digest" }
+      }
+    }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+  }
+}

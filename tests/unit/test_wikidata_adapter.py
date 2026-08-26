@@ -161,10 +161,17 @@ def _quantity_claim(
     unit_qid: str,
     *,
     qualifier_qid: str | None = None,
+    qualifier_property: str = "P642",
     stmt_id: str | None = None,
     rank: str = "normal",
 ) -> dict[str, Any]:
-    """Build a minimal Wikidata quantity claim dict."""
+    """Build a minimal Wikidata quantity claim dict.
+
+    ``qualifier_property`` defaults to the existing accepted P642 "of"
+    qualifier; SLICE-0027 tests pass "P518" or "P3831" to build claims
+    shaped like the evidenced alternate carriers found in the retained
+    SLICE-0026 raw claims.
+    """
     unit_uri = f"http://www.wikidata.org/entity/{unit_qid}"
     claim: dict[str, Any] = {
         "type": "statement",
@@ -184,10 +191,10 @@ def _quantity_claim(
     }
     if qualifier_qid is not None:
         claim["qualifiers"] = {
-            "P642": [
+            qualifier_property: [
                 {
                     "snaktype": "value",
-                    "property": "P642",
+                    "property": qualifier_property,
                     "datavalue": {
                         "type": "wikibase-entityid",
                         "value": {"entity-type": "item", "id": qualifier_qid},
@@ -2173,3 +2180,330 @@ def test_parse_entity_returns_empty_aliases_when_neither_lang_present() -> None:
     adapter = _make_adapter(config=_make_config(language="de"), mock_client=mock_client)
     entities = adapter.fetch_entities(["Q5005"])
     assert entities[0].aliases == []
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0027 — evidenced alternate qualifier-property carriers (P518, P3831)
+#
+# The SLICE-0026 retained 100-BoatModel raw claims show the already-accepted
+# LOA/LWL/draft/displacement concept QIDs carried under P518 ("applies to
+# part") and P3831 ("object has role") qualifiers rather than only P642
+# ("of"). These tests use exactly the evidenced (statement property,
+# qualifier property, concept QID) shapes recorded in
+# research/stage3/sl0027-wikidata-qualifier-semantics/qualifier_shape_analysis.json.
+# ---------------------------------------------------------------------------
+
+
+def test_p518_qualifier_maps_to_loa_field() -> None:
+    entity = WikidataEntityData(
+        qid="Q100",
+        label="Sloop X",
+        aliases=[],
+        raw_claims={
+            "P2043": [
+                _quantity_claim(
+                    "P2043", "+12.8", "Q11573", qualifier_qid="Q2358152", qualifier_property="P518"
+                )
+            ]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+
+    loa_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/loa_m"]
+    assert len(loa_ev) == 1
+    assert loa_ev[0].normalized_candidate is not None
+    assert report.field_presence.get("loa", 0) == 1
+
+
+def test_p518_qualifier_maps_to_lwl_field() -> None:
+    entity = WikidataEntityData(
+        qid="Q100",
+        label="Sloop X",
+        aliases=[],
+        raw_claims={
+            "P2043": [
+                _quantity_claim(
+                    "P2043", "+10.5", "Q11573", qualifier_qid="Q1817392", qualifier_property="P518"
+                )
+            ]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+
+    lwl_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/lwl_m"]
+    assert len(lwl_ev) == 1
+    assert lwl_ev[0].normalized_candidate is not None
+    assert report.field_presence.get("lwl", 0) == 1
+
+
+def test_p518_qualifier_maps_to_draft_field() -> None:
+    entity = WikidataEntityData(
+        qid="Q200",
+        label="Ketch Y",
+        aliases=[],
+        raw_claims={
+            "P2048": [
+                _quantity_claim(
+                    "P2048", "+1.8", "Q11573", qualifier_qid="Q244777", qualifier_property="P518"
+                )
+            ]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+
+    draft_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/draft_min_m"]
+    assert len(draft_ev) == 1
+    assert draft_ev[0].normalized_candidate is not None
+    assert report.field_presence.get("draft", 0) == 1
+
+
+def test_p3831_qualifier_maps_to_displacement_field() -> None:
+    entity = WikidataEntityData(
+        qid="Q300",
+        label="Cruiser Z",
+        aliases=[],
+        raw_claims={
+            "P2067": [
+                _quantity_claim(
+                    "P2067", "+6000", "Q11570", qualifier_qid="Q5636358", qualifier_property="P3831"
+                )
+            ]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+
+    disp_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/displacement_kg"]
+    assert len(disp_ev) == 1
+    assert disp_ev[0].normalized_candidate is not None
+    assert report.field_presence.get("displacement", 0) == 1
+
+
+def test_p518_evidence_preserves_qualifier_identity() -> None:
+    """LOA evidence carried via P518 must record P518 (not P642) as the
+    qualifier_property in the raw observation, so the mapping basis remains
+    fully recoverable from the evidence alone."""
+    entity = WikidataEntityData(
+        qid="Q100",
+        label="Sloop X",
+        aliases=[],
+        raw_claims={
+            "P2043": [
+                _quantity_claim(
+                    "P2043", "+12.0", "Q11573", qualifier_qid="Q2358152", qualifier_property="P518"
+                )
+            ]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, _report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    loa_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/loa_m"]
+    assert len(loa_ev) == 1
+    raw_val = loa_ev[0].raw.value
+    assert isinstance(raw_val, dict)
+    assert raw_val.get("qualifier_property") == "P518"
+    assert raw_val.get("qualifier_value_id") == "Q2358152"
+
+
+def test_p3831_evidence_preserves_qualifier_identity() -> None:
+    """Displacement evidence carried via P3831 must record P3831 (not P642)
+    as the qualifier_property in the raw observation."""
+    entity = WikidataEntityData(
+        qid="Q300",
+        label="Cruiser Z",
+        aliases=[],
+        raw_claims={
+            "P2067": [
+                _quantity_claim(
+                    "P2067", "+6000", "Q11570", qualifier_qid="Q5636358", qualifier_property="P3831"
+                )
+            ]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, _report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    disp_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/displacement_kg"]
+    assert len(disp_ev) == 1
+    raw_val = disp_ev[0].raw.value
+    assert isinstance(raw_val, dict)
+    assert raw_val.get("qualifier_property") == "P3831"
+    assert raw_val.get("qualifier_value_id") == "Q5636358"
+
+
+def test_p518_with_unrecognized_concept_qid_remains_unsupported() -> None:
+    """A recognized qualifier property (P518) with an unrecognized concept
+    QID (not LOA/LWL) must remain unsupported, never guessed."""
+    entity = WikidataEntityData(
+        qid="Q100",
+        label="Sloop X",
+        aliases=[],
+        raw_claims={
+            "P2043": [
+                _quantity_claim(
+                    "P2043", "+12.8", "Q11573", qualifier_qid="Q9999999", qualifier_property="P518"
+                )
+            ]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    length_ev = [
+        e
+        for e in evidence
+        if e.field_pointer.raw in ("/baseline/dimensions/loa_m", "/baseline/dimensions/lwl_m")
+    ]
+    assert length_ev == []
+    assert report.unsupported_qualifier_count >= 1
+
+
+def test_accepted_concept_qid_under_unevidenced_qualifier_property_remains_unsupported() -> None:
+    """The accepted LOA concept QID (Q2358152) under P1013 — a real shape
+    observed in the retained SLICE-0026 raw claims but NOT an evidenced/
+    accepted carrier property — must remain unsupported rather than silently
+    accepted merely because the concept QID itself is already accepted under
+    a different (P642/P518) carrier."""
+    entity = WikidataEntityData(
+        qid="Q100",
+        label="Sloop X",
+        aliases=[],
+        raw_claims={
+            "P2043": [
+                _quantity_claim(
+                    "P2043", "+12.8", "Q11573", qualifier_qid="Q2358152", qualifier_property="P1013"
+                )
+            ]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    length_ev = [
+        e
+        for e in evidence
+        if e.field_pointer.raw in ("/baseline/dimensions/loa_m", "/baseline/dimensions/lwl_m")
+    ]
+    assert length_ev == []
+    assert report.unsupported_qualifier_count >= 1
+
+
+def test_wrong_qualifier_property_for_mass_remains_unsupported() -> None:
+    """An unrecognized qualifier property on P2067 (mass) — not P642 or the
+    evidenced P3831 — must remain unsupported."""
+    entity = WikidataEntityData(
+        qid="Q300",
+        label="Cruiser Z",
+        aliases=[],
+        raw_claims={
+            "P2067": [
+                _quantity_claim(
+                    "P2067", "+6000", "Q11570", qualifier_qid="Q5636358", qualifier_property="P2302"
+                )
+            ]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    disp_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/displacement_kg"]
+    assert disp_ev == []
+    assert report.unsupported_qualifier_count >= 1
+
+
+def test_p3831_ballast_qid_is_not_recognized() -> None:
+    """P3831 is evidenced/accepted only for the displacement concept QID —
+    not ballast. A ballast QID under P3831 must remain unsupported even
+    though P642+ballast is already an accepted combination."""
+    entity = WikidataEntityData(
+        qid="Q300",
+        label="Cruiser Z",
+        aliases=[],
+        raw_claims={
+            "P2067": [
+                _quantity_claim(
+                    "P2067", "+2000", "Q11570", qualifier_qid="Q5461048", qualifier_property="P3831"
+                )
+            ]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    mass_ev = [
+        e
+        for e in evidence
+        if e.field_pointer.raw
+        in ("/baseline/dimensions/displacement_kg", "/baseline/dimensions/ballast_kg")
+    ]
+    assert mass_ev == []
+    assert report.unsupported_qualifier_count >= 1
+
+
+def test_beam_extraction_unaffected_by_p518_qualifier_presence() -> None:
+    """Beam (P2049) needs no qualifier disambiguation; a P518 qualifier
+    present on the statement (as seen in real retained SLICE-0026 raw claims)
+    must not change unqualified beam extraction."""
+    entity = WikidataEntityData(
+        qid="Q400",
+        label="Cutter W",
+        aliases=[],
+        raw_claims={
+            "P2049": [
+                _quantity_claim(
+                    "P2049", "+3.5", "Q11573", qualifier_qid="Q2376482", qualifier_property="P518"
+                )
+            ]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    beam_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/beam_m"]
+    assert len(beam_ev) == 1
+    assert beam_ev[0].normalized_candidate is not None
+    assert report.field_presence.get("beam", 0) == 1
+
+
+def test_p518_loa_wrong_dimension_unit_is_not_normalized() -> None:
+    """A P518-carried LOA statement with a recognized wrong-dimension unit
+    (mass instead of length) must not be normalized — raw-only, explicit,
+    never guessed — mirroring the existing P642 cross-dimension rejection."""
+    entity = WikidataEntityData(
+        qid="Q100",
+        label="Sloop X",
+        aliases=[],
+        raw_claims={
+            "P2043": [
+                _quantity_claim(
+                    "P2043", "+12.8", "Q11570", qualifier_qid="Q2358152", qualifier_property="P518"
+                )  # Q11570 = kilogram, wrong dimension for a length field
+            ]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, report = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+    loa_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/loa_m"]
+    assert loa_ev == []
+    assert report.unsupported_qualifier_count >= 1

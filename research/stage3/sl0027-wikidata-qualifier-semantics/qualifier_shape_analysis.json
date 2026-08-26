@@ -1,0 +1,61 @@
+{
+  "schema_version": "sl0027-qualifier-shape-analysis-v1",
+  "generated_at": "2026-08-26T19:32:56.161392+00:00",
+  "source_id": "SRC_WIKIDATA_API_2026",
+  "analyzed_statement_properties": [
+    "P2043",
+    "P2048",
+    "P2067"
+  ],
+  "note": "Deterministic characterization of every (statement property, qualifier property, qualifier-value QID) combination observed on the accepted, unmodified SLICE-0026 retained raw claims for the three shared/qualified Wikidata measurement properties the five allowed fields use (P2043 length: LOA/LWL; P2048 height: draft; P2067 mass: displacement/ballast). Beam (P2049) needs no qualifier disambiguation in the accepted adapter and is excluded. 'recognized'=true means the exact combination is an evidence-backed accepted carrier for an already-accepted concept QID (see hullq.sources.wikidata.QUALIFIER_CARRIERS_BY_VERSION); 'recognized'=false combinations remain unsupported, never guessed.",
+  "shapes": [
+    {
+      "statement_property": "P2043",
+      "qualifier_property": "P1013",
+      "qualifier_value_qid": "Q2358152",
+      "count": 2,
+      "recognized": false,
+      "mapped_field": null
+    },
+    {
+      "statement_property": "P2043",
+      "qualifier_property": "P518",
+      "qualifier_value_qid": "Q1817392",
+      "count": 42,
+      "recognized": true,
+      "mapped_field": "lwl"
+    },
+    {
+      "statement_property": "P2043",
+      "qualifier_property": "P518",
+      "qualifier_value_qid": "Q2358152",
+      "count": 41,
+      "recognized": true,
+      "mapped_field": "loa"
+    },
+    {
+      "statement_property": "P2048",
+      "qualifier_property": "P518",
+      "qualifier_value_qid": "Q244777",
+      "count": 28,
+      "recognized": true,
+      "mapped_field": "draft"
+    },
+    {
+      "statement_property": "P2048",
+      "qualifier_property": "P518",
+      "qualifier_value_qid": "Q331744",
+      "count": 1,
+      "recognized": false,
+      "mapped_field": null
+    },
+    {
+      "statement_property": "P2067",
+      "qualifier_property": "P3831",
+      "qualifier_value_qid": "Q5636358",
+      "count": 37,
+      "recognized": true,
+      "mapped_field": "displacement"
+    }
+  ]
+}

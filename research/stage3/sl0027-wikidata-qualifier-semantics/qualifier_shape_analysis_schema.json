@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0027-qualifier-shape-analysis/v1",
+  "title": "HullQ SLICE-0027 Wikidata Qualifier-Shape Analysis",
+  "description": "Deterministic characterization of every (statement property, qualifier property, qualifier-value QID) combination observed on the accepted, unmodified SLICE-0026 retained raw claims for the three shared/qualified Wikidata measurement properties the five allowed fields use (P2043, P2048, P2067). Beam (P2049) needs no qualifier disambiguation and is excluded.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "source_id",
+    "analyzed_statement_properties",
+    "note",
+    "shapes"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0027-qualifier-shape-analysis-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "source_id": { "const": "SRC_WIKIDATA_API_2026" },
+    "analyzed_statement_properties": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^P[1-9][0-9]*$" }
+    },
+    "note": { "type": "string", "minLength": 1 },
+    "shapes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/shape" }
+    }
+  },
+  "$defs": {
+    "shape": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "statement_property",
+        "qualifier_property",
+        "qualifier_value_qid",
+        "count",
+        "recognized",
+        "mapped_field"
+      ],
+      "properties": {
+        "statement_property": { "type": "string", "pattern": "^P[1-9][0-9]*$" },
+        "qualifier_property": { "type": "string", "pattern": "^P[1-9][0-9]*$" },
+        "qualifier_value_qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+        "count": { "type": "integer", "minimum": 1 },
+        "recognized": { "type": "boolean" },
+        "mapped_field": {
+          "type": ["string", "null"],
+          "enum": ["loa", "lwl", "beam", "draft", "displacement", "ballast", null]
+        }
+      }
+    }
+  }
+}

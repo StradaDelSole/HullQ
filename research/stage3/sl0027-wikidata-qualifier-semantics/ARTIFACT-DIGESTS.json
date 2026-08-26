@@ -1,0 +1,14 @@
+{
+  "schema_version": "sl0027-artifact-digests-v1",
+  "generated_at": "2026-08-26T19:42:45.214183+00:00",
+  "digests": {
+    "REPLAY-REPORT.md": "sha256:56021b99746b737e84dd2baa85d64a5aefce79db06001380623d736bd2a66f86",
+    "REPLAY-RESULT.json": "sha256:37dd32118b123aad9130e9522557670614e982e521de110b7867bb0ee37b0b77",
+    "REPORT.md": "sha256:5720e8581bc8af04fa66e8fb012a67a94ea639ad68aa3c95d2ffe5a4bbf3a787",
+    "artifact_digests_schema.json": "sha256:699220dc0cae4907e6df75b0445a488eb3c64c69f72e9c712970d95fe921a128",
+    "coverage_before_after.json": "sha256:290b310fcfeadf082c4df371c0e3a3467c1556583790910385a1b7c143114b70",
+    "coverage_before_after_schema.json": "sha256:70111a839eadd6e620a2e6cc0e51e82845702a9495d291d440809f165be2591f",
+    "qualifier_shape_analysis.json": "sha256:889eaae3ee6aaa36824886604b11868b425d18fabc9d9f7574c8e18f8c2ecd26",
+    "qualifier_shape_analysis_schema.json": "sha256:13c10ec3b60dddeeaac36fb85ee1ec37893b8d001d2db4c24df777f3e3fb305a"
+  }
+}

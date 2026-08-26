@@ -324,7 +324,11 @@ def run_verify(
         verify_evidence_manifest_self_consistency,
         verify_selection_self_consistency,
     )
-    from hullq.sources.wikidata import WikidataAdapter, WikidataAdapterConfig
+    from hullq.sources.wikidata import (
+        QUALIFIER_CARRIER_VERSION_SLICE0008,
+        WikidataAdapter,
+        WikidataAdapterConfig,
+    )
 
     print(
         "HullQ SLICE-0026 Bounded Wikidata Tier-1 Enrichment Evidence Pilot — OFFLINE VERIFY "
@@ -375,10 +379,22 @@ def run_verify(
         with httpx.Client() as client:
             adapter = WikidataAdapter(source=source, config=config, http_client=client)
             rebuilt_entities = rebuild_entities_from_manifest(evidence_manifest)
+            # SLICE-0027 pinned note: this reproduction must keep exercising the
+            # exact P642-only extraction behavior originally captured in this
+            # retained package, independent of the SLICE-0027-evidenced P518/
+            # P3831 alternate carriers the shared adapter now also recognizes by
+            # default. Pinning QUALIFIER_CARRIER_VERSION_SLICE0008 here is what
+            # lets this retained package keep "reproducing deterministically"
+            # forever, rather than drifting the moment a later slice legitimately
+            # extends the adapter's qualifier-carrier vocabulary. SLICE-0027's own
+            # before/after coverage delta is measured separately (see
+            # research/stage3/sl0027-wikidata-qualifier-semantics/), against the
+            # current (unpinned) adapter default.
             rebuilt_full_evidence, _report = adapter.extract_field_evidence(
                 rebuilt_entities,
                 evidence_manifest.get("acquired_at", ""),
                 requested_qid_count=len(rebuilt_entities),
+                qualifier_carrier_version=QUALIFIER_CARRIER_VERSION_SLICE0008,
             )
         print(
             f"  rebuilt {len(rebuilt_entities)} entities and re-extracted "
@@ -620,7 +636,11 @@ def persist_and_verify(
     from hullq.bootstrap.wikidata_sl0026_tier1_enrichment_pilot import (
         rebuild_entities_from_manifest,
     )
-    from hullq.sources.wikidata import WikidataAdapter, WikidataAdapterConfig
+    from hullq.sources.wikidata import (
+        QUALIFIER_CARRIER_VERSION_SLICE0008,
+        WikidataAdapter,
+        WikidataAdapterConfig,
+    )
 
     source = {"source_id": "SRC_WIKIDATA_API_2026"}
     config = WikidataAdapterConfig(user_agent="HullQ/0.1 (offline-persist@example.org)")
@@ -629,8 +649,14 @@ def persist_and_verify(
     with httpx.Client() as client:
         adapter = WikidataAdapter(source=source, config=config, http_client=client)
         entities = rebuild_entities_from_manifest(evidence_manifest)
+        # See the identical SLICE-0027 pinning note in run_verify() above: this
+        # persistence replay must keep importing exactly the bundles SLICE-0026
+        # originally captured and had independently reviewed/accepted.
         full_evidence, _report = adapter.extract_field_evidence(
-            entities, evidence_manifest.get("acquired_at", ""), requested_qid_count=len(entities)
+            entities,
+            evidence_manifest.get("acquired_at", ""),
+            requested_qid_count=len(entities),
+            qualifier_carrier_version=QUALIFIER_CARRIER_VERSION_SLICE0008,
         )
 
     allowed = filter_to_allowed_evidence(full_evidence)
