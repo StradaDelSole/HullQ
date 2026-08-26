@@ -1,0 +1,78 @@
+{
+  "schema_version": "sl0027-coverage-before-after-v1",
+  "generated_at": "2026-08-26T19:32:56.436160+00:00",
+  "sample_size": 100,
+  "note": "'before' is the accepted SLICE-0026 retained evidence_manifest.json's own field_coverage, computed with the P642-only qualifier carriers in force at SLICE-0026 acceptance (QUALIFIER_CARRIER_VERSION_SLICE0008). 'after' is independently recomputed over the identical retained 100-entity raw claims using the SLICE-0027-amended adapter default (QUALIFIER_CARRIER_VERSION_SLICE0027), which additionally recognizes evidence-backed P518/P3831 alternate carriers for the same already-accepted concept QIDs, on top of (never instead of) the existing accepted P642 path. Four mutually exclusive, exhaustive coverage states per (BoatModel, field); counts sum to sample_size for every field, in both before and after.",
+  "fields": {
+    "loa": {
+      "before": {
+        "normalized_candidate_present": 0,
+        "source_statement_present": 0,
+        "unsupported_or_malformed": 64,
+        "no_usable_value": 36
+      },
+      "after": {
+        "normalized_candidate_present": 41,
+        "source_statement_present": 0,
+        "unsupported_or_malformed": 16,
+        "no_usable_value": 43
+      }
+    },
+    "lwl": {
+      "before": {
+        "normalized_candidate_present": 0,
+        "source_statement_present": 0,
+        "unsupported_or_malformed": 64,
+        "no_usable_value": 36
+      },
+      "after": {
+        "normalized_candidate_present": 42,
+        "source_statement_present": 0,
+        "unsupported_or_malformed": 16,
+        "no_usable_value": 42
+      }
+    },
+    "beam": {
+      "before": {
+        "normalized_candidate_present": 41,
+        "source_statement_present": 0,
+        "unsupported_or_malformed": 0,
+        "no_usable_value": 59
+      },
+      "after": {
+        "normalized_candidate_present": 41,
+        "source_statement_present": 0,
+        "unsupported_or_malformed": 0,
+        "no_usable_value": 59
+      }
+    },
+    "draft": {
+      "before": {
+        "normalized_candidate_present": 0,
+        "source_statement_present": 0,
+        "unsupported_or_malformed": 29,
+        "no_usable_value": 71
+      },
+      "after": {
+        "normalized_candidate_present": 28,
+        "source_statement_present": 0,
+        "unsupported_or_malformed": 1,
+        "no_usable_value": 71
+      }
+    },
+    "displacement": {
+      "before": {
+        "normalized_candidate_present": 0,
+        "source_statement_present": 0,
+        "unsupported_or_malformed": 51,
+        "no_usable_value": 49
+      },
+      "after": {
+        "normalized_candidate_present": 5,
+        "source_statement_present": 32,
+        "unsupported_or_malformed": 14,
+        "no_usable_value": 49
+      }
+    }
+  }
+}

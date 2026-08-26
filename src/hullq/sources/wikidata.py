@@ -25,6 +25,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -67,6 +68,10 @@ __all__ = [
     "BOOTSTRAP_ENTITY_API_VERSION",
     "BOOTSTRAP_SPARQL_ENDPOINT",
     "BOOTSTRAP_SPARQL_QUERY_VERSION",
+    "DEFAULT_QUALIFIER_CARRIER_VERSION",
+    "QUALIFIER_CARRIERS_BY_VERSION",
+    "QUALIFIER_CARRIER_VERSION_SLICE0008",
+    "QUALIFIER_CARRIER_VERSION_SLICE0027",
     "SLICE_0008_ITEM_CEILING",
     "WIKIDATA_BOOTSTRAP_SAFETY_CEILING",
     "WIKIDATA_SOURCE_ID",
@@ -191,12 +196,67 @@ _PROP_TOTAL_PRODUCED = "P1092"
 # Qualifier property used to distinguish concept variants (e.g., LOA vs LWL).
 _QUALIFIER_OF = "P642"
 
-# QIDs of the qualifier value entities (values of the P642 "of" qualifier).
+# SLICE-0027: evidenced alternate qualifier-property carriers for the same
+# already-accepted concept QIDs below, found in the retained SLICE-0026 raw
+# claims (research/stage3/sl0026-wikidata-tier1-enrichment/evidence_manifest.json)
+# and characterized in research/stage3/sl0027-wikidata-qualifier-semantics/.
+# Recognized only for the exact (statement property, qualifier property,
+# concept QID) combinations in QUALIFIER_CARRIERS_BY_VERSION below — never
+# inferred from label or property alone.
+_QUALIFIER_APPLIES_TO_PART = "P518"
+_QUALIFIER_OBJECT_HAS_ROLE = "P3831"
+
+# QIDs of the qualifier value entities (values of the "of"/"applies to part"/
+# "object has role" qualifiers).
 _QUAL_LOA = "Q2358152"  # length overall
 _QUAL_LWL = "Q1817392"  # length at waterline
 _QUAL_DRAFT = "Q244777"  # draft
 _QUAL_DISPLACEMENT = "Q5636358"  # displacement
 _QUAL_BALLAST = "Q5461048"  # ballast
+
+# ---------------------------------------------------------------------------
+# SLICE-0027: versioned qualifier-carrier maps.
+#
+# Maps a version label to {statement property: (qualifier_property, {concept
+# QID: field label}) tuples, in the exact precedence order they are checked}.
+# ``QUALIFIER_CARRIER_VERSION_SLICE0008`` is the exact P642-only carrier set
+# the adapter used from SLICE-0008 through the accepted SLICE-0026 pilot —
+# preserved unchanged and exposed so SLICE-0026's own retained-package offline
+# verification keeps reproducing precisely the extraction behavior it
+# originally captured, independent of later evidence-backed carrier
+# additions. ``QUALIFIER_CARRIER_VERSION_SLICE0027`` additionally recognizes
+# the P518/P3831 carriers evidenced by the retained SLICE-0026 raw claims and
+# is the default for all other callers (backward-compatible recognition, not
+# a replacement of the P642 path).
+# ---------------------------------------------------------------------------
+
+QUALIFIER_CARRIER_VERSION_SLICE0008 = "SLICE-0008-v1"
+QUALIFIER_CARRIER_VERSION_SLICE0027 = "SLICE-0027-v1"
+DEFAULT_QUALIFIER_CARRIER_VERSION = QUALIFIER_CARRIER_VERSION_SLICE0027
+
+QUALIFIER_CARRIERS_BY_VERSION: dict[str, dict[str, tuple[tuple[str, dict[str, str]], ...]]] = {
+    QUALIFIER_CARRIER_VERSION_SLICE0008: {
+        _PROP_LENGTH: ((_QUALIFIER_OF, {_QUAL_LOA: "loa", _QUAL_LWL: "lwl"}),),
+        _PROP_HEIGHT: ((_QUALIFIER_OF, {_QUAL_DRAFT: "draft"}),),
+        _PROP_MASS: (
+            (_QUALIFIER_OF, {_QUAL_DISPLACEMENT: "displacement", _QUAL_BALLAST: "ballast"}),
+        ),
+    },
+    QUALIFIER_CARRIER_VERSION_SLICE0027: {
+        _PROP_LENGTH: (
+            (_QUALIFIER_OF, {_QUAL_LOA: "loa", _QUAL_LWL: "lwl"}),
+            (_QUALIFIER_APPLIES_TO_PART, {_QUAL_LOA: "loa", _QUAL_LWL: "lwl"}),
+        ),
+        _PROP_HEIGHT: (
+            (_QUALIFIER_OF, {_QUAL_DRAFT: "draft"}),
+            (_QUALIFIER_APPLIES_TO_PART, {_QUAL_DRAFT: "draft"}),
+        ),
+        _PROP_MASS: (
+            (_QUALIFIER_OF, {_QUAL_DISPLACEMENT: "displacement", _QUAL_BALLAST: "ballast"}),
+            (_QUALIFIER_OBJECT_HAS_ROLE, {_QUAL_DISPLACEMENT: "displacement"}),
+        ),
+    },
+}
 
 # ---------------------------------------------------------------------------
 # Wikidata unit QID → (Quantity, Unit) mapping
@@ -228,6 +288,39 @@ _PTR_BALLAST = JsonPointer("/baseline/dimensions/ballast_kg")
 _PTR_BUILDERS = JsonPointer("/relationships/builders")
 _PTR_DESIGNERS = JsonPointer("/relationships/designers")
 _PTR_NUMBER_BUILT = JsonPointer("/relationships/number_built")
+
+# Field label -> field pointer, used only to expand QUALIFIER_CARRIERS_BY_VERSION's
+# plain-data concept-QID-to-label maps into the (JsonPointer, label) tuples
+# _process_qualified_quantity requires (see _carriers_for).
+_FIELD_LABEL_TO_POINTER: dict[str, JsonPointer] = {
+    "loa": _PTR_LOA,
+    "lwl": _PTR_LWL,
+    "draft": _PTR_DRAFT,
+    "displacement": _PTR_DISPLACEMENT,
+    "ballast": _PTR_BALLAST,
+}
+
+
+def _carriers_for(
+    prop_id: str, qualifier_carrier_version: str
+) -> tuple[tuple[str, dict[str, tuple[JsonPointer, str]]], ...]:
+    """Expand ``QUALIFIER_CARRIERS_BY_VERSION[qualifier_carrier_version][prop_id]``
+    (plain concept-QID -> field-label data) into the qualifier-carrier tuples
+    ``_process_qualified_quantity`` requires (concept-QID -> (field pointer,
+    field label)). A single source of truth (``QUALIFIER_CARRIERS_BY_VERSION``)
+    drives both live extraction and any external qualifier-shape analysis/
+    reporting (e.g. SLICE-0027's retained package), so the accepted carrier
+    set can never drift between the two.
+    """
+    carriers = QUALIFIER_CARRIERS_BY_VERSION[qualifier_carrier_version].get(prop_id, ())
+    return tuple(
+        (
+            qualifier_property,
+            {qid: (_FIELD_LABEL_TO_POINTER[label], label) for qid, label in concept_map.items()},
+        )
+        for qualifier_property, concept_map in carriers
+    )
+
 
 # ---------------------------------------------------------------------------
 # Regex patterns
@@ -545,10 +638,12 @@ def _make_evidence_id(qid: str, prop: str, stmt_id: str | None, index: int) -> s
     return f"WD-{qid}-{prop}-idx{index}"
 
 
-def _get_p642_qualifier_qids(qualifiers: dict[str, Any]) -> list[str]:
-    """Extract all value QIDs from P642 ('of') qualifier snaks in a statement."""
+def _get_qualifier_qids(qualifiers: dict[str, Any], qualifier_property: str) -> list[str]:
+    """Extract all value QIDs from *qualifier_property*'s qualifier snaks in a
+    statement (e.g. P642 'of', P518 'applies to part', P3831 'object has
+    role')."""
     result: list[str] = []
-    for snak in qualifiers.get(_QUALIFIER_OF, []):
+    for snak in qualifiers.get(qualifier_property, []):
         if not isinstance(snak, dict):
             continue
         if snak.get("snaktype") != "value":
@@ -586,6 +681,7 @@ def _build_quantity_evidence(
     retrieved_at: str,
     index: int,
     *,
+    qualifier_property: str | None = None,
     qualifier_qid: str | None = None,
     expected_quantity: Quantity | None = None,
 ) -> FieldEvidence | None:
@@ -595,9 +691,12 @@ def _build_quantity_evidence(
     The raw Wikidata quantity/unit representation is always preserved separately
     from the normalized candidate (SLICE-0004 reused).
 
-    When ``qualifier_qid`` is supplied (the P642 "of" qualifier value that
-    determined the semantic mapping), it is preserved in the raw observation so
-    that the mapping decision is fully recoverable from the evidence alone.
+    When ``qualifier_qid`` is supplied (the qualifier value, under
+    ``qualifier_property``, that determined the semantic mapping — e.g. P642
+    "of" or the SLICE-0027-evidenced P518/P3831 alternate carriers), both are
+    preserved in the raw observation so that the mapping decision is fully
+    recoverable from the evidence alone. ``qualifier_property`` is required
+    whenever ``qualifier_qid`` is supplied.
 
     When ``expected_quantity`` is supplied, a recognized unit of a different
     physical dimension (e.g., kg for a length field) is NOT normalized — the
@@ -660,7 +759,9 @@ def _build_quantity_evidence(
     # fully recoverable from this evidence object alone.
     raw_value: dict[str, str] = {"amount": amount_str, "unit": unit_uri}
     if qualifier_qid is not None:
-        raw_value["qualifier_property"] = _QUALIFIER_OF
+        if qualifier_property is None:
+            raise ValueError("qualifier_property is required when qualifier_qid is supplied")
+        raw_value["qualifier_property"] = qualifier_property
         raw_value["qualifier_value_id"] = qualifier_qid
 
     raw = RawObservation(
@@ -1297,6 +1398,7 @@ class WikidataAdapter:
         retrieved_at: str,
         *,
         requested_qid_count: int,
+        qualifier_carrier_version: str = DEFAULT_QUALIFIER_CARRIER_VERSION,
     ) -> tuple[list[FieldEvidence], WikidataQualityReport]:
         """Extract FieldEvidence candidates from acquired entities.
 
@@ -1306,6 +1408,15 @@ class WikidataAdapter:
         (the number of usable item-type entities actually returned by the API),
         which may be lower when QIDs are absent or of a non-item type.
 
+        ``qualifier_carrier_version`` selects which entry of
+        ``QUALIFIER_CARRIERS_BY_VERSION`` governs qualifier-property
+        disambiguation for LOA/LWL/draft/displacement/ballast (see that
+        constant's docstring). Defaults to the current accepted set
+        (SLICE-0027). Callers that must reproduce exactly the extraction
+        behavior captured by an earlier accepted retained package (e.g. the
+        SLICE-0026 offline verifier) pass
+        ``QUALIFIER_CARRIER_VERSION_SLICE0008`` explicitly.
+
         No canonical FieldResolution or BoatDesign write is performed.
         SLICE-0004 normalization is reused for recognised quantity units.
         Statements with absent or unsupported qualifiers are routed to the
@@ -1314,7 +1425,7 @@ class WikidataAdapter:
         state = _ExtractionState()
 
         for entity in entities:
-            self._extract_entity_evidence(entity, retrieved_at, state)
+            self._extract_entity_evidence(entity, retrieved_at, state, qualifier_carrier_version)
 
         report = WikidataQualityReport(
             source_id=WIKIDATA_SOURCE_ID,
@@ -1333,6 +1444,7 @@ class WikidataAdapter:
         entity: WikidataEntityData,
         retrieved_at: str,
         state: _ExtractionState,
+        qualifier_carrier_version: str = DEFAULT_QUALIFIER_CARRIER_VERSION,
     ) -> None:
         qid = entity.qid
         claims = entity.raw_claims
@@ -1364,7 +1476,7 @@ class WikidataAdapter:
             qid,
             _PROP_LENGTH,
             claims,
-            {_QUAL_LOA: (_PTR_LOA, "loa"), _QUAL_LWL: (_PTR_LWL, "lwl")},
+            _carriers_for(_PROP_LENGTH, qualifier_carrier_version),
             retrieved_at,
             state,
             expected_quantity=Quantity.LENGTH,
@@ -1387,7 +1499,7 @@ class WikidataAdapter:
             qid,
             _PROP_HEIGHT,
             claims,
-            {_QUAL_DRAFT: (_PTR_DRAFT, "draft")},
+            _carriers_for(_PROP_HEIGHT, qualifier_carrier_version),
             retrieved_at,
             state,
             expected_quantity=Quantity.LENGTH,
@@ -1398,10 +1510,7 @@ class WikidataAdapter:
             qid,
             _PROP_MASS,
             claims,
-            {
-                _QUAL_DISPLACEMENT: (_PTR_DISPLACEMENT, "displacement"),
-                _QUAL_BALLAST: (_PTR_BALLAST, "ballast"),
-            },
+            _carriers_for(_PROP_MASS, qualifier_carrier_version),
             retrieved_at,
             state,
             expected_quantity=Quantity.MASS,
@@ -1569,16 +1678,24 @@ class WikidataAdapter:
         qid: str,
         prop_id: str,
         claims: dict[str, Any],
-        qualifier_map: dict[str, tuple[JsonPointer, str]],
+        qualifier_carriers: Sequence[tuple[str, dict[str, tuple[JsonPointer, str]]]],
         retrieved_at: str,
         state: _ExtractionState,
         *,
         expected_quantity: Quantity | None = None,
     ) -> None:
-        """Process quantity claims where a P642 qualifier determines field mapping.
+        """Process quantity claims where a qualifier determines field mapping.
 
-        Statements with absent or unrecognised qualifier values are counted as
-        unsupported rather than guessed.  ``expected_quantity`` is forwarded to
+        ``qualifier_carriers`` is an ordered sequence of ``(qualifier_property,
+        {concept_qid: (field_pointer, field_label)})`` pairs (see
+        ``QUALIFIER_CARRIERS_BY_VERSION`` / ``_carriers_for``). Carriers are
+        tried in order; the first carrier whose qualifier property has a
+        recognised concept-QID value wins (SLICE-0027: this is how an
+        evidence-backed alternative carrier, e.g. P518/P3831, is recognised
+        without displacing the existing accepted P642 path, which is always
+        listed first). Statements with absent or unrecognised qualifier
+        values under every carrier are counted as unsupported rather than
+        guessed. ``expected_quantity`` is forwarded to
         ``_build_quantity_evidence`` to prevent cross-dimension normalisation.
         """
         prop_claims = claims.get(prop_id, [])
@@ -1597,36 +1714,41 @@ class WikidataAdapter:
             if not isinstance(qualifiers, dict):
                 qualifiers = {}
 
-            qual_qids = _get_p642_qualifier_qids(qualifiers)
             matched = False
-            for qual_qid in qual_qids:
-                if qual_qid in qualifier_map:
-                    field_pointer, field_label = qualifier_map[qual_qid]
-                    # Reject a recognised wrong-dimension unit before creating evidence.
-                    if expected_quantity is not None:
-                        unit_qid = _claim_unit_qid(claim)
-                        if unit_qid is not None and unit_qid in _UNIT_QID_MAP:
-                            actual_qty, _ = _UNIT_QID_MAP[unit_qid]
-                            if actual_qty != expected_quantity:
-                                state.unsupported_qualifier_count += 1
-                                matched = True
-                                break
-                    ev = _build_quantity_evidence(
-                        qid,
-                        prop_id,
-                        claim,
-                        field_pointer,
-                        field_label,
-                        retrieved_at,
-                        idx,
-                        qualifier_qid=qual_qid,
-                        expected_quantity=expected_quantity,
-                    )
-                    if ev is None:
-                        state.malformed_count += 1
-                    else:
-                        state.add_evidence(ev, field_label)
-                    matched = True
+            for qualifier_property, qualifier_map in qualifier_carriers:
+                qual_qids = _get_qualifier_qids(qualifiers, qualifier_property)
+                for qual_qid in qual_qids:
+                    if qual_qid in qualifier_map:
+                        field_pointer, field_label = qualifier_map[qual_qid]
+                        # Reject a recognised wrong-dimension unit before creating evidence.
+                        if expected_quantity is not None:
+                            unit_qid = _claim_unit_qid(claim)
+                            if unit_qid is not None and unit_qid in _UNIT_QID_MAP:
+                                actual_qty, _ = _UNIT_QID_MAP[unit_qid]
+                                if actual_qty != expected_quantity:
+                                    state.unsupported_qualifier_count += 1
+                                    matched = True
+                                    break
+                        if not matched:
+                            ev = _build_quantity_evidence(
+                                qid,
+                                prop_id,
+                                claim,
+                                field_pointer,
+                                field_label,
+                                retrieved_at,
+                                idx,
+                                qualifier_property=qualifier_property,
+                                qualifier_qid=qual_qid,
+                                expected_quantity=expected_quantity,
+                            )
+                            if ev is None:
+                                state.malformed_count += 1
+                            else:
+                                state.add_evidence(ev, field_label)
+                            matched = True
+                        break
+                if matched:
                     break
 
             if not matched:

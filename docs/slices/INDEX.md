@@ -1,7 +1,7 @@
 # HullQ Slice Index
 
 **Status:** ACTIVE execution board  
-**Updated:** 2026-08-26 — SLICE-0025 accepted / `DONE` (`BEGIN_BOUNDED_STAGE_3_3_IN_PARALLEL`); SLICE-0026 bounded Wikidata Tier-1 enrichment evidence pilot handed off `REVIEW`
+**Updated:** 2026-08-26 — SLICE-0026 accepted / `DONE` (bounded Wikidata Tier-1 enrichment evidence pilot); SLICE-0027 qualifier-semantics correction + offline replay handed off `REVIEW`
 
 This file is the **compact operational queue**, not the historical evidence archive. Detailed implementation/review history belongs in each slice contract, acceptance-closure document, retained research package and Git history. Agents should read this file only when queue/status context is actually needed.
 
@@ -32,11 +32,12 @@ This file is the **compact operational queue**, not the historical evidence arch
 | SLICE-0023 | DESIGN_RESEARCH | DONE | Bounded English-Wikipedia category identity-lead discovery pilot | SLICE-0022 |
 | SLICE-0024 | DESIGN_RESEARCH | DONE | Deterministic 30-QID independent identity-verification/source-cost pilot over accepted SLICE-0023 leads | SLICE-0023 accepted / DONE |
 | SLICE-0025 | VALIDATION | DONE | Stage-3.2 breadth-sufficiency / Stage-3.3 parallel-entry governance decision over accepted SLICE-0018/0020/0021/0022/0023/0024 evidence | SLICE-0024 accepted / DONE |
-| SLICE-0026 | IMPLEMENTATION | REVIEW | Bounded Wikidata Tier-1 (LOA/LWL/beam/draft/displacement) enrichment evidence pilot over exactly 100 already-canonical BoatModels | SLICE-0025 accepted / DONE |
+| SLICE-0026 | IMPLEMENTATION | DONE | Bounded Wikidata Tier-1 (LOA/LWL/beam/draft/displacement) enrichment evidence pilot over exactly 100 already-canonical BoatModels | SLICE-0025 accepted / DONE |
+| SLICE-0027 | IMPLEMENTATION | REVIEW | Wikidata qualifier-property semantics correction (evidence-backed P518/P3831 alternate carriers) + offline replay over the exact retained SLICE-0026 100-BoatModel sample | SLICE-0026 accepted / DONE |
 
 ## Current execution rule
 
-**SLICE-0001 through SLICE-0025 are accepted / `DONE`. SLICE-0026 is handed off `REVIEW`; it is not yet independently reviewed or project-owner accepted, so it is not `DONE`. No SLICE-0027 or later slice is authorized.**
+**SLICE-0001 through SLICE-0026 are accepted / `DONE`. SLICE-0027 is handed off `REVIEW`; it is not yet independently reviewed or project-owner accepted, so it is not `DONE`. No SLICE-0028 or later slice is authorized.**
 
 For an already completed slice, its `*-acceptance-closure.md` is the final acceptance-state record. A primary slice contract may still show its historical implementation handoff state (`REVIEW`); the acceptance closure plus this operational queue control the final operational `DONE` state.
 
@@ -102,15 +103,23 @@ Primary contract: `docs/slices/SLICE-0025-stage-3-2-breadth-sufficiency-stage-3-
 
 SLICE-0025 is accepted / `DONE` (see `docs/slices/SLICE-0025-acceptance-closure.md`).
 
-## Latest handoff — SLICE-0026 (`REVIEW`, not yet accepted)
+## Accepted — SLICE-0026
 
-SLICE-0026 is a bounded Stage-3.3 evidence-path pilot (not a canonical technical-resolution rollout) over exactly 100 already-canonical BoatModels selected deterministically from the accepted 1,770/1,772 identity boundary. It fetches only those known QIDs via the existing rights-gated Wikidata `wbgetentities` adapter (no discovery query) and measures per-field coverage for LOA/LWL/beam/draft/displacement only. It creates/mutates no canonical BoatModel/BoatDesign row and mints no BoatDesign ID.
+SLICE-0026 was a bounded Stage-3.3 evidence-path pilot (not a canonical technical-resolution rollout) over exactly 100 already-canonical BoatModels selected deterministically from the accepted 1,770/1,772 identity boundary. It fetched only those known QIDs via the existing rights-gated Wikidata `wbgetentities` adapter (no discovery query) and measured per-field coverage for LOA/LWL/beam/draft/displacement only. It created/mutated no canonical BoatModel/BoatDesign row and minted no BoatDesign ID.
 
 Retained package: `research/stage3/sl0026-wikidata-tier1-enrichment/` (`selection.json`, `evidence_manifest.json`, `REPORT.md`, `ARTIFACT-DIGESTS.json`, `REPLAY-RESULT.json`/`REPLAY-REPORT.md` plus JSON schemas), reproducible offline via `scripts/bootstrap/wikidata_sl0026_tier1_enrichment_pilot_runner.py --verify`.
 
-Primary contract: `docs/slices/SLICE-0026-bounded-wikidata-tier1-enrichment-evidence-pilot.md`.
+Primary contract: `docs/slices/SLICE-0026-bounded-wikidata-tier1-enrichment-evidence-pilot.md`. Closure: `docs/slices/SLICE-0026-acceptance-closure.md` (owner acceptance 2026-08-26).
 
-This entry records the implementation agent's own measurement and does not itself constitute independent review or project-owner acceptance. SLICE-0026 is `REVIEW`, not `DONE`. No SLICE-0027 or later slice is created/started.
+## Latest handoff — SLICE-0027 (`REVIEW`, not yet accepted)
+
+SLICE-0027 corrects the bounded Wikidata adapter qualifier-property semantics exposed by SLICE-0026, using only the already-retained SLICE-0026 raw entity claims as evidence (no live Wikidata acquisition). It amends `hullq.sources.wikidata` to additionally recognize evidence-backed alternate qualifier-property carriers for already-accepted concept QIDs (`P518` for LOA/LWL/draft, `P3831` for displacement) on top of the existing accepted `P642` path, then replays the exact retained 100 entities offline to measure the before/after coverage delta and persists the resulting research evidence through the existing PostgreSQL importer. It creates/mutates no canonical BoatModel/BoatDesign row and does not modify the SLICE-0026 retained package.
+
+Retained package: `research/stage3/sl0027-wikidata-qualifier-semantics/` (`qualifier_shape_analysis.json`, `coverage_before_after.json`, `REPORT.md`, `ARTIFACT-DIGESTS.json`, `REPLAY-RESULT.json`/`REPLAY-REPORT.md` plus JSON schemas), reproducible offline via `scripts/bootstrap/wikidata_sl0027_qualifier_semantics_correction_runner.py --verify`.
+
+Primary contract: `docs/slices/SLICE-0027-wikidata-qualifier-semantics-correction-offline-replay.md`.
+
+This entry records the implementation agent's own measurement and does not itself constitute independent review or project-owner acceptance. SLICE-0027 is `REVIEW`, not `DONE`. No SLICE-0028 or later slice is created/started.
 
 ## Latest accepted boundary — SLICE-0023
 
