@@ -216,26 +216,49 @@ def test_normalized_dict_present() -> None:
     assert d["method_id"] == "std"
 
 
-def test_normalized_dict_decimal_value_stringified_and_fingerprintable() -> None:
+def test_normalized_dict_decimal_value_wrapped_and_fingerprintable() -> None:
     """SLICE-0026: fingerprint_evidence/fingerprint_observation must not raise
     on a Decimal-valued NormalizedCandidate (every measurement value
     hullq.sources.wikidata produces) — json.dumps has no native Decimal
-    support, so _normalized_dict must stringify it losslessly first."""
+    support, so _normalized_dict must encode it via the shared
+    hullq.persistence.schema.encode_decimal_for_jsonb marker (never a bare
+    ``str(value)``, which would collide with a legitimately string-typed
+    value of the same text)."""
     from decimal import Decimal
+
+    from hullq.persistence.schema import DECIMAL_JSONB_MARKER_KEY
 
     nc = NormalizedCandidate(
         value=Decimal("4500"), unit="kg", method_id="std", method_version="1.0"
     )
     d = _normalized_dict(nc)
     assert d is not None
-    assert d["value"] == "4500"
-    assert isinstance(d["value"], str)
+    assert d["value"] == {DECIMAL_JSONB_MARKER_KEY: "4500"}
 
     # Must not raise — exercises the exact json.dumps call fingerprint_dict makes.
     digest = fingerprint_dict(d)
     assert isinstance(digest, str) and len(digest) == 64
     # Deterministic: identical input always yields the identical digest.
     assert fingerprint_dict(d) == digest
+
+
+def test_normalized_dict_decimal_and_equal_text_string_produce_different_fingerprints() -> None:
+    """Decimal("4500") and the string "4500" are distinct
+    NormalizedCandidate.value shapes and MUST NOT produce the same content
+    fingerprint — otherwise two semantically different evidence items would
+    be treated as identical by the SLICE-0013 importer's fingerprint-based
+    identity/conflict checks."""
+    from decimal import Decimal
+
+    nc_decimal = NormalizedCandidate(
+        value=Decimal("4500"), unit="kg", method_id=None, method_version=None
+    )
+    nc_string = NormalizedCandidate(value="4500", unit="kg", method_id=None, method_version=None)
+
+    d_decimal = _normalized_dict(nc_decimal)
+    d_string = _normalized_dict(nc_string)
+    assert d_decimal != d_string
+    assert fingerprint_dict(d_decimal) != fingerprint_dict(d_string)
 
 
 def test_applicability_dict_design_option_hints() -> None:

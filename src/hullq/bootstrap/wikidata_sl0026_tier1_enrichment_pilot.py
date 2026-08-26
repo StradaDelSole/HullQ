@@ -64,6 +64,8 @@ __all__ = [
     "ACCEPTED_HISTORICAL_CROSSWALK_COUNT",
     "ACCEPTED_SL0018_DELTA_MANIFEST_SHA256",
     "ALLOWED_FIELD_POINTERS",
+    "ARTIFACT_DIGESTS_FILENAME",
+    "ARTIFACT_DIGESTS_SCHEMA_VERSION",
     "DELTA_MANIFEST_PATH",
     "FIELD_LABEL_BY_POINTER",
     "PILOT_SIZE",
@@ -78,6 +80,7 @@ __all__ = [
     "IdentityBoundary",
     "IdentityBoundaryIntegrityError",
     "PilotBoatModel",
+    "build_artifact_digests",
     "build_evidence_manifest_document",
     "build_pilot_bundle",
     "build_selection_document",
@@ -85,9 +88,11 @@ __all__ = [
     "filter_to_allowed_evidence",
     "load_reproduced_identity_boundary",
     "rebuild_entities_from_manifest",
+    "retained_package_filenames",
     "select_pilot_boatmodels",
     "summarize_field_coverage",
     "trim_raw_claims_to_allowed_properties",
+    "verify_artifact_digests_self_consistency",
     "verify_evidence_manifest_self_consistency",
     "verify_selection_self_consistency",
 ]
@@ -838,3 +843,89 @@ def verify_evidence_manifest_self_consistency(
         )
 
     return problems
+
+
+# ---------------------------------------------------------------------------
+# 7. Retained-package artifact-integrity digests
+# ---------------------------------------------------------------------------
+
+ARTIFACT_DIGESTS_SCHEMA_VERSION = "sl0026-artifact-digests-v1"
+
+# The digest document itself is never covered by its own digests (the
+# controlling slice's "integrity digests covering every retained package
+# file except the digest document itself").
+ARTIFACT_DIGESTS_FILENAME = "ARTIFACT-DIGESTS.json"
+
+
+def retained_package_filenames(package_dir: Path) -> set[str]:
+    """Every regular file directly inside *package_dir* except the digest
+    document itself.
+
+    Computed dynamically from the directory listing -- never a hardcoded
+    allowlist -- so digest coverage automatically tracks the FINAL retained
+    package regardless of which files exist when it is computed: exactly the
+    six selection/evidence-manifest/report/schema files right after
+    ``--live``, and all eight files (also covering ``REPLAY-RESULT.json`` and
+    ``REPLAY-REPORT.md``) once ``--persist`` has additionally run, for the
+    committed final package. A hardcoded filename list would silently miss a
+    newly added retained file, or keep expecting one that was removed,
+    without the constant itself being updated in lockstep.
+    """
+    return {
+        p.name for p in package_dir.iterdir() if p.is_file() and p.name != ARTIFACT_DIGESTS_FILENAME
+    }
+
+
+def build_artifact_digests(*, generated_at: str, package_dir: Path) -> dict[str, Any]:
+    """Build the retained ``ARTIFACT-DIGESTS.json`` document: a SHA256 digest
+    of every retained package file in *package_dir* except the digest
+    document itself, discovered dynamically (see
+    ``retained_package_filenames``).
+    """
+    digests = {
+        name: "sha256:" + hashlib.sha256((package_dir / name).read_bytes()).hexdigest()
+        for name in sorted(retained_package_filenames(package_dir))
+    }
+    return {
+        "schema_version": ARTIFACT_DIGESTS_SCHEMA_VERSION,
+        "generated_at": generated_at,
+        "digests": digests,
+    }
+
+
+def verify_artifact_digests_self_consistency(
+    *, artifact_digests: Mapping[str, Any], package_dir: Path
+) -> list[str]:
+    """Recompute the SHA256 digest of every file currently in *package_dir*
+    (except the digest document itself) and compare against a retained
+    ``ARTIFACT-DIGESTS.json`` document.
+
+    Independently enforces the exact expected covered-file-name set
+    (discovered dynamically from *package_dir* via
+    ``retained_package_filenames``, never a hardcoded allowlist) rather than
+    trusting whatever file-name keys happen to be present in the retained
+    document -- a missing digest entry (a retained file with no digest), an
+    extra/stale digest entry (a digest for a file that no longer exists), or
+    any per-file content mutation are all detected.
+    """
+    mismatches: list[str] = []
+    digests = artifact_digests.get("digests", {})
+    retained_names = set(digests)
+    expected_names = retained_package_filenames(package_dir)
+    if retained_names != expected_names:
+        mismatches.append(
+            "digests file-name set != every retained package file (excluding "
+            f"{ARTIFACT_DIGESTS_FILENAME}): missing={sorted(expected_names - retained_names)!r}, "
+            f"unexpected={sorted(retained_names - expected_names)!r}"
+        )
+    for filename, stored in digests.items():
+        file_path = package_dir / filename
+        if not file_path.is_file():
+            mismatches.append(f"digest entry {filename!r}: file does not exist")
+            continue
+        actual = "sha256:" + hashlib.sha256(file_path.read_bytes()).hexdigest()
+        if actual != stored:
+            mismatches.append(
+                f"digest entry {filename!r}: stored={stored!r} != recomputed {actual!r}"
+            )
+    return mismatches

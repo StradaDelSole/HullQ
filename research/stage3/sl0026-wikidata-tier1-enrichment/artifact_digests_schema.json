@@ -12,6 +12,7 @@
     "digests": {
       "type": "object",
       "additionalProperties": false,
+      "description": "Covers every retained package file except ARTIFACT-DIGESTS.json itself, discovered dynamically from the package directory (never a hardcoded allowlist) by hullq.bootstrap.wikidata_sl0026_tier1_enrichment_pilot.build_artifact_digests / verify_artifact_digests_self_consistency. The six base entries are always present once --live has run. REPLAY-RESULT.json/REPLAY-REPORT.md are additionally required once --persist has run (the committed final package state); they are absent (and therefore not required here) in the intermediate post---live-only state.",
       "required": [
         "selection.json",
         "selection_schema.json",
@@ -26,7 +27,9 @@
         "evidence_manifest.json": { "$ref": "#/$defs/digest" },
         "evidence_manifest_schema.json": { "$ref": "#/$defs/digest" },
         "REPORT.md": { "$ref": "#/$defs/digest" },
-        "artifact_digests_schema.json": { "$ref": "#/$defs/digest" }
+        "artifact_digests_schema.json": { "$ref": "#/$defs/digest" },
+        "REPLAY-RESULT.json": { "$ref": "#/$defs/digest" },
+        "REPLAY-REPORT.md": { "$ref": "#/$defs/digest" }
       }
     }
   },

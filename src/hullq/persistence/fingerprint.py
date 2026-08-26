@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from decimal import Decimal
 from typing import Any
 
 from hullq.domain.provenance import (
@@ -21,6 +20,7 @@ from hullq.domain.provenance import (
     ResearchContext,
     SourceLocator,
 )
+from hullq.persistence.schema import encode_decimal_for_jsonb
 from hullq.research.jobs import ResearchTarget
 from hullq.research.observations import (
     ReferenceCrosscheck,
@@ -75,18 +75,18 @@ def _raw_dict(raw: RawObservation) -> dict[str, Any]:
 def _normalized_dict(nc: NormalizedCandidate | None) -> dict[str, Any] | None:
     if nc is None:
         return None
-    # NormalizedCandidate.value is declared as `object` (REQ: canonical physical
-    # storage uses SI, precision-preserving representation) and MAY be a
-    # Decimal (e.g. every measurement value produced by
-    # hullq.sources.wikidata via hullq.domain.measurements.normalize_measurement).
-    # json.dumps has no native Decimal support; stringify losslessly so
-    # fingerprinting never raises on a genuine, already-accepted value shape.
-    value = str(nc.value) if isinstance(nc.value, Decimal) else nc.value
+    # Uses the same hullq.persistence.schema.encode_decimal_for_jsonb encoding
+    # as JSONB storage (never a bare str(value)) so that a Decimal and a
+    # legitimately string-typed NormalizedCandidate.value with the same text
+    # (e.g. Decimal("12.80") vs the string "12.80") produce DIFFERENT
+    # fingerprints rather than colliding. json.dumps also has no native
+    # Decimal support, so this also prevents fingerprinting from raising on a
+    # genuine, already-accepted Decimal value shape.
     return {
         "method_id": nc.method_id,
         "method_version": nc.method_version,
         "unit": nc.unit,
-        "value": value,
+        "value": encode_decimal_for_jsonb(nc.value),
     }
 
 

@@ -11,9 +11,12 @@ from hullq.domain.provenance import (
     SourceLocator,
 )
 from hullq.persistence.schema import (
+    DECIMAL_JSONB_MARKER_KEY,
     applicability_from_jsonb,
     applicability_to_jsonb,
     context_to_jsonb,
+    decode_decimal_from_jsonb,
+    encode_decimal_for_jsonb,
     locator_to_jsonb,
     normalized_to_jsonb,
     producer_to_jsonb,
@@ -110,13 +113,17 @@ def test_normalized_to_jsonb_present() -> None:
     assert d["method_id"] == "std"
 
 
-def test_normalized_to_jsonb_decimal_value_stringified() -> None:
+def test_normalized_to_jsonb_decimal_value_wrapped_in_type_marker() -> None:
     """SLICE-0026: every measurement value hullq.sources.wikidata produces via
     hullq.domain.measurements.normalize_measurement is a Decimal.
     NormalizedCandidate.value is untyped (``object``), but json.dumps (used
     by psycopg's Jsonb wrapper for JSONB storage) has no native Decimal
-    support — normalized_to_jsonb must stringify it losslessly rather than
-    raise ``TypeError: Object of type Decimal is not JSON serializable``.
+    support. A bare ``str(value)`` is NOT used because NormalizedCandidate.value
+    could independently, legitimately be a plain string with the same text —
+    Decimal("12.80") and the string "12.80" must not collapse to the same
+    wire representation. normalized_to_jsonb must therefore wrap a Decimal in
+    the explicit DECIMAL_JSONB_MARKER_KEY marker object rather than raising
+    ``TypeError: Object of type Decimal is not JSON serializable``.
     """
     from decimal import Decimal
 
@@ -128,13 +135,87 @@ def test_normalized_to_jsonb_decimal_value_stringified() -> None:
     )
     d = normalized_to_jsonb(nc)
     assert d is not None
-    assert d["value"] == "12.80"
-    assert isinstance(d["value"], str)
+    assert d["value"] == {DECIMAL_JSONB_MARKER_KEY: "12.80"}
 
     import json
 
     # Must not raise — this is exactly the shape passed to psycopg's Jsonb().
     json.dumps(d)
+
+
+def test_normalized_to_jsonb_numeric_looking_string_passes_through_unchanged() -> None:
+    """A legitimately string-typed NormalizedCandidate.value that happens to
+    look numeric (e.g. "12.80") must NOT be treated as, or collapse with, a
+    Decimal — no numeric-looking-text heuristic is applied on the encode
+    side either."""
+    nc = NormalizedCandidate(value="12.80", unit="m", method_id="std", method_version="1.0")
+    d = normalized_to_jsonb(nc)
+    assert d is not None
+    assert d["value"] == "12.80"
+    assert isinstance(d["value"], str)
+
+
+def test_encode_decimal_for_jsonb_distinguishes_decimal_from_equal_text_string() -> None:
+    from decimal import Decimal
+
+    encoded_decimal = encode_decimal_for_jsonb(Decimal("12.80"))
+    encoded_string = encode_decimal_for_jsonb("12.80")
+    assert encoded_decimal != encoded_string
+    assert encoded_decimal == {DECIMAL_JSONB_MARKER_KEY: "12.80"}
+    assert encoded_string == "12.80"
+
+
+def test_decode_decimal_from_jsonb_round_trips_decimal_exactly() -> None:
+    from decimal import Decimal
+
+    encoded = encode_decimal_for_jsonb(Decimal("12.80"))
+    assert decode_decimal_from_jsonb(encoded) == Decimal("12.80")
+    assert isinstance(decode_decimal_from_jsonb(encoded), Decimal)
+
+
+def test_decode_decimal_from_jsonb_leaves_plain_string_as_string() -> None:
+    assert decode_decimal_from_jsonb("12.80") == "12.80"
+    assert isinstance(decode_decimal_from_jsonb("12.80"), str)
+
+
+def test_decode_decimal_from_jsonb_leaves_non_string_marker_value_unchanged() -> None:
+    # Defensive: a marker-shaped dict whose value isn't a string (shouldn't
+    # happen from encode_decimal_for_jsonb, but must never raise or silently
+    # coerce) passes through unchanged rather than being misread as Decimal.
+    malformed = {DECIMAL_JSONB_MARKER_KEY: 123}
+    assert decode_decimal_from_jsonb(malformed) == malformed
+
+
+def test_decode_decimal_from_jsonb_leaves_non_marker_dict_unchanged() -> None:
+    # A dict that merely happens to share the marker key alongside other
+    # keys, or an unrelated dict shape, must never be misread as a Decimal.
+    other = {"__decimal__": "12.80", "extra": 1}
+    assert decode_decimal_from_jsonb(other) == other
+
+
+def test_decimal_and_equal_text_string_round_trip_through_jsonb_shape_distinctly() -> None:
+    """End-to-end regression: NormalizedCandidate(value=Decimal("12.80")) and
+    NormalizedCandidate(value="12.80") must remain distinguishable after a
+    full normalized_to_jsonb -> decode_decimal_from_jsonb round trip."""
+    from decimal import Decimal
+
+    nc_decimal = NormalizedCandidate(
+        value=Decimal("12.80"), unit="m", method_id=None, method_version=None
+    )
+    nc_string = NormalizedCandidate(value="12.80", unit="m", method_id=None, method_version=None)
+
+    encoded_decimal = normalized_to_jsonb(nc_decimal)
+    encoded_string = normalized_to_jsonb(nc_string)
+    assert encoded_decimal != encoded_string
+
+    assert encoded_decimal is not None
+    assert encoded_string is not None
+    decoded_decimal = decode_decimal_from_jsonb(encoded_decimal["value"])
+    decoded_string = decode_decimal_from_jsonb(encoded_string["value"])
+    assert decoded_decimal == Decimal("12.80")
+    assert isinstance(decoded_decimal, Decimal)
+    assert decoded_string == "12.80"
+    assert isinstance(decoded_string, str)
 
 
 # ---------------------------------------------------------------------------

@@ -51,18 +51,57 @@ def raw_to_jsonb(raw: RawObservation) -> dict[str, Any]:
     }
 
 
+# NormalizedCandidate.value is declared as `object` (REQ: canonical physical
+# storage uses SI, precision-preserving representation) and MAY be a Decimal
+# — every measurement value hullq.sources.wikidata produces via
+# hullq.domain.measurements.normalize_measurement is a Decimal. The JSONB/
+# JSON encoder has no native Decimal support, so a Decimal must be encoded
+# for storage; a bare string (``str(value)``) is NOT sufficient, because
+# NormalizedCandidate.value could independently, legitimately be a plain
+# string (e.g. "12.80") — that string and Decimal("12.80") are distinct
+# values and must not collapse to the same wire representation, or become
+# indistinguishable in a content fingerprint. A Decimal is therefore wrapped
+# in this explicit, structurally distinct marker object; decoding only ever
+# restores a Decimal from that exact marker shape — never from numeric-
+# looking text — so every other value (str, int, float, bool, None, dict,
+# list) round-trips completely unchanged. Shared verbatim by
+# hullq.persistence.readback (decode) and hullq.persistence.fingerprint
+# (encode, for a stable/distinguishing content hash) rather than duplicated,
+# so the two sides of the encoding can never drift apart.
+DECIMAL_JSONB_MARKER_KEY = "__decimal__"
+
+
+def encode_decimal_for_jsonb(value: object) -> object:
+    """Encode *value* for JSON/JSONB storage, preserving Decimal identity.
+
+    See ``DECIMAL_JSONB_MARKER_KEY`` for why a bare stringification is not
+    used. Every non-Decimal value passes through completely unchanged.
+    """
+    if isinstance(value, Decimal):
+        return {DECIMAL_JSONB_MARKER_KEY: str(value)}
+    return value
+
+
+def decode_decimal_from_jsonb(value: object) -> object:
+    """Inverse of ``encode_decimal_for_jsonb``.
+
+    Restores a Decimal ONLY from the exact structural marker object; no
+    heuristic (numeric-looking text, unit, method, field pointer) is ever
+    applied, so a legitimately string-typed value — including one that looks
+    numeric — always round-trips as the same string.
+    """
+    if isinstance(value, dict) and set(value) == {DECIMAL_JSONB_MARKER_KEY}:
+        marker_value = value[DECIMAL_JSONB_MARKER_KEY]
+        if isinstance(marker_value, str):
+            return Decimal(marker_value)
+    return value
+
+
 def normalized_to_jsonb(nc: NormalizedCandidate | None) -> dict[str, Any] | None:
     if nc is None:
         return None
-    # NormalizedCandidate.value is declared as `object` and MAY be a Decimal
-    # (e.g. every measurement value produced by hullq.sources.wikidata via
-    # hullq.domain.measurements.normalize_measurement). The JSONB encoder has
-    # no native Decimal support, so stringify losslessly for storage;
-    # hullq.persistence.readback._normalized_from_jsonb restores a Decimal
-    # from a numeric string on read so the round trip is exact.
-    value = str(nc.value) if isinstance(nc.value, Decimal) else nc.value
     return {
-        "value": value,
+        "value": encode_decimal_for_jsonb(nc.value),
         "unit": nc.unit,
         "method_id": nc.method_id,
         "method_version": nc.method_version,

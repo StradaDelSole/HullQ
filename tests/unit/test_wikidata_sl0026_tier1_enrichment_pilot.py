@@ -12,6 +12,7 @@ import pytest
 
 from hullq.bootstrap.wikidata_sl0026_tier1_enrichment_pilot import (
     ACCEPTED_SL0018_DELTA_MANIFEST_SHA256,
+    ARTIFACT_DIGESTS_FILENAME,
     PILOT_SIZE,
     PTR_BEAM,
     PTR_DISPLACEMENT,
@@ -23,6 +24,7 @@ from hullq.bootstrap.wikidata_sl0026_tier1_enrichment_pilot import (
     IdentityBoundary,
     IdentityBoundaryIntegrityError,
     PilotBoatModel,
+    build_artifact_digests,
     build_evidence_manifest_document,
     build_pilot_bundle,
     build_selection_document,
@@ -30,9 +32,11 @@ from hullq.bootstrap.wikidata_sl0026_tier1_enrichment_pilot import (
     filter_to_allowed_evidence,
     load_reproduced_identity_boundary,
     rebuild_entities_from_manifest,
+    retained_package_filenames,
     select_pilot_boatmodels,
     summarize_field_coverage,
     trim_raw_claims_to_allowed_properties,
+    verify_artifact_digests_self_consistency,
     verify_evidence_manifest_self_consistency,
     verify_selection_self_consistency,
 )
@@ -595,3 +599,119 @@ def test_entity_field_coverage_dataclass_fields() -> None:
     )
     assert c.qid == "Q1"
     assert c.field_pointer == PTR_BEAM
+
+
+# ---------------------------------------------------------------------------
+# retained_package_filenames / build_artifact_digests /
+# verify_artifact_digests_self_consistency — the FINAL retained package must
+# have integrity digests covering every file except ARTIFACT-DIGESTS.json
+# itself, discovered dynamically (never a hardcoded allowlist), so digest
+# coverage automatically tracks both the intermediate --live-only state (6
+# files) and the final --persist state (8 files, including the two replay
+# artifacts).
+# ---------------------------------------------------------------------------
+
+
+def _write(path: Path, content: str = "x") -> None:
+    path.write_text(content, encoding="utf-8")
+
+
+def test_retained_package_filenames_excludes_only_the_digest_document(tmp_path: Path) -> None:
+    _write(tmp_path / "selection.json")
+    _write(tmp_path / "evidence_manifest.json")
+    _write(tmp_path / ARTIFACT_DIGESTS_FILENAME)
+    names = retained_package_filenames(tmp_path)
+    assert names == {"selection.json", "evidence_manifest.json"}
+
+
+def test_retained_package_filenames_ignores_subdirectories(tmp_path: Path) -> None:
+    _write(tmp_path / "selection.json")
+    (tmp_path / "subdir").mkdir()
+    _write(tmp_path / "subdir" / "not_directly_in_package.json")
+    assert retained_package_filenames(tmp_path) == {"selection.json"}
+
+
+def test_build_artifact_digests_covers_exactly_the_six_live_stage_files(tmp_path: Path) -> None:
+    """Simulates the intermediate state right after --live (before --persist
+    has ever run): only the six selection/evidence-manifest/report/schema
+    files exist yet — REPLAY-RESULT.json/REPLAY-REPORT.md are correctly NOT
+    expected or required at this stage."""
+    live_stage_files = (
+        "selection.json",
+        "selection_schema.json",
+        "evidence_manifest.json",
+        "evidence_manifest_schema.json",
+        "REPORT.md",
+        "artifact_digests_schema.json",
+    )
+    for name in live_stage_files:
+        _write(tmp_path / name, content=name)
+
+    doc = build_artifact_digests(generated_at="2026-01-01T00:00:00Z", package_dir=tmp_path)
+    assert set(doc["digests"]) == set(live_stage_files)
+    problems = verify_artifact_digests_self_consistency(artifact_digests=doc, package_dir=tmp_path)
+    assert problems == []
+
+
+def test_build_artifact_digests_covers_all_eight_files_after_persist(tmp_path: Path) -> None:
+    """Simulates the FINAL committed state after --persist has run: the same
+    six files plus REPLAY-RESULT.json and REPLAY-REPORT.md must ALL be
+    covered — this is the literal contract requirement the reviewer flagged
+    as missing."""
+    final_stage_files = (
+        "selection.json",
+        "selection_schema.json",
+        "evidence_manifest.json",
+        "evidence_manifest_schema.json",
+        "REPORT.md",
+        "artifact_digests_schema.json",
+        "REPLAY-RESULT.json",
+        "REPLAY-REPORT.md",
+    )
+    for name in final_stage_files:
+        _write(tmp_path / name, content=name)
+
+    doc = build_artifact_digests(generated_at="2026-01-01T00:00:00Z", package_dir=tmp_path)
+    assert set(doc["digests"]) == set(final_stage_files)
+    assert "REPLAY-RESULT.json" in doc["digests"]
+    assert "REPLAY-REPORT.md" in doc["digests"]
+    problems = verify_artifact_digests_self_consistency(artifact_digests=doc, package_dir=tmp_path)
+    assert problems == []
+
+
+def test_verify_artifact_digests_detects_undigested_added_file(tmp_path: Path) -> None:
+    _write(tmp_path / "selection.json")
+    doc = build_artifact_digests(generated_at="2026-01-01T00:00:00Z", package_dir=tmp_path)
+    # A new retained file (e.g. a freshly-written REPLAY-RESULT.json) appears
+    # after the digests were built but before they were rebuilt.
+    _write(tmp_path / "REPLAY-RESULT.json")
+    problems = verify_artifact_digests_self_consistency(artifact_digests=doc, package_dir=tmp_path)
+    assert any("REPLAY-RESULT.json" in p and "missing" in p for p in problems)
+
+
+def test_verify_artifact_digests_detects_stale_digest_for_removed_file(tmp_path: Path) -> None:
+    _write(tmp_path / "selection.json")
+    _write(tmp_path / "REPLAY-RESULT.json")
+    doc = build_artifact_digests(generated_at="2026-01-01T00:00:00Z", package_dir=tmp_path)
+    (tmp_path / "REPLAY-RESULT.json").unlink()
+    problems = verify_artifact_digests_self_consistency(artifact_digests=doc, package_dir=tmp_path)
+    assert any("REPLAY-RESULT.json" in p for p in problems)
+
+
+def test_verify_artifact_digests_detects_mutated_file_content(tmp_path: Path) -> None:
+    _write(tmp_path / "selection.json", content="original")
+    doc = build_artifact_digests(generated_at="2026-01-01T00:00:00Z", package_dir=tmp_path)
+    _write(tmp_path / "selection.json", content="tampered")
+    problems = verify_artifact_digests_self_consistency(artifact_digests=doc, package_dir=tmp_path)
+    assert any("selection.json" in p and "recomputed" in p for p in problems)
+
+
+def test_verify_artifact_digests_never_requires_the_digest_document_itself(tmp_path: Path) -> None:
+    _write(tmp_path / "selection.json")
+    doc = build_artifact_digests(generated_at="2026-01-01T00:00:00Z", package_dir=tmp_path)
+    assert ARTIFACT_DIGESTS_FILENAME not in doc["digests"]
+    _write(tmp_path / ARTIFACT_DIGESTS_FILENAME, content=json.dumps(doc))
+    # Writing the digest document itself afterward must not retroactively
+    # become a required/undigested entry.
+    problems = verify_artifact_digests_self_consistency(artifact_digests=doc, package_dir=tmp_path)
+    assert problems == []

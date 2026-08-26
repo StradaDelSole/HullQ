@@ -1,8 +1,8 @@
 # HullQ SLICE-0026 Bounded Wikidata Tier-1 Enrichment Evidence Pilot Report
 
 **Selection generated_at:** 2026-08-26T13:37:04.912490+00:00  
-**Evidence manifest generated_at:** 2026-08-26T14:43:29.192720+00:00  
-**Acquired at:** 2026-08-26T14:43:26.965654+00:00  
+**Evidence manifest generated_at:** 2026-08-26T16:23:15.790435+00:00  
+**Acquired at:** 2026-08-26T16:23:10.234235+00:00  
 **Source:** SRC_WIKIDATA_API_2026
 
 ## SCOPE

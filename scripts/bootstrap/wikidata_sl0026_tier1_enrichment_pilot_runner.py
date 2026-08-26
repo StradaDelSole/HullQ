@@ -76,14 +76,14 @@ REPLAY_REPORT_PATH = SL0026_DIR / "REPLAY-REPORT.md"
 
 SOURCE_PATH = ROOT / "fixtures" / "sources" / "wikidata_source.json"
 
-ARTIFACT_DIGEST_COVERED_FILENAMES: tuple[str, ...] = (
-    "selection.json",
-    "selection_schema.json",
-    "evidence_manifest.json",
-    "evidence_manifest_schema.json",
-    "REPORT.md",
-    "artifact_digests_schema.json",
-)
+# Digest coverage is NOT a hardcoded filename list here: every retained
+# package file except ARTIFACT-DIGESTS.json itself is covered, discovered
+# dynamically from the package directory by
+# hullq.bootstrap.wikidata_sl0026_tier1_enrichment_pilot.build_artifact_digests
+# / verify_artifact_digests_self_consistency — this is what makes the FINAL
+# committed package (which includes REPLAY-RESULT.json/REPLAY-REPORT.md once
+# --persist has run, in addition to the six files --live already produces)
+# fully covered without a second constant to keep in sync.
 
 
 def _write_text_lf(path: Path, text: str) -> None:
@@ -171,6 +171,22 @@ def run_live(*, user_agent: str, selection_path: Path = SELECTION_PATH) -> dict[
         "HullQ SLICE-0026 Bounded Wikidata Tier-1 Enrichment Evidence Pilot — LIVE RUN",
         flush=True,
     )
+
+    # A prior --persist run may have left REPLAY-RESULT.json/REPLAY-REPORT.md
+    # on disk. Once evidence_manifest.json below is freshly regenerated,
+    # those replay artifacts would describe a bundle set that no longer
+    # matches it — remove them now (they are dynamically re-included in
+    # digest coverage the moment they exist, per retained_package_filenames,
+    # so a stale pair left in place would otherwise be digest-covered as if
+    # still valid). --persist regenerates both from the fresh manifest.
+    for stale_path in (REPLAY_RESULT_PATH, REPLAY_REPORT_PATH):
+        if stale_path.exists():
+            stale_path.unlink()
+            print(
+                f"  removed stale {stale_path.name} (describes a prior evidence_manifest.json; "
+                "re-run --persist to regenerate)",
+                flush=True,
+            )
 
     if not selection_path.exists():
         print("  selection.json not found; running --select first...", flush=True)
@@ -268,16 +284,13 @@ def run_live(*, user_agent: str, selection_path: Path = SELECTION_PATH) -> dict[
 
     _write_report(selection_doc, document, replay_result=None)
 
-    digest_paths = {
-        "selection.json": SELECTION_PATH,
-        "selection_schema.json": SELECTION_SCHEMA_PATH,
-        "evidence_manifest.json": EVIDENCE_MANIFEST_PATH,
-        "evidence_manifest_schema.json": EVIDENCE_MANIFEST_SCHEMA_PATH,
-        "REPORT.md": REPORT_PATH,
-        "artifact_digests_schema.json": ARTIFACT_DIGESTS_SCHEMA_PATH,
-    }
-    digests_doc = _build_artifact_digests(
-        generated_at=datetime.now(tz=UTC).isoformat(), paths=digest_paths
+    from hullq.bootstrap.wikidata_sl0026_tier1_enrichment_pilot import build_artifact_digests
+
+    # evidence_manifest.json/REPORT.md etc. above are always written to the
+    # real SL0026_DIR (only run_select's selection_path is test-overridable),
+    # so digest coverage is discovered from that same directory.
+    digests_doc = build_artifact_digests(
+        generated_at=datetime.now(tz=UTC).isoformat(), package_dir=SL0026_DIR
     )
     mismatches = _validate_schema(
         digests_doc, ARTIFACT_DIGESTS_SCHEMA_PATH, label="SLICE-0026 artifact digests"
@@ -290,43 +303,6 @@ def run_live(*, user_agent: str, selection_path: Path = SELECTION_PATH) -> dict[
     print(f"Artifact digests written to: {ARTIFACT_DIGESTS_PATH}", flush=True)
 
     return document
-
-
-def _build_artifact_digests(*, generated_at: str, paths: dict[str, Path]) -> dict[str, Any]:
-    digests = {}
-    for name, path in paths.items():
-        digests[name] = "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
-    return {
-        "schema_version": "sl0026-artifact-digests-v1",
-        "generated_at": generated_at,
-        "digests": digests,
-    }
-
-
-def _verify_artifact_digests(
-    artifact_digests: dict[str, Any], *, paths: dict[str, Path]
-) -> list[str]:
-    mismatches: list[str] = []
-    digests = artifact_digests.get("digests", {})
-    retained_names = set(digests)
-    expected_names = set(ARTIFACT_DIGEST_COVERED_FILENAMES)
-    if retained_names != expected_names:
-        mismatches.append(
-            "digests file-name set != expected covered-file set: "
-            f"missing={sorted(expected_names - retained_names)!r}, "
-            f"unexpected={sorted(retained_names - expected_names)!r}"
-        )
-    for filename, stored in digests.items():
-        path = paths.get(filename)
-        if path is None or not path.is_file():
-            mismatches.append(f"digest entry {filename!r}: file does not exist")
-            continue
-        actual = "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
-        if actual != stored:
-            mismatches.append(
-                f"digest entry {filename!r}: stored={stored!r} != recomputed {actual!r}"
-            )
-    return mismatches
 
 
 # ---------------------------------------------------------------------------
@@ -344,6 +320,7 @@ def run_verify(
         PilotBoatModel,
         load_reproduced_identity_boundary,
         rebuild_entities_from_manifest,
+        verify_artifact_digests_self_consistency,
         verify_evidence_manifest_self_consistency,
         verify_selection_self_consistency,
     )
@@ -424,15 +401,11 @@ def run_verify(
                     digests_doc, ARTIFACT_DIGESTS_SCHEMA_PATH, label="SLICE-0026 artifact digests"
                 )
             )
-            digest_paths = {
-                "selection.json": selection_path,
-                "selection_schema.json": SELECTION_SCHEMA_PATH,
-                "evidence_manifest.json": evidence_manifest_path,
-                "evidence_manifest_schema.json": EVIDENCE_MANIFEST_SCHEMA_PATH,
-                "REPORT.md": REPORT_PATH,
-                "artifact_digests_schema.json": ARTIFACT_DIGESTS_SCHEMA_PATH,
-            }
-            mismatches.extend(_verify_artifact_digests(digests_doc, paths=digest_paths))
+            mismatches.extend(
+                verify_artifact_digests_self_consistency(
+                    artifact_digests=digests_doc, package_dir=artifact_digests_path.parent
+                )
+            )
         else:
             mismatches.append(
                 f"required ARTIFACT-DIGESTS.json not found at {artifact_digests_path}"
@@ -804,19 +777,14 @@ def run_persist(db_url: str) -> dict[str, Any]:
     )
     print(f"Replay report written to: {REPLAY_REPORT_PATH}", flush=True)
 
-    # REPORT.md changed above (replay evidence appended); rebuild the
-    # retained artifact digests so ARTIFACT-DIGESTS.json stays byte-accurate
-    # for every covered file, including REPORT.md.
-    digest_paths = {
-        "selection.json": SELECTION_PATH,
-        "selection_schema.json": SELECTION_SCHEMA_PATH,
-        "evidence_manifest.json": EVIDENCE_MANIFEST_PATH,
-        "evidence_manifest_schema.json": EVIDENCE_MANIFEST_SCHEMA_PATH,
-        "REPORT.md": REPORT_PATH,
-        "artifact_digests_schema.json": ARTIFACT_DIGESTS_SCHEMA_PATH,
-    }
-    digests_doc = _build_artifact_digests(
-        generated_at=datetime.now(tz=UTC).isoformat(), paths=digest_paths
+    # REPORT.md changed above (replay evidence appended) and REPLAY-RESULT.json/
+    # REPLAY-REPORT.md now exist for the first time; rebuild the retained
+    # artifact digests so ARTIFACT-DIGESTS.json covers every retained package
+    # file byte-accurately, including the two just-written replay artifacts.
+    from hullq.bootstrap.wikidata_sl0026_tier1_enrichment_pilot import build_artifact_digests
+
+    digests_doc = build_artifact_digests(
+        generated_at=datetime.now(tz=UTC).isoformat(), package_dir=SL0026_DIR
     )
     mismatches = _validate_schema(
         digests_doc, ARTIFACT_DIGESTS_SCHEMA_PATH, label="SLICE-0026 artifact digests"

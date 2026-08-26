@@ -1,7 +1,7 @@
 {
   "schema_version": "sl0026-evidence-manifest-v1",
-  "generated_at": "2026-08-26T14:43:29.192720+00:00",
-  "acquired_at": "2026-08-26T14:43:26.965654+00:00",
+  "generated_at": "2026-08-26T16:23:15.790435+00:00",
+  "acquired_at": "2026-08-26T16:23:10.234235+00:00",
   "source_id": "SRC_WIKIDATA_API_2026",
   "activity_id": "SLICE-0026-TIER1-ENRICHMENT-PILOT",
   "allowed_field_pointers": [
