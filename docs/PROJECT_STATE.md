@@ -1,9 +1,9 @@
 # HullQ — Current Project State
 
 **Updated:** 2026-08-26  
-**Current stage:** Stage 3.2 — canonical identity breadth / bounded discovery and admission proof (remains open; SLICE-0025 additionally permits a later bounded Stage-3.3 pilot in parallel)  
-**Accepted slices:** SLICE-0001 through SLICE-0024 are owner-accepted / `DONE`  
-**Current queue:** SLICE-0025 reproduced the accepted SLICE-0018/0020/0021/0022/0023/0024 evidence boundary and mechanically derived recommendation `BEGIN_BOUNDED_STAGE_3_3_IN_PARALLEL`; it is handed off `REVIEW`, not yet independently reviewed or project-owner accepted. No later slice is authorized.
+**Current stage:** Stage 3.2 — canonical identity breadth / bounded discovery and admission proof (remains open; SLICE-0025 additionally permitted a bounded Stage-3.3 pilot in parallel, now underway via SLICE-0026)  
+**Accepted slices:** SLICE-0001 through SLICE-0025 are owner-accepted / `DONE`  
+**Current queue:** SLICE-0026 is a bounded Stage-3.3 evidence-path pilot (LOA/LWL/beam/draft/displacement) over exactly 100 already-canonical BoatModels, using only the already-cleared Wikidata adapter for known QIDs (no discovery); it is handed off `REVIEW`, not yet independently reviewed or project-owner accepted. No later slice is authorized.
 
 This is a **compact current-state document**. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Do not use this file as a substitute for normative specs or accepted ADRs.
 
@@ -270,7 +270,9 @@ SLICE-0024 performed zero canonical admission, minted no HullQ ID, changed no hi
 
 Retained package: `research/bootstrap/wikimedia/sl0024-independent-verification/`. Primary contract: `docs/slices/SLICE-0024-wikimedia-lead-independent-identity-verification-pilot.md`. Closure: `docs/slices/SLICE-0024-acceptance-closure.md` (owner acceptance 2026-08-25).
 
-## Current queue — SLICE-0025 `REVIEW`
+## Accepted result — SLICE-0025
+
+SLICE-0025 is accepted / `DONE` (owner acceptance 2026-08-26; see `docs/slices/SLICE-0025-acceptance-closure.md`). Details below.
 
 SLICE-0025 is a bounded `VALIDATION` slice: using only the already-accepted SLICE-0018/0020/0021/0022/0023/0024 evidence above (no new external research, no canonical mutation), it reproduces the fixed accepted evidence boundary directly from retained artifacts and mechanically applies a precommitted decision rule to choose between remaining Stage-3.2-only and beginning a bounded Stage-3.3 pilot in parallel.
 
@@ -286,7 +288,15 @@ Retained package: `research/stage3/sl0025-breadth-enrichment-entry/` (`decision_
 
 Primary contract: `docs/slices/SLICE-0025-stage-3-2-breadth-sufficiency-stage-3-3-parallel-entry-decision.md`.
 
-This entry records the implementation agent's own measurement and does not constitute independent review or project-owner acceptance. SLICE-0025 is `REVIEW`; it is not `DONE`. No SLICE-0026 or later slice is currently `READY` or authorized.
+## Current queue — SLICE-0026 `REVIEW`
+
+SLICE-0026 is a bounded Stage-3.3 evidence-path pilot (not a canonical technical-resolution rollout) over exactly 100 already-canonical BoatModels selected deterministically from the accepted 1,770/1,772 identity boundary. It fetches only those known QIDs via the existing rights-gated Wikidata `wbgetentities` adapter (no discovery query) and reuses the existing SLICE-0004/0008 extraction/normalization path to measure per-field coverage for exactly five allowed field pointers: LOA, LWL, beam, draft, displacement. It creates/mutates no canonical BoatModel/BoatDesign row, mints no BoatDesign ID and creates no FieldResolution.
+
+Retained package: `research/stage3/sl0026-wikidata-tier1-enrichment/` (`selection.json`, `evidence_manifest.json`, `REPORT.md`, `ARTIFACT-DIGESTS.json`, `REPLAY-RESULT.json`/`REPLAY-REPORT.md` plus JSON schemas), reproducible offline via `scripts/bootstrap/wikidata_sl0026_tier1_enrichment_pilot_runner.py --verify`.
+
+Primary contract: `docs/slices/SLICE-0026-bounded-wikidata-tier1-enrichment-evidence-pilot.md`.
+
+This entry records the implementation agent's own measurement and does not constitute independent review or project-owner acceptance. SLICE-0026 is `REVIEW`; it is not `DONE`. No SLICE-0027 or later slice is currently `READY` or authorized.
 
 Operational queue: `docs/slices/INDEX.md`.
 

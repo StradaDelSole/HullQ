@@ -6,7 +6,9 @@ survives the round trip losslessly. Not a general query/search repository API.
 
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from hullq.domain.provenance import (
@@ -88,8 +90,17 @@ def _raw_from_jsonb(d: dict[str, Any]) -> RawObservation:
 def _normalized_from_jsonb(d: dict[str, Any] | None) -> NormalizedCandidate | None:
     if d is None:
         return None
+    value = d["value"]
+    if isinstance(value, str):
+        # hullq.persistence.schema.normalized_to_jsonb stringifies a Decimal
+        # value losslessly before JSONB storage (Decimal has no native JSON
+        # representation); restore it here so the round trip is exact. A
+        # value that was never a Decimal but happens to already be a
+        # non-numeric string is left unchanged.
+        with contextlib.suppress(InvalidOperation):
+            value = Decimal(value)
     return NormalizedCandidate(
-        value=d["value"],
+        value=value,
         unit=d.get("unit"),
         method_id=d.get("method_id"),
         method_version=d.get("method_version"),

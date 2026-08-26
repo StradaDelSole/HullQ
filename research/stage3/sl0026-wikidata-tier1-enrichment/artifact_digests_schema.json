@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0026-artifact-digests/v1",
+  "title": "HullQ SLICE-0026 Artifact Digests",
+  "description": "SHA256 integrity digests covering every retained SLICE-0026 package file except this document itself.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "digests"],
+  "properties": {
+    "schema_version": { "const": "sl0026-artifact-digests-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "selection.json",
+        "selection_schema.json",
+        "evidence_manifest.json",
+        "evidence_manifest_schema.json",
+        "REPORT.md",
+        "artifact_digests_schema.json"
+      ],
+      "properties": {
+        "selection.json": { "$ref": "#/$defs/digest" },
+        "selection_schema.json": { "$ref": "#/$defs/digest" },
+        "evidence_manifest.json": { "$ref": "#/$defs/digest" },
+        "evidence_manifest_schema.json": { "$ref": "#/$defs/digest" },
+        "REPORT.md": { "$ref": "#/$defs/digest" },
+        "artifact_digests_schema.json": { "$ref": "#/$defs/digest" }
+      }
+    }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+  }
+}

@@ -216,6 +216,28 @@ def test_normalized_dict_present() -> None:
     assert d["method_id"] == "std"
 
 
+def test_normalized_dict_decimal_value_stringified_and_fingerprintable() -> None:
+    """SLICE-0026: fingerprint_evidence/fingerprint_observation must not raise
+    on a Decimal-valued NormalizedCandidate (every measurement value
+    hullq.sources.wikidata produces) — json.dumps has no native Decimal
+    support, so _normalized_dict must stringify it losslessly first."""
+    from decimal import Decimal
+
+    nc = NormalizedCandidate(
+        value=Decimal("4500"), unit="kg", method_id="std", method_version="1.0"
+    )
+    d = _normalized_dict(nc)
+    assert d is not None
+    assert d["value"] == "4500"
+    assert isinstance(d["value"], str)
+
+    # Must not raise — exercises the exact json.dumps call fingerprint_dict makes.
+    digest = fingerprint_dict(d)
+    assert isinstance(digest, str) and len(digest) == 64
+    # Deterministic: identical input always yields the identical digest.
+    assert fingerprint_dict(d) == digest
+
+
 def test_applicability_dict_design_option_hints() -> None:
     app = _make_applicability(design_option_hints=["shoal_keel", "fin_keel"])
     d = _applicability_dict(app)

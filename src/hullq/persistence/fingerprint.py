@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from decimal import Decimal
 from typing import Any
 
 from hullq.domain.provenance import (
@@ -74,11 +75,18 @@ def _raw_dict(raw: RawObservation) -> dict[str, Any]:
 def _normalized_dict(nc: NormalizedCandidate | None) -> dict[str, Any] | None:
     if nc is None:
         return None
+    # NormalizedCandidate.value is declared as `object` (REQ: canonical physical
+    # storage uses SI, precision-preserving representation) and MAY be a
+    # Decimal (e.g. every measurement value produced by
+    # hullq.sources.wikidata via hullq.domain.measurements.normalize_measurement).
+    # json.dumps has no native Decimal support; stringify losslessly so
+    # fingerprinting never raises on a genuine, already-accepted value shape.
+    value = str(nc.value) if isinstance(nc.value, Decimal) else nc.value
     return {
         "method_id": nc.method_id,
         "method_version": nc.method_version,
         "unit": nc.unit,
-        "value": nc.value,
+        "value": value,
     }
 
 

@@ -1,0 +1,516 @@
+{
+  "schema_version": "sl0026-selection-v1",
+  "generated_at": "2026-08-26T13:37:04.912490+00:00",
+  "identity_boundary": {
+    "baseline_manifest_path": "research/bootstrap/wikidata/manifest.json",
+    "baseline_manifest_sha256": "076b0d64441973c4d5b71cf467cd9cdbf46242babb9cb44f788c97a0f33e5845",
+    "delta_manifest_path": "research/bootstrap/wikidata/sl0018-2500/manifest.json",
+    "delta_manifest_sha256": "41ef238c217e31cfbe03329e226a1a3dfff849061df93b8f2523a1e72493821f",
+    "canonical_boat_model_count": 1770,
+    "historical_crosswalk_count": 1772
+  },
+  "selection_ordering": "ascending canonical HullQ BoatModel ID over the combined SLICE-0017+0018 AUTO_ADMIT QID->HullQ-ID universe; first pilot_size taken",
+  "pilot_size": 100,
+  "boat_models": [
+    {
+      "hullq_id": "BM_WDT0_0002af56abee4adf9873d76bf16b5949",
+      "qid": "Q106366267",
+      "preferred_label": "Edel 4"
+    },
+    {
+      "hullq_id": "BM_WDT0_0015b2a337084f6a9109db6aa830495a",
+      "qid": "Q107093996",
+      "preferred_label": "Merak Sport"
+    },
+    {
+      "hullq_id": "BM_WDT0_00372d0824024b6ab9bfe6547d56ef67",
+      "qid": "Q106365859",
+      "preferred_label": "UFO 22"
+    },
+    {
+      "hullq_id": "BM_WDT0_003ba28d4cd143d68c28e57899a3ed73",
+      "qid": "Q104861437",
+      "preferred_label": "Buzzards Bay 14"
+    },
+    {
+      "hullq_id": "BM_WDT0_0040159e704c49d0a0b7bc7c6224ecfb",
+      "qid": "Q104829866",
+      "preferred_label": "Suspens"
+    },
+    {
+      "hullq_id": "BM_WDT0_0089f457aa7540c7b0bf3e247a8d1047",
+      "qid": "Q909576",
+      "preferred_label": "Dragon"
+    },
+    {
+      "hullq_id": "BM_WDT0_00949f1a195942d3b3d3f4766417b5ad",
+      "qid": "Q28162918",
+      "preferred_label": "Swan 48 Frers"
+    },
+    {
+      "hullq_id": "BM_WDT0_00a6501eae2b43faa2dfc4bbe6ce6cc9",
+      "qid": "Q28446479",
+      "preferred_label": "Freedom 45"
+    },
+    {
+      "hullq_id": "BM_WDT0_00a7f8b059d447bd9aea08c1f39fe3d2",
+      "qid": "Q7277689",
+      "preferred_label": "RS600"
+    },
+    {
+      "hullq_id": "BM_WDT0_00c866f918ab4d5e942592bf533ba91c",
+      "qid": "Q2829472",
+      "preferred_label": "Alado 18"
+    },
+    {
+      "hullq_id": "BM_WDT0_00de13e286b9494ea1bf5cc888fcc556",
+      "qid": "Q106489271",
+      "preferred_label": "Dufour 525 Grand Large"
+    },
+    {
+      "hullq_id": "BM_WDT0_00e00fd83e5346dab476b83dab332ab7",
+      "qid": "Q1758251",
+      "preferred_label": "Splash"
+    },
+    {
+      "hullq_id": "BM_WDT0_00f6a6f678474a14ab5ec1b078cf6d60",
+      "qid": "Q60521258",
+      "preferred_label": "Hunter 340"
+    },
+    {
+      "hullq_id": "BM_WDT0_0102842bee80490781689fd031f65ba6",
+      "qid": "Q6489548",
+      "preferred_label": "Lark"
+    },
+    {
+      "hullq_id": "BM_WDT0_0108cc11c67b4a8183a6eed7331f1ed1",
+      "qid": "Q7116923",
+      "preferred_label": "P-class yacht"
+    },
+    {
+      "hullq_id": "BM_WDT0_0116d29ce3384300b5fab39fa3447969",
+      "qid": "Q109974350",
+      "preferred_label": "Bristol Channel Cutter"
+    },
+    {
+      "hullq_id": "BM_WDT0_0165c78e6dc040b897a0caf409cf287a",
+      "qid": "Q5399422",
+      "preferred_label": "Esse 990 Sportboat"
+    },
+    {
+      "hullq_id": "BM_WDT0_0169a6d4aa5e42468a809ffa40f25c74",
+      "qid": "Q106436036",
+      "preferred_label": "Etap 26"
+    },
+    {
+      "hullq_id": "BM_WDT0_017fa74c98044a1893f683354e74fc1c",
+      "qid": "Q121484960",
+      "preferred_label": "Beneteau California 5.50"
+    },
+    {
+      "hullq_id": "BM_WDT0_019a7e6f8d744a74b6c4beb400f04d87",
+      "qid": "Q109974843",
+      "preferred_label": "S2 7.0"
+    },
+    {
+      "hullq_id": "BM_WDT0_025c32969570426f829fe6da3904e404",
+      "qid": "Q107093933",
+      "preferred_label": "Alpha 160 F"
+    },
+    {
+      "hullq_id": "BM_WDT0_025f6aed2b4b4d26acfe5393eb93b1a6",
+      "qid": "Q5759292",
+      "preferred_label": "Highlander"
+    },
+    {
+      "hullq_id": "BM_WDT0_0286d96e0d2d4f7f988d1fa5b7dbd220",
+      "qid": "Q7799079",
+      "preferred_label": "Thunderbird 26"
+    },
+    {
+      "hullq_id": "BM_WDT0_02f7e4ff84964ee880a4817384ab6b1d",
+      "qid": "Q246762",
+      "preferred_label": "snark sailboat"
+    },
+    {
+      "hullq_id": "BM_WDT0_02fb818fffd24b3c808a276f570789eb",
+      "qid": "Q85755722",
+      "preferred_label": "Dark Harbor 17 1/2"
+    },
+    {
+      "hullq_id": "BM_WDT0_033628cb7b6d4b5f8f18dbbca2af80ae",
+      "qid": "Q19945962",
+      "preferred_label": "Searunner 37"
+    },
+    {
+      "hullq_id": "BM_WDT0_0365ad4534484dc4bd6ae684f457454e",
+      "qid": "Q4552092",
+      "preferred_label": "16ft Skiff"
+    },
+    {
+      "hullq_id": "BM_WDT0_03c3c12531bb4509b69348cb4da68fad",
+      "qid": "Q370367",
+      "preferred_label": "Hobie Cat"
+    },
+    {
+      "hullq_id": "BM_WDT0_03ce8eafb97647a1b770bee840fc3365",
+      "qid": "Q3506403",
+      "preferred_label": "Swallow"
+    },
+    {
+      "hullq_id": "BM_WDT0_03ffc802087249a5958731bec3594655",
+      "qid": "Q2043470",
+      "preferred_label": "P-Boat"
+    },
+    {
+      "hullq_id": "BM_WDT0_0405737acdc149d187edc9c5ab4fd8e1",
+      "qid": "Q106436043",
+      "preferred_label": "Etap 35i"
+    },
+    {
+      "hullq_id": "BM_WDT0_041b206a55fe490785620b29a2af443a",
+      "qid": "Q85753944",
+      "preferred_label": "Contest 32 CS"
+    },
+    {
+      "hullq_id": "BM_WDT0_04b218cee39c495682c6dab58ba4824f",
+      "qid": "Q10593127",
+      "preferred_label": "M\u00e4lar 30"
+    },
+    {
+      "hullq_id": "BM_WDT0_0500d7a79d094e3790737f6b15997e61",
+      "qid": "Q98139858",
+      "preferred_label": "Skipjack 15"
+    },
+    {
+      "hullq_id": "BM_WDT0_0506d0be7f7a436ba3e3263e930ef410",
+      "qid": "Q28446351",
+      "preferred_label": "Freedom 28"
+    },
+    {
+      "hullq_id": "BM_WDT0_0576d7072d0d4d62a1233522646cc2e1",
+      "qid": "Q3047377",
+      "preferred_label": "Edel 6"
+    },
+    {
+      "hullq_id": "BM_WDT0_0583357032e943039659058f30c1bd27",
+      "qid": "Q109974903",
+      "preferred_label": "Falmouth Cutter 34"
+    },
+    {
+      "hullq_id": "BM_WDT0_05ee3a3457794b1ab9d67aeff57995c1",
+      "qid": "Q6492969",
+      "preferred_label": "RS2000"
+    },
+    {
+      "hullq_id": "BM_WDT0_0606ce74ff444de9a3aa2a439f08da9c",
+      "qid": "Q5875057",
+      "preferred_label": "Hobie Wildcat"
+    },
+    {
+      "hullq_id": "BM_WDT0_063de15589744b39afa2d73358ac039f",
+      "qid": "Q1109616",
+      "preferred_label": "International America's Cup Class"
+    },
+    {
+      "hullq_id": "BM_WDT0_067ecd150594472ca5f327649fada367",
+      "qid": "Q7109348",
+      "preferred_label": "Otter"
+    },
+    {
+      "hullq_id": "BM_WDT0_06fb86aa6d634890a906b890d793d080",
+      "qid": "Q1816085",
+      "preferred_label": "Leisure 17"
+    },
+    {
+      "hullq_id": "BM_WDT0_074f8ccc869342d2b392e9a315709b1b",
+      "qid": "Q85753415",
+      "preferred_label": "Columbia 24"
+    },
+    {
+      "hullq_id": "BM_WDT0_0755a356d5aa4d3a9d7521b468542afb",
+      "qid": "Q7122333",
+      "preferred_label": "Pacific Catamaran"
+    },
+    {
+      "hullq_id": "BM_WDT0_0773da973b2c47dd84dc1e271b3c16fd",
+      "qid": "Q60755809",
+      "preferred_label": "Moorings 335"
+    },
+    {
+      "hullq_id": "BM_WDT0_079e2f2d7b714fd6bbf07b3f21bccf2b",
+      "qid": "Q107094015",
+      "preferred_label": "Seawolf Racing"
+    },
+    {
+      "hullq_id": "BM_WDT0_079f8ff558ae4e5aaae8a87066ce8e25",
+      "qid": "Q16964788",
+      "preferred_label": "Pearson Vanguard"
+    },
+    {
+      "hullq_id": "BM_WDT0_07e7ebd154244b9cb8ccaa61589af3e4",
+      "qid": "Q105742651",
+      "preferred_label": "Clipper 21"
+    },
+    {
+      "hullq_id": "BM_WDT0_080cdc6c04f941bf878b4dd1dc920648",
+      "qid": "Q28233910",
+      "preferred_label": "Swan 68"
+    },
+    {
+      "hullq_id": "BM_WDT0_0830b1e5f698466fa77550cc403751b2",
+      "qid": "Q107093917",
+      "preferred_label": "Kanga 300"
+    },
+    {
+      "hullq_id": "BM_WDT0_08525414f20a478b8968d9403805c20b",
+      "qid": "Q28448974",
+      "preferred_label": "Catalina 320"
+    },
+    {
+      "hullq_id": "BM_WDT0_08ea6f2bec49459b9c9cd96ee82fef67",
+      "qid": "Q28449930",
+      "preferred_label": "C&C 27"
+    },
+    {
+      "hullq_id": "BM_WDT0_08f47683f0b9435ca508cc7cc7e1e602",
+      "qid": "Q60521277",
+      "preferred_label": "Hunter 43 Legend"
+    },
+    {
+      "hullq_id": "BM_WDT0_08f5b3e54ed64515919478f1724db8e8",
+      "qid": "Q3827350",
+      "preferred_label": "Laser 4.7"
+    },
+    {
+      "hullq_id": "BM_WDT0_090a42a1e08641da98a840cd97b671ce",
+      "qid": "Q55071986",
+      "preferred_label": "Discovery 7.9"
+    },
+    {
+      "hullq_id": "BM_WDT0_0916c2b237d342aead7d082b747b5bb7",
+      "qid": "Q28444839",
+      "preferred_label": "Tanzer 28"
+    },
+    {
+      "hullq_id": "BM_WDT0_09362be74c414f70adfeb744afa22120",
+      "qid": "Q22570313",
+      "preferred_label": "J/70"
+    },
+    {
+      "hullq_id": "BM_WDT0_09ddb4a4062d4d559c8c0ba15217f8b9",
+      "qid": "Q28182569",
+      "preferred_label": "Swan 441"
+    },
+    {
+      "hullq_id": "BM_WDT0_0a0a65b7c87149f1a32c64fb62cbf372",
+      "qid": "Q107093902",
+      "preferred_label": "Ligier Funboard"
+    },
+    {
+      "hullq_id": "BM_WDT0_0a34c7c72dcc4f4f8657ee23a90c5f02",
+      "qid": "Q3047373",
+      "preferred_label": "Edel 2"
+    },
+    {
+      "hullq_id": "BM_WDT0_0a4d0a2fe0614c8395955d2dadb49072",
+      "qid": "Q107093913",
+      "preferred_label": "Mad Black"
+    },
+    {
+      "hullq_id": "BM_WDT0_0a89441b627045ec8902a495d2f284d8",
+      "qid": "Q2469375",
+      "preferred_label": "O'pen BIC"
+    },
+    {
+      "hullq_id": "BM_WDT0_0aaedc6c78944558a5d32c79a1f8ff22",
+      "qid": "Q7638953",
+      "preferred_label": "Sunburst"
+    },
+    {
+      "hullq_id": "BM_WDT0_0ad9c9202b5548538c466d8121b3f60f",
+      "qid": "Q107040841",
+      "preferred_label": "Herreshoff America"
+    },
+    {
+      "hullq_id": "BM_WDT0_0aea6edb13dc48c998f194a2980b2376",
+      "qid": "Q103843162",
+      "preferred_label": "Pogo 36"
+    },
+    {
+      "hullq_id": "BM_WDT0_0aeb784a1cef4706982266379b9cc1e0",
+      "qid": "Q5463514",
+      "preferred_label": "Flying Scot"
+    },
+    {
+      "hullq_id": "BM_WDT0_0afd41052a3448129830f55712f03dc7",
+      "qid": "Q103843163",
+      "preferred_label": "Pogo 10.50"
+    },
+    {
+      "hullq_id": "BM_WDT0_0b14fb0af9f643d993fc30f395cb32d8",
+      "qid": "Q105474389",
+      "preferred_label": "Cal T/4"
+    },
+    {
+      "hullq_id": "BM_WDT0_0b347d89ee8c48829d19fb67807d23e9",
+      "qid": "Q104749603",
+      "preferred_label": "RS CAT16"
+    },
+    {
+      "hullq_id": "BM_WDT0_0b557fbeb19348d187443567312a65cf",
+      "qid": "Q19578269",
+      "preferred_label": "WindRider 10"
+    },
+    {
+      "hullq_id": "BM_WDT0_0b94df6b783b458194a0734f07f585d9",
+      "qid": "Q28447966",
+      "preferred_label": "Ranger 26"
+    },
+    {
+      "hullq_id": "BM_WDT0_0bd15dbd17cf44eea09203f4a6bac262",
+      "qid": "Q7321000",
+      "preferred_label": "Rhodes 19"
+    },
+    {
+      "hullq_id": "BM_WDT0_0bf6136e589a4f6498ee70b0f0e44bcd",
+      "qid": "Q5974155",
+      "preferred_label": "ISO"
+    },
+    {
+      "hullq_id": "BM_WDT0_0c19ffaccdae401180f2d6ebeae99c39",
+      "qid": "Q65076969",
+      "preferred_label": "Cal 2-25"
+    },
+    {
+      "hullq_id": "BM_WDT0_0cddc116f5f84bbf845a880beac40686",
+      "qid": "Q7941329",
+      "preferred_label": "Volvo One-Design"
+    },
+    {
+      "hullq_id": "BM_WDT0_0cdf302bff774223b68cf610ea754ea8",
+      "qid": "Q105753294",
+      "preferred_label": "Clipper 23"
+    },
+    {
+      "hullq_id": "BM_WDT0_0d26025b556648dc94e4e2c569979b13",
+      "qid": "Q106489210",
+      "preferred_label": "Dufour 34e"
+    },
+    {
+      "hullq_id": "BM_WDT0_0d3332f4fa6b473db51515dd754f0b41",
+      "qid": "Q106436045",
+      "preferred_label": "Etap 26i"
+    },
+    {
+      "hullq_id": "BM_WDT0_0d3dc025a4f64baea4f61b644fb94722",
+      "qid": "Q60521224",
+      "preferred_label": "Hunter 18.5"
+    },
+    {
+      "hullq_id": "BM_WDT0_0d482c99e18a465f86539c7cb4fa201c",
+      "qid": "Q107093908",
+      "preferred_label": "Diamond Head"
+    },
+    {
+      "hullq_id": "BM_WDT0_0d5c1696f02147348d7f62c1085d8d9d",
+      "qid": "Q18395607",
+      "preferred_label": "X1"
+    },
+    {
+      "hullq_id": "BM_WDT0_0d76db8bb7974fd28db5b1adbeefff40",
+      "qid": "Q25349792",
+      "preferred_label": "Tanzer 7.5"
+    },
+    {
+      "hullq_id": "BM_WDT0_0d7b18ff7c14471e8dbc17ae665dcfaf",
+      "qid": "Q104902894",
+      "preferred_label": "Amphibi-Con 25"
+    },
+    {
+      "hullq_id": "BM_WDT0_0d7e014b40034115aadfa9b01cc7caea",
+      "qid": "Q18355683",
+      "preferred_label": "Flying Phantom"
+    },
+    {
+      "hullq_id": "BM_WDT0_0d940e826d4f4aa0a30acd07fb837591",
+      "qid": "Q26869445",
+      "preferred_label": "Freedom 28 Cat Ketch"
+    },
+    {
+      "hullq_id": "BM_WDT0_0deff08a37754fe2b134afca36e08655",
+      "qid": "Q5310817",
+      "preferred_label": "Dublin Bay 24"
+    },
+    {
+      "hullq_id": "BM_WDT0_0e010b1c7a96496ab84d8e0a007ae968",
+      "qid": "Q107094018",
+      "preferred_label": "Ligier Loisir"
+    },
+    {
+      "hullq_id": "BM_WDT0_0e1fb528258b4ac8a4daf0dfebec3c69",
+      "qid": "Q109973703",
+      "preferred_label": "S2 10.3"
+    },
+    {
+      "hullq_id": "BM_WDT0_0e4382e856004934b01266c0ce63bc40",
+      "qid": "Q107324686",
+      "preferred_label": "Kaiser 25"
+    },
+    {
+      "hullq_id": "BM_WDT0_0e5ae9e1cdcf42c880d3a8fec0c43092",
+      "qid": "Q48845062",
+      "preferred_label": "Mirage 39"
+    },
+    {
+      "hullq_id": "BM_WDT0_0e8528d46b5b44caa5e2eae217215c8a",
+      "qid": "Q106075875",
+      "preferred_label": "Cornish Crabber 24"
+    },
+    {
+      "hullq_id": "BM_WDT0_0eac095907db44f88d9e1eacb5b83b01",
+      "qid": "Q28233906",
+      "preferred_label": "Swan 76"
+    },
+    {
+      "hullq_id": "BM_WDT0_0ee18a6310c24cc097a710352569e4ae",
+      "qid": "Q103843168",
+      "preferred_label": "Pogo 50"
+    },
+    {
+      "hullq_id": "BM_WDT0_0f5b200366e34311b570e48b8086cc43",
+      "qid": "Q28445920",
+      "preferred_label": "Chico 30"
+    },
+    {
+      "hullq_id": "BM_WDT0_0f6523f9aca84c43a36dafb1efa49dfa",
+      "qid": "Q28162947",
+      "preferred_label": "Swan 77"
+    },
+    {
+      "hullq_id": "BM_WDT0_0f7288826a1c440db8a835b83be49332",
+      "qid": "Q106971931",
+      "preferred_label": "Classic 22"
+    },
+    {
+      "hullq_id": "BM_WDT0_0f903a3481e843e6a8add1802a771a7e",
+      "qid": "Q106541128",
+      "preferred_label": "K3"
+    },
+    {
+      "hullq_id": "BM_WDT0_0fb75bfa80a340c58f7d0be0c65eac16",
+      "qid": "Q48850681",
+      "preferred_label": "Beneteau Oceanis 321"
+    },
+    {
+      "hullq_id": "BM_WDT0_0fc75a8e076340e3b16bf5c6f38e5d37",
+      "qid": "Q5438001",
+      "preferred_label": "Fatty Knees"
+    },
+    {
+      "hullq_id": "BM_WDT0_0ff30f7a6d6f4c2ea3a41bb811b21bf3",
+      "qid": "Q5092598",
+      "preferred_label": "Cherub"
+    }
+  ]
+}

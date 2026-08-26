@@ -110,6 +110,33 @@ def test_normalized_to_jsonb_present() -> None:
     assert d["method_id"] == "std"
 
 
+def test_normalized_to_jsonb_decimal_value_stringified() -> None:
+    """SLICE-0026: every measurement value hullq.sources.wikidata produces via
+    hullq.domain.measurements.normalize_measurement is a Decimal.
+    NormalizedCandidate.value is untyped (``object``), but json.dumps (used
+    by psycopg's Jsonb wrapper for JSONB storage) has no native Decimal
+    support — normalized_to_jsonb must stringify it losslessly rather than
+    raise ``TypeError: Object of type Decimal is not JSON serializable``.
+    """
+    from decimal import Decimal
+
+    nc = NormalizedCandidate(
+        value=Decimal("12.80"),
+        unit="m",
+        method_id="hullq-measurements-1.0",
+        method_version="SLICE-0004-v1",
+    )
+    d = normalized_to_jsonb(nc)
+    assert d is not None
+    assert d["value"] == "12.80"
+    assert isinstance(d["value"], str)
+
+    import json
+
+    # Must not raise — this is exactly the shape passed to psycopg's Jsonb().
+    json.dumps(d)
+
+
 # ---------------------------------------------------------------------------
 # producer_to_jsonb
 # ---------------------------------------------------------------------------

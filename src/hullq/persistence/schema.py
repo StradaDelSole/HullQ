@@ -6,6 +6,7 @@ the relational schema. They are pure Python with no database dependencies.
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 
 from hullq.domain.provenance import (
@@ -53,8 +54,15 @@ def raw_to_jsonb(raw: RawObservation) -> dict[str, Any]:
 def normalized_to_jsonb(nc: NormalizedCandidate | None) -> dict[str, Any] | None:
     if nc is None:
         return None
+    # NormalizedCandidate.value is declared as `object` and MAY be a Decimal
+    # (e.g. every measurement value produced by hullq.sources.wikidata via
+    # hullq.domain.measurements.normalize_measurement). The JSONB encoder has
+    # no native Decimal support, so stringify losslessly for storage;
+    # hullq.persistence.readback._normalized_from_jsonb restores a Decimal
+    # from a numeric string on read so the round trip is exact.
+    value = str(nc.value) if isinstance(nc.value, Decimal) else nc.value
     return {
-        "value": nc.value,
+        "value": value,
         "unit": nc.unit,
         "method_id": nc.method_id,
         "method_version": nc.method_version,
