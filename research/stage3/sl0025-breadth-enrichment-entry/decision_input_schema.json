@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0025-decision-input/v1",
+  "title": "HullQ SLICE-0025 Breadth/Enrichment Entry Decision Input",
+  "description": "Retained SLICE-0025 fixed accepted evidence boundary, its reproduction from SLICE-0018/0020/0021/0022/0023/0024 retained artifacts, and the four known Stage-3.2 breadth-path candidates evaluated against it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "fixed_accepted_boundary",
+    "reproduced_accepted_boundary",
+    "boundary_mismatches",
+    "known_breadth_path_candidates"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0025-decision-input-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "fixed_accepted_boundary": { "$ref": "#/$defs/fixed_boundary" },
+    "reproduced_accepted_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accepted_canonical_boat_models",
+        "historical_qid_to_hullq_id_mappings",
+        "sl0018_direct_discovery_unique_qids",
+        "sl0018_requested_direct_discovery_limit",
+        "sl0020_adapter_ready_archive_sources",
+        "sl0021_alternative_route_candidate_union",
+        "sl0022_auto_admit_from_57",
+        "sl0022_review_required",
+        "sl0022_not_admitted",
+        "sl0023_incremental_wikimedia_qid_leads",
+        "sl0024_threshold_set_independently_supported_in_scope",
+        "sl0024_threshold_required",
+        "sl0024_final_recommendation",
+        "zero_tolerance_conditions_clear",
+        "prior_baseline_verified_before_sl0022"
+      ],
+      "properties": {
+        "accepted_canonical_boat_models": { "type": "integer" },
+        "historical_qid_to_hullq_id_mappings": { "type": "integer" },
+        "sl0018_direct_discovery_unique_qids": { "type": "integer" },
+        "sl0018_requested_direct_discovery_limit": { "type": "integer" },
+        "sl0020_adapter_ready_archive_sources": { "type": "integer" },
+        "sl0021_alternative_route_candidate_union": { "type": "integer" },
+        "sl0022_auto_admit_from_57": { "type": "integer" },
+        "sl0022_review_required": { "type": "integer" },
+        "sl0022_not_admitted": { "type": "integer" },
+        "sl0023_incremental_wikimedia_qid_leads": { "type": "integer" },
+        "sl0024_threshold_set_independently_supported_in_scope": { "type": "integer" },
+        "sl0024_threshold_required": { "type": "integer" },
+        "sl0024_final_recommendation": { "type": "string" },
+        "zero_tolerance_conditions_clear": { "type": "boolean" },
+        "prior_baseline_verified_before_sl0022": { "type": "boolean" }
+      }
+    },
+    "boundary_mismatches": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "known_breadth_path_candidates": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/breadth_path_candidate" }
+    }
+  },
+  "$defs": {
+    "fixed_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accepted_canonical_boat_models",
+        "historical_qid_to_hullq_id_mappings",
+        "sl0018_direct_discovery_unique_qids",
+        "sl0018_requested_direct_discovery_limit",
+        "sl0020_adapter_ready_archive_sources",
+        "sl0021_alternative_route_candidate_union",
+        "sl0022_auto_admit_from_57",
+        "sl0022_review_required",
+        "sl0022_not_admitted",
+        "sl0023_incremental_wikimedia_qid_leads",
+        "sl0024_threshold_set_independently_supported_in_scope",
+        "sl0024_threshold_required",
+        "sl0024_final_recommendation"
+      ],
+      "properties": {
+        "accepted_canonical_boat_models": { "const": 1770 },
+        "historical_qid_to_hullq_id_mappings": { "const": 1772 },
+        "sl0018_direct_discovery_unique_qids": { "const": 1829 },
+        "sl0018_requested_direct_discovery_limit": { "const": 2500 },
+        "sl0020_adapter_ready_archive_sources": { "const": 0 },
+        "sl0021_alternative_route_candidate_union": { "const": 57 },
+        "sl0022_auto_admit_from_57": { "const": 0 },
+        "sl0022_review_required": { "const": 31 },
+        "sl0022_not_admitted": { "const": 26 },
+        "sl0023_incremental_wikimedia_qid_leads": { "const": 409 },
+        "sl0024_threshold_set_independently_supported_in_scope": { "const": 11 },
+        "sl0024_threshold_required": { "const": 12 },
+        "sl0024_final_recommendation": { "const": "LOW_INDEPENDENT_VERIFICATION_YIELD" }
+      }
+    },
+    "breadth_path_candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "source_slices",
+        "already_executed",
+        "production_bulk_cleared",
+        "materially_different_from_sl0018",
+        "likely_incremental_yield",
+        "requires_full_wikimedia_campaign",
+        "requires_upstream_governance_decision",
+        "qualifies",
+        "rationale"
+      ],
+      "properties": {
+        "name": { "type": "string" },
+        "source_slices": { "type": "string" },
+        "already_executed": { "type": "boolean" },
+        "production_bulk_cleared": { "type": "boolean" },
+        "materially_different_from_sl0018": { "type": "boolean" },
+        "likely_incremental_yield": { "type": "integer", "minimum": 0 },
+        "requires_full_wikimedia_campaign": { "type": "boolean" },
+        "requires_upstream_governance_decision": { "type": "boolean" },
+        "qualifies": { "type": "boolean" },
+        "rationale": { "type": "string" }
+      }
+    }
+  }
+}

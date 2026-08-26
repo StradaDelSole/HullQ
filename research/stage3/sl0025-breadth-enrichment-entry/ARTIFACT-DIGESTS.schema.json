@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0025-artifact-digests/v1",
+  "title": "HullQ SLICE-0025 Artifact Digests",
+  "description": "SHA256 integrity digests of every other retained SLICE-0025 package file, excluding this file itself.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "excludes_self", "digests"],
+  "properties": {
+    "schema_version": { "const": "sl0025-artifact-digests-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "excludes_self": { "const": "ARTIFACT-DIGESTS.json" },
+    "digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision_input.json",
+        "decision_input_schema.json",
+        "decision_result.json",
+        "decision_result_schema.json",
+        "REPORT.md",
+        "ARTIFACT-DIGESTS.schema.json"
+      ],
+      "properties": {
+        "decision_input.json": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "decision_input_schema.json": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "decision_result.json": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "decision_result_schema.json": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "REPORT.md": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "ARTIFACT-DIGESTS.schema.json": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      }
+    }
+  }
+}

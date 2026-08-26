@@ -1,9 +1,9 @@
 # HullQ — Current Project State
 
-**Updated:** 2026-08-25  
-**Current stage:** Stage 3.2 — canonical identity breadth / bounded discovery and admission proof  
-**Accepted slices:** SLICE-0001 through SLICE-0023 are owner-accepted / `DONE`  
-**Current queue:** SLICE-0024 was amended after independent review found the original `REVIEW` handoff not defensible (hidden over-budget action counting; two overstated evidence judgments) and is now `BLOCKED`, not `REVIEW`/`DONE`. No later slice is authorized.
+**Updated:** 2026-08-26  
+**Current stage:** Stage 3.2 — canonical identity breadth / bounded discovery and admission proof (remains open; SLICE-0025 additionally permits a later bounded Stage-3.3 pilot in parallel)  
+**Accepted slices:** SLICE-0001 through SLICE-0024 are owner-accepted / `DONE`  
+**Current queue:** SLICE-0025 reproduced the accepted SLICE-0018/0020/0021/0022/0023/0024 evidence boundary and mechanically derived recommendation `BEGIN_BOUNDED_STAGE_3_3_IN_PARALLEL`; it is handed off `REVIEW`, not yet independently reviewed or project-owner accepted. No later slice is authorized.
 
 This is a **compact current-state document**. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Do not use this file as a substitute for normative specs or accepted ADRs.
 
@@ -30,9 +30,10 @@ retained historical QID -> HullQ-ID mappings    1,772
 SLICE-0021 alternative-route union                  57 QIDs
 SLICE-0022 new canonical admissions                  0
 SLICE-0023 incremental Wikimedia QID leads          409
+SLICE-0024 threshold-set independently-supported     11  (>=12 required -- NOT MET)
 ```
 
-SLICE-0023 did **not** admit any of its 409 leads. Canonical BoatModels therefore remain exactly **1,770** and the historical crosswalk exactly **1,772**.
+SLICE-0023 did **not** admit any of its 409 leads, and SLICE-0024's bounded 30-candidate verification pilot did not meet its independent-support threshold. Canonical BoatModels therefore remain exactly **1,770** and the historical crosswalk exactly **1,772**.
 
 ## Latest accepted result — SLICE-0023
 
@@ -99,7 +100,7 @@ Do not infer that `FOLLOWUP_VERIFICATION_CANDIDATE` means:
 - Tier-1/Tier-2 technical enrichment;
 - query-engine/API/frontend authorization.
 
-SLICE-0024 is `BLOCKED` after independent review (see below); it remains only a bounded verification-source pilot over 30 deterministic candidates and its corrected `LOW_INDEPENDENT_VERIFICATION_YIELD` recommendation is research-only and authorizes nothing.
+SLICE-0024 is accepted / `DONE` (see below); it remains only a bounded verification-source pilot over 30 deterministic candidates and its corrected `LOW_INDEPENDENT_VERIFICATION_YIELD` recommendation is research-only and authorizes nothing. SLICE-0025 (see below) additionally permits a later, separately readied slice to pilot a bounded Stage-3.3 Tier-1/basic enrichment subset in parallel with continued Stage-3.2 breadth work; it does not itself perform or authorize that enrichment.
 
 ## Accepted foundation
 
@@ -128,6 +129,7 @@ SLICE-0024 is `BLOCKED` after independent review (see below); it remains only a 
 | 0021 | alternative Wikidata routes; +57 discovery signals |
 | 0022 | admission-safety proof; 0 auto-admissions from the 57 alternatives |
 | 0023 | Wikimedia category lead pilot; +409 research leads, follow-up candidate |
+| 0024 | independent verification pilot over 30 candidates; 11/24 independently supported (below required 12), accepted `LOW_INDEPENDENT_VERIFICATION_YIELD` |
 
 For exact amendments, hashes, CI runs and acceptance reasoning, read the corresponding `docs/slices/SLICE-XXXX-acceptance-closure.md` and retained package instead of expanding this document.
 
@@ -258,41 +260,33 @@ Binding files:
 
 The project master/reviewer should explicitly direct the operator with `NOW: /clear` or `NOW: /compact` when appropriate.
 
-## Current next boundary — SLICE-0024 `BLOCKED` after independent review
+## Accepted result — SLICE-0024
 
-SLICE-0024 performed a deterministic **30-QID independent identity-verification/source-cost pilot** over the final accepted SLICE-0023 quality sample:
+SLICE-0024 performed a deterministic **30-QID independent identity-verification/source-cost pilot** over the final accepted SLICE-0023 quality sample. The project owner explicitly accepted its **corrected blocked finding** as `DONE`: the primary contract correctly retains historical status `BLOCKED` because two candidates (`Q119855214`, `Q30681833`) truly exceeded the fixed per-candidate search-query ceiling during original execution, but the bounded research slice is complete and its negative/blocked outcome is the accepted final result.
+
+Accepted corrected result: 11 `in_scope_identity` / 8 `out_of_scope` / 0 `conflict` / 11 `unresolved`; among the 24 prior plausible+ambiguous threshold candidates, only 11 were independently supported `in_scope_identity` (**below** the required >=12); global totals 50 searches / 71 evaluations / 121 combined actions (within global ceilings 60/120/180). The precommitted mechanical recommendation rule yields **`LOW_INDEPENDENT_VERIFICATION_YIELD`** — a research-only signal, not an authorization of anything.
+
+SLICE-0024 performed zero canonical admission, minted no HullQ ID, changed no historical crosswalk and began no Stage-3.3 enrichment.
+
+Retained package: `research/bootstrap/wikimedia/sl0024-independent-verification/`. Primary contract: `docs/slices/SLICE-0024-wikimedia-lead-independent-identity-verification-pilot.md`. Closure: `docs/slices/SLICE-0024-acceptance-closure.md` (owner acceptance 2026-08-25).
+
+## Current queue — SLICE-0025 `REVIEW`
+
+SLICE-0025 is a bounded `VALIDATION` slice: using only the already-accepted SLICE-0018/0020/0021/0022/0023/0024 evidence above (no new external research, no canonical mutation), it reproduces the fixed accepted evidence boundary directly from retained artifacts and mechanically applies a precommitted decision rule to choose between remaining Stage-3.2-only and beginning a bounded Stage-3.3 pilot in parallel.
+
+None of the four known Stage-3.2 breadth mechanisms (a larger SLICE-0018 direct-discovery limit, SLICE-0020 manufacturer/archive bulk bootstrap, the SLICE-0021/0022 alternative Wikidata route, or a full SLICE-0023/0024 Wikimedia-lead campaign) qualifies as an unexecuted, already-cleared, materially-different, >=100-yield route. All accepted parallel-readiness conditions (zero-tolerance identity foundation, >=1,000 and >=1,770 canonical BoatModels, SLICE-0022's zero auto-admissions, SLICE-0024's below-threshold yield, a boundable deterministic subset) are met, so the mechanically derived recommendation is:
 
 ```text
-prior plausible   18
-prior ambiguous    6
-prior out-of-scope 6
+BEGIN_BOUNDED_STAGE_3_3_IN_PARALLEL
 ```
 
-The prior tags were used only as calibration metadata, never as new-outcome evidence. Each of the 30 candidates was researched under the strict per-candidate (<=2 search / <=4 source-page-eval / <=6 combined) and global (<=60 / <=120 / <=180) action ceilings. Qualifying evidence came only from the accepted strong source hierarchy (manufacturer/shipyard, brochure, owner's/technical manual, designer/naval architect, class association, owners' association, museum/archive) or, secondarily, two genuinely independent high-quality specialist sources. Wikipedia/Wikidata context, search snippets and SailboatData were used only as discovery, never as qualifying verification evidence.
+This does **not** declare Stage 3.2 complete, does not declare G4 passed, and does not itself perform or authorize any enrichment, canonical admission, query-engine, API, frontend or other implementation work. Stage 3.2 breadth work remains explicitly open. It permits only a later, separately readied slice to pilot a bounded Stage-3.3 Tier-1/basic-enrichment subset of already-canonical BoatModels.
 
-**Independent review (2026-08-25) found the original `REVIEW` handoff not defensible** and returned verdict `BLOCK`:
+Retained package: `research/stage3/sl0025-breadth-enrichment-entry/` (`decision_input.json`, `decision_result.json`, `REPORT.md`, `ARTIFACT-DIGESTS.json` plus their JSON schemas), reproducible offline via `scripts/bootstrap/sl0025_breadth_enrichment_entry_decision_runner.py --verify`.
 
-1. two candidates (`Q119855214`, `Q30681833`) actually issued a third discovery-search query beyond the fixed 2-query-per-candidate ceiling; the original assembly incorrectly excluded those actually-issued queries from the mechanically counted action ledger instead of retaining/counting them (an executed action must never be hidden or discarded because its lead went unused);
-2. two evidence judgments overstated their retained evidence: `Q49142754` ("Acapella") documents one individual 1978 trimaran hull, not a reusable production model/class/design-family; `Q115815035` ("Legende 1 Ton") documents a custom modified-mould One Tonner racing prototype that preceded the distinct production Sun Legende 41, not a production design family.
+Primary contract: `docs/slices/SLICE-0025-stage-3-2-breadth-sufficiency-stage-3-3-parallel-entry-decision.md`.
 
-The retained package, pure module, offline verifier and tests were amended (no new external research performed) to truthfully count every actually-issued action, mechanically detect per-candidate ceiling violations and feed them into the precommitted recommendation rule, and reclassify the two overstated candidates to `out_of_scope`. Corrected measured result: 11 `in_scope_identity` / 8 `out_of_scope` / 0 `conflict` / 11 `unresolved`; among the 24 prior plausible+ambiguous threshold candidates, only 11 were independently supported `in_scope_identity` (**below** the required >=12), of which 10 were `strong_source` (>=8 required, moot given the yield shortfall); median combined research actions among independently-supported in-scope candidates was 2.0 (<=4 required); global totals 50 searches / 71 evaluations / 121 combined actions (within global ceilings 60/120/180), but the per-candidate search-query ceiling (<=2) was truly exceeded for `Q119855214` and `Q30681833` (3 each). The precommitted mechanical recommendation rule (reapplied exactly in its specified order, not hardcoded) now yields **`LOW_INDEPENDENT_VERIFICATION_YIELD`** — a research-only signal, not an authorization of anything.
-
-SLICE-0024 did not:
-
-- create any canonical identity;
-- mint any HullQ ID;
-- change the historical crosswalk;
-- grant any new production source clearance;
-- begin Stage-3.3 enrichment;
-- create/start SLICE-0025.
-
-SLICE-0024 does not satisfy its own acceptance criterion that "all 30 candidates receive a bounded research result without exceeding per-candidate/global action ceilings" (two candidates truly exceeded the per-candidate search-query ceiling), so it is handed off `BLOCKED`, not `REVIEW`.
-
-Retained package: `research/bootstrap/wikimedia/sl0024-independent-verification/` (`verification_sample.json`, `verification_results.json`, `REPORT.md`, `ARTIFACT-DIGESTS.json` plus their JSON schemas). The retained package passes its own strict offline `--verify` recompute/tamper-check with zero mismatches; the per-candidate ceiling violations are truthfully retained and printed as an explicit note by `--verify`, not hidden or treated as a hard verifier failure.
-
-Primary contract: `docs/slices/SLICE-0024-wikimedia-lead-independent-identity-verification-pilot.md`.
-
-This entry records the implementation agent's own measurement and does not constitute further independent review or project-owner acceptance. SLICE-0024 is `BLOCKED`; it is not `REVIEW` or `DONE`. No SLICE-0025 or later slice is currently `READY` or authorized.
+This entry records the implementation agent's own measurement and does not constitute independent review or project-owner acceptance. SLICE-0025 is `REVIEW`; it is not `DONE`. No SLICE-0026 or later slice is currently `READY` or authorized.
 
 Operational queue: `docs/slices/INDEX.md`.
 

@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0025  
 **Type:** VALIDATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** 3.2 → 3.3 decision boundary  
 **Depends on:** SLICE-0024 owner-accepted / DONE  
 **Blocks:** first Stage-3.3 basic-enrichment implementation slice; any claim that Stage 3.2 is complete

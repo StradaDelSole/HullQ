@@ -1,0 +1,87 @@
+{
+  "schema_version": "sl0025-decision-input-v1",
+  "generated_at": "2026-08-25T00:00:00+00:00",
+  "fixed_accepted_boundary": {
+    "accepted_canonical_boat_models": 1770,
+    "historical_qid_to_hullq_id_mappings": 1772,
+    "sl0018_direct_discovery_unique_qids": 1829,
+    "sl0018_requested_direct_discovery_limit": 2500,
+    "sl0020_adapter_ready_archive_sources": 0,
+    "sl0021_alternative_route_candidate_union": 57,
+    "sl0022_auto_admit_from_57": 0,
+    "sl0022_review_required": 31,
+    "sl0022_not_admitted": 26,
+    "sl0023_incremental_wikimedia_qid_leads": 409,
+    "sl0024_threshold_set_independently_supported_in_scope": 11,
+    "sl0024_threshold_required": 12,
+    "sl0024_final_recommendation": "LOW_INDEPENDENT_VERIFICATION_YIELD"
+  },
+  "reproduced_accepted_boundary": {
+    "accepted_canonical_boat_models": 1770,
+    "historical_qid_to_hullq_id_mappings": 1772,
+    "sl0018_direct_discovery_unique_qids": 1829,
+    "sl0018_requested_direct_discovery_limit": 2500,
+    "sl0020_adapter_ready_archive_sources": 0,
+    "sl0021_alternative_route_candidate_union": 57,
+    "sl0022_auto_admit_from_57": 0,
+    "sl0022_review_required": 31,
+    "sl0022_not_admitted": 26,
+    "sl0023_incremental_wikimedia_qid_leads": 409,
+    "sl0024_threshold_set_independently_supported_in_scope": 11,
+    "sl0024_threshold_required": 12,
+    "sl0024_final_recommendation": "LOW_INDEPENDENT_VERIFICATION_YIELD",
+    "zero_tolerance_conditions_clear": true,
+    "prior_baseline_verified_before_sl0022": true
+  },
+  "boundary_mismatches": [],
+  "known_breadth_path_candidates": [
+    {
+      "name": "sl0018_larger_direct_discovery_limit",
+      "source_slices": "SLICE-0018",
+      "already_executed": true,
+      "production_bulk_cleared": true,
+      "materially_different_from_sl0018": false,
+      "likely_incremental_yield": 0,
+      "requires_full_wikimedia_campaign": false,
+      "requires_upstream_governance_decision": false,
+      "qualifies": false,
+      "rationale": "Same exact direct-instance Wikidata strategy already measured a 1829-QID source ceiling against a requested limit of 2500. The accepted SLICE-0018 closure states that simply increasing the limit is not evidence that further direct-instance candidates exist."
+    },
+    {
+      "name": "sl0020_manufacturer_archive_bulk_bootstrap",
+      "source_slices": "SLICE-0020",
+      "already_executed": true,
+      "production_bulk_cleared": false,
+      "materially_different_from_sl0018": true,
+      "likely_incremental_yield": 0,
+      "requires_full_wikimedia_campaign": false,
+      "requires_upstream_governance_decision": false,
+      "qualifies": false,
+      "rationale": "0 of 10 assessed manufacturer/heritage archive sources reached ADAPTER_READY under the accepted source-rights model; no cleared bulk-bootstrap source exists to measure a yield from."
+    },
+    {
+      "name": "sl0021_sl0022_alternative_wikidata_route",
+      "source_slices": "SLICE-0021, SLICE-0022",
+      "already_executed": true,
+      "production_bulk_cleared": true,
+      "materially_different_from_sl0018": true,
+      "likely_incremental_yield": 0,
+      "requires_full_wikimedia_campaign": false,
+      "requires_upstream_governance_decision": false,
+      "qualifies": false,
+      "rationale": "Already executed: the 57-QID alternative-route union was already run through Tier-0 admission and produced 0 AUTO_ADMIT (31 REVIEW_REQUIRED, 26 NOT_ADMITTED). It is not an unexecuted mechanism, and its realized yield is far below 100."
+    },
+    {
+      "name": "sl0023_sl0024_full_wikimedia_verification_campaign",
+      "source_slices": "SLICE-0023, SLICE-0024",
+      "already_executed": false,
+      "production_bulk_cleared": false,
+      "materially_different_from_sl0018": true,
+      "likely_incremental_yield": 409,
+      "requires_full_wikimedia_campaign": true,
+      "requires_upstream_governance_decision": false,
+      "qualifies": false,
+      "rationale": "The 409-lead yield is >=100, but Wikipedia/Wikimedia remains cleared for research-lead use only (not bulk canonical admission), and a full campaign over all leads is exactly what the accepted SLICE-0024 result (LOW_INDEPENDENT_VERIFICATION_YIELD, 11 < 12 required) rejected as unjustified."
+    }
+  ]
+}

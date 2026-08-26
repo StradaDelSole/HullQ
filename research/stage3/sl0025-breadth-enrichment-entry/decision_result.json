@@ -1,0 +1,23 @@
+{
+  "schema_version": "sl0025-decision-result-v1",
+  "generated_at": "2026-08-25T00:00:00+00:00",
+  "boundary_mismatches": [],
+  "qualifying_breadth_path": null,
+  "parallel_readiness_conditions": {
+    "zero_tolerance_identity_foundation_accepted": true,
+    "canonical_count_at_least_1000": true,
+    "canonical_count_at_least_1770": true,
+    "no_qualifying_breadth_path_pending": true,
+    "sl0022_zero_auto_admit_established": true,
+    "sl0024_below_yield_threshold": true,
+    "bounded_subset_and_provenance_preservable": true,
+    "all_met": true
+  },
+  "decision": "BEGIN_BOUNDED_STAGE_3_3_IN_PARALLEL",
+  "interpretation": {
+    "declares_stage_3_2_complete": false,
+    "declares_g4_pass": false,
+    "authorizes_broad_enrichment": false,
+    "stage_3_2_remains_open": true
+  }
+}
