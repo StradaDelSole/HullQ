@@ -577,9 +577,22 @@ def test_normalized_from_jsonb_none() -> None:
 
 def test_normalized_from_jsonb_present() -> None:
     from hullq.persistence.readback import _normalized_from_jsonb
+    from hullq.persistence.schema import (
+        ENCODED_VALUE_PAYLOAD_KEY,
+        ENCODED_VALUE_TYPE_KEY,
+        ENCODED_VALUE_TYPE_RAW,
+    )
 
     nc = _normalized_from_jsonb(
-        {"value": 10.5, "unit": "m", "method_id": "std", "method_version": "1.0"}
+        {
+            "value": {
+                ENCODED_VALUE_TYPE_KEY: ENCODED_VALUE_TYPE_RAW,
+                ENCODED_VALUE_PAYLOAD_KEY: 10.5,
+            },
+            "unit": "m",
+            "method_id": "std",
+            "method_version": "1.0",
+        }
     )
     assert nc is not None
     assert nc.value == 10.5

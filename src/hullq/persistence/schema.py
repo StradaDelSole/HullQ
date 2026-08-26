@@ -6,6 +6,7 @@ the relational schema. They are pure Python with no database dependencies.
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 
 from hullq.domain.provenance import (
@@ -50,11 +51,100 @@ def raw_to_jsonb(raw: RawObservation) -> dict[str, Any]:
     }
 
 
+# NormalizedCandidate.value is declared as `object` (REQ: canonical physical
+# storage uses SI, precision-preserving representation) and — per
+# FIELD_EVIDENCE_SCHEMA.v0.2 — its accepted value domain is genuinely
+# unconstrained: str, int, float, bool, None, dict or list, at any nesting.
+# Two concrete needs follow:
+#
+# 1. Every measurement value hullq.sources.wikidata produces via
+#    hullq.domain.measurements.normalize_measurement is a Decimal, which the
+#    JSONB/JSON encoder has no native representation for.
+# 2. Because the accepted value domain includes arbitrary dicts, ANY marker
+#    shape used to tag a Decimal (e.g. a reserved key) can itself collide
+#    with a legitimate, unrelated value that happens to already look like
+#    that marker — narrowing the accepted domain to rule this out is not
+#    permitted (no controlling spec does so), and a partial/heuristic escape
+#    scheme only pushes the same collision one level deeper (an escaped
+#    value that itself looks like an escape marker).
+#
+# The only construction that is unambiguous for a genuinely unconstrained
+# domain is a TOTAL envelope: every value, without exception, is wrapped in
+# a fixed two-key discriminated-union shape before storage/fingerprinting.
+# The stored top level is therefore NEVER the naked original value — it is
+# always {ENCODED_VALUE_TYPE_KEY: ..., ENCODED_VALUE_PAYLOAD_KEY: ...} — so
+# decoding never needs to pattern-match (and risk misreading) a value's own
+# internal structure; for the "raw" branch the payload is returned byte-for-
+# byte verbatim, completely uninspected. Shared verbatim by
+# hullq.persistence.readback (decode) and hullq.persistence.fingerprint
+# (encode, for a stable/distinguishing content hash) rather than duplicated,
+# so the two sides of the encoding can never drift apart.
+ENCODED_VALUE_TYPE_KEY = "$type"
+ENCODED_VALUE_PAYLOAD_KEY = "$value"
+ENCODED_VALUE_TYPE_DECIMAL = "decimal"
+ENCODED_VALUE_TYPE_RAW = "raw"
+
+
+class EncodedValueError(ValueError):
+    """Raised when a value read back from JSONB/JSON storage is not a valid
+    ``encode_normalized_value`` envelope.
+
+    Every value ``encode_normalized_value`` ever produces is wrapped, so an
+    unwrapped or malformed value here means the data was never round-tripped
+    through this encoding (corruption, or a foreign/legacy row) — fails
+    closed rather than silently guessing an interpretation.
+    """
+
+
+def encode_normalized_value(value: object) -> dict[str, Any]:
+    """Encode *value* for JSON/JSONB storage in a type-preserving envelope.
+
+    See the module-level comment above ``ENCODED_VALUE_TYPE_KEY`` for why
+    every value — not only Decimal — is unconditionally wrapped: a genuinely
+    unconstrained value domain (FIELD_EVIDENCE_SCHEMA.v0.2) means no
+    unwrapped marker shape can ever be proven safe against collision with a
+    legitimate value. A Decimal is encoded as its exact decimal text under
+    type ``"decimal"``; every other value (str, int, float, bool, None,
+    dict, list, at any nesting — including a dict that happens to look like
+    an envelope itself) is embedded byte-for-byte unchanged under type
+    ``"raw"``.
+    """
+    if isinstance(value, Decimal):
+        return {
+            ENCODED_VALUE_TYPE_KEY: ENCODED_VALUE_TYPE_DECIMAL,
+            ENCODED_VALUE_PAYLOAD_KEY: str(value),
+        }
+    return {ENCODED_VALUE_TYPE_KEY: ENCODED_VALUE_TYPE_RAW, ENCODED_VALUE_PAYLOAD_KEY: value}
+
+
+def decode_normalized_value(encoded: object) -> object:
+    """Inverse of ``encode_normalized_value``.
+
+    Fails closed (``EncodedValueError``) unless *encoded* is exactly a
+    two-key ``{type, value}`` envelope with a recognized type — the "raw"
+    payload is returned completely unexamined (never pattern-matched
+    against its own contents), so a legitimate value that happens to look
+    like an envelope (or a Decimal marker) is restored exactly as stored,
+    never misread as something else.
+    """
+    if isinstance(encoded, dict) and set(encoded) == {
+        ENCODED_VALUE_TYPE_KEY,
+        ENCODED_VALUE_PAYLOAD_KEY,
+    }:
+        type_tag = encoded[ENCODED_VALUE_TYPE_KEY]
+        payload = encoded[ENCODED_VALUE_PAYLOAD_KEY]
+        if type_tag == ENCODED_VALUE_TYPE_DECIMAL and isinstance(payload, str):
+            return Decimal(payload)
+        if type_tag == ENCODED_VALUE_TYPE_RAW:
+            return payload
+    raise EncodedValueError(f"not a valid encode_normalized_value envelope: {encoded!r}")
+
+
 def normalized_to_jsonb(nc: NormalizedCandidate | None) -> dict[str, Any] | None:
     if nc is None:
         return None
     return {
-        "value": nc.value,
+        "value": encode_normalized_value(nc.value),
         "unit": nc.unit,
         "method_id": nc.method_id,
         "method_version": nc.method_version,

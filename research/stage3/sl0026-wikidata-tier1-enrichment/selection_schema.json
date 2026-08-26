@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0026-selection/v1",
+  "title": "HullQ SLICE-0026 Bounded Wikidata Tier-1 Enrichment Pilot Selection",
+  "description": "Deterministic selection of exactly 100 distinct canonical BoatModels (with explicit BoatModel<->QID links) drawn from the reproduced accepted 1,770/1,772 SLICE-0017+0018 identity boundary. No discovery, no canonical mutation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "identity_boundary",
+    "selection_ordering",
+    "pilot_size",
+    "boat_models"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0026-selection-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "identity_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "baseline_manifest_path",
+        "baseline_manifest_sha256",
+        "delta_manifest_path",
+        "delta_manifest_sha256",
+        "canonical_boat_model_count",
+        "historical_crosswalk_count"
+      ],
+      "properties": {
+        "baseline_manifest_path": { "type": "string", "minLength": 1 },
+        "baseline_manifest_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "delta_manifest_path": { "type": "string", "minLength": 1 },
+        "delta_manifest_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "canonical_boat_model_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Must equal 1770 for the real accepted retained artifact; enforced by hullq.bootstrap.wikidata_sl0026_tier1_enrichment_pilot.load_reproduced_identity_boundary (IdentityBoundaryIntegrityError), not repeated here as a schema const so synthetic/test documents remain schema-valid."
+        },
+        "historical_crosswalk_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Must equal 1772 for the real accepted retained artifact; see canonical_boat_model_count."
+        }
+      }
+    },
+    "selection_ordering": { "type": "string", "minLength": 1 },
+    "pilot_size": { "type": "integer", "minimum": 0 },
+    "boat_models": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/boat_model" }
+    }
+  },
+  "$defs": {
+    "boat_model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hullq_id", "qid", "preferred_label"],
+      "properties": {
+        "hullq_id": { "type": "string", "minLength": 1 },
+        "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+        "preferred_label": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

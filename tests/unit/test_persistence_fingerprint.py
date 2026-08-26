@@ -209,11 +209,80 @@ def test_normalized_dict_none() -> None:
 
 
 def test_normalized_dict_present() -> None:
+    from hullq.persistence.schema import (
+        ENCODED_VALUE_PAYLOAD_KEY,
+        ENCODED_VALUE_TYPE_KEY,
+        ENCODED_VALUE_TYPE_RAW,
+    )
+
     nc = NormalizedCandidate(value=10.5, unit="m", method_id="std", method_version="1.0")
     d = _normalized_dict(nc)
     assert d is not None
-    assert d["value"] == 10.5
+    assert d["value"] == {
+        ENCODED_VALUE_TYPE_KEY: ENCODED_VALUE_TYPE_RAW,
+        ENCODED_VALUE_PAYLOAD_KEY: 10.5,
+    }
     assert d["method_id"] == "std"
+
+
+def test_normalized_dict_decimal_value_wrapped_and_fingerprintable() -> None:
+    """SLICE-0026: fingerprint_evidence/fingerprint_observation must not raise
+    on a Decimal-valued NormalizedCandidate (every measurement value
+    hullq.sources.wikidata produces) — json.dumps has no native Decimal
+    support, so _normalized_dict must encode it via the shared
+    hullq.persistence.schema.encode_normalized_value total envelope (never a
+    bare/partial marker, which could collide with a legitimately
+    dict/string-typed value of the same shape)."""
+    from decimal import Decimal
+
+    from hullq.persistence.schema import (
+        ENCODED_VALUE_PAYLOAD_KEY,
+        ENCODED_VALUE_TYPE_DECIMAL,
+        ENCODED_VALUE_TYPE_KEY,
+    )
+
+    nc = NormalizedCandidate(
+        value=Decimal("4500"), unit="kg", method_id="std", method_version="1.0"
+    )
+    d = _normalized_dict(nc)
+    assert d is not None
+    assert d["value"] == {
+        ENCODED_VALUE_TYPE_KEY: ENCODED_VALUE_TYPE_DECIMAL,
+        ENCODED_VALUE_PAYLOAD_KEY: "4500",
+    }
+
+    # Must not raise — exercises the exact json.dumps call fingerprint_dict makes.
+    digest = fingerprint_dict(d)
+    assert isinstance(digest, str) and len(digest) == 64
+    # Deterministic: identical input always yields the identical digest.
+    assert fingerprint_dict(d) == digest
+
+
+def test_normalized_dict_decimal_string_and_lookalike_dict_produce_pairwise_different_fingerprints() -> (
+    None
+):
+    """Decimal("4500"), the string "4500", and a legitimate structured value
+    that happens to look like a Decimal marker are three distinct
+    NormalizedCandidate.value shapes and MUST NOT produce colliding content
+    fingerprints — otherwise semantically different evidence items would be
+    treated as identical by the SLICE-0013 importer's fingerprint-based
+    identity/conflict checks."""
+    from decimal import Decimal
+
+    lookalike = {"__decimal__": "4500"}
+    candidates = [
+        NormalizedCandidate(value=Decimal("4500"), unit="kg", method_id=None, method_version=None),
+        NormalizedCandidate(value="4500", unit="kg", method_id=None, method_version=None),
+        NormalizedCandidate(value=lookalike, unit="kg", method_id=None, method_version=None),
+    ]
+    dicts = [_normalized_dict(nc) for nc in candidates]
+    fingerprints = [fingerprint_dict(d) for d in dicts]
+
+    for i in range(len(dicts)):
+        for j in range(len(dicts)):
+            if i != j:
+                assert dicts[i] != dicts[j]
+                assert fingerprints[i] != fingerprints[j]
 
 
 def test_applicability_dict_design_option_hints() -> None:

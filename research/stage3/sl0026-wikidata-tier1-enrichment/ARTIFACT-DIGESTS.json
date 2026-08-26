@@ -1,0 +1,14 @@
+{
+  "schema_version": "sl0026-artifact-digests-v1",
+  "generated_at": "2026-08-26T16:55:22.903073+00:00",
+  "digests": {
+    "REPLAY-REPORT.md": "sha256:fe33b02c9d37df692153f0ca24a3e9a31935d6bf7bcea443f3c90c6d27327013",
+    "REPLAY-RESULT.json": "sha256:fd3ce43bd968179addb5ca0d9bc430fc7d16774be120ceeb41b5bd9695bb68ca",
+    "REPORT.md": "sha256:4d07cb6b8f96893c0415cbc5b8f93741cf6185c9875839d4615b542c8be29f43",
+    "artifact_digests_schema.json": "sha256:93c72e1db80ea55a9fc16818a0a92aff48d3900385f19f3e8a1d93a02a01564c",
+    "evidence_manifest.json": "sha256:dc7c952c720510b43e10829a6da20fbdcd65a466487049c97d5e949c128010b4",
+    "evidence_manifest_schema.json": "sha256:734aa832989ffcb8f0606dab4f2b52084c2fc68c7a58a95ee5281b97aba727ef",
+    "selection.json": "sha256:1d2de10b90f79dd53d4e0a759a7bc0de83d89c5d29e12733ea7cd96668d26253",
+    "selection_schema.json": "sha256:cab82f79b0e84e2be3bc7acf06dcd2379a30b6cbf95d4a082671be71ef3e792a"
+  }
+}

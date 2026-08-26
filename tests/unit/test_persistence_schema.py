@@ -11,9 +11,16 @@ from hullq.domain.provenance import (
     SourceLocator,
 )
 from hullq.persistence.schema import (
+    ENCODED_VALUE_PAYLOAD_KEY,
+    ENCODED_VALUE_TYPE_DECIMAL,
+    ENCODED_VALUE_TYPE_KEY,
+    ENCODED_VALUE_TYPE_RAW,
+    EncodedValueError,
     applicability_from_jsonb,
     applicability_to_jsonb,
     context_to_jsonb,
+    decode_normalized_value,
+    encode_normalized_value,
     locator_to_jsonb,
     normalized_to_jsonb,
     producer_to_jsonb,
@@ -106,8 +113,212 @@ def test_normalized_to_jsonb_present() -> None:
     nc = NormalizedCandidate(value=10.5, unit="m", method_id="std", method_version="1.0")
     d = normalized_to_jsonb(nc)
     assert d is not None
-    assert d["value"] == 10.5
+    assert d["value"] == {
+        ENCODED_VALUE_TYPE_KEY: ENCODED_VALUE_TYPE_RAW,
+        ENCODED_VALUE_PAYLOAD_KEY: 10.5,
+    }
     assert d["method_id"] == "std"
+
+
+def test_normalized_to_jsonb_decimal_value_wrapped_in_type_envelope() -> None:
+    """SLICE-0026: every measurement value hullq.sources.wikidata produces via
+    hullq.domain.measurements.normalize_measurement is a Decimal.
+    NormalizedCandidate.value is untyped (``object``) with a genuinely
+    unconstrained accepted domain (FIELD_EVIDENCE_SCHEMA.v0.2), so no bare
+    marker shape can be proven collision-safe against a legitimate value
+    that happens to look like it. normalized_to_jsonb must therefore wrap
+    EVERY value (not only Decimal) in the total {type, value} envelope
+    rather than raising ``TypeError: Object of type Decimal is not JSON
+    serializable`` and rather than risking an ambiguous partial encoding.
+    """
+    from decimal import Decimal
+
+    nc = NormalizedCandidate(
+        value=Decimal("12.80"),
+        unit="m",
+        method_id="hullq-measurements-1.0",
+        method_version="SLICE-0004-v1",
+    )
+    d = normalized_to_jsonb(nc)
+    assert d is not None
+    assert d["value"] == {
+        ENCODED_VALUE_TYPE_KEY: ENCODED_VALUE_TYPE_DECIMAL,
+        ENCODED_VALUE_PAYLOAD_KEY: "12.80",
+    }
+
+    import json
+
+    # Must not raise — this is exactly the shape passed to psycopg's Jsonb().
+    json.dumps(d)
+
+
+def test_normalized_to_jsonb_numeric_looking_string_passes_through_as_raw() -> None:
+    """A legitimately string-typed NormalizedCandidate.value that happens to
+    look numeric (e.g. "12.80") must NOT be treated as, or collapse with, a
+    Decimal — no numeric-looking-text heuristic is applied on the encode
+    side either; it is embedded verbatim under the "raw" envelope type."""
+    nc = NormalizedCandidate(value="12.80", unit="m", method_id="std", method_version="1.0")
+    d = normalized_to_jsonb(nc)
+    assert d is not None
+    assert d["value"] == {
+        ENCODED_VALUE_TYPE_KEY: ENCODED_VALUE_TYPE_RAW,
+        ENCODED_VALUE_PAYLOAD_KEY: "12.80",
+    }
+
+
+def test_normalized_to_jsonb_value_that_looks_like_the_decimal_envelope_passes_through_as_raw() -> (
+    None
+):
+    """A legitimate structured NormalizedCandidate.value that itself happens
+    to look exactly like the encoder's own Decimal-envelope shape (e.g.
+    ``{"__decimal__": "12.80"}`` under a hypothetical earlier marker scheme,
+    or literally any dict) must round-trip completely unchanged, nested
+    ONE level under the "raw" envelope — never misread as an actual
+    Decimal."""
+    lookalike = {"__decimal__": "12.80"}
+    nc = NormalizedCandidate(value=lookalike, unit="m", method_id=None, method_version=None)
+    d = normalized_to_jsonb(nc)
+    assert d is not None
+    assert d["value"] == {
+        ENCODED_VALUE_TYPE_KEY: ENCODED_VALUE_TYPE_RAW,
+        ENCODED_VALUE_PAYLOAD_KEY: lookalike,
+    }
+    assert d["value"] != {
+        ENCODED_VALUE_TYPE_KEY: ENCODED_VALUE_TYPE_DECIMAL,
+        ENCODED_VALUE_PAYLOAD_KEY: "12.80",
+    }
+
+
+def test_encode_normalized_value_distinguishes_decimal_from_equal_text_string() -> None:
+    from decimal import Decimal
+
+    encoded_decimal = encode_normalized_value(Decimal("12.80"))
+    encoded_string = encode_normalized_value("12.80")
+    assert encoded_decimal != encoded_string
+    assert encoded_decimal == {
+        ENCODED_VALUE_TYPE_KEY: ENCODED_VALUE_TYPE_DECIMAL,
+        ENCODED_VALUE_PAYLOAD_KEY: "12.80",
+    }
+    assert encoded_string == {
+        ENCODED_VALUE_TYPE_KEY: ENCODED_VALUE_TYPE_RAW,
+        ENCODED_VALUE_PAYLOAD_KEY: "12.80",
+    }
+
+
+def test_decode_normalized_value_round_trips_decimal_exactly() -> None:
+    from decimal import Decimal
+
+    encoded = encode_normalized_value(Decimal("12.80"))
+    assert decode_normalized_value(encoded) == Decimal("12.80")
+    assert isinstance(decode_normalized_value(encoded), Decimal)
+
+
+def test_decode_normalized_value_round_trips_plain_string_exactly() -> None:
+    encoded = encode_normalized_value("12.80")
+    decoded = decode_normalized_value(encoded)
+    assert decoded == "12.80"
+    assert isinstance(decoded, str)
+
+
+def test_decode_normalized_value_round_trips_decimal_lookalike_dict_exactly() -> None:
+    """The exact scenario the reviewer flagged: a legitimate structured value
+    equal to {"__decimal__": "12.80"} must decode back to that same dict,
+    never to Decimal("12.80")."""
+    lookalike = {"__decimal__": "12.80"}
+    encoded = encode_normalized_value(lookalike)
+    decoded = decode_normalized_value(encoded)
+    assert decoded == lookalike
+    assert isinstance(decoded, dict)
+
+
+def test_decimal_string_and_lookalike_dict_are_pairwise_distinguishable() -> None:
+    """All three of the reviewer's required cases, pairwise: distinguishable
+    persistence (encoded) representations AND correct decode identity for
+    each."""
+    from decimal import Decimal
+
+    lookalike = {"__decimal__": "12.80"}
+    values: list[object] = [Decimal("12.80"), "12.80", lookalike]
+    encoded = [encode_normalized_value(v) for v in values]
+
+    # Pairwise distinguishable encoded (persistence) representations.
+    for i in range(len(encoded)):
+        for j in range(len(encoded)):
+            if i != j:
+                assert encoded[i] != encoded[j]
+
+    decoded = [decode_normalized_value(e) for e in encoded]
+    assert decoded[0] == Decimal("12.80") and isinstance(decoded[0], Decimal)
+    assert decoded[1] == "12.80" and isinstance(decoded[1], str)
+    assert decoded[2] == lookalike and isinstance(decoded[2], dict)
+
+
+def test_decode_normalized_value_rejects_unwrapped_value() -> None:
+    # A bare, never-enveloped value (e.g. legacy/foreign data) must fail
+    # closed rather than being silently guessed at.
+    import pytest
+
+    with pytest.raises(EncodedValueError):
+        decode_normalized_value("12.80")
+    with pytest.raises(EncodedValueError):
+        decode_normalized_value(10.5)
+    with pytest.raises(EncodedValueError):
+        decode_normalized_value({"__decimal__": "12.80"})
+
+
+def test_decode_normalized_value_rejects_unknown_type_tag() -> None:
+    import pytest
+
+    with pytest.raises(EncodedValueError):
+        decode_normalized_value(
+            {ENCODED_VALUE_TYPE_KEY: "float", ENCODED_VALUE_PAYLOAD_KEY: "12.80"}
+        )
+
+
+def test_decode_normalized_value_rejects_decimal_envelope_with_non_string_payload() -> None:
+    import pytest
+
+    with pytest.raises(EncodedValueError):
+        decode_normalized_value(
+            {ENCODED_VALUE_TYPE_KEY: ENCODED_VALUE_TYPE_DECIMAL, ENCODED_VALUE_PAYLOAD_KEY: 12.80}
+        )
+
+
+def test_decimal_and_equal_text_string_round_trip_through_jsonb_shape_distinctly() -> None:
+    """End-to-end regression: NormalizedCandidate(value=Decimal("12.80")) and
+    NormalizedCandidate(value="12.80") must remain distinguishable after a
+    full normalized_to_jsonb -> decode_normalized_value round trip."""
+    from decimal import Decimal
+
+    nc_decimal = NormalizedCandidate(
+        value=Decimal("12.80"), unit="m", method_id=None, method_version=None
+    )
+    nc_string = NormalizedCandidate(value="12.80", unit="m", method_id=None, method_version=None)
+
+    encoded_decimal = normalized_to_jsonb(nc_decimal)
+    encoded_string = normalized_to_jsonb(nc_string)
+    assert encoded_decimal != encoded_string
+
+    assert encoded_decimal is not None
+    assert encoded_string is not None
+    decoded_decimal = decode_normalized_value(encoded_decimal["value"])
+    decoded_string = decode_normalized_value(encoded_string["value"])
+    assert decoded_decimal == Decimal("12.80")
+    assert isinstance(decoded_decimal, Decimal)
+    assert decoded_string == "12.80"
+    assert isinstance(decoded_string, str)
+
+
+def test_normalized_to_jsonb_existing_non_decimal_values_remain_valid() -> None:
+    """Existing non-Decimal NormalizedCandidate.value behavior (float, int,
+    bool, None, list) remains valid: each round-trips through
+    normalized_to_jsonb -> decode_normalized_value to the exact original
+    value, unaffected by the Decimal-specific envelope branch."""
+    for value in (10.5, 42, True, None, [1, 2, 3], {"nested": "dict"}):
+        nc = NormalizedCandidate(value=value, unit="m", method_id=None, method_version=None)
+        encoded = normalized_to_jsonb(nc)
+        assert encoded is not None
+        assert decode_normalized_value(encoded["value"]) == value
 
 
 # ---------------------------------------------------------------------------
