@@ -209,10 +209,19 @@ def test_normalized_dict_none() -> None:
 
 
 def test_normalized_dict_present() -> None:
+    from hullq.persistence.schema import (
+        ENCODED_VALUE_PAYLOAD_KEY,
+        ENCODED_VALUE_TYPE_KEY,
+        ENCODED_VALUE_TYPE_RAW,
+    )
+
     nc = NormalizedCandidate(value=10.5, unit="m", method_id="std", method_version="1.0")
     d = _normalized_dict(nc)
     assert d is not None
-    assert d["value"] == 10.5
+    assert d["value"] == {
+        ENCODED_VALUE_TYPE_KEY: ENCODED_VALUE_TYPE_RAW,
+        ENCODED_VALUE_PAYLOAD_KEY: 10.5,
+    }
     assert d["method_id"] == "std"
 
 
@@ -221,19 +230,26 @@ def test_normalized_dict_decimal_value_wrapped_and_fingerprintable() -> None:
     on a Decimal-valued NormalizedCandidate (every measurement value
     hullq.sources.wikidata produces) — json.dumps has no native Decimal
     support, so _normalized_dict must encode it via the shared
-    hullq.persistence.schema.encode_decimal_for_jsonb marker (never a bare
-    ``str(value)``, which would collide with a legitimately string-typed
-    value of the same text)."""
+    hullq.persistence.schema.encode_normalized_value total envelope (never a
+    bare/partial marker, which could collide with a legitimately
+    dict/string-typed value of the same shape)."""
     from decimal import Decimal
 
-    from hullq.persistence.schema import DECIMAL_JSONB_MARKER_KEY
+    from hullq.persistence.schema import (
+        ENCODED_VALUE_PAYLOAD_KEY,
+        ENCODED_VALUE_TYPE_DECIMAL,
+        ENCODED_VALUE_TYPE_KEY,
+    )
 
     nc = NormalizedCandidate(
         value=Decimal("4500"), unit="kg", method_id="std", method_version="1.0"
     )
     d = _normalized_dict(nc)
     assert d is not None
-    assert d["value"] == {DECIMAL_JSONB_MARKER_KEY: "4500"}
+    assert d["value"] == {
+        ENCODED_VALUE_TYPE_KEY: ENCODED_VALUE_TYPE_DECIMAL,
+        ENCODED_VALUE_PAYLOAD_KEY: "4500",
+    }
 
     # Must not raise — exercises the exact json.dumps call fingerprint_dict makes.
     digest = fingerprint_dict(d)
@@ -242,23 +258,31 @@ def test_normalized_dict_decimal_value_wrapped_and_fingerprintable() -> None:
     assert fingerprint_dict(d) == digest
 
 
-def test_normalized_dict_decimal_and_equal_text_string_produce_different_fingerprints() -> None:
-    """Decimal("4500") and the string "4500" are distinct
-    NormalizedCandidate.value shapes and MUST NOT produce the same content
-    fingerprint — otherwise two semantically different evidence items would
-    be treated as identical by the SLICE-0013 importer's fingerprint-based
+def test_normalized_dict_decimal_string_and_lookalike_dict_produce_pairwise_different_fingerprints() -> (
+    None
+):
+    """Decimal("4500"), the string "4500", and a legitimate structured value
+    that happens to look like a Decimal marker are three distinct
+    NormalizedCandidate.value shapes and MUST NOT produce colliding content
+    fingerprints — otherwise semantically different evidence items would be
+    treated as identical by the SLICE-0013 importer's fingerprint-based
     identity/conflict checks."""
     from decimal import Decimal
 
-    nc_decimal = NormalizedCandidate(
-        value=Decimal("4500"), unit="kg", method_id=None, method_version=None
-    )
-    nc_string = NormalizedCandidate(value="4500", unit="kg", method_id=None, method_version=None)
+    lookalike = {"__decimal__": "4500"}
+    candidates = [
+        NormalizedCandidate(value=Decimal("4500"), unit="kg", method_id=None, method_version=None),
+        NormalizedCandidate(value="4500", unit="kg", method_id=None, method_version=None),
+        NormalizedCandidate(value=lookalike, unit="kg", method_id=None, method_version=None),
+    ]
+    dicts = [_normalized_dict(nc) for nc in candidates]
+    fingerprints = [fingerprint_dict(d) for d in dicts]
 
-    d_decimal = _normalized_dict(nc_decimal)
-    d_string = _normalized_dict(nc_string)
-    assert d_decimal != d_string
-    assert fingerprint_dict(d_decimal) != fingerprint_dict(d_string)
+    for i in range(len(dicts)):
+        for j in range(len(dicts)):
+            if i != j:
+                assert dicts[i] != dicts[j]
+                assert fingerprints[i] != fingerprints[j]
 
 
 def test_applicability_dict_design_option_hints() -> None:

@@ -25,7 +25,7 @@ from hullq.domain.provenance import (
     SourceLocator,
     SubjectKind,
 )
-from hullq.persistence.schema import applicability_from_jsonb, decode_decimal_from_jsonb
+from hullq.persistence.schema import applicability_from_jsonb, decode_normalized_value
 from hullq.research.jobs import ResearchTarget
 from hullq.research.observations import (
     ReferenceCheckOutcome,
@@ -89,7 +89,7 @@ def _normalized_from_jsonb(d: dict[str, Any] | None) -> NormalizedCandidate | No
     if d is None:
         return None
     return NormalizedCandidate(
-        value=decode_decimal_from_jsonb(d["value"]),
+        value=decode_normalized_value(d["value"]),
         unit=d.get("unit"),
         method_id=d.get("method_id"),
         method_version=d.get("method_version"),

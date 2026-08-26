@@ -20,7 +20,7 @@ from hullq.domain.provenance import (
     ResearchContext,
     SourceLocator,
 )
-from hullq.persistence.schema import encode_decimal_for_jsonb
+from hullq.persistence.schema import encode_normalized_value
 from hullq.research.jobs import ResearchTarget
 from hullq.research.observations import (
     ReferenceCrosscheck,
@@ -75,18 +75,19 @@ def _raw_dict(raw: RawObservation) -> dict[str, Any]:
 def _normalized_dict(nc: NormalizedCandidate | None) -> dict[str, Any] | None:
     if nc is None:
         return None
-    # Uses the same hullq.persistence.schema.encode_decimal_for_jsonb encoding
-    # as JSONB storage (never a bare str(value)) so that a Decimal and a
-    # legitimately string-typed NormalizedCandidate.value with the same text
-    # (e.g. Decimal("12.80") vs the string "12.80") produce DIFFERENT
-    # fingerprints rather than colliding. json.dumps also has no native
-    # Decimal support, so this also prevents fingerprinting from raising on a
-    # genuine, already-accepted Decimal value shape.
+    # Uses the same hullq.persistence.schema.encode_normalized_value total
+    # envelope as JSONB storage (never a bare/partial encoding) so that
+    # Decimal("12.80"), the string "12.80", and any other accepted value
+    # shape (including one that happens to look like an envelope itself)
+    # all produce DIFFERENT fingerprints rather than colliding. json.dumps
+    # also has no native Decimal support, so this also prevents
+    # fingerprinting from raising on a genuine, already-accepted Decimal
+    # value shape.
     return {
         "method_id": nc.method_id,
         "method_version": nc.method_version,
         "unit": nc.unit,
-        "value": encode_decimal_for_jsonb(nc.value),
+        "value": encode_normalized_value(nc.value),
     }
 
 

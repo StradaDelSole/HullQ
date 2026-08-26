@@ -3,7 +3,7 @@
 ```json
 {
   "schema_version": "sl0026-replay-v1",
-  "run_timestamp": "2026-08-26T16:23:29.089273+00:00",
+  "run_timestamp": "2026-08-26T16:55:22.888441+00:00",
   "postgresql_version": "PostgreSQL 18.6 on x86_64-windows, compiled by msvc-19.44.35228, 64-bit",
   "bundle_count": 100,
   "first_pass": {
