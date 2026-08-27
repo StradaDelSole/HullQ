@@ -1,0 +1,93 @@
+{
+  "schema_version": "sl0029-boatdesign-applicability-v1",
+  "generated_at": "2026-08-27T13:00:00+00:00",
+  "identity_model_reference": "specs/IDENTITY_MODEL.v0.2.md#2.4",
+  "boat_models": [
+    {
+      "qid": "Q5051252",
+      "hullq_id": "BM_WDT0_6c94b5bc9e79402bb07309289905913e",
+      "preferred_label": "Catalina 22",
+      "production_span_evidence": {
+        "first_built": "1969-07",
+        "last_built": null,
+        "evidence": "Official history page: 'July 1969 -- Catalina's first model, the Catalina 22, is built in North Hollywood, CA.' Hull-number milestones: 'February 1975 -- The Catalina 22 exceeds Frank Butler's hopes to build 100 boats when hull number 5,000 is completed.'; 'September 1980 -- Catalina 22 hull number 10,000 is completed.'; 'February 1990 -- Catalina 22 hull number 15,000 is delivered.' last_built is not evidenced by the bounded pass (per the no-absence-as-proof rule this is reported as null/unknown, not assumed still-in-production or assumed ended)."
+      },
+      "candidate_generation_boundaries": [
+        {
+          "label": "Catalina 22 markII",
+          "boundary_date": "1995-01",
+          "evidence_class": "manufacturer_generation_redesign",
+          "evidence": "Official history page, dated entry: 'January 1995 -- The Catalina 22 markII is introduced with re-designed and enlarged deck and new interior.'",
+          "identity_model_criterion_matched": "IDENTITY_MODEL.v0.2.md 2.4 criterion 2 (evidence-backed manufacturer/designer generation redesign) and criterion 3 (persistent, non-optional production change with an identifiable production boundary: 1995-01).",
+          "dimensional_impact_on_five_tier1_fields": "not_evidenced_by_this_pilot",
+          "caution": "The history entry describes an 'enlarged deck and new interior' but does not itself state numeric LOA/LWL/beam/draft/displacement values for the markII configuration. This bounded pass did not locate a markII-specific specification document in the official brochure archive, so whether the five Tier-1 hull-dimension fields actually changed at this boundary is unresolved, not assumed unchanged."
+        },
+        {
+          "label": "Catalina 22 Sport",
+          "boundary_date": "2004-06",
+          "evidence_class": "later_variant_matching_earlier_baseline",
+          "evidence": "Official history page: 'June 2004 -- The Catalina 22 Sport is introduced to better accommodate one-design racing.' The 22Sport brochure itself (C22sBro.pdf) states it was built 'In response to Catalina 22 owners' requests for a production boat that more accurately reflects the original dimensions and weight of this popular one design boat' and explicitly invokes 'the first Catalina 22' and 'the thousands of first generation 22s'.",
+          "identity_model_criterion_matched": "Named later variant with an identifiable introduction date (2004-06); the brochure's own text is evidence that its dimensions were deliberately set to match the pre-1995 (pre-markII) baseline rather than the markII baseline, but this is the manufacturer's marketing claim of intent, not an independently verified measurement comparison.",
+          "dimensional_impact_on_five_tier1_fields": "22Sport brochure spec table: length of hull 6.55 m (21'6\"), length of waterline 5.89 m (19'4\"), beam 2.34 m (7'8\"), draft board-up 0.51 m (1'8\") / board-down 1.52 m (5'0\"), weight 1080 kg (2380 lbs). A separate 'length overall' figure of 7.25 m (23'10\") is also given, distinct from 'length of hull'.",
+          "caution": "22Sport is itself a distinct later production run (2004+), not the same physical configuration as the 1969-1994 original run it claims to replicate. Its numbers are useful diagnostic evidence, not proof of the original/pre-1995 generation's own measured dimensions."
+        }
+      ],
+      "excluded_related_products": [
+        {
+          "label": "Catalina Capri 22 / Catalina 22 Capri",
+          "reason_excluded": "Distinct commercial product with its own hull-number series (official history: 'September 2002 -- Catalina Capri 22 Hull number 1000 is built in Woodland Hills, CA'), materially different dimensions (CC22Bro-05.pdf: length of hull 7.52 m/24'8\", length overall 6.71 m/22'0\", LWL 6.01 m/20'0\", beam 2.44 m/8'2\", fin/wing weight 999-1022 kg / 2200-2250 lbs, fin/wing draft 1.22 m/0.81 m), and its own official current-model page (sport-series/22-capri/) separate from Catalina 22. Not treated as evidence for Q5051252."
+        }
+      ],
+      "generation_boundary_established_for_this_pilot": false,
+      "generation_boundary_rationale": "A real, dated, textually-described generation redesign (markII, 1995-01) is positively evidenced, which is sufficient under IDENTITY_MODEL.v0.2.md 2.4 to treat 'Catalina 22' as spanning at least two BoatDesign generations. However, the bounded pass could not obtain markII-specific numeric specifications, so it cannot positively establish WHICH generation the retained SLICE-0028 Wikidata candidate values describe. This is reported as an unresolved boundary (GENERATION_AMBIGUOUS for the affected fields), not a false-negative absence claim -- the redesign itself is confirmed; its dimensional consequence for these five fields is not.",
+      "design_option_axis_evidence": [
+        {
+          "axis": "draft",
+          "evidence": "22Sport brochure: 'Draft, board up 0.51m 1'-8\"' and 'Draft, board down 1.52m 5'-0\"' -- a swing/centerboard keel with two concurrent, factory-documented draft states on the same hull, matching IDENTITY_MODEL.v0.2.md 2.5's explicit DesignOption 'draft' axis and its 'fixed vs lifting keel' example."
+        }
+      ]
+    },
+    {
+      "qid": "Q5051253",
+      "hullq_id": "BM_WDT0_3fdd058699d145c6a1b044fc90b65201",
+      "preferred_label": "Catalina 30",
+      "production_span_evidence": {
+        "first_built": "1974-12",
+        "last_built": null,
+        "evidence": "Official history page: 'December 1974 -- Catalina's third model, the Catalina 30, is introduced; the trend-setting design is an immediate sales success...'. Hull-number milestone: 'October 1987 -- Catalina 30 hull number 5,000 is completed. Catalina 30s are being built at the East and West Coast plants, as well as in Canada...'. last_built is not evidenced by the bounded pass."
+      },
+      "candidate_generation_boundaries": [
+        {
+          "label": "Catalina 30 MKI (archive link label only)",
+          "boundary_date": null,
+          "evidence_class": "archive_label_uncorroborated_by_dated_history_entry",
+          "evidence": "The official brochure-archives/ index links one scanned document with the anchor text 'Catalina 30 MKI brochure' (C-30-MK-I-Brochure.pdf), distinct from a second, undated 'Cat-30 brochure' (brochure-C-30.pdf). The official history/ timeline (retrieval 11) contains no 'Mk' or generation-numbered entry for Catalina 30 anywhere (unlike the explicit, dated Catalina 22 markII entry).",
+          "identity_model_criterion_matched": "Archive-side generation label only (IDENTITY_MODEL.v0.2.md 2.4 'manufacturer generation label such as Mk II' is SHOULD-level applicability metadata), not independently corroborated by a dated redesign statement in the same manufacturer's own history page.",
+          "dimensional_impact_on_five_tier1_fields": "No difference found in LOA/LWL/beam/displacement(std)/lead(std) between the two retrieved Catalina 30 documents (see below).",
+          "caution": "Per the no-absence-as-proof rule, the absence of a located 'MK II' document does not prove one does not exist; this label is retained as an open, unresolved naming signal, not as a confirmed second generation."
+        }
+      ],
+      "excluded_related_products": [],
+      "generation_boundary_established_for_this_pilot": true,
+      "generation_boundary_rationale": "Two independently retrieved official primary-source specification documents for Catalina 30 -- one carrying the archive's 'MKI' label (wing/fin keel options, skeg-hung spade rudder, optional walk-through transom) and one undated plain document (Frank-Butler-credited, traditional/dinette interior option, Patent No. 3648310, no wing keel or walk-through transom mentioned) -- report IDENTICAL core hull baseline figures: LOA 29'11\", LWL 25'0\", beam 10'10\", standard displacement 10,200 lbs, standard lead ballast 4,200 lbs, standard sail area 446 sq ft. The differences between the two documents (keel type, rudder configuration, transom style, interior layout) are each an explicit DesignOption-axis example under IDENTITY_MODEL.v0.2.md 2.5 (keel; rudder; layout), not evidence of materially different hull form/tooling. This supports treating LOA/LWL/beam as a stable, cross-validated BoatDesign baseline across the observed documented span (introduction 1974-12 through at least the two dated brochure eras), with keel/rudder/transom/interior varying as concurrent factory options rather than separate generations.",
+      "design_option_axis_evidence": [
+        {
+          "axis": "keel",
+          "evidence": "C-30-MK-I-Brochure.pdf: 'Wing and fin keels are available.' Ballast/displacement figures differ by keel option: std lead 4,200 lbs / wing lead 4,300 lbs; std displacement 10,200 lbs / wing displacement 10,300 lbs."
+        },
+        {
+          "axis": "draft",
+          "evidence": "Draft figures differ between the two retrieved documents even though LOA/LWL/beam do not: brochure-C-30.pdf lists draft 5'3\" (std) / shoal draft 4'4\"; C-30-MK-I-Brochure.pdf lists draft, std 5'3\" / shoal draft 3'10\". This 6-inch shoal-draft discrepancy between two primary-source documents is retained as an open SOURCE_VALUE_CONFLICT-class disagreement, not resolved by this pilot."
+        },
+        {
+          "axis": "rudder",
+          "evidence": "C-30-MK-I-Brochure.pdf: 'The long horizontal skeg between the keel and balanced spade rudder insure control and tracking in a variety of conditions.' Not mentioned in brochure-C-30.pdf."
+        },
+        {
+          "axis": "layout",
+          "evidence": "brochure-C-30.pdf: 'TRADITIONAL MODEL SHOWN -- ALSO AVAILABLE WITH DINETTE.' C-30-MK-I-Brochure.pdf shows a single interior layout drawing with no traditional/dinette choice mentioned; C-30-MK-I-Brochure.pdf also notes an 'available walk through transom' as an option."
+        }
+      ]
+    }
+  ]
+}

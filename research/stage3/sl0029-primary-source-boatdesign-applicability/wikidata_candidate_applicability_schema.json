@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0029-wikidata-candidate-applicability/v1",
+  "title": "HullQ SLICE-0029 Wikidata Candidate Field Applicability",
+  "description": "Fail-closed applicability classification of the five retained SLICE-0028 Tier-1 field candidates against the two fixed pilot BoatModels. Creates zero canonical FieldResolution or technical value.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "allowed_field_pointers",
+    "applicability_vocabulary",
+    "boat_models"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0029-wikidata-candidate-applicability-v1" },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "allowed_field_pointers": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": { "type": "string", "pattern": "^/baseline/dimensions/" }
+    },
+    "applicability_vocabulary": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": { "type": "string" }
+    },
+    "boat_models": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["qid", "hullq_id", "preferred_label", "fields"],
+        "properties": {
+          "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+          "hullq_id": { "type": "string", "minLength": 1 },
+          "preferred_label": { "type": "string", "minLength": 1 },
+          "fields": {
+            "type": "array",
+            "minItems": 5,
+            "maxItems": 5,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "field_pointer",
+                "sl0028_normalized_candidate",
+                "sl0028_evidence_id",
+                "outcome",
+                "rationale"
+              ],
+              "properties": {
+                "field_pointer": { "type": "string", "pattern": "^/baseline/dimensions/" },
+                "sl0028_normalized_candidate": {
+                  "anyOf": [
+                    { "type": "null" },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["value", "unit"],
+                      "properties": {
+                        "value": { "type": "string", "minLength": 1 },
+                        "unit": { "type": "string", "minLength": 1 }
+                      }
+                    }
+                  ]
+                },
+                "sl0028_evidence_id": { "type": ["string", "null"] },
+                "outcome": {
+                  "enum": [
+                    "SAFE_FOR_LATER_DESIGN_PROMOTION",
+                    "MODEL_SCOPE_ONLY_NOT_PROMOTABLE",
+                    "GENERATION_AMBIGUOUS",
+                    "OPTION_SENSITIVE",
+                    "SOURCE_VALUE_CONFLICT",
+                    "INSUFFICIENT_EVIDENCE",
+                    "NO_NORMALIZED_WIKIDATA_CANDIDATE",
+                    "RIGHTS_BLOCKED"
+                  ]
+                },
+                "rationale": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "schema_version": "sl0029-wikidata-candidate-applicability-v1",
+  "generated_at": "2026-08-27T13:00:00+00:00",
+  "allowed_field_pointers": [
+    "/baseline/dimensions/loa_m",
+    "/baseline/dimensions/lwl_m",
+    "/baseline/dimensions/beam_m",
+    "/baseline/dimensions/draft_min_m",
+    "/baseline/dimensions/displacement_kg"
+  ],
+  "applicability_vocabulary": [
+    "SAFE_FOR_LATER_DESIGN_PROMOTION",
+    "MODEL_SCOPE_ONLY_NOT_PROMOTABLE",
+    "GENERATION_AMBIGUOUS",
+    "OPTION_SENSITIVE",
+    "SOURCE_VALUE_CONFLICT",
+    "INSUFFICIENT_EVIDENCE",
+    "NO_NORMALIZED_WIKIDATA_CANDIDATE",
+    "RIGHTS_BLOCKED"
+  ],
+  "boat_models": [
+    {
+      "qid": "Q5051252",
+      "hullq_id": "BM_WDT0_6c94b5bc9e79402bb07309289905913e",
+      "preferred_label": "Catalina 22",
+      "fields": [
+        {
+          "field_pointer": "/baseline/dimensions/loa_m",
+          "sl0028_normalized_candidate": { "value": "6.55320", "unit": "m" },
+          "sl0028_evidence_id": "WD-Q5051252-P2043-d4fffea90f224ee7",
+          "outcome": "GENERATION_AMBIGUOUS",
+          "rationale": "Primary-source diagnostic: the 2004+ '22Sport' brochure's 'Length of Hull' figure (6.55 m / 21'6\") numerically equals the Wikidata normalized candidate exactly. Per the slice's explicit rule that value equality is a diagnostic only and not proof of design-generation applicability, this cannot be marked safe: boatdesign_applicability.json positively evidences a dated 1995-01 'markII' redesign ('re-designed and enlarged deck and new interior') for which no markII-specific numeric specification was located in this bounded pass. The BoatModel-level candidate cannot be safely pinned to a specific generation."
+        },
+        {
+          "field_pointer": "/baseline/dimensions/lwl_m",
+          "sl0028_normalized_candidate": { "value": "5.891784", "unit": "m" },
+          "sl0028_evidence_id": "WD-Q5051252-P2043-12871c5245644882",
+          "outcome": "GENERATION_AMBIGUOUS",
+          "rationale": "Same reasoning as loa_m: exact numeric match to the 22Sport brochure's 'Length of Waterline' (5.89 m / 19'4\") is diagnostic only, not proof, given the confirmed but numerically un-evidenced 1995-01 markII redesign."
+        },
+        {
+          "field_pointer": "/baseline/dimensions/beam_m",
+          "sl0028_normalized_candidate": { "value": "2.337816", "unit": "m" },
+          "sl0028_evidence_id": "WD-Q5051252-P2049-a2b3e92e92ca46b8",
+          "outcome": "GENERATION_AMBIGUOUS",
+          "rationale": "Same reasoning as loa_m: exact numeric match to the 22Sport brochure's beam (2.34 m / 7'8\") is diagnostic only, not proof, given the confirmed but numerically un-evidenced 1995-01 markII redesign."
+        },
+        {
+          "field_pointer": "/baseline/dimensions/draft_min_m",
+          "sl0028_normalized_candidate": { "value": "1.5240", "unit": "m" },
+          "sl0028_evidence_id": "WD-Q5051252-P2048-5a7bb6c4f69203fd",
+          "outcome": "OPTION_SENSITIVE",
+          "rationale": "The 22Sport brochure documents two concurrent factory draft states on the same swing/centerboard-keel hull: 'Draft, board up 0.51m 1'-8\"' and 'Draft, board down 1.52m 5'-0\"'. The Wikidata candidate (1.5240 m) equals only the board-down (deepest) state. Selecting one point value as a scalar baseline for a documented keel/draft option axis is the exact flattening the slice prohibits (IDENTITY_MODEL.v0.2.md 2.5 'draft' axis)."
+        },
+        {
+          "field_pointer": "/baseline/dimensions/displacement_kg",
+          "sl0028_normalized_candidate": null,
+          "sl0028_evidence_id": "WD-Q5051252-P2067-0e381607fdf48126",
+          "outcome": "NO_NORMALIZED_WIKIDATA_CANDIDATE",
+          "rationale": "The retained SLICE-0028 evidence bundle carries this field's normalized_candidate as null (raw Wikidata statement +2490 lb, unit not normalized by the SLICE-0028 pipeline). No promotable value exists to classify further. Additional caution: the 22Sport brochure's own 'Approximate Weight' (1080 kg / 2380 lbs) differs from the Wikidata raw amount (2490 lb) by about 4.6%, a further disagreement signal that would apply even if a normalized candidate existed."
+        }
+      ]
+    },
+    {
+      "qid": "Q5051253",
+      "hullq_id": "BM_WDT0_3fdd058699d145c6a1b044fc90b65201",
+      "preferred_label": "Catalina 30",
+      "fields": [
+        {
+          "field_pointer": "/baseline/dimensions/loa_m",
+          "sl0028_normalized_candidate": { "value": "9.119616", "unit": "m" },
+          "sl0028_evidence_id": "WD-Q5051253-P2043-54a10536f58a791b",
+          "outcome": "SAFE_FOR_LATER_DESIGN_PROMOTION",
+          "rationale": "Cross-validated: both independently retrieved primary-source Catalina 30 documents (brochure-C-30.pdf and C-30-MK-I-Brochure.pdf), which differ in keel/rudder/transom/layout options, report an identical LOA of 29'11\" (= 9.1186 m, matching the Wikidata normalized candidate to within rounding). boatdesign_applicability.json establishes that the observed differences between the two documents are DesignOption-axis (keel, draft, rudder, layout) rather than hull-form/tooling differences, and that no evidence contradicts a single stable BoatDesign baseline across the documented production span. This satisfies the slice's bar: the match is treated as supporting evidence alongside an independently evidenced generation/option boundary, not as sole proof."
+        },
+        {
+          "field_pointer": "/baseline/dimensions/lwl_m",
+          "sl0028_normalized_candidate": { "value": "7.6200", "unit": "m" },
+          "sl0028_evidence_id": "WD-Q5051253-P2043-4a6068d10d94fc44",
+          "outcome": "SAFE_FOR_LATER_DESIGN_PROMOTION",
+          "rationale": "Cross-validated: both primary-source Catalina 30 documents report an identical LWL of 25'0\" (= 7.6200 m exactly), matching the Wikidata normalized candidate exactly. Same generation/option reasoning as loa_m above."
+        },
+        {
+          "field_pointer": "/baseline/dimensions/beam_m",
+          "sl0028_normalized_candidate": { "value": "3.300984", "unit": "m" },
+          "sl0028_evidence_id": "WD-Q5051253-P2049-742ffeb6a857cfda",
+          "outcome": "SAFE_FOR_LATER_DESIGN_PROMOTION",
+          "rationale": "Cross-validated: both primary-source Catalina 30 documents report an identical beam of 10'10\" (= 3.3020 m, matching the Wikidata normalized candidate to within rounding). Same generation/option reasoning as loa_m above."
+        },
+        {
+          "field_pointer": "/baseline/dimensions/draft_min_m",
+          "sl0028_normalized_candidate": null,
+          "sl0028_evidence_id": null,
+          "outcome": "NO_NORMALIZED_WIKIDATA_CANDIDATE",
+          "rationale": "The retained SLICE-0028 evidence bundle for Q5051253 contains no evidence entry at all for this field pointer (only loa_m, lwl_m, beam_m and displacement_kg were captured for this QID). There is nothing to classify beyond this absence. Separately, primary-source evidence shows Catalina 30 draft is itself option-sensitive (std vs shoal vs wing keel; see boatdesign_applicability.json), so a future promotion attempt for this field would need to address OPTION_SENSITIVE handling regardless."
+        },
+        {
+          "field_pointer": "/baseline/dimensions/displacement_kg",
+          "sl0028_normalized_candidate": null,
+          "sl0028_evidence_id": "WD-Q5051253-P2067-5ce389a10158c68b",
+          "outcome": "NO_NORMALIZED_WIKIDATA_CANDIDATE",
+          "rationale": "The retained SLICE-0028 evidence bundle carries this field's normalized_candidate as null (raw Wikidata statement +10200 lb, unit not normalized by the SLICE-0028 pipeline). No promotable value exists to classify further, even though both primary-source documents independently report an identical standard displacement of 10,200 lbs, exactly matching the Wikidata raw (un-normalized) amount -- a useful diagnostic for a possible future SLICE-0028 pipeline unit-conversion fix, but not itself a promotable normalized candidate today."
+        }
+      ]
+    }
+  ]
+}

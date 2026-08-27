@@ -1,0 +1,130 @@
+{
+  "schema_version": "sl0029-source-retrieval-log-v1",
+  "generated_at": "2026-08-27T13:00:00+00:00",
+  "retrieval_ceiling": 25,
+  "retrieval_count": 11,
+  "retrieval_method_note": "Bounded manual research pass: eleven individually issued, human-directed HTTP GET requests against official catalinayachts.com surfaces during one research session on 2026-08-27, each inspected before the next was requested. No crawler, scraper, or unattended/looped retrieval was used. No page/document outside the permitted source-surface classes was fetched.",
+  "retrievals": [
+    {
+      "retrieval_index": 1,
+      "url": "https://www.catalinayachts.com/robots.txt",
+      "source_surface_class": "access_or_automation_policy",
+      "accessed_at": "2026-08-27T11:37:31+00:00",
+      "http_status": 200,
+      "content_type": "text/plain",
+      "byte_size": 123,
+      "sha256": "7d00014ed14f563f6e637dd1c364473cbd69f8f0cb1e475b2a00c996744e0717",
+      "fact_purpose": "Check for crawl/automation restrictions before any further retrieval. Result: disallows only /wp-admin/; declares a sitemap; no crawl-delay or bot-specific block."
+    },
+    {
+      "retrieval_index": 2,
+      "url": "https://www.catalinayachts.com/",
+      "source_surface_class": "official_current_model_and_navigation_page",
+      "accessed_at": "2026-08-27T11:39:58+00:00",
+      "http_status": 200,
+      "content_type": "text/html",
+      "byte_size": 205998,
+      "sha256": "d3ced4cdf2f6dce60fbf62a46ca0c7e408dea2aeab8afbbdb2aa714ba200e9ac",
+      "fact_purpose": "Locate brochure-archive/history navigation paths and check footer for terms/privacy/copyright links. Result: bare '© 2026 Catalina Yachts' copyright notice; no terms/privacy/licence link found in the footer."
+    },
+    {
+      "retrieval_index": 3,
+      "url": "https://www.catalinayachts.com/wp-sitemap.xml",
+      "source_surface_class": "access_or_automation_policy",
+      "accessed_at": "2026-08-27T11:40:21+00:00",
+      "http_status": 200,
+      "content_type": "application/xml",
+      "byte_size": 489,
+      "sha256": "642a5b6bb9f1f705b58b219aa1f638678bfe91a05896a4eb2b7b49cb9ba1d2e7",
+      "fact_purpose": "WordPress sitemap index, used only to locate the site's own page-listing sitemap (declared by robots.txt) rather than guessing URLs."
+    },
+    {
+      "retrieval_index": 4,
+      "url": "https://www.catalinayachts.com/wp-sitemap-posts-page-1.xml",
+      "source_surface_class": "access_or_automation_policy",
+      "accessed_at": "2026-08-27T11:40:30+00:00",
+      "http_status": 200,
+      "content_type": "application/xml",
+      "byte_size": 6594,
+      "sha256": "a1b0d2f10055b8568c20f6aa8d26c9dceba4cd91684341238346194f0cb5d82a",
+      "fact_purpose": "Enumerate the site's own declared WordPress 'page' URLs (56 total) to check specifically for a dedicated terms-of-use/privacy-policy/licence page. Result: none found among the 56 listed pages."
+    },
+    {
+      "retrieval_index": 5,
+      "url": "https://www.catalinayachts.com/brochure-archives/",
+      "source_surface_class": "official_brochure_archive_index",
+      "accessed_at": "2026-08-27T11:46:22+00:00",
+      "http_status": 200,
+      "content_type": "text/html",
+      "byte_size": 1514685,
+      "sha256": "a4cc81be9b96ea07e367b01467c892f52f00cc960649878e66be819d75bb38fd",
+      "fact_purpose": "Official archive index of scanned historical brochure PDFs. Located the Catalina 22 and Catalina 30 brochure entries and their exact link labels, including the archive's own 'Catalina 30 MKI brochure' and 'Catalina 22mkII brochure' labels."
+    },
+    {
+      "retrieval_index": 6,
+      "url": "https://www.catalinayachts.com/catalina-brochures/",
+      "source_surface_class": "official_brochure_archive_index",
+      "accessed_at": "2026-08-27T11:50:04+00:00",
+      "http_status": 200,
+      "content_type": "text/html",
+      "byte_size": 141899,
+      "sha256": "d97667d49e7b109b4fce6ab838f45f4c678e0530ac74108ef6649b93a525186f",
+      "fact_purpose": "Secondary/alternate official brochure listing page, checked for any additional Catalina 22/30 generation entries not present in brochure-archives/. Only current-production '22 Sport' and '22 Capri' brochures listed; no Catalina 30 entry present."
+    },
+    {
+      "retrieval_index": 7,
+      "url": "https://www.catalinayachts.com/wp-content/uploads/2016/12/brochure-C-30.pdf",
+      "source_surface_class": "official_model_brochure_or_specification_document",
+      "accessed_at": "2026-08-27T12:14:40+00:00",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "byte_size": 8566086,
+      "sha256": "aaa26e4b95f0c207cdc8000bbb99157c1a7ebe68370befaa88d7eacc837da66c",
+      "fact_purpose": "Scanned 'THE NEW CATALINA 30' brochure (Frank Butler design credit, traditional/dinette interior option, Patent No. 3648310). Principal-specifications table: LOA 29'11\", LWL 25'0\", beam 10'10\", displacement 10,200 lbs, lead 4,200 lbs, sail area 446 sq ft, draft 5'3\", shoal draft 4'4\". No wing-keel option, skeg/spade-rudder, or walk-through transom mentioned."
+    },
+    {
+      "retrieval_index": 8,
+      "url": "https://www.catalinayachts.com/wp-content/uploads/2016/12/C-30-MK-I-Brochure.pdf",
+      "source_surface_class": "official_model_brochure_or_specification_document",
+      "accessed_at": "2026-08-27T12:14:56+00:00",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "byte_size": 11783504,
+      "sha256": "6bfbc77f567bb4d73772126a11e590d4914d036bdb9e970fa2569591fee73cd0",
+      "fact_purpose": "Scanned brochure archived by Catalina Yachts under the link label 'Catalina 30 MKI brochure'. Principal-specifications table: LOA 29'11\", LWL 25'0\", beam 10'10\", ballast lead std 4,200 lbs / wing keel 4,300 lbs, displacement std 10,200 lbs / wing keel 10,300 lbs, draft std 5'3\" / shoal draft 3'10\". Text notes wing and fin keel options, a skeg-hung balanced spade rudder, and an available walk-through transom."
+    },
+    {
+      "retrieval_index": 9,
+      "url": "https://www.catalinayachts.com/wp-content/uploads/2016/12/C22sBro.pdf",
+      "source_surface_class": "official_model_brochure_or_specification_document",
+      "accessed_at": "2026-08-27T12:15:10+00:00",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "byte_size": 661255,
+      "sha256": "abcdcd1596968c0941fd525043787eb79af3e30486e1b6b2daf850f9d980fbbd",
+      "fact_purpose": "'Catalina 22Sport' brochure. Body text states the 22Sport is a later production boat built to match the original dimensions/weight of 'the first Catalina 22' for one-design racing compatibility. Principal specifications: length overall 7.25 m (23'10\"), length of hull 6.55 m (21'6\"), length of waterline 5.89 m (19'4\"), beam 2.34 m (7'8\"), draft board-up 0.51 m (1'8\"), draft board-down 1.52 m (5'0\"), sail area 19.04 m2 (205 sq ft), approximate weight 1080 kg (2380 lbs). The archive links this same file under two different labels ('Catalina 22 Sport brochure' and 'Catalina 22mkII brochure'); the document's own text never uses the term 'MkII'."
+    },
+    {
+      "retrieval_index": 10,
+      "url": "https://www.catalinayachts.com/wp-content/uploads/2016/12/CC22Bro-05.pdf",
+      "source_surface_class": "official_model_brochure_or_specification_document",
+      "accessed_at": "2026-08-27T12:15:12+00:00",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "byte_size": 663962,
+      "sha256": "507ec7b29ff0858af1c0b59b08448dce2e8f5acfb39fe65e8def0add850672ae",
+      "fact_purpose": "'Catalina Capri 22' brochure, retrieved only to test whether the archive's adjacent 'Catalina 22 Capri' link is the same commercial product as Wikidata Q5051252 'Catalina 22'. Specifications (length of hull 7.52 m / 24'8\", length overall 6.71 m / 22'0\", LWL 6.01 m / 20'0\", beam 2.44 m / 8'2\", fin-keel weight 999 kg / 2200 lbs, wing-keel weight 1022 kg / 2250 lbs, fin draft 1.22 m / 4'0\", wing draft 0.81 m / 2'8\") differ materially from every Catalina 22 figure found, and the official history page separately tracks a distinct Capri 22 hull-number series -- confirming Capri 22 is a related but distinct commercial product, excluded from the Q5051252 findings."
+    },
+    {
+      "retrieval_index": 11,
+      "url": "https://www.catalinayachts.com/history/",
+      "source_surface_class": "official_history_or_current_model_page",
+      "accessed_at": "2026-08-27T12:52:18+00:00",
+      "http_status": 200,
+      "content_type": "text/html",
+      "byte_size": 177864,
+      "sha256": "6c417fef3accca83251d58aa15e635b7b00504ad329e17ef6db5ae0aa2dc0590",
+      "fact_purpose": "Official dated company-history timeline. Key dated entries used as evidence: Catalina 22 built from July 1969 ('Catalina's first model'); Catalina 30 introduced December 1974 ('Catalina's third model'); Catalina 22 hull #10,000 completed September 1980; Catalina 30 hull #5,000 completed October 1987; Catalina Capri 22 tracked as its own hull-number series (hull #1000 in September 2002); 'January 1995 -- The Catalina 22 markII is introduced with re-designed and enlarged deck and new interior'; 'June 2004 -- The Catalina 22 Sport is introduced to better accommodate one-design racing.' No Catalina-30 generation-label entry (e.g. an explicit 'Mk II') was found in this timeline."
+    }
+  ]
+}

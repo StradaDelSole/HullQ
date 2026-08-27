@@ -1,0 +1,34 @@
+{
+  "schema_version": "sl0029-pilot-identity-boundary-v1",
+  "generated_at": "2026-08-27T13:00:00+00:00",
+  "source_identity_boundary": {
+    "linkage_document_path": "research/stage3/sl0028-wikidata-tier1-full-boundary/linkage.json",
+    "overlap_result_path": "research/manufacturers/overlap_result.json",
+    "canonical_boat_model_count": 1770,
+    "historical_crosswalk_count": 1772,
+    "note": "Both counts are reproduced unchanged from the accepted SLICE-0017+0018/0028 identity boundary. SLICE-0029 performs no discovery and admits no new BoatModel."
+  },
+  "pilot_boat_models": [
+    {
+      "qid": "Q5051252",
+      "preferred_label": "Catalina 22",
+      "hullq_id": "BM_WDT0_6c94b5bc9e79402bb07309289905913e",
+      "overlap_result_manufacturer_sample": "Catalina Yachts",
+      "overlap_result_match_kind": "exact_overlap"
+    },
+    {
+      "qid": "Q5051253",
+      "preferred_label": "Catalina 30",
+      "hullq_id": "BM_WDT0_3fdd058699d145c6a1b044fc90b65201",
+      "overlap_result_manufacturer_sample": "Catalina Yachts",
+      "overlap_result_match_kind": "exact_overlap"
+    }
+  ],
+  "boundary_invariants": {
+    "fixed_qid_count": 2,
+    "no_identity_expansion": true,
+    "no_fuzzy_matching_used": true,
+    "no_canonical_boat_model_id_changed": true,
+    "no_historical_qid_to_hullq_id_mapping_changed": true
+  }
+}

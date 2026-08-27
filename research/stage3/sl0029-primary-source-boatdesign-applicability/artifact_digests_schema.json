@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0029-artifact-digests/v1",
+  "title": "HullQ SLICE-0029 Artifact Digests",
+  "description": "SHA256 integrity digests covering every retained SLICE-0029 package file except this document itself.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "digests"],
+  "properties": {
+    "schema_version": { "const": "sl0029-artifact-digests-v1" },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Covers every retained package file except ARTIFACT-DIGESTS.json itself, discovered dynamically from the package directory (never a hardcoded allowlist) by hullq.bootstrap.wikidata_sl0029_boatdesign_applicability_pilot.build_artifact_digests / verify_artifact_digests_self_consistency.",
+      "required": [
+        "REPORT.md",
+        "artifact_digests_schema.json",
+        "boatdesign_applicability.json",
+        "boatdesign_applicability_schema.json",
+        "pilot_identity_boundary.json",
+        "pilot_identity_boundary_schema.json",
+        "source_clearance_assessment.json",
+        "source_clearance_assessment_schema.json",
+        "source_retrieval_log.json",
+        "source_retrieval_log_schema.json",
+        "wikidata_candidate_applicability.json",
+        "wikidata_candidate_applicability_schema.json"
+      ],
+      "properties": {
+        "REPORT.md": { "$ref": "#/$defs/digest" },
+        "artifact_digests_schema.json": { "$ref": "#/$defs/digest" },
+        "boatdesign_applicability.json": { "$ref": "#/$defs/digest" },
+        "boatdesign_applicability_schema.json": { "$ref": "#/$defs/digest" },
+        "pilot_identity_boundary.json": { "$ref": "#/$defs/digest" },
+        "pilot_identity_boundary_schema.json": { "$ref": "#/$defs/digest" },
+        "source_clearance_assessment.json": { "$ref": "#/$defs/digest" },
+        "source_clearance_assessment_schema.json": { "$ref": "#/$defs/digest" },
+        "source_retrieval_log.json": { "$ref": "#/$defs/digest" },
+        "source_retrieval_log_schema.json": { "$ref": "#/$defs/digest" },
+        "wikidata_candidate_applicability.json": { "$ref": "#/$defs/digest" },
+        "wikidata_candidate_applicability_schema.json": { "$ref": "#/$defs/digest" }
+      }
+    }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+  }
+}
