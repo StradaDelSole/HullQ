@@ -1004,7 +1004,9 @@ def test_metric_tonne_converts_to_kg() -> None:
         qid="Q701",
         label="Cutter E",
         aliases=[],
-        raw_claims={"P2067": [_quantity_claim("P2067", "+5", "Q11369", qualifier_qid="Q5636358")]},
+        # Q191118 is the corrected/default SLICE-0030 tonne/metric-tonne QID
+        # (Q11369 == molecule was never a real unit — see SLICE-0030).
+        raw_claims={"P2067": [_quantity_claim("P2067", "+5", "Q191118", qualifier_qid="Q5636358")]},
     )
     adapter = _make_adapter()
     evidence, _ = adapter.extract_field_evidence(
@@ -1018,6 +1020,158 @@ def test_metric_tonne_converts_to_kg() -> None:
     # 5 metric tonnes = 5000 kg
     assert nc.value == Decimal("5000")
     assert nc.unit == "kg"
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0030 — mass-unit QID correction regressions
+# ---------------------------------------------------------------------------
+
+
+def test_gram_unit_produces_correct_normalized_candidate() -> None:
+    entity = WikidataEntityData(
+        qid="Q702",
+        label="Dinghy G",
+        aliases=[],
+        raw_claims={
+            "P2067": [_quantity_claim("P2067", "+3000000", "Q41803", qualifier_qid="Q5636358")]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+
+    disp_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/displacement_kg"]
+    assert len(disp_ev) == 1
+    nc = disp_ev[0].normalized_candidate
+    assert nc is not None
+    assert nc.value == Decimal("3000")
+    assert nc.unit == "kg"
+
+
+def test_pound_unit_produces_correct_normalized_candidate() -> None:
+    entity = WikidataEntityData(
+        qid="Q703",
+        label="Sloop H",
+        aliases=[],
+        raw_claims={"P2067": [_quantity_claim("P2067", "+1", "Q100995", qualifier_qid="Q5636358")]},
+    )
+    adapter = _make_adapter()
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+
+    disp_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/displacement_kg"]
+    assert len(disp_ev) == 1
+    nc = disp_ev[0].normalized_candidate
+    assert nc is not None
+    assert nc.value == Decimal("0.45359237")
+    assert nc.unit == "kg"
+
+
+def test_pound_2490_converts_exactly() -> None:
+    entity = WikidataEntityData(
+        qid="Q704",
+        label="Catalina 22",
+        aliases=[],
+        raw_claims={
+            "P2067": [_quantity_claim("P2067", "+2490", "Q100995", qualifier_qid="Q5636358")]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+
+    disp_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/displacement_kg"]
+    assert len(disp_ev) == 1
+    nc = disp_ev[0].normalized_candidate
+    assert nc is not None
+    assert nc.value == Decimal("1129.44500130")
+    assert nc.unit == "kg"
+
+
+def test_pound_10200_converts_exactly() -> None:
+    entity = WikidataEntityData(
+        qid="Q705",
+        label="Catalina 30",
+        aliases=[],
+        raw_claims={
+            "P2067": [_quantity_claim("P2067", "+10200", "Q100995", qualifier_qid="Q5636358")]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+
+    disp_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/displacement_kg"]
+    assert len(disp_ev) == 1
+    nc = disp_ev[0].normalized_candidate
+    assert nc is not None
+    assert nc.value == Decimal("4626.64217400")
+    assert nc.unit == "kg"
+
+
+@pytest.mark.parametrize("legacy_qid", ["Q12152", "Q11369", "Q37795"])
+def test_legacy_unrelated_qids_do_not_normalize_as_mass_units(legacy_qid: str) -> None:
+    """Q12152 (myocardial infarction), Q11369 (molecule) and Q37795 (Romanian
+    Raven Shepherd Dog) are not Wikidata mass units at all and must not
+    normalize under the corrected/default map."""
+    entity = WikidataEntityData(
+        qid="Q706",
+        label="Yawl I",
+        aliases=[],
+        raw_claims={
+            "P2067": [_quantity_claim("P2067", "+100", legacy_qid, qualifier_qid="Q5636358")]
+        },
+    )
+    adapter = _make_adapter()
+    evidence, _ = adapter.extract_field_evidence(
+        [entity], "2026-08-19T00:00:00Z", requested_qid_count=1
+    )
+
+    disp_ev = [e for e in evidence if e.field_pointer.raw == "/baseline/dimensions/displacement_kg"]
+    assert len(disp_ev) == 1
+    assert disp_ev[0].normalized_candidate is None
+    assert disp_ev[0].raw.value["amount"] == "+100"
+
+
+def test_legacy_unit_map_version_reproduces_pre_sl0030_extraction_behavior() -> None:
+    """Pinning UNIT_QID_MAP_VERSION_SLICE0008 (used only for historical
+    retained-package replay) reproduces exactly the pre-SLICE-0030 buggy
+    behavior: Q11369 normalizes as a (mis-mapped) metric tonne, while the
+    real Q191118 tonne QID is NOT recognized."""
+    from hullq.sources.wikidata import UNIT_QID_MAP_VERSION_SLICE0008
+
+    legacy_entity = WikidataEntityData(
+        qid="Q707",
+        label="Ketch J",
+        aliases=[],
+        raw_claims={"P2067": [_quantity_claim("P2067", "+5", "Q11369", qualifier_qid="Q5636358")]},
+    )
+    corrected_qid_entity = WikidataEntityData(
+        qid="Q708",
+        label="Ketch K",
+        aliases=[],
+        raw_claims={"P2067": [_quantity_claim("P2067", "+5", "Q191118", qualifier_qid="Q5636358")]},
+    )
+    adapter = _make_adapter()
+    evidence, _ = adapter.extract_field_evidence(
+        [legacy_entity, corrected_qid_entity],
+        "2026-08-19T00:00:00Z",
+        requested_qid_count=2,
+        unit_map_version=UNIT_QID_MAP_VERSION_SLICE0008,
+    )
+
+    by_qid = {
+        e.subject.id: e
+        for e in evidence
+        if e.field_pointer.raw == "/baseline/dimensions/displacement_kg"
+    }
+    assert by_qid["Q707"].normalized_candidate is not None
+    assert by_qid["Q707"].normalized_candidate.value == Decimal("5000")
+    assert by_qid["Q708"].normalized_candidate is None
 
 
 # ---------------------------------------------------------------------------

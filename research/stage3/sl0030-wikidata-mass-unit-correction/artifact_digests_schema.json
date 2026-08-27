@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0030-artifact-digests/v1",
+  "title": "HullQ SLICE-0030 Artifact Digests",
+  "description": "SHA256 integrity digests covering every retained SLICE-0030 package file except this document itself.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "digests"],
+  "properties": {
+    "schema_version": { "const": "sl0030-artifact-digests-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Covers every retained package file except ARTIFACT-DIGESTS.json itself, discovered dynamically from the package directory (never a hardcoded allowlist) by hullq.bootstrap.wikidata_sl0030_mass_unit_correction.build_artifact_digests / verify_artifact_digests_self_consistency. The base entries are always present once --replay has run. REPLAY-RESULT.json/REPLAY-REPORT.md are additionally required once --persist has run; they are absent (and therefore not required here) in the intermediate post---replay-only state.",
+      "required": [
+        "unit_qid_assessment.json",
+        "unit_qid_assessment_schema.json",
+        "coverage_before_after.json",
+        "coverage_before_after_schema.json",
+        "REPORT.md",
+        "artifact_digests_schema.json"
+      ],
+      "properties": {
+        "unit_qid_assessment.json": { "$ref": "#/$defs/digest" },
+        "unit_qid_assessment_schema.json": { "$ref": "#/$defs/digest" },
+        "coverage_before_after.json": { "$ref": "#/$defs/digest" },
+        "coverage_before_after_schema.json": { "$ref": "#/$defs/digest" },
+        "REPORT.md": { "$ref": "#/$defs/digest" },
+        "artifact_digests_schema.json": { "$ref": "#/$defs/digest" },
+        "REPLAY-RESULT.json": { "$ref": "#/$defs/digest" },
+        "REPLAY-REPORT.md": { "$ref": "#/$defs/digest" }
+      }
+    }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+  }
+}

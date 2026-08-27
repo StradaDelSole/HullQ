@@ -60,6 +60,7 @@ from hullq.sources.wikidata import (
     DEFAULT_QUALIFIER_CARRIER_VERSION,
     QUALIFIER_CARRIER_VERSION_SLICE0008,
     QUALIFIER_CARRIERS_BY_VERSION,
+    UNIT_QID_MAP_VERSION_SLICE0008,
     WIKIDATA_SOURCE_ID,
     WikidataAdapter,
     WikidataAdapterConfig,
@@ -217,6 +218,7 @@ def load_and_verify_retained_sl0026_package(
         evidence_manifest.get("acquired_at", ""),
         requested_qid_count=len(entities),
         qualifier_carrier_version=QUALIFIER_CARRIER_VERSION_SLICE0008,
+        unit_map_version=UNIT_QID_MAP_VERSION_SLICE0008,
     )
     problems.extend(
         sl0026.verify_evidence_manifest_self_consistency(
@@ -404,13 +406,24 @@ def compute_after_extraction(
 ) -> tuple[tuple[FieldEvidence, ...], WikidataQualityReport]:
     """Re-extract FieldEvidence from *entities* offline using the SLICE-0027-
     amended adapter default (``DEFAULT_QUALIFIER_CARRIER_VERSION`` ==
-    ``QUALIFIER_CARRIER_VERSION_SLICE0027``). Zero network access."""
+    ``QUALIFIER_CARRIER_VERSION_SLICE0027``). Zero network access.
+
+    Pins ``unit_map_version=UNIT_QID_MAP_VERSION_SLICE0008`` explicitly:
+    SLICE-0027's own retained ``coverage_before_after.json`` "after" state was
+    computed before SLICE-0030 existed, when the (then-uncorrected)
+    SLICE-0008 mass-unit map was the only map / the adapter's only default.
+    Pinning it here keeps this retained package reproducing exactly that
+    "after" state forever, independent of the SLICE-0030 corrected adapter
+    default. SLICE-0030's own before/after coverage delta is measured
+    separately (see research/stage3/sl0030-wikidata-mass-unit-correction/).
+    """
     adapter = _offline_adapter("HullQ/0.1 (sl0027-replay@example.org)")
     full_evidence, report = adapter.extract_field_evidence(
         list(entities),
         acquired_at,
         requested_qid_count=len(entities),
         qualifier_carrier_version=DEFAULT_QUALIFIER_CARRIER_VERSION,
+        unit_map_version=UNIT_QID_MAP_VERSION_SLICE0008,
     )
     return tuple(full_evidence), report
 

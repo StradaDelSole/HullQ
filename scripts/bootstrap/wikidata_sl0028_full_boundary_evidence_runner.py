@@ -504,7 +504,11 @@ def run_recompute(
         BoatModelLinkage,
         rebuild_entities_from_manifest,
     )
-    from hullq.sources.wikidata import WikidataAdapter, WikidataAdapterConfig
+    from hullq.sources.wikidata import (
+        UNIT_QID_MAP_VERSION_SLICE0008,
+        WikidataAdapter,
+        WikidataAdapterConfig,
+    )
 
     print(
         "HullQ SLICE-0028 Full-Boundary Wikidata Tier-1 Evidence Rollout — RECOMPUTE "
@@ -542,8 +546,18 @@ def run_recompute(
     with httpx.Client() as client:
         adapter = WikidataAdapter(source=source, config=config, http_client=client)
         entities = rebuild_entities_from_manifest(existing_manifest)
+        # SLICE-0030 pinned note: --recompute regenerates derived documents
+        # (coverage.json, disagreement diagnostics, REPORT.md, etc.) from the
+        # retained raw_entities without re-acquisition. Pinning
+        # UNIT_QID_MAP_VERSION_SLICE0008 keeps that regeneration reproducing
+        # exactly the (uncorrected) mass-unit extraction behavior this
+        # retained package originally captured, independent of the
+        # SLICE-0030 corrected adapter default.
         full_evidence, quality_report = adapter.extract_field_evidence(
-            entities, acquired_at, requested_qid_count=len(entities)
+            entities,
+            acquired_at,
+            requested_qid_count=len(entities),
+            unit_map_version=UNIT_QID_MAP_VERSION_SLICE0008,
         )
 
     # This run performs zero network requests, so quality_report's own
@@ -601,7 +615,11 @@ def run_verify(
         verify_full_boundary_linkage,
         verify_linkage_document_self_consistency,
     )
-    from hullq.sources.wikidata import WikidataAdapter, WikidataAdapterConfig
+    from hullq.sources.wikidata import (
+        UNIT_QID_MAP_VERSION_SLICE0008,
+        WikidataAdapter,
+        WikidataAdapterConfig,
+    )
 
     print(
         "HullQ SLICE-0028 Full-Boundary Wikidata Tier-1 Evidence Rollout — OFFLINE VERIFY "
@@ -657,10 +675,19 @@ def run_verify(
         with httpx.Client() as client:
             adapter = WikidataAdapter(source=source, config=config, http_client=client)
             rebuilt_entities = rebuild_entities_from_manifest(evidence_manifest)
+            # SLICE-0030 pinned note: this retained package's evidence was
+            # originally extracted under the (uncorrected) SLICE-0008
+            # mass-unit map — the only map that existed before SLICE-0030.
+            # Pinning UNIT_QID_MAP_VERSION_SLICE0008 keeps this offline
+            # verifier reproducing exactly that extraction behavior forever,
+            # independent of the SLICE-0030 corrected adapter default.
+            # SLICE-0030's own before/after coverage delta is measured
+            # separately (see research/stage3/sl0030-wikidata-mass-unit-correction/).
             rebuilt_full_evidence, rebuilt_report = adapter.extract_field_evidence(
                 rebuilt_entities,
                 evidence_manifest.get("acquired_at", ""),
                 requested_qid_count=len(rebuilt_entities),
+                unit_map_version=UNIT_QID_MAP_VERSION_SLICE0008,
             )
         print(
             f"  rebuilt {len(rebuilt_entities)} entities and re-extracted "
@@ -994,7 +1021,11 @@ def persist_and_verify(
     from hullq.persistence.importer import import_research_evidence_bundle
     from hullq.persistence.migrations import apply_migrations
     from hullq.persistence.readback import fetch_bundle_snapshot, fetch_evidence
-    from hullq.sources.wikidata import WikidataAdapter, WikidataAdapterConfig
+    from hullq.sources.wikidata import (
+        UNIT_QID_MAP_VERSION_SLICE0008,
+        WikidataAdapter,
+        WikidataAdapterConfig,
+    )
 
     linkage_doc = json.loads(linkage_path.read_text(encoding="utf-8"))
     evidence_manifest = json.loads(evidence_manifest_path.read_text(encoding="utf-8"))
@@ -1015,10 +1046,15 @@ def persist_and_verify(
     with httpx.Client() as client:
         adapter = WikidataAdapter(source=source, config=config, http_client=client)
         entities = rebuild_entities_from_manifest(evidence_manifest)
+        # SLICE-0030 pinned note: this persistence replay must keep importing
+        # exactly the evidence SLICE-0028 originally captured and had
+        # independently reviewed/accepted, extracted under the (uncorrected)
+        # SLICE-0008 mass-unit map.
         full_evidence, _report = adapter.extract_field_evidence(
             entities,
             evidence_manifest.get("acquired_at", ""),
             requested_qid_count=len(entities),
+            unit_map_version=UNIT_QID_MAP_VERSION_SLICE0008,
         )
 
     allowed = filter_to_allowed_evidence(full_evidence)

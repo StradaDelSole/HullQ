@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0030-coverage-before-after/v1",
+  "title": "HullQ SLICE-0030 Before/After Coverage",
+  "description": "Per-field before (legacy SLICE-0008 mass-unit map) and after (SLICE-0030 corrected mass-unit map) coverage over the fixed, unmodified accepted SLICE-0028 full-boundary raw claims, using the same four mutually exclusive coverage states as SLICE-0026/0027/0028.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "qid_count",
+    "note",
+    "before_unit_map_version",
+    "after_unit_map_version",
+    "displacement_normalized_candidate_delta",
+    "non_displacement_fields_unchanged",
+    "fields"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0030-coverage-before-after-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "qid_count": { "type": "integer", "const": 1770 },
+    "note": { "type": "string", "minLength": 1 },
+    "before_unit_map_version": { "const": "SLICE-0008-v1" },
+    "after_unit_map_version": { "const": "SLICE-0030-v1" },
+    "displacement_normalized_candidate_delta": { "type": "integer" },
+    "non_displacement_fields_unchanged": { "type": "boolean" },
+    "fields": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["loa", "lwl", "beam", "draft", "displacement"],
+      "properties": {
+        "loa": { "$ref": "#/$defs/before_after" },
+        "lwl": { "$ref": "#/$defs/before_after" },
+        "beam": { "$ref": "#/$defs/before_after" },
+        "draft": { "$ref": "#/$defs/before_after" },
+        "displacement": { "$ref": "#/$defs/before_after" }
+      }
+    }
+  },
+  "$defs": {
+    "coverage_bucket_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "normalized_candidate_present",
+        "source_statement_present",
+        "unsupported_or_malformed",
+        "no_usable_value"
+      ],
+      "properties": {
+        "normalized_candidate_present": { "type": "integer", "minimum": 0 },
+        "source_statement_present": { "type": "integer", "minimum": 0 },
+        "unsupported_or_malformed": { "type": "integer", "minimum": 0 },
+        "no_usable_value": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "before_after": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["before", "after"],
+      "properties": {
+        "before": { "$ref": "#/$defs/coverage_bucket_counts" },
+        "after": { "$ref": "#/$defs/coverage_bucket_counts" }
+      }
+    }
+  }
+}
