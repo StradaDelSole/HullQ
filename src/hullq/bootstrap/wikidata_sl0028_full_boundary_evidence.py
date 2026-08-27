@@ -63,7 +63,11 @@ from typing import Any
 
 from hullq.bootstrap import wikidata_sl0026_tier1_enrichment_pilot as sl0026
 from hullq.bootstrap.wikidata_tier0 import load_crosswalk_from_manifest
-from hullq.bootstrap.wikidata_tier0_sl0018 import BASELINE_MANIFEST_PATH
+from hullq.bootstrap.wikidata_tier0_sl0018 import (
+    BASELINE_MANIFEST_PATH,
+    DeltaCompletenessError,
+    verify_entity_acquisition_completeness,
+)
 from hullq.domain.provenance import FieldEvidence, JsonPointer
 from hullq.research.jobs import ResearchTarget
 from hullq.research.observations import ResearchEvidenceBundle, migrate_evidence_v02_to_v03
@@ -1100,11 +1104,20 @@ def verify_evidence_manifest_self_consistency(
     - ``usage_metrics.requested_qid_count`` against the independently
       derived ``distinct_request_qids(linkage)`` count;
     - ``usage_metrics.fetched_entity_count`` against ``len(entities)``;
-    - internal consistency between ``acquisition_failure_count == 0`` and
-      ``fetched_entity_count == requested_qid_count`` (a zero-failure
-      manifest cannot truthfully have fewer fetched entities than requested
-      QIDs — the one acquisition-completeness fact deterministically
-      inferable from a retained *successful* package alone);
+    - EXACT acquisition completeness: the rebuilt entities' QID set must
+      equal ``set(distinct_request_qids(linkage))`` with no duplicate entity
+      QID — reusing
+      ``hullq.bootstrap.wikidata_tier0_sl0018.verify_entity_acquisition_completeness``
+      (the identical accepted gate ``run_live()`` itself must pass before it
+      will ever write a manifest), never a cardinality-only comparison that a
+      duplicate-for-missing or unexpected-for-requested QID swap could pass
+      undetected;
+    - the resulting biconditional consistency between that exact-completeness
+      result and ``usage_metrics.acquisition_failure_count``: exact
+      completeness requires ``acquisition_failure_count == 0``, and
+      ``acquisition_failure_count == 0`` requires exact completeness (a
+      retained *successful* package written by ``run_live()`` can never
+      truthfully report one without the other);
     - ``quality_report_global.malformed_statement_count`` and
       ``.unsupported_qualifier_count`` against the independently
       re-extracted *quality_report*.
@@ -1136,14 +1149,37 @@ def verify_evidence_manifest_self_consistency(
             f"({actual_fetched_entity_count!r}) != len(entities) ({expected_fetched_entity_count})"
         )
 
-    if (
-        usage.get("acquisition_failure_count") == 0
-        and actual_fetched_entity_count != actual_requested_qid_count
-    ):
+    # Reuses the exact accepted completeness gate run_live() itself must pass
+    # before it will ever write a manifest (never a second, weaker
+    # cardinality-only check): a mismatched cardinality that happens to match
+    # by coincidence (e.g. one requested QID silently swapped for an
+    # unexpected one, or a duplicate entity QID masking a missing one) is
+    # caught by the same set-equality/uniqueness logic, not merely by
+    # comparing counts.
+    completeness_error: str | None = None
+    try:
+        verify_entity_acquisition_completeness(distinct_request_qids(linkage), entities)
+    except DeltaCompletenessError as exc:
+        completeness_error = str(exc)
+
+    acquisition_failure_count = usage.get("acquisition_failure_count")
+    if completeness_error is not None:
         problems.append(
-            "retained evidence_manifest reports acquisition_failure_count == 0 but "
-            f"fetched_entity_count ({actual_fetched_entity_count!r}) != requested_qid_count "
-            f"({actual_requested_qid_count!r}), which is internally inconsistent"
+            "retained raw_entities do not exactly cover the full canonical AUTO_ADMIT "
+            f"request-QID set (missing/unexpected/duplicate QIDs): {completeness_error}"
+        )
+        if acquisition_failure_count == 0:
+            problems.append(
+                "retained evidence_manifest reports acquisition_failure_count == 0 but the "
+                "rebuilt raw_entities do not exactly cover the full request-QID set, which is "
+                "internally inconsistent for a package run_live() only ever writes after "
+                "verify_entity_acquisition_completeness has already passed"
+            )
+    elif acquisition_failure_count != 0:
+        problems.append(
+            "rebuilt raw_entities exactly cover the full canonical AUTO_ADMIT request-QID set "
+            f"(zero missing/unexpected/duplicate QIDs) but retained acquisition_failure_count "
+            f"({acquisition_failure_count!r}) != 0, which is internally inconsistent"
         )
 
     quality_global = evidence_manifest.get("quality_report_global", {})

@@ -885,6 +885,104 @@ def test_evidence_manifest_self_consistency_detects_zero_failure_count_mismatch(
     assert any("internally inconsistent" in p for p in problems)
 
 
+def test_evidence_manifest_self_consistency_detects_unexpected_qid_swap() -> None:
+    """Same entity count as requested, but one requested QID was silently
+    replaced by an unexpected QID -- a cardinality-only check would miss
+    this; exact set-equality (reusing verify_entity_acquisition_completeness)
+    must not."""
+    boundary = _boundary((("Q1", "BM_A"), ("Q2", "BM_B")), canonical_count=2)
+    linkage = build_full_boundary_linkage(boundary)
+    entity_q1 = WikidataEntityData(qid="Q1", label="Boat A", aliases=[], raw_claims={})
+    entity_unexpected = WikidataEntityData(qid="Q999", label="Boat X", aliases=[], raw_claims={})
+    entities = [entity_q1, entity_unexpected]
+    full_evidence, quality_report = _extract(entities)
+    doc = build_evidence_manifest_document(
+        generated_at="t",
+        acquired_at="t2",
+        linkage=linkage,
+        entities=entities,
+        allowed_evidence_by_qid={},
+        quality_report=quality_report,
+        requested_qid_count=2,
+        acquisition_failure_count=0,
+    )
+    problems = verify_evidence_manifest_self_consistency(
+        linkage=linkage,
+        entities=entities,
+        full_evidence=full_evidence,
+        quality_report=quality_report,
+        evidence_manifest=doc,
+    )
+    assert any("do not exactly cover" in p for p in problems)
+    assert any("internally inconsistent" in p for p in problems)
+
+
+def test_evidence_manifest_self_consistency_detects_duplicate_entity_qid_masking_missing_qid() -> (
+    None
+):
+    """Same entity count as requested, but a duplicate entity QID masks a
+    genuinely missing requested QID -- a cardinality-only check would miss
+    this too."""
+    boundary = _boundary((("Q1", "BM_A"), ("Q2", "BM_B")), canonical_count=2)
+    linkage = build_full_boundary_linkage(boundary)
+    entity_q1 = WikidataEntityData(qid="Q1", label="Boat A", aliases=[], raw_claims={})
+    entity_q1_dup = WikidataEntityData(qid="Q1", label="Boat A", aliases=[], raw_claims={})
+    entities = [entity_q1, entity_q1_dup]
+    full_evidence, quality_report = _extract(entities)
+    doc = build_evidence_manifest_document(
+        generated_at="t",
+        acquired_at="t2",
+        linkage=linkage,
+        entities=entities,
+        allowed_evidence_by_qid={},
+        quality_report=quality_report,
+        requested_qid_count=2,
+        acquisition_failure_count=0,
+    )
+    problems = verify_evidence_manifest_self_consistency(
+        linkage=linkage,
+        entities=entities,
+        full_evidence=full_evidence,
+        quality_report=quality_report,
+        evidence_manifest=doc,
+    )
+    assert any("do not exactly cover" in p for p in problems)
+    assert any("internally inconsistent" in p for p in problems)
+
+
+def test_evidence_manifest_self_consistency_detects_failure_count_tampered_nonzero_while_complete() -> (
+    None
+):
+    """The rebuilt entities exactly cover the full request-QID set (genuinely
+    complete), but acquisition_failure_count was tampered from the correct 0
+    to a non-zero value -- must be caught even though the entity data itself
+    is untouched."""
+    entity = WikidataEntityData(qid="Q1", label="Boat A", aliases=[], raw_claims={})
+    boundary = _boundary((("Q1", "BM_A"),))
+    linkage = build_full_boundary_linkage(boundary)
+    full_evidence, quality_report = _extract([entity])
+    doc = build_evidence_manifest_document(
+        generated_at="t",
+        acquired_at="t2",
+        linkage=linkage,
+        entities=[entity],
+        allowed_evidence_by_qid={},
+        quality_report=quality_report,
+        requested_qid_count=1,
+        acquisition_failure_count=0,
+    )
+    tampered = json_copy_with(doc, ("usage_metrics", "acquisition_failure_count"), 1)
+    problems = verify_evidence_manifest_self_consistency(
+        linkage=linkage,
+        entities=[entity],
+        full_evidence=full_evidence,
+        quality_report=quality_report,
+        evidence_manifest=tampered,
+    )
+    assert any("internally inconsistent" in p for p in problems)
+    assert not any("do not exactly cover" in p for p in problems)
+
+
 def test_evidence_manifest_self_consistency_detects_malformed_count_tamper() -> None:
     entity = WikidataEntityData(qid="Q1", label="Boat A", aliases=[], raw_claims={})
     boundary = _boundary((("Q1", "BM_A"),))
