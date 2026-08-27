@@ -28,7 +28,8 @@
           "generation_boundary_rationale",
           "design_option_axis_evidence",
           "dated_primary_source_documents",
-          "applicability_scope"
+          "applicability_scope",
+          "non_option_descriptive_differences"
         ],
         "properties": {
           "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
@@ -119,7 +120,20 @@
               }
             }
           },
-          "applicability_scope": { "$ref": "#/$defs/applicability_scope" }
+          "applicability_scope": { "$ref": "#/$defs/applicability_scope" },
+          "non_option_descriptive_differences": {
+            "type": "array",
+            "description": "Descriptive text differences between retained documents that are explicitly NOT treated as DesignOption evidence, because they rest on one document mentioning something and another not mentioning it (non-mention is not positive evidence of a concurrent factory option). May be empty.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["topic", "evidence"],
+              "properties": {
+                "topic": { "type": "string", "minLength": 1 },
+                "evidence": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
         }
       }
     }

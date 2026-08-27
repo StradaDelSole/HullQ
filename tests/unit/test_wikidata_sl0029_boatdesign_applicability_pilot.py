@@ -494,9 +494,11 @@ def _unbounded_scope() -> dict[str, Any]:
 
 
 def _bounded_scope(**overrides: Any) -> dict[str, Any]:
+    """A genuinely closed production-year range: BOTH first_year and last_year known."""
     scope = _unbounded_scope()
     scope["unknown_or_unbounded"] = False
     scope["first_year"] = 1974
+    scope["last_year"] = 1995
     scope.update(overrides)
     return scope
 
@@ -509,6 +511,16 @@ def test_validate_applicability_scope_invariant_accepts_genuinely_bounded() -> N
     assert validate_applicability_scope_invariant(_bounded_scope()) == []
 
 
+def test_validate_applicability_scope_invariant_accepts_bounded_by_hull_number() -> None:
+    """A non-year dimension (e.g. a hull-number range) can independently justify a
+    genuinely bounded scope without needing a production-year range at all."""
+    scope = _unbounded_scope()
+    scope["unknown_or_unbounded"] = False
+    scope["hull_number_from"] = "1"
+    scope["hull_number_to"] = "500"
+    assert validate_applicability_scope_invariant(scope) == []
+
+
 def test_validate_applicability_scope_invariant_rejects_empty_bounded_claim() -> None:
     """unknown_or_unbounded=false with every dimension null is an empty scope
     masquerading as bounded -- exactly the forbidden absence-as-proof pattern."""
@@ -517,6 +529,22 @@ def test_validate_applicability_scope_invariant_rejects_empty_bounded_claim() ->
     problems = validate_applicability_scope_invariant(empty_but_claimed_bounded)
     assert problems
     assert any("empty scope" in p for p in problems)
+
+
+def test_validate_applicability_scope_invariant_rejects_half_open_year_range() -> None:
+    """The review's exact second-round finding: a genuinely unknown production-year
+    upper (or lower) bound must not be treated as bounded merely because the OTHER
+    bound is known. Neither a known first_year alone nor a known last_year alone is
+    sufficient."""
+    known_start_only = _bounded_scope(last_year=None)
+    problems = validate_applicability_scope_invariant(known_start_only)
+    assert problems
+    assert any("only one of first_year/last_year is known" in p for p in problems)
+
+    known_end_only = _bounded_scope(first_year=None, last_year=1995)
+    problems = validate_applicability_scope_invariant(known_end_only)
+    assert problems
+    assert any("only one of first_year/last_year is known" in p for p in problems)
 
 
 # ---------------------------------------------------------------------------
@@ -548,14 +576,17 @@ def test_validate_boatdesign_applicability_rejects_hullq_id_mismatch() -> None:
 def test_validate_boatdesign_applicability_rejects_established_true_with_unbounded_scope() -> None:
     """The review's exact original defect: generation_boundary_established_for_this_pilot
     = true while applicability_scope claims unknown_or_unbounded -- the two facts
-    must agree."""
+    must agree. Both BoatModels are currently established=false in the retained
+    package (amended per review), so this test forces established=true onto a
+    synthetic copy to exercise the invariant directly."""
     identity_boundary = _load(SL0029_DIR / "pilot_identity_boundary.json")
     boatdesign = json.loads(
         (SL0029_DIR / "boatdesign_applicability.json").read_text(encoding="utf-8")
     )
     catalina_30 = next(m for m in boatdesign["boat_models"] if m["qid"] == "Q5051253")
-    assert catalina_30["generation_boundary_established_for_this_pilot"] is True
-    catalina_30["applicability_scope"] = _unbounded_scope()
+    assert catalina_30["generation_boundary_established_for_this_pilot"] is False
+    assert catalina_30["applicability_scope"]["unknown_or_unbounded"] is True
+    catalina_30["generation_boundary_established_for_this_pilot"] = True
     problems = validate_boatdesign_applicability(
         boatdesign, pilot_identity_boundary=identity_boundary
     )
@@ -599,7 +630,9 @@ def test_validate_wikidata_candidate_applicability_rejects_tampered_candidate() 
 def test_validate_wikidata_candidate_applicability_rejects_safe_with_unbounded_scope() -> None:
     """The core anti-overclaim rule: SAFE_FOR_LATER_DESIGN_PROMOTION requires a
     genuinely bounded applicability_scope -- absence of evidence must never become
-    evidence of all-production applicability."""
+    evidence of all-production applicability. No field in the retained package is
+    currently SAFE (amended per review), so this test forces the outcome onto a
+    synthetic copy of an already-unbounded retained field to exercise the check."""
     identity_boundary = _load(SL0029_DIR / "pilot_identity_boundary.json")
     evidence_manifest = _load(SL0028_DIR / "evidence_manifest.json")
     field_applicability = json.loads(
@@ -609,8 +642,9 @@ def test_validate_wikidata_candidate_applicability_rejects_safe_with_unbounded_s
     loa_field = next(
         f for f in catalina_30["fields"] if f["field_pointer"] == "/baseline/dimensions/loa_m"
     )
-    assert loa_field["outcome"] == ApplicabilityOutcome.SAFE_FOR_LATER_DESIGN_PROMOTION.value
-    loa_field["applicability_scope"] = _unbounded_scope()
+    assert loa_field["outcome"] == ApplicabilityOutcome.INSUFFICIENT_EVIDENCE.value
+    assert loa_field["applicability_scope"]["unknown_or_unbounded"] is True
+    loa_field["outcome"] = ApplicabilityOutcome.SAFE_FOR_LATER_DESIGN_PROMOTION.value
     problems = validate_wikidata_candidate_applicability(
         field_applicability,
         pilot_identity_boundary=identity_boundary,
@@ -740,7 +774,7 @@ def test_compute_recommendation_matches_retained_package() -> None:
         boatdesign_applicability=boatdesign,
         wikidata_candidate_applicability=field_applicability,
     )
-    assert result == RecommendationCode.READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT.value
+    assert result == RecommendationCode.APPLICABILITY_EVIDENCE_INSUFFICIENT.value
     report_text = (SL0029_DIR / "REPORT.md").read_text(encoding="utf-8")
     assert result in report_text
 

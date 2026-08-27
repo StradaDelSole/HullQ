@@ -2,8 +2,8 @@
   "schema_version": "sl0029-source-retrieval-log-v1",
   "generated_at": "2026-08-27T13:00:00+00:00",
   "retrieval_ceiling": 25,
-  "retrieval_count": 11,
-  "retrieval_method_note": "Bounded manual research pass: eleven individually issued, human-directed HTTP GET requests against official catalinayachts.com surfaces during one research session on 2026-08-27, each inspected before the next was requested. No crawler, scraper, or unattended/looped retrieval was used. No page/document outside the permitted source-surface classes was fetched.",
+  "retrieval_count": 13,
+  "retrieval_method_note": "Bounded manual research pass: thirteen individually issued, human-directed HTTP GET requests against official catalinayachts.com surfaces during one research session on 2026-08-27, each inspected before the next was requested. No crawler, scraper, or unattended/looped retrieval was used. No page/document outside the permitted source-surface classes was fetched. Retrievals 12-13 were added during an amendment pass, in response to independent review, to test (per the SLICE-0029 positive/negative-path rule) whether additional official Catalina 30 dating evidence existed on the two remaining unvisited official brochure-listing pages; both returned lead-generation form pages with zero brochure PDF links, so this amendment pass ends with the negative-path result documented in boatdesign_applicability.json / wikidata_candidate_applicability.json.",
   "retrievals": [
     {
       "retrieval_index": 1,
@@ -125,6 +125,28 @@
       "byte_size": 177864,
       "sha256": "6c417fef3accca83251d58aa15e635b7b00504ad329e17ef6db5ae0aa2dc0590",
       "fact_purpose": "Official dated company-history timeline. Key dated entries used as evidence: Catalina 22 built from July 1969 ('Catalina's first model'); Catalina 30 introduced December 1974 ('Catalina's third model'); Catalina 22 hull #10,000 completed September 1980; Catalina 30 hull #5,000 completed October 1987; Catalina Capri 22 tracked as its own hull-number series (hull #1000 in September 2002); 'January 1995 -- The Catalina 22 markII is introduced with re-designed and enlarged deck and new interior'; 'June 2004 -- The Catalina 22 Sport is introduced to better accommodate one-design racing.' No Catalina-30 generation-label entry (e.g. an explicit 'Mk II') was found in this timeline."
+    },
+    {
+      "retrieval_index": 12,
+      "url": "https://www.catalinayachts.com/brochure-downloads/",
+      "source_surface_class": "official_brochure_archive_index",
+      "accessed_at": "2026-08-27T16:43:57+00:00",
+      "http_status": 200,
+      "content_type": "text/html",
+      "byte_size": 1506431,
+      "sha256": "019113525f840ff93f8322ffb0541de575b9631da3ba3aca18cc87227c8b1213",
+      "fact_purpose": "Amendment-pass positive-path check: this page (page title 'Catalina Yachts Brochure Download') is a brochure request/lead-generation form, not an archive listing -- zero PDF hrefs anywhere in the retrieved HTML. No additional (and possibly dated) Catalina 30 document was found here."
+    },
+    {
+      "retrieval_index": 13,
+      "url": "https://www.catalinayachts.com/catalina-yachts-brochure-download/",
+      "source_surface_class": "official_brochure_archive_index",
+      "accessed_at": "2026-08-27T16:54:10+00:00",
+      "http_status": 200,
+      "content_type": "text/html",
+      "byte_size": 1506567,
+      "sha256": "5981e73afce799af27b0840a0d0c1fdb1a469de81ecfb9101b242bac9c681c77",
+      "fact_purpose": "Amendment-pass positive-path check: same 'Catalina Yachts Brochure Download' lead-generation form as retrieval 12 (distinct URL, same content pattern) -- zero PDF hrefs anywhere in the retrieved HTML. Confirms the two Catalina 30 documents already retained (retrievals 7 and 8) are the only official Catalina 30 specification documents discoverable within the permitted source-surface classes during this bounded pass; no further positive dating evidence was found."
     }
   ]
 }

@@ -40,10 +40,12 @@ derived from it are retained in ``boatdesign_applicability.json``. What this mod
   evidence bundle (guards against silently reinterpreting already-accepted evidence);
 - validating every field/BoatModel applicability classification's structured
   ``applicability_scope`` (``specs/OBSERVATION_APPLICABILITY_SCHEMA.v0.1.json`` shape)
-  and refusing ``SAFE_FOR_LATER_DESIGN_PROMOTION`` unless that scope is genuinely
-  bounded by at least one positively-evidenced dimension -- an unknown/unbounded scope
-  can never itself become "safe for promotion" (absence of evidence is never evidence
-  of all-production applicability);
+  and refusing ``SAFE_FOR_LATER_DESIGN_PROMOTION`` unless that scope is genuinely,
+  fully bounded -- a production-year range needs BOTH ``first_year`` and
+  ``last_year`` positively known; a half-open range with only one side known is
+  still an unknown/unbounded scope on its unknown side and can never itself become
+  "safe for promotion" (absence of evidence is never evidence of all-production
+  applicability, and "one known bound" is never treated as "genuinely bounded");
 - mechanically recomputing the slice's single deterministic next-step recommendation
   from the retained rights-gate outcome and applicability classifications;
 - building/verifying the retained-package SHA-256 artifact-integrity digest document.
@@ -495,13 +497,27 @@ def source_use_allowed(gate_decisions: Mapping[str, Any], use: str) -> bool:
     return bool(entry.get("outcome") == DecisionOutcome.ALLOWED.value)
 
 
+_NON_YEAR_APPLICABILITY_SCOPE_DIMENSION_KEYS: tuple[str, ...] = tuple(
+    key for key in _APPLICABILITY_SCOPE_DIMENSION_KEYS if key not in ("first_year", "last_year")
+)
+
+
 def validate_applicability_scope_invariant(scope: Mapping[str, Any]) -> list[str]:
     """Validate the OBSERVATION_APPLICABILITY_SCHEMA.v0.1 no-absence-as-proof
-    invariant: a scope MUST NOT claim ``unknown_or_unbounded: false`` (i.e. "this is
-    genuinely bounded") while every individual bounding dimension is null. That
-    combination would be an empty scope masquerading as a bounded one -- exactly the
-    "absence of evidence becomes evidence of all-production applicability" failure
-    mode the controlling slice prohibits.
+    invariant.
+
+    Per that schema, a null value for ANY dimension means that specific bound is
+    unknown -- never that the observation applies to all production. This means:
+
+    - a scope MUST NOT claim ``unknown_or_unbounded: false`` while every individual
+      bounding dimension is null (an empty scope masquerading as bounded);
+    - a scope using a production-year range MUST NOT claim
+      ``unknown_or_unbounded: false`` unless BOTH ``first_year`` and ``last_year``
+      are known. A half-open range (e.g. a known ``first_year`` with a genuinely
+      unknown ``last_year``) is still an unknown/unbounded scope on its known side
+      alone -- treating "one known bound" as "genuinely bounded" is exactly the
+      absence-as-proof failure mode the controlling slice prohibits, and MUST NOT be
+      corrected by reinterpreting the accepted schema.
 
     Structural schema conformance (required keys, types, the ``schema_version``
     const) is validated separately against ``specs/OBSERVATION_APPLICABILITY_SCHEMA.v0.1.json``
@@ -510,8 +526,24 @@ def validate_applicability_scope_invariant(scope: Mapping[str, Any]) -> list[str
     """
     if scope.get("unknown_or_unbounded") is True:
         return []
-    if any(scope.get(key) is not None for key in _APPLICABILITY_SCOPE_DIMENSION_KEYS):
-        return []
+
+    first_year = scope.get("first_year")
+    last_year = scope.get("last_year")
+
+    if first_year is not None and last_year is not None:
+        return []  # genuinely closed production-year range
+
+    if first_year is not None or last_year is not None:
+        return [
+            "applicability_scope claims unknown_or_unbounded=false using a production-year "
+            "range but only one of first_year/last_year is known -- the other bound remains "
+            "genuinely unknown and MUST NOT be treated as bounded merely because one side "
+            "is known"
+        ]
+
+    if any(scope.get(key) is not None for key in _NON_YEAR_APPLICABILITY_SCOPE_DIMENSION_KEYS):
+        return []  # bounded by a non-year dimension (hull number range, named variant, etc.)
+
     return [
         "applicability_scope claims unknown_or_unbounded=false but every bounding "
         "dimension is null -- an empty scope cannot be treated as genuinely bounded"

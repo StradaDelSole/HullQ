@@ -135,11 +135,11 @@
           "field_pointer": "/baseline/dimensions/loa_m",
           "sl0028_normalized_candidate": { "value": "9.119616", "unit": "m" },
           "sl0028_evidence_id": "WD-Q5051253-P2043-54a10536f58a791b",
-          "outcome": "SAFE_FOR_LATER_DESIGN_PROMOTION",
-          "rationale": "Two independently retrieved primary-source Catalina 30 documents -- brochure-C-30.pdf (no confirmed print date; circumstantial signals consistent with an early, near-1974-introduction document) and C-30-MK-I-Brochure.pdf (print-run date code '9 90', read as September 1990) -- differ in keel/rudder/transom/layout options yet report an identical LOA of 29'11\" (= 9.1186 m, matching the Wikidata normalized candidate to within rounding). boatdesign_applicability.json establishes that the observed differences are DesignOption-axis (keel, draft, rudder, layout), not hull-form/tooling differences, and that no IDENTITY_MODEL.v0.2.md 2.4 BoatDesign-split trigger was found for Catalina 30. Per OBSERVATION_APPLICABILITY_SCHEMA.v0.1 this is a NARROWLY bounded finding, not an all-production claim: applicability_scope below states production_year >= 1974 with an explicitly unknown upper bound (last_year = null) -- it does not claim coverage of the entire, still only partially known, Catalina 30 production run. The retained SLICE-0028 Wikidata evidence remains QID/BoatModel-scoped and is treated here as CORROBORATING (not defining) this bounded scope; a later canonical promotion slice MUST create its own BoatDesign-scoped FieldEvidence/FieldResolution citing the primary-source dating facts and this applicability_scope -- it MUST NOT silently retarget the QID-scoped Wikidata evidence_id onto a BoatDesign subject.",
+          "outcome": "INSUFFICIENT_EVIDENCE",
+          "rationale": "Amended per independent review: previously classified SAFE_FOR_LATER_DESIGN_PROMOTION; downgraded because the bounded scope supporting that outcome was not actually established. Two independently retrieved primary-source Catalina 30 documents -- brochure-C-30.pdf (no confirmed print date; its 1970s-era styling is circumstantial only, not proof of any date) and C-30-MK-I-Brochure.pdf (print-run date code '9 90', read as September 1990) -- report an identical LOA of 29'11\" (= 9.1186 m, matching the Wikidata normalized candidate to within rounding), but per the controlling slice this equality is diagnostic corroboration only, never proof of BoatDesign-generation applicability. boatdesign_applicability.json's Catalina 30 entry does not positively establish a BoatDesign-generation/applicability boundary: the 'MKI' label is archive-side and uncorroborated, no IDENTITY_MODEL.v0.2.md 2.4 split trigger was found (which argues against, not for, a positive boundary claim -- absence of a trigger is not proof of one stable generation either), and the December 1974 introduction date is a BoatModel-identity fact, not positive evidence that the technical figures in the undated plain brochure applied from that year -- the only positively dated technical document is the single 1990-09 data point. A bounded positive-path search of the two remaining official brochure-listing pages (retrievals 12-13) found no further Catalina 30 document or dating evidence. Per OBSERVATION_APPLICABILITY_SCHEMA.v0.1, a null bound means that bound is genuinely unknown, not all-production, and a scope is not genuinely bounded merely because one dimension happens to be known -- this pilot cannot positively establish a genuinely bounded (first_year AND last_year both known) applicability_scope, so this field remains INSUFFICIENT_EVIDENCE, not SAFE. The retained SLICE-0028 Wikidata evidence remains QID/BoatModel-scoped and is not retargeted onto any BoatDesign subject.",
           "applicability_scope": {
             "schema_version": "0.1",
-            "first_year": 1974,
+            "first_year": null,
             "last_year": null,
             "hull_number_from": null,
             "hull_number_to": null,
@@ -148,18 +148,18 @@
             "design_option_hints": ["keel:fin", "keel:wing"],
             "operating_state_hint": null,
             "individual_hull_or_listing_ref": null,
-            "unknown_or_unbounded": false
+            "unknown_or_unbounded": true
           }
         },
         {
           "field_pointer": "/baseline/dimensions/lwl_m",
           "sl0028_normalized_candidate": { "value": "7.6200", "unit": "m" },
           "sl0028_evidence_id": "WD-Q5051253-P2043-4a6068d10d94fc44",
-          "outcome": "SAFE_FOR_LATER_DESIGN_PROMOTION",
-          "rationale": "Same evidence and bounded-scope reasoning as loa_m above: both primary-source Catalina 30 documents (one dated 1990-09, one undated-but-circumstantially-early) report an identical LWL of 25'0\" (= 7.6200 m exactly), matching the Wikidata normalized candidate exactly. The QID-scoped Wikidata evidence corroborates but does not itself define the bounded scope stated in applicability_scope below; a later canonical promotion slice must create its own BoatDesign-scoped FieldEvidence carrying that scope, not retarget this evidence_id.",
+          "outcome": "INSUFFICIENT_EVIDENCE",
+          "rationale": "Same evidence and reasoning as loa_m above (amended per independent review; previously SAFE_FOR_LATER_DESIGN_PROMOTION): both primary-source Catalina 30 documents (one dated 1990-09, one with no confirmed date) report an identical LWL of 25'0\" (= 7.6200 m exactly), matching the Wikidata normalized candidate exactly, but this equality is diagnostic corroboration only. No genuinely bounded (first_year AND last_year both known) applicability_scope was established for Catalina 30 in this bounded pass.",
           "applicability_scope": {
             "schema_version": "0.1",
-            "first_year": 1974,
+            "first_year": null,
             "last_year": null,
             "hull_number_from": null,
             "hull_number_to": null,
@@ -168,18 +168,18 @@
             "design_option_hints": ["keel:fin", "keel:wing"],
             "operating_state_hint": null,
             "individual_hull_or_listing_ref": null,
-            "unknown_or_unbounded": false
+            "unknown_or_unbounded": true
           }
         },
         {
           "field_pointer": "/baseline/dimensions/beam_m",
           "sl0028_normalized_candidate": { "value": "3.300984", "unit": "m" },
           "sl0028_evidence_id": "WD-Q5051253-P2049-742ffeb6a857cfda",
-          "outcome": "SAFE_FOR_LATER_DESIGN_PROMOTION",
-          "rationale": "Same evidence and bounded-scope reasoning as loa_m above: both primary-source Catalina 30 documents (one dated 1990-09, one undated-but-circumstantially-early) report an identical beam of 10'10\" (= 3.3020 m, matching the Wikidata normalized candidate to within rounding). The QID-scoped Wikidata evidence corroborates but does not itself define the bounded scope stated in applicability_scope below; a later canonical promotion slice must create its own BoatDesign-scoped FieldEvidence carrying that scope, not retarget this evidence_id.",
+          "outcome": "INSUFFICIENT_EVIDENCE",
+          "rationale": "Same evidence and reasoning as loa_m above (amended per independent review; previously SAFE_FOR_LATER_DESIGN_PROMOTION): both primary-source Catalina 30 documents (one dated 1990-09, one with no confirmed date) report an identical beam of 10'10\" (= 3.3020 m, matching the Wikidata normalized candidate to within rounding), but this equality is diagnostic corroboration only. No genuinely bounded (first_year AND last_year both known) applicability_scope was established for Catalina 30 in this bounded pass.",
           "applicability_scope": {
             "schema_version": "0.1",
-            "first_year": 1974,
+            "first_year": null,
             "last_year": null,
             "hull_number_from": null,
             "hull_number_to": null,
@@ -188,7 +188,7 @@
             "design_option_hints": ["keel:fin", "keel:wing"],
             "operating_state_hint": null,
             "individual_hull_or_listing_ref": null,
-            "unknown_or_unbounded": false
+            "unknown_or_unbounded": true
           }
         },
         {

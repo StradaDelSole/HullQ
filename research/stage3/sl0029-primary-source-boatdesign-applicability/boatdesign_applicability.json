@@ -59,7 +59,8 @@
         "operating_state_hint": null,
         "individual_hull_or_listing_ref": null,
         "unknown_or_unbounded": true
-      }
+      },
+      "non_option_descriptive_differences": []
     },
     {
       "qid": "Q5051253",
@@ -82,8 +83,8 @@
         }
       ],
       "excluded_related_products": [],
-      "generation_boundary_established_for_this_pilot": true,
-      "generation_boundary_rationale": "Two independently retrieved official primary-source specification documents for Catalina 30 -- one carrying the archive's 'MKI' label (wing/fin keel options, skeg-hung spade rudder, optional walk-through transom; page-4 print-run date code '9 90', read as September 1990 -- see dated_primary_source_documents below) and one undated plain document (Frank-Butler-credited, traditional/dinette interior option, Patent No. 3648310, no wing keel or walk-through transom mentioned, no print-date code found) -- report IDENTICAL core hull baseline figures: LOA 29'11\", LWL 25'0\", beam 10'10\", standard displacement 10,200 lbs, standard lead ballast 4,200 lbs, standard sail area 446 sq ft. The differences between the two documents (keel type, rudder configuration, transom style, interior layout) are each an explicit DesignOption-axis example under IDENTITY_MODEL.v0.2.md 2.5 (keel; rudder; layout), not evidence of materially different hull form/tooling; no IDENTITY_MODEL.v0.2.md 2.4 BoatDesign-split trigger was found. This is treated, per OBSERVATION_APPLICABILITY_SCHEMA.v0.1, as a genuinely but NARROWLY bounded finding, not an all-production claim: LOA/LWL/beam are positively confirmed stable for production_year >= 1974 (official December 1974 introduction), independently corroborated by the dated 1990-09 MKI document; the upper production-year bound is explicitly left unknown (applicability_scope.last_year = null) because this bounded pass did not verify whether the dimensions held for the remainder of Catalina 30 production. This is a narrower, positively-evidenced claim than 'stable across the whole documented production span' -- it is sufficient scope for a later, separately readied canonical promotion slice to attach the SAME bounded scope to a BoatDesign-level FieldEvidence; it does not itself create that BoatDesign or FieldEvidence, and it must not be read as applying beyond the stated first_year/last_year bound.",
+      "generation_boundary_established_for_this_pilot": false,
+      "generation_boundary_rationale": "Amended per independent review: this is NOT a positively evidenced BoatDesign-generation/applicability boundary sufficient for canonical modeling, and the prior amendment's `true` value here overclaimed it. Two independently retrieved official primary-source specification documents for Catalina 30 -- one carrying the archive's uncorroborated 'MKI' label (wing/fin keel options, an available walk-through transom option; page-4 print-run date code '9 90', read as September 1990 -- see dated_primary_source_documents below) and one plain document with no confirmed print date (Frank-Butler-credited, traditional/dinette interior option, Patent No. 3648310; its 1970s-era styling is circumstantial only, not proof of any date) -- report identical core hull baseline figures: LOA 29'11\", LWL 25'0\", beam 10'10\", standard displacement 10,200 lbs, standard lead ballast 4,200 lbs, standard sail area 446 sq ft. That equality is useful corroboration but, per the controlling slice, is explicitly NOT by itself proof of BoatDesign-generation applicability. No IDENTITY_MODEL.v0.2.md 2.4 BoatDesign-split trigger was found for Catalina 30, but the absence of a trigger is equally not proof of one stable generation -- both directions are unresolved, not merely the split direction. Critically, the December 1974 introduction date is an identity/production fact about when the BoatModel began, not positive evidence that the specific technical values in the undated plain brochure applied from that date: the only positively dated Catalina 30 technical document is the 1990-09 MKI brochure, a single point in a production run of unknown total length (last_built remains unevidenced). A bounded, human-directed positive-path search of the two remaining official brochure-listing surfaces (retrievals 12-13; see source_retrieval_log.json) found no additional Catalina 30 document and no further dating evidence, so this pilot cannot positively establish a genuinely bounded (first_year AND last_year both known, per OBSERVATION_APPLICABILITY_SCHEMA.v0.1) applicability scope for these fields. Per the slice's explicit negative-path allowance, this is reported as an unresolved/insufficient boundary rather than a forced positive result.",
       "dated_primary_source_documents": [
         {
           "document": "C-30-MK-I-Brochure.pdf",
@@ -102,7 +103,7 @@
       ],
       "applicability_scope": {
         "schema_version": "0.1",
-        "first_year": 1974,
+        "first_year": null,
         "last_year": null,
         "hull_number_from": null,
         "hull_number_to": null,
@@ -111,24 +112,34 @@
         "design_option_hints": ["keel:fin", "keel:wing"],
         "operating_state_hint": null,
         "individual_hull_or_listing_ref": null,
-        "unknown_or_unbounded": false
+        "unknown_or_unbounded": true
       },
       "design_option_axis_evidence": [
         {
           "axis": "keel",
-          "evidence": "C-30-MK-I-Brochure.pdf: 'Wing and fin keels are available.' Ballast/displacement figures differ by keel option: std lead 4,200 lbs / wing lead 4,300 lbs; std displacement 10,200 lbs / wing displacement 10,300 lbs."
+          "evidence": "Positive within-document evidence: C-30-MK-I-Brochure.pdf states 'Wing and fin keels are available,' explicitly offering both as a concurrent factory choice on the same document/hull. Ballast/displacement figures differ by keel option: std lead 4,200 lbs / wing lead 4,300 lbs; std displacement 10,200 lbs / wing displacement 10,300 lbs."
         },
         {
           "axis": "draft",
-          "evidence": "Draft figures differ between the two retrieved documents even though LOA/LWL/beam do not: brochure-C-30.pdf lists draft 5'3\" (std) / shoal draft 4'4\"; C-30-MK-I-Brochure.pdf lists draft, std 5'3\" / shoal draft 3'10\". This 6-inch shoal-draft discrepancy between two primary-source documents is retained as an open SOURCE_VALUE_CONFLICT-class disagreement, not resolved by this pilot."
+          "evidence": "Positive within-document evidence: both retrieved documents each independently list a standard AND a shoal draft figure as concurrent factory choices on the same hull (brochure-C-30.pdf: draft 5'3\" std / shoal 4'4\"; C-30-MK-I-Brochure.pdf: draft std 5'3\" / shoal 3'10\"). The two documents' shoal-draft figures disagree with each other by 6 inches (4'4\" vs 3'10\"); this cross-document numeric disagreement is retained as an open SOURCE_VALUE_CONFLICT-class discrepancy, not resolved by this pilot, and is independent of the (separately positive) within-document evidence that a std/shoal draft choice exists at all."
         },
         {
-          "axis": "rudder",
-          "evidence": "C-30-MK-I-Brochure.pdf: 'The long horizontal skeg between the keel and balanced spade rudder insure control and tracking in a variety of conditions.' Not mentioned in brochure-C-30.pdf."
+          "axis": "other",
+          "evidence": "Transom configuration (not a listed IDENTITY_MODEL.v0.2.md 2.5 axis; classified 'other'). Positive within-document evidence only: C-30-MK-I-Brochure.pdf states 'Available walk through transom is not shown,' which by its own wording describes an optional transom style alongside the one pictured -- evidenced entirely within that single document, not inferred from the other document's silence on the topic."
         },
         {
           "axis": "layout",
-          "evidence": "brochure-C-30.pdf: 'TRADITIONAL MODEL SHOWN -- ALSO AVAILABLE WITH DINETTE.' C-30-MK-I-Brochure.pdf shows a single interior layout drawing with no traditional/dinette choice mentioned; C-30-MK-I-Brochure.pdf also notes an 'available walk through transom' as an option."
+          "evidence": "Positive within-document evidence only: brochure-C-30.pdf states 'TRADITIONAL MODEL SHOWN -- ALSO AVAILABLE WITH DINETTE,' explicitly offering both as a concurrent factory choice within that single document -- evidenced entirely within that one document, not inferred from C-30-MK-I-Brochure.pdf's silence on the topic (see non_option_descriptive_differences below)."
+        }
+      ],
+      "non_option_descriptive_differences": [
+        {
+          "topic": "rudder narrative description",
+          "evidence": "C-30-MK-I-Brochure.pdf describes 'the long horizontal skeg between the keel and balanced spade rudder'; brochure-C-30.pdf does not describe a rudder configuration at all. Neither document offers a rudder CHOICE -- this is a difference in which facts each document's marketing text happens to describe, not evidence of a concurrent factory rudder option. Per independent review, non-mention in one document must not be treated as positive evidence of an option, so this is retained as a descriptive note only and does NOT appear in design_option_axis_evidence."
+        },
+        {
+          "topic": "interior layout narrative description (cross-document contrast)",
+          "evidence": "C-30-MK-I-Brochure.pdf shows a single interior layout drawing with no traditional/dinette choice mentioned. This silence is NOT used as evidence about C-30-MK-I-Brochure.pdf's own interior-layout options (positive or negative); the 'layout' DesignOption axis above rests solely on brochure-C-30.pdf's own explicit text, independent of this contrast."
         }
       ]
     }
