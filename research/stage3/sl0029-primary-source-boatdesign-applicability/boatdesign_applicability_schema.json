@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0029-boatdesign-applicability/v1",
+  "title": "HullQ SLICE-0029 BoatDesign Generation/Option Applicability Findings",
+  "description": "Positive-evidence-only generation/option/applicability findings for the two fixed pilot BoatModels, classified per specs/IDENTITY_MODEL.v0.2.md OQ-003 rules. Creates zero canonical BoatDesign/DesignOption/NamedVariant entities.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "identity_model_reference", "boat_models"],
+  "properties": {
+    "schema_version": { "const": "sl0029-boatdesign-applicability-v1" },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "identity_model_reference": { "const": "specs/IDENTITY_MODEL.v0.2.md#2.4" },
+    "boat_models": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "qid",
+          "hullq_id",
+          "preferred_label",
+          "production_span_evidence",
+          "candidate_generation_boundaries",
+          "excluded_related_products",
+          "generation_boundary_established_for_this_pilot",
+          "generation_boundary_rationale",
+          "design_option_axis_evidence",
+          "dated_primary_source_documents",
+          "applicability_scope",
+          "non_option_descriptive_differences"
+        ],
+        "properties": {
+          "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+          "hullq_id": { "type": "string", "minLength": 1 },
+          "preferred_label": { "type": "string", "minLength": 1 },
+          "production_span_evidence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["first_built", "last_built", "evidence"],
+            "properties": {
+              "first_built": { "type": ["string", "null"] },
+              "last_built": { "type": ["string", "null"] },
+              "evidence": { "type": "string", "minLength": 1 }
+            }
+          },
+          "candidate_generation_boundaries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "label",
+                "boundary_date",
+                "evidence_class",
+                "evidence",
+                "identity_model_criterion_matched",
+                "dimensional_impact_on_five_tier1_fields",
+                "caution"
+              ],
+              "properties": {
+                "label": { "type": "string", "minLength": 1 },
+                "boundary_date": { "type": ["string", "null"] },
+                "evidence_class": { "type": "string", "minLength": 1 },
+                "evidence": { "type": "string", "minLength": 1 },
+                "identity_model_criterion_matched": { "type": "string", "minLength": 1 },
+                "dimensional_impact_on_five_tier1_fields": { "type": "string", "minLength": 1 },
+                "caution": { "type": "string", "minLength": 1 }
+              }
+            }
+          },
+          "excluded_related_products": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["label", "reason_excluded"],
+              "properties": {
+                "label": { "type": "string", "minLength": 1 },
+                "reason_excluded": { "type": "string", "minLength": 1 }
+              }
+            }
+          },
+          "generation_boundary_established_for_this_pilot": { "type": "boolean" },
+          "generation_boundary_rationale": { "type": "string", "minLength": 1 },
+          "design_option_axis_evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["axis", "evidence"],
+              "properties": {
+                "axis": {
+                  "enum": ["keel", "rig", "rudder", "sailplan", "draft", "engine", "layout", "other"]
+                },
+                "evidence": { "type": "string", "minLength": 1 }
+              }
+            }
+          },
+          "dated_primary_source_documents": {
+            "type": "array",
+            "description": "Positively evidenced (or explicitly unconfirmed) production/print dating facts for the retained primary-source documents. May be empty when no document-level dating evidence was found for this BoatModel.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "document",
+                "retrieval_index",
+                "dating_evidence",
+                "inferred_print_date",
+                "confidence"
+              ],
+              "properties": {
+                "document": { "type": "string", "minLength": 1 },
+                "retrieval_index": { "type": "integer", "minimum": 1 },
+                "dating_evidence": { "type": "string", "minLength": 1 },
+                "inferred_print_date": { "type": ["string", "null"] },
+                "confidence": { "type": "string", "minLength": 1 }
+              }
+            }
+          },
+          "applicability_scope": { "$ref": "#/$defs/applicability_scope" },
+          "non_option_descriptive_differences": {
+            "type": "array",
+            "description": "Descriptive text differences between retained documents that are explicitly NOT treated as DesignOption evidence, because they rest on one document mentioning something and another not mentioning it (non-mention is not positive evidence of a concurrent factory option). May be empty.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["topic", "evidence"],
+              "properties": {
+                "topic": { "type": "string", "minLength": 1 },
+                "evidence": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "applicability_scope": {
+      "type": "object",
+      "description": "specs/OBSERVATION_APPLICABILITY_SCHEMA.v0.1.json shape, validated against that file directly by the SLICE-0029 offline verifier. A null value for any dimension means the bound is unknown, NOT that the observation applies to all production.",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "first_year",
+        "last_year",
+        "hull_number_from",
+        "hull_number_to",
+        "market_or_region",
+        "named_variant_hint",
+        "design_option_hints",
+        "operating_state_hint",
+        "individual_hull_or_listing_ref",
+        "unknown_or_unbounded"
+      ],
+      "properties": {
+        "schema_version": { "const": "0.1" },
+        "first_year": { "type": ["integer", "null"] },
+        "last_year": { "type": ["integer", "null"] },
+        "hull_number_from": { "type": ["string", "null"], "minLength": 1 },
+        "hull_number_to": { "type": ["string", "null"], "minLength": 1 },
+        "market_or_region": { "type": ["string", "null"], "minLength": 1 },
+        "named_variant_hint": { "type": ["string", "null"], "minLength": 1 },
+        "design_option_hints": {
+          "type": ["array", "null"],
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "operating_state_hint": { "type": ["string", "null"], "minLength": 1 },
+        "individual_hull_or_listing_ref": { "type": ["string", "null"], "minLength": 1 },
+        "unknown_or_unbounded": { "type": "boolean" }
+      }
+    }
+  }
+}

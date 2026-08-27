@@ -1,0 +1,171 @@
+{
+  "schema_version": "sl0029-source-clearance-assessment-v1",
+  "generated_at": "2026-08-27T13:00:00+00:00",
+  "predecessor_assessment": {
+    "path": "research/manufacturers/archive_clearance/archive_source_clearance.json",
+    "source_key": "catalina_yachts",
+    "note": "SLICE-0020 (ChatGPT-led external pass) previously recorded identity_seed/production_value as conditional and automated_ingestion as unknown for Catalina Yachts, without resolving the SR-6.6 bounded-manual-use conditions in full. SLICE-0029 independently re-examined the official source directly (see source_retrieval_log.json) and resolves the SR-6.6 conditions for the tightly bounded use actually required by this pilot only."
+  },
+  "sr_6_6_condition_evaluation": {
+    "policy_reference": "specs/SOURCE_RIGHTS_POLICY.v0.1.md#6.6",
+    "conditions": [
+      {
+        "condition": "lawfully_publicly_accessible",
+        "satisfied": true,
+        "evidence": "All eleven retrieved catalinayachts.com pages/documents returned HTTP 200 with no login/paywall; robots.txt (retrieval 1) disallows only /wp-admin/, which was never accessed."
+      },
+      {
+        "condition": "reused_element_is_discrete_factual_value_not_expressive_content",
+        "satisfied": true,
+        "evidence": "Only discrete dimension figures (LOA/LWL/beam/draft/displacement), dated production-history facts, and archive link labels were extracted into the retained package. No brochure marketing prose, photography, or drawings were copied; no PDF/HTML/image file was vendored into the repository (source-material retention boundary)."
+      },
+      {
+        "condition": "provenance_recorded",
+        "satisfied": true,
+        "evidence": "source_retrieval_log.json retains exact URL, access timestamp, HTTP status, byte size and a locally-computed SHA-256 fingerprint for every retrieval, without vendoring the underlying content."
+      },
+      {
+        "condition": "no_identified_source_term_prohibits_the_chosen_method",
+        "satisfied": true,
+        "evidence": "No Terms of Use, Privacy Policy, or licence page exists anywhere in the site's own declared WordPress page sitemap (retrieval 4; 56 pages enumerated, none matching terms/privacy/legal/policy). The footer displays only a bare '© 2026 Catalina Yachts' notice with no reproduction/licence grant or restriction text (retrieval 2). No access restriction beyond /wp-admin/ was found in robots.txt (retrieval 1). This differs materially from source rows such as Beneteau/Wauquiez in archive_source_clearance.json, which carry an explicit anti-extraction Terms-of-Use clause; Catalina Yachts carries no equivalent found restriction."
+      },
+      {
+        "condition": "not_systematic_or_bulk_database_extraction",
+        "satisfied": true,
+        "evidence": "Exactly two fixed BoatModels were researched using 11 of the 25 permitted retrievals; no attempt was made to enumerate or extract the full brochure catalogue (dozens of unrelated models visible in the brochure-archives/ index were left untouched)."
+      },
+      {
+        "condition": "no_automated_extraction_unless_separately_cleared",
+        "satisfied": "partial_left_unresolved",
+        "evidence": "Retrieval was performed as 11 individually issued, human-directed HTTP GET requests, each inspected before the next was requested -- not an unattended crawler/scraper/loop. This satisfies the bounded manual method used in this pilot. It does NOT constitute a clearance of production automated_ingestion, which this assessment leaves unresolved (unknown) exactly as SLICE-0020 left it; see automated_ingestion decision below."
+      }
+    ],
+    "conditions_satisfied_for_bounded_manual_use": true
+  },
+  "source_record": {
+    "source_id": "SRC_CATALINA_YACHTS_OFFICIAL_2026",
+    "title": "Catalina Yachts official website (brochure archive, company history, current-model pages)",
+    "publisher": "Catalina Yachts",
+    "source_type": "manufacturer_official_website",
+    "url": "https://www.catalinayachts.com/",
+    "document_identifier": "catalinayachts.com;brochure-archives;catalina-brochures;history;C22sBro.pdf;CC22Bro-05.pdf;brochure-C-30.pdf;C-30-MK-I-Brochure.pdf",
+    "publication_date": null,
+    "accessed_at": "2026-08-27T12:52:18+00:00",
+    "notes": "Bounded manually curated discrete factual use only, scoped to the two fixed SLICE-0029 pilot BoatModels (Q5051252 Catalina 22, Q5051253 Catalina 30) and the five existing Tier-1 dimension fields. Does not authorize automated/bulk extraction, systematic archive ingestion, or redistribution of source brochure/page material. See sr_6_6_condition_evaluation above for the evidence supporting each SR-6.6 condition.",
+    "rights": {
+      "assessment_status": "assessed",
+      "rights_basis": "unlicensed_factual_reference",
+      "rights_holder": "Catalina Yachts",
+      "license_expression": null,
+      "license_name": null,
+      "license_url": null,
+      "license_scope": ["unknown"],
+      "access": {
+        "method": "public_web",
+        "public_access": true,
+        "automated_access": "unknown",
+        "terms_url": null,
+        "terms_reviewed_at": "2026-08-27",
+        "tdm_reservation": "none_observed",
+        "rate_limit_notes": "robots.txt (retrieved 2026-08-27) discloses no crawl-delay or rate-limit directive and disallows only /wp-admin/; this bounded pass issued 11 sequential single-document GET requests with no concurrency and no bulk enumeration. automated_access is left 'unknown' because no explicit automated/bulk reuse permission exists beyond the absence of a robots.txt block, and SR-004 prohibits treating public/crawlable accessibility alone as a reuse grant."
+      },
+      "permissions": {
+        "commercial_use": "conditional",
+        "extract_facts": "allowed",
+        "normalize": "allowed",
+        "store_canonical_values": "conditional",
+        "bulk_ingest": "unknown",
+        "automated_extract": "unknown",
+        "redistribute_source_material": "prohibited",
+        "publish_derived_database": "conditional"
+      },
+      "obligations": {
+        "attribution_required": "unknown",
+        "share_alike": "not_applicable",
+        "notice_required": "unknown",
+        "attribution_instructions": null,
+        "other_conditions": [
+          "Bounded manually curated discrete factual use only -- not automated/bulk extraction or redistribution of source material.",
+          "No Catalina Yachts Terms of Use, Privacy Policy, or licence page was located anywhere in the site's declared page sitemap during this bounded pass (2026-08-27); the footer carries a bare copyright notice with no reproduction/licence grant.",
+          "Any later automated_ingestion, bulk_bootstrap, or artifact_redistribution use requires its own independent clearance and MUST NOT be inferred from this record.",
+          "permissions.commercial_use / store_canonical_values / publish_derived_database are deliberately left 'conditional' (never 'allowed') even though clearance.identity_seed / production_value read 'allowed': the clearance is scoped exactly to the structured bounded_scope block below (the two fixed pilot BoatModels and five field pointers), not to Catalina Yachts content in general. The permissions fields describe general/unscoped reuse, which SR-6.6 does not clear; see hullq.bootstrap.wikidata_sl0029_boatdesign_applicability_pilot.validate_permissions_bounded and validate_bounded_scope, which enforce this mechanically."
+        ]
+      },
+      "clearance": {
+        "research_reference": "allowed",
+        "research_lead": "allowed",
+        "identity_seed": "allowed",
+        "production_value": "allowed",
+        "bulk_bootstrap": "legal_review_required",
+        "automated_ingestion": "unknown",
+        "artifact_redistribution": "legal_review_required"
+      },
+      "rights_evidence": [
+        {
+          "evidence_type": "other",
+          "url": "https://www.catalinayachts.com/robots.txt",
+          "document_identifier": null,
+          "accessed_at": "2026-08-27T11:37:31+00:00",
+          "sha256": "7d00014ed14f563f6e637dd1c364473cbd69f8f0cb1e475b2a00c996744e0717",
+          "notes": "Disallows only /wp-admin/; no crawl-delay; declares wp-sitemap.xml."
+        },
+        {
+          "evidence_type": "other",
+          "url": "https://www.catalinayachts.com/wp-sitemap-posts-page-1.xml",
+          "document_identifier": null,
+          "accessed_at": "2026-08-27T11:40:30+00:00",
+          "sha256": "a1b0d2f10055b8568c20f6aa8d26c9dceba4cd91684341238346194f0cb5d82a",
+          "notes": "Full 56-URL WordPress page listing; no terms/privacy/licence page present."
+        },
+        {
+          "evidence_type": "other",
+          "url": "https://www.catalinayachts.com/",
+          "document_identifier": null,
+          "accessed_at": "2026-08-27T11:39:58+00:00",
+          "sha256": "d3ced4cdf2f6dce60fbf62a46ca0c7e408dea2aeab8afbbdb2aa714ba200e9ac",
+          "notes": "Footer text: bare '© 2026 Catalina Yachts' with no reproduction/licence grant or restriction."
+        }
+      ],
+      "review": {
+        "reviewed_at": "2026-08-27",
+        "reviewer": "SLICE-0029 implementation agent (Claude, bounded manual primary-source pass; no independent legal review performed)",
+        "rationale": "All six SR-6.6 conditions are positively evidenced for the bounded manual identity_seed/production_value use actually performed (two fixed BoatModels, discrete facts only, provenance retained, no identified prohibition, non-bulk, human-directed retrieval). clearance.identity_seed and clearance.production_value are not independently asserted: they are mechanically derived from sr_6_6_condition_evaluation.conditions_satisfied_for_bounded_manual_use by hullq.bootstrap.wikidata_sl0029_boatdesign_applicability_pilot.derive_sr_6_6_use_clearance, so an unsatisfied/tampered condition set can never coexist with an 'allowed' clearance here. automated_ingestion, bulk_bootstrap and artifact_redistribution are deliberately left non-allow because no independent evidence for those broader uses was sought or found; SLICE-0029 does not authorize them.",
+        "next_review_at": null
+      }
+    }
+  },
+  "bounded_scope": {
+    "hullq_ids": [
+      "BM_WDT0_6c94b5bc9e79402bb07309289905913e",
+      "BM_WDT0_3fdd058699d145c6a1b044fc90b65201"
+    ],
+    "qids": ["Q5051252", "Q5051253"],
+    "field_pointers": [
+      "/baseline/dimensions/loa_m",
+      "/baseline/dimensions/lwl_m",
+      "/baseline/dimensions/beam_m",
+      "/baseline/dimensions/draft_min_m",
+      "/baseline/dimensions/displacement_kg"
+    ],
+    "use_kinds": ["identity_seed", "production_value"],
+    "note": "The positive identity_seed/production_value clearance above applies ONLY to these exact BoatModels/QIDs and field pointers, for the identity_seed/production_value uses only. It does not extend to any other Catalina model, field, or use kind. Mechanically validated against pilot_identity_boundary.json and the five fixed Tier-1 field pointers by hullq.bootstrap.wikidata_sl0029_boatdesign_applicability_pilot.validate_bounded_scope."
+  },
+  "source_use_gate_decisions": {
+    "gate_module": "hullq.sources.rights.check_source_use",
+    "note": "Deterministic decisions recomputed by scripts/bootstrap/wikidata_sl0029_boatdesign_applicability_pilot_runner.py --verify from the source_record above -- not hand-transcribed.",
+    "decisions": {
+      "research_reference": { "outcome": "allowed" },
+      "research_lead": { "outcome": "allowed" },
+      "identity_seed": { "outcome": "allowed" },
+      "production_value": { "outcome": "allowed" },
+      "bulk_bootstrap": { "outcome": "legal_review_required" },
+      "automated_ingestion": { "outcome": "unknown_unassessed" },
+      "artifact_redistribution": { "outcome": "legal_review_required" }
+    }
+  },
+  "scope_guardrail_confirmation": {
+    "positive_clearance_uses": ["identity_seed", "production_value"],
+    "unchanged_non_allow_uses": ["bulk_bootstrap", "automated_ingestion", "artifact_redistribution"],
+    "note": "bounded manually curated discrete factual use only -- this positive result MUST NOT be generalized into automated/bulk Catalina ingestion or source-artifact redistribution."
+  }
+}

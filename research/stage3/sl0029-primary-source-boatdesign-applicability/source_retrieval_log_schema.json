@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0029-source-retrieval-log/v1",
+  "title": "HullQ SLICE-0029 Bounded Catalina Source Retrieval Log",
+  "description": "Accounting of every official-Catalina HTTP retrieval performed during the bounded manual research pass, bounded to <=25 documents.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "retrieval_ceiling",
+    "retrieval_count",
+    "retrieval_method_note",
+    "retrievals"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0029-source-retrieval-log-v1" },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "retrieval_ceiling": { "const": 25 },
+    "retrieval_count": { "type": "integer", "minimum": 0, "maximum": 25 },
+    "retrieval_method_note": { "type": "string", "minLength": 1 },
+    "retrievals": {
+      "type": "array",
+      "maxItems": 25,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "retrieval_index",
+          "url",
+          "source_surface_class",
+          "accessed_at",
+          "http_status",
+          "content_type",
+          "byte_size",
+          "sha256",
+          "fact_purpose"
+        ],
+        "properties": {
+          "retrieval_index": { "type": "integer", "minimum": 1 },
+          "url": { "type": "string", "pattern": "^https://www\\.catalinayachts\\.com/" },
+          "source_surface_class": {
+            "enum": [
+              "access_or_automation_policy",
+              "official_current_model_and_navigation_page",
+              "official_brochure_archive_index",
+              "official_model_brochure_or_specification_document",
+              "official_history_or_current_model_page",
+              "official_terms_privacy_copyright_page"
+            ]
+          },
+          "accessed_at": { "type": "string", "minLength": 1 },
+          "http_status": { "type": "integer" },
+          "content_type": { "type": "string", "minLength": 1 },
+          "byte_size": { "type": "integer", "minimum": 0 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "fact_purpose": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

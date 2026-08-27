@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0029-wikidata-candidate-applicability/v1",
+  "title": "HullQ SLICE-0029 Wikidata Candidate Field Applicability",
+  "description": "Fail-closed applicability classification of the five retained SLICE-0028 Tier-1 field candidates against the two fixed pilot BoatModels. Creates zero canonical FieldResolution or technical value.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "allowed_field_pointers",
+    "applicability_vocabulary",
+    "boat_models"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0029-wikidata-candidate-applicability-v1" },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "allowed_field_pointers": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": { "type": "string", "pattern": "^/baseline/dimensions/" }
+    },
+    "applicability_vocabulary": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": { "type": "string" }
+    },
+    "boat_models": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["qid", "hullq_id", "preferred_label", "fields"],
+        "properties": {
+          "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+          "hullq_id": { "type": "string", "minLength": 1 },
+          "preferred_label": { "type": "string", "minLength": 1 },
+          "fields": {
+            "type": "array",
+            "minItems": 5,
+            "maxItems": 5,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "field_pointer",
+                "sl0028_normalized_candidate",
+                "sl0028_evidence_id",
+                "outcome",
+                "rationale",
+                "applicability_scope"
+              ],
+              "properties": {
+                "field_pointer": { "type": "string", "pattern": "^/baseline/dimensions/" },
+                "sl0028_normalized_candidate": {
+                  "anyOf": [
+                    { "type": "null" },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["value", "unit"],
+                      "properties": {
+                        "value": { "type": "string", "minLength": 1 },
+                        "unit": { "type": "string", "minLength": 1 }
+                      }
+                    }
+                  ]
+                },
+                "sl0028_evidence_id": { "type": ["string", "null"] },
+                "outcome": {
+                  "enum": [
+                    "SAFE_FOR_LATER_DESIGN_PROMOTION",
+                    "MODEL_SCOPE_ONLY_NOT_PROMOTABLE",
+                    "GENERATION_AMBIGUOUS",
+                    "OPTION_SENSITIVE",
+                    "SOURCE_VALUE_CONFLICT",
+                    "INSUFFICIENT_EVIDENCE",
+                    "NO_NORMALIZED_WIKIDATA_CANDIDATE",
+                    "RIGHTS_BLOCKED"
+                  ]
+                },
+                "rationale": { "type": "string", "minLength": 1 },
+                "applicability_scope": { "$ref": "#/$defs/applicability_scope" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "applicability_scope": {
+      "type": "object",
+      "description": "specs/OBSERVATION_APPLICABILITY_SCHEMA.v0.1.json shape, validated against that file directly by the SLICE-0029 offline verifier. A null value for any dimension means the bound is unknown, NOT that the observation applies to all production. outcome == SAFE_FOR_LATER_DESIGN_PROMOTION requires unknown_or_unbounded == false (checked by hullq.bootstrap.wikidata_sl0029_boatdesign_applicability_pilot.validate_wikidata_candidate_applicability).",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "first_year",
+        "last_year",
+        "hull_number_from",
+        "hull_number_to",
+        "market_or_region",
+        "named_variant_hint",
+        "design_option_hints",
+        "operating_state_hint",
+        "individual_hull_or_listing_ref",
+        "unknown_or_unbounded"
+      ],
+      "properties": {
+        "schema_version": { "const": "0.1" },
+        "first_year": { "type": ["integer", "null"] },
+        "last_year": { "type": ["integer", "null"] },
+        "hull_number_from": { "type": ["string", "null"], "minLength": 1 },
+        "hull_number_to": { "type": ["string", "null"], "minLength": 1 },
+        "market_or_region": { "type": ["string", "null"], "minLength": 1 },
+        "named_variant_hint": { "type": ["string", "null"], "minLength": 1 },
+        "design_option_hints": {
+          "type": ["array", "null"],
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "operating_state_hint": { "type": ["string", "null"], "minLength": 1 },
+        "individual_hull_or_listing_ref": { "type": ["string", "null"], "minLength": 1 },
+        "unknown_or_unbounded": { "type": "boolean" }
+      }
+    }
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0029-pilot-identity-boundary/v1",
+  "title": "HullQ SLICE-0029 Pilot Identity Boundary",
+  "description": "Exact two-QID -> canonical-BoatModel linkage for the fixed SLICE-0029 pilot, reproduced from the accepted SLICE-0028 linkage document and the retained SLICE-0019/0020 overlap_result.json. No discovery, no canonical mutation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "source_identity_boundary",
+    "pilot_boat_models",
+    "boundary_invariants"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0029-pilot-identity-boundary-v1" },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "source_identity_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "linkage_document_path",
+        "overlap_result_path",
+        "canonical_boat_model_count",
+        "historical_crosswalk_count",
+        "note"
+      ],
+      "properties": {
+        "linkage_document_path": { "type": "string", "minLength": 1 },
+        "overlap_result_path": { "type": "string", "minLength": 1 },
+        "canonical_boat_model_count": { "const": 1770 },
+        "historical_crosswalk_count": { "const": 1772 },
+        "note": { "type": "string", "minLength": 1 }
+      }
+    },
+    "pilot_boat_models": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "qid",
+          "preferred_label",
+          "hullq_id",
+          "overlap_result_manufacturer_sample",
+          "overlap_result_match_kind"
+        ],
+        "properties": {
+          "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+          "preferred_label": { "type": ["string", "null"] },
+          "hullq_id": { "type": "string", "minLength": 1 },
+          "overlap_result_manufacturer_sample": { "const": "Catalina Yachts" },
+          "overlap_result_match_kind": { "const": "exact_overlap" }
+        }
+      }
+    },
+    "boundary_invariants": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fixed_qid_count",
+        "no_identity_expansion",
+        "no_fuzzy_matching_used",
+        "no_canonical_boat_model_id_changed",
+        "no_historical_qid_to_hullq_id_mapping_changed"
+      ],
+      "properties": {
+        "fixed_qid_count": { "const": 2 },
+        "no_identity_expansion": { "const": true },
+        "no_fuzzy_matching_used": { "const": true },
+        "no_canonical_boat_model_id_changed": { "const": true },
+        "no_historical_qid_to_hullq_id_mapping_changed": { "const": true }
+      }
+    }
+  }
+}
