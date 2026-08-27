@@ -29,12 +29,14 @@ from hullq.bootstrap.wikidata_sl0028_full_boundary_evidence import (
     build_disagreement_document,
     build_evidence_manifest_document,
     build_full_boundary_linkage,
+    build_historical_registry_reconciliation_block,
     build_linkage_document,
     build_sl0028_bundle,
     classify_boat_model_field_coverage,
     compute_basic_searchable_evidence_precursor,
     compute_boat_model_field_disagreements,
     distinct_request_qids,
+    load_full_historical_registry_reconciliation,
     rebuild_entities_from_manifest,
     retained_package_filenames,
     summarize_boat_model_field_coverage,
@@ -86,6 +88,20 @@ def _quantity_claim(
             ]
         }
     return claim
+
+
+def json_copy_with(doc: dict[str, Any], path: tuple[str, ...], value: Any) -> dict[str, Any]:
+    """Deep-copy *doc* and override the nested key at *path* with *value* —
+    a small test-only helper for building a single-field-tampered document
+    without hand-writing a full nested dict literal per test."""
+    import copy
+
+    copied = copy.deepcopy(doc)
+    node = copied
+    for key in path[:-1]:
+        node = node[key]
+    node[path[-1]] = value
+    return copied
 
 
 def _boundary(
@@ -196,24 +212,128 @@ def test_real_boundary_linkage_reproduces_1770_and_matches() -> None:
 
 
 def test_linkage_document_round_trip() -> None:
+    """Pure composition test with a synthetic boundary (not tied to real
+    manifest files on disk) -- the historical-registry reconciliation block
+    is built directly (``build_historical_registry_reconciliation_block``,
+    no file I/O), not via ``load_full_historical_registry_reconciliation``
+    (which requires a boundary whose historical_crosswalk_count matches the
+    real retained SLICE-0017/0018 manifests; exercised separately below
+    against the real boundary)."""
     boundary = _boundary((("Q1", "BM_A"), ("Q2", "BM_A"), ("Q3", "BM_B")), canonical_count=2)
     linkage = build_full_boundary_linkage(boundary)
+    reconciliation = build_historical_registry_reconciliation_block(
+        boundary=boundary, reserved_entries=()
+    )
     doc = build_linkage_document(
-        generated_at="2026-01-01T00:00:00Z", boundary=boundary, linkage=linkage
+        generated_at="2026-01-01T00:00:00Z",
+        boundary=boundary,
+        linkage=linkage,
+        historical_registry_reconciliation=reconciliation,
     )
     assert doc["boat_model_count"] == 2
     assert doc["distinct_request_qid_count"] == 3
-    assert verify_linkage_document_self_consistency(boundary=boundary, document=doc) == []
+    assert doc["historical_registry_reconciliation"]["historical_registry_count"] == 3
+    assert doc["historical_registry_reconciliation"]["canonical_auto_admit_linkage_count"] == 2
 
 
 def test_linkage_document_self_consistency_detects_tamper() -> None:
-    boundary = _boundary((("Q1", "BM_A"), ("Q2", "BM_B")))
+    boundary = load_reproduced_identity_boundary()
     linkage = build_full_boundary_linkage(boundary)
-    doc = build_linkage_document(generated_at="t", boundary=boundary, linkage=linkage)
+    _full_crosswalk, reserved_entries = load_full_historical_registry_reconciliation(
+        boundary=boundary
+    )
+    reconciliation = build_historical_registry_reconciliation_block(
+        boundary=boundary, reserved_entries=reserved_entries
+    )
+    doc = build_linkage_document(
+        generated_at="t",
+        boundary=boundary,
+        linkage=linkage,
+        historical_registry_reconciliation=reconciliation,
+    )
     tampered = dict(doc)
     tampered["boat_model_count"] = 999
     problems = verify_linkage_document_self_consistency(boundary=boundary, document=tampered)
     assert problems
+
+
+# ---------------------------------------------------------------------------
+# 1,772 historical registry vs 1,770 canonical AUTO_ADMIT linkage reconciliation
+# ---------------------------------------------------------------------------
+
+
+def test_real_historical_registry_reconciliation_has_exactly_two_reserved_entries() -> None:
+    """SLICE-0028 review clarification: the accepted 1,772-entry historical
+    registry minus the 1,770-entry canonical AUTO_ADMIT linkage is exactly 2
+    non-canonical REVIEW_REQUIRED reserved-ID crosswalk entries -- never
+    silently equated with the acquisition request set."""
+    boundary = load_reproduced_identity_boundary()
+    full_crosswalk, reserved_entries = load_full_historical_registry_reconciliation(
+        boundary=boundary
+    )
+    assert len(full_crosswalk) == 1772
+    assert len(reserved_entries) == 2
+    assert {e.qid for e in reserved_entries} == {"Q109650429", "Q2461915"}
+    for e in reserved_entries:
+        assert e.decision == "review_required"
+        assert "name_collision" in e.reason_codes
+        assert e.reserved_hullq_id == full_crosswalk[e.qid]
+        # A reserved QID must never appear in the canonical AUTO_ADMIT linkage.
+        assert e.qid not in {qid for qid, _hid in boundary.auto_admit_qid_to_hullq_id}
+
+
+def test_historical_registry_reconciliation_block_composition() -> None:
+    boundary = load_reproduced_identity_boundary()
+    _full_crosswalk, reserved_entries = load_full_historical_registry_reconciliation(
+        boundary=boundary
+    )
+    block = build_historical_registry_reconciliation_block(
+        boundary=boundary, reserved_entries=reserved_entries
+    )
+    assert block["historical_registry_count"] == 1772
+    assert block["canonical_auto_admit_linkage_count"] == 1770
+    assert block["non_canonical_reserved_count"] == 2
+    assert (
+        block["historical_registry_count"]
+        == block["canonical_auto_admit_linkage_count"] + block["non_canonical_reserved_count"]
+    )
+    assert len(block["reserved_entries"]) == 2
+
+
+def test_real_linkage_document_round_trip_with_reconciliation() -> None:
+    boundary = load_reproduced_identity_boundary()
+    linkage = build_full_boundary_linkage(boundary)
+    _full_crosswalk, reserved_entries = load_full_historical_registry_reconciliation(
+        boundary=boundary
+    )
+    reconciliation = build_historical_registry_reconciliation_block(
+        boundary=boundary, reserved_entries=reserved_entries
+    )
+    doc = build_linkage_document(
+        generated_at="t",
+        boundary=boundary,
+        linkage=linkage,
+        historical_registry_reconciliation=reconciliation,
+    )
+    assert verify_linkage_document_self_consistency(boundary=boundary, document=doc) == []
+
+
+def test_load_full_historical_registry_reconciliation_fails_closed_on_count_mismatch() -> None:
+    from hullq.bootstrap.wikidata_sl0026_tier1_enrichment_pilot import (
+        IdentityBoundaryIntegrityError,
+    )
+
+    boundary = load_reproduced_identity_boundary()
+    tampered_boundary = IdentityBoundary(
+        baseline_manifest_sha256=boundary.baseline_manifest_sha256,
+        delta_manifest_sha256=boundary.delta_manifest_sha256,
+        canonical_boat_model_count=boundary.canonical_boat_model_count,
+        historical_crosswalk_count=9999,
+        auto_admit_qid_to_hullq_id=boundary.auto_admit_qid_to_hullq_id,
+        preferred_label_by_qid=boundary.preferred_label_by_qid,
+    )
+    with pytest.raises(IdentityBoundaryIntegrityError, match="Reconciled full historical registry"):
+        load_full_historical_registry_reconciliation(boundary=tampered_boundary)
 
 
 # ---------------------------------------------------------------------------
@@ -331,9 +451,10 @@ def test_disagreement_flags_multi_candidate_and_multi_value_within_one_qid() -> 
     boundary = _boundary((("Q1", "BM_A"),))
     linkage = build_full_boundary_linkage(boundary)
     full_evidence, _report = _extract([entity])
-    allowed = filter_to_allowed_evidence(full_evidence)
     _counts, details = summarize_field_coverage([entity], full_evidence)
-    disagreements = compute_boat_model_field_disagreements(linkage, allowed, details)
+    disagreements = compute_boat_model_field_disagreements(
+        linkage, [entity], full_evidence, details
+    )
     loa_case = next(d for d in disagreements if d.field_pointer == PTR_LOA)
     assert loa_case.normalized_candidate_count == 2
     assert len(loa_case.distinct_normalized_values) == 2
@@ -358,10 +479,44 @@ def test_disagreement_flags_unsupported_coexisting_with_normalized_across_qids()
     boundary = _boundary((("Q3", "BM_C"), ("Q4", "BM_C")), canonical_count=1)
     linkage = build_full_boundary_linkage(boundary)
     full_evidence, _report = _extract([entity_normal, entity_unsupported])
-    allowed = filter_to_allowed_evidence(full_evidence)
-    _counts, details = summarize_field_coverage([entity_normal, entity_unsupported], full_evidence)
-    disagreements = compute_boat_model_field_disagreements(linkage, allowed, details)
+    entities = [entity_normal, entity_unsupported]
+    _counts, details = summarize_field_coverage(entities, full_evidence)
+    disagreements = compute_boat_model_field_disagreements(
+        linkage, entities, full_evidence, details
+    )
     loa_case = next(d for d in disagreements if d.field_pointer == PTR_LOA)
+    assert loa_case.unsupported_coexists_with_normalized is True
+
+
+def test_disagreement_flags_unsupported_coexisting_with_normalized_within_same_qid() -> None:
+    """SLICE-0028 review finding: a single QID with BOTH a correctly-qualified
+    statement (normalized) AND another unsupported/malformed statement on the
+    SAME shared property must still be flagged -- the per-QID coverage bucket
+    alone (NORMALIZED_CANDIDATE_PRESENT takes precedence over
+    UNSUPPORTED_OR_MALFORMED) cannot reveal this by itself."""
+    entity = WikidataEntityData(
+        qid="Q1",
+        label="Boat Mixed",
+        aliases=[],
+        raw_claims={
+            "P2043": [
+                _quantity_claim("12.5", "Q11573", "Q2358152"),  # recognized LOA -> normalized
+                _quantity_claim(
+                    "9.9", "Q11573", "Q999999"
+                ),  # unrecognized qualifier -> unsupported
+            ]
+        },
+    )
+    boundary = _boundary((("Q1", "BM_A"),))
+    linkage = build_full_boundary_linkage(boundary)
+    full_evidence, _report = _extract([entity])
+    _counts, details = summarize_field_coverage([entity], full_evidence)
+    disagreements = compute_boat_model_field_disagreements(
+        linkage, [entity], full_evidence, details
+    )
+    loa_case = next(d for d in disagreements if d.field_pointer == PTR_LOA)
+    assert loa_case.normalized_candidate_count == 1
+    assert loa_case.contributing_qid_count == 1
     assert loa_case.unsupported_coexists_with_normalized is True
 
 
@@ -381,9 +536,11 @@ def test_disagreement_flags_multi_qid_contribution() -> None:
     boundary = _boundary((("Q5", "BM_E"), ("Q6", "BM_E")), canonical_count=1)
     linkage = build_full_boundary_linkage(boundary)
     full_evidence, _report = _extract([entity_5, entity_6])
-    allowed = filter_to_allowed_evidence(full_evidence)
-    _counts, details = summarize_field_coverage([entity_5, entity_6], full_evidence)
-    disagreements = compute_boat_model_field_disagreements(linkage, allowed, details)
+    entities = [entity_5, entity_6]
+    _counts, details = summarize_field_coverage(entities, full_evidence)
+    disagreements = compute_boat_model_field_disagreements(
+        linkage, entities, full_evidence, details
+    )
     loa_case = next(d for d in disagreements if d.field_pointer == PTR_LOA)
     assert loa_case.contributing_qid_count == 2
 
@@ -398,9 +555,10 @@ def test_disagreement_empty_for_clean_single_candidate() -> None:
     boundary = _boundary((("Q1", "BM_A"),))
     linkage = build_full_boundary_linkage(boundary)
     full_evidence, _report = _extract([entity])
-    allowed = filter_to_allowed_evidence(full_evidence)
     _counts, details = summarize_field_coverage([entity], full_evidence)
-    disagreements = compute_boat_model_field_disagreements(linkage, allowed, details)
+    disagreements = compute_boat_model_field_disagreements(
+        linkage, [entity], full_evidence, details
+    )
     assert not any(d.field_pointer == PTR_LOA for d in disagreements)
 
 
@@ -419,14 +577,19 @@ def test_disagreement_document_round_trip() -> None:
     boundary = _boundary((("Q1", "BM_A"),))
     linkage = build_full_boundary_linkage(boundary)
     full_evidence, _report = _extract([entity])
-    allowed = filter_to_allowed_evidence(full_evidence)
     _counts, details = summarize_field_coverage([entity], full_evidence)
-    disagreements = compute_boat_model_field_disagreements(linkage, allowed, details)
+    disagreements = compute_boat_model_field_disagreements(
+        linkage, [entity], full_evidence, details
+    )
     doc = build_disagreement_document(generated_at="t", disagreements=disagreements)
     assert doc["flagged_case_count"] == len(disagreements)
     assert (
         verify_disagreement_self_consistency(
-            linkage=linkage, allowed_evidence=allowed, source_qid_details=details, document=doc
+            linkage=linkage,
+            entities=[entity],
+            full_evidence=full_evidence,
+            source_qid_details=details,
+            document=doc,
         )
         == []
     )
@@ -598,10 +761,15 @@ def test_evidence_manifest_round_trip() -> None:
     )
     assert doc["usage_metrics"]["requested_qid_count"] == 1
     assert doc["usage_metrics"]["acquisition_failure_count"] == 0
+    assert "retrieval_count_attributed_note" in doc["usage_metrics"]
     assert len(doc["requested_qid_evidence"]) == 1
     assert (
         verify_evidence_manifest_self_consistency(
-            linkage=linkage, entities=[entity], full_evidence=full_evidence, evidence_manifest=doc
+            linkage=linkage,
+            entities=[entity],
+            full_evidence=full_evidence,
+            quality_report=quality_report,
+            evidence_manifest=doc,
         )
         == []
     )
@@ -628,9 +796,143 @@ def test_evidence_manifest_self_consistency_detects_tamper() -> None:
     tampered = dict(doc)
     tampered["raw_entities"] = []
     problems = verify_evidence_manifest_self_consistency(
-        linkage=linkage, entities=[entity], full_evidence=full_evidence, evidence_manifest=tampered
+        linkage=linkage,
+        entities=[entity],
+        full_evidence=full_evidence,
+        quality_report=quality_report,
+        evidence_manifest=tampered,
     )
     assert problems
+
+
+def test_evidence_manifest_self_consistency_detects_requested_qid_count_tamper() -> None:
+    entity = WikidataEntityData(qid="Q1", label="Boat A", aliases=[], raw_claims={})
+    boundary = _boundary((("Q1", "BM_A"),))
+    linkage = build_full_boundary_linkage(boundary)
+    full_evidence, quality_report = _extract([entity])
+    doc = build_evidence_manifest_document(
+        generated_at="t",
+        acquired_at="t2",
+        linkage=linkage,
+        entities=[entity],
+        allowed_evidence_by_qid={},
+        quality_report=quality_report,
+        requested_qid_count=1,
+    )
+    tampered = json_copy_with(doc, ("usage_metrics", "requested_qid_count"), 999)
+    problems = verify_evidence_manifest_self_consistency(
+        linkage=linkage,
+        entities=[entity],
+        full_evidence=full_evidence,
+        quality_report=quality_report,
+        evidence_manifest=tampered,
+    )
+    assert any("requested_qid_count" in p for p in problems)
+
+
+def test_evidence_manifest_self_consistency_detects_fetched_entity_count_tamper() -> None:
+    entity = WikidataEntityData(qid="Q1", label="Boat A", aliases=[], raw_claims={})
+    boundary = _boundary((("Q1", "BM_A"),))
+    linkage = build_full_boundary_linkage(boundary)
+    full_evidence, quality_report = _extract([entity])
+    doc = build_evidence_manifest_document(
+        generated_at="t",
+        acquired_at="t2",
+        linkage=linkage,
+        entities=[entity],
+        allowed_evidence_by_qid={},
+        quality_report=quality_report,
+        requested_qid_count=1,
+    )
+    tampered = json_copy_with(doc, ("usage_metrics", "fetched_entity_count"), 0)
+    problems = verify_evidence_manifest_self_consistency(
+        linkage=linkage,
+        entities=[entity],
+        full_evidence=full_evidence,
+        quality_report=quality_report,
+        evidence_manifest=tampered,
+    )
+    assert any("fetched_entity_count" in p for p in problems)
+
+
+def test_evidence_manifest_self_consistency_detects_zero_failure_count_mismatch() -> None:
+    """acquisition_failure_count == 0 but fetched_entity_count !=
+    requested_qid_count is internally inconsistent and must be caught even
+    though both individual values might otherwise look independently
+    plausible."""
+    entity = WikidataEntityData(qid="Q1", label="Boat A", aliases=[], raw_claims={})
+    boundary = _boundary((("Q1", "BM_A"), ("Q2", "BM_A")), canonical_count=1)
+    linkage = build_full_boundary_linkage(boundary)
+    full_evidence, quality_report = _extract([entity])
+    doc = build_evidence_manifest_document(
+        generated_at="t",
+        acquired_at="t2",
+        linkage=linkage,
+        entities=[entity],
+        allowed_evidence_by_qid={},
+        quality_report=quality_report,
+        requested_qid_count=2,
+        acquisition_failure_count=0,
+    )
+    # requested_qid_count(2) != fetched_entity_count(1) with acquisition_failure_count == 0.
+    problems = verify_evidence_manifest_self_consistency(
+        linkage=linkage,
+        entities=[entity],
+        full_evidence=full_evidence,
+        quality_report=quality_report,
+        evidence_manifest=doc,
+    )
+    assert any("internally inconsistent" in p for p in problems)
+
+
+def test_evidence_manifest_self_consistency_detects_malformed_count_tamper() -> None:
+    entity = WikidataEntityData(qid="Q1", label="Boat A", aliases=[], raw_claims={})
+    boundary = _boundary((("Q1", "BM_A"),))
+    linkage = build_full_boundary_linkage(boundary)
+    full_evidence, quality_report = _extract([entity])
+    doc = build_evidence_manifest_document(
+        generated_at="t",
+        acquired_at="t2",
+        linkage=linkage,
+        entities=[entity],
+        allowed_evidence_by_qid={},
+        quality_report=quality_report,
+        requested_qid_count=1,
+    )
+    tampered = json_copy_with(doc, ("quality_report_global", "malformed_statement_count"), 999)
+    problems = verify_evidence_manifest_self_consistency(
+        linkage=linkage,
+        entities=[entity],
+        full_evidence=full_evidence,
+        quality_report=quality_report,
+        evidence_manifest=tampered,
+    )
+    assert any("malformed_statement_count" in p for p in problems)
+
+
+def test_evidence_manifest_self_consistency_detects_unsupported_qualifier_count_tamper() -> None:
+    entity = WikidataEntityData(qid="Q1", label="Boat A", aliases=[], raw_claims={})
+    boundary = _boundary((("Q1", "BM_A"),))
+    linkage = build_full_boundary_linkage(boundary)
+    full_evidence, quality_report = _extract([entity])
+    doc = build_evidence_manifest_document(
+        generated_at="t",
+        acquired_at="t2",
+        linkage=linkage,
+        entities=[entity],
+        allowed_evidence_by_qid={},
+        quality_report=quality_report,
+        requested_qid_count=1,
+    )
+    tampered = json_copy_with(doc, ("quality_report_global", "unsupported_qualifier_count"), 999)
+    problems = verify_evidence_manifest_self_consistency(
+        linkage=linkage,
+        entities=[entity],
+        full_evidence=full_evidence,
+        quality_report=quality_report,
+        evidence_manifest=tampered,
+    )
+    assert any("unsupported_qualifier_count" in p for p in problems)
 
 
 # ---------------------------------------------------------------------------

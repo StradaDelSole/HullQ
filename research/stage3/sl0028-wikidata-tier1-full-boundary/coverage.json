@@ -1,6 +1,6 @@
 {
   "schema_version": "sl0028-coverage-v1",
-  "generated_at": "2026-08-26T21:52:46.671714+00:00",
+  "generated_at": "2026-08-26T22:56:27.821356+00:00",
   "boat_model_count": 1770,
   "source_qid_count": 1770,
   "note": "Four mutually exclusive, exhaustive coverage states per field: normalized_candidate_present / source_statement_present / unsupported_or_malformed / no_usable_value. source_qid_level counts sum to source_qid_count for every field; boat_model_level counts sum to boat_model_count for every field, computed via strongest-available-evidence precedence over every accepted QID mapped to each BoatModel. A coverage classification only \u2014 never a canonical technical-value choice; no FieldResolution is created.",

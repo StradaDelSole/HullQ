@@ -9,6 +9,7 @@
     "schema_version",
     "generated_at",
     "identity_boundary",
+    "historical_registry_reconciliation",
     "linkage_ordering",
     "boat_model_count",
     "distinct_request_qid_count",
@@ -45,6 +46,27 @@
         }
       }
     },
+    "historical_registry_reconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "historical_registry_count",
+        "canonical_auto_admit_linkage_count",
+        "non_canonical_reserved_count",
+        "note",
+        "reserved_entries"
+      ],
+      "properties": {
+        "historical_registry_count": { "type": "integer", "minimum": 0 },
+        "canonical_auto_admit_linkage_count": { "type": "integer", "minimum": 0 },
+        "non_canonical_reserved_count": { "type": "integer", "minimum": 0 },
+        "note": { "type": "string", "minLength": 1 },
+        "reserved_entries": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reserved_entry" }
+        }
+      }
+    },
     "linkage_ordering": { "type": "string", "minLength": 1 },
     "boat_model_count": { "type": "integer", "minimum": 0 },
     "distinct_request_qid_count": { "type": "integer", "minimum": 0 },
@@ -70,6 +92,18 @@
           "propertyNames": { "pattern": "^Q[1-9][0-9]*$" },
           "additionalProperties": { "type": ["string", "null"] }
         }
+      }
+    },
+    "reserved_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["qid", "reserved_hullq_id", "decision", "reason_codes", "preferred_label"],
+      "properties": {
+        "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+        "reserved_hullq_id": { "type": "string", "minLength": 1 },
+        "decision": { "type": "string", "minLength": 1 },
+        "reason_codes": { "type": "array", "items": { "type": "string" } },
+        "preferred_label": { "type": ["string", "null"] }
       }
     }
   }

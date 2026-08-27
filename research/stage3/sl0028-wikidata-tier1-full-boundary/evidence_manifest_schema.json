@@ -36,7 +36,8 @@
         "requested_qid_count",
         "fetched_entity_count",
         "acquisition_failure_count",
-        "retrieval_count_attributed"
+        "retrieval_count_attributed",
+        "retrieval_count_attributed_note"
       ],
       "properties": {
         "requested_qid_count": { "type": "integer", "minimum": 0 },
@@ -46,7 +47,12 @@
           "minimum": 0,
           "description": "A retrieval failure/throttle/malformed-response, tracked separately from any coverage bucket — never reclassified as no_usable_value."
         },
-        "retrieval_count_attributed": { "type": "integer", "minimum": 0 }
+        "retrieval_count_attributed": { "type": "integer", "minimum": 0 },
+        "retrieval_count_attributed_note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Clarifies that retrieval_count_attributed is retained live-acquisition telemetry, NOT independently recomputed by offline --verify (unlike malformed_statement_count/unsupported_qualifier_count below)."
+        }
       }
     },
     "quality_report_global": {

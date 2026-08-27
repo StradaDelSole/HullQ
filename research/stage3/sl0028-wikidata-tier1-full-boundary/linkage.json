@@ -1,6 +1,6 @@
 {
   "schema_version": "sl0028-linkage-v1",
-  "generated_at": "2026-08-26T21:42:58.921093+00:00",
+  "generated_at": "2026-08-26T22:55:43.659507+00:00",
   "identity_boundary": {
     "baseline_manifest_path": "research/bootstrap/wikidata/manifest.json",
     "baseline_manifest_sha256": "076b0d64441973c4d5b71cf467cd9cdbf46242babb9cb44f788c97a0f33e5845",
@@ -8,6 +8,32 @@
     "delta_manifest_sha256": "41ef238c217e31cfbe03329e226a1a3dfff849061df93b8f2523a1e72493821f",
     "canonical_boat_model_count": 1770,
     "historical_crosswalk_count": 1772
+  },
+  "historical_registry_reconciliation": {
+    "historical_registry_count": 1772,
+    "canonical_auto_admit_linkage_count": 1770,
+    "non_canonical_reserved_count": 2,
+    "note": "The accepted SLICE-0017+0018 identity implementation distinguishes the full historical QID -> HullQ-ID registry (every QID ever given a real minted/reserved HullQ ID) from the canonical AUTO_ADMIT linkage (every QID currently addressing a real canonical BoatModel row). Each reserved entry below carries a real, never-reminted HullQ ID, but no canonical BoatModel row was ever created for it (current decision is not AUTO_ADMIT) -- it is excluded from SLICE-0028 acquisition because it does not address a canonical BoatModel. historical_registry_count == canonical_auto_admit_linkage_count + non_canonical_reserved_count.",
+    "reserved_entries": [
+      {
+        "qid": "Q109650429",
+        "reserved_hullq_id": "BM_WDT0_6221328c32fe4b43b113c0ffc5e0bec9",
+        "decision": "review_required",
+        "reason_codes": [
+          "name_collision"
+        ],
+        "preferred_label": "J-80"
+      },
+      {
+        "qid": "Q2461915",
+        "reserved_hullq_id": "BM_WDT0_25df3c46ed4c45c292c817cf4b7eb0b3",
+        "decision": "review_required",
+        "reason_codes": [
+          "name_collision"
+        ],
+        "preferred_label": "J/80"
+      }
+    ]
   },
   "linkage_ordering": "ascending canonical HullQ BoatModel ID over the combined SLICE-0017+0018 AUTO_ADMIT QID->HullQ-ID universe; each BoatModel's own accepted QIDs ascending",
   "boat_model_count": 1770,

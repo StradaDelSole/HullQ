@@ -1,7 +1,428 @@
 {
   "schema_version": "sl0028-disagreement-v1",
-  "generated_at": "2026-08-26T21:52:46.681006+00:00",
+  "generated_at": "2026-08-26T22:56:27.853168+00:00",
   "note": "Every (BoatModel, field) case with more than one normalized candidate, more than one distinct normalized value, evidence arriving through more than one accepted mapped QID, or unsupported/malformed evidence coexisting with a normalized candidate. Diagnostic only: no canonical value is chosen and no case is silently resolved by majority or first-seen value. Absence of a (BoatModel, field) pair here means none of the four conditions applied to it.",
-  "flagged_case_count": 0,
-  "cases": []
+  "flagged_case_count": 42,
+  "cases": [
+    {
+      "hullq_id": "BM_WDT0_09362be74c414f70adfeb744afa22120",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "6.239256 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_0cddc116f5f84bbf845a880beac40686",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "20 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_0ff9cfe560e347c482f073dccbfd4a84",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "6.1 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_0fff2c8ed02841e0b756cae60125ee5d",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "6.208776 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_14b7d211fc384ea3ba0c29948a953b3d",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "5.998464 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_1d402c9cb8164d4da4b4ff0820455269",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "6.3 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_21f42c5b4615424e9231bac56a6b7614",
+      "field_pointer": "/baseline/dimensions/loa_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "5.498592 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_21f42c5b4615424e9231bac56a6b7614",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "4.99872 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_23facd5cc0e8400ea7bca47d8ec9140f",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "7.290816 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_250a1217ebe7459c84108b2c9ef5f4ab",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "6.31 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_2c84bf3cd133460eb33fc7d78faa24a1",
+      "field_pointer": "/baseline/dimensions/loa_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "5.97 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_2c84bf3cd133460eb33fc7d78faa24a1",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "5.25 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_4025c536f0484759a2fbc4ebd2683a48",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "6.4 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_5eb4f38cad2143ce9ac0f0edb7aff39f",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "4.700016 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_6299d2237a4c475fa49544ebb1f42941",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "6.7056 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_6858cca84f904eb0a856866bb460c1a9",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "6.0960 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_70ae475d4f9543d2a8e0e6df355b3d64",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "6.0960 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_79b82d1051574785898e5f769ab8e74f",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "8.634984 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_7cd0c5ac413748258d8fc394e45b42be",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "5.85 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_7e610b46731848fabe2ff9b1cd709f1a",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "4.038600 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_8731bed24fef4028a594104ef90d7fa8",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "3.800856 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_878cde284e5645f69142cfcf844ff490",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "7.0104 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_8a8441b697cf46479748a94de3844673",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "6.071616 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_9401ca53424c46a7b457a4940d32d6a4",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "5.7912 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_9607700fb42f446faae25e38bbbb757f",
+      "field_pointer": "/baseline/dimensions/displacement_kg",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "2500 kg"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_9845af0593854a3593e913932c8bca79",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "2.95 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_9d0ad46c941546ddb1109b67266a6c5e",
+      "field_pointer": "/baseline/dimensions/loa_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "8.049768 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_9d0ad46c941546ddb1109b67266a6c5e",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "6.251448 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_a44c3e14de7949da842442eda16d6ad5",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "5.586984 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_a6fb1993caef43a394aadc4514c8a16d",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "6.4008 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_cc47874245ef4c2da0ea827379529316",
+      "field_pointer": "/baseline/dimensions/loa_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "7.65048 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_cc47874245ef4c2da0ea827379529316",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "6.598920 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_d2dc3fbfa66f4d0f87259b84775ef7b3",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "9.549384 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_d9e0c8a2f10d42e09112980bd40257a1",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "4.014216 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_da01402a052e4f41901959e0634526c1",
+      "field_pointer": "/baseline/dimensions/displacement_kg",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "18000 kg"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_db79fe1bc25f443ea18a61b778b1080c",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "4.34 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_decb8b50d55c43eab2a90053fd3280ef",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "6 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_ed2fd5cad4974d7f85983ef0e0e93361",
+      "field_pointer": "/baseline/dimensions/displacement_kg",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "809 kg"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_f00925f7af474f56bb42c097e936009c",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "6.1 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_f352e429c83a40b8a99b1c3936a61fd4",
+      "field_pointer": "/baseline/dimensions/loa_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "2.36 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_f352e429c83a40b8a99b1c3936a61fd4",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "2.18 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    },
+    {
+      "hullq_id": "BM_WDT0_ff499a0f097d4011a4f5da115f46d5f9",
+      "field_pointer": "/baseline/dimensions/lwl_m",
+      "normalized_candidate_count": 1,
+      "distinct_normalized_values": [
+        "7.0104 m"
+      ],
+      "contributing_qid_count": 1,
+      "unsupported_coexists_with_normalized": true
+    }
+  ]
 }

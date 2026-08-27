@@ -64,6 +64,7 @@ def synthetic_full_boundary_package(tmp_path: Path) -> tuple[Path, Path]:
     from hullq.bootstrap.wikidata_sl0028_full_boundary_evidence import (
         build_evidence_manifest_document,
         build_full_boundary_linkage,
+        build_historical_registry_reconciliation_block,
         build_linkage_document,
     )
     from hullq.sources.wikidata import WikidataAdapter, WikidataAdapterConfig, WikidataEntityData
@@ -85,8 +86,14 @@ def synthetic_full_boundary_package(tmp_path: Path) -> tuple[Path, Path]:
         },
     )
     linkage = build_full_boundary_linkage(boundary)
+    reconciliation = build_historical_registry_reconciliation_block(
+        boundary=boundary, reserved_entries=()
+    )
     linkage_doc = build_linkage_document(
-        generated_at="2026-01-01T00:00:00Z", boundary=boundary, linkage=linkage
+        generated_at="2026-01-01T00:00:00Z",
+        boundary=boundary,
+        linkage=linkage,
+        historical_registry_reconciliation=reconciliation,
     )
 
     entities = [

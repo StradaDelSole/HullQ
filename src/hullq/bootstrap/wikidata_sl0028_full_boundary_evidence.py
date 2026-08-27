@@ -55,12 +55,15 @@ Explicitly does NOT:
 from __future__ import annotations
 
 import hashlib
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from hullq.bootstrap import wikidata_sl0026_tier1_enrichment_pilot as sl0026
+from hullq.bootstrap.wikidata_tier0 import load_crosswalk_from_manifest
+from hullq.bootstrap.wikidata_tier0_sl0018 import BASELINE_MANIFEST_PATH
 from hullq.domain.provenance import FieldEvidence, JsonPointer
 from hullq.research.jobs import ResearchTarget
 from hullq.research.observations import ResearchEvidenceBundle, migrate_evidence_v02_to_v03
@@ -82,18 +85,21 @@ __all__ = [
     "BoatModelLinkage",
     "FieldCoverageBucket",
     "LinkageIntegrityError",
+    "ReservedHistoricalEntry",
     "build_artifact_digests",
     "build_basic_searchable_precursor_document",
     "build_coverage_document",
     "build_disagreement_document",
     "build_evidence_manifest_document",
     "build_full_boundary_linkage",
+    "build_historical_registry_reconciliation_block",
     "build_linkage_document",
     "build_sl0028_bundle",
     "classify_boat_model_field_coverage",
     "compute_basic_searchable_evidence_precursor",
     "compute_boat_model_field_disagreements",
     "distinct_request_qids",
+    "load_full_historical_registry_reconciliation",
     "rebuild_entities_from_manifest",
     "retained_package_filenames",
     "summarize_boat_model_field_coverage",
@@ -247,15 +253,163 @@ def verify_full_boundary_linkage(
     return problems
 
 
+# ---------------------------------------------------------------------------
+# 1b. 1,772-entry historical registry vs 1,770-entry canonical AUTO_ADMIT
+#     linkage reconciliation (SLICE-0028 review clarification — no new
+#     identity decision; makes already-accepted identity semantics explicit
+#     and auditable).
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ReservedHistoricalEntry:
+    """One accepted historical QID -> HullQ-ID registry entry that is NOT
+    part of the 1,770-entry canonical AUTO_ADMIT linkage.
+
+    The accepted SLICE-0017+0018 identity implementation distinguishes the
+    full historical registry (every QID ever given a real minted/reserved
+    HullQ ID; 1,772 entries) from the canonical AUTO_ADMIT linkage (every QID
+    currently addressing a real canonical BoatModel row; 1,770 entries). A
+    reserved entry carries a real HullQ ID — never reminted if the QID
+    reappears (``hullq.bootstrap.wikidata_tier0.classify_candidates``) — but
+    no canonical BoatModel row was ever created for it, because its current
+    decision is not ``AUTO_ADMIT``. It is excluded from SLICE-0028
+    acquisition because it does not address a canonical BoatModel.
+    """
+
+    qid: str
+    reserved_hullq_id: str
+    decision: str
+    reason_codes: tuple[str, ...]
+    preferred_label: str | None
+
+
+def load_full_historical_registry_reconciliation(
+    *,
+    boundary: sl0026.IdentityBoundary,
+    baseline_manifest_path: Path = BASELINE_MANIFEST_PATH,
+    delta_manifest_path: Path = sl0026.DELTA_MANIFEST_PATH,
+) -> tuple[dict[str, str], tuple[ReservedHistoricalEntry, ...]]:
+    """Reconcile the accepted 1,772-entry full historical QID -> HullQ-ID
+    registry against the 1,770-entry canonical AUTO_ADMIT linkage *boundary*
+    already represents, identifying the exact non-canonical reserved entries
+    that account for the difference.
+
+    *boundary* MUST already have passed
+    ``hullq.bootstrap.wikidata_sl0026_tier1_enrichment_pilot.
+    load_reproduced_identity_boundary``'s fail-closed 1,770/1,772 check —
+    this function does not repeat that check, only explains the already-
+    verified difference. Reuses only already-accepted public primitives: the
+    accepted SLICE-0018 delta manifest's own ``retained_crosswalk`` field is
+    already the complete merged historical registry (SLICE-0026's own
+    documented rationale: "no further merge needed"), loaded here via the
+    existing ``hullq.bootstrap.wikidata_tier0.load_crosswalk_from_manifest`` —
+    never a new crosswalk-merge rule. Candidate ``decision``/``reason_codes``/
+    ``preferred_label`` for a reserved QID are read directly from the
+    retained SLICE-0017 baseline / SLICE-0018 delta ``candidates`` rows (a
+    plain dict lookup, not an identity decision); a reserved QID absent from
+    both current ``candidates`` windows (carried forward only in
+    ``retained_crosswalk`` from an even earlier run) reports
+    ``decision="unknown"`` rather than fabricating one.
+
+    Returns ``(full_crosswalk, reserved_entries)`` — the complete 1,772-entry
+    registry and every entry whose HullQ ID is not one of the 1,770 canonical
+    AUTO_ADMIT IDs, sorted by QID.
+    """
+    delta_manifest = json.loads(delta_manifest_path.read_bytes().decode("utf-8"))
+    full_crosswalk = load_crosswalk_from_manifest(
+        {"retained_crosswalk": delta_manifest["retained_crosswalk"]}
+    )
+
+    if len(full_crosswalk) != boundary.historical_crosswalk_count:
+        raise sl0026.IdentityBoundaryIntegrityError(
+            f"Reconciled full historical registry has {len(full_crosswalk)} entries; expected "
+            f"exactly the already-verified {boundary.historical_crosswalk_count}"
+        )
+
+    canonical_ids = {hullq_id for _qid, hullq_id in boundary.auto_admit_qid_to_hullq_id}
+    reserved_qids = {
+        qid for qid, hullq_id in full_crosswalk.items() if hullq_id not in canonical_ids
+    }
+
+    baseline_manifest = json.loads(baseline_manifest_path.read_bytes().decode("utf-8"))
+    rows_by_qid = {
+        row["qid"]: row for row in (*baseline_manifest["candidates"], *delta_manifest["candidates"])
+    }
+
+    reserved_entries = tuple(
+        sorted(
+            (
+                ReservedHistoricalEntry(
+                    qid=qid,
+                    reserved_hullq_id=full_crosswalk[qid],
+                    decision=rows_by_qid[qid]["decision"] if qid in rows_by_qid else "unknown",
+                    reason_codes=(
+                        tuple(rows_by_qid[qid].get("reason_codes") or ())
+                        if qid in rows_by_qid
+                        else ()
+                    ),
+                    preferred_label=(
+                        rows_by_qid[qid].get("preferred_label") if qid in rows_by_qid else None
+                    ),
+                )
+                for qid in reserved_qids
+            ),
+            key=lambda e: e.qid,
+        )
+    )
+    return full_crosswalk, reserved_entries
+
+
+def build_historical_registry_reconciliation_block(
+    *, boundary: sl0026.IdentityBoundary, reserved_entries: Sequence[ReservedHistoricalEntry]
+) -> dict[str, Any]:
+    """Assemble the ``historical_registry_reconciliation`` block retained
+    inside ``linkage.json``, making explicit and auditable the difference
+    between the 1,772-entry historical registry and the 1,770-entry
+    canonical AUTO_ADMIT linkage this slice actually acquires against."""
+    return {
+        "historical_registry_count": boundary.historical_crosswalk_count,
+        "canonical_auto_admit_linkage_count": boundary.canonical_boat_model_count,
+        "non_canonical_reserved_count": len(reserved_entries),
+        "note": (
+            "The accepted SLICE-0017+0018 identity implementation distinguishes the full "
+            "historical QID -> HullQ-ID registry (every QID ever given a real minted/reserved "
+            "HullQ ID) from the canonical AUTO_ADMIT linkage (every QID currently addressing a "
+            "real canonical BoatModel row). Each reserved entry below carries a real, "
+            "never-reminted HullQ ID, but no canonical BoatModel row was ever created for it "
+            "(current decision is not AUTO_ADMIT) -- it is excluded from SLICE-0028 acquisition "
+            "because it does not address a canonical BoatModel. historical_registry_count == "
+            "canonical_auto_admit_linkage_count + non_canonical_reserved_count."
+        ),
+        "reserved_entries": [
+            {
+                "qid": e.qid,
+                "reserved_hullq_id": e.reserved_hullq_id,
+                "decision": e.decision,
+                "reason_codes": list(e.reason_codes),
+                "preferred_label": e.preferred_label,
+            }
+            for e in reserved_entries
+        ],
+    }
+
+
 LINKAGE_SCHEMA_VERSION = "sl0028-linkage-v1"
 
 
 def build_linkage_document(
-    *, generated_at: str, boundary: sl0026.IdentityBoundary, linkage: Sequence[BoatModelLinkage]
+    *,
+    generated_at: str,
+    boundary: sl0026.IdentityBoundary,
+    linkage: Sequence[BoatModelLinkage],
+    historical_registry_reconciliation: Mapping[str, Any],
 ) -> dict[str, Any]:
     """Assemble the retained ``linkage.json`` document: the reproduced
-    identity boundary plus the full-boundary QID<->BoatModel linkage derived
-    from it, and the exact distinct request-QID count."""
+    identity boundary, the full-boundary QID<->BoatModel linkage derived from
+    it, the exact distinct request-QID count, and the explicit 1,772-vs-1,770
+    historical-registry reconciliation (see
+    ``build_historical_registry_reconciliation_block``)."""
     return {
         "schema_version": LINKAGE_SCHEMA_VERSION,
         "generated_at": generated_at,
@@ -267,6 +421,7 @@ def build_linkage_document(
             "canonical_boat_model_count": boundary.canonical_boat_model_count,
             "historical_crosswalk_count": boundary.historical_crosswalk_count,
         },
+        "historical_registry_reconciliation": dict(historical_registry_reconciliation),
         "linkage_ordering": (
             "ascending canonical HullQ BoatModel ID over the combined SLICE-0017+0018 "
             "AUTO_ADMIT QID->HullQ-ID universe; each BoatModel's own accepted QIDs ascending"
@@ -287,19 +442,29 @@ def build_linkage_document(
 def verify_linkage_document_self_consistency(
     *, boundary: sl0026.IdentityBoundary, document: Mapping[str, Any]
 ) -> list[str]:
-    """Independently rebuild the expected linkage from a freshly reproduced
-    identity boundary and compare against a retained ``linkage.json``
-    document. Never trusts the retained document's own boundary/linkage
-    fields as verification input."""
+    """Independently rebuild the expected linkage (and historical-registry
+    reconciliation) from a freshly reproduced identity boundary and compare
+    against a retained ``linkage.json`` document. Never trusts the retained
+    document's own boundary/linkage/reconciliation fields as verification
+    input."""
     linkage = build_full_boundary_linkage(boundary)
     problems = list(verify_full_boundary_linkage(boundary=boundary, linkage=linkage))
+    _full_crosswalk, reserved_entries = load_full_historical_registry_reconciliation(
+        boundary=boundary
+    )
+    reconciliation = build_historical_registry_reconciliation_block(
+        boundary=boundary, reserved_entries=reserved_entries
+    )
     expected = build_linkage_document(
-        generated_at=str(document.get("generated_at", "")), boundary=boundary, linkage=linkage
+        generated_at=str(document.get("generated_at", "")),
+        boundary=boundary,
+        linkage=linkage,
+        historical_registry_reconciliation=reconciliation,
     )
     if dict(document) != expected:
         problems.append(
-            "retained linkage.json != independently rebuilt linkage from the live reproduced "
-            "identity boundary"
+            "retained linkage.json != independently rebuilt linkage/reconciliation from the "
+            "live reproduced identity boundary"
         )
     return problems
 
@@ -464,9 +629,51 @@ def _normalized_value_key(ev: FieldEvidence) -> str:
     return f"{ev.normalized_candidate.value} {ev.normalized_candidate.unit}"
 
 
+def _qid_has_extra_unmatched_property_statement(
+    entity: WikidataEntityData,
+    field_pointer: JsonPointer,
+    full_index: Mapping[tuple[str, JsonPointer], Sequence[FieldEvidence]],
+) -> bool:
+    """True if *entity*'s raw claims for the Wikidata property backing
+    *field_pointer* contain at least one statement that produced neither an
+    own-field nor a sibling-field ``FieldEvidence`` item — i.e. an
+    unsupported/malformed statement on that property — even when the SAME
+    QID also has another statement on the same property that DID produce a
+    normalized candidate for *field_pointer*.
+
+    This case is invisible to the per-QID coverage bucket alone: a QID with
+    both a matching and a non-matching statement on the same shared property
+    classifies as ``NORMALIZED_CANDIDATE_PRESENT`` (or
+    ``SOURCE_STATEMENT_PRESENT``), which takes precedence over
+    ``UNSUPPORTED_OR_MALFORMED`` at the bucket level
+    (``classify_entity_field_coverage``), silently hiding the coexisting
+    unsupported statement. Detected here via a plain raw-claim count
+    comparison — never a new qualifier/unit parser.
+
+    Conservative/symmetric for a shared property with a sibling field
+    (LOA<->LWL, displacement<->ballast): an extra statement that cannot be
+    attributed to only one of the two siblings from the adapter's public
+    outputs alone is counted as unsupported evidence for *field_pointer*
+    regardless of which sibling it might really belong to — the same
+    documented upper-bound convention already used by
+    ``hullq.bootstrap.wikidata_sl0026_tier1_enrichment_pilot.
+    classify_entity_field_coverage``.
+    """
+    prop_id = sl0026._FIELD_PROPERTY[field_pointer]
+    raw_claims = entity.raw_claims.get(prop_id, [])
+    total = len(raw_claims) if isinstance(raw_claims, list) else 0
+    if total == 0:
+        return False
+    own = len(full_index.get((entity.qid, field_pointer), ()))
+    sibling_ptr = sl0026._FIELD_SIBLING[field_pointer]
+    sibling = len(full_index.get((entity.qid, sibling_ptr), ())) if sibling_ptr is not None else 0
+    return total > (own + sibling)
+
+
 def compute_boat_model_field_disagreements(
     linkage: Sequence[BoatModelLinkage],
-    allowed_evidence: Sequence[FieldEvidence],
+    entities: Sequence[WikidataEntityData],
+    full_evidence: Sequence[FieldEvidence],
     source_qid_details: Sequence[sl0026.EntityFieldCoverage],
 ) -> tuple[BoatModelFieldDisagreement, ...]:
     """Retain a diagnostic row for every (BoatModel, field) case with any of:
@@ -474,16 +681,33 @@ def compute_boat_model_field_disagreements(
     - more than one normalized candidate;
     - more than one distinct normalized candidate value;
     - evidence arriving through more than one accepted mapped QID;
-    - unsupported/malformed evidence coexisting with a normalized candidate.
+    - unsupported/malformed evidence coexisting with a normalized candidate
+      — including the same-QID case where one statement on a shared property
+      produced a normalized candidate while another statement on that same
+      QID/property was unsupported/malformed
+      (``_qid_has_extra_unmatched_property_statement``).
 
     Only qualifying cases are retained (not the full BoatModel x field grid)
     — this is a diagnostic surface, not a resolution: no canonical value is
     chosen, and a case appearing more than once is never collapsed to a
     majority/first-seen value.
+
+    ``full_evidence`` MUST be the unfiltered evidence the adapter's
+    ``extract_field_evidence`` produced for *entities* (including ballast) —
+    filtering to the five allowed pointers happens internally, only after the
+    unfiltered per-(qid, field) index needed for sibling-aware same-QID
+    unsupported detection has been built.
     """
+    allowed_evidence = sl0026.filter_to_allowed_evidence(full_evidence)
     ev_index: dict[tuple[str, JsonPointer], list[FieldEvidence]] = {}
     for ev in allowed_evidence:
         ev_index.setdefault((ev.subject.id, ev.field_pointer), []).append(ev)
+
+    full_index: dict[tuple[str, JsonPointer], list[FieldEvidence]] = {}
+    for ev in full_evidence:
+        full_index.setdefault((ev.subject.id, ev.field_pointer), []).append(ev)
+
+    entity_by_qid = {e.qid: e for e in entities}
     bucket_index = {(d.qid, d.field_pointer): d.bucket for d in source_qid_details}
 
     results: list[BoatModelFieldDisagreement] = []
@@ -497,7 +721,16 @@ def compute_boat_model_field_disagreements(
                 if items:
                     contributing_qids.add(qid)
                 field_items.extend(items)
-                if bucket_index.get((qid, ptr)) == FieldCoverageBucket.UNSUPPORTED_OR_MALFORMED:
+
+                is_unsupported_bucket = (
+                    bucket_index.get((qid, ptr)) == FieldCoverageBucket.UNSUPPORTED_OR_MALFORMED
+                )
+                entity = entity_by_qid.get(qid)
+                has_extra_unsupported = (
+                    entity is not None
+                    and _qid_has_extra_unmatched_property_statement(entity, ptr, full_index)
+                )
+                if is_unsupported_bucket or has_extra_unsupported:
                     unsupported_qids.add(qid)
 
             normalized_items = [ev for ev in field_items if ev.normalized_candidate is not None]
@@ -559,17 +792,18 @@ def build_disagreement_document(
 def verify_disagreement_self_consistency(
     *,
     linkage: Sequence[BoatModelLinkage],
-    allowed_evidence: Sequence[FieldEvidence],
+    entities: Sequence[WikidataEntityData],
+    full_evidence: Sequence[FieldEvidence],
     source_qid_details: Sequence[sl0026.EntityFieldCoverage],
     document: Mapping[str, Any],
 ) -> list[str]:
     """Independently recompute the disagreement diagnostics purely from
-    *linkage*/*allowed_evidence*/*source_qid_details* and compare against a
-    retained ``disagreement_diagnostics.json`` document."""
+    *linkage*/*entities*/*full_evidence*/*source_qid_details* and compare
+    against a retained ``disagreement_diagnostics.json`` document."""
     expected = build_disagreement_document(
         generated_at=str(document.get("generated_at", "")),
         disagreements=compute_boat_model_field_disagreements(
-            linkage, allowed_evidence, source_qid_details
+            linkage, entities, full_evidence, source_qid_details
         ),
     )
     if dict(document) != expected:
@@ -817,6 +1051,13 @@ def build_evidence_manifest_document(
             "fetched_entity_count": len(entities),
             "acquisition_failure_count": acquisition_failure_count,
             "retrieval_count_attributed": quality_report.retrieval_count_attributed,
+            "retrieval_count_attributed_note": (
+                "Retained live-acquisition telemetry (HTTP requests attributed to this source "
+                "during the original --live run). This is NOT independently recomputed by "
+                "offline --verify: it depends on live network batching/retry behavior, not on "
+                "retained raw_claims content, so it cannot be reconstructed from the retained "
+                "package alone."
+            ),
         },
         "quality_report_global": {
             "malformed_statement_count": quality_report.malformed_statement_count,
@@ -825,7 +1066,10 @@ def build_evidence_manifest_document(
                 "Global totals produced directly by the existing adapter's "
                 "extract_field_evidence across ALL extracted properties (including "
                 "manufacturer/designer/ballast/total_produced, which are not part of the five "
-                "SLICE-0028 allowed fields) — not decomposed per field."
+                "SLICE-0028 allowed fields) — not decomposed per field. Unlike "
+                "retrieval_count_attributed, both counts here ARE independently recomputed by "
+                "offline --verify by re-running extract_field_evidence over the retained "
+                "raw_claims."
             ),
         },
         "requested_qid_evidence": _requested_qid_evidence_rows(linkage, allowed_evidence_by_qid),
@@ -838,18 +1082,86 @@ def verify_evidence_manifest_self_consistency(
     linkage: Sequence[BoatModelLinkage],
     entities: Sequence[WikidataEntityData],
     full_evidence: Sequence[FieldEvidence],
+    quality_report: WikidataQualityReport,
     evidence_manifest: Mapping[str, Any],
 ) -> list[str]:
-    """Independently rebuild the expected per-QID evidence rows and raw-
-    entity rows purely from *entities*/*full_evidence*/*linkage* and compare
-    against a retained ``evidence_manifest.json`` document.
+    """Independently rebuild every offline-reconstructible retained value
+    purely from *entities*/*full_evidence*/*quality_report*/*linkage* and
+    compare against a retained ``evidence_manifest.json`` document.
 
-    The caller obtains *entities*/*full_evidence* with zero network access by
-    calling ``rebuild_entities_from_manifest(evidence_manifest)`` and
-    rerunning the existing adapter's ``extract_field_evidence`` on the
-    result — never by trusting the manifest's own already-computed fields.
+    The caller obtains *entities*/*full_evidence*/*quality_report* with zero
+    network access by calling ``rebuild_entities_from_manifest
+    (evidence_manifest)`` and rerunning the existing adapter's
+    ``extract_field_evidence`` on the result — never by trusting the
+    manifest's own already-computed fields.
+
+    Checks, in addition to the per-QID evidence rows and raw-entity rows:
+
+    - ``usage_metrics.requested_qid_count`` against the independently
+      derived ``distinct_request_qids(linkage)`` count;
+    - ``usage_metrics.fetched_entity_count`` against ``len(entities)``;
+    - internal consistency between ``acquisition_failure_count == 0`` and
+      ``fetched_entity_count == requested_qid_count`` (a zero-failure
+      manifest cannot truthfully have fewer fetched entities than requested
+      QIDs — the one acquisition-completeness fact deterministically
+      inferable from a retained *successful* package alone);
+    - ``quality_report_global.malformed_statement_count`` and
+      ``.unsupported_qualifier_count`` against the independently
+      re-extracted *quality_report*.
+
+    Does NOT attempt to independently verify
+    ``usage_metrics.retrieval_count_attributed``: that is retained live-
+    acquisition telemetry (HTTP request count from the original --live run)
+    that cannot be reconstructed from retained raw_claims content alone —
+    see the field's own retained ``retrieval_count_attributed_note``.
     """
     problems: list[str] = []
+
+    usage = evidence_manifest.get("usage_metrics", {})
+
+    expected_requested_qid_count = len(distinct_request_qids(linkage))
+    actual_requested_qid_count = usage.get("requested_qid_count")
+    if actual_requested_qid_count != expected_requested_qid_count:
+        problems.append(
+            "retained evidence_manifest.usage_metrics.requested_qid_count "
+            f"({actual_requested_qid_count!r}) != independently derived "
+            f"distinct_request_qids(linkage) count ({expected_requested_qid_count})"
+        )
+
+    expected_fetched_entity_count = len(entities)
+    actual_fetched_entity_count = usage.get("fetched_entity_count")
+    if actual_fetched_entity_count != expected_fetched_entity_count:
+        problems.append(
+            "retained evidence_manifest.usage_metrics.fetched_entity_count "
+            f"({actual_fetched_entity_count!r}) != len(entities) ({expected_fetched_entity_count})"
+        )
+
+    if (
+        usage.get("acquisition_failure_count") == 0
+        and actual_fetched_entity_count != actual_requested_qid_count
+    ):
+        problems.append(
+            "retained evidence_manifest reports acquisition_failure_count == 0 but "
+            f"fetched_entity_count ({actual_fetched_entity_count!r}) != requested_qid_count "
+            f"({actual_requested_qid_count!r}), which is internally inconsistent"
+        )
+
+    quality_global = evidence_manifest.get("quality_report_global", {})
+    if quality_global.get("malformed_statement_count") != quality_report.malformed_statement_count:
+        problems.append(
+            "retained evidence_manifest.quality_report_global.malformed_statement_count "
+            f"({quality_global.get('malformed_statement_count')!r}) != independently "
+            f"re-extracted value ({quality_report.malformed_statement_count})"
+        )
+    if (
+        quality_global.get("unsupported_qualifier_count")
+        != quality_report.unsupported_qualifier_count
+    ):
+        problems.append(
+            "retained evidence_manifest.quality_report_global.unsupported_qualifier_count "
+            f"({quality_global.get('unsupported_qualifier_count')!r}) != independently "
+            f"re-extracted value ({quality_report.unsupported_qualifier_count})"
+        )
 
     allowed = sl0026.filter_to_allowed_evidence(full_evidence)
     by_qid: dict[str, list[FieldEvidence]] = {}

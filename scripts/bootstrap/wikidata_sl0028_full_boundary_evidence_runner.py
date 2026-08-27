@@ -1,6 +1,6 @@
 """SLICE-0028 full-boundary Wikidata Tier-1 evidence rollout runner.
 
-Four independent modes:
+Five independent modes:
 
 ``--linkage``
     Offline (no network access): reproduces the accepted 1,770/1,772
@@ -28,6 +28,19 @@ Four independent modes:
     ``ARTIFACT-DIGESTS.json``. Requires network access and is NOT part of
     normal CI. Builds ``linkage.json`` first if it does not already exist.
 
+``--recompute``
+    Offline (no network access, no re-acquisition): rebuilds every derived
+    document (``evidence_manifest.json`` / ``coverage.json`` /
+    ``disagreement_diagnostics.json`` /
+    ``basic_searchable_evidence_precursor.json`` / ``REPORT.md`` /
+    ``ARTIFACT-DIGESTS.json``) from the already-retained
+    ``evidence_manifest.json``'s own ``raw_entities``, without a new Wikidata
+    request. Used after a pure-logic fix to a derived value (e.g. a coverage/
+    disagreement classification correction) when the underlying acquired
+    evidence has not changed. Preserves the original retained live-
+    acquisition telemetry (``retrieval_count_attributed``) rather than
+    overwriting it with a fabricated zero from this network-free run.
+
 ``--verify``
     Fully offline (zero network access): reloads every retained document,
     recomputes the identity boundary and linkage from the retained
@@ -52,6 +65,8 @@ Usage::
 
     uv run python scripts/bootstrap/wikidata_sl0028_full_boundary_evidence_runner.py --live \\
         --user-agent "HullQ/0.1 (research@example.org; https://github.com/example/hullq)"
+
+    uv run python scripts/bootstrap/wikidata_sl0028_full_boundary_evidence_runner.py --recompute
 
     uv run python scripts/bootstrap/wikidata_sl0028_full_boundary_evidence_runner.py --verify
 
@@ -126,8 +141,10 @@ def run_linkage(*, linkage_path: Path = LINKAGE_PATH) -> dict[str, Any]:
     )
     from hullq.bootstrap.wikidata_sl0028_full_boundary_evidence import (
         build_full_boundary_linkage,
+        build_historical_registry_reconciliation_block,
         build_linkage_document,
         distinct_request_qids,
+        load_full_historical_registry_reconciliation,
         verify_full_boundary_linkage,
     )
 
@@ -157,8 +174,26 @@ def run_linkage(*, linkage_path: Path = LINKAGE_PATH) -> dict[str, Any]:
     multi_qid_models = [e for e in linkage if len(e.qids) > 1]
     print(f"  BoatModels with more than one accepted QID: {len(multi_qid_models)}", flush=True)
 
+    _full_crosswalk, reserved_entries = load_full_historical_registry_reconciliation(
+        boundary=boundary
+    )
+    reconciliation = build_historical_registry_reconciliation_block(
+        boundary=boundary, reserved_entries=reserved_entries
+    )
+    print(
+        f"  historical registry reconciliation: {reconciliation['historical_registry_count']} full "
+        f"registry = {reconciliation['canonical_auto_admit_linkage_count']} canonical AUTO_ADMIT "
+        f"linkage + {reconciliation['non_canonical_reserved_count']} non-canonical reserved",
+        flush=True,
+    )
+    for e in reserved_entries:
+        print(f"    reserved: {e.qid} -> {e.reserved_hullq_id} (decision={e.decision})", flush=True)
+
     document = build_linkage_document(
-        generated_at=datetime.now(tz=UTC).isoformat(), boundary=boundary, linkage=linkage
+        generated_at=datetime.now(tz=UTC).isoformat(),
+        boundary=boundary,
+        linkage=linkage,
+        historical_registry_reconciliation=reconciliation,
     )
     mismatches = _validate_schema(document, LINKAGE_SCHEMA_PATH, label="SLICE-0028 linkage")
     if mismatches:
@@ -173,25 +208,182 @@ def run_linkage(*, linkage_path: Path = LINKAGE_PATH) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# --live : rights-gated live acquisition (network access required)
+# Shared: build + write every derived document from already-acquired
+# entities/evidence (used by both --live, right after a fresh acquisition,
+# and --recompute, which regenerates every derived document offline from an
+# already-retained evidence_manifest.json's raw_entities without a new
+# acquisition -- e.g. after a pure-logic fix to a derived value).
 # ---------------------------------------------------------------------------
 
 
-def run_live(*, user_agent: str, linkage_path: Path = LINKAGE_PATH) -> dict[str, Any]:
+def _build_and_write_derived_documents(
+    *,
+    linkage_doc: dict[str, Any],
+    linkage: list[Any],
+    entities: list[Any],
+    full_evidence: list[Any],
+    quality_report: Any,
+    requested_qid_count: int,
+    acquisition_failure_count: int,
+    acquired_at: str,
+) -> dict[str, Any]:
     from hullq.bootstrap.wikidata_sl0026_tier1_enrichment_pilot import (
         filter_to_allowed_evidence,
         summarize_field_coverage,
     )
     from hullq.bootstrap.wikidata_sl0028_full_boundary_evidence import (
         ALLOWED_FIELD_POINTERS,
-        BoatModelLinkage,
+        build_artifact_digests,
         build_basic_searchable_precursor_document,
         build_coverage_document,
         build_disagreement_document,
         build_evidence_manifest_document,
         compute_boat_model_field_disagreements,
-        distinct_request_qids,
         summarize_boat_model_field_coverage,
+    )
+
+    print(
+        f"  extracted {len(full_evidence)} raw evidence item(s) across all properties "
+        f"(malformed={quality_report.malformed_statement_count} "
+        f"unsupported_qualifier={quality_report.unsupported_qualifier_count})",
+        flush=True,
+    )
+
+    source_counts, source_details = summarize_field_coverage(entities, full_evidence)
+    boat_model_counts, boat_model_details = summarize_boat_model_field_coverage(
+        linkage, source_details
+    )
+    print("  source-QID-level coverage:", flush=True)
+    for label, buckets in source_counts.items():
+        print(f"    {label}: {buckets}", flush=True)
+    print("  BoatModel-level coverage:", flush=True)
+    for label, buckets in boat_model_counts.items():
+        print(f"    {label}: {buckets}", flush=True)
+
+    allowed = filter_to_allowed_evidence(full_evidence)
+    allowed_by_qid: dict[str, list[Any]] = {}
+    for ev in allowed:
+        allowed_by_qid.setdefault(ev.subject.id, []).append(ev)
+    print(
+        f"  retained {len(allowed)} evidence item(s) across the five allowed field pointers "
+        f"({sorted(str(p) for p in ALLOWED_FIELD_POINTERS)})",
+        flush=True,
+    )
+
+    evidence_manifest = build_evidence_manifest_document(
+        generated_at=datetime.now(tz=UTC).isoformat(),
+        acquired_at=acquired_at,
+        linkage=linkage,
+        entities=entities,
+        allowed_evidence_by_qid=allowed_by_qid,
+        quality_report=quality_report,
+        requested_qid_count=requested_qid_count,
+        acquisition_failure_count=acquisition_failure_count,
+    )
+
+    disagreements = compute_boat_model_field_disagreements(
+        linkage, entities, full_evidence, source_details
+    )
+    print(
+        f"  candidate-multiplicity/value-disagreement flagged cases: {len(disagreements)}",
+        flush=True,
+    )
+
+    precursor_doc = build_basic_searchable_precursor_document(
+        generated_at=datetime.now(tz=UTC).isoformat(),
+        boat_model_count=len(linkage),
+        boat_model_coverage=boat_model_details,
+    )
+    print(
+        "  basic_searchable_evidence_precursor (non-canonical): "
+        f"{precursor_doc['qualifying_boat_model_count']}/{precursor_doc['boat_model_count']} "
+        f"({precursor_doc['qualifying_boat_model_percentage']}%)",
+        flush=True,
+    )
+
+    mismatches = _validate_schema(
+        evidence_manifest, EVIDENCE_MANIFEST_SCHEMA_PATH, label="SLICE-0028 evidence manifest"
+    )
+    if mismatches:
+        for m in mismatches:
+            print(f"  - {m}", flush=True)
+        raise SystemExit(1)
+    EVIDENCE_MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _write_text_lf(EVIDENCE_MANIFEST_PATH, json.dumps(evidence_manifest, indent=2))
+    print(f"Evidence manifest written to: {EVIDENCE_MANIFEST_PATH}", flush=True)
+
+    coverage_doc = build_coverage_document(
+        generated_at=datetime.now(tz=UTC).isoformat(),
+        boat_model_count=len(linkage),
+        source_qid_count=len(entities),
+        source_qid_coverage_counts=source_counts,
+        boat_model_coverage_counts=boat_model_counts,
+    )
+    mismatches = _validate_schema(coverage_doc, COVERAGE_SCHEMA_PATH, label="SLICE-0028 coverage")
+    if mismatches:
+        for m in mismatches:
+            print(f"  - {m}", flush=True)
+        raise SystemExit(1)
+    _write_text_lf(COVERAGE_PATH, json.dumps(coverage_doc, indent=2))
+    print(f"Coverage written to: {COVERAGE_PATH}", flush=True)
+
+    disagreement_doc = build_disagreement_document(
+        generated_at=datetime.now(tz=UTC).isoformat(), disagreements=disagreements
+    )
+    mismatches = _validate_schema(
+        disagreement_doc, DISAGREEMENT_SCHEMA_PATH, label="SLICE-0028 disagreement diagnostics"
+    )
+    if mismatches:
+        for m in mismatches:
+            print(f"  - {m}", flush=True)
+        raise SystemExit(1)
+    _write_text_lf(DISAGREEMENT_PATH, json.dumps(disagreement_doc, indent=2))
+    print(f"Disagreement diagnostics written to: {DISAGREEMENT_PATH}", flush=True)
+
+    mismatches = _validate_schema(
+        precursor_doc, PRECURSOR_SCHEMA_PATH, label="SLICE-0028 basic_searchable_evidence_precursor"
+    )
+    if mismatches:
+        for m in mismatches:
+            print(f"  - {m}", flush=True)
+        raise SystemExit(1)
+    _write_text_lf(PRECURSOR_PATH, json.dumps(precursor_doc, indent=2))
+    print(f"basic_searchable_evidence_precursor written to: {PRECURSOR_PATH}", flush=True)
+
+    _write_report(
+        linkage_doc,
+        evidence_manifest,
+        coverage_doc,
+        disagreement_doc,
+        precursor_doc,
+        replay_result=None,
+    )
+
+    digests_doc = build_artifact_digests(
+        generated_at=datetime.now(tz=UTC).isoformat(), package_dir=SL0028_DIR
+    )
+    mismatches = _validate_schema(
+        digests_doc, ARTIFACT_DIGESTS_SCHEMA_PATH, label="SLICE-0028 artifact digests"
+    )
+    if mismatches:
+        for m in mismatches:
+            print(f"  - {m}", flush=True)
+        raise SystemExit(1)
+    _write_text_lf(ARTIFACT_DIGESTS_PATH, json.dumps(digests_doc, indent=2))
+    print(f"Artifact digests written to: {ARTIFACT_DIGESTS_PATH}", flush=True)
+
+    return evidence_manifest
+
+
+# ---------------------------------------------------------------------------
+# --live : rights-gated live acquisition (network access required)
+# ---------------------------------------------------------------------------
+
+
+def run_live(*, user_agent: str, linkage_path: Path = LINKAGE_PATH) -> dict[str, Any]:
+    from hullq.bootstrap.wikidata_sl0028_full_boundary_evidence import (
+        BoatModelLinkage,
+        distinct_request_qids,
     )
     from hullq.bootstrap.wikidata_tier0_sl0018 import (
         DeltaCompletenessError,
@@ -281,137 +473,102 @@ def run_live(*, user_agent: str, linkage_path: Path = LINKAGE_PATH) -> dict[str,
         full_evidence, quality_report = adapter.extract_field_evidence(
             entities, acquired_at, requested_qid_count=len(request_qids)
         )
-        print(
-            f"  extracted {len(full_evidence)} raw evidence item(s) across all properties "
-            f"(malformed={quality_report.malformed_statement_count} "
-            f"unsupported_qualifier={quality_report.unsupported_qualifier_count})",
-            flush=True,
-        )
 
-        source_counts, source_details = summarize_field_coverage(entities, full_evidence)
-        boat_model_counts, boat_model_details = summarize_boat_model_field_coverage(
-            linkage, source_details
-        )
-        print("  source-QID-level coverage:", flush=True)
-        for label, buckets in source_counts.items():
-            print(f"    {label}: {buckets}", flush=True)
-        print("  BoatModel-level coverage:", flush=True)
-        for label, buckets in boat_model_counts.items():
-            print(f"    {label}: {buckets}", flush=True)
-
-        allowed = filter_to_allowed_evidence(full_evidence)
-        allowed_by_qid: dict[str, list[Any]] = {}
-        for ev in allowed:
-            allowed_by_qid.setdefault(ev.subject.id, []).append(ev)
-        print(
-            f"  retained {len(allowed)} evidence item(s) across the five allowed field pointers "
-            f"({sorted(str(p) for p in ALLOWED_FIELD_POINTERS)})",
-            flush=True,
-        )
-
-        evidence_manifest = build_evidence_manifest_document(
-            generated_at=datetime.now(tz=UTC).isoformat(),
-            acquired_at=acquired_at,
+        return _build_and_write_derived_documents(
+            linkage_doc=linkage_doc,
             linkage=linkage,
             entities=entities,
-            allowed_evidence_by_qid=allowed_by_qid,
+            full_evidence=full_evidence,
             quality_report=quality_report,
             requested_qid_count=len(request_qids),
             acquisition_failure_count=0,
+            acquired_at=acquired_at,
         )
 
-        disagreements = compute_boat_model_field_disagreements(linkage, allowed, source_details)
-        print(
-            f"  candidate-multiplicity/value-disagreement flagged cases: {len(disagreements)}",
-            flush=True,
+
+# ---------------------------------------------------------------------------
+# --recompute : offline regeneration from an already-retained
+# evidence_manifest.json's raw_entities, WITHOUT a new acquisition (used
+# after a pure-logic fix to a derived value; preserves the original retained
+# live-acquisition telemetry rather than fabricating a fresh, zero,
+# recomputed retrieval count).
+# ---------------------------------------------------------------------------
+
+
+def run_recompute(
+    *,
+    linkage_path: Path = LINKAGE_PATH,
+    evidence_manifest_path: Path = EVIDENCE_MANIFEST_PATH,
+) -> dict[str, Any]:
+    from hullq.bootstrap.wikidata_sl0028_full_boundary_evidence import (
+        BoatModelLinkage,
+        rebuild_entities_from_manifest,
+    )
+    from hullq.sources.wikidata import WikidataAdapter, WikidataAdapterConfig
+
+    print(
+        "HullQ SLICE-0028 Full-Boundary Wikidata Tier-1 Evidence Rollout — RECOMPUTE "
+        "(offline, no network access, no re-acquisition)",
+        flush=True,
+    )
+
+    for stale_path in (REPLAY_RESULT_PATH, REPLAY_REPORT_PATH):
+        if stale_path.exists():
+            stale_path.unlink()
+            print(
+                f"  removed stale {stale_path.name} (describes a prior evidence_manifest.json; "
+                "re-run --persist to regenerate)",
+                flush=True,
+            )
+
+    linkage_doc = json.loads(linkage_path.read_text(encoding="utf-8"))
+    linkage = [
+        BoatModelLinkage(
+            hullq_id=row["hullq_id"],
+            qids=tuple(row["qids"]),
+            preferred_label_by_qid=row["preferred_label_by_qid"],
+        )
+        for row in linkage_doc["boat_models"]
+    ]
+
+    existing_manifest = json.loads(evidence_manifest_path.read_text(encoding="utf-8"))
+    existing_usage = existing_manifest["usage_metrics"]
+    acquired_at = existing_manifest.get("acquired_at", "")
+
+    source = {"source_id": "SRC_WIKIDATA_API_2026"}
+    config = WikidataAdapterConfig(user_agent="HullQ/0.1 (offline-recompute@example.org)")
+    import httpx
+
+    with httpx.Client() as client:
+        adapter = WikidataAdapter(source=source, config=config, http_client=client)
+        entities = rebuild_entities_from_manifest(existing_manifest)
+        full_evidence, quality_report = adapter.extract_field_evidence(
+            entities, acquired_at, requested_qid_count=len(entities)
         )
 
-        precursor_doc = build_basic_searchable_precursor_document(
-            generated_at=datetime.now(tz=UTC).isoformat(),
-            boat_model_count=len(linkage),
-            boat_model_coverage=boat_model_details,
-        )
-        print(
-            "  basic_searchable_evidence_precursor (non-canonical): "
-            f"{precursor_doc['qualifying_boat_model_count']}/{precursor_doc['boat_model_count']} "
-            f"({precursor_doc['qualifying_boat_model_percentage']}%)",
-            flush=True,
-        )
+    # This run performs zero network requests, so quality_report's own
+    # retrieval_count_attributed is 0 -- NOT a truthful recomputation of the
+    # original --live run's HTTP request count. Preserve the original
+    # retained live-acquisition telemetry instead of overwriting it with a
+    # fabricated zero (WikidataQualityReport is a plain, non-frozen dataclass).
+    quality_report.retrieval_count_attributed = existing_usage["retrieval_count_attributed"]
 
-    mismatches = _validate_schema(
-        evidence_manifest, EVIDENCE_MANIFEST_SCHEMA_PATH, label="SLICE-0028 evidence manifest"
-    )
-    if mismatches:
-        for m in mismatches:
-            print(f"  - {m}", flush=True)
-        raise SystemExit(1)
-    EVIDENCE_MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _write_text_lf(EVIDENCE_MANIFEST_PATH, json.dumps(evidence_manifest, indent=2))
-    print(f"Evidence manifest written to: {EVIDENCE_MANIFEST_PATH}", flush=True)
-
-    coverage_doc = build_coverage_document(
-        generated_at=datetime.now(tz=UTC).isoformat(),
-        boat_model_count=len(linkage),
-        source_qid_count=len(entities),
-        source_qid_coverage_counts=source_counts,
-        boat_model_coverage_counts=boat_model_counts,
-    )
-    mismatches = _validate_schema(coverage_doc, COVERAGE_SCHEMA_PATH, label="SLICE-0028 coverage")
-    if mismatches:
-        for m in mismatches:
-            print(f"  - {m}", flush=True)
-        raise SystemExit(1)
-    _write_text_lf(COVERAGE_PATH, json.dumps(coverage_doc, indent=2))
-    print(f"Coverage written to: {COVERAGE_PATH}", flush=True)
-
-    disagreement_doc = build_disagreement_document(
-        generated_at=datetime.now(tz=UTC).isoformat(), disagreements=disagreements
-    )
-    mismatches = _validate_schema(
-        disagreement_doc, DISAGREEMENT_SCHEMA_PATH, label="SLICE-0028 disagreement diagnostics"
-    )
-    if mismatches:
-        for m in mismatches:
-            print(f"  - {m}", flush=True)
-        raise SystemExit(1)
-    _write_text_lf(DISAGREEMENT_PATH, json.dumps(disagreement_doc, indent=2))
-    print(f"Disagreement diagnostics written to: {DISAGREEMENT_PATH}", flush=True)
-
-    mismatches = _validate_schema(
-        precursor_doc, PRECURSOR_SCHEMA_PATH, label="SLICE-0028 basic_searchable_evidence_precursor"
-    )
-    if mismatches:
-        for m in mismatches:
-            print(f"  - {m}", flush=True)
-        raise SystemExit(1)
-    _write_text_lf(PRECURSOR_PATH, json.dumps(precursor_doc, indent=2))
-    print(f"basic_searchable_evidence_precursor written to: {PRECURSOR_PATH}", flush=True)
-
-    _write_report(
-        linkage_doc,
-        evidence_manifest,
-        coverage_doc,
-        disagreement_doc,
-        precursor_doc,
-        replay_result=None,
+    print(
+        f"  rebuilt {len(entities)} entities offline from retained raw_entities "
+        f"(preserving original retrieval_count_attributed={quality_report.retrieval_count_attributed})",
+        flush=True,
     )
 
-    from hullq.bootstrap.wikidata_sl0028_full_boundary_evidence import build_artifact_digests
-
-    digests_doc = build_artifact_digests(
-        generated_at=datetime.now(tz=UTC).isoformat(), package_dir=SL0028_DIR
+    return _build_and_write_derived_documents(
+        linkage_doc=linkage_doc,
+        linkage=linkage,
+        entities=entities,
+        full_evidence=full_evidence,
+        quality_report=quality_report,
+        requested_qid_count=existing_usage["requested_qid_count"],
+        acquisition_failure_count=existing_usage["acquisition_failure_count"],
+        acquired_at=acquired_at,
     )
-    mismatches = _validate_schema(
-        digests_doc, ARTIFACT_DIGESTS_SCHEMA_PATH, label="SLICE-0028 artifact digests"
-    )
-    if mismatches:
-        for m in mismatches:
-            print(f"  - {m}", flush=True)
-        raise SystemExit(1)
-    _write_text_lf(ARTIFACT_DIGESTS_PATH, json.dumps(digests_doc, indent=2))
-    print(f"Artifact digests written to: {ARTIFACT_DIGESTS_PATH}", flush=True)
-
-    return evidence_manifest
 
 
 # ---------------------------------------------------------------------------
@@ -429,7 +586,6 @@ def run_verify(
     artifact_digests_path: Path = ARTIFACT_DIGESTS_PATH,
 ) -> None:
     from hullq.bootstrap.wikidata_sl0026_tier1_enrichment_pilot import (
-        filter_to_allowed_evidence,
         load_reproduced_identity_boundary,
         summarize_field_coverage,
     )
@@ -501,7 +657,7 @@ def run_verify(
         with httpx.Client() as client:
             adapter = WikidataAdapter(source=source, config=config, http_client=client)
             rebuilt_entities = rebuild_entities_from_manifest(evidence_manifest)
-            rebuilt_full_evidence, _report = adapter.extract_field_evidence(
+            rebuilt_full_evidence, rebuilt_report = adapter.extract_field_evidence(
                 rebuilt_entities,
                 evidence_manifest.get("acquired_at", ""),
                 requested_qid_count=len(rebuilt_entities),
@@ -516,11 +672,11 @@ def run_verify(
                 linkage=linkage,
                 entities=rebuilt_entities,
                 full_evidence=rebuilt_full_evidence,
+                quality_report=rebuilt_report,
                 evidence_manifest=evidence_manifest,
             )
         )
 
-        allowed = filter_to_allowed_evidence(rebuilt_full_evidence)
         _source_counts, source_details = summarize_field_coverage(
             rebuilt_entities, rebuilt_full_evidence
         )
@@ -556,7 +712,8 @@ def run_verify(
             mismatches.extend(
                 verify_disagreement_self_consistency(
                     linkage=linkage,
-                    allowed_evidence=allowed,
+                    entities=rebuilt_entities,
+                    full_evidence=rebuilt_full_evidence,
                     source_qid_details=source_details,
                     document=disagreement_doc,
                 )
@@ -654,6 +811,29 @@ def _write_report(
         f"- historical QID -> HullQ-ID mappings: **{boundary['historical_crosswalk_count']}** (must equal 1,772)",
         f"- baseline manifest sha256: `{boundary['baseline_manifest_sha256']}`",
         f"- delta manifest sha256: `{boundary['delta_manifest_sha256']}`",
+        "",
+        "## HISTORICAL REGISTRY RECONCILIATION (1,772 vs 1,770)",
+        "",
+    ]
+    reconciliation = linkage_doc["historical_registry_reconciliation"]
+    lines += [
+        f"- historical registry count: **{reconciliation['historical_registry_count']}**",
+        f"- canonical AUTO_ADMIT QID -> BoatModel linkage count: **{reconciliation['canonical_auto_admit_linkage_count']}**",
+        f"- non-canonical historical/reserved mappings excluded from acquisition: **{reconciliation['non_canonical_reserved_count']}**",
+    ]
+    if reconciliation["reserved_entries"]:
+        lines += [
+            "",
+            "| reserved QID | reserved HullQ ID | decision | reason codes |",
+            "|---|---|---|---|",
+        ]
+        lines += [
+            f"| {e['qid']} | `{e['reserved_hullq_id']}` | {e['decision']} | {', '.join(e['reason_codes']) or '—'} |"
+            for e in reconciliation["reserved_entries"]
+        ]
+    lines += [
+        "",
+        reconciliation["note"],
         "",
         "## FULL-BOUNDARY LINKAGE",
         "",
@@ -1032,6 +1212,7 @@ def main() -> None:
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--linkage", action="store_true")
     mode.add_argument("--live", action="store_true")
+    mode.add_argument("--recompute", action="store_true")
     mode.add_argument("--verify", action="store_true")
     mode.add_argument("--persist", action="store_true")
     parser.add_argument("--user-agent", default=None)
@@ -1044,6 +1225,8 @@ def main() -> None:
         if not args.user_agent:
             raise SystemExit("--live requires --user-agent")
         run_live(user_agent=args.user_agent)
+    elif args.recompute:
+        run_recompute()
     elif args.verify:
         run_verify()
     elif args.persist:

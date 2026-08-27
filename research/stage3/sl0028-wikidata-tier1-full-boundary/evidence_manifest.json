@@ -1,6 +1,6 @@
 {
   "schema_version": "sl0028-evidence-manifest-v1",
-  "generated_at": "2026-08-26T21:52:45.445169+00:00",
+  "generated_at": "2026-08-26T22:56:24.134482+00:00",
   "acquired_at": "2026-08-26T21:52:06.805656+00:00",
   "source_id": "SRC_WIKIDATA_API_2026",
   "activity_id": "SLICE-0028-FULL-BOUNDARY-EVIDENCE",
@@ -15,12 +15,13 @@
     "requested_qid_count": 1770,
     "fetched_entity_count": 1770,
     "acquisition_failure_count": 0,
-    "retrieval_count_attributed": 36
+    "retrieval_count_attributed": 36,
+    "retrieval_count_attributed_note": "Retained live-acquisition telemetry (HTTP requests attributed to this source during the original --live run). This is NOT independently recomputed by offline --verify: it depends on live network batching/retry behavior, not on retained raw_claims content, so it cannot be reconstructed from the retained package alone."
   },
   "quality_report_global": {
     "malformed_statement_count": 0,
     "unsupported_qualifier_count": 451,
-    "note": "Global totals produced directly by the existing adapter's extract_field_evidence across ALL extracted properties (including manufacturer/designer/ballast/total_produced, which are not part of the five SLICE-0028 allowed fields) \u2014 not decomposed per field."
+    "note": "Global totals produced directly by the existing adapter's extract_field_evidence across ALL extracted properties (including manufacturer/designer/ballast/total_produced, which are not part of the five SLICE-0028 allowed fields) \u2014 not decomposed per field. Unlike retrieval_count_attributed, both counts here ARE independently recomputed by offline --verify by re-running extract_field_evidence over the retained raw_claims."
   },
   "requested_qid_evidence": [
     {

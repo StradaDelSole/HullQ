@@ -1,6 +1,6 @@
 {
   "schema_version": "sl0028-basic-searchable-evidence-precursor-v1",
-  "generated_at": "2026-08-26T21:52:45.490977+00:00",
+  "generated_at": "2026-08-26T22:56:24.435523+00:00",
   "metric_name": "basic_searchable_evidence_precursor",
   "definition": "canonical BoatModel count with BoatModel-level normalized_candidate_present coverage for LOA AND beam AND (draft OR displacement)",
   "non_canonical_disclaimer": "This is NOT CAL-01 D2 basic-searchable coverage and MUST NOT be reported as launch-readiness coverage. No canonical BoatDesign, FieldResolution or searchable technical value has been created or decided. Source-evidence diagnostic only, intended to inform the still-pending CAL-01 D2b threshold decision.",
