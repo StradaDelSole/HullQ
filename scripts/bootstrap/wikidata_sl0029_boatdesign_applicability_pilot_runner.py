@@ -58,6 +58,9 @@ ARTIFACT_DIGESTS_PATH = SL0029_DIR / "ARTIFACT-DIGESTS.json"
 ARTIFACT_DIGESTS_SCHEMA_PATH = SL0029_DIR / "artifact_digests_schema.json"
 
 SOURCE_SCHEMA_PATH = ROOT / "specs" / "SOURCE_SCHEMA.v0.2.json"
+OBSERVATION_APPLICABILITY_SCHEMA_PATH = (
+    ROOT / "specs" / "OBSERVATION_APPLICABILITY_SCHEMA.v0.1.json"
+)
 
 LINKAGE_PATH = SL0028_DIR / "linkage.json"
 EVIDENCE_MANIFEST_PATH = SL0028_DIR / "evidence_manifest.json"
@@ -86,6 +89,32 @@ def _validate_schema(instance: Any, schema_path: Path, *, label: str) -> list[st
         return [f"{label} failed schema validation: {exc.message} (path={list(exc.absolute_path)})"]
     print(f"{label} schema validation: PASS", flush=True)
     return []
+
+
+def _validate_applicability_scopes(
+    *, boatdesign: Any, field_applicability: Any, label_prefix: str
+) -> list[str]:
+    """Validate every retained ``applicability_scope`` object -- one per boat_model in
+    boatdesign_applicability.json, one per field in wikidata_candidate_applicability.json
+    -- against the real ``specs/OBSERVATION_APPLICABILITY_SCHEMA.v0.1.json`` file."""
+    problems: list[str] = []
+    for model in boatdesign.get("boat_models", []):
+        problems += _validate_schema(
+            model["applicability_scope"],
+            OBSERVATION_APPLICABILITY_SCHEMA_PATH,
+            label=f"{label_prefix} boatdesign_applicability[{model['qid']}].applicability_scope",
+        )
+    for model in field_applicability.get("boat_models", []):
+        for field in model.get("fields", []):
+            problems += _validate_schema(
+                field["applicability_scope"],
+                OBSERVATION_APPLICABILITY_SCHEMA_PATH,
+                label=(
+                    f"{label_prefix} wikidata_candidate_applicability[{model['qid']}]"
+                    f"[{field['field_pointer']}].applicability_scope"
+                ),
+            )
+    return problems
 
 
 def run_verify() -> None:
@@ -135,7 +164,9 @@ def run_verify() -> None:
         SOURCE_SCHEMA_PATH,
         label="source_clearance_assessment.source_record (against specs/SOURCE_SCHEMA.v0.2.json)",
     )
-    problems += sl0029.verify_source_clearance_assessment_self_consistency(clearance)
+    problems += sl0029.verify_source_clearance_assessment_self_consistency(
+        clearance, pilot_identity_boundary=identity_boundary
+    )
     gate = clearance["source_use_gate_decisions"]["decisions"]
     print(
         "  source-use gate (recomputed via hullq.sources.rights.check_source_use): "
@@ -165,6 +196,9 @@ def run_verify() -> None:
         field_applicability,
         pilot_identity_boundary=identity_boundary,
         evidence_manifest=evidence_manifest,
+    )
+    problems += _validate_applicability_scopes(
+        boatdesign=boatdesign, field_applicability=field_applicability, label_prefix="  "
     )
 
     recommendation = sl0029.compute_recommendation(

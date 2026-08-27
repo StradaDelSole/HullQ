@@ -29,35 +29,100 @@
           "sl0028_normalized_candidate": { "value": "6.55320", "unit": "m" },
           "sl0028_evidence_id": "WD-Q5051252-P2043-d4fffea90f224ee7",
           "outcome": "GENERATION_AMBIGUOUS",
-          "rationale": "Primary-source diagnostic: the 2004+ '22Sport' brochure's 'Length of Hull' figure (6.55 m / 21'6\") numerically equals the Wikidata normalized candidate exactly. Per the slice's explicit rule that value equality is a diagnostic only and not proof of design-generation applicability, this cannot be marked safe: boatdesign_applicability.json positively evidences a dated 1995-01 'markII' redesign ('re-designed and enlarged deck and new interior') for which no markII-specific numeric specification was located in this bounded pass. The BoatModel-level candidate cannot be safely pinned to a specific generation."
+          "rationale": "Primary-source diagnostic: the 2004+ '22Sport' brochure's 'Length of Hull' figure (6.55 m / 21'6\") numerically equals the Wikidata normalized candidate exactly. Per the slice's explicit rule that value equality is a diagnostic only and not proof of design-generation applicability, this cannot be marked safe: boatdesign_applicability.json positively evidences a dated 1995-01 'markII' redesign ('re-designed and enlarged deck and new interior') for which no markII-specific numeric specification was located in this bounded pass. The BoatModel-level candidate cannot be safely pinned to a specific generation.",
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": null,
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          }
         },
         {
           "field_pointer": "/baseline/dimensions/lwl_m",
           "sl0028_normalized_candidate": { "value": "5.891784", "unit": "m" },
           "sl0028_evidence_id": "WD-Q5051252-P2043-12871c5245644882",
           "outcome": "GENERATION_AMBIGUOUS",
-          "rationale": "Same reasoning as loa_m: exact numeric match to the 22Sport brochure's 'Length of Waterline' (5.89 m / 19'4\") is diagnostic only, not proof, given the confirmed but numerically un-evidenced 1995-01 markII redesign."
+          "rationale": "Same reasoning as loa_m: exact numeric match to the 22Sport brochure's 'Length of Waterline' (5.89 m / 19'4\") is diagnostic only, not proof, given the confirmed but numerically un-evidenced 1995-01 markII redesign.",
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": null,
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          }
         },
         {
           "field_pointer": "/baseline/dimensions/beam_m",
           "sl0028_normalized_candidate": { "value": "2.337816", "unit": "m" },
           "sl0028_evidence_id": "WD-Q5051252-P2049-a2b3e92e92ca46b8",
           "outcome": "GENERATION_AMBIGUOUS",
-          "rationale": "Same reasoning as loa_m: exact numeric match to the 22Sport brochure's beam (2.34 m / 7'8\") is diagnostic only, not proof, given the confirmed but numerically un-evidenced 1995-01 markII redesign."
+          "rationale": "Same reasoning as loa_m: exact numeric match to the 22Sport brochure's beam (2.34 m / 7'8\") is diagnostic only, not proof, given the confirmed but numerically un-evidenced 1995-01 markII redesign.",
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": null,
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          }
         },
         {
           "field_pointer": "/baseline/dimensions/draft_min_m",
           "sl0028_normalized_candidate": { "value": "1.5240", "unit": "m" },
           "sl0028_evidence_id": "WD-Q5051252-P2048-5a7bb6c4f69203fd",
           "outcome": "OPTION_SENSITIVE",
-          "rationale": "The 22Sport brochure documents two concurrent factory draft states on the same swing/centerboard-keel hull: 'Draft, board up 0.51m 1'-8\"' and 'Draft, board down 1.52m 5'-0\"'. The Wikidata candidate (1.5240 m) equals only the board-down (deepest) state. Selecting one point value as a scalar baseline for a documented keel/draft option axis is the exact flattening the slice prohibits (IDENTITY_MODEL.v0.2.md 2.5 'draft' axis)."
+          "rationale": "The 22Sport brochure documents two concurrent factory draft states on the same swing/centerboard-keel hull: 'Draft, board up 0.51m 1'-8\"' and 'Draft, board down 1.52m 5'-0\"'. The Wikidata candidate (1.5240 m) equals only the board-down (deepest) state. Selecting one point value as a scalar baseline for a documented keel/draft option axis is the exact flattening the slice prohibits (IDENTITY_MODEL.v0.2.md 2.5 'draft' axis).",
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": ["keel:board_up", "keel:board_down"],
+            "operating_state_hint": "board_down",
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          }
         },
         {
           "field_pointer": "/baseline/dimensions/displacement_kg",
           "sl0028_normalized_candidate": null,
           "sl0028_evidence_id": "WD-Q5051252-P2067-0e381607fdf48126",
           "outcome": "NO_NORMALIZED_WIKIDATA_CANDIDATE",
-          "rationale": "The retained SLICE-0028 evidence bundle carries this field's normalized_candidate as null (raw Wikidata statement +2490 lb, unit not normalized by the SLICE-0028 pipeline). No promotable value exists to classify further. Additional caution: the 22Sport brochure's own 'Approximate Weight' (1080 kg / 2380 lbs) differs from the Wikidata raw amount (2490 lb) by about 4.6%, a further disagreement signal that would apply even if a normalized candidate existed."
+          "rationale": "The retained SLICE-0028 evidence bundle carries this field's normalized_candidate as null (raw Wikidata statement +2490 lb, unit not normalized by the SLICE-0028 pipeline). No promotable value exists to classify further. Additional caution: the 22Sport brochure's own 'Approximate Weight' (1080 kg / 2380 lbs) differs from the Wikidata raw amount (2490 lb) by about 4.6%, a further disagreement signal that would apply even if a normalized candidate existed.",
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": null,
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          }
         }
       ]
     },
@@ -71,35 +136,100 @@
           "sl0028_normalized_candidate": { "value": "9.119616", "unit": "m" },
           "sl0028_evidence_id": "WD-Q5051253-P2043-54a10536f58a791b",
           "outcome": "SAFE_FOR_LATER_DESIGN_PROMOTION",
-          "rationale": "Cross-validated: both independently retrieved primary-source Catalina 30 documents (brochure-C-30.pdf and C-30-MK-I-Brochure.pdf), which differ in keel/rudder/transom/layout options, report an identical LOA of 29'11\" (= 9.1186 m, matching the Wikidata normalized candidate to within rounding). boatdesign_applicability.json establishes that the observed differences between the two documents are DesignOption-axis (keel, draft, rudder, layout) rather than hull-form/tooling differences, and that no evidence contradicts a single stable BoatDesign baseline across the documented production span. This satisfies the slice's bar: the match is treated as supporting evidence alongside an independently evidenced generation/option boundary, not as sole proof."
+          "rationale": "Two independently retrieved primary-source Catalina 30 documents -- brochure-C-30.pdf (no confirmed print date; circumstantial signals consistent with an early, near-1974-introduction document) and C-30-MK-I-Brochure.pdf (print-run date code '9 90', read as September 1990) -- differ in keel/rudder/transom/layout options yet report an identical LOA of 29'11\" (= 9.1186 m, matching the Wikidata normalized candidate to within rounding). boatdesign_applicability.json establishes that the observed differences are DesignOption-axis (keel, draft, rudder, layout), not hull-form/tooling differences, and that no IDENTITY_MODEL.v0.2.md 2.4 BoatDesign-split trigger was found for Catalina 30. Per OBSERVATION_APPLICABILITY_SCHEMA.v0.1 this is a NARROWLY bounded finding, not an all-production claim: applicability_scope below states production_year >= 1974 with an explicitly unknown upper bound (last_year = null) -- it does not claim coverage of the entire, still only partially known, Catalina 30 production run. The retained SLICE-0028 Wikidata evidence remains QID/BoatModel-scoped and is treated here as CORROBORATING (not defining) this bounded scope; a later canonical promotion slice MUST create its own BoatDesign-scoped FieldEvidence/FieldResolution citing the primary-source dating facts and this applicability_scope -- it MUST NOT silently retarget the QID-scoped Wikidata evidence_id onto a BoatDesign subject.",
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": 1974,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": ["keel:fin", "keel:wing"],
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": false
+          }
         },
         {
           "field_pointer": "/baseline/dimensions/lwl_m",
           "sl0028_normalized_candidate": { "value": "7.6200", "unit": "m" },
           "sl0028_evidence_id": "WD-Q5051253-P2043-4a6068d10d94fc44",
           "outcome": "SAFE_FOR_LATER_DESIGN_PROMOTION",
-          "rationale": "Cross-validated: both primary-source Catalina 30 documents report an identical LWL of 25'0\" (= 7.6200 m exactly), matching the Wikidata normalized candidate exactly. Same generation/option reasoning as loa_m above."
+          "rationale": "Same evidence and bounded-scope reasoning as loa_m above: both primary-source Catalina 30 documents (one dated 1990-09, one undated-but-circumstantially-early) report an identical LWL of 25'0\" (= 7.6200 m exactly), matching the Wikidata normalized candidate exactly. The QID-scoped Wikidata evidence corroborates but does not itself define the bounded scope stated in applicability_scope below; a later canonical promotion slice must create its own BoatDesign-scoped FieldEvidence carrying that scope, not retarget this evidence_id.",
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": 1974,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": ["keel:fin", "keel:wing"],
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": false
+          }
         },
         {
           "field_pointer": "/baseline/dimensions/beam_m",
           "sl0028_normalized_candidate": { "value": "3.300984", "unit": "m" },
           "sl0028_evidence_id": "WD-Q5051253-P2049-742ffeb6a857cfda",
           "outcome": "SAFE_FOR_LATER_DESIGN_PROMOTION",
-          "rationale": "Cross-validated: both primary-source Catalina 30 documents report an identical beam of 10'10\" (= 3.3020 m, matching the Wikidata normalized candidate to within rounding). Same generation/option reasoning as loa_m above."
+          "rationale": "Same evidence and bounded-scope reasoning as loa_m above: both primary-source Catalina 30 documents (one dated 1990-09, one undated-but-circumstantially-early) report an identical beam of 10'10\" (= 3.3020 m, matching the Wikidata normalized candidate to within rounding). The QID-scoped Wikidata evidence corroborates but does not itself define the bounded scope stated in applicability_scope below; a later canonical promotion slice must create its own BoatDesign-scoped FieldEvidence carrying that scope, not retarget this evidence_id.",
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": 1974,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": ["keel:fin", "keel:wing"],
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": false
+          }
         },
         {
           "field_pointer": "/baseline/dimensions/draft_min_m",
           "sl0028_normalized_candidate": null,
           "sl0028_evidence_id": null,
           "outcome": "NO_NORMALIZED_WIKIDATA_CANDIDATE",
-          "rationale": "The retained SLICE-0028 evidence bundle for Q5051253 contains no evidence entry at all for this field pointer (only loa_m, lwl_m, beam_m and displacement_kg were captured for this QID). There is nothing to classify beyond this absence. Separately, primary-source evidence shows Catalina 30 draft is itself option-sensitive (std vs shoal vs wing keel; see boatdesign_applicability.json), so a future promotion attempt for this field would need to address OPTION_SENSITIVE handling regardless."
+          "rationale": "The retained SLICE-0028 evidence bundle for Q5051253 contains no evidence entry at all for this field pointer (only loa_m, lwl_m, beam_m and displacement_kg were captured for this QID). There is nothing to classify beyond this absence. Separately, primary-source evidence shows Catalina 30 draft is itself option-sensitive (std vs shoal vs wing keel, and a 6-inch shoal-draft disagreement between the two retrieved documents; see boatdesign_applicability.json), so a future promotion attempt for this field would need to address OPTION_SENSITIVE handling regardless.",
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": null,
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          }
         },
         {
           "field_pointer": "/baseline/dimensions/displacement_kg",
           "sl0028_normalized_candidate": null,
           "sl0028_evidence_id": "WD-Q5051253-P2067-5ce389a10158c68b",
           "outcome": "NO_NORMALIZED_WIKIDATA_CANDIDATE",
-          "rationale": "The retained SLICE-0028 evidence bundle carries this field's normalized_candidate as null (raw Wikidata statement +10200 lb, unit not normalized by the SLICE-0028 pipeline). No promotable value exists to classify further, even though both primary-source documents independently report an identical standard displacement of 10,200 lbs, exactly matching the Wikidata raw (un-normalized) amount -- a useful diagnostic for a possible future SLICE-0028 pipeline unit-conversion fix, but not itself a promotable normalized candidate today."
+          "rationale": "The retained SLICE-0028 evidence bundle carries this field's normalized_candidate as null (raw Wikidata statement +10200 lb, unit not normalized by the SLICE-0028 pipeline). No promotable value exists to classify further, even though both primary-source documents independently report an identical standard displacement of 10,200 lbs, exactly matching the Wikidata raw (un-normalized) amount -- a useful diagnostic for a possible future SLICE-0028 pipeline unit-conversion fix, but not itself a promotable normalized candidate today.",
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": null,
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          }
         }
       ]
     }

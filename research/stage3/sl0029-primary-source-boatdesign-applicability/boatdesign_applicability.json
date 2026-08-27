@@ -45,7 +45,21 @@
           "axis": "draft",
           "evidence": "22Sport brochure: 'Draft, board up 0.51m 1'-8\"' and 'Draft, board down 1.52m 5'-0\"' -- a swing/centerboard keel with two concurrent, factory-documented draft states on the same hull, matching IDENTITY_MODEL.v0.2.md 2.5's explicit DesignOption 'draft' axis and its 'fixed vs lifting keel' example."
         }
-      ]
+      ],
+      "dated_primary_source_documents": [],
+      "applicability_scope": {
+        "schema_version": "0.1",
+        "first_year": null,
+        "last_year": null,
+        "hull_number_from": null,
+        "hull_number_to": null,
+        "market_or_region": null,
+        "named_variant_hint": null,
+        "design_option_hints": null,
+        "operating_state_hint": null,
+        "individual_hull_or_listing_ref": null,
+        "unknown_or_unbounded": true
+      }
     },
     {
       "qid": "Q5051253",
@@ -61,15 +75,44 @@
           "label": "Catalina 30 MKI (archive link label only)",
           "boundary_date": null,
           "evidence_class": "archive_label_uncorroborated_by_dated_history_entry",
-          "evidence": "The official brochure-archives/ index links one scanned document with the anchor text 'Catalina 30 MKI brochure' (C-30-MK-I-Brochure.pdf), distinct from a second, undated 'Cat-30 brochure' (brochure-C-30.pdf). The official history/ timeline (retrieval 11) contains no 'Mk' or generation-numbered entry for Catalina 30 anywhere (unlike the explicit, dated Catalina 22 markII entry).",
-          "identity_model_criterion_matched": "Archive-side generation label only (IDENTITY_MODEL.v0.2.md 2.4 'manufacturer generation label such as Mk II' is SHOULD-level applicability metadata), not independently corroborated by a dated redesign statement in the same manufacturer's own history page.",
+          "evidence": "The official brochure-archives/ index links one scanned document with the anchor text 'Catalina 30 MKI brochure' (C-30-MK-I-Brochure.pdf), distinct from a second, undated 'Cat-30 brochure' (brochure-C-30.pdf). The official history/ timeline (retrieval 11) contains no 'Mk' or generation-numbered entry for Catalina 30 anywhere -- in contrast, the same timeline explicitly logs dated Mark II-style redesigns for FOUR sibling models: Catalina 22 (January 1995, 're-designed and enlarged deck and new interior'), Catalina 36 Mark II (March 1995), Catalina 28 Mark II (March 1996) and Catalina 34 MarkII (February 1996, 're-designed and enlarged deck, transom and interior'). Given the company's own demonstrated practice of dating and naming such redesigns for its other successful models, the total absence of an equivalent Catalina-30 entry is treated as WEAK supporting context, not proof, that no comparable hull/deck redesign occurred.",
+          "identity_model_criterion_matched": "Archive-side generation label only (IDENTITY_MODEL.v0.2.md 2.4 'manufacturer generation label such as Mk II' is SHOULD-level applicability metadata), not independently corroborated by a dated redesign statement in the same manufacturer's own history page. No IDENTITY_MODEL.v0.2.md 2.4 BoatDesign-split trigger (materially different hull form/tooling, an evidence-backed redesign, a persistent non-optional field-affecting change with an identifiable boundary, or an unrelated reused-name design) was found for Catalina 30 in this bounded pass.",
           "dimensional_impact_on_five_tier1_fields": "No difference found in LOA/LWL/beam/displacement(std)/lead(std) between the two retrieved Catalina 30 documents (see below).",
-          "caution": "Per the no-absence-as-proof rule, the absence of a located 'MK II' document does not prove one does not exist; this label is retained as an open, unresolved naming signal, not as a confirmed second generation."
+          "caution": "Per the no-absence-as-proof rule, the absence of a located 'MK II' document does not prove one does not exist, and the absence of a company-history redesign entry does not prove no redesign occurred; this label is retained as an open, unresolved naming signal, not as a confirmed second generation."
         }
       ],
       "excluded_related_products": [],
       "generation_boundary_established_for_this_pilot": true,
-      "generation_boundary_rationale": "Two independently retrieved official primary-source specification documents for Catalina 30 -- one carrying the archive's 'MKI' label (wing/fin keel options, skeg-hung spade rudder, optional walk-through transom) and one undated plain document (Frank-Butler-credited, traditional/dinette interior option, Patent No. 3648310, no wing keel or walk-through transom mentioned) -- report IDENTICAL core hull baseline figures: LOA 29'11\", LWL 25'0\", beam 10'10\", standard displacement 10,200 lbs, standard lead ballast 4,200 lbs, standard sail area 446 sq ft. The differences between the two documents (keel type, rudder configuration, transom style, interior layout) are each an explicit DesignOption-axis example under IDENTITY_MODEL.v0.2.md 2.5 (keel; rudder; layout), not evidence of materially different hull form/tooling. This supports treating LOA/LWL/beam as a stable, cross-validated BoatDesign baseline across the observed documented span (introduction 1974-12 through at least the two dated brochure eras), with keel/rudder/transom/interior varying as concurrent factory options rather than separate generations.",
+      "generation_boundary_rationale": "Two independently retrieved official primary-source specification documents for Catalina 30 -- one carrying the archive's 'MKI' label (wing/fin keel options, skeg-hung spade rudder, optional walk-through transom; page-4 print-run date code '9 90', read as September 1990 -- see dated_primary_source_documents below) and one undated plain document (Frank-Butler-credited, traditional/dinette interior option, Patent No. 3648310, no wing keel or walk-through transom mentioned, no print-date code found) -- report IDENTICAL core hull baseline figures: LOA 29'11\", LWL 25'0\", beam 10'10\", standard displacement 10,200 lbs, standard lead ballast 4,200 lbs, standard sail area 446 sq ft. The differences between the two documents (keel type, rudder configuration, transom style, interior layout) are each an explicit DesignOption-axis example under IDENTITY_MODEL.v0.2.md 2.5 (keel; rudder; layout), not evidence of materially different hull form/tooling; no IDENTITY_MODEL.v0.2.md 2.4 BoatDesign-split trigger was found. This is treated, per OBSERVATION_APPLICABILITY_SCHEMA.v0.1, as a genuinely but NARROWLY bounded finding, not an all-production claim: LOA/LWL/beam are positively confirmed stable for production_year >= 1974 (official December 1974 introduction), independently corroborated by the dated 1990-09 MKI document; the upper production-year bound is explicitly left unknown (applicability_scope.last_year = null) because this bounded pass did not verify whether the dimensions held for the remainder of Catalina 30 production. This is a narrower, positively-evidenced claim than 'stable across the whole documented production span' -- it is sufficient scope for a later, separately readied canonical promotion slice to attach the SAME bounded scope to a BoatDesign-level FieldEvidence; it does not itself create that BoatDesign or FieldEvidence, and it must not be read as applying beyond the stated first_year/last_year bound.",
+      "dated_primary_source_documents": [
+        {
+          "document": "C-30-MK-I-Brochure.pdf",
+          "retrieval_index": 8,
+          "dating_evidence": "Page 4 (specification page) bottom-left margin carries a small print-run date code reading '9 90', matching Catalina's standard month/year brochure print-date convention seen elsewhere in the brochure-archives/ index (e.g. filenames/labels such as 'C400bro10-04' for October 2004).",
+          "inferred_print_date": "1990-09",
+          "confidence": "moderate: a print-run date code evidences when this specific print run was produced, not necessarily the exact model-year the pictured configuration was first introduced."
+        },
+        {
+          "document": "brochure-C-30.pdf",
+          "retrieval_index": 7,
+          "dating_evidence": "No print-date code was found on any of the four retained pages. The cover reads 'THE NEW CATALINA 30 -- A PERFORMANCE CRUISING YACHT' in 1970s-era block outline typography, with byline 'Designed by Frank Butler' and 'Patent No. 3648310' on the specification page -- circumstantial signals consistent with, but not proof of, a document produced near the model's official December 1974 introduction.",
+          "inferred_print_date": null,
+          "confidence": "no confirmed date; circumstantial stylistic signals only, not treated as a dating fact."
+        }
+      ],
+      "applicability_scope": {
+        "schema_version": "0.1",
+        "first_year": 1974,
+        "last_year": null,
+        "hull_number_from": null,
+        "hull_number_to": null,
+        "market_or_region": null,
+        "named_variant_hint": null,
+        "design_option_hints": ["keel:fin", "keel:wing"],
+        "operating_state_hint": null,
+        "individual_hull_or_listing_ref": null,
+        "unknown_or_unbounded": false
+      },
       "design_option_axis_evidence": [
         {
           "axis": "keel",

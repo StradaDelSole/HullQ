@@ -24,9 +24,26 @@ derived from it are retained in ``boatdesign_applicability.json``. What this mod
 - evaluating the retained, schema-valid Catalina Source record through the existing
   SLICE-0007 deterministic source-use gate (``hullq.sources.rights.check_source_use``)
   for all seven use keys, rather than hand-asserting gate outcomes;
+- mechanically deriving the ``identity_seed``/``production_value`` clearance fields
+  from the retained SR-6.6 condition evaluation itself (``derive_sr_6_6_use_clearance``),
+  so a tampered/unsatisfied condition set can never coexist with a retained ``allowed``
+  clearance -- SR-6.6 satisfaction and the positive clearance are the same computation,
+  not two independently-asserted facts that could silently drift apart;
+- validating that the positive clearance's declared ``bounded_scope`` (exact QIDs/
+  hullq_ids/field pointers/use kinds) matches the fixed pilot boundary, and that the
+  broader SOURCE_SCHEMA permissions that would authorize *unscoped* reuse
+  (``commercial_use``/``store_canonical_values``/``publish_derived_database``) never
+  read ``allowed`` -- so the scoped positive clearance can never be read as a blanket
+  grant;
 - validating that every retained field-applicability classification cites a
   ``sl0028_normalized_candidate`` that matches, byte-for-byte, the reused SLICE-0028
   evidence bundle (guards against silently reinterpreting already-accepted evidence);
+- validating every field/BoatModel applicability classification's structured
+  ``applicability_scope`` (``specs/OBSERVATION_APPLICABILITY_SCHEMA.v0.1.json`` shape)
+  and refusing ``SAFE_FOR_LATER_DESIGN_PROMOTION`` unless that scope is genuinely
+  bounded by at least one positively-evidenced dimension -- an unknown/unbounded scope
+  can never itself become "safe for promotion" (absence of evidence is never evidence
+  of all-production applicability);
 - mechanically recomputing the slice's single deterministic next-step recommendation
   from the retained rights-gate outcome and applicability classifications;
 - building/verifying the retained-package SHA-256 artifact-integrity digest document.
@@ -54,9 +71,14 @@ __all__ = [
     "ALLOWED_FIELD_POINTERS",
     "ARTIFACT_DIGESTS_FILENAME",
     "ARTIFACT_DIGESTS_SCHEMA_VERSION",
+    "BOUNDED_ONLY_PERMISSION_KEYS",
     "FIXED_QIDS",
+    "OBSERVATION_APPLICABILITY_SCHEMA_VERSION",
     "RETRIEVAL_CEILING",
     "SL0029_ACTIVITY_ID",
+    "SR_6_6_DEFAULT_CLEARANCE",
+    "SR_6_6_GATED_USES",
+    "SR_6_6_SATISFIED_CLEARANCE",
     "ApplicabilityOutcome",
     "IdentityBoundaryIntegrityError",
     "RecommendationCode",
@@ -64,9 +86,13 @@ __all__ = [
     "build_artifact_digests",
     "build_pilot_identity_boundary",
     "compute_recommendation",
+    "derive_sr_6_6_use_clearance",
     "evaluate_source_use_gate",
     "retained_package_filenames",
+    "validate_applicability_scope_invariant",
     "validate_boatdesign_applicability",
+    "validate_bounded_scope",
+    "validate_permissions_bounded",
     "validate_source_retrieval_log",
     "validate_wikidata_candidate_applicability",
     "verify_artifact_digests_self_consistency",
@@ -92,6 +118,43 @@ ALLOWED_FIELD_POINTERS: frozenset[str] = frozenset(
 )
 
 _ALLOWED_RETRIEVAL_HOSTS: frozenset[str] = frozenset({"www.catalinayachts.com"})
+
+# SR-6.6 (specs/SOURCE_RIGHTS_POLICY.v0.1.md#6.6) baseline is 'conditional'
+# production clearance for an unlicensed primary factual source. SLICE-0029's own
+# controlling scoped-positive-clearance rule promotes exactly identity_seed/
+# production_value to 'allowed' -- and ONLY those two use keys -- when every
+# required SR-6.6 condition is positively satisfied for the exact bounded scope
+# actually performed. This mapping is the single source of truth for that
+# promotion; nothing else in this module or the retained package may assert
+# 'allowed' for these two uses independently of it.
+SR_6_6_SATISFIED_CLEARANCE = "allowed"
+SR_6_6_DEFAULT_CLEARANCE = "conditional"
+SR_6_6_GATED_USES: tuple[str, str] = (
+    SourceUse.IDENTITY_SEED.value,
+    SourceUse.PRODUCTION_VALUE.value,
+)
+
+# Underlying SOURCE_SCHEMA permissions that would authorize UNSCOPED reuse. These
+# MUST NOT read 'allowed' while the SR-6.6 clearance above is scoped -- otherwise a
+# reader could treat the narrow, bounded 'allowed' clearance as a blanket grant.
+BOUNDED_ONLY_PERMISSION_KEYS: tuple[str, str, str] = (
+    "commercial_use",
+    "store_canonical_values",
+    "publish_derived_database",
+)
+
+OBSERVATION_APPLICABILITY_SCHEMA_VERSION = "0.1"
+_APPLICABILITY_SCOPE_DIMENSION_KEYS: tuple[str, ...] = (
+    "first_year",
+    "last_year",
+    "hull_number_from",
+    "hull_number_to",
+    "market_or_region",
+    "named_variant_hint",
+    "design_option_hints",
+    "operating_state_hint",
+    "individual_hull_or_listing_ref",
+)
 
 
 class ApplicabilityOutcome(StrEnum):
@@ -301,22 +364,97 @@ def evaluate_source_use_gate(source_record: Mapping[str, Any]) -> dict[str, dict
     return results
 
 
-def verify_source_clearance_assessment_self_consistency(
-    document: Mapping[str, Any],
+def sr_6_6_conditions_satisfied(conditions: Any) -> bool:
+    """True only if every retained SR-6.6 condition is positively satisfied
+    (``True`` or the one explicitly-allowed partial state) for the bounded manual
+    use actually performed."""
+    return all(c["satisfied"] in (True, "partial_left_unresolved") for c in conditions)
+
+
+def derive_sr_6_6_use_clearance(conditions: Any) -> str:
+    """Mechanically derive the ``identity_seed``/``production_value`` clearance value
+    from the retained SR-6.6 condition evaluation.
+
+    SR-6.6 satisfaction and the positive clearance are the SAME computation: there is
+    no way to represent "conditions failed" and "clearance allowed" simultaneously
+    without an explicit mismatch caught by
+    :func:`verify_source_clearance_assessment_self_consistency`.
+    """
+    return (
+        SR_6_6_SATISFIED_CLEARANCE
+        if sr_6_6_conditions_satisfied(conditions)
+        else SR_6_6_DEFAULT_CLEARANCE
+    )
+
+
+def validate_permissions_bounded(source_record: Mapping[str, Any]) -> list[str]:
+    """The broader SOURCE_SCHEMA permissions that would authorize *unscoped* reuse
+    MUST NOT read 'allowed' -- otherwise the narrow, SR-6.6-bounded 'allowed'
+    identity_seed/production_value clearance could be misread as a blanket grant."""
+    permissions = source_record["rights"]["permissions"]
+    return [
+        f"permissions.{key} == 'allowed' would remove the SLICE-0029 bounded-scope "
+        "constraint on the scoped identity_seed/production_value clearance"
+        for key in BOUNDED_ONLY_PERMISSION_KEYS
+        if permissions.get(key) == "allowed"
+    ]
+
+
+def validate_bounded_scope(
+    document: Mapping[str, Any], *, pilot_identity_boundary: Mapping[str, Any]
 ) -> list[str]:
-    """Recompute the source-use gate decisions and the SR-6.6 boolean, and compare
-    against the retained document."""
+    """Validate that the positive clearance's declared ``bounded_scope`` covers
+    exactly the fixed pilot BoatModels/QIDs/field pointers/use keys -- never more,
+    never less -- so the scoped positive clearance stays mechanically tied to this
+    pilot's exact bounded research, not to Catalina Yachts in general."""
+    problems: list[str] = []
+    scope = document.get("bounded_scope", {})
+    expected_hullq_ids = sorted(m["hullq_id"] for m in pilot_identity_boundary["pilot_boat_models"])
+    expected_qids = sorted(m["qid"] for m in pilot_identity_boundary["pilot_boat_models"])
+
+    if sorted(scope.get("hullq_ids", [])) != expected_hullq_ids:
+        problems.append(
+            f"bounded_scope.hullq_ids {sorted(scope.get('hullq_ids', []))!r} != "
+            f"pilot identity boundary hullq_ids {expected_hullq_ids!r}"
+        )
+    if sorted(scope.get("qids", [])) != expected_qids:
+        problems.append(
+            f"bounded_scope.qids {sorted(scope.get('qids', []))!r} != "
+            f"pilot identity boundary qids {expected_qids!r}"
+        )
+    if set(scope.get("field_pointers", [])) != ALLOWED_FIELD_POINTERS:
+        problems.append(
+            f"bounded_scope.field_pointers {sorted(scope.get('field_pointers', []))!r} != "
+            f"the five fixed Tier-1 pointers {sorted(ALLOWED_FIELD_POINTERS)!r}"
+        )
+    if set(scope.get("use_kinds", [])) != set(SR_6_6_GATED_USES):
+        problems.append(
+            f"bounded_scope.use_kinds {sorted(scope.get('use_kinds', []))!r} != "
+            f"{sorted(SR_6_6_GATED_USES)!r}"
+        )
+    return problems
+
+
+def verify_source_clearance_assessment_self_consistency(
+    document: Mapping[str, Any], *, pilot_identity_boundary: Mapping[str, Any]
+) -> list[str]:
+    """Recompute the source-use gate decisions, mechanically re-derive the SR-6.6
+    clearance from the retained conditions, and validate the bounded-scope/
+    permissions reconciliation -- comparing every recomputed value against the
+    retained document.
+
+    This is the fail-closed coupling required by the SLICE-0029 review: a package
+    with unsatisfied/tampered SR-6.6 conditions can never retain an 'allowed'
+    identity_seed/production_value clearance and pass this check, because the
+    clearance value is not independently asserted -- it is recomputed FROM the
+    conditions every time.
+    """
     mismatches: list[str] = []
     source_record = document["source_record"]
-    recomputed = evaluate_source_use_gate(source_record)
-    retained = document["source_use_gate_decisions"]["decisions"]
-    if recomputed != retained:
-        mismatches.append(
-            f"source_use_gate_decisions mismatch: retained={retained!r} recomputed={recomputed!r}"
-        )
+    clearance = source_record["rights"]["clearance"]
 
     conditions = document["sr_6_6_condition_evaluation"]["conditions"]
-    all_satisfied = all(c["satisfied"] in (True, "partial_left_unresolved") for c in conditions)
+    all_satisfied = sr_6_6_conditions_satisfied(conditions)
     retained_flag = document["sr_6_6_condition_evaluation"][
         "conditions_satisfied_for_bounded_manual_use"
     ]
@@ -325,6 +463,29 @@ def verify_source_clearance_assessment_self_consistency(
             "conditions_satisfied_for_bounded_manual_use "
             f"retained={retained_flag!r} recomputed={all_satisfied!r}"
         )
+
+    expected_use_clearance = derive_sr_6_6_use_clearance(conditions)
+    for use in SR_6_6_GATED_USES:
+        actual = clearance.get(use)
+        if actual != expected_use_clearance:
+            mismatches.append(
+                f"source_record.rights.clearance.{use}={actual!r} is not mechanically "
+                f"derived from sr_6_6_condition_evaluation (expected {expected_use_clearance!r} "
+                f"given conditions_satisfied={all_satisfied!r})"
+            )
+
+    mismatches.extend(validate_permissions_bounded(source_record))
+    mismatches.extend(
+        validate_bounded_scope(document, pilot_identity_boundary=pilot_identity_boundary)
+    )
+
+    recomputed = evaluate_source_use_gate(source_record)
+    retained = document["source_use_gate_decisions"]["decisions"]
+    if recomputed != retained:
+        mismatches.append(
+            f"source_use_gate_decisions mismatch: retained={retained!r} recomputed={recomputed!r}"
+        )
+
     return mismatches
 
 
@@ -332,6 +493,29 @@ def source_use_allowed(gate_decisions: Mapping[str, Any], use: str) -> bool:
     """True only if the given use key's gate outcome is exactly 'allowed'."""
     entry = gate_decisions.get(use, {})
     return bool(entry.get("outcome") == DecisionOutcome.ALLOWED.value)
+
+
+def validate_applicability_scope_invariant(scope: Mapping[str, Any]) -> list[str]:
+    """Validate the OBSERVATION_APPLICABILITY_SCHEMA.v0.1 no-absence-as-proof
+    invariant: a scope MUST NOT claim ``unknown_or_unbounded: false`` (i.e. "this is
+    genuinely bounded") while every individual bounding dimension is null. That
+    combination would be an empty scope masquerading as a bounded one -- exactly the
+    "absence of evidence becomes evidence of all-production applicability" failure
+    mode the controlling slice prohibits.
+
+    Structural schema conformance (required keys, types, the ``schema_version``
+    const) is validated separately against ``specs/OBSERVATION_APPLICABILITY_SCHEMA.v0.1.json``
+    itself (see the runner's ``_validate_schema`` calls); this function only checks
+    the semantic invariant that schema alone cannot express.
+    """
+    if scope.get("unknown_or_unbounded") is True:
+        return []
+    if any(scope.get(key) is not None for key in _APPLICABILITY_SCOPE_DIMENSION_KEYS):
+        return []
+    return [
+        "applicability_scope claims unknown_or_unbounded=false but every bounding "
+        "dimension is null -- an empty scope cannot be treated as genuinely bounded"
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -347,12 +531,35 @@ def validate_boatdesign_applicability(
     expected_hullq_ids = {m["hullq_id"] for m in pilot_identity_boundary["pilot_boat_models"]}
     found_hullq_ids: set[str] = set()
     for model in document.get("boat_models", []):
-        found_hullq_ids.add(model["hullq_id"])
-        if not isinstance(model.get("generation_boundary_established_for_this_pilot"), bool):
+        hullq_id = model["hullq_id"]
+        found_hullq_ids.add(hullq_id)
+        established = model.get("generation_boundary_established_for_this_pilot")
+        if not isinstance(established, bool):
             problems.append(
                 f"boat_model {model.get('qid')!r}: "
                 "generation_boundary_established_for_this_pilot is not a bool"
             )
+
+        scope = model.get("applicability_scope")
+        if scope is None:
+            problems.append(f"boat_model {hullq_id}: missing applicability_scope")
+            continue
+        problems.extend(
+            f"boat_model {hullq_id}: {p}" for p in validate_applicability_scope_invariant(scope)
+        )
+        # A model whose generation boundary is claimed established MUST carry a
+        # genuinely bounded scope, and vice versa -- the two facts must agree.
+        if established is True and scope.get("unknown_or_unbounded") is not False:
+            problems.append(
+                f"boat_model {hullq_id}: generation_boundary_established_for_this_pilot=True "
+                "but applicability_scope.unknown_or_unbounded != false"
+            )
+        if established is False and scope.get("unknown_or_unbounded") is not True:
+            problems.append(
+                f"boat_model {hullq_id}: generation_boundary_established_for_this_pilot=False "
+                "but applicability_scope.unknown_or_unbounded != true"
+            )
+
     if found_hullq_ids != expected_hullq_ids:
         problems.append(
             f"boatdesign_applicability hullq_id set {sorted(found_hullq_ids)!r} != "
@@ -428,6 +635,27 @@ def validate_wikidata_candidate_applicability(
                         f"{evidence_entry.get('normalized_candidate')!r}"
                     )
 
+            scope = field.get("applicability_scope")
+            if scope is None:
+                problems.append(
+                    f"boat_model {hullq_id} field {pointer}: missing applicability_scope"
+                )
+            else:
+                problems.extend(
+                    f"boat_model {hullq_id} field {pointer}: {p}"
+                    for p in validate_applicability_scope_invariant(scope)
+                )
+                # No absence-as-proof: a field can only be SAFE_FOR_LATER_DESIGN_PROMOTION
+                # when its scope is genuinely bounded, never when it is unknown/unbounded.
+                is_safe = (
+                    field["outcome"] == ApplicabilityOutcome.SAFE_FOR_LATER_DESIGN_PROMOTION.value
+                )
+                if is_safe and scope.get("unknown_or_unbounded") is not False:
+                    problems.append(
+                        f"boat_model {hullq_id} field {pointer}: outcome=SAFE_FOR_LATER_DESIGN_PROMOTION "
+                        "requires applicability_scope.unknown_or_unbounded == false"
+                    )
+
         if seen_pointers != ALLOWED_FIELD_POINTERS:
             problems.append(
                 f"boat_model {hullq_id}: field pointer coverage {sorted(seen_pointers)!r} != "
@@ -470,8 +698,13 @@ def compute_recommendation(
         hullq_id = model["hullq_id"]
         if hullq_id not in established_hullq_ids:
             continue
+        # Defense in depth: a field only counts as safe here if it is both classified
+        # SAFE_FOR_LATER_DESIGN_PROMOTION *and* carries a genuinely bounded scope --
+        # never an unknown/unbounded one -- even if a caller skipped
+        # validate_wikidata_candidate_applicability.
         has_safe_field = any(
             field["outcome"] == ApplicabilityOutcome.SAFE_FOR_LATER_DESIGN_PROMOTION.value
+            and field.get("applicability_scope", {}).get("unknown_or_unbounded") is False
             for field in model["fields"]
         )
         if has_safe_field:

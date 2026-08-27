@@ -87,7 +87,8 @@
         "other_conditions": [
           "Bounded manually curated discrete factual use only -- not automated/bulk extraction or redistribution of source material.",
           "No Catalina Yachts Terms of Use, Privacy Policy, or licence page was located anywhere in the site's declared page sitemap during this bounded pass (2026-08-27); the footer carries a bare copyright notice with no reproduction/licence grant.",
-          "Any later automated_ingestion, bulk_bootstrap, or artifact_redistribution use requires its own independent clearance and MUST NOT be inferred from this record."
+          "Any later automated_ingestion, bulk_bootstrap, or artifact_redistribution use requires its own independent clearance and MUST NOT be inferred from this record.",
+          "permissions.commercial_use / store_canonical_values / publish_derived_database are deliberately left 'conditional' (never 'allowed') even though clearance.identity_seed / production_value read 'allowed': the clearance is scoped exactly to the structured bounded_scope block below (the two fixed pilot BoatModels and five field pointers), not to Catalina Yachts content in general. The permissions fields describe general/unscoped reuse, which SR-6.6 does not clear; see hullq.bootstrap.wikidata_sl0029_boatdesign_applicability_pilot.validate_permissions_bounded and validate_bounded_scope, which enforce this mechanically."
         ]
       },
       "clearance": {
@@ -128,10 +129,26 @@
       "review": {
         "reviewed_at": "2026-08-27",
         "reviewer": "SLICE-0029 implementation agent (Claude, bounded manual primary-source pass; no independent legal review performed)",
-        "rationale": "All six SR-6.6 conditions are positively evidenced for the bounded manual identity_seed/production_value use actually performed (two fixed BoatModels, discrete facts only, provenance retained, no identified prohibition, non-bulk, human-directed retrieval). automated_ingestion, bulk_bootstrap and artifact_redistribution are deliberately left non-allow because no independent evidence for those broader uses was sought or found; SLICE-0029 does not authorize them.",
+        "rationale": "All six SR-6.6 conditions are positively evidenced for the bounded manual identity_seed/production_value use actually performed (two fixed BoatModels, discrete facts only, provenance retained, no identified prohibition, non-bulk, human-directed retrieval). clearance.identity_seed and clearance.production_value are not independently asserted: they are mechanically derived from sr_6_6_condition_evaluation.conditions_satisfied_for_bounded_manual_use by hullq.bootstrap.wikidata_sl0029_boatdesign_applicability_pilot.derive_sr_6_6_use_clearance, so an unsatisfied/tampered condition set can never coexist with an 'allowed' clearance here. automated_ingestion, bulk_bootstrap and artifact_redistribution are deliberately left non-allow because no independent evidence for those broader uses was sought or found; SLICE-0029 does not authorize them.",
         "next_review_at": null
       }
     }
+  },
+  "bounded_scope": {
+    "hullq_ids": [
+      "BM_WDT0_6c94b5bc9e79402bb07309289905913e",
+      "BM_WDT0_3fdd058699d145c6a1b044fc90b65201"
+    ],
+    "qids": ["Q5051252", "Q5051253"],
+    "field_pointers": [
+      "/baseline/dimensions/loa_m",
+      "/baseline/dimensions/lwl_m",
+      "/baseline/dimensions/beam_m",
+      "/baseline/dimensions/draft_min_m",
+      "/baseline/dimensions/displacement_kg"
+    ],
+    "use_kinds": ["identity_seed", "production_value"],
+    "note": "The positive identity_seed/production_value clearance above applies ONLY to these exact BoatModels/QIDs and field pointers, for the identity_seed/production_value uses only. It does not extend to any other Catalina model, field, or use kind. Mechanically validated against pilot_identity_boundary.json and the five fixed Tier-1 field pointers by hullq.bootstrap.wikidata_sl0029_boatdesign_applicability_pilot.validate_bounded_scope."
   },
   "source_use_gate_decisions": {
     "gate_module": "hullq.sources.rights.check_source_use",

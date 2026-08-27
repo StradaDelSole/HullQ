@@ -26,7 +26,9 @@
           "excluded_related_products",
           "generation_boundary_established_for_this_pilot",
           "generation_boundary_rationale",
-          "design_option_axis_evidence"
+          "design_option_axis_evidence",
+          "dated_primary_source_documents",
+          "applicability_scope"
         ],
         "properties": {
           "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
@@ -94,8 +96,67 @@
                 "evidence": { "type": "string", "minLength": 1 }
               }
             }
-          }
+          },
+          "dated_primary_source_documents": {
+            "type": "array",
+            "description": "Positively evidenced (or explicitly unconfirmed) production/print dating facts for the retained primary-source documents. May be empty when no document-level dating evidence was found for this BoatModel.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "document",
+                "retrieval_index",
+                "dating_evidence",
+                "inferred_print_date",
+                "confidence"
+              ],
+              "properties": {
+                "document": { "type": "string", "minLength": 1 },
+                "retrieval_index": { "type": "integer", "minimum": 1 },
+                "dating_evidence": { "type": "string", "minLength": 1 },
+                "inferred_print_date": { "type": ["string", "null"] },
+                "confidence": { "type": "string", "minLength": 1 }
+              }
+            }
+          },
+          "applicability_scope": { "$ref": "#/$defs/applicability_scope" }
         }
+      }
+    }
+  },
+  "$defs": {
+    "applicability_scope": {
+      "type": "object",
+      "description": "specs/OBSERVATION_APPLICABILITY_SCHEMA.v0.1.json shape, validated against that file directly by the SLICE-0029 offline verifier. A null value for any dimension means the bound is unknown, NOT that the observation applies to all production.",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "first_year",
+        "last_year",
+        "hull_number_from",
+        "hull_number_to",
+        "market_or_region",
+        "named_variant_hint",
+        "design_option_hints",
+        "operating_state_hint",
+        "individual_hull_or_listing_ref",
+        "unknown_or_unbounded"
+      ],
+      "properties": {
+        "schema_version": { "const": "0.1" },
+        "first_year": { "type": ["integer", "null"] },
+        "last_year": { "type": ["integer", "null"] },
+        "hull_number_from": { "type": ["string", "null"], "minLength": 1 },
+        "hull_number_to": { "type": ["string", "null"], "minLength": 1 },
+        "market_or_region": { "type": ["string", "null"], "minLength": 1 },
+        "named_variant_hint": { "type": ["string", "null"], "minLength": 1 },
+        "design_option_hints": {
+          "type": ["array", "null"],
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "operating_state_hint": { "type": ["string", "null"], "minLength": 1 },
+        "individual_hull_or_listing_ref": { "type": ["string", "null"], "minLength": 1 },
+        "unknown_or_unbounded": { "type": "boolean" }
       }
     }
   }

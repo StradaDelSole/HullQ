@@ -11,6 +11,7 @@
     "predecessor_assessment",
     "sr_6_6_condition_evaluation",
     "source_record",
+    "bounded_scope",
     "source_use_gate_decisions",
     "scope_guardrail_confirmation"
   ],
@@ -56,6 +57,39 @@
     "source_record": {
       "type": "object",
       "description": "MUST additionally validate against specs/SOURCE_SCHEMA.v0.2.json (checked separately)."
+    },
+    "bounded_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The exact QIDs/hullq_ids/field pointers/use kinds the positive identity_seed/production_value clearance applies to. MUST equal the fixed pilot identity boundary and the five fixed Tier-1 field pointers; checked by hullq.bootstrap.wikidata_sl0029_boatdesign_applicability_pilot.validate_bounded_scope.",
+      "required": ["hullq_ids", "qids", "field_pointers", "use_kinds", "note"],
+      "properties": {
+        "hullq_ids": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "qids": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "string", "pattern": "^Q[1-9][0-9]*$" }
+        },
+        "field_pointers": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": { "type": "string", "pattern": "^/baseline/dimensions/" }
+        },
+        "use_kinds": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "enum": ["identity_seed", "production_value"] }
+        },
+        "note": { "type": "string", "minLength": 1 }
+      }
     },
     "source_use_gate_decisions": {
       "type": "object",

@@ -1,18 +1,18 @@
 {
   "schema_version": "sl0029-artifact-digests-v1",
-  "generated_at": "2026-08-27T13:40:36.494417+00:00",
+  "generated_at": "2026-08-27T15:06:26.534666+00:00",
   "digests": {
-    "REPORT.md": "sha256:4c440ee14e7bc4bb1d89d5160a19e8e8199b31589ea39e77b0f95e2662ff217e",
+    "REPORT.md": "sha256:516a96aec2d1143ed49d76f93746bb455dd8e04d791e26ffe618c8988e7f5156",
     "artifact_digests_schema.json": "sha256:056e7f43571caa8397ea68b6b809689d176b91076ffdac2fb922addd166a41af",
-    "boatdesign_applicability.json": "sha256:25c95a8c82871b8930688bab5912f1e474817310b15d20ea9da75b08f0f67284",
-    "boatdesign_applicability_schema.json": "sha256:5f62e2366fd94d8acb0ee8a96c042f6ed60f2c1b1d4190d5f7f8f570c352022b",
+    "boatdesign_applicability.json": "sha256:50f343d75ea284efcf358288fa9f4daac658ab95d57f5085cb8a8f8ae199ae2f",
+    "boatdesign_applicability_schema.json": "sha256:d0adf0eb704d2a0c6b0dba21666fe0a673bba033df47f0d7ae0e8e344959960b",
     "pilot_identity_boundary.json": "sha256:575d3efe7c843b84f4fdc2f3c5b8a4e7270d5e56907ef2906cf56567c7aa0fd2",
     "pilot_identity_boundary_schema.json": "sha256:871f6fae654205e5b8ac4f22119df85260f588ed3333d295f70ba29de2e532c3",
-    "source_clearance_assessment.json": "sha256:62d4513a3aa0a9a0ebd68f22cea37ae928ad2162abb99adaadc23b04435b4ca3",
-    "source_clearance_assessment_schema.json": "sha256:06be328ab97cf94f5452f06494e7a5a62a29b2f82d8c3b32dd98c7c9ee5ff255",
-    "source_retrieval_log.json": "sha256:c9c4a14c2da9d0314d2c8b72be2561dbe9e9a60dae452dd2e80d61d20b9eb48d",
+    "source_clearance_assessment.json": "sha256:1a6fca5a5d4efb1811a6595b4aa8285621a783a26db8939ba29338d0ecb2bf1f",
+    "source_clearance_assessment_schema.json": "sha256:10ce99029be326ac1b512a322cd4c1824fd63ee40bb38b1f09a8fde7763824b4",
+    "source_retrieval_log.json": "sha256:a1791a77ebf9b1428f0dd0ceff425e59df4d99a5373a00c83579879bc8f8be39",
     "source_retrieval_log_schema.json": "sha256:90c13ca1daff721e5f9d270e921b5fcd31ed7f057367fc47bf4bbf54ee02c9e6",
-    "wikidata_candidate_applicability.json": "sha256:8aa74208a9538990f5414af18e0943294feafc2c51af6a836a3a0eed12f244ab",
-    "wikidata_candidate_applicability_schema.json": "sha256:dabedcd0a7dbd1ecb46b7517b373141359a22584a1e87841e009f7c5ef07e319"
+    "wikidata_candidate_applicability.json": "sha256:e9cace1c5fe8418c66e1239d2f1eb9ebce13cf85fe3571b174a436df755583a9",
+    "wikidata_candidate_applicability_schema.json": "sha256:52e13bc2f809e29b75f01a4a3a1d31e9fca6e7649e4e77b450e07fe025e89c2b"
   }
 }
