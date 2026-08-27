@@ -1,9 +1,9 @@
 # HullQ — Current Project State
 
-**Updated:** 2026-08-26  
-**Current stage:** Stage 3.2 — canonical identity breadth / bounded discovery and admission proof (remains open; SLICE-0025 additionally permitted a bounded Stage-3.3 pilot in parallel, now underway via SLICE-0026/0027)  
-**Accepted slices:** SLICE-0001 through SLICE-0026 are owner-accepted / `DONE`  
-**Current queue:** SLICE-0027 corrects the bounded Wikidata adapter qualifier-property semantics exposed by SLICE-0026 (evidence-backed P518/P3831 alternate carriers for already-accepted LOA/LWL/draft/displacement concept QIDs, on top of the existing accepted P642 path) and replays the exact same retained 100-BoatModel sample offline; it is handed off `REVIEW`, not yet independently reviewed or project-owner accepted. No later slice is authorized.
+**Updated:** 2026-08-27  
+**Current stage:** Stage 3.2 — canonical identity breadth / bounded discovery and admission proof (remains open; SLICE-0025 additionally permitted a bounded Stage-3.3 pilot in parallel, now underway via SLICE-0026/0027/0028)  
+**Accepted slices:** SLICE-0001 through SLICE-0027 are owner-accepted / `DONE` (SLICE-0027 owner-accepted 2026-08-26 on PR #78, issue comment [5430886497](https://github.com/StradaDelSole/HullQ/pull/78#issuecomment-5430886497); see "Accepted result — SLICE-0027" below)  
+**Current queue:** SLICE-0028 (full-boundary rollout of the SLICE-0027-corrected evidence path to all 1,770 canonical BoatModels) is handed off `REVIEW`, not yet independently reviewed or project-owner accepted. No later slice is authorized.
 
 This is a **compact current-state document**. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Do not use this file as a substitute for normative specs or accepted ADRs.
 
@@ -298,15 +298,25 @@ Retained package: `research/stage3/sl0026-wikidata-tier1-enrichment/` (`selectio
 
 Primary contract: `docs/slices/SLICE-0026-bounded-wikidata-tier1-enrichment-evidence-pilot.md`.
 
-## Current queue — SLICE-0027 `REVIEW`
+## Accepted result — SLICE-0027
 
 SLICE-0027 corrects the qualifier-property mismatch SLICE-0026 exposed, using only the already-retained SLICE-0026 raw entity claims as evidence (no live Wikidata acquisition). It amends `hullq.sources.wikidata` to additionally recognize evidence-backed alternate qualifier-property carriers for already-accepted concept QIDs — `P518` for LOA (`Q2358152`), LWL (`Q1817392`) and draft (`Q244777`); `P3831` for displacement (`Q5636358`) — on top of (never instead of) the existing accepted `P642` path and unqualified beam extraction, both of which remain unchanged and regression-tested. It replays the exact retained 100 entities offline through the amended adapter to produce independently-recomputed after-coverage alongside the retained SLICE-0026 before-coverage, and persists the resulting research evidence through the existing SLICE-0013 PostgreSQL importer. No canonical BoatModel/BoatDesign row is created or mutated; the SLICE-0026 retained package itself is untouched.
 
 Retained package: `research/stage3/sl0027-wikidata-qualifier-semantics/` (`qualifier_shape_analysis.json`, `coverage_before_after.json`, `REPORT.md`, `ARTIFACT-DIGESTS.json`, `REPLAY-RESULT.json`/`REPLAY-REPORT.md` plus JSON schemas), reproducible offline via `scripts/bootstrap/wikidata_sl0027_qualifier_semantics_correction_runner.py --verify`.
 
-Primary contract: `docs/slices/SLICE-0027-wikidata-qualifier-semantics-correction-offline-replay.md`.
+Primary contract: `docs/slices/SLICE-0027-wikidata-qualifier-semantics-correction-offline-replay.md`. Independent-review-time closure snapshot: `docs/slices/SLICE-0027-acceptance-closure.md` (recorded `OWNER_ACCEPTANCE_PENDING` at the time that document was written).
 
-This entry records the implementation agent's own measurement and does not constitute independent review or project-owner acceptance. SLICE-0027 is `REVIEW`; it is not `DONE`. No SLICE-0028 or later slice is currently `READY` or authorized.
+SLICE-0027 is accepted / `DONE`. The Project Owner explicitly accepted it on 2026-08-26 on PR #78 via issue comment [5430886497](https://github.com/StradaDelSole/HullQ/pull/78#issuecomment-5430886497), which records: accepted implementation head `8c8eaa901f2842fceb228ffb80c78aa46b7e1afb`, implementation merge `546e8babf5ee3a64e00113e017053b1537873810`, closure merge `7c02638cd9889bedf441f709716ad4eadf4e5e79`. That acceptance postdates the closure document above and changes the operational state from `OWNER_ACCEPTANCE_PENDING` to accepted / `DONE` for workflow purposes; the closure document's own text is left as the historical pre-acceptance record rather than rewritten.
+
+## Current queue — SLICE-0028 `REVIEW`
+
+SLICE-0028 scales the SLICE-0027-corrected Wikidata Tier-1 evidence path from the retained 100-BoatModel pilot to the **entire accepted 1,770-canonical-BoatModel / 1,772-historical-mapping identity boundary**. It reproduces that boundary from the retained SLICE-0017/0018 manifests (fail-closed on drift) and makes explicit that the 1,772-entry historical registry equals the 1,770-entry canonical AUTO_ADMIT linkage plus exactly 2 non-canonical REVIEW_REQUIRED reserved-ID crosswalk entries (`Q109650429`, `Q2461915`) excluded from acquisition because they do not address a canonical BoatModel. It derives a full-boundary QID -> canonical-BoatModel linkage from the 1,770-entry canonical set (structurally safe for a BoatModel with more than one accepted QID, though every BoatModel maps to exactly one accepted QID in the real boundary today), and fetches all 1,770 distinct linkage-derived QIDs via the existing rights-gated `wbgetentities` adapter (no discovery query). Acquisition completeness was independently verified (1,770 of 1,770 requested QIDs returned, zero acquisition failures) before any coverage was computed, so a retrieval gap could never be silently reported as missing boat data. It measures per-field coverage for the five allowed pointers (LOA/LWL/beam/draft/displacement) at both source-QID and canonical-BoatModel level (strongest-available-evidence precedence over every QID mapped to one BoatModel — a coverage classification only), retains candidate-multiplicity/value-disagreement diagnostics — **42 (BoatModel, field) cases flagged**, mostly a single QID carrying both a correctly-qualified statement (normalized) and another unsupported/malformed statement on the same shared property — and computes the explicitly non-canonical `basic_searchable_evidence_precursor` diagnostic: 607 of 1,770 BoatModels (34.29%) have normalized-candidate evidence for LOA + beam + (draft or displacement). It created/mutated no canonical BoatModel/BoatDesign row, minted no BoatDesign ID and created no FieldResolution; the SLICE-0026/0027 retained packages are untouched.
+
+Retained package: `research/stage3/sl0028-wikidata-tier1-full-boundary/` (`linkage.json`, `evidence_manifest.json`, `coverage.json`, `disagreement_diagnostics.json`, `basic_searchable_evidence_precursor.json`, `REPORT.md`, `ARTIFACT-DIGESTS.json`, `REPLAY-RESULT.json`/`REPLAY-REPORT.md` plus JSON schemas), reproducible offline via `scripts/bootstrap/wikidata_sl0028_full_boundary_evidence_runner.py --verify`.
+
+Primary contract: `docs/slices/SLICE-0028-full-boundary-wikidata-tier1-evidence-rollout.md`.
+
+This entry records the implementation agent's own measurement and does not constitute independent review or project-owner acceptance. SLICE-0028 is `REVIEW`; it is not `DONE`. `basic_searchable_evidence_precursor` is explicitly non-canonical and MUST NOT be read as CAL-01 D2 launch-readiness coverage. No SLICE-0029 or later slice is currently `READY` or authorized.
 
 Operational queue: `docs/slices/INDEX.md`.
 

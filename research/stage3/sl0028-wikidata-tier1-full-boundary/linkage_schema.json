@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0028-linkage/v1",
+  "title": "HullQ SLICE-0028 Full-Boundary QID<->BoatModel Linkage",
+  "description": "Reproduced accepted SLICE-0017+0018 identity boundary and the full-boundary QID -> canonical-BoatModel linkage derived from it. Structurally multi-QID-safe (a BoatModel with more than one accepted QID retains every one of them) even though the accepted crosswalk is bijective (exactly one QID per BoatModel) in the real boundary today. No discovery, no canonical mutation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "identity_boundary",
+    "historical_registry_reconciliation",
+    "linkage_ordering",
+    "boat_model_count",
+    "distinct_request_qid_count",
+    "boat_models"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0028-linkage-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "identity_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "baseline_manifest_path",
+        "baseline_manifest_sha256",
+        "delta_manifest_path",
+        "delta_manifest_sha256",
+        "canonical_boat_model_count",
+        "historical_crosswalk_count"
+      ],
+      "properties": {
+        "baseline_manifest_path": { "type": "string", "minLength": 1 },
+        "baseline_manifest_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "delta_manifest_path": { "type": "string", "minLength": 1 },
+        "delta_manifest_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "canonical_boat_model_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Must equal 1770 for the real accepted retained artifact; enforced by hullq.bootstrap.wikidata_sl0026_tier1_enrichment_pilot.load_reproduced_identity_boundary (IdentityBoundaryIntegrityError), not repeated here as a schema const so synthetic/test documents remain schema-valid."
+        },
+        "historical_crosswalk_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Must equal 1772 for the real accepted retained artifact; see canonical_boat_model_count."
+        }
+      }
+    },
+    "historical_registry_reconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "historical_registry_count",
+        "canonical_auto_admit_linkage_count",
+        "non_canonical_reserved_count",
+        "note",
+        "reserved_entries"
+      ],
+      "properties": {
+        "historical_registry_count": { "type": "integer", "minimum": 0 },
+        "canonical_auto_admit_linkage_count": { "type": "integer", "minimum": 0 },
+        "non_canonical_reserved_count": { "type": "integer", "minimum": 0 },
+        "note": { "type": "string", "minLength": 1 },
+        "reserved_entries": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reserved_entry" }
+        }
+      }
+    },
+    "linkage_ordering": { "type": "string", "minLength": 1 },
+    "boat_model_count": { "type": "integer", "minimum": 0 },
+    "distinct_request_qid_count": { "type": "integer", "minimum": 0 },
+    "boat_models": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/boat_model_linkage" }
+    }
+  },
+  "$defs": {
+    "boat_model_linkage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hullq_id", "qids", "preferred_label_by_qid"],
+      "properties": {
+        "hullq_id": { "type": "string", "minLength": 1 },
+        "qids": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^Q[1-9][0-9]*$" }
+        },
+        "preferred_label_by_qid": {
+          "type": "object",
+          "propertyNames": { "pattern": "^Q[1-9][0-9]*$" },
+          "additionalProperties": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "reserved_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["qid", "reserved_hullq_id", "decision", "reason_codes", "preferred_label"],
+      "properties": {
+        "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+        "reserved_hullq_id": { "type": "string", "minLength": 1 },
+        "decision": { "type": "string", "minLength": 1 },
+        "reason_codes": { "type": "array", "items": { "type": "string" } },
+        "preferred_label": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

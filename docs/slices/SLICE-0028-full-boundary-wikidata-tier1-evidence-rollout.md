@@ -61,23 +61,37 @@ This restates the existing `CLAUDE.md` acceptance/verification rule; it does not
 
 Before acquisition, reproduce the accepted SLICE-0017+0018 identity state from retained artifacts and fail closed on drift.
 
-Required accepted counts:
+The accepted identity implementation distinguishes two related but distinct sets, and this slice's acquisition target is explicitly the second, not the first:
 
 ```text
-canonical BoatModels                 1,770
-historical QID -> HullQ-ID mappings  1,772
+historical registry (all historical QID -> HullQ-ID entries)         1,772
+canonical AUTO_ADMIT linkage (QID -> canonical BoatModel entries)    1,770
+non-canonical historical/reserved mappings (registry minus linkage)      2
 ```
 
-Derive the acquisition request set **only** from the accepted historical QID -> HullQ-ID mapping keys.
+The historical registry (1,772 entries) additionally contains historical QID -> HullQ-ID mappings that carry a real, never-reminted HullQ ID but whose current decision is not `AUTO_ADMIT` — i.e. no canonical BoatModel row was ever created for them (`REVIEW_REQUIRED` reserved-ID crosswalk entries). These reserved entries remain retained/auditable historical identity state, but they are excluded from SLICE-0028 technical acquisition because they do not address a canonical BoatModel. The exact accepted reserved entries (reproducible from the retained SLICE-0017/0018 artifacts) are:
+
+```text
+Q109650429  -> BM_WDT0_6221328c32fe4b43b113c0ffc5e0bec9  (review_required / name_collision)
+Q2461915    -> BM_WDT0_25df3c46ed4c45c292c817cf4b7eb0b3  (review_required / name_collision)
+```
+
+Derive the acquisition request set **only** from the accepted canonical AUTO_ADMIT linkage keys (QID -> canonical BoatModel), never from the full 1,772-entry historical registry:
+
+```text
+request-QID derivation = canonical AUTO_ADMIT linkage keys (1,770 entries)
+                        != all 1,772 historical registry keys
+```
 
 Requirements:
 
-- retain all accepted QID -> BoatModel links;
+- retain all accepted canonical AUTO_ADMIT QID -> BoatModel links;
 - preserve multiple accepted QIDs mapping to the same BoatModel rather than silently selecting one and discarding another;
-- report the exact distinct requested-QID count derived from the accepted mappings;
-- verify that the mapping value set covers exactly the accepted 1,770 canonical BoatModel IDs;
+- report the exact distinct requested-QID count derived from the accepted canonical AUTO_ADMIT linkage (today exactly 1,770, one QID per BoatModel; the linkage representation itself remains generically multi-QID-safe);
+- verify that the canonical AUTO_ADMIT linkage's mapping value set covers exactly the accepted 1,770 canonical BoatModel IDs (this is a check on the 1,770-entry linkage, not the 1,772-entry historical registry, which by construction also contains the 2 non-canonical reserved entries above);
+- separately retain/report the full 1,772-entry historical registry, the 1,770-entry canonical AUTO_ADMIT linkage count, and the exact non-canonical reserved entries excluded from acquisition, so the 1,772-vs-1,770 distinction stays auditable rather than silently collapsed;
 - do not add a QID by discovery, fuzzy matching, label search or a new identity decision;
-- if the accepted artifacts no longer reproduce the 1,770 / 1,772 boundary, stop `BLOCKED`.
+- if the accepted artifacts no longer reproduce the 1,770 canonical / 1,772 historical-registry boundary, stop `BLOCKED`.
 
 ## Source and acquisition boundary
 
@@ -237,8 +251,8 @@ Do not mutate the accepted SLICE-0026 or SLICE-0027 retained packages.
 
 ## Required behavior
 
-1. Reproduce the accepted 1,770 BoatModel / 1,772 historical-QID-mapping identity boundary before acquisition.
-2. Derive and retain the exact accepted QID -> BoatModel acquisition/linkage set without discovery or new identity decisions.
+1. Reproduce the accepted 1,770-canonical-BoatModel / 1,772-historical-registry identity boundary before acquisition, and retain the exact reconciliation between the two (see "Fixed identity boundary").
+2. Derive and retain the exact accepted canonical AUTO_ADMIT QID -> BoatModel acquisition/linkage set — never the full 1,772-entry historical registry — without discovery or new identity decisions.
 3. Pass the accepted source-use gate before every Wikidata request.
 4. Acquire every distinct accepted mapped QID through the existing known-QID entity API path, with acquisition failures separate from data-missing states.
 5. Reuse the accepted SLICE-0027 qualifier-carrier semantics and existing SLICE-0004 normalization.
@@ -257,8 +271,10 @@ Do not mutate the accepted SLICE-0026 or SLICE-0027 retained packages.
 Tests must cover at least:
 
 - accepted identity-boundary drift fails closed;
+- the 1,772-entry historical registry reconciles exactly to the 1,770-entry canonical AUTO_ADMIT linkage plus the exact non-canonical reserved entries, and the acquisition request set is derived only from the canonical linkage, never the full historical registry;
 - multiple accepted QIDs mapping to one BoatModel are all preserved in the full-boundary linkage input;
 - acquisition failures cannot become `no_usable_value`;
+- exact acquisition-completeness (rebuilt entity-QID set equals the full canonical request-QID set with no duplicate/unexpected/missing QID) is independently verifiable offline, and its biconditional consistency with a zero acquisition-failure count is enforced — not a cardinality-only comparison;
 - existing accepted P642 extraction remains valid;
 - accepted P518 LOA/LWL/draft extraction remains valid;
 - accepted P3831 displacement extraction remains valid;
@@ -303,12 +319,12 @@ Tests must cover at least:
 
 ## Acceptance criteria
 
-- [ ] Accepted SLICE-0017+0018 identity artifacts reproduce exactly at 1,770 canonical BoatModels / 1,772 historical QID -> HullQ-ID mappings before acquisition.
-- [ ] The retained mapping values cover exactly the accepted 1,770 canonical BoatModel IDs; all accepted mapped QIDs are preserved.
-- [ ] The distinct request-QID cardinality is derived from retained accepted mappings and reported exactly rather than assumed.
+- [ ] Accepted SLICE-0017+0018 identity artifacts reproduce exactly at 1,770 canonical BoatModels / 1,772 historical-registry QID -> HullQ-ID mappings before acquisition, and the exact reconciliation (1,770 canonical AUTO_ADMIT linkage + 2 non-canonical reserved entries = 1,772 historical registry) is retained/auditable.
+- [ ] The acquisition request set is derived only from the 1,770-entry canonical AUTO_ADMIT linkage, never the full 1,772-entry historical registry; the linkage's mapping values cover exactly the accepted 1,770 canonical BoatModel IDs; all accepted canonical-linkage QIDs are preserved.
+- [ ] The distinct request-QID cardinality is derived from the retained canonical AUTO_ADMIT linkage and reported exactly rather than assumed.
 - [ ] No discovery/new identity lookup is performed.
 - [ ] Existing source-rights/use gate is enforced before every live request.
-- [ ] Every distinct accepted request QID receives a deterministically classified acquisition result; acquisition failures are not misreported as missing boat data.
+- [ ] Every distinct accepted request QID receives a deterministically classified acquisition result; acquisition failures are not misreported as missing boat data; exact acquisition-completeness (set equality, no duplicates) and its consistency with a zero acquisition-failure count are independently verified offline, not merely a cardinality comparison.
 - [ ] Only the five allowed fields are admitted to SLICE-0028 coverage/evidence output.
 - [ ] Accepted P642/P518/P3831/beam semantics and existing measurement normalization are reused without broadening concept semantics.
 - [ ] Source-QID and BoatModel-level coverage reproduce deterministically offline.
@@ -360,9 +376,9 @@ The bounded live acquisition/build must be executed only as needed to create the
 
 Stop `BLOCKED` instead of inventing results if:
 
-- the accepted 1,770 / 1,772 identity boundary does not reproduce;
+- the accepted 1,770-canonical / 1,772-historical-registry identity boundary does not reproduce, or the reconciliation between them cannot be derived truthfully from retained artifacts;
 - accepted source rights/use gate rejects the full-boundary known-QID acquisition;
-- the full accepted QID->BoatModel mapping cannot be preserved truthfully;
+- the full accepted canonical AUTO_ADMIT QID->BoatModel linkage cannot be preserved truthfully;
 - acquisition cannot classify every requested QID without conflating network failure and missing source data;
 - a newly observed claim shape requires a new qualifier/concept semantic decision;
 - truthful persistence would require inventing a BoatDesign, changing accepted identity semantics or creating canonical technical resolutions;
@@ -379,7 +395,7 @@ Use the concise structure from `docs/slices/SLICE_TEMPLATE.md` and include only 
 Include at minimum:
 
 - exact final branch HEAD SHA;
-- reproduced canonical BoatModel and historical mapping counts;
+- reproduced canonical BoatModel and historical-registry mapping counts, plus the exact 1,772-vs-1,770 reconciliation (non-canonical reserved entries excluded from acquisition);
 - exact distinct requested-QID count;
 - acquisition request/entity/failure counts;
 - exact source-QID and BoatModel coverage counts for all five fields;

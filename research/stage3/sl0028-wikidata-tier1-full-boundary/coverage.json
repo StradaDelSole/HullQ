@@ -1,0 +1,71 @@
+{
+  "schema_version": "sl0028-coverage-v1",
+  "generated_at": "2026-08-26T22:56:27.821356+00:00",
+  "boat_model_count": 1770,
+  "source_qid_count": 1770,
+  "note": "Four mutually exclusive, exhaustive coverage states per field: normalized_candidate_present / source_statement_present / unsupported_or_malformed / no_usable_value. source_qid_level counts sum to source_qid_count for every field; boat_model_level counts sum to boat_model_count for every field, computed via strongest-available-evidence precedence over every accepted QID mapped to each BoatModel. A coverage classification only \u2014 never a canonical technical-value choice; no FieldResolution is created.",
+  "source_qid_level": {
+    "loa": {
+      "normalized_candidate_present": 888,
+      "source_statement_present": 0,
+      "unsupported_or_malformed": 227,
+      "no_usable_value": 655
+    },
+    "lwl": {
+      "normalized_candidate_present": 848,
+      "source_statement_present": 0,
+      "unsupported_or_malformed": 227,
+      "no_usable_value": 695
+    },
+    "beam": {
+      "normalized_candidate_present": 891,
+      "source_statement_present": 1,
+      "unsupported_or_malformed": 0,
+      "no_usable_value": 878
+    },
+    "draft": {
+      "normalized_candidate_present": 691,
+      "source_statement_present": 0,
+      "unsupported_or_malformed": 11,
+      "no_usable_value": 1068
+    },
+    "displacement": {
+      "normalized_candidate_present": 66,
+      "source_statement_present": 792,
+      "unsupported_or_malformed": 155,
+      "no_usable_value": 757
+    }
+  },
+  "boat_model_level": {
+    "loa": {
+      "normalized_candidate_present": 888,
+      "source_statement_present": 0,
+      "unsupported_or_malformed": 227,
+      "no_usable_value": 655
+    },
+    "lwl": {
+      "normalized_candidate_present": 848,
+      "source_statement_present": 0,
+      "unsupported_or_malformed": 227,
+      "no_usable_value": 695
+    },
+    "beam": {
+      "normalized_candidate_present": 891,
+      "source_statement_present": 1,
+      "unsupported_or_malformed": 0,
+      "no_usable_value": 878
+    },
+    "draft": {
+      "normalized_candidate_present": 691,
+      "source_statement_present": 0,
+      "unsupported_or_malformed": 11,
+      "no_usable_value": 1068
+    },
+    "displacement": {
+      "normalized_candidate_present": 66,
+      "source_statement_present": 792,
+      "unsupported_or_malformed": 155,
+      "no_usable_value": 757
+    }
+  }
+}

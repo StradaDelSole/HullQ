@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0028-evidence-manifest/v1",
+  "title": "HullQ SLICE-0028 Full-Boundary Wikidata Tier-1 Evidence Manifest",
+  "description": "Retained Tier-1 (LOA/LWL/beam/draft/displacement) evidence for the entire accepted full-boundary request-QID set, acquired via the existing rights-gated Wikidata adapter for known QIDs only. Includes trimmed raw-entity data sufficient to fully reproduce every derived SLICE-0028 document offline (zero network access).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "acquired_at",
+    "source_id",
+    "activity_id",
+    "allowed_field_pointers",
+    "usage_metrics",
+    "quality_report_global",
+    "requested_qid_evidence",
+    "raw_entities"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0028-evidence-manifest-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "acquired_at": { "type": "string", "minLength": 1 },
+    "source_id": { "const": "SRC_WIKIDATA_API_2026" },
+    "activity_id": { "type": "string", "minLength": 1 },
+    "allowed_field_pointers": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": { "type": "string", "pattern": "^/baseline/dimensions/" }
+    },
+    "usage_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requested_qid_count",
+        "fetched_entity_count",
+        "acquisition_failure_count",
+        "retrieval_count_attributed",
+        "retrieval_count_attributed_note"
+      ],
+      "properties": {
+        "requested_qid_count": { "type": "integer", "minimum": 0 },
+        "fetched_entity_count": { "type": "integer", "minimum": 0 },
+        "acquisition_failure_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "A retrieval failure/throttle/malformed-response, tracked separately from any coverage bucket — never reclassified as no_usable_value."
+        },
+        "retrieval_count_attributed": { "type": "integer", "minimum": 0 },
+        "retrieval_count_attributed_note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Clarifies that retrieval_count_attributed is retained live-acquisition telemetry, NOT independently recomputed by offline --verify (unlike malformed_statement_count/unsupported_qualifier_count below)."
+        }
+      }
+    },
+    "quality_report_global": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["malformed_statement_count", "unsupported_qualifier_count", "note"],
+      "properties": {
+        "malformed_statement_count": { "type": "integer", "minimum": 0 },
+        "unsupported_qualifier_count": { "type": "integer", "minimum": 0 },
+        "note": { "type": "string", "minLength": 1 }
+      }
+    },
+    "requested_qid_evidence": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/qid_evidence" }
+    },
+    "raw_entities": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/raw_entity" }
+    }
+  },
+  "$defs": {
+    "evidence_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "field_pointer",
+        "subject_kind",
+        "subject_qid",
+        "raw",
+        "normalized_candidate"
+      ],
+      "properties": {
+        "evidence_id": { "type": "string", "minLength": 1 },
+        "field_pointer": { "type": "string", "pattern": "^/baseline/dimensions/" },
+        "subject_kind": { "type": "string" },
+        "subject_qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+        "raw": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value", "unit"],
+          "properties": {
+            "kind": { "type": "string" },
+            "value": {},
+            "unit": { "type": ["string", "null"] }
+          }
+        },
+        "normalized_candidate": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["value", "unit"],
+          "properties": {
+            "value": { "type": "string" },
+            "unit": { "type": "string" }
+          }
+        }
+      }
+    },
+    "qid_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hullq_id", "qid", "bundle_id", "evidence"],
+      "properties": {
+        "hullq_id": { "type": "string", "minLength": 1 },
+        "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+        "bundle_id": { "type": "string", "minLength": 1 },
+        "evidence": {
+          "type": "array",
+          "maxItems": 5,
+          "items": { "$ref": "#/$defs/evidence_item" }
+        }
+      }
+    },
+    "raw_entity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["qid", "label", "aliases", "raw_claims"],
+      "properties": {
+        "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+        "label": { "type": ["string", "null"] },
+        "aliases": { "type": "array", "items": { "type": "string" } },
+        "raw_claims": { "type": "object" }
+      }
+    }
+  }
+}

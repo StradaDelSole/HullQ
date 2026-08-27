@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0028-basic-searchable-evidence-precursor/v1",
+  "title": "HullQ SLICE-0028 basic_searchable_evidence_precursor (non-canonical diagnostic)",
+  "description": "Canonical BoatModel count with BoatModel-level normalized-candidate evidence availability for LOA AND beam AND (draft OR displacement). This is NOT CAL-01 D2 basic-searchable coverage and MUST NOT be reported as launch-readiness coverage -- no canonical BoatDesign, FieldResolution or searchable technical value has been created or decided.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "metric_name",
+    "definition",
+    "non_canonical_disclaimer",
+    "boat_model_count",
+    "qualifying_boat_model_count",
+    "qualifying_boat_model_percentage",
+    "qualifying_hullq_ids"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0028-basic-searchable-evidence-precursor-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "metric_name": { "const": "basic_searchable_evidence_precursor" },
+    "definition": { "type": "string", "minLength": 1 },
+    "non_canonical_disclaimer": { "type": "string", "minLength": 1 },
+    "boat_model_count": { "type": "integer", "minimum": 0 },
+    "qualifying_boat_model_count": { "type": "integer", "minimum": 0 },
+    "qualifying_boat_model_percentage": { "type": "number", "minimum": 0, "maximum": 100 },
+    "qualifying_hullq_ids": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}
