@@ -1,8 +1,8 @@
 {
   "schema_version": "sl0030-unit-qid-assessment-v1",
-  "generated_at": "2026-08-27T21:01:20.080736+00:00",
+  "generated_at": "2026-08-27T23:46:35.179277+00:00",
   "source_id": "SRC_WIKIDATA_API_2026",
-  "note": "One row per fixed SLICE-0030 unit QID (FIXED_UNIT_QIDS): a bounded, rights-gated wbgetentities identity check (label/description/P31 instance-of only — no broader boat-technical field is collected), combined with a deterministic count of P2067 mass statements in the fixed accepted SLICE-0028 retained raw claims whose unit resolves to this QID. classification is one of: correct_existing_mapping (Q11570/kilogram, unchanged since SLICE-0008), corrected_positively_verified_mapping (Q41803/Q191118/Q100995, newly recognized by the SLICE-0030 default map), incorrect_legacy_mapping (Q12152/Q11369/Q37795, recognized by the pre-SLICE-0030 default map but never the intended physical unit and never observed as a real unit reference in the fixed retained evidence).",
+  "note": "One row per fixed SLICE-0030 unit QID (FIXED_UNIT_QIDS): a bounded, rights-gated wbgetentities identity check (label/description/P31 instance-of only — no broader boat-technical field is collected), combined with a deterministic count of P2067 mass statements in the fixed accepted SLICE-0028 retained raw claims whose unit resolves to this QID. classification is one of: correct_existing_mapping (Q11570/kilogram, unchanged since SLICE-0008), corrected_positively_verified_mapping (Q41803/Q191118/Q100995, newly recognized by the SLICE-0030 default map), incorrect_legacy_mapping (Q12152/Q11369/Q37795, recognized by the pre-SLICE-0030 default map but never the intended physical unit and never observed as a real unit reference in the fixed retained evidence). Fail-closed identity criterion (independent-review requirement): verified_is_unit_of_mass is true iff verified_instance_of_qids contains verified_unit_of_mass_instance_qid (Q3647172, Wikidata 'unit of mass') — a structural P31 check, not the label alone. validate_unit_qid_snapshots raises UnitIdentityValidationError before this document is built if any QID's expected classification (correct/corrected_positively_verified vs incorrect_legacy) disagrees with its verified_is_unit_of_mass value; this document could not have been produced or replayed if that check failed.",
   "assessed_units": [
     {
       "qid": "Q100995",
@@ -15,7 +15,9 @@
         "Q3647172",
         "Q82047057"
       ],
-      "verification_retrieved_at": "2026-08-27T21:01:18.205802+00:00",
+      "verified_unit_of_mass_instance_qid": "Q3647172",
+      "verified_is_unit_of_mass": true,
+      "verification_retrieved_at": "2026-08-27T23:46:32.830646+00:00",
       "occurs_in_sl0028_retained_raw_claims": true,
       "observed_retained_statement_count": 794
     },
@@ -29,7 +31,9 @@
       "verified_instance_of_qids": [
         "Q72070508"
       ],
-      "verification_retrieved_at": "2026-08-27T21:01:18.205802+00:00",
+      "verified_unit_of_mass_instance_qid": "Q3647172",
+      "verified_is_unit_of_mass": false,
+      "verification_retrieved_at": "2026-08-27T23:46:32.830646+00:00",
       "occurs_in_sl0028_retained_raw_claims": false,
       "observed_retained_statement_count": 0
     },
@@ -45,7 +49,9 @@
         "Q3647172",
         "Q69197847"
       ],
-      "verification_retrieved_at": "2026-08-27T21:01:18.205802+00:00",
+      "verified_unit_of_mass_instance_qid": "Q3647172",
+      "verified_is_unit_of_mass": true,
+      "verification_retrieved_at": "2026-08-27T23:46:32.830646+00:00",
       "occurs_in_sl0028_retained_raw_claims": true,
       "observed_retained_statement_count": 224
     },
@@ -61,7 +67,9 @@
         "Q112193867",
         "Q112965645"
       ],
-      "verification_retrieved_at": "2026-08-27T21:01:18.205802+00:00",
+      "verified_unit_of_mass_instance_qid": "Q3647172",
+      "verified_is_unit_of_mass": false,
+      "verification_retrieved_at": "2026-08-27T23:46:32.830646+00:00",
       "occurs_in_sl0028_retained_raw_claims": false,
       "observed_retained_statement_count": 0
     },
@@ -78,7 +86,9 @@
         "Q82047057",
         "Q3268848"
       ],
-      "verification_retrieved_at": "2026-08-27T21:01:18.205802+00:00",
+      "verified_unit_of_mass_instance_qid": "Q3647172",
+      "verified_is_unit_of_mass": true,
+      "verification_retrieved_at": "2026-08-27T23:46:32.830646+00:00",
       "occurs_in_sl0028_retained_raw_claims": true,
       "observed_retained_statement_count": 1
     },
@@ -92,7 +102,9 @@
       "verified_instance_of_qids": [
         "Q39367"
       ],
-      "verification_retrieved_at": "2026-08-27T21:01:18.205802+00:00",
+      "verified_unit_of_mass_instance_qid": "Q3647172",
+      "verified_is_unit_of_mass": false,
+      "verification_retrieved_at": "2026-08-27T23:46:32.830646+00:00",
       "occurs_in_sl0028_retained_raw_claims": false,
       "observed_retained_statement_count": 0
     },
@@ -108,7 +120,9 @@
         "Q208469",
         "Q82047053"
       ],
-      "verification_retrieved_at": "2026-08-27T21:01:18.205802+00:00",
+      "verified_unit_of_mass_instance_qid": "Q3647172",
+      "verified_is_unit_of_mass": true,
+      "verification_retrieved_at": "2026-08-27T23:46:32.830646+00:00",
       "occurs_in_sl0028_retained_raw_claims": false,
       "observed_retained_statement_count": 0
     }

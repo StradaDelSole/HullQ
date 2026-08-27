@@ -56,7 +56,9 @@ __all__ = [
     "FIXED_UNIT_QIDS",
     "SL0030_ACTIVITY_ID",
     "UNIT_QID_ASSESSMENT_SCHEMA_VERSION",
+    "VERIFIED_MASS_UNIT_INSTANCE_QID",
     "UnitEntitySnapshot",
+    "UnitIdentityValidationError",
     "build_artifact_digests",
     "build_coverage_before_after_document",
     "build_sl0030_bundle",
@@ -64,6 +66,7 @@ __all__ = [
     "compute_before_after_coverage",
     "count_mass_unit_qid_occurrences",
     "retained_package_filenames",
+    "validate_unit_qid_snapshots",
     "verify_artifact_digests_self_consistency",
     "verify_coverage_before_after_self_consistency",
     "verify_unit_qid_assessment_self_consistency",
@@ -114,6 +117,82 @@ _INTENDED_UNIT_ENUM_BY_QID: dict[str, str | None] = {
     "Q11369": None,
     "Q37795": None,
 }
+
+# Wikidata "unit of mass" (https://www.wikidata.org/entity/Q3647172) —
+# positively confirmed via a live wbgetentities lookup: label="unit of mass",
+# description="physical unit which measures mass". This is the fail-closed,
+# structural (P31/instance-of) criterion for "is a Wikidata mass unit",
+# independent of and stronger than the entity's label — a label alone
+# (e.g. "gram") is supporting evidence only, never the sole criterion.
+VERIFIED_MASS_UNIT_INSTANCE_QID = "Q3647172"
+
+# What FIXED_UNIT_QIDS is expected to positively verify as, per the
+# controlling slice's required corrected/rejected boundary. Independent
+# review requirement: this expectation must be checked against the live P31
+# evidence before classification/intended_hullq_unit are ever assigned from
+# _CLASSIFICATION_BY_QID / _INTENDED_UNIT_ENUM_BY_QID — those static tables
+# encode the *intended* SLICE-0030 decision, not a substitute for verifying
+# the actually-fetched entity matches it.
+_EXPECTED_IS_MASS_UNIT_BY_QID: dict[str, bool] = {
+    "Q11570": True,
+    "Q41803": True,
+    "Q191118": True,
+    "Q100995": True,
+    "Q12152": False,
+    "Q11369": False,
+    "Q37795": False,
+}
+
+
+class UnitIdentityValidationError(ValueError):
+    """Raised when a fixed unit QID's live-verified P31 evidence contradicts
+    the physical-unit identity SLICE-0030 is about to assign it.
+
+    Fail-closed: no unit_qid_assessment.json document is ever built (live or
+    replayed offline) while this condition holds — a contradictory or
+    ambiguous Wikidata response must stop BLOCKED rather than being silently
+    retained/reported as positively verified.
+    """
+
+
+def _snapshot_is_verified_mass_unit(snap: UnitEntitySnapshot) -> bool:
+    """Structural, evidence-backed criterion: does *snap*'s live-retrieved
+    P31 (instance-of) claim set include ``VERIFIED_MASS_UNIT_INSTANCE_QID``?
+    """
+    return VERIFIED_MASS_UNIT_INSTANCE_QID in snap.p31_qids
+
+
+def validate_unit_qid_snapshots(snapshots: Sequence[UnitEntitySnapshot]) -> None:
+    """Fail-closed identity validator.
+
+    Raises ``UnitIdentityValidationError`` if any snapshot in *snapshots*
+    whose QID is a member of ``_EXPECTED_IS_MASS_UNIT_BY_QID`` has live P31
+    evidence that disagrees with that expectation — e.g. a QID SLICE-0030
+    intends to recognize as a mass unit whose fetched entity does NOT carry
+    the ``VERIFIED_MASS_UNIT_INSTANCE_QID`` instance-of claim, or a QID
+    SLICE-0030 intends to reject that unexpectedly DOES carry it. Called
+    before every ``build_unit_qid_assessment_document`` construction — both
+    the live ``--identity-check`` path and the offline
+    ``verify_unit_qid_assessment_self_consistency`` replay path — so neither
+    can ever retain or report a contradictory identity as verified.
+    """
+    problems = []
+    for snap in snapshots:
+        if snap.qid not in _EXPECTED_IS_MASS_UNIT_BY_QID:
+            continue  # unknown QID is surfaced separately by the FIXED_UNIT_QIDS coverage check
+        expected = _EXPECTED_IS_MASS_UNIT_BY_QID[snap.qid]
+        actual = _snapshot_is_verified_mass_unit(snap)
+        if actual != expected:
+            problems.append(
+                f"{snap.qid}: expected verified_is_unit_of_mass={expected} per the SLICE-0030 "
+                f"classification, but live P31 evidence gives {actual} "
+                f"(p31_qids={list(snap.p31_qids)!r}, label={snap.label!r})"
+            )
+    if problems:
+        raise UnitIdentityValidationError(
+            f"fail-closed unit-identity check failed for {len(problems)} QID(s): "
+            + "; ".join(problems)
+        )
 
 
 @dataclass(frozen=True)
@@ -191,6 +270,14 @@ def build_unit_qid_assessment_document(
 
     ``snapshots`` MUST cover exactly ``FIXED_UNIT_QIDS`` (no more, no fewer) —
     SLICE-0030 does not assess any QID outside this fixed set.
+
+    Fail-closed: ``validate_unit_qid_snapshots`` is called before any row is
+    assembled. If any snapshot's live P31 evidence contradicts the physical
+    identity SLICE-0030 is about to assign it, this function raises
+    ``UnitIdentityValidationError`` instead of returning a document — the
+    static ``_CLASSIFICATION_BY_QID`` / ``_INTENDED_UNIT_ENUM_BY_QID`` tables
+    encode the *intended* decision, never a substitute for checking it
+    against what was actually fetched.
     """
     snapshot_qids = {s.qid for s in snapshots}
     if snapshot_qids != set(FIXED_UNIT_QIDS):
@@ -199,6 +286,7 @@ def build_unit_qid_assessment_document(
             f"{sorted(set(FIXED_UNIT_QIDS) - snapshot_qids)!r} "
             f"unexpected={sorted(snapshot_qids - set(FIXED_UNIT_QIDS))!r}"
         )
+    validate_unit_qid_snapshots(snapshots)
     rows = [
         {
             "qid": snap.qid,
@@ -208,6 +296,8 @@ def build_unit_qid_assessment_document(
             "verified_label_en": snap.label,
             "verified_description_en": snap.description_en,
             "verified_instance_of_qids": list(snap.p31_qids),
+            "verified_unit_of_mass_instance_qid": VERIFIED_MASS_UNIT_INSTANCE_QID,
+            "verified_is_unit_of_mass": _snapshot_is_verified_mass_unit(snap),
             "verification_retrieved_at": verified_at,
             "occurs_in_sl0028_retained_raw_claims": occurrence_counts.get(snap.qid, 0) > 0,
             "observed_retained_statement_count": occurrence_counts.get(snap.qid, 0),
@@ -230,7 +320,17 @@ def build_unit_qid_assessment_document(
             "recognized by the SLICE-0030 default map), incorrect_legacy_mapping "
             "(Q12152/Q11369/Q37795, recognized by the pre-SLICE-0030 default map "
             "but never the intended physical unit and never observed as a real "
-            "unit reference in the fixed retained evidence)."
+            "unit reference in the fixed retained evidence). Fail-closed identity "
+            "criterion (independent-review requirement): verified_is_unit_of_mass "
+            "is true iff verified_instance_of_qids contains "
+            "verified_unit_of_mass_instance_qid (Q3647172, Wikidata 'unit of "
+            "mass') — a structural P31 check, not the label alone. "
+            "validate_unit_qid_snapshots raises UnitIdentityValidationError "
+            "before this document is built if any QID's expected "
+            "classification (correct/corrected_positively_verified vs "
+            "incorrect_legacy) disagrees with its verified_is_unit_of_mass "
+            "value; this document could not have been produced or replayed "
+            "if that check failed."
         ),
         "assessed_units": rows,
         "raw_entity_snapshots": [
@@ -258,6 +358,14 @@ def verify_unit_qid_assessment_self_consistency(
 
     Zero network access: this is what makes the retained package's own
     identity-check result reproducible forever without re-querying Wikidata.
+
+    Because this rebuild goes through ``build_unit_qid_assessment_document``
+    unchanged, it re-runs ``validate_unit_qid_snapshots`` against the
+    retained ``raw_entity_snapshots`` on every call — the same fail-closed
+    identity criterion enforced at live acquisition time, never a second,
+    weaker offline-only check. A retained snapshot whose P31 evidence would
+    no longer satisfy that criterion is reported as a problem here (via the
+    ``except ValueError`` below), not silently accepted.
     """
     raw_snapshots = document.get("raw_entity_snapshots", [])
     snapshots = tuple(

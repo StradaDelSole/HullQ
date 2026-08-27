@@ -15,13 +15,16 @@ import pytest
 from hullq.bootstrap.wikidata_sl0030_mass_unit_correction import (
     FIXED_UNIT_QIDS,
     SL0030_ACTIVITY_ID,
+    VERIFIED_MASS_UNIT_INSTANCE_QID,
     UnitEntitySnapshot,
+    UnitIdentityValidationError,
     build_artifact_digests,
     build_coverage_before_after_document,
     build_sl0030_bundle,
     build_unit_qid_assessment_document,
     compute_before_after_coverage,
     count_mass_unit_qid_occurrences,
+    validate_unit_qid_snapshots,
     verify_artifact_digests_self_consistency,
     verify_coverage_before_after_self_consistency,
     verify_unit_qid_assessment_self_consistency,
@@ -165,6 +168,10 @@ def test_unit_qid_assessment_classification_and_intended_unit() -> None:
         assert rows[qid]["intended_hullq_unit"] is None
         assert rows[qid]["occurs_in_sl0028_retained_raw_claims"] is False
         assert rows[qid]["observed_retained_statement_count"] == 0
+        assert rows[qid]["verified_is_unit_of_mass"] is False
+    for qid in ("Q11570", "Q41803", "Q191118", "Q100995"):
+        assert rows[qid]["verified_is_unit_of_mass"] is True
+        assert rows[qid]["verified_unit_of_mass_instance_qid"] == VERIFIED_MASS_UNIT_INSTANCE_QID
     assert rows["Q100995"]["occurs_in_sl0028_retained_raw_claims"] is True
     assert rows["Q100995"]["observed_retained_statement_count"] == 794
 
@@ -178,6 +185,88 @@ def test_unit_qid_assessment_requires_exactly_the_fixed_qid_set() -> None:
             snapshots=incomplete,
             occurrence_counts={},
         )
+
+
+# ---------------------------------------------------------------------------
+# Fail-closed identity validation (independent-review requirement)
+# ---------------------------------------------------------------------------
+
+
+def test_validate_unit_qid_snapshots_passes_for_consistent_evidence() -> None:
+    validate_unit_qid_snapshots(_all_snapshots())  # must not raise
+
+
+def test_validate_unit_qid_snapshots_rejects_supported_qid_missing_mass_unit_p31() -> None:
+    """Q41803 (gram) is expected to verify as a mass unit. If the live P31
+    evidence does NOT include VERIFIED_MASS_UNIT_INSTANCE_QID, this is a
+    contradictory response and must fail closed rather than being silently
+    classified corrected_positively_verified_mapping."""
+    contradictory = _all_snapshots(
+        {"Q41803": UnitEntitySnapshot("Q41803", "gram", "unit of mass", ("Q208469",))}
+    )
+    with pytest.raises(UnitIdentityValidationError, match="Q41803"):
+        validate_unit_qid_snapshots(contradictory)
+
+
+def test_validate_unit_qid_snapshots_rejects_rejected_qid_with_mass_unit_p31() -> None:
+    """Q12152 is expected to NOT verify as a mass unit. If a live response
+    unexpectedly carried the mass-unit P31 claim, this contradicts the
+    incorrect_legacy_mapping classification and must fail closed rather than
+    being silently accepted."""
+    contradictory = _all_snapshots(
+        {
+            "Q12152": UnitEntitySnapshot(
+                "Q12152",
+                "myocardial infarction",
+                "heart condition",
+                (VERIFIED_MASS_UNIT_INSTANCE_QID,),
+            )
+        }
+    )
+    with pytest.raises(UnitIdentityValidationError, match="Q12152"):
+        validate_unit_qid_snapshots(contradictory)
+
+
+def test_build_unit_qid_assessment_document_refuses_to_build_on_contradictory_evidence() -> None:
+    """build_unit_qid_assessment_document must never return a document when
+    the fail-closed identity check fails — the caller (--identity-check)
+    relies on this to refuse writing a contradictory assessment."""
+    contradictory = _all_snapshots(
+        {"Q100995": UnitEntitySnapshot("Q100995", "pound", "unit of mass", ("Q82047057",))}
+    )
+    with pytest.raises(UnitIdentityValidationError, match="Q100995"):
+        build_unit_qid_assessment_document(
+            generated_at="2026-01-01T00:00:00Z",
+            verified_at="2026-01-01T00:00:00Z",
+            snapshots=contradictory,
+            occurrence_counts={},
+        )
+
+
+def test_verify_unit_qid_assessment_self_consistency_fails_closed_on_tampered_p31_evidence() -> (
+    None
+):
+    """If a retained raw_entity_snapshots entry is altered so its P31
+    evidence no longer supports the QID's classification, offline
+    verification must report a problem (via the same fail-closed validator),
+    never silently pass."""
+    entities: list[WikidataEntityData] = []
+    doc = build_unit_qid_assessment_document(
+        generated_at="2026-01-01T00:00:00Z",
+        verified_at="2026-01-01T00:00:00Z",
+        snapshots=_all_snapshots(),
+        occurrence_counts=count_mass_unit_qid_occurrences(entities),
+    )
+    tampered = dict(doc)
+    tampered["raw_entity_snapshots"] = [
+        {**row, "p31_qids": ["Q208469"]} if row["qid"] == "Q41803" else row
+        for row in doc["raw_entity_snapshots"]
+    ]
+    problems = verify_unit_qid_assessment_self_consistency(
+        sl0028_entities=entities, document=tampered
+    )
+    assert problems != []
+    assert any("Q41803" in p for p in problems)
 
 
 def test_verify_unit_qid_assessment_self_consistency_passes_for_matching_document() -> None:

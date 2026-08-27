@@ -234,6 +234,7 @@ def run_identity_check(*, user_agent: str) -> dict[str, Any]:
     from hullq.bootstrap.wikidata_sl0030_mass_unit_correction import (
         FIXED_UNIT_QIDS,
         UnitEntitySnapshot,
+        UnitIdentityValidationError,
         build_unit_qid_assessment_document,
         count_mass_unit_qid_occurrences,
     )
@@ -310,12 +311,18 @@ def run_identity_check(*, user_agent: str) -> dict[str, Any]:
     occurrence_counts = count_mass_unit_qid_occurrences(sl0028_entities)
     print(f"  occurrence counts in fixed SLICE-0028 raw claims: {occurrence_counts}", flush=True)
 
-    document = build_unit_qid_assessment_document(
-        generated_at=datetime.now(tz=UTC).isoformat(),
-        verified_at=verified_at,
-        snapshots=snapshots,
-        occurrence_counts=occurrence_counts,
-    )
+    try:
+        document = build_unit_qid_assessment_document(
+            generated_at=datetime.now(tz=UTC).isoformat(),
+            verified_at=verified_at,
+            snapshots=snapshots,
+            occurrence_counts=occurrence_counts,
+        )
+    except UnitIdentityValidationError as exc:
+        raise SystemExit(
+            "SLICE-0030 identity check: fail-closed unit-identity validation failed — "
+            f"refusing to write a contradictory unit_qid_assessment.json: {exc}"
+        ) from exc
     SL0030_DIR.mkdir(parents=True, exist_ok=True)
     _write_text_lf(UNIT_QID_ASSESSMENT_PATH, json.dumps(document, indent=2, ensure_ascii=False))
     print(f"  wrote {UNIT_QID_ASSESSMENT_PATH}", flush=True)

@@ -36,6 +36,8 @@
         "verified_label_en",
         "verified_description_en",
         "verified_instance_of_qids",
+        "verified_unit_of_mass_instance_qid",
+        "verified_is_unit_of_mass",
         "verification_retrieved_at",
         "occurs_in_sl0028_retained_raw_claims",
         "observed_retained_statement_count"
@@ -61,6 +63,11 @@
         "verified_instance_of_qids": {
           "type": "array",
           "items": { "type": "string", "pattern": "^Q[1-9][0-9]*$" }
+        },
+        "verified_unit_of_mass_instance_qid": { "const": "Q3647172" },
+        "verified_is_unit_of_mass": {
+          "type": "boolean",
+          "description": "Fail-closed structural criterion: true iff verified_instance_of_qids contains verified_unit_of_mass_instance_qid. classification/intended_hullq_unit can only have been assigned as correct_existing_mapping or corrected_positively_verified_mapping when this is true, and as incorrect_legacy_mapping when this is false — enforced by validate_unit_qid_snapshots before this document is built."
         },
         "verification_retrieved_at": { "type": "string" },
         "occurs_in_sl0028_retained_raw_claims": { "type": "boolean" },

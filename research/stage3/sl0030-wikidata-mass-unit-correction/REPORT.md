@@ -1,6 +1,6 @@
 # HullQ SLICE-0030 Wikidata Mass-Unit QID Correction Report
 
-**generated_at:** 2026-08-27T21:01:39.800270+00:00  
+**generated_at:** 2026-08-27T23:46:48.186441+00:00  
 **fixed SLICE-0028 input qid_count:** 1770  
 
 ## SCOPE
