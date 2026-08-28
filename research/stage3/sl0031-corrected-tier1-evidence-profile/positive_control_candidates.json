@@ -1,0 +1,217 @@
+{
+  "schema_version": "sl0031-positive-control-candidates-v1",
+  "generated_at": "2026-08-28T08:11:40.928631+00:00",
+  "eligibility_rule": "within the fixed 1,770 canonical BoatModel boundary; satisfies corrected LOA + beam + (draft OR displacement); at least 4 of 5 fixed fields normalized; no retained disagreement/unsupported-coexistence diagnostic on the five fixed fields; not Q5051252 (Catalina 22) or Q5051253 (Catalina 30)",
+  "ranking_rule": "normalized_field_count descending; both draft and displacement normalized before only one of them; LWL normalized before LWL missing; canonical hullq_id ascending as the final stable tie-break",
+  "excluded_negative_control_qids": [
+    "Q5051252",
+    "Q5051253"
+  ],
+  "eligible_candidate_count": 784,
+  "candidate_pool_limit": 20,
+  "candidate_pool_size": 20,
+  "pool_result": "POSITIVE_CONTROL_POOL_AVAILABLE",
+  "non_canonical_disclaimer": "A positive pool means only that technically strong BoatModel-scoped source evidence exists for later applicability research. It does not mean any selected BoatModel has a proven BoatDesign generation boundary, a cleared primary source, or a promotable canonical value. Retention here is not authorization to research all listed candidates externally.",
+  "candidates": [
+    {
+      "rank": 1,
+      "hullq_id": "BM_WDT0_003ba28d4cd143d68c28e57899a3ed73",
+      "qids": [
+        "Q104861437"
+      ],
+      "normalized_field_count": 5,
+      "draft_and_displacement_present": true,
+      "lwl_present": true
+    },
+    {
+      "rank": 2,
+      "hullq_id": "BM_WDT0_0040159e704c49d0a0b7bc7c6224ecfb",
+      "qids": [
+        "Q104829866"
+      ],
+      "normalized_field_count": 5,
+      "draft_and_displacement_present": true,
+      "lwl_present": true
+    },
+    {
+      "rank": 3,
+      "hullq_id": "BM_WDT0_00f6a6f678474a14ab5ec1b078cf6d60",
+      "qids": [
+        "Q60521258"
+      ],
+      "normalized_field_count": 5,
+      "draft_and_displacement_present": true,
+      "lwl_present": true
+    },
+    {
+      "rank": 4,
+      "hullq_id": "BM_WDT0_041b206a55fe490785620b29a2af443a",
+      "qids": [
+        "Q85753944"
+      ],
+      "normalized_field_count": 5,
+      "draft_and_displacement_present": true,
+      "lwl_present": true
+    },
+    {
+      "rank": 5,
+      "hullq_id": "BM_WDT0_074f8ccc869342d2b392e9a315709b1b",
+      "qids": [
+        "Q85753415"
+      ],
+      "normalized_field_count": 5,
+      "draft_and_displacement_present": true,
+      "lwl_present": true
+    },
+    {
+      "rank": 6,
+      "hullq_id": "BM_WDT0_0773da973b2c47dd84dc1e271b3c16fd",
+      "qids": [
+        "Q60755809"
+      ],
+      "normalized_field_count": 5,
+      "draft_and_displacement_present": true,
+      "lwl_present": true
+    },
+    {
+      "rank": 7,
+      "hullq_id": "BM_WDT0_07e7ebd154244b9cb8ccaa61589af3e4",
+      "qids": [
+        "Q105742651"
+      ],
+      "normalized_field_count": 5,
+      "draft_and_displacement_present": true,
+      "lwl_present": true
+    },
+    {
+      "rank": 8,
+      "hullq_id": "BM_WDT0_08f47683f0b9435ca508cc7cc7e1e602",
+      "qids": [
+        "Q60521277"
+      ],
+      "normalized_field_count": 5,
+      "draft_and_displacement_present": true,
+      "lwl_present": true
+    },
+    {
+      "rank": 9,
+      "hullq_id": "BM_WDT0_090a42a1e08641da98a840cd97b671ce",
+      "qids": [
+        "Q55071986"
+      ],
+      "normalized_field_count": 5,
+      "draft_and_displacement_present": true,
+      "lwl_present": true
+    },
+    {
+      "rank": 10,
+      "hullq_id": "BM_WDT0_0aeb784a1cef4706982266379b9cc1e0",
+      "qids": [
+        "Q5463514"
+      ],
+      "normalized_field_count": 5,
+      "draft_and_displacement_present": true,
+      "lwl_present": true
+    },
+    {
+      "rank": 11,
+      "hullq_id": "BM_WDT0_0b14fb0af9f643d993fc30f395cb32d8",
+      "qids": [
+        "Q105474389"
+      ],
+      "normalized_field_count": 5,
+      "draft_and_displacement_present": true,
+      "lwl_present": true
+    },
+    {
+      "rank": 12,
+      "hullq_id": "BM_WDT0_0bd15dbd17cf44eea09203f4a6bac262",
+      "qids": [
+        "Q7321000"
+      ],
+      "normalized_field_count": 5,
+      "draft_and_displacement_present": true,
+      "lwl_present": true
+    },
+    {
+      "rank": 13,
+      "hullq_id": "BM_WDT0_0c19ffaccdae401180f2d6ebeae99c39",
+      "qids": [
+        "Q65076969"
+      ],
+      "normalized_field_count": 5,
+      "draft_and_displacement_present": true,
+      "lwl_present": true
+    },
+    {
+      "rank": 14,
+      "hullq_id": "BM_WDT0_0cdf302bff774223b68cf610ea754ea8",
+      "qids": [
+        "Q105753294"
+      ],
+      "normalized_field_count": 5,
+      "draft_and_displacement_present": true,
+      "lwl_present": true
+    },
+    {
+      "rank": 15,
+      "hullq_id": "BM_WDT0_0d3dc025a4f64baea4f61b644fb94722",
+      "qids": [
+        "Q60521224"
+      ],
+      "normalized_field_count": 5,
+      "draft_and_displacement_present": true,
+      "lwl_present": true
+    },
+    {
+      "rank": 16,
+      "hullq_id": "BM_WDT0_0d7b18ff7c14471e8dbc17ae665dcfaf",
+      "qids": [
+        "Q104902894"
+      ],
+      "normalized_field_count": 5,
+      "draft_and_displacement_present": true,
+      "lwl_present": true
+    },
+    {
+      "rank": 17,
+      "hullq_id": "BM_WDT0_0e8528d46b5b44caa5e2eae217215c8a",
+      "qids": [
+        "Q106075875"
+      ],
+      "normalized_field_count": 5,
+      "draft_and_displacement_present": true,
+      "lwl_present": true
+    },
+    {
+      "rank": 18,
+      "hullq_id": "BM_WDT0_10717b8f0c114505aed1bd2011f7f38e",
+      "qids": [
+        "Q60740478"
+      ],
+      "normalized_field_count": 5,
+      "draft_and_displacement_present": true,
+      "lwl_present": true
+    },
+    {
+      "rank": 19,
+      "hullq_id": "BM_WDT0_11226d16987e4d86bf35fbcced51fc0f",
+      "qids": [
+        "Q66737997"
+      ],
+      "normalized_field_count": 5,
+      "draft_and_displacement_present": true,
+      "lwl_present": true
+    },
+    {
+      "rank": 20,
+      "hullq_id": "BM_WDT0_1184b9a1439c42689b3147977632c75f",
+      "qids": [
+        "Q60743939"
+      ],
+      "normalized_field_count": 5,
+      "draft_and_displacement_present": true,
+      "lwl_present": true
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0031-artifact-digests/v1",
+  "title": "HullQ SLICE-0031 Artifact Digests",
+  "description": "SHA256 integrity digests covering every retained SLICE-0031 package file except this document itself.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "digests"],
+  "properties": {
+    "schema_version": { "const": "sl0031-artifact-digests-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Covers every retained package file except ARTIFACT-DIGESTS.json itself, discovered dynamically from the package directory (never a hardcoded allowlist) by hullq.bootstrap.wikidata_sl0031_corrected_tier1_evidence_profile.build_artifact_digests / verify_artifact_digests_self_consistency.",
+      "required": [
+        "boatmodel_evidence_profile.json",
+        "boatmodel_evidence_profile_schema.json",
+        "aggregate_profile.json",
+        "aggregate_profile_schema.json",
+        "positive_control_candidates.json",
+        "positive_control_candidates_schema.json",
+        "REPORT.md",
+        "artifact_digests_schema.json"
+      ],
+      "properties": {
+        "boatmodel_evidence_profile.json": { "$ref": "#/$defs/digest" },
+        "boatmodel_evidence_profile_schema.json": { "$ref": "#/$defs/digest" },
+        "aggregate_profile.json": { "$ref": "#/$defs/digest" },
+        "aggregate_profile_schema.json": { "$ref": "#/$defs/digest" },
+        "positive_control_candidates.json": { "$ref": "#/$defs/digest" },
+        "positive_control_candidates_schema.json": { "$ref": "#/$defs/digest" },
+        "REPORT.md": { "$ref": "#/$defs/digest" },
+        "artifact_digests_schema.json": { "$ref": "#/$defs/digest" }
+      }
+    }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+  }
+}

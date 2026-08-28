@@ -1,0 +1,76 @@
+{
+  "schema_version": "sl0031-aggregate-profile-v1",
+  "generated_at": "2026-08-28T08:11:40.928631+00:00",
+  "non_canonical_disclaimer": "Every measurement in this document is a source-evidence diagnostic only. It is NOT CAL-01 D2 basic-searchable coverage, is NOT a launch-readiness metric, and does not mean any BoatModel already possesses an accepted canonical searchable value. No CAL-01 D2/D2b threshold or G4 claim is made or implied.",
+  "boat_model_count": 1770,
+  "per_field_corrected_coverage": {
+    "loa": {
+      "normalized_candidate_present": 888,
+      "source_statement_present": 0,
+      "unsupported_or_malformed": 227,
+      "no_usable_value": 655
+    },
+    "lwl": {
+      "normalized_candidate_present": 848,
+      "source_statement_present": 0,
+      "unsupported_or_malformed": 227,
+      "no_usable_value": 695
+    },
+    "beam": {
+      "normalized_candidate_present": 891,
+      "source_statement_present": 1,
+      "unsupported_or_malformed": 0,
+      "no_usable_value": 878
+    },
+    "draft": {
+      "normalized_candidate_present": 691,
+      "source_statement_present": 0,
+      "unsupported_or_malformed": 11,
+      "no_usable_value": 1068
+    },
+    "displacement": {
+      "normalized_candidate_present": 858,
+      "source_statement_present": 0,
+      "unsupported_or_malformed": 155,
+      "no_usable_value": 757
+    }
+  },
+  "normalized_field_count_distribution": {
+    "0": 787,
+    "1": 28,
+    "2": 65,
+    "3": 53,
+    "4": 326,
+    "5": 511
+  },
+  "cumulative": {
+    "gte_3": 890,
+    "gte_4": 837,
+    "all_5": 511
+  },
+  "predecessor_precursor": {
+    "count": 607,
+    "boat_model_count": 1770,
+    "percentage": 34.2938
+  },
+  "corrected_precursor": {
+    "count": 817,
+    "boat_model_count": 1770,
+    "percentage": 46.1582
+  },
+  "precursor_delta": {
+    "absolute": 210,
+    "percentage_points": 11.8644
+  },
+  "precursor_overlap_decomposition": {
+    "draft_only": 55,
+    "displacement_only": 213,
+    "both": 549
+  },
+  "strong_evidence_subsets": {
+    "loa_beam_draft_displacement": 549,
+    "loa_lwl_beam_draft_or_displacement": 753,
+    "all_five_fields": 511,
+    "gte4_normalized_no_disagreement": 831
+  }
+}
