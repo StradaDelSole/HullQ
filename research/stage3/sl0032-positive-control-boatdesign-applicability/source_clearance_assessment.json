@@ -1,0 +1,206 @@
+{
+  "schema_version": "sl0032-source-clearance-assessment-v1",
+  "generated_at": "2026-08-28T14:33:57.147541+00:00",
+  "candidates": [
+    {
+      "candidate_rank": 1,
+      "qid": "Q104861437",
+      "hullq_id": "BM_WDT0_003ba28d4cd143d68c28e57899a3ed73",
+      "source_located": true,
+      "sr_6_6_condition_evaluation": {
+        "policy_reference": "specs/SOURCE_RIGHTS_POLICY.v0.1.md#6.6",
+        "conditions": [
+          {
+            "condition": "lawfully_publicly_accessible",
+            "satisfied": true,
+            "evidence": "Both buzzardsbayboatshop.com pages retrieved (retrievals 2-3) returned HTTP 200 with no login/paywall; robots.txt (retrieval 4) returns HTTP 404 -- no automation restriction is declared at all."
+          },
+          {
+            "condition": "reused_element_is_discrete_factual_value_not_expressive_content",
+            "satisfied": true,
+            "evidence": "Only discrete dimension/ballast/displacement figures and construction-material facts were extracted into the retained package. No site prose, photography or drawings were copied; no HTML/image file was vendored into the repository."
+          },
+          {
+            "condition": "provenance_recorded",
+            "satisfied": true,
+            "evidence": "source_retrieval_log.json retains exact URL, access timestamp, HTTP status, content-type, byte size and a locally-computed SHA-256 fingerprint for every retrieval, without vendoring the underlying content."
+          },
+          {
+            "condition": "no_identified_source_term_prohibits_the_chosen_method",
+            "satisfied": true,
+            "evidence": "The site's own declared page set is exactly four pages (home, boat specs, photo gallery, contact); none is a terms-of-use/licence/copyright page. Neither the home page nor the boat-spec page carries any copyright notice. robots.txt does not exist (HTTP 404)."
+          },
+          {
+            "condition": "not_systematic_or_bulk_database_extraction",
+            "satisfied": true,
+            "evidence": "Exactly one BoatModel (Buzzards Bay 14) was researched using 4 of the 12 permitted per-candidate retrievals; the photo-gallery and contact pages were left unvisited/unused as evidence."
+          },
+          {
+            "condition": "no_automated_extraction_unless_separately_cleared",
+            "satisfied": "partial_left_unresolved",
+            "evidence": "Retrieval was performed as four individually issued, human-directed HTTPS GET requests, each inspected before the next was requested -- not an unattended crawler/scraper/loop. This satisfies the bounded manual method used in this pilot. It does NOT constitute a clearance of production automated_ingestion, which this assessment leaves unresolved (unknown); see automated_ingestion decision below."
+          }
+        ],
+        "conditions_satisfied_for_bounded_manual_use": true
+      },
+      "source_record": {
+        "source_id": "SRC_BUZZARDS_BAY_BOAT_SHOP_2026",
+        "title": "Buzzards Bay Boat Shop official website (Buzzards Bay 14 model specification page)",
+        "publisher": "Buzzards Bay Boat Shop",
+        "source_type": "manufacturer_official_website",
+        "url": "https://www.buzzardsbayboatshop.com/",
+        "document_identifier": "buzzardsbayboatshop.com;bb14boat.html",
+        "publication_date": null,
+        "accessed_at": "2026-08-28T13:21:17+00:00",
+        "notes": "Bounded manually curated discrete factual use only, scoped to this one fixed SLICE-0032 pilot BoatModel (Q104861437 Buzzards Bay 14) and the five existing Tier-1 dimension fields. Does not authorize automated/bulk extraction, systematic archive ingestion, or redistribution of source page material. See sr_6_6_condition_evaluation above for the evidence supporting each SR-6.6 condition.",
+        "rights": {
+          "assessment_status": "assessed",
+          "rights_basis": "unlicensed_factual_reference",
+          "rights_holder": "Buzzards Bay Boat Shop",
+          "license_expression": null,
+          "license_name": null,
+          "license_url": null,
+          "license_scope": [
+            "unknown"
+          ],
+          "access": {
+            "method": "public_web",
+            "public_access": true,
+            "automated_access": "unknown",
+            "terms_url": null,
+            "terms_reviewed_at": "2026-08-28",
+            "tdm_reservation": "none_observed",
+            "rate_limit_notes": "robots.txt returns HTTP 404 (no file present, so no crawl-delay or rate-limit directive exists); this bounded pass issued 4 sequential single-document GET requests with no concurrency and no bulk enumeration. automated_access is left 'unknown' because no explicit automated/bulk reuse permission exists beyond the absence of a robots.txt block, and public/crawlable accessibility alone is not a reuse grant."
+          },
+          "permissions": {
+            "commercial_use": "conditional",
+            "extract_facts": "allowed",
+            "normalize": "allowed",
+            "store_canonical_values": "conditional",
+            "bulk_ingest": "unknown",
+            "automated_extract": "unknown",
+            "redistribute_source_material": "prohibited",
+            "publish_derived_database": "conditional"
+          },
+          "obligations": {
+            "attribution_required": "unknown",
+            "share_alike": "not_applicable",
+            "notice_required": "unknown",
+            "attribution_instructions": null,
+            "other_conditions": [
+              "Bounded manually curated discrete factual use only -- not automated/bulk extraction or redistribution of source material.",
+              "No terms-of-use, privacy-policy or licence page exists anywhere on this four-page site; neither retrieved page carries a copyright notice.",
+              "Any later automated_ingestion, bulk_bootstrap, or artifact_redistribution use requires its own independent clearance and MUST NOT be inferred from this record.",
+              "permissions.commercial_use / store_canonical_values / publish_derived_database are deliberately left 'conditional' (never 'allowed') even though clearance.identity_seed / production_value read 'allowed': the clearance is scoped exactly to the structured bounded_scope block below, not to Buzzards Bay Boat Shop content in general."
+            ]
+          },
+          "clearance": {
+            "research_reference": "allowed",
+            "research_lead": "allowed",
+            "identity_seed": "allowed",
+            "production_value": "allowed",
+            "bulk_bootstrap": "legal_review_required",
+            "automated_ingestion": "unknown",
+            "artifact_redistribution": "legal_review_required"
+          },
+          "rights_evidence": [
+            {
+              "evidence_type": "other",
+              "url": "https://www.buzzardsbayboatshop.com/robots.txt",
+              "document_identifier": null,
+              "accessed_at": "2026-08-28T13:21:18+00:00",
+              "sha256": "9448f8a1159c9b14e3e1b9d8eab1a6ddf88d26e1f888a34cef430c756e4e6e1e",
+              "notes": "HTTP 404 -- no robots.txt file exists."
+            },
+            {
+              "evidence_type": "other",
+              "url": "https://www.buzzardsbayboatshop.com/",
+              "document_identifier": null,
+              "accessed_at": "2026-08-28T13:21:18+00:00",
+              "sha256": "7c86bedc064301e83e7adb6d97f66d9754d38cf70ca52b457431ac3d28b2a6be",
+              "notes": "No copyright/terms notice present; four-page site."
+            },
+            {
+              "evidence_type": "other",
+              "url": "https://www.buzzardsbayboatshop.com/bb14boat.html",
+              "document_identifier": null,
+              "accessed_at": "2026-08-28T13:21:17+00:00",
+              "sha256": "7b63c49fee300b194314d898b8a932928fcc34b5026681dc591f4ec3b26afeae",
+              "notes": "Official model specification page; discrete dimension/displacement facts extracted."
+            }
+          ],
+          "review": {
+            "reviewed_at": "2026-08-28",
+            "reviewer": "SLICE-0032 implementation agent (Claude, bounded manual primary-source pass; no independent legal review performed)",
+            "rationale": "All six SR-6.6 conditions are positively evidenced for the bounded manual identity_seed/production_value use actually performed (one fixed BoatModel, discrete facts only, provenance retained, no identified prohibition, non-bulk, human-directed retrieval). clearance.identity_seed and clearance.production_value are not independently asserted: they are mechanically derived from sr_6_6_condition_evaluation.conditions_satisfied_for_bounded_manual_use. automated_ingestion, bulk_bootstrap and artifact_redistribution are deliberately left non-allow because no independent evidence for those broader uses was sought or found.",
+            "next_review_at": null
+          }
+        }
+      },
+      "bounded_scope": {
+        "hullq_ids": [
+          "BM_WDT0_003ba28d4cd143d68c28e57899a3ed73"
+        ],
+        "qids": [
+          "Q104861437"
+        ],
+        "field_pointers": [
+          "/baseline/dimensions/loa_m",
+          "/baseline/dimensions/lwl_m",
+          "/baseline/dimensions/beam_m",
+          "/baseline/dimensions/draft_min_m",
+          "/baseline/dimensions/displacement_kg"
+        ],
+        "use_kinds": [
+          "identity_seed",
+          "production_value"
+        ],
+        "note": "The positive identity_seed/production_value clearance above applies ONLY to this exact BoatModel/QID and field pointers, for these two uses only."
+      },
+      "source_use_gate_decisions": {
+        "gate_module": "hullq.sources.rights.check_source_use",
+        "note": "Deterministic decisions recomputed by scripts/bootstrap/wikidata_sl0032_sequential_positive_control_pilot_runner.py --verify from the source_record above -- not hand-transcribed.",
+        "decisions": {
+          "research_reference": {
+            "outcome": "allowed"
+          },
+          "research_lead": {
+            "outcome": "allowed"
+          },
+          "identity_seed": {
+            "outcome": "allowed"
+          },
+          "production_value": {
+            "outcome": "allowed"
+          },
+          "bulk_bootstrap": {
+            "outcome": "legal_review_required"
+          },
+          "automated_ingestion": {
+            "outcome": "unknown_unassessed"
+          },
+          "artifact_redistribution": {
+            "outcome": "legal_review_required"
+          }
+        }
+      },
+      "candidate_source_clearance_result": "SOURCE_USE_CLEARED_FOR_APPLICABILITY_RESEARCH"
+    },
+    {
+      "candidate_rank": 2,
+      "qid": "Q104829866",
+      "hullq_id": "BM_WDT0_0040159e704c49d0a0b7bc7c6224ecfb",
+      "source_located": false,
+      "no_source_rationale": "Suspens was built 1979-1987 by Archambault Boats (Dange-Saint-Romain, France), which failed and entered judicial liquidation in 2015; its remaining assets/molds were acquired by BG Race solely to relaunch the unrelated Surprise model, and the live BG Race site carries zero Suspens/Archambault content (retrieval 6). The designer office, Joubert-Nivelt (dissolved 2016), has no resolving official domain (retrieval 5, DNS failure). No official one-design class association exists for Suspens (it is a production racer-cruiser, not a strict one-design). No source under any of the three fixed authoritative primary-source classes (builder/successor archive; designer/naval-architect office/estate; official class association) could be located within the bounded retrieval ceiling. There is therefore no source use to positively clear.",
+      "candidate_source_clearance_result": "RIGHTS_CLEARANCE_BLOCKED"
+    },
+    {
+      "candidate_rank": 3,
+      "qid": "Q60521258",
+      "hullq_id": "BM_WDT0_00f6a6f678474a14ab5ec1b078cf6d60",
+      "source_located": false,
+      "no_source_rationale": "Hunter 340 was built 1998-2001 by Hunter Marine (USA), acquired in 2012 by Marlow Yachts to form Marlow-Hunter LLC, which itself ceased production in spring 2025 and lost its domain in 2024; the official www.marlow-hunter.com URL now 301-redirects to an unrelated third-party restaurant website (retrieval 7). Hunter Marine's in-house design team is not an independent naval-architect office with a surviving official site. No official one-design class association exists for the Hunter 340 (a production cruiser, not a strict one-design). No source under any of the three fixed authoritative primary-source classes could be located within the bounded retrieval ceiling. There is therefore no source use to positively clear.",
+      "candidate_source_clearance_result": "RIGHTS_CLEARANCE_BLOCKED"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "schema_version": "sl0032-pilot-candidates-v1",
+  "generated_at": "2026-08-28T14:33:57.147541+00:00",
+  "source_pool": "research/stage3/sl0031-corrected-tier1-evidence-profile/positive_control_candidates.json",
+  "eligibility_rule": "within the fixed 1,770 canonical BoatModel boundary; satisfies corrected LOA + beam + (draft OR displacement); at least 4 of 5 fixed fields normalized; no retained disagreement/unsupported-coexistence diagnostic on the five fixed fields; not Q5051252 (Catalina 22) or Q5051253 (Catalina 30)",
+  "ranking_rule": "normalized_field_count descending; both draft and displacement normalized before only one of them; LWL normalized before LWL missing; canonical hullq_id ascending as the final stable tie-break",
+  "sequential_rule": "assess rank 1; only if rank 1 does not satisfy the fixed positive-control success rule, assess rank 2; only if ranks 1 and 2 do not satisfy it, assess rank 3; stop immediately once one candidate satisfies the positive-control success rule",
+  "max_candidates": 3,
+  "max_retrievals_per_candidate": 12,
+  "max_total_retrievals": 36,
+  "allowed_field_pointers": [
+    "/baseline/dimensions/beam_m",
+    "/baseline/dimensions/displacement_kg",
+    "/baseline/dimensions/draft_min_m",
+    "/baseline/dimensions/loa_m",
+    "/baseline/dimensions/lwl_m"
+  ],
+  "candidates": [
+    {
+      "rank": 1,
+      "qid": "Q104861437",
+      "hullq_id": "BM_WDT0_003ba28d4cd143d68c28e57899a3ed73",
+      "label": "Buzzards Bay 14"
+    },
+    {
+      "rank": 2,
+      "qid": "Q104829866",
+      "hullq_id": "BM_WDT0_0040159e704c49d0a0b7bc7c6224ecfb",
+      "label": "Suspens"
+    },
+    {
+      "rank": 3,
+      "qid": "Q60521258",
+      "hullq_id": "BM_WDT0_00f6a6f678474a14ab5ec1b078cf6d60",
+      "label": "Hunter 340"
+    }
+  ]
+}

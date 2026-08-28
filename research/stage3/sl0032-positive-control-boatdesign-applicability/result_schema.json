@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0032-result/v1",
+  "title": "HullQ SLICE-0032 Per-Candidate + Top-Level Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "candidates", "total_retrievals", "stop_on_first_positive_invariant", "top_level_result", "successful_rank"],
+  "properties": {
+    "schema_version": { "const": "sl0032-result-v1" },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "candidates": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["candidate_rank", "qid", "hullq_id", "result", "retrieval_count"],
+        "properties": {
+          "candidate_rank": { "type": "integer", "enum": [1, 2, 3] },
+          "qid": { "type": "string", "pattern": "^Q[0-9]+$" },
+          "hullq_id": { "type": "string", "minLength": 1 },
+          "result": {
+            "enum": [
+              "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT",
+              "RIGHTS_CLEARANCE_BLOCKED",
+              "APPLICABILITY_EVIDENCE_INSUFFICIENT",
+              "NOT_ATTEMPTED_AFTER_SUCCESS"
+            ]
+          },
+          "retrieval_count": { "type": "integer", "minimum": 0, "maximum": 12 }
+        }
+      }
+    },
+    "total_retrievals": { "type": "integer", "minimum": 0, "maximum": 36 },
+    "stop_on_first_positive_invariant": { "const": "PASS" },
+    "top_level_result": {
+      "enum": [
+        "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT",
+        "RIGHTS_CLEARANCE_BLOCKED",
+        "APPLICABILITY_EVIDENCE_INSUFFICIENT"
+      ]
+    },
+    "successful_rank": { "type": ["integer", "null"], "enum": [1, 2, 3, null] }
+  }
+}

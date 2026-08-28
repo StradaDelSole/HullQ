@@ -1,0 +1,31 @@
+{
+  "schema_version": "sl0032-result-v1",
+  "generated_at": "2026-08-28T14:33:57.147541+00:00",
+  "candidates": [
+    {
+      "candidate_rank": 1,
+      "qid": "Q104861437",
+      "hullq_id": "BM_WDT0_003ba28d4cd143d68c28e57899a3ed73",
+      "result": "APPLICABILITY_EVIDENCE_INSUFFICIENT",
+      "retrieval_count": 4
+    },
+    {
+      "candidate_rank": 2,
+      "qid": "Q104829866",
+      "hullq_id": "BM_WDT0_0040159e704c49d0a0b7bc7c6224ecfb",
+      "result": "RIGHTS_CLEARANCE_BLOCKED",
+      "retrieval_count": 2
+    },
+    {
+      "candidate_rank": 3,
+      "qid": "Q60521258",
+      "hullq_id": "BM_WDT0_00f6a6f678474a14ab5ec1b078cf6d60",
+      "result": "RIGHTS_CLEARANCE_BLOCKED",
+      "retrieval_count": 1
+    }
+  ],
+  "total_retrievals": 7,
+  "stop_on_first_positive_invariant": "PASS",
+  "top_level_result": "APPLICABILITY_EVIDENCE_INSUFFICIENT",
+  "successful_rank": null
+}

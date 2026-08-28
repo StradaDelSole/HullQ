@@ -1,0 +1,101 @@
+{
+  "schema_version": "sl0032-source-retrieval-log-v1",
+  "generated_at": "2026-08-28T14:33:57.147541+00:00",
+  "retrieval_ceiling_per_candidate": 12,
+  "retrieval_ceiling_total": 36,
+  "retrieval_count": 7,
+  "retrieval_method_note": "Bounded manual research pass: seven individually issued, human-directed HTTPS requests across the three fixed candidates, each inspected before the next was issued. No crawler, scraper, or unattended/looped retrieval was used. Research stopped after rank 1 (4 retrievals) did not reach READY, continued to rank 2 (2 retrievals, both establishing that no locatable authoritative primary source exists under the fixed source classes), and continued to rank 3 (1 retrieval, same outcome) because rank 2 also did not reach READY. No retrieval targets a source outside the fixed permitted classes for its candidate; SailboatData, Wikipedia, broker/dealer, forum, review, or archive-snapshot pages were used only as search-engine navigation leads, never as retained positive evidence.",
+  "retrievals": [
+    {
+      "retrieval_index": 1,
+      "candidate_rank": 1,
+      "url": "https://www.capecodshipbuilding.com/",
+      "source_surface_class": "official_current_model_and_navigation_page",
+      "accessed_at": "2026-08-28T13:21:19+00:00",
+      "retrieval_outcome": "fetched",
+      "http_status": 200,
+      "content_type": "text/html; charset=UTF-8",
+      "byte_size": 24865,
+      "sha256": "56d36d53c3ef63b2308a3786de12dc2e04e214b84db433d8d51df4c0f9de6ebb",
+      "fact_purpose": "Candidate authoritative-builder identity check: does Cape Cod Shipbuilding (a current wooden/fiberglass classic-daysailer builder) currently build the Buzzards Bay 14? Result: their fleet list (Mercury 15, Bull's Eye 15, Herreshoff H12 1/2, DaySailer 17, Rhodes 18, Goldeneye 18, Marlin Heritage 23, Raven 25, Shields 30, Atlantic 30, plus retired designs) does not include the Buzzards Bay 14 -- not the authoritative source for this design."
+    },
+    {
+      "retrieval_index": 2,
+      "candidate_rank": 1,
+      "url": "https://www.buzzardsbayboatshop.com/bb14boat.html",
+      "source_surface_class": "official_model_specification_page",
+      "accessed_at": "2026-08-28T13:21:17+00:00",
+      "retrieval_outcome": "fetched",
+      "http_status": 200,
+      "content_type": "text/html; charset=UTF-8",
+      "byte_size": 10534,
+      "sha256": "7b63c49fee300b194314d898b8a932928fcc34b5026681dc591f4ec3b26afeae",
+      "fact_purpose": "Official current builder's model specification page. Extracted discrete facts: Length overall 17' 9\"; Length at waterline 14' 1\"; Beam 5'10\"; Draft 2' 6\"; Draft ballast (standard, lead encapsulated) 900 lbs; Displacement 2000 lbs; construction is solid hand-laid fiberglass hull/bulkheads (mahogany/teak trim options); page states this is 'our fiberglass version of the original L. Francis Herreshoff's Buzzards Bay 14 footer' and that the builder 'keeps as close to his original design as possible' -- no production year range or hull-number range given."
+    },
+    {
+      "retrieval_index": 3,
+      "candidate_rank": 1,
+      "url": "https://www.buzzardsbayboatshop.com/",
+      "source_surface_class": "official_current_model_and_navigation_page",
+      "accessed_at": "2026-08-28T13:21:18+00:00",
+      "retrieval_outcome": "fetched",
+      "http_status": 200,
+      "content_type": "text/html; charset=UTF-8",
+      "byte_size": 7829,
+      "sha256": "7c86bedc064301e83e7adb6d97f66d9754d38cf70ca52b457431ac3d28b2a6be",
+      "fact_purpose": "Site home/navigation page: confirmed the site has exactly four pages (THE BOAT, PHOTO GALLERY, USED & BROKERAGE BOATS external link, CONTACT US) -- no history/generation/hull-number page exists on this official site. No copyright or terms notice of any kind appears on this page."
+    },
+    {
+      "retrieval_index": 4,
+      "candidate_rank": 1,
+      "url": "https://www.buzzardsbayboatshop.com/robots.txt",
+      "source_surface_class": "access_or_automation_policy",
+      "accessed_at": "2026-08-28T13:21:18+00:00",
+      "retrieval_outcome": "fetched",
+      "http_status": 404,
+      "content_type": "text/html; charset=iso-8859-1",
+      "byte_size": 236,
+      "sha256": "9448f8a1159c9b14e3e1b9d8eab1a6ddf88d26e1f888a34cef430c756e4e6e1e",
+      "fact_purpose": "Access/automation-policy check: no robots.txt file exists at all (HTTP 404) -- no crawl/automation restriction is declared by this site."
+    },
+    {
+      "retrieval_index": 5,
+      "candidate_rank": 2,
+      "url": "https://www.joubertnivelt-design.com/",
+      "source_surface_class": "official_current_model_and_navigation_page",
+      "accessed_at": "2026-08-28T13:35:20+00:00",
+      "retrieval_outcome": "dns_resolution_failed",
+      "http_status": null,
+      "content_type": null,
+      "byte_size": null,
+      "sha256": null,
+      "fact_purpose": "Candidate designer-office identity check: Suspens was designed by the Joubert-Nivelt naval architecture office (dissolved 2016). Its reported official domain does not resolve (DNS failure) -- no live official designer-office archive exists for this source class."
+    },
+    {
+      "retrieval_index": 6,
+      "candidate_rank": 2,
+      "url": "https://www.bgrace.fr/",
+      "source_surface_class": "official_current_model_and_navigation_page",
+      "accessed_at": "2026-08-28T13:35:22+00:00",
+      "retrieval_outcome": "fetched",
+      "http_status": 200,
+      "content_type": "text/html; charset=UTF-8",
+      "byte_size": 130746,
+      "sha256": "0242758ed5c9cd5d4f1071ac93d9da97bce20d144c6491486b148719924baca7",
+      "fact_purpose": "Candidate official-successor-archive identity check: BG Race (Saint-Malo) acquired Archambault Boats' remaining assets/molds in 2015 to relaunch the Surprise model. The live bgrace.fr site content contains zero occurrences of 'Archambault' or 'Suspens' and is now an unrelated inflatable-boats/kayaks retail blog -- not an authoritative Suspens archive."
+    },
+    {
+      "retrieval_index": 7,
+      "candidate_rank": 3,
+      "url": "https://www.marlow-hunter.com/",
+      "source_surface_class": "official_current_model_and_navigation_page",
+      "accessed_at": "2026-08-28T13:35:25+00:00",
+      "retrieval_outcome": "fetched",
+      "http_status": 200,
+      "content_type": "text/html",
+      "byte_size": 256335,
+      "sha256": "ea63cde877a3eb45c6caf1dd9714941d256a38037a51d58c657c09cee7f8052d",
+      "fact_purpose": "Candidate official successor-builder identity check: Hunter Marine (builder of the Hunter 340, 1998-2001) was acquired by Marlow Yachts in 2012, forming Marlow-Hunter LLC, which itself ceased production in spring 2025 and lost its domain in 2024. The official www.marlow-hunter.com URL now 301-redirects to an unrelated third-party restaurant website (domain expired/repurposed) -- no live official successor archive exists for this source class."
+    }
+  ]
+}
