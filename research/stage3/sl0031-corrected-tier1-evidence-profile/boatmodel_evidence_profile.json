@@ -1,6 +1,6 @@
 {
   "schema_version": "sl0031-boatmodel-evidence-profile-v1",
-  "generated_at": "2026-08-28T08:11:40.928631+00:00",
+  "generated_at": "2026-08-28T09:27:18.431775+00:00",
   "boat_model_count": 1770,
   "note": "One row per canonical BoatModel over the fixed accepted 1,770-BoatModel boundary. coverage_bucket is one of the four accepted mutually exclusive per-field evidence states (normalized_candidate_present / source_statement_present / unsupported_or_malformed / no_usable_value), aggregated over every accepted QID mapped to that BoatModel via strongest-available-evidence precedence (sl0028.summarize_boat_model_field_coverage), never a canonical value choice. precursor_satisfied is the corrected/current LOA + beam + (draft OR displacement) condition. has_disagreement_diagnostic is true iff this BoatModel has at least one retained SLICE-0028/0030-style disagreement/unsupported-coexistence diagnostic (sl0028.compute_boat_model_field_disagreements) on any of the five fixed fields under the corrected/current evidence path. No canonical technical value or FieldResolution is asserted anywhere in this document.",
   "boat_models": [

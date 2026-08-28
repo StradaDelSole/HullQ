@@ -528,15 +528,25 @@ POSITIVE_CONTROL_CANDIDATES_SCHEMA_VERSION = "sl0031-positive-control-candidates
 
 
 def build_positive_control_candidates_document(
-    *,
-    generated_at: str,
-    rows: Sequence[BoatModelEvidenceProfileRow],
-    limit: int = CANDIDATE_POOL_LIMIT,
+    *, generated_at: str, rows: Sequence[BoatModelEvidenceProfileRow]
 ) -> dict[str, Any]:
-    """Assemble the retained ``positive_control_candidates.json`` document."""
+    """Assemble the retained ``positive_control_candidates.json`` document.
+
+    The retained artifact contract is deliberately NOT parameterizable:
+    ``candidate_pool_limit`` is always the fixed ``CANDIDATE_POOL_LIMIT``
+    (20), never an argument, so a caller cannot construct (and no tampered
+    retained document can be mistaken for) a document built against a
+    different limit. ``pool_result`` is derived from whether the full
+    *eligible* set (``eligible_rows``, before truncation) is non-empty --
+    never from ``candidate_pool_limit`` or the truncated ``candidates`` list,
+    both of which a tampered document could otherwise set to zero/empty
+    (e.g. limit=0) to flip the result independently of the real eligible
+    set (controlling slice fail-closed requirement, SLICE-0031 review
+    amendment).
+    """
     eligible_rows = eligible_positive_control_rows(rows)
-    candidates = rank_positive_control_candidates(eligible_rows, limit=limit)
-    pool_result = "POSITIVE_CONTROL_POOL_AVAILABLE" if candidates else "NO_POSITIVE_CONTROL_POOL"
+    candidates = rank_positive_control_candidates(eligible_rows, limit=CANDIDATE_POOL_LIMIT)
+    pool_result = "POSITIVE_CONTROL_POOL_AVAILABLE" if eligible_rows else "NO_POSITIVE_CONTROL_POOL"
     return {
         "schema_version": POSITIVE_CONTROL_CANDIDATES_SCHEMA_VERSION,
         "generated_at": generated_at,
@@ -553,7 +563,7 @@ def build_positive_control_candidates_document(
         ),
         "excluded_negative_control_qids": sorted(EXCLUDED_NEGATIVE_CONTROL_QIDS),
         "eligible_candidate_count": len(eligible_rows),
-        "candidate_pool_limit": limit,
+        "candidate_pool_limit": CANDIDATE_POOL_LIMIT,
         "candidate_pool_size": len(candidates),
         "pool_result": pool_result,
         "non_canonical_disclaimer": (
@@ -583,20 +593,27 @@ def verify_positive_control_candidates_self_consistency(
     document: Mapping[str, Any],
 ) -> list[str]:
     """Independently rebuild the expected candidate-pool document purely from
-    *rows* and compare against a retained ``positive_control_candidates.json``
-    document."""
-    limit = document.get("candidate_pool_limit", CANDIDATE_POOL_LIMIT)
-    if not isinstance(limit, int):
-        return ["retained positive_control_candidates.candidate_pool_limit is not an integer"]
+    *rows*, using the fixed non-parameterizable ``CANDIDATE_POOL_LIMIT`` --
+    NEVER the retained document's own ``candidate_pool_limit``, which is
+    untrusted input a tampered document fully controls -- and compare against
+    a retained ``positive_control_candidates.json`` document.
+    """
+    problems: list[str] = []
+    retained_limit = document.get("candidate_pool_limit")
+    if retained_limit != CANDIDATE_POOL_LIMIT:
+        problems.append(
+            f"retained positive_control_candidates.candidate_pool_limit={retained_limit!r} != "
+            f"the fixed non-parameterizable SLICE-0031 limit {CANDIDATE_POOL_LIMIT}"
+        )
     expected = build_positive_control_candidates_document(
-        generated_at=str(document.get("generated_at", "")), rows=rows, limit=limit
+        generated_at=str(document.get("generated_at", "")), rows=rows
     )
     if dict(document) != expected:
-        return [
+        problems.append(
             "retained positive_control_candidates.json != independently rebuilt candidate pool "
-            "from the fixed corrected evidence profile"
-        ]
-    return []
+            "from the fixed corrected evidence profile using the fixed CANDIDATE_POOL_LIMIT"
+        )
+    return problems
 
 
 # ---------------------------------------------------------------------------
