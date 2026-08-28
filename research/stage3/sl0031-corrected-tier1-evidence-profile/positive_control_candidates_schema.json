@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0031-positive-control-candidates/v1",
+  "title": "HullQ SLICE-0031 Positive-Control Candidate Pool",
+  "description": "A deterministic ranked pool of at most 20 already-canonical BoatModels for a later, separately readied BoatDesign/applicability positive-control pilot. Retention here is not authorization to research all listed candidates externally and does not establish a BoatDesign generation boundary, cleared primary source, or promotable canonical value for any listed BoatModel.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "eligibility_rule",
+    "ranking_rule",
+    "excluded_negative_control_qids",
+    "eligible_candidate_count",
+    "candidate_pool_limit",
+    "candidate_pool_size",
+    "pool_result",
+    "non_canonical_disclaimer",
+    "candidates"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0031-positive-control-candidates-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "eligibility_rule": { "type": "string", "minLength": 1 },
+    "ranking_rule": { "type": "string", "minLength": 1 },
+    "excluded_negative_control_qids": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^Q[0-9]+$" }
+    },
+    "eligible_candidate_count": { "type": "integer", "minimum": 0 },
+    "candidate_pool_limit": { "type": "integer", "minimum": 0 },
+    "candidate_pool_size": { "type": "integer", "minimum": 0 },
+    "pool_result": {
+      "enum": ["POSITIVE_CONTROL_POOL_AVAILABLE", "NO_POSITIVE_CONTROL_POOL"]
+    },
+    "non_canonical_disclaimer": { "type": "string", "minLength": 1 },
+    "candidates": {
+      "type": "array",
+      "maxItems": 20,
+      "items": { "$ref": "#/$defs/candidate" }
+    }
+  },
+  "$defs": {
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rank",
+        "hullq_id",
+        "qids",
+        "normalized_field_count",
+        "draft_and_displacement_present",
+        "lwl_present"
+      ],
+      "properties": {
+        "rank": { "type": "integer", "minimum": 1 },
+        "hullq_id": { "type": "string", "minLength": 1 },
+        "qids": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^Q[0-9]+$" }
+        },
+        "normalized_field_count": { "type": "integer", "minimum": 4, "maximum": 5 },
+        "draft_and_displacement_present": { "type": "boolean" },
+        "lwl_present": { "type": "boolean" }
+      }
+    }
+  }
+}

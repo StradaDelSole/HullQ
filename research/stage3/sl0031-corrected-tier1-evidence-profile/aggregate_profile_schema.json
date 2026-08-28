@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0031-aggregate-profile/v1",
+  "title": "HullQ SLICE-0031 Aggregate Corrected Tier-1 Evidence Measurements",
+  "description": "Aggregate, non-canonical source-evidence measurements over the fixed accepted 1,770-BoatModel boundary: per-field corrected coverage, normalized-field-count distribution, predecessor/corrected basic_searchable_evidence_precursor counts and overlap decomposition, and strong technical-evidence subset counts. NOT CAL-01 D2 basic-searchable coverage and NOT a launch-readiness metric.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "non_canonical_disclaimer",
+    "boat_model_count",
+    "per_field_corrected_coverage",
+    "normalized_field_count_distribution",
+    "cumulative",
+    "predecessor_precursor",
+    "corrected_precursor",
+    "precursor_delta",
+    "precursor_overlap_decomposition",
+    "strong_evidence_subsets"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0031-aggregate-profile-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "non_canonical_disclaimer": { "type": "string", "minLength": 1 },
+    "boat_model_count": { "type": "integer", "minimum": 0 },
+    "per_field_corrected_coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["loa", "lwl", "beam", "draft", "displacement"],
+      "properties": {
+        "loa": { "$ref": "#/$defs/coverage_bucket_counts" },
+        "lwl": { "$ref": "#/$defs/coverage_bucket_counts" },
+        "beam": { "$ref": "#/$defs/coverage_bucket_counts" },
+        "draft": { "$ref": "#/$defs/coverage_bucket_counts" },
+        "displacement": { "$ref": "#/$defs/coverage_bucket_counts" }
+      }
+    },
+    "normalized_field_count_distribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["0", "1", "2", "3", "4", "5"],
+      "properties": {
+        "0": { "type": "integer", "minimum": 0 },
+        "1": { "type": "integer", "minimum": 0 },
+        "2": { "type": "integer", "minimum": 0 },
+        "3": { "type": "integer", "minimum": 0 },
+        "4": { "type": "integer", "minimum": 0 },
+        "5": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "cumulative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gte_3", "gte_4", "all_5"],
+      "properties": {
+        "gte_3": { "type": "integer", "minimum": 0 },
+        "gte_4": { "type": "integer", "minimum": 0 },
+        "all_5": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "predecessor_precursor": { "$ref": "#/$defs/precursor_measurement" },
+    "corrected_precursor": { "$ref": "#/$defs/precursor_measurement" },
+    "precursor_delta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["absolute", "percentage_points"],
+      "properties": {
+        "absolute": { "type": "integer" },
+        "percentage_points": { "type": "number" }
+      }
+    },
+    "precursor_overlap_decomposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["draft_only", "displacement_only", "both"],
+      "properties": {
+        "draft_only": { "type": "integer", "minimum": 0 },
+        "displacement_only": { "type": "integer", "minimum": 0 },
+        "both": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "strong_evidence_subsets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "loa_beam_draft_displacement",
+        "loa_lwl_beam_draft_or_displacement",
+        "all_five_fields",
+        "gte4_normalized_no_disagreement"
+      ],
+      "properties": {
+        "loa_beam_draft_displacement": { "type": "integer", "minimum": 0 },
+        "loa_lwl_beam_draft_or_displacement": { "type": "integer", "minimum": 0 },
+        "all_five_fields": { "type": "integer", "minimum": 0 },
+        "gte4_normalized_no_disagreement": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "$defs": {
+    "coverage_bucket_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "normalized_candidate_present",
+        "source_statement_present",
+        "unsupported_or_malformed",
+        "no_usable_value"
+      ],
+      "properties": {
+        "normalized_candidate_present": { "type": "integer", "minimum": 0 },
+        "source_statement_present": { "type": "integer", "minimum": 0 },
+        "unsupported_or_malformed": { "type": "integer", "minimum": 0 },
+        "no_usable_value": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "precursor_measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "boat_model_count", "percentage"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "boat_model_count": { "type": "integer", "minimum": 0 },
+        "percentage": { "type": "number", "minimum": 0, "maximum": 100 }
+      }
+    }
+  }
+}

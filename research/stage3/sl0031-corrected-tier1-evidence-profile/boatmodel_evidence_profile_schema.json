@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0031-boatmodel-evidence-profile/v1",
+  "title": "HullQ SLICE-0031 Per-BoatModel Corrected Tier-1 Evidence Profile",
+  "description": "One deterministic evidence-profile row per canonical BoatModel over the fixed accepted 1,770-BoatModel boundary, under the corrected/current SLICE-0030 mass-unit evidence path. A source-evidence classification only -- never a canonical technical value or FieldResolution.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "boat_model_count", "note", "boat_models"],
+  "properties": {
+    "schema_version": { "const": "sl0031-boatmodel-evidence-profile-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "boat_model_count": { "type": "integer", "minimum": 0 },
+    "note": { "type": "string", "minLength": 1 },
+    "boat_models": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/boat_model_row" }
+    }
+  },
+  "$defs": {
+    "field_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["coverage_bucket", "normalized_candidate_present"],
+      "properties": {
+        "coverage_bucket": {
+          "enum": [
+            "normalized_candidate_present",
+            "source_statement_present",
+            "unsupported_or_malformed",
+            "no_usable_value"
+          ]
+        },
+        "normalized_candidate_present": { "type": "boolean" }
+      }
+    },
+    "boat_model_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hullq_id",
+        "qids",
+        "fields",
+        "normalized_field_count",
+        "precursor_satisfied",
+        "draft_and_displacement_present",
+        "has_disagreement_diagnostic"
+      ],
+      "properties": {
+        "hullq_id": { "type": "string", "minLength": 1 },
+        "qids": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^Q[0-9]+$" }
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["loa", "lwl", "beam", "draft", "displacement"],
+          "properties": {
+            "loa": { "$ref": "#/$defs/field_profile" },
+            "lwl": { "$ref": "#/$defs/field_profile" },
+            "beam": { "$ref": "#/$defs/field_profile" },
+            "draft": { "$ref": "#/$defs/field_profile" },
+            "displacement": { "$ref": "#/$defs/field_profile" }
+          }
+        },
+        "normalized_field_count": { "type": "integer", "minimum": 0, "maximum": 5 },
+        "precursor_satisfied": { "type": "boolean" },
+        "draft_and_displacement_present": { "type": "boolean" },
+        "has_disagreement_diagnostic": { "type": "boolean" }
+      }
+    }
+  }
+}

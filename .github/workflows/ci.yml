@@ -422,6 +422,10 @@ jobs:
           assert result['clear'] is True, 'SLICE-0030 persistence proof did not clear'
           "
 
+      - name: Offline-verify SLICE-0031 retained corrected Tier-1 evidence profile and positive-control candidates reproduce deterministically (no network)
+        run: >
+          uv run python scripts/bootstrap/wikidata_sl0031_corrected_tier1_evidence_profile_runner.py --verify
+
   dependency-audit:
     name: dependency audit
     runs-on: ubuntu-latest
