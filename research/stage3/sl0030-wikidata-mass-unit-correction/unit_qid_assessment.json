@@ -1,0 +1,198 @@
+{
+  "schema_version": "sl0030-unit-qid-assessment-v1",
+  "generated_at": "2026-08-27T23:46:35.179277+00:00",
+  "source_id": "SRC_WIKIDATA_API_2026",
+  "note": "One row per fixed SLICE-0030 unit QID (FIXED_UNIT_QIDS): a bounded, rights-gated wbgetentities identity check (label/description/P31 instance-of only — no broader boat-technical field is collected), combined with a deterministic count of P2067 mass statements in the fixed accepted SLICE-0028 retained raw claims whose unit resolves to this QID. classification is one of: correct_existing_mapping (Q11570/kilogram, unchanged since SLICE-0008), corrected_positively_verified_mapping (Q41803/Q191118/Q100995, newly recognized by the SLICE-0030 default map), incorrect_legacy_mapping (Q12152/Q11369/Q37795, recognized by the pre-SLICE-0030 default map but never the intended physical unit and never observed as a real unit reference in the fixed retained evidence). Fail-closed identity criterion (independent-review requirement): verified_is_unit_of_mass is true iff verified_instance_of_qids contains verified_unit_of_mass_instance_qid (Q3647172, Wikidata 'unit of mass') — a structural P31 check, not the label alone. validate_unit_qid_snapshots raises UnitIdentityValidationError before this document is built if any QID's expected classification (correct/corrected_positively_verified vs incorrect_legacy) disagrees with its verified_is_unit_of_mass value; this document could not have been produced or replayed if that check failed.",
+  "assessed_units": [
+    {
+      "qid": "Q100995",
+      "wikidata_entity_locator": "https://www.wikidata.org/entity/Q100995",
+      "intended_hullq_unit": "MassUnit.POUND",
+      "classification": "corrected_positively_verified_mapping",
+      "verified_label_en": "pound",
+      "verified_description_en": null,
+      "verified_instance_of_qids": [
+        "Q3647172",
+        "Q82047057"
+      ],
+      "verified_unit_of_mass_instance_qid": "Q3647172",
+      "verified_is_unit_of_mass": true,
+      "verification_retrieved_at": "2026-08-27T23:46:32.830646+00:00",
+      "occurs_in_sl0028_retained_raw_claims": true,
+      "observed_retained_statement_count": 794
+    },
+    {
+      "qid": "Q11369",
+      "wikidata_entity_locator": "https://www.wikidata.org/entity/Q11369",
+      "intended_hullq_unit": null,
+      "classification": "incorrect_legacy_mapping",
+      "verified_label_en": "molecule",
+      "verified_description_en": null,
+      "verified_instance_of_qids": [
+        "Q72070508"
+      ],
+      "verified_unit_of_mass_instance_qid": "Q3647172",
+      "verified_is_unit_of_mass": false,
+      "verification_retrieved_at": "2026-08-27T23:46:32.830646+00:00",
+      "occurs_in_sl0028_retained_raw_claims": false,
+      "observed_retained_statement_count": 0
+    },
+    {
+      "qid": "Q11570",
+      "wikidata_entity_locator": "https://www.wikidata.org/entity/Q11570",
+      "intended_hullq_unit": "MassUnit.KILOGRAM",
+      "classification": "correct_existing_mapping",
+      "verified_label_en": "kilogram",
+      "verified_description_en": null,
+      "verified_instance_of_qids": [
+        "Q223662",
+        "Q3647172",
+        "Q69197847"
+      ],
+      "verified_unit_of_mass_instance_qid": "Q3647172",
+      "verified_is_unit_of_mass": true,
+      "verification_retrieved_at": "2026-08-27T23:46:32.830646+00:00",
+      "occurs_in_sl0028_retained_raw_claims": true,
+      "observed_retained_statement_count": 224
+    },
+    {
+      "qid": "Q12152",
+      "wikidata_entity_locator": "https://www.wikidata.org/entity/Q12152",
+      "intended_hullq_unit": null,
+      "classification": "incorrect_legacy_mapping",
+      "verified_label_en": "myocardial infarction",
+      "verified_description_en": null,
+      "verified_instance_of_qids": [
+        "Q1931388",
+        "Q112193867",
+        "Q112965645"
+      ],
+      "verified_unit_of_mass_instance_qid": "Q3647172",
+      "verified_is_unit_of_mass": false,
+      "verification_retrieved_at": "2026-08-27T23:46:32.830646+00:00",
+      "occurs_in_sl0028_retained_raw_claims": false,
+      "observed_retained_statement_count": 0
+    },
+    {
+      "qid": "Q191118",
+      "wikidata_entity_locator": "https://www.wikidata.org/entity/Q191118",
+      "intended_hullq_unit": "MassUnit.METRIC_TONNE",
+      "classification": "corrected_positively_verified_mapping",
+      "verified_label_en": "tonne",
+      "verified_description_en": null,
+      "verified_instance_of_qids": [
+        "Q3647172",
+        "Q106839753",
+        "Q82047057",
+        "Q3268848"
+      ],
+      "verified_unit_of_mass_instance_qid": "Q3647172",
+      "verified_is_unit_of_mass": true,
+      "verification_retrieved_at": "2026-08-27T23:46:32.830646+00:00",
+      "occurs_in_sl0028_retained_raw_claims": true,
+      "observed_retained_statement_count": 1
+    },
+    {
+      "qid": "Q37795",
+      "wikidata_entity_locator": "https://www.wikidata.org/entity/Q37795",
+      "intended_hullq_unit": null,
+      "classification": "incorrect_legacy_mapping",
+      "verified_label_en": "Romanian Raven Shepherd Dog",
+      "verified_description_en": null,
+      "verified_instance_of_qids": [
+        "Q39367"
+      ],
+      "verified_unit_of_mass_instance_qid": "Q3647172",
+      "verified_is_unit_of_mass": false,
+      "verification_retrieved_at": "2026-08-27T23:46:32.830646+00:00",
+      "occurs_in_sl0028_retained_raw_claims": false,
+      "observed_retained_statement_count": 0
+    },
+    {
+      "qid": "Q41803",
+      "wikidata_entity_locator": "https://www.wikidata.org/entity/Q41803",
+      "intended_hullq_unit": "MassUnit.GRAM",
+      "classification": "corrected_positively_verified_mapping",
+      "verified_label_en": "gram",
+      "verified_description_en": null,
+      "verified_instance_of_qids": [
+        "Q3647172",
+        "Q208469",
+        "Q82047053"
+      ],
+      "verified_unit_of_mass_instance_qid": "Q3647172",
+      "verified_is_unit_of_mass": true,
+      "verification_retrieved_at": "2026-08-27T23:46:32.830646+00:00",
+      "occurs_in_sl0028_retained_raw_claims": false,
+      "observed_retained_statement_count": 0
+    }
+  ],
+  "raw_entity_snapshots": [
+    {
+      "qid": "Q100995",
+      "label": "pound",
+      "description_en": null,
+      "p31_qids": [
+        "Q3647172",
+        "Q82047057"
+      ]
+    },
+    {
+      "qid": "Q11369",
+      "label": "molecule",
+      "description_en": null,
+      "p31_qids": [
+        "Q72070508"
+      ]
+    },
+    {
+      "qid": "Q11570",
+      "label": "kilogram",
+      "description_en": null,
+      "p31_qids": [
+        "Q223662",
+        "Q3647172",
+        "Q69197847"
+      ]
+    },
+    {
+      "qid": "Q12152",
+      "label": "myocardial infarction",
+      "description_en": null,
+      "p31_qids": [
+        "Q1931388",
+        "Q112193867",
+        "Q112965645"
+      ]
+    },
+    {
+      "qid": "Q191118",
+      "label": "tonne",
+      "description_en": null,
+      "p31_qids": [
+        "Q3647172",
+        "Q106839753",
+        "Q82047057",
+        "Q3268848"
+      ]
+    },
+    {
+      "qid": "Q37795",
+      "label": "Romanian Raven Shepherd Dog",
+      "description_en": null,
+      "p31_qids": [
+        "Q39367"
+      ]
+    },
+    {
+      "qid": "Q41803",
+      "label": "gram",
+      "description_en": null,
+      "p31_qids": [
+        "Q3647172",
+        "Q208469",
+        "Q82047053"
+      ]
+    }
+  ]
+}

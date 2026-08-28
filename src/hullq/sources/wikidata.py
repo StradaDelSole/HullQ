@@ -25,7 +25,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -69,10 +69,14 @@ __all__ = [
     "BOOTSTRAP_SPARQL_ENDPOINT",
     "BOOTSTRAP_SPARQL_QUERY_VERSION",
     "DEFAULT_QUALIFIER_CARRIER_VERSION",
+    "DEFAULT_UNIT_QID_MAP_VERSION",
     "QUALIFIER_CARRIERS_BY_VERSION",
     "QUALIFIER_CARRIER_VERSION_SLICE0008",
     "QUALIFIER_CARRIER_VERSION_SLICE0027",
     "SLICE_0008_ITEM_CEILING",
+    "UNIT_QID_MAPS_BY_VERSION",
+    "UNIT_QID_MAP_VERSION_SLICE0008",
+    "UNIT_QID_MAP_VERSION_SLICE0030",
     "WIKIDATA_BOOTSTRAP_SAFETY_CEILING",
     "WIKIDATA_SOURCE_ID",
     "SampledEntityDetail",
@@ -262,17 +266,64 @@ QUALIFIER_CARRIERS_BY_VERSION: dict[str, dict[str, tuple[tuple[str, dict[str, st
 # Wikidata unit QID → (Quantity, Unit) mapping
 # Only confirmed, common unit QIDs. Unknown units produce no normalized
 # candidate; raw quantity/unit are always preserved separately.
+#
+# SLICE-0030: the mass-unit entries are versioned analogously to
+# QUALIFIER_CARRIERS_BY_VERSION above. Independent readiness review found
+# that the SLICE-0008-through-SLICE-0029 mass-unit QIDs did not identify the
+# intended physical units at all (Q12152 = myocardial infarction, Q11369 =
+# molecule, Q37795 = Romanian Raven Shepherd Dog — see
+# research/stage3/sl0030-wikidata-mass-unit-correction/unit_qid_assessment.json
+# for the positively-verified evidence). No real Wikidata mass statement in
+# any accepted retained package actually used these QIDs as a unit, so this
+# was a latent (dead-on-real-data) defect rather than a live
+# misclassification, but the map itself was still wrong and must not remain
+# the default for new/current extraction. UNIT_QID_MAP_VERSION_SLICE0008 is
+# preserved unchanged so accepted SLICE-0026/0027/0028 retained-package
+# offline verifiers keep reproducing precisely the extraction behavior they
+# originally captured; UNIT_QID_MAP_VERSION_SLICE0030 (the corrected map) is
+# the default for all other callers.
 # ---------------------------------------------------------------------------
 
-_UNIT_QID_MAP: dict[str, tuple[Quantity, Unit]] = {
+_LENGTH_UNIT_ENTRIES: dict[str, tuple[Quantity, Unit]] = {
     "Q11573": (Quantity.LENGTH, LengthUnit.METRE),
     "Q174728": (Quantity.LENGTH, LengthUnit.CENTIMETRE),
     "Q3710": (Quantity.LENGTH, LengthUnit.FOOT),
     "Q218593": (Quantity.LENGTH, LengthUnit.INCH),
+}
+
+# Legacy SLICE-0008 mass-unit map — retained ONLY for historical replay.
+# Q11570 (kilogram) was always correct; Q12152/Q11369/Q37795 were not the
+# intended units at all (see module-level note above).
+_MASS_UNIT_ENTRIES_SLICE0008: dict[str, tuple[Quantity, Unit]] = {
     "Q11570": (Quantity.MASS, MassUnit.KILOGRAM),
     "Q12152": (Quantity.MASS, MassUnit.GRAM),
     "Q11369": (Quantity.MASS, MassUnit.METRIC_TONNE),
     "Q37795": (Quantity.MASS, MassUnit.POUND),
+}
+
+# SLICE-0030 corrected mass-unit map — the default for all new/current
+# extraction. Q41803 = gram, Q191118 = tonne/metric tonne, Q100995 = pound
+# (avoirdupois pound); Q11570 = kilogram is unchanged.
+_MASS_UNIT_ENTRIES_SLICE0030: dict[str, tuple[Quantity, Unit]] = {
+    "Q11570": (Quantity.MASS, MassUnit.KILOGRAM),
+    "Q41803": (Quantity.MASS, MassUnit.GRAM),
+    "Q191118": (Quantity.MASS, MassUnit.METRIC_TONNE),
+    "Q100995": (Quantity.MASS, MassUnit.POUND),
+}
+
+UNIT_QID_MAP_VERSION_SLICE0008 = "SLICE-0008-v1"
+UNIT_QID_MAP_VERSION_SLICE0030 = "SLICE-0030-v1"
+DEFAULT_UNIT_QID_MAP_VERSION = UNIT_QID_MAP_VERSION_SLICE0030
+
+UNIT_QID_MAPS_BY_VERSION: dict[str, dict[str, tuple[Quantity, Unit]]] = {
+    UNIT_QID_MAP_VERSION_SLICE0008: {
+        **_LENGTH_UNIT_ENTRIES,
+        **_MASS_UNIT_ENTRIES_SLICE0008,
+    },
+    UNIT_QID_MAP_VERSION_SLICE0030: {
+        **_LENGTH_UNIT_ENTRIES,
+        **_MASS_UNIT_ENTRIES_SLICE0030,
+    },
 }
 
 # ---------------------------------------------------------------------------
@@ -681,6 +732,7 @@ def _build_quantity_evidence(
     retrieved_at: str,
     index: int,
     *,
+    unit_map: Mapping[str, tuple[Quantity, Unit]],
     qualifier_property: str | None = None,
     qualifier_qid: str | None = None,
     expected_quantity: Quantity | None = None,
@@ -737,8 +789,8 @@ def _build_quantity_evidence(
     # the wrong dimension (e.g., kg on a length field) is NOT normalized —
     # only the raw observation is preserved in that case.
     normalized: NormalizedCandidate | None = None
-    if unit_qid and unit_qid in _UNIT_QID_MAP:
-        qty, unit_enum = _UNIT_QID_MAP[unit_qid]
+    if unit_qid and unit_qid in unit_map:
+        qty, unit_enum = unit_map[unit_qid]
         dimension_ok = expected_quantity is None or qty == expected_quantity
         if dimension_ok:
             try:
@@ -1399,6 +1451,7 @@ class WikidataAdapter:
         *,
         requested_qid_count: int,
         qualifier_carrier_version: str = DEFAULT_QUALIFIER_CARRIER_VERSION,
+        unit_map_version: str = DEFAULT_UNIT_QID_MAP_VERSION,
     ) -> tuple[list[FieldEvidence], WikidataQualityReport]:
         """Extract FieldEvidence candidates from acquired entities.
 
@@ -1417,15 +1470,25 @@ class WikidataAdapter:
         SLICE-0026 offline verifier) pass
         ``QUALIFIER_CARRIER_VERSION_SLICE0008`` explicitly.
 
+        ``unit_map_version`` selects which entry of ``UNIT_QID_MAPS_BY_VERSION``
+        governs Wikidata unit-QID -> HullQ-unit identity (see that constant's
+        docstring). Defaults to the SLICE-0030 corrected mass-unit map.
+        Callers that must reproduce exactly the extraction behavior captured
+        by an earlier accepted retained package (SLICE-0026/0027/0028 offline
+        verifiers) pass ``UNIT_QID_MAP_VERSION_SLICE0008`` explicitly.
+
         No canonical FieldResolution or BoatDesign write is performed.
         SLICE-0004 normalization is reused for recognised quantity units.
         Statements with absent or unsupported qualifiers are routed to the
         unsupported count rather than guessed.
         """
         state = _ExtractionState()
+        unit_map = UNIT_QID_MAPS_BY_VERSION[unit_map_version]
 
         for entity in entities:
-            self._extract_entity_evidence(entity, retrieved_at, state, qualifier_carrier_version)
+            self._extract_entity_evidence(
+                entity, retrieved_at, state, qualifier_carrier_version, unit_map=unit_map
+            )
 
         report = WikidataQualityReport(
             source_id=WIKIDATA_SOURCE_ID,
@@ -1445,6 +1508,8 @@ class WikidataAdapter:
         retrieved_at: str,
         state: _ExtractionState,
         qualifier_carrier_version: str = DEFAULT_QUALIFIER_CARRIER_VERSION,
+        *,
+        unit_map: Mapping[str, tuple[Quantity, Unit]],
     ) -> None:
         qid = entity.qid
         claims = entity.raw_claims
@@ -1479,6 +1544,7 @@ class WikidataAdapter:
             _carriers_for(_PROP_LENGTH, qualifier_carrier_version),
             retrieved_at,
             state,
+            unit_map=unit_map,
             expected_quantity=Quantity.LENGTH,
         )
 
@@ -1491,6 +1557,7 @@ class WikidataAdapter:
             "beam",
             retrieved_at,
             state,
+            unit_map=unit_map,
             expected_quantity=Quantity.LENGTH,
         )
 
@@ -1502,6 +1569,7 @@ class WikidataAdapter:
             _carriers_for(_PROP_HEIGHT, qualifier_carrier_version),
             retrieved_at,
             state,
+            unit_map=unit_map,
             expected_quantity=Quantity.LENGTH,
         )
 
@@ -1513,6 +1581,7 @@ class WikidataAdapter:
             _carriers_for(_PROP_MASS, qualifier_carrier_version),
             retrieved_at,
             state,
+            unit_map=unit_map,
             expected_quantity=Quantity.MASS,
         )
 
@@ -1525,6 +1594,7 @@ class WikidataAdapter:
             "total_produced",
             retrieved_at,
             state,
+            unit_map=unit_map,
         )
 
     def _process_entity_refs(
@@ -1567,6 +1637,7 @@ class WikidataAdapter:
         retrieved_at: str,
         state: _ExtractionState,
         *,
+        unit_map: Mapping[str, tuple[Quantity, Unit]],
         expected_quantity: Quantity | None = None,
     ) -> None:
         """Process quantity claims that need no qualifier disambiguation.
@@ -1588,8 +1659,8 @@ class WikidataAdapter:
             # Reject a recognised wrong-dimension unit before creating any evidence.
             if expected_quantity is not None:
                 unit_qid = _claim_unit_qid(claim)
-                if unit_qid is not None and unit_qid in _UNIT_QID_MAP:
-                    actual_qty, _ = _UNIT_QID_MAP[unit_qid]
+                if unit_qid is not None and unit_qid in unit_map:
+                    actual_qty, _ = unit_map[unit_qid]
                     if actual_qty != expected_quantity:
                         state.unsupported_qualifier_count += 1
                         continue
@@ -1601,6 +1672,7 @@ class WikidataAdapter:
                 field_label,
                 retrieved_at,
                 idx,
+                unit_map=unit_map,
                 expected_quantity=expected_quantity,
             )
             if ev is None:
@@ -1623,6 +1695,8 @@ class WikidataAdapter:
         field_label: str,
         retrieved_at: str,
         state: _ExtractionState,
+        *,
+        unit_map: Mapping[str, tuple[Quantity, Unit]],
     ) -> None:
         """Process dimensionless integer-count claims (e.g. P1092 total produced).
 
@@ -1666,6 +1740,7 @@ class WikidataAdapter:
                 field_label,
                 retrieved_at,
                 idx,
+                unit_map=unit_map,
                 expected_quantity=None,
             )
             if ev is None:
@@ -1682,6 +1757,7 @@ class WikidataAdapter:
         retrieved_at: str,
         state: _ExtractionState,
         *,
+        unit_map: Mapping[str, tuple[Quantity, Unit]],
         expected_quantity: Quantity | None = None,
     ) -> None:
         """Process quantity claims where a qualifier determines field mapping.
@@ -1723,8 +1799,8 @@ class WikidataAdapter:
                         # Reject a recognised wrong-dimension unit before creating evidence.
                         if expected_quantity is not None:
                             unit_qid = _claim_unit_qid(claim)
-                            if unit_qid is not None and unit_qid in _UNIT_QID_MAP:
-                                actual_qty, _ = _UNIT_QID_MAP[unit_qid]
+                            if unit_qid is not None and unit_qid in unit_map:
+                                actual_qty, _ = unit_map[unit_qid]
                                 if actual_qty != expected_quantity:
                                     state.unsupported_qualifier_count += 1
                                     matched = True
@@ -1738,6 +1814,7 @@ class WikidataAdapter:
                                 field_label,
                                 retrieved_at,
                                 idx,
+                                unit_map=unit_map,
                                 qualifier_property=qualifier_property,
                                 qualifier_qid=qual_qid,
                                 expected_quantity=expected_quantity,

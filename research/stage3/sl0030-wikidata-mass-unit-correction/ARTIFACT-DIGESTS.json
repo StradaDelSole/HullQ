@@ -1,0 +1,14 @@
+{
+  "schema_version": "sl0030-artifact-digests-v1",
+  "generated_at": "2026-08-27T23:47:26.301568+00:00",
+  "digests": {
+    "REPLAY-REPORT.md": "sha256:1cb5ee1e8ef689a67727a0a8b4e4a52069130abbaf62362f21f7644918ceb9ea",
+    "REPLAY-RESULT.json": "sha256:8584f016aaba5f61ae9902eb1d1b260bdc51927f894d5aff89959ec18f82a28c",
+    "REPORT.md": "sha256:689f906c772eca719fdab2c86139bd6eba188921694c470f16cc5af558dc6740",
+    "artifact_digests_schema.json": "sha256:0010f9e572600c47d12c1d56fe6e1a9e041e8c60bcfec0c31fe5f7d70ad4082e",
+    "coverage_before_after.json": "sha256:266bec1d24dc6cfde2eecca19e9592719d1c573f00ae82a1973c3ff7ed7aa623",
+    "coverage_before_after_schema.json": "sha256:05f94bb97a981d91f0fc5652d3be6c4edfd8415ae460388268ab00c0081aeda6",
+    "unit_qid_assessment.json": "sha256:45a61cfd93d5c0547b1d33480f1b98104fdc6c6257712d37fd32a303fa23a6df",
+    "unit_qid_assessment_schema.json": "sha256:bfdc3df741e35d1207658025bc645400128a9caded5304c9c2eb9ae810ca1e3b"
+  }
+}

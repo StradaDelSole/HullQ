@@ -394,6 +394,34 @@ jobs:
           assert result['clear'] is True, 'SLICE-0028 persistence proof did not clear'
           "
 
+      - name: Offline-verify SLICE-0030 retained mass-unit assessment and before/after coverage reproduce deterministically (no network)
+        run: >
+          uv run python scripts/bootstrap/wikidata_sl0030_mass_unit_correction_runner.py --verify
+
+      - name: Persist/replay SLICE-0030 corrected full-boundary evidence against PostgreSQL 18
+        env:
+          HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
+        run: >
+          uv run python scripts/bootstrap/wikidata_sl0030_mass_unit_correction_runner.py --persist
+          --db-url postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
+
+      - name: Verify SLICE-0030 persistence proof cleared every required condition
+        run: >
+          uv run python -c "
+          import json, pathlib;
+          result = json.loads(pathlib.Path('research/stage3/sl0030-wikidata-mass-unit-correction/REPLAY-RESULT.json').read_text());
+          print(json.dumps(result, indent=2));
+          assert result['bundle_count'] == 1770, f\"expected 1770 retained full-boundary bundles, got {result['bundle_count']}\";
+          assert result['first_pass']['imported'] == result['bundle_count'], f\"expected {result['bundle_count']} first imports, got {result['first_pass']['imported']}\";
+          assert result['first_pass']['conflict'] == 0 and result['first_pass']['error'] == 0, 'first pass had conflicts/errors';
+          assert result['readback_mismatches'] == 0, f\"expected zero readback mismatches, got {result['readback_mismatches']}\";
+          assert result['reimport']['already_imported'] == result['bundle_count'], f\"expected {result['bundle_count']} idempotent reimports, got {result['reimport']['already_imported']}\";
+          assert result['reimport']['conflict'] == 0 and result['reimport']['error'] == 0, 'reimport had conflicts/errors';
+          assert result['canonical_boat_model_row_count'] == 0, 'SLICE-0030 must never create a canonical BoatModel row';
+          assert result['canonical_boat_design_row_count'] == 0, 'SLICE-0030 must never create a canonical BoatDesign row';
+          assert result['clear'] is True, 'SLICE-0030 persistence proof did not clear'
+          "
+
   dependency-audit:
     name: dependency audit
     runs-on: ubuntu-latest

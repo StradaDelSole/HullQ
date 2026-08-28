@@ -326,6 +326,7 @@ def run_verify(
     )
     from hullq.sources.wikidata import (
         QUALIFIER_CARRIER_VERSION_SLICE0008,
+        UNIT_QID_MAP_VERSION_SLICE0008,
         WikidataAdapter,
         WikidataAdapterConfig,
     )
@@ -389,12 +390,19 @@ def run_verify(
             # extends the adapter's qualifier-carrier vocabulary. SLICE-0027's own
             # before/after coverage delta is measured separately (see
             # research/stage3/sl0027-wikidata-qualifier-semantics/), against the
-            # current (unpinned) adapter default.
+            # current (unpinned) adapter default. SLICE-0030 pinned note: the
+            # same reasoning applies to the mass-unit QID map — pinning
+            # UNIT_QID_MAP_VERSION_SLICE0008 here keeps this retained package
+            # reproducing the exact (uncorrected) mass-unit extraction behavior
+            # it originally captured, independent of the SLICE-0030 corrected
+            # default. SLICE-0030's own before/after coverage delta is measured
+            # separately (see research/stage3/sl0030-wikidata-mass-unit-correction/).
             rebuilt_full_evidence, _report = adapter.extract_field_evidence(
                 rebuilt_entities,
                 evidence_manifest.get("acquired_at", ""),
                 requested_qid_count=len(rebuilt_entities),
                 qualifier_carrier_version=QUALIFIER_CARRIER_VERSION_SLICE0008,
+                unit_map_version=UNIT_QID_MAP_VERSION_SLICE0008,
             )
         print(
             f"  rebuilt {len(rebuilt_entities)} entities and re-extracted "
@@ -638,6 +646,7 @@ def persist_and_verify(
     )
     from hullq.sources.wikidata import (
         QUALIFIER_CARRIER_VERSION_SLICE0008,
+        UNIT_QID_MAP_VERSION_SLICE0008,
         WikidataAdapter,
         WikidataAdapterConfig,
     )
@@ -649,14 +658,16 @@ def persist_and_verify(
     with httpx.Client() as client:
         adapter = WikidataAdapter(source=source, config=config, http_client=client)
         entities = rebuild_entities_from_manifest(evidence_manifest)
-        # See the identical SLICE-0027 pinning note in run_verify() above: this
-        # persistence replay must keep importing exactly the bundles SLICE-0026
-        # originally captured and had independently reviewed/accepted.
+        # See the identical SLICE-0027/SLICE-0030 pinning note in run_verify()
+        # above: this persistence replay must keep importing exactly the
+        # bundles SLICE-0026 originally captured and had independently
+        # reviewed/accepted.
         full_evidence, _report = adapter.extract_field_evidence(
             entities,
             evidence_manifest.get("acquired_at", ""),
             requested_qid_count=len(entities),
             qualifier_carrier_version=QUALIFIER_CARRIER_VERSION_SLICE0008,
+            unit_map_version=UNIT_QID_MAP_VERSION_SLICE0008,
         )
 
     allowed = filter_to_allowed_evidence(full_evidence)

@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0030-unit-qid-assessment/v1",
+  "title": "HullQ SLICE-0030 Unit QID Assessment",
+  "description": "Positively-verified Wikidata entity identity for the seven fixed SLICE-0030 mass-unit QIDs, combined with their observed occurrence count in the fixed accepted SLICE-0028 retained raw claims.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "source_id", "note", "assessed_units", "raw_entity_snapshots"],
+  "properties": {
+    "schema_version": { "const": "sl0030-unit-qid-assessment-v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "source_id": { "const": "SRC_WIKIDATA_API_2026" },
+    "note": { "type": "string", "minLength": 1 },
+    "assessed_units": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": { "$ref": "#/$defs/assessed_unit" }
+    },
+    "raw_entity_snapshots": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": { "$ref": "#/$defs/raw_entity_snapshot" }
+    }
+  },
+  "$defs": {
+    "assessed_unit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "qid",
+        "wikidata_entity_locator",
+        "intended_hullq_unit",
+        "classification",
+        "verified_label_en",
+        "verified_description_en",
+        "verified_instance_of_qids",
+        "verified_unit_of_mass_instance_qid",
+        "verified_is_unit_of_mass",
+        "verification_retrieved_at",
+        "occurs_in_sl0028_retained_raw_claims",
+        "observed_retained_statement_count"
+      ],
+      "properties": {
+        "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+        "wikidata_entity_locator": { "type": "string", "format": "uri" },
+        "intended_hullq_unit": {
+          "type": ["string", "null"],
+          "enum": ["MassUnit.KILOGRAM", "MassUnit.GRAM", "MassUnit.METRIC_TONNE", "MassUnit.POUND", null]
+        },
+        "classification": {
+          "type": "string",
+          "enum": [
+            "correct_existing_mapping",
+            "incorrect_legacy_mapping",
+            "corrected_positively_verified_mapping",
+            "observed_but_unsupported"
+          ]
+        },
+        "verified_label_en": { "type": ["string", "null"] },
+        "verified_description_en": { "type": ["string", "null"] },
+        "verified_instance_of_qids": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^Q[1-9][0-9]*$" }
+        },
+        "verified_unit_of_mass_instance_qid": { "const": "Q3647172" },
+        "verified_is_unit_of_mass": {
+          "type": "boolean",
+          "description": "Fail-closed structural criterion: true iff verified_instance_of_qids contains verified_unit_of_mass_instance_qid. classification/intended_hullq_unit can only have been assigned as correct_existing_mapping or corrected_positively_verified_mapping when this is true, and as incorrect_legacy_mapping when this is false — enforced by validate_unit_qid_snapshots before this document is built."
+        },
+        "verification_retrieved_at": { "type": "string" },
+        "occurs_in_sl0028_retained_raw_claims": { "type": "boolean" },
+        "observed_retained_statement_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "raw_entity_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["qid", "label", "description_en", "p31_qids"],
+      "properties": {
+        "qid": { "type": "string", "pattern": "^Q[1-9][0-9]*$" },
+        "label": { "type": ["string", "null"] },
+        "description_en": { "type": ["string", "null"] },
+        "p31_qids": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^Q[1-9][0-9]*$" }
+        }
+      }
+    }
+  }
+}

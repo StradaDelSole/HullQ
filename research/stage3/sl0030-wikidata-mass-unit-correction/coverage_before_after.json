@@ -1,0 +1,82 @@
+{
+  "schema_version": "sl0030-coverage-before-after-v1",
+  "generated_at": "2026-08-27T23:46:48.186441+00:00",
+  "qid_count": 1770,
+  "note": "Source-QID-level coverage over the fixed, unmodified accepted SLICE-0028 full-boundary raw claims (1,770 requested QIDs), replayed offline through the current adapter twice: 'before' pins hullq.sources.wikidata.UNIT_QID_MAP_VERSION_SLICE0008 (the legacy, uncorrected mass-unit map in force through SLICE-0029); 'after' uses the current SLICE-0030 corrected/default map. Because the fixed SLICE-0028 linkage is bijective (one accepted QID per canonical BoatModel), qid_count also equals the canonical BoatModel count over this exact boundary. Everything except the mass-unit map (adapter code, qualifier-carrier version, the fixed input entities) is held constant between before and after.",
+  "before_unit_map_version": "SLICE-0008-v1",
+  "after_unit_map_version": "SLICE-0030-v1",
+  "displacement_normalized_candidate_delta": 792,
+  "non_displacement_fields_unchanged": true,
+  "fields": {
+    "loa": {
+      "before": {
+        "normalized_candidate_present": 888,
+        "source_statement_present": 0,
+        "unsupported_or_malformed": 227,
+        "no_usable_value": 655
+      },
+      "after": {
+        "normalized_candidate_present": 888,
+        "source_statement_present": 0,
+        "unsupported_or_malformed": 227,
+        "no_usable_value": 655
+      }
+    },
+    "lwl": {
+      "before": {
+        "normalized_candidate_present": 848,
+        "source_statement_present": 0,
+        "unsupported_or_malformed": 227,
+        "no_usable_value": 695
+      },
+      "after": {
+        "normalized_candidate_present": 848,
+        "source_statement_present": 0,
+        "unsupported_or_malformed": 227,
+        "no_usable_value": 695
+      }
+    },
+    "beam": {
+      "before": {
+        "normalized_candidate_present": 891,
+        "source_statement_present": 1,
+        "unsupported_or_malformed": 0,
+        "no_usable_value": 878
+      },
+      "after": {
+        "normalized_candidate_present": 891,
+        "source_statement_present": 1,
+        "unsupported_or_malformed": 0,
+        "no_usable_value": 878
+      }
+    },
+    "draft": {
+      "before": {
+        "normalized_candidate_present": 691,
+        "source_statement_present": 0,
+        "unsupported_or_malformed": 11,
+        "no_usable_value": 1068
+      },
+      "after": {
+        "normalized_candidate_present": 691,
+        "source_statement_present": 0,
+        "unsupported_or_malformed": 11,
+        "no_usable_value": 1068
+      }
+    },
+    "displacement": {
+      "before": {
+        "normalized_candidate_present": 66,
+        "source_statement_present": 792,
+        "unsupported_or_malformed": 155,
+        "no_usable_value": 757
+      },
+      "after": {
+        "normalized_candidate_present": 858,
+        "source_statement_present": 0,
+        "unsupported_or_malformed": 155,
+        "no_usable_value": 757
+      }
+    }
+  }
+}
