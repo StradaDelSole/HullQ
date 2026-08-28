@@ -1,6 +1,6 @@
 {
   "schema_version": "sl0031-aggregate-profile-v1",
-  "generated_at": "2026-08-28T08:11:40.928631+00:00",
+  "generated_at": "2026-08-28T09:27:18.431775+00:00",
   "non_canonical_disclaimer": "Every measurement in this document is a source-evidence diagnostic only. It is NOT CAL-01 D2 basic-searchable coverage, is NOT a launch-readiness metric, and does not mean any BoatModel already possesses an accepted canonical searchable value. No CAL-01 D2/D2b threshold or G4 claim is made or implied.",
   "boat_model_count": 1770,
   "per_field_corrected_coverage": {

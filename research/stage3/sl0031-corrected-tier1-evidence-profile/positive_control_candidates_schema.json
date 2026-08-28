@@ -28,8 +28,11 @@
       "items": { "type": "string", "pattern": "^Q[0-9]+$" }
     },
     "eligible_candidate_count": { "type": "integer", "minimum": 0 },
-    "candidate_pool_limit": { "type": "integer", "minimum": 0 },
-    "candidate_pool_size": { "type": "integer", "minimum": 0 },
+    "candidate_pool_limit": {
+      "const": 20,
+      "description": "Fixed, non-parameterizable SLICE-0031 contract value. Never derived from or trusted as verification input -- hullq.bootstrap.wikidata_sl0031_corrected_tier1_evidence_profile.CANDIDATE_POOL_LIMIT is always used to independently rebuild the expected document, regardless of what a retained document claims here."
+    },
+    "candidate_pool_size": { "type": "integer", "minimum": 0, "maximum": 20 },
     "pool_result": {
       "enum": ["POSITIVE_CONTROL_POOL_AVAILABLE", "NO_POSITIVE_CONTROL_POOL"]
     },

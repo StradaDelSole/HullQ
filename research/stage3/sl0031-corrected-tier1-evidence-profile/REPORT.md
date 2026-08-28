@@ -1,6 +1,6 @@
 # HullQ SLICE-0031 Corrected Tier-1 Evidence Profile Report
 
-**generated_at:** 2026-08-28T08:11:40.928631+00:00  
+**generated_at:** 2026-08-28T09:27:18.431775+00:00  
 **boat_model_count:** 1770  
 
 ## SCOPE

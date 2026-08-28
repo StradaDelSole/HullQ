@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from hullq.bootstrap.wikidata_sl0026_tier1_enrichment_pilot import (
     PTR_BEAM,
     PTR_DISPLACEMENT,
@@ -30,6 +32,7 @@ from hullq.bootstrap.wikidata_sl0028_full_boundary_evidence import (
     BoatModelLinkage,
 )
 from hullq.bootstrap.wikidata_sl0031_corrected_tier1_evidence_profile import (
+    CANDIDATE_POOL_LIMIT,
     EXCLUDED_NEGATIVE_CONTROL_QIDS,
     BoatModelEvidenceProfileRow,
     FieldProfile,
@@ -430,6 +433,174 @@ def test_positive_control_candidates_document_self_consistency_and_tamper() -> N
     tampered["pool_result"] = "NO_POSITIVE_CONTROL_POOL"
     problems = verify_positive_control_candidates_self_consistency(rows=rows, document=tampered)
     assert problems
+
+
+# ---------------------------------------------------------------------------
+# Fail-closed positive-control pool verification -- SLICE-0031 review
+# amendment. candidate_pool_limit must be a fixed, non-parameterizable
+# contract value (always 20), and pool_result must be derived from the full
+# eligible set before truncation -- never from candidate_pool_limit or the
+# truncated candidates list, which a tampered retained document fully
+# controls.
+# ---------------------------------------------------------------------------
+
+
+def _eligible_rows(n: int) -> list[BoatModelEvidenceProfileRow]:
+    return [
+        _row(f"BM_{i:03d}", loa=True, beam=True, draft=True, displacement=True, lwl=True)
+        for i in range(n)
+    ]
+
+
+def test_build_positive_control_candidates_document_is_not_parameterizable() -> None:
+    """The retained-artifact builder must not accept a caller-supplied limit
+    at all -- only the fixed module-level CANDIDATE_POOL_LIMIT may govern the
+    retained document."""
+    with pytest.raises(TypeError):
+        build_positive_control_candidates_document(  # type: ignore[call-arg]
+            generated_at="2026-01-01T00:00:00+00:00", rows=_eligible_rows(5), limit=0
+        )
+
+
+def test_pool_result_available_derived_from_full_eligible_set_beyond_limit() -> None:
+    """With more eligible BoatModels than CANDIDATE_POOL_LIMIT, pool_result
+    must still be AVAILABLE (derived from the eligible set), while
+    candidate_pool_size is capped at the fixed limit -- never derived from,
+    or equal to, an attacker-controlled truncated list length alone."""
+    rows = _eligible_rows(CANDIDATE_POOL_LIMIT + 5)
+    doc = build_positive_control_candidates_document(
+        generated_at="2026-01-01T00:00:00+00:00", rows=rows
+    )
+    assert doc["eligible_candidate_count"] == CANDIDATE_POOL_LIMIT + 5
+    assert doc["candidate_pool_limit"] == CANDIDATE_POOL_LIMIT == 20
+    assert doc["candidate_pool_size"] == CANDIDATE_POOL_LIMIT
+    assert doc["pool_result"] == "POSITIVE_CONTROL_POOL_AVAILABLE"
+
+
+def test_verifier_rejects_retained_limit_changed_to_zero() -> None:
+    rows = _eligible_rows(3)
+    doc = build_positive_control_candidates_document(
+        generated_at="2026-01-01T00:00:00+00:00", rows=rows
+    )
+    tampered = dict(doc)
+    tampered["candidate_pool_limit"] = 0
+    problems = verify_positive_control_candidates_self_consistency(rows=rows, document=tampered)
+    assert problems
+
+
+def test_verifier_rejects_retained_limit_changed_to_other_non_20_value() -> None:
+    rows = _eligible_rows(3)
+    doc = build_positive_control_candidates_document(
+        generated_at="2026-01-01T00:00:00+00:00", rows=rows
+    )
+    tampered = dict(doc)
+    tampered["candidate_pool_limit"] = 5
+    problems = verify_positive_control_candidates_self_consistency(rows=rows, document=tampered)
+    assert problems
+
+
+def test_verifier_rejects_coherently_tampered_zero_limit_flip_while_eligible_exist() -> None:
+    """The exact attack described by independent review: limit forced to 0,
+    candidates emptied, and pool_result flipped to NO_POSITIVE_CONTROL_POOL,
+    all made internally consistent with each other -- while the real eligible
+    set is non-empty. The verifier must still fail closed because it never
+    trusts the retained candidate_pool_limit as input to its own rebuild."""
+    rows = _eligible_rows(3)
+    doc = build_positive_control_candidates_document(
+        generated_at="2026-01-01T00:00:00+00:00", rows=rows
+    )
+    tampered = dict(doc)
+    tampered["candidate_pool_limit"] = 0
+    tampered["candidate_pool_size"] = 0
+    tampered["candidates"] = []
+    tampered["pool_result"] = "NO_POSITIVE_CONTROL_POOL"
+    problems = verify_positive_control_candidates_self_consistency(rows=rows, document=tampered)
+    assert problems
+
+
+def test_verifier_rejects_no_pool_result_while_eligible_rows_exist() -> None:
+    rows = _eligible_rows(1)
+    doc = build_positive_control_candidates_document(
+        generated_at="2026-01-01T00:00:00+00:00", rows=rows
+    )
+    assert doc["pool_result"] == "POSITIVE_CONTROL_POOL_AVAILABLE"
+    tampered = dict(doc)
+    tampered["pool_result"] = "NO_POSITIVE_CONTROL_POOL"
+    problems = verify_positive_control_candidates_self_consistency(rows=rows, document=tampered)
+    assert problems
+
+
+def test_verifier_rejects_available_pool_result_when_eligible_set_empty() -> None:
+    ineligible_row = _row("BM_X", loa=True, beam=True, draft=True)  # only 3 fields
+    doc = build_positive_control_candidates_document(
+        generated_at="2026-01-01T00:00:00+00:00", rows=[ineligible_row]
+    )
+    assert doc["pool_result"] == "NO_POSITIVE_CONTROL_POOL"
+    tampered = dict(doc)
+    tampered["pool_result"] = "POSITIVE_CONTROL_POOL_AVAILABLE"
+    problems = verify_positive_control_candidates_self_consistency(
+        rows=[ineligible_row], document=tampered
+    )
+    assert problems
+
+
+def test_verifier_passes_real_fixed_semantics_ranking_and_exclusion_intact() -> None:
+    """Normal, untampered real semantics continue to pass end to end,
+    including deterministic ranking and Catalina negative-control exclusion,
+    after the fail-closed amendment."""
+    rows = [
+        *_eligible_rows(3),
+        _row(
+            "BM_CATALINA22",
+            qids=("Q5051252",),
+            loa=True,
+            beam=True,
+            draft=True,
+            displacement=True,
+            lwl=True,
+        ),
+    ]
+    doc = build_positive_control_candidates_document(
+        generated_at="2026-01-01T00:00:00+00:00", rows=rows
+    )
+    assert verify_positive_control_candidates_self_consistency(rows=rows, document=doc) == []
+    assert doc["pool_result"] == "POSITIVE_CONTROL_POOL_AVAILABLE"
+    assert doc["candidate_pool_limit"] == 20
+    assert doc["eligible_candidate_count"] == 3  # Catalina 22 excluded
+    assert [c["hullq_id"] for c in doc["candidates"]] == ["BM_000", "BM_001", "BM_002"]
+
+
+def test_positive_control_candidates_schema_rejects_non_20_limit() -> None:
+    """Direct schema regression: a document with a non-20 candidate_pool_limit
+    must be schema-invalid, not merely verifier-rejected."""
+    import json
+
+    import jsonschema
+
+    schema_path = (
+        Path(__file__).resolve().parents[2]
+        / "research"
+        / "stage3"
+        / "sl0031-corrected-tier1-evidence-profile"
+        / "positive_control_candidates_schema.json"
+    )
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+
+    rows = _eligible_rows(1)
+    doc = build_positive_control_candidates_document(
+        generated_at="2026-01-01T00:00:00+00:00", rows=rows
+    )
+    jsonschema.validate(instance=doc, schema=schema)  # valid as built
+
+    tampered_zero = dict(doc)
+    tampered_zero["candidate_pool_limit"] = 0
+    with pytest.raises(jsonschema.exceptions.ValidationError):
+        jsonschema.validate(instance=tampered_zero, schema=schema)
+
+    tampered_other = dict(doc)
+    tampered_other["candidate_pool_limit"] = 25
+    with pytest.raises(jsonschema.exceptions.ValidationError):
+        jsonschema.validate(instance=tampered_other, schema=schema)
 
 
 # ---------------------------------------------------------------------------
