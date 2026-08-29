@@ -11,13 +11,15 @@ and `hullq.domain.derived_metrics.MetricStatus` for derived metrics) into the
 search kernel's own `ValueQualification`, so evaluation code never has to
 reason about raw FieldResolution/FieldEvidence/MetricResult shapes directly.
 
-Does not implement: configuration-aware/option-sensitive qualification,
-applicability-as-confirmed-exclusion (`NOT_APPLICABLE` as FALSE) — both
-belong to REQ-SEARCH-006 and are explicitly out of scope for this slice.
+Does not implement: option-sensitive/ResolvedConfiguration-scoped
+qualification — that belongs to REQ-SEARCH-006 and is explicitly out of
+scope for this slice. `NOT_APPLICABLE`/`APPLICABILITY_UNKNOWN` ARE
+implemented here as generic (non-configuration-scoped) statuses.
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Final
 
@@ -29,7 +31,20 @@ __all__ = [
     "QualifiedNumericValue",
     "from_derived_metric_status",
     "from_resolution_state",
+    "is_finite_real_number",
 ]
+
+
+def is_finite_real_number(value: object) -> bool:
+    """True iff *value* is a finite, non-bool `int`/`float`.
+
+    The single shared guard used everywhere a numeric candidate value or
+    threshold enters this package: `bool` is a subclass of `int` in Python
+    and would otherwise silently pass an `isinstance(x, (int, float))`
+    check, and `NaN`/`+Infinity`/`-Infinity` are valid `float` values that
+    would otherwise reach comparison logic and produce a bogus TRUE/FALSE.
+    """
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,10 +52,14 @@ class QualifiedNumericValue:
     """A candidate numeric value paired with its fail-closed qualification.
 
     Invariant: `value` is non-`None` if and only if `qualification` is
-    `ValueQualification.CONFIRMED`. Constructing any other combination raises
-    `ValueError` — this is the single choke point that keeps missing,
-    provisional and unresolved-conflict values from silently reaching
-    comparison logic as a usable number.
+    `ValueQualification.CONFIRMED`, and a `CONFIRMED` value MUST be a finite,
+    non-bool real number (see `is_finite_real_number`) — never `bool`,
+    `NaN`, `+Infinity` or `-Infinity`. Constructing any other combination
+    raises `ValueError` — this is the single choke point that keeps missing,
+    provisional, unresolved-conflict, not-applicable, applicability-unknown
+    and malformed numeric values from silently reaching comparison logic.
+
+    A `CONFIRMED` `int` value is normalized to `float` on construction.
     """
 
     value: float | None
@@ -48,9 +67,14 @@ class QualifiedNumericValue:
 
     def __post_init__(self) -> None:
         is_confirmed = self.qualification is ValueQualification.CONFIRMED
-        if is_confirmed and self.value is None:
-            raise ValueError("CONFIRMED qualification requires a non-null value")
-        if not is_confirmed and self.value is not None:
+        if is_confirmed:
+            if not is_finite_real_number(self.value):
+                raise ValueError(
+                    f"CONFIRMED qualification requires a finite, non-bool numeric value; "
+                    f"got {self.value!r}"
+                )
+            object.__setattr__(self, "value", float(self.value))  # type: ignore[arg-type]
+        elif self.value is not None:
             raise ValueError(
                 f"Non-CONFIRMED qualification {self.qualification!r} must not carry a value"
             )
@@ -98,8 +122,8 @@ _METRIC_STATUS_QUALIFICATION: Final[dict[MetricStatus, ValueQualification]] = {
     MetricStatus.MISSING_INPUT: ValueQualification.MISSING,
     MetricStatus.UNRESOLVED_INPUT: ValueQualification.UNRESOLVED_CONFLICT,
     MetricStatus.INVALID_INPUT: ValueQualification.MISSING,
-    MetricStatus.NOT_APPLICABLE: ValueQualification.MISSING,
-    MetricStatus.APPLICABILITY_UNKNOWN: ValueQualification.MISSING,
+    MetricStatus.NOT_APPLICABLE: ValueQualification.NOT_APPLICABLE,
+    MetricStatus.APPLICABILITY_UNKNOWN: ValueQualification.APPLICABILITY_UNKNOWN,
     MetricStatus.NONSTANDARD_INPUT: ValueQualification.MISSING,
 }
 
@@ -109,12 +133,20 @@ def from_derived_metric_status(status: MetricStatus, value: float | None) -> Qua
 
     Only `computed` is `CONFIRMED`. `computed_provisional` maps to
     `PROVISIONAL` and MUST NOT by itself produce confirmed inclusion or
-    exclusion (SEARCH_QUERY_SEMANTICS.v0.1.md §3). Every other status
-    (missing/unresolved/invalid input, not-applicable, applicability-unknown,
+    exclusion (SEARCH_QUERY_SEMANTICS.v0.1.md §3). `not_applicable` and
+    `applicability_unknown` preserve their own accepted semantics
+    (SEARCH_QUERY_SEMANTICS.v0.1.md §2) rather than being relabeled
+    `MISSING`: `not_applicable` maps to `ValueQualification.NOT_APPLICABLE`,
+    which `hullq.search.criteria.evaluate_numeric_leaf` resolves directly to
+    FALSE (confirmed exclusion) without inventing a numeric candidate value;
+    `applicability_unknown` maps to `ValueQualification.APPLICABILITY_UNKNOWN`,
+    which resolves to UNKNOWN with `ReasonCode.APPLICABILITY_UNKNOWN`. This is
+    the generic (non-configuration-scoped) status only — evaluating
+    `not_applicable`/`applicability_unknown` against a specific
+    ResolvedConfiguration/design-option scope belongs to REQ-SEARCH-006 and
+    remains out of scope. Every remaining status (missing/unresolved/invalid/
     nonstandard input) maps to `MISSING` or `UNRESOLVED_CONFLICT` and is
-    never treated as usable — this slice does not implement `NOT_APPLICABLE`
-    as confirmed exclusion, which belongs to configuration-aware evaluation
-    (REQ-SEARCH-006, out of scope here).
+    never treated as usable.
     """
     qualification = _METRIC_STATUS_QUALIFICATION[status]
     resolved_value = value if qualification is ValueQualification.CONFIRMED else None

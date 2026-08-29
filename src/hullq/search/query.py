@@ -12,7 +12,7 @@ all explicitly out of scope for this slice.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Final
 
 from hullq.search.criteria import (
     CriterionEvaluation,
@@ -21,6 +21,7 @@ from hullq.search.criteria import (
 )
 from hullq.search.projection import SearchableDesignProjection
 from hullq.search.types import NumericComparisonKind, RequirementStrength, ResultClass, TruthState
+from hullq.search.values import is_finite_real_number
 
 __all__ = [
     "AndQuery",
@@ -34,6 +35,13 @@ __all__ = [
 
 _QUERY_TYPE = "AND"
 _SCHEMA_VERSION = "0.1"
+
+# Exact known key sets for schema_version 0.1. Any other key is a semantic-drift
+# risk (e.g. a silently-ignored "unit") and MUST be rejected, not discarded.
+_TOP_LEVEL_KEYS: Final[frozenset[str]] = frozenset({"schema_version", "type", "criteria"})
+_CRITERION_KEYS: Final[frozenset[str]] = frozenset(
+    {"field", "comparison", "threshold_min", "threshold_max", "strength"}
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,7 +126,15 @@ def _criterion_to_json_dict(criterion: NumericLeafCriterion) -> dict[str, Any]:
     }
 
 
-def _criterion_from_json_dict(data: dict[str, Any]) -> NumericLeafCriterion:
+def _criterion_from_json_dict(data: object) -> NumericLeafCriterion:
+    if not isinstance(data, dict):
+        raise ValueError(f"Numeric leaf criterion must be a JSON object, got {type(data).__name__}")
+    unknown_keys = set(data.keys()) - _CRITERION_KEYS
+    if unknown_keys:
+        raise ValueError(
+            f"Unknown numeric leaf criterion field(s) {sorted(unknown_keys)}; "
+            f"future query-contract fields require explicit schema/version evolution"
+        )
     try:
         field_name = data["field"]
         comparison = NumericComparisonKind(data["comparison"])
@@ -129,10 +145,16 @@ def _criterion_from_json_dict(data: dict[str, Any]) -> NumericLeafCriterion:
         raise ValueError(f"Malformed numeric leaf criterion, missing key: {exc}") from exc
     if not isinstance(field_name, str):
         raise ValueError(f"criterion.field must be a string, got {type(field_name).__name__}")
-    if threshold_min is not None and not isinstance(threshold_min, (int, float)):
-        raise ValueError("criterion.threshold_min must be numeric or null")
-    if threshold_max is not None and not isinstance(threshold_max, (int, float)):
-        raise ValueError("criterion.threshold_max must be numeric or null")
+    if threshold_min is not None and not is_finite_real_number(threshold_min):
+        raise ValueError(
+            f"criterion.threshold_min must be a finite, non-bool numeric value or null; "
+            f"got {threshold_min!r}"
+        )
+    if threshold_max is not None and not is_finite_real_number(threshold_max):
+        raise ValueError(
+            f"criterion.threshold_max must be a finite, non-bool numeric value or null; "
+            f"got {threshold_max!r}"
+        )
     return NumericLeafCriterion(
         field=field_name,
         comparison=comparison,
@@ -159,9 +181,19 @@ def query_from_json_dict(data: dict[str, Any]) -> AndQuery:
     """Deserialize an `AndQuery` from a mapping produced by `query_to_json_dict`.
 
     Fails closed (raises `ValueError`) on an unrecognized schema version,
-    query type, or malformed/unknown-enum criterion — never silently
-    coerces unrecognized input into a permissive default.
+    query type, unknown top-level/criterion key, or malformed/unknown-enum
+    criterion — never silently discards or coerces unrecognized input.
+    Future query-contract fields require explicit schema/version evolution,
+    not silent acceptance.
     """
+    if not isinstance(data, dict):
+        raise ValueError(f"Query payload must be a JSON object, got {type(data).__name__}")
+    unknown_keys = set(data.keys()) - _TOP_LEVEL_KEYS
+    if unknown_keys:
+        raise ValueError(
+            f"Unknown top-level query field(s) {sorted(unknown_keys)}; "
+            f"future query-contract fields require explicit schema/version evolution"
+        )
     if data.get("schema_version") != _SCHEMA_VERSION:
         raise ValueError(f"Unsupported query schema_version: {data.get('schema_version')!r}")
     if data.get("type") != _QUERY_TYPE:

@@ -184,12 +184,94 @@ def test_query_from_json_dict_rejects_non_string_field() -> None:
 def test_query_from_json_dict_rejects_non_numeric_threshold_min() -> None:
     data = query_to_json_dict(_query())
     data["criteria"][0]["threshold_min"] = "ten"
-    with pytest.raises(ValueError, match="threshold_min must be numeric"):
+    with pytest.raises(ValueError, match="threshold_min must be a finite, non-bool numeric"):
         query_from_json_dict(data)
 
 
 def test_query_from_json_dict_rejects_non_numeric_threshold_max() -> None:
     data = query_to_json_dict(_query())
     data["criteria"][0]["threshold_max"] = "twelve"
-    with pytest.raises(ValueError, match="threshold_max must be numeric"):
+    with pytest.raises(ValueError, match="threshold_max must be a finite, non-bool numeric"):
+        query_from_json_dict(data)
+
+
+# ---------------------------------------------------------------------------
+# Finding 1 (query boundary) — bool / NaN / Infinity thresholds via JSON tamper
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("bad_threshold", [True, False])
+def test_query_from_json_dict_rejects_bool_threshold_min(bad_threshold: object) -> None:
+    data = query_to_json_dict(_query())
+    data["criteria"][0]["threshold_min"] = bad_threshold
+    with pytest.raises(ValueError, match="threshold_min must be a finite, non-bool numeric"):
+        query_from_json_dict(data)
+
+
+@pytest.mark.parametrize("bad_threshold", [True, False])
+def test_query_from_json_dict_rejects_bool_threshold_max(bad_threshold: object) -> None:
+    data = query_to_json_dict(_query())
+    data["criteria"][0]["threshold_max"] = bad_threshold
+    with pytest.raises(ValueError, match="threshold_max must be a finite, non-bool numeric"):
+        query_from_json_dict(data)
+
+
+def test_query_from_json_dict_rejects_nan_threshold() -> None:
+    data = query_to_json_dict(_query())
+    data["criteria"][0]["threshold_min"] = float("nan")
+    with pytest.raises(ValueError, match="threshold_min must be a finite, non-bool numeric"):
+        query_from_json_dict(data)
+
+
+@pytest.mark.parametrize("infinite", [float("inf"), float("-inf")])
+def test_query_from_json_dict_rejects_infinite_threshold(infinite: float) -> None:
+    data = query_to_json_dict(_query())
+    data["criteria"][0]["threshold_max"] = infinite
+    with pytest.raises(ValueError, match="threshold_max must be a finite, non-bool numeric"):
+        query_from_json_dict(data)
+
+
+# ---------------------------------------------------------------------------
+# Finding 3 — unknown-key / malformed-shape tamper tests
+# ---------------------------------------------------------------------------
+
+
+def test_query_from_json_dict_rejects_unknown_top_level_key() -> None:
+    data = query_to_json_dict(_query())
+    data["extra_field"] = "unexpected"
+    with pytest.raises(ValueError, match="Unknown top-level query field"):
+        query_from_json_dict(data)
+
+
+def test_query_from_json_dict_rejects_unknown_criterion_key_unit() -> None:
+    data = query_to_json_dict(_query())
+    data["criteria"][0]["unit"] = "ft"
+    with pytest.raises(ValueError, match="Unknown numeric leaf criterion field"):
+        query_from_json_dict(data)
+
+
+def test_query_from_json_dict_rejects_non_object_criterion_entry() -> None:
+    data = query_to_json_dict(_query())
+    data["criteria"][0] = "not-a-criterion-object"
+    with pytest.raises(ValueError, match="must be a JSON object"):
+        query_from_json_dict(data)
+
+
+def test_query_from_json_dict_rejects_non_object_top_level_payload() -> None:
+    with pytest.raises(ValueError, match="must be a JSON object"):
+        query_from_json_dict(["not", "an", "object"])  # type: ignore[arg-type]
+
+
+def test_query_from_json_dict_unit_is_not_silently_discarded() -> None:
+    # The exact adversarial example from the review finding: 40 must never be
+    # evaluated under a canonical-unit assumption while "unit": "ft" is dropped.
+    data = query_to_json_dict(_query())
+    data["criteria"][0] = {
+        "field": "loa_m",
+        "comparison": "MAXIMUM",
+        "threshold_min": None,
+        "threshold_max": 40,
+        "unit": "ft",
+    }
+    with pytest.raises(ValueError, match="Unknown numeric leaf criterion field"):
         query_from_json_dict(data)
