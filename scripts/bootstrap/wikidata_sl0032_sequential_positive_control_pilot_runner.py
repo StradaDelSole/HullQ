@@ -601,8 +601,8 @@ def build_source_retrieval_log_document(*, generated_at: str) -> dict[str, Any]:
             byte_size=236,
             sha256="9448f8a1159c9b14e3e1b9d8eab1a6ddf88d26e1f888a34cef430c756e4e6e1e",
             purpose=(
-                "Access/automation-policy check: no robots.txt file exists at all (HTTP 404) -- "
-                "no crawl/automation restriction is declared by this site."
+                "Access/automation-policy check: `/robots.txt` returned HTTP 404; no robots.txt "
+                "access/automation restriction was observed at the standard robots path."
             ),
         ),
         _retrieval(
@@ -699,8 +699,9 @@ def build_source_clearance_assessment_document(*, generated_at: str) -> dict[str
                     "satisfied": True,
                     "evidence": (
                         "Both buzzardsbayboatshop.com pages retrieved (retrievals 2-3) returned "
-                        "HTTP 200 with no login/paywall; robots.txt (retrieval 4) returns HTTP "
-                        "404 -- no automation restriction is declared at all."
+                        "HTTP 200 with no login/paywall; `/robots.txt` (retrieval 4) returned "
+                        "HTTP 404, so no robots.txt access/automation restriction was observed at "
+                        "the standard robots path."
                     ),
                 },
                 {
@@ -737,13 +738,15 @@ def build_source_clearance_assessment_document(*, generated_at: str) -> dict[str
                         "index.html labelled HOMEPORT on bb14boat.html, THE BOAT -> bb14boat.html, "
                         "PHOTO GALLERY, USED & BROKERAGE BOATS -> same-domain "
                         "boatsforsale/class_search.pl, CONTACT US) -- none of which is a "
-                        "terms-of-use/licence page. robots.txt does not exist (HTTP 404, "
-                        "retrieval 4), so no automation/access restriction is declared either. "
-                        "Per the accepted SLICE-0029 precedent (Catalina Yachts' bare '© 2026 "
-                        "Catalina Yachts' footer notice was treated as satisfying this same "
-                        "condition), a bare copyright/attribution line without accompanying "
-                        "restrictive licence language does not by itself prohibit the bounded "
-                        "manual factual-extraction method used here; the copyright notice's mere "
+                        "terms-of-use/licence page. `/robots.txt` (retrieval 4) returned HTTP "
+                        "404; no robots.txt access/automation restriction was observed at the "
+                        "standard robots path. No prohibition on the bounded manual method used "
+                        "here was identified on the inspected source surfaces. Per the accepted "
+                        "SLICE-0029 precedent (Catalina Yachts' bare '© 2026 Catalina Yachts' "
+                        "footer notice was treated as satisfying this same condition), a bare "
+                        "copyright/attribution line without accompanying restrictive licence "
+                        "language does not by itself prohibit the bounded manual "
+                        "factual-extraction method used here; the copyright notice's mere "
                         "presence is not, on its own, evidence either for or against a "
                         "prohibition."
                     ),
@@ -806,13 +809,12 @@ def build_source_clearance_assessment_document(*, generated_at: str) -> dict[str
                     "terms_reviewed_at": "2026-08-28",
                     "tdm_reservation": "none_observed",
                     "rate_limit_notes": (
-                        "robots.txt returns HTTP 404 (no file present, so no crawl-delay or "
-                        "rate-limit directive exists); this bounded pass issued 4 sequential "
-                        "single-document GET requests with no concurrency and no bulk "
+                        "`/robots.txt` returned HTTP 404; no crawl-delay or rate-limit directive "
+                        "was observed at the standard robots path. This bounded pass issued 4 "
+                        "sequential single-document GET requests with no concurrency and no bulk "
                         "enumeration. automated_access is left 'unknown' because no explicit "
-                        "automated/bulk reuse permission exists beyond the absence of a "
-                        "robots.txt block, and public/crawlable accessibility alone is not a "
-                        "reuse grant."
+                        "automated/bulk reuse permission was identified on the inspected source "
+                        "surfaces, and public/crawlable accessibility alone is not a reuse grant."
                     ),
                 },
                 "permissions": {
@@ -1259,9 +1261,8 @@ def _build_and_validate_documents(*, generated_at: str, mismatches: list[str]) -
 
     fixed_ranks = [c.rank for c in sl0032.FIXED_CANDIDATE_SEQUENCE]
     fields_by_rank = {row["candidate_rank"]: row["fields"] for row in field_doc["candidates"]}
-    boundary_by_rank = {
-        row["candidate_rank"]: row["generation_boundary_established_for_this_pilot"]
-        for row in boatdesign_doc["candidates"]
+    scope_by_rank = {
+        row["candidate_rank"]: row["applicability_scope"] for row in boatdesign_doc["candidates"]
     }
     clearance_by_rank = {row["candidate_rank"]: row for row in clearance_doc["candidates"]}
 
@@ -1286,7 +1287,7 @@ def _build_and_validate_documents(*, generated_at: str, mismatches: list[str]) -
             attempt_status = sl0032.AttemptStatus.ATTEMPTED
             result = sl0032.compute_candidate_result(
                 source_cleared=sl0032.candidate_source_cleared(clearance_by_rank[rank]),
-                generation_boundary_established=boundary_by_rank[rank],
+                boatdesign_applicability_scope=scope_by_rank[rank],
                 field_outcomes=fields_by_rank[rank],
             )
             attempted_results_for_toplevel.append((rank, result))

@@ -1,6 +1,6 @@
 # HullQ SLICE-0032 Sequential Positive-Control BoatDesign Applicability Pilot Report
 
-**generated_at:** 2026-08-28T22:53:04.736344+00:00  
+**generated_at:** 2026-08-29T12:39:09.052124+00:00  
 **top_level_result:** APPLICABILITY_EVIDENCE_INSUFFICIENT  
 
 ## SCOPE

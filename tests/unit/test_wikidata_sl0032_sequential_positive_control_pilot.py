@@ -12,10 +12,12 @@ import pytest
 from hullq.bootstrap.wikidata_sl0032_sequential_positive_control_pilot import (
     ALLOWED_FIELD_POINTERS,
     FIXED_CANDIDATE_SEQUENCE,
+    FIXED_SR_6_6_CONDITION_IDENTIFIERS,
     MAX_RETRIEVALS_PER_CANDIDATE,
     MAX_TOTAL_RETRIEVALS,
     SOURCE_CLEARANCE_RIGHTS_BLOCKED,
     SOURCE_CLEARANCE_USE_CLEARED,
+    SR_6_6_POLICY_REFERENCE,
     AttemptStatus,
     CandidateOutcome,
     TopLevelResult,
@@ -27,12 +29,14 @@ from hullq.bootstrap.wikidata_sl0032_sequential_positive_control_pilot import (
     retained_package_filenames,
     sr_6_6_conditions_satisfied,
     validate_applicability_scope_invariant,
+    validate_attempted_row_identity,
     validate_boatdesign_applicability,
     validate_bounded_scope,
     validate_field_applicability,
     validate_permissions_bounded,
     validate_sequential_stop_invariant,
     validate_source_retrieval_log,
+    validate_sr_6_6_condition_set,
     validate_stop_on_first_positive_retrievals,
     verify_artifact_digests_self_consistency,
     verify_fixed_candidate_sequence,
@@ -581,6 +585,88 @@ def test_candidate_source_cleared() -> None:
 
 
 # ---------------------------------------------------------------------------
+# 3b. Pinned exact SR-6.6 condition set (Finding 1, review 5058020519)
+# ---------------------------------------------------------------------------
+
+
+def test_validate_sr_6_6_condition_set_all_six_present_passes() -> None:
+    assert validate_sr_6_6_condition_set(_satisfied_conditions()) == []
+    assert len(FIXED_SR_6_6_CONDITION_IDENTIFIERS) == 6
+
+
+def test_validate_sr_6_6_condition_set_rejects_missing_condition() -> None:
+    conditions = _satisfied_conditions()[:-1]  # remove one of the six
+    problems = validate_sr_6_6_condition_set(conditions)
+    assert any("missing required identifiers" in p for p in problems)
+    assert sr_6_6_conditions_satisfied(conditions) is False
+
+
+def test_validate_sr_6_6_condition_set_rejects_renamed_condition() -> None:
+    conditions = _satisfied_conditions()
+    conditions[0]["condition"] = "lawfully_publicly_accessible_renamed"
+    problems = validate_sr_6_6_condition_set(conditions)
+    assert any("missing required identifiers" in p for p in problems)
+    assert any("non-normative identifiers" in p for p in problems)
+    assert sr_6_6_conditions_satisfied(conditions) is False
+
+
+def test_validate_sr_6_6_condition_set_rejects_duplicate_condition() -> None:
+    conditions = _satisfied_conditions()
+    conditions.append(dict(conditions[0]))  # duplicate one of the six -> 7 rows
+    problems = validate_sr_6_6_condition_set(conditions)
+    assert any("duplicated normative identifiers" in p for p in problems)
+    assert sr_6_6_conditions_satisfied(conditions) is False
+
+
+def test_validate_sr_6_6_condition_set_rejects_seventh_arbitrary_condition() -> None:
+    conditions = _satisfied_conditions()
+    conditions.append({"condition": "invented_condition", "satisfied": True, "evidence": "e"})
+    problems = validate_sr_6_6_condition_set(conditions)
+    assert any("non-normative identifiers" in p for p in problems)
+    assert sr_6_6_conditions_satisfied(conditions) is False
+
+
+def test_validate_sr_6_6_condition_set_rejects_all_six_replaced_by_one_invented() -> None:
+    conditions = [{"condition": "invented_condition", "satisfied": True, "evidence": "e"}]
+    problems = validate_sr_6_6_condition_set(conditions)
+    assert any("missing required identifiers" in p for p in problems)
+    assert any("non-normative identifiers" in p for p in problems)
+    assert sr_6_6_conditions_satisfied(conditions) is False
+
+
+def test_sr_6_6_policy_reference_tamper_fails_verification() -> None:
+    doc = _real_clearance_document()
+    doc["candidates"][0]["sr_6_6_condition_evaluation"]["policy_reference"] = (
+        "specs/SOME_OTHER_POLICY.md#1.1"
+    )
+    problems = verify_source_clearance_assessment_self_consistency(
+        doc, attempted_ranks=ALL_ATTEMPTED_RANKS
+    )
+    assert any("policy_reference" in p for p in problems)
+    assert SR_6_6_POLICY_REFERENCE == "specs/SOURCE_RIGHTS_POLICY.v0.1.md#6.6"
+
+
+def test_invented_condition_set_cannot_mechanically_derive_positive_clearance() -> None:
+    """The exact defect described by the independent review: an artifact
+    substituting an invented single condition for the fixed six must never
+    mechanically derive an 'allowed' identity_seed/production_value
+    clearance."""
+    invented_conditions = [{"condition": "invented_condition", "satisfied": True, "evidence": "e"}]
+    assert derive_sr_6_6_use_clearance(invented_conditions) == "conditional"
+
+    doc = _real_clearance_document()
+    doc["candidates"][0]["sr_6_6_condition_evaluation"]["conditions"] = invented_conditions
+    doc["candidates"][0]["sr_6_6_condition_evaluation"][
+        "conditions_satisfied_for_bounded_manual_use"
+    ] = True
+    # clearance still says 'allowed' -- tampered, must be caught
+    problems = verify_source_clearance_assessment_self_consistency(
+        doc, attempted_ranks=ALL_ATTEMPTED_RANKS
+    )
+    assert problems
+
+
+# ---------------------------------------------------------------------------
 # 4. Applicability scope invariant (closed-boundary rule)
 # ---------------------------------------------------------------------------
 
@@ -721,14 +807,207 @@ def test_validate_field_applicability_rejects_wrong_attempted_rank_set() -> None
 
 
 # ---------------------------------------------------------------------------
+# 5b. Duplicate-row / fixed-identity pinning (Finding 3, review 5058020519)
+# ---------------------------------------------------------------------------
+
+
+def test_validate_attempted_row_identity_happy_path() -> None:
+    problems, rows_by_rank = validate_attempted_row_identity(
+        _real_clearance_document()["candidates"]
+    )
+    assert problems == []
+    assert set(rows_by_rank) == {1, 2, 3}
+
+
+def test_validate_attempted_row_identity_rejects_duplicate_rank() -> None:
+    rows = [_rank1_clearance_entry(), dict(_rank1_clearance_entry())]
+    problems, rows_by_rank = validate_attempted_row_identity(rows)
+    assert any("duplicate row for candidate_rank 1" in p for p in problems)
+    assert set(rows_by_rank) == {1}
+
+
+def test_validate_attempted_row_identity_rejects_wrong_qid() -> None:
+    row = dict(_rank1_clearance_entry())
+    row["qid"] = "Q999999"
+    problems, rows_by_rank = validate_attempted_row_identity([row])
+    assert any("qid" in p and "!= fixed" in p for p in problems)
+    assert (
+        1 not in rows_by_rank or rows_by_rank[1]["qid"] == "Q999999"
+    )  # row still returned, flagged
+
+
+def test_validate_attempted_row_identity_rejects_wrong_hullq_id() -> None:
+    row = dict(_rank1_clearance_entry())
+    row["hullq_id"] = "BM_WDT0_WRONG"
+    problems, _rows_by_rank = validate_attempted_row_identity([row])
+    assert any("hullq_id" in p and "!= fixed" in p for p in problems)
+
+
+def test_duplicate_rank1_source_clearance_rows_fail() -> None:
+    doc = _real_clearance_document()
+    doc["candidates"].append(dict(_rank1_clearance_entry()))  # duplicate rank 1
+    problems = verify_source_clearance_assessment_self_consistency(
+        doc, attempted_ranks=ALL_ATTEMPTED_RANKS
+    )
+    assert any("duplicate row for candidate_rank 1" in p for p in problems)
+
+
+def test_duplicate_rank1_field_applicability_rows_fail() -> None:
+    field_doc = _real_field_applicability_document()
+    field_doc["candidates"].append(dict(field_doc["candidates"][0]))  # duplicate rank 1
+    problems = validate_field_applicability(
+        field_doc,
+        corrected_candidate_evidence={"candidates": []},
+        attempted_ranks=ALL_ATTEMPTED_RANKS,
+    )
+    assert any("duplicate row for candidate_rank 1" in p for p in problems)
+
+
+def test_duplicate_rank1_boatdesign_applicability_rows_fail() -> None:
+    boatdesign_doc = _real_boatdesign_document()
+    boatdesign_doc["candidates"].append(dict(boatdesign_doc["candidates"][0]))  # duplicate rank 1
+    problems = validate_boatdesign_applicability(
+        boatdesign_doc, attempted_ranks=ALL_ATTEMPTED_RANKS
+    )
+    assert any("duplicate row for candidate_rank 1" in p for p in problems)
+
+
+def test_correct_rank_wrong_qid_fails_source_clearance() -> None:
+    doc = _real_clearance_document()
+    doc["candidates"][0]["qid"] = "Q1"  # wrong QID, rank still 1
+    problems = verify_source_clearance_assessment_self_consistency(
+        doc, attempted_ranks=ALL_ATTEMPTED_RANKS
+    )
+    assert any("qid" in p and "!= fixed" in p for p in problems)
+
+
+def test_correct_rank_qid_wrong_hullq_id_fails_source_clearance() -> None:
+    doc = _real_clearance_document()
+    doc["candidates"][0]["hullq_id"] = "BM_WDT0_WRONG"
+    problems = verify_source_clearance_assessment_self_consistency(
+        doc, attempted_ranks=ALL_ATTEMPTED_RANKS
+    )
+    assert any("hullq_id" in p and "!= fixed" in p for p in problems)
+
+
+def test_correct_rank_wrong_qid_fails_field_applicability() -> None:
+    field_doc = _real_field_applicability_document()
+    field_doc["candidates"][0]["qid"] = "Q1"
+    problems = validate_field_applicability(
+        field_doc,
+        corrected_candidate_evidence={"candidates": []},
+        attempted_ranks=ALL_ATTEMPTED_RANKS,
+    )
+    assert any("qid" in p and "!= fixed" in p for p in problems)
+
+
+def test_correct_rank_wrong_hullq_id_fails_boatdesign_applicability() -> None:
+    boatdesign_doc = _real_boatdesign_document()
+    boatdesign_doc["candidates"][0]["hullq_id"] = "BM_WDT0_WRONG"
+    problems = validate_boatdesign_applicability(
+        boatdesign_doc, attempted_ranks=ALL_ATTEMPTED_RANKS
+    )
+    assert any("hullq_id" in p and "!= fixed" in p for p in problems)
+
+
+def test_positive_stop_path_duplicate_row_within_single_attempted_rank_fails() -> None:
+    """Positive-stop path (only rank 1 attempted, READY): a duplicate rank-1
+    row in field_applicability.json must still fail even though there is
+    only one attempted rank total."""
+    field_doc = _ready_field_doc_for_rank(1)
+    field_doc["candidates"].append(dict(field_doc["candidates"][0]))
+    problems = validate_field_applicability(
+        field_doc, corrected_candidate_evidence={"candidates": []}, attempted_ranks=frozenset({1})
+    )
+    assert any("duplicate row for candidate_rank 1" in p for p in problems)
+
+
+def test_positive_stop_path_wrong_identity_on_two_attempted_ranks_fails() -> None:
+    """Positive-stop path (ranks 1 and 2 attempted, rank 2 READY): a wrong
+    QID on the rank-1 boatdesign-applicability row must still be caught."""
+    boatdesign_doc = {
+        "schema_version": "sl0032-boatdesign-applicability-v2",
+        "generated_at": "2026-08-28T00:00:00+00:00",
+        "candidates": [
+            {
+                "candidate_rank": 1,
+                "qid": "Q1",  # wrong -- should be FIXED_CANDIDATE_SEQUENCE[0].qid
+                "hullq_id": FIXED_CANDIDATE_SEQUENCE[0].hullq_id,
+                "generation_boundary_established_for_this_pilot": False,
+                "applicability_scope": dict(_UNBOUNDED_SCOPE),
+                "findings": "test",
+            },
+            _ready_boatdesign_doc_for_rank(2)["candidates"][0],
+        ],
+    }
+    problems = validate_boatdesign_applicability(boatdesign_doc, attempted_ranks=frozenset({1, 2}))
+    assert any("qid" in p and "!= fixed" in p for p in problems)
+
+
+def test_real_all_three_attempted_package_remains_valid_under_identity_pinning() -> None:
+    """The existing real all-three-attempted retained-package fixtures must
+    remain valid under the strengthened duplicate/identity checks."""
+    assert (
+        validate_field_applicability(
+            _real_field_applicability_document(),
+            corrected_candidate_evidence={
+                "candidates": [
+                    {
+                        "candidate_rank": c.rank,
+                        "fields": [
+                            {
+                                "field_pointer": p,
+                                "normalized_candidate": {"value": "1.0", "unit": "m"},
+                            }
+                            for p in sorted(ALLOWED_FIELD_POINTERS)
+                        ],
+                    }
+                    for c in FIXED_CANDIDATE_SEQUENCE
+                ]
+            },
+            attempted_ranks=ALL_ATTEMPTED_RANKS,
+        )
+        == []
+    )
+    assert (
+        validate_boatdesign_applicability(
+            _real_boatdesign_document(), attempted_ranks=ALL_ATTEMPTED_RANKS
+        )
+        == []
+    )
+    assert (
+        verify_source_clearance_assessment_self_consistency(
+            _real_clearance_document(), attempted_ranks=ALL_ATTEMPTED_RANKS
+        )
+        == []
+    )
+
+
+# ---------------------------------------------------------------------------
 # 6. Candidate-level / top-level result derivation
 # ---------------------------------------------------------------------------
+
+
+def _mismatched_bounded_year_scope() -> dict[str, Any]:
+    """A second, independently-bounded year scope that does NOT equal
+    ``_bounded_year_scope()`` -- used to prove two independently-bounded
+    scopes are never treated as "the same scope" merely because both are
+    bounded."""
+    scope = dict(_UNBOUNDED_SCOPE)
+    scope.update(first_year=2002, last_year=2005, unknown_or_unbounded=False)
+    return scope
+
+
+def _bounded_named_variant_scope(hint: str) -> dict[str, Any]:
+    scope = dict(_UNBOUNDED_SCOPE)
+    scope.update(named_variant_hint=hint, unknown_or_unbounded=False)
+    return scope
 
 
 def test_compute_candidate_result_rights_blocked_wins_regardless_of_evidence() -> None:
     result = compute_candidate_result(
         source_cleared=False,
-        generation_boundary_established=True,
+        boatdesign_applicability_scope=_bounded_year_scope(),
         field_outcomes=_all_fields("SAFE_FOR_LATER_DESIGN_PROMOTION", scope=_bounded_year_scope()),
     )
     assert result == BLOCKED
@@ -737,10 +1016,55 @@ def test_compute_candidate_result_rights_blocked_wins_regardless_of_evidence() -
 def test_compute_candidate_result_ready_requires_bounded_generation_and_safe_field() -> None:
     result = compute_candidate_result(
         source_cleared=True,
-        generation_boundary_established=True,
+        boatdesign_applicability_scope=_bounded_year_scope(),
         field_outcomes=_all_fields("SAFE_FOR_LATER_DESIGN_PROMOTION", scope=_bounded_year_scope()),
     )
     assert result == READY
+
+
+def test_compute_candidate_result_same_scope_contributes_to_ready() -> None:
+    """CASE SAME-SCOPE (required by independent review): a bounded BoatDesign
+    scope plus a SAFE field with an IDENTICAL bounded scope may contribute to
+    READY."""
+    scope = _bounded_year_scope()
+    result = compute_candidate_result(
+        source_cleared=True,
+        boatdesign_applicability_scope=scope,
+        field_outcomes=[
+            _field(
+                "/baseline/dimensions/loa_m", "SAFE_FOR_LATER_DESIGN_PROMOTION", scope=dict(scope)
+            )
+        ],
+    )
+    assert result == READY
+
+
+def test_compute_candidate_result_mismatched_year_scope_cannot_be_ready() -> None:
+    """CASE MISMATCH (required by independent review): a bounded BoatDesign
+    scope (1998-2001) and a SAFE field with a DIFFERENT bounded scope
+    (2002-2005) must NOT produce READY -- both are independently bounded,
+    but they are not the same scope."""
+    result = compute_candidate_result(
+        source_cleared=True,
+        boatdesign_applicability_scope=_bounded_year_scope(),
+        field_outcomes=_all_fields(
+            "SAFE_FOR_LATER_DESIGN_PROMOTION", scope=_mismatched_bounded_year_scope()
+        ),
+    )
+    assert result == INSUFFICIENT
+
+
+def test_compute_candidate_result_mismatched_named_variant_scope_cannot_be_ready() -> None:
+    """Mismatch on a non-year applicability dimension (named variant/design
+    option) must also block READY, not only a year-range mismatch."""
+    result = compute_candidate_result(
+        source_cleared=True,
+        boatdesign_applicability_scope=_bounded_named_variant_scope("Mk I"),
+        field_outcomes=_all_fields(
+            "SAFE_FOR_LATER_DESIGN_PROMOTION", scope=_bounded_named_variant_scope("Mk II")
+        ),
+    )
+    assert result == INSUFFICIENT
 
 
 def test_compute_candidate_result_equality_alone_cannot_be_ready() -> None:
@@ -749,7 +1073,7 @@ def test_compute_candidate_result_equality_alone_cannot_be_ready() -> None:
     READY -- the equality rule's guardrail."""
     result = compute_candidate_result(
         source_cleared=True,
-        generation_boundary_established=True,
+        boatdesign_applicability_scope=_bounded_year_scope(),
         field_outcomes=_all_fields("SAFE_FOR_LATER_DESIGN_PROMOTION", scope=dict(_UNBOUNDED_SCOPE)),
     )
     assert result == INSUFFICIENT
@@ -758,7 +1082,7 @@ def test_compute_candidate_result_equality_alone_cannot_be_ready() -> None:
 def test_compute_candidate_result_option_sensitive_cannot_be_flattened_to_safe() -> None:
     result = compute_candidate_result(
         source_cleared=True,
-        generation_boundary_established=True,
+        boatdesign_applicability_scope=_bounded_year_scope(),
         field_outcomes=_all_fields("OPTION_SENSITIVE", scope=_bounded_year_scope()),
     )
     assert result == INSUFFICIENT
@@ -767,7 +1091,7 @@ def test_compute_candidate_result_option_sensitive_cannot_be_flattened_to_safe()
 def test_compute_candidate_result_requires_generation_boundary_even_with_safe_field() -> None:
     result = compute_candidate_result(
         source_cleared=True,
-        generation_boundary_established=False,
+        boatdesign_applicability_scope=dict(_UNBOUNDED_SCOPE),
         field_outcomes=_all_fields("SAFE_FOR_LATER_DESIGN_PROMOTION", scope=_bounded_year_scope()),
     )
     assert result == INSUFFICIENT

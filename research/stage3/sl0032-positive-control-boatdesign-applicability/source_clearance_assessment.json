@@ -1,6 +1,6 @@
 {
   "schema_version": "sl0032-source-clearance-assessment-v2",
-  "generated_at": "2026-08-28T22:53:04.736344+00:00",
+  "generated_at": "2026-08-29T12:39:09.052124+00:00",
   "candidates": [
     {
       "candidate_rank": 1,
@@ -13,7 +13,7 @@
           {
             "condition": "lawfully_publicly_accessible",
             "satisfied": true,
-            "evidence": "Both buzzardsbayboatshop.com pages retrieved (retrievals 2-3) returned HTTP 200 with no login/paywall; robots.txt (retrieval 4) returns HTTP 404 -- no automation restriction is declared at all."
+            "evidence": "Both buzzardsbayboatshop.com pages retrieved (retrievals 2-3) returned HTTP 200 with no login/paywall; `/robots.txt` (retrieval 4) returned HTTP 404, so no robots.txt access/automation restriction was observed at the standard robots path."
           },
           {
             "condition": "reused_element_is_discrete_factual_value_not_expressive_content",
@@ -28,7 +28,7 @@
           {
             "condition": "no_identified_source_term_prohibits_the_chosen_method",
             "satisfied": true,
-            "evidence": "Both retrieved pages (retrievals 2-3) carry a bare copyright/attribution line in the footer: '&copy; Buzzards Bay Boat Shop [buzzardsbayboatshop.com]'. This is an ownership/attribution assertion only: it contains no 'all rights reserved' or reproduction-restriction language, no statement addressing data/fact extraction or reuse, and no link to any terms-of-use/licence page. The footer navigation observed across both retrieved pages resolves to five link destinations (home/index.html labelled HOMEPORT on bb14boat.html, THE BOAT -> bb14boat.html, PHOTO GALLERY, USED & BROKERAGE BOATS -> same-domain boatsforsale/class_search.pl, CONTACT US) -- none of which is a terms-of-use/licence page. robots.txt does not exist (HTTP 404, retrieval 4), so no automation/access restriction is declared either. Per the accepted SLICE-0029 precedent (Catalina Yachts' bare '© 2026 Catalina Yachts' footer notice was treated as satisfying this same condition), a bare copyright/attribution line without accompanying restrictive licence language does not by itself prohibit the bounded manual factual-extraction method used here; the copyright notice's mere presence is not, on its own, evidence either for or against a prohibition."
+            "evidence": "Both retrieved pages (retrievals 2-3) carry a bare copyright/attribution line in the footer: '&copy; Buzzards Bay Boat Shop [buzzardsbayboatshop.com]'. This is an ownership/attribution assertion only: it contains no 'all rights reserved' or reproduction-restriction language, no statement addressing data/fact extraction or reuse, and no link to any terms-of-use/licence page. The footer navigation observed across both retrieved pages resolves to five link destinations (home/index.html labelled HOMEPORT on bb14boat.html, THE BOAT -> bb14boat.html, PHOTO GALLERY, USED & BROKERAGE BOATS -> same-domain boatsforsale/class_search.pl, CONTACT US) -- none of which is a terms-of-use/licence page. `/robots.txt` (retrieval 4) returned HTTP 404; no robots.txt access/automation restriction was observed at the standard robots path. No prohibition on the bounded manual method used here was identified on the inspected source surfaces. Per the accepted SLICE-0029 precedent (Catalina Yachts' bare '© 2026 Catalina Yachts' footer notice was treated as satisfying this same condition), a bare copyright/attribution line without accompanying restrictive licence language does not by itself prohibit the bounded manual factual-extraction method used here; the copyright notice's mere presence is not, on its own, evidence either for or against a prohibition."
           },
           {
             "condition": "not_systematic_or_bulk_database_extraction",
@@ -70,7 +70,7 @@
             "terms_url": null,
             "terms_reviewed_at": "2026-08-28",
             "tdm_reservation": "none_observed",
-            "rate_limit_notes": "robots.txt returns HTTP 404 (no file present, so no crawl-delay or rate-limit directive exists); this bounded pass issued 4 sequential single-document GET requests with no concurrency and no bulk enumeration. automated_access is left 'unknown' because no explicit automated/bulk reuse permission exists beyond the absence of a robots.txt block, and public/crawlable accessibility alone is not a reuse grant."
+            "rate_limit_notes": "`/robots.txt` returned HTTP 404; no crawl-delay or rate-limit directive was observed at the standard robots path. This bounded pass issued 4 sequential single-document GET requests with no concurrency and no bulk enumeration. automated_access is left 'unknown' because no explicit automated/bulk reuse permission was identified on the inspected source surfaces, and public/crawlable accessibility alone is not a reuse grant."
           },
           "permissions": {
             "commercial_use": "conditional",

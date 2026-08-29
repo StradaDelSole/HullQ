@@ -1,6 +1,6 @@
 {
   "schema_version": "sl0032-corrected-candidate-evidence-v1",
-  "generated_at": "2026-08-28T22:53:04.736344+00:00",
+  "generated_at": "2026-08-29T12:39:09.052124+00:00",
   "derivation_note": "Reconstructed purely offline from the retained SLICE-0028 evidence_manifest.json raw_entities, replayed through hullq.sources.wikidata.WikidataAdapter.extract_field_evidence at the SLICE-0030 corrected/current default unit-QID map (UNIT_QID_MAP_VERSION_SLICE0030). Zero Wikidata reacquisition.",
   "unit_map_version": "SLICE-0030-v1",
   "candidates": [

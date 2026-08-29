@@ -1,6 +1,6 @@
 {
   "schema_version": "sl0032-source-retrieval-log-v1",
-  "generated_at": "2026-08-28T22:53:04.736344+00:00",
+  "generated_at": "2026-08-29T12:39:09.052124+00:00",
   "retrieval_ceiling_per_candidate": 12,
   "retrieval_ceiling_total": 36,
   "retrieval_count": 7,
@@ -56,7 +56,7 @@
       "content_type": "text/html; charset=iso-8859-1",
       "byte_size": 236,
       "sha256": "9448f8a1159c9b14e3e1b9d8eab1a6ddf88d26e1f888a34cef430c756e4e6e1e",
-      "fact_purpose": "Access/automation-policy check: no robots.txt file exists at all (HTTP 404) -- no crawl/automation restriction is declared by this site."
+      "fact_purpose": "Access/automation-policy check: `/robots.txt` returned HTTP 404; no robots.txt access/automation restriction was observed at the standard robots path."
     },
     {
       "retrieval_index": 5,

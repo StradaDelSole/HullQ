@@ -77,6 +77,8 @@ __all__ = [
     "ARTIFACT_DIGESTS_SCHEMA_VERSION",
     "BOUNDED_ONLY_PERMISSION_KEYS",
     "FIXED_CANDIDATE_SEQUENCE",
+    "FIXED_SR_6_6_CONDITION_IDENTIFIERS",
+    "FIXED_SR_6_6_CONDITION_IDENTIFIER_SET",
     "MAX_CANDIDATES",
     "MAX_RETRIEVALS_PER_CANDIDATE",
     "MAX_TOTAL_RETRIEVALS",
@@ -86,6 +88,7 @@ __all__ = [
     "SOURCE_CLEARANCE_USE_CLEARED",
     "SR_6_6_DEFAULT_CLEARANCE",
     "SR_6_6_GATED_USES",
+    "SR_6_6_POLICY_REFERENCE",
     "SR_6_6_SATISFIED_CLEARANCE",
     "AttemptStatus",
     "CandidateOutcome",
@@ -105,12 +108,14 @@ __all__ = [
     "retrieval_host",
     "sr_6_6_conditions_satisfied",
     "validate_applicability_scope_invariant",
+    "validate_attempted_row_identity",
     "validate_boatdesign_applicability",
     "validate_bounded_scope",
     "validate_field_applicability",
     "validate_permissions_bounded",
     "validate_sequential_stop_invariant",
     "validate_source_retrieval_log",
+    "validate_sr_6_6_condition_set",
     "validate_stop_on_first_positive_retrievals",
     "verify_artifact_digests_self_consistency",
     "verify_fixed_candidate_sequence",
@@ -209,6 +214,27 @@ SR_6_6_GATED_USES: tuple[str, str] = (
     SourceUse.IDENTITY_SEED.value,
     SourceUse.PRODUCTION_VALUE.value,
 )
+
+# The exact six normative SR-6.6 condition identifiers (specs/SOURCE_RIGHTS_POLICY.v0.1.md#6.6),
+# as fixed code constants -- never trusted from a retained artifact. A
+# clearance evaluation is valid only when it names exactly these six
+# identifiers, each exactly once: no missing, renamed, duplicated or extra
+# condition can ever mechanically derive a positive clearance.
+FIXED_SR_6_6_CONDITION_IDENTIFIERS: tuple[str, ...] = (
+    "lawfully_publicly_accessible",
+    "reused_element_is_discrete_factual_value_not_expressive_content",
+    "provenance_recorded",
+    "no_identified_source_term_prohibits_the_chosen_method",
+    "not_systematic_or_bulk_database_extraction",
+    "no_automated_extraction_unless_separately_cleared",
+)
+FIXED_SR_6_6_CONDITION_IDENTIFIER_SET: frozenset[str] = frozenset(
+    FIXED_SR_6_6_CONDITION_IDENTIFIERS
+)
+
+# The exact, fixed SR-6.6 policy reference -- never trusted from a retained
+# artifact's own `policy_reference` field.
+SR_6_6_POLICY_REFERENCE = "specs/SOURCE_RIGHTS_POLICY.v0.1.md#6.6"
 
 BOUNDED_ONLY_PERMISSION_KEYS: tuple[str, str, str] = (
     "commercial_use",
@@ -525,9 +551,62 @@ def evaluate_source_use_gate(source_record: Mapping[str, Any]) -> dict[str, dict
     return results
 
 
+def validate_sr_6_6_condition_set(conditions: Any) -> list[str]:
+    """Independently validate that *conditions* names exactly the fixed six
+    normative SR-6.6 identifiers (``FIXED_SR_6_6_CONDITION_IDENTIFIERS``),
+    each exactly once -- never trusting the retained artifact's own choice
+    of which conditions are "required". Detects missing, renamed
+    (simultaneously missing + extra), duplicated and additional-arbitrary
+    identifiers. ``uniqueItems``-style JSON Schema checks are not relied
+    upon: two rows with the same ``condition`` name but different
+    ``evidence`` text are still a semantic duplicate, caught here by
+    identifier alone.
+    """
+    if not isinstance(conditions, list):
+        return ["sr_6_6 conditions is not a list"]
+
+    identifiers = [c.get("condition") if isinstance(c, Mapping) else None for c in conditions]
+    counts: dict[Any, int] = {}
+    for identifier in identifiers:
+        counts[identifier] = counts.get(identifier, 0) + 1
+
+    present = set(identifiers)
+    missing = FIXED_SR_6_6_CONDITION_IDENTIFIER_SET - present
+    extra = present - FIXED_SR_6_6_CONDITION_IDENTIFIER_SET
+    duplicated = {
+        identifier
+        for identifier, count in counts.items()
+        if count > 1 and identifier in FIXED_SR_6_6_CONDITION_IDENTIFIER_SET
+    }
+
+    problems: list[str] = []
+    if missing:
+        problems.append(f"sr_6_6 conditions missing required identifiers: {sorted(missing)!r}")
+    if extra:
+        problems.append(
+            f"sr_6_6 conditions contain non-normative identifiers: {sorted(extra, key=str)!r}"
+        )
+    if duplicated:
+        problems.append(
+            f"sr_6_6 conditions contain duplicated normative identifiers: {sorted(duplicated)!r}"
+        )
+    if not problems and len(identifiers) != len(FIXED_SR_6_6_CONDITION_IDENTIFIERS):
+        problems.append(
+            f"sr_6_6 conditions count {len(identifiers)} != required "
+            f"{len(FIXED_SR_6_6_CONDITION_IDENTIFIERS)}"
+        )
+    return problems
+
+
 def sr_6_6_conditions_satisfied(conditions: Any) -> bool:
-    """True only if every retained SR-6.6 condition is positively satisfied
-    (``True`` or the one explicitly-allowed partial state)."""
+    """True only if *conditions* names exactly the fixed six normative SR-6.6
+    identifiers (see ``validate_sr_6_6_condition_set``) AND every one of them
+    is positively satisfied (``True`` or the one explicitly-allowed partial
+    state). Fails closed (returns ``False``) if the condition set itself is
+    invalid -- a retained artifact can never substitute its own condition
+    set to manufacture a positive clearance."""
+    if validate_sr_6_6_condition_set(conditions):
+        return False
     return all(c["satisfied"] in (True, "partial_left_unresolved") for c in conditions)
 
 
@@ -582,6 +661,55 @@ def validate_bounded_scope(
     return problems
 
 
+def validate_attempted_row_identity(
+    rows: Sequence[Mapping[str, Any]],
+) -> tuple[list[str], dict[int, Mapping[str, Any]]]:
+    """Independently validate an attempted-only document's rows against
+    ``FIXED_CANDIDATE_SEQUENCE`` and return ``(problems, rows_by_rank)``.
+
+    ``rows_by_rank`` is built ONLY from rows that pass identity/uniqueness
+    validation -- never via a naive ``{row["candidate_rank"]: row for row in
+    rows}`` dict comprehension, which would silently let a later duplicate
+    row overwrite an earlier one instead of being flagged. Detects,
+    independently of any retained artifact:
+
+    - a duplicate row for the same ``candidate_rank`` (second and later
+      occurrences are reported and excluded from ``rows_by_rank``, even if
+      their content differs from the first);
+    - a ``candidate_rank`` outside the fixed 1..3 sequence;
+    - a ``qid``/``hullq_id`` that does not match the fixed candidate pinned
+      to that exact rank in ``FIXED_CANDIDATE_SEQUENCE`` (identity drift
+      while the numeric rank itself stays "correct").
+    """
+    problems: list[str] = []
+    fixed_by_rank = {c.rank: c for c in FIXED_CANDIDATE_SEQUENCE}
+    seen_ranks: set[int] = set()
+    rows_by_rank: dict[int, Mapping[str, Any]] = {}
+    for row in rows:
+        rank_raw = row.get("candidate_rank")
+        rank = rank_raw if isinstance(rank_raw, int) else None
+        if rank is None:
+            problems.append(f"unrecognized candidate_rank {rank_raw!r}")
+            continue
+        if rank in seen_ranks:
+            problems.append(f"duplicate row for candidate_rank {rank!r}")
+            continue
+        seen_ranks.add(rank)
+        fixed_candidate = fixed_by_rank.get(rank)
+        if fixed_candidate is None:
+            problems.append(f"unrecognized candidate_rank {rank!r}")
+            continue
+        if row.get("qid") != fixed_candidate.qid:
+            problems.append(f"rank {rank}: qid {row.get('qid')!r} != fixed {fixed_candidate.qid!r}")
+        if row.get("hullq_id") != fixed_candidate.hullq_id:
+            problems.append(
+                f"rank {rank}: hullq_id {row.get('hullq_id')!r} != fixed "
+                f"{fixed_candidate.hullq_id!r}"
+            )
+        rows_by_rank[rank] = row
+    return problems, rows_by_rank
+
+
 def verify_source_clearance_assessment_self_consistency(
     document: Mapping[str, Any],
     *,
@@ -606,15 +734,14 @@ def verify_source_clearance_assessment_self_consistency(
     """
     mismatches: list[str] = []
     fixed_by_rank = {c.rank: c for c in FIXED_CANDIDATE_SEQUENCE}
-    found_ranks: set[int] = set()
 
-    for entry in document.get("candidates", []):
-        rank = entry.get("candidate_rank")
-        found_ranks.add(rank)
-        fixed_candidate = fixed_by_rank.get(rank)
-        if fixed_candidate is None:
-            mismatches.append(f"source_clearance_assessment: unrecognized candidate_rank {rank!r}")
-            continue
+    identity_problems, rows_by_rank = validate_attempted_row_identity(
+        document.get("candidates", [])
+    )
+    mismatches.extend(f"source_clearance_assessment: {p}" for p in identity_problems)
+
+    for rank, entry in rows_by_rank.items():
+        fixed_candidate = fixed_by_rank[rank]
 
         if entry.get("source_located") is False:
             if entry.get("candidate_source_clearance_result") != SOURCE_CLEARANCE_RIGHTS_BLOCKED:
@@ -627,11 +754,19 @@ def verify_source_clearance_assessment_self_consistency(
 
         source_record = entry["source_record"]
         clearance = source_record["rights"]["clearance"]
-        conditions = entry["sr_6_6_condition_evaluation"]["conditions"]
+        sr_6_6_block = entry["sr_6_6_condition_evaluation"]
+        conditions = sr_6_6_block["conditions"]
+
+        policy_reference = sr_6_6_block.get("policy_reference")
+        if policy_reference != SR_6_6_POLICY_REFERENCE:
+            mismatches.append(
+                f"rank {rank}: sr_6_6_condition_evaluation.policy_reference="
+                f"{policy_reference!r} != fixed {SR_6_6_POLICY_REFERENCE!r}"
+            )
+        mismatches.extend(f"rank {rank}: {p}" for p in validate_sr_6_6_condition_set(conditions))
+
         all_satisfied = sr_6_6_conditions_satisfied(conditions)
-        retained_flag = entry["sr_6_6_condition_evaluation"][
-            "conditions_satisfied_for_bounded_manual_use"
-        ]
+        retained_flag = sr_6_6_block["conditions_satisfied_for_bounded_manual_use"]
         if retained_flag != all_satisfied:
             mismatches.append(
                 f"rank {rank}: conditions_satisfied_for_bounded_manual_use retained="
@@ -672,9 +807,9 @@ def verify_source_clearance_assessment_self_consistency(
                 f"{expected_clearance_result!r}"
             )
 
-    if found_ranks != attempted_ranks:
+    if set(rows_by_rank) != attempted_ranks:
         mismatches.append(
-            f"source_clearance_assessment rank set {sorted(found_ranks)!r} != independently "
+            f"source_clearance_assessment rank set {sorted(rows_by_rank)!r} != independently "
             f"derived attempted-rank set {sorted(attempted_ranks)!r} -- an unattempted rank must "
             "carry no clearance row at all, and every attempted rank must carry exactly one"
         )
@@ -760,11 +895,12 @@ def validate_boatdesign_applicability(
     here at all -- this document is never a place to assert generation/
     applicability findings for research that did not happen.
     """
-    problems: list[str] = []
-    found_ranks: set[int] = set()
-    for model in document.get("candidates", []):
-        rank = model.get("candidate_rank")
-        found_ranks.add(rank)
+    identity_problems, rows_by_rank = validate_attempted_row_identity(
+        document.get("candidates", [])
+    )
+    problems: list[str] = [f"boatdesign_applicability: {p}" for p in identity_problems]
+
+    for rank, model in rows_by_rank.items():
         established = model.get("generation_boundary_established_for_this_pilot")
         if not isinstance(established, bool):
             problems.append(
@@ -787,9 +923,9 @@ def validate_boatdesign_applicability(
                 "applicability_scope.unknown_or_unbounded != true"
             )
 
-    if found_ranks != attempted_ranks:
+    if set(rows_by_rank) != attempted_ranks:
         problems.append(
-            f"boatdesign_applicability rank set {sorted(found_ranks)!r} != {sorted(attempted_ranks)!r}"
+            f"boatdesign_applicability rank set {sorted(rows_by_rank)!r} != {sorted(attempted_ranks)!r}"
         )
     return problems
 
@@ -810,17 +946,18 @@ def validate_field_applicability(
     here at all -- five-field classification is never asserted for research
     that did not happen.
     """
-    problems: list[str] = []
     valid_outcomes = {o.value for o in FieldApplicabilityOutcome}
 
     evidence_by_rank: dict[int, dict[str, Any]] = {
         row["candidate_rank"]: row for row in corrected_candidate_evidence.get("candidates", [])
     }
 
-    found_ranks: set[int] = set()
-    for model in document.get("candidates", []):
-        rank = model.get("candidate_rank")
-        found_ranks.add(rank)
+    identity_problems, rows_by_rank = validate_attempted_row_identity(
+        document.get("candidates", [])
+    )
+    problems: list[str] = [f"field_applicability: {p}" for p in identity_problems]
+
+    for rank, model in rows_by_rank.items():
         seen_pointers: set[str] = set()
         evidence_row = evidence_by_rank.get(rank)
         fields_by_pointer = (
@@ -881,9 +1018,9 @@ def validate_field_applicability(
                 f"rank {rank}: field pointer coverage {sorted(seen_pointers)!r} != the five fixed pointers"
             )
 
-    if found_ranks != attempted_ranks:
+    if set(rows_by_rank) != attempted_ranks:
         problems.append(
-            f"field_applicability rank set {sorted(found_ranks)!r} != {sorted(attempted_ranks)!r}"
+            f"field_applicability rank set {sorted(rows_by_rank)!r} != {sorted(attempted_ranks)!r}"
         )
     return problems
 
@@ -896,30 +1033,44 @@ def validate_field_applicability(
 def compute_candidate_result(
     *,
     source_cleared: bool,
-    generation_boundary_established: bool,
+    boatdesign_applicability_scope: Mapping[str, Any],
     field_outcomes: Sequence[Mapping[str, Any]],
 ) -> CandidateOutcome:
     """Mechanically compute one candidate's result from its rights-clearance
-    state, its BoatDesign generation/configuration boundary state, and its
-    five field-applicability classifications.
+    state, its actual established BoatDesign generation/configuration
+    ``applicability_scope`` (not merely a boolean "established" flag), and
+    its five field-applicability classifications.
 
-    READY requires ALL of: source use cleared, a genuinely bounded
-    generation/configuration scope, and at least one field classified
-    SAFE_FOR_LATER_DESIGN_PROMOTION with a genuinely bounded
-    (``unknown_or_unbounded is False``) scope on that same field -- equality
-    alone or an unbounded/half-open scope can never satisfy this (defense in
-    depth alongside ``validate_field_applicability`` /
+    READY requires ALL of:
+
+    - source use cleared;
+    - the BoatDesign ``applicability_scope`` is genuinely bounded
+      (``unknown_or_unbounded is False``);
+    - at least one field classified ``SAFE_FOR_LATER_DESIGN_PROMOTION`` whose
+      OWN ``applicability_scope`` is *structurally equal* to that same
+      established BoatDesign scope -- two independently-bounded scopes that
+      differ (e.g. different year ranges, a different named variant/option)
+      are never treated as "the same scope". This is intentionally strict
+      dict equality: no fuzzy compatibility, subset inference, overlap
+      inference, or scope-merging is implemented in this slice.
+
+    Numeric-value equality alone, an unbounded/half-open scope on either
+    side, or a scope on a *different* dimension can never satisfy this
+    (defense in depth alongside ``validate_field_applicability`` /
     ``validate_boatdesign_applicability``).
     """
     if not source_cleared:
         return CandidateOutcome.RIGHTS_CLEARANCE_BLOCKED
 
-    has_safe_field = any(
+    boundary_established = boatdesign_applicability_scope.get("unknown_or_unbounded") is False
+
+    has_same_scope_safe_field = boundary_established and any(
         field["outcome"] == FieldApplicabilityOutcome.SAFE_FOR_LATER_DESIGN_PROMOTION.value
         and field.get("applicability_scope", {}).get("unknown_or_unbounded") is False
+        and field.get("applicability_scope") == boatdesign_applicability_scope
         for field in field_outcomes
     )
-    if generation_boundary_established and has_safe_field:
+    if has_same_scope_safe_field:
         return CandidateOutcome.READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT
     return CandidateOutcome.APPLICABILITY_EVIDENCE_INSUFFICIENT
 
@@ -1008,19 +1159,22 @@ def verify_result_self_consistency(
     earlier READY, and cannot claim retrievals occurred for a rank that was
     never attempted.
     """
-    problems: list[str] = []
     fixed_ranks = [c.rank for c in FIXED_CANDIDATE_SEQUENCE]
 
-    by_rank = {row["candidate_rank"]: row for row in document.get("candidates", [])}
+    identity_problems, by_rank = validate_attempted_row_identity(document.get("candidates", []))
+    problems: list[str] = [f"result.json: {p}" for p in identity_problems]
     if set(by_rank) != set(fixed_ranks):
-        return [f"result.json candidate rank set {sorted(by_rank)!r} != {fixed_ranks!r}"]
+        problems.append(f"result.json candidate rank set {sorted(by_rank)!r} != {fixed_ranks!r}")
+        return problems
 
     entries: list[CandidateSequenceEntry] = []
     for rank in fixed_ranks:
         row = by_rank[rank]
         attempt_status_raw = row.get("attempt_status")
         try:
-            attempt_status = AttemptStatus(attempt_status_raw)
+            attempt_status = AttemptStatus(
+                attempt_status_raw if isinstance(attempt_status_raw, str) else ""
+            )
         except ValueError:
             problems.append(
                 f"rank {rank}: attempt_status={attempt_status_raw!r} is not a valid AttemptStatus"
@@ -1047,20 +1201,27 @@ def verify_result_self_consistency(
         rank for rank, status, _ in entries if status == AttemptStatus.NOT_ATTEMPTED_AFTER_SUCCESS
     )
 
-    fields_by_rank = {
-        row["candidate_rank"]: row["fields"]
-        for row in field_applicability_document.get("candidates", [])
+    field_identity_problems, field_rows_by_rank = validate_attempted_row_identity(
+        field_applicability_document.get("candidates", [])
+    )
+    boundary_identity_problems, boundary_rows_by_rank = validate_attempted_row_identity(
+        boatdesign_applicability_document.get("candidates", [])
+    )
+    clearance_identity_problems, clearance_by_rank = validate_attempted_row_identity(
+        source_clearance_document.get("candidates", [])
+    )
+    problems.extend(f"field_applicability: {p}" for p in field_identity_problems)
+    problems.extend(f"boatdesign_applicability: {p}" for p in boundary_identity_problems)
+    problems.extend(f"source_clearance_assessment: {p}" for p in clearance_identity_problems)
+
+    fields_by_rank = {rank: row["fields"] for rank, row in field_rows_by_rank.items()}
+    scope_by_rank = {
+        rank: row["applicability_scope"] for rank, row in boundary_rows_by_rank.items()
     }
-    boundary_by_rank = {
-        row["candidate_rank"]: row["generation_boundary_established_for_this_pilot"]
-        for row in boatdesign_applicability_document.get("candidates", [])
-    }
-    clearance_by_rank = {
-        row["candidate_rank"]: row for row in source_clearance_document.get("candidates", [])
-    }
+
     for label, doc_ranks in (
-        ("field_applicability", set(fields_by_rank)),
-        ("boatdesign_applicability", set(boundary_by_rank)),
+        ("field_applicability", set(field_rows_by_rank)),
+        ("boatdesign_applicability", set(boundary_rows_by_rank)),
         ("source_clearance_assessment", set(clearance_by_rank)),
     ):
         if doc_ranks != attempted_ranks:
@@ -1105,11 +1266,7 @@ def verify_result_self_consistency(
                 "source_retrieval_log.json -- a genuinely attempted candidate requires at least "
                 "one bounded source retrieval"
             )
-        if (
-            rank not in fields_by_rank
-            or rank not in boundary_by_rank
-            or rank not in clearance_by_rank
-        ):
+        if rank not in fields_by_rank or rank not in scope_by_rank or rank not in clearance_by_rank:
             problems.append(
                 f"rank {rank}: attempt_status=ATTEMPTED but missing from one or more of "
                 "field_applicability.json / boatdesign_applicability.json / "
@@ -1118,7 +1275,7 @@ def verify_result_self_consistency(
             continue
         recomputed = compute_candidate_result(
             source_cleared=candidate_source_cleared(clearance_by_rank[rank]),
-            generation_boundary_established=boundary_by_rank[rank],
+            boatdesign_applicability_scope=scope_by_rank[rank],
             field_outcomes=fields_by_rank[rank],
         )
         if retained_result != recomputed:
