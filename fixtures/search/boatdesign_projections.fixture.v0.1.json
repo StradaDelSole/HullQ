@@ -1,0 +1,59 @@
+{
+  "schema_version": "0.1",
+  "fixture_label": "SLICE-0033 local demo fixtures — explicit test data, NOT canonical searchable BoatDesigns. The 1,770-record normalized research-evidence corpus is not represented here.",
+  "designs": [
+    {
+      "design_id": "fixture-design-001-confirmed-match",
+      "note": "All three leaves resolved and within range -> CONFIRMED_MATCH.",
+      "fields": {
+        "loa_m": { "source": "field_resolution", "state": "resolved", "value": 11.2 },
+        "draft_max_m": { "source": "field_resolution", "state": "resolved", "value": 1.6 },
+        "beam_m": { "source": "field_resolution", "state": "resolved", "value": 3.9 }
+      }
+    },
+    {
+      "design_id": "fixture-design-002-confirmed-match-boundary",
+      "note": "Every value sits exactly on its inclusive threshold boundary -> CONFIRMED_MATCH.",
+      "fields": {
+        "loa_m": { "source": "field_resolution", "state": "resolved", "value": 10.0 },
+        "draft_max_m": { "source": "field_resolution", "state": "resolved", "value": 1.8 },
+        "beam_m": { "source": "field_resolution", "state": "resolved", "value": 4.2 }
+      }
+    },
+    {
+      "design_id": "fixture-design-003-confirmed-non-match-loa",
+      "note": "LOA resolved but outside the required range -> FALSE on one leaf -> CONFIRMED_NON_MATCH.",
+      "fields": {
+        "loa_m": { "source": "field_resolution", "state": "resolved", "value": 13.5 },
+        "draft_max_m": { "source": "field_resolution", "state": "resolved", "value": 1.5 },
+        "beam_m": { "source": "field_resolution", "state": "resolved", "value": 3.8 }
+      }
+    },
+    {
+      "design_id": "fixture-design-004-insufficient-data-missing",
+      "note": "draft_max_m has no FieldResolution at all (VALUE_MISSING) -> INSUFFICIENT_DATA.",
+      "fields": {
+        "loa_m": { "source": "field_resolution", "state": "resolved", "value": 11.0 },
+        "beam_m": { "source": "field_resolution", "state": "resolved", "value": 3.7 }
+      }
+    },
+    {
+      "design_id": "fixture-design-005-insufficient-data-conflict",
+      "note": "beam_m is an unresolved FieldResolution conflict (UNRESOLVED_CONFLICT) -> INSUFFICIENT_DATA.",
+      "fields": {
+        "loa_m": { "source": "field_resolution", "state": "resolved", "value": 11.4 },
+        "draft_max_m": { "source": "field_resolution", "state": "resolved", "value": 1.4 },
+        "beam_m": { "source": "field_resolution", "state": "conflict", "value": null }
+      }
+    },
+    {
+      "design_id": "fixture-design-006-insufficient-data-provisional",
+      "note": "beam_m is a computed_provisional derived value; PROVISIONAL_VALUE MUST NOT confirm a match -> INSUFFICIENT_DATA.",
+      "fields": {
+        "loa_m": { "source": "field_resolution", "state": "resolved", "value": 10.8 },
+        "draft_max_m": { "source": "field_resolution", "state": "resolved", "value": 1.2 },
+        "beam_m": { "source": "derived_metric", "status": "computed_provisional", "value": 3.6 }
+      }
+    }
+  ]
+}

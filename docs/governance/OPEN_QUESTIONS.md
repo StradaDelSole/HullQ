@@ -14,7 +14,7 @@ This register is canonical for unresolved project decisions. Existing legacy `D-
 | OQ-006 | D-006 | Alert cadence, freshness and cache TTL policy | DEFERRED | Before automated alerts | alert/freshness spec |
 | OQ-007 | D-007 | Required source licensing/rights metadata | DECIDED | Before open-data bootstrap ingestion | `specs/SOURCE_SCHEMA.v0.2.json` + `specs/SOURCE_RIGHTS_POLICY.v0.1.md` + ADR-0005 |
 | OQ-008 | D-008 | Final frontend technology | DECIDED | Before frontend implementation | ADR-0010 + `docs/engineering/APPLICATION_STACK_BASELINE.v0.1.md`: Astro + TypeScript; selective React islands only where state complexity justifies them |
-| OQ-009 | — | Persisted/derived coverage tiers and unknown-data search semantics | OPEN | Before query engine implementation | search semantics spec + tests |
+| OQ-009 | — | Persisted/derived coverage tiers and unknown-data search semantics | DECIDED | Before query engine implementation | `specs/SEARCH_QUERY_SEMANTICS.v0.1.md` (D1-D10, accepted 2026-08-28/29) + `src/hullq/search/` (SLICE-0033) + tests |
 | OQ-010 | — | Python/data-pipeline runtime, dependency and tooling baseline | DECIDED | Before first pipeline code | `docs/engineering/PYTHON_TOOLCHAIN_BASELINE.v0.1.md` + ADR-0009; repository bootstrap follows as Stage 0.3 |
 | OQ-011 | — | Application/backend architecture and whether Strapi remains appropriate | DECIDED | Before application backend implementation | ADR-0010 + application stack baseline: CPython 3.14/FastAPI; Strapi not selected |
 | OQ-012 | — | Database/search persistence technology and indexing strategy | DECIDED | Before production persistence/query implementation | ADR-0010 + application stack baseline: PostgreSQL initial production persistence; no dedicated search engine until measured need |
@@ -33,7 +33,7 @@ The next work SHOULD proceed in this order:
 1. complete/review the canonical contract runtime (`SLICE-0003`);
 2. continue the evidence-derived Stage-2 normalization/provenance/derived/research-job slices in bounded order;
 3. implement and then measure the 50–100-design benchmark;
-4. resolve `OQ-009` unknown-data search semantics before query-engine code;
+4. `OQ-009` unknown-data search semantics is decided (`specs/SEARCH_QUERY_SEMANTICS.v0.1.md`) and its minimum numeric-MUST-AND vertical is implemented in `src/hullq/search/` (SLICE-0033); the Project Owner requires re-evaluation after a practical search run/benchmark (spec §12);
 5. introduce production persistence/API/frontend only through their dedicated slices even though the target stack is now accepted.
 
 The application stack was intentionally resolved early on 2026-08-18 to prevent divergent frontend/backend/persistence assumptions while domain code is being built. **ADR-0010 does not authorize premature frontend, PostgreSQL, FastAPI, deployment, account or alert implementation outside an assigned slice.**
