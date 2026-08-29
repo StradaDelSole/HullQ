@@ -1,0 +1,27 @@
+{
+  "schema_version": "0.1",
+  "type": "AND",
+  "criteria": [
+    {
+      "field": "loa_m",
+      "comparison": "RANGE",
+      "threshold_min": 10.0,
+      "threshold_max": 12.5,
+      "strength": "MUST"
+    },
+    {
+      "field": "draft_max_m",
+      "comparison": "MAXIMUM",
+      "threshold_min": null,
+      "threshold_max": 1.8,
+      "strength": "MUST"
+    },
+    {
+      "field": "beam_m",
+      "comparison": "RANGE",
+      "threshold_min": 3.5,
+      "threshold_max": 4.2,
+      "strength": "MUST"
+    }
+  ]
+}

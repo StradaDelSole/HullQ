@@ -286,9 +286,9 @@ A record with unknown data for an active criterion MUST NOT be classified as a c
 **Acceptance:** an unknown-field fixture returns an insufficient-data state rather than confirmed false for that criterion.
 
 ### REQ-SEARCH-003 — Three-state semantics
-**BLOCKED by OQ-009.** Query semantics MUST distinguish at least confirmed match, confirmed non-match and insufficient-data/unknown outcome where relevant.
+Resolved by OQ-009 / `specs/SEARCH_QUERY_SEMANTICS.v0.1.md`. Query semantics MUST distinguish at least confirmed match, confirmed non-match and insufficient-data/unknown outcome where relevant.
 
-**Acceptance:** OQ-009 fixtures cover and distinguish all three states for the same criterion type.
+**Acceptance:** `hullq.search` fixtures (SLICE-0033, `fixtures/search/`) cover and distinguish all three states for the same criterion type.
 
 ### REQ-SEARCH-004 — Explainable matching
 For each returned design, HullQ SHOULD be able to identify which query criteria were confirmed and which depend on missing/uncertain data.
