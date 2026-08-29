@@ -1,0 +1,194 @@
+{
+  "fixture_purpose": "SLICE-0034 synthetic archetype: modern production cruiser demonstrating a standard-vs-shallow-draft DesignOption (axis=draft, overriding dimensions+appendages) and a single-vs-twin-helm DesignOption (axis=helm, overriding deck) on the same baseline. Not a real BoatDesign; no real-world boat facts are represented.",
+  "schema_version": "0.6",
+  "id": "BD_ARCHETYPE_MODERN_PRODUCTION_OPTIONS",
+  "boat_model_id": "BM_ARCHETYPE_MODERN_PRODUCTION",
+  "generation": {
+    "label": "Mk I",
+    "sequence": 1,
+    "aliases": [],
+    "first_built": 2015,
+    "last_built": null,
+    "hull_number_from": null,
+    "hull_number_to": null,
+    "boundary_confidence": "medium"
+  },
+  "relationships": {
+    "builders": [
+      {
+        "id": "ODR_ARCHETYPE_MODERN_1",
+        "organization_id": "ORG_ARCHETYPE_MODERN_YARD",
+        "role": "builder",
+        "first_year": 2015,
+        "last_year": null,
+        "hull_number_from": null,
+        "hull_number_to": null,
+        "market": null,
+        "notes": null
+      }
+    ],
+    "designers": [
+      {
+        "name": "Archetype Production Design (synthetic)",
+        "role": "naval_architect"
+      }
+    ],
+    "number_built": null
+  },
+  "baseline": {
+    "dimensions": {
+      "loa_m": 11.2,
+      "lod_m": 10.9,
+      "lwl_m": 10.1,
+      "beam_m": 3.9,
+      "beam_waterline_m": 3.4,
+      "draft_min_m": 1.95,
+      "draft_max_m": 1.95,
+      "displacement_kg": 8600,
+      "ballast_kg": 2500,
+      "ballast_type": "external_keel",
+      "ballast_material": "cast_iron",
+      "sail_area_m2": 63.0
+    },
+    "ratio_input_basis": {
+      "displacement_basis": "lightship",
+      "sail_area_basis": "upwind_100pct"
+    },
+    "configuration": {
+      "hull_configuration": "monohull",
+      "hull_count": 1
+    },
+    "appendages": {
+      "keel_type": "fin",
+      "keel_subtype": "standard fin, synthetic",
+      "centerboard_count": 0,
+      "centerboard_type": null,
+      "daggerboard_count": 0,
+      "daggerboard_type": null,
+      "rudder_count": 1,
+      "rudder_position": "underhull",
+      "rudder_support": "free",
+      "rudder_balance": "balanced",
+      "skeg_type": "none"
+    },
+    "rig": {
+      "sailplan": "sloop",
+      "masthead_fractional": "fractional",
+      "mast_count": 1,
+      "mast_step": "deck",
+      "rig_variant": "standard",
+      "mast_height_m": 16.2,
+      "mast_height_basis": "from_design_waterline",
+      "i_m": 13.5,
+      "j_m": 4.0,
+      "p_m": 13.9,
+      "e_m": 4.6,
+      "py_m": null,
+      "ey_m": null,
+      "isp_m": null,
+      "jp_m": null,
+      "spl_or_tps_m": null,
+      "forestay_length_m": 14.1,
+      "forestay_length_basis": "reported",
+      "sail_area_reported_m2": 63.0,
+      "sail_area_main_m2": 32.0,
+      "sail_area_foretriangle_m2": 27.0,
+      "sail_area_calculated_m2": 59.0,
+      "sail_area_calculated_notes": "upwind 100% foretriangle plus main, synthetic figure"
+    },
+    "deck": {
+      "cockpit_position": "aft",
+      "cockpit_count": 1,
+      "helm_type": "wheel",
+      "helm_count": 1,
+      "deck_saloon": "none"
+    },
+    "construction": {
+      "hull_material": "grp_fiberglass",
+      "construction_method": null
+    },
+    "propulsion": {
+      "engine_make": null,
+      "engine_model": null,
+      "engine_type": "inboard_diesel",
+      "engine_power_hp": 40,
+      "engine_count": 1,
+      "drive_type": "saildrive",
+      "propeller_configuration": null,
+      "fuel_capacity_l": 200,
+      "water_capacity_l": 400
+    },
+    "accommodation": {
+      "headroom_m": 2.0,
+      "bridgedeck_clearance_m": null,
+      "cabin_count": 3,
+      "berth_count": 6,
+      "head_count": 2
+    },
+    "compliance": {
+      "ce_design_category": "A"
+    }
+  },
+  "named_variants": [],
+  "design_options": [
+    {
+      "id": "DO_ARCHETYPE_SHALLOW_DRAFT",
+      "axis": "draft",
+      "name": "Shallow Draft Keel",
+      "aliases": ["shoal draft"],
+      "applicability": {
+        "first_built": null,
+        "last_built": null,
+        "hull_number_from": null,
+        "hull_number_to": null,
+        "notes": "Synthetic option; standard vs shallow-draft keel."
+      },
+      "overrides": {
+        "dimensions": {"draft_min_m": 1.35, "draft_max_m": 1.35},
+        "ratio_input_basis": {},
+        "configuration": {},
+        "appendages": {"keel_type": "shoal", "keel_subtype": "shallow fin, synthetic"},
+        "rig": {},
+        "deck": {},
+        "construction": {},
+        "propulsion": {},
+        "accommodation": {},
+        "compliance": {}
+      },
+      "requires_option_ids": [],
+      "excludes_option_ids": []
+    },
+    {
+      "id": "DO_ARCHETYPE_TWIN_HELM",
+      "axis": "helm",
+      "name": "Twin Wheel Helm",
+      "aliases": ["twin wheel"],
+      "applicability": {
+        "first_built": null,
+        "last_built": null,
+        "hull_number_from": null,
+        "hull_number_to": null,
+        "notes": "Synthetic option; single vs twin wheel helm station."
+      },
+      "overrides": {
+        "dimensions": {},
+        "ratio_input_basis": {},
+        "configuration": {},
+        "appendages": {},
+        "rig": {},
+        "deck": {"helm_count": 2},
+        "construction": {},
+        "propulsion": {},
+        "accommodation": {},
+        "compliance": {}
+      },
+      "requires_option_ids": [],
+      "excludes_option_ids": []
+    }
+  ],
+  "quality": {
+    "status": "partial",
+    "confidence": "medium",
+    "notes": "Synthetic SLICE-0034 archetype fixture. Not production data; the baseline represents the standard configuration and both DesignOptions are independently applicable, not merged into one averaged record."
+  }
+}

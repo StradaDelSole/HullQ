@@ -1,0 +1,1299 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/boat-design/0.6",
+  "title": "HullQ BoatDesign v0.6",
+  "description": "BoatDesign contract superseding v0.5 for new payloads. Preserves v0.5 identity/generation/relationship/quality semantics unchanged. Decomposes the v0.5 combined rig_type into rig.sailplan + rig.masthead_fractional, and the v0.5 combined rudder_type into appendages.rudder_position + appendages.rudder_support + appendages.rudder_balance so a transom-positioned rudder can independently carry keel/skeg support semantics. Adds structured cockpit/helm, richer rig dimensions (I/J/P/E and related), propulsion drive/engine-count/propeller, accommodation cabin/berth/head, LOD/beam-at-waterline, ballast type/material and CE/design category. v0.5 remains the contract for existing v0.5 payloads; this schema does not retroactively rewrite it. See docs/engineering/BOAT_DESIGN_V05_TO_V06_MAPPING.md for the full field mapping.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "boat_model_id",
+    "generation",
+    "relationships",
+    "baseline",
+    "named_variants",
+    "design_options",
+    "quality"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.6"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "boat_model_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "sequence",
+        "aliases",
+        "first_built",
+        "last_built",
+        "hull_number_from",
+        "hull_number_to",
+        "boundary_confidence"
+      ],
+      "properties": {
+        "label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sequence": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "first_built": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1800,
+          "maximum": 2200
+        },
+        "last_built": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1800,
+          "maximum": 2200
+        },
+        "hull_number_from": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "hull_number_to": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "boundary_confidence": {
+          "enum": [
+            "high",
+            "medium",
+            "low",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "relationships": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "builders",
+        "designers",
+        "number_built"
+      ],
+      "properties": {
+        "builders": {
+          "type": "array",
+          "description": "Organization relationships for builders/manufacturers. Each entry references a stable Organization ID; multiple time-bounded entries are supported. Unchanged from BOAT_DESIGN_SCHEMA.v0.5.",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "https://hullq.local/schemas/relationship-applicability/0.1"
+              }
+            ],
+            "type": "object",
+            "unevaluatedProperties": false,
+            "required": [
+              "id",
+              "organization_id",
+              "role"
+            ],
+            "properties": {
+              "organization_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "role": {
+                "$ref": "https://hullq.local/schemas/relationship-applicability/0.1#/$defs/builder_role"
+              }
+            }
+          }
+        },
+        "designers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "role"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "role": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "number_built": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accommodation",
+        "appendages",
+        "compliance",
+        "configuration",
+        "construction",
+        "deck",
+        "dimensions",
+        "propulsion",
+        "ratio_input_basis",
+        "rig"
+      ],
+      "properties": {
+        "ratio_input_basis": {
+          "$ref": "https://hullq.local/schemas/ratio-input-basis/0.1"
+        },
+        "dimensions": {
+          "$ref": "#/$defs/dimensions_baseline"
+        },
+        "configuration": {
+          "$ref": "#/$defs/configuration_baseline"
+        },
+        "appendages": {
+          "$ref": "#/$defs/appendages_baseline"
+        },
+        "rig": {
+          "$ref": "#/$defs/rig_baseline"
+        },
+        "deck": {
+          "$ref": "#/$defs/deck_baseline"
+        },
+        "construction": {
+          "$ref": "#/$defs/construction_baseline"
+        },
+        "propulsion": {
+          "$ref": "#/$defs/propulsion_baseline"
+        },
+        "accommodation": {
+          "$ref": "#/$defs/accommodation_baseline"
+        },
+        "compliance": {
+          "$ref": "#/$defs/compliance_baseline"
+        }
+      }
+    },
+    "named_variants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "aliases",
+          "applicability",
+          "overrides",
+          "requires_option_ids",
+          "excludes_option_ids"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "applicability": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "first_built",
+              "last_built",
+              "hull_number_from",
+              "hull_number_to",
+              "notes"
+            ],
+            "properties": {
+              "first_built": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1800,
+                "maximum": 2200
+              },
+              "last_built": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1800,
+                "maximum": 2200
+              },
+              "hull_number_from": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "hull_number_to": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "notes": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "overrides": {
+            "$ref": "#/$defs/overrides"
+          },
+          "requires_option_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "excludes_option_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          }
+        }
+      }
+    },
+    "design_options": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "axis",
+          "name",
+          "aliases",
+          "applicability",
+          "overrides",
+          "requires_option_ids",
+          "excludes_option_ids"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "applicability": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "first_built",
+              "last_built",
+              "hull_number_from",
+              "hull_number_to",
+              "notes"
+            ],
+            "properties": {
+              "first_built": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1800,
+                "maximum": 2200
+              },
+              "last_built": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1800,
+                "maximum": 2200
+              },
+              "hull_number_from": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "hull_number_to": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "notes": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "overrides": {
+            "$ref": "#/$defs/overrides"
+          },
+          "requires_option_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "excludes_option_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "axis": {
+            "enum": [
+              "keel",
+              "rig",
+              "rudder",
+              "sailplan",
+              "draft",
+              "engine",
+              "layout",
+              "cockpit",
+              "helm",
+              "propulsion",
+              "accommodation",
+              "other"
+            ]
+          }
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "confidence",
+        "notes"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "verified",
+            "partial",
+            "needs_review",
+            "conflict"
+          ]
+        },
+        "confidence": {
+          "enum": [
+            "high",
+            "medium",
+            "low",
+            "unknown"
+          ]
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "dimensions_shape": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "loa_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "lod_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "lwl_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "beam_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "beam_waterline_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "draft_min_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "draft_max_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "displacement_kg": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "ballast_kg": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "ballast_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ballast_material": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sail_area_m2": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "dimensions_baseline": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/dimensions_shape"
+        }
+      ],
+      "required": [
+        "ballast_kg",
+        "ballast_material",
+        "ballast_type",
+        "beam_m",
+        "beam_waterline_m",
+        "displacement_kg",
+        "draft_max_m",
+        "draft_min_m",
+        "loa_m",
+        "lod_m",
+        "lwl_m",
+        "sail_area_m2"
+      ]
+    },
+    "dimensions_override": {
+      "$ref": "#/$defs/dimensions_shape"
+    },
+    "configuration_shape": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hull_configuration": {
+          "enum": [
+            "monohull",
+            "catamaran",
+            "trimaran",
+            "other",
+            "unknown"
+          ]
+        },
+        "hull_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        }
+      }
+    },
+    "configuration_baseline": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/configuration_shape"
+        }
+      ],
+      "required": [
+        "hull_configuration",
+        "hull_count"
+      ]
+    },
+    "configuration_override": {
+      "$ref": "#/$defs/configuration_shape"
+    },
+    "appendages_shape": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "keel_type": {
+          "enum": [
+            "full",
+            "modified_full",
+            "long_fin",
+            "fin",
+            "wing",
+            "bulb",
+            "twin",
+            "bilge",
+            "centerboard",
+            "daggerboard",
+            "swing",
+            "lifting",
+            "shoal",
+            "other",
+            "unknown"
+          ]
+        },
+        "keel_subtype": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "centerboard_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "centerboard_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "daggerboard_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "daggerboard_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rudder_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "rudder_position": {
+          "enum": [
+            "transom",
+            "underhull",
+            "other",
+            "unknown"
+          ]
+        },
+        "rudder_support": {
+          "enum": [
+            "keel",
+            "skeg",
+            "free",
+            "transom",
+            "other",
+            "unknown"
+          ]
+        },
+        "rudder_balance": {
+          "enum": [
+            "balanced",
+            "semi_balanced",
+            "unbalanced",
+            "other",
+            "unknown"
+          ]
+        },
+        "skeg_type": {
+          "enum": [
+            "full",
+            "partial",
+            "none",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "appendages_baseline": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/appendages_shape"
+        }
+      ],
+      "required": [
+        "centerboard_count",
+        "centerboard_type",
+        "daggerboard_count",
+        "daggerboard_type",
+        "keel_subtype",
+        "keel_type",
+        "rudder_balance",
+        "rudder_count",
+        "rudder_position",
+        "rudder_support",
+        "skeg_type"
+      ]
+    },
+    "appendages_override": {
+      "$ref": "#/$defs/appendages_shape"
+    },
+    "rig_shape": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sailplan": {
+          "enum": [
+            "sloop",
+            "cutter",
+            "ketch",
+            "yawl",
+            "schooner",
+            "cat",
+            "other",
+            "unknown"
+          ]
+        },
+        "masthead_fractional": {
+          "enum": [
+            "masthead",
+            "fractional",
+            "not_applicable",
+            "unknown"
+          ]
+        },
+        "mast_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "mast_step": {
+          "enum": [
+            "deck",
+            "keel",
+            "other",
+            "unknown"
+          ]
+        },
+        "rig_variant": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mast_height_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "mast_height_basis": {
+          "enum": [
+            "from_design_waterline",
+            "from_deck",
+            "from_keel_bottom",
+            "source_unspecified",
+            "unknown"
+          ]
+        },
+        "i_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "j_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "p_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "e_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "py_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "ey_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "isp_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "jp_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "spl_or_tps_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "forestay_length_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "forestay_length_basis": {
+          "enum": [
+            "reported",
+            "estimated",
+            "source_unspecified",
+            "unknown"
+          ]
+        },
+        "sail_area_reported_m2": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "sail_area_main_m2": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "sail_area_foretriangle_m2": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "sail_area_calculated_m2": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "sail_area_calculated_notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "rig_baseline": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/rig_shape"
+        }
+      ],
+      "required": [
+        "e_m",
+        "ey_m",
+        "forestay_length_basis",
+        "forestay_length_m",
+        "i_m",
+        "isp_m",
+        "j_m",
+        "jp_m",
+        "mast_count",
+        "mast_height_basis",
+        "mast_height_m",
+        "mast_step",
+        "masthead_fractional",
+        "p_m",
+        "py_m",
+        "rig_variant",
+        "sail_area_calculated_m2",
+        "sail_area_calculated_notes",
+        "sail_area_foretriangle_m2",
+        "sail_area_main_m2",
+        "sail_area_reported_m2",
+        "sailplan",
+        "spl_or_tps_m"
+      ]
+    },
+    "rig_override": {
+      "$ref": "#/$defs/rig_shape"
+    },
+    "deck_shape": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cockpit_position": {
+          "enum": [
+            "aft",
+            "center",
+            "forward",
+            "multiple",
+            "other",
+            "unknown"
+          ]
+        },
+        "cockpit_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "helm_type": {
+          "enum": [
+            "tiller",
+            "wheel",
+            "other",
+            "unknown"
+          ]
+        },
+        "helm_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "deck_saloon": {
+          "enum": [
+            "none",
+            "deck_saloon",
+            "pilothouse",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "deck_baseline": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/deck_shape"
+        }
+      ],
+      "required": [
+        "cockpit_count",
+        "cockpit_position",
+        "deck_saloon",
+        "helm_count",
+        "helm_type"
+      ]
+    },
+    "deck_override": {
+      "$ref": "#/$defs/deck_shape"
+    },
+    "construction_shape": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hull_material": {
+          "enum": [
+            "grp_fiberglass",
+            "aluminium",
+            "steel",
+            "wood",
+            "wood_composite",
+            "carbon",
+            "other",
+            "unknown"
+          ]
+        },
+        "construction_method": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "construction_baseline": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/construction_shape"
+        }
+      ],
+      "required": [
+        "construction_method",
+        "hull_material"
+      ]
+    },
+    "construction_override": {
+      "$ref": "#/$defs/construction_shape"
+    },
+    "propulsion_shape": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "engine_make": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "engine_model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "engine_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "engine_power_hp": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "engine_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "drive_type": {
+          "enum": [
+            "shaft",
+            "saildrive",
+            "outboard",
+            "other",
+            "unknown"
+          ]
+        },
+        "propeller_configuration": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fuel_capacity_l": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "water_capacity_l": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "propulsion_baseline": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/propulsion_shape"
+        }
+      ],
+      "required": [
+        "drive_type",
+        "engine_count",
+        "engine_make",
+        "engine_model",
+        "engine_power_hp",
+        "engine_type",
+        "fuel_capacity_l",
+        "propeller_configuration",
+        "water_capacity_l"
+      ]
+    },
+    "propulsion_override": {
+      "$ref": "#/$defs/propulsion_shape"
+    },
+    "accommodation_shape": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "headroom_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "bridgedeck_clearance_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "cabin_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "berth_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "head_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "accommodation_baseline": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/accommodation_shape"
+        }
+      ],
+      "required": [
+        "berth_count",
+        "bridgedeck_clearance_m",
+        "cabin_count",
+        "head_count",
+        "headroom_m"
+      ]
+    },
+    "accommodation_override": {
+      "$ref": "#/$defs/accommodation_shape"
+    },
+    "compliance_shape": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ce_design_category": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "compliance_baseline": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/compliance_shape"
+        }
+      ],
+      "required": [
+        "ce_design_category"
+      ]
+    },
+    "compliance_override": {
+      "$ref": "#/$defs/compliance_shape"
+    },
+    "ratio_input_basis_override_shape": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "displacement_basis": {
+          "enum": [
+            "design",
+            "lightship",
+            "normal_sailing",
+            "full_load",
+            "source_unspecified",
+            "unknown"
+          ]
+        },
+        "sail_area_basis": {
+          "enum": [
+            "nominal_main_plus_foretriangle",
+            "upwind_100pct",
+            "working_sails_actual",
+            "downwind",
+            "source_unspecified",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "overrides": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accommodation",
+        "appendages",
+        "compliance",
+        "configuration",
+        "construction",
+        "deck",
+        "dimensions",
+        "propulsion",
+        "ratio_input_basis",
+        "rig"
+      ],
+      "properties": {
+        "ratio_input_basis": {
+          "$ref": "#/$defs/ratio_input_basis_override_shape"
+        },
+        "dimensions": {
+          "$ref": "#/$defs/dimensions_override"
+        },
+        "configuration": {
+          "$ref": "#/$defs/configuration_override"
+        },
+        "appendages": {
+          "$ref": "#/$defs/appendages_override"
+        },
+        "rig": {
+          "$ref": "#/$defs/rig_override"
+        },
+        "deck": {
+          "$ref": "#/$defs/deck_override"
+        },
+        "construction": {
+          "$ref": "#/$defs/construction_override"
+        },
+        "propulsion": {
+          "$ref": "#/$defs/propulsion_override"
+        },
+        "accommodation": {
+          "$ref": "#/$defs/accommodation_override"
+        },
+        "compliance": {
+          "$ref": "#/$defs/compliance_override"
+        }
+      }
+    }
+  }
+}
