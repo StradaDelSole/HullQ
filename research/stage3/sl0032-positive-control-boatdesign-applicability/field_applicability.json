@@ -1,0 +1,399 @@
+{
+  "schema_version": "sl0032-field-applicability-v2",
+  "generated_at": "2026-08-29T12:39:09.052124+00:00",
+  "allowed_field_pointers": [
+    "/baseline/dimensions/beam_m",
+    "/baseline/dimensions/displacement_kg",
+    "/baseline/dimensions/draft_min_m",
+    "/baseline/dimensions/loa_m",
+    "/baseline/dimensions/lwl_m"
+  ],
+  "candidates": [
+    {
+      "candidate_rank": 1,
+      "qid": "Q104861437",
+      "hullq_id": "BM_WDT0_003ba28d4cd143d68c28e57899a3ed73",
+      "fields": [
+        {
+          "field_pointer": "/baseline/dimensions/loa_m",
+          "outcome": "SOURCE_VALUE_CONFLICT",
+          "wikidata_normalized_candidate": {
+            "value": "5.257800",
+            "unit": "m"
+          },
+          "primary_source_value": {
+            "value": "5.410200",
+            "unit": "m",
+            "raw": "17' 9\" (buzzardsbayboatshop.com)"
+          },
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": null,
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          },
+          "notes": "Official current-builder page states LOA 17' 9\" (5.4102 m); the Wikidata corrected normalized candidate is 17.25 ft (5.2578 m). The two values differ by ~0.15 m -- a genuine numeric conflict, not rounding noise."
+        },
+        {
+          "field_pointer": "/baseline/dimensions/lwl_m",
+          "outcome": "SOURCE_VALUE_CONFLICT",
+          "wikidata_normalized_candidate": {
+            "value": "4.2672",
+            "unit": "m"
+          },
+          "primary_source_value": {
+            "value": "4.292600",
+            "unit": "m",
+            "raw": "14' 1\" (buzzardsbayboatshop.com)"
+          },
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": null,
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          },
+          "notes": "Official current-builder page states LWL 14' 1\" (4.2926 m); the Wikidata corrected normalized candidate is 14.00 ft (4.2672 m) -- a ~2.5 cm (1 inch) discrepancy between the two sources."
+        },
+        {
+          "field_pointer": "/baseline/dimensions/beam_m",
+          "outcome": "GENERATION_AMBIGUOUS",
+          "wikidata_normalized_candidate": {
+            "value": "1.776984",
+            "unit": "m"
+          },
+          "primary_source_value": {
+            "value": "1.778000",
+            "unit": "m",
+            "raw": "5'10\" (buzzardsbayboatshop.com)"
+          },
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": null,
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          },
+          "notes": "Values agree to within ~1 mm rounding (5'10\" vs Wikidata's 5.83 ft), but no BoatDesign generation/configuration boundary is positively established distinguishing the original wood design from the current fiberglass adaptation. Per the controlling equality rule, numeric agreement alone can never establish applicability to a specific generation."
+        },
+        {
+          "field_pointer": "/baseline/dimensions/draft_min_m",
+          "outcome": "GENERATION_AMBIGUOUS",
+          "wikidata_normalized_candidate": {
+            "value": "0.76200",
+            "unit": "m"
+          },
+          "primary_source_value": {
+            "value": "0.762000",
+            "unit": "m",
+            "raw": "2' 6\" (buzzardsbayboatshop.com)"
+          },
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": null,
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          },
+          "notes": "Values are an exact match (2' 6\" = 0.762 m on both sides), but for the same reason as beam above, no generation/configuration boundary is established, so the equality rule prohibits promoting this to SAFE_FOR_LATER_DESIGN_PROMOTION."
+        },
+        {
+          "field_pointer": "/baseline/dimensions/displacement_kg",
+          "outcome": "SOURCE_VALUE_CONFLICT",
+          "wikidata_normalized_candidate": {
+            "value": "771.10702900",
+            "unit": "kg"
+          },
+          "primary_source_value": {
+            "value": "907.184740",
+            "unit": "kg",
+            "raw": "2000 lbs (buzzardsbayboatshop.com)"
+          },
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": null,
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          },
+          "notes": "Official current-builder page states displacement 2000 lbs (907.18 kg); the Wikidata corrected normalized candidate is 1700 lb (771.11 kg) -- an ~18% conflict, consistent with the fiberglass hull/deck layup being a materially different, heavier build than the original wood design figures captured by Wikidata."
+        }
+      ]
+    },
+    {
+      "candidate_rank": 2,
+      "qid": "Q104829866",
+      "hullq_id": "BM_WDT0_0040159e704c49d0a0b7bc7c6224ecfb",
+      "fields": [
+        {
+          "field_pointer": "/baseline/dimensions/loa_m",
+          "outcome": "RIGHTS_BLOCKED",
+          "wikidata_normalized_candidate": {
+            "value": "9.250680",
+            "unit": "m"
+          },
+          "primary_source_value": null,
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": null,
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          },
+          "notes": "No authoritative primary source under the fixed source classes could be located for this candidate (see source_clearance_assessment.json); the source-rights step blocks any positive applicability determination regardless of the Wikidata-side normalized candidate shown here for reference."
+        },
+        {
+          "field_pointer": "/baseline/dimensions/lwl_m",
+          "outcome": "RIGHTS_BLOCKED",
+          "wikidata_normalized_candidate": {
+            "value": "7.799832",
+            "unit": "m"
+          },
+          "primary_source_value": null,
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": null,
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          },
+          "notes": "No authoritative primary source under the fixed source classes could be located for this candidate (see source_clearance_assessment.json); the source-rights step blocks any positive applicability determination regardless of the Wikidata-side normalized candidate shown here for reference."
+        },
+        {
+          "field_pointer": "/baseline/dimensions/beam_m",
+          "outcome": "RIGHTS_BLOCKED",
+          "wikidata_normalized_candidate": {
+            "value": "2.999232",
+            "unit": "m"
+          },
+          "primary_source_value": null,
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": null,
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          },
+          "notes": "No authoritative primary source under the fixed source classes could be located for this candidate (see source_clearance_assessment.json); the source-rights step blocks any positive applicability determination regardless of the Wikidata-side normalized candidate shown here for reference."
+        },
+        {
+          "field_pointer": "/baseline/dimensions/draft_min_m",
+          "outcome": "RIGHTS_BLOCKED",
+          "wikidata_normalized_candidate": {
+            "value": "1.801368",
+            "unit": "m"
+          },
+          "primary_source_value": null,
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": null,
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          },
+          "notes": "No authoritative primary source under the fixed source classes could be located for this candidate (see source_clearance_assessment.json); the source-rights step blocks any positive applicability determination regardless of the Wikidata-side normalized candidate shown here for reference."
+        },
+        {
+          "field_pointer": "/baseline/dimensions/displacement_kg",
+          "outcome": "RIGHTS_BLOCKED",
+          "wikidata_normalized_candidate": {
+            "value": "2775.07811966",
+            "unit": "kg"
+          },
+          "primary_source_value": null,
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": null,
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          },
+          "notes": "No authoritative primary source under the fixed source classes could be located for this candidate (see source_clearance_assessment.json); the source-rights step blocks any positive applicability determination regardless of the Wikidata-side normalized candidate shown here for reference."
+        }
+      ]
+    },
+    {
+      "candidate_rank": 3,
+      "qid": "Q60521258",
+      "hullq_id": "BM_WDT0_00f6a6f678474a14ab5ec1b078cf6d60",
+      "fields": [
+        {
+          "field_pointer": "/baseline/dimensions/loa_m",
+          "outcome": "RIGHTS_BLOCKED",
+          "wikidata_normalized_candidate": {
+            "value": "10.287000",
+            "unit": "m"
+          },
+          "primary_source_value": null,
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": null,
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          },
+          "notes": "No authoritative primary source under the fixed source classes could be located for this candidate (see source_clearance_assessment.json); the source-rights step blocks any positive applicability determination regardless of the Wikidata-side normalized candidate shown here for reference."
+        },
+        {
+          "field_pointer": "/baseline/dimensions/lwl_m",
+          "outcome": "RIGHTS_BLOCKED",
+          "wikidata_normalized_candidate": {
+            "value": "8.711184",
+            "unit": "m"
+          },
+          "primary_source_value": null,
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": null,
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          },
+          "notes": "No authoritative primary source under the fixed source classes could be located for this candidate (see source_clearance_assessment.json); the source-rights step blocks any positive applicability determination regardless of the Wikidata-side normalized candidate shown here for reference."
+        },
+        {
+          "field_pointer": "/baseline/dimensions/beam_m",
+          "outcome": "RIGHTS_BLOCKED",
+          "wikidata_normalized_candidate": {
+            "value": "3.557016",
+            "unit": "m"
+          },
+          "primary_source_value": null,
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": null,
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          },
+          "notes": "No authoritative primary source under the fixed source classes could be located for this candidate (see source_clearance_assessment.json); the source-rights step blocks any positive applicability determination regardless of the Wikidata-side normalized candidate shown here for reference."
+        },
+        {
+          "field_pointer": "/baseline/dimensions/draft_min_m",
+          "outcome": "RIGHTS_BLOCKED",
+          "wikidata_normalized_candidate": {
+            "value": "1.37160",
+            "unit": "m"
+          },
+          "primary_source_value": null,
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": null,
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          },
+          "notes": "No authoritative primary source under the fixed source classes could be located for this candidate (see source_clearance_assessment.json); the source-rights step blocks any positive applicability determination regardless of the Wikidata-side normalized candidate shown here for reference."
+        },
+        {
+          "field_pointer": "/baseline/dimensions/displacement_kg",
+          "outcome": "RIGHTS_BLOCKED",
+          "wikidata_normalized_candidate": {
+            "value": "5003.12384110",
+            "unit": "kg"
+          },
+          "primary_source_value": null,
+          "applicability_scope": {
+            "schema_version": "0.1",
+            "first_year": null,
+            "last_year": null,
+            "hull_number_from": null,
+            "hull_number_to": null,
+            "market_or_region": null,
+            "named_variant_hint": null,
+            "design_option_hints": null,
+            "operating_state_hint": null,
+            "individual_hull_or_listing_ref": null,
+            "unknown_or_unbounded": true
+          },
+          "notes": "No authoritative primary source under the fixed source classes could be located for this candidate (see source_clearance_assessment.json); the source-rights step blocks any positive applicability determination regardless of the Wikidata-side normalized candidate shown here for reference."
+        }
+      ]
+    }
+  ]
+}

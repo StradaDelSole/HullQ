@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0032-artifact-digests/v1",
+  "title": "HullQ SLICE-0032 Retained Package Artifact-Integrity Digests",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "digests"],
+  "properties": {
+    "schema_version": { "const": "sl0032-artifact-digests-v1" },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "digests": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+    }
+  }
+}

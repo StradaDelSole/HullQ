@@ -426,6 +426,10 @@ jobs:
         run: >
           uv run python scripts/bootstrap/wikidata_sl0031_corrected_tier1_evidence_profile_runner.py --verify
 
+      - name: Offline-verify SLICE-0032 retained sequential positive-control pilot package reproduces deterministically (no network)
+        run: >
+          uv run python scripts/bootstrap/wikidata_sl0032_sequential_positive_control_pilot_runner.py --verify
+
   dependency-audit:
     name: dependency audit
     runs-on: ubuntu-latest

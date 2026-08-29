@@ -1,0 +1,66 @@
+{
+  "schema_version": "sl0032-boatdesign-applicability-v2",
+  "generated_at": "2026-08-29T12:39:09.052124+00:00",
+  "candidates": [
+    {
+      "candidate_rank": 1,
+      "qid": "Q104861437",
+      "hullq_id": "BM_WDT0_003ba28d4cd143d68c28e57899a3ed73",
+      "generation_boundary_established_for_this_pilot": false,
+      "applicability_scope": {
+        "schema_version": "0.1",
+        "first_year": null,
+        "last_year": null,
+        "hull_number_from": null,
+        "hull_number_to": null,
+        "market_or_region": null,
+        "named_variant_hint": null,
+        "design_option_hints": null,
+        "operating_state_hint": null,
+        "individual_hull_or_listing_ref": null,
+        "unknown_or_unbounded": true
+      },
+      "findings": "Buzzards Bay 14 is L. Francis Herreshoff Design No. 86 (1940), originally intended for wood construction; few wood examples were completed. The current builder (Buzzards Bay Boat Shop) produces 'a fiberglass version of the original L. Francis Herreshoff's design' and states it 'keep[s] as close to his original design as possible' -- an explicit acknowledgement that the current fiberglass boat is an adaptation, not a guaranteed-identical carryover of the original wood design's exact figures. The official site publishes no production-year range, no hull-number range, and no explicit redesign/generation-boundary notice (its own page set is only home/boat-specs/gallery/contact). Two of five fixed fields (LOA, displacement) diverge materially between the official current-builder figures and the Wikidata-retained candidate figures, corroborating that the current fiberglass build and the figures captured by Wikidata are not straightforwardly the same specification set. No closed-boundary generation/configuration scope can be positively established from the available primary-source evidence."
+    },
+    {
+      "candidate_rank": 2,
+      "qid": "Q104829866",
+      "hullq_id": "BM_WDT0_0040159e704c49d0a0b7bc7c6224ecfb",
+      "generation_boundary_established_for_this_pilot": false,
+      "applicability_scope": {
+        "schema_version": "0.1",
+        "first_year": null,
+        "last_year": null,
+        "hull_number_from": null,
+        "hull_number_to": null,
+        "market_or_region": null,
+        "named_variant_hint": null,
+        "design_option_hints": null,
+        "operating_state_hint": null,
+        "individual_hull_or_listing_ref": null,
+        "unknown_or_unbounded": true
+      },
+      "findings": "Research for this candidate stopped at the source-rights step: no authoritative primary source under any of the three fixed source classes could be located (see source_clearance_assessment.json). No positive BoatDesign generation/option evidence was or could be gathered."
+    },
+    {
+      "candidate_rank": 3,
+      "qid": "Q60521258",
+      "hullq_id": "BM_WDT0_00f6a6f678474a14ab5ec1b078cf6d60",
+      "generation_boundary_established_for_this_pilot": false,
+      "applicability_scope": {
+        "schema_version": "0.1",
+        "first_year": null,
+        "last_year": null,
+        "hull_number_from": null,
+        "hull_number_to": null,
+        "market_or_region": null,
+        "named_variant_hint": null,
+        "design_option_hints": null,
+        "operating_state_hint": null,
+        "individual_hull_or_listing_ref": null,
+        "unknown_or_unbounded": true
+      },
+      "findings": "Research for this candidate stopped at the source-rights step: no authoritative primary source under any of the three fixed source classes could be located (see source_clearance_assessment.json). No positive BoatDesign generation/option evidence was or could be gathered."
+    }
+  ]
+}

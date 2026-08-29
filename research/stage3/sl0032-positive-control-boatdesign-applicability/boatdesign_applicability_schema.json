@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0032-boatdesign-applicability/v2",
+  "title": "HullQ SLICE-0032 BoatDesign Generation/Configuration Applicability Findings",
+  "description": "Positive-evidence-only generation/configuration/applicability findings, one row per ATTEMPTED candidate rank only -- a rank with attempt_status=NOT_ATTEMPTED_AFTER_SUCCESS in result.json carries no row here at all. Creates zero canonical BoatDesign/DesignOption/NamedVariant entities.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "candidates"],
+  "properties": {
+    "schema_version": { "const": "sl0032-boatdesign-applicability-v2" },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "candidates": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["candidate_rank", "qid", "hullq_id", "generation_boundary_established_for_this_pilot", "applicability_scope", "findings"],
+        "properties": {
+          "candidate_rank": { "type": "integer", "enum": [1, 2, 3] },
+          "qid": { "type": "string", "pattern": "^Q[0-9]+$" },
+          "hullq_id": { "type": "string", "minLength": 1 },
+          "generation_boundary_established_for_this_pilot": { "type": "boolean" },
+          "applicability_scope": { "$ref": "#/$defs/applicability_scope" },
+          "findings": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "applicability_scope": {
+      "type": "object",
+      "description": "specs/OBSERVATION_APPLICABILITY_SCHEMA.v0.1.json shape, validated against that file directly by the SLICE-0032 offline verifier. A null value for any dimension means the bound is unknown, NOT that the observation applies to all production.",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "first_year",
+        "last_year",
+        "hull_number_from",
+        "hull_number_to",
+        "market_or_region",
+        "named_variant_hint",
+        "design_option_hints",
+        "operating_state_hint",
+        "individual_hull_or_listing_ref",
+        "unknown_or_unbounded"
+      ],
+      "properties": {
+        "schema_version": { "const": "0.1" },
+        "first_year": { "type": ["integer", "null"] },
+        "last_year": { "type": ["integer", "null"] },
+        "hull_number_from": { "type": ["string", "null"], "minLength": 1 },
+        "hull_number_to": { "type": ["string", "null"], "minLength": 1 },
+        "market_or_region": { "type": ["string", "null"], "minLength": 1 },
+        "named_variant_hint": { "type": ["string", "null"], "minLength": 1 },
+        "design_option_hints": {
+          "type": ["array", "null"],
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "operating_state_hint": { "type": ["string", "null"], "minLength": 1 },
+        "individual_hull_or_listing_ref": { "type": ["string", "null"], "minLength": 1 },
+        "unknown_or_unbounded": { "type": "boolean" }
+      }
+    }
+  }
+}

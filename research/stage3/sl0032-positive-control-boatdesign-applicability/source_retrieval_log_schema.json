@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0032-source-retrieval-log/v1",
+  "title": "HullQ SLICE-0032 Bounded Sequential Retrieval Log",
+  "description": "Ordered candidate-by-candidate retrieval accounting for the bounded manual research pass, <=12 per candidate, <=36 total.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "retrieval_ceiling_per_candidate",
+    "retrieval_ceiling_total",
+    "retrieval_count",
+    "retrieval_method_note",
+    "retrievals"
+  ],
+  "properties": {
+    "schema_version": { "const": "sl0032-source-retrieval-log-v1" },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "retrieval_ceiling_per_candidate": { "const": 12 },
+    "retrieval_ceiling_total": { "const": 36 },
+    "retrieval_count": { "type": "integer", "minimum": 0, "maximum": 36 },
+    "retrieval_method_note": { "type": "string", "minLength": 1 },
+    "retrievals": {
+      "type": "array",
+      "maxItems": 36,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "retrieval_index",
+          "candidate_rank",
+          "url",
+          "source_surface_class",
+          "accessed_at",
+          "retrieval_outcome",
+          "http_status",
+          "content_type",
+          "byte_size",
+          "sha256",
+          "fact_purpose"
+        ],
+        "properties": {
+          "retrieval_index": { "type": "integer", "minimum": 1 },
+          "candidate_rank": { "type": "integer", "enum": [1, 2, 3] },
+          "url": { "type": "string", "pattern": "^https://" },
+          "source_surface_class": {
+            "enum": [
+              "access_or_automation_policy",
+              "official_current_model_and_navigation_page",
+              "official_model_specification_page",
+              "official_brochure_archive_index",
+              "official_model_brochure_or_specification_document",
+              "official_history_or_current_model_page",
+              "official_terms_privacy_copyright_page",
+              "official_class_rules_or_specifications"
+            ]
+          },
+          "accessed_at": { "type": "string", "minLength": 1 },
+          "retrieval_outcome": { "enum": ["fetched", "dns_resolution_failed"] },
+          "http_status": { "type": ["integer", "null"] },
+          "content_type": { "type": ["string", "null"] },
+          "byte_size": { "type": ["integer", "null"], "minimum": 0 },
+          "sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+          "fact_purpose": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,293 @@
+{
+  "schema_version": "sl0032-corrected-candidate-evidence-v1",
+  "generated_at": "2026-08-29T12:39:09.052124+00:00",
+  "derivation_note": "Reconstructed purely offline from the retained SLICE-0028 evidence_manifest.json raw_entities, replayed through hullq.sources.wikidata.WikidataAdapter.extract_field_evidence at the SLICE-0030 corrected/current default unit-QID map (UNIT_QID_MAP_VERSION_SLICE0030). Zero Wikidata reacquisition.",
+  "unit_map_version": "SLICE-0030-v1",
+  "candidates": [
+    {
+      "candidate_rank": 1,
+      "qid": "Q104861437",
+      "hullq_id": "BM_WDT0_003ba28d4cd143d68c28e57899a3ed73",
+      "fields": [
+        {
+          "evidence_id": "WD-Q104861437-P2049-3f802140cfdf32ee",
+          "field_pointer": "/baseline/dimensions/beam_m",
+          "raw": {
+            "kind": "literal",
+            "value": {
+              "amount": "+5.83",
+              "unit": "http://www.wikidata.org/entity/Q3710"
+            },
+            "unit": "Q3710"
+          },
+          "normalized_candidate": {
+            "value": "1.776984",
+            "unit": "m"
+          }
+        },
+        {
+          "evidence_id": "WD-Q104861437-P2067-208f7868a29930c7",
+          "field_pointer": "/baseline/dimensions/displacement_kg",
+          "raw": {
+            "kind": "literal",
+            "value": {
+              "amount": "+1700",
+              "unit": "http://www.wikidata.org/entity/Q100995",
+              "qualifier_property": "P3831",
+              "qualifier_value_id": "Q5636358"
+            },
+            "unit": "Q100995"
+          },
+          "normalized_candidate": {
+            "value": "771.10702900",
+            "unit": "kg"
+          }
+        },
+        {
+          "evidence_id": "WD-Q104861437-P2048-99b110efb5f296f3",
+          "field_pointer": "/baseline/dimensions/draft_min_m",
+          "raw": {
+            "kind": "literal",
+            "value": {
+              "amount": "+2.5",
+              "unit": "http://www.wikidata.org/entity/Q3710",
+              "qualifier_property": "P518",
+              "qualifier_value_id": "Q244777"
+            },
+            "unit": "Q3710"
+          },
+          "normalized_candidate": {
+            "value": "0.76200",
+            "unit": "m"
+          }
+        },
+        {
+          "evidence_id": "WD-Q104861437-P2043-c0a0214cdf72aeee",
+          "field_pointer": "/baseline/dimensions/loa_m",
+          "raw": {
+            "kind": "literal",
+            "value": {
+              "amount": "+17.25",
+              "unit": "http://www.wikidata.org/entity/Q3710",
+              "qualifier_property": "P518",
+              "qualifier_value_id": "Q2358152"
+            },
+            "unit": "Q3710"
+          },
+          "normalized_candidate": {
+            "value": "5.257800",
+            "unit": "m"
+          }
+        },
+        {
+          "evidence_id": "WD-Q104861437-P2043-25bfa09e6889dccb",
+          "field_pointer": "/baseline/dimensions/lwl_m",
+          "raw": {
+            "kind": "literal",
+            "value": {
+              "amount": "+14",
+              "unit": "http://www.wikidata.org/entity/Q3710",
+              "qualifier_property": "P518",
+              "qualifier_value_id": "Q1817392"
+            },
+            "unit": "Q3710"
+          },
+          "normalized_candidate": {
+            "value": "4.2672",
+            "unit": "m"
+          }
+        }
+      ]
+    },
+    {
+      "candidate_rank": 2,
+      "qid": "Q104829866",
+      "hullq_id": "BM_WDT0_0040159e704c49d0a0b7bc7c6224ecfb",
+      "fields": [
+        {
+          "evidence_id": "WD-Q104829866-P2049-a4e1603c02466f05",
+          "field_pointer": "/baseline/dimensions/beam_m",
+          "raw": {
+            "kind": "literal",
+            "value": {
+              "amount": "+9.84",
+              "unit": "http://www.wikidata.org/entity/Q3710"
+            },
+            "unit": "Q3710"
+          },
+          "normalized_candidate": {
+            "value": "2.999232",
+            "unit": "m"
+          }
+        },
+        {
+          "evidence_id": "WD-Q104829866-P2067-4ce93434bd1b68d1",
+          "field_pointer": "/baseline/dimensions/displacement_kg",
+          "raw": {
+            "kind": "literal",
+            "value": {
+              "amount": "+6118",
+              "unit": "http://www.wikidata.org/entity/Q100995",
+              "qualifier_property": "P3831",
+              "qualifier_value_id": "Q5636358"
+            },
+            "unit": "Q100995"
+          },
+          "normalized_candidate": {
+            "value": "2775.07811966",
+            "unit": "kg"
+          }
+        },
+        {
+          "evidence_id": "WD-Q104829866-P2048-840f387a15b9d908",
+          "field_pointer": "/baseline/dimensions/draft_min_m",
+          "raw": {
+            "kind": "literal",
+            "value": {
+              "amount": "+5.91",
+              "unit": "http://www.wikidata.org/entity/Q3710",
+              "qualifier_property": "P518",
+              "qualifier_value_id": "Q244777"
+            },
+            "unit": "Q3710"
+          },
+          "normalized_candidate": {
+            "value": "1.801368",
+            "unit": "m"
+          }
+        },
+        {
+          "evidence_id": "WD-Q104829866-P2043-f08154f2e0c03d14",
+          "field_pointer": "/baseline/dimensions/loa_m",
+          "raw": {
+            "kind": "literal",
+            "value": {
+              "amount": "+30.35",
+              "unit": "http://www.wikidata.org/entity/Q3710",
+              "qualifier_property": "P518",
+              "qualifier_value_id": "Q2358152"
+            },
+            "unit": "Q3710"
+          },
+          "normalized_candidate": {
+            "value": "9.250680",
+            "unit": "m"
+          }
+        },
+        {
+          "evidence_id": "WD-Q104829866-P2043-eee947187794c1d3",
+          "field_pointer": "/baseline/dimensions/lwl_m",
+          "raw": {
+            "kind": "literal",
+            "value": {
+              "amount": "+25.59",
+              "unit": "http://www.wikidata.org/entity/Q3710",
+              "qualifier_property": "P518",
+              "qualifier_value_id": "Q1817392"
+            },
+            "unit": "Q3710"
+          },
+          "normalized_candidate": {
+            "value": "7.799832",
+            "unit": "m"
+          }
+        }
+      ]
+    },
+    {
+      "candidate_rank": 3,
+      "qid": "Q60521258",
+      "hullq_id": "BM_WDT0_00f6a6f678474a14ab5ec1b078cf6d60",
+      "fields": [
+        {
+          "evidence_id": "WD-Q60521258-P2049-3619d0ca5a0c1fef",
+          "field_pointer": "/baseline/dimensions/beam_m",
+          "raw": {
+            "kind": "literal",
+            "value": {
+              "amount": "+11.67",
+              "unit": "http://www.wikidata.org/entity/Q3710"
+            },
+            "unit": "Q3710"
+          },
+          "normalized_candidate": {
+            "value": "3.557016",
+            "unit": "m"
+          }
+        },
+        {
+          "evidence_id": "WD-Q60521258-P2067-e7916e9df82f0a15",
+          "field_pointer": "/baseline/dimensions/displacement_kg",
+          "raw": {
+            "kind": "literal",
+            "value": {
+              "amount": "+11030",
+              "unit": "http://www.wikidata.org/entity/Q100995",
+              "qualifier_property": "P3831",
+              "qualifier_value_id": "Q5636358"
+            },
+            "unit": "Q100995"
+          },
+          "normalized_candidate": {
+            "value": "5003.12384110",
+            "unit": "kg"
+          }
+        },
+        {
+          "evidence_id": "WD-Q60521258-P2048-1d9770b01724967f",
+          "field_pointer": "/baseline/dimensions/draft_min_m",
+          "raw": {
+            "kind": "literal",
+            "value": {
+              "amount": "+4.5",
+              "unit": "http://www.wikidata.org/entity/Q3710",
+              "qualifier_property": "P518",
+              "qualifier_value_id": "Q244777"
+            },
+            "unit": "Q3710"
+          },
+          "normalized_candidate": {
+            "value": "1.37160",
+            "unit": "m"
+          }
+        },
+        {
+          "evidence_id": "WD-Q60521258-P2043-a391353feffe2538",
+          "field_pointer": "/baseline/dimensions/loa_m",
+          "raw": {
+            "kind": "literal",
+            "value": {
+              "amount": "+33.75",
+              "unit": "http://www.wikidata.org/entity/Q3710",
+              "qualifier_property": "P518",
+              "qualifier_value_id": "Q2358152"
+            },
+            "unit": "Q3710"
+          },
+          "normalized_candidate": {
+            "value": "10.287000",
+            "unit": "m"
+          }
+        },
+        {
+          "evidence_id": "WD-Q60521258-P2043-fff5ba2c3c04bb4b",
+          "field_pointer": "/baseline/dimensions/lwl_m",
+          "raw": {
+            "kind": "literal",
+            "value": {
+              "amount": "+28.58",
+              "unit": "http://www.wikidata.org/entity/Q3710",
+              "qualifier_property": "P518",
+              "qualifier_value_id": "Q1817392"
+            },
+            "unit": "Q3710"
+          },
+          "normalized_candidate": {
+            "value": "8.711184",
+            "unit": "m"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/sl0032-source-clearance-assessment/v2",
+  "title": "HullQ SLICE-0032 Per-Candidate Source Rights Clearance Assessment",
+  "description": "Per-ATTEMPTED-candidate SR-6.6/source-rights clearance outcome, one row per attempted rank only -- a rank with attempt_status=NOT_ATTEMPTED_AFTER_SUCCESS in result.json carries no row here at all. An attempted candidate with no locatable authoritative primary source carries source_located=false and no source_record.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "candidates"],
+  "properties": {
+    "schema_version": { "const": "sl0032-source-clearance-assessment-v2" },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "candidates": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["candidate_rank", "qid", "hullq_id", "source_located", "candidate_source_clearance_result"],
+        "properties": {
+          "candidate_rank": { "type": "integer", "enum": [1, 2, 3] },
+          "qid": { "type": "string", "pattern": "^Q[0-9]+$" },
+          "hullq_id": { "type": "string", "minLength": 1 },
+          "source_located": { "type": "boolean" },
+          "candidate_source_clearance_result": {
+            "enum": ["SOURCE_USE_CLEARED_FOR_APPLICABILITY_RESEARCH", "RIGHTS_CLEARANCE_BLOCKED"]
+          },
+          "no_source_rationale": { "type": "string", "minLength": 1 },
+          "sr_6_6_condition_evaluation": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["policy_reference", "conditions", "conditions_satisfied_for_bounded_manual_use"],
+            "properties": {
+              "policy_reference": { "const": "specs/SOURCE_RIGHTS_POLICY.v0.1.md#6.6" },
+              "conditions": {
+                "description": "Schema reinforces cardinality/vocabulary only; exact-six-identifier, no-duplicate, no-extra enforcement is done in code (hullq.bootstrap.wikidata_sl0032_sequential_positive_control_pilot.validate_sr_6_6_condition_set), never trusted from this retained artifact alone.",
+                "type": "array",
+                "minItems": 6,
+                "maxItems": 6,
+                "uniqueItems": true,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["condition", "satisfied", "evidence"],
+                  "properties": {
+                    "condition": {
+                      "enum": [
+                        "lawfully_publicly_accessible",
+                        "reused_element_is_discrete_factual_value_not_expressive_content",
+                        "provenance_recorded",
+                        "no_identified_source_term_prohibits_the_chosen_method",
+                        "not_systematic_or_bulk_database_extraction",
+                        "no_automated_extraction_unless_separately_cleared"
+                      ]
+                    },
+                    "satisfied": { "enum": [true, false, "partial_left_unresolved"] },
+                    "evidence": { "type": "string", "minLength": 1 }
+                  }
+                }
+              },
+              "conditions_satisfied_for_bounded_manual_use": { "type": "boolean" }
+            }
+          },
+          "source_record": {
+            "type": "object",
+            "required": ["source_id", "title", "publisher", "source_type", "url", "document_identifier", "publication_date", "accessed_at", "notes", "rights"]
+          },
+          "bounded_scope": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["hullq_ids", "qids", "field_pointers", "use_kinds", "note"],
+            "properties": {
+              "hullq_ids": { "type": "array", "items": { "type": "string" } },
+              "qids": { "type": "array", "items": { "type": "string" } },
+              "field_pointers": { "type": "array", "items": { "type": "string" } },
+              "use_kinds": { "type": "array", "items": { "type": "string" } },
+              "note": { "type": "string" }
+            }
+          },
+          "source_use_gate_decisions": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["gate_module", "note", "decisions"],
+            "properties": {
+              "gate_module": { "const": "hullq.sources.rights.check_source_use" },
+              "note": { "type": "string" },
+              "decisions": { "type": "object" }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "source_located": { "const": true } } },
+            "then": { "required": ["sr_6_6_condition_evaluation", "source_record", "bounded_scope", "source_use_gate_decisions"] }
+          },
+          {
+            "if": { "properties": { "source_located": { "const": false } } },
+            "then": {
+              "required": ["no_source_rationale"],
+              "properties": { "candidate_source_clearance_result": { "const": "RIGHTS_CLEARANCE_BLOCKED" } }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
