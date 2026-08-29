@@ -1,17 +1,17 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://hullq.local/schemas/sl0032-boatdesign-applicability/v1",
+  "$id": "https://hullq.local/schemas/sl0032-boatdesign-applicability/v2",
   "title": "HullQ SLICE-0032 BoatDesign Generation/Configuration Applicability Findings",
-  "description": "Positive-evidence-only generation/configuration/applicability findings for the three fixed pilot candidates. Creates zero canonical BoatDesign/DesignOption/NamedVariant entities.",
+  "description": "Positive-evidence-only generation/configuration/applicability findings, one row per ATTEMPTED candidate rank only -- a rank with attempt_status=NOT_ATTEMPTED_AFTER_SUCCESS in result.json carries no row here at all. Creates zero canonical BoatDesign/DesignOption/NamedVariant entities.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "generated_at", "candidates"],
   "properties": {
-    "schema_version": { "const": "sl0032-boatdesign-applicability-v1" },
+    "schema_version": { "const": "sl0032-boatdesign-applicability-v2" },
     "generated_at": { "type": "string", "minLength": 1 },
     "candidates": {
       "type": "array",
-      "minItems": 3,
+      "minItems": 1,
       "maxItems": 3,
       "items": {
         "type": "object",

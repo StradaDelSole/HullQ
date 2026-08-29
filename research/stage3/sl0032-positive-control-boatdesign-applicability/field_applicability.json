@@ -1,6 +1,6 @@
 {
-  "schema_version": "sl0032-field-applicability-v1",
-  "generated_at": "2026-08-28T14:33:57.147541+00:00",
+  "schema_version": "sl0032-field-applicability-v2",
+  "generated_at": "2026-08-28T22:53:04.736344+00:00",
   "allowed_field_pointers": [
     "/baseline/dimensions/beam_m",
     "/baseline/dimensions/displacement_kg",

@@ -1,6 +1,6 @@
 # HullQ SLICE-0032 Sequential Positive-Control BoatDesign Applicability Pilot Report
 
-**generated_at:** 2026-08-28T14:33:57.147541+00:00  
+**generated_at:** 2026-08-28T22:53:04.736344+00:00  
 **top_level_result:** APPLICABILITY_EVIDENCE_INSUFFICIENT  
 
 ## SCOPE
@@ -9,11 +9,11 @@ Bounded, sequential, stop-on-first-positive primary-source applicability pilot o
 
 ## CANDIDATES
 
-| rank | boat | result | retrievals |
-|---:|---|---|---:|
-| 1 | Buzzards Bay 14 | APPLICABILITY_EVIDENCE_INSUFFICIENT | 4 |
-| 2 | Suspens | RIGHTS_CLEARANCE_BLOCKED | 2 |
-| 3 | Hunter 340 | RIGHTS_CLEARANCE_BLOCKED | 1 |
+| rank | boat | attempt_status | result | retrievals |
+|---:|---|---|---|---:|
+| 1 | Buzzards Bay 14 | ATTEMPTED | APPLICABILITY_EVIDENCE_INSUFFICIENT | 4 |
+| 2 | Suspens | ATTEMPTED | RIGHTS_CLEARANCE_BLOCKED | 2 |
+| 3 | Hunter 340 | ATTEMPTED | RIGHTS_CLEARANCE_BLOCKED | 1 |
 
 **total_retrievals:** 7 / 36  
 **successful_rank:** None  

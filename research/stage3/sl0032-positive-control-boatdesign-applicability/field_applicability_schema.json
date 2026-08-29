@@ -1,12 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://hullq.local/schemas/sl0032-field-applicability/v1",
+  "$id": "https://hullq.local/schemas/sl0032-field-applicability/v2",
   "title": "HullQ SLICE-0032 Five-Field Applicability Classification",
+  "description": "Contains exactly one row per ATTEMPTED candidate rank (1..3 of them) -- a rank with attempt_status=NOT_ATTEMPTED_AFTER_SUCCESS in result.json carries no row here at all.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "generated_at", "allowed_field_pointers", "candidates"],
   "properties": {
-    "schema_version": { "const": "sl0032-field-applicability-v1" },
+    "schema_version": { "const": "sl0032-field-applicability-v2" },
     "generated_at": { "type": "string", "minLength": 1 },
     "allowed_field_pointers": {
       "type": "array",
@@ -16,7 +17,7 @@
     },
     "candidates": {
       "type": "array",
-      "minItems": 3,
+      "minItems": 1,
       "maxItems": 3,
       "items": {
         "type": "object",

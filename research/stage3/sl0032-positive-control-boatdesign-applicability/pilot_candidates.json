@@ -1,6 +1,6 @@
 {
   "schema_version": "sl0032-pilot-candidates-v1",
-  "generated_at": "2026-08-28T14:33:57.147541+00:00",
+  "generated_at": "2026-08-28T22:53:04.736344+00:00",
   "source_pool": "research/stage3/sl0031-corrected-tier1-evidence-profile/positive_control_candidates.json",
   "eligibility_rule": "within the fixed 1,770 canonical BoatModel boundary; satisfies corrected LOA + beam + (draft OR displacement); at least 4 of 5 fixed fields normalized; no retained disagreement/unsupported-coexistence diagnostic on the five fixed fields; not Q5051252 (Catalina 22) or Q5051253 (Catalina 30)",
   "ranking_rule": "normalized_field_count descending; both draft and displacement normalized before only one of them; LWL normalized before LWL missing; canonical hullq_id ascending as the final stable tie-break",

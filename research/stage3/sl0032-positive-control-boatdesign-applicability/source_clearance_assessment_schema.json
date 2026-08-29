@@ -1,17 +1,17 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://hullq.local/schemas/sl0032-source-clearance-assessment/v1",
+  "$id": "https://hullq.local/schemas/sl0032-source-clearance-assessment/v2",
   "title": "HullQ SLICE-0032 Per-Candidate Source Rights Clearance Assessment",
-  "description": "Per-candidate SR-6.6/source-rights clearance outcome. A candidate with no locatable authoritative primary source carries source_located=false and no source_record.",
+  "description": "Per-ATTEMPTED-candidate SR-6.6/source-rights clearance outcome, one row per attempted rank only -- a rank with attempt_status=NOT_ATTEMPTED_AFTER_SUCCESS in result.json carries no row here at all. An attempted candidate with no locatable authoritative primary source carries source_located=false and no source_record.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "generated_at", "candidates"],
   "properties": {
-    "schema_version": { "const": "sl0032-source-clearance-assessment-v1" },
+    "schema_version": { "const": "sl0032-source-clearance-assessment-v2" },
     "generated_at": { "type": "string", "minLength": 1 },
     "candidates": {
       "type": "array",
-      "minItems": 3,
+      "minItems": 1,
       "maxItems": 3,
       "items": {
         "type": "object",

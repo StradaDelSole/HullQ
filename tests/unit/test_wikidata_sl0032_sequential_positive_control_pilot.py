@@ -14,6 +14,9 @@ from hullq.bootstrap.wikidata_sl0032_sequential_positive_control_pilot import (
     FIXED_CANDIDATE_SEQUENCE,
     MAX_RETRIEVALS_PER_CANDIDATE,
     MAX_TOTAL_RETRIEVALS,
+    SOURCE_CLEARANCE_RIGHTS_BLOCKED,
+    SOURCE_CLEARANCE_USE_CLEARED,
+    AttemptStatus,
     CandidateOutcome,
     TopLevelResult,
     build_artifact_digests,
@@ -39,6 +42,12 @@ from hullq.bootstrap.wikidata_sl0032_sequential_positive_control_pilot import (
 
 ROOT = Path(__file__).resolve().parents[2]
 SL0032_DIR = ROOT / "research" / "stage3" / "sl0032-positive-control-boatdesign-applicability"
+
+A = AttemptStatus.ATTEMPTED
+NA = AttemptStatus.NOT_ATTEMPTED_AFTER_SUCCESS
+READY = CandidateOutcome.READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT
+BLOCKED = CandidateOutcome.RIGHTS_CLEARANCE_BLOCKED
+INSUFFICIENT = CandidateOutcome.APPLICABILITY_EVIDENCE_INSUFFICIENT
 
 
 # ---------------------------------------------------------------------------
@@ -204,7 +213,7 @@ def _rank1_clearance_entry() -> dict[str, Any]:
                 "artifact_redistribution": {"outcome": "legal_review_required"},
             },
         },
-        "candidate_source_clearance_result": "SOURCE_USE_CLEARED_FOR_APPLICABILITY_RESEARCH",
+        "candidate_source_clearance_result": SOURCE_CLEARANCE_USE_CLEARED,
     }
 
 
@@ -216,13 +225,14 @@ def _blocked_clearance_entry(rank: int) -> dict[str, Any]:
         "hullq_id": c.hullq_id,
         "source_located": False,
         "no_source_rationale": "no qualifying source located",
-        "candidate_source_clearance_result": "RIGHTS_CLEARANCE_BLOCKED",
+        "candidate_source_clearance_result": SOURCE_CLEARANCE_RIGHTS_BLOCKED,
     }
 
 
 def _real_clearance_document() -> dict[str, Any]:
+    """All three fixed ranks genuinely ATTEMPTED (the real SLICE-0032 result)."""
     return {
-        "schema_version": "sl0032-source-clearance-assessment-v1",
+        "schema_version": "sl0032-source-clearance-assessment-v2",
         "generated_at": "2026-08-28T00:00:00+00:00",
         "candidates": [
             _rank1_clearance_entry(),
@@ -230,6 +240,9 @@ def _real_clearance_document() -> dict[str, Any]:
             _blocked_clearance_entry(3),
         ],
     }
+
+
+ALL_ATTEMPTED_RANKS = frozenset({1, 2, 3})
 
 
 def _field(pointer: str, outcome: str, *, scope: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -247,38 +260,93 @@ def _all_fields(outcome: str, *, scope: dict[str, Any] | None = None) -> list[di
     return [_field(p, outcome, scope=scope) for p in sorted(ALLOWED_FIELD_POINTERS)]
 
 
-def _real_field_applicability_document() -> dict[str, Any]:
+def _real_field_applicability_document(ranks: tuple[int, ...] = (1, 2, 3)) -> dict[str, Any]:
+    by_rank = {c.rank: c for c in FIXED_CANDIDATE_SEQUENCE}
     return {
-        "schema_version": "sl0032-field-applicability-v1",
+        "schema_version": "sl0032-field-applicability-v2",
         "generated_at": "2026-08-28T00:00:00+00:00",
         "allowed_field_pointers": sorted(ALLOWED_FIELD_POINTERS),
         "candidates": [
             {
-                "candidate_rank": c.rank,
-                "qid": c.qid,
-                "hullq_id": c.hullq_id,
-                "fields": _all_fields("RIGHTS_BLOCKED" if c.rank != 1 else "SOURCE_VALUE_CONFLICT"),
+                "candidate_rank": by_rank[r].rank,
+                "qid": by_rank[r].qid,
+                "hullq_id": by_rank[r].hullq_id,
+                "fields": _all_fields("RIGHTS_BLOCKED" if r != 1 else "SOURCE_VALUE_CONFLICT"),
             }
-            for c in FIXED_CANDIDATE_SEQUENCE
+            for r in ranks
         ],
     }
 
 
-def _real_boatdesign_document() -> dict[str, Any]:
+def _real_boatdesign_document(ranks: tuple[int, ...] = (1, 2, 3)) -> dict[str, Any]:
+    by_rank = {c.rank: c for c in FIXED_CANDIDATE_SEQUENCE}
     return {
-        "schema_version": "sl0032-boatdesign-applicability-v1",
+        "schema_version": "sl0032-boatdesign-applicability-v2",
         "generated_at": "2026-08-28T00:00:00+00:00",
         "candidates": [
             {
-                "candidate_rank": c.rank,
-                "qid": c.qid,
-                "hullq_id": c.hullq_id,
+                "candidate_rank": by_rank[r].rank,
+                "qid": by_rank[r].qid,
+                "hullq_id": by_rank[r].hullq_id,
                 "generation_boundary_established_for_this_pilot": False,
                 "applicability_scope": dict(_UNBOUNDED_SCOPE),
                 "findings": "test",
             }
-            for c in FIXED_CANDIDATE_SEQUENCE
+            for r in ranks
         ],
+    }
+
+
+def _retrieval_log_document(retrievals: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "schema_version": "sl0032-source-retrieval-log-v1",
+        "generated_at": "2026-08-28T00:00:00+00:00",
+        "retrieval_ceiling_per_candidate": MAX_RETRIEVALS_PER_CANDIDATE,
+        "retrieval_ceiling_total": MAX_TOTAL_RETRIEVALS,
+        "retrieval_count": len(retrievals),
+        "retrieval_method_note": "test",
+        "retrievals": retrievals,
+    }
+
+
+def _real_retrieval_log_document() -> dict[str, Any]:
+    return _retrieval_log_document(
+        [_valid_retrieval(1, 1), _valid_retrieval(2, 2), _valid_retrieval(3, 3)]
+    )
+
+
+def _real_result_document() -> dict[str, Any]:
+    """Mirrors the real retained result.json: all three ranks ATTEMPTED, none READY."""
+    by_rank = {c.rank: c for c in FIXED_CANDIDATE_SEQUENCE}
+    return {
+        "candidates": [
+            {
+                "candidate_rank": 1,
+                "qid": by_rank[1].qid,
+                "hullq_id": by_rank[1].hullq_id,
+                "attempt_status": "ATTEMPTED",
+                "result": "APPLICABILITY_EVIDENCE_INSUFFICIENT",
+                "retrieval_count": 1,
+            },
+            {
+                "candidate_rank": 2,
+                "qid": by_rank[2].qid,
+                "hullq_id": by_rank[2].hullq_id,
+                "attempt_status": "ATTEMPTED",
+                "result": "RIGHTS_CLEARANCE_BLOCKED",
+                "retrieval_count": 1,
+            },
+            {
+                "candidate_rank": 3,
+                "qid": by_rank[3].qid,
+                "hullq_id": by_rank[3].hullq_id,
+                "attempt_status": "ATTEMPTED",
+                "result": "RIGHTS_CLEARANCE_BLOCKED",
+                "retrieval_count": 1,
+            },
+        ],
+        "top_level_result": "APPLICABILITY_EVIDENCE_INSUFFICIENT",
+        "successful_rank": None,
     }
 
 
@@ -337,15 +405,7 @@ def _valid_retrieval(index: int, rank: int) -> dict[str, Any]:
 
 
 def _valid_retrieval_log(retrievals: list[dict[str, Any]]) -> dict[str, Any]:
-    return {
-        "schema_version": "sl0032-source-retrieval-log-v1",
-        "generated_at": "2026-08-28T00:00:00+00:00",
-        "retrieval_ceiling_per_candidate": MAX_RETRIEVALS_PER_CANDIDATE,
-        "retrieval_ceiling_total": MAX_TOTAL_RETRIEVALS,
-        "retrieval_count": len(retrievals),
-        "retrieval_method_note": "test",
-        "retrievals": retrievals,
-    }
+    return _retrieval_log_document(retrievals)
 
 
 def test_validate_source_retrieval_log_happy_path() -> None:
@@ -369,12 +429,6 @@ def test_validate_source_retrieval_log_rejects_over_total_ceiling() -> None:
         for _ in range(MAX_RETRIEVALS_PER_CANDIDATE):
             retrievals.append(_valid_retrieval(idx, rank))
             idx += 1
-    # 36 exactly is fine; add one more to push rank 1 over its own per-candidate
-    # ceiling AND the total ceiling simultaneously is avoided by using a
-    # dedicated 4th "rank" bucket check instead: directly assert the total-only
-    # ceiling by keeping per-candidate <=12 but total >36 is impossible with
-    # only 3 ranks, so we instead assert MAX_TOTAL_RETRIEVALS is enforced by
-    # construction: 3 * 12 == 36 == MAX_TOTAL_RETRIEVALS exactly.
     log = _valid_retrieval_log(retrievals)
     assert len(retrievals) == MAX_TOTAL_RETRIEVALS
     assert validate_source_retrieval_log(log) == []
@@ -424,26 +478,17 @@ def test_validate_source_retrieval_log_ignores_tampered_document_ceiling_values(
     assert any("exceeds fixed MAX_RETRIEVALS_PER_CANDIDATE" in p for p in problems)
 
 
-def test_validate_stop_on_first_positive_retrievals_flags_later_rank_retrieval() -> None:
+def test_validate_stop_on_first_positive_retrievals_flags_not_attempted_rank_retrieval() -> None:
     log = _valid_retrieval_log([_valid_retrieval(1, 1), _valid_retrieval(2, 2)])
-    ordered = [
-        (1, CandidateOutcome.READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT),
-        (2, CandidateOutcome.NOT_ATTEMPTED_AFTER_SUCCESS),
-    ]
-    problems = validate_stop_on_first_positive_retrievals(log, ordered_candidate_results=ordered)
+    problems = validate_stop_on_first_positive_retrievals(log, not_attempted_ranks=frozenset({2}))
     assert problems
 
 
-def test_validate_stop_on_first_positive_retrievals_passes_when_no_ready() -> None:
+def test_validate_stop_on_first_positive_retrievals_passes_when_nothing_not_attempted() -> None:
     log = _valid_retrieval_log(
         [_valid_retrieval(1, 1), _valid_retrieval(2, 2), _valid_retrieval(3, 3)]
     )
-    ordered = [
-        (1, CandidateOutcome.APPLICABILITY_EVIDENCE_INSUFFICIENT),
-        (2, CandidateOutcome.RIGHTS_CLEARANCE_BLOCKED),
-        (3, CandidateOutcome.RIGHTS_CLEARANCE_BLOCKED),
-    ]
-    assert validate_stop_on_first_positive_retrievals(log, ordered_candidate_results=ordered) == []
+    assert validate_stop_on_first_positive_retrievals(log, not_attempted_ranks=frozenset()) == []
 
 
 # ---------------------------------------------------------------------------
@@ -452,14 +497,28 @@ def test_validate_stop_on_first_positive_retrievals_passes_when_no_ready() -> No
 
 
 def test_verify_source_clearance_assessment_happy_path() -> None:
-    assert verify_source_clearance_assessment_self_consistency(_real_clearance_document()) == []
+    problems = verify_source_clearance_assessment_self_consistency(
+        _real_clearance_document(), attempted_ranks=ALL_ATTEMPTED_RANKS
+    )
+    assert problems == []
+
+
+def test_verify_source_clearance_assessment_rejects_wrong_attempted_rank_set() -> None:
+    """A clearance document must cover exactly the independently-derived
+    attempted-rank set -- neither more nor fewer rows."""
+    problems = verify_source_clearance_assessment_self_consistency(
+        _real_clearance_document(), attempted_ranks=frozenset({1, 2})
+    )
+    assert any("rank set" in p for p in problems)
 
 
 def test_sr_6_6_missing_condition_blocks_clearance() -> None:
     doc = _real_clearance_document()
     doc["candidates"][0]["sr_6_6_condition_evaluation"]["conditions"][0]["satisfied"] = False
     # tamper: leave the derived flag/clearance as if still satisfied
-    problems = verify_source_clearance_assessment_self_consistency(doc)
+    problems = verify_source_clearance_assessment_self_consistency(
+        doc, attempted_ranks=ALL_ATTEMPTED_RANKS
+    )
     assert problems
     assert not sr_6_6_conditions_satisfied(
         doc["candidates"][0]["sr_6_6_condition_evaluation"]["conditions"]
@@ -478,7 +537,9 @@ def test_sr_6_6_condition_unsatisfied_cannot_coexist_with_allowed_clearance() ->
     entry["sr_6_6_condition_evaluation"]["conditions"][0]["satisfied"] = False
     entry["sr_6_6_condition_evaluation"]["conditions_satisfied_for_bounded_manual_use"] = False
     # clearance.identity_seed/production_value still say 'allowed' -- tampered
-    problems = verify_source_clearance_assessment_self_consistency(doc)
+    problems = verify_source_clearance_assessment_self_consistency(
+        doc, attempted_ranks=ALL_ATTEMPTED_RANKS
+    )
     assert any("is not mechanically derived" in p for p in problems)
 
 
@@ -505,10 +566,12 @@ def test_validate_bounded_scope_rejects_wrong_field_pointers() -> None:
 
 def test_blocked_candidate_requires_rights_clearance_blocked_result() -> None:
     entry = _blocked_clearance_entry(2)
-    entry["candidate_source_clearance_result"] = "SOURCE_USE_CLEARED_FOR_APPLICABILITY_RESEARCH"
+    entry["candidate_source_clearance_result"] = SOURCE_CLEARANCE_USE_CLEARED
     doc = _real_clearance_document()
     doc["candidates"][1] = entry
-    problems = verify_source_clearance_assessment_self_consistency(doc)
+    problems = verify_source_clearance_assessment_self_consistency(
+        doc, attempted_ranks=ALL_ATTEMPTED_RANKS
+    )
     assert problems
 
 
@@ -564,20 +627,28 @@ def test_named_variant_hint_actually_captured_is_a_valid_non_year_boundary() -> 
 
 
 def test_validate_boatdesign_applicability_happy_path() -> None:
-    assert validate_boatdesign_applicability(_real_boatdesign_document()) == []
+    problems = validate_boatdesign_applicability(
+        _real_boatdesign_document(), attempted_ranks=ALL_ATTEMPTED_RANKS
+    )
+    assert problems == []
 
 
 def test_validate_boatdesign_applicability_rejects_established_true_with_unbounded_scope() -> None:
     doc = _real_boatdesign_document()
     doc["candidates"][0]["generation_boundary_established_for_this_pilot"] = True
     # scope left unknown_or_unbounded=True -- inconsistent
-    problems = validate_boatdesign_applicability(doc)
+    problems = validate_boatdesign_applicability(doc, attempted_ranks=ALL_ATTEMPTED_RANKS)
+    assert problems
+
+
+def test_validate_boatdesign_applicability_rejects_wrong_attempted_rank_set() -> None:
+    doc = _real_boatdesign_document()
+    problems = validate_boatdesign_applicability(doc, attempted_ranks=frozenset({1, 2}))
     assert problems
 
 
 def test_validate_field_applicability_happy_path() -> None:
     field_doc = _real_field_applicability_document()
-    # cross-reference evidence must match: build a matching corrected_candidate_evidence doc
     evidence_doc = {
         "candidates": [
             {
@@ -590,7 +661,10 @@ def test_validate_field_applicability_happy_path() -> None:
             for c in FIXED_CANDIDATE_SEQUENCE
         ]
     }
-    assert validate_field_applicability(field_doc, corrected_candidate_evidence=evidence_doc) == []
+    problems = validate_field_applicability(
+        field_doc, corrected_candidate_evidence=evidence_doc, attempted_ranks=ALL_ATTEMPTED_RANKS
+    )
+    assert problems == []
 
 
 def test_validate_field_applicability_rejects_candidate_mismatch() -> None:
@@ -607,7 +681,9 @@ def test_validate_field_applicability_rejects_candidate_mismatch() -> None:
             for c in FIXED_CANDIDATE_SEQUENCE
         ]
     }
-    problems = validate_field_applicability(field_doc, corrected_candidate_evidence=evidence_doc)
+    problems = validate_field_applicability(
+        field_doc, corrected_candidate_evidence=evidence_doc, attempted_ranks=ALL_ATTEMPTED_RANKS
+    )
     assert problems
 
 
@@ -615,7 +691,9 @@ def test_validate_field_applicability_rejects_missing_field_pointer() -> None:
     field_doc = _real_field_applicability_document()
     field_doc["candidates"][0]["fields"] = field_doc["candidates"][0]["fields"][:-1]
     problems = validate_field_applicability(
-        field_doc, corrected_candidate_evidence={"candidates": []}
+        field_doc,
+        corrected_candidate_evidence={"candidates": []},
+        attempted_ranks=ALL_ATTEMPTED_RANKS,
     )
     assert any("field pointer coverage" in p for p in problems)
 
@@ -625,9 +703,21 @@ def test_validate_field_applicability_safe_requires_bounded_scope() -> None:
     field_doc["candidates"][0]["fields"][0]["outcome"] = "SAFE_FOR_LATER_DESIGN_PROMOTION"
     # applicability_scope still unbounded -- must be rejected
     problems = validate_field_applicability(
-        field_doc, corrected_candidate_evidence={"candidates": []}
+        field_doc,
+        corrected_candidate_evidence={"candidates": []},
+        attempted_ranks=ALL_ATTEMPTED_RANKS,
     )
     assert problems
+
+
+def test_validate_field_applicability_rejects_wrong_attempted_rank_set() -> None:
+    field_doc = _real_field_applicability_document()
+    problems = validate_field_applicability(
+        field_doc,
+        corrected_candidate_evidence={"candidates": []},
+        attempted_ranks=frozenset({1, 2}),
+    )
+    assert any("rank set" in p for p in problems)
 
 
 # ---------------------------------------------------------------------------
@@ -641,7 +731,7 @@ def test_compute_candidate_result_rights_blocked_wins_regardless_of_evidence() -
         generation_boundary_established=True,
         field_outcomes=_all_fields("SAFE_FOR_LATER_DESIGN_PROMOTION", scope=_bounded_year_scope()),
     )
-    assert result == CandidateOutcome.RIGHTS_CLEARANCE_BLOCKED
+    assert result == BLOCKED
 
 
 def test_compute_candidate_result_ready_requires_bounded_generation_and_safe_field() -> None:
@@ -650,7 +740,7 @@ def test_compute_candidate_result_ready_requires_bounded_generation_and_safe_fie
         generation_boundary_established=True,
         field_outcomes=_all_fields("SAFE_FOR_LATER_DESIGN_PROMOTION", scope=_bounded_year_scope()),
     )
-    assert result == CandidateOutcome.READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT
+    assert result == READY
 
 
 def test_compute_candidate_result_equality_alone_cannot_be_ready() -> None:
@@ -662,7 +752,7 @@ def test_compute_candidate_result_equality_alone_cannot_be_ready() -> None:
         generation_boundary_established=True,
         field_outcomes=_all_fields("SAFE_FOR_LATER_DESIGN_PROMOTION", scope=dict(_UNBOUNDED_SCOPE)),
     )
-    assert result == CandidateOutcome.APPLICABILITY_EVIDENCE_INSUFFICIENT
+    assert result == INSUFFICIENT
 
 
 def test_compute_candidate_result_option_sensitive_cannot_be_flattened_to_safe() -> None:
@@ -671,7 +761,7 @@ def test_compute_candidate_result_option_sensitive_cannot_be_flattened_to_safe()
         generation_boundary_established=True,
         field_outcomes=_all_fields("OPTION_SENSITIVE", scope=_bounded_year_scope()),
     )
-    assert result == CandidateOutcome.APPLICABILITY_EVIDENCE_INSUFFICIENT
+    assert result == INSUFFICIENT
 
 
 def test_compute_candidate_result_requires_generation_boundary_even_with_safe_field() -> None:
@@ -680,160 +770,461 @@ def test_compute_candidate_result_requires_generation_boundary_even_with_safe_fi
         generation_boundary_established=False,
         field_outcomes=_all_fields("SAFE_FOR_LATER_DESIGN_PROMOTION", scope=_bounded_year_scope()),
     )
-    assert result == CandidateOutcome.APPLICABILITY_EVIDENCE_INSUFFICIENT
+    assert result == INSUFFICIENT
+
+
+def test_candidate_outcome_has_exactly_three_members() -> None:
+    """CandidateOutcome must never grow a fourth 'not attempted' member --
+    attempt status is a wholly separate concept (AttemptStatus)."""
+    assert {member.value for member in CandidateOutcome} == {
+        "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT",
+        "RIGHTS_CLEARANCE_BLOCKED",
+        "APPLICABILITY_EVIDENCE_INSUFFICIENT",
+    }
+    assert {member.value for member in AttemptStatus} == {
+        "ATTEMPTED",
+        "NOT_ATTEMPTED_AFTER_SUCCESS",
+    }
 
 
 def test_compute_top_level_result_first_ready_rank_wins() -> None:
-    ordered = [
-        (1, CandidateOutcome.APPLICABILITY_EVIDENCE_INSUFFICIENT),
-        (2, CandidateOutcome.READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT),
-    ]
+    attempted = [(1, INSUFFICIENT), (2, READY)]
     assert (
-        compute_top_level_result(ordered)
+        compute_top_level_result(attempted)
         == TopLevelResult.READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT
     )
 
 
 def test_compute_top_level_result_insufficient_when_one_cleared_but_none_ready() -> None:
-    ordered = [
-        (1, CandidateOutcome.RIGHTS_CLEARANCE_BLOCKED),
-        (2, CandidateOutcome.APPLICABILITY_EVIDENCE_INSUFFICIENT),
-        (3, CandidateOutcome.RIGHTS_CLEARANCE_BLOCKED),
-    ]
-    assert compute_top_level_result(ordered) == TopLevelResult.APPLICABILITY_EVIDENCE_INSUFFICIENT
+    attempted = [(1, BLOCKED), (2, INSUFFICIENT), (3, BLOCKED)]
+    assert compute_top_level_result(attempted) == TopLevelResult.APPLICABILITY_EVIDENCE_INSUFFICIENT
 
 
 def test_compute_top_level_result_rights_blocked_only_when_all_blocked() -> None:
-    ordered = [
-        (1, CandidateOutcome.RIGHTS_CLEARANCE_BLOCKED),
-        (2, CandidateOutcome.RIGHTS_CLEARANCE_BLOCKED),
-        (3, CandidateOutcome.RIGHTS_CLEARANCE_BLOCKED),
-    ]
-    assert compute_top_level_result(ordered) == TopLevelResult.RIGHTS_CLEARANCE_BLOCKED
+    attempted = [(1, BLOCKED), (2, BLOCKED), (3, BLOCKED)]
+    assert compute_top_level_result(attempted) == TopLevelResult.RIGHTS_CLEARANCE_BLOCKED
 
 
 # ---------------------------------------------------------------------------
-# 7. Sequential stop-on-first-positive invariant
+# 7. Sequential stop-on-first-positive invariant (attempt_status + result)
 # ---------------------------------------------------------------------------
 
 
 def test_sequential_invariant_candidate_2_cannot_be_attempted_after_1_ready() -> None:
-    ordered = [
-        (1, CandidateOutcome.READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT),
-        (2, CandidateOutcome.APPLICABILITY_EVIDENCE_INSUFFICIENT),
-    ]
-    assert validate_sequential_stop_invariant(ordered) != []
+    entries = [(1, A, READY), (2, A, INSUFFICIENT)]
+    problems = validate_sequential_stop_invariant(entries)
+    assert any("must have attempt_status=NOT_ATTEMPTED_AFTER_SUCCESS" in p for p in problems)
 
 
 def test_sequential_invariant_candidate_3_cannot_be_attempted_after_1_or_2_ready() -> None:
-    ordered = [
-        (1, CandidateOutcome.RIGHTS_CLEARANCE_BLOCKED),
-        (2, CandidateOutcome.READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT),
-        (3, CandidateOutcome.RIGHTS_CLEARANCE_BLOCKED),
-    ]
-    assert validate_sequential_stop_invariant(ordered) != []
+    entries = [(1, A, BLOCKED), (2, A, READY), (3, A, BLOCKED)]
+    problems = validate_sequential_stop_invariant(entries)
+    assert any("must have attempt_status=NOT_ATTEMPTED_AFTER_SUCCESS" in p for p in problems)
 
 
 def test_sequential_invariant_candidate_2_permitted_after_1_blocked_or_insufficient() -> None:
-    for first in (
-        CandidateOutcome.RIGHTS_CLEARANCE_BLOCKED,
-        CandidateOutcome.APPLICABILITY_EVIDENCE_INSUFFICIENT,
-    ):
-        ordered = [
-            (1, first),
-            (2, CandidateOutcome.RIGHTS_CLEARANCE_BLOCKED),
-            (3, CandidateOutcome.RIGHTS_CLEARANCE_BLOCKED),
-        ]
-        assert validate_sequential_stop_invariant(ordered) == []
+    for first_result in (BLOCKED, INSUFFICIENT):
+        entries = [(1, A, first_result), (2, A, BLOCKED), (3, A, BLOCKED)]
+        assert validate_sequential_stop_invariant(entries) == []
 
 
 def test_sequential_invariant_not_attempted_marker_requires_earlier_ready() -> None:
-    ordered = [
-        (1, CandidateOutcome.APPLICABILITY_EVIDENCE_INSUFFICIENT),
-        (2, CandidateOutcome.NOT_ATTEMPTED_AFTER_SUCCESS),
-    ]
-    problems = validate_sequential_stop_invariant(ordered)
+    entries = [(1, A, INSUFFICIENT), (2, NA, None)]
+    problems = validate_sequential_stop_invariant(entries)
     assert any("no earlier rank reached READY" in p for p in problems)
 
 
 def test_sequential_invariant_correct_stop_after_ready() -> None:
-    ordered = [
-        (1, CandidateOutcome.APPLICABILITY_EVIDENCE_INSUFFICIENT),
-        (2, CandidateOutcome.READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT),
-        (3, CandidateOutcome.NOT_ATTEMPTED_AFTER_SUCCESS),
-    ]
-    assert validate_sequential_stop_invariant(ordered) == []
+    entries = [(1, A, INSUFFICIENT), (2, A, READY), (3, NA, None)]
+    assert validate_sequential_stop_invariant(entries) == []
+
+
+def test_sequential_invariant_attempted_row_requires_non_null_result() -> None:
+    entries = [(1, A, None)]
+    problems = validate_sequential_stop_invariant(entries)
+    assert any("attempt_status=ATTEMPTED requires a non-null result" in p for p in problems)
+
+
+def test_sequential_invariant_not_attempted_row_requires_null_result() -> None:
+    """NOT_ATTEMPTED_AFTER_SUCCESS is never a fourth candidate result -- a row
+    claiming it while also carrying a real CandidateOutcome is a tamper."""
+    entries = [(1, A, READY), (2, NA, BLOCKED)]
+    problems = validate_sequential_stop_invariant(entries)
+    assert any(
+        "NOT_ATTEMPTED_AFTER_SUCCESS is not a fourth candidate result" in p for p in problems
+    )
 
 
 # ---------------------------------------------------------------------------
-# 8. result.json cross-document self-consistency
+# 8. result.json cross-document self-consistency (real negative result +
+#    Case A / Case B positive-path scenarios required by independent review)
 # ---------------------------------------------------------------------------
 
 
 def test_verify_result_self_consistency_real_negative_result() -> None:
-    field_doc = _real_field_applicability_document()
-    boundary_doc = _real_boatdesign_document()
-    clearance_doc = _real_clearance_document()
-    result_doc = {
-        "candidates": [
-            {"candidate_rank": 1, "result": "APPLICABILITY_EVIDENCE_INSUFFICIENT"},
-            {"candidate_rank": 2, "result": "RIGHTS_CLEARANCE_BLOCKED"},
-            {"candidate_rank": 3, "result": "RIGHTS_CLEARANCE_BLOCKED"},
-        ],
-        "top_level_result": "APPLICABILITY_EVIDENCE_INSUFFICIENT",
-        "successful_rank": None,
-    }
     problems = verify_result_self_consistency(
-        result_doc,
-        field_applicability_document=field_doc,
-        boatdesign_applicability_document=boundary_doc,
-        source_clearance_document=clearance_doc,
+        _real_result_document(),
+        field_applicability_document=_real_field_applicability_document(),
+        boatdesign_applicability_document=_real_boatdesign_document(),
+        source_clearance_document=_real_clearance_document(),
+        source_retrieval_log_document=_real_retrieval_log_document(),
     )
     assert problems == []
 
 
 def test_verify_result_self_consistency_rejects_tampered_top_level_result() -> None:
-    field_doc = _real_field_applicability_document()
-    boundary_doc = _real_boatdesign_document()
-    clearance_doc = _real_clearance_document()
-    result_doc = {
-        "candidates": [
-            {"candidate_rank": 1, "result": "APPLICABILITY_EVIDENCE_INSUFFICIENT"},
-            {"candidate_rank": 2, "result": "RIGHTS_CLEARANCE_BLOCKED"},
-            {"candidate_rank": 3, "result": "RIGHTS_CLEARANCE_BLOCKED"},
-        ],
-        "top_level_result": "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT",  # tampered
-        "successful_rank": 1,
-    }
+    result_doc = _real_result_document()
+    result_doc["top_level_result"] = "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT"  # tampered
+    result_doc["successful_rank"] = 1
     problems = verify_result_self_consistency(
         result_doc,
-        field_applicability_document=field_doc,
-        boatdesign_applicability_document=boundary_doc,
-        source_clearance_document=clearance_doc,
+        field_applicability_document=_real_field_applicability_document(),
+        boatdesign_applicability_document=_real_boatdesign_document(),
+        source_clearance_document=_real_clearance_document(),
+        source_retrieval_log_document=_real_retrieval_log_document(),
     )
     assert problems
 
 
 def test_verify_result_self_consistency_rejects_successful_rank_without_ready() -> None:
-    field_doc = _real_field_applicability_document()
-    boundary_doc = _real_boatdesign_document()
-    clearance_doc = _real_clearance_document()
+    result_doc = _real_result_document()
+    result_doc["successful_rank"] = 1  # tampered -- no rank is READY
+    problems = verify_result_self_consistency(
+        result_doc,
+        field_applicability_document=_real_field_applicability_document(),
+        boatdesign_applicability_document=_real_boatdesign_document(),
+        source_clearance_document=_real_clearance_document(),
+        source_retrieval_log_document=_real_retrieval_log_document(),
+    )
+    assert problems
+
+
+def _ready_field_doc_for_rank(rank: int) -> dict[str, Any]:
+    c = next(c for c in FIXED_CANDIDATE_SEQUENCE if c.rank == rank)
+    return {
+        "schema_version": "sl0032-field-applicability-v2",
+        "generated_at": "2026-08-28T00:00:00+00:00",
+        "allowed_field_pointers": sorted(ALLOWED_FIELD_POINTERS),
+        "candidates": [
+            {
+                "candidate_rank": c.rank,
+                "qid": c.qid,
+                "hullq_id": c.hullq_id,
+                "fields": _all_fields(
+                    "SAFE_FOR_LATER_DESIGN_PROMOTION", scope=_bounded_year_scope()
+                ),
+            }
+        ],
+    }
+
+
+def _ready_boatdesign_doc_for_rank(rank: int) -> dict[str, Any]:
+    c = next(c for c in FIXED_CANDIDATE_SEQUENCE if c.rank == rank)
+    return {
+        "schema_version": "sl0032-boatdesign-applicability-v2",
+        "generated_at": "2026-08-28T00:00:00+00:00",
+        "candidates": [
+            {
+                "candidate_rank": c.rank,
+                "qid": c.qid,
+                "hullq_id": c.hullq_id,
+                "generation_boundary_established_for_this_pilot": True,
+                "applicability_scope": _bounded_year_scope(),
+                "findings": "test",
+            }
+        ],
+    }
+
+
+def _ready_clearance_doc_for_rank(rank: int) -> dict[str, Any]:
+    entry = dict(_rank1_clearance_entry())
+    c = next(c for c in FIXED_CANDIDATE_SEQUENCE if c.rank == rank)
+    entry["candidate_rank"] = rank
+    entry["qid"] = c.qid
+    entry["hullq_id"] = c.hullq_id
+    entry["bounded_scope"] = {
+        "hullq_ids": [c.hullq_id],
+        "qids": [c.qid],
+        "field_pointers": sorted(ALLOWED_FIELD_POINTERS),
+        "use_kinds": ["identity_seed", "production_value"],
+        "note": "test",
+    }
+    return {
+        "schema_version": "sl0032-source-clearance-assessment-v2",
+        "generated_at": "2026-08-28T00:00:00+00:00",
+        "candidates": [entry],
+    }
+
+
+def _not_attempted_row(rank: int) -> dict[str, Any]:
+    c = next(c for c in FIXED_CANDIDATE_SEQUENCE if c.rank == rank)
+    return {
+        "candidate_rank": rank,
+        "qid": c.qid,
+        "hullq_id": c.hullq_id,
+        "attempt_status": "NOT_ATTEMPTED_AFTER_SUCCESS",
+        "result": None,
+        "retrieval_count": 0,
+    }
+
+
+def _attempted_row(rank: int, result: str, retrieval_count: int) -> dict[str, Any]:
+    c = next(c for c in FIXED_CANDIDATE_SEQUENCE if c.rank == rank)
+    return {
+        "candidate_rank": rank,
+        "qid": c.qid,
+        "hullq_id": c.hullq_id,
+        "attempt_status": "ATTEMPTED",
+        "result": result,
+        "retrieval_count": retrieval_count,
+    }
+
+
+def test_case_a_rank1_ready_ranks_2_and_3_not_attempted() -> None:
+    """CASE A (required by independent review): rank 1 = READY, ranks 2/3 =
+    NOT_ATTEMPTED_AFTER_SUCCESS. Zero retrievals for ranks 2/3, no
+    attempted-only evidence for ranks 2/3, top-level READY rank 1."""
     result_doc = {
         "candidates": [
-            {"candidate_rank": 1, "result": "APPLICABILITY_EVIDENCE_INSUFFICIENT"},
-            {"candidate_rank": 2, "result": "RIGHTS_CLEARANCE_BLOCKED"},
-            {"candidate_rank": 3, "result": "RIGHTS_CLEARANCE_BLOCKED"},
+            _attempted_row(1, "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT", 4),
+            _not_attempted_row(2),
+            _not_attempted_row(3),
         ],
-        "top_level_result": "APPLICABILITY_EVIDENCE_INSUFFICIENT",
-        "successful_rank": 1,  # tampered -- no rank is READY
+        "top_level_result": "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT",
+        "successful_rank": 1,
     }
+    retrieval_log = _retrieval_log_document([_valid_retrieval(i, 1) for i in range(1, 5)])
+    field_doc = _ready_field_doc_for_rank(1)
+    boatdesign_doc = _ready_boatdesign_doc_for_rank(1)
+    clearance_doc = _ready_clearance_doc_for_rank(1)
+
     problems = verify_result_self_consistency(
         result_doc,
         field_applicability_document=field_doc,
-        boatdesign_applicability_document=boundary_doc,
+        boatdesign_applicability_document=boatdesign_doc,
         source_clearance_document=clearance_doc,
+        source_retrieval_log_document=retrieval_log,
+    )
+    assert problems == []
+
+    # zero retrievals for ranks 2/3
+    assert all(r["candidate_rank"] == 1 for r in retrieval_log["retrievals"])
+    # no attempted-only evidence for ranks 2/3
+    assert {row["candidate_rank"] for row in field_doc["candidates"]} == {1}
+    assert {row["candidate_rank"] for row in boatdesign_doc["candidates"]} == {1}
+    assert {row["candidate_rank"] for row in clearance_doc["candidates"]} == {1}
+    # top-level READY rank 1
+    assert result_doc["top_level_result"] == "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT"
+    assert result_doc["successful_rank"] == 1
+
+
+def test_case_a_later_result_cannot_be_injected_into_not_attempted_rank() -> None:
+    result_doc = {
+        "candidates": [
+            _attempted_row(1, "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT", 4),
+            _not_attempted_row(2),
+            _not_attempted_row(3),
+        ],
+        "top_level_result": "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT",
+        "successful_rank": 1,
+    }
+    # tamper: inject a result value into a NOT_ATTEMPTED_AFTER_SUCCESS row
+    result_doc["candidates"][1]["result"] = "RIGHTS_CLEARANCE_BLOCKED"
+    problems = verify_result_self_consistency(
+        result_doc,
+        field_applicability_document=_ready_field_doc_for_rank(1),
+        boatdesign_applicability_document=_ready_boatdesign_doc_for_rank(1),
+        source_clearance_document=_ready_clearance_doc_for_rank(1),
+        source_retrieval_log_document=_retrieval_log_document(
+            [_valid_retrieval(i, 1) for i in range(1, 5)]
+        ),
     )
     assert problems
+
+
+def test_case_b_rank1_blocked_rank2_ready_rank3_not_attempted() -> None:
+    """CASE B (required by independent review): rank 1 = RIGHTS_CLEARANCE_BLOCKED
+    or APPLICABILITY_EVIDENCE_INSUFFICIENT, rank 2 = READY, rank 3 =
+    NOT_ATTEMPTED_AFTER_SUCCESS. Rank 3 has zero retrievals, carries no
+    attempted-only evidence/result, top-level READY rank 2."""
+    result_doc = {
+        "candidates": [
+            _attempted_row(1, "RIGHTS_CLEARANCE_BLOCKED", 2),
+            _attempted_row(2, "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT", 3),
+            _not_attempted_row(3),
+        ],
+        "top_level_result": "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT",
+        "successful_rank": 2,
+    }
+    retrieval_log = _retrieval_log_document(
+        [
+            _valid_retrieval(1, 1),
+            _valid_retrieval(2, 1),
+            _valid_retrieval(3, 2),
+            _valid_retrieval(4, 2),
+            _valid_retrieval(5, 2),
+        ]
+    )
+    field_doc = {
+        "schema_version": "sl0032-field-applicability-v2",
+        "generated_at": "2026-08-28T00:00:00+00:00",
+        "allowed_field_pointers": sorted(ALLOWED_FIELD_POINTERS),
+        "candidates": [
+            _ready_field_doc_for_rank(2)["candidates"][0],
+        ],
+    }
+    field_doc["candidates"].insert(
+        0,
+        {
+            "candidate_rank": 1,
+            "qid": FIXED_CANDIDATE_SEQUENCE[0].qid,
+            "hullq_id": FIXED_CANDIDATE_SEQUENCE[0].hullq_id,
+            "fields": _all_fields("RIGHTS_BLOCKED"),
+        },
+    )
+    boatdesign_doc = {
+        "schema_version": "sl0032-boatdesign-applicability-v2",
+        "generated_at": "2026-08-28T00:00:00+00:00",
+        "candidates": [
+            {
+                "candidate_rank": 1,
+                "qid": FIXED_CANDIDATE_SEQUENCE[0].qid,
+                "hullq_id": FIXED_CANDIDATE_SEQUENCE[0].hullq_id,
+                "generation_boundary_established_for_this_pilot": False,
+                "applicability_scope": dict(_UNBOUNDED_SCOPE),
+                "findings": "test",
+            },
+            _ready_boatdesign_doc_for_rank(2)["candidates"][0],
+        ],
+    }
+    clearance_doc = {
+        "schema_version": "sl0032-source-clearance-assessment-v2",
+        "generated_at": "2026-08-28T00:00:00+00:00",
+        "candidates": [
+            _blocked_clearance_entry(1),
+            _ready_clearance_doc_for_rank(2)["candidates"][0],
+        ],
+    }
+
+    problems = verify_result_self_consistency(
+        result_doc,
+        field_applicability_document=field_doc,
+        boatdesign_applicability_document=boatdesign_doc,
+        source_clearance_document=clearance_doc,
+        source_retrieval_log_document=retrieval_log,
+    )
+    assert problems == []
+
+    # rank 3 has zero retrievals
+    assert all(r["candidate_rank"] != 3 for r in retrieval_log["retrievals"])
+    # rank 3 cannot carry attempted-only evidence/result
+    assert 3 not in {row["candidate_rank"] for row in field_doc["candidates"]}
+    assert 3 not in {row["candidate_rank"] for row in boatdesign_doc["candidates"]}
+    assert 3 not in {row["candidate_rank"] for row in clearance_doc["candidates"]}
+    # top-level READY rank 2
+    assert result_doc["top_level_result"] == "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT"
+    assert result_doc["successful_rank"] == 2
+
+
+# ---------------------------------------------------------------------------
+# 8b. Tamper tests required by independent review
+# ---------------------------------------------------------------------------
+
+
+def test_tamper_artifact_cannot_mark_later_rank_attempted_after_earlier_ready() -> None:
+    result_doc = {
+        "candidates": [
+            _attempted_row(1, "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT", 4),
+            _attempted_row(2, "RIGHTS_CLEARANCE_BLOCKED", 1),  # tampered: should be NOT_ATTEMPTED
+            _not_attempted_row(3),
+        ],
+        "top_level_result": "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT",
+        "successful_rank": 1,
+    }
+    problems = verify_result_self_consistency(
+        result_doc,
+        field_applicability_document=_ready_field_doc_for_rank(1),
+        boatdesign_applicability_document=_ready_boatdesign_doc_for_rank(1),
+        source_clearance_document=_ready_clearance_doc_for_rank(1),
+        source_retrieval_log_document=_retrieval_log_document(
+            [_valid_retrieval(i, 1) for i in range(1, 5)]
+        ),
+    )
+    assert problems
+
+
+def test_tamper_artifact_cannot_add_later_retrieval_after_ready() -> None:
+    result_doc = {
+        "candidates": [
+            _attempted_row(1, "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT", 4),
+            _not_attempted_row(2),
+            _not_attempted_row(3),
+        ],
+        "top_level_result": "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT",
+        "successful_rank": 1,
+    }
+    # tamper: a retrieval targets rank 2, which is NOT_ATTEMPTED_AFTER_SUCCESS
+    retrieval_log = _retrieval_log_document(
+        [_valid_retrieval(i, 1) for i in range(1, 5)] + [_valid_retrieval(5, 2)]
+    )
+    problems = verify_result_self_consistency(
+        result_doc,
+        field_applicability_document=_ready_field_doc_for_rank(1),
+        boatdesign_applicability_document=_ready_boatdesign_doc_for_rank(1),
+        source_clearance_document=_ready_clearance_doc_for_rank(1),
+        source_retrieval_log_document=retrieval_log,
+    )
+    assert problems
+
+
+def test_tamper_artifact_cannot_attach_evidence_to_not_attempted_rank() -> None:
+    result_doc = {
+        "candidates": [
+            _attempted_row(1, "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT", 4),
+            _not_attempted_row(2),
+            _not_attempted_row(3),
+        ],
+        "top_level_result": "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT",
+        "successful_rank": 1,
+    }
+    # tamper: field_applicability.json carries a row for the NOT_ATTEMPTED rank 2
+    field_doc = _ready_field_doc_for_rank(1)
+    field_doc["candidates"].append(
+        {
+            "candidate_rank": 2,
+            "qid": FIXED_CANDIDATE_SEQUENCE[1].qid,
+            "hullq_id": FIXED_CANDIDATE_SEQUENCE[1].hullq_id,
+            "fields": _all_fields("RIGHTS_BLOCKED"),
+        }
+    )
+    problems = verify_result_self_consistency(
+        result_doc,
+        field_applicability_document=field_doc,
+        boatdesign_applicability_document=_ready_boatdesign_doc_for_rank(1),
+        source_clearance_document=_ready_clearance_doc_for_rank(1),
+        source_retrieval_log_document=_retrieval_log_document(
+            [_valid_retrieval(i, 1) for i in range(1, 5)]
+        ),
+    )
+    assert problems
+
+
+def test_tamper_not_attempted_cannot_be_used_as_fourth_candidate_result() -> None:
+    """result.json's own per-row 'result' field must never literally be the
+    string 'NOT_ATTEMPTED_AFTER_SUCCESS' -- that is an attempt_status value,
+    never a CandidateOutcome. An ATTEMPTED row asserting it fails the
+    sequential-invariant recomputation (invalid CandidateOutcome)."""
+    result_doc = _real_result_document()
+    result_doc["candidates"][1]["result"] = "NOT_ATTEMPTED_AFTER_SUCCESS"
+    problems = verify_result_self_consistency(
+        result_doc,
+        field_applicability_document=_real_field_applicability_document(),
+        boatdesign_applicability_document=_real_boatdesign_document(),
+        source_clearance_document=_real_clearance_document(),
+        source_retrieval_log_document=_real_retrieval_log_document(),
+    )
+    assert problems
+    assert "NOT_ATTEMPTED_AFTER_SUCCESS" not in {member.value for member in CandidateOutcome}
 
 
 # ---------------------------------------------------------------------------
@@ -939,7 +1330,9 @@ def test_validate_source_retrieval_log_rejects_missing_http_status_on_fetched() 
 def test_verify_source_clearance_assessment_rejects_unrecognized_rank() -> None:
     doc = _real_clearance_document()
     doc["candidates"][0]["candidate_rank"] = 99
-    problems = verify_source_clearance_assessment_self_consistency(doc)
+    problems = verify_source_clearance_assessment_self_consistency(
+        doc, attempted_ranks=ALL_ATTEMPTED_RANKS
+    )
     assert any("unrecognized candidate_rank" in p for p in problems)
 
 
@@ -948,7 +1341,9 @@ def test_verify_source_clearance_assessment_rejects_tampered_gate_decisions() ->
     doc["candidates"][0]["source_use_gate_decisions"]["decisions"]["bulk_bootstrap"] = {
         "outcome": "allowed"
     }
-    problems = verify_source_clearance_assessment_self_consistency(doc)
+    problems = verify_source_clearance_assessment_self_consistency(
+        doc, attempted_ranks=ALL_ATTEMPTED_RANKS
+    )
     assert any("source_use_gate_decisions mismatch" in p for p in problems)
 
 
@@ -962,7 +1357,9 @@ def test_validate_field_applicability_no_normalized_candidate_outcome_allows_nul
     field_doc["candidates"][0]["fields"][0]["outcome"] = "NO_NORMALIZED_WIKIDATA_CANDIDATE"
     field_doc["candidates"][0]["fields"][0]["wikidata_normalized_candidate"] = None
     problems = validate_field_applicability(
-        field_doc, corrected_candidate_evidence={"candidates": []}
+        field_doc,
+        corrected_candidate_evidence={"candidates": []},
+        attempted_ranks=ALL_ATTEMPTED_RANKS,
     )
     assert problems == []
 
@@ -971,7 +1368,9 @@ def test_validate_field_applicability_rights_blocked_outcome_allows_null_candida
     field_doc = _real_field_applicability_document()
     field_doc["candidates"][1]["fields"][0]["wikidata_normalized_candidate"] = None
     problems = validate_field_applicability(
-        field_doc, corrected_candidate_evidence={"candidates": []}
+        field_doc,
+        corrected_candidate_evidence={"candidates": []},
+        attempted_ranks=ALL_ATTEMPTED_RANKS,
     )
     assert problems == []
 
@@ -981,7 +1380,9 @@ def test_validate_field_applicability_rejects_null_candidate_on_other_outcomes()
     field_doc["candidates"][0]["fields"][0]["wikidata_normalized_candidate"] = None
     # outcome stays SOURCE_VALUE_CONFLICT, which requires a candidate value
     problems = validate_field_applicability(
-        field_doc, corrected_candidate_evidence={"candidates": []}
+        field_doc,
+        corrected_candidate_evidence={"candidates": []},
+        attempted_ranks=ALL_ATTEMPTED_RANKS,
     )
     assert problems
 
@@ -989,14 +1390,14 @@ def test_validate_field_applicability_rejects_null_candidate_on_other_outcomes()
 def test_validate_boatdesign_applicability_rejects_missing_rank() -> None:
     doc = _real_boatdesign_document()
     doc["candidates"] = doc["candidates"][:-1]
-    problems = validate_boatdesign_applicability(doc)
+    problems = validate_boatdesign_applicability(doc, attempted_ranks=ALL_ATTEMPTED_RANKS)
     assert problems
 
 
 def test_validate_boatdesign_applicability_rejects_non_bool_established() -> None:
     doc = _real_boatdesign_document()
     doc["candidates"][0]["generation_boundary_established_for_this_pilot"] = "yes"
-    problems = validate_boatdesign_applicability(doc)
+    problems = validate_boatdesign_applicability(doc, attempted_ranks=ALL_ATTEMPTED_RANKS)
     assert any("is not a bool" in p for p in problems)
 
 
@@ -1041,7 +1442,26 @@ def test_retained_result_document_top_level_is_applicability_evidence_insufficie
     assert result["top_level_result"] == "APPLICABILITY_EVIDENCE_INSUFFICIENT"
     assert result["successful_rank"] is None
     for row in result["candidates"]:
+        assert row["attempt_status"] == "ATTEMPTED"
         assert row["result"] != "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT"
+        assert row["retrieval_count"] >= 1
+
+
+@pytest.mark.skipif(not SL0032_DIR.exists(), reason="retained SLICE-0032 package not present")
+def test_retained_source_clearance_evidence_contains_no_false_page_count_or_copyright_claim() -> (
+    None
+):
+    """Regression guard for the independent-review Finding 1 correction:
+    the retained rank-1 SR-6.6 evidence must never again claim the site is
+    'exactly four pages' or that the pages carry no copyright notice --
+    both were observed to be false."""
+    clearance_path = SL0032_DIR / "source_clearance_assessment.json"
+    if not clearance_path.exists():
+        pytest.skip("source_clearance_assessment.json not yet generated")
+    text = clearance_path.read_text(encoding="utf-8")
+    assert "exactly four pages" not in text
+    assert "no copyright" not in text.lower()
+    assert "&copy; Buzzards Bay Boat Shop" in text
 
 
 def test_fixed_candidate_sequence_is_exact_three_ranks() -> None:

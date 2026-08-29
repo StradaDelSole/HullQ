@@ -558,7 +558,12 @@ def build_source_retrieval_log_document(*, generated_at: str) -> dict[str, Any]:
                 "options); page states this is 'our fiberglass version of the original L. Francis "
                 "Herreshoff's Buzzards Bay 14 footer' and that the builder 'keeps as close to his "
                 "original design as possible' -- no production year range or hull-number range "
-                "given."
+                "given. Footer carries a bare copyright/attribution line ('&copy; Buzzards Bay "
+                "Boat Shop [buzzardsbayboatshop.com]') with no reproduction-restriction or "
+                "licence language, and a footer navigation list of five link destinations: THE "
+                "BOAT (self), PHOTO GALLERY, USED & BROKERAGE BOATS (same-domain "
+                "boatsforsale/class_search.pl), CONTACT US, and HOMEPORT (index.html) -- none of "
+                "which is a terms-of-use/licence page."
             ),
         ),
         _retrieval(
@@ -573,10 +578,15 @@ def build_source_retrieval_log_document(*, generated_at: str) -> dict[str, Any]:
             byte_size=7829,
             sha256="7c86bedc064301e83e7adb6d97f66d9754d38cf70ca52b457431ac3d28b2a6be",
             purpose=(
-                "Site home/navigation page: confirmed the site has exactly four pages (THE BOAT, "
-                "PHOTO GALLERY, USED & BROKERAGE BOATS external link, CONTACT US) -- no "
-                "history/generation/hull-number page exists on this official site. No copyright "
-                "or terms notice of any kind appears on this page."
+                "Site home/navigation page: footer navigation resolves to four link destinations "
+                "from this page (THE BOAT -> bb14boat.html, PHOTO GALLERY, USED & BROKERAGE BOATS "
+                "-> same-domain boatsforsale/class_search.pl, CONTACT US); bb14boat.html's own "
+                "footer additionally links back here via a fifth link labelled HOMEPORT -> "
+                "index.html (retrieval 2). No dedicated history/generation/hull-number page is "
+                "linked from either retrieved page. This page carries the same bare copyright/"
+                "attribution line as bb14boat.html ('&copy; Buzzards Bay Boat Shop "
+                "[buzzardsbayboatshop.com]'), with no reproduction-restriction or licence "
+                "language and no link to a terms-of-use/licence page."
             ),
         ),
         _retrieval(
@@ -717,10 +727,25 @@ def build_source_clearance_assessment_document(*, generated_at: str) -> dict[str
                     "condition": "no_identified_source_term_prohibits_the_chosen_method",
                     "satisfied": True,
                     "evidence": (
-                        "The site's own declared page set is exactly four pages (home, boat "
-                        "specs, photo gallery, contact); none is a terms-of-use/licence/"
-                        "copyright page. Neither the home page nor the boat-spec page carries "
-                        "any copyright notice. robots.txt does not exist (HTTP 404)."
+                        "Both retrieved pages (retrievals 2-3) carry a bare copyright/attribution "
+                        "line in the footer: '&copy; Buzzards Bay Boat Shop "
+                        "[buzzardsbayboatshop.com]'. This is an ownership/attribution assertion "
+                        "only: it contains no 'all rights reserved' or reproduction-restriction "
+                        "language, no statement addressing data/fact extraction or reuse, and no "
+                        "link to any terms-of-use/licence page. The footer navigation observed "
+                        "across both retrieved pages resolves to five link destinations (home/"
+                        "index.html labelled HOMEPORT on bb14boat.html, THE BOAT -> bb14boat.html, "
+                        "PHOTO GALLERY, USED & BROKERAGE BOATS -> same-domain "
+                        "boatsforsale/class_search.pl, CONTACT US) -- none of which is a "
+                        "terms-of-use/licence page. robots.txt does not exist (HTTP 404, "
+                        "retrieval 4), so no automation/access restriction is declared either. "
+                        "Per the accepted SLICE-0029 precedent (Catalina Yachts' bare '© 2026 "
+                        "Catalina Yachts' footer notice was treated as satisfying this same "
+                        "condition), a bare copyright/attribution line without accompanying "
+                        "restrictive licence language does not by itself prohibit the bounded "
+                        "manual factual-extraction method used here; the copyright notice's mere "
+                        "presence is not, on its own, evidence either for or against a "
+                        "prohibition."
                     ),
                 },
                 {
@@ -728,8 +753,9 @@ def build_source_clearance_assessment_document(*, generated_at: str) -> dict[str
                     "satisfied": True,
                     "evidence": (
                         "Exactly one BoatModel (Buzzards Bay 14) was researched using 4 of the "
-                        "12 permitted per-candidate retrievals; the photo-gallery and contact "
-                        "pages were left unvisited/unused as evidence."
+                        "12 permitted per-candidate retrievals; the photo-gallery, contact and "
+                        "used-boats/brokerage search pages linked from the retrieved footers were "
+                        "left unvisited/unused as evidence."
                     ),
                 },
                 {
@@ -806,7 +832,7 @@ def build_source_clearance_assessment_document(*, generated_at: str) -> dict[str
                     "attribution_instructions": None,
                     "other_conditions": [
                         "Bounded manually curated discrete factual use only -- not automated/bulk extraction or redistribution of source material.",
-                        "No terms-of-use, privacy-policy or licence page exists anywhere on this four-page site; neither retrieved page carries a copyright notice.",
+                        "Both retrieved pages carry a bare copyright/attribution footer line ('&copy; Buzzards Bay Boat Shop [buzzardsbayboatshop.com]') with no reproduction-restriction or licence language; no terms-of-use/licence page is linked from either retrieved page's footer navigation.",
                         "Any later automated_ingestion, bulk_bootstrap, or artifact_redistribution use requires its own independent clearance and MUST NOT be inferred from this record.",
                         "permissions.commercial_use / store_canonical_values / publish_derived_database are deliberately left 'conditional' (never 'allowed') even though clearance.identity_seed / production_value read 'allowed': the clearance is scoped exactly to the structured bounded_scope block below, not to Buzzards Bay Boat Shop content in general.",
                     ],
@@ -835,7 +861,7 @@ def build_source_clearance_assessment_document(*, generated_at: str) -> dict[str
                         "document_identifier": None,
                         "accessed_at": "2026-08-28T13:21:18+00:00",
                         "sha256": "7c86bedc064301e83e7adb6d97f66d9754d38cf70ca52b457431ac3d28b2a6be",
-                        "notes": "No copyright/terms notice present; four-page site.",
+                        "notes": "Bare copyright/attribution footer line present ('&copy; Buzzards Bay Boat Shop [buzzardsbayboatshop.com]'); no reproduction-restriction language; no terms-of-use/licence page linked.",
                     },
                     {
                         "evidence_type": "other",
@@ -947,7 +973,7 @@ def build_source_clearance_assessment_document(*, generated_at: str) -> dict[str
     )
 
     return {
-        "schema_version": "sl0032-source-clearance-assessment-v1",
+        "schema_version": "sl0032-source-clearance-assessment-v2",
         "generated_at": generated_at,
         "candidates": [rank1, rank2, rank3],
     }
@@ -970,7 +996,7 @@ _APPLICABILITY_SCOPE_UNBOUNDED: dict[str, Any] = {
 
 def build_boatdesign_applicability_document(*, generated_at: str) -> dict[str, Any]:
     return {
-        "schema_version": "sl0032-boatdesign-applicability-v1",
+        "schema_version": "sl0032-boatdesign-applicability-v2",
         "generated_at": generated_at,
         "candidates": [
             {
@@ -1166,7 +1192,7 @@ def build_field_applicability_document(
     ]
 
     return {
-        "schema_version": "sl0032-field-applicability-v1",
+        "schema_version": "sl0032-field-applicability-v2",
         "generated_at": generated_at,
         "allowed_field_pointers": sorted(
             {
@@ -1230,13 +1256,6 @@ def _build_and_validate_documents(*, generated_at: str, mismatches: list[str]) -
     )
 
     mismatches.extend(sl0032.validate_source_retrieval_log(retrieval_log_doc))
-    mismatches.extend(sl0032.verify_source_clearance_assessment_self_consistency(clearance_doc))
-    mismatches.extend(sl0032.validate_boatdesign_applicability(boatdesign_doc))
-    mismatches.extend(
-        sl0032.validate_field_applicability(
-            field_doc, corrected_candidate_evidence=corrected_evidence_doc
-        )
-    )
 
     fixed_ranks = [c.rank for c in sl0032.FIXED_CANDIDATE_SEQUENCE]
     fields_by_rank = {row["candidate_rank"]: row["fields"] for row in field_doc["candidates"]}
@@ -1246,49 +1265,91 @@ def _build_and_validate_documents(*, generated_at: str, mismatches: list[str]) -
     }
     clearance_by_rank = {row["candidate_rank"]: row for row in clearance_doc["candidates"]}
 
-    candidate_rows = []
-    ordered_results: list[tuple[int, Any]] = []
+    # Determine each rank's attempt_status/result in strict rank order,
+    # stopping (NOT_ATTEMPTED_AFTER_SUCCESS for every later rank) at the
+    # first READY -- these three literal-data builders currently emit a row
+    # for every fixed rank because none of the three real candidates reached
+    # READY, but this loop is written generally so it fails loudly (KeyError)
+    # rather than silently mis-deriving attempt status if that ever changes.
+    candidate_rows: list[dict[str, Any]] = []
+    entries: list[tuple[int, Any, Any]] = []
+    attempted_results_for_toplevel: list[tuple[int, Any]] = []
+    stopped = False
     for rank in fixed_ranks:
-        result = sl0032.compute_candidate_result(
-            source_cleared=sl0032.candidate_source_cleared(clearance_by_rank[rank]),
-            generation_boundary_established=boundary_by_rank[rank],
-            field_outcomes=fields_by_rank[rank],
-        )
-        ordered_results.append((rank, result))
-        retrieval_count = sum(
-            1 for r in retrieval_log_doc["retrievals"] if r["candidate_rank"] == rank
-        )
+        qid = next(c.qid for c in sl0032.FIXED_CANDIDATE_SEQUENCE if c.rank == rank)
+        hullq_id = next(c.hullq_id for c in sl0032.FIXED_CANDIDATE_SEQUENCE if c.rank == rank)
+        if stopped:
+            attempt_status = sl0032.AttemptStatus.NOT_ATTEMPTED_AFTER_SUCCESS
+            result = None
+            retrieval_count = 0
+        else:
+            attempt_status = sl0032.AttemptStatus.ATTEMPTED
+            result = sl0032.compute_candidate_result(
+                source_cleared=sl0032.candidate_source_cleared(clearance_by_rank[rank]),
+                generation_boundary_established=boundary_by_rank[rank],
+                field_outcomes=fields_by_rank[rank],
+            )
+            attempted_results_for_toplevel.append((rank, result))
+            retrieval_count = sum(
+                1 for r in retrieval_log_doc["retrievals"] if r["candidate_rank"] == rank
+            )
+            if result == sl0032.CandidateOutcome.READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT:
+                stopped = True
+        entries.append((rank, attempt_status, result))
         candidate_rows.append(
             {
                 "candidate_rank": rank,
-                "qid": next(c.qid for c in sl0032.FIXED_CANDIDATE_SEQUENCE if c.rank == rank),
-                "hullq_id": next(
-                    c.hullq_id for c in sl0032.FIXED_CANDIDATE_SEQUENCE if c.rank == rank
-                ),
-                "result": result.value,
+                "qid": qid,
+                "hullq_id": hullq_id,
+                "attempt_status": attempt_status.value,
+                "result": result.value if result is not None else None,
                 "retrieval_count": retrieval_count,
             }
         )
 
-    mismatches.extend(sl0032.validate_sequential_stop_invariant(ordered_results))
+    attempted_ranks = frozenset(
+        rank for rank, status, _ in entries if status == sl0032.AttemptStatus.ATTEMPTED
+    )
     mismatches.extend(
-        sl0032.validate_stop_on_first_positive_retrievals(
-            retrieval_log_doc, ordered_candidate_results=ordered_results
+        sl0032.verify_source_clearance_assessment_self_consistency(
+            clearance_doc, attempted_ranks=attempted_ranks
+        )
+    )
+    mismatches.extend(
+        sl0032.validate_boatdesign_applicability(boatdesign_doc, attempted_ranks=attempted_ranks)
+    )
+    mismatches.extend(
+        sl0032.validate_field_applicability(
+            field_doc,
+            corrected_candidate_evidence=corrected_evidence_doc,
+            attempted_ranks=attempted_ranks,
         )
     )
 
-    top_level = sl0032.compute_top_level_result(ordered_results)
+    mismatches.extend(sl0032.validate_sequential_stop_invariant(entries))
+    not_attempted_ranks = frozenset(
+        rank
+        for rank, status, _ in entries
+        if status == sl0032.AttemptStatus.NOT_ATTEMPTED_AFTER_SUCCESS
+    )
+    mismatches.extend(
+        sl0032.validate_stop_on_first_positive_retrievals(
+            retrieval_log_doc, not_attempted_ranks=not_attempted_ranks
+        )
+    )
+
+    top_level = sl0032.compute_top_level_result(attempted_results_for_toplevel)
     successful_rank = next(
         (
             rank
-            for rank, result in ordered_results
+            for rank, result in attempted_results_for_toplevel
             if result == sl0032.CandidateOutcome.READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT
         ),
         None,
     )
     total_retrievals = len(retrieval_log_doc["retrievals"])
     result_doc = {
-        "schema_version": "sl0032-result-v1",
+        "schema_version": "sl0032-result-v2",
         "generated_at": generated_at,
         "candidates": candidate_rows,
         "total_retrievals": total_retrievals,
@@ -1302,6 +1363,7 @@ def _build_and_validate_documents(*, generated_at: str, mismatches: list[str]) -
             field_applicability_document=field_doc,
             boatdesign_applicability_document=boatdesign_doc,
             source_clearance_document=clearance_doc,
+            source_retrieval_log_document=retrieval_log_doc,
         )
     )
 
@@ -1371,8 +1433,8 @@ def run_replay() -> None:
         "",
         "## CANDIDATES",
         "",
-        "| rank | boat | result | retrievals |",
-        "|---:|---|---|---:|",
+        "| rank | boat | attempt_status | result | retrievals |",
+        "|---:|---|---|---|---:|",
     ]
     from hullq.bootstrap.wikidata_sl0032_sequential_positive_control_pilot import (
         FIXED_CANDIDATE_SEQUENCE,
@@ -1381,7 +1443,8 @@ def run_replay() -> None:
     for row in result["candidates"]:
         label = next(c.label for c in FIXED_CANDIDATE_SEQUENCE if c.rank == row["candidate_rank"])
         report_lines.append(
-            f"| {row['candidate_rank']} | {label} | {row['result']} | {row['retrieval_count']} |"
+            f"| {row['candidate_rank']} | {label} | {row['attempt_status']} | {row['result']} | "
+            f"{row['retrieval_count']} |"
         )
     report_lines += [
         "",

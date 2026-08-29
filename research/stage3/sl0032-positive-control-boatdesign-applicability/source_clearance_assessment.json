@@ -1,6 +1,6 @@
 {
-  "schema_version": "sl0032-source-clearance-assessment-v1",
-  "generated_at": "2026-08-28T14:33:57.147541+00:00",
+  "schema_version": "sl0032-source-clearance-assessment-v2",
+  "generated_at": "2026-08-28T22:53:04.736344+00:00",
   "candidates": [
     {
       "candidate_rank": 1,
@@ -28,12 +28,12 @@
           {
             "condition": "no_identified_source_term_prohibits_the_chosen_method",
             "satisfied": true,
-            "evidence": "The site's own declared page set is exactly four pages (home, boat specs, photo gallery, contact); none is a terms-of-use/licence/copyright page. Neither the home page nor the boat-spec page carries any copyright notice. robots.txt does not exist (HTTP 404)."
+            "evidence": "Both retrieved pages (retrievals 2-3) carry a bare copyright/attribution line in the footer: '&copy; Buzzards Bay Boat Shop [buzzardsbayboatshop.com]'. This is an ownership/attribution assertion only: it contains no 'all rights reserved' or reproduction-restriction language, no statement addressing data/fact extraction or reuse, and no link to any terms-of-use/licence page. The footer navigation observed across both retrieved pages resolves to five link destinations (home/index.html labelled HOMEPORT on bb14boat.html, THE BOAT -> bb14boat.html, PHOTO GALLERY, USED & BROKERAGE BOATS -> same-domain boatsforsale/class_search.pl, CONTACT US) -- none of which is a terms-of-use/licence page. robots.txt does not exist (HTTP 404, retrieval 4), so no automation/access restriction is declared either. Per the accepted SLICE-0029 precedent (Catalina Yachts' bare '© 2026 Catalina Yachts' footer notice was treated as satisfying this same condition), a bare copyright/attribution line without accompanying restrictive licence language does not by itself prohibit the bounded manual factual-extraction method used here; the copyright notice's mere presence is not, on its own, evidence either for or against a prohibition."
           },
           {
             "condition": "not_systematic_or_bulk_database_extraction",
             "satisfied": true,
-            "evidence": "Exactly one BoatModel (Buzzards Bay 14) was researched using 4 of the 12 permitted per-candidate retrievals; the photo-gallery and contact pages were left unvisited/unused as evidence."
+            "evidence": "Exactly one BoatModel (Buzzards Bay 14) was researched using 4 of the 12 permitted per-candidate retrievals; the photo-gallery, contact and used-boats/brokerage search pages linked from the retrieved footers were left unvisited/unused as evidence."
           },
           {
             "condition": "no_automated_extraction_unless_separately_cleared",
@@ -89,7 +89,7 @@
             "attribution_instructions": null,
             "other_conditions": [
               "Bounded manually curated discrete factual use only -- not automated/bulk extraction or redistribution of source material.",
-              "No terms-of-use, privacy-policy or licence page exists anywhere on this four-page site; neither retrieved page carries a copyright notice.",
+              "Both retrieved pages carry a bare copyright/attribution footer line ('&copy; Buzzards Bay Boat Shop [buzzardsbayboatshop.com]') with no reproduction-restriction or licence language; no terms-of-use/licence page is linked from either retrieved page's footer navigation.",
               "Any later automated_ingestion, bulk_bootstrap, or artifact_redistribution use requires its own independent clearance and MUST NOT be inferred from this record.",
               "permissions.commercial_use / store_canonical_values / publish_derived_database are deliberately left 'conditional' (never 'allowed') even though clearance.identity_seed / production_value read 'allowed': the clearance is scoped exactly to the structured bounded_scope block below, not to Buzzards Bay Boat Shop content in general."
             ]
@@ -118,7 +118,7 @@
               "document_identifier": null,
               "accessed_at": "2026-08-28T13:21:18+00:00",
               "sha256": "7c86bedc064301e83e7adb6d97f66d9754d38cf70ca52b457431ac3d28b2a6be",
-              "notes": "No copyright/terms notice present; four-page site."
+              "notes": "Bare copyright/attribution footer line present ('&copy; Buzzards Bay Boat Shop [buzzardsbayboatshop.com]'); no reproduction-restriction language; no terms-of-use/licence page linked."
             },
             {
               "evidence_type": "other",

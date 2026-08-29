@@ -81,10 +81,15 @@ __all__ = [
     "MAX_RETRIEVALS_PER_CANDIDATE",
     "MAX_TOTAL_RETRIEVALS",
     "SL0032_ACTIVITY_ID",
+    "SOURCE_CLEARANCE_RESULT_VALUES",
+    "SOURCE_CLEARANCE_RIGHTS_BLOCKED",
+    "SOURCE_CLEARANCE_USE_CLEARED",
     "SR_6_6_DEFAULT_CLEARANCE",
     "SR_6_6_GATED_USES",
     "SR_6_6_SATISFIED_CLEARANCE",
+    "AttemptStatus",
     "CandidateOutcome",
+    "CandidateSequenceEntry",
     "FieldApplicabilityOutcome",
     "FixedCandidate",
     "RetrievalLogIntegrityError",
@@ -226,13 +231,38 @@ class FieldApplicabilityOutcome(StrEnum):
 
 
 class CandidateOutcome(StrEnum):
-    """Per-candidate result vocabulary, plus the sequencing marker used for a
-    later-ranked candidate that was correctly never researched."""
+    """The exact three normative per-candidate result values the controlling
+    slice defines for an ATTEMPTED candidate. Deliberately contains NOTHING
+    else: attempt/non-attempt status is a wholly separate concept
+    (:class:`AttemptStatus`), never a fourth member of this enum -- a
+    candidate that was never researched has no result at all, not a
+    result meaning "not attempted"."""
 
     READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT = "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT"
     RIGHTS_CLEARANCE_BLOCKED = "RIGHTS_CLEARANCE_BLOCKED"
     APPLICABILITY_EVIDENCE_INSUFFICIENT = "APPLICABILITY_EVIDENCE_INSUFFICIENT"
+
+
+class AttemptStatus(StrEnum):
+    """Whether a fixed-rank candidate was actually researched.
+
+    Kept entirely separate from :class:`CandidateOutcome`: a
+    ``NOT_ATTEMPTED_AFTER_SUCCESS`` candidate carries no
+    :class:`CandidateOutcome` value at all (``None``), zero retrievals, and
+    no rights/applicability/technical evidence in any retained document --
+    it is not a fourth "result".
+    """
+
+    ATTEMPTED = "ATTEMPTED"
     NOT_ATTEMPTED_AFTER_SUCCESS = "NOT_ATTEMPTED_AFTER_SUCCESS"
+
+
+# One fixed rank's position in the sequential stop-on-first-positive
+# ordering: (rank, attempt_status, result). ``result`` MUST be a
+# ``CandidateOutcome`` when ``attempt_status`` is ``ATTEMPTED`` and MUST be
+# ``None`` when ``attempt_status`` is ``NOT_ATTEMPTED_AFTER_SUCCESS`` --
+# enforced by ``validate_sequential_stop_invariant``, never assumed.
+CandidateSequenceEntry = tuple[int, AttemptStatus, "CandidateOutcome | None"]
 
 
 class TopLevelResult(StrEnum):
@@ -241,6 +271,22 @@ class TopLevelResult(StrEnum):
     READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT = "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT"
     RIGHTS_CLEARANCE_BLOCKED = "RIGHTS_CLEARANCE_BLOCKED"
     APPLICABILITY_EVIDENCE_INSUFFICIENT = "APPLICABILITY_EVIDENCE_INSUFFICIENT"
+
+
+# Vocabulary for source_clearance_assessment.json's per-candidate
+# candidate_source_clearance_result field. This is intentionally a SEPARATE
+# vocabulary from CandidateOutcome (never reuses/aliases it): a source-
+# clearance outcome is not itself one of the three normative candidate
+# results. A rank that was never researched carries NO row at all in
+# field_applicability.json / boatdesign_applicability.json /
+# source_clearance_assessment.json (see verify_result_self_consistency) --
+# so this vocabulary has exactly two values, both meaning research was
+# genuinely attempted for that candidate.
+SOURCE_CLEARANCE_USE_CLEARED = "SOURCE_USE_CLEARED_FOR_APPLICABILITY_RESEARCH"
+SOURCE_CLEARANCE_RIGHTS_BLOCKED = "RIGHTS_CLEARANCE_BLOCKED"
+SOURCE_CLEARANCE_RESULT_VALUES: frozenset[str] = frozenset(
+    {SOURCE_CLEARANCE_USE_CLEARED, SOURCE_CLEARANCE_RIGHTS_BLOCKED}
+)
 
 
 class SequenceIntegrityError(Exception):
@@ -442,26 +488,23 @@ def validate_source_retrieval_log(document: Mapping[str, Any]) -> list[str]:
 def validate_stop_on_first_positive_retrievals(
     document: Mapping[str, Any],
     *,
-    ordered_candidate_results: Sequence[tuple[int, CandidateOutcome]],
+    not_attempted_ranks: frozenset[int],
 ) -> list[str]:
-    """Validate that no retrieval for a rank greater than the first READY
-    rank exists in the retrieval log (mechanically auditable stop-on-first-
-    positive)."""
-    ready_rank: int | None = None
-    for rank, result in ordered_candidate_results:
-        if result == CandidateOutcome.READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT:
-            ready_rank = rank
-            break
-    if ready_rank is None:
+    """Validate that zero retrievals exist in the retrieval log for any rank
+    in *not_attempted_ranks* (mechanically auditable stop-on-first-positive:
+    a candidate correctly skipped after an earlier rank reached READY must
+    show literally zero retrieval activity, not merely a suppressed
+    result)."""
+    if not not_attempted_ranks:
         return []
     problems: list[str] = []
     for entry in document.get("retrievals", []):
         rank = entry.get("candidate_rank")
-        if isinstance(rank, int) and rank > ready_rank:
+        if rank in not_attempted_ranks:
             problems.append(
-                f"retrieval {entry.get('retrieval_index')!r} targets rank {rank} but rank "
-                f"{ready_rank} already reached READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT -- "
-                "stop-on-first-positive was violated"
+                f"retrieval {entry.get('retrieval_index')!r} targets rank {rank}, which is in "
+                f"the independently-derived not-attempted-rank set {sorted(not_attempted_ranks)!r} "
+                "-- stop-on-first-positive was violated"
             )
     return problems
 
@@ -541,36 +584,44 @@ def validate_bounded_scope(
 
 def verify_source_clearance_assessment_self_consistency(
     document: Mapping[str, Any],
+    *,
+    attempted_ranks: frozenset[int],
 ) -> list[str]:
     """Recompute every candidate's clearance decision from its retained
     evidence and compare against the retained document.
 
+    *attempted_ranks* is the independently-derived set of ranks that were
+    genuinely researched (never inferred from this document itself): the
+    retained document's rank coverage must equal it exactly. A rank that was
+    never attempted (a later candidate correctly skipped after an earlier
+    rank reached READY) MUST NOT appear here at all -- there is no
+    "not attempted" clearance result, only genuine research outcomes.
+
     For a candidate with a located source record, the source-use gate
     decisions and the SR-6.6-derived identity_seed/production_value
-    clearance are recomputed exactly as SLICE-0029 established. For a
-    candidate with no located authoritative primary source
+    clearance are recomputed exactly as SLICE-0029 established. For an
+    attempted candidate with no located authoritative primary source
     (``source_located: false``), the only valid ``candidate_source_clearance_result``
     is ``RIGHTS_CLEARANCE_BLOCKED`` -- there is nothing to clear.
     """
     mismatches: list[str] = []
     fixed_by_rank = {c.rank: c for c in FIXED_CANDIDATE_SEQUENCE}
+    found_ranks: set[int] = set()
 
     for entry in document.get("candidates", []):
         rank = entry.get("candidate_rank")
+        found_ranks.add(rank)
         fixed_candidate = fixed_by_rank.get(rank)
         if fixed_candidate is None:
             mismatches.append(f"source_clearance_assessment: unrecognized candidate_rank {rank!r}")
             continue
 
         if entry.get("source_located") is False:
-            if (
-                entry.get("candidate_source_clearance_result")
-                != CandidateOutcome.RIGHTS_CLEARANCE_BLOCKED.value
-            ):
+            if entry.get("candidate_source_clearance_result") != SOURCE_CLEARANCE_RIGHTS_BLOCKED:
                 mismatches.append(
                     f"rank {rank}: source_located=false but "
                     f"candidate_source_clearance_result={entry.get('candidate_source_clearance_result')!r} "
-                    f"!= {CandidateOutcome.RIGHTS_CLEARANCE_BLOCKED.value!r}"
+                    f"!= {SOURCE_CLEARANCE_RIGHTS_BLOCKED!r}"
                 )
             continue
 
@@ -612,9 +663,7 @@ def verify_source_clearance_assessment_self_consistency(
             retained_gate, SourceUse.IDENTITY_SEED.value
         ) and source_use_allowed(retained_gate, SourceUse.PRODUCTION_VALUE.value)
         expected_clearance_result = (
-            "SOURCE_USE_CLEARED_FOR_APPLICABILITY_RESEARCH"
-            if source_cleared
-            else CandidateOutcome.RIGHTS_CLEARANCE_BLOCKED.value
+            SOURCE_CLEARANCE_USE_CLEARED if source_cleared else SOURCE_CLEARANCE_RIGHTS_BLOCKED
         )
         if entry.get("candidate_source_clearance_result") != expected_clearance_result:
             mismatches.append(
@@ -622,6 +671,13 @@ def verify_source_clearance_assessment_self_consistency(
                 f"{entry.get('candidate_source_clearance_result')!r} != mechanically derived "
                 f"{expected_clearance_result!r}"
             )
+
+    if found_ranks != attempted_ranks:
+        mismatches.append(
+            f"source_clearance_assessment rank set {sorted(found_ranks)!r} != independently "
+            f"derived attempted-rank set {sorted(attempted_ranks)!r} -- an unattempted rank must "
+            "carry no clearance row at all, and every attempted rank must carry exactly one"
+        )
 
     return mismatches
 
@@ -635,9 +691,7 @@ def source_use_allowed(gate_decisions: Mapping[str, Any], use: str) -> bool:
 def candidate_source_cleared(clearance_entry: Mapping[str, Any]) -> bool:
     """True iff a per-candidate source_clearance_assessment entry cleared
     identity_seed/production_value for applicability research."""
-    return clearance_entry.get("candidate_source_clearance_result") == (
-        "SOURCE_USE_CLEARED_FOR_APPLICABILITY_RESEARCH"
-    )
+    return clearance_entry.get("candidate_source_clearance_result") == SOURCE_CLEARANCE_USE_CLEARED
 
 
 # ---------------------------------------------------------------------------
@@ -695,11 +749,18 @@ def validate_applicability_scope_invariant(scope: Mapping[str, Any]) -> list[str
 # ---------------------------------------------------------------------------
 
 
-def validate_boatdesign_applicability(document: Mapping[str, Any]) -> list[str]:
+def validate_boatdesign_applicability(
+    document: Mapping[str, Any], *, attempted_ranks: frozenset[int]
+) -> list[str]:
     """Validate structural invariants of the retained BoatDesign applicability
-    findings for every attempted candidate."""
+    findings for every attempted candidate.
+
+    *attempted_ranks* is the independently-derived set of genuinely
+    researched ranks. A rank that was never attempted MUST carry no row
+    here at all -- this document is never a place to assert generation/
+    applicability findings for research that did not happen.
+    """
     problems: list[str] = []
-    attempted_ranks = {c.rank for c in FIXED_CANDIDATE_SEQUENCE}
     found_ranks: set[int] = set()
     for model in document.get("candidates", []):
         rank = model.get("candidate_rank")
@@ -734,15 +795,23 @@ def validate_boatdesign_applicability(document: Mapping[str, Any]) -> list[str]:
 
 
 def validate_field_applicability(
-    document: Mapping[str, Any], *, corrected_candidate_evidence: Mapping[str, Any]
+    document: Mapping[str, Any],
+    *,
+    corrected_candidate_evidence: Mapping[str, Any],
+    attempted_ranks: frozenset[int],
 ) -> list[str]:
     """Validate the five-field applicability vocabulary/coverage invariants
     for every attempted candidate and cross-check every cited normalized
     candidate against the reused, independently-derived
-    ``corrected_candidate_evidence.json`` (never reacquired/reinterpreted)."""
+    ``corrected_candidate_evidence.json`` (never reacquired/reinterpreted).
+
+    *attempted_ranks* is the independently-derived set of genuinely
+    researched ranks. A rank that was never attempted MUST carry no row
+    here at all -- five-field classification is never asserted for research
+    that did not happen.
+    """
     problems: list[str] = []
     valid_outcomes = {o.value for o in FieldApplicabilityOutcome}
-    attempted_ranks = {c.rank for c in FIXED_CANDIDATE_SEQUENCE}
 
     evidence_by_rank: dict[int, dict[str, Any]] = {
         row["candidate_rank"]: row for row in corrected_candidate_evidence.get("candidates", [])
@@ -856,45 +925,68 @@ def compute_candidate_result(
 
 
 def compute_top_level_result(
-    ordered_candidate_results: Sequence[tuple[int, CandidateOutcome]],
+    attempted_candidate_results: Sequence[tuple[int, CandidateOutcome]],
 ) -> TopLevelResult:
     """Mechanically derive the slice's single top-level result from the
     fixed three-rule precedence: first READY wins; else any cleared-but-
     insufficient attempted candidate yields APPLICABILITY_EVIDENCE_INSUFFICIENT;
-    else (every attempted candidate rights-blocked) RIGHTS_CLEARANCE_BLOCKED."""
-    for _rank, result in ordered_candidate_results:
+    else (every attempted candidate rights-blocked) RIGHTS_CLEARANCE_BLOCKED.
+
+    *attempted_candidate_results* must contain ATTEMPTED candidates only --
+    a candidate that was never researched has no result and must never be
+    passed here at all."""
+    for _rank, result in attempted_candidate_results:
         if result == CandidateOutcome.READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT:
             return TopLevelResult.READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT
     if any(
         result == CandidateOutcome.APPLICABILITY_EVIDENCE_INSUFFICIENT
-        for _rank, result in ordered_candidate_results
+        for _rank, result in attempted_candidate_results
     ):
         return TopLevelResult.APPLICABILITY_EVIDENCE_INSUFFICIENT
     return TopLevelResult.RIGHTS_CLEARANCE_BLOCKED
 
 
 def validate_sequential_stop_invariant(
-    ordered_candidate_results: Sequence[tuple[int, CandidateOutcome]],
+    entries: Sequence[CandidateSequenceEntry],
 ) -> list[str]:
     """Validate the stop-on-first-positive sequencing invariant over the
-    fixed rank order: every candidate after the first READY rank must be
-    exactly NOT_ATTEMPTED_AFTER_SUCCESS, and NOT_ATTEMPTED_AFTER_SUCCESS
-    must never appear before a READY rank."""
+    fixed rank order, given each rank's ``(attempt_status, result)`` pair:
+
+    - an ``ATTEMPTED`` rank MUST carry a non-null ``CandidateOutcome``;
+    - a ``NOT_ATTEMPTED_AFTER_SUCCESS`` rank MUST carry a null result (it is
+      not a fourth candidate-result value);
+    - every rank strictly after the first READY rank MUST be
+      ``NOT_ATTEMPTED_AFTER_SUCCESS``;
+    - ``NOT_ATTEMPTED_AFTER_SUCCESS`` MUST NOT appear before any rank has
+      reached READY.
+    """
     problems: list[str] = []
     ready_rank: int | None = None
-    for rank, result in ordered_candidate_results:
+    for rank, attempt_status, result in entries:
+        if attempt_status == AttemptStatus.ATTEMPTED and result is None:
+            problems.append(f"rank {rank}: attempt_status=ATTEMPTED requires a non-null result")
+        if attempt_status == AttemptStatus.NOT_ATTEMPTED_AFTER_SUCCESS and result is not None:
+            problems.append(
+                f"rank {rank}: attempt_status=NOT_ATTEMPTED_AFTER_SUCCESS requires a null "
+                f"result, got {result!r} -- NOT_ATTEMPTED_AFTER_SUCCESS is not a fourth "
+                "candidate result"
+            )
+
         if ready_rank is not None:
-            if result != CandidateOutcome.NOT_ATTEMPTED_AFTER_SUCCESS:
+            if attempt_status != AttemptStatus.NOT_ATTEMPTED_AFTER_SUCCESS:
                 problems.append(
-                    f"rank {rank} must be NOT_ATTEMPTED_AFTER_SUCCESS because rank {ready_rank} "
-                    "already reached READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT"
+                    f"rank {rank} must have attempt_status=NOT_ATTEMPTED_AFTER_SUCCESS because "
+                    f"rank {ready_rank} already reached "
+                    "READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT"
                 )
             continue
-        if result == CandidateOutcome.NOT_ATTEMPTED_AFTER_SUCCESS:
+
+        if attempt_status == AttemptStatus.NOT_ATTEMPTED_AFTER_SUCCESS:
             problems.append(
-                f"rank {rank} is marked NOT_ATTEMPTED_AFTER_SUCCESS but no earlier rank reached READY"
+                f"rank {rank} has attempt_status=NOT_ATTEMPTED_AFTER_SUCCESS but no earlier rank "
+                "reached READY"
             )
-        if result == CandidateOutcome.READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT:
+        elif result == CandidateOutcome.READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT:
             ready_rank = rank
     return problems
 
@@ -905,16 +997,55 @@ def verify_result_self_consistency(
     field_applicability_document: Mapping[str, Any],
     boatdesign_applicability_document: Mapping[str, Any],
     source_clearance_document: Mapping[str, Any],
+    source_retrieval_log_document: Mapping[str, Any],
 ) -> list[str]:
-    """Independently recompute every candidate result, the sequential stop
-    invariant, and the top-level result purely from the OTHER three retained
-    documents (never from ``result.json``'s own embedded copies -- it has
-    none), then compare against the document's own asserted results -- so a
+    """Independently recompute every candidate's attempt status, result, the
+    sequential stop invariant, and the top-level result purely from the
+    OTHER four retained documents (never from ``result.json``'s own claims),
+    then compare against ``result.json``'s own asserted values -- so a
     tampered ``result.json`` cannot assert a result its own inputs do not
-    mechanically produce, and cannot smuggle in a self-referential field
-    dataset."""
+    mechanically produce, cannot mark a later rank ATTEMPTED after an
+    earlier READY, and cannot claim retrievals occurred for a rank that was
+    never attempted.
+    """
     problems: list[str] = []
     fixed_ranks = [c.rank for c in FIXED_CANDIDATE_SEQUENCE]
+
+    by_rank = {row["candidate_rank"]: row for row in document.get("candidates", [])}
+    if set(by_rank) != set(fixed_ranks):
+        return [f"result.json candidate rank set {sorted(by_rank)!r} != {fixed_ranks!r}"]
+
+    entries: list[CandidateSequenceEntry] = []
+    for rank in fixed_ranks:
+        row = by_rank[rank]
+        attempt_status_raw = row.get("attempt_status")
+        try:
+            attempt_status = AttemptStatus(attempt_status_raw)
+        except ValueError:
+            problems.append(
+                f"rank {rank}: attempt_status={attempt_status_raw!r} is not a valid AttemptStatus"
+            )
+            entries.append((rank, AttemptStatus.NOT_ATTEMPTED_AFTER_SUCCESS, None))
+            continue
+        result_raw = row.get("result")
+        result: CandidateOutcome | None = None
+        if result_raw is not None:
+            try:
+                result = CandidateOutcome(result_raw)
+            except ValueError:
+                problems.append(
+                    f"rank {rank}: result={result_raw!r} is not a valid CandidateOutcome"
+                )
+        entries.append((rank, attempt_status, result))
+
+    problems.extend(validate_sequential_stop_invariant(entries))
+
+    attempted_ranks = frozenset(
+        rank for rank, status, _ in entries if status == AttemptStatus.ATTEMPTED
+    )
+    not_attempted_ranks = frozenset(
+        rank for rank, status, _ in entries if status == AttemptStatus.NOT_ATTEMPTED_AFTER_SUCCESS
+    )
 
     fields_by_rank = {
         row["candidate_rank"]: row["fields"]
@@ -927,37 +1058,83 @@ def verify_result_self_consistency(
     clearance_by_rank = {
         row["candidate_rank"]: row for row in source_clearance_document.get("candidates", [])
     }
+    for label, doc_ranks in (
+        ("field_applicability", set(fields_by_rank)),
+        ("boatdesign_applicability", set(boundary_by_rank)),
+        ("source_clearance_assessment", set(clearance_by_rank)),
+    ):
+        if doc_ranks != attempted_ranks:
+            problems.append(
+                f"{label} rank set {sorted(doc_ranks)!r} != independently-derived "
+                f"attempt_status=ATTEMPTED rank set {sorted(attempted_ranks)!r} -- an unattempted "
+                "rank must carry no evidence row at all, and every attempted rank must carry "
+                "exactly one"
+            )
 
-    by_rank = {row["candidate_rank"]: row for row in document.get("candidates", [])}
-    if set(by_rank) != set(fixed_ranks):
-        return [f"result.json candidate rank set {sorted(by_rank)!r} != {fixed_ranks!r}"]
+    retrieval_counts_by_rank: dict[int, int] = {}
+    for retrieval_entry in source_retrieval_log_document.get("retrievals", []):
+        retrieval_rank = retrieval_entry.get("candidate_rank")
+        if isinstance(retrieval_rank, int):
+            retrieval_counts_by_rank[retrieval_rank] = (
+                retrieval_counts_by_rank.get(retrieval_rank, 0) + 1
+            )
 
-    ordered_results: list[tuple[int, CandidateOutcome]] = []
-    for rank in fixed_ranks:
-        row = by_rank[rank]
-        retained_result = row.get("result")
-        if retained_result == CandidateOutcome.NOT_ATTEMPTED_AFTER_SUCCESS.value:
-            ordered_results.append((rank, CandidateOutcome.NOT_ATTEMPTED_AFTER_SUCCESS))
+    recomputed_attempted_results: list[tuple[int, CandidateOutcome]] = []
+    for rank, attempt_status, retained_result in entries:
+        actual_retrieval_count = retrieval_counts_by_rank.get(rank, 0)
+        retained_retrieval_count = by_rank[rank].get("retrieval_count")
+        if retained_retrieval_count != actual_retrieval_count:
+            problems.append(
+                f"rank {rank}: retained retrieval_count={retained_retrieval_count!r} != actual "
+                f"source_retrieval_log.json count {actual_retrieval_count}"
+            )
+
+        if attempt_status == AttemptStatus.NOT_ATTEMPTED_AFTER_SUCCESS:
+            if actual_retrieval_count != 0:
+                problems.append(
+                    f"rank {rank}: attempt_status=NOT_ATTEMPTED_AFTER_SUCCESS but "
+                    f"{actual_retrieval_count} retrieval(s) exist in source_retrieval_log.json -- "
+                    "no semantic source retrieval may exist for an unattempted rank"
+                )
+            continue
+
+        # attempt_status == ATTEMPTED
+        if actual_retrieval_count == 0:
+            problems.append(
+                f"rank {rank}: attempt_status=ATTEMPTED but zero retrievals exist in "
+                "source_retrieval_log.json -- a genuinely attempted candidate requires at least "
+                "one bounded source retrieval"
+            )
+        if (
+            rank not in fields_by_rank
+            or rank not in boundary_by_rank
+            or rank not in clearance_by_rank
+        ):
+            problems.append(
+                f"rank {rank}: attempt_status=ATTEMPTED but missing from one or more of "
+                "field_applicability.json / boatdesign_applicability.json / "
+                "source_clearance_assessment.json"
+            )
             continue
         recomputed = compute_candidate_result(
             source_cleared=candidate_source_cleared(clearance_by_rank[rank]),
             generation_boundary_established=boundary_by_rank[rank],
             field_outcomes=fields_by_rank[rank],
         )
-        if retained_result != recomputed.value:
+        if retained_result != recomputed:
+            retained_display = retained_result.value if retained_result is not None else None
             problems.append(
-                f"rank {rank}: retained result={retained_result!r} recomputed={recomputed.value!r}"
+                f"rank {rank}: retained result={retained_display!r} recomputed={recomputed.value!r}"
             )
-        ordered_results.append((rank, recomputed))
+        recomputed_attempted_results.append((rank, recomputed))
 
-    problems.extend(validate_sequential_stop_invariant(ordered_results))
+    problems.extend(
+        validate_stop_on_first_positive_retrievals(
+            source_retrieval_log_document, not_attempted_ranks=not_attempted_ranks
+        )
+    )
 
-    attempted_results = [
-        (rank, result)
-        for rank, result in ordered_results
-        if result != CandidateOutcome.NOT_ATTEMPTED_AFTER_SUCCESS
-    ]
-    recomputed_top_level = compute_top_level_result(attempted_results)
+    recomputed_top_level = compute_top_level_result(recomputed_attempted_results)
     if document.get("top_level_result") != recomputed_top_level.value:
         problems.append(
             f"top_level_result retained={document.get('top_level_result')!r} recomputed="
@@ -966,13 +1143,17 @@ def verify_result_self_consistency(
 
     if recomputed_top_level == TopLevelResult.READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT:
         successful_rank = next(
-            rank
-            for rank, result in attempted_results
-            if result == CandidateOutcome.READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT
+            (
+                rank
+                for rank, result in recomputed_attempted_results
+                if result == CandidateOutcome.READY_FOR_BOUNDED_CANONICAL_BOATDESIGN_PILOT
+            ),
+            None,
         )
         if document.get("successful_rank") != successful_rank:
             problems.append(
-                f"successful_rank retained={document.get('successful_rank')!r} recomputed={successful_rank!r}"
+                f"successful_rank retained={document.get('successful_rank')!r} recomputed="
+                f"{successful_rank!r}"
             )
     elif document.get("successful_rank") is not None:
         problems.append(

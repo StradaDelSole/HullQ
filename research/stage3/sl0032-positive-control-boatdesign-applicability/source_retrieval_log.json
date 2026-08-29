@@ -1,6 +1,6 @@
 {
   "schema_version": "sl0032-source-retrieval-log-v1",
-  "generated_at": "2026-08-28T14:33:57.147541+00:00",
+  "generated_at": "2026-08-28T22:53:04.736344+00:00",
   "retrieval_ceiling_per_candidate": 12,
   "retrieval_ceiling_total": 36,
   "retrieval_count": 7,
@@ -30,7 +30,7 @@
       "content_type": "text/html; charset=UTF-8",
       "byte_size": 10534,
       "sha256": "7b63c49fee300b194314d898b8a932928fcc34b5026681dc591f4ec3b26afeae",
-      "fact_purpose": "Official current builder's model specification page. Extracted discrete facts: Length overall 17' 9\"; Length at waterline 14' 1\"; Beam 5'10\"; Draft 2' 6\"; Draft ballast (standard, lead encapsulated) 900 lbs; Displacement 2000 lbs; construction is solid hand-laid fiberglass hull/bulkheads (mahogany/teak trim options); page states this is 'our fiberglass version of the original L. Francis Herreshoff's Buzzards Bay 14 footer' and that the builder 'keeps as close to his original design as possible' -- no production year range or hull-number range given."
+      "fact_purpose": "Official current builder's model specification page. Extracted discrete facts: Length overall 17' 9\"; Length at waterline 14' 1\"; Beam 5'10\"; Draft 2' 6\"; Draft ballast (standard, lead encapsulated) 900 lbs; Displacement 2000 lbs; construction is solid hand-laid fiberglass hull/bulkheads (mahogany/teak trim options); page states this is 'our fiberglass version of the original L. Francis Herreshoff's Buzzards Bay 14 footer' and that the builder 'keeps as close to his original design as possible' -- no production year range or hull-number range given. Footer carries a bare copyright/attribution line ('&copy; Buzzards Bay Boat Shop [buzzardsbayboatshop.com]') with no reproduction-restriction or licence language, and a footer navigation list of five link destinations: THE BOAT (self), PHOTO GALLERY, USED & BROKERAGE BOATS (same-domain boatsforsale/class_search.pl), CONTACT US, and HOMEPORT (index.html) -- none of which is a terms-of-use/licence page."
     },
     {
       "retrieval_index": 3,
@@ -43,7 +43,7 @@
       "content_type": "text/html; charset=UTF-8",
       "byte_size": 7829,
       "sha256": "7c86bedc064301e83e7adb6d97f66d9754d38cf70ca52b457431ac3d28b2a6be",
-      "fact_purpose": "Site home/navigation page: confirmed the site has exactly four pages (THE BOAT, PHOTO GALLERY, USED & BROKERAGE BOATS external link, CONTACT US) -- no history/generation/hull-number page exists on this official site. No copyright or terms notice of any kind appears on this page."
+      "fact_purpose": "Site home/navigation page: footer navigation resolves to four link destinations from this page (THE BOAT -> bb14boat.html, PHOTO GALLERY, USED & BROKERAGE BOATS -> same-domain boatsforsale/class_search.pl, CONTACT US); bb14boat.html's own footer additionally links back here via a fifth link labelled HOMEPORT -> index.html (retrieval 2). No dedicated history/generation/hull-number page is linked from either retrieved page. This page carries the same bare copyright/attribution line as bb14boat.html ('&copy; Buzzards Bay Boat Shop [buzzardsbayboatshop.com]'), with no reproduction-restriction or licence language and no link to a terms-of-use/licence page."
     },
     {
       "retrieval_index": 4,
