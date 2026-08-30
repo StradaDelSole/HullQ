@@ -28,6 +28,13 @@ REVIEW amendment Finding 3: a NamedVariantConstraint-governed configuration
 composes correctly with normal design-level aggregation, including remaining
 INSUFFICIENT_DATA (never a false CONFIRMED_NON_MATCH) when the configuration
 space itself is not known to be complete.
+
+REVIEW amendment second round, remaining blocker 1: an unresolved-
+applicability option/variant declaration composes correctly with normal
+design-level aggregation — a known FALSE configuration plus unresolved
+applicability elsewhere is INSUFFICIENT_DATA, never CONFIRMED_NON_MATCH,
+while a separately confirmed TRUE configuration still produces
+CONFIRMED_MATCH regardless.
 """
 
 from __future__ import annotations
@@ -38,6 +45,7 @@ from hullq.search.configuration import (
     ConfigurationProjection,
     DesignConfigurationSet,
     NamedVariantConstraint,
+    OptionConstraint,
     ResolvedConfiguration,
 )
 from hullq.search.configuration_engine import (
@@ -515,3 +523,83 @@ def test_variant_constrained_configuration_with_incomplete_space_is_insufficient
     evaluation = evaluate_design_configuration_set(_draft_query(), config_set)
     assert evaluation.result_class is ResultClass.INSUFFICIENT_DATA
     assert evaluation.reason is ReasonCode.CONFIGURATION_AMBIGUOUS
+
+
+# ---------------------------------------------------------------------------
+# REVIEW amendment (second round) — remaining blocker 1: unresolved
+# applicability composes correctly with design-level aggregation
+# ---------------------------------------------------------------------------
+
+
+def test_unresolved_applicability_plus_known_false_config_is_insufficient_not_non_match() -> None:
+    # The disputed option is declared with unresolved applicability but is
+    # not referenced by any configuration (referencing it would be rejected
+    # at construction); its mere declaration forces
+    # configuration_space_complete=False, so the known FALSE baseline cannot
+    # license a universal CONFIRMED_NON_MATCH.
+    false_cfg = _resolved_configuration("cfg-baseline", "design-1", draft_max_m=1.9)
+    config_set = DesignConfigurationSet(
+        design_id="design-1",
+        configurations=(false_cfg,),
+        configuration_space_complete=False,
+        option_constraints={
+            "OPT-UNRESEARCHED": OptionConstraint(
+                option_id="OPT-UNRESEARCHED",
+                applicability=ValueQualification.APPLICABILITY_UNKNOWN,
+            )
+        },
+    )
+    evaluation = evaluate_design_configuration_set(_draft_query(), config_set)
+    assert evaluation.result_class is ResultClass.INSUFFICIENT_DATA
+    assert evaluation.result_class is not ResultClass.CONFIRMED_NON_MATCH
+    assert evaluation.reason is ReasonCode.CONFIGURATION_AMBIGUOUS
+
+
+def test_unresolved_applicability_plus_separate_confirmed_true_config_still_matches() -> None:
+    # A separately confirmed TRUE configuration still produces
+    # CONFIRMED_MATCH, preserving existential-match semantics regardless of
+    # unresolved applicability elsewhere in the same design.
+    true_cfg = _resolved_configuration("cfg-shallow", "design-1", draft_max_m=1.5)
+    config_set = DesignConfigurationSet(
+        design_id="design-1",
+        configurations=(true_cfg,),
+        configuration_space_complete=False,
+        variant_constraints={
+            "VARIANT-UNRESEARCHED": NamedVariantConstraint(
+                variant_id="VARIANT-UNRESEARCHED",
+                applicability=ValueQualification.APPLICABILITY_UNKNOWN,
+            )
+        },
+    )
+    evaluation = evaluate_design_configuration_set(_draft_query(), config_set)
+    assert evaluation.result_class is ResultClass.CONFIRMED_MATCH
+    assert evaluation.matching_configuration_ids == ("cfg-shallow",)
+
+
+def test_constructing_disputed_option_configuration_is_rejected_before_evaluation() -> None:
+    # A configuration cannot even be assembled with a disputed option, so it
+    # can never reach evaluate_design_configuration_set to begin with.
+    disputed_cfg = ResolvedConfiguration(
+        identity=ConfigurationIdentity(
+            configuration_id="cfg-disputed",
+            boat_design_id="design-1",
+            applied_option_ids=("OPT-UNRESEARCHED",),
+        ),
+        projection=ConfigurationProjection(),
+    )
+    try:
+        DesignConfigurationSet(
+            design_id="design-1",
+            configurations=(disputed_cfg,),
+            configuration_space_complete=False,
+            option_constraints={
+                "OPT-UNRESEARCHED": OptionConstraint(
+                    option_id="OPT-UNRESEARCHED",
+                    applicability=ValueQualification.APPLICABILITY_UNKNOWN,
+                )
+            },
+        )
+    except ValueError as exc:
+        assert "not CONFIRMED" in str(exc)
+    else:
+        raise AssertionError("expected ValueError for disputed applicability-unknown option")
