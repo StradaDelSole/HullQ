@@ -1,11 +1,14 @@
 """Contract tests for BOAT_DESIGN_SCHEMA.v0.6 (SLICE-0034).
 
 Validates the four required synthetic structural archetypes and proves the schema
-fails closed on unknown properties, malformed enums, out-of-range counts and
-incomplete override family sets. Also proves rudder position and rudder support are
-independently representable (a transom-positioned rudder may carry skeg-support
-semantics without contradiction) and that newly added search-significant families
-are override-capable through both NamedVariant and DesignOption mechanisms.
+fails closed on unknown properties, malformed enums, out-of-range counts,
+incomplete override family sets, and bounded cross-field contradictions
+(hull_configuration/hull_count, skeg_type=none vs a skeg-supported rudder,
+a zero appendage count vs a concrete descriptor of that appendage). Also proves
+rudder position and rudder support are independently representable (a
+transom-positioned rudder may carry skeg-support semantics without contradiction)
+and that newly added search-significant families are override-capable through
+both NamedVariant and DesignOption mechanisms.
 
 None of these fixtures represent real-world boat facts.
 """
@@ -313,6 +316,179 @@ def test_rejects_unbounded_design_option_axis() -> None:
     instance["design_options"][0]["axis"] = "not_a_real_axis"
     with pytest.raises(ValidationError):
         _V06.validate(instance)
+
+
+# ---------------------------------------------------------------------------
+# Bounded cross-field fail-closed invariants (SLICE-0034 amendment).
+#
+# Each invariant below is a definitional/mathematical certainty (what the words
+# monohull/catamaran/trimaran mean; a zero count cannot coexist with a concrete
+# descriptor of the thing being counted; skeg_type=none cannot coexist with a
+# skeg-supported rudder), not a domain-taxonomy guess. Every "reject" case is
+# paired with an "accept" case proving the invariant only fires on the actual
+# contradiction, and a partial-override case proves an invariant never forces a
+# NamedVariant/DesignOption override to restate untouched sibling fields.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("hull_configuration", "hull_count"),
+    [("catamaran", 1), ("trimaran", 2), ("trimaran", 1), ("monohull", 2), ("monohull", 3)],
+)
+def test_rejects_hull_configuration_hull_count_mismatch(
+    hull_configuration: str, hull_count: int
+) -> None:
+    instance = _base_instance()
+    instance["baseline"]["configuration"] = {
+        "hull_configuration": hull_configuration,
+        "hull_count": hull_count,
+    }
+    with pytest.raises(ValidationError):
+        _V06.validate(instance)
+
+
+@pytest.mark.parametrize(
+    ("hull_configuration", "hull_count"),
+    [("monohull", 1), ("catamaran", 2), ("trimaran", 3), ("monohull", None), ("other", 5)],
+)
+def test_accepts_hull_configuration_hull_count_agreement_or_unknown_count(
+    hull_configuration: str, hull_count: int | None
+) -> None:
+    instance = _base_instance()
+    instance["baseline"]["configuration"] = {
+        "hull_configuration": hull_configuration,
+        "hull_count": hull_count,
+    }
+    _V06.validate(instance)
+
+
+def test_rejects_skeg_none_with_skeg_supported_rudder() -> None:
+    instance = _base_instance()
+    instance["baseline"]["appendages"]["skeg_type"] = "none"
+    instance["baseline"]["appendages"]["rudder_support"] = "skeg"
+    with pytest.raises(ValidationError):
+        _V06.validate(instance)
+
+
+def test_accepts_skeg_none_with_non_skeg_rudder_support() -> None:
+    instance = _base_instance()
+    instance["baseline"]["appendages"]["skeg_type"] = "none"
+    instance["baseline"]["appendages"]["rudder_support"] = "free"
+    _V06.validate(instance)
+
+
+def test_rejects_zero_centerboard_count_with_concrete_centerboard_type() -> None:
+    instance = _base_instance()
+    instance["baseline"]["appendages"]["centerboard_count"] = 0
+    instance["baseline"]["appendages"]["centerboard_type"] = "swing"
+    with pytest.raises(ValidationError):
+        _V06.validate(instance)
+
+
+def test_rejects_zero_daggerboard_count_with_concrete_daggerboard_type() -> None:
+    instance = _base_instance()
+    instance["baseline"]["appendages"]["daggerboard_count"] = 0
+    instance["baseline"]["appendages"]["daggerboard_type"] = "carbon"
+    with pytest.raises(ValidationError):
+        _V06.validate(instance)
+
+
+def test_accepts_zero_board_counts_with_null_board_types() -> None:
+    instance = _base_instance()
+    instance["baseline"]["appendages"]["centerboard_count"] = 0
+    instance["baseline"]["appendages"]["centerboard_type"] = None
+    instance["baseline"]["appendages"]["daggerboard_count"] = 0
+    instance["baseline"]["appendages"]["daggerboard_type"] = None
+    _V06.validate(instance)
+
+
+def test_rejects_zero_rudder_count_with_concrete_rudder_position() -> None:
+    # The classic-aft-cockpit base fixture already carries a concrete
+    # rudder_position/support/balance; setting rudder_count=0 without clearing
+    # them must be rejected.
+    instance = _base_instance()
+    instance["baseline"]["appendages"]["rudder_count"] = 0
+    with pytest.raises(ValidationError):
+        _V06.validate(instance)
+
+
+def test_accepts_zero_rudder_count_with_all_unknown_rudder_facts() -> None:
+    instance = _base_instance()
+    instance["baseline"]["appendages"].update(
+        rudder_count=0,
+        rudder_position="unknown",
+        rudder_support="unknown",
+        rudder_balance="unknown",
+    )
+    _V06.validate(instance)
+
+
+def test_accepts_null_rudder_count_with_concrete_rudder_position() -> None:
+    # An unrecorded count (null) is honest "we don't know how many"; it must not
+    # be treated as a contradiction the way an explicit zero is.
+    instance = _base_instance()
+    instance["baseline"]["appendages"]["rudder_count"] = None
+    _V06.validate(instance)
+
+
+def test_rejects_zero_cockpit_count_with_concrete_cockpit_position() -> None:
+    instance = _base_instance()
+    instance["baseline"]["deck"]["cockpit_count"] = 0
+    with pytest.raises(ValidationError):
+        _V06.validate(instance)
+
+
+def test_accepts_zero_cockpit_count_with_unknown_cockpit_position() -> None:
+    instance = _base_instance()
+    instance["baseline"]["deck"]["cockpit_count"] = 0
+    instance["baseline"]["deck"]["cockpit_position"] = "unknown"
+    _V06.validate(instance)
+
+
+def test_rejects_zero_helm_count_with_concrete_helm_type() -> None:
+    instance = _base_instance()
+    instance["baseline"]["deck"]["helm_count"] = 0
+    with pytest.raises(ValidationError):
+        _V06.validate(instance)
+
+
+def test_accepts_zero_helm_count_with_unknown_helm_type() -> None:
+    instance = _base_instance()
+    instance["baseline"]["deck"]["helm_count"] = 0
+    instance["baseline"]["deck"]["helm_type"] = "unknown"
+    _V06.validate(instance)
+
+
+def test_cross_field_invariants_do_not_force_partial_overrides_to_restate_siblings() -> None:
+    """A NamedVariant overriding only rudder_count=0 must not be forced to also
+    restate rudder_position/support/balance, since it never touched them."""
+    instance = load_archetype("performance_rig_keel_variant")
+    instance.pop("fixture_purpose")
+    instance["named_variants"][0]["overrides"]["appendages"] = {"rudder_count": 0}
+    _V06.validate(instance)
+
+
+def test_draft_min_exceeds_draft_max_is_a_known_unenforceable_gap() -> None:
+    """Deliberately documents a gap, not a guarantee.
+
+    draft_min_m > draft_max_m is a genuine contradiction, but standard JSON
+    Schema (Draft 2020-12, as consumed by this repo's `jsonschema` package,
+    which does not implement the non-standard `$data` proposal) has no
+    declarative way to compare two sibling numeric properties without a custom
+    keyword/format extension. This repo's only existing cross-field pattern
+    (`FIELD_RESOLUTION_SCHEMA.v0.1/v0.2`, and the invariants added above) is
+    entirely `const`/`enum`-based `if`/`then`, never a numeric comparison
+    between two variable properties, so there is no local precedent to extend
+    either. Introducing a new validation mechanism for this one field pair
+    would be disproportionate to a bounded schema-shape amendment. This test
+    exists to make the gap explicit and regression-visible rather than silent:
+    if a future change closes it, this test should start failing and can be
+    deleted.
+    """
+    instance = _base_instance()
+    instance["baseline"]["dimensions"]["draft_min_m"] = 5.0
+    instance["baseline"]["dimensions"]["draft_max_m"] = 1.0
+    _V06.validate(instance)  # not raising is the documented, known gap
 
 
 # ---------------------------------------------------------------------------

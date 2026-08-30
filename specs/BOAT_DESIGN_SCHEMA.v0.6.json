@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://hullq.local/schemas/boat-design/0.6",
   "title": "HullQ BoatDesign v0.6",
-  "description": "BoatDesign contract superseding v0.5 for new payloads. Preserves v0.5 identity/generation/relationship/quality semantics unchanged. Decomposes the v0.5 combined rig_type into rig.sailplan + rig.masthead_fractional, and the v0.5 combined rudder_type into appendages.rudder_position + appendages.rudder_support + appendages.rudder_balance so a transom-positioned rudder can independently carry keel/skeg support semantics. Adds structured cockpit/helm, richer rig dimensions (I/J/P/E and related), propulsion drive/engine-count/propeller, accommodation cabin/berth/head, LOD/beam-at-waterline, ballast type/material and CE/design category. v0.5 remains the contract for existing v0.5 payloads; this schema does not retroactively rewrite it. See docs/engineering/BOAT_DESIGN_V05_TO_V06_MAPPING.md for the full field mapping.",
+  "description": "BoatDesign contract superseding v0.5 for new payloads. Preserves v0.5 identity/generation/relationship/quality semantics unchanged. Decomposes the v0.5 combined rig_type into rig.sailplan + rig.masthead_fractional, and the v0.5 combined rudder_type into appendages.rudder_position + appendages.rudder_support + appendages.rudder_balance so a transom-positioned rudder can independently carry keel/skeg support semantics. Adds structured cockpit/helm, richer rig dimensions (I/J/P/E and related), propulsion drive/engine-count/propeller, accommodation cabin/berth/head, LOD/beam-at-waterline, ballast type/material and CE/design category. v0.5 remains the contract for existing v0.5 payloads; this schema does not retroactively rewrite it. Also enforces bounded cross-field consistency invariants (hull_configuration/hull_count agreement, skeg_type=none vs skeg-supported rudder, a zero appendage count vs a concrete descriptor of that appendage) that are definitional certainties, not domain-taxonomy guesses. See docs/engineering/BOAT_DESIGN_V05_TO_V06_MAPPING.md for the full field mapping.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -601,7 +601,78 @@
           ],
           "minimum": 1
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "hull_configuration",
+              "hull_count"
+            ],
+            "properties": {
+              "hull_configuration": {
+                "const": "monohull"
+              },
+              "hull_count": {
+                "type": "integer"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "hull_count": {
+                "const": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "hull_configuration",
+              "hull_count"
+            ],
+            "properties": {
+              "hull_configuration": {
+                "const": "catamaran"
+              },
+              "hull_count": {
+                "type": "integer"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "hull_count": {
+                "const": 2
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "hull_configuration",
+              "hull_count"
+            ],
+            "properties": {
+              "hull_configuration": {
+                "const": "trimaran"
+              },
+              "hull_count": {
+                "type": "integer"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "hull_count": {
+                "const": 3
+              }
+            }
+          }
+        }
+      ]
     },
     "configuration_baseline": {
       "allOf": [
@@ -714,7 +785,85 @@
             "unknown"
           ]
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "skeg_type",
+              "rudder_support"
+            ],
+            "properties": {
+              "skeg_type": {
+                "const": "none"
+              },
+              "rudder_support": {
+                "const": "skeg"
+              }
+            }
+          },
+          "then": false
+        },
+        {
+          "if": {
+            "required": [
+              "centerboard_count",
+              "centerboard_type"
+            ],
+            "properties": {
+              "centerboard_count": {
+                "const": 0
+              },
+              "centerboard_type": {
+                "type": "string"
+              }
+            }
+          },
+          "then": false
+        },
+        {
+          "if": {
+            "required": [
+              "daggerboard_count",
+              "daggerboard_type"
+            ],
+            "properties": {
+              "daggerboard_count": {
+                "const": 0
+              },
+              "daggerboard_type": {
+                "type": "string"
+              }
+            }
+          },
+          "then": false
+        },
+        {
+          "if": {
+            "required": [
+              "rudder_count"
+            ],
+            "properties": {
+              "rudder_count": {
+                "const": 0
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "rudder_position": {
+                "const": "unknown"
+              },
+              "rudder_support": {
+                "const": "unknown"
+              },
+              "rudder_balance": {
+                "const": "unknown"
+              }
+            }
+          }
+        }
+      ]
     },
     "appendages_baseline": {
       "allOf": [
@@ -993,7 +1142,47 @@
             "unknown"
           ]
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "cockpit_count"
+            ],
+            "properties": {
+              "cockpit_count": {
+                "const": 0
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cockpit_position": {
+                "const": "unknown"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "helm_count"
+            ],
+            "properties": {
+              "helm_count": {
+                "const": 0
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "helm_type": {
+                "const": "unknown"
+              }
+            }
+          }
+        }
+      ]
     },
     "deck_baseline": {
       "allOf": [
