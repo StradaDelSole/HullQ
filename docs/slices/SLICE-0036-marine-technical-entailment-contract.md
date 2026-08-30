@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0036  
 **Type:** DESIGN_RESEARCH  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** P0 Data Track — marine semantic correctness before first real search vertical  
 **Depends on:** SLICE-0034 accepted/DONE; SLICE-0035 accepted/DONE; `specs/TECHNICAL_PROFILE_SPEC.v0.1.md`; `specs/BOAT_DESIGN_SCHEMA.v0.6.json`; `docs/engineering/BOAT_DESIGN_V05_TO_V06_MAPPING.md`  
 **Blocks:** Oceanis 30.1 practical application and first real BoatDesign through the existing search kernel

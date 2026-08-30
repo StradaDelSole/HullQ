@@ -1,0 +1,811 @@
+{
+  "contract_version": "0.1",
+  "status": "PROPOSED",
+  "controlling_slice": "SLICE-0036",
+  "normative_document": "specs/MARINE_TECHNICAL_ENTAILMENT.v0.1.md",
+  "description": "Declarative coverage/rule registry for the bounded marine-technical entailment contract. Every controlled enum token in the fixed v0.6 field inventory (plus the preserved legacy v0.5 rig_type/rudder_type vocabularies) is classified as exactly one of DEFINITIONAL_ENTAILMENT, DIRECT_ONLY or NO_DERIVATION. This is a closed, hand-maintained coverage table, not a generic rule engine: adding a new schema enum token without adding its classification here is a coverage failure, by design. This file's own 'schema'/'enum_path' metadata and 'classifications' array are informational/self-descriptive only -- the controlling contract tests independently hardcode the expected field->schema-location mapping and the allowed classification set, and cross-check this file against that independent expectation rather than trusting it as its own authority (see tests/contract/test_marine_technical_entailment.py).",
+  "classifications": ["DEFINITIONAL_ENTAILMENT", "DIRECT_ONLY", "NO_DERIVATION"],
+  "schema_sources": {
+    "v06": "specs/BOAT_DESIGN_SCHEMA.v0.6.json",
+    "v05": "specs/BOAT_DESIGN_SCHEMA.v0.5.json"
+  },
+  "output_operators": {
+    "value": {
+      "meaning": "Exact positive value assertion: the target field's true value IS this literal (enum token or integer). MUST NOT be used to assert either reserved categorical sentinel ('unknown' or 'not_applicable') -- a rule that structurally forces a field to the schema's unknown state MUST use 'forces_unknown' instead (see below), never 'value'.",
+      "authorizes": "positive_truth"
+    },
+    "relation": {
+      "meaning": "Inclusive lower-bound assertion for an integer target field only. v0.1 authorizes exactly the closed relation set {'>=1', '>=2'}; no other relation string is accepted. The target field's true value is at least N; the exact value beyond that bound is not asserted and must not be silently upgraded to one.",
+      "authorizes": "positive_bound_truth"
+    },
+    "excludes_value": {
+      "meaning": "Negative assertion for an enum target field: the target field's true value is NOT this one specific token. No other value is positively asserted.",
+      "authorizes": "negative_truth_single_exclusion"
+    },
+    "not_concrete": {
+      "meaning": "Negative assertion for a free-text target field: the target field must not carry any concrete (non-null) value. Used only when a paired qualified count fact (e.g. centerboard_count=0) structurally forecloses any concrete descriptor existing -- driven by a positive qualified fact, not an inference from the free-text field's own absence.",
+      "authorizes": "negative_truth_no_concrete_value"
+    },
+    "forces_unknown": {
+      "meaning": "Structural-unknown assertion for an enum target field whose independently observed schema enum contains the literal 'unknown' token: a qualified positive source fact (e.g. rudder_count=0) structurally forecloses the target ever carrying a concrete categorical fact in this situation, so the target resolves to the schema's own 'unknown' state. This is driven by a positive source fact, never by the target's own absence. It authorizes NO ordinary positive categorical Search truth: per src/hullq/search/values.py (QualifiedCategoricalValue, RESERVED_CATEGORICAL_SENTINELS), 'unknown' must never be represented as an ordinary CONFIRMED categorical string -- a downstream consumer must treat this as ValueQualification.MISSING (non-truth-final UNKNOWN), exactly as an ordinary reported 'unknown' value would be treated, never as ValueQualification.CONFIRMED with value 'unknown'.",
+      "authorizes": "structural_unknown_no_search_truth"
+    },
+    "conditional": {
+      "meaning": "A closed, single-purpose piecewise output reserved exclusively for the one already-accepted SLICE-0034 twin/rudder_count case (rule MTE-LEGACY-RUD-006). v0.1 does NOT generalize this into a conditional-output mechanism for other rules; a second rule wishing to use it would require an explicit accepted decision, not a routine registry edit.",
+      "authorizes": "single_rule_exception_see_MTE-LEGACY-RUD-006"
+    }
+  },
+  "guard_policies": {
+    "STANDARD_MTE_GUARD_V0_1": {
+      "id": "STANDARD_MTE_GUARD_V0_1",
+      "version": "0.1",
+      "requires_source_qualified": true,
+      "forbids_provisional_source": true,
+      "forbids_unresolved_conflict_source": true,
+      "forbids_applicability_unknown_source": true,
+      "requires_single_material_scope": true,
+      "cross_scope_combination_authorized": false,
+      "same_scope_explicit_contradiction_behavior": "UNRESOLVED_CONFLICT",
+      "requires_lineage": true,
+      "description": "The single, uniform qualification/applicability/conflict guard shared by every DEFINITIONAL_ENTAILMENT rule in this v0.1 registry. It restates MARINE_TECHNICAL_ENTAILMENT.v0.1.md section 4's mandatory epistemic rules as machine-checkable structured fields rather than free-form prose. Every rule below references this same policy by id; no rule in v0.1 defines a weaker, stronger, or rule-specific guard."
+    }
+  },
+  "fields": {
+    "configuration.hull_configuration": {
+      "kind": "enum",
+      "schema": "v06",
+      "enum_path": ["$defs", "configuration_shape", "properties", "hull_configuration", "enum"],
+      "tokens": {
+        "monohull": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-HULL-001"]},
+        "catamaran": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-HULL-002"]},
+        "trimaran": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-HULL-003"]},
+        "other": {"classification": "NO_DERIVATION"},
+        "unknown": {"classification": "NO_DERIVATION"}
+      }
+    },
+    "configuration.hull_count": {
+      "kind": "integer",
+      "classification": "DIRECT_ONLY",
+      "reverse_relations": [
+        {
+          "target": "configuration.hull_configuration",
+          "classification": "NO_DERIVATION",
+          "reason": "A concrete hull_count does not uniquely identify a named topology: an allowed 'other' topology (e.g. a proa-like asymmetric configuration) can share the same hull_count as monohull/catamaran/trimaran. Reverse of MTE-HULL-001..003 is unsafe and is not authorized."
+        }
+      ]
+    },
+    "appendages.keel_type": {
+      "kind": "enum",
+      "schema": "v06",
+      "enum_path": ["$defs", "appendages_shape", "properties", "keel_type", "enum"],
+      "tokens": {
+        "full": {"classification": "DIRECT_ONLY"},
+        "modified_full": {"classification": "DIRECT_ONLY"},
+        "long_fin": {"classification": "DIRECT_ONLY"},
+        "fin": {"classification": "DIRECT_ONLY"},
+        "wing": {"classification": "DIRECT_ONLY"},
+        "bulb": {"classification": "DIRECT_ONLY"},
+        "twin": {"classification": "DIRECT_ONLY"},
+        "bilge": {"classification": "DIRECT_ONLY"},
+        "centerboard": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-KEEL-001"]},
+        "daggerboard": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-KEEL-002"]},
+        "swing": {"classification": "DIRECT_ONLY"},
+        "lifting": {"classification": "DIRECT_ONLY"},
+        "shoal": {"classification": "DIRECT_ONLY"},
+        "other": {"classification": "NO_DERIVATION"},
+        "unknown": {"classification": "NO_DERIVATION"}
+      },
+      "notes": "No non-board keel_type token (full/modified_full/long_fin/fin/wing/bulb/twin/bilge/swing/lifting/shoal) entails centerboard_count=0 or daggerboard_count=0: keel-centerboard and other hybrid appendage combinations exist, and absence is not negative evidence."
+    },
+    "appendages.keel_subtype": {
+      "kind": "free_text",
+      "classification": "NO_DERIVATION",
+      "reason": "Arbitrary string; no closed vocabulary exists to bind an entailment to."
+    },
+    "appendages.centerboard_count": {
+      "kind": "integer",
+      "classification": "DIRECT_ONLY",
+      "value_rules": [
+        {
+          "value": 0,
+          "classification": "DEFINITIONAL_ENTAILMENT",
+          "rule_id": "MTE-KEEL-003"
+        }
+      ]
+    },
+    "appendages.centerboard_type": {
+      "kind": "free_text",
+      "classification": "NO_DERIVATION",
+      "reason": "Arbitrary string; no closed vocabulary exists to bind an entailment to."
+    },
+    "appendages.daggerboard_count": {
+      "kind": "integer",
+      "classification": "DIRECT_ONLY",
+      "value_rules": [
+        {
+          "value": 0,
+          "classification": "DEFINITIONAL_ENTAILMENT",
+          "rule_id": "MTE-KEEL-004"
+        }
+      ]
+    },
+    "appendages.daggerboard_type": {
+      "kind": "free_text",
+      "classification": "NO_DERIVATION",
+      "reason": "Arbitrary string; no closed vocabulary exists to bind an entailment to."
+    },
+    "appendages.rudder_count": {
+      "kind": "integer",
+      "classification": "DIRECT_ONLY",
+      "value_rules": [
+        {
+          "value": 0,
+          "classification": "DEFINITIONAL_ENTAILMENT",
+          "rule_id": "MTE-RUD-001"
+        }
+      ]
+    },
+    "appendages.rudder_position": {
+      "kind": "enum",
+      "schema": "v06",
+      "enum_path": ["$defs", "appendages_shape", "properties", "rudder_position", "enum"],
+      "tokens": {
+        "transom": {"classification": "DIRECT_ONLY"},
+        "underhull": {"classification": "DIRECT_ONLY"},
+        "other": {"classification": "NO_DERIVATION"},
+        "unknown": {"classification": "NO_DERIVATION"}
+      },
+      "notes": "rudder_position never entails rudder_support in v0.6-native data: a transom-positioned rudder can independently carry keel/skeg support semantics (see BOAT_DESIGN_V05_TO_V06_MAPPING.md section 3.2 and fixtures/technical_profile/valid/01_classic_aft_cockpit_masthead_sloop.json)."
+    },
+    "appendages.rudder_support": {
+      "kind": "enum",
+      "schema": "v06",
+      "enum_path": ["$defs", "appendages_shape", "properties", "rudder_support", "enum"],
+      "tokens": {
+        "keel": {"classification": "DIRECT_ONLY"},
+        "skeg": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-RUD-002"]},
+        "free": {"classification": "DIRECT_ONLY"},
+        "transom": {"classification": "DIRECT_ONLY"},
+        "other": {"classification": "NO_DERIVATION"},
+        "unknown": {"classification": "NO_DERIVATION"}
+      },
+      "notes": "rudder_support never entails rudder_position (independent axes) and never entails keel_type/skeg_type concretely beyond the skeg-presence exclusion in MTE-RUD-002."
+    },
+    "appendages.rudder_balance": {
+      "kind": "enum",
+      "schema": "v06",
+      "enum_path": ["$defs", "appendages_shape", "properties", "rudder_balance", "enum"],
+      "tokens": {
+        "balanced": {"classification": "DIRECT_ONLY"},
+        "semi_balanced": {"classification": "DIRECT_ONLY"},
+        "unbalanced": {"classification": "DIRECT_ONLY"},
+        "other": {"classification": "NO_DERIVATION"},
+        "unknown": {"classification": "NO_DERIVATION"}
+      }
+    },
+    "appendages.skeg_type": {
+      "kind": "enum",
+      "schema": "v06",
+      "enum_path": ["$defs", "appendages_shape", "properties", "skeg_type", "enum"],
+      "tokens": {
+        "full": {"classification": "DIRECT_ONLY"},
+        "partial": {"classification": "DIRECT_ONLY"},
+        "none": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-RUD-003"]},
+        "unknown": {"classification": "NO_DERIVATION"}
+      },
+      "notes": "skeg_type=full and skeg_type=partial do not entail rudder_support=skeg: a skeg-equipped hull can still carry a rudder the skeg does not structurally support."
+    },
+    "rig.sailplan": {
+      "kind": "enum",
+      "schema": "v06",
+      "enum_path": ["$defs", "rig_shape", "properties", "sailplan", "enum"],
+      "tokens": {
+        "sloop": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-RIG-001"]},
+        "cutter": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-RIG-002"]},
+        "ketch": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-RIG-004"]},
+        "yawl": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-RIG-005"]},
+        "schooner": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-RIG-006"]},
+        "cat": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-RIG-003"]},
+        "other": {"classification": "NO_DERIVATION"},
+        "unknown": {"classification": "NO_DERIVATION"}
+      },
+      "notes": "sailplan never entails masthead_fractional in v0.6-native data, including sailplan=cat: an unstayed cat rig is a plausible basis for masthead_fractional=not_applicable, but that basis is a maritime-exception judgment call outside the v0.6 token itself, so it is deliberately NOT asserted here (see MARINE_TECHNICAL_ENTAILMENT.v0.1.md section 6)."
+    },
+    "rig.masthead_fractional": {
+      "kind": "enum",
+      "schema": "v06",
+      "enum_path": ["$defs", "rig_shape", "properties", "masthead_fractional", "enum"],
+      "tokens": {
+        "masthead": {"classification": "DIRECT_ONLY"},
+        "fractional": {"classification": "DIRECT_ONLY"},
+        "not_applicable": {"classification": "DIRECT_ONLY"},
+        "unknown": {"classification": "NO_DERIVATION"}
+      },
+      "notes": "masthead_fractional never entails sailplan or mast_count: masthead/fractional character is not uniquely restricted to one sailplan family."
+    },
+    "rig.mast_count": {
+      "kind": "integer",
+      "classification": "DIRECT_ONLY",
+      "reverse_relations": [
+        {
+          "target": "rig.sailplan",
+          "classification": "NO_DERIVATION",
+          "reason": "mast_count=1 does not uniquely identify sloop/cutter/cat; mast_count=2 does not uniquely identify ketch/yawl/a two-masted schooner. Reverse of MTE-RIG-001..006 is unsafe and is not authorized."
+        }
+      ]
+    },
+    "rig.mast_step": {
+      "kind": "enum",
+      "schema": "v06",
+      "enum_path": ["$defs", "rig_shape", "properties", "mast_step", "enum"],
+      "tokens": {
+        "deck": {"classification": "DIRECT_ONLY"},
+        "keel": {"classification": "DIRECT_ONLY"},
+        "other": {"classification": "NO_DERIVATION"},
+        "unknown": {"classification": "NO_DERIVATION"}
+      }
+    },
+    "rig.rig_variant": {
+      "kind": "free_text",
+      "classification": "NO_DERIVATION",
+      "reason": "Arbitrary string; no closed vocabulary exists to bind an entailment to."
+    },
+    "deck.cockpit_position": {
+      "kind": "enum",
+      "schema": "v06",
+      "enum_path": ["$defs", "deck_shape", "properties", "cockpit_position", "enum"],
+      "tokens": {
+        "aft": {"classification": "DIRECT_ONLY"},
+        "center": {"classification": "DIRECT_ONLY"},
+        "forward": {"classification": "DIRECT_ONLY"},
+        "multiple": {"classification": "DIRECT_ONLY"},
+        "other": {"classification": "NO_DERIVATION"},
+        "unknown": {"classification": "NO_DERIVATION"}
+      }
+    },
+    "deck.cockpit_count": {
+      "kind": "integer",
+      "classification": "DIRECT_ONLY",
+      "value_rules": [
+        {
+          "value": 0,
+          "classification": "DEFINITIONAL_ENTAILMENT",
+          "rule_id": "MTE-DECK-001"
+        }
+      ]
+    },
+    "deck.helm_type": {
+      "kind": "enum",
+      "schema": "v06",
+      "enum_path": ["$defs", "deck_shape", "properties", "helm_type", "enum"],
+      "tokens": {
+        "tiller": {"classification": "DIRECT_ONLY"},
+        "wheel": {"classification": "DIRECT_ONLY"},
+        "other": {"classification": "NO_DERIVATION"},
+        "unknown": {"classification": "NO_DERIVATION"}
+      },
+      "notes": "helm_type never entails helm_count: a wheel or tiller helm does not definitionally guarantee a specific helm station count (twin-wheel installations exist)."
+    },
+    "deck.helm_count": {
+      "kind": "integer",
+      "classification": "DIRECT_ONLY",
+      "value_rules": [
+        {
+          "value": 0,
+          "classification": "DEFINITIONAL_ENTAILMENT",
+          "rule_id": "MTE-DECK-002"
+        }
+      ]
+    },
+    "legacy.rig_type": {
+      "kind": "enum",
+      "schema": "v05",
+      "enum_path": ["properties", "baseline", "properties", "configuration", "properties", "rig_type", "enum"],
+      "tokens": {
+        "masthead_sloop": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-LEGACY-RIG-001"]},
+        "fractional_sloop": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-LEGACY-RIG-002"]},
+        "cutter": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-LEGACY-RIG-003"]},
+        "ketch": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-LEGACY-RIG-004"]},
+        "yawl": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-LEGACY-RIG-005"]},
+        "schooner": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-LEGACY-RIG-006"]},
+        "cat_rig": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-LEGACY-RIG-007"]},
+        "other": {"classification": "NO_DERIVATION"},
+        "unknown": {"classification": "NO_DERIVATION"}
+      },
+      "notes": "Positive rows (masthead_sloop/fractional_sloop/cutter/ketch/yawl/schooner/cat_rig) preserve the accepted SLICE-0034 compatibility mapping (BOAT_DESIGN_V05_TO_V06_MAPPING.md section 3.1) verbatim. 'other' and 'unknown' are classified NO_DERIVATION in this entailment contract, consistent with the universal sentinel rule applied to every other field in this registry: an opaque escape token or an absent-information sentinel authorizes no cross-field truth. This does NOT change or weaken the pre-existing, separately-tested BOAT_DESIGN_V05_TO_V06_MAPPING.md compatibility table itself (tests/contract/test_boat_design_v05_to_v06_mapping_conservatism.py, unchanged) -- that table's 'other'->'other'/'unknown'->'unknown' rows remain valid v0.5->v0.6 *shape/field-renaming* migration semantics (moving a value from the old field name to the new one), which is a different concern from this contract's *truth-entailment* classification. A structural field-rename is not, by itself, a substantive cross-field MTE entailment, so no MTE-LEGACY-RIG rule exists for 'other'/'unknown'."
+    },
+    "legacy.rudder_type": {
+      "kind": "enum",
+      "schema": "v05",
+      "enum_path": ["properties", "baseline", "properties", "configuration", "properties", "rudder_type", "enum"],
+      "tokens": {
+        "keel_hung": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-LEGACY-RUD-001"]},
+        "skeg_hung": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-LEGACY-RUD-002"]},
+        "partial_skeg": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-LEGACY-RUD-003"]},
+        "spade": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-LEGACY-RUD-004"]},
+        "transom_hung": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-LEGACY-RUD-005"]},
+        "twin": {"classification": "DEFINITIONAL_ENTAILMENT", "rule_ids": ["MTE-LEGACY-RUD-006"]},
+        "other": {"classification": "NO_DERIVATION"},
+        "unknown": {"classification": "NO_DERIVATION"}
+      },
+      "notes": "Positive rows preserve the accepted SLICE-0034 compatibility mapping (BOAT_DESIGN_V05_TO_V06_MAPPING.md section 3.2, amendments 1 and 2) verbatim, including the rudder_balance-is-always-unknown finding and the twin/rudder_count conflict rule. 'other' and 'unknown' are classified NO_DERIVATION here for the same reason given for legacy.rig_type above: they are v0.5->v0.6 shape/field-renaming migration facts (unchanged, separately tested), not substantive MTE cross-field truth entailments."
+    }
+  },
+  "rules": [
+    {
+      "id": "MTE-HULL-001",
+      "version": "0.1",
+      "area": "hull_multihull",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "configuration.hull_configuration", "value": "monohull"},
+      "output": [{"field": "configuration.hull_count", "value": 1}],
+      "prerequisites": "hull_configuration is a qualified, accepted (non-provisional, non-conflicted) value of exactly 'monohull'.",
+      "applicability": "Applies within the single resolved BoatDesign baseline or NamedVariant/DesignOption override scope where hull_configuration is itself qualified as monohull; does not import hull_configuration from a different scope.",
+      "exceptions": "None: a monohull has exactly one hull by definition.",
+      "conflict_behavior": "If the same scope already carries a qualified explicit hull_count other than 1, surface UNRESOLVED_CONFLICT per TECHNICAL_PROFILE_SPEC.v0.1.md sections 5-6; do not silently overwrite either value. (Also independently enforced structurally by BOAT_DESIGN_SCHEMA.v0.6.json's hull_configuration/hull_count if/then invariant when both fields are concretely present.)",
+      "evidence_basis": "Dictionary/definitional meaning of 'monohull' (single-hulled vessel); already-accepted v0.6 schema invariant.",
+      "lineage_requirement": "Derived hull_count must record rule_id MTE-HULL-001, version 0.1, the qualifying hull_configuration=monohull fact and its applicability scope, distinguishable from a directly reported hull_count."
+    },
+    {
+      "id": "MTE-HULL-002",
+      "version": "0.1",
+      "area": "hull_multihull",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "configuration.hull_configuration", "value": "catamaran"},
+      "output": [{"field": "configuration.hull_count", "value": 2}],
+      "prerequisites": "hull_configuration is a qualified, accepted value of exactly 'catamaran'.",
+      "applicability": "Applies within the single resolved BoatDesign baseline or NamedVariant/DesignOption override scope where hull_configuration is itself qualified as catamaran.",
+      "exceptions": "None: a catamaran has exactly two hulls by definition.",
+      "conflict_behavior": "If the same scope already carries a qualified explicit hull_count other than 2, surface UNRESOLVED_CONFLICT; do not silently overwrite either value. Also independently enforced structurally by the v0.6 schema invariant when both fields are concretely present.",
+      "evidence_basis": "Dictionary/definitional meaning of 'catamaran' (twin-hulled vessel); already-accepted v0.6 schema invariant.",
+      "lineage_requirement": "Derived hull_count must record rule_id MTE-HULL-002, version 0.1, the qualifying fact and applicability scope."
+    },
+    {
+      "id": "MTE-HULL-003",
+      "version": "0.1",
+      "area": "hull_multihull",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "configuration.hull_configuration", "value": "trimaran"},
+      "output": [{"field": "configuration.hull_count", "value": 3}],
+      "prerequisites": "hull_configuration is a qualified, accepted value of exactly 'trimaran'.",
+      "applicability": "Applies within the single resolved BoatDesign baseline or NamedVariant/DesignOption override scope where hull_configuration is itself qualified as trimaran.",
+      "exceptions": "None: a trimaran has exactly three hulls by definition.",
+      "conflict_behavior": "If the same scope already carries a qualified explicit hull_count other than 3, surface UNRESOLVED_CONFLICT; do not silently overwrite either value. Also independently enforced structurally by the v0.6 schema invariant when both fields are concretely present.",
+      "evidence_basis": "Dictionary/definitional meaning of 'trimaran' (three-hulled vessel); already-accepted v0.6 schema invariant.",
+      "lineage_requirement": "Derived hull_count must record rule_id MTE-HULL-003, version 0.1, the qualifying fact and applicability scope."
+    },
+    {
+      "id": "MTE-KEEL-001",
+      "version": "0.1",
+      "area": "keel_boards",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "appendages.keel_type", "value": "centerboard"},
+      "output": [{"field": "appendages.centerboard_count", "relation": ">=1"}],
+      "prerequisites": "keel_type is a qualified, accepted value of exactly 'centerboard' (i.e. the boat's primary keel-equivalent appendage is itself a centerboard).",
+      "applicability": "Applies within the single resolved BoatDesign baseline or NamedVariant/DesignOption override scope where keel_type is itself qualified.",
+      "exceptions": "The exact count is not guaranteed (single or twin centerboards both exist); only presence of at least one is definitionally guaranteed.",
+      "conflict_behavior": "If the same scope already carries a qualified explicit centerboard_count of 0, surface UNRESOLVED_CONFLICT; do not silently overwrite either value.",
+      "evidence_basis": "Internal HullQ controlled-vocabulary identity, not external maritime research: the v0.6 keel_type enum value's own literal word is 'centerboard' (BOAT_DESIGN_SCHEMA.v0.6.json), which is the same controlled word the schema uses to name the corresponding appendage-count field's subject (centerboard_count). If the boat's own primary keel-equivalent appendage IS a centerboard, at least one centerboard must exist. This is the same class of reasoning already accepted in SLICE-0034 for masthead_sloop/fractional_sloop (BOAT_DESIGN_V05_TO_V06_MAPPING.md section 3.1): the source token's own word is the entailed fact's subject.",
+      "lineage_requirement": "A derived centerboard_count>=1 fact must record rule_id MTE-KEEL-001, version 0.1, the qualifying keel_type fact and applicability scope; it must not be upgraded to an exact count without separate qualified evidence."
+    },
+    {
+      "id": "MTE-KEEL-002",
+      "version": "0.1",
+      "area": "keel_boards",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "appendages.keel_type", "value": "daggerboard"},
+      "output": [{"field": "appendages.daggerboard_count", "relation": ">=1"}],
+      "prerequisites": "keel_type is a qualified, accepted value of exactly 'daggerboard'.",
+      "applicability": "Applies within the single resolved BoatDesign baseline or NamedVariant/DesignOption override scope where keel_type is itself qualified.",
+      "exceptions": "The exact count is not guaranteed (single or twin daggerboards both exist); only presence of at least one is definitionally guaranteed.",
+      "conflict_behavior": "If the same scope already carries a qualified explicit daggerboard_count of 0, surface UNRESOLVED_CONFLICT; do not silently overwrite either value.",
+      "evidence_basis": "Internal HullQ controlled-vocabulary identity, not external maritime research: the v0.6 keel_type enum value's own literal word is 'daggerboard' (BOAT_DESIGN_SCHEMA.v0.6.json), the same controlled word the schema uses to name the corresponding appendage-count field's subject (daggerboard_count). Same class of reasoning as MTE-KEEL-001 and the accepted SLICE-0034 masthead_sloop/fractional_sloop word-identity precedent.",
+      "lineage_requirement": "A derived daggerboard_count>=1 fact must record rule_id MTE-KEEL-002, version 0.1, the qualifying keel_type fact and applicability scope; it must not be upgraded to an exact count without separate qualified evidence."
+    },
+    {
+      "id": "MTE-KEEL-003",
+      "version": "0.1",
+      "area": "keel_boards",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "appendages.centerboard_count", "value": 0},
+      "output": [{"field": "appendages.centerboard_type", "not_concrete": true}],
+      "prerequisites": "centerboard_count is qualified as exactly 0.",
+      "applicability": "Applies within the single resolved BoatDesign baseline or NamedVariant/DesignOption override scope where centerboard_count is itself qualified.",
+      "exceptions": "None.",
+      "conflict_behavior": "Also independently enforced structurally by BOAT_DESIGN_SCHEMA.v0.6.json (centerboard_count=0 cannot coexist with a concrete centerboard_type); this rule records the same certainty for search-projection consumers operating ahead of full schema validation.",
+      "evidence_basis": "Zero centerboards definitionally means no centerboard-type fact can exist to describe. This is a positive qualified count fact (centerboard_count=0) driving a negative conclusion about a different field, not an inference from centerboard_type's own absence.",
+      "lineage_requirement": "Record rule_id MTE-KEEL-003, version 0.1, and the qualifying centerboard_count=0 fact."
+    },
+    {
+      "id": "MTE-KEEL-004",
+      "version": "0.1",
+      "area": "keel_boards",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "appendages.daggerboard_count", "value": 0},
+      "output": [{"field": "appendages.daggerboard_type", "not_concrete": true}],
+      "prerequisites": "daggerboard_count is qualified as exactly 0.",
+      "applicability": "Applies within the single resolved BoatDesign baseline or NamedVariant/DesignOption override scope where daggerboard_count is itself qualified.",
+      "exceptions": "None.",
+      "conflict_behavior": "Also independently enforced structurally by BOAT_DESIGN_SCHEMA.v0.6.json (daggerboard_count=0 cannot coexist with a concrete daggerboard_type); this rule records the same certainty for search-projection consumers operating ahead of full schema validation.",
+      "evidence_basis": "Zero daggerboards definitionally means no daggerboard-type fact can exist to describe. Positive qualified count fact driving a negative conclusion, not inference from absence of the free-text field itself.",
+      "lineage_requirement": "Record rule_id MTE-KEEL-004, version 0.1, and the qualifying daggerboard_count=0 fact."
+    },
+    {
+      "id": "MTE-RUD-001",
+      "version": "0.1",
+      "area": "rudder_skeg",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "appendages.rudder_count", "value": 0},
+      "output": [
+        {"field": "appendages.rudder_position", "forces_unknown": true},
+        {"field": "appendages.rudder_support", "forces_unknown": true},
+        {"field": "appendages.rudder_balance", "forces_unknown": true}
+      ],
+      "prerequisites": "rudder_count is qualified as exactly 0.",
+      "applicability": "Applies within the single resolved BoatDesign baseline or NamedVariant/DesignOption override scope where rudder_count is itself qualified.",
+      "exceptions": "None. The structurally-forced state is the schema's own literal 'unknown' token (there is no 'not_applicable' option for these three fields in v0.6). This is NOT a claim of missing information and it MUST NOT be represented as ordinary positive categorical Search truth (ValueQualification.CONFIRMED with value 'unknown') -- per src/hullq/search/values.py RESERVED_CATEGORICAL_SENTINELS, it resolves to ValueQualification.MISSING, exactly as an ordinary reported 'unknown' would.",
+      "conflict_behavior": "Also independently enforced structurally by BOAT_DESIGN_SCHEMA.v0.6.json's rudder_count=0 if/then invariant; this rule records the same certainty for search-projection consumers operating ahead of full schema validation.",
+      "evidence_basis": "Zero rudders definitionally means no position/support/balance fact can exist to describe.",
+      "lineage_requirement": "Record rule_id MTE-RUD-001, version 0.1, and the qualifying rudder_count=0 fact."
+    },
+    {
+      "id": "MTE-RUD-002",
+      "version": "0.1",
+      "area": "rudder_skeg",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "appendages.rudder_support", "value": "skeg"},
+      "output": [{"field": "appendages.skeg_type", "excludes_value": "none"}],
+      "prerequisites": "rudder_support is qualified as exactly 'skeg'.",
+      "applicability": "Applies within the single resolved BoatDesign baseline or NamedVariant/DesignOption override scope where rudder_support is itself qualified.",
+      "exceptions": "Does not determine whether skeg_type is 'full' or 'partial'; only excludes 'none'.",
+      "conflict_behavior": "If the same scope already carries a qualified explicit skeg_type of 'none', surface UNRESOLVED_CONFLICT; do not silently overwrite either value. Also independently enforced structurally by the v0.6 schema's skeg_type=none/rudder_support=skeg mutual-exclusion invariant.",
+      "evidence_basis": "A skeg-supported rudder definitionally requires an existing skeg. This exclusion is driven by a positive qualified fact (rudder_support IS 'skeg'), not by any absence -- it must not be confused with inferring negative facts from missing/unknown data.",
+      "lineage_requirement": "Record rule_id MTE-RUD-002, version 0.1, and the qualifying rudder_support=skeg fact."
+    },
+    {
+      "id": "MTE-RUD-003",
+      "version": "0.1",
+      "area": "rudder_skeg",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "appendages.skeg_type", "value": "none"},
+      "output": [{"field": "appendages.rudder_support", "excludes_value": "skeg"}],
+      "prerequisites": "skeg_type is qualified as exactly 'none'.",
+      "applicability": "Applies within the single resolved BoatDesign baseline or NamedVariant/DesignOption override scope where skeg_type is itself qualified.",
+      "exceptions": "Does not determine what rudder_support actually is (keel/free/transom/other/unknown); only excludes 'skeg'.",
+      "conflict_behavior": "If the same scope already carries a qualified explicit rudder_support of 'skeg', surface UNRESOLVED_CONFLICT; do not silently overwrite either value. This is the symmetric reverse direction of MTE-RUD-002, recorded independently per the 'direction by direction' completion requirement, and is likewise already enforced structurally by the v0.6 schema.",
+      "evidence_basis": "Absence of any skeg definitionally means the rudder cannot be skeg-supported. Driven by the positive qualified fact skeg_type IS 'none' (a concrete reported value), not by skeg_type being missing/unknown -- 'none' is a reported absence-of-skeg fact, which is different from an unreported/unknown skeg_type.",
+      "lineage_requirement": "Record rule_id MTE-RUD-003, version 0.1, and the qualifying skeg_type=none fact."
+    },
+    {
+      "id": "MTE-RIG-001",
+      "version": "0.1",
+      "area": "rig",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "rig.sailplan", "value": "sloop"},
+      "output": [{"field": "rig.mast_count", "value": 1}],
+      "prerequisites": "sailplan is a qualified, accepted value of exactly 'sloop'.",
+      "applicability": "Applies within the single resolved BoatDesign baseline or NamedVariant/DesignOption override scope where sailplan is itself qualified.",
+      "exceptions": "None: a sloop is by definition single-masted.",
+      "conflict_behavior": "If the same scope already carries a qualified explicit mast_count other than 1, surface UNRESOLVED_CONFLICT; do not silently overwrite either value.",
+      "evidence_basis": "Encyclopaedia Britannica, 'sloop' (https://www.britannica.com/technology/sloop, retrieved 2026-08-30): 'a single-masted sailing vessel with fore-and-aft rigging, including mainsail, jib, and sometimes one or more headsails.' A sloop is single-masted by definition, directly supporting mast_count=1.",
+      "lineage_requirement": "Record rule_id MTE-RIG-001, version 0.1, and the qualifying sailplan=sloop fact and applicability scope."
+    },
+    {
+      "id": "MTE-RIG-002",
+      "version": "0.1",
+      "area": "rig",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "rig.sailplan", "value": "cutter"},
+      "output": [{"field": "rig.mast_count", "value": 1}],
+      "prerequisites": "sailplan is a qualified, accepted value of exactly 'cutter'.",
+      "applicability": "Applies within the single resolved BoatDesign baseline or NamedVariant/DesignOption override scope where sailplan is itself qualified.",
+      "exceptions": "None: a cutter is by definition single-masted (distinguished from a sloop by headsail plan, not mast count).",
+      "conflict_behavior": "If the same scope already carries a qualified explicit mast_count other than 1, surface UNRESOLVED_CONFLICT; do not silently overwrite either value.",
+      "evidence_basis": "Encyclopaedia Britannica, 'cutter' (https://www.britannica.com/technology/cutter-sailing-craft, retrieved 2026-08-30): a cutter is 'a small, speedy sailing vessel similar to a sloop... a single mast rigged fore and aft, carrying a mainsail and at least two headsails.' Single-masted by definition, directly supporting mast_count=1.",
+      "lineage_requirement": "Record rule_id MTE-RIG-002, version 0.1, and the qualifying sailplan=cutter fact and applicability scope."
+    },
+    {
+      "id": "MTE-RIG-003",
+      "version": "0.1",
+      "area": "rig",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "rig.sailplan", "value": "cat"},
+      "output": [{"field": "rig.mast_count", "value": 1}],
+      "prerequisites": "sailplan is a qualified, accepted value of exactly 'cat'.",
+      "applicability": "Applies within the single resolved BoatDesign baseline or NamedVariant/DesignOption override scope where sailplan is itself qualified.",
+      "exceptions": "None: a cat-rigged vessel is by definition single-masted (one mast, one sail, no headsail/forestay).",
+      "conflict_behavior": "If the same scope already carries a qualified explicit mast_count other than 1, surface UNRESOLVED_CONFLICT; do not silently overwrite either value.",
+      "evidence_basis": "Merriam-Webster, 'catboat' (https://www.merriam-webster.com/dictionary/catboat, retrieved 2026-08-30): 'a sailboat with a single mast set far forward and a single large sail with a long boom.' A cat-rigged vessel is single-masted by definition, directly supporting mast_count=1.",
+      "lineage_requirement": "Record rule_id MTE-RIG-003, version 0.1, and the qualifying sailplan=cat fact and applicability scope."
+    },
+    {
+      "id": "MTE-RIG-004",
+      "version": "0.1",
+      "area": "rig",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "rig.sailplan", "value": "ketch"},
+      "output": [{"field": "rig.mast_count", "value": 2}],
+      "prerequisites": "sailplan is a qualified, accepted value of exactly 'ketch'.",
+      "applicability": "Applies within the single resolved BoatDesign baseline or NamedVariant/DesignOption override scope where sailplan is itself qualified.",
+      "exceptions": "None: a ketch is by definition two-masted (main and mizzen forward of the rudder post; the mizzen-position distinction from a yawl does not change the mast count).",
+      "conflict_behavior": "If the same scope already carries a qualified explicit mast_count other than 2, surface UNRESOLVED_CONFLICT; do not silently overwrite either value.",
+      "evidence_basis": "Britannica Dictionary, 'ketch' (https://www.britannica.com/dictionary/ketch, retrieved 2026-08-30): a ketch is defined as a two-masted sailing vessel. Two-masted by definition, directly supporting mast_count=2.",
+      "lineage_requirement": "Record rule_id MTE-RIG-004, version 0.1, and the qualifying sailplan=ketch fact and applicability scope."
+    },
+    {
+      "id": "MTE-RIG-005",
+      "version": "0.1",
+      "area": "rig",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "rig.sailplan", "value": "yawl"},
+      "output": [{"field": "rig.mast_count", "value": 2}],
+      "prerequisites": "sailplan is a qualified, accepted value of exactly 'yawl'.",
+      "applicability": "Applies within the single resolved BoatDesign baseline or NamedVariant/DesignOption override scope where sailplan is itself qualified.",
+      "exceptions": "None: a yawl is by definition two-masted (main and a smaller mizzen aft of the rudder post -- the mizzen-position distinction from a ketch does not change the mast count).",
+      "conflict_behavior": "If the same scope already carries a qualified explicit mast_count other than 2, surface UNRESOLVED_CONFLICT; do not silently overwrite either value.",
+      "evidence_basis": "Encyclopaedia Britannica, 'Yawl' (https://www.britannica.com/technology/yawl, retrieved 2026-08-30): a yawl is a two-masted sailing vessel whose mizzenmast is stepped aft of the rudder post, distinguishing it from a ketch (whose mizzen is stepped forward of the rudder post). Two-masted by definition, directly supporting mast_count=2.",
+      "lineage_requirement": "Record rule_id MTE-RIG-005, version 0.1, and the qualifying sailplan=yawl fact and applicability scope."
+    },
+    {
+      "id": "MTE-RIG-006",
+      "version": "0.1",
+      "area": "rig",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "rig.sailplan", "value": "schooner"},
+      "output": [{"field": "rig.mast_count", "relation": ">=2"}],
+      "prerequisites": "sailplan is a qualified, accepted value of exactly 'schooner'.",
+      "applicability": "Applies within the single resolved BoatDesign baseline or NamedVariant/DesignOption override scope where sailplan is itself qualified.",
+      "exceptions": "The exact mast count is not guaranteed: two-masted schooners are typical but three-or-more-masted schooners exist. Only the lower bound of 2 is definitionally guaranteed.",
+      "conflict_behavior": "If the same scope already carries a qualified explicit mast_count of 0 or 1, surface UNRESOLVED_CONFLICT; do not silently overwrite either value.",
+      "evidence_basis": "Encyclopaedia Britannica, 'schooner' (https://www.britannica.com/technology/schooner, retrieved 2026-08-30): 'a sailing ship rigged with fore-and-aft sails on its two or more masts.' The source itself states 'two or more', which is exactly why only the lower bound (>=2), not an exact count, is authorized here.",
+      "lineage_requirement": "Record rule_id MTE-RIG-006, version 0.1, and the qualifying sailplan=schooner fact and applicability scope; the bound (>=2) must not be silently upgraded to an exact count without separate qualified evidence."
+    },
+    {
+      "id": "MTE-DECK-001",
+      "version": "0.1",
+      "area": "cockpit_helm",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "deck.cockpit_count", "value": 0},
+      "output": [{"field": "deck.cockpit_position", "forces_unknown": true}],
+      "prerequisites": "cockpit_count is qualified as exactly 0.",
+      "applicability": "Applies within the single resolved BoatDesign baseline or NamedVariant/DesignOption override scope where cockpit_count is itself qualified.",
+      "exceptions": "None. The structurally-forced state is the schema's own literal 'unknown' token; there is no 'not_applicable' option for cockpit_position in v0.6. It MUST NOT be represented as ordinary positive categorical Search truth -- it resolves to ValueQualification.MISSING per src/hullq/search/values.py.",
+      "conflict_behavior": "Also independently enforced structurally by BOAT_DESIGN_SCHEMA.v0.6.json's cockpit_count=0 if/then invariant; this rule records the same certainty for search-projection consumers operating ahead of full schema validation.",
+      "evidence_basis": "Zero cockpits definitionally means no cockpit-position fact can exist to describe.",
+      "lineage_requirement": "Record rule_id MTE-DECK-001, version 0.1, and the qualifying cockpit_count=0 fact."
+    },
+    {
+      "id": "MTE-DECK-002",
+      "version": "0.1",
+      "area": "cockpit_helm",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "deck.helm_count", "value": 0},
+      "output": [{"field": "deck.helm_type", "forces_unknown": true}],
+      "prerequisites": "helm_count is qualified as exactly 0.",
+      "applicability": "Applies within the single resolved BoatDesign baseline or NamedVariant/DesignOption override scope where helm_count is itself qualified.",
+      "exceptions": "None. The structurally-forced state is the schema's own literal 'unknown' token; there is no 'not_applicable' option for helm_type in v0.6. It MUST NOT be represented as ordinary positive categorical Search truth -- it resolves to ValueQualification.MISSING per src/hullq/search/values.py.",
+      "conflict_behavior": "Also independently enforced structurally by BOAT_DESIGN_SCHEMA.v0.6.json's helm_count=0 if/then invariant; this rule records the same certainty for search-projection consumers operating ahead of full schema validation.",
+      "evidence_basis": "Zero helm stations definitionally means no helm-type fact can exist to describe.",
+      "lineage_requirement": "Record rule_id MTE-DECK-002, version 0.1, and the qualifying helm_count=0 fact."
+    },
+    {
+      "id": "MTE-LEGACY-RIG-001",
+      "version": "0.1",
+      "area": "legacy_rig_type",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "legacy.rig_type", "value": "masthead_sloop"},
+      "output": [
+        {"field": "rig.sailplan", "value": "sloop"},
+        {"field": "rig.masthead_fractional", "value": "masthead"}
+      ],
+      "prerequisites": "Legacy v0.5 rig_type is qualified as exactly 'masthead_sloop'.",
+      "applicability": "Applies to translating a single qualified v0.5 record's own baseline into v0.6-shaped facts; does not import rig_type from a different BoatDesign/scope.",
+      "exceptions": "None: both 'masthead' and 'sloop' are literally present as words within the token itself.",
+      "conflict_behavior": "If the same v0.5 record already carries a contradicting explicit v0.6-shaped sailplan/masthead_fractional value, surface UNRESOLVED_CONFLICT; do not silently overwrite either value.",
+      "evidence_basis": "BOAT_DESIGN_V05_TO_V06_MAPPING.md section 3.1 (accepted SLICE-0034 mapping, amendment-1 corrected).",
+      "lineage_requirement": "Record rule_id MTE-LEGACY-RIG-001, version 0.1, and the qualifying legacy rig_type=masthead_sloop fact."
+    },
+    {
+      "id": "MTE-LEGACY-RIG-002",
+      "version": "0.1",
+      "area": "legacy_rig_type",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "legacy.rig_type", "value": "fractional_sloop"},
+      "output": [
+        {"field": "rig.sailplan", "value": "sloop"},
+        {"field": "rig.masthead_fractional", "value": "fractional"}
+      ],
+      "prerequisites": "Legacy v0.5 rig_type is qualified as exactly 'fractional_sloop'.",
+      "applicability": "Applies to translating a single qualified v0.5 record's own baseline into v0.6-shaped facts; does not import rig_type from a different BoatDesign/scope.",
+      "exceptions": "None: both 'fractional' and 'sloop' are literally present as words within the token itself.",
+      "conflict_behavior": "If the same v0.5 record already carries a contradicting explicit v0.6-shaped sailplan/masthead_fractional value, surface UNRESOLVED_CONFLICT; do not silently overwrite either value.",
+      "evidence_basis": "BOAT_DESIGN_V05_TO_V06_MAPPING.md section 3.1 (accepted SLICE-0034 mapping, amendment-1 corrected).",
+      "lineage_requirement": "Record rule_id MTE-LEGACY-RIG-002, version 0.1, and the qualifying legacy rig_type=fractional_sloop fact."
+    },
+    {
+      "id": "MTE-LEGACY-RIG-003",
+      "version": "0.1",
+      "area": "legacy_rig_type",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "legacy.rig_type", "value": "cutter"},
+      "output": [
+        {"field": "rig.sailplan", "value": "cutter"}
+      ],
+      "prerequisites": "Legacy v0.5 rig_type is qualified as exactly 'cutter'.",
+      "applicability": "Applies to translating a single qualified v0.5 record's own baseline into v0.6-shaped facts, within that record's own applicability scope; does not import the source token from a different BoatDesign/scope.",
+      "exceptions": "masthead_fractional is explicitly NOT entailed: v0.5 never recorded masthead/fractional character for cutters, so the corresponding v0.6 field must project 'unknown', not 'not_applicable' or a guessed value.",
+      "conflict_behavior": "If the same v0.5 record already carries a contradicting explicit v0.6-shaped sailplan value, surface UNRESOLVED_CONFLICT; do not silently overwrite either value.",
+      "evidence_basis": "BOAT_DESIGN_V05_TO_V06_MAPPING.md section 3.1 (accepted SLICE-0034 mapping, amendment-1 corrected).",
+      "lineage_requirement": "Record rule_id MTE-LEGACY-RIG-003, version 0.1, and the qualifying legacy rig_type=cutter fact."
+    },
+    {
+      "id": "MTE-LEGACY-RIG-004",
+      "version": "0.1",
+      "area": "legacy_rig_type",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "legacy.rig_type", "value": "ketch"},
+      "output": [
+        {"field": "rig.sailplan", "value": "ketch"}
+      ],
+      "prerequisites": "Legacy v0.5 rig_type is qualified as exactly 'ketch'.",
+      "applicability": "Applies to translating a single qualified v0.5 record's own baseline into v0.6-shaped facts, within that record's own applicability scope; does not import the source token from a different BoatDesign/scope.",
+      "exceptions": "masthead_fractional is explicitly NOT entailed (must project 'unknown', not 'not_applicable' -- a prior draft of the mapping table wrongly asserted not_applicable here and was corrected after independent review).",
+      "conflict_behavior": "If the same v0.5 record already carries a contradicting explicit v0.6-shaped sailplan value, surface UNRESOLVED_CONFLICT; do not silently overwrite either value.",
+      "evidence_basis": "BOAT_DESIGN_V05_TO_V06_MAPPING.md section 3.1 (accepted SLICE-0034 mapping, amendment-1 corrected).",
+      "lineage_requirement": "Record rule_id MTE-LEGACY-RIG-004, version 0.1, and the qualifying legacy rig_type=ketch fact."
+    },
+    {
+      "id": "MTE-LEGACY-RIG-005",
+      "version": "0.1",
+      "area": "legacy_rig_type",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "legacy.rig_type", "value": "yawl"},
+      "output": [
+        {"field": "rig.sailplan", "value": "yawl"}
+      ],
+      "prerequisites": "Legacy v0.5 rig_type is qualified as exactly 'yawl'.",
+      "applicability": "Applies to translating a single qualified v0.5 record's own baseline into v0.6-shaped facts, within that record's own applicability scope; does not import the source token from a different BoatDesign/scope.",
+      "exceptions": "masthead_fractional is explicitly NOT entailed (must project 'unknown', same correction as 'ketch').",
+      "conflict_behavior": "If the same v0.5 record already carries a contradicting explicit v0.6-shaped sailplan value, surface UNRESOLVED_CONFLICT; do not silently overwrite either value.",
+      "evidence_basis": "BOAT_DESIGN_V05_TO_V06_MAPPING.md section 3.1 (accepted SLICE-0034 mapping, amendment-1 corrected).",
+      "lineage_requirement": "Record rule_id MTE-LEGACY-RIG-005, version 0.1, and the qualifying legacy rig_type=yawl fact."
+    },
+    {
+      "id": "MTE-LEGACY-RIG-006",
+      "version": "0.1",
+      "area": "legacy_rig_type",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "legacy.rig_type", "value": "schooner"},
+      "output": [
+        {"field": "rig.sailplan", "value": "schooner"}
+      ],
+      "prerequisites": "Legacy v0.5 rig_type is qualified as exactly 'schooner'.",
+      "applicability": "Applies to translating a single qualified v0.5 record's own baseline into v0.6-shaped facts, within that record's own applicability scope; does not import the source token from a different BoatDesign/scope.",
+      "exceptions": "masthead_fractional is explicitly NOT entailed (must project 'unknown', same correction as 'ketch').",
+      "conflict_behavior": "If the same v0.5 record already carries a contradicting explicit v0.6-shaped sailplan value, surface UNRESOLVED_CONFLICT; do not silently overwrite either value.",
+      "evidence_basis": "BOAT_DESIGN_V05_TO_V06_MAPPING.md section 3.1 (accepted SLICE-0034 mapping, amendment-1 corrected).",
+      "lineage_requirement": "Record rule_id MTE-LEGACY-RIG-006, version 0.1, and the qualifying legacy rig_type=schooner fact."
+    },
+    {
+      "id": "MTE-LEGACY-RIG-007",
+      "version": "0.1",
+      "area": "legacy_rig_type",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "legacy.rig_type", "value": "cat_rig"},
+      "output": [
+        {"field": "rig.sailplan", "value": "cat"}
+      ],
+      "prerequisites": "Legacy v0.5 rig_type is qualified as exactly 'cat_rig'.",
+      "applicability": "Applies to translating a single qualified v0.5 record's own baseline into v0.6-shaped facts, within that record's own applicability scope; does not import the source token from a different BoatDesign/scope.",
+      "exceptions": "masthead_fractional is explicitly NOT entailed (must project 'unknown'). A cat rig's single-sail/no-forestay definition is a reasonable basis for masthead_fractional=not_applicable, but that basis lives outside the v0.5 token itself and outside TECHNICAL_PROFILE_SPEC.v0.1.md, so this mapping does not assert it.",
+      "conflict_behavior": "If the same v0.5 record already carries a contradicting explicit v0.6-shaped sailplan value, surface UNRESOLVED_CONFLICT; do not silently overwrite either value.",
+      "evidence_basis": "BOAT_DESIGN_V05_TO_V06_MAPPING.md section 3.1 (accepted SLICE-0034 mapping, amendment-1 corrected).",
+      "lineage_requirement": "Record rule_id MTE-LEGACY-RIG-007, version 0.1, and the qualifying legacy rig_type=cat_rig fact."
+    },
+    {
+      "id": "MTE-LEGACY-RUD-001",
+      "version": "0.1",
+      "area": "legacy_rudder_type",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "legacy.rudder_type", "value": "keel_hung"},
+      "output": [
+        {"field": "appendages.rudder_support", "value": "keel"}
+      ],
+      "prerequisites": "Legacy v0.5 rudder_type is qualified as exactly 'keel_hung'.",
+      "applicability": "Applies to translating a single qualified v0.5 record's own baseline into v0.6-shaped facts, within that record's own applicability scope; does not import the source token from a different BoatDesign/scope.",
+      "exceptions": "rudder_position and rudder_balance are explicitly NOT entailed (must project 'unknown'): 'keel_hung' names support only, not position or balance.",
+      "conflict_behavior": "If the same v0.5 record already carries a contradicting explicit v0.6-shaped rudder_support value, surface UNRESOLVED_CONFLICT; do not silently overwrite either value.",
+      "evidence_basis": "BOAT_DESIGN_V05_TO_V06_MAPPING.md section 3.2 (accepted SLICE-0034 mapping, amendment-1 corrected): 'keel' is the v0.5 token's own word for what supports the rudder.",
+      "lineage_requirement": "Record rule_id MTE-LEGACY-RUD-001, version 0.1, and the qualifying legacy rudder_type=keel_hung fact."
+    },
+    {
+      "id": "MTE-LEGACY-RUD-002",
+      "version": "0.1",
+      "area": "legacy_rudder_type",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "legacy.rudder_type", "value": "skeg_hung"},
+      "output": [
+        {"field": "appendages.rudder_support", "value": "skeg"}
+      ],
+      "prerequisites": "Legacy v0.5 rudder_type is qualified as exactly 'skeg_hung'.",
+      "applicability": "Applies to translating a single qualified v0.5 record's own baseline into v0.6-shaped facts, within that record's own applicability scope; does not import the source token from a different BoatDesign/scope.",
+      "exceptions": "rudder_position and rudder_balance are explicitly NOT entailed (must project 'unknown').",
+      "conflict_behavior": "If the same v0.5 record already carries a contradicting explicit v0.6-shaped rudder_support value, surface UNRESOLVED_CONFLICT; do not silently overwrite either value. Note: skeg_type='none' recorded on the same v0.5-derived record alongside rudder_type='skeg_hung' is exactly the kind of inconsistency MTE-RUD-002/MTE-RUD-003 catch independently.",
+      "evidence_basis": "BOAT_DESIGN_V05_TO_V06_MAPPING.md section 3.2 (accepted SLICE-0034 mapping, amendment-1 corrected): 'skeg' is the v0.5 token's own word for what supports the rudder.",
+      "lineage_requirement": "Record rule_id MTE-LEGACY-RUD-002, version 0.1, and the qualifying legacy rudder_type=skeg_hung fact."
+    },
+    {
+      "id": "MTE-LEGACY-RUD-003",
+      "version": "0.1",
+      "area": "legacy_rudder_type",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "legacy.rudder_type", "value": "partial_skeg"},
+      "output": [
+        {"field": "appendages.rudder_support", "value": "skeg"}
+      ],
+      "prerequisites": "Legacy v0.5 rudder_type is qualified as exactly 'partial_skeg'.",
+      "applicability": "Applies to translating a single qualified v0.5 record's own baseline into v0.6-shaped facts, within that record's own applicability scope; does not import the source token from a different BoatDesign/scope.",
+      "exceptions": "rudder_position and rudder_balance are explicitly NOT entailed (must project 'unknown'). 'partial' qualifies the skeg's physical extent, not the rudder's position or balance; skeg_type is a separate straight-moved field and is not set to 'partial' by this rule.",
+      "conflict_behavior": "If the same v0.5 record already carries a contradicting explicit v0.6-shaped rudder_support value, surface UNRESOLVED_CONFLICT; do not silently overwrite either value.",
+      "evidence_basis": "BOAT_DESIGN_V05_TO_V06_MAPPING.md section 3.2 (accepted SLICE-0034 mapping, amendment-1 corrected).",
+      "lineage_requirement": "Record rule_id MTE-LEGACY-RUD-003, version 0.1, and the qualifying legacy rudder_type=partial_skeg fact."
+    },
+    {
+      "id": "MTE-LEGACY-RUD-004",
+      "version": "0.1",
+      "area": "legacy_rudder_type",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "legacy.rudder_type", "value": "spade"},
+      "output": [
+        {"field": "appendages.rudder_support", "value": "free"}
+      ],
+      "prerequisites": "Legacy v0.5 rudder_type is qualified as exactly 'spade'.",
+      "applicability": "Applies to translating a single qualified v0.5 record's own baseline into v0.6-shaped facts, within that record's own applicability scope; does not import the source token from a different BoatDesign/scope.",
+      "exceptions": "rudder_position and rudder_balance are explicitly NOT entailed (must project 'unknown'): a spade rudder's free-standing character says nothing about where it is mounted or whether it is balanced.",
+      "conflict_behavior": "If the same v0.5 record already carries a contradicting explicit v0.6-shaped rudder_support value, surface UNRESOLVED_CONFLICT; do not silently overwrite either value.",
+      "evidence_basis": "BOAT_DESIGN_V05_TO_V06_MAPPING.md section 3.2 (accepted SLICE-0034 mapping, amendment-1 corrected): a spade rudder is by definition a free-standing/unsupported blade.",
+      "lineage_requirement": "Record rule_id MTE-LEGACY-RUD-004, version 0.1, and the qualifying legacy rudder_type=spade fact."
+    },
+    {
+      "id": "MTE-LEGACY-RUD-005",
+      "version": "0.1",
+      "area": "legacy_rudder_type",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "legacy.rudder_type", "value": "transom_hung"},
+      "output": [
+        {"field": "appendages.rudder_position", "value": "transom"},
+        {"field": "appendages.rudder_support", "value": "transom"}
+      ],
+      "prerequisites": "Legacy v0.5 rudder_type is qualified as exactly 'transom_hung'.",
+      "applicability": "Applies to translating a single qualified v0.5 record's own baseline into v0.6-shaped facts, within that record's own applicability scope; does not import the source token from a different BoatDesign/scope.",
+      "exceptions": "rudder_balance is explicitly NOT entailed (must project 'unknown').",
+      "conflict_behavior": "If the same v0.5 record already carries a contradicting explicit v0.6-shaped rudder_position/rudder_support value, surface UNRESOLVED_CONFLICT; do not silently overwrite either value.",
+      "evidence_basis": "BOAT_DESIGN_V05_TO_V06_MAPPING.md section 3.2 (accepted SLICE-0034 mapping, amendment-1 corrected): 'transom' is the v0.5 token's own word for both position and support.",
+      "lineage_requirement": "Record rule_id MTE-LEGACY-RUD-005, version 0.1, and the qualifying legacy rudder_type=transom_hung fact."
+    },
+    {
+      "id": "MTE-LEGACY-RUD-006",
+      "version": "0.1",
+      "area": "legacy_rudder_type",
+      "guard": "STANDARD_MTE_GUARD_V0_1",
+      "source": {"field": "legacy.rudder_type", "value": "twin"},
+      "co_inputs": [{"field": "appendages.rudder_count", "role": "the straight-moved (per BOAT_DESIGN_V05_TO_V06_MAPPING.md section 2) source rudder_count value prior to this rule's own projection; must be jointly qualified to determine the output; null is an accepted qualified state meaning 'never recorded'"}],
+      "output": [
+        {
+          "field": "appendages.rudder_count",
+          "conditional": [
+            {"if_source_rudder_count": null, "then": 2, "note": "guaranteed projection: 'twin' definitionally means two rudders"},
+            {"if_source_rudder_count": 2, "then": 2, "note": "source already agrees; nothing to resolve"},
+            {"if_source_rudder_count": "any other concrete integer", "then": "RAISE_CONFLICT", "note": "internally inconsistent v0.5 payload; not silently resolved"}
+          ]
+        }
+      ],
+      "prerequisites": "Legacy v0.5 rudder_type is qualified as exactly 'twin'; source rudder_count is jointly known (including the qualified null state).",
+      "applicability": "Applies to translating a single qualified v0.5 record's own baseline into v0.6-shaped facts; both rudder_type and rudder_count must come from the same record/scope.",
+      "exceptions": "rudder_position, rudder_support and rudder_balance are explicitly NOT entailed by 'twin' (must project 'unknown' for all three): 'twin' describes rudder count only.",
+      "conflict_behavior": "A source rudder_count concretely other than 2 (e.g. 0, 1, 3, 4) is an internally inconsistent v0.5 payload. This rule does not silently overwrite the recorded count with 2, and does not silently keep the recorded count while dropping the twin fact; it raises a flagged conflict for manual/conflict resolution per TECHNICAL_PROFILE_SPEC.v0.1.md sections 5-6, exactly mirroring the existing accepted RudderCountMappingConflict behavior.",
+      "evidence_basis": "BOAT_DESIGN_V05_TO_V06_MAPPING.md section 3.2 'rudder_count and twin' (accepted SLICE-0034 mapping, amendment 2): the word 'twin' definitionally IS the count fact, so a null/unrecorded source count must not discard it.",
+      "lineage_requirement": "Record rule_id MTE-LEGACY-RUD-006, version 0.1, the qualifying legacy rudder_type=twin fact, and the source rudder_count value actually observed (null/2/conflict)."
+    }
+  ]
+}
