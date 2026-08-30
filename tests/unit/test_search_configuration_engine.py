@@ -487,6 +487,7 @@ def test_variant_constrained_configuration_evaluates_normally() -> None:
         variant_constraints={
             "VARIANT-CENTER-COCKPIT": NamedVariantConstraint(
                 variant_id="VARIANT-CENTER-COCKPIT",
+                applicability=ValueQualification.CONFIRMED,
                 requires_option_ids=frozenset({"OPT-WHEEL-STEERING"}),
             )
         },
@@ -516,6 +517,7 @@ def test_variant_constrained_configuration_with_incomplete_space_is_insufficient
         variant_constraints={
             "VARIANT-CENTER-COCKPIT": NamedVariantConstraint(
                 variant_id="VARIANT-CENTER-COCKPIT",
+                applicability=ValueQualification.CONFIRMED,
                 requires_option_ids=frozenset({"OPT-WHEEL-STEERING"}),
             )
         },

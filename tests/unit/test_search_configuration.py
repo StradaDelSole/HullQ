@@ -192,13 +192,14 @@ def test_design_configuration_set_accepts_valid_input() -> None:
 
 def test_option_constraint_requires_option_id() -> None:
     with pytest.raises(ValueError, match="option_id"):
-        OptionConstraint(option_id="")
+        OptionConstraint(option_id="", applicability=ValueQualification.CONFIRMED)
 
 
 def test_option_constraint_rejects_overlapping_requires_and_excludes() -> None:
     with pytest.raises(ValueError, match="cannot both require and exclude"):
         OptionConstraint(
             option_id="OPT-SHALLOW-DRAFT",
+            applicability=ValueQualification.CONFIRMED,
             requires_option_ids=frozenset({"OPT-X"}),
             excludes_option_ids=frozenset({"OPT-X"}),
         )
@@ -218,7 +219,11 @@ def _configuration_with_options(*option_ids: str) -> ResolvedConfiguration:
 def test_configuration_missing_required_companion_option_is_rejected() -> None:
     # OPT-B requires OPT-A, but this configuration applies OPT-B alone.
     constraints = {
-        "OPT-B": OptionConstraint(option_id="OPT-B", requires_option_ids=frozenset({"OPT-A"}))
+        "OPT-B": OptionConstraint(
+            option_id="OPT-B",
+            applicability=ValueQualification.CONFIRMED,
+            requires_option_ids=frozenset({"OPT-A"}),
+        )
     }
     with pytest.raises(ValueError, match="without its required companion option"):
         DesignConfigurationSet(
@@ -231,7 +236,11 @@ def test_configuration_missing_required_companion_option_is_rejected() -> None:
 
 def test_configuration_with_required_companion_option_is_accepted() -> None:
     constraints = {
-        "OPT-B": OptionConstraint(option_id="OPT-B", requires_option_ids=frozenset({"OPT-A"}))
+        "OPT-B": OptionConstraint(
+            option_id="OPT-B",
+            applicability=ValueQualification.CONFIRMED,
+            requires_option_ids=frozenset({"OPT-A"}),
+        )
     }
     config_set = DesignConfigurationSet(
         design_id="design-1",
@@ -246,7 +255,9 @@ def test_configuration_with_excluded_option_combination_is_rejected() -> None:
     # OPT-SHALLOW excludes OPT-DEEP; a configuration combining both is invalid.
     constraints = {
         "OPT-SHALLOW": OptionConstraint(
-            option_id="OPT-SHALLOW", excludes_option_ids=frozenset({"OPT-DEEP"})
+            option_id="OPT-SHALLOW",
+            applicability=ValueQualification.CONFIRMED,
+            excludes_option_ids=frozenset({"OPT-DEEP"}),
         )
     }
     with pytest.raises(ValueError, match="alongside excluded option"):
@@ -309,14 +320,22 @@ def test_mutating_source_configurations_list_after_construction_is_inert() -> No
 
 def test_mutating_source_requires_set_after_constructing_option_constraint_is_inert() -> None:
     source_requires = {"OPT-A"}
-    constraint = OptionConstraint(option_id="OPT-B", requires_option_ids=source_requires)
+    constraint = OptionConstraint(
+        option_id="OPT-B",
+        applicability=ValueQualification.CONFIRMED,
+        requires_option_ids=source_requires,
+    )
     source_requires.add("OPT-Z")
     assert constraint.requires_option_ids == frozenset({"OPT-A"})
 
 
 def test_mutating_source_excludes_set_after_constructing_option_constraint_is_inert() -> None:
     source_excludes = {"OPT-DEEP"}
-    constraint = OptionConstraint(option_id="OPT-SHALLOW", excludes_option_ids=source_excludes)
+    constraint = OptionConstraint(
+        option_id="OPT-SHALLOW",
+        applicability=ValueQualification.CONFIRMED,
+        excludes_option_ids=source_excludes,
+    )
     source_excludes.add("OPT-OTHER")
     assert constraint.excludes_option_ids == frozenset({"OPT-DEEP"})
 
@@ -326,7 +345,11 @@ def test_mutation_after_option_constraint_construction_cannot_relax_validation()
     # construction could turn a currently-valid configuration invalid (or
     # vice versa) without re-validation ever running. It must not.
     source_excludes: set[str] = set()
-    constraint = OptionConstraint(option_id="OPT-B", excludes_option_ids=source_excludes)
+    constraint = OptionConstraint(
+        option_id="OPT-B",
+        applicability=ValueQualification.CONFIRMED,
+        excludes_option_ids=source_excludes,
+    )
     config_set = DesignConfigurationSet(
         design_id="design-1",
         configurations=(_configuration_with_options("OPT-A", "OPT-B"),),
@@ -339,7 +362,7 @@ def test_mutation_after_option_constraint_construction_cannot_relax_validation()
 
 
 def test_option_constraints_mapping_key_must_match_option_id() -> None:
-    constraint = OptionConstraint(option_id="OPT-B")
+    constraint = OptionConstraint(option_id="OPT-B", applicability=ValueQualification.CONFIRMED)
     with pytest.raises(ValueError, match="does not match"):
         DesignConfigurationSet(
             design_id="design-1",
@@ -356,13 +379,14 @@ def test_option_constraints_mapping_key_must_match_option_id() -> None:
 
 def test_named_variant_constraint_requires_variant_id() -> None:
     with pytest.raises(ValueError, match="variant_id"):
-        NamedVariantConstraint(variant_id="")
+        NamedVariantConstraint(variant_id="", applicability=ValueQualification.CONFIRMED)
 
 
 def test_named_variant_constraint_rejects_overlapping_requires_and_excludes() -> None:
     with pytest.raises(ValueError, match="cannot both require and exclude"):
         NamedVariantConstraint(
             variant_id="VARIANT-CENTER-COCKPIT",
+            applicability=ValueQualification.CONFIRMED,
             requires_option_ids=frozenset({"OPT-X"}),
             excludes_option_ids=frozenset({"OPT-X"}),
         )
@@ -384,7 +408,9 @@ def test_variant_missing_required_companion_option_is_rejected() -> None:
     # VARIANT-CC requires OPT-WHEEL-STEERING, but this configuration doesn't apply it.
     constraints = {
         "VARIANT-CC": NamedVariantConstraint(
-            variant_id="VARIANT-CC", requires_option_ids=frozenset({"OPT-WHEEL-STEERING"})
+            variant_id="VARIANT-CC",
+            applicability=ValueQualification.CONFIRMED,
+            requires_option_ids=frozenset({"OPT-WHEEL-STEERING"}),
         )
     }
     with pytest.raises(ValueError, match="without its required companion option"):
@@ -399,7 +425,9 @@ def test_variant_missing_required_companion_option_is_rejected() -> None:
 def test_variant_with_required_companion_option_is_accepted() -> None:
     constraints = {
         "VARIANT-CC": NamedVariantConstraint(
-            variant_id="VARIANT-CC", requires_option_ids=frozenset({"OPT-WHEEL-STEERING"})
+            variant_id="VARIANT-CC",
+            applicability=ValueQualification.CONFIRMED,
+            requires_option_ids=frozenset({"OPT-WHEEL-STEERING"}),
         )
     }
     config_set = DesignConfigurationSet(
@@ -414,7 +442,9 @@ def test_variant_with_required_companion_option_is_accepted() -> None:
 def test_variant_with_excluded_option_combination_is_rejected() -> None:
     constraints = {
         "VARIANT-CC": NamedVariantConstraint(
-            variant_id="VARIANT-CC", excludes_option_ids=frozenset({"OPT-TILLER"})
+            variant_id="VARIANT-CC",
+            applicability=ValueQualification.CONFIRMED,
+            excludes_option_ids=frozenset({"OPT-TILLER"}),
         )
     }
     with pytest.raises(ValueError, match="alongside excluded option"):
@@ -440,7 +470,9 @@ def test_configuration_referencing_unconstrained_variant_is_unaffected() -> None
 def test_configuration_with_no_variant_is_unaffected_by_variant_constraints() -> None:
     constraints = {
         "VARIANT-CC": NamedVariantConstraint(
-            variant_id="VARIANT-CC", requires_option_ids=frozenset({"OPT-WHEEL-STEERING"})
+            variant_id="VARIANT-CC",
+            applicability=ValueQualification.CONFIRMED,
+            requires_option_ids=frozenset({"OPT-WHEEL-STEERING"}),
         )
     }
     config_set = DesignConfigurationSet(
@@ -456,7 +488,9 @@ def test_variant_constraint_is_not_applied_to_a_different_variant() -> None:
     # A constraint keyed to VARIANT-CC must never leak onto VARIANT-OTHER.
     constraints = {
         "VARIANT-CC": NamedVariantConstraint(
-            variant_id="VARIANT-CC", requires_option_ids=frozenset({"OPT-WHEEL-STEERING"})
+            variant_id="VARIANT-CC",
+            applicability=ValueQualification.CONFIRMED,
+            requires_option_ids=frozenset({"OPT-WHEEL-STEERING"}),
         )
     }
     config_set = DesignConfigurationSet(
@@ -469,7 +503,9 @@ def test_variant_constraint_is_not_applied_to_a_different_variant() -> None:
 
 
 def test_variant_constraints_mapping_key_must_match_variant_id() -> None:
-    constraint = NamedVariantConstraint(variant_id="VARIANT-CC")
+    constraint = NamedVariantConstraint(
+        variant_id="VARIANT-CC", applicability=ValueQualification.CONFIRMED
+    )
     with pytest.raises(ValueError, match="does not match"):
         DesignConfigurationSet(
             design_id="design-1",
@@ -482,7 +518,9 @@ def test_variant_constraints_mapping_key_must_match_variant_id() -> None:
 def test_mutating_source_requires_set_after_constructing_variant_constraint_is_inert() -> None:
     source_requires = {"OPT-A"}
     constraint = NamedVariantConstraint(
-        variant_id="VARIANT-CC", requires_option_ids=source_requires
+        variant_id="VARIANT-CC",
+        applicability=ValueQualification.CONFIRMED,
+        requires_option_ids=source_requires,
     )
     source_requires.add("OPT-Z")
     assert constraint.requires_option_ids == frozenset({"OPT-A"})
@@ -580,17 +618,21 @@ def test_design_configuration_set_design_id_rejects_non_string() -> None:
 
 def test_option_constraint_option_id_rejects_non_string() -> None:
     with pytest.raises(ValueError, match="must be non-empty"):
-        OptionConstraint(option_id=123)  # type: ignore[arg-type]
+        OptionConstraint(option_id=123, applicability=ValueQualification.CONFIRMED)  # type: ignore[arg-type]
 
 
 def test_named_variant_constraint_variant_id_rejects_non_string() -> None:
     with pytest.raises(ValueError, match="must be non-empty"):
-        NamedVariantConstraint(variant_id=123)  # type: ignore[arg-type]
+        NamedVariantConstraint(variant_id=123, applicability=ValueQualification.CONFIRMED)  # type: ignore[arg-type]
 
 
 def test_option_constraint_requires_option_ids_rejects_bare_string() -> None:
     with pytest.raises(ValueError, match="not a bare str"):
-        OptionConstraint(option_id="OPT-A", requires_option_ids="OPT-A")  # type: ignore[arg-type]
+        OptionConstraint(
+            option_id="OPT-A",
+            applicability=ValueQualification.CONFIRMED,
+            requires_option_ids="OPT-A",  # type: ignore[arg-type]
+        )
 
 
 def test_option_constraint_excludes_option_ids_rejects_bare_string_bypass() -> None:
@@ -599,7 +641,11 @@ def test_option_constraint_excludes_option_ids_rejects_bare_string_bypass() -> N
     # intersect an applied_option_ids containing the real string "OPT-B" and
     # let a forbidden combination pass validation.
     with pytest.raises(ValueError, match="not a bare str"):
-        OptionConstraint(option_id="OPT-A", excludes_option_ids="OPT-B")  # type: ignore[arg-type]
+        OptionConstraint(
+            option_id="OPT-A",
+            applicability=ValueQualification.CONFIRMED,
+            excludes_option_ids="OPT-B",  # type: ignore[arg-type]
+        )
 
 
 def test_bare_string_exclusion_bypass_can_no_longer_admit_a_forbidden_combination() -> None:
@@ -607,28 +653,45 @@ def test_bare_string_exclusion_bypass_can_no_longer_admit_a_forbidden_combinatio
     # fails closed before it could ever be attached to a DesignConfigurationSet
     # and silently admit a configuration containing the real "OPT-B" id.
     with pytest.raises(ValueError, match="not a bare str"):
-        OptionConstraint(option_id="OPT-A", excludes_option_ids="OPT-B")  # type: ignore[arg-type]
+        OptionConstraint(
+            option_id="OPT-A",
+            applicability=ValueQualification.CONFIRMED,
+            excludes_option_ids="OPT-B",  # type: ignore[arg-type]
+        )
 
 
 def test_option_constraint_requires_option_ids_rejects_non_string_element() -> None:
     with pytest.raises(ValueError, match="must be non-empty strings"):
-        OptionConstraint(option_id="OPT-A", requires_option_ids=frozenset({1, 2}))  # type: ignore[arg-type]
+        OptionConstraint(
+            option_id="OPT-A",
+            applicability=ValueQualification.CONFIRMED,
+            requires_option_ids=frozenset({1, 2}),  # type: ignore[arg-type]
+        )
 
 
 def test_option_constraint_requires_option_ids_rejects_duplicate_via_list() -> None:
     with pytest.raises(ValueError, match="must not contain duplicates"):
-        OptionConstraint(option_id="OPT-A", requires_option_ids=["OPT-B", "OPT-B"])  # type: ignore[arg-type]
+        OptionConstraint(
+            option_id="OPT-A",
+            applicability=ValueQualification.CONFIRMED,
+            requires_option_ids=["OPT-B", "OPT-B"],  # type: ignore[arg-type]
+        )
 
 
 def test_named_variant_constraint_requires_option_ids_rejects_bare_string() -> None:
     with pytest.raises(ValueError, match="not a bare str"):
-        NamedVariantConstraint(variant_id="VARIANT-A", requires_option_ids="OPT-A")  # type: ignore[arg-type]
+        NamedVariantConstraint(
+            variant_id="VARIANT-A",
+            applicability=ValueQualification.CONFIRMED,
+            requires_option_ids="OPT-A",  # type: ignore[arg-type]
+        )
 
 
 def test_named_variant_constraint_excludes_option_ids_rejects_duplicate_via_list() -> None:
     with pytest.raises(ValueError, match="must not contain duplicates"):
         NamedVariantConstraint(
             variant_id="VARIANT-A",
+            applicability=ValueQualification.CONFIRMED,
             excludes_option_ids=["OPT-B", "OPT-B"],  # type: ignore[arg-type]
         )
 
@@ -638,9 +701,46 @@ def test_named_variant_constraint_excludes_option_ids_rejects_duplicate_via_list
 # ---------------------------------------------------------------------------
 
 
-def test_option_constraint_applicability_defaults_to_confirmed() -> None:
-    constraint = OptionConstraint(option_id="OPT-A")
+def test_option_constraint_applicability_has_no_default_and_must_be_supplied() -> None:
+    # Omitting applicability is a TypeError at the call site — it can never
+    # silently become CONFIRMED. This is Python's own missing-argument
+    # error, not a fabricated runtime workaround.
+    with pytest.raises(TypeError, match="applicability"):
+        OptionConstraint(option_id="OPT-A")  # type: ignore[call-arg]
+
+
+def test_named_variant_constraint_applicability_has_no_default_and_must_be_supplied() -> None:
+    with pytest.raises(TypeError, match="applicability"):
+        NamedVariantConstraint(variant_id="VARIANT-A")  # type: ignore[call-arg]
+
+
+def test_option_constraint_explicit_confirmed_applicability_still_works() -> None:
+    constraint = OptionConstraint(option_id="OPT-A", applicability=ValueQualification.CONFIRMED)
     assert constraint.applicability is ValueQualification.CONFIRMED
+
+
+def test_named_variant_constraint_explicit_confirmed_applicability_still_works() -> None:
+    constraint = NamedVariantConstraint(
+        variant_id="VARIANT-A", applicability=ValueQualification.CONFIRMED
+    )
+    assert constraint.applicability is ValueQualification.CONFIRMED
+
+
+def test_dependency_metadata_alone_cannot_grant_confirmed_applicability() -> None:
+    # Supplying requires_option_ids does not somehow substitute for an
+    # explicit applicability declaration — it remains a required, separate
+    # argument regardless of how much dependency metadata is known.
+    with pytest.raises(TypeError, match="applicability"):
+        OptionConstraint(  # type: ignore[call-arg]
+            option_id="OPT-A", requires_option_ids=frozenset({"OPT-B"})
+        )
+
+
+def test_named_variant_dependency_metadata_alone_cannot_grant_confirmed_applicability() -> None:
+    with pytest.raises(TypeError, match="applicability"):
+        NamedVariantConstraint(  # type: ignore[call-arg]
+            variant_id="VARIANT-A", requires_option_ids=frozenset({"OPT-B"})
+        )
 
 
 def test_option_constraint_applicability_rejects_non_value_qualification() -> None:

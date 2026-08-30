@@ -39,6 +39,9 @@ claim a truth-authorizing complete configuration space. An option/variant
 with no supplied constraint at all remains fully unconstrained, exactly as
 before — no applicability state is ever inferred merely from a constraint's
 absence, a fixture's presence, requires/excludes, or completeness.
+`applicability` has no default on either constraint type (REVIEW Finding 1,
+third round): every caller constructing a constraint must state explicitly
+what it knows, so applicability can never silently default to `CONFIRMED`.
 
 Every collection accepted at this boundary (`configurations`, applied option
 ID collections, `requires_option_ids`, `excludes_option_ids`) is validated as
@@ -279,21 +282,29 @@ class OptionConstraint:
 
     `applicability` reuses the already-accepted `ValueQualification`
     three-valued vocabulary (REVIEW Finding 1, second round) rather than
-    inventing a new enum: `CONFIRMED` (the default) means this option is
-    known-applicable and participates normally; `NOT_APPLICABLE` means a
-    `ResolvedConfiguration` referencing this option MUST NOT be accepted at
-    all; any other member (`MISSING`/`UNRESOLVED_CONFLICT`/`PROVISIONAL`/
-    `APPLICABILITY_UNKNOWN`) means the same — the configuration is rejected —
-    *and* additionally forbids `configuration_space_complete=True` anywhere
-    on the same `DesignConfigurationSet`, because a materially possible but
+    inventing a new enum: `CONFIRMED` means this option is known-applicable
+    and participates normally; `NOT_APPLICABLE` means a `ResolvedConfiguration`
+    referencing this option MUST NOT be accepted at all; any other member
+    (`MISSING`/`UNRESOLVED_CONFLICT`/`PROVISIONAL`/`APPLICABILITY_UNKNOWN`)
+    means the same — the configuration is rejected — *and* additionally
+    forbids `configuration_space_complete=True` anywhere on the same
+    `DesignConfigurationSet`, because a materially possible but
     applicability-unresolved option must not be silently excluded from a
     claimed-complete configuration space.
+
+    `applicability` has deliberately **no default** (REVIEW Finding 1, third
+    round): omitting it is a `TypeError` at the call site, not a silent
+    `CONFIRMED`. Applicability is a truth-authorizing qualification exactly
+    like a field's own `ValueQualification` — it must never be inferred
+    merely from a constraint object existing, from `requires_option_ids`/
+    `excludes_option_ids` being known, or from any other structural fact.
+    Every caller must state explicitly what it knows.
     """
 
     option_id: str
+    applicability: ValueQualification
     requires_option_ids: frozenset[str] = frozenset()
     excludes_option_ids: frozenset[str] = frozenset()
-    applicability: ValueQualification = ValueQualification.CONFIRMED
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -328,17 +339,20 @@ class NamedVariantConstraint:
     construction. A variant with no supplied constraint is left unconstrained
     — this module never invents applicability for it.
 
-    `applicability` behaves identically to `OptionConstraint.applicability`
-    (REVIEW Finding 1, second round): `CONFIRMED` (default) participates
-    normally; `NOT_APPLICABLE` or any unresolved member rejects any
-    `ResolvedConfiguration` carrying this variant, and an unresolved member
-    additionally forbids `configuration_space_complete=True` on the same set.
+    `applicability` behaves identically to `OptionConstraint.applicability`,
+    including having deliberately **no default** (REVIEW Finding 1, third
+    round): `CONFIRMED` participates normally; `NOT_APPLICABLE` or any
+    unresolved member rejects any `ResolvedConfiguration` carrying this
+    variant, and an unresolved member additionally forbids
+    `configuration_space_complete=True` on the same set. Omitting
+    `applicability` is a `TypeError` at the call site, not a silent
+    `CONFIRMED` — every caller must state explicitly what it knows.
     """
 
     variant_id: str
+    applicability: ValueQualification
     requires_option_ids: frozenset[str] = frozenset()
     excludes_option_ids: frozenset[str] = frozenset()
-    applicability: ValueQualification = ValueQualification.CONFIRMED
 
     def __post_init__(self) -> None:
         object.__setattr__(
