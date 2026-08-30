@@ -1,4 +1,4 @@
-"""Unit tests for hullq.search.criteria — SLICE-0033 (+ REVIEW amendment).
+"""Unit tests for hullq.search.criteria — SLICE-0033 (+ REVIEW amendment, + SLICE-0035).
 
 Covers:
 - NumericLeafCriterion construction validation (comparison/threshold shape)
@@ -13,13 +13,26 @@ Covers:
   invalid comparison/strength values are rejected at construction, never
   silently falling into RANGE semantics or reaching comparison logic
   (review Finding 1)
+- SLICE-0035: CategoricalLeafCriterion construction validation and exact
+  canonical-string equality truth, mirroring the numeric leaf's fail-closed
+  qualification handling and NOT_APPLICABLE/negation-loophole guarantees
+- SLICE-0035 REVIEW amendment Finding 1: reserved categorical semantic
+  sentinels ("unknown"/"not_applicable") routed through the real
+  from_resolution_state_categorical adapter can never produce TRUE/FALSE via
+  ordinary equality at leaf-evaluation granularity
 """
 
 from __future__ import annotations
 
 import pytest
 
-from hullq.search.criteria import NumericLeafCriterion, evaluate_numeric_leaf
+from hullq.domain.provenance import ResolutionState
+from hullq.search.criteria import (
+    CategoricalLeafCriterion,
+    NumericLeafCriterion,
+    evaluate_categorical_leaf,
+    evaluate_numeric_leaf,
+)
 from hullq.search.types import (
     NumericComparisonKind,
     ReasonCode,
@@ -27,7 +40,11 @@ from hullq.search.types import (
     TruthState,
     ValueQualification,
 )
-from hullq.search.values import QualifiedNumericValue
+from hullq.search.values import (
+    QualifiedCategoricalValue,
+    QualifiedNumericValue,
+    from_resolution_state_categorical,
+)
 
 # ---------------------------------------------------------------------------
 # Construction validation
@@ -299,3 +316,144 @@ def test_applicability_unknown_never_returned_as_value_missing() -> None:
     assert result.reason is not ReasonCode.VALUE_MISSING
     assert result.reason is ReasonCode.APPLICABILITY_UNKNOWN
     assert result.truth is TruthState.UNKNOWN
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0035 — CategoricalLeafCriterion construction validation
+# ---------------------------------------------------------------------------
+
+
+def test_categorical_field_must_be_non_empty() -> None:
+    with pytest.raises(ValueError, match="field"):
+        CategoricalLeafCriterion(field="", equals="masthead")
+
+
+def test_categorical_equals_must_be_non_empty() -> None:
+    with pytest.raises(ValueError, match="equals"):
+        CategoricalLeafCriterion(field="rig.masthead_fractional", equals="")
+
+
+def test_categorical_equals_must_be_a_string() -> None:
+    with pytest.raises(ValueError, match="equals"):
+        CategoricalLeafCriterion(field="rig.masthead_fractional", equals=1)  # type: ignore[arg-type]
+
+
+def test_categorical_strength_must_be_a_requirement_strength_member() -> None:
+    with pytest.raises(ValueError, match="RequirementStrength member"):
+        CategoricalLeafCriterion(
+            field="rig.masthead_fractional",
+            equals="masthead",
+            strength="PREFER",  # type: ignore[arg-type]
+        )
+
+
+def test_categorical_explicit_must_strength_is_accepted() -> None:
+    criterion = CategoricalLeafCriterion(
+        field="rig.masthead_fractional", equals="masthead", strength=RequirementStrength.MUST
+    )
+    assert criterion.strength is RequirementStrength.MUST
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0035 — exact canonical-string equality truth
+# ---------------------------------------------------------------------------
+
+
+def _confirmed_categorical(value: str) -> QualifiedCategoricalValue:
+    return QualifiedCategoricalValue(value=value, qualification=ValueQualification.CONFIRMED)
+
+
+def test_categorical_exact_equality_is_true() -> None:
+    criterion = CategoricalLeafCriterion(field="rig.masthead_fractional", equals="masthead")
+    result = evaluate_categorical_leaf(criterion, _confirmed_categorical("masthead"))
+    assert result.truth is TruthState.TRUE
+    assert result.reason is None
+
+
+def test_categorical_inequality_is_false() -> None:
+    criterion = CategoricalLeafCriterion(field="rig.masthead_fractional", equals="masthead")
+    result = evaluate_categorical_leaf(criterion, _confirmed_categorical("fractional"))
+    assert result.truth is TruthState.FALSE
+    assert result.reason is None
+
+
+def test_categorical_comparison_is_case_sensitive_no_fuzzy_matching() -> None:
+    # slice Required Behavior §A: "no fuzzy synonym matching at evaluator
+    # time; no case-folding/normalization hidden inside truth evaluation".
+    criterion = CategoricalLeafCriterion(field="rig.masthead_fractional", equals="masthead")
+    result = evaluate_categorical_leaf(criterion, _confirmed_categorical("Masthead"))
+    assert result.truth is TruthState.FALSE
+
+
+@pytest.mark.parametrize(
+    ("qualification", "expected_reason"),
+    [
+        (ValueQualification.MISSING, ReasonCode.VALUE_MISSING),
+        (ValueQualification.UNRESOLVED_CONFLICT, ReasonCode.UNRESOLVED_CONFLICT),
+        (ValueQualification.PROVISIONAL, ReasonCode.PROVISIONAL_VALUE),
+        (ValueQualification.APPLICABILITY_UNKNOWN, ReasonCode.APPLICABILITY_UNKNOWN),
+    ],
+)
+def test_categorical_unqualified_value_yields_unknown_never_true_or_false(
+    qualification: ValueQualification, expected_reason: ReasonCode
+) -> None:
+    criterion = CategoricalLeafCriterion(field="deck.cockpit_position", equals="aft")
+    qv = QualifiedCategoricalValue(value=None, qualification=qualification)
+    result = evaluate_categorical_leaf(criterion, qv)
+    assert result.truth is TruthState.UNKNOWN
+    assert result.reason is expected_reason
+
+
+def test_categorical_not_applicable_yields_false_not_unknown() -> None:
+    criterion = CategoricalLeafCriterion(field="rig.masthead_fractional", equals="masthead")
+    qv = QualifiedCategoricalValue(value=None, qualification=ValueQualification.NOT_APPLICABLE)
+    result = evaluate_categorical_leaf(criterion, qv)
+    assert result.truth is TruthState.FALSE
+    assert result.reason is ReasonCode.NOT_APPLICABLE
+
+
+def test_categorical_not_applicable_never_becomes_true_through_comparison() -> None:
+    # Adversarial checklist Q4: NOT_APPLICABLE must never become TRUE through
+    # a comparison loophole, e.g. comparing against the literal string
+    # "not_applicable" as if it were a legitimate canonical rig value.
+    criterion = CategoricalLeafCriterion(field="rig.masthead_fractional", equals="not_applicable")
+    qv = QualifiedCategoricalValue(value=None, qualification=ValueQualification.NOT_APPLICABLE)
+    result = evaluate_categorical_leaf(criterion, qv)
+    assert result.truth is TruthState.FALSE
+    assert result.reason is ReasonCode.NOT_APPLICABLE
+
+
+# ---------------------------------------------------------------------------
+# REVIEW amendment Finding 1 — reserved sentinels through the real adapter,
+# end-to-end at leaf-evaluation granularity
+# ---------------------------------------------------------------------------
+
+
+def test_categorical_unknown_sentinel_via_adapter_never_true() -> None:
+    criterion = CategoricalLeafCriterion(field="rig.masthead_fractional", equals="unknown")
+    qv = from_resolution_state_categorical(ResolutionState.RESOLVED, "unknown")
+    result = evaluate_categorical_leaf(criterion, qv)
+    assert result.truth is not TruthState.TRUE
+
+
+def test_categorical_unknown_sentinel_via_adapter_never_false() -> None:
+    criterion = CategoricalLeafCriterion(field="rig.masthead_fractional", equals="masthead")
+    qv = from_resolution_state_categorical(ResolutionState.RESOLVED, "unknown")
+    result = evaluate_categorical_leaf(criterion, qv)
+    assert result.truth is TruthState.UNKNOWN
+    assert result.reason is ReasonCode.VALUE_MISSING
+
+
+def test_categorical_not_applicable_sentinel_via_adapter_follows_not_applicable_path() -> None:
+    criterion = CategoricalLeafCriterion(field="rig.masthead_fractional", equals="masthead")
+    qv = from_resolution_state_categorical(ResolutionState.RESOLVED, "not_applicable")
+    result = evaluate_categorical_leaf(criterion, qv)
+    assert result.truth is TruthState.FALSE
+    assert result.reason is ReasonCode.NOT_APPLICABLE
+
+
+def test_categorical_not_applicable_sentinel_via_adapter_never_equality_matches() -> None:
+    criterion = CategoricalLeafCriterion(field="rig.masthead_fractional", equals="not_applicable")
+    qv = from_resolution_state_categorical(ResolutionState.RESOLVED, "not_applicable")
+    result = evaluate_categorical_leaf(criterion, qv)
+    assert result.truth is TruthState.FALSE

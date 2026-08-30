@@ -1,4 +1,4 @@
-"""Numeric MUST leaf criterion and its deterministic evaluation — SLICE-0033.
+"""MUST leaf criteria and their deterministic evaluation — SLICE-0033 + SLICE-0035.
 
 Implements SEARCH_QUERY_SEMANTICS.v0.1.md §6 (inclusive numeric comparison)
 and the slice's Required Behavior §A (numeric leaf truth) over already
@@ -6,10 +6,17 @@ canonicalized values. Unit conversion happens upstream of this module —
 `NumericLeafCriterion` thresholds and `QualifiedNumericValue.value` MUST
 already be in the same canonical unit.
 
-Does not implement: unit conversion, option-sensitive/bounded-value-range
-configuration-aware evaluation (§7), PREFER, or OR/NOT aggregation.
+SLICE-0035 adds `CategoricalLeafCriterion`/`evaluate_categorical_leaf`
+(slice Required Behavior §A): deterministic exact canonical-string equality,
+no fuzzy synonym matching or case-folding at evaluator time. Both leaf kinds
+share the same fail-closed unqualified-value reason mapping and the same
+`CriterionEvaluation` result shape, so `hullq.search.query.and_reduce` and
+`hullq.search.configuration_engine` can treat them uniformly.
+
+Does not implement: unit conversion, PREFER, or OR/NOT aggregation.
 `ValueQualification.NOT_APPLICABLE`/`APPLICABILITY_UNKNOWN` are handled here
-as generic (non-configuration-scoped) statuses only.
+as generic (non-configuration-scoped) statuses — configuration-scoped
+resolution/aggregation lives in `hullq.search.configuration_engine`.
 """
 
 from __future__ import annotations
@@ -23,11 +30,17 @@ from hullq.search.types import (
     TruthState,
     ValueQualification,
 )
-from hullq.search.values import QualifiedNumericValue, is_finite_real_number
+from hullq.search.values import (
+    QualifiedCategoricalValue,
+    QualifiedNumericValue,
+    is_finite_real_number,
+)
 
 __all__ = [
+    "CategoricalLeafCriterion",
     "CriterionEvaluation",
     "NumericLeafCriterion",
+    "evaluate_categorical_leaf",
     "evaluate_numeric_leaf",
 ]
 
@@ -179,6 +192,89 @@ def evaluate_numeric_leaf(
         f"{criterion.field}={value} {'satisfies' if passes else 'contradicts'} "
         f"{criterion.comparison.value} "
         f"(min={criterion.threshold_min}, max={criterion.threshold_max})"
+    )
+    return CriterionEvaluation(
+        field=criterion.field, truth=truth, reason=None, explanation=explanation
+    )
+
+
+# ---------------------------------------------------------------------------
+# Categorical MUST leaf — SLICE-0035
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class CategoricalLeafCriterion:
+    """One serializable categorical MUST criterion over a named projection field.
+
+    `field` addresses a key in a `hullq.search.configuration.ConfigurationProjection`
+    categorical value mapping; it is opaque to this module exactly like
+    `NumericLeafCriterion.field`. `equals` is the exact canonical string the
+    qualified candidate value must match (slice Required Behavior §A: exact
+    equality only, no fuzzy/synonym matching or case-folding here).
+    """
+
+    field: str
+    equals: str
+    strength: RequirementStrength = RequirementStrength.MUST
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.field, str) or not self.field:
+            raise ValueError(
+                f"CategoricalLeafCriterion.field must be a non-empty string; got {self.field!r}"
+            )
+        if not isinstance(self.equals, str) or not self.equals:
+            raise ValueError(
+                f"CategoricalLeafCriterion.equals must be a non-empty string; got {self.equals!r}"
+            )
+        if not isinstance(self.strength, RequirementStrength):
+            raise ValueError(
+                f"CategoricalLeafCriterion.strength must be a RequirementStrength member; "
+                f"got {self.strength!r}"
+            )
+
+
+def evaluate_categorical_leaf(
+    criterion: CategoricalLeafCriterion, qualified_value: QualifiedCategoricalValue
+) -> CriterionEvaluation:
+    """Evaluate one categorical MUST leaf against one qualified candidate value.
+
+    Fail-closed exactly like `evaluate_numeric_leaf`: any qualification other
+    than `CONFIRMED`/`NOT_APPLICABLE` yields UNKNOWN with the matching reason
+    code, never FALSE or TRUE. `NOT_APPLICABLE` resolves directly to FALSE
+    (confirmed exclusion) without comparing any string value. A `CONFIRMED`
+    value is compared with strict `==` — no case-folding, no synonym table.
+    """
+    if qualified_value.qualification is ValueQualification.NOT_APPLICABLE:
+        return CriterionEvaluation(
+            field=criterion.field,
+            truth=TruthState.FALSE,
+            reason=ReasonCode.NOT_APPLICABLE,
+            explanation=(
+                f"{criterion.field}: criterion is not applicable to this design "
+                f"(confirmed exclusion, not insufficient data)"
+            ),
+        )
+
+    if qualified_value.qualification is not ValueQualification.CONFIRMED:
+        reason = _UNQUALIFIED_REASON[qualified_value.qualification]
+        return CriterionEvaluation(
+            field=criterion.field,
+            truth=TruthState.UNKNOWN,
+            reason=reason,
+            explanation=(
+                f"{criterion.field}: value is not qualified for confirmed truth "
+                f"({qualified_value.qualification.value})"
+            ),
+        )
+
+    value = qualified_value.value
+    assert value is not None  # enforced by QualifiedCategoricalValue invariant
+    passes = value == criterion.equals
+    truth = TruthState.TRUE if passes else TruthState.FALSE
+    explanation = (
+        f"{criterion.field}={value!r} {'equals' if passes else 'does not equal'} "
+        f"required value {criterion.equals!r}"
     )
     return CriterionEvaluation(
         field=criterion.field, truth=truth, reason=None, explanation=explanation
