@@ -3,12 +3,21 @@
 **Status:** informational, non-normative compatibility note for SLICE-0034.
 **Normative contract:** `specs/BOAT_DESIGN_SCHEMA.v0.6.json`.
 
-**Amendment (post-review):** §3 was corrected after independent review found
+**Amendment 1 (post-review):** §3 was corrected after independent review found
 the original `rig_type`/`rudder_type` decomposition tables asserted several
 decomposed facts (e.g. `ketch → masthead_fractional: not_applicable`,
 `spade → rudder_balance: balanced`, `twin → rudder_position: underhull`) that
 the v0.5 token did not actually prove. §3 now states and mechanically enforces
 a strict "only what the predecessor token logically guarantees" rule; see §3.3.
+
+**Amendment 2 (post-review):** a second review found that amendment 1
+over-corrected one case: `rudder_type = "twin"` definitionally guarantees
+*two rudders*, and the mapping had started discarding that guaranteed fact
+(leaving `rudder_count` untouched even when the source had it as `null`). §3.2
+now projects `rudder_count = 2` for `twin` when the source count is `null` or
+already `2`, and explicitly refuses to silently resolve a `twin` record whose
+source `rudder_count` is a concrete value other than `2` (raises rather than
+guessing); see the corrected "`rudder_count` and `twin`" note and §3.3/§3.4.
 
 This is **not** a production data migration. `BOAT_DESIGN_SCHEMA.v0.5.json` is
 unchanged and remains valid for existing v0.5 payloads. v0.6 is a new,
@@ -135,18 +144,38 @@ position is exactly the kind of inference this table must not make.
 | `other` | `unknown` | `unknown` | `unknown` | an opaque escape token proves nothing about any individual decomposed dimension (corrected — a prior draft wrongly cascaded `other` into every field) |
 | `unknown` | `unknown` | `unknown` | `unknown` | no information |
 
-**`rudder_count` and `twin` (corrected):** `baseline.appendages.rudder_count` is
-a straight-moved field (§2), copied verbatim from v0.5 independently of
-`rudder_type`. This mapping table does **not** synthesize `rudder_count = 2`
-from `rudder_type = twin`. A valid v0.5 payload can have `rudder_type: "twin"`
-and `rudder_count: null` (the count was simply never recorded even though the
-type was); in that case the "there are two rudders" fact has no home in v0.6
-beyond `rudder_count`, and this compatibility note leaves it as the source
-recorded it — `null` — rather than inventing `2`. Asserting a count from a type
-label would be exactly the kind of invented fact this section exists to
-prevent. A production migration that wants to backfill `rudder_count` from
-`rudder_type = twin` is a deliberate policy decision outside this note's scope,
-not a mechanical consequence of the schema shapes.
+**`rudder_count` and `twin` (corrected again):** `baseline.appendages.rudder_count`
+is a straight-moved field (§2), copied verbatim from v0.5 for every `rudder_type`
+value **except** `twin`. "Twin" is not merely a style label like the other seven
+values — the word's entire semantic content *is* the count fact: it is not
+possible for a v0.5 recorder to have meant anything by `rudder_type: "twin"`
+other than "there are two rudders." Leaving `rudder_count` untouched in that one
+case would discard a fact the token itself logically guarantees, which is
+exactly what §3's governing rule ("project a concrete value when it is logically
+guaranteed by the predecessor token") requires the mapping to preserve — a
+defect an earlier draft of this amendment introduced by treating `rudder_count`
+as an unconditional passthrough. The corrected projection:
+
+- `rudder_type = "twin"` and source `rudder_count` is `null` (never recorded) →
+  project `rudder_count = 2`. This is not a guessed real-world fact; it is
+  definitionally encoded in the `twin` token itself, exactly as `masthead` is
+  definitionally encoded in `masthead_sloop`.
+- `rudder_type = "twin"` and source `rudder_count` is already `2` → stays `2`
+  (the two fields agree; nothing to resolve).
+- `rudder_type = "twin"` and source `rudder_count` is a concrete value other
+  than `2` (e.g. `1` or `3`) → **this is an internally inconsistent v0.5
+  payload**, not a case this mapping can deterministically resolve. The mapping
+  does not silently overwrite the recorded count with `2`, and does not
+  silently keep the recorded count and drop the `twin` fact either — it refuses
+  to produce a clean projection and flags the record for manual/conflict
+  resolution instead (`RudderCountMappingConflict` in the regression test,
+  §3.3). Guessing which of two contradicting predecessor facts to trust would
+  be exactly the kind of invented resolution `TECHNICAL_PROFILE_SPEC.v0.1.md`
+  §5's applicability-before-conflict principle and §6's 6/8-eye protocol exist
+  to prevent, and picking one silently is worse than surfacing the conflict.
+- Every `rudder_type` value other than `twin` never touches `rudder_count` at
+  all, in either direction — a straight passthrough of whatever the source had
+  (including `null`), with no exception.
 
 Because `rudder_position` and `rudder_support` are independent fields, v0.6 can
 represent combinations v0.5 could not, e.g. a transom-positioned rudder that is
@@ -169,13 +198,54 @@ governing rule, independently of the table's own content:
   `rudder_type` value, with no exception;
 - `appendages.rudder_position` is asserted as non-`unknown` for **only**
   `transom_hung`;
-- the mapping's `rudder_count` handling is a straight passthrough, never a
-  function of `rudder_type` (checked by asserting the mapping table has no
-  `rudder_count` column/key at all).
+- `rudder_count` projection (`project_rudder_count` in the test module) is a
+  straight passthrough for every `rudder_type` **except** `twin`; for `twin` it
+  asserts `null → 2` and `2 → 2`, and asserts that `1`/`0`/`3`/`4` each raise
+  `RudderCountMappingConflict` rather than silently resolving; twin's
+  `rudder_position`/`rudder_support`/`rudder_balance` are separately asserted
+  to stay `unknown`/`unknown`/`unknown` (the count correction does not reopen
+  amendment 1's conservatism for the other three fields).
 
 This makes it structurally impossible for a future edit to silently reintroduce
-an invented decomposed fact (e.g. re-adding `balanced` for `spade`) without an
+an invented decomposed fact (e.g. re-adding `balanced` for `spade`, or silently
+picking a winner for a contradictory `twin`/`rudder_count` pair) without an
 explicit, reviewable change to the enforcement rule itself, not just the table.
+
+### 3.4 Analogous-fact audit (amendment 2)
+
+Requested scope: check the corrected §3.1/§3.2 tables for other rows where a
+predecessor token *literally or definitionally* encodes a fact about an
+**existing** v0.5→v0.6 field that the mapping currently discards — the same
+pattern that caused the `twin`/`rudder_count` defect.
+
+- **`rig_type` table (§3.1):** no analogous case. Sailplan-implies-mast-count
+  (a sloop/cutter/cat rig is definitionally single-masted; a schooner has two
+  or more masts) is a real definitional fact, but `rig.mast_count` has **no
+  v0.5 predecessor field at all** (§4 — it is wholly new in v0.6). Nothing is
+  being *discarded*, because v0.5 never had anywhere to record it; populating
+  `mast_count` from `sailplan` would be *adding* a new inferred fact, not
+  *stopping the loss* of an existing recorded one, so it is a different (and
+  broader) category of change than this audit's scope and is not made here.
+- **`rudder_type` table (§3.2):** one candidate was considered and declined.
+  `rudder_type ∈ {skeg_hung, partial_skeg}` definitionally requires a skeg to
+  exist (`appendages.skeg_type ≠ "none"`) — but that half is already covered
+  without any mapping change, because `skeg_type` is a straight-moved field
+  (§2) and v0.6's own `skeg_type = "none"` + `rudder_support = "skeg"`
+  cross-field invariant (§6) will already reject the resulting instance if a
+  real v0.5 record has `rudder_type: "skeg_hung"` and `skeg_type: "none"`
+  simultaneously — the same "flag the inconsistency, do not silently resolve
+  it" outcome §3.2 now gives `twin`/`rudder_count`, obtained for free from the
+  existing invariant. Going further and asserting `skeg_type = "full"` for the
+  plain `skeg_hung` token (as opposed to `partial_skeg`) was considered and
+  **declined**: unlike `twin`↔`rudder_count = 2`, which has only one possible
+  reading, that inference depends on reading `skeg_hung`'s meaning through
+  contrast with its sibling enum value `partial_skeg`, not from `skeg_hung`
+  taken in isolation — the same kind of enum-sibling-exclusivity reasoning
+  amendment 1 already rejected when it stopped inferring `rudder_position:
+  "underhull"` from `rudder_type` values other than `transom_hung`. No other
+  row in either table references any other existing v0.5 field.
+- No new taxonomy, migration engine, real-BoatDesign ingestion, search change
+  or persistence change was introduced by this audit.
 
 ## 4. New in v0.6 (no v0.5 predecessor)
 

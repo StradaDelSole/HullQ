@@ -5,12 +5,20 @@ tables, how the v0.5 combined `rig_type` and `rudder_type` tokens translate into
 the v0.6 decomposed fields. Independent review found the original tables
 over-inferred: they asserted decomposed facts (e.g. `ketch -> masthead_fractional:
 not_applicable`, `spade -> rudder_balance: balanced`) that the v0.5 token never
-actually encoded.
+actually encoded (amendment 1).
 
-This module transcribes the corrected tables as literal Python data and then
-enforces the *governing rule itself* -- not just "does the code match the
-table" (which would let a bug in both drift together undetected) -- so a future
-edit cannot silently reintroduce an invented fact without an explicit, reviewed
+A second review then found amendment 1 over-corrected one case: `rudder_type =
+"twin"` definitionally guarantees two rudders, and the mapping had started
+discarding that guaranteed fact by leaving `rudder_count` untouched even when
+the source had it as `null`. `project_rudder_count` below (amendment 2) restores
+that one guaranteed projection while refusing to silently resolve a `twin`
+record whose source `rudder_count` disagrees (a concrete value other than `2`).
+
+This module transcribes the corrected tables/rules as literal Python data and
+functions, then enforces the *governing rule itself* -- not just "does the code
+match the table" (which would let a bug in both drift together undetected) --
+so a future edit cannot silently reintroduce an invented fact, or silently
+resolve a contradictory predecessor payload, without an explicit, reviewed
 change to the enforcement rule below, not merely to the table.
 
 None of this is wired into the persistence importer/readback path; it is a
@@ -23,6 +31,8 @@ import copy
 import json
 from pathlib import Path
 from typing import Any
+
+import pytest
 
 from hullq.contracts import ContractRegistry
 
@@ -59,8 +69,10 @@ RIG_TYPE_MAPPING: dict[str, dict[str, str]] = {
 }
 
 # Transcription of docs/engineering/BOAT_DESIGN_V05_TO_V06_MAPPING.md §3.2.
-# Deliberately has no "rudder_count" key anywhere: rudder_count is a
-# straight-moved field (§2), never synthesized from rudder_type.
+# Deliberately has no "rudder_count" key anywhere: rudder_count projection is
+# handled separately by project_rudder_count() below, since -- uniquely for
+# "twin" -- the correct projection depends on the *source* rudder_count value,
+# not on rudder_type alone (a static per-token table entry cannot express that).
 RUDDER_TYPE_MAPPING: dict[str, dict[str, str]] = {
     "keel_hung": {
         "rudder_position": "unknown",
@@ -99,6 +111,38 @@ RUDDER_TYPE_MAPPING: dict[str, dict[str, str]] = {
         "rudder_balance": "unknown",
     },
 }
+
+
+class RudderCountMappingConflict(ValueError):
+    """A v0.5 payload's rudder_type and rudder_count logically disagree.
+
+    Raised, never silently resolved, by project_rudder_count() below. Mirrors
+    the "applicability before conflict" / 6-8-eye principle in
+    TECHNICAL_PROFILE_SPEC.v0.1.md SS5/SS6: two disagreeing predecessor facts are
+    flagged for manual/conflict resolution, not mechanically arbitrated.
+    """
+
+
+def project_rudder_count(rudder_type: str, source_rudder_count: int | None) -> int | None:
+    """Project v0.5 baseline.appendages.rudder_count into v0.6, per mapping doc SS3.2.
+
+    A straight passthrough for every rudder_type except "twin": "twin" is
+    definitionally two rudders, so a null/unrecorded source count is projected
+    as 2 (a guaranteed fact, not a guess) and an already-2 source count stays 2.
+    A concrete source count other than 2 combined with rudder_type="twin" is an
+    internally inconsistent v0.5 payload; this function refuses to silently
+    pick a winner and raises RudderCountMappingConflict instead.
+    """
+    if rudder_type != "twin":
+        return source_rudder_count
+    if source_rudder_count is None or source_rudder_count == 2:
+        return 2
+    raise RudderCountMappingConflict(
+        f"v0.5 payload has rudder_type='twin' but rudder_count={source_rudder_count!r}; "
+        "this is an internally inconsistent predecessor record. This compatibility "
+        "mapping does not silently resolve it -- flag for manual/conflict resolution "
+        "(TECHNICAL_PROFILE_SPEC.v0.1.md SS5/SS6)."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -194,12 +238,47 @@ def test_rudder_type_mapping_never_asserts_other_for_every_field_simultaneously(
     assert all(value == "unknown" for value in other_row.values())
 
 
-def test_mapping_tables_never_synthesize_rudder_count() -> None:
-    # rudder_count is a straight-moved field (mapping doc SS2), independent of
-    # rudder_type; the twin -> rudder_count=2 shortcut from the pre-review draft
-    # would lose a real v0.5 payload's actual (possibly null) recorded count.
-    for row in RUDDER_TYPE_MAPPING.values():
-        assert "rudder_count" not in row
+# ---------------------------------------------------------------------------
+# rudder_count projection: twin is the one narrow, guaranteed exception to the
+# "rudder_count is a straight-moved field" rule (mapping doc SS2/SS3.2).
+# ---------------------------------------------------------------------------
+
+
+def test_twin_with_null_source_count_projects_to_the_guaranteed_two() -> None:
+    assert project_rudder_count("twin", None) == 2
+
+
+def test_twin_with_already_two_source_count_stays_two() -> None:
+    assert project_rudder_count("twin", 2) == 2
+
+
+@pytest.mark.parametrize("contradictory_count", [0, 1, 3, 4])
+def test_twin_with_contradictory_source_count_is_not_silently_resolved(
+    contradictory_count: int,
+) -> None:
+    # Neither silently overwritten to 2 nor silently kept as the contradictory
+    # value while dropping the twin fact -- must raise, not return anything.
+    with pytest.raises(RudderCountMappingConflict):
+        project_rudder_count("twin", contradictory_count)
+
+
+def test_twin_still_does_not_invent_position_support_or_balance() -> None:
+    # The rudder_count correction (amendment 2) must not reopen amendment 1's
+    # conservatism for the other three decomposed rudder fields.
+    row = RUDDER_TYPE_MAPPING["twin"]
+    assert row == {
+        "rudder_position": "unknown",
+        "rudder_support": "unknown",
+        "rudder_balance": "unknown",
+    }
+
+
+@pytest.mark.parametrize("rudder_type", sorted(t for t in RUDDER_TYPE_MAPPING if t != "twin"))
+@pytest.mark.parametrize("source_count", [None, 0, 1, 2, 3])
+def test_non_twin_rudder_types_never_synthesize_rudder_count(
+    rudder_type: str, source_count: int | None
+) -> None:
+    assert project_rudder_count(rudder_type, source_count) == source_count
 
 
 # ---------------------------------------------------------------------------
@@ -225,13 +304,50 @@ def test_every_mapped_rig_type_row_produces_a_schema_valid_instance() -> None:
 
 
 def test_every_mapped_rudder_type_row_produces_a_schema_valid_instance() -> None:
+    # Uses source_rudder_count=None (the representative "never recorded" case)
+    # so the twin row exercises its actual guaranteed projection (-> 2) rather
+    # than an arbitrary leftover fixture value.
     base = _load_base_instance()
-    for row in RUDDER_TYPE_MAPPING.values():
+    for rudder_type, row in RUDDER_TYPE_MAPPING.items():
         instance = copy.deepcopy(base)
         instance["baseline"]["appendages"]["rudder_position"] = row["rudder_position"]
         instance["baseline"]["appendages"]["rudder_support"] = row["rudder_support"]
         instance["baseline"]["appendages"]["rudder_balance"] = row["rudder_balance"]
-        # rudder_count / skeg_type are independent of this mapping and are left
-        # as the base fixture's own concrete values (rudder_count=1, skeg_type
-        # full), which is compatible with every mapped support value here.
+        instance["baseline"]["appendages"]["rudder_count"] = project_rudder_count(rudder_type, None)
+        # skeg_type is independent of this mapping and is left as the base
+        # fixture's own concrete value ("full"), which is compatible with
+        # every mapped rudder_support value exercised here.
         _V06.validate(instance)
+
+
+def test_twin_with_null_source_count_produces_a_schema_valid_count_two_instance() -> None:
+    base = _load_base_instance()
+    instance = copy.deepcopy(base)
+    instance["baseline"]["appendages"].update(
+        rudder_position="unknown",
+        rudder_support="unknown",
+        rudder_balance="unknown",
+        rudder_count=project_rudder_count("twin", None),
+    )
+    assert instance["baseline"]["appendages"]["rudder_count"] == 2
+    _V06.validate(instance)
+
+
+def test_twin_with_agreeing_source_count_two_produces_a_schema_valid_instance() -> None:
+    base = _load_base_instance()
+    instance = copy.deepcopy(base)
+    instance["baseline"]["appendages"].update(
+        rudder_position="unknown",
+        rudder_support="unknown",
+        rudder_balance="unknown",
+        rudder_count=project_rudder_count("twin", 2),
+    )
+    _V06.validate(instance)
+
+
+def test_twin_with_contradictory_source_count_never_reaches_schema_validation() -> None:
+    # The conflict must be caught by the mapping function itself, before any
+    # v0.6 instance is even constructed -- there is no "clean" instance to
+    # validate for a rudder_type=twin/rudder_count=1 source payload.
+    with pytest.raises(RudderCountMappingConflict):
+        project_rudder_count("twin", 1)
