@@ -41,6 +41,7 @@ from hullq.search.configuration import (
     ConfigurationIdentity,
     ConfigurationProjection,
     DesignConfigurationSet,
+    NamedVariantConstraint,
     OptionConstraint,
     ResolvedConfiguration,
 )
@@ -86,6 +87,7 @@ from hullq.search.types import (
     ValueQualification,
 )
 from hullq.search.values import (
+    RESERVED_CATEGORICAL_SENTINELS,
     QualifiedCategoricalValue,
     QualifiedNumericValue,
     from_derived_metric_status,
@@ -94,6 +96,7 @@ from hullq.search.values import (
 )
 
 __all__ = [
+    "RESERVED_CATEGORICAL_SENTINELS",
     "AndQuery",
     "CategoricalLeafCriterion",
     "ConfigurationEvaluation",
@@ -106,6 +109,7 @@ __all__ = [
     "LeafCriterionKind",
     "MixedAndQuery",
     "MixedLeafCriterion",
+    "NamedVariantConstraint",
     "NumericComparisonKind",
     "NumericLeafCriterion",
     "OptionConstraint",

@@ -22,6 +22,7 @@ from hullq.domain.derived_metrics import MetricStatus
 from hullq.domain.provenance import ResolutionState
 from hullq.search.types import ValueQualification
 from hullq.search.values import (
+    RESERVED_CATEGORICAL_SENTINELS,
     QualifiedCategoricalValue,
     QualifiedNumericValue,
     from_derived_metric_status,
@@ -270,3 +271,56 @@ def test_from_resolution_state_categorical_covers_all_enum_members() -> None:
     confirmed_states = {ResolutionState.RESOLVED, ResolutionState.RESOLVED_WITH_CONFLICT}
     for state in ResolutionState:
         from_resolution_state_categorical(state, "fin" if state in confirmed_states else None)
+
+
+# ---------------------------------------------------------------------------
+# REVIEW amendment Finding 1 — reserved categorical semantic sentinels
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("sentinel", sorted(RESERVED_CATEGORICAL_SENTINELS))
+def test_direct_construction_cannot_bypass_sentinel_protection(sentinel: str) -> None:
+    # A caller must not be able to construct an ordinary CONFIRMED
+    # QualifiedCategoricalValue carrying a reserved sentinel by bypassing the
+    # from_resolution_state_categorical adapter entirely.
+    with pytest.raises(ValueError, match="reserved semantic sentinel"):
+        QualifiedCategoricalValue(value=sentinel, qualification=ValueQualification.CONFIRMED)
+
+
+def test_reserved_sentinels_are_exactly_unknown_and_not_applicable() -> None:
+    assert frozenset({"unknown", "not_applicable"}) == RESERVED_CATEGORICAL_SENTINELS
+
+
+@pytest.mark.parametrize(
+    "state", [ResolutionState.RESOLVED, ResolutionState.RESOLVED_WITH_CONFLICT]
+)
+def test_adapter_reroutes_unknown_sentinel_to_missing(state: ResolutionState) -> None:
+    qv = from_resolution_state_categorical(state, "unknown")
+    assert qv.qualification is ValueQualification.MISSING
+    assert qv.value is None
+
+
+@pytest.mark.parametrize(
+    "state", [ResolutionState.RESOLVED, ResolutionState.RESOLVED_WITH_CONFLICT]
+)
+def test_adapter_reroutes_not_applicable_sentinel_to_not_applicable(state: ResolutionState) -> None:
+    qv = from_resolution_state_categorical(state, "not_applicable")
+    assert qv.qualification is ValueQualification.NOT_APPLICABLE
+    assert qv.value is None
+
+
+def test_adapter_still_confirms_genuine_non_sentinel_values() -> None:
+    # A resolved FieldResolution being CONFIRMED is unaffected for any
+    # ordinary canonical value that is not a reserved sentinel.
+    qv = from_resolution_state_categorical(ResolutionState.RESOLVED, "masthead")
+    assert qv.qualification is ValueQualification.CONFIRMED
+    assert qv.value == "masthead"
+
+
+def test_adapter_sentinel_rerouting_does_not_apply_to_non_confirmed_states() -> None:
+    # unknown/needs_review/conflict already discard the candidate value
+    # entirely; the sentinel check only changes behavior for an
+    # otherwise-CONFIRMED state.
+    qv = from_resolution_state_categorical(ResolutionState.UNKNOWN, "unknown")
+    assert qv.qualification is ValueQualification.MISSING
+    assert qv.value is None

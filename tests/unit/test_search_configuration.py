@@ -1,4 +1,4 @@
-"""Unit tests for hullq.search.configuration — SLICE-0035.
+"""Unit tests for hullq.search.configuration — SLICE-0035 (+ REVIEW amendment).
 
 Covers:
 - ConfigurationProjection fail-closed .get_numeric()/.get_categorical() and
@@ -8,6 +8,15 @@ Covers:
   unique configuration_id, option_constraints validation (requires/excludes)
 - adversarial checklist Q6: an invalid/unresolved option dependency
   combination is rejected at construction, never silently ignored
+- REVIEW amendment Finding 2: configuration_space_complete is a genuine bool
+  (never coerced), configurations/requires/excludes are defensively
+  materialized to immutable types before validation so a caller mutating its
+  own source collection after construction cannot alter what was validated,
+  and option_constraints/variant_constraints mapping keys must match the
+  constraint's own id
+- REVIEW amendment Finding 3: NamedVariantConstraint enforces
+  requires/excludes for a ResolvedConfiguration's named_variant_id, mirroring
+  OptionConstraint, never invented for an unconstrained variant
 """
 
 from __future__ import annotations
@@ -18,6 +27,7 @@ from hullq.search.configuration import (
     ConfigurationIdentity,
     ConfigurationProjection,
     DesignConfigurationSet,
+    NamedVariantConstraint,
     OptionConstraint,
     ResolvedConfiguration,
 )
@@ -246,3 +256,222 @@ def test_configuration_referencing_unconstrained_option_is_unaffected() -> None:
         configuration_space_complete=True,
     )
     assert config_set.configurations[0].identity.applied_option_ids == ("OPT-UNCONSTRAINED",)
+
+
+# ---------------------------------------------------------------------------
+# REVIEW amendment Finding 2 — runtime-closed truth-authorizing controls
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("bad_complete", [1, 0, "true", "false", None, 1.0])
+def test_configuration_space_complete_rejects_non_bool(bad_complete: object) -> None:
+    with pytest.raises(ValueError, match="configuration_space_complete must be an actual bool"):
+        DesignConfigurationSet(
+            design_id="design-1",
+            configurations=(_baseline_configuration(),),
+            configuration_space_complete=bad_complete,  # type: ignore[arg-type]
+        )
+
+
+@pytest.mark.parametrize("good_complete", [True, False])
+def test_configuration_space_complete_accepts_genuine_bool(good_complete: bool) -> None:
+    config_set = DesignConfigurationSet(
+        design_id="design-1",
+        configurations=(_baseline_configuration(),),
+        configuration_space_complete=good_complete,
+    )
+    assert config_set.configuration_space_complete is good_complete
+
+
+def test_mutating_source_configurations_list_after_construction_is_inert() -> None:
+    source_list = [_baseline_configuration()]
+    config_set = DesignConfigurationSet(
+        design_id="design-1",
+        configurations=source_list,
+        configuration_space_complete=True,  # type: ignore[arg-type]
+    )
+    extra = _configuration_with_options()
+    source_list.append(extra)
+    assert len(config_set.configurations) == 1
+    assert config_set.configurations[0].identity.configuration_id == "cfg-baseline"
+
+
+def test_mutating_source_requires_set_after_constructing_option_constraint_is_inert() -> None:
+    source_requires = {"OPT-A"}
+    constraint = OptionConstraint(option_id="OPT-B", requires_option_ids=source_requires)
+    source_requires.add("OPT-Z")
+    assert constraint.requires_option_ids == frozenset({"OPT-A"})
+
+
+def test_mutating_source_excludes_set_after_constructing_option_constraint_is_inert() -> None:
+    source_excludes = {"OPT-DEEP"}
+    constraint = OptionConstraint(option_id="OPT-SHALLOW", excludes_option_ids=source_excludes)
+    source_excludes.add("OPT-OTHER")
+    assert constraint.excludes_option_ids == frozenset({"OPT-DEEP"})
+
+
+def test_mutation_after_option_constraint_construction_cannot_relax_validation() -> None:
+    # If mutation leaked through, adding "OPT-A" to the excludes set after
+    # construction could turn a currently-valid configuration invalid (or
+    # vice versa) without re-validation ever running. It must not.
+    source_excludes: set[str] = set()
+    constraint = OptionConstraint(option_id="OPT-B", excludes_option_ids=source_excludes)
+    config_set = DesignConfigurationSet(
+        design_id="design-1",
+        configurations=(_configuration_with_options("OPT-A", "OPT-B"),),
+        configuration_space_complete=True,
+        option_constraints={"OPT-B": constraint},
+    )
+    source_excludes.add("OPT-A")
+    # Already-validated set is unaffected by the post-hoc mutation attempt.
+    assert config_set.configurations[0].identity.applied_option_ids == ("OPT-A", "OPT-B")
+
+
+def test_option_constraints_mapping_key_must_match_option_id() -> None:
+    constraint = OptionConstraint(option_id="OPT-B")
+    with pytest.raises(ValueError, match="does not match"):
+        DesignConfigurationSet(
+            design_id="design-1",
+            configurations=(_configuration_with_options("OPT-B"),),
+            configuration_space_complete=True,
+            option_constraints={"OPT-WRONG-KEY": constraint},
+        )
+
+
+# ---------------------------------------------------------------------------
+# REVIEW amendment Finding 3 — NamedVariant dependency/applicability
+# ---------------------------------------------------------------------------
+
+
+def test_named_variant_constraint_requires_variant_id() -> None:
+    with pytest.raises(ValueError, match="variant_id"):
+        NamedVariantConstraint(variant_id="")
+
+
+def test_named_variant_constraint_rejects_overlapping_requires_and_excludes() -> None:
+    with pytest.raises(ValueError, match="cannot both require and exclude"):
+        NamedVariantConstraint(
+            variant_id="VARIANT-CENTER-COCKPIT",
+            requires_option_ids=frozenset({"OPT-X"}),
+            excludes_option_ids=frozenset({"OPT-X"}),
+        )
+
+
+def _configuration_with_variant(variant_id: str | None, *option_ids: str) -> ResolvedConfiguration:
+    return ResolvedConfiguration(
+        identity=ConfigurationIdentity(
+            configuration_id="cfg-with-variant",
+            boat_design_id="design-1",
+            named_variant_id=variant_id,
+            applied_option_ids=option_ids,
+        ),
+        projection=ConfigurationProjection(),
+    )
+
+
+def test_variant_missing_required_companion_option_is_rejected() -> None:
+    # VARIANT-CC requires OPT-WHEEL-STEERING, but this configuration doesn't apply it.
+    constraints = {
+        "VARIANT-CC": NamedVariantConstraint(
+            variant_id="VARIANT-CC", requires_option_ids=frozenset({"OPT-WHEEL-STEERING"})
+        )
+    }
+    with pytest.raises(ValueError, match="without its required companion option"):
+        DesignConfigurationSet(
+            design_id="design-1",
+            configurations=(_configuration_with_variant("VARIANT-CC"),),
+            configuration_space_complete=True,
+            variant_constraints=constraints,
+        )
+
+
+def test_variant_with_required_companion_option_is_accepted() -> None:
+    constraints = {
+        "VARIANT-CC": NamedVariantConstraint(
+            variant_id="VARIANT-CC", requires_option_ids=frozenset({"OPT-WHEEL-STEERING"})
+        )
+    }
+    config_set = DesignConfigurationSet(
+        design_id="design-1",
+        configurations=(_configuration_with_variant("VARIANT-CC", "OPT-WHEEL-STEERING"),),
+        configuration_space_complete=True,
+        variant_constraints=constraints,
+    )
+    assert config_set.configurations[0].identity.named_variant_id == "VARIANT-CC"
+
+
+def test_variant_with_excluded_option_combination_is_rejected() -> None:
+    constraints = {
+        "VARIANT-CC": NamedVariantConstraint(
+            variant_id="VARIANT-CC", excludes_option_ids=frozenset({"OPT-TILLER"})
+        )
+    }
+    with pytest.raises(ValueError, match="alongside excluded option"):
+        DesignConfigurationSet(
+            design_id="design-1",
+            configurations=(_configuration_with_variant("VARIANT-CC", "OPT-TILLER"),),
+            configuration_space_complete=True,
+            variant_constraints=constraints,
+        )
+
+
+def test_configuration_referencing_unconstrained_variant_is_unaffected() -> None:
+    # A variant id with no entry in variant_constraints is not validated —
+    # only explicitly supplied constraints are enforced (never invented).
+    config_set = DesignConfigurationSet(
+        design_id="design-1",
+        configurations=(_configuration_with_variant("VARIANT-UNCONSTRAINED"),),
+        configuration_space_complete=True,
+    )
+    assert config_set.configurations[0].identity.named_variant_id == "VARIANT-UNCONSTRAINED"
+
+
+def test_configuration_with_no_variant_is_unaffected_by_variant_constraints() -> None:
+    constraints = {
+        "VARIANT-CC": NamedVariantConstraint(
+            variant_id="VARIANT-CC", requires_option_ids=frozenset({"OPT-WHEEL-STEERING"})
+        )
+    }
+    config_set = DesignConfigurationSet(
+        design_id="design-1",
+        configurations=(_configuration_with_variant(None),),
+        configuration_space_complete=True,
+        variant_constraints=constraints,
+    )
+    assert config_set.configurations[0].identity.named_variant_id is None
+
+
+def test_variant_constraint_is_not_applied_to_a_different_variant() -> None:
+    # A constraint keyed to VARIANT-CC must never leak onto VARIANT-OTHER.
+    constraints = {
+        "VARIANT-CC": NamedVariantConstraint(
+            variant_id="VARIANT-CC", requires_option_ids=frozenset({"OPT-WHEEL-STEERING"})
+        )
+    }
+    config_set = DesignConfigurationSet(
+        design_id="design-1",
+        configurations=(_configuration_with_variant("VARIANT-OTHER"),),
+        configuration_space_complete=True,
+        variant_constraints=constraints,
+    )
+    assert config_set.configurations[0].identity.named_variant_id == "VARIANT-OTHER"
+
+
+def test_variant_constraints_mapping_key_must_match_variant_id() -> None:
+    constraint = NamedVariantConstraint(variant_id="VARIANT-CC")
+    with pytest.raises(ValueError, match="does not match"):
+        DesignConfigurationSet(
+            design_id="design-1",
+            configurations=(_configuration_with_variant("VARIANT-CC"),),
+            configuration_space_complete=True,
+            variant_constraints={"VARIANT-WRONG-KEY": constraint},
+        )
+
+
+def test_mutating_source_requires_set_after_constructing_variant_constraint_is_inert() -> None:
+    source_requires = {"OPT-A"}
+    constraint = NamedVariantConstraint(
+        variant_id="VARIANT-CC", requires_option_ids=source_requires
+    )
+    source_requires.add("OPT-Z")
+    assert constraint.requires_option_ids == frozenset({"OPT-A"})

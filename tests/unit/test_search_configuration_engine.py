@@ -17,14 +17,27 @@ criterion), a genuinely configuration-ambiguous design remaining insufficient,
 mixed categorical + numeric AND at configuration granularity, deterministic
 design_id ordering, and the primary-result-surface boundary (only
 CONFIRMED_MATCH counted as a match).
+
+REVIEW amendment Finding 1: end-to-end proof (real
+`from_resolution_state_categorical` adapter through to design-level
+aggregation) that a reserved categorical sentinel ("unknown") can never
+license `CONFIRMED_NON_MATCH`, and that "not_applicable" correctly flows to
+FALSE and can license it.
+
+REVIEW amendment Finding 3: a NamedVariantConstraint-governed configuration
+composes correctly with normal design-level aggregation, including remaining
+INSUFFICIENT_DATA (never a false CONFIRMED_NON_MATCH) when the configuration
+space itself is not known to be complete.
 """
 
 from __future__ import annotations
 
+from hullq.domain.provenance import ResolutionState
 from hullq.search.configuration import (
     ConfigurationIdentity,
     ConfigurationProjection,
     DesignConfigurationSet,
+    NamedVariantConstraint,
     ResolvedConfiguration,
 )
 from hullq.search.configuration_engine import (
@@ -41,7 +54,11 @@ from hullq.search.types import (
     TruthState,
     ValueQualification,
 )
-from hullq.search.values import QualifiedCategoricalValue, QualifiedNumericValue
+from hullq.search.values import (
+    QualifiedCategoricalValue,
+    QualifiedNumericValue,
+    from_resolution_state_categorical,
+)
 
 
 def _confirmed_numeric(value: float) -> QualifiedNumericValue:
@@ -378,3 +395,123 @@ def test_run_configuration_query_ordering_is_stable_regardless_of_input_order() 
     forward_ids = [e.design_id for e in forward.confirmed_matches]
     reversed_ids = [e.design_id for e in reversed_result.confirmed_matches]
     assert forward_ids == reversed_ids == sorted(forward_ids)
+
+
+# ---------------------------------------------------------------------------
+# REVIEW amendment Finding 1 — reserved sentinels through the full pipeline,
+# adapter -> leaf -> configuration -> design aggregation
+# ---------------------------------------------------------------------------
+
+
+def _masthead_query() -> MixedAndQuery:
+    return MixedAndQuery(
+        criteria=(CategoricalLeafCriterion(field="rig.masthead_fractional", equals="masthead"),)
+    )
+
+
+def test_unknown_sentinel_field_cannot_license_confirmed_non_match() -> None:
+    # The only criterion resolves to the reserved "unknown" sentinel through
+    # the real adapter; even with a complete, single-configuration space this
+    # must remain INSUFFICIENT_DATA, never CONFIRMED_NON_MATCH.
+    configuration = ResolvedConfiguration(
+        identity=ConfigurationIdentity(configuration_id="cfg-1", boat_design_id="design-1"),
+        projection=ConfigurationProjection(
+            categorical_values={
+                "rig.masthead_fractional": from_resolution_state_categorical(
+                    ResolutionState.RESOLVED, "unknown"
+                )
+            }
+        ),
+    )
+    config_set = DesignConfigurationSet(
+        design_id="design-1", configurations=(configuration,), configuration_space_complete=True
+    )
+    evaluation = evaluate_design_configuration_set(_masthead_query(), config_set)
+    assert evaluation.result_class is ResultClass.INSUFFICIENT_DATA
+    assert evaluation.result_class is not ResultClass.CONFIRMED_NON_MATCH
+
+
+def test_not_applicable_sentinel_field_flows_to_confirmed_non_match() -> None:
+    # "not_applicable" through the real adapter correctly produces FALSE
+    # (confirmed exclusion) at the leaf, and therefore a genuine
+    # CONFIRMED_NON_MATCH when it is the only configuration in a complete space.
+    configuration = ResolvedConfiguration(
+        identity=ConfigurationIdentity(configuration_id="cfg-1", boat_design_id="design-1"),
+        projection=ConfigurationProjection(
+            categorical_values={
+                "rig.masthead_fractional": from_resolution_state_categorical(
+                    ResolutionState.RESOLVED, "not_applicable"
+                )
+            }
+        ),
+    )
+    config_set = DesignConfigurationSet(
+        design_id="design-1", configurations=(configuration,), configuration_space_complete=True
+    )
+    evaluation = evaluate_design_configuration_set(_masthead_query(), config_set)
+    assert evaluation.result_class is ResultClass.CONFIRMED_NON_MATCH
+    assert evaluation.configuration_evaluations[0].truth is TruthState.FALSE
+    assert evaluation.configuration_evaluations[0].criterion_evaluations[0].reason is (
+        ReasonCode.NOT_APPLICABLE
+    )
+
+
+# ---------------------------------------------------------------------------
+# REVIEW amendment Finding 3 — NamedVariantConstraint composes with aggregation
+# ---------------------------------------------------------------------------
+
+
+def test_variant_constrained_configuration_evaluates_normally() -> None:
+    variant_cfg = _resolved_configuration("cfg-center-cockpit", "design-1", draft_max_m=1.5)
+    variant_cfg = ResolvedConfiguration(
+        identity=ConfigurationIdentity(
+            configuration_id="cfg-center-cockpit",
+            boat_design_id="design-1",
+            named_variant_id="VARIANT-CENTER-COCKPIT",
+            applied_option_ids=("OPT-WHEEL-STEERING",),
+        ),
+        projection=variant_cfg.projection,
+    )
+    config_set = DesignConfigurationSet(
+        design_id="design-1",
+        configurations=(variant_cfg,),
+        configuration_space_complete=True,
+        variant_constraints={
+            "VARIANT-CENTER-COCKPIT": NamedVariantConstraint(
+                variant_id="VARIANT-CENTER-COCKPIT",
+                requires_option_ids=frozenset({"OPT-WHEEL-STEERING"}),
+            )
+        },
+    )
+    evaluation = evaluate_design_configuration_set(_draft_query(), config_set)
+    assert evaluation.result_class is ResultClass.CONFIRMED_MATCH
+    assert evaluation.matching_configuration_ids == ("cfg-center-cockpit",)
+
+
+def test_variant_constrained_configuration_with_incomplete_space_is_insufficient() -> None:
+    # Even though the known variant-bearing configuration is itself FALSE,
+    # an incomplete configuration space still forces INSUFFICIENT_DATA.
+    variant_cfg = _resolved_configuration("cfg-baseline", "design-1", draft_max_m=1.9)
+    variant_cfg = ResolvedConfiguration(
+        identity=ConfigurationIdentity(
+            configuration_id="cfg-baseline",
+            boat_design_id="design-1",
+            named_variant_id="VARIANT-CENTER-COCKPIT",
+            applied_option_ids=("OPT-WHEEL-STEERING",),
+        ),
+        projection=variant_cfg.projection,
+    )
+    config_set = DesignConfigurationSet(
+        design_id="design-1",
+        configurations=(variant_cfg,),
+        configuration_space_complete=False,
+        variant_constraints={
+            "VARIANT-CENTER-COCKPIT": NamedVariantConstraint(
+                variant_id="VARIANT-CENTER-COCKPIT",
+                requires_option_ids=frozenset({"OPT-WHEEL-STEERING"}),
+            )
+        },
+    )
+    evaluation = evaluate_design_configuration_set(_draft_query(), config_set)
+    assert evaluation.result_class is ResultClass.INSUFFICIENT_DATA
+    assert evaluation.reason is ReasonCode.CONFIGURATION_AMBIGUOUS
