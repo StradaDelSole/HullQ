@@ -1,0 +1,139 @@
+{
+  "fixture_purpose": "SLICE-0034 synthetic archetype: center-cockpit cruiser demonstrating cockpit-position filtering data (center vs aft) independent of hull/rig facts. Not a real BoatDesign; no real-world boat facts are represented.",
+  "schema_version": "0.6",
+  "id": "BD_ARCHETYPE_CENTER_COCKPIT",
+  "boat_model_id": "BM_ARCHETYPE_CENTER_COCKPIT",
+  "generation": {
+    "label": "Mk I",
+    "sequence": 1,
+    "aliases": [],
+    "first_built": 1998,
+    "last_built": 2006,
+    "hull_number_from": null,
+    "hull_number_to": null,
+    "boundary_confidence": "medium"
+  },
+  "relationships": {
+    "builders": [
+      {
+        "id": "ODR_ARCHETYPE_CENTER_COCKPIT_1",
+        "organization_id": "ORG_ARCHETYPE_CENTER_COCKPIT_YARD",
+        "role": "builder",
+        "first_year": 1998,
+        "last_year": null,
+        "hull_number_from": null,
+        "hull_number_to": null,
+        "market": null,
+        "notes": null
+      }
+    ],
+    "designers": [
+      {
+        "name": "Archetype Design Studio (synthetic)",
+        "role": "naval_architect"
+      }
+    ],
+    "number_built": null
+  },
+  "baseline": {
+    "dimensions": {
+      "loa_m": 13.4,
+      "lod_m": 12.9,
+      "lwl_m": 11.2,
+      "beam_m": 4.1,
+      "beam_waterline_m": 3.5,
+      "draft_min_m": 1.9,
+      "draft_max_m": 1.9,
+      "displacement_kg": 12800,
+      "ballast_kg": 4600,
+      "ballast_type": "external_keel",
+      "ballast_material": "lead",
+      "sail_area_m2": 84.0
+    },
+    "ratio_input_basis": {
+      "displacement_basis": "lightship",
+      "sail_area_basis": "nominal_main_plus_foretriangle"
+    },
+    "configuration": {
+      "hull_configuration": "monohull",
+      "hull_count": 1
+    },
+    "appendages": {
+      "keel_type": "fin",
+      "keel_subtype": null,
+      "centerboard_count": 0,
+      "centerboard_type": null,
+      "daggerboard_count": 0,
+      "daggerboard_type": null,
+      "rudder_count": 1,
+      "rudder_position": "underhull",
+      "rudder_support": "skeg",
+      "rudder_balance": "semi_balanced",
+      "skeg_type": "partial"
+    },
+    "rig": {
+      "sailplan": "cutter",
+      "masthead_fractional": "masthead",
+      "mast_count": 1,
+      "mast_step": "deck",
+      "rig_variant": "standard",
+      "mast_height_m": 17.8,
+      "mast_height_basis": "from_design_waterline",
+      "i_m": 14.9,
+      "j_m": 4.6,
+      "p_m": 14.2,
+      "e_m": 4.9,
+      "py_m": null,
+      "ey_m": null,
+      "isp_m": null,
+      "jp_m": null,
+      "spl_or_tps_m": null,
+      "forestay_length_m": 15.6,
+      "forestay_length_basis": "reported",
+      "sail_area_reported_m2": 84.0,
+      "sail_area_main_m2": 34.8,
+      "sail_area_foretriangle_m2": 34.3,
+      "sail_area_calculated_m2": 69.1,
+      "sail_area_calculated_notes": "100% foretriangle plus main, synthetic figure"
+    },
+    "deck": {
+      "cockpit_position": "center",
+      "cockpit_count": 1,
+      "helm_type": "wheel",
+      "helm_count": 1,
+      "deck_saloon": "none"
+    },
+    "construction": {
+      "hull_material": "grp_fiberglass",
+      "construction_method": null
+    },
+    "propulsion": {
+      "engine_make": null,
+      "engine_model": null,
+      "engine_type": "inboard_diesel",
+      "engine_power_hp": 55,
+      "engine_count": 1,
+      "drive_type": "shaft",
+      "propeller_configuration": null,
+      "fuel_capacity_l": 300,
+      "water_capacity_l": 450
+    },
+    "accommodation": {
+      "headroom_m": 1.95,
+      "bridgedeck_clearance_m": null,
+      "cabin_count": 3,
+      "berth_count": 7,
+      "head_count": 2
+    },
+    "compliance": {
+      "ce_design_category": "A"
+    }
+  },
+  "named_variants": [],
+  "design_options": [],
+  "quality": {
+    "status": "partial",
+    "confidence": "medium",
+    "notes": "Synthetic SLICE-0034 archetype fixture. Not production data; demonstrates a center-cockpit configuration with an aft owner's cabin implied by higher cabin/berth/head counts."
+  }
+}

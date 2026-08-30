@@ -1,0 +1,139 @@
+{
+  "fixture_purpose": "SLICE-0034 synthetic archetype: classic aft-cockpit masthead sloop with a long/full keel and a transom-positioned rudder that also carries skeg-support semantics. Not a real BoatDesign; no real-world boat facts are represented.",
+  "schema_version": "0.6",
+  "id": "BD_ARCHETYPE_CLASSIC_AFT_COCKPIT",
+  "boat_model_id": "BM_ARCHETYPE_CLASSIC",
+  "generation": {
+    "label": "Original",
+    "sequence": 1,
+    "aliases": [],
+    "first_built": 1972,
+    "last_built": 1985,
+    "hull_number_from": null,
+    "hull_number_to": null,
+    "boundary_confidence": "low"
+  },
+  "relationships": {
+    "builders": [
+      {
+        "id": "ODR_ARCHETYPE_CLASSIC_1",
+        "organization_id": "ORG_ARCHETYPE_CLASSIC_YARD",
+        "role": "builder",
+        "first_year": 1972,
+        "last_year": 1985,
+        "hull_number_from": null,
+        "hull_number_to": null,
+        "market": null,
+        "notes": null
+      }
+    ],
+    "designers": [
+      {
+        "name": "Archetype Naval Architecture (synthetic)",
+        "role": "naval_architect"
+      }
+    ],
+    "number_built": null
+  },
+  "baseline": {
+    "dimensions": {
+      "loa_m": 10.7,
+      "lod_m": 10.3,
+      "lwl_m": 8.1,
+      "beam_m": 3.1,
+      "beam_waterline_m": 2.7,
+      "draft_min_m": 1.5,
+      "draft_max_m": 1.5,
+      "displacement_kg": 7200,
+      "ballast_kg": 3100,
+      "ballast_type": "encapsulated",
+      "ballast_material": "lead",
+      "sail_area_m2": 52.0
+    },
+    "ratio_input_basis": {
+      "displacement_basis": "design",
+      "sail_area_basis": "nominal_main_plus_foretriangle"
+    },
+    "configuration": {
+      "hull_configuration": "monohull",
+      "hull_count": 1
+    },
+    "appendages": {
+      "keel_type": "full",
+      "keel_subtype": null,
+      "centerboard_count": 0,
+      "centerboard_type": null,
+      "daggerboard_count": 0,
+      "daggerboard_type": null,
+      "rudder_count": 1,
+      "rudder_position": "transom",
+      "rudder_support": "skeg",
+      "rudder_balance": "unbalanced",
+      "skeg_type": "full"
+    },
+    "rig": {
+      "sailplan": "sloop",
+      "masthead_fractional": "masthead",
+      "mast_count": 1,
+      "mast_step": "keel",
+      "rig_variant": "standard",
+      "mast_height_m": 13.4,
+      "mast_height_basis": "from_design_waterline",
+      "i_m": 11.6,
+      "j_m": 3.6,
+      "p_m": 11.0,
+      "e_m": 3.7,
+      "py_m": null,
+      "ey_m": null,
+      "isp_m": null,
+      "jp_m": null,
+      "spl_or_tps_m": null,
+      "forestay_length_m": 12.1,
+      "forestay_length_basis": "estimated",
+      "sail_area_reported_m2": 52.0,
+      "sail_area_main_m2": 20.4,
+      "sail_area_foretriangle_m2": 20.9,
+      "sail_area_calculated_m2": 41.3,
+      "sail_area_calculated_notes": "100% foretriangle plus main, synthetic figure"
+    },
+    "deck": {
+      "cockpit_position": "aft",
+      "cockpit_count": 1,
+      "helm_type": "tiller",
+      "helm_count": 1,
+      "deck_saloon": "none"
+    },
+    "construction": {
+      "hull_material": "grp_fiberglass",
+      "construction_method": null
+    },
+    "propulsion": {
+      "engine_make": null,
+      "engine_model": null,
+      "engine_type": "inboard_diesel",
+      "engine_power_hp": 24,
+      "engine_count": 1,
+      "drive_type": "shaft",
+      "propeller_configuration": null,
+      "fuel_capacity_l": 100,
+      "water_capacity_l": 180
+    },
+    "accommodation": {
+      "headroom_m": 1.85,
+      "bridgedeck_clearance_m": null,
+      "cabin_count": 2,
+      "berth_count": 5,
+      "head_count": 1
+    },
+    "compliance": {
+      "ce_design_category": null
+    }
+  },
+  "named_variants": [],
+  "design_options": [],
+  "quality": {
+    "status": "partial",
+    "confidence": "low",
+    "notes": "Synthetic SLICE-0034 archetype fixture. Not production data; demonstrates transom rudder position with independent skeg-support semantics."
+  }
+}
