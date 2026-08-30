@@ -11,11 +11,11 @@
   },
   "output_operators": {
     "value": {
-      "meaning": "Exact positive value assertion: the target field's true value IS this literal (enum token, integer, or the sentinel string 'unknown').",
+      "meaning": "Exact positive value assertion: the target field's true value IS this literal (enum token or integer). MUST NOT be used to assert either reserved categorical sentinel ('unknown' or 'not_applicable') -- a rule that structurally forces a field to the schema's unknown state MUST use 'forces_unknown' instead (see below), never 'value'.",
       "authorizes": "positive_truth"
     },
     "relation": {
-      "meaning": "Inclusive lower-bound assertion for an integer target field only (values used in v0.1: '>=1', '>=2'). The target field's true value is at least N; the exact value beyond that bound is not asserted and must not be silently upgraded to one.",
+      "meaning": "Inclusive lower-bound assertion for an integer target field only. v0.1 authorizes exactly the closed relation set {'>=1', '>=2'}; no other relation string is accepted. The target field's true value is at least N; the exact value beyond that bound is not asserted and must not be silently upgraded to one.",
       "authorizes": "positive_bound_truth"
     },
     "excludes_value": {
@@ -25,6 +25,10 @@
     "not_concrete": {
       "meaning": "Negative assertion for a free-text target field: the target field must not carry any concrete (non-null) value. Used only when a paired qualified count fact (e.g. centerboard_count=0) structurally forecloses any concrete descriptor existing -- driven by a positive qualified fact, not an inference from the free-text field's own absence.",
       "authorizes": "negative_truth_no_concrete_value"
+    },
+    "forces_unknown": {
+      "meaning": "Structural-unknown assertion for an enum target field whose independently observed schema enum contains the literal 'unknown' token: a qualified positive source fact (e.g. rudder_count=0) structurally forecloses the target ever carrying a concrete categorical fact in this situation, so the target resolves to the schema's own 'unknown' state. This is driven by a positive source fact, never by the target's own absence. It authorizes NO ordinary positive categorical Search truth: per src/hullq/search/values.py (QualifiedCategoricalValue, RESERVED_CATEGORICAL_SENTINELS), 'unknown' must never be represented as an ordinary CONFIRMED categorical string -- a downstream consumer must treat this as ValueQualification.MISSING (non-truth-final UNKNOWN), exactly as an ordinary reported 'unknown' value would be treated, never as ValueQualification.CONFIRMED with value 'unknown'.",
+      "authorizes": "structural_unknown_no_search_truth"
     },
     "conditional": {
       "meaning": "A closed, single-purpose piecewise output reserved exclusively for the one already-accepted SLICE-0034 twin/rudder_count case (rule MTE-LEGACY-RUD-006). v0.1 does NOT generalize this into a conditional-output mechanism for other rules; a second rule wishing to use it would require an explicit accepted decision, not a routine registry edit.",
@@ -433,13 +437,13 @@
       "guard": "STANDARD_MTE_GUARD_V0_1",
       "source": {"field": "appendages.rudder_count", "value": 0},
       "output": [
-        {"field": "appendages.rudder_position", "value": "unknown"},
-        {"field": "appendages.rudder_support", "value": "unknown"},
-        {"field": "appendages.rudder_balance", "value": "unknown"}
+        {"field": "appendages.rudder_position", "forces_unknown": true},
+        {"field": "appendages.rudder_support", "forces_unknown": true},
+        {"field": "appendages.rudder_balance", "forces_unknown": true}
       ],
       "prerequisites": "rudder_count is qualified as exactly 0.",
       "applicability": "Applies within the single resolved BoatDesign baseline or NamedVariant/DesignOption override scope where rudder_count is itself qualified.",
-      "exceptions": "None. Note the projected value is the schema's own literal 'unknown' token (there is no 'not_applicable' option for these three fields in v0.6), not a claim of missing information.",
+      "exceptions": "None. The structurally-forced state is the schema's own literal 'unknown' token (there is no 'not_applicable' option for these three fields in v0.6). This is NOT a claim of missing information and it MUST NOT be represented as ordinary positive categorical Search truth (ValueQualification.CONFIRMED with value 'unknown') -- per src/hullq/search/values.py RESERVED_CATEGORICAL_SENTINELS, it resolves to ValueQualification.MISSING, exactly as an ordinary reported 'unknown' would.",
       "conflict_behavior": "Also independently enforced structurally by BOAT_DESIGN_SCHEMA.v0.6.json's rudder_count=0 if/then invariant; this rule records the same certainty for search-projection consumers operating ahead of full schema validation.",
       "evidence_basis": "Zero rudders definitionally means no position/support/balance fact can exist to describe.",
       "lineage_requirement": "Record rule_id MTE-RUD-001, version 0.1, and the qualifying rudder_count=0 fact."
@@ -562,10 +566,10 @@
       "area": "cockpit_helm",
       "guard": "STANDARD_MTE_GUARD_V0_1",
       "source": {"field": "deck.cockpit_count", "value": 0},
-      "output": [{"field": "deck.cockpit_position", "value": "unknown"}],
+      "output": [{"field": "deck.cockpit_position", "forces_unknown": true}],
       "prerequisites": "cockpit_count is qualified as exactly 0.",
       "applicability": "Applies within the single resolved BoatDesign baseline or NamedVariant/DesignOption override scope where cockpit_count is itself qualified.",
-      "exceptions": "None. The projected value is the schema's own literal 'unknown' token; there is no 'not_applicable' option for cockpit_position in v0.6.",
+      "exceptions": "None. The structurally-forced state is the schema's own literal 'unknown' token; there is no 'not_applicable' option for cockpit_position in v0.6. It MUST NOT be represented as ordinary positive categorical Search truth -- it resolves to ValueQualification.MISSING per src/hullq/search/values.py.",
       "conflict_behavior": "Also independently enforced structurally by BOAT_DESIGN_SCHEMA.v0.6.json's cockpit_count=0 if/then invariant; this rule records the same certainty for search-projection consumers operating ahead of full schema validation.",
       "evidence_basis": "Zero cockpits definitionally means no cockpit-position fact can exist to describe.",
       "lineage_requirement": "Record rule_id MTE-DECK-001, version 0.1, and the qualifying cockpit_count=0 fact."
@@ -576,10 +580,10 @@
       "area": "cockpit_helm",
       "guard": "STANDARD_MTE_GUARD_V0_1",
       "source": {"field": "deck.helm_count", "value": 0},
-      "output": [{"field": "deck.helm_type", "value": "unknown"}],
+      "output": [{"field": "deck.helm_type", "forces_unknown": true}],
       "prerequisites": "helm_count is qualified as exactly 0.",
       "applicability": "Applies within the single resolved BoatDesign baseline or NamedVariant/DesignOption override scope where helm_count is itself qualified.",
-      "exceptions": "None. The projected value is the schema's own literal 'unknown' token; there is no 'not_applicable' option for helm_type in v0.6.",
+      "exceptions": "None. The structurally-forced state is the schema's own literal 'unknown' token; there is no 'not_applicable' option for helm_type in v0.6. It MUST NOT be represented as ordinary positive categorical Search truth -- it resolves to ValueQualification.MISSING per src/hullq/search/values.py.",
       "conflict_behavior": "Also independently enforced structurally by BOAT_DESIGN_SCHEMA.v0.6.json's helm_count=0 if/then invariant; this rule records the same certainty for search-projection consumers operating ahead of full schema validation.",
       "evidence_basis": "Zero helm stations definitionally means no helm-type fact can exist to describe.",
       "lineage_requirement": "Record rule_id MTE-DECK-002, version 0.1, and the qualifying helm_count=0 fact."

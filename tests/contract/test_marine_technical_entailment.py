@@ -550,14 +550,151 @@ def test_every_integer_value_rule_matches_its_referenced_rule(field_name: str) -
 
 
 # ---------------------------------------------------------------------------
-# Rule output grammar: exactly five closed shapes, each value independently
+# Bidirectional rule/classification closure: not only does every
+# DEFINITIONAL_ENTAILMENT token/value_rule point at a real, matching rule
+# (proven above), but the CONVERSE must also hold: the exact set of rule IDs
+# actually present in the registry must equal the exact set of rule IDs
+# authorized by walking every classification/value_rule. A rule with no
+# authorizing classification (an "orphan") -- or a rule sourced from a
+# DIRECT_ONLY/NO_DERIVATION token -- is a fail-open gap this section closes.
+# ---------------------------------------------------------------------------
+
+
+def _authorized_rule_ids_from_classifications(registry: dict[str, Any]) -> list[str]:
+    """Independently walk every DEFINITIONAL_ENTAILMENT classification/value_rule
+    and collect the rule IDs it authorizes, verifying each authorized rule's
+    declared source matches the classifying field/token exactly.
+
+    Returns a list (not a set) so callers can additionally check for
+    duplicate/ambiguous ownership (the same rule_id authorized twice).
+    """
+    authorized: list[str] = []
+    for field_name, entry in registry["fields"].items():
+        if entry["kind"] == "enum":
+            for token, meta in entry["tokens"].items():
+                if meta["classification"] != "DEFINITIONAL_ENTAILMENT":
+                    continue
+                for rule_id in meta["rule_ids"]:
+                    rule = registry["rules"]
+                    matching = [r for r in rule if r["id"] == rule_id]
+                    assert matching, f"{field_name}={token} authorizes nonexistent rule {rule_id!r}"
+                    (resolved_rule,) = matching
+                    assert resolved_rule["source"] == {"field": field_name, "value": token}, (
+                        f"{rule_id} authorized by {field_name}={token} but its source is "
+                        f"{resolved_rule['source']!r}"
+                    )
+                    authorized.append(rule_id)
+        elif entry["kind"] == "integer":
+            for value_rule in entry.get("value_rules", []):
+                if value_rule["classification"] != "DEFINITIONAL_ENTAILMENT":
+                    continue
+                rule_id = value_rule["rule_id"]
+                matching = [r for r in registry["rules"] if r["id"] == rule_id]
+                assert matching, (
+                    f"{field_name}={value_rule['value']} authorizes nonexistent rule {rule_id!r}"
+                )
+                (resolved_rule,) = matching
+                assert resolved_rule["source"] == {
+                    "field": field_name,
+                    "value": value_rule["value"],
+                }
+                authorized.append(rule_id)
+    return authorized
+
+
+def test_rule_id_set_exactly_equals_classification_authorized_set() -> None:
+    authorized_list = _authorized_rule_ids_from_classifications(_REGISTRY)
+    authorized_set = set(authorized_list)
+    actual_rule_ids = set(_RULES_BY_ID)
+    assert authorized_set == actual_rule_ids, (
+        f"orphan rules (exist but not authorized): {actual_rule_ids - authorized_set}; "
+        f"phantom authorizations (authorized but no such rule): {authorized_set - actual_rule_ids}"
+    )
+
+
+def test_no_duplicate_or_ambiguous_rule_ownership() -> None:
+    authorized_list = _authorized_rule_ids_from_classifications(_REGISTRY)
+    duplicates = {rule_id for rule_id in authorized_list if authorized_list.count(rule_id) > 1}
+    assert not duplicates, (
+        f"rule(s) claimed by more than one classification/value_rule: {duplicates}"
+    )
+
+
+@pytest.mark.parametrize("rule", _REGISTRY["rules"], ids=lambda r: r["id"])
+def test_every_rule_source_classification_is_definitional_entailment(
+    rule: dict[str, Any],
+) -> None:
+    # The reverse check of test_every_definitional_entailment_token_has_a_matching_rule:
+    # no rule may source from a token/value classified DIRECT_ONLY or
+    # NO_DERIVATION.
+    source = rule["source"]
+    field_name = source["field"]
+    entry = _REGISTRY["fields"][field_name]
+    if entry["kind"] == "enum":
+        classification = entry["tokens"][source["value"]]["classification"]
+    else:
+        (matching_value_rule,) = [
+            vr for vr in entry["value_rules"] if vr["value"] == source["value"]
+        ]
+        classification = matching_value_rule["classification"]
+    assert classification == "DEFINITIONAL_ENTAILMENT", (
+        f"{rule['id']} sources from {field_name}={source['value']!r}, classified "
+        f"{classification!r}, not DEFINITIONAL_ENTAILMENT"
+    )
+
+
+def test_rogue_rule_sourced_from_a_direct_only_token_is_rejected_by_closure() -> None:
+    # Adversarial mutation: append a syntactically valid rule sourced from a
+    # currently DIRECT_ONLY token (keel_type=fin has no rule_ids) and prove
+    # the closure check above would catch it -- the rogue rule is a real
+    # entry in "rules" but is never authorized by any classification.
+    mutated = copy.deepcopy(_REGISTRY)
+    assert (
+        mutated["fields"]["appendages.keel_type"]["tokens"]["fin"]["classification"]
+        == "DIRECT_ONLY"
+    )
+    rogue_rule = {
+        "id": "MTE-ROGUE-001",
+        "version": "0.1",
+        "area": "adversarial_test_only",
+        "guard": "STANDARD_MTE_GUARD_V0_1",
+        "source": {"field": "appendages.keel_type", "value": "fin"},
+        "output": [{"field": "appendages.centerboard_count", "relation": ">=1"}],
+        "prerequisites": "adversarial fixture only",
+        "applicability": "adversarial fixture only, same material scope",
+        "exceptions": "none",
+        "conflict_behavior": "N/A adversarial fixture",
+        "evidence_basis": "adversarial fixture only",
+        "lineage_requirement": "adversarial fixture only MTE-ROGUE-001",
+    }
+    mutated["rules"].append(rogue_rule)
+
+    authorized_set = set(_authorized_rule_ids_from_classifications(mutated))
+    actual_rule_ids = {r["id"] for r in mutated["rules"]}
+    assert authorized_set != actual_rule_ids
+    assert "MTE-ROGUE-001" in actual_rule_ids
+    assert "MTE-ROGUE-001" not in authorized_set
+
+
+# ---------------------------------------------------------------------------
+# Rule output grammar: exactly six closed shapes, each value independently
 # verified against the target field's real schema location.
 # ---------------------------------------------------------------------------
 
 _ALLOWED_OUTPUT_OPERATORS = frozenset(
-    {"value", "relation", "excludes_value", "not_concrete", "conditional"}
+    {"value", "relation", "excludes_value", "not_concrete", "forces_unknown", "conditional"}
 )
 _RELATION_PATTERN = re.compile(r"^>=(\d+)$")
+# v0.1 authorizes exactly this closed relation set -- not an arbitrary '>=N'
+# numeric predicate language. A synthetic '>=3' (or any other value) must be
+# rejected even though it would otherwise match _RELATION_PATTERN.
+_ALLOWED_RELATIONS = frozenset({">=1", ">=2"})
+# Reserved categorical sentinels (src/hullq/search/values.py,
+# RESERVED_CATEGORICAL_SENTINELS) that the ordinary 'value' operator must
+# never assert -- a rule that structurally forces one of these must use
+# 'forces_unknown' (for 'unknown') instead; 'not_applicable' is never
+# asserted by any rule in this contract at all (section 6).
+_RESERVED_CATEGORICAL_SENTINELS = frozenset({"unknown", "not_applicable"})
 
 
 @pytest.mark.parametrize("rule", _REGISTRY["rules"], ids=lambda r: r["id"])
@@ -571,6 +708,28 @@ def test_every_rule_output_uses_exactly_one_closed_operator(rule: dict[str, Any]
         assert len(operator_keys) == 1, (
             f"{rule['id']} output must use exactly one operator, got {operator_keys}"
         )
+
+
+_EXPECTED_OUTPUT_OPERATORS: dict[str, str] = {
+    "value": "positive_truth",
+    "relation": "positive_bound_truth",
+    "excludes_value": "negative_truth_single_exclusion",
+    "not_concrete": "negative_truth_no_concrete_value",
+    "forces_unknown": "structural_unknown_no_search_truth",
+    "conditional": "single_rule_exception_see_MTE-LEGACY-RUD-006",
+}
+
+
+def test_registry_output_operators_are_exactly_the_expected_closed_set() -> None:
+    declared = _REGISTRY["output_operators"]
+    assert set(declared) == set(_EXPECTED_OUTPUT_OPERATORS), (
+        f"declared operators {set(declared)} != expected {set(_EXPECTED_OUTPUT_OPERATORS)}"
+    )
+    for operator, expected_category in _EXPECTED_OUTPUT_OPERATORS.items():
+        assert declared[operator]["authorizes"] == expected_category, (
+            f"output_operators.{operator}.authorizes != {expected_category!r}"
+        )
+    assert set(_ALLOWED_OUTPUT_OPERATORS) == set(_EXPECTED_OUTPUT_OPERATORS)
 
 
 def test_conditional_operator_is_used_only_by_the_one_documented_exception() -> None:
@@ -605,13 +764,37 @@ def test_every_value_output_independently_matches_the_target_field_schema(
 
 
 @pytest.mark.parametrize("rule", _REGISTRY["rules"], ids=lambda r: r["id"])
-def test_every_relation_output_is_a_schema_consistent_lower_bound(rule: dict[str, Any]) -> None:
+def test_value_operator_never_asserts_a_reserved_categorical_sentinel(
+    rule: dict[str, Any],
+) -> None:
+    # 'value' authorizes ordinary positive truth only. A rule that
+    # structurally forces the schema's 'unknown' state must use
+    # 'forces_unknown' instead (Finding 1); no rule may ever assert
+    # 'not_applicable' as an output at all (section 6).
+    for output in rule["output"]:
+        if "value" not in output:
+            continue
+        assert output["value"] not in _RESERVED_CATEGORICAL_SENTINELS, (
+            f"{rule['id']} illegally uses 'value' to assert reserved categorical sentinel "
+            f"{output['value']!r}; use 'forces_unknown' for structural unknown, or downgrade "
+            "to NO_DERIVATION -- never assert not_applicable at all"
+        )
+
+
+@pytest.mark.parametrize("rule", _REGISTRY["rules"], ids=lambda r: r["id"])
+def test_every_relation_output_is_within_the_closed_allowed_relation_set(
+    rule: dict[str, Any],
+) -> None:
     for output in rule["output"]:
         if "relation" not in output:
             continue
         field_name = output["field"]
         assert field_name in _INDEPENDENT_INTEGER_LOCATIONS, (
             f"{rule['id']} uses a 'relation' output on non-integer field {field_name!r}"
+        )
+        assert output["relation"] in _ALLOWED_RELATIONS, (
+            f"{rule['id']} uses relation {output['relation']!r}, outside the v0.1 closed set "
+            f"{sorted(_ALLOWED_RELATIONS)}"
         )
         match = _RELATION_PATTERN.match(output["relation"])
         assert match, f"{rule['id']} uses an unsupported relation shape {output['relation']!r}"
@@ -620,6 +803,34 @@ def test_every_relation_output_is_a_schema_consistent_lower_bound(rule: dict[str
         assert bound >= minimum
         if maximum is not None:
             assert bound <= maximum
+
+
+def test_relation_grammar_rejects_a_synthetic_out_of_set_relation() -> None:
+    # v0.1 does not implement a generic '>=N' numeric predicate language: only
+    # the two relations actually authorized by the registry are accepted.
+    assert ">=3" not in _ALLOWED_RELATIONS
+    assert _RELATION_PATTERN.match(">=3"), (
+        "sanity: '>=3' does match the loose regex shape, so rejection must "
+        "come from the closed _ALLOWED_RELATIONS set, not the regex alone"
+    )
+
+
+@pytest.mark.parametrize("rule", _REGISTRY["rules"], ids=lambda r: r["id"])
+def test_every_forces_unknown_output_targets_a_genuine_enum_field_with_unknown(
+    rule: dict[str, Any],
+) -> None:
+    for output in rule["output"]:
+        if "forces_unknown" not in output:
+            continue
+        field_name = output["field"]
+        assert field_name in _INDEPENDENT_ENUM_LOCATIONS, (
+            f"{rule['id']} uses 'forces_unknown' on non-enum field {field_name!r}"
+        )
+        assert output["forces_unknown"] is True
+        assert "unknown" in _independent_enum_tokens(field_name), (
+            f"{rule['id']}: {field_name}'s independently-located schema enum has no 'unknown' "
+            "token to force"
+        )
 
 
 @pytest.mark.parametrize("rule", _REGISTRY["rules"], ids=lambda r: r["id"])
@@ -677,14 +888,18 @@ def test_every_rule_references_the_one_standard_guard_policy(rule: dict[str, Any
 # TEST-ONLY reference evaluator. Not shipped under src/, not a production
 # inference engine: it exists solely to prove the structured guard policy
 # produces the required fail-closed outcome in each qualification scenario.
+# Every branch genuinely reads a specific guard_policy field -- there is no
+# hardcoded outcome that ignores the policy passed in (Finding 5).
 def _reference_apply_guard(
     guard_policy: dict[str, Any],
     *,
+    source_qualified: bool,
     state: str,
     same_scope: bool,
     contradicting_explicit_output: bool,
+    lineage_present: bool,
 ) -> str:
-    if not same_scope:
+    if guard_policy["requires_source_qualified"] and not source_qualified:
         return "UNKNOWN"
     if state == "provisional" and guard_policy["forbids_provisional_source"]:
         return "UNKNOWN"
@@ -694,7 +909,13 @@ def _reference_apply_guard(
         return "UNKNOWN"
     if state == "missing":
         return "UNKNOWN"
-    if state != "confirmed":
+    if (
+        guard_policy["requires_single_material_scope"]
+        and not same_scope
+        and not guard_policy["cross_scope_combination_authorized"]
+    ):
+        return "UNKNOWN"
+    if guard_policy["requires_lineage"] and not lineage_present:
         return "UNKNOWN"
     if contradicting_explicit_output:
         return str(guard_policy["same_scope_explicit_contradiction_behavior"])
@@ -703,36 +924,76 @@ def _reference_apply_guard(
 
 _STANDARD_GUARD = _REGISTRY["guard_policies"]["STANDARD_MTE_GUARD_V0_1"]
 
+# Baseline "everything is fine" kwargs for the scenario tests below; each test
+# overrides exactly the one dimension it is exercising.
+_BASELINE_GUARD_INPUT: dict[str, Any] = {
+    "source_qualified": True,
+    "state": "confirmed",
+    "same_scope": True,
+    "contradicting_explicit_output": False,
+    "lineage_present": True,
+}
 
-def test_guard_confirmed_qualified_same_scope_no_contradiction_is_authorized() -> None:
-    result = _reference_apply_guard(
-        _STANDARD_GUARD, state="confirmed", same_scope=True, contradicting_explicit_output=False
-    )
+
+def test_guard_qualified_confirmed_same_scope_lineage_no_contradiction_is_authorized() -> None:
+    result = _reference_apply_guard(_STANDARD_GUARD, **_BASELINE_GUARD_INPUT)
     assert result == "AUTHORIZED"
+
+
+def test_guard_unqualified_source_yields_unknown() -> None:
+    kwargs = {**_BASELINE_GUARD_INPUT, "source_qualified": False}
+    assert _reference_apply_guard(_STANDARD_GUARD, **kwargs) == "UNKNOWN"
 
 
 @pytest.mark.parametrize(
     "state", ["provisional", "unresolved_conflict", "applicability_unknown", "missing"]
 )
 def test_guard_unqualified_source_states_yield_unknown(state: str) -> None:
-    result = _reference_apply_guard(
-        _STANDARD_GUARD, state=state, same_scope=True, contradicting_explicit_output=False
-    )
-    assert result == "UNKNOWN"
+    kwargs = {**_BASELINE_GUARD_INPUT, "state": state}
+    assert _reference_apply_guard(_STANDARD_GUARD, **kwargs) == "UNKNOWN"
 
 
 def test_guard_cross_scope_source_facts_never_combine() -> None:
-    result = _reference_apply_guard(
-        _STANDARD_GUARD, state="confirmed", same_scope=False, contradicting_explicit_output=False
-    )
-    assert result == "UNKNOWN"
+    kwargs = {**_BASELINE_GUARD_INPUT, "same_scope": False}
+    assert _reference_apply_guard(_STANDARD_GUARD, **kwargs) == "UNKNOWN"
+    # Confirms this genuinely depends on cross_scope_combination_authorized,
+    # not a hardcoded same_scope check: flipping that one policy field to
+    # True with everything else held constant changes the outcome.
+    permissive_policy = {**_STANDARD_GUARD, "cross_scope_combination_authorized": True}
+    assert _reference_apply_guard(permissive_policy, **kwargs) == "AUTHORIZED"
+
+
+def test_guard_missing_required_lineage_yields_unknown() -> None:
+    kwargs = {**_BASELINE_GUARD_INPUT, "lineage_present": False}
+    assert _reference_apply_guard(_STANDARD_GUARD, **kwargs) == "UNKNOWN"
 
 
 def test_guard_same_scope_explicit_contradiction_yields_unresolved_conflict() -> None:
-    result = _reference_apply_guard(
-        _STANDARD_GUARD, state="confirmed", same_scope=True, contradicting_explicit_output=True
+    kwargs = {**_BASELINE_GUARD_INPUT, "contradicting_explicit_output": True}
+    assert _reference_apply_guard(_STANDARD_GUARD, **kwargs) == "UNRESOLVED_CONFLICT"
+
+
+def test_weakening_forbids_provisional_source_changes_evaluator_outcome() -> None:
+    # Proves the evaluator genuinely consults forbids_provisional_source
+    # rather than hardcoding the provisional outcome.
+    kwargs = {**_BASELINE_GUARD_INPUT, "state": "provisional"}
+    assert _reference_apply_guard(_STANDARD_GUARD, **kwargs) == "UNKNOWN"
+    weakened_policy = {**_STANDARD_GUARD, "forbids_provisional_source": False}
+    assert _reference_apply_guard(weakened_policy, **kwargs) == "AUTHORIZED"
+    # And such a weakening would itself be rejected by the independently
+    # expected guard-policy structure if it appeared in the real registry.
+    assert (
+        weakened_policy["forbids_provisional_source"]
+        != _EXPECTED_GUARD_POLICY["forbids_provisional_source"]
     )
-    assert result == "UNRESOLVED_CONFLICT"
+
+
+def test_weakening_requires_lineage_changes_evaluator_outcome() -> None:
+    kwargs = {**_BASELINE_GUARD_INPUT, "lineage_present": False}
+    assert _reference_apply_guard(_STANDARD_GUARD, **kwargs) == "UNKNOWN"
+    weakened_policy = {**_STANDARD_GUARD, "requires_lineage": False}
+    assert _reference_apply_guard(weakened_policy, **kwargs) == "AUTHORIZED"
+    assert weakened_policy["requires_lineage"] != _EXPECTED_GUARD_POLICY["requires_lineage"]
 
 
 def test_guard_unknown_other_and_free_text_source_tokens_have_no_rule_to_guard() -> None:
@@ -913,9 +1174,12 @@ def test_zero_count_forces_sibling_fields_unknown(
 ) -> None:
     rule = _RULES_BY_ID[rule_id]
     assert rule["source"] == {"field": count_field, "value": 0}
-    outputs = {o["field"]: o["value"] for o in rule["output"]}
+    outputs = {o["field"]: o for o in rule["output"]}
     for sibling in sibling_fields:
-        assert outputs[sibling] == "unknown"
+        # Structurally forced, not an ordinary positive 'value' -- see
+        # Finding 1 / MARINE_TECHNICAL_ENTAILMENT.v0.1.md section 7.1.
+        assert outputs[sibling].get("forces_unknown") is True
+        assert "value" not in outputs[sibling]
 
 
 @pytest.mark.parametrize(
@@ -1026,6 +1290,95 @@ def test_legacy_rudder_type_twin_is_the_only_rudder_count_source() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Exact structural verification of MTE-LEGACY-RUD-006's conditional truth
+# table. The TEST-ONLY reference helper below (and its own tests) prove the
+# ACCEPTED SLICE-0034 behavior in isolation; this section additionally proves
+# the REGISTRY's own JSON payload -- not just the independent helper -- has
+# exactly that truth table, so a registry mutation (e.g. null -> 3) fails
+# mechanically even if the independent helper is left untouched.
+# ---------------------------------------------------------------------------
+
+# One independently hardcoded expected truth table that BOTH the registry
+# (via test_twin_rule_conditional_table_matches_the_independently_expected_table)
+# AND the TEST-ONLY reference helper (via
+# test_reference_helper_agrees_with_the_independently_expected_truth_table)
+# are checked against.
+_EXPECTED_TWIN_TRUTH_TABLE: list[tuple[object, object]] = [
+    (None, 2),
+    (2, 2),
+    ("any other concrete integer", "RAISE_CONFLICT"),
+]
+
+
+def _twin_conditional_branches(conditional: list[dict[str, Any]]) -> list[tuple[object, object]]:
+    return [(branch["if_source_rudder_count"], branch["then"]) for branch in conditional]
+
+
+def test_twin_rule_source_and_co_input_are_exact() -> None:
+    rule = _RULES_BY_ID["MTE-LEGACY-RUD-006"]
+    assert rule["source"] == {"field": "legacy.rudder_type", "value": "twin"}
+    assert len(rule["co_inputs"]) == 1
+    co_input = rule["co_inputs"][0]
+    assert co_input["field"] == "appendages.rudder_count"
+    # The co-input independently resolves to a real v0.6 integer field.
+    assert "appendages.rudder_count" in _INDEPENDENT_INTEGER_LOCATIONS
+    _independent_integer_bounds("appendages.rudder_count")  # does not raise
+
+
+def test_twin_rule_output_target_and_operator_are_exact() -> None:
+    rule = _RULES_BY_ID["MTE-LEGACY-RUD-006"]
+    assert len(rule["output"]) == 1
+    output = rule["output"][0]
+    assert output["field"] == "appendages.rudder_count"
+    assert set(output) - {"field"} == {"conditional"}
+
+
+def test_twin_rule_conditional_table_matches_the_independently_expected_table() -> None:
+    rule = _RULES_BY_ID["MTE-LEGACY-RUD-006"]
+    branches = _twin_conditional_branches(rule["output"][0]["conditional"])
+    assert branches == _EXPECTED_TWIN_TRUTH_TABLE
+    assert len(branches) == 3, "exactly three branches -- no fourth branch is authorized"
+
+
+@pytest.mark.parametrize(
+    ("mutation_name", "mutated_table"),
+    [
+        (
+            "null_branch_changed_to_three",
+            [(None, 3), (2, 2), ("any other concrete integer", "RAISE_CONFLICT")],
+        ),
+        (
+            "agreement_branch_changed_to_three",
+            [(None, 2), (2, 3), ("any other concrete integer", "RAISE_CONFLICT")],
+        ),
+        (
+            "conflict_action_changed_to_silent_two",
+            [(None, 2), (2, 2), ("any other concrete integer", 2)],
+        ),
+        (
+            "conflict_branch_removed",
+            [(None, 2), (2, 2)],
+        ),
+        (
+            "fourth_branch_added",
+            [
+                (None, 2),
+                (2, 2),
+                ("any other concrete integer", "RAISE_CONFLICT"),
+                (3, 3),
+            ],
+        ),
+    ],
+)
+def test_tampered_twin_truth_tables_are_caught(
+    mutation_name: str, mutated_table: list[tuple[object, object]]
+) -> None:
+    assert mutated_table != _EXPECTED_TWIN_TRUTH_TABLE, (
+        f"mutation {mutation_name!r} was not actually different from the expected table"
+    )
+
+
+# ---------------------------------------------------------------------------
 # TEST-ONLY reference application of MTE-LEGACY-RUD-006 (twin/rudder_count),
 # mirroring the pre-existing accepted RudderCountMappingConflict behavior from
 # BOAT_DESIGN_V05_TO_V06_MAPPING.md section 3.2. Not shipped under src/.
@@ -1061,6 +1414,23 @@ def test_twin_with_contradictory_source_count_is_not_silently_resolved(
 ) -> None:
     with pytest.raises(_ReferenceRudderCountConflict):
         _reference_project_twin_rudder_count(contradictory_count)
+
+
+def test_reference_helper_agrees_with_the_independently_expected_truth_table() -> None:
+    # Both the registry's own JSON (test_twin_rule_conditional_table_matches_
+    # the_independently_expected_table) and this TEST-ONLY reference helper
+    # are checked against the SAME independently hardcoded
+    # _EXPECTED_TWIN_TRUTH_TABLE, per Finding 3's "tie the reference helper to
+    # the verified table, or test both against one hardcoded table" option.
+    null_branch, agreement_branch, conflict_branch = _EXPECTED_TWIN_TRUTH_TABLE
+    assert null_branch == (None, 2)
+    assert _reference_project_twin_rudder_count(None) == null_branch[1]
+    assert agreement_branch == (2, 2)
+    assert _reference_project_twin_rudder_count(2) == agreement_branch[1]
+    assert conflict_branch == ("any other concrete integer", "RAISE_CONFLICT")
+    for contradictory_count in (0, 1, 3, 4):
+        with pytest.raises(_ReferenceRudderCountConflict):
+            _reference_project_twin_rudder_count(contradictory_count)
 
 
 # ---------------------------------------------------------------------------

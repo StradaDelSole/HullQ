@@ -35,7 +35,7 @@ Every controlled enum token in the fixed inventory above, and every free-text fi
 - **`DIRECT_ONLY`** — the fact is real and usable directly (e.g. for search filtering on its own field), but authorizes no cross-field derivation. No relevant rule exists because none is safe.
 - **`NO_DERIVATION`** — ambiguity, source-dependent meaning, a relevant maritime exception, sentinel/free-text semantics, or absence of an accepted basis prevents any derived truth. **This includes every `unknown` token and every `other` token, in every field in the fixed inventory without exception — including the two legacy v0.5 enums.** An opaque escape value (`other`) proves nothing about any specific dimension by construction; an absent-information sentinel (`unknown`) never authorizes a cross-field fact under the "absence is not negative evidence" rule (section 4). Free-text fields (`keel_subtype`, `centerboard_type`, `daggerboard_type`, `rig_variant`) are `NO_DERIVATION` in full.
 
-`not_applicable` (the one place it exists — `rig.masthead_fractional`) is `DIRECT_ONLY`, not a sentinel: it is a legitimate, concrete negative fact when freshly and separately established by evidence, distinct from not knowing. This contract's own rules never assert it (see section 6).
+`not_applicable` (the one place it exists — `rig.masthead_fractional`) is a **reserved semantic categorical sentinel** under the accepted Search contract (`src/hullq/search/values.py`, `RESERVED_CATEGORICAL_SENTINELS = {"unknown", "not_applicable"}`) — it must never become an ordinary `CONFIRMED` categorical string, exactly like `unknown`. Unlike `unknown`, however, it represents a legitimate *directly established applicability state* (a concrete negative fact when freshly and separately established by evidence), not an absence of information. For **this contract's** cross-field-entailment classification purposes that distinction places it as `DIRECT_ONLY`: it is a real, directly usable fact once established, but this contract's own rules never assert it as an output (see section 6). Its actual Search-time behavior remains governed entirely by the existing `ValueQualification.NOT_APPLICABLE` semantics in `src/hullq/search/values.py`, which this contract does not change.
 
 Numeric count fields (`hull_count`, `centerboard_count`, `daggerboard_count`, `rudder_count`, `mast_count`, `cockpit_count`, `helm_count`) are `DIRECT_ONLY` as a general fact, with specific concrete values (chiefly `0`) carrying their own `DEFINITIONAL_ENTAILMENT` rule where a schema-level structural certainty exists (section 5.4).
 
@@ -92,7 +92,7 @@ These verify/preserve the existing v0.6 schema certainties. The reverse directio
 
 | Rule | Entailment |
 |---|---|
-| `MTE-RUD-001` | `rudder_count=0 -> rudder_position=unknown, rudder_support=unknown, rudder_balance=unknown` |
+| `MTE-RUD-001` | `rudder_count=0 -> rudder_position/rudder_support/rudder_balance` structurally forced to `unknown` (`forces_unknown`, not ordinary `value` — see section 7.1) |
 | `MTE-RUD-002` | `rudder_support=skeg -> skeg_type != none` |
 | `MTE-RUD-003` | `skeg_type=none -> rudder_support != skeg` |
 
@@ -115,8 +115,8 @@ These six rules were the subject of bounded authoritative research performed for
 
 | Rule | Entailment |
 |---|---|
-| `MTE-DECK-001` | `cockpit_count=0 -> cockpit_position=unknown` |
-| `MTE-DECK-002` | `helm_count=0 -> helm_type=unknown` |
+| `MTE-DECK-001` | `cockpit_count=0 -> cockpit_position` structurally forced to `unknown` (`forces_unknown`, not ordinary `value` — see section 7.1) |
+| `MTE-DECK-002` | `helm_count=0 -> helm_type` structurally forced to `unknown` (`forces_unknown`, not ordinary `value` — see section 7.1) |
 
 `helm_type` (tiller/wheel) never entails `helm_count`: twin-wheel installations exist, so a wheel or tiller helm does not guarantee a specific station count.
 
@@ -149,17 +149,22 @@ These were specifically considered and rejected, to make the boundary auditable 
 
 ## 7. Rule output grammar (bounded, closed)
 
-Every `DEFINITIONAL_ENTAILMENT` rule's `output` entries use exactly one of five closed shapes, defined in `specs/MARINE_TECHNICAL_ENTAILMENT_RULES.v0.1.json`'s top-level `output_operators` object. No other key/operator is permitted; an unrecognized shape is a contract violation, not a silent no-op.
+Every `DEFINITIONAL_ENTAILMENT` rule's `output` entries use exactly one of **six** closed shapes, defined in `specs/MARINE_TECHNICAL_ENTAILMENT_RULES.v0.1.json`'s top-level `output_operators` object. No other key/operator is permitted; an unrecognized shape is a contract violation, not a silent no-op.
 
 | Operator | Meaning | Authorizes |
 |---|---|---|
-| `value` | Exact positive value assertion: the target field's true value IS this literal (enum token, integer, or the sentinel string `unknown`). | Positive truth |
-| `relation` (`>=1`, `>=2`; integer fields only) | Inclusive lower-bound assertion. The target's true value is at least N; the exact value is not asserted and must not be silently upgraded to one. | Positive bound truth |
+| `value` | Exact positive value assertion: the target field's true value IS this literal (enum token or integer). **MUST NOT** be used to assert either reserved categorical sentinel (`unknown` or `not_applicable`) — see `forces_unknown` below for the structural-unknown case. | Positive truth |
+| `relation` (integer fields only; v0.1 authorizes exactly the closed set `>=1`, `>=2` — no other relation string) | Inclusive lower-bound assertion. The target's true value is at least N; the exact value is not asserted and must not be silently upgraded to one. | Positive bound truth |
 | `excludes_value` (enum fields only) | Negative assertion: the target's true value is NOT this one specific token. No other value is positively asserted. | Negative truth (single exclusion) |
 | `not_concrete` (free-text fields only) | Negative assertion: the target must not carry any concrete (non-null) value. Used only when a paired qualified count fact structurally forecloses any concrete descriptor existing — a positive qualified fact driving a negative conclusion, never an inference from the free-text field's own absence. | Negative truth (no concrete value) |
-| `conditional` | A closed, single-purpose piecewise output reserved exclusively for `MTE-LEGACY-RUD-006` (the accepted SLICE-0034 twin/rudder_count case). v0.1 does **not** generalize this into a reusable conditional-output mechanism; a second rule wishing to use it requires an explicit accepted decision, not a routine registry edit. |Single documented exception (`RAISE_CONFLICT` on a contradictory co-input) |
+| `forces_unknown` (enum fields whose independently observed schema enum contains the literal `unknown`) | Structural-unknown assertion: a qualified positive source fact (e.g. `rudder_count=0`) structurally forecloses the target ever carrying a concrete categorical fact in this situation, so the target resolves to the schema's own `unknown` state. Authorizes **no** ordinary positive categorical Search truth. | Structural UNKNOWN — never Search truth |
+| `conditional` | A closed, single-purpose piecewise output reserved exclusively for `MTE-LEGACY-RUD-006` (the accepted SLICE-0034 twin/rudder_count case). v0.1 does **not** generalize this into a reusable conditional-output mechanism; a second rule wishing to use it requires an explicit accepted decision, not a routine registry edit. | Single documented exception (`RAISE_CONFLICT` on a contradictory co-input) |
 
 `excludes_value` is retained in v0.1 (`MTE-RUD-002`/`MTE-RUD-003`) because in both cases the exclusion is derived from a **stated positive fact** (`rudder_support` IS `skeg`; `skeg_type` IS `none`) — never from silence or a missing value — and both directions are independently declared and independently tested (`tests/contract/test_marine_technical_entailment.py`), including the same-scope-contradiction and reverse-direction cases. If a future proposed rule cannot make this same positive-fact-driven distinction, it must be downgraded to `NO_DERIVATION` rather than stretching this operator.
+
+### 7.1 Structural UNKNOWN is never positive categorical Search truth
+
+`MTE-RUD-001`, `MTE-DECK-001` and `MTE-DECK-002` structurally force `rudder_position`/`rudder_support`/`rudder_balance` (from `rudder_count=0`), `cockpit_position` (from `cockpit_count=0`) and `helm_type` (from `helm_count=0`) respectively to the schema's `unknown` state. These three rules use `forces_unknown`, **not** `value: "unknown"` — a plain `value` output is reserved for exact positive facts, and `unknown`/`not_applicable` are reserved categorical sentinels under the accepted Search contract (`src/hullq/search/values.py`: `QualifiedCategoricalValue`, `RESERVED_CATEGORICAL_SENTINELS`). Representing a structurally-forced `unknown` as an ordinary `value: "unknown"` output would let a future implementation construct `ValueQualification.CONFIRMED` with value `"unknown"` — exactly the defect `QualifiedCategoricalValue` exists to reject. A `forces_unknown` output must instead be consumed as `ValueQualification.MISSING` (non-truth-final UNKNOWN), the same treatment an ordinary reported `unknown` value already receives. This contract does not modify `src/hullq/search/values.py`; it only ensures its own declared entailments cannot be misread as authorizing the forbidden combination.
 
 ## 8. Relationship to existing structural invariants
 
