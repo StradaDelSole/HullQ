@@ -52,8 +52,7 @@ text.
 
 **Retained qualified facts used:**
 
-- "Twin keel." (bilge/twin keel monohull cruiser.)
-- Implicit monohull configuration (a "large-volume British twin-keeler", conventional single-hull cruiser — `configuration.hull_configuration = monohull`).
+- "Twin keel." (a British bilge/twin-keeler.)
 - "Historical designer press text describes a balanced skegless spade rudder." — this yields two separate facts that must **not** be conflated: (a) legacy `rudder_type = spade` (the word "spade" is the controlled taxonomy token), and (b) a *directly reported* "balanced" fact from the same prose, which is not itself an output of the `spade` entailment rule.
 - "Sloop/ketch noted, with very few ketches."
 
@@ -61,11 +60,11 @@ text.
 
 | Rule | Result |
 |---|---|
-| `MTE-HULL-001` (`hull_configuration=monohull`) | `configuration.hull_count = 1` — **concrete derived fact**. |
 | `MTE-LEGACY-RUD-004` (`rudder_type=spade`) | `appendages.rudder_support = free` — **concrete derived fact**. |
 
 **Intentionally underived / UNKNOWN, and the direct-vs-derived distinction:**
 
+- `configuration.hull_configuration` / `hull_count` — **UNKNOWN, deliberately not qualified or derived.** SEED-06 describes the Centaur as "twin keel" and a "large-volume British twin-keeler" — this is keel-type/descriptive context, not an explicit statement of the controlled `hull_configuration=monohull` fact. Upgrading contextual convention ("this is obviously a monohull cruiser") into a qualified input would be exactly the "typical, not definitional" reasoning `MARINE_TECHNICAL_ENTAILMENT.v0.1.md` mandatory rule 1 forbids. `MTE-HULL-001` is therefore **not applied** to this design; hull_count stays unqualified/UNKNOWN for this validation record. (An earlier draft of this validation record incorrectly treated "twin-keeler" context as sufficient to qualify `hull_configuration=monohull` and fire `MTE-HULL-001`; that was corrected after independent review — see `MTE-RUD-*` word-identity precedent for the *correct* standard: only a token whose own word literally names the fact may fire a rule, and no retained SEED-06 sentence names "monohull".)
 - `appendages.rudder_balance` — the source prose directly and separately states "balanced." This is recorded as a **directly reported fact** (`DIRECT_ONLY` provenance: reported outright by the designer press text), not as an output of `MTE-LEGACY-RUD-004` (which, per the preserved SLICE-0034 conservatism, never entails balance from any legacy `rudder_type` token, spade included). The two must carry different lineage: one is "entailed by rule MTE-LEGACY-RUD-004 from the word 'spade'", the other is "directly reported by the same source sentence, independent of the rudder_type token."
 - `appendages.rudder_position` — **UNKNOWN**. Neither "spade" nor the prose states where the rudder is mounted relative to the hull.
 - `rig.sailplan` / `rig.masthead_fractional` / `rig.mast_count` — **UNKNOWN, and deliberately not forced to a value.** "Sloop/ketch noted, with very few ketches" describes variation *across individual boats of this one design*, not a single qualified sailplan for the BoatDesign baseline. Because no `MTE-RIG-*` rule has a single, unambiguous qualified `sailplan` token to apply to, no mast-count entailment fires. This is the expected, correct outcome for a design whose retained evidence itself reports an ambiguous/mixed rig identity — see `MARINE_TECHNICAL_ENTAILMENT.v0.1.md` mandatory rule 4 (applicability before conflict) and rule 1 (definition/necessity only).
@@ -121,7 +120,7 @@ or `rudder_balance`, which all remain UNKNOWN for this design).
 | Design | Concrete derived facts | Rule IDs applied | Deliberate UNKNOWNs | Conflicts |
 |---|---|---|---|---|
 | Rustler 36 | `rudder_support=keel` | `MTE-LEGACY-RUD-001` | position, balance, keel_type, hull config | none |
-| Westerly Centaur | `hull_count=1`; `rudder_support=free` | `MTE-HULL-001`; `MTE-LEGACY-RUD-004` | position; sailplan/masthead_fractional/mast_count (ambiguous rig identity) | none |
+| Westerly Centaur | `rudder_support=free` | `MTE-LEGACY-RUD-004` | hull_configuration/hull_count (never qualified); position; sailplan/masthead_fractional/mast_count (ambiguous rig identity) | none |
 | Island Packet 349 | `rudder_support=skeg` | `MTE-LEGACY-RUD-002` | keel_type (proprietary term), position, balance, exact skeg_type | none |
 | Pogo 1 (optional) | none (direct fact, not derived) | none | position, support-provenance, balance | none |
 
