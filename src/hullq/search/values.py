@@ -1,20 +1,24 @@
-"""Fail-closed value qualification — SLICE-0033.
+"""Fail-closed value qualification — SLICE-0033 (+ SLICE-0035 categorical).
 
-`QualifiedNumericValue` is the persistence-neutral unit the search kernel
-compares against thresholds. It never carries a usable value unless the
-originating canonical resolution or derived-metric computation was fully
-qualified, per `specs/SEARCH_QUERY_SEMANTICS.v0.1.md` §3.
+`QualifiedNumericValue` and `QualifiedCategoricalValue` are the
+persistence-neutral units the search kernel compares against a query leaf.
+Neither carries a usable value unless the originating canonical resolution
+(or, for numeric values, a derived-metric computation) was fully qualified,
+per `specs/SEARCH_QUERY_SEMANTICS.v0.1.md` §3.
 
-The adapters below translate the two accepted existing status vocabularies
+The adapters below translate the accepted existing status vocabularies
 (`hullq.domain.provenance.ResolutionState` for canonical BoatDesign fields
 and `hullq.domain.derived_metrics.MetricStatus` for derived metrics) into the
 search kernel's own `ValueQualification`, so evaluation code never has to
 reason about raw FieldResolution/FieldEvidence/MetricResult shapes directly.
 
-Does not implement: option-sensitive/ResolvedConfiguration-scoped
-qualification — that belongs to REQ-SEARCH-006 and is explicitly out of
-scope for this slice. `NOT_APPLICABLE`/`APPLICABILITY_UNKNOWN` ARE
-implemented here as generic (non-configuration-scoped) statuses.
+SLICE-0035 adds `QualifiedCategoricalValue` for the categorical MUST leaf and
+its own `from_resolution_state_categorical` adapter (derived metrics are
+numeric-only, so there is no categorical `MetricStatus` adapter). Both
+qualified-value types are consumed by the configuration-aware evaluator in
+`hullq.search.configuration_engine` via `hullq.search.configuration`'s
+persistence-neutral `ConfigurationProjection`, never by reading raw BoatDesign
+JSON directly (slice Required Behavior §E).
 """
 
 from __future__ import annotations
@@ -28,9 +32,11 @@ from hullq.domain.provenance import ResolutionState
 from hullq.search.types import ValueQualification
 
 __all__ = [
+    "QualifiedCategoricalValue",
     "QualifiedNumericValue",
     "from_derived_metric_status",
     "from_resolution_state",
+    "from_resolution_state_categorical",
     "is_finite_real_number",
 ]
 
@@ -151,3 +157,56 @@ def from_derived_metric_status(status: MetricStatus, value: float | None) -> Qua
     qualification = _METRIC_STATUS_QUALIFICATION[status]
     resolved_value = value if qualification is ValueQualification.CONFIRMED else None
     return QualifiedNumericValue(value=resolved_value, qualification=qualification)
+
+
+# ---------------------------------------------------------------------------
+# QualifiedCategoricalValue — SLICE-0035
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class QualifiedCategoricalValue:
+    """A candidate canonical string value paired with its fail-closed qualification.
+
+    Invariant: `value` is non-`None` if and only if `qualification` is
+    `ValueQualification.CONFIRMED`, and a `CONFIRMED` value MUST be a
+    non-empty `str` — never a numeric type, never whitespace-only. Constructing
+    any other combination raises `ValueError`, the same choke point pattern as
+    `QualifiedNumericValue` (slice Required Behavior §A: "no fuzzy synonym
+    matching at evaluator time; no case-folding/normalization hidden inside
+    truth evaluation unless the projection contract has already canonicalized
+    the value" — so this type stores exactly the already-canonicalized string,
+    verbatim, with no normalization performed here).
+    """
+
+    value: str | None
+    qualification: ValueQualification
+
+    def __post_init__(self) -> None:
+        is_confirmed = self.qualification is ValueQualification.CONFIRMED
+        if is_confirmed:
+            if not isinstance(self.value, str) or not self.value.strip():
+                raise ValueError(
+                    f"CONFIRMED qualification requires a non-empty string value; got {self.value!r}"
+                )
+        elif self.value is not None:
+            raise ValueError(
+                f"Non-CONFIRMED qualification {self.qualification!r} must not carry a value"
+            )
+
+
+def from_resolution_state_categorical(
+    state: ResolutionState, canonical_value: str | None
+) -> QualifiedCategoricalValue:
+    """Build a `QualifiedCategoricalValue` from an accepted `FieldResolution.state`.
+
+    Mirrors `from_resolution_state` exactly (same `ResolutionState` ->
+    `ValueQualification` mapping) for the categorical baseline/override fields
+    introduced by BOAT_DESIGN_SCHEMA.v0.6 (rig.sailplan, rig.masthead_fractional,
+    deck.cockpit_position, appendages.keel_type, appendages.rudder_support,
+    etc.). There is no categorical derived-metric adapter: HullQ's derived
+    metrics (SAD, BDR, comfort ratio, ...) are exclusively numeric.
+    """
+    qualification = _RESOLUTION_STATE_QUALIFICATION[state]
+    value = canonical_value if qualification is ValueQualification.CONFIRMED else None
+    return QualifiedCategoricalValue(value=value, qualification=qualification)

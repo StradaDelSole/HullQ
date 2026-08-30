@@ -1,0 +1,184 @@
+{
+  "schema_version": "0.1",
+  "fixture_label": "SLICE-0035 configuration-aware demo fixtures — explicit synthetic test data, NOT canonical searchable BoatDesigns and NOT the locked SEARCH_BENCHMARK.v0.1.md 12-BoatDesign corpus. No Rustler 36, Contessa 32, Bavaria Cruiser 34, Sun Odyssey 36i, Albin Vega, Rival 34, Najad 451 CC, Lagoon 42, Oceanis 30.1, AMEL Super Maramu, Hallberg-Rassy 400 or Sirius 35 DS field values appear here.",
+  "designs": [
+    {
+      "design_id": "fx-design-01-broad-match",
+      "note": "All CORE_SEARCH fields confirmed; single complete baseline configuration.",
+      "configuration_space_complete": true,
+      "configurations": [
+        {
+          "configuration_id": "fx-design-01-broad-match::baseline",
+          "numeric_fields": {
+            "loa_m": { "source": "field_resolution", "state": "resolved", "value": 10.2 },
+            "beam_m": { "source": "field_resolution", "state": "resolved", "value": 3.4 },
+            "draft_max_m": { "source": "field_resolution", "state": "resolved", "value": 1.65 },
+            "displacement_kg": { "source": "field_resolution", "state": "resolved", "value": 6200 }
+          },
+          "categorical_fields": {
+            "rig.masthead_fractional": { "source": "field_resolution", "state": "resolved", "value": "masthead" },
+            "rig.sailplan": { "source": "field_resolution", "state": "resolved", "value": "sloop" },
+            "deck.cockpit_position": { "source": "field_resolution", "state": "resolved", "value": "aft" },
+            "appendages.keel_type": { "source": "field_resolution", "state": "resolved", "value": "fin" },
+            "appendages.rudder_support": { "source": "field_resolution", "state": "resolved", "value": "skeg" }
+          }
+        }
+      ]
+    },
+    {
+      "design_id": "fx-design-02-rig-non-match",
+      "note": "Fractional rig confirmed -> categorical confirmed non-match for masthead-rig queries; other fields confirmed match-capable.",
+      "configuration_space_complete": true,
+      "configurations": [
+        {
+          "configuration_id": "fx-design-02-rig-non-match::baseline",
+          "numeric_fields": {
+            "loa_m": { "source": "field_resolution", "state": "resolved", "value": 10.5 },
+            "beam_m": { "source": "field_resolution", "state": "resolved", "value": 3.5 },
+            "draft_max_m": { "source": "field_resolution", "state": "resolved", "value": 1.55 },
+            "displacement_kg": { "source": "field_resolution", "state": "resolved", "value": 6500 }
+          },
+          "categorical_fields": {
+            "rig.masthead_fractional": { "source": "field_resolution", "state": "resolved", "value": "fractional" },
+            "rig.sailplan": { "source": "field_resolution", "state": "resolved", "value": "sloop" },
+            "deck.cockpit_position": { "source": "field_resolution", "state": "resolved", "value": "aft" },
+            "appendages.keel_type": { "source": "field_resolution", "state": "resolved", "value": "fin" },
+            "appendages.rudder_support": { "source": "field_resolution", "state": "resolved", "value": "skeg" }
+          }
+        }
+      ]
+    },
+    {
+      "design_id": "fx-design-03-categorical-unknown",
+      "note": "rig.masthead_fractional is an unresolved FieldResolution conflict -> UNKNOWN on any masthead-rig criterion, INSUFFICIENT_DATA for queries that require it, while other queries remain fully evaluable.",
+      "configuration_space_complete": true,
+      "configurations": [
+        {
+          "configuration_id": "fx-design-03-categorical-unknown::baseline",
+          "numeric_fields": {
+            "loa_m": { "source": "field_resolution", "state": "resolved", "value": 10.0 },
+            "beam_m": { "source": "field_resolution", "state": "resolved", "value": 3.3 },
+            "draft_max_m": { "source": "field_resolution", "state": "resolved", "value": 1.60 },
+            "displacement_kg": { "source": "field_resolution", "state": "resolved", "value": 6000 }
+          },
+          "categorical_fields": {
+            "rig.masthead_fractional": { "source": "field_resolution", "state": "conflict", "value": null },
+            "rig.sailplan": { "source": "field_resolution", "state": "resolved", "value": "cutter" },
+            "deck.cockpit_position": { "source": "field_resolution", "state": "resolved", "value": "center" },
+            "appendages.keel_type": { "source": "field_resolution", "state": "resolved", "value": "fin" },
+            "appendages.rudder_support": { "source": "field_resolution", "state": "resolved", "value": "skeg" }
+          }
+        }
+      ]
+    },
+    {
+      "design_id": "fx-design-04-shallow-draft-option",
+      "note": "Standard baseline draft is too deep for the draft-limited queries; an explicit shallow-draft DesignOption configuration is the only one that satisfies them (slice acceptance criterion). Both configurations are known and the space is complete.",
+      "configuration_space_complete": true,
+      "configurations": [
+        {
+          "configuration_id": "fx-design-04-shallow-draft-option::baseline",
+          "named_variant_id": null,
+          "applied_option_ids": [],
+          "numeric_fields": {
+            "loa_m": { "source": "field_resolution", "state": "resolved", "value": 11.0 },
+            "beam_m": { "source": "field_resolution", "state": "resolved", "value": 3.6 },
+            "draft_max_m": { "source": "field_resolution", "state": "resolved", "value": 1.90 },
+            "displacement_kg": { "source": "field_resolution", "state": "resolved", "value": 7200 }
+          },
+          "categorical_fields": {
+            "rig.masthead_fractional": { "source": "field_resolution", "state": "resolved", "value": "masthead" },
+            "rig.sailplan": { "source": "field_resolution", "state": "resolved", "value": "cutter" },
+            "deck.cockpit_position": { "source": "field_resolution", "state": "resolved", "value": "center" },
+            "appendages.keel_type": { "source": "field_resolution", "state": "resolved", "value": "fin" },
+            "appendages.rudder_support": { "source": "field_resolution", "state": "resolved", "value": "skeg" }
+          }
+        },
+        {
+          "configuration_id": "fx-design-04-shallow-draft-option::shallow-draft",
+          "named_variant_id": null,
+          "applied_option_ids": ["OPT-SHALLOW-DRAFT"],
+          "numeric_fields": {
+            "loa_m": { "source": "field_resolution", "state": "resolved", "value": 11.0 },
+            "beam_m": { "source": "field_resolution", "state": "resolved", "value": 3.6 },
+            "draft_max_m": { "source": "field_resolution", "state": "resolved", "value": 1.55 },
+            "displacement_kg": { "source": "field_resolution", "state": "resolved", "value": 7200 }
+          },
+          "categorical_fields": {
+            "rig.masthead_fractional": { "source": "field_resolution", "state": "resolved", "value": "masthead" },
+            "rig.sailplan": { "source": "field_resolution", "state": "resolved", "value": "cutter" },
+            "deck.cockpit_position": { "source": "field_resolution", "state": "resolved", "value": "center" },
+            "appendages.keel_type": { "source": "field_resolution", "state": "resolved", "value": "fin" },
+            "appendages.rudder_support": { "source": "field_resolution", "state": "resolved", "value": "skeg" }
+          }
+        }
+      ]
+    },
+    {
+      "design_id": "fx-design-05-cutter-rig-option",
+      "note": "Standard baseline rig is sloop; an explicit cutter-rig DesignOption configuration is the only one that satisfies Cutter-rig queries -> matching and non-matching confirmed configurations coexist without a false universal claim.",
+      "configuration_space_complete": true,
+      "configurations": [
+        {
+          "configuration_id": "fx-design-05-cutter-rig-option::baseline",
+          "named_variant_id": null,
+          "applied_option_ids": [],
+          "numeric_fields": {
+            "loa_m": { "source": "field_resolution", "state": "resolved", "value": 10.8 },
+            "beam_m": { "source": "field_resolution", "state": "resolved", "value": 3.5 },
+            "draft_max_m": { "source": "field_resolution", "state": "resolved", "value": 1.60 },
+            "displacement_kg": { "source": "field_resolution", "state": "resolved", "value": 6800 }
+          },
+          "categorical_fields": {
+            "rig.masthead_fractional": { "source": "field_resolution", "state": "resolved", "value": "masthead" },
+            "rig.sailplan": { "source": "field_resolution", "state": "resolved", "value": "sloop" },
+            "deck.cockpit_position": { "source": "field_resolution", "state": "resolved", "value": "aft" },
+            "appendages.keel_type": { "source": "field_resolution", "state": "resolved", "value": "fin" },
+            "appendages.rudder_support": { "source": "field_resolution", "state": "resolved", "value": "skeg" }
+          }
+        },
+        {
+          "configuration_id": "fx-design-05-cutter-rig-option::cutter-rig",
+          "named_variant_id": null,
+          "applied_option_ids": ["OPT-CUTTER-RIG"],
+          "numeric_fields": {
+            "loa_m": { "source": "field_resolution", "state": "resolved", "value": 10.8 },
+            "beam_m": { "source": "field_resolution", "state": "resolved", "value": 3.5 },
+            "draft_max_m": { "source": "field_resolution", "state": "resolved", "value": 1.60 },
+            "displacement_kg": { "source": "field_resolution", "state": "resolved", "value": 6800 }
+          },
+          "categorical_fields": {
+            "rig.masthead_fractional": { "source": "field_resolution", "state": "resolved", "value": "masthead" },
+            "rig.sailplan": { "source": "field_resolution", "state": "resolved", "value": "cutter" },
+            "deck.cockpit_position": { "source": "field_resolution", "state": "resolved", "value": "aft" },
+            "appendages.keel_type": { "source": "field_resolution", "state": "resolved", "value": "fin" },
+            "appendages.rudder_support": { "source": "field_resolution", "state": "resolved", "value": "skeg" }
+          }
+        }
+      ]
+    },
+    {
+      "design_id": "fx-design-06-ambiguous-configuration-space",
+      "note": "Only the baseline configuration is currently resolved; a shallow-draft DesignOption is known to exist (per BOAT_DESIGN_SCHEMA design_options) but its overridden fields are not yet researched, so configuration_space_complete=false. A query the known baseline already satisfies remains CONFIRMED_MATCH; a query the baseline does not satisfy is genuinely CONFIGURATION_AMBIGUOUS, never a false CONFIRMED_NON_MATCH.",
+      "configuration_space_complete": false,
+      "configurations": [
+        {
+          "configuration_id": "fx-design-06-ambiguous-configuration-space::baseline",
+          "numeric_fields": {
+            "loa_m": { "source": "field_resolution", "state": "resolved", "value": 10.5 },
+            "beam_m": { "source": "field_resolution", "state": "resolved", "value": 3.5 },
+            "draft_max_m": { "source": "field_resolution", "state": "resolved", "value": 1.90 },
+            "displacement_kg": { "source": "field_resolution", "state": "resolved", "value": 6600 }
+          },
+          "categorical_fields": {
+            "rig.masthead_fractional": { "source": "field_resolution", "state": "resolved", "value": "masthead" },
+            "rig.sailplan": { "source": "field_resolution", "state": "resolved", "value": "cutter" },
+            "deck.cockpit_position": { "source": "field_resolution", "state": "resolved", "value": "center" },
+            "appendages.keel_type": { "source": "field_resolution", "state": "resolved", "value": "fin" },
+            "appendages.rudder_support": { "source": "field_resolution", "state": "resolved", "value": "skeg" }
+          }
+        }
+      ]
+    }
+  ]
+}

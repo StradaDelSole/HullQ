@@ -1,0 +1,138 @@
+{
+  "fixture_label": "SLICE-0035 query-shape fixtures matching the SEARCH_BENCHMARK.v0.1.md locked PRIMARY suite operator/field shapes (Q1-Q10). Thresholds and structure mirror the locked spec text exactly; this file does not run against the real 12-BoatDesign benchmark corpus and is not itself the locked benchmark.",
+  "queries": [
+    {
+      "query_id": "Q1",
+      "role": "USER_INTENT",
+      "description": "LOA 8-11 m AND Draft <= 1.80 m",
+      "query": {
+        "schema_version": "0.2",
+        "type": "AND",
+        "criteria": [
+          { "kind": "NUMERIC", "field": "loa_m", "comparison": "RANGE", "threshold_min": 8.0, "threshold_max": 11.0, "strength": "MUST" },
+          { "kind": "NUMERIC", "field": "draft_max_m", "comparison": "MAXIMUM", "threshold_min": null, "threshold_max": 1.80, "strength": "MUST" }
+        ]
+      }
+    },
+    {
+      "query_id": "Q2",
+      "role": "USER_INTENT",
+      "description": "LOA 9-12 m AND Beam <= 3.60 m AND Draft <= 2.00 m",
+      "query": {
+        "schema_version": "0.2",
+        "type": "AND",
+        "criteria": [
+          { "kind": "NUMERIC", "field": "loa_m", "comparison": "RANGE", "threshold_min": 9.0, "threshold_max": 12.0, "strength": "MUST" },
+          { "kind": "NUMERIC", "field": "beam_m", "comparison": "MAXIMUM", "threshold_min": null, "threshold_max": 3.60, "strength": "MUST" },
+          { "kind": "NUMERIC", "field": "draft_max_m", "comparison": "MAXIMUM", "threshold_min": null, "threshold_max": 2.00, "strength": "MUST" }
+        ]
+      }
+    },
+    {
+      "query_id": "Q3",
+      "role": "USER_INTENT",
+      "description": "Displacement >= 4,000 kg AND LOA <= 12 m",
+      "query": {
+        "schema_version": "0.2",
+        "type": "AND",
+        "criteria": [
+          { "kind": "NUMERIC", "field": "displacement_kg", "comparison": "MINIMUM", "threshold_min": 4000.0, "threshold_max": null, "strength": "MUST" },
+          { "kind": "NUMERIC", "field": "loa_m", "comparison": "MAXIMUM", "threshold_min": null, "threshold_max": 12.0, "strength": "MUST" }
+        ]
+      }
+    },
+    {
+      "query_id": "Q4",
+      "role": "USER_INTENT",
+      "description": "Masthead rig AND Draft <= 1.80 m",
+      "query": {
+        "schema_version": "0.2",
+        "type": "AND",
+        "criteria": [
+          { "kind": "CATEGORICAL", "field": "rig.masthead_fractional", "equals": "masthead", "strength": "MUST" },
+          { "kind": "NUMERIC", "field": "draft_max_m", "comparison": "MAXIMUM", "threshold_min": null, "threshold_max": 1.80, "strength": "MUST" }
+        ]
+      }
+    },
+    {
+      "query_id": "Q5",
+      "role": "USER_INTENT",
+      "description": "Aft cockpit AND Fin keel AND Draft <= 1.70 m",
+      "query": {
+        "schema_version": "0.2",
+        "type": "AND",
+        "criteria": [
+          { "kind": "CATEGORICAL", "field": "deck.cockpit_position", "equals": "aft", "strength": "MUST" },
+          { "kind": "CATEGORICAL", "field": "appendages.keel_type", "equals": "fin", "strength": "MUST" },
+          { "kind": "NUMERIC", "field": "draft_max_m", "comparison": "MAXIMUM", "threshold_min": null, "threshold_max": 1.70, "strength": "MUST" }
+        ]
+      }
+    },
+    {
+      "query_id": "Q6",
+      "role": "USER_INTENT",
+      "description": "Skeg-supported rudder AND LOA 9-12 m",
+      "query": {
+        "schema_version": "0.2",
+        "type": "AND",
+        "criteria": [
+          { "kind": "CATEGORICAL", "field": "appendages.rudder_support", "equals": "skeg", "strength": "MUST" },
+          { "kind": "NUMERIC", "field": "loa_m", "comparison": "RANGE", "threshold_min": 9.0, "threshold_max": 12.0, "strength": "MUST" }
+        ]
+      }
+    },
+    {
+      "query_id": "Q7",
+      "role": "USER_INTENT",
+      "description": "Center cockpit AND Draft <= 1.80 m",
+      "query": {
+        "schema_version": "0.2",
+        "type": "AND",
+        "criteria": [
+          { "kind": "CATEGORICAL", "field": "deck.cockpit_position", "equals": "center", "strength": "MUST" },
+          { "kind": "NUMERIC", "field": "draft_max_m", "comparison": "MAXIMUM", "threshold_min": null, "threshold_max": 1.80, "strength": "MUST" }
+        ]
+      }
+    },
+    {
+      "query_id": "Q8",
+      "role": "USER_INTENT",
+      "description": "Cutter AND Skeg-supported rudder",
+      "query": {
+        "schema_version": "0.2",
+        "type": "AND",
+        "criteria": [
+          { "kind": "CATEGORICAL", "field": "rig.sailplan", "equals": "cutter", "strength": "MUST" },
+          { "kind": "CATEGORICAL", "field": "appendages.rudder_support", "equals": "skeg", "strength": "MUST" }
+        ]
+      }
+    },
+    {
+      "query_id": "Q9",
+      "role": "SYSTEM_CHALLENGE",
+      "description": "Center cockpit AND Cutter AND Skeg-supported rudder AND Draft <= 1.80 m",
+      "query": {
+        "schema_version": "0.2",
+        "type": "AND",
+        "criteria": [
+          { "kind": "CATEGORICAL", "field": "deck.cockpit_position", "equals": "center", "strength": "MUST" },
+          { "kind": "CATEGORICAL", "field": "rig.sailplan", "equals": "cutter", "strength": "MUST" },
+          { "kind": "CATEGORICAL", "field": "appendages.rudder_support", "equals": "skeg", "strength": "MUST" },
+          { "kind": "NUMERIC", "field": "draft_max_m", "comparison": "MAXIMUM", "threshold_min": null, "threshold_max": 1.80, "strength": "MUST" }
+        ]
+      }
+    },
+    {
+      "query_id": "Q10",
+      "role": "SYSTEM_CHALLENGE",
+      "description": "Draft <= 1.60 m (configuration-aware: standard/deep/shallow alternatives must be evaluated through explicit resolved configurations, not a design-wide averaged or arbitrary draft)",
+      "query": {
+        "schema_version": "0.2",
+        "type": "AND",
+        "criteria": [
+          { "kind": "NUMERIC", "field": "draft_max_m", "comparison": "MAXIMUM", "threshold_min": null, "threshold_max": 1.60, "strength": "MUST" }
+        ]
+      }
+    }
+  ]
+}

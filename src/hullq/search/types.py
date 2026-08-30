@@ -1,14 +1,14 @@
-"""Core vocabulary for the HullQ search kernel — SLICE-0033.
+"""Core vocabulary for the HullQ search kernel — SLICE-0033 (+ SLICE-0035).
 
 Matches the accepted `specs/SEARCH_QUERY_SEMANTICS.v0.1.md` (OQ-009 D1-D10)
-truth model, reason codes and result-class vocabulary for the implemented
-minimum numeric-MUST-AND vertical slice.
+truth model, reason codes and result-class vocabulary. SLICE-0033 implemented
+the minimum numeric-MUST-AND vertical slice. SLICE-0035 adds the categorical
+MUST leaf and configuration-aware evaluation vocabulary (`CategoricalLeafKind`
+constants live in `hullq.search.criteria`; `ReasonCode.CONFIGURATION_AMBIGUOUS`
+is added here) required by `specs/SEARCH_BENCHMARK.v0.1.md`.
 
-Does not implement: PREFER requirement strength, OR/NOT aggregation, ranking,
-or option-sensitive/ResolvedConfiguration-scoped configuration-aware
-evaluation (REQ-SEARCH-006). `NOT_APPLICABLE` and `APPLICABILITY_UNKNOWN` are
-implemented as generic (non-configuration-scoped) statuses only — see
-`hullq.search.values.from_derived_metric_status`.
+Does not implement: PREFER requirement strength, OR/NOT aggregation, or
+ranking — still explicitly out of scope.
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ from __future__ import annotations
 from enum import StrEnum
 
 __all__ = [
+    "LeafCriterionKind",
     "NumericComparisonKind",
     "ReasonCode",
     "RequirementStrength",
@@ -42,14 +43,18 @@ class ResultClass(StrEnum):
 
 
 class ReasonCode(StrEnum):
-    """Reason codes implemented by this slice's numeric-MUST-AND vertical.
+    """Reason codes implemented across SLICE-0033 and SLICE-0035.
 
-    `CONFIGURATION_AMBIGUOUS` and `RANGE_OVERLAPS_THRESHOLD` belong to
-    option-sensitive/bounded-value-range configuration-aware evaluation
-    (REQ-SEARCH-006, SEARCH_QUERY_SEMANTICS.v0.1.md §7), which is explicitly
-    out of scope for this slice. `APPLICABILITY_UNKNOWN` and `NOT_APPLICABLE`
-    ARE implemented, as generic (non-configuration-scoped) derived-metric
-    statuses — see `hullq.search.values.from_derived_metric_status`.
+    `RANGE_OVERLAPS_THRESHOLD` (SEARCH_QUERY_SEMANTICS.v0.1.md §7) belongs to
+    a bounded-value-range representation this slice does not implement — a
+    fake range mechanism must not be invented solely to exercise the enum
+    (SLICE-0035 stop condition), so it remains absent from this vocabulary.
+    `CONFIGURATION_AMBIGUOUS` IS implemented as of SLICE-0035: it is the
+    design-level reason attached when a `DesignQueryEvaluation` is
+    `INSUFFICIENT_DATA` because the resolved-configuration space is not
+    known to be complete (`DesignConfigurationSet.configuration_space_complete`
+    is `False`) and no confirmed match already exists — see
+    `hullq.search.configuration_engine.evaluate_design_configuration_set`.
     """
 
     VALUE_MISSING = "VALUE_MISSING"
@@ -57,6 +62,7 @@ class ReasonCode(StrEnum):
     PROVISIONAL_VALUE = "PROVISIONAL_VALUE"
     APPLICABILITY_UNKNOWN = "APPLICABILITY_UNKNOWN"
     NOT_APPLICABLE = "NOT_APPLICABLE"
+    CONFIGURATION_AMBIGUOUS = "CONFIGURATION_AMBIGUOUS"
 
 
 class RequirementStrength(StrEnum):
@@ -98,3 +104,16 @@ class NumericComparisonKind(StrEnum):
     MINIMUM = "MINIMUM"
     MAXIMUM = "MAXIMUM"
     RANGE = "RANGE"
+
+
+class LeafCriterionKind(StrEnum):
+    """Discriminator for a mixed-query leaf criterion — SLICE-0035 query v0.2.
+
+    Used only by the serialized query-contract boundary
+    (`hullq.search.query_mixed`) to tag each criterion dict with which leaf
+    type it deserializes to. Not used by v0.1 numeric-only serialization,
+    which carries no such discriminator and remains unchanged.
+    """
+
+    NUMERIC = "NUMERIC"
+    CATEGORICAL = "CATEGORICAL"

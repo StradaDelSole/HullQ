@@ -1,4 +1,4 @@
-"""Unit tests for hullq.search.values — SLICE-0033 (+ REVIEW amendment).
+"""Unit tests for hullq.search.values — SLICE-0033 (+ REVIEW amendment, + SLICE-0035).
 
 Covers:
 - QualifiedNumericValue's CONFIRMED<->value invariant (both directions)
@@ -8,6 +8,8 @@ Covers:
 - non-CONFIRMED adapter outputs never carry the original value
 - is_finite_real_number / CONFIRMED structural fail-closed hardening against
   bool, NaN, +/-Infinity and non-numeric candidate values (review Finding 1)
+- SLICE-0035: QualifiedCategoricalValue's CONFIRMED<->value invariant and
+  from_resolution_state_categorical adapter
 """
 
 from __future__ import annotations
@@ -20,9 +22,11 @@ from hullq.domain.derived_metrics import MetricStatus
 from hullq.domain.provenance import ResolutionState
 from hullq.search.types import ValueQualification
 from hullq.search.values import (
+    QualifiedCategoricalValue,
     QualifiedNumericValue,
     from_derived_metric_status,
     from_resolution_state,
+    from_resolution_state_categorical,
     is_finite_real_number,
 )
 
@@ -192,3 +196,77 @@ def test_is_finite_real_number_used_consistently_with_math_isfinite() -> None:
             and not isinstance(candidate, bool)
             and math.isfinite(candidate)
         )
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0035 — QualifiedCategoricalValue
+# ---------------------------------------------------------------------------
+
+
+def test_categorical_confirmed_requires_value() -> None:
+    with pytest.raises(ValueError, match="CONFIRMED"):
+        QualifiedCategoricalValue(value=None, qualification=ValueQualification.CONFIRMED)
+
+
+@pytest.mark.parametrize(
+    "qualification",
+    [
+        ValueQualification.MISSING,
+        ValueQualification.UNRESOLVED_CONFLICT,
+        ValueQualification.PROVISIONAL,
+        ValueQualification.APPLICABILITY_UNKNOWN,
+        ValueQualification.NOT_APPLICABLE,
+    ],
+)
+def test_categorical_non_confirmed_must_not_carry_value(
+    qualification: ValueQualification,
+) -> None:
+    with pytest.raises(ValueError, match="must not carry a value"):
+        QualifiedCategoricalValue(value="masthead", qualification=qualification)
+
+
+def test_categorical_confirmed_with_value_is_valid() -> None:
+    qv = QualifiedCategoricalValue(value="masthead", qualification=ValueQualification.CONFIRMED)
+    assert qv.value == "masthead"
+
+
+def test_categorical_confirmed_rejects_non_string() -> None:
+    with pytest.raises(ValueError, match="non-empty string"):
+        QualifiedCategoricalValue(value=1, qualification=ValueQualification.CONFIRMED)  # type: ignore[arg-type]
+
+
+def test_categorical_confirmed_rejects_empty_string() -> None:
+    with pytest.raises(ValueError, match="non-empty string"):
+        QualifiedCategoricalValue(value="", qualification=ValueQualification.CONFIRMED)
+
+
+def test_categorical_confirmed_rejects_whitespace_only_string() -> None:
+    with pytest.raises(ValueError, match="non-empty string"):
+        QualifiedCategoricalValue(value="   ", qualification=ValueQualification.CONFIRMED)
+
+
+@pytest.mark.parametrize(
+    ("state", "expected"),
+    [
+        (ResolutionState.RESOLVED, ValueQualification.CONFIRMED),
+        (ResolutionState.RESOLVED_WITH_CONFLICT, ValueQualification.CONFIRMED),
+        (ResolutionState.UNKNOWN, ValueQualification.MISSING),
+        (ResolutionState.NEEDS_REVIEW, ValueQualification.MISSING),
+        (ResolutionState.CONFLICT, ValueQualification.UNRESOLVED_CONFLICT),
+    ],
+)
+def test_from_resolution_state_categorical_maps_every_member(
+    state: ResolutionState, expected: ValueQualification
+) -> None:
+    qv = from_resolution_state_categorical(state, "aft")
+    assert qv.qualification is expected
+    if expected is ValueQualification.CONFIRMED:
+        assert qv.value == "aft"
+    else:
+        assert qv.value is None
+
+
+def test_from_resolution_state_categorical_covers_all_enum_members() -> None:
+    confirmed_states = {ResolutionState.RESOLVED, ResolutionState.RESOLVED_WITH_CONFLICT}
+    for state in ResolutionState:
+        from_resolution_state_categorical(state, "fin" if state in confirmed_states else None)
