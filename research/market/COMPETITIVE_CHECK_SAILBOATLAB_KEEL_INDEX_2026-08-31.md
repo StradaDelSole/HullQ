@@ -275,6 +275,26 @@ saved search / fit-confirmed monitoring
 
 This remains a **hypothesis to validate with real buyers**, not a marketing claim to publish before Gate 1.
 
+## Defensibility is staged, not present by declaration
+
+HullQ does **not** currently possess a durable moat merely because its architecture is stricter. A plausible defensibility path is staged:
+
+1. **Execution discipline:** preserve exact identity, configuration scope, hard constraints, UNKNOWN/conflict and provenance while shipping quickly enough to validate demand.
+2. **Proprietary configuration/evidence corpus:** only after product value is demonstrated, deliberately accumulate correctly scoped evidence that is expensive to reconstruct across thousands of designs/configurations.
+3. **Compounding market/intention layer:** later market-history observations, feed relationships, entity/dedup history and buyer-intent/search data may further increase replacement cost.
+
+This staged moat thesis is **not** permission to enlarge the pre-Gate-1 Seed Corpus or perfect unused provenance fields. Before Gate 1, corpus work remains bounded to validation usefulness as specified by the Product Execution Plan.
+
+## AI assistants: threat and potential channel
+
+General AI assistants such as ChatGPT/Claude/Perplexity are a structural competitive risk because users may increasingly ask them directly to find boats rather than visiting a specialist search UI.
+
+They may also become a distribution surface for a trusted vertical HullQ search/data/API layer. That opportunity should be treated as:
+
+> **an additional channel, not a distribution foundation.**
+
+HullQ should not become structurally dependent on third-party AI tool-call economics, ranking preferences, plugin/tool policies or access rules. Direct product/distribution capability remains necessary even if AI assistants later consume HullQ data.
+
 ## Competitive roles
 
 - **Listings Port:** benchmark for breadth, aggregation, dedup/history and observed Search/identity/configuration failure cases.
@@ -292,11 +312,12 @@ No phase is inserted and SLICE-0038 remains untouched.
 After SLICE-0038:
 
 - Seed Corpus selection should deliberately include multi-configuration designs and hard-constraint stress cases;
+- Seed Corpus remains bounded to validation usefulness; the future proprietary-corpus moat thesis must not expand the pre-Gate-1 data program;
 - Concierge Validation should neutrally test the user value of strict evidence/truth against existing alternatives;
-- the strongest benchmark classes are now:
-  1. broad aggregator/search behavior (Listings Port),
-  2. personalized AI buyer scoring / design-to-ad workflow (SailboatLab),
-  3. deterministic evidence-backed HullQ results;
+- Listings Port and SailboatLab should be available as distinct comparison classes where practical: broad aggregator/search vs personalized buyer-intelligence/scoring;
+- a primary product-value signal should count only when it appears before HullQ's supposed truth/configuration advantage is explained; moderator-created persuasion is not product pull;
+- the long-term combination of competitor strengths plus HullQ truth/UX is a **North Star, not a feature backlog or execution roadmap**;
+- AI-assistant integration/distribution is a later channel hypothesis, not a new phase or dependency;
 - Keel Index informs later public/SEO execution rather than requiring a separate product phase.
 
 Market Access research remains separate and bounded. Competitor behavior does not authorize HullQ acquisition methods.
