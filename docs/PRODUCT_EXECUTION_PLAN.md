@@ -34,6 +34,18 @@ this specific offered boat is confirmed to fit
 
 `UNKNOWN` is a valid product result and must never be converted to a plausible guess merely to increase apparent coverage.
 
+The two equal business-validation risks are:
+
+```text
+A. Buyer Value Risk
+Does strict configuration/listing truth materially change buyer behavior?
+
+B. Market Access Risk
+Can HullQ obtain enough current inventory on sustainable legal/economic terms?
+```
+
+Gate 1 addresses A. Gate 2 addresses B. Neither substitutes for the other.
+
 ## 2. Locked immediate sequence
 
 ### Phase A — SLICE-0038 core market proof
