@@ -71,6 +71,20 @@ Rules:
 - market sources may help prioritize which designs matter, but do not automatically become technical-fact sources;
 - technical facts still follow accepted provenance/source-rights rules.
 
+#### Pre-Gate-1 data discipline
+
+Until Gate 1 has been classified, the future possibility of a proprietary configuration/evidence corpus is a **North-Star moat hypothesis, not a reason to expand the corpus**.
+
+Any slice whose primary effect is technical-data/corpus growth must directly support at least one of:
+
+1. one of the bounded approximately 20–30 Seed-Corpus BoatDesigns;
+2. a concrete requirement needed by an active/planned Concierge test query; or
+3. a real blocker preventing those tests from running.
+
+If it does none of these, defer it until after Gate 1. "Building the moat", increasing headline coverage, completing unused fields, or accumulating provenance depth for future value is not sufficient justification before product value is validated.
+
+The existing `ONE-CAPABILITY CHECK` and `VISIBLE-RESULT CHECK` apply equally to Data/Research slices; data work is not exempt merely because correct data may become defensible later.
+
 ### Phase C — Concierge Product Validation
 
 Run standardized moderated tests with **6–8 serious prospective users**. The first three tests should happen as soon as the Seed Corpus can support their real searches; do not wait for perfect corpus completion.
@@ -90,6 +104,8 @@ For every participant:
 
 Do not lead with statements such as "HullQ is more accurate here". Prefer neutral questions such as "What would you do based on these results?" and "Did anything change your decision?"
 
+Where useful, compare against both a broad aggregator/search product and a buyer-intelligence/recommendation product (currently Listings Port and SailboatLab are the reference classes), without teaching the participant what HullQ is supposed to do better.
+
 #### Gate 1 — Product Value
 
 Primary signals:
@@ -100,11 +116,13 @@ Primary signals:
 
 Secondary praise such as "interesting", "nice idea" or "I would look at this" does not satisfy the gate.
 
+**Unprompted-value rule:** a primary signal counts toward GREEN only if the relevant behavior/value is visible **before** HullQ's configuration-truth/provenance advantage is explained to the participant. A participant does not need to use HullQ terminology; changing a decision, requesting monitoring, or preferring the evidence-backed result is sufficient. Benefits that appear only after the moderator explains why HullQ is supposed to be better must be recorded as prompted feedback and do **not** satisfy a primary GREEN signal.
+
 Classification after 6–8 tests:
 
-- **GREEN:** at least 5 of 8 (or 4 of 6 if stopped after six because the result is already clear) show at least one of `Decision impact` or `Monitoring pull`, **and at least half of all tested participants** show a real `Trust advantage`.
-- **YELLOW:** meaningful value exists, but mainly for a narrower user group or a subset of technically constrained searches. Continue with a narrower beachhead rather than claiming broad-market validation.
-- **RED:** fewer than half show `Decision impact` or `Monitoring pull`, and normal model/listing search is repeatedly judged sufficient. Do not continue the existing product expansion by default.
+- **GREEN:** at least 5 of 8 (or 4 of 6 if stopped after six because the result is already clear) show at least one of `Decision impact` or `Monitoring pull`, **and at least half of all tested participants** show a real `Trust advantage`; the counted primary signals satisfy the unprompted-value rule above.
+- **YELLOW:** meaningful value exists, but mainly for a narrower user group or a subset of technically constrained searches, or the value is visible but requires more explanation than expected. Continue with a narrower beachhead rather than claiming broad-market validation.
+- **RED:** fewer than half show `Decision impact` or `Monitoring pull`, normal model/listing search is repeatedly judged sufficient, or the supposed configuration-truth advantage only becomes persuasive after repeated moderator explanation. Do not continue the existing product expansion by default.
 
 If Gate 1 is RED, evaluate only these bounded fallback directions before further investment:
 
@@ -247,6 +265,9 @@ After SLICE-0038, decisions follow the gates in this document rather than return
 - Listings Port validates demand for cross-market sailboat discovery and already covers aggregation/dedup/alerts/history-like use cases; HullQ should not try to win merely by aggregating more sources.
 - SailboatLab demonstrates that buyer-side model comparison, design-vs-ad distinction, scoring and market monitoring already exist; HullQ's stronger differentiation hypothesis is field-level physical-listing evidence, configuration scope, deterministic hard constraints, explicit UNKNOWN/conflict and auditable provenance.
 - Keel Index is a strong benchmark for coherent BoatDesign decision hubs, market-context presentation and product-led/data-driven SEO; HullQ should adopt the useful interaction/information patterns without copying its visual identity or relaxing truth semantics.
+- The long-term composite vision — broad market coverage + strong decision-hub/SEO surfaces + guided discovery + HullQ truth/search integrity + excellent UX — is a **North Star, not an execution roadmap or feature backlog**. It may not be used to widen pre-Gate-1 scope.
+- A potential defensibility path is staged: execution discipline first; only after product value is validated may a proprietary configuration/evidence corpus become an intentional moat investment; later market history, feed relationships and buyer-intent data may compound that advantage. The future moat thesis does not authorize premature corpus expansion.
+- General AI assistants are both a competitive threat and a possible future distribution/API channel for HullQ's verified vertical data. They are an **additional channel, not a distribution foundation**; HullQ should retain direct product/distribution capability rather than depend on another platform's tool/API policies.
 - Scanboat and broker-syndication research indicate that broker/CRM/MLS/feed relationships may be cleaner long-term inventory paths than scraping many public portals.
 - Scraping multiple marketplaces is therefore not the foundational business model.
 - A native marketplace is a possible later outcome only if supply relationships naturally justify it; it is not a panic pivot.
@@ -262,3 +283,5 @@ PRODUCT EXECUTION PLAN ALIGNMENT: PASS | FAIL
 ```
 
 A failed One-Capability check blocks readiness. A failed Visible-Result check blocks ordinary product work unless the slice documents a genuine prerequisite/blocker exception.
+
+Until Gate 1 has been classified, any readiness/review for a slice whose primary effect is corpus/data growth must additionally state whether it directly serves the bounded Seed Corpus, an active/planned Concierge query, or a real validation blocker. If not, the slice is not aligned with this plan and must be deferred.
