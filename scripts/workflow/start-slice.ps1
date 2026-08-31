@@ -31,6 +31,23 @@ function Get-PrimarySliceFile([string]$Root, [string]$Number) {
     return $primary[0]
 }
 
+function Assert-ProductExecutionChecks([string]$Number, [string]$Text, [string]$FileName) {
+    if ([int]$Number -lt 39) { return }
+
+    $requiredChecks = @(
+        'ONE-CAPABILITY CHECK',
+        'VISIBLE-RESULT CHECK',
+        'PRODUCT EXECUTION PLAN ALIGNMENT'
+    )
+
+    foreach ($check in $requiredChecks) {
+        $pattern = "(?m)^\*\*$([regex]::Escape($check)):\*\*\s*PASS\s*$"
+        if ($Text -notmatch $pattern) {
+            throw "SLICE-$Number cannot start: $FileName must contain '**$check:** PASS' for post-0038 work. Prepare/review the slice against docs/PRODUCT_EXECUTION_PLAN.md before starting Claude."
+        }
+    }
+}
+
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 if (-not $Slice) { $Slice = Read-Host 'Slice number (example: 0005)' }
 $sliceNumber = Normalize-Slice $Slice
@@ -57,6 +74,8 @@ $sliceStatus = $statusMatch.Groups[1].Value
 if ($sliceStatus -ne 'READY') {
     throw "SLICE-$sliceNumber is '$sliceStatus', not READY. Do not start Claude yet; ask the project master to prepare/authorize this slice first."
 }
+
+Assert-ProductExecutionChecks -Number $sliceNumber -Text $sliceText -FileName $sliceFile.Name
 
 $slug = $sliceFile.BaseName -replace "^SLICE-$sliceNumber-", ''
 $branch = "slice/$sliceNumber-$slug"
@@ -103,6 +122,7 @@ TOKEN/CONTEXT DISCIPLINE:
 
 EXECUTION:
 - Follow CLAUDE.md and $relativeSliceFile exactly.
+- For SLICE-0039 and later, comply with docs/PRODUCT_EXECUTION_PLAN.md and preserve the slice's PASS product-execution checks.
 - Work only on `$branch`; do not modify main or another branch.
 - Do not broaden scope or start another slice.
 - Push this same branch to GitHub at completion.
