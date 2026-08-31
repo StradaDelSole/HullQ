@@ -285,6 +285,21 @@ def _normalize_identity_token(value: str | None) -> str:
     return re.sub(r"[^a-z0-9]", "", text.lower())
 
 
+def _reduced_model_token(model: str | None) -> str:
+    """Normalized model token with one leading duplicated brand prefix stripped.
+
+    Shared by `admit_boat_design_identity` (compare against the expected
+    canonical model) and `_fields_conflict` (compare two raw structured model
+    observations against *each other*) so both use the identical reduction --
+    "Oceanis 30.1" and "Beneteau Oceanis 301" must reduce to the same token in
+    both call sites, not just at the final admission check.
+    """
+    token = _normalize_identity_token(model)
+    if token.startswith(_EXPECTED_BRAND_TOKEN):
+        token = token[len(_EXPECTED_BRAND_TOKEN) :]
+    return token
+
+
 def admit_boat_design_identity(manufacturer: str | None, model: str | None) -> str | None:
     """Independently authorize `matched_boat_design_id` from structured identity only.
 
@@ -297,34 +312,62 @@ def admit_boat_design_identity(manufacturer: str | None, model: str | None) -> s
     be exactly "oceanis301". Any other value, including a near-neighbor model
     (Oceanis 30, 31, 300, 34.1, ...), yields `None` (unresolved).
     """
-    brand_token = _normalize_identity_token(manufacturer)
-    if brand_token != _EXPECTED_BRAND_TOKEN:
+    if _normalize_identity_token(manufacturer) != _EXPECTED_BRAND_TOKEN:
         return None
-    model_token = _normalize_identity_token(model)
-    if model_token.startswith(brand_token):
-        model_token = model_token[len(brand_token) :]
-    if model_token != _EXPECTED_MODEL_TOKEN:
+    if _reduced_model_token(model) != _EXPECTED_MODEL_TOKEN:
         return None
     return EXPECTED_DESIGN_ID
 
 
-def _extract_raw_identity(listing: dict[str, Any]) -> dict[str, str | None]:
+def _fields_conflict(a: str | None, b: str | None, *, is_model: bool) -> bool:
+    """True iff two structured observations of the *same* identity field disagree.
+
+    `None` (a source simply not supplying that field) never conflicts with
+    anything -- that is the live-supported "incomplete `attributes` plus a
+    complete `boat_specs`" case, which must keep admitting. When both sources
+    *do* supply a value, they must reduce to the same normalized token or
+    this is a genuine conflict: `admit_boat_design_identity`'s caller must
+    fail closed rather than silently preferring one observation over the
+    other (Required Behavior D review finding, PR #117).
+    """
+    if a is None or b is None:
+        return False
+    reduce = _reduced_model_token if is_model else _normalize_identity_token
+    return reduce(a) != reduce(b)
+
+
+def _extract_raw_identity(listing: dict[str, Any]) -> tuple[dict[str, str | None], bool]:
     """Structured brand/model only -- title/description are never consulted here.
 
     `attributes.model`/`attributes.brand` (Owning's own dedicated asset-type
-    fields, `GET /api/asset-types/boats`) are preferred; `boat_specs.brand`/
-    `boat_specs.model` (the raw upstream-scrape mirror) are the fallback. A
-    listing exposing neither yields `model=None`, which
-    `admit_boat_design_identity` always rejects -- title is deliberately not
-    parsed as a third fallback (would edge into generic free-text entity
-    resolution, which this pilot does not authorize; see REPORT.md for the
-    three real 2026-08-31 candidates this actually excluded).
+    fields, `GET /api/asset-types/boats`) are preferred for *display*;
+    `boat_specs.brand`/`boat_specs.model` (the raw upstream-scrape mirror) are
+    the fallback when a source is silent on that field. A listing exposing
+    neither yields `model=None`, which `admit_boat_design_identity` always
+    rejects -- title is deliberately not parsed as a third fallback (would
+    edge into generic free-text entity resolution, which this pilot does not
+    authorize; see REPORT.md for the three real 2026-08-31 candidates this
+    actually excluded).
+
+    Returns `(raw_identity, has_conflict)`. `has_conflict` is `True` when
+    `attributes` and `boat_specs` both supply a value for brand and/or model
+    and those values disagree after normalization -- the two structured
+    representations are never silently collapsed by picking whichever one
+    happens to come first (Required Behavior D review finding, PR #117): an
+    incomplete `attributes` record (e.g. brand only) paired with a complete,
+    *agreeing* `boat_specs` record is not a conflict and keeps admitting, but
+    two populated, *disagreeing* observations of the same field are.
     """
     attributes = listing.get("attributes") or {}
     boat_specs = listing.get("boat_specs") or {}
-    manufacturer = attributes.get("brand") or boat_specs.get("brand")
-    model = attributes.get("model") or boat_specs.get("model")
-    return {"manufacturer": manufacturer, "model": model, "variant": None}
+    attr_brand, spec_brand = attributes.get("brand"), boat_specs.get("brand")
+    attr_model, spec_model = attributes.get("model"), boat_specs.get("model")
+    has_conflict = _fields_conflict(attr_brand, spec_brand, is_model=False) or _fields_conflict(
+        attr_model, spec_model, is_model=True
+    )
+    manufacturer = attr_brand or spec_brand
+    model = attr_model or spec_model
+    return {"manufacturer": manufacturer, "model": model, "variant": None}, has_conflict
 
 
 # ---------------------------------------------------------------------------
@@ -439,10 +482,19 @@ def _map_seller(seller: dict[str, Any]) -> dict[str, str | None]:
 
 
 def normalize_listing(listing: dict[str, Any], observed_at: str) -> dict[str, Any]:
-    """Build the MARKET_LISTING_SCHEMA.v0.1.json-shaped canonical record for *listing*."""
-    raw_identity = _extract_raw_identity(listing)
-    matched_boat_design_id = admit_boat_design_identity(
-        raw_identity["manufacturer"], raw_identity["model"]
+    """Build the MARKET_LISTING_SCHEMA.v0.1.json-shaped canonical record for *listing*.
+
+    A detected `attributes` vs `boat_specs` identity conflict (see
+    `_extract_raw_identity`) forces `matched_boat_design_id=None` regardless
+    of what `admit_boat_design_identity` would otherwise decide from the
+    OR-preferred display value -- the conflict itself, not either individual
+    observation, is authoritative here.
+    """
+    raw_identity, identity_conflict = _extract_raw_identity(listing)
+    matched_boat_design_id = (
+        None
+        if identity_conflict
+        else admit_boat_design_identity(raw_identity["manufacturer"], raw_identity["model"])
     )
     price = listing.get("price") or {}
     location = listing.get("location") or {}

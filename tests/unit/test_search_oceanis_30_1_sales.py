@@ -238,6 +238,59 @@ def test_search_return_membership_alone_does_not_authorize_identity() -> None:
     assert canonical["matched_boat_design_id"] is None
 
 
+def test_conflicting_model_observations_leave_identity_unresolved() -> None:
+    """PR #117 review finding: two populated, disagreeing model observations
+
+    must never be silently collapsed by preferring `attributes` over
+    `boat_specs` -- the listing must remain unresolved (Required Behavior D),
+    not admitted using whichever value happens to come first.
+    """
+    listing = _listing(
+        attributes={"brand": "beneteau", "model": "Oceanis 31"},
+        boat_specs={"brand": "Beneteau", "model": "Oceanis 30.1"},
+    )
+    canonical = normalize_listing(listing, observed_at="2026-08-31T00:00:00Z")
+    assert canonical["matched_boat_design_id"] is None
+
+
+def test_conflicting_brand_observations_leave_identity_unresolved() -> None:
+    """Same review finding, for the brand field: `attributes.brand="beneteau"`
+
+    must not silently win over a disagreeing `boat_specs.brand="Jeanneau"`
+    merely because `attributes` is checked first.
+    """
+    listing = _listing(
+        attributes={"brand": "beneteau", "model": "Oceanis 30.1"},
+        boat_specs={"brand": "Jeanneau", "model": "Oceanis 30.1"},
+    )
+    canonical = normalize_listing(listing, observed_at="2026-08-31T00:00:00Z")
+    assert canonical["matched_boat_design_id"] is None
+
+
+def test_consistent_duplicate_representations_still_admit() -> None:
+    """Positive control required alongside the conflict fix: an incomplete
+
+    `attributes` record (brand only, the real live-observed shape for 4 of
+    the 10 2026-08-31 candidates) paired with a complete `boat_specs`
+    brand/model pair is not a conflict, and neither is a fully populated
+    `attributes` record that merely spells the model differently than
+    `boat_specs` (duplicate brand prefix vs none). Both must keep admitting.
+    """
+    incomplete_attributes = _listing(
+        attributes={"brand": "beneteau"},
+        boat_specs={"brand": "Beneteau", "model": "Beneteau Oceanis 301"},
+    )
+    canonical = normalize_listing(incomplete_attributes, observed_at="2026-08-31T00:00:00Z")
+    assert canonical["matched_boat_design_id"] == EXPECTED_DESIGN_ID
+
+    differently_spelled = _listing(
+        attributes={"brand": "beneteau", "model": "Oceanis 30.1"},
+        boat_specs={"brand": "Beneteau", "model": "Beneteau Oceanis 301"},
+    )
+    canonical = normalize_listing(differently_spelled, observed_at="2026-08-31T00:00:00Z")
+    assert canonical["matched_boat_design_id"] == EXPECTED_DESIGN_ID
+
+
 # ---------------------------------------------------------------------------
 # Required Behavior E — listing-level configuration assessment
 # ---------------------------------------------------------------------------
