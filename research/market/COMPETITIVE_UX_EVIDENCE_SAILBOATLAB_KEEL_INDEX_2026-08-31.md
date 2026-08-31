@@ -21,6 +21,8 @@ It does **not**:
 - add a new Product Execution Plan phase;
 - require any of the later feature candidates to be built now.
 
+The combined long-term picture of competitor strengths plus HullQ truth/search integrity is a **North Star, not an execution roadmap or feature backlog**. It may not be used to widen pre-Gate-1 scope.
+
 ---
 
 # 2. SailboatLab visual/product evidence
@@ -327,7 +329,8 @@ These are captured in `docs/PRODUCT_UX_PRINCIPLES.md` and are required controlli
 - survey/known-issues evidence;
 - books/videos/affiliate library;
 - user-contributed imagery;
-- direct seller listings.
+- direct seller listings;
+- possible AI-assistant/API distribution as a secondary channel.
 
 ## Explicitly do not copy
 
@@ -340,7 +343,35 @@ These are captured in `docs/PRODUCT_UX_PRINCIPLES.md` and are required controlli
 
 ---
 
-# 6. Research stop
+# 6. AI assistants: threat and possible channel
+
+General AI assistants can increasingly answer the user's top-level discovery question directly, which creates a distribution threat to specialist search products.
+
+HullQ may later expose verified vertical search/data through such assistants, but this must remain:
+
+> **an additional channel, not a distribution foundation.**
+
+HullQ should retain direct product/distribution capability and avoid structural dependence on third-party tool-call economics, rankings, plugin/tool policies or access changes.
+
+This is a later channel hypothesis, not a current build item.
+
+---
+
+# 7. Pre-Gate-1 validation discipline
+
+The possibility that a proprietary configuration/evidence corpus becomes a real moat later is not a reason to expand the Seed Corpus now.
+
+Before Gate 1, Data/Research work should directly support:
+
+- one of the bounded Seed-Corpus BoatDesigns;
+- an active/planned Concierge query; or
+- a real validation blocker.
+
+The Concierge test must also avoid moderator-created value: if participants only appreciate HullQ's configuration/provenance advantage after it is explained, that is prompted feedback rather than evidence of spontaneous product pull.
+
+---
+
+# 8. Research stop
 
 The screenshots materially improve the UX/product benchmark but do not require another competitor phase.
 
