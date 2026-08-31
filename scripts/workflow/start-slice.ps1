@@ -113,7 +113,8 @@ Implement SLICE-$sliceNumber on branch `$branch`.
 TOKEN/CONTEXT DISCIPLINE:
 - This slice should run in a fresh Claude conversation.
 - Read CLAUDE.md, then read $relativeSliceFile FIRST.
-- Read only controlling artifacts explicitly named by the slice and implementation files needed for the concrete task.
+- Then read any binding `docs/slices/SLICE-$sliceNumber-*-addendum.md` files before implementation; these supplement the primary slice and may impose stricter fail-closed constraints.
+- Read only controlling artifacts explicitly named by the slice/addenda and implementation files needed for the concrete task.
 - Do NOT preload README, PROJECT_CONTEXT, PROJECT_STATE, full REQUIREMENTS, OPEN_QUESTIONS, slice INDEX, ROADMAP, or unrelated history merely for orientation.
 - Prefer targeted search/narrow reads over whole large files.
 - Use the synchronized local checkout; do not repeatedly fetch ordinary local files through GitHub/API tooling.
