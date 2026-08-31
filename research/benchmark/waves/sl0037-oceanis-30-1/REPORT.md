@@ -18,8 +18,9 @@ explicit instruction not to infer a boundary from the model name alone.
 
 ## 2. Source basis and the robots.txt finding
 
-Six distinct documents were retrieved (see `source_retrieval_log.json` for
-full detail); the retrieval ceiling was 12 and was not approached.
+Seven distinct documents were retrieved (see `source_retrieval_log.json` for
+full detail — SRC-7 was added in the REVIEW amendment, section 11); the
+retrieval ceiling was 12 and was not approached.
 
 A significant mid-research finding: `pro.beneteauusa.com` (SRC-4, the most
 detailed single document retrieved — an official BENETEAU America equipment
@@ -51,13 +52,12 @@ relied upon, since every fact it reported was independently re-obtained from
 SRC-1's raw text.
 
 Source-rights disposition for every source actually relied upon (SRC-1,
-SRC-5, SRC-6): `unlicensed_factual_reference` rights basis, SR-6.6
-`conditional` production clearance — lawfully accessible, reused as discrete
-factual/technical values only (not vendored expressive text), provenance
-recorded, source terms do not prohibit the method used, not a bulk-extraction
-mechanism (six documents total for one design), and this bounded single-pilot
-manual-style retrieval is not claimed as a separately-cleared
-`automated_ingestion` pipeline.
+SRC-5, SRC-6): `unlicensed_factual_reference` rights basis, `conditional`
+production-value clearance, and — as of the REVIEW amendment in section 11 —
+an honestly-recorded `conditional` (not blanket `allowed`, not the
+unassessed default `unknown`) `automated_access`/`automated_ingestion`
+disposition scoped narrowly to this one bounded, non-recurring, low-volume
+retrieval; `bulk_bootstrap` remains unassessed/`unknown` and is never claimed.
 
 Web search (not counted toward the retrieval ceiling) was used only to locate
 `en.finot-conq.com`'s Oceanis 30.1 URL; no search-result snippet (including
@@ -217,3 +217,112 @@ description, `result_class` (+ reason where applicable), each configuration's
 id/truth with per-criterion explanation, and `matching_configuration_ids`
 where matched; ends with a CONFIRMED_MATCH / CONFIRMED_NON_MATCH /
 INSUFFICIENT_DATA summary. Output matches section 8 exactly.
+
+## 11. REVIEW amendment (review 5067543634) — independent admission boundary and SR-6.6(6) re-check
+
+Independent review on head `707bb6805e61d5de06afb767a176aa5ff15ffb44`
+returned CHANGES REQUIRED on two points. Both are addressed here without
+reopening the underlying technical research (sections 1-10 above are
+unchanged in substance; only the presentation of source-rights honesty and a
+new independent code-side gate were added).
+
+### 11.1 Retained-projection self-authorization hole closed
+
+Before this amendment, `scripts/search_oceanis_30_1.py` trusted
+`oceanis_30_1_projection.v1.json`'s own `state`/`value`/`evidence_refs`
+claims directly. That is exactly what SLICE-0037 Required Behavior A
+forbids: "A retained artifact MUST NOT self-authorize its own CONFIRMED
+state."
+
+`scripts/search_oceanis_30_1.py` now carries a small, immutable,
+code-side-only **independent admission oracle**
+(`EXPECTED_DESIGN_ID`, `EXPECTED_CONFIGURATION_IDS`,
+`EXPECTED_NAMED_VARIANT_IDS`, `ALLOWED_EVIDENCE_SOURCE_IDS`,
+`EXPECTED_CONFIGURATION_EVIDENCE_REFS`, `_AUTHORIZED_NUMERIC_FACTS`,
+`_AUTHORIZED_CATEGORICAL_FACTS`) plus `validate_oceanis_30_1_projection()`,
+which `load_oceanis_30_1_configuration_set()` now calls **before** any
+`DesignConfigurationSet` is materialized. None of the oracle's literals are
+read from the JSON under test; every one is hardcoded in source-controlled
+Python, so an edit to the retained JSON can only ever cause admission to
+fail closed, never to authorize a different fact.
+
+The oracle independently fixes: the exact design id; the exact three
+configuration ids and their exact `named_variant_id` strings (no fourth
+configuration, no renamed configuration is ever accepted); each
+configuration's `configuration_evidence_refs` (a new, machine-checked field
+distinct from the human-readable `configuration_basis` prose, which is never
+itself truth-authorizing); and the closed set of exactly nine authorized
+`(configuration_id, field_name)` Search facts — `loa_m`/`beam_m` for all
+three configurations, `draft_max_m` for the two fixed keels only, each with
+its own exact value and its own minimum required evidence-source-id set.
+Deliberately absent: any `(retractable-keel, draft_max_m)` entry (no single
+factory-resolved value is authorized) and any categorical fact at all
+(`_AUTHORIZED_CATEGORICAL_FACTS = {}`).
+
+`tests/unit/test_search_oceanis_30_1.py` adds 17 focused admission-boundary
+tests, each starting from a genuinely-passing deep copy of the retained
+payload and mutating exactly one fact: `SRC-4` as evidence (rejected), a
+bogus source id (rejected), an *allowed-but-insufficient* source substituted
+for the field's specific required source (rejected — proves an evidence-ref
+mutation using an otherwise-valid source id still fails), a numeric value
+changed to a different number that would not change any Q1/Q10 Search
+result (rejected — proves same-threshold-side edits are not exempt), an
+injected extra numeric field, an injected extra categorical field, the
+retractable-keel's draft promoted to `state="resolved"`, an altered
+`configuration_id`, an altered `named_variant_id`, a stripped
+`configuration_evidence_refs`, an injected fourth configuration, a removed
+configuration, an altered `design_id`, and — the direct proof requested by
+the review — `configuration_space_complete` forced to `True` at the JSON
+layer, rejected by `validate_oceanis_30_1_projection` itself rather than
+relying on the Q10-specific engine-level test (which, on its own, cannot
+distinguish "completeness is independently rejected" from "Q10 just happens
+to already have a genuine match"; both tests are kept, serving different
+purposes).
+
+### 11.2 SR-6.6(6) automated-access clearance corrected
+
+The prior "manual-style" characterization of the retrieval method understated
+that access was in fact programmatic/agent-mediated (`curl`, `WebFetch`).
+`source_retrieval_log.json` now records `rights` for SRC-1/SRC-5/SRC-6 in the
+full structure of `specs/SOURCE_SCHEMA.v0.2.json`
+(`access`/`permissions`/`obligations`/`clearance`/`rights_evidence`/`review`)
+rather than a bespoke ad hoc vocabulary.
+
+`SRC-7` (`https://www.beneteau.com/en-us/legal-notices` — SPBI SAS's Legal
+Notices page, which contains the site's complete Terms and conditions of
+use) was retrieved and reviewed in full. It contains **no clause addressing
+robots/bots/crawlers/automated access/scraping/text-and-data-mining in either
+direction** — no explicit authorization, no explicit prohibition. It does
+contain a standard broad intellectual-property clause requiring prior
+written consent for reproduction/use/adaptation of protected site elements
+(trademarks, photos, text, illustrations, video, computer applications) —
+this is exactly the ordinary "no explicit open license" case
+`SOURCE_RIGHTS_POLICY.v0.1.md` SR-6.6 exists to handle for *discrete factual
+values* (SR-6.6 condition 2), and does not by itself prohibit extracting a
+number such as `loa_m=9.53`.
+
+Given that finding plus `robots.txt` not disallowing the fetched paths and no
+text-and-data-mining reservation being observed, `access.automated_access`
+is now recorded as **`conditional`** for SRC-1/SRC-5 — not the stronger
+`allowed`, and not the weaker default `unknown` — conditioned explicitly on:
+a single bounded, non-recurring, low-volume retrieval (two documents from
+this domain across the whole pilot); discrete-fact extraction only; no
+reproduction of protected expressive elements; no redistribution of source
+material. `clearance.bulk_bootstrap` is recorded as `unknown` (never
+`allowed`) and `clearance.automated_ingestion` is `conditional` scoped to
+this one bounded pilot only — explicitly **not** claimed to extend to a
+recurring or scheduled ingestion pipeline for this or any other BoatDesign.
+
+A bounded check of `en.finot-conq.com` (SRC-6) found no dedicated terms/legal
+page reachable from that page's own site navigation (enumerated and recorded
+in `source_retrieval_log.json`'s `terms_page_search_result`, not silently
+skipped). `robots.txt`'s explicit `Allow: /` is the strongest access-condition
+signal available for that domain; the same `conditional` disposition and the
+same bounded conditions are applied.
+
+**Fail-closed re-evaluation of Q10:** both sources supporting the required
+configuration-sensitive proof (SRC-1 for the shallow-keel configuration's
+factory identity; SRC-6 for its exact `1.30 m` value) carry a positive
+(`conditional`) clearance under this corrected, honest assessment. Q10 is
+therefore **not** re-classified as BLOCKED; the technical result in section 8
+stands unchanged.

@@ -2,8 +2,9 @@
   "slice": "SLICE-0037",
   "target_identity": "BENETEAU Oceanis 30.1",
   "retrieval_ceiling": 12,
-  "semantic_retrievals_used": 6,
-  "note": "Web-search-engine navigation calls (used only to locate candidate official/architect URLs, never as evidence) are not counted as semantic retrievals per the slice's definition. Two of the six distinct documents below were excluded from the positive evidence basis after a robots.txt access-restriction finding (SRC-4); this log retains them for audit transparency.",
+  "semantic_retrievals_used": 7,
+  "note": "Web-search-engine navigation calls (used only to locate candidate official/architect URLs, never as evidence) are not counted as semantic retrievals per the slice's definition. Two of the seven distinct documents below (SRC-2, SRC-3) were superseded/yielded no content; one (SRC-4) was excluded from the positive evidence basis after a robots.txt access-restriction finding; SRC-7 is a source-rights/access review document, not an Oceanis technical-fact source. This log retains all seven for audit transparency.",
+  "review_amendment_note": "REVIEW amendment (review 5067543634): SR-1/SR-5/SR-6's earlier informal `sr_6_6_conditions` blocks are replaced below with structured `rights` objects shaped exactly like specs/SOURCE_SCHEMA.v0.2.json (access/permissions/obligations/clearance/rights_evidence/review), so the automated-access disposition is recorded honestly and in the accepted project vocabulary rather than a bespoke 'manual-style' label that understated that the actual retrieval method was programmatic/agent-mediated (curl / WebFetch). SRC-7 (BENETEAU's own Legal Notices / Terms and conditions of use page) was retrieved specifically to ground this assessment. A bounded check of en.finot-conq.com's own site navigation found no discoverable terms/legal page (recorded explicitly on SRC-6, not silently omitted).",
   "sources": [
     {
       "id": "SRC-1",
@@ -14,15 +15,75 @@
       "retrieval_method": "raw HTTP GET (curl) + HTML tag stripping, read directly by the agent (not summarized by an intermediary model)",
       "robots_txt_checked": true,
       "robots_txt_result": "www.beneteau.com/robots.txt disallows only /admin/, /core/, /profiles/, /search/, /user/*, /comment/reply/, /filter/tips, /node/add/ (and their /index.php/ equivalents). The /en-us/oceanis/oceanis-301 path is not disallowed.",
-      "rights_basis": "unlicensed_factual_reference",
-      "sr_6_6_disposition": "conditional_clearance_granted",
-      "sr_6_6_conditions": {
-        "lawfully_accessible": true,
-        "reused_element_is_discrete_fact_not_expressive_copy": true,
-        "provenance_recorded": true,
-        "source_terms_do_not_prohibit_method": true,
-        "not_unreviewed_bulk_extraction_mechanism": true,
-        "automated_access_note": "A single bounded manual-style agent retrieval of one page for this one pilot design, not a recurring/bulk automated_ingestion pipeline; no separate automated_ingestion Source Rights Profile clearance is claimed or required for this bounded use."
+      "rights": {
+        "assessment_status": "assessed",
+        "rights_basis": "unlicensed_factual_reference",
+        "rights_holder": "SPBI SAS",
+        "license_expression": null,
+        "license_name": null,
+        "license_url": null,
+        "license_scope": ["unknown"],
+        "access": {
+          "method": "public_web",
+          "public_access": true,
+          "automated_access": "conditional",
+          "terms_url": "https://www.beneteau.com/en-us/legal-notices",
+          "terms_reviewed_at": "2026-08-31",
+          "tdm_reservation": "none_observed",
+          "rate_limit_notes": "One bounded, single-session, non-recurring page retrieval; no scheduled/repeated access to this domain."
+        },
+        "permissions": {
+          "commercial_use": "unknown",
+          "extract_facts": "conditional",
+          "normalize": "conditional",
+          "store_canonical_values": "conditional",
+          "bulk_ingest": "unknown",
+          "automated_extract": "conditional",
+          "redistribute_source_material": "prohibited",
+          "publish_derived_database": "unknown"
+        },
+        "obligations": {
+          "attribution_required": "no",
+          "share_alike": "no",
+          "notice_required": "no",
+          "attribution_instructions": null,
+          "other_conditions": [
+            "The Terms and conditions of use section requires SPBI's prior written consent for 'reproduction, representation, use or adaptation ... of all or part of' protected site elements (trademarks, photos, text, illustrations, animated/non-animated images, video sequences, sounds, computer applications). This pilot's use is limited to discrete factual/technical values (SR-6.6 condition 2) -- not reproduction of those protected expressive elements -- and no expressive site content (text, images, layout) is vendored into the repository (SR-007)."
+          ]
+        },
+        "clearance": {
+          "research_reference": "allowed",
+          "research_lead": "allowed",
+          "identity_seed": "conditional",
+          "production_value": "conditional",
+          "bulk_bootstrap": "unknown",
+          "automated_ingestion": "conditional",
+          "artifact_redistribution": "prohibited"
+        },
+        "rights_evidence": [
+          {
+            "evidence_type": "terms_page",
+            "url": "https://www.beneteau.com/en-us/legal-notices",
+            "document_identifier": null,
+            "accessed_at": "2026-08-31",
+            "sha256": null,
+            "notes": "SPBI SAS 'Legal Notices' page, which itself contains the site's full 'Terms and conditions of use' section (no separate ToS document exists on this site). Reviewed in full via raw HTTP GET + tag-stripped plain text (~12.6KB). No clause anywhere on the page addresses robots/bots/crawlers/automated access/scraping/text-and-data-mining, in either direction -- neither an explicit permission nor an explicit prohibition of automated/programmatic retrieval was found. See SRC-7 below for the full retrieval record of this page."
+          },
+          {
+            "evidence_type": "machine_readable_reservation",
+            "url": "https://www.beneteau.com/robots.txt",
+            "document_identifier": null,
+            "accessed_at": "2026-08-31",
+            "sha256": null,
+            "notes": "Disallows only /admin/, /core/, /profiles/, /search/, /user/*, /comment/reply/, /filter/tips, /node/add/ and their /index.php/ equivalents. Does not disallow /en-us/oceanis/oceanis-301."
+          }
+        ],
+        "review": {
+          "reviewed_at": "2026-08-31",
+          "reviewer": "SLICE-0037 implementation agent (Claude Sonnet 5)",
+          "rationale": "Bounded pilot re-check triggered by independent review 5067543634. automated_access is assessed 'conditional', not 'allowed': the Legal Notices/Terms page states no explicit position on bot/programmatic access either way; robots.txt does not disallow the fetched path and no TDM reservation was found, which together support a bounded conditional clearance rather than a blanket one. The condition is: a single bounded, non-recurring, low-volume retrieval (2 documents from this domain across the whole pilot: SRC-1, SRC-5) for one design; discrete-fact extraction only; no reproduction of protected expressive elements; no redistribution of source material. This conditional clearance does NOT extend to bulk_bootstrap or a recurring/scheduled automated_ingestion pipeline for this domain -- both remain genuinely unassessed here and default-deny under SOURCE_RIGHTS_POLICY.v0.1.md SR-003 until a separate, broader review establishes them.",
+          "next_review_at": null
+        }
       },
       "used_as_positive_evidence": true,
       "facts_supplied": [
@@ -46,7 +107,7 @@
       "rights_basis": "unlicensed_factual_reference",
       "sr_6_6_disposition": "attempted_not_relied_upon",
       "used_as_positive_evidence": false,
-      "reason_not_relied_upon": "WebFetch's summarization step is a small intermediary model and is not itself verified evidence; every fact from this URL that mattered to the retained projection was independently re-obtained via SRC-1's raw HTML retrieval instead. Retained only for audit transparency."
+      "reason_not_relied_upon": "WebFetch's summarization step is a small intermediary model and is not itself verified evidence; every fact from this URL that mattered to the retained projection was independently re-obtained via SRC-1's raw HTML retrieval instead. Retained only for audit transparency. No separate structured `rights` record is kept for this superseded duplicate; SRC-1's applies to the same domain/terms."
     },
     {
       "id": "SRC-3",
@@ -60,7 +121,7 @@
       "rights_basis": "unlicensed_factual_reference",
       "sr_6_6_disposition": "attempted_no_content",
       "used_as_positive_evidence": false,
-      "reason_not_relied_upon": "This is a client-side JavaScript document viewer; the fetched markup contained only the page title ('BENETEAU OCEANIS 30.1 EN') with no extractable specification text. No facts were obtained."
+      "reason_not_relied_upon": "This is a client-side JavaScript document viewer; the fetched markup contained only the page title ('BENETEAU OCEANIS 30.1 EN') with no extractable specification text. No facts were obtained; no rights record needed."
     },
     {
       "id": "SRC-4",
@@ -74,7 +135,7 @@
       "rights_basis": "unlicensed_factual_reference",
       "sr_6_6_disposition": "EXCLUDED_robots_txt_disallow",
       "used_as_positive_evidence": false,
-      "reason_not_relied_upon": "SOURCE_RIGHTS_POLICY.v0.1.md SR-6.6 condition 4 requires that source terms/access restrictions not prohibit the chosen research method. This domain's robots.txt unconditionally disallows all automated access. The document was read once it had already been fetched (to make this determination and to avoid discarding the discovery unrecorded), but no fact drawn from it is used anywhere in the retained projection, the Search input, or any acceptance-criteria claim in REPORT.md. Every retained numeric/categorical fact that this PDF also happened to contain was independently re-established from SRC-1 (www.beneteau.com) and/or SRC-6 (en.finot-conq.com), both of which are robots.txt-clear.",
+      "reason_not_relied_upon": "SOURCE_RIGHTS_POLICY.v0.1.md SR-6.6 condition 4 requires that source terms/access restrictions not prohibit the chosen research method. This domain's robots.txt unconditionally disallows all automated access. The document was read once it had already been fetched (to make this determination and to avoid discarding the discovery unrecorded), but no fact drawn from it is used anywhere in the retained projection, the Search input, or any acceptance-criteria claim in REPORT.md. Every retained numeric/categorical fact that this PDF also happened to contain was independently re-established from SRC-1 (www.beneteau.com) and/or SRC-6 (en.finot-conq.com), both of which are robots.txt-clear. SRC-4 is also independently blocked at the code layer: `scripts/search_oceanis_30_1.py`'s `ALLOWED_EVIDENCE_SOURCE_IDS` oracle does not include 'SRC-4', so no retained-projection edit could route around this exclusion.",
       "content_summary_for_audit_only": "General Equipment list, code V12765 (Q) US, dated 02/27/2026. Contained a per-keel-option draft/ballast breakdown (deep/shallow/lifting-keel), a '9/10' mast fraction statement, and twin-rudder construction detail. None of this is used as evidence; recorded here only so the exclusion is auditable rather than silent."
     },
     {
@@ -86,15 +147,67 @@
       "retrieval_method": "raw HTTP GET (curl) + HTML tag stripping, read directly by the agent",
       "robots_txt_checked": true,
       "robots_txt_result": "Same www.beneteau.com robots.txt as SRC-1; /en-us/newsroom-actualite/ path is not disallowed.",
-      "rights_basis": "unlicensed_factual_reference",
-      "sr_6_6_disposition": "conditional_clearance_granted",
-      "sr_6_6_conditions": {
-        "lawfully_accessible": true,
-        "reused_element_is_discrete_fact_not_expressive_copy": true,
-        "provenance_recorded": true,
-        "source_terms_do_not_prohibit_method": true,
-        "not_unreviewed_bulk_extraction_mechanism": true,
-        "automated_access_note": "Same bounded single-document manual-style retrieval as SRC-1."
+      "rights": {
+        "assessment_status": "assessed",
+        "rights_basis": "unlicensed_factual_reference",
+        "rights_holder": "SPBI SAS",
+        "license_expression": null,
+        "license_name": null,
+        "license_url": null,
+        "license_scope": ["unknown"],
+        "access": {
+          "method": "public_web",
+          "public_access": true,
+          "automated_access": "conditional",
+          "terms_url": "https://www.beneteau.com/en-us/legal-notices",
+          "terms_reviewed_at": "2026-08-31",
+          "tdm_reservation": "none_observed",
+          "rate_limit_notes": "One bounded, single-session, non-recurring page retrieval; same domain-wide assessment as SRC-1."
+        },
+        "permissions": {
+          "commercial_use": "unknown",
+          "extract_facts": "conditional",
+          "normalize": "conditional",
+          "store_canonical_values": "conditional",
+          "bulk_ingest": "unknown",
+          "automated_extract": "conditional",
+          "redistribute_source_material": "prohibited",
+          "publish_derived_database": "unknown"
+        },
+        "obligations": {
+          "attribution_required": "no",
+          "share_alike": "no",
+          "notice_required": "no",
+          "attribution_instructions": null,
+          "other_conditions": [
+            "Same reproduction/consent clause as SRC-1; this pilot extracts discrete facts only (identity/introduction date, hull designer, twin-rudder count, standard mainsail type), not the press release's own expressive prose."
+          ]
+        },
+        "clearance": {
+          "research_reference": "allowed",
+          "research_lead": "allowed",
+          "identity_seed": "conditional",
+          "production_value": "conditional",
+          "bulk_bootstrap": "unknown",
+          "automated_ingestion": "conditional",
+          "artifact_redistribution": "prohibited"
+        },
+        "rights_evidence": [
+          {
+            "evidence_type": "terms_page",
+            "url": "https://www.beneteau.com/en-us/legal-notices",
+            "document_identifier": null,
+            "accessed_at": "2026-08-31",
+            "sha256": null,
+            "notes": "Identical site-wide terms as SRC-1 (same rights_holder, same domain); see SRC-1's rights_evidence for the full review notes."
+          }
+        ],
+        "review": {
+          "reviewed_at": "2026-08-31",
+          "reviewer": "SLICE-0037 implementation agent (Claude Sonnet 5)",
+          "rationale": "Same domain-wide rationale as SRC-1's review. Conditional clearance bounded to this pilot's non-recurring, low-volume, discrete-fact-only use; bulk_bootstrap and recurring automated_ingestion remain unassessed/default-deny.",
+          "next_review_at": null
+        }
       },
       "used_as_positive_evidence": true,
       "facts_supplied": [
@@ -114,15 +227,68 @@
       "retrieval_method": "raw HTTP GET (curl) + HTML tag stripping, read directly by the agent",
       "robots_txt_checked": true,
       "robots_txt_result": "en.finot-conq.com/robots.txt states 'Allow: /' for User-agent: * (with an unrelated lightbox-query-param exclusion); this specific page is not disallowed.",
-      "rights_basis": "unlicensed_factual_reference",
-      "sr_6_6_disposition": "conditional_clearance_granted",
-      "sr_6_6_conditions": {
-        "lawfully_accessible": true,
-        "reused_element_is_discrete_fact_not_expressive_copy": true,
-        "provenance_recorded": true,
-        "source_terms_do_not_prohibit_method": true,
-        "not_unreviewed_bulk_extraction_mechanism": true,
-        "automated_access_note": "Same bounded single-document manual-style retrieval as SRC-1. This is also the naval-architect source class explicitly named permissible by the slice's source boundary."
+      "terms_page_search_result": "Bounded check only: every internal link reachable from this page's own navigation/footer (about, alubat, beneteau, contact, course, croisiere, equipe, histoire, jobs, marine-composite, oceanis-30-1, pogo, recompenses, yachts) was enumerated from the already-fetched page HTML; none is a legal-notices/terms/privacy/mentions-legales page. This is recorded as a bounded-check negative result -- 'no terms/legal page discoverable via this page's own navigation' -- not as an affirmative claim that no such page exists anywhere on the site or that none was ever reviewed.",
+      "rights": {
+        "assessment_status": "assessed",
+        "rights_basis": "unlicensed_factual_reference",
+        "rights_holder": "Finot-Conq Architectes",
+        "license_expression": null,
+        "license_name": null,
+        "license_url": null,
+        "license_scope": ["unknown"],
+        "access": {
+          "method": "public_web",
+          "public_access": true,
+          "automated_access": "conditional",
+          "terms_url": null,
+          "terms_reviewed_at": null,
+          "tdm_reservation": "none_observed",
+          "rate_limit_notes": "One bounded, single-session, non-recurring page retrieval; robots.txt is the only access-condition evidence found for this domain (no separate terms/legal page discoverable -- see terms_page_search_result above)."
+        },
+        "permissions": {
+          "commercial_use": "unknown",
+          "extract_facts": "conditional",
+          "normalize": "conditional",
+          "store_canonical_values": "conditional",
+          "bulk_ingest": "unknown",
+          "automated_extract": "conditional",
+          "redistribute_source_material": "unknown",
+          "publish_derived_database": "unknown"
+        },
+        "obligations": {
+          "attribution_required": "unknown",
+          "share_alike": "unknown",
+          "notice_required": "unknown",
+          "attribution_instructions": null,
+          "other_conditions": [
+            "No terms/legal page was discoverable via bounded site-navigation review (see terms_page_search_result); this pilot extracts discrete numeric facts (LOA, beam, two named draft figures) only, consistent with SR-6.6 condition 2 regardless."
+          ]
+        },
+        "clearance": {
+          "research_reference": "allowed",
+          "research_lead": "allowed",
+          "identity_seed": "conditional",
+          "production_value": "conditional",
+          "bulk_bootstrap": "unknown",
+          "automated_ingestion": "conditional",
+          "artifact_redistribution": "unknown"
+        },
+        "rights_evidence": [
+          {
+            "evidence_type": "machine_readable_reservation",
+            "url": "https://en.finot-conq.com/robots.txt",
+            "document_identifier": null,
+            "accessed_at": "2026-08-31",
+            "sha256": null,
+            "notes": "'Allow: /' for User-agent: * (only an unrelated '?lightbox=' query-parameter exclusion and specific bot-blocklist entries for PetalBot/AdsBot paths, none of which affect the fetched page)."
+          }
+        ],
+        "review": {
+          "reviewed_at": "2026-08-31",
+          "reviewer": "SLICE-0037 implementation agent (Claude Sonnet 5)",
+          "rationale": "Bounded pilot re-check triggered by independent review 5067543634. This is a small Wix-hosted naval-architecture studio site with no discoverable dedicated terms/legal page from its own navigation (bounded check only, not exhaustive). robots.txt affirmatively allows the fetched path, which is the strongest access-condition signal available. automated_access is assessed 'conditional' (not 'allowed') on the same non-recurring, low-volume, discrete-fact-only conditions as SRC-1/SRC-5, given the absence of any explicit terms statement one way or the other. bulk_bootstrap and recurring automated_ingestion remain unassessed/default-deny per SR-003.",
+          "next_review_at": null
+        }
       },
       "used_as_positive_evidence": true,
       "facts_supplied": [
@@ -133,6 +299,22 @@
         "'Light displacement : 3,99 t' -- NOT used as a confirmed field value; see REPORT.md displacement discussion",
         "Hull designed by Finot-Conq (corroborates SRC-5)"
       ]
+    },
+    {
+      "id": "SRC-7",
+      "url": "https://www.beneteau.com/en-us/legal-notices",
+      "source_class": "official_manufacturer_legal_notices_and_terms_page",
+      "domain": "www.beneteau.com",
+      "retrieved_at": "2026-08-31",
+      "retrieval_method": "raw HTTP GET (curl) + HTML tag stripping, read directly by the agent",
+      "robots_txt_checked": true,
+      "robots_txt_result": "Same www.beneteau.com robots.txt as SRC-1; /en-us/legal-notices path is not disallowed.",
+      "rights_basis": "unlicensed_factual_reference",
+      "sr_6_6_disposition": "reviewed_as_rights_evidence_only",
+      "used_as_positive_evidence": false,
+      "facts_supplied": [],
+      "reason_not_relied_upon": "This document supplies source-rights/access assessment evidence for SRC-1/SRC-5/SRC-6 (see their `rights.rights_evidence` entries above), not an Oceanis 30.1 technical fact; it was retrieved specifically to answer REVIEW amendment (review 5067543634) point 2 and counts toward the 12-document retrieval ceiling as an access-policy retrieval, per that review's instruction.",
+      "content_summary_for_audit_only": "SPBI SAS 'Legal Notices' page (publisher: SPBI SAS, French simplified joint-stock company, registered office Dompierre-sur-Yon). Contains the site's full 'Terms and conditions of use'. Key clauses reviewed: free public access (no login required for general browsing); a personal-account creation section (irrelevant, not used); a broad intellectual-property clause requiring SPBI's prior written consent for reproduction/representation/use/adaptation of protected site elements (trademarks, photos, text, illustrations, images, video, sounds, computer applications); an information-accuracy disclaimer; a hypertext-linking consent clause (irrelevant to this pilot, which creates no links to the site); French jurisdiction. No clause anywhere addresses robots/bots/crawlers/automated access/scraping/text-and-data-mining in either direction."
     }
   ],
   "non_evidentiary_navigation_searches": [
@@ -143,5 +325,6 @@
     "boat-specs.com (surfaced only in search-engine results; never fetched or used as evidence)",
     "sailingmagazine.net / 48north.com / canadianboating.ca (surfaced only in search-engine results; never fetched or used as evidence)",
     "wikipedia.org (not attempted)"
-  ]
+  ],
+  "unclaimed_clearances_explicit_statement": "Across every source used as positive evidence (SRC-1, SRC-5, SRC-6), `clearance.bulk_bootstrap` is 'unknown' and `clearance.automated_ingestion` is 'conditional' scoped narrowly to this one bounded, non-recurring, low-volume (2 documents per beneteau.com-family domain, 1 for finot-conq.com) single-pilot-design retrieval. No source's `automated_ingestion` clearance is claimed to extend to a recurring, scheduled, or bulk retrieval pipeline for this or any other BoatDesign; establishing that would require a separate, broader source-rights review this slice does not perform."
 }

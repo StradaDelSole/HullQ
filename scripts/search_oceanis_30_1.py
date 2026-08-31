@@ -20,8 +20,9 @@ Run: uv run python scripts/search_oceanis_30_1.py
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 from hullq.domain.provenance import ResolutionState
 from hullq.search.configuration import (
@@ -57,6 +58,243 @@ QUERIES_FIXTURE = (
 )
 
 
+# ---------------------------------------------------------------------------
+# Independent pilot admission oracle — REVIEW amendment (review 5067543634)
+#
+# SLICE-0037 Required Behavior A: "A retained artifact MUST NOT self-authorize
+# its own CONFIRMED state." Everything below is a small, immutable,
+# code/test-side reviewed description of exactly what independent review
+# accepted for this one design. Every literal is hardcoded here; nothing here
+# is read from `oceanis_30_1_projection.v1.json`. That file is edited freely
+# as an ordinary research artifact; this oracle is not. A change to the
+# retained JSON's values, evidence refs, configuration identities, or
+# completeness flag can therefore never by itself authorize a different
+# Search-admitted fact -- it can only cause `validate_oceanis_30_1_projection`
+# to fail closed. This is deliberately scoped to this one pilot design; it is
+# not a generic ingestion/admission framework (slice stop condition).
+# ---------------------------------------------------------------------------
+
+EXPECTED_DESIGN_ID: Final = "beneteau-oceanis-30-1"
+
+DEEP_KEEL: Final = "oceanis-30-1-deep-keel"
+SHALLOW_KEEL: Final = "oceanis-30-1-shallow-keel"
+RETRACTABLE_KEEL: Final = "oceanis-30-1-retractable-keel"
+
+EXPECTED_CONFIGURATION_IDS: Final[frozenset[str]] = frozenset(
+    {DEEP_KEEL, SHALLOW_KEEL, RETRACTABLE_KEEL}
+)
+
+EXPECTED_NAMED_VARIANT_IDS: Final[dict[str, str]] = {
+    DEEP_KEEL: "deep-draft-keel",
+    SHALLOW_KEEL: "shallow-draft-keel",
+    RETRACTABLE_KEEL: "performance-draft-hydraulic-swing-keel",
+}
+
+# Only these three retained source documents (source_retrieval_log.json
+# SRC-1/SRC-5/SRC-6) were independently reviewed and cleared to authorize a
+# confirmed Search fact for this pilot. SRC-4 (pro.beneteauusa.com) is
+# excluded by construction -- it is not a member of this set, deliberately,
+# not merely absent by omission -- and any reference to it, or to any other
+# unrecognized source id, is rejected below regardless of what
+# `source_retrieval_log.json` separately claims.
+ALLOWED_EVIDENCE_SOURCE_IDS: Final[frozenset[str]] = frozenset({"SRC-1", "SRC-5", "SRC-6"})
+
+# Evidence establishing each configuration's own factory-supported *identity*
+# (not any field's value) -- SRC-1's "There are 3 ballasts available ... Deep
+# draft / Shallow draft / Performance draft (hydraulic swing keel)".
+EXPECTED_CONFIGURATION_EVIDENCE_REFS: Final[dict[str, frozenset[str]]] = {
+    DEEP_KEEL: frozenset({"SRC-1"}),
+    SHALLOW_KEEL: frozenset({"SRC-1"}),
+    RETRACTABLE_KEEL: frozenset({"SRC-1"}),
+}
+
+
+@dataclass(frozen=True, slots=True)
+class _AuthorizedFact:
+    value: float
+    minimum_evidence_refs: frozenset[str]
+
+
+# The complete, closed set of Search facts this pilot's independent review
+# authorizes, keyed by (configuration_id, field_name). A numeric or
+# categorical field present in the retained JSON for a configuration that is
+# NOT a key here is rejected outright, regardless of its value, state or
+# evidence -- this is what makes an "unsupported new resolved field" or a
+# "retractable draft promoted to resolved" adversarial edit fail closed.
+_AUTHORIZED_NUMERIC_FACTS: Final[dict[tuple[str, str], _AuthorizedFact]] = {
+    (DEEP_KEEL, "loa_m"): _AuthorizedFact(9.53, frozenset({"SRC-1", "SRC-6"})),
+    (DEEP_KEEL, "beam_m"): _AuthorizedFact(2.99, frozenset({"SRC-1", "SRC-6"})),
+    (DEEP_KEEL, "draft_max_m"): _AuthorizedFact(1.85, frozenset({"SRC-6"})),
+    (SHALLOW_KEEL, "loa_m"): _AuthorizedFact(9.53, frozenset({"SRC-1", "SRC-6"})),
+    (SHALLOW_KEEL, "beam_m"): _AuthorizedFact(2.99, frozenset({"SRC-1", "SRC-6"})),
+    (SHALLOW_KEEL, "draft_max_m"): _AuthorizedFact(1.30, frozenset({"SRC-1", "SRC-6"})),
+    (RETRACTABLE_KEEL, "loa_m"): _AuthorizedFact(9.53, frozenset({"SRC-1", "SRC-6"})),
+    (RETRACTABLE_KEEL, "beam_m"): _AuthorizedFact(2.99, frozenset({"SRC-1", "SRC-6"})),
+    # Deliberately no (RETRACTABLE_KEEL, "draft_max_m") entry: no single
+    # factory-resolved draft value is independently authorized for the
+    # operator-adjustable configuration (REPORT.md section 3). Any such field
+    # appearing in the retained JSON at all, in any state, is rejected.
+}
+
+# No categorical Search field is independently authorized for any
+# configuration in this pilot (rig/keel-shape/rudder-support/cockpit-position
+# all remain unresolved -- REPORT.md section 5). Left intentionally empty so
+# that any categorical field present in the retained JSON is rejected.
+_AUTHORIZED_CATEGORICAL_FACTS: Final[dict[tuple[str, str], _AuthorizedFact]] = {}
+
+
+class OceanisProjectionAdmissionError(ValueError):
+    """Raised when the retained projection JSON fails independent admission."""
+
+
+def validate_oceanis_30_1_projection(payload: dict[str, Any]) -> None:
+    """Independently authorize *payload* before it may become Search input.
+
+    Every check below compares *payload* against the hardcoded oracle above
+    -- never against the payload's own claims about itself (its own
+    `configuration_basis` prose, its own declared completeness, or its own
+    field list). A payload that is internally self-consistent but disagrees
+    with the oracle on any single point is rejected, even where the
+    disagreement would not change any Q1-Q10 Search result (e.g. a draft
+    value edited to a still-same-threshold-side number).
+    """
+    design_id = payload.get("design_id")
+    if design_id != EXPECTED_DESIGN_ID:
+        raise OceanisProjectionAdmissionError(
+            f"design_id {design_id!r} does not match the independently authorized "
+            f"{EXPECTED_DESIGN_ID!r}"
+        )
+
+    complete = payload.get("configuration_space_complete")
+    if complete is not False:
+        raise OceanisProjectionAdmissionError(
+            f"configuration_space_complete must be exactly False (independently "
+            f"required -- completeness was never established for this pilot); "
+            f"got {complete!r}"
+        )
+
+    configs = payload.get("configurations")
+    if not isinstance(configs, list):
+        raise OceanisProjectionAdmissionError("configurations must be a list")
+
+    seen_ids: set[str] = set()
+    for config_data in configs:
+        if not isinstance(config_data, dict):
+            raise OceanisProjectionAdmissionError("each configuration entry must be an object")
+        config_id = config_data.get("configuration_id")
+        if config_id in seen_ids:
+            raise OceanisProjectionAdmissionError(f"duplicate configuration_id {config_id!r}")
+        if isinstance(config_id, str):
+            seen_ids.add(config_id)
+        _validate_one_configuration(config_id, config_data)
+
+    if seen_ids != EXPECTED_CONFIGURATION_IDS:
+        raise OceanisProjectionAdmissionError(
+            f"configuration_id set {sorted(seen_ids)} does not match the independently "
+            f"authorized set {sorted(EXPECTED_CONFIGURATION_IDS)} -- no unexpected/missing "
+            f"configuration is accepted merely because the retained JSON contains it"
+        )
+
+
+def _validate_one_configuration(config_id: object, config_data: dict[str, Any]) -> None:
+    if config_id not in EXPECTED_CONFIGURATION_IDS:
+        raise OceanisProjectionAdmissionError(
+            f"configuration_id {config_id!r} is not in the independently authorized set "
+            f"{sorted(EXPECTED_CONFIGURATION_IDS)}"
+        )
+    assert isinstance(config_id, str)
+
+    named_variant_id = config_data.get("named_variant_id")
+    expected_variant = EXPECTED_NAMED_VARIANT_IDS[config_id]
+    if named_variant_id != expected_variant:
+        raise OceanisProjectionAdmissionError(
+            f"{config_id}: named_variant_id {named_variant_id!r} does not match the "
+            f"independently authorized {expected_variant!r}"
+        )
+
+    config_evidence = _validate_evidence_refs(
+        config_id, "configuration_evidence_refs", config_data.get("configuration_evidence_refs")
+    )
+    required_config_evidence = EXPECTED_CONFIGURATION_EVIDENCE_REFS[config_id]
+    if not required_config_evidence.issubset(config_evidence):
+        raise OceanisProjectionAdmissionError(
+            f"{config_id}: configuration_evidence_refs {sorted(config_evidence)} does not "
+            f"include the independently required {sorted(required_config_evidence)}"
+        )
+
+    _validate_configuration_fields(
+        config_id,
+        "numeric_fields",
+        config_data.get("numeric_fields", {}),
+        _AUTHORIZED_NUMERIC_FACTS,
+    )
+    _validate_configuration_fields(
+        config_id,
+        "categorical_fields",
+        config_data.get("categorical_fields", {}),
+        _AUTHORIZED_CATEGORICAL_FACTS,
+    )
+
+
+def _validate_evidence_refs(config_id: str, label: str, raw: object) -> frozenset[str]:
+    if not isinstance(raw, list) or not raw:
+        raise OceanisProjectionAdmissionError(f"{config_id}: {label} must be a non-empty list")
+    refs = frozenset(raw)
+    if len(refs) != len(raw):
+        raise OceanisProjectionAdmissionError(f"{config_id}: {label} must not contain duplicates")
+    unknown = refs - ALLOWED_EVIDENCE_SOURCE_IDS
+    if unknown:
+        raise OceanisProjectionAdmissionError(
+            f"{config_id}: {label} references source id(s) {sorted(unknown)} not in the "
+            f"independently authorized evidence source set {sorted(ALLOWED_EVIDENCE_SOURCE_IDS)} "
+            f"(SRC-4 and any unrecognized id are always rejected here, regardless of what "
+            f"source_retrieval_log.json separately claims)"
+        )
+    return refs
+
+
+def _validate_configuration_fields(
+    config_id: str,
+    label: str,
+    fields: object,
+    authorized: dict[tuple[str, str], _AuthorizedFact],
+) -> None:
+    if not isinstance(fields, dict):
+        raise OceanisProjectionAdmissionError(f"{config_id}: {label} must be an object")
+    for field_name, field_data in fields.items():
+        fact = authorized.get((config_id, field_name))
+        if fact is None:
+            raise OceanisProjectionAdmissionError(
+                f"{config_id}: {label}.{field_name} is not in the independently authorized "
+                f"fact set for this configuration -- present in the retained JSON but not "
+                f"reviewed/accepted"
+            )
+        if not isinstance(field_data, dict):
+            raise OceanisProjectionAdmissionError(
+                f"{config_id}: {label}.{field_name} must be an object"
+            )
+        if field_data.get("state") != "resolved":
+            raise OceanisProjectionAdmissionError(
+                f"{config_id}: {label}.{field_name} has state {field_data.get('state')!r}; the "
+                f"independently authorized fact requires exactly 'resolved'"
+            )
+        value = field_data.get("value")
+        if value != fact.value:
+            raise OceanisProjectionAdmissionError(
+                f"{config_id}: {label}.{field_name} value {value!r} does not match the "
+                f"independently authorized value {fact.value!r} -- a changed value is rejected "
+                f"even if it would not change any Q1-Q10 Search result"
+            )
+        refs = _validate_evidence_refs(
+            config_id, f"{label}.{field_name}.evidence_refs", field_data.get("evidence_refs")
+        )
+        if not fact.minimum_evidence_refs.issubset(refs):
+            raise OceanisProjectionAdmissionError(
+                f"{config_id}: {label}.{field_name}.evidence_refs {sorted(refs)} does not "
+                f"include the independently required minimum {sorted(fact.minimum_evidence_refs)}"
+            )
+
+
 def _numeric_field(field_data: dict[str, Any]) -> QualifiedNumericValue:
     state = ResolutionState(field_data["state"])
     return from_resolution_state(state, field_data.get("value"))
@@ -72,14 +310,20 @@ def load_oceanis_30_1_configuration_set(
 ) -> DesignConfigurationSet:
     """Load the retained real Oceanis 30.1 projection. `is_fixture=False`.
 
-    Only `numeric_fields`/`categorical_fields` entries actually present in the
-    retained package are projected; every field the research deliberately
-    left unresolved (see the package's `fields_deliberately_left_unresolved_*`
-    sections) is simply absent here, which `ConfigurationProjection.get_*`
-    already treats as MISSING -- never as a confirmed value or a confirmed
-    non-match.
+    `validate_oceanis_30_1_projection` runs first and independently
+    authorizes *payload* against the hardcoded pilot oracle before any of it
+    is materialized into Search input (SLICE-0037 Required Behavior A: "A
+    retained artifact MUST NOT self-authorize its own CONFIRMED state") --
+    this function itself never decides what to trust based on the payload's
+    own claims. Only `numeric_fields`/`categorical_fields` entries actually
+    present in the retained package (and now independently authorized) are
+    projected; every field the research deliberately left unresolved (see
+    the package's `fields_deliberately_left_unresolved_*` sections) is simply
+    absent here, which `ConfigurationProjection.get_*` already treats as
+    MISSING -- never as a confirmed value or a confirmed non-match.
     """
     payload = json.loads(path.read_text(encoding="utf-8"))
+    validate_oceanis_30_1_projection(payload)
     configurations = []
     for config_data in payload["configurations"]:
         numeric_values = {

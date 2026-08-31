@@ -12,8 +12,10 @@ promoted to confirmed Search truth merely by loosely editing the artifact
 
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -24,16 +26,32 @@ from hullq.search.values import ValueQualification
 from scripts.search_oceanis_30_1 import (
     PROJECTION_PATH,
     QUERIES_FIXTURE,
+    OceanisProjectionAdmissionError,
     _categorical_field,
     _numeric_field,
     load_locked_queries,
     load_oceanis_30_1_configuration_set,
     main,
+    validate_oceanis_30_1_projection,
 )
 
 DEEP = "oceanis-30-1-deep-keel"
 SHALLOW = "oceanis-30-1-shallow-keel"
 RETRACTABLE = "oceanis-30-1-retractable-keel"
+
+
+def _real_payload() -> dict[str, Any]:
+    """A fresh, independently-loaded, mutable copy of the retained JSON.
+
+    Every admission-boundary test below starts from this genuinely-passing
+    payload and mutates exactly one thing, so a failure always isolates the
+    single tampered fact rather than some unrelated pre-existing defect.
+    """
+    return copy.deepcopy(json.loads(Path(PROJECTION_PATH).read_text(encoding="utf-8")))
+
+
+def _configuration(payload: dict[str, Any], configuration_id: str) -> dict[str, Any]:
+    return next(c for c in payload["configurations"] if c["configuration_id"] == configuration_id)
 
 
 # ---------------------------------------------------------------------------
@@ -169,11 +187,18 @@ def test_tampered_json_with_stray_value_alongside_unknown_state_does_not_leak() 
 
 
 def test_forced_configuration_space_complete_still_cannot_manufacture_a_false_non_match() -> None:
-    """Even a maliciously/carelessly tampered configuration_space_complete=True
-    must not turn the genuinely UNKNOWN retractable-keel configuration into a
+    """Supplementary engine-level check (kept alongside the direct admission-
+    boundary test below, which is the actual proof of independence): even a
+    tampered `DesignConfigurationSet.configuration_space_complete=True` must
+    not turn the genuinely UNKNOWN retractable-keel configuration into a
     confirmed non-match for Q10 -- the existing engine's own universal-FALSE
     requirement (not just the completeness flag) is what actually gates
-    CONFIRMED_NON_MATCH, and this retained data never satisfies it.
+    CONFIRMED_NON_MATCH, and this retained data never satisfies it. This test
+    exercises Q10 specifically, where a genuine TRUE (shallow-keel) already
+    exists, so on its own it does NOT prove tampered completeness is
+    rejected in general -- see
+    `test_configuration_space_complete_true_is_rejected_before_admission`
+    for that direct proof.
     """
     real_config_set = load_oceanis_30_1_configuration_set()
     tampered_config_set = DesignConfigurationSet(
@@ -187,11 +212,164 @@ def test_forced_configuration_space_complete_still_cannot_manufacture_a_false_no
     evaluation = (
         outcome.confirmed_matches + outcome.confirmed_non_matches + outcome.insufficient_data
     )[0]
-    # The shallow-keel configuration is a genuine TRUE, so this remains a
-    # real CONFIRMED_MATCH either way -- tampering completeness cannot even
-    # incidentally manufacture a *non*-match here.
     assert evaluation.result_class is ResultClass.CONFIRMED_MATCH
     assert evaluation.matching_configuration_ids == (SHALLOW,)
+
+
+# ---------------------------------------------------------------------------
+# Independent retained-projection admission boundary — REVIEW amendment
+# (review 5067543634): the retained JSON must not be able to self-authorize
+# its own CONFIRMED state merely by being internally self-consistent. Every
+# test below starts from the genuinely-passing retained payload and mutates
+# exactly one fact, proving `validate_oceanis_30_1_projection` rejects it
+# independently of whether the mutation would change any Q1-Q10 result.
+# ---------------------------------------------------------------------------
+
+
+def test_legitimate_retained_payload_passes_admission() -> None:
+    validate_oceanis_30_1_projection(_real_payload())  # must not raise
+
+
+def test_configuration_space_complete_true_is_rejected_before_admission() -> None:
+    payload = _real_payload()
+    payload["configuration_space_complete"] = True
+    with pytest.raises(OceanisProjectionAdmissionError, match="configuration_space_complete"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_shallow_draft_evidence_changed_to_src4_is_rejected() -> None:
+    payload = _real_payload()
+    _configuration(payload, SHALLOW)["numeric_fields"]["draft_max_m"]["evidence_refs"] = ["SRC-4"]
+    with pytest.raises(OceanisProjectionAdmissionError, match="SRC-4"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_shallow_draft_evidence_changed_to_bogus_source_is_rejected() -> None:
+    payload = _real_payload()
+    _configuration(payload, SHALLOW)["numeric_fields"]["draft_max_m"]["evidence_refs"] = ["BOGUS"]
+    with pytest.raises(OceanisProjectionAdmissionError, match="BOGUS"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_deep_draft_evidence_narrowed_to_an_allowed_but_insufficient_source_is_rejected() -> None:
+    # SRC-1 is an allowed source in general, but the independently authorized
+    # deep-keel draft fact requires SRC-6 specifically -- an allowed-but-
+    # wrong source must still fail, not merely a blocklisted one.
+    payload = _real_payload()
+    _configuration(payload, DEEP)["numeric_fields"]["draft_max_m"]["evidence_refs"] = ["SRC-1"]
+    with pytest.raises(OceanisProjectionAdmissionError, match="evidence_refs"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_shallow_draft_value_changed_on_the_same_threshold_side_is_still_rejected() -> None:
+    # 1.55 is still <=1.60 (same Q1/Q10 Search result as 1.30), but the
+    # independent oracle must reject any value mismatch regardless.
+    payload = _real_payload()
+    _configuration(payload, SHALLOW)["numeric_fields"]["draft_max_m"]["value"] = 1.55
+    with pytest.raises(OceanisProjectionAdmissionError, match="does not match"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_loa_value_changed_to_another_still_matching_number_is_rejected() -> None:
+    payload = _real_payload()
+    _configuration(payload, DEEP)["numeric_fields"]["loa_m"]["value"] = 9.60
+    with pytest.raises(OceanisProjectionAdmissionError, match="does not match"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_extra_resolved_numeric_field_injected_is_rejected() -> None:
+    payload = _real_payload()
+    _configuration(payload, DEEP)["numeric_fields"]["displacement_kg"] = {
+        "state": "resolved",
+        "value": 4120.0,
+        "evidence_refs": ["SRC-1"],
+    }
+    with pytest.raises(OceanisProjectionAdmissionError, match="displacement_kg"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_extra_resolved_categorical_field_injected_is_rejected() -> None:
+    payload = _real_payload()
+    _configuration(payload, SHALLOW)["categorical_fields"]["deck.cockpit_position"] = {
+        "state": "resolved",
+        "value": "aft",
+        "evidence_refs": ["SRC-1"],
+    }
+    with pytest.raises(OceanisProjectionAdmissionError, match="cockpit_position"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_retractable_draft_injected_as_resolved_is_rejected() -> None:
+    payload = _real_payload()
+    _configuration(payload, RETRACTABLE)["numeric_fields"]["draft_max_m"] = {
+        "state": "resolved",
+        "value": 1.20,
+        "evidence_refs": ["SRC-1"],
+    }
+    with pytest.raises(OceanisProjectionAdmissionError, match="draft_max_m"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_configuration_id_altered_is_rejected() -> None:
+    payload = _real_payload()
+    _configuration(payload, DEEP)["configuration_id"] = "oceanis-30-1-deep-keel-v2"
+    with pytest.raises(OceanisProjectionAdmissionError, match="configuration_id"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_named_variant_id_altered_is_rejected() -> None:
+    payload = _real_payload()
+    _configuration(payload, DEEP)["named_variant_id"] = "deep-draft-keel-v2"
+    with pytest.raises(OceanisProjectionAdmissionError, match="named_variant_id"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_required_configuration_evidence_ref_removed_is_rejected() -> None:
+    payload = _real_payload()
+    _configuration(payload, SHALLOW)["configuration_evidence_refs"] = []
+    with pytest.raises(OceanisProjectionAdmissionError):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_unexpected_fourth_configuration_is_rejected() -> None:
+    payload = _real_payload()
+    extra = copy.deepcopy(_configuration(payload, SHALLOW))
+    extra["configuration_id"] = "oceanis-30-1-mystery-keel"
+    payload["configurations"].append(extra)
+    with pytest.raises(OceanisProjectionAdmissionError, match="mystery-keel"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_missing_configuration_is_rejected() -> None:
+    payload = _real_payload()
+    payload["configurations"] = [
+        c for c in payload["configurations"] if c["configuration_id"] != RETRACTABLE
+    ]
+    with pytest.raises(OceanisProjectionAdmissionError, match="configuration_id set"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_design_id_altered_is_rejected() -> None:
+    payload = _real_payload()
+    payload["design_id"] = "beneteau-oceanis-30-1-v2"
+    with pytest.raises(OceanisProjectionAdmissionError, match="design_id"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_admission_runs_before_configuration_set_materialization() -> None:
+    """The loader must fail closed at the JSON layer, not merely at
+    `DesignConfigurationSet` construction -- corrupting the retained file on
+    disk must make `load_oceanis_30_1_configuration_set` itself raise.
+    """
+    payload = _real_payload()
+    payload["configuration_space_complete"] = True
+    tampered_path = PROJECTION_PATH.parent / "_tampered_for_test.v1.json"
+    tampered_path.write_text(json.dumps(payload), encoding="utf-8")
+    try:
+        with pytest.raises(OceanisProjectionAdmissionError):
+            load_oceanis_30_1_configuration_set(path=tampered_path)
+    finally:
+        tampered_path.unlink()
 
 
 # ---------------------------------------------------------------------------
@@ -210,6 +388,60 @@ def test_retained_package_excludes_the_robots_txt_blocked_source_from_evidence()
     blocked = next(s for s in payload["sources"] if s["id"] == "SRC-4")
     assert blocked["used_as_positive_evidence"] is False
     assert blocked["sr_6_6_disposition"] == "EXCLUDED_robots_txt_disallow"
+
+
+def _retrieval_log() -> dict[str, Any]:
+    return json.loads(
+        (PROJECTION_PATH.parent / "source_retrieval_log.json").read_text(encoding="utf-8")
+    )
+
+
+@pytest.mark.parametrize("source_id", ["SRC-1", "SRC-5", "SRC-6"])
+def test_positive_evidence_sources_record_honest_automated_access_disposition(
+    source_id: str,
+) -> None:
+    """REVIEW amendment (review 5067543634) point 2: automated access must be
+    recorded honestly using the SOURCE_SCHEMA.v0.2 vocabulary, not glossed as
+    "manual-style" -- every source actually used as positive evidence must
+    carry a structured `rights.access.automated_access` disposition that is
+    `conditional` (bounded/reviewed), never the unassessed default `unknown`
+    and never an unqualified blanket `allowed`.
+    """
+    source = next(s for s in _retrieval_log()["sources"] if s["id"] == source_id)
+    assert source["used_as_positive_evidence"] is True
+    assert source["rights"]["access"]["automated_access"] == "conditional"
+    assert source["rights"]["clearance"]["production_value"] == "conditional"
+
+
+@pytest.mark.parametrize("source_id", ["SRC-1", "SRC-5", "SRC-6"])
+def test_positive_evidence_sources_do_not_claim_bulk_or_recurring_clearance(
+    source_id: str,
+) -> None:
+    source = next(s for s in _retrieval_log()["sources"] if s["id"] == source_id)
+    clearance = source["rights"]["clearance"]
+    assert clearance["bulk_bootstrap"] != "allowed"
+    assert clearance["automated_ingestion"] != "allowed"
+
+
+def test_beneteau_legal_notices_terms_surface_was_reviewed() -> None:
+    log = _retrieval_log()
+    src7 = next(s for s in log["sources"] if s["id"] == "SRC-7")
+    assert src7["url"] == "https://www.beneteau.com/en-us/legal-notices"
+    src1 = next(s for s in log["sources"] if s["id"] == "SRC-1")
+    assert src1["rights"]["access"]["terms_url"] == "https://www.beneteau.com/en-us/legal-notices"
+    assert src1["rights"]["access"]["terms_reviewed_at"] is not None
+
+
+def test_finot_conq_terms_surface_bounded_check_is_recorded_not_silently_skipped() -> None:
+    src6 = next(s for s in _retrieval_log()["sources"] if s["id"] == "SRC-6")
+    assert "terms_page_search_result" in src6
+    assert src6["rights"]["access"]["terms_url"] is None
+
+
+def test_retrieval_ceiling_is_not_exceeded() -> None:
+    log = _retrieval_log()
+    assert log["semantic_retrievals_used"] == len(log["sources"])
+    assert log["semantic_retrievals_used"] <= log["retrieval_ceiling"]
 
 
 def test_every_evaluation_is_a_valid_result_class() -> None:

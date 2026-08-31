@@ -435,3 +435,91 @@ After the final handoff, STOP.
 - No unverified acceptance criterion was marked as passed.
 - The next slice was not started automatically.
 - The agent has NOT marked this slice `DONE`.
+
+---
+
+## Amendment 1 completion report (review 5067543634 — CHANGES REQUIRED)
+
+Bounded amendment to the exact same branch/worktree/PR #110, in response to
+independent review `5067543634` on prior head
+`707bb6805e61d5de06afb767a176aa5ff15ffb44`. No new Oceanis technical research
+was performed; the configuration-sensitive technical result was already
+accepted as directionally sound. Two blockers were closed: (1) the retained
+projection could self-authorize its own CONFIRMED state, and (2) the
+automated-access clearance for the positive-evidence sources was recorded as
+"manual-style" rather than honestly as programmatic/agent-mediated access
+under the accepted `SOURCE_SCHEMA.v0.2` vocabulary.
+
+### Slice
+
+- Slice ID: `SLICE-0037`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES` (bounded amendment scope only)
+- New exact final branch HEAD SHA: recorded in the conversation completion
+  report (see `git log -1` on `slice/0037-oceanis-30-1-real-search-pilot`).
+
+### Changes
+
+- Changed files: `scripts/search_oceanis_30_1.py` (independent admission
+  oracle + `validate_oceanis_30_1_projection`, wired into
+  `load_oceanis_30_1_configuration_set`),
+  `tests/unit/test_search_oceanis_30_1.py` (+17 admission-boundary
+  adversarial tests, +5 rights-bookkeeping tests, replaced the
+  Q10-dependent completeness test's role with a direct
+  admission-layer test),
+  `research/benchmark/waves/sl0037-oceanis-30-1/oceanis_30_1_projection.v1.json`
+  (`configuration_evidence_refs` added per configuration; a
+  `self_authorization_boundary_note` added; no fact value changed),
+  `research/benchmark/waves/sl0037-oceanis-30-1/source_retrieval_log.json`
+  (SRC-1/SRC-5/SRC-6 `rights` rewritten in full `SOURCE_SCHEMA.v0.2` shape;
+  SRC-7 — BENETEAU Legal Notices/Terms — added; retrieval count 6 -> 7),
+  `research/benchmark/waves/sl0037-oceanis-30-1/REPORT.md` (section 11
+  added), this slice document (this report).
+- No production `src/hullq/search/**` code changed. No Search semantics
+  changed. No Q1-Q10 threshold/category/role changed. No other boat
+  researched. No new PR opened; no merge; not marked DONE.
+- Requirements implemented: SLICE-0037 Required Behavior A's
+  self-authorization prohibition, independently enforced at code level for
+  the first time; SR-6.6(6) automated-access clearance recorded accurately.
+- Tests/fixtures added or updated: `tests/unit/test_search_oceanis_30_1.py`
+  grew from 26 to 52 tests (26 new).
+
+### Validation
+
+- Local validation: `PASS`
+- Commands run: `uv run ruff format --check .`; `uv run ruff check .`;
+  `uv run mypy src`; `uv run python scripts/validate_repository.py`;
+  `uv run python -m coverage run -m pytest`; `uv run python -m coverage report`;
+  `uv run python scripts/search_oceanis_30_1.py`.
+- Results: ruff/mypy clean; repository validator PASS (88/88); 3310 passed /
+  217 skipped (pre-existing DB/live-network gaps, +26 vs. the prior head);
+  coverage 91.74% total (unchanged — `src/hullq/search/**` remains 100%,
+  untouched); owner-test script deterministic, Q1/Q2/Q10 CONFIRMED_MATCH,
+  Q3-Q9 INSUFFICIENT_DATA, zero CONFIRMED_NON_MATCH — byte-identical outcome
+  distribution to the prior reviewed head.
+
+### External verification
+
+- Remote CI: `NOT VERIFIED` (to be observed on the new exact final pushed
+  HEAD, same PR #110)
+- Other external gates: `NOT VERIFIED` (Manufacturer artifact
+  reproducibility, same PR #110)
+
+### Findings
+
+- Unresolved findings: none blocking.
+- Scope deviations: none. Both amendment items were explicitly requested by
+  the review; no additional research, no new boat, no Search semantics
+  change.
+
+### Follow-up
+
+- Recommended next action: independent re-review of PR #110 on the new head.
+
+### Agent declaration
+
+- No work outside the two requested amendment items was started.
+- No unverified acceptance criterion was marked as passed.
+- No new PR was created; PR #110 was updated in place.
+- The next slice was not started automatically.
+- The agent has NOT marked this slice `DONE` and has NOT merged.

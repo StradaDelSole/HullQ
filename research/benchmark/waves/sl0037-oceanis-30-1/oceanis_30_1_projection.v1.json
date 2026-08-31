@@ -11,12 +11,14 @@
   },
   "configuration_space_complete": false,
   "configuration_space_complete_basis": "Three named ballast/keel options ('Deep draft', 'Shallow draft', 'Performance draft (hydraulic swing keel)') are positively evidenced (SRC-1), but no source states this is the complete materially relevant factory configuration space (e.g. market-specific variants, rig-only options unrelated to keel choice). configuration_space_complete is left False per the slice's explicit instruction not to infer completeness from the number of discovered configurations.",
+  "self_authorization_boundary_note": "REVIEW amendment (review 5067543634): this file is a retained, editable research artifact, not a truth-authorizing one. scripts/search_oceanis_30_1.py's validate_oceanis_30_1_projection() independently re-derives design_id, configuration_space_complete, the exact configuration_id/named_variant_id set, every field's exact value, and every evidence_refs/configuration_evidence_refs entry against a hardcoded oracle before this file's content is permitted to become Search input -- it never trusts this file's own claims about itself. A field, value, evidence reference or completeness flag edited here without a matching independent-review amendment to that oracle fails admission rather than silently reaching Search.",
   "configurations": [
     {
       "configuration_id": "oceanis-30-1-deep-keel",
       "named_variant_id": "deep-draft-keel",
       "applied_option_ids": [],
-      "configuration_basis": "SRC-1's 'Deep draft' named ballast option; draft value from SRC-6's 'Draft long' figure for the same design.",
+      "configuration_evidence_refs": ["SRC-1"],
+      "configuration_basis": "SRC-1's 'Deep draft' named ballast option (one of the '3 ballasts available' -- see source_retrieval_log.json SRC-1); draft value from SRC-6's 'Draft long' figure for the same design. `configuration_evidence_refs` is machine-checked identity evidence (REVIEW amendment); `configuration_basis` remains human-readable audit prose only and is never itself the truth-authorizing mechanism -- see scripts/search_oceanis_30_1.py's independent admission oracle.",
       "numeric_fields": {
         "loa_m": {
           "state": "resolved",
@@ -46,7 +48,8 @@
       "configuration_id": "oceanis-30-1-shallow-keel",
       "named_variant_id": "shallow-draft-keel",
       "applied_option_ids": [],
-      "configuration_basis": "SRC-1's 'Shallow draft' named ballast option; draft value corroborated independently by both SRC-1 ('Draft Min') and SRC-6 ('Draft short').",
+      "configuration_evidence_refs": ["SRC-1"],
+      "configuration_basis": "SRC-1's 'Shallow draft' named ballast option (one of the '3 ballasts available'); draft value corroborated independently by both SRC-1 ('Draft Min') and SRC-6 ('Draft short'). `configuration_evidence_refs` is machine-checked identity evidence (REVIEW amendment); `configuration_basis` remains human-readable audit prose only.",
       "numeric_fields": {
         "loa_m": {
           "state": "resolved",
@@ -76,7 +79,8 @@
       "configuration_id": "oceanis-30-1-retractable-keel",
       "named_variant_id": "performance-draft-hydraulic-swing-keel",
       "applied_option_ids": [],
-      "configuration_basis": "SRC-1's 'Performance draft (hydraulic swing keel)' named ballast option.",
+      "configuration_evidence_refs": ["SRC-1"],
+      "configuration_basis": "SRC-1's 'Performance draft (hydraulic swing keel)' named ballast option (one of the '3 ballasts available'). `configuration_evidence_refs` is machine-checked identity evidence (REVIEW amendment); `configuration_basis` remains human-readable audit prose only.",
       "numeric_fields": {
         "loa_m": {
           "state": "resolved",
