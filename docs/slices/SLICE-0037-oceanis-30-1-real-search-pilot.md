@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0037  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** P0 Data/Search vertical — first real BoatDesign through the existing Search kernel  
 **Depends on:** SLICE-0036 owner-accepted / DONE; SLICE-0035 owner-accepted / DONE; `specs/SEARCH_BENCHMARK.v0.1.md` ACCEPTED  
 **Blocks:** first real-design local owner-test gate and the later API/frontend architecture decision
@@ -354,3 +354,296 @@ Additionally report concisely:
 - unresolved findings/ambiguities/scope deviations.
 
 After the final handoff, STOP.
+
+---
+
+## Implementation completion report
+
+### Slice
+
+- Slice ID: `SLICE-0037`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+- Exact final branch HEAD SHA: recorded in the conversation completion report
+  (a file cannot self-reference its own content hash at commit time); see
+  `git log -1` on `slice/0037-oceanis-30-1-real-search-pilot`.
+
+### Changes
+
+- Changed files: `research/benchmark/waves/sl0037-oceanis-30-1/REPORT.md`,
+  `research/benchmark/waves/sl0037-oceanis-30-1/source_retrieval_log.json`,
+  `research/benchmark/waves/sl0037-oceanis-30-1/oceanis_30_1_projection.v1.json`,
+  `scripts/search_oceanis_30_1.py`, `tests/unit/test_search_oceanis_30_1.py`,
+  this slice document (status only).
+- Requirements implemented or researched: real, provenance-backed, non-fixture
+  BENETEAU Oceanis 30.1 projection researched from bounded authoritative
+  official sources; explicit resolved-configuration set
+  (`DesignConfigurationSet.is_fixture=False`) built and run through the
+  unchanged `hullq.search.configuration_engine` for the exact locked Q1-Q10
+  suite; SLICE-0036 MTE registry classification applied to every relevant
+  qualified fact (zero derived facts materialized — see REPORT.md section 6).
+- Tests/fixtures added or updated: `tests/unit/test_search_oceanis_30_1.py`
+  (26 focused tests, including adversarial FALSE_CONFIRMED_RESULT coverage).
+  No existing fixture/spec file was modified.
+
+### Validation
+
+- Local validation: `PASS`
+- Commands run: `uv run ruff format --check .`; `uv run ruff check .`;
+  `uv run mypy src`; `uv run python scripts/validate_repository.py`;
+  `uv run python -m coverage run -m pytest`; `uv run python -m coverage report`;
+  `uv run python scripts/search_oceanis_30_1.py`.
+- Results: ruff format/check clean; mypy strict clean (56 source files);
+  repository validator PASS (88/88 requirements); 3284 passed / 217 skipped
+  (pre-existing DB/live-network gaps, unrelated to this slice); coverage
+  91.74% total (>= repository's required threshold), `src/hullq/search/**`
+  100% (unchanged, no production Search code was modified); the owner-test
+  script runs deterministically and produces the outcome distribution in
+  `REPORT.md` section 8 (CONFIRMED_MATCH: Q1, Q2, Q10; INSUFFICIENT_DATA:
+  Q3-Q9; CONFIRMED_NON_MATCH: none).
+
+### External verification
+
+- Remote CI: `NOT VERIFIED` (to be observed on the exact final pushed HEAD)
+- Other external gates: `NOT VERIFIED` (Manufacturer artifact reproducibility,
+  to be observed on the exact final pushed HEAD)
+
+### Findings
+
+- Unresolved findings: none blocking.
+- Spec/ADR ambiguities: none encountered beyond the documented, deliberate
+  fail-closed treatment of the displacement cross-source discrepancy and the
+  rig/rudder/cockpit fields left unresolved (REPORT.md section 5).
+- Scope deviations: a mid-research `robots.txt` finding
+  (`pro.beneteauusa.com`: `Disallow: /`) required excluding the single most
+  detailed source document from the evidence basis after it had already been
+  read; this narrowed the confirmed field set materially (no displacement,
+  rig, keel-shape, rudder-support or cockpit-position facts could be
+  confirmed from the remaining robots.txt-clear sources) but did not change
+  scope, target identity, or any locked query/threshold — see REPORT.md
+  section 2 for the full account. This is disclosed as a research-basis
+  narrowing, not a scope deviation from the slice contract itself.
+
+### Follow-up
+
+- Recommended next action: independent review of this REVIEW-state slice;
+  no further action by this agent until review findings return.
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice was not started automatically.
+- The agent has NOT marked this slice `DONE`.
+
+---
+
+## Amendment 1 completion report (review 5067543634 — CHANGES REQUIRED)
+
+Bounded amendment to the exact same branch/worktree/PR #110, in response to
+independent review `5067543634` on prior head
+`707bb6805e61d5de06afb767a176aa5ff15ffb44`. No new Oceanis technical research
+was performed; the configuration-sensitive technical result was already
+accepted as directionally sound. Two blockers were closed: (1) the retained
+projection could self-authorize its own CONFIRMED state, and (2) the
+automated-access clearance for the positive-evidence sources was recorded as
+"manual-style" rather than honestly as programmatic/agent-mediated access
+under the accepted `SOURCE_SCHEMA.v0.2` vocabulary.
+
+### Slice
+
+- Slice ID: `SLICE-0037`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES` (bounded amendment scope only)
+- New exact final branch HEAD SHA: recorded in the conversation completion
+  report (see `git log -1` on `slice/0037-oceanis-30-1-real-search-pilot`).
+
+### Changes
+
+- Changed files: `scripts/search_oceanis_30_1.py` (independent admission
+  oracle + `validate_oceanis_30_1_projection`, wired into
+  `load_oceanis_30_1_configuration_set`),
+  `tests/unit/test_search_oceanis_30_1.py` (+17 admission-boundary
+  adversarial tests, +5 rights-bookkeeping tests, replaced the
+  Q10-dependent completeness test's role with a direct
+  admission-layer test),
+  `research/benchmark/waves/sl0037-oceanis-30-1/oceanis_30_1_projection.v1.json`
+  (`configuration_evidence_refs` added per configuration; a
+  `self_authorization_boundary_note` added; no fact value changed),
+  `research/benchmark/waves/sl0037-oceanis-30-1/source_retrieval_log.json`
+  (SRC-1/SRC-5/SRC-6 `rights` rewritten in full `SOURCE_SCHEMA.v0.2` shape;
+  SRC-7 — BENETEAU Legal Notices/Terms — added; retrieval count 6 -> 7),
+  `research/benchmark/waves/sl0037-oceanis-30-1/REPORT.md` (section 11
+  added), this slice document (this report).
+- No production `src/hullq/search/**` code changed. No Search semantics
+  changed. No Q1-Q10 threshold/category/role changed. No other boat
+  researched. No new PR opened; no merge; not marked DONE.
+- Requirements implemented: SLICE-0037 Required Behavior A's
+  self-authorization prohibition, independently enforced at code level for
+  the first time; SR-6.6(6) automated-access clearance recorded accurately.
+- Tests/fixtures added or updated: `tests/unit/test_search_oceanis_30_1.py`
+  grew from 26 to 52 tests (26 new).
+
+### Validation
+
+- Local validation: `PASS`
+- Commands run: `uv run ruff format --check .`; `uv run ruff check .`;
+  `uv run mypy src`; `uv run python scripts/validate_repository.py`;
+  `uv run python -m coverage run -m pytest`; `uv run python -m coverage report`;
+  `uv run python scripts/search_oceanis_30_1.py`.
+- Results: ruff/mypy clean; repository validator PASS (88/88); 3310 passed /
+  217 skipped (pre-existing DB/live-network gaps, +26 vs. the prior head);
+  coverage 91.74% total (unchanged — `src/hullq/search/**` remains 100%,
+  untouched); owner-test script deterministic, Q1/Q2/Q10 CONFIRMED_MATCH,
+  Q3-Q9 INSUFFICIENT_DATA, zero CONFIRMED_NON_MATCH — byte-identical outcome
+  distribution to the prior reviewed head.
+
+### External verification
+
+- Remote CI: `NOT VERIFIED` (to be observed on the new exact final pushed
+  HEAD, same PR #110)
+- Other external gates: `NOT VERIFIED` (Manufacturer artifact
+  reproducibility, same PR #110)
+
+### Findings
+
+- Unresolved findings: none blocking.
+- Scope deviations: none. Both amendment items were explicitly requested by
+  the review; no additional research, no new boat, no Search semantics
+  change.
+
+### Follow-up
+
+- Recommended next action: independent re-review of PR #110 on the new head.
+
+### Agent declaration
+
+- No work outside the two requested amendment items was started.
+- No unverified acceptance criterion was marked as passed.
+- No new PR was created; PR #110 was updated in place.
+- The next slice was not started automatically.
+- The agent has NOT marked this slice `DONE` and has NOT merged.
+
+---
+
+## Amendment 2 completion report (review 5068222791 — CHANGES REQUIRED)
+
+Small mechanical amendment to the exact same branch/worktree/PR #110, in
+response to independent review `5068222791` on prior head
+`be7e3dba44b09d4645e963f20bb9c79bd549bff7`. Per the review, the prior major
+blockers (self-authorization, source-rights/access treatment, SRC-4
+exclusion) are resolved and were not reopened. No further source was
+fetched; no further Oceanis research was performed.
+
+### Slice
+
+- Slice ID: `SLICE-0037`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES` (bounded mechanical amendment only)
+- New exact final branch HEAD SHA: recorded in the conversation completion
+  report (see `git log -1` on `slice/0037-oceanis-30-1-real-search-pilot`).
+
+### Changes
+
+- Changed files: `scripts/search_oceanis_30_1.py` (independent oracle
+  extended with `EXPECTED_APPLIED_OPTION_IDS` and per-fact
+  `direct_or_derived`/`scope_id`; evidence-ref check tightened from a
+  minimum-subset check to an exact-set check),
+  `tests/unit/test_search_oceanis_30_1.py` (+12 adversarial tests: 4 for
+  `applied_option_ids`, 6 for `direct_or_derived`/`scope_id`, 1 for the
+  exact-evidence-set check, 1 legitimate-payload sanity check),
+  `research/benchmark/waves/sl0037-oceanis-30-1/oceanis_30_1_projection.v1.json`
+  (`scope_id` added to all eight authorized numeric facts; no fact value,
+  evidence set, or configuration identity changed).
+- No production `src/hullq/search/**` code changed. No Search semantics
+  changed. No schema changed. No persistence/API/frontend/market work
+  added. No additional source fetched. No other boat researched. No new PR;
+  no merge; not marked DONE.
+
+### 1. `applied_option_ids` independently fixed
+
+`EXPECTED_APPLIED_OPTION_IDS = {deep-keel: (), shallow-keel: (), retractable-keel: ()}`
+is now independently checked in `_validate_one_configuration` before any
+other field-level check, requiring `config_data["applied_option_ids"]` to be
+a genuine list whose tuple form exactly equals the expected (empty) tuple.
+New tests prove: `["fake-option"]` on the deep-keel configuration rejected;
+a non-empty option on the shallow-keel configuration rejected; a bare string
+(`"fake-option"`, which would otherwise iterate character-by-character)
+rejected; the key omitted entirely rejected. The legitimate retained
+artifact (all three configurations carrying `applied_option_ids: []`)
+continues to admit.
+
+### 2. Direct-vs-derived and scope independently bound
+
+`_AuthorizedFact` now carries `direct_or_derived` and a closed `scope_id`
+vocabulary (`design_wide`, `deep_fixed_keel`, `shallow_fixed_keel`) alongside
+`value`, in addition to `evidence_refs`. `_validate_configuration_fields`
+independently checks all four for every one of the eight authorized numeric
+facts before admission. The reviewed mapping was applied exactly as
+specified: `loa_m`/`beam_m` -> `design_wide` on all three configurations;
+deep-keel `draft_max_m` -> `deep_fixed_keel`; shallow-keel `draft_max_m` ->
+`shallow_fixed_keel`; every fact `direct_or_derived = "direct"` (SLICE-0037
+authorizes zero derived facts). The retained JSON's existing free-text
+`scope` prose is preserved for audit only and is not read by the validator.
+New tests prove rejection of: shallow draft reclassified `"derived"`;
+shallow draft's scope widened to `design_wide`; deep draft's scope swapped to
+`shallow_fixed_keel`; a design-wide LOA narrowed to a keel-specific scope;
+the `scope_id` key omitted entirely; and an unrecognized scope token.
+
+### 3. Evidence refs tightened to exact-set
+
+`_validate_configuration_fields`'s evidence check changed from
+`fact.minimum_evidence_refs.issubset(refs)` to `refs == fact.evidence_refs`
+(exact set equality). A new test proves that adding an unrelated
+*otherwise-allowed* source (`SRC-1`) alongside the deep-keel draft fact's
+genuinely required `{SRC-6}` is rejected, not merely tolerated because the
+required source is still present. SRC-4 remains outside
+`ALLOWED_EVIDENCE_SOURCE_IDS` entirely, unchanged.
+
+### Final Q1-Q10 results (unchanged across all three amendment heads)
+
+- **CONFIRMED_MATCH:** Q1, Q2, Q10.
+- **INSUFFICIENT_DATA:** Q3-Q9.
+- **CONFIRMED_NON_MATCH:** none.
+- **Q10 exact matching configuration:** `("oceanis-30-1-shallow-keel",)`.
+- **`FALSE_CONFIRMED_RESULT`:** 0.
+
+### Validation
+
+- Local validation: `PASS`
+- Commands run: `uv run ruff format --check .`; `uv run ruff check .`;
+  `uv run mypy src`; `uv run python scripts/validate_repository.py`;
+  `uv run python -m pytest`; `uv run python -m coverage run -m pytest`;
+  `uv run python -m coverage report`; `uv run python scripts/search_oceanis_30_1.py`.
+- Results: ruff/mypy clean; repository validator PASS (88/88); **3322
+  passed / 217 skipped** (pre-existing DB/live-network gaps; +12 vs. the
+  prior head); coverage **91.74%** total (unchanged, `src/hullq/search/**`
+  remains 100%, untouched); owner-test script deterministic, output
+  byte-identical to the prior two heads.
+
+### External verification
+
+- Remote CI: `NOT VERIFIED` (to be observed on the new exact final pushed
+  HEAD, same PR #110)
+- Other external gates: `NOT VERIFIED` (Manufacturer artifact
+  reproducibility, same PR #110)
+
+### Findings
+
+- Unresolved findings: none blocking.
+- Scope deviations: none. Both amendment items were exactly what the review
+  requested; no additional research, no additional source, no Search
+  semantics change.
+
+### Follow-up
+
+- Recommended next action: independent re-review of PR #110 on the new head.
+
+### Agent declaration
+
+- No work outside the two requested mechanical-amendment items was started.
+- No additional source was fetched; no further Oceanis research performed.
+- No unverified acceptance criterion was marked as passed.
+- No new PR was created; PR #110 was updated in place.
+- The next slice was not started automatically.
+- The agent has NOT marked this slice `DONE` and has NOT merged.
