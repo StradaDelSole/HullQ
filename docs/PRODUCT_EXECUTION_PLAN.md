@@ -158,6 +158,8 @@ requirements
 
 Do not require accounts, payments, large UI systems or broad SEO rollout for the first Alpha.
 
+**Phase E UX binding:** every slice that creates or materially changes public Search, Search-result, BoatDesign, comparison, market, save/monitor or alert UI MUST name `docs/PRODUCT_UX_PRINCIPLES.md` as a controlling artifact. The Alpha remains deliberately small, but its truth states, requirement semantics and design-vs-physical-listing boundary must be understandable without training or a developer explanation.
+
 ### Phase F — Demand-driven Coverage
 
 After the Alpha produces real query data, replace Seed-Corpus assumptions with observed demand.
@@ -243,6 +245,8 @@ After SLICE-0038, decisions follow the gates in this document rather than return
 
 - Listing aggregation alone is not HullQ's moat.
 - Listings Port validates demand for cross-market sailboat discovery and already covers aggregation/dedup/alerts/history-like use cases; HullQ should not try to win merely by aggregating more sources.
+- SailboatLab demonstrates that buyer-side model comparison, design-vs-ad distinction, scoring and market monitoring already exist; HullQ's stronger differentiation hypothesis is field-level physical-listing evidence, configuration scope, deterministic hard constraints, explicit UNKNOWN/conflict and auditable provenance.
+- Keel Index is a strong benchmark for coherent BoatDesign decision hubs, market-context presentation and product-led/data-driven SEO; HullQ should adopt the useful interaction/information patterns without copying its visual identity or relaxing truth semantics.
 - Scanboat and broker-syndication research indicate that broker/CRM/MLS/feed relationships may be cleaner long-term inventory paths than scraping many public portals.
 - Scraping multiple marketplaces is therefore not the foundational business model.
 - A native marketplace is a possible later outcome only if supply relationships naturally justify it; it is not a panic pivot.
