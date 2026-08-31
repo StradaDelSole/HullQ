@@ -11,6 +11,21 @@
 
 One concrete outcome only.
 
+## Product execution checks
+
+For SLICE-0039 and later, both checks are mandatory before a primary slice may become `READY`.
+
+**ONE-CAPABILITY CHECK:** PASS | FAIL  
+Does this slice deliver exactly one user-visible capability OR answer exactly one business-critical hypothesis?
+
+**VISIBLE-RESULT CHECK:** PASS | FAIL  
+Can the Project Owner personally execute, observe or inspect the result at the end of this slice?
+
+**PRODUCT EXECUTION PLAN ALIGNMENT:** PASS | FAIL  
+Does the slice comply with `docs/PRODUCT_EXECUTION_PLAN.md`, including current phase ordering and explicit gates?
+
+A `FAIL` on ONE-CAPABILITY blocks readiness. A `FAIL` on VISIBLE-RESULT blocks ordinary product work unless the slice documents a genuine prerequisite/blocker exception. A `FAIL` on PRODUCT EXECUTION PLAN ALIGNMENT blocks readiness.
+
 ## Why this slice exists
 
 Explain the problem this slice closes and why it belongs at this point in the execution order.
@@ -21,6 +36,7 @@ Explain the problem this slice closes and why it belongs at this point in the ex
 - Specifications:
 - Accepted ADRs:
 - Governance / research protocols:
+- Product execution plan: `docs/PRODUCT_EXECUTION_PLAN.md` for SLICE-0039 and later
 - Relevant open questions:
 
 ## In scope
@@ -61,7 +77,7 @@ Stop and report instead of inventing a solution when:
 
 - a required controlling decision is absent;
 - accepted artifacts contradict each other materially;
-- the requested behavior would violate source-rights, provenance, identity, search/SEO, or other accepted policy;
+- the requested behavior would violate source-rights, provenance, identity, search/SEO, product-execution, or other accepted policy;
 - implementation requires scope outside this slice.
 
 ## Status handoff rule
@@ -84,6 +100,12 @@ Use this structure exactly at the end of the assigned slice.
 - Recommended slice state: `REVIEW` | `BLOCKED`
 - Scope completed: `YES` | `NO`
 - Exact final branch HEAD SHA:
+
+### Product execution checks
+
+- ONE-CAPABILITY CHECK: `PASS` | `FAIL` | `NOT APPLICABLE`
+- VISIBLE-RESULT CHECK: `PASS` | `FAIL` | `NOT APPLICABLE`
+- PRODUCT EXECUTION PLAN ALIGNMENT: `PASS` | `FAIL` | `NOT APPLICABLE`
 
 ### Changes
 
