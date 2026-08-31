@@ -25,6 +25,7 @@
           "value": 9.53,
           "evidence_refs": ["SRC-1", "SRC-6"],
           "direct_or_derived": "direct",
+          "scope_id": "design_wide",
           "scope": "design-wide (LOA does not vary by keel option)"
         },
         "beam_m": {
@@ -32,6 +33,7 @@
           "value": 2.99,
           "evidence_refs": ["SRC-1", "SRC-6"],
           "direct_or_derived": "direct",
+          "scope_id": "design_wide",
           "scope": "design-wide (beam does not vary by keel option)"
         },
         "draft_max_m": {
@@ -39,6 +41,7 @@
           "value": 1.85,
           "evidence_refs": ["SRC-6"],
           "direct_or_derived": "direct",
+          "scope_id": "deep_fixed_keel",
           "scope": "SRC-6 'Draft long : 1,85 m', bound specifically to the deep/long fixed-keel configuration; SRC-1's separate 'Draft Max 2.3 m' figure is a design-wide bounding statement across all three keel options (its deepest reading corresponds to the hydraulic swing keel fully lowered, not this fixed configuration) and is not used as this configuration's value."
         }
       },
@@ -56,6 +59,7 @@
           "value": 9.53,
           "evidence_refs": ["SRC-1", "SRC-6"],
           "direct_or_derived": "direct",
+          "scope_id": "design_wide",
           "scope": "design-wide"
         },
         "beam_m": {
@@ -63,6 +67,7 @@
           "value": 2.99,
           "evidence_refs": ["SRC-1", "SRC-6"],
           "direct_or_derived": "direct",
+          "scope_id": "design_wide",
           "scope": "design-wide"
         },
         "draft_max_m": {
@@ -70,6 +75,7 @@
           "value": 1.30,
           "evidence_refs": ["SRC-1", "SRC-6"],
           "direct_or_derived": "direct",
+          "scope_id": "shallow_fixed_keel",
           "scope": "SRC-6 'Draft short : 1,30 m' for this named shallow-keel configuration, independently corroborated by SRC-1's design-wide 'Draft Min 1.3 m' (consistent because the shallow keel is definitionally the shoalest fixed option)."
         }
       },
@@ -87,6 +93,7 @@
           "value": 9.53,
           "evidence_refs": ["SRC-1", "SRC-6"],
           "direct_or_derived": "direct",
+          "scope_id": "design_wide",
           "scope": "design-wide"
         },
         "beam_m": {
@@ -94,6 +101,7 @@
           "value": 2.99,
           "evidence_refs": ["SRC-1", "SRC-6"],
           "direct_or_derived": "direct",
+          "scope_id": "design_wide",
           "scope": "design-wide"
         }
       },

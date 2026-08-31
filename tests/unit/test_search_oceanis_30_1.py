@@ -373,6 +373,121 @@ def test_admission_runs_before_configuration_set_materialization() -> None:
 
 
 # ---------------------------------------------------------------------------
+# applied_option_ids — REVIEW amendment (review 5068222791) point 1: no
+# DesignOption is reviewed/authorized for this pilot, so every configuration's
+# applied_option_ids must be independently required to be exactly empty.
+# ---------------------------------------------------------------------------
+
+
+def test_legitimate_applied_option_ids_are_all_empty() -> None:
+    payload = _real_payload()
+    for config_id in (DEEP, SHALLOW, RETRACTABLE):
+        assert _configuration(payload, config_id)["applied_option_ids"] == []
+    validate_oceanis_30_1_projection(payload)  # must not raise
+
+
+def test_deep_keel_fake_applied_option_is_rejected() -> None:
+    payload = _real_payload()
+    _configuration(payload, DEEP)["applied_option_ids"] = ["fake-option"]
+    with pytest.raises(OceanisProjectionAdmissionError, match="applied_option_ids"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_shallow_keel_nonempty_applied_option_is_rejected() -> None:
+    payload = _real_payload()
+    _configuration(payload, SHALLOW)["applied_option_ids"] = ["some-real-looking-option-id"]
+    with pytest.raises(OceanisProjectionAdmissionError, match="applied_option_ids"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_applied_option_ids_as_a_bare_string_is_rejected() -> None:
+    # A bare string is iterable character-by-character; must not be silently
+    # accepted as if it were an (empty-equivalent-looking) collection.
+    payload = _real_payload()
+    _configuration(payload, DEEP)["applied_option_ids"] = "fake-option"
+    with pytest.raises(OceanisProjectionAdmissionError, match="applied_option_ids"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_applied_option_ids_missing_entirely_is_rejected() -> None:
+    payload = _real_payload()
+    del _configuration(payload, RETRACTABLE)["applied_option_ids"]
+    with pytest.raises(OceanisProjectionAdmissionError, match="applied_option_ids"):
+        validate_oceanis_30_1_projection(payload)
+
+
+# ---------------------------------------------------------------------------
+# direct_or_derived / scope_id / exact evidence set — REVIEW amendment
+# (review 5068222791) point 2: SLICE-0037 Required Behavior A requires every
+# confirmed direct fact to independently bind qualification, evidence,
+# configuration/source scope AND direct-vs-derived classification -- not
+# merely value and a minimum evidence subset.
+# ---------------------------------------------------------------------------
+
+
+def test_shallow_draft_reclassified_as_derived_is_rejected() -> None:
+    payload = _real_payload()
+    _configuration(payload, SHALLOW)["numeric_fields"]["draft_max_m"]["direct_or_derived"] = (
+        "derived"
+    )
+    with pytest.raises(OceanisProjectionAdmissionError, match="direct_or_derived"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_shallow_draft_scope_widened_to_design_wide_is_rejected() -> None:
+    payload = _real_payload()
+    _configuration(payload, SHALLOW)["numeric_fields"]["draft_max_m"]["scope_id"] = "design_wide"
+    with pytest.raises(OceanisProjectionAdmissionError, match="scope_id"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_deep_draft_scope_swapped_to_shallow_scope_is_rejected() -> None:
+    payload = _real_payload()
+    _configuration(payload, DEEP)["numeric_fields"]["draft_max_m"]["scope_id"] = (
+        "shallow_fixed_keel"
+    )
+    with pytest.raises(OceanisProjectionAdmissionError, match="scope_id"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_design_wide_loa_narrowed_to_a_keel_specific_scope_is_rejected() -> None:
+    payload = _real_payload()
+    _configuration(payload, DEEP)["numeric_fields"]["loa_m"]["scope_id"] = "deep_fixed_keel"
+    with pytest.raises(OceanisProjectionAdmissionError, match="scope_id"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_missing_scope_id_field_is_rejected() -> None:
+    payload = _real_payload()
+    del _configuration(payload, SHALLOW)["numeric_fields"]["draft_max_m"]["scope_id"]
+    with pytest.raises(OceanisProjectionAdmissionError, match="scope_id"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_unexpected_scope_token_is_rejected() -> None:
+    payload = _real_payload()
+    _configuration(payload, SHALLOW)["numeric_fields"]["draft_max_m"]["scope_id"] = (
+        "some_invented_scope"
+    )
+    with pytest.raises(OceanisProjectionAdmissionError, match="scope_id"):
+        validate_oceanis_30_1_projection(payload)
+
+
+def test_deep_draft_evidence_widened_with_an_extra_allowed_source_is_rejected() -> None:
+    # SRC-1 is an allowed source in general, but the deep-keel draft fact's
+    # exact required evidence set is {SRC-6} alone -- adding an unrelated
+    # allowed source must still fail an exact-set check, not merely a
+    # missing-required-source check.
+    payload = _real_payload()
+    _configuration(payload, DEEP)["numeric_fields"]["draft_max_m"]["evidence_refs"] = [
+        "SRC-6",
+        "SRC-1",
+    ]
+    with pytest.raises(OceanisProjectionAdmissionError, match="evidence_refs"):
+        validate_oceanis_30_1_projection(payload)
+
+
+# ---------------------------------------------------------------------------
 # Retained package content — evidence/MTE bookkeeping is present and honest
 # ---------------------------------------------------------------------------
 

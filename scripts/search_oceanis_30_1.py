@@ -90,6 +90,15 @@ EXPECTED_NAMED_VARIANT_IDS: Final[dict[str, str]] = {
     RETRACTABLE_KEEL: "performance-draft-hydraulic-swing-keel",
 }
 
+# No DesignOption is reviewed/authorized for this pilot -- every
+# ConfigurationIdentity.applied_option_ids is independently required to be
+# exactly empty. This module never infers or invents a DesignOption id.
+EXPECTED_APPLIED_OPTION_IDS: Final[dict[str, tuple[str, ...]]] = {
+    DEEP_KEEL: (),
+    SHALLOW_KEEL: (),
+    RETRACTABLE_KEEL: (),
+}
+
 # Only these three retained source documents (source_retrieval_log.json
 # SRC-1/SRC-5/SRC-6) were independently reviewed and cleared to authorize a
 # confirmed Search fact for this pilot. SRC-4 (pro.beneteauusa.com) is
@@ -109,10 +118,23 @@ EXPECTED_CONFIGURATION_EVIDENCE_REFS: Final[dict[str, frozenset[str]]] = {
 }
 
 
+# Closed, pilot-specific scope vocabulary. "design_wide" means the fact does
+# not vary by keel option; the two "*_fixed_keel" tokens bind a fact to
+# exactly one of the two factory-named fixed-draft configurations. This is a
+# machine-checked closed set, not a place for free-form prose -- REPORT.md's
+# human-readable `scope` explanation remains for audit only and is never
+# itself the authorizing mechanism.
+_SCOPE_DESIGN_WIDE: Final = "design_wide"
+_SCOPE_DEEP_FIXED_KEEL: Final = "deep_fixed_keel"
+_SCOPE_SHALLOW_FIXED_KEEL: Final = "shallow_fixed_keel"
+
+
 @dataclass(frozen=True, slots=True)
 class _AuthorizedFact:
     value: float
-    minimum_evidence_refs: frozenset[str]
+    evidence_refs: frozenset[str]
+    direct_or_derived: str
+    scope_id: str
 
 
 # The complete, closed set of Search facts this pilot's independent review
@@ -121,15 +143,36 @@ class _AuthorizedFact:
 # NOT a key here is rejected outright, regardless of its value, state or
 # evidence -- this is what makes an "unsupported new resolved field" or a
 # "retractable draft promoted to resolved" adversarial edit fail closed.
+# `evidence_refs` is the exact required set (not merely a minimum subset):
+# an unrelated allowed source present alongside the genuinely required one(s)
+# does not, by itself, authorize a fact whose evidence set no longer matches
+# exactly. Every one of these eight facts is `direct_or_derived="direct"`;
+# SLICE-0037 authorizes zero derived facts.
 _AUTHORIZED_NUMERIC_FACTS: Final[dict[tuple[str, str], _AuthorizedFact]] = {
-    (DEEP_KEEL, "loa_m"): _AuthorizedFact(9.53, frozenset({"SRC-1", "SRC-6"})),
-    (DEEP_KEEL, "beam_m"): _AuthorizedFact(2.99, frozenset({"SRC-1", "SRC-6"})),
-    (DEEP_KEEL, "draft_max_m"): _AuthorizedFact(1.85, frozenset({"SRC-6"})),
-    (SHALLOW_KEEL, "loa_m"): _AuthorizedFact(9.53, frozenset({"SRC-1", "SRC-6"})),
-    (SHALLOW_KEEL, "beam_m"): _AuthorizedFact(2.99, frozenset({"SRC-1", "SRC-6"})),
-    (SHALLOW_KEEL, "draft_max_m"): _AuthorizedFact(1.30, frozenset({"SRC-1", "SRC-6"})),
-    (RETRACTABLE_KEEL, "loa_m"): _AuthorizedFact(9.53, frozenset({"SRC-1", "SRC-6"})),
-    (RETRACTABLE_KEEL, "beam_m"): _AuthorizedFact(2.99, frozenset({"SRC-1", "SRC-6"})),
+    (DEEP_KEEL, "loa_m"): _AuthorizedFact(
+        9.53, frozenset({"SRC-1", "SRC-6"}), "direct", _SCOPE_DESIGN_WIDE
+    ),
+    (DEEP_KEEL, "beam_m"): _AuthorizedFact(
+        2.99, frozenset({"SRC-1", "SRC-6"}), "direct", _SCOPE_DESIGN_WIDE
+    ),
+    (DEEP_KEEL, "draft_max_m"): _AuthorizedFact(
+        1.85, frozenset({"SRC-6"}), "direct", _SCOPE_DEEP_FIXED_KEEL
+    ),
+    (SHALLOW_KEEL, "loa_m"): _AuthorizedFact(
+        9.53, frozenset({"SRC-1", "SRC-6"}), "direct", _SCOPE_DESIGN_WIDE
+    ),
+    (SHALLOW_KEEL, "beam_m"): _AuthorizedFact(
+        2.99, frozenset({"SRC-1", "SRC-6"}), "direct", _SCOPE_DESIGN_WIDE
+    ),
+    (SHALLOW_KEEL, "draft_max_m"): _AuthorizedFact(
+        1.30, frozenset({"SRC-1", "SRC-6"}), "direct", _SCOPE_SHALLOW_FIXED_KEEL
+    ),
+    (RETRACTABLE_KEEL, "loa_m"): _AuthorizedFact(
+        9.53, frozenset({"SRC-1", "SRC-6"}), "direct", _SCOPE_DESIGN_WIDE
+    ),
+    (RETRACTABLE_KEEL, "beam_m"): _AuthorizedFact(
+        2.99, frozenset({"SRC-1", "SRC-6"}), "direct", _SCOPE_DESIGN_WIDE
+    ),
     # Deliberately no (RETRACTABLE_KEEL, "draft_max_m") entry: no single
     # factory-resolved draft value is independently authorized for the
     # operator-adjustable configuration (REPORT.md section 3). Any such field
@@ -212,6 +255,20 @@ def _validate_one_configuration(config_id: object, config_data: dict[str, Any]) 
             f"independently authorized {expected_variant!r}"
         )
 
+    applied_option_ids = config_data.get("applied_option_ids")
+    if not isinstance(applied_option_ids, list):
+        raise OceanisProjectionAdmissionError(
+            f"{config_id}: applied_option_ids must be a list; got "
+            f"{applied_option_ids!r} ({type(applied_option_ids).__name__})"
+        )
+    expected_options = EXPECTED_APPLIED_OPTION_IDS[config_id]
+    if tuple(applied_option_ids) != expected_options:
+        raise OceanisProjectionAdmissionError(
+            f"{config_id}: applied_option_ids {applied_option_ids!r} does not match the "
+            f"independently authorized {expected_options!r} -- no DesignOption is reviewed/"
+            f"authorized for this pilot"
+        )
+
     config_evidence = _validate_evidence_refs(
         config_id, "configuration_evidence_refs", config_data.get("configuration_evidence_refs")
     )
@@ -285,13 +342,28 @@ def _validate_configuration_fields(
                 f"independently authorized value {fact.value!r} -- a changed value is rejected "
                 f"even if it would not change any Q1-Q10 Search result"
             )
+        direct_or_derived = field_data.get("direct_or_derived")
+        if direct_or_derived != fact.direct_or_derived:
+            raise OceanisProjectionAdmissionError(
+                f"{config_id}: {label}.{field_name}.direct_or_derived {direct_or_derived!r} does "
+                f"not match the independently authorized {fact.direct_or_derived!r} -- SLICE-0037 "
+                f"authorizes zero derived facts"
+            )
+        scope_id = field_data.get("scope_id")
+        if scope_id != fact.scope_id:
+            raise OceanisProjectionAdmissionError(
+                f"{config_id}: {label}.{field_name}.scope_id {scope_id!r} does not match the "
+                f"independently authorized {fact.scope_id!r}"
+            )
         refs = _validate_evidence_refs(
             config_id, f"{label}.{field_name}.evidence_refs", field_data.get("evidence_refs")
         )
-        if not fact.minimum_evidence_refs.issubset(refs):
+        if refs != fact.evidence_refs:
             raise OceanisProjectionAdmissionError(
                 f"{config_id}: {label}.{field_name}.evidence_refs {sorted(refs)} does not "
-                f"include the independently required minimum {sorted(fact.minimum_evidence_refs)}"
+                f"exactly match the independently authorized set {sorted(fact.evidence_refs)} -- "
+                f"an unrelated allowed source present alongside (or in place of) the genuinely "
+                f"required source(s) does not authorize this fact"
             )
 
 

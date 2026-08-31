@@ -523,3 +523,127 @@ under the accepted `SOURCE_SCHEMA.v0.2` vocabulary.
 - No new PR was created; PR #110 was updated in place.
 - The next slice was not started automatically.
 - The agent has NOT marked this slice `DONE` and has NOT merged.
+
+---
+
+## Amendment 2 completion report (review 5068222791 — CHANGES REQUIRED)
+
+Small mechanical amendment to the exact same branch/worktree/PR #110, in
+response to independent review `5068222791` on prior head
+`be7e3dba44b09d4645e963f20bb9c79bd549bff7`. Per the review, the prior major
+blockers (self-authorization, source-rights/access treatment, SRC-4
+exclusion) are resolved and were not reopened. No further source was
+fetched; no further Oceanis research was performed.
+
+### Slice
+
+- Slice ID: `SLICE-0037`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES` (bounded mechanical amendment only)
+- New exact final branch HEAD SHA: recorded in the conversation completion
+  report (see `git log -1` on `slice/0037-oceanis-30-1-real-search-pilot`).
+
+### Changes
+
+- Changed files: `scripts/search_oceanis_30_1.py` (independent oracle
+  extended with `EXPECTED_APPLIED_OPTION_IDS` and per-fact
+  `direct_or_derived`/`scope_id`; evidence-ref check tightened from a
+  minimum-subset check to an exact-set check),
+  `tests/unit/test_search_oceanis_30_1.py` (+12 adversarial tests: 4 for
+  `applied_option_ids`, 6 for `direct_or_derived`/`scope_id`, 1 for the
+  exact-evidence-set check, 1 legitimate-payload sanity check),
+  `research/benchmark/waves/sl0037-oceanis-30-1/oceanis_30_1_projection.v1.json`
+  (`scope_id` added to all eight authorized numeric facts; no fact value,
+  evidence set, or configuration identity changed).
+- No production `src/hullq/search/**` code changed. No Search semantics
+  changed. No schema changed. No persistence/API/frontend/market work
+  added. No additional source fetched. No other boat researched. No new PR;
+  no merge; not marked DONE.
+
+### 1. `applied_option_ids` independently fixed
+
+`EXPECTED_APPLIED_OPTION_IDS = {deep-keel: (), shallow-keel: (), retractable-keel: ()}`
+is now independently checked in `_validate_one_configuration` before any
+other field-level check, requiring `config_data["applied_option_ids"]` to be
+a genuine list whose tuple form exactly equals the expected (empty) tuple.
+New tests prove: `["fake-option"]` on the deep-keel configuration rejected;
+a non-empty option on the shallow-keel configuration rejected; a bare string
+(`"fake-option"`, which would otherwise iterate character-by-character)
+rejected; the key omitted entirely rejected. The legitimate retained
+artifact (all three configurations carrying `applied_option_ids: []`)
+continues to admit.
+
+### 2. Direct-vs-derived and scope independently bound
+
+`_AuthorizedFact` now carries `direct_or_derived` and a closed `scope_id`
+vocabulary (`design_wide`, `deep_fixed_keel`, `shallow_fixed_keel`) alongside
+`value`, in addition to `evidence_refs`. `_validate_configuration_fields`
+independently checks all four for every one of the eight authorized numeric
+facts before admission. The reviewed mapping was applied exactly as
+specified: `loa_m`/`beam_m` -> `design_wide` on all three configurations;
+deep-keel `draft_max_m` -> `deep_fixed_keel`; shallow-keel `draft_max_m` ->
+`shallow_fixed_keel`; every fact `direct_or_derived = "direct"` (SLICE-0037
+authorizes zero derived facts). The retained JSON's existing free-text
+`scope` prose is preserved for audit only and is not read by the validator.
+New tests prove rejection of: shallow draft reclassified `"derived"`;
+shallow draft's scope widened to `design_wide`; deep draft's scope swapped to
+`shallow_fixed_keel`; a design-wide LOA narrowed to a keel-specific scope;
+the `scope_id` key omitted entirely; and an unrecognized scope token.
+
+### 3. Evidence refs tightened to exact-set
+
+`_validate_configuration_fields`'s evidence check changed from
+`fact.minimum_evidence_refs.issubset(refs)` to `refs == fact.evidence_refs`
+(exact set equality). A new test proves that adding an unrelated
+*otherwise-allowed* source (`SRC-1`) alongside the deep-keel draft fact's
+genuinely required `{SRC-6}` is rejected, not merely tolerated because the
+required source is still present. SRC-4 remains outside
+`ALLOWED_EVIDENCE_SOURCE_IDS` entirely, unchanged.
+
+### Final Q1-Q10 results (unchanged across all three amendment heads)
+
+- **CONFIRMED_MATCH:** Q1, Q2, Q10.
+- **INSUFFICIENT_DATA:** Q3-Q9.
+- **CONFIRMED_NON_MATCH:** none.
+- **Q10 exact matching configuration:** `("oceanis-30-1-shallow-keel",)`.
+- **`FALSE_CONFIRMED_RESULT`:** 0.
+
+### Validation
+
+- Local validation: `PASS`
+- Commands run: `uv run ruff format --check .`; `uv run ruff check .`;
+  `uv run mypy src`; `uv run python scripts/validate_repository.py`;
+  `uv run python -m pytest`; `uv run python -m coverage run -m pytest`;
+  `uv run python -m coverage report`; `uv run python scripts/search_oceanis_30_1.py`.
+- Results: ruff/mypy clean; repository validator PASS (88/88); **3322
+  passed / 217 skipped** (pre-existing DB/live-network gaps; +12 vs. the
+  prior head); coverage **91.74%** total (unchanged, `src/hullq/search/**`
+  remains 100%, untouched); owner-test script deterministic, output
+  byte-identical to the prior two heads.
+
+### External verification
+
+- Remote CI: `NOT VERIFIED` (to be observed on the new exact final pushed
+  HEAD, same PR #110)
+- Other external gates: `NOT VERIFIED` (Manufacturer artifact
+  reproducibility, same PR #110)
+
+### Findings
+
+- Unresolved findings: none blocking.
+- Scope deviations: none. Both amendment items were exactly what the review
+  requested; no additional research, no additional source, no Search
+  semantics change.
+
+### Follow-up
+
+- Recommended next action: independent re-review of PR #110 on the new head.
+
+### Agent declaration
+
+- No work outside the two requested mechanical-amendment items was started.
+- No additional source was fetched; no further Oceanis research performed.
+- No unverified acceptance criterion was marked as passed.
+- No new PR was created; PR #110 was updated in place.
+- The next slice was not started automatically.
+- The agent has NOT marked this slice `DONE` and has NOT merged.
