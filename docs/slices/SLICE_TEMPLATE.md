@@ -13,7 +13,7 @@ One concrete outcome only.
 
 ## Product execution checks
 
-For SLICE-0039 and later, both checks are mandatory before a primary slice may become `READY`.
+For SLICE-0039 and later, all three checks are mandatory before a primary slice may become `READY`.
 
 **ONE-CAPABILITY CHECK:** PASS | FAIL  
 Does this slice deliver exactly one user-visible capability OR answer exactly one business-critical hypothesis?
@@ -24,7 +24,7 @@ Can the Project Owner personally execute, observe or inspect the result at the e
 **PRODUCT EXECUTION PLAN ALIGNMENT:** PASS | FAIL  
 Does the slice comply with `docs/PRODUCT_EXECUTION_PLAN.md`, including current phase ordering and explicit gates?
 
-A `FAIL` on ONE-CAPABILITY blocks readiness. A `FAIL` on VISIBLE-RESULT blocks ordinary product work unless the slice documents a genuine prerequisite/blocker exception. A `FAIL` on PRODUCT EXECUTION PLAN ALIGNMENT blocks readiness.
+A `FAIL` on any of these checks blocks readiness. Genuine prerequisite/blocker work must still be cut so the Project Owner can inspect its concrete result and the check can honestly be `PASS`.
 
 ## Why this slice exists
 
