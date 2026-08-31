@@ -1,0 +1,167 @@
+{
+  "design_id": "beneteau-oceanis-30-1",
+  "identity": {
+    "designation": "BENETEAU Oceanis 30.1",
+    "builder": "BENETEAU",
+    "naval_architect": "Finot-Conq (Pascal Conq)",
+    "introduced": "2019-01-14",
+    "introduced_evidence_ref": "SRC-5",
+    "production_end": null,
+    "production_end_note": "No evidence establishes a production end; the model is listed on the live current Oceanis range alongside Oceanis 34.1/37.1/40.1/42/47/52 as of SRC-1's retrieval on 2026-08-31. No production-year range beyond 'introduced 2019, still current as of retrieval' is asserted, per the slice's prohibition on inventing an epoch boundary from the model name alone."
+  },
+  "configuration_space_complete": false,
+  "configuration_space_complete_basis": "Three named ballast/keel options ('Deep draft', 'Shallow draft', 'Performance draft (hydraulic swing keel)') are positively evidenced (SRC-1), but no source states this is the complete materially relevant factory configuration space (e.g. market-specific variants, rig-only options unrelated to keel choice). configuration_space_complete is left False per the slice's explicit instruction not to infer completeness from the number of discovered configurations.",
+  "configurations": [
+    {
+      "configuration_id": "oceanis-30-1-deep-keel",
+      "named_variant_id": "deep-draft-keel",
+      "applied_option_ids": [],
+      "configuration_basis": "SRC-1's 'Deep draft' named ballast option; draft value from SRC-6's 'Draft long' figure for the same design.",
+      "numeric_fields": {
+        "loa_m": {
+          "state": "resolved",
+          "value": 9.53,
+          "evidence_refs": ["SRC-1", "SRC-6"],
+          "direct_or_derived": "direct",
+          "scope": "design-wide (LOA does not vary by keel option)"
+        },
+        "beam_m": {
+          "state": "resolved",
+          "value": 2.99,
+          "evidence_refs": ["SRC-1", "SRC-6"],
+          "direct_or_derived": "direct",
+          "scope": "design-wide (beam does not vary by keel option)"
+        },
+        "draft_max_m": {
+          "state": "resolved",
+          "value": 1.85,
+          "evidence_refs": ["SRC-6"],
+          "direct_or_derived": "direct",
+          "scope": "SRC-6 'Draft long : 1,85 m', bound specifically to the deep/long fixed-keel configuration; SRC-1's separate 'Draft Max 2.3 m' figure is a design-wide bounding statement across all three keel options (its deepest reading corresponds to the hydraulic swing keel fully lowered, not this fixed configuration) and is not used as this configuration's value."
+        }
+      },
+      "categorical_fields": {}
+    },
+    {
+      "configuration_id": "oceanis-30-1-shallow-keel",
+      "named_variant_id": "shallow-draft-keel",
+      "applied_option_ids": [],
+      "configuration_basis": "SRC-1's 'Shallow draft' named ballast option; draft value corroborated independently by both SRC-1 ('Draft Min') and SRC-6 ('Draft short').",
+      "numeric_fields": {
+        "loa_m": {
+          "state": "resolved",
+          "value": 9.53,
+          "evidence_refs": ["SRC-1", "SRC-6"],
+          "direct_or_derived": "direct",
+          "scope": "design-wide"
+        },
+        "beam_m": {
+          "state": "resolved",
+          "value": 2.99,
+          "evidence_refs": ["SRC-1", "SRC-6"],
+          "direct_or_derived": "direct",
+          "scope": "design-wide"
+        },
+        "draft_max_m": {
+          "state": "resolved",
+          "value": 1.30,
+          "evidence_refs": ["SRC-1", "SRC-6"],
+          "direct_or_derived": "direct",
+          "scope": "SRC-6 'Draft short : 1,30 m' for this named shallow-keel configuration, independently corroborated by SRC-1's design-wide 'Draft Min 1.3 m' (consistent because the shallow keel is definitionally the shoalest fixed option)."
+        }
+      },
+      "categorical_fields": {}
+    },
+    {
+      "configuration_id": "oceanis-30-1-retractable-keel",
+      "named_variant_id": "performance-draft-hydraulic-swing-keel",
+      "applied_option_ids": [],
+      "configuration_basis": "SRC-1's 'Performance draft (hydraulic swing keel)' named ballast option.",
+      "numeric_fields": {
+        "loa_m": {
+          "state": "resolved",
+          "value": 9.53,
+          "evidence_refs": ["SRC-1", "SRC-6"],
+          "direct_or_derived": "direct",
+          "scope": "design-wide"
+        },
+        "beam_m": {
+          "state": "resolved",
+          "value": 2.99,
+          "evidence_refs": ["SRC-1", "SRC-6"],
+          "direct_or_derived": "direct",
+          "scope": "design-wide"
+        }
+      },
+      "categorical_fields": {},
+      "deliberately_unresolved": [
+        {
+          "field": "draft_max_m",
+          "reason": "This keel is operator-adjustable between a shoal and a deep position (SRC-1's overall 'Draft Max 2.3 m' is the deepest bound across all three keel options, consistent with this configuration's deepest setting, but no source states one single factory-resolved draft value for this configuration -- it is inherently a continuous operator-controlled range, not a discrete factory alternative like the two fixed keels. Search's QualifiedNumericValue boundary carries exactly one confirmed value or none; inventing two synthetic 'raised'/'lowered' endpoint configurations from a page-level range is explicitly forbidden by the slice (Required Behavior B). This field is therefore left unresolved (MISSING) for this configuration rather than assigned any single number."
+        }
+      ]
+    }
+  ],
+  "fields_deliberately_left_unresolved_design_wide": [
+    {
+      "field": "displacement_kg",
+      "reason": "SRC-1's spec-table 'Dry Weight 9,100 lbs / 4,120 kg' and SRC-1's separate marketing-prose 'a weight of 8,000 lbs' (TRAILERABLE section, same page) are not stated to share the same measurement basis, and neither is explicitly scoped to one specific keel option. SRC-6 (Finot-Conq) separately states 'Light displacement : 3,99 t' (3,990 kg) without keel-option scoping either. 3,990 kg sits on the opposite side of the Q3 threshold (>=4,000 kg) from 4,120 kg / 8,000 lbs (~3,629 kg), so this is a materially threshold-crossing discrepancy across sources whose applicability scope (which keel option, which measurement basis) cannot be positively established as identical. Per TECHNICAL_PROFILE_SPEC.v0.1.md section 5 (applicability before conflict) this cannot be responsibly forced into either a single CONFIRMED value or a same-scope UNRESOLVED_CONFLICT without inventing the missing scope information; it is left unresolved (MISSING) design-wide rather than bound to any one configuration."
+    },
+    {
+      "field": "rig.sailplan",
+      "reason": "SRC-1 describes 'self-tacking jib' and 'large overlapping genoa' as alternative headsail choices (never simultaneously), and Finot-Conq's own sail-plan drawing labels ('Deep draught keel - genoa', 'Deep draught keel - Foc autovireur [self-tacking jib]') reinforce a single-headsail-position architecture. This is consistent with a sloop rig, but no retrieved cleared source states the word 'sloop' (or an equivalent unambiguous single-mast-single-headsail-family declaration) outright. Consistent with the SLICE-0036 real-design validation precedent (research/validation/SL0036-marine-entailment-real-design-validation.md), inferring the controlled taxonomy token from single-headsail-position architecture rather than a literal source statement would be exactly the 'typical, not definitional' reasoning MARINE_TECHNICAL_ENTAILMENT.v0.1.md section 4 rule 1 forbids for cross-field entailment, and this research holds direct-field confirmation to the same literal-statement standard. Left MISSING design-wide."
+    },
+    {
+      "field": "rig.masthead_fractional",
+      "reason": "No cleared source states an explicit masthead/fractional designation or a mast-fraction ratio (e.g. '9/10') for this design. SRC-4 (the pro.beneteauusa.com equipment-list PDF) did state 'Classic mast (Z-Diffusion) 9/10', which would have been strong direct evidence of a fractional rig, but SRC-4 is excluded from the evidence basis due to its robots.txt disallow (see source_retrieval_log.json). Left MISSING design-wide."
+    },
+    {
+      "field": "appendages.keel_type",
+      "reason": "No cleared source states a controlled keel_type enum token (fin/bulb/long_fin/etc.) for either fixed-keel configuration; sources name the options by draft ('Deep draft'/'Shallow draft') and material is not stated in a cleared source either. Left MISSING for every configuration."
+    },
+    {
+      "field": "appendages.rudder_support",
+      "reason": "SRC-1 and SRC-5 both confirm 'twin rudders' (a direct rudder_count=2 fact, not itself projected into Search because no locked Q1-Q10 query needs rudder_count), but no cleared source states whether the twin rudders are skeg-supported or free-standing/spade. No skeg is mentioned in any cleared source, but per CLAUDE.md's core provenance guardrail absence of mention is never treated as negative evidence of an absent skeg. Left MISSING for every configuration."
+    },
+    {
+      "field": "deck.cockpit_position",
+      "reason": "SRC-1/SRC-5 describe cockpit layout and seating ('wonderfully big cockpit', 'two large benches') and a bow/aft two-cabin layout, but no cleared source states the controlled cockpit_position token ('aft'/'center'/'forward'/'multiple') outright. Left MISSING for every configuration."
+    }
+  ],
+  "mte_classification": {
+    "note": "Every Oceanis fact this research confirmed or considered is classified against specs/MARINE_TECHNICAL_ENTAILMENT_RULES.v0.1.json. No new production inference runtime is introduced; this is a research-time classification record only, exactly mirroring the style of research/validation/SL0036-marine-entailment-real-design-validation.md.",
+    "facts_considered": [
+      {
+        "field": "rig.sailplan",
+        "value": "not qualified (left MISSING; see fields_deliberately_left_unresolved_design_wide)",
+        "classification_if_it_had_been_qualified_as_sloop": "DEFINITIONAL_ENTAILMENT (would fire MTE-RIG-001: sailplan=sloop -> mast_count=1)",
+        "applied": false,
+        "reason_not_applied": "The source fact itself was never qualified to CONFIRMED (see above); MTE-RIG-001's prerequisite ('sailplan is a qualified, accepted value of exactly sloop') is not met, so the rule is not fired. No mast_count derivation is materialized for this design."
+      },
+      {
+        "field": "appendages.rudder_count",
+        "value": 2,
+        "classification": "DIRECT_ONLY (registry: value_rules only entail from rudder_count=0; 2 does not match)",
+        "applied": false,
+        "reason_not_applied": "rudder_count=2 is a real, directly confirmed fact (SRC-1, SRC-5: 'twin rudders') but the registry authorizes no rule for any non-zero rudder_count; it stays a directly usable fact with no cross-field derivation. It is not projected into the Search ConfigurationProjection because no locked Q1-Q10 criterion reads rudder_count."
+      },
+      {
+        "field": "rig.masthead_fractional",
+        "value": "not qualified (left MISSING)",
+        "classification": "DIRECT_ONLY (registry: masthead/fractional/not_applicable tokens never entail cross-field facts)",
+        "applied": false,
+        "reason_not_applied": "No qualified value exists to classify; recorded for completeness only."
+      },
+      {
+        "field": "appendages.keel_type",
+        "value": "not qualified (left MISSING)",
+        "classification": "would depend on the specific token (fin/bulb/etc. are DIRECT_ONLY; centerboard/daggerboard are DEFINITIONAL_ENTAILMENT) -- moot, no token was qualified",
+        "applied": false,
+        "reason_not_applied": "No qualified value exists to classify."
+      }
+    ],
+    "derived_facts_materialized": [],
+    "derived_facts_materialized_note": "Zero. No Oceanis 30.1 source fact this research was able to positively qualify from a rights-cleared source satisfied a DEFINITIONAL_ENTAILMENT rule's prerequisites. This is a legitimate, expected outcome of the robots.txt-driven evidence-basis narrowing (see source_retrieval_log.json SRC-4), not a defect: the one fact that would have fired MTE-RIG-001 (sailplan=sloop) was excluded from the evidence basis specifically because it was not literally stated by a cleared source."
+  },
+  "fixed_query_field_inventory_note": "loa_m, beam_m, draft_max_m and displacement_kg are BOAT_DESIGN_SCHEMA.v0.6 principal-dimension fields, not part of the MARINE_TECHNICAL_ENTAILMENT.v0.1.md fixed field inventory (specs/MARINE_TECHNICAL_ENTAILMENT.v0.1.md section 2 covers hull/keel/rudder/rig/cockpit-helm classification fields only); no MTE classification applies to them, by design."
+}

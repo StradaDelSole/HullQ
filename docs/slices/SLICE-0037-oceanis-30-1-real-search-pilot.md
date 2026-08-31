@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0037  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** P0 Data/Search vertical — first real BoatDesign through the existing Search kernel  
 **Depends on:** SLICE-0036 owner-accepted / DONE; SLICE-0035 owner-accepted / DONE; `specs/SEARCH_BENCHMARK.v0.1.md` ACCEPTED  
 **Blocks:** first real-design local owner-test gate and the later API/frontend architecture decision
@@ -354,3 +354,84 @@ Additionally report concisely:
 - unresolved findings/ambiguities/scope deviations.
 
 After the final handoff, STOP.
+
+---
+
+## Implementation completion report
+
+### Slice
+
+- Slice ID: `SLICE-0037`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+- Exact final branch HEAD SHA: recorded in the conversation completion report
+  (a file cannot self-reference its own content hash at commit time); see
+  `git log -1` on `slice/0037-oceanis-30-1-real-search-pilot`.
+
+### Changes
+
+- Changed files: `research/benchmark/waves/sl0037-oceanis-30-1/REPORT.md`,
+  `research/benchmark/waves/sl0037-oceanis-30-1/source_retrieval_log.json`,
+  `research/benchmark/waves/sl0037-oceanis-30-1/oceanis_30_1_projection.v1.json`,
+  `scripts/search_oceanis_30_1.py`, `tests/unit/test_search_oceanis_30_1.py`,
+  this slice document (status only).
+- Requirements implemented or researched: real, provenance-backed, non-fixture
+  BENETEAU Oceanis 30.1 projection researched from bounded authoritative
+  official sources; explicit resolved-configuration set
+  (`DesignConfigurationSet.is_fixture=False`) built and run through the
+  unchanged `hullq.search.configuration_engine` for the exact locked Q1-Q10
+  suite; SLICE-0036 MTE registry classification applied to every relevant
+  qualified fact (zero derived facts materialized — see REPORT.md section 6).
+- Tests/fixtures added or updated: `tests/unit/test_search_oceanis_30_1.py`
+  (26 focused tests, including adversarial FALSE_CONFIRMED_RESULT coverage).
+  No existing fixture/spec file was modified.
+
+### Validation
+
+- Local validation: `PASS`
+- Commands run: `uv run ruff format --check .`; `uv run ruff check .`;
+  `uv run mypy src`; `uv run python scripts/validate_repository.py`;
+  `uv run python -m coverage run -m pytest`; `uv run python -m coverage report`;
+  `uv run python scripts/search_oceanis_30_1.py`.
+- Results: ruff format/check clean; mypy strict clean (56 source files);
+  repository validator PASS (88/88 requirements); 3284 passed / 217 skipped
+  (pre-existing DB/live-network gaps, unrelated to this slice); coverage
+  91.74% total (>= repository's required threshold), `src/hullq/search/**`
+  100% (unchanged, no production Search code was modified); the owner-test
+  script runs deterministically and produces the outcome distribution in
+  `REPORT.md` section 8 (CONFIRMED_MATCH: Q1, Q2, Q10; INSUFFICIENT_DATA:
+  Q3-Q9; CONFIRMED_NON_MATCH: none).
+
+### External verification
+
+- Remote CI: `NOT VERIFIED` (to be observed on the exact final pushed HEAD)
+- Other external gates: `NOT VERIFIED` (Manufacturer artifact reproducibility,
+  to be observed on the exact final pushed HEAD)
+
+### Findings
+
+- Unresolved findings: none blocking.
+- Spec/ADR ambiguities: none encountered beyond the documented, deliberate
+  fail-closed treatment of the displacement cross-source discrepancy and the
+  rig/rudder/cockpit fields left unresolved (REPORT.md section 5).
+- Scope deviations: a mid-research `robots.txt` finding
+  (`pro.beneteauusa.com`: `Disallow: /`) required excluding the single most
+  detailed source document from the evidence basis after it had already been
+  read; this narrowed the confirmed field set materially (no displacement,
+  rig, keel-shape, rudder-support or cockpit-position facts could be
+  confirmed from the remaining robots.txt-clear sources) but did not change
+  scope, target identity, or any locked query/threshold — see REPORT.md
+  section 2 for the full account. This is disclosed as a research-basis
+  narrowing, not a scope deviation from the slice contract itself.
+
+### Follow-up
+
+- Recommended next action: independent review of this REVIEW-state slice;
+  no further action by this agent until review findings return.
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice was not started automatically.
+- The agent has NOT marked this slice `DONE`.

@@ -1,0 +1,147 @@
+{
+  "slice": "SLICE-0037",
+  "target_identity": "BENETEAU Oceanis 30.1",
+  "retrieval_ceiling": 12,
+  "semantic_retrievals_used": 6,
+  "note": "Web-search-engine navigation calls (used only to locate candidate official/architect URLs, never as evidence) are not counted as semantic retrievals per the slice's definition. Two of the six distinct documents below were excluded from the positive evidence basis after a robots.txt access-restriction finding (SRC-4); this log retains them for audit transparency.",
+  "sources": [
+    {
+      "id": "SRC-1",
+      "url": "https://www.beneteau.com/en-us/oceanis/oceanis-301",
+      "source_class": "official_manufacturer_product_page",
+      "domain": "www.beneteau.com",
+      "retrieved_at": "2026-08-31",
+      "retrieval_method": "raw HTTP GET (curl) + HTML tag stripping, read directly by the agent (not summarized by an intermediary model)",
+      "robots_txt_checked": true,
+      "robots_txt_result": "www.beneteau.com/robots.txt disallows only /admin/, /core/, /profiles/, /search/, /user/*, /comment/reply/, /filter/tips, /node/add/ (and their /index.php/ equivalents). The /en-us/oceanis/oceanis-301 path is not disallowed.",
+      "rights_basis": "unlicensed_factual_reference",
+      "sr_6_6_disposition": "conditional_clearance_granted",
+      "sr_6_6_conditions": {
+        "lawfully_accessible": true,
+        "reused_element_is_discrete_fact_not_expressive_copy": true,
+        "provenance_recorded": true,
+        "source_terms_do_not_prohibit_method": true,
+        "not_unreviewed_bulk_extraction_mechanism": true,
+        "automated_access_note": "A single bounded manual-style agent retrieval of one page for this one pilot design, not a recurring/bulk automated_ingestion pipeline; no separate automated_ingestion Source Rights Profile clearance is claimed or required for this bounded use."
+      },
+      "used_as_positive_evidence": true,
+      "facts_supplied": [
+        "loa_m=9.53 (design-wide)",
+        "beam_m=2.99 (design-wide)",
+        "existence of exactly 3 named ballast/keel options: 'Deep draft', 'Shallow draft', 'Performance draft (hydraulic swing keel)'",
+        "overall Draft Min=1.3 m / Draft Max=2.3 m (design-wide bounding range across all keel options, not one configuration's value)",
+        "twin rudders; tiller or twin-steering-wheel helm options",
+        "self-tacking jib / large overlapping genoa described as alternative headsail choices (not used as sufficient definitional basis for sailplan=sloop; see REPORT.md)"
+      ]
+    },
+    {
+      "id": "SRC-2",
+      "url": "https://www.beneteau.com/oceanis/oceanis-301",
+      "source_class": "official_manufacturer_product_page",
+      "domain": "www.beneteau.com",
+      "retrieved_at": "2026-08-31",
+      "retrieval_method": "WebFetch (AI-summarized) initial pass; superseded by SRC-1's raw-text retrieval of the equivalent /en-us/ page for every fact actually relied upon",
+      "robots_txt_checked": true,
+      "robots_txt_result": "Same www.beneteau.com robots.txt as SRC-1; path not disallowed.",
+      "rights_basis": "unlicensed_factual_reference",
+      "sr_6_6_disposition": "attempted_not_relied_upon",
+      "used_as_positive_evidence": false,
+      "reason_not_relied_upon": "WebFetch's summarization step is a small intermediary model and is not itself verified evidence; every fact from this URL that mattered to the retained projection was independently re-obtained via SRC-1's raw HTML retrieval instead. Retained only for audit transparency."
+    },
+    {
+      "id": "SRC-3",
+      "url": "https://brochures.beneteau.com/oceanis301/EN/",
+      "source_class": "official_manufacturer_brochure_viewer",
+      "domain": "brochures.beneteau.com",
+      "retrieved_at": "2026-08-31",
+      "retrieval_method": "WebFetch",
+      "robots_txt_checked": true,
+      "robots_txt_result": "No robots.txt file exists at this host (404 response); no stated access restriction found.",
+      "rights_basis": "unlicensed_factual_reference",
+      "sr_6_6_disposition": "attempted_no_content",
+      "used_as_positive_evidence": false,
+      "reason_not_relied_upon": "This is a client-side JavaScript document viewer; the fetched markup contained only the page title ('BENETEAU OCEANIS 30.1 EN') with no extractable specification text. No facts were obtained."
+    },
+    {
+      "id": "SRC-4",
+      "url": "https://pro.beneteauusa.com/documents/bateau/13784/V12765_Oceanis_30-1_US%20(1).pdf",
+      "source_class": "official_manufacturer_regional_equipment_list_pdf",
+      "domain": "pro.beneteauusa.com",
+      "retrieved_at": "2026-08-31",
+      "retrieval_method": "WebFetch (binary PDF fetched and read directly by the agent's PDF reader)",
+      "robots_txt_checked": true,
+      "robots_txt_result": "pro.beneteauusa.com/robots.txt states 'User-agent: * / Disallow: /' -- an unqualified site-wide disallow covering every path including this document.",
+      "rights_basis": "unlicensed_factual_reference",
+      "sr_6_6_disposition": "EXCLUDED_robots_txt_disallow",
+      "used_as_positive_evidence": false,
+      "reason_not_relied_upon": "SOURCE_RIGHTS_POLICY.v0.1.md SR-6.6 condition 4 requires that source terms/access restrictions not prohibit the chosen research method. This domain's robots.txt unconditionally disallows all automated access. The document was read once it had already been fetched (to make this determination and to avoid discarding the discovery unrecorded), but no fact drawn from it is used anywhere in the retained projection, the Search input, or any acceptance-criteria claim in REPORT.md. Every retained numeric/categorical fact that this PDF also happened to contain was independently re-established from SRC-1 (www.beneteau.com) and/or SRC-6 (en.finot-conq.com), both of which are robots.txt-clear.",
+      "content_summary_for_audit_only": "General Equipment list, code V12765 (Q) US, dated 02/27/2026. Contained a per-keel-option draft/ballast breakdown (deep/shallow/lifting-keel), a '9/10' mast fraction statement, and twin-rudder construction detail. None of this is used as evidence; recorded here only so the exclusion is auditable rather than silent."
+    },
+    {
+      "id": "SRC-5",
+      "url": "https://www.beneteau.com/en-us/newsroom-actualite/new-oceanis-301",
+      "source_class": "official_manufacturer_press_release",
+      "domain": "www.beneteau.com",
+      "retrieved_at": "2026-08-31",
+      "retrieval_method": "raw HTTP GET (curl) + HTML tag stripping, read directly by the agent",
+      "robots_txt_checked": true,
+      "robots_txt_result": "Same www.beneteau.com robots.txt as SRC-1; /en-us/newsroom-actualite/ path is not disallowed.",
+      "rights_basis": "unlicensed_factual_reference",
+      "sr_6_6_disposition": "conditional_clearance_granted",
+      "sr_6_6_conditions": {
+        "lawfully_accessible": true,
+        "reused_element_is_discrete_fact_not_expressive_copy": true,
+        "provenance_recorded": true,
+        "source_terms_do_not_prohibit_method": true,
+        "not_unreviewed_bulk_extraction_mechanism": true,
+        "automated_access_note": "Same bounded single-document manual-style retrieval as SRC-1."
+      },
+      "used_as_positive_evidence": true,
+      "facts_supplied": [
+        "Published 14.01.2019 (identity/introduction-date scope)",
+        "Hull designed by Finot-Conq",
+        "twin rudders (corroborates SRC-1)",
+        "square-top mainsail as standard (corroborates SRC-1)",
+        "'gets rid of the back stay' -- no backstay -- used only as narrative context, not as a masthead/fractional determination"
+      ]
+    },
+    {
+      "id": "SRC-6",
+      "url": "https://en.finot-conq.com/oceanis-30-1",
+      "source_class": "official_naval_architect_page",
+      "domain": "en.finot-conq.com",
+      "retrieved_at": "2026-08-31",
+      "retrieval_method": "raw HTTP GET (curl) + HTML tag stripping, read directly by the agent",
+      "robots_txt_checked": true,
+      "robots_txt_result": "en.finot-conq.com/robots.txt states 'Allow: /' for User-agent: * (with an unrelated lightbox-query-param exclusion); this specific page is not disallowed.",
+      "rights_basis": "unlicensed_factual_reference",
+      "sr_6_6_disposition": "conditional_clearance_granted",
+      "sr_6_6_conditions": {
+        "lawfully_accessible": true,
+        "reused_element_is_discrete_fact_not_expressive_copy": true,
+        "provenance_recorded": true,
+        "source_terms_do_not_prohibit_method": true,
+        "not_unreviewed_bulk_extraction_mechanism": true,
+        "automated_access_note": "Same bounded single-document manual-style retrieval as SRC-1. This is also the naval-architect source class explicitly named permissible by the slice's source boundary."
+      },
+      "used_as_positive_evidence": true,
+      "facts_supplied": [
+        "CHARACTERISTICS table: 'Lenght OA : 9,53 m' (corroborates SRC-1 loa_m)",
+        "'Beam : 2,99 m' (corroborates SRC-1 beam_m)",
+        "'Draft short : 1,30 m' -- used as the shallow fixed-keel configuration's draft_max_m",
+        "'Draft long : 1,85 m' -- used as the deep fixed-keel configuration's draft_max_m",
+        "'Light displacement : 3,99 t' -- NOT used as a confirmed field value; see REPORT.md displacement discussion",
+        "Hull designed by Finot-Conq (corroborates SRC-5)"
+      ]
+    }
+  ],
+  "non_evidentiary_navigation_searches": [
+    "web search used only to locate the en.finot-conq.com Oceanis 30.1 URL and to confirm no beneteau.com technical-sheet PDF path existed beyond the excluded SRC-4 domain; no search-result snippet content is used as a fact anywhere in this package (SOURCE_AND_RIGHTS boundary: 'Search engines may be used only for navigation to an allowed source surface. Search-result snippets are not evidence.')"
+  ],
+  "disallowed_sources_not_used": [
+    "sailboatdata.com (not attempted)",
+    "boat-specs.com (surfaced only in search-engine results; never fetched or used as evidence)",
+    "sailingmagazine.net / 48north.com / canadianboating.ca (surfaced only in search-engine results; never fetched or used as evidence)",
+    "wikipedia.org (not attempted)"
+  ]
+}
