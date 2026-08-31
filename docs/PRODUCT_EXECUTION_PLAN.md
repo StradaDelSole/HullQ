@@ -116,7 +116,7 @@ For every participant:
 
 Do not lead with statements such as "HullQ is more accurate here". Prefer neutral questions such as "What would you do based on these results?" and "Did anything change your decision?"
 
-Where useful, compare against both a broad aggregator/search product and a buyer-intelligence/recommendation product (currently Listings Port and SailboatLab are the reference classes), without teaching the participant what HullQ is supposed to do better.
+Where useful, compare against both a broad aggregator/search product and a buyer-intelligence/recommendation product. Current reference classes are **Listings Port** and **SailboatLab**. The purpose is not a generic three-product usability contest; it is to test whether HullQ's evidence/configuration semantics create value against both breadth-first search and personalized recommendation alternatives.
 
 #### Gate 1 — Product Value
 
