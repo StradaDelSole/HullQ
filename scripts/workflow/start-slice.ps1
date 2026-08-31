@@ -15,7 +15,10 @@ function Normalize-Slice([string]$Value) {
 }
 
 function Get-PrimarySliceFile([string]$Root, [string]$Number) {
-    $candidates = @(Get-ChildItem (Join-Path $Root 'docs\slices') -Filter "SLICE-$Number-*.md")
+    $allCandidates = @(Get-ChildItem (Join-Path $Root 'docs\slices') -Filter "SLICE-$Number-*.md")
+    $candidates = @(
+        $allCandidates | Where-Object { $_.Name -notlike '*-acceptance-closure.md' }
+    )
     $primary = @(
         $candidates | Where-Object {
             (Get-Content -Raw $_.FullName) -match '(?m)^\*\*Type:\*\*\s*[A-Z_]+\s*$'
@@ -23,7 +26,7 @@ function Get-PrimarySliceFile([string]$Root, [string]$Number) {
     )
     if ($primary.Count -ne 1) {
         $names = if ($candidates.Count -gt 0) { ($candidates.Name -join ', ') } else { '<none>' }
-        throw "Expected exactly one primary SLICE-$Number document with a **Type:** header; found $($primary.Count). Matching files: $names"
+        throw "Expected exactly one primary SLICE-$Number document with a **Type:** header after excluding acceptance-closure documents; found $($primary.Count). Eligible files: $names"
     }
     return $primary[0]
 }
