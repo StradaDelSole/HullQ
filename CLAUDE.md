@@ -13,6 +13,8 @@ For an assigned slice:
 3. read only the controlling specs, ADRs, protocols and implementation files explicitly named by that slice or required to answer a concrete implementation question;
 4. consult broader project documents (`PROJECT_STATE`, `OPEN_QUESTIONS`, `REQUIREMENTS`, slice `INDEX`, roadmap/history) only when the slice references them or a real conflict/blocker requires them.
 
+For SLICE-0039 and later, `docs/PRODUCT_EXECUTION_PLAN.md` is a controlling execution-policy document and must be read when named by the primary slice (the normal post-0038 template names it explicitly).
+
 When only one section/symbol of a large file is needed, prefer targeted search/narrow reads over loading the entire file.
 
 Use the synchronized local checkout for ordinary repository reads. Do not repeatedly fetch local files through GitHub/API tooling when the local checkout already contains canonical synchronized content.
@@ -96,6 +98,34 @@ FIND DESIGN → FIND BOAT FOR SALE → COMPARE / SAVE → ALERT
 ```
 
 Do not broaden it into a generic boating super-app without an accepted scope decision.
+
+## Product execution policy (post-SLICE-0038)
+
+`docs/PRODUCT_EXECUTION_PLAN.md` governs product sequencing from SLICE-0039 onward.
+
+The execution principle is:
+
+> **Strict truth. Fast product. Test the business before building the business.**
+
+Every post-0038 primary slice must enter READY with all three explicit checks set to PASS:
+
+```text
+ONE-CAPABILITY CHECK
+VISIBLE-RESULT CHECK
+PRODUCT EXECUTION PLAN ALIGNMENT
+```
+
+`START_SLICE` enforces these markers mechanically for SLICE-0039 and later.
+
+Agents must preserve the intent behind those checks during implementation:
+
+- one user-visible capability OR one business-critical hypothesis per ordinary slice;
+- the Project Owner can personally execute, observe or inspect the result;
+- no generic framework or infrastructure widening without an active consumer/blocker;
+- no second market adapter immediately after SLICE-0038 merely because it is the next obvious technical task;
+- strict truth/provenance/fail-closed behavior remains non-negotiable while process scope is reduced for speed.
+
+If implementation reveals that the slice no longer satisfies its PASS checks, stop and report the scope problem rather than silently widening the slice.
 
 ## Core data/identity/provenance guardrails
 
