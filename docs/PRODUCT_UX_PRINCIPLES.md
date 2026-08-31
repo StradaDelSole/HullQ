@@ -300,6 +300,43 @@ Useful competitive ideas retained for later evaluation, **not authorized for imm
 - user-contributed model imagery;
 - preference scoring after deterministic eligibility;
 - guided natural-language use cases;
-- richer comparison dashboards.
+- richer comparison dashboards;
+- possible AI-assistant/API distribution as a secondary channel.
 
 These candidates enter the roadmap only through observed demand, the one-capability rule and the accepted Product Execution Plan.
+
+## 17. North Star is not a backlog
+
+The long-term opportunity may combine competitor-proven strengths such as broad aggregation, guided discovery, coherent decision hubs, market context, monitoring and data-driven SEO with HullQ's stricter Search/truth semantics.
+
+That composite vision is a **North Star only**. It must not become a pre-Gate-1 feature checklist, corpus-expansion argument or multi-capability slice.
+
+The Product Execution Plan and Gate 1 determine what may actually be built next.
+
+## 18. AI assistants are a secondary channel hypothesis
+
+General AI assistants may become both competitors for top-level discovery and future distribution surfaces for HullQ's verified vertical data/search.
+
+Treat such integrations as:
+
+> **additional channel, not distribution foundation.**
+
+HullQ should retain direct product/distribution capability and avoid structural dependence on third-party tool-call economics, ranking decisions, plugin/tool policies or access changes.
+
+No AI-assistant/API distribution work is justified before the Product Execution Plan reaches a relevant validated phase.
+
+## 19. Pre-Gate-1 value must survive without explanation
+
+The first Concierge tests are not demos in which the moderator teaches the participant why HullQ is superior.
+
+A primary value signal counts only when the participant's behavior or preference reveals the benefit **before** the moderator explains HullQ's configuration/provenance advantage.
+
+The participant does not need to say `configuration truth`. Observable evidence includes:
+
+- changing a shortlist or decision;
+- requesting monitoring/alerts;
+- preferring an evidence-backed `CONFIRMED / UNKNOWN` result.
+
+If the supposed advantage becomes compelling only after explanation, record it as prompted feedback rather than spontaneous product pull.
+
+The possibility that a proprietary configuration/evidence corpus becomes defensible later is likewise not permission to expand pre-Gate-1 data work beyond the bounded Seed Corpus, active/planned Concierge queries or real validation blockers.
