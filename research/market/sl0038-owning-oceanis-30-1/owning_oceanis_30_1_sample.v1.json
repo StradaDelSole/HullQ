@@ -1,0 +1,439 @@
+{
+  "retained_sample_version": "1",
+  "source_platform": "Owning",
+  "source_api_base": "https://api.owning.pro",
+  "source_endpoint": "/api/listings",
+  "source_query_params": {
+    "category": "sailboats",
+    "q": "Oceanis 30.1",
+    "limit": 20
+  },
+  "accessed_at": "2026-08-31T21:33:49Z",
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 10,
+    "pages": 1,
+    "has_more": false,
+    "next_page": null,
+    "cursor_mode": false
+  },
+  "note": "Compact, trimmed capture of the real (non-fixture) live Owning.pro GET /api/listings response for this exact bounded SLICE-0038 query, retained 2026-08-31 for deterministic offline replay/tests. Images, long/free-text descriptions and tags dropped as unnecessary expressive listing text; only fields needed for identity admission, draft-configuration assessment and MARKET_LISTING_SCHEMA.v0.1 normalization are kept. No candidate in this live pull carried a structured draft attribute or boat_specs.specs.dimensions draft value on the access date -- every identity-admitted offer in this retained sample is therefore genuinely UNKNOWN at the configuration level, not a fabricated placeholder.",
+  "results": [
+    {
+      "id": "lst_01KZ1897Y612WQ686W16ZS0T87",
+      "slug": "beneteau-oceanis-30-1-2023",
+      "title": "Beneteau Oceanis 30.1 2023",
+      "price": {
+        "amount": 189950,
+        "currency": "USD",
+        "negotiable": true
+      },
+      "location": {
+        "country": "US",
+        "city": "Seattle",
+        "shipping": false
+      },
+      "seller": {
+        "id": "usr_01KX6SQGZYHSBDCC3D6GSBNFV8",
+        "name": "Owning Marketplace",
+        "type": "agent",
+        "verified": false,
+        "member_since": "2026-07-10"
+      },
+      "attributes": null,
+      "boat_specs": {
+        "brand": "Beneteau",
+        "model": "Oceanis 30.1",
+        "specs": {
+          "dimensions": {
+            "length_overall_m": 9.4
+          }
+        },
+        "source": {
+          "portals": [
+            "yachtworld.com"
+          ]
+        }
+      },
+      "updated_at": "2026-08-10T07:15:03.201Z"
+    },
+    {
+      "id": "lst_01KYM4TRT1AFZ3S08BDMZAT9F9",
+      "slug": "beneteau-oceanis-30-1-2022",
+      "title": "Beneteau Oceanis 30.1 2022",
+      "price": {
+        "amount": 149900,
+        "currency": "USD",
+        "negotiable": true
+      },
+      "location": {
+        "country": "US",
+        "city": "Stony Point",
+        "shipping": false
+      },
+      "seller": {
+        "id": "usr_01KX6SQGZYHSBDCC3D6GSBNFV8",
+        "name": "Owning Marketplace",
+        "type": "agent",
+        "verified": false,
+        "member_since": "2026-07-10"
+      },
+      "attributes": null,
+      "boat_specs": {
+        "brand": "Beneteau",
+        "model": "Oceanis 30.1",
+        "specs": {
+          "dimensions": {
+            "length_overall_m": 9.1
+          }
+        },
+        "source": {
+          "portals": [
+            "yachtworld.com"
+          ]
+        }
+      },
+      "updated_at": "2026-08-02T23:15:08.627Z"
+    },
+    {
+      "id": "lst_01KY2Y0VND7NEK9G4WBQHNNYF2",
+      "slug": "beneteau-oceanis-30-1-HNNYF2",
+      "title": "Beneteau Oceanis 30.1",
+      "price": {
+        "amount": 141791,
+        "currency": "GBP",
+        "negotiable": true
+      },
+      "location": {
+        "country": "GB",
+        "city": "&nbsp;",
+        "shipping": false
+      },
+      "seller": {
+        "id": "usr_01KX6SQGZYHSBDCC3D6GSBNFV8",
+        "name": "Owning Marketplace",
+        "type": "agent",
+        "verified": false,
+        "member_since": "2026-07-10"
+      },
+      "attributes": null,
+      "boat_specs": {
+        "brand": "Beneteau",
+        "model": "Oceanis 30 1",
+        "specs": {
+          "additional": {
+            "tax_paid": false
+          }
+        },
+        "source": {
+          "portals": [
+            "ancasta.com"
+          ]
+        }
+      },
+      "updated_at": "2026-08-08T19:43:48.393Z"
+    },
+    {
+      "id": "lst_01KX8FEWJP7PRBNYF0BZ492PPP",
+      "slug": "beneteau-oceanis-30-1-492PPP",
+      "title": "Beneteau Oceanis 30.1",
+      "price": {
+        "amount": 112300,
+        "currency": "EUR",
+        "negotiable": true
+      },
+      "location": {
+        "country": "DE",
+        "city": "Schweden » Saltsjobaden",
+        "shipping": false
+      },
+      "seller": {
+        "id": "usr_01KX6SQGZYHSBDCC3D6GSBNFV8",
+        "name": "Owning Marketplace",
+        "type": "agent",
+        "verified": false,
+        "member_since": "2026-07-10"
+      },
+      "attributes": {
+        "beam": 2.99,
+        "year": 2020,
+        "brand": "beneteau",
+        "length": 9.53,
+        "boat_type": "Segelyacht",
+        "boat_category": "sail"
+      },
+      "boat_specs": {
+        "brand": "Beneteau",
+        "model": "Beneteau Oceanis 301",
+        "specs": {
+          "dimensions": {
+            "beam_m": 2.99,
+            "length_overall_m": 9.53
+          }
+        },
+        "source": {
+          "portals": [
+            "boat24.com"
+          ]
+        }
+      },
+      "updated_at": "2026-08-08T21:35:00.871Z"
+    },
+    {
+      "id": "lst_01KX8FEWM88TTACES5JY7AFDPZ",
+      "slug": "beneteau-oceanis-30-1-7AFDPZ",
+      "title": "Beneteau Oceanis 30.1",
+      "price": {
+        "amount": 118300,
+        "currency": "EUR",
+        "negotiable": true
+      },
+      "location": {
+        "country": "DE",
+        "city": "Türkei » Fethiye",
+        "shipping": false
+      },
+      "seller": {
+        "id": "usr_01KX6SQGZYHSBDCC3D6GSBNFV8",
+        "name": "Owning Marketplace",
+        "type": "agent",
+        "verified": false,
+        "member_since": "2026-07-10"
+      },
+      "attributes": {
+        "beam": 2.77,
+        "year": 2024,
+        "brand": "beneteau",
+        "engine": "1 x 21 PS / 15 kW",
+        "length": 9.53,
+        "boat_type": "Segelyacht",
+        "fuel_type": "petrol",
+        "boat_category": "sail"
+      },
+      "boat_specs": {
+        "brand": "Beneteau",
+        "model": "Beneteau Oceanis 301",
+        "specs": {
+          "engine": {
+            "engine_power_hp": 21,
+            "engine_power_kw": 15
+          },
+          "dimensions": {
+            "beam_m": 2.77,
+            "length_overall_m": 9.53
+          }
+        },
+        "source": {
+          "portals": [
+            "boat24.com"
+          ]
+        }
+      },
+      "updated_at": "2026-08-08T21:35:01.585Z"
+    },
+    {
+      "id": "lst_01KX8FEW91MGZFDG5DXS0PBT1A",
+      "slug": "beneteau-oceanis-30-1",
+      "title": "Beneteau Oceanis 30.1",
+      "price": {
+        "amount": 114900,
+        "currency": "EUR",
+        "negotiable": true
+      },
+      "location": {
+        "country": "DE",
+        "city": "Deutschland » Schleswig-Holstein » Flensburg",
+        "shipping": false
+      },
+      "seller": {
+        "id": "usr_01KX6SQGZYHSBDCC3D6GSBNFV8",
+        "name": "Owning Marketplace",
+        "type": "agent",
+        "verified": false,
+        "member_since": "2026-07-10"
+      },
+      "attributes": {
+        "beam": 2.99,
+        "year": 2023,
+        "brand": "beneteau",
+        "engine": "1 x 21 PS / 15 kW",
+        "length": 9.53,
+        "boat_type": "Segelyacht",
+        "fuel_type": "petrol",
+        "boat_category": "sail"
+      },
+      "boat_specs": {
+        "brand": "Beneteau",
+        "model": "Beneteau Oceanis 301",
+        "specs": {
+          "engine": {
+            "engine_power_hp": 21,
+            "engine_power_kw": 15
+          },
+          "dimensions": {
+            "beam_m": 2.99,
+            "length_overall_m": 9.53
+          }
+        },
+        "source": {
+          "portals": [
+            "boat24.com"
+          ]
+        }
+      },
+      "updated_at": "2026-08-08T21:34:57.304Z"
+    },
+    {
+      "id": "lst_01KX8FEWBXFW1MQM243ZPV2XVX",
+      "slug": "beneteau-oceanis-30-1-PV2XVX",
+      "title": "Beneteau OCEANIS 30.1",
+      "price": {
+        "amount": 159000,
+        "currency": "EUR",
+        "negotiable": true
+      },
+      "location": {
+        "country": "DE",
+        "city": "Deutschland » Germany",
+        "shipping": false
+      },
+      "seller": {
+        "id": "usr_01KX6SQGZYHSBDCC3D6GSBNFV8",
+        "name": "Owning Marketplace",
+        "type": "agent",
+        "verified": false,
+        "member_since": "2026-07-10"
+      },
+      "attributes": {
+        "beam": 2.99,
+        "brand": "beneteau",
+        "engine": "1 x 21 PS / 15 kW",
+        "length": 9.53,
+        "boat_type": "Segelyacht",
+        "fuel_type": "petrol",
+        "boat_category": "sail"
+      },
+      "boat_specs": {
+        "brand": "Beneteau",
+        "model": "Beneteau OCEANIS 301",
+        "specs": {
+          "engine": {
+            "engine_power_hp": 21,
+            "engine_power_kw": 15
+          },
+          "dimensions": {
+            "beam_m": 2.99,
+            "length_overall_m": 9.53
+          }
+        },
+        "source": {
+          "portals": [
+            "boat24.com"
+          ]
+        }
+      },
+      "updated_at": "2026-08-08T21:34:58.354Z"
+    },
+    {
+      "id": "lst_01KX8G3SR6CSCME3D19EDFBH3D",
+      "slug": "beneteau-oceanis-30-1-DFBH3D",
+      "title": "Beneteau OCEANIS 30.1",
+      "price": {
+        "amount": 125170,
+        "currency": "EUR",
+        "negotiable": true
+      },
+      "location": {
+        "country": "ES",
+        "city": "Palma de Mallorca",
+        "shipping": false
+      },
+      "seller": {
+        "id": "usr_01KX6SQGZYHSBDCC3D6GSBNFV8",
+        "name": "Owning Marketplace",
+        "type": "agent",
+        "verified": false,
+        "member_since": "2026-07-10"
+      },
+      "attributes": {
+        "beam": 2.99,
+        "year": 2026,
+        "brand": "beneteau",
+        "engine": "1 x 21 PS / 15 kW",
+        "length": 8.99,
+        "boat_type": "Segelyacht",
+        "fuel_type": "petrol",
+        "boat_category": "sail"
+      },
+      "boat_specs": null,
+      "updated_at": "2026-07-14T13:05:26.243Z"
+    },
+    {
+      "id": "lst_01KX8G3SNK161ZHXEA6QYNE4GK",
+      "slug": "beneteau-oceanis-30-1-YNE4GK",
+      "title": "Beneteau Oceanis 30.1",
+      "price": {
+        "amount": 0,
+        "currency": "EUR",
+        "negotiable": true
+      },
+      "location": {
+        "country": "DE",
+        "city": "Katalogboot",
+        "shipping": false
+      },
+      "seller": {
+        "id": "usr_01KX6SQGZYHSBDCC3D6GSBNFV8",
+        "name": "Owning Marketplace",
+        "type": "agent",
+        "verified": false,
+        "member_since": "2026-07-10"
+      },
+      "attributes": {
+        "beam": 2.99,
+        "year": 2024,
+        "brand": "beneteau",
+        "length": 9.53,
+        "boat_type": "Segelyacht",
+        "boat_category": "sail"
+      },
+      "boat_specs": null,
+      "updated_at": "2026-07-12T19:34:04.663Z"
+    },
+    {
+      "id": "lst_01KX8G3SD5ZTG3F83H2KHR1HH3",
+      "slug": "beneteau-oceanis-30-1-HR1HH3",
+      "title": "Beneteau Oceanis 30.1",
+      "price": {
+        "amount": 130000,
+        "currency": "EUR",
+        "negotiable": true
+      },
+      "location": {
+        "country": "ES",
+        "city": "El Masnou",
+        "shipping": false
+      },
+      "seller": {
+        "id": "usr_01KX6SQGZYHSBDCC3D6GSBNFV8",
+        "name": "Owning Marketplace",
+        "type": "agent",
+        "verified": false,
+        "member_since": "2026-07-10"
+      },
+      "attributes": {
+        "beam": 2.99,
+        "year": 2025,
+        "brand": "beneteau",
+        "engine": "1 x 21 PS / 15 kW",
+        "length": 9.53,
+        "boat_type": "Blauwasseryacht",
+        "fuel_type": "petrol",
+        "boat_category": "sail"
+      },
+      "boat_specs": null,
+      "updated_at": "2026-07-12T19:34:05.143Z"
+    }
+  ]
+}
