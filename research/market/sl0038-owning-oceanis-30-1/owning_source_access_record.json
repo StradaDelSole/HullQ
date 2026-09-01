@@ -1,0 +1,131 @@
+{
+  "source_id": "SRC-OWNING-API-1",
+  "title": "Owning.pro Public Read API",
+  "publisher": "Owning.pro",
+  "source_type": "marketplace_api",
+  "url": "https://api.owning.pro",
+  "document_identifier": null,
+  "publication_date": null,
+  "accessed_at": "2026-08-31",
+  "notes": "Re-checked for SLICE-0038 on 2026-08-31. Owning.pro is a nautical classifieds marketplace (owning.pro) that also aggregates listings scraped from other portals (observed portals in this pilot's own candidate set: yachtworld.com, boat24.com, ancasta.com, via each listing's boat_specs.source.portals field). Its public API base is https://api.owning.pro; GET /api/listings is the documented structured search endpoint used by this pilot. No formal Terms of Service or Privacy Policy page could be located on owning.pro as of the access date (probed /legal, /en/legal, /privacy, /en/privacy: all 404; footer links surfaced Help/About/Safety/Press/Status/Docs only). The access disposition below is therefore based on the site's own affirmative developer/API/agent documentation, robots.txt, and the machine-readable agent-discovery file, not a separate legal ToS.",
+  "rights": {
+    "assessment_status": "assessed",
+    "rights_basis": "mixed",
+    "rights_holder": null,
+    "license_expression": null,
+    "license_name": null,
+    "license_url": null,
+    "license_scope": ["unknown"],
+    "access": {
+      "method": "api",
+      "public_access": true,
+      "automated_access": "allowed",
+      "terms_url": null,
+      "terms_reviewed_at": "2026-08-31",
+      "tdm_reservation": "none_observed",
+      "rate_limit_notes": "Documented public unauthenticated read limit is 100 req/min per IP per the OpenAPI spec (api.owning.pro/api/openapi.json) and the .well-known/ai.json agent-discovery file; the separate /en/docs/api-reference page states 200/min and the developer blog states 100/min -- a minor internal documentation inconsistency, noted but not resolved here. Live response headers on this pilot's own request confirmed x-ratelimit-limit: 100, x-ratelimit-policy: 100;w=60;scope=ip. Standard X-RateLimit-* headers and 429/Retry-After behavior are documented."
+    },
+    "permissions": {
+      "commercial_use": "unknown",
+      "extract_facts": "conditional",
+      "normalize": "conditional",
+      "store_canonical_values": "conditional",
+      "bulk_ingest": "prohibited",
+      "automated_extract": "conditional",
+      "redistribute_source_material": "prohibited",
+      "publish_derived_database": "prohibited"
+    },
+    "obligations": {
+      "attribution_required": "unknown",
+      "share_alike": "not_applicable",
+      "notice_required": "unknown",
+      "attribution_instructions": null,
+      "other_conditions": [
+        "Owning itself aggregates third-party portal listings (observed: yachtworld.com, boat24.com, ancasta.com). HullQ has not independently cleared rights against those upstream portals and this slice does not fetch them; upstream portal names/URLs returned by Owning are treated as provenance metadata only.",
+        "No formal Terms of Service/Privacy Policy page was discoverable on owning.pro as of 2026-08-31; this disposition rests on the site's own developer/API/agent documentation, robots.txt, and .well-known/ai.json only, and should be re-checked if a formal ToS later appears.",
+        "The conditional permissions/clearances below are bounded to this one non-recurring, <=15-request, single-BoatDesign local pilot; they are not a standing production/bulk grant."
+      ]
+    },
+    "clearance": {
+      "research_reference": "allowed",
+      "research_lead": "allowed",
+      "identity_seed": "unknown",
+      "production_value": "conditional",
+      "bulk_bootstrap": "prohibited",
+      "automated_ingestion": "conditional",
+      "artifact_redistribution": "prohibited"
+    },
+    "rights_evidence": [
+      {
+        "evidence_type": "other",
+        "url": "https://owning.pro/en/docs/api-reference",
+        "document_identifier": null,
+        "accessed_at": "2026-08-31",
+        "sha256": null,
+        "notes": "Confirms GET /api/listings, /api/listings/:id and /api/listings/compare are public, no-authentication-required read endpoints; states a 200/min unauthenticated rate limit (see rate_limit_notes discrepancy)."
+      },
+      {
+        "evidence_type": "other",
+        "url": "https://owning.pro/en/blog/developer-api-guide-building-with-owning",
+        "document_identifier": null,
+        "accessed_at": "2026-08-31",
+        "sha256": null,
+        "notes": "Developer guide encouraging integration/agent use; states unauthenticated 100 req/min; contains no explicit statement on commercial use, bulk access, or redistribution of retrieved data either way."
+      },
+      {
+        "evidence_type": "other",
+        "url": "https://owning.pro/en/docs/mcp",
+        "document_identifier": null,
+        "accessed_at": "2026-08-31",
+        "sha256": null,
+        "notes": "MCP server docs: read tools (search/get/categories/asset-types) work with API key optional; anonymous reads subject to the public 100 req/min limit."
+      },
+      {
+        "evidence_type": "other",
+        "url": "https://api.owning.pro/api/openapi.json",
+        "document_identifier": null,
+        "accessed_at": "2026-08-31",
+        "sha256": null,
+        "notes": "Full OpenAPI schema; used to identify GET /api/listings query parameters and response shape, GET /api/asset-types/{type} for the boats asset-type attribute list (brand/model/draft/etc.), and to confirm no auth is declared required on GET listing/search/category/schema paths."
+      },
+      {
+        "evidence_type": "machine_readable_reservation",
+        "url": "https://api.owning.pro/.well-known/ai.json",
+        "document_identifier": null,
+        "accessed_at": "2026-08-31",
+        "sha256": null,
+        "notes": "Machine-readable agent-discovery declaration: public GET/search endpoints require no authentication; declares the MCP server, rate limits, and no separate terms-of-service/acceptable-use URL."
+      },
+      {
+        "evidence_type": "machine_readable_reservation",
+        "url": "https://api.owning.pro/robots.txt",
+        "document_identifier": null,
+        "accessed_at": "2026-08-31",
+        "sha256": null,
+        "notes": "User-agent: * / Allow: / ; points to /.well-known/ai.json via an AI-Discovery header line. No disallow, no TDM reservation observed."
+      },
+      {
+        "evidence_type": "other",
+        "url": "https://owning.pro/en/about",
+        "document_identifier": null,
+        "accessed_at": "2026-08-31",
+        "sha256": null,
+        "notes": "Operator identity: 'Owning.pro', free classifieds marketplace, contact hello@owning.pro / press@owning.pro. No separate registered-entity name or address disclosed on this page."
+      },
+      {
+        "evidence_type": "other",
+        "url": "https://owning.pro/en/help",
+        "document_identifier": null,
+        "accessed_at": "2026-08-31",
+        "sha256": null,
+        "notes": "Help center index; includes 'Owning for AI Agents' and 'Account & API Keys' articles; no distinct Terms of Service/acceptable-use article content was retrievable from this index page."
+      }
+    ],
+    "review": {
+      "reviewed_at": "2026-08-31",
+      "reviewer": "Claude (SLICE-0038 implementation agent)",
+      "rationale": "Owning.pro affirmatively documents and encourages unauthenticated, automated, agent-native public read access to its listing search API (dedicated 'Owning for AI Agents' docs, MCP server, .well-known/ai.json agent-discovery file, permissive robots.txt). This supports a bounded, non-recurring, discrete-fact-only local pilot read (research_reference/research_lead: allowed; production_value/automated_ingestion for this exact pilot: conditional). No formal Terms of Service was discoverable, so broader commercial-use, bulk-ingestion, redistribution and derived-database rights remain unresolved (unknown/prohibited) rather than assumed permissive. Owning's own aggregation of third-party portal content (yachtworld.com, boat24.com, ancasta.com observed) means the underlying listing content's own rights basis is separately unresolved from Owning's access grant (SR-001); this slice does not fetch those upstream portals and treats their names as provenance metadata only.",
+      "next_review_at": null
+    }
+  }
+}
