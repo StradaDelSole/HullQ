@@ -22,7 +22,7 @@ Does this slice deliver exactly one user-visible capability OR answer exactly on
 Can the Project Owner personally execute, observe or inspect the result at the end of this slice?
 
 **PRODUCT EXECUTION PLAN ALIGNMENT:** PASS | FAIL  
-Does the slice comply with `docs/PRODUCT_EXECUTION_PLAN.md`, including current phase ordering and explicit gates?
+Does the slice comply with `docs/PRODUCT_EXECUTION_PLAN.md`, including current phase ordering and explicit gates? For work after SLICE-0039, this check also requires compliance with `docs/PRODUCT_EXECUTION_PLAN_AMENDMENT_2026-09-01.md` until that amendment is folded into the base execution plan.
 
 A `FAIL` on any of these checks blocks readiness. Genuine prerequisite/blocker work must still be cut so the Project Owner can inspect its concrete result and the check can honestly be `PASS`.
 
@@ -37,6 +37,7 @@ Explain the problem this slice closes and why it belongs at this point in the ex
 - Accepted ADRs:
 - Governance / research protocols:
 - Product execution plan: `docs/PRODUCT_EXECUTION_PLAN.md` for SLICE-0039 and later
+- Pre-Gate-1 execution amendment: `docs/PRODUCT_EXECUTION_PLAN_AMENDMENT_2026-09-01.md` for work after SLICE-0039 until folded into the base plan
 - Relevant open questions:
 
 ## In scope
