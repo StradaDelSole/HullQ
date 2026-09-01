@@ -43,7 +43,7 @@ function Assert-ProductExecutionChecks([string]$Number, [string]$Text, [string]$
     foreach ($check in $requiredChecks) {
         $pattern = "(?m)^\*\*$([regex]::Escape($check)):\*\*\s*PASS\s*$"
         if ($Text -notmatch $pattern) {
-            throw "SLICE-$Number cannot start: $FileName must contain '**$check:** PASS' for post-0038 work. Prepare/review the slice against docs/PRODUCT_EXECUTION_PLAN.md before starting Claude."
+            throw "SLICE-$Number cannot start: $FileName must contain '**${check}:** PASS' for post-0038 work. Prepare/review the slice against docs/PRODUCT_EXECUTION_PLAN.md before starting Claude."
         }
     }
 }
