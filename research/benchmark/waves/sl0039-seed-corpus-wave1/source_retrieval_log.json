@@ -1,0 +1,294 @@
+{
+  "slice": "SLICE-0039",
+  "target_identities": ["BAVARIA Cruiser 34", "Contessa 32", "Lagoon 42"],
+  "retrieval_ceiling_total": 12,
+  "retrieval_ceiling_per_design": 5,
+  "note": "Web-search-engine navigation calls (used only to locate candidate official/architect/class-association URLs) are not counted as semantic retrievals, per the same convention established in research/benchmark/waves/sl0037-oceanis-30-1/source_retrieval_log.json. A retrieval that returned zero extractable content (e.g. CON-5's initial direct-download attempt) is still logged for audit transparency but did not by itself add usable evidence; the archived copy of the same document (CON-5b) is what actually supplied content and counts as the same logical surface, not an additional one.",
+  "sources": [
+    {
+      "id": "BAV-1",
+      "design": "bavaria-cruiser-34",
+      "url": "https://www.bavariayachts.com/sailing-yachts/cruiser-34/data-and-options/",
+      "source_class": "official_manufacturer_product_page",
+      "domain": "www.bavariayachts.com",
+      "retrieved_at": "2026-09-01",
+      "retrieval_method": "raw HTTP GET (curl) + HTML tag stripping, read directly by the agent (not summarized by an intermediary model)",
+      "robots_txt_checked": true,
+      "robots_txt_result": "www.bavariayachts.com/robots.txt disallows only /typo3/ and /typo3temp/; the /sailing-yachts/cruiser-34/data-and-options/ path is not disallowed.",
+      "rights": {
+        "assessment_status": "assessed",
+        "rights_basis": "unlicensed_factual_reference",
+        "rights_holder": "Bavaria Yachtbau GmbH",
+        "license_expression": null,
+        "license_name": null,
+        "license_url": null,
+        "license_scope": ["unknown"],
+        "access": {
+          "method": "public_web",
+          "public_access": true,
+          "automated_access": "conditional",
+          "terms_url": "https://www.bavariayachts.com/imprint/",
+          "terms_reviewed_at": "2026-09-01",
+          "tdm_reservation": "none_observed",
+          "rate_limit_notes": "One bounded, single-session, non-recurring page retrieval; no scheduled/repeated access to this domain."
+        },
+        "permissions": {
+          "commercial_use": "unknown",
+          "extract_facts": "conditional",
+          "normalize": "conditional",
+          "store_canonical_values": "conditional",
+          "bulk_ingest": "unknown",
+          "automated_extract": "conditional",
+          "redistribute_source_material": "prohibited",
+          "publish_derived_database": "unknown"
+        },
+        "obligations": {
+          "attribution_required": "no",
+          "share_alike": "no",
+          "notice_required": "no",
+          "attribution_instructions": null,
+          "other_conditions": [
+            "Imprint/Disclaimer section 3 (Copyright) reserves duplication/use of 'diagrams, sounds or texts' without consent; this pilot extracts discrete numeric/technical facts only (SR-6.6 condition 2), not reproduction of protected expressive elements. The same Imprint additionally disclaims the technical data's own legal bindingness ('legally binding information...only...via the dealer'), which is recorded here for audit but does not affect the values' use as research-basis technical evidence."
+          ]
+        },
+        "clearance": {
+          "research_reference": "allowed",
+          "research_lead": "allowed",
+          "identity_seed": "conditional",
+          "production_value": "conditional",
+          "bulk_bootstrap": "unknown",
+          "automated_ingestion": "conditional",
+          "artifact_redistribution": "prohibited"
+        },
+        "rights_evidence": [
+          {
+            "evidence_type": "terms_page",
+            "url": "https://www.bavariayachts.com/imprint/",
+            "document_identifier": null,
+            "accessed_at": "2026-09-01",
+            "sha256": null,
+            "notes": "Bavaria Yachtbau GmbH 'Imprint' page, including its 'Information on technical data and product images' notice and full 'Disclaimer' (Content / Referrals and links / Copyright / Legal validity sections). No clause addresses robots/bots/crawlers/automated access/scraping/text-and-data-mining in either direction."
+          },
+          {
+            "evidence_type": "machine_readable_reservation",
+            "url": "https://www.bavariayachts.com/robots.txt",
+            "document_identifier": null,
+            "accessed_at": "2026-09-01",
+            "sha256": null,
+            "notes": "Disallows only /typo3/ and /typo3temp/. Does not disallow /sailing-yachts/cruiser-34/data-and-options/."
+          }
+        ],
+        "review": {
+          "reviewed_at": "2026-09-01",
+          "reviewer": "SLICE-0039 implementation agent (Claude Sonnet 5)",
+          "rationale": "Same bounded-pilot rationale as SLICE-0037's SRC-1/SRC-5/SRC-6: robots.txt does not disallow the fetched path, no TDM reservation was found, and no explicit bot/automated-access position was stated either way; automated_access is assessed 'conditional', bounded to one non-recurring, low-volume, discrete-fact-only retrieval for this one design. bulk_bootstrap and recurring automated_ingestion remain unassessed/default-deny per SOURCE_RIGHTS_POLICY.v0.1.md SR-003.",
+          "next_review_at": null
+        }
+      },
+      "used_as_positive_evidence": true,
+      "facts_supplied": [
+        "Length over all 9.99 m (design-wide)",
+        "Length over all (incl. bowsprit) 10.67 m (not used -- see projection scope note)",
+        "Beam of hull 3.42 m (design-wide)",
+        "Draught standard 2.04 m",
+        "Draught option 1.58 m",
+        "Ballast standard 1,363 kg; Displacement standard 5,298 kg (not used -- not needed by Q1/Q2/Q10)",
+        "Design: Farr Yacht Design"
+      ]
+    },
+    {
+      "id": "CON-1",
+      "design": "contessa-32",
+      "url": "https://www.jeremyrogers.co.uk/contessa32-specification/",
+      "source_class": "official_current_builder_specification_page",
+      "domain": "www.jeremyrogers.co.uk",
+      "retrieved_at": "2026-09-01",
+      "retrieval_method": "raw HTTP GET (curl) + HTML tag stripping; re-checked via WebFetch (AI-summarized pass) specifically to confirm no dimension figures were present in any image/diagram/caption not visible to the raw-text extraction",
+      "robots_txt_checked": true,
+      "robots_txt_result": "www.jeremyrogers.co.uk/robots.txt disallows only /wp-content/uploads/wc-logs/, /wp-content/uploads/woocommerce_transient_files/, /wp-content/uploads/woocommerce_uploads/, cart-related query paths and /wp-admin/; /contessa32-specification/ (redirects 301 to /contessa32-specification.php's canonical /contessa32-specification/ target -- the fetched path) is not disallowed.",
+      "used_as_positive_evidence": true,
+      "sr_6_6_disposition": "used_partial_identity_and_construction_facts_only",
+      "facts_supplied": [
+        "Page titled 'New Build Contessa 32 Specification, 2023' -- confirms design still in bespoke new-build production by the current builder",
+        "RINA RCD 2 Category A cruiser/racer certification",
+        "Total displacement 9300 lbs (4218.48 kg) (not used -- not needed by Q1/Q2/Q10)",
+        "Rudder has a stainless steel lower attachment plate at the base of the skeg (direct appendages.rudder_support=skeg-supported fact -- not needed by Q1/Q2/Q10, not projected)",
+        "No LOA/beam/draft figures present anywhere on the page, confirmed by both the raw-text extraction and an independent WebFetch re-check"
+      ]
+    },
+    {
+      "id": "CON-2",
+      "design": "contessa-32",
+      "url": "https://www.jeremyrogers.co.uk/all-about-contessa/",
+      "source_class": "official_current_builder_history_page",
+      "domain": "www.jeremyrogers.co.uk",
+      "retrieved_at": "2026-09-01",
+      "retrieval_method": "raw HTTP GET (curl) + HTML tag stripping",
+      "robots_txt_checked": true,
+      "robots_txt_result": "Same www.jeremyrogers.co.uk robots.txt as CON-1; /all-about-contessa/ is not disallowed.",
+      "used_as_positive_evidence": true,
+      "sr_6_6_disposition": "used_identity_facts_only",
+      "facts_supplied": [
+        "Contessa brand created 1966 by Jeremy Rogers; Contessa 32 was the larger successor design (David Sadler, per corroborating CON well-known design attribution on this history page and the class association's own history)",
+        "Jeremy Rogers bought back the Contessa 32 moulds in 1996 and resumed bespoke production ('new builds')",
+        "No LOA/beam/draft figures present on this page"
+      ]
+    },
+    {
+      "id": "CON-3",
+      "design": "contessa-32",
+      "url": "https://www.jeremyrogers.co.uk/contessa-32-new-build/",
+      "source_class": "official_current_builder_product_landing_page",
+      "domain": "www.jeremyrogers.co.uk",
+      "retrieved_at": "2026-09-01",
+      "retrieval_method": "raw HTTP GET (curl) + HTML tag stripping",
+      "robots_txt_checked": true,
+      "robots_txt_result": "Same www.jeremyrogers.co.uk robots.txt as CON-1; /contessa-32-new-build/ is not disallowed.",
+      "used_as_positive_evidence": false,
+      "sr_6_6_disposition": "attempted_no_new_facts",
+      "reason_not_relied_upon": "Marketing landing page; contains no principal-dimension figures beyond what CON-1/CON-2 already supplied.",
+      "facts_supplied": []
+    },
+    {
+      "id": "CON-4",
+      "design": "contessa-32",
+      "url": "https://www.co32.org/",
+      "source_class": "official_one_design_class_association_homepage",
+      "domain": "www.co32.org",
+      "retrieved_at": "2026-09-01",
+      "retrieval_method": "raw HTTP GET (curl) + HTML tag stripping",
+      "robots_txt_checked": true,
+      "robots_txt_result": "www.co32.org returns HTTP 406 for a direct robots.txt request regardless of User-Agent/Accept headers; no robots.txt content could be retrieved. The homepage itself returned HTTP 200 with full content under the same request pattern.",
+      "used_as_positive_evidence": true,
+      "sr_6_6_disposition": "used_identity_confirmation_only",
+      "facts_supplied": [
+        "Confirms the Contessa 32 Class Association is an active, currently operating one-design racing class administrator (news/regatta content dated 2026)",
+        "No LOA/beam/draft figures present on the homepage"
+      ]
+    },
+    {
+      "id": "CON-5",
+      "design": "contessa-32",
+      "url": "https://www.co32.org/sites/default/files/co32_racing_rules_v3-3.pdf",
+      "source_class": "official_one_design_class_racing_rules_document",
+      "domain": "www.co32.org",
+      "retrieved_at": "2026-09-01",
+      "retrieval_method": "direct HTTP GET attempt returned HTTP 406 with zero bytes under every User-Agent/Accept header combination tried; the identical document was independently located via the Internet Archive Wayback Machine (web.archive.org/web/20161207131809/, archived 2016-12-07) and read from that mirrored copy",
+      "robots_txt_checked": true,
+      "robots_txt_result": "See CON-4 -- www.co32.org/robots.txt itself returns HTTP 406 for every request pattern tried; this is treated as a genuine, honest access-restriction/technical-limitation finding for this specific domain/path pattern (/sites/default/files/*.pdf), not routed around by the archived-copy retrieval, which reads the same publicly-issued document via a third-party public archive rather than bypassing any access control on co32.org itself.",
+      "used_as_positive_evidence": true,
+      "sr_6_6_disposition": "used_for_scope_confirmation_only_no_dimension_facts",
+      "facts_supplied": [
+        "THE CONTESSA 32 CLASS RACING RULES, Version 3.3 (15 March 2015): Part 2 (Yacht Specification) confirms all class-legal hulls are standard mouldings from the original J C Rogers moulds -- corroborating a single one-design hull configuration",
+        "Part 2/3 specify mast, boom, sail and rigging measurement limits (e.g. mainsail luff/foot/leech, spinnaker dimensions) -- none of which is a hull LOA/beam/draft figure",
+        "No LOA/beam/draft figures present anywhere in the 11-page document"
+      ]
+    },
+    {
+      "id": "LAG-1",
+      "design": "lagoon-42",
+      "url": "https://www.catamarans-lagoon.com/boats/lagoon-42",
+      "source_class": "official_manufacturer_product_page",
+      "domain": "www.catamarans-lagoon.com",
+      "retrieved_at": "2026-09-01",
+      "retrieval_method": "raw HTTP GET (curl) + HTML tag stripping, read directly by the agent",
+      "robots_txt_checked": true,
+      "robots_txt_result": "www.catamarans-lagoon.com/robots.txt states 'Allow: /' for User-agent: * with no disallow entries at all.",
+      "rights": {
+        "assessment_status": "assessed",
+        "rights_basis": "unlicensed_factual_reference",
+        "rights_holder": "Groupe Beneteau",
+        "license_expression": null,
+        "license_name": null,
+        "license_url": null,
+        "license_scope": ["unknown"],
+        "access": {
+          "method": "public_web",
+          "public_access": true,
+          "automated_access": "conditional",
+          "terms_url": "https://www.catamarans-lagoon.com/terms-use",
+          "terms_reviewed_at": "2026-09-01",
+          "tdm_reservation": "none_observed",
+          "rate_limit_notes": "One bounded, single-session, non-recurring page retrieval; no scheduled/repeated access to this domain."
+        },
+        "permissions": {
+          "commercial_use": "unknown",
+          "extract_facts": "conditional",
+          "normalize": "conditional",
+          "store_canonical_values": "conditional",
+          "bulk_ingest": "unknown",
+          "automated_extract": "conditional",
+          "redistribute_source_material": "prohibited",
+          "publish_derived_database": "unknown"
+        },
+        "obligations": {
+          "attribution_required": "no",
+          "share_alike": "no",
+          "notice_required": "no",
+          "attribution_instructions": null,
+          "other_conditions": [
+            "Terms of Use clause: 'No part of the site may be used, reproduced, represented, distributed, decompiled, indexed or extracted by any technical protocol without the Company's prior written consent' for protected expressive elements (text, graphics, logos, images, etc.). This pilot extracts discrete numeric/technical facts only (SR-6.6 condition 2), not reproduction of protected expressive elements."
+          ]
+        },
+        "clearance": {
+          "research_reference": "allowed",
+          "research_lead": "allowed",
+          "identity_seed": "conditional",
+          "production_value": "conditional",
+          "bulk_bootstrap": "unknown",
+          "automated_ingestion": "conditional",
+          "artifact_redistribution": "prohibited"
+        },
+        "rights_evidence": [
+          {
+            "evidence_type": "terms_page",
+            "url": "https://www.catamarans-lagoon.com/terms-use",
+            "document_identifier": null,
+            "accessed_at": "2026-09-01",
+            "sha256": null,
+            "notes": "Groupe Beneteau / Lagoon 'Terms of Use' page. No clause addresses robots/bots/crawlers/automated access/scraping/text-and-data-mining in either direction; same structural pattern as the Oceanis 30.1 pilot's beneteau.com Legal Notices finding."
+          },
+          {
+            "evidence_type": "machine_readable_reservation",
+            "url": "https://www.catamarans-lagoon.com/robots.txt",
+            "document_identifier": null,
+            "accessed_at": "2026-09-01",
+            "sha256": null,
+            "notes": "'Allow: /' for User-agent: *, no disallow entries."
+          }
+        ],
+        "review": {
+          "reviewed_at": "2026-09-01",
+          "reviewer": "SLICE-0039 implementation agent (Claude Sonnet 5)",
+          "rationale": "Same bounded-pilot rationale as SLICE-0037/BAV-1: robots.txt affirmatively allows all paths, no TDM reservation was found, and no explicit bot/automated-access position was stated either way; automated_access is assessed 'conditional', bounded to one non-recurring, low-volume, discrete-fact-only retrieval for this one design. bulk_bootstrap and recurring automated_ingestion remain unassessed/default-deny.",
+          "next_review_at": null
+        }
+      },
+      "used_as_positive_evidence": true,
+      "facts_supplied": [
+        "Hull length 12.79 m (not used as loa_m -- see projection scope note)",
+        "Length overall 13.22 m (used as loa_m, design-wide)",
+        "Beam 7.68 m (design-wide)",
+        "Water draft 1.26 m (design-wide; no '(opt.)' marker, unlike the same block's genuinely optional sail items)",
+        "Air draft 20.6 m (not used -- not needed by Q1/Q2/Q10)",
+        "Light displacement (EEC) 12.1 t (not used -- not needed by Q1/Q2/Q10)",
+        "Page explicitly labels this as the 'previous model' relative to the newer 'Lagoon 42 Millennium' -- confirms correct generation/identity scope"
+      ]
+    }
+  ],
+  "non_evidentiary_navigation_searches": [
+    "web search used only to locate the co32.org Class Association domain, the co32.org class-rules PDF URL, and to confirm no jeremyrogers.co.uk brochure PDF existed for the Contessa 32 (unlike its sibling Contessa 26/33/34/35/39/43/28/27 models); no search-result snippet content (including Wikipedia, goodoldboat.com, sailboat.guide, canadianboating.ca, or any other reference/aggregator site that surfaced incidentally) was used as evidence anywhere in this package, per the slice's source boundary (Source and research discipline, item 3)."
+  ],
+  "disallowed_sources_not_used": [
+    "en.wikipedia.org/wiki/Contessa_32 (fetched only to identify the co32.org Class Association as a research lead per its citation list; its infobox LOA/beam/draft figures are NOT used as evidence anywhere in this package)",
+    "goodoldboat.com, sailboat.guide, canadianboating.ca, pbo.co.uk, yachtingmonthly.com (surfaced only in search-engine results; never fetched or used as evidence)",
+    "sailboatdata.com (not attempted; historical SailboatData scrape is never a canonical Search-fact source per CLAUDE.md)"
+  ],
+  "external_evidence_surface_count": {
+    "bavaria-cruiser-34": 1,
+    "contessa-32": 5,
+    "lagoon-42": 1,
+    "total": 7
+  },
+  "unclaimed_clearances_explicit_statement": "Across every source used as positive evidence (BAV-1, LAG-1), `clearance.bulk_bootstrap` is 'unknown' and `clearance.automated_ingestion` is 'conditional' scoped narrowly to this one bounded, non-recurring, low-volume, single-pilot-design retrieval. No source's `automated_ingestion` clearance is claimed to extend to a recurring, scheduled, or bulk retrieval pipeline for this or any other BoatDesign."
+}

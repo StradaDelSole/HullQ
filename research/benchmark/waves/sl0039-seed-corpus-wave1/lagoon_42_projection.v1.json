@@ -1,0 +1,70 @@
+{
+  "design_id": "lagoon-42",
+  "identity": {
+    "designation": "Lagoon 42",
+    "builder": "Groupe Beneteau (Lagoon Catamarans)",
+    "naval_architect": null,
+    "introduced": null,
+    "introduced_evidence_ref": null,
+    "production_end": null,
+    "production_end_note": "LAG-1 (catamarans-lagoon.com/boats/lagoon-42) explicitly labels this design as the manufacturer's 'previous model', distinct from the current 'Lagoon 42 Millennium' refresh referenced on the same page ('You're looking at our previous model. Discover the all-new 42 Millennium'). This confirms the projection below is scoped to the original Lagoon 42 generation -- the same generation named in specs/SEARCH_BENCHMARK.v0.1.md's locked Wave-1 cohort (research/benchmark/SEED_RESEARCH_NOTES.md SEED-18, researched before the Millennium refresh existed) -- and is not conflated with the newer Millennium variant's own (unresearched, unprojected) dimensions."
+  },
+  "configuration_space_complete": true,
+  "configuration_space_complete_basis": "Unlike the Oceanis 30.1 pilot (three explicitly named ballast/keel options) and the Bavaria Cruiser 34 in this same wave (two explicitly named draught rows), LAG-1's 'Specifications' block names exactly one hull-length/beam/draft/displacement figure each, with no keel/daggerboard/draft option named or implied anywhere on the page, in research/benchmark/SEED_RESEARCH_NOTES.md SEED-18, or in any other lead encountered during this research. LAG-1 itself explicitly marks other genuinely optional items on the very same specification block with an '(opt.)' suffix (e.g. 'Square top mainsail (opt.)', 'Code 0 (opt.)'); 'Water draft 1,26m' carries no such marker, i.e. the source's own labelling convention treats it as the design's single standard figure, not one of several alternatives. This is also consistent with production catamarans of this class using one fixed, hull-integral keel per mould rather than an interchangeable ballast casting (the pattern that motivated leaving configuration_space_complete=False for the Oceanis 30.1 and the Bavaria Cruiser 34, both monohulls with swappable ballast keels). configuration_space_complete=True is set here as an independent, documented judgment call scoped to this evidence -- not inferred merely from the number of discovered configurations -- and is the ONLY field in this projection this wave chose to set True; the shared admission oracle enforces the exact expected value so a tampered edit in either direction fails admission. This determination affects Q1/Q2 non-match soundness only through the LOA/beam fields below, both of which are design-wide hull-mould dimensions that cannot vary by any hypothetical undiscovered appendage configuration in any case; it never resolves the (left-unresolved) question of whether any other configuration-sensitive field exists for this design.",
+  "self_authorization_boundary_note": "This file is a retained, editable research artifact, not a truth-authorizing one. scripts/search_seed_corpus_wave1.py's shared independent admission oracle (LAGOON_ORACLE) independently re-derives design_id, configuration_space_complete, the exact configuration_id set, and every field's exact value/evidence_refs/scope/direct_or_derived against hardcoded, code-side-only expectations before this file's content is permitted to become Search input, mirroring SLICE-0037 Required Behavior A.",
+  "configurations": [
+    {
+      "configuration_id": "lagoon-42-standard",
+      "named_variant_id": null,
+      "applied_option_ids": [],
+      "configuration_evidence_refs": ["LAG-1"],
+      "configuration_basis": "LAG-1's 'Specifications' block for the (previous-model) Lagoon 42, the design's single documented hull/keel configuration. `configuration_evidence_refs` is machine-checked identity evidence; `configuration_basis` remains human-readable audit prose only.",
+      "numeric_fields": {
+        "loa_m": {
+          "state": "resolved",
+          "value": 13.22,
+          "evidence_refs": ["LAG-1"],
+          "direct_or_derived": "direct",
+          "scope_id": "design_wide",
+          "scope": "LAG-1's 'Length overall 13.22 m' row, the literal, direct match for the generic loa_m field. Distinct from the same block's separately labelled 'Hull length 12,79m' row, which is not used here (it is a different, narrower measurement than 'Length overall'; using it instead would not change any Q1/Q2 outcome, since 12.79 m also exceeds both range upper bounds, but the unqualified 'Length overall' label is preferred as the literal match)."
+        },
+        "beam_m": {
+          "state": "resolved",
+          "value": 7.68,
+          "evidence_refs": ["LAG-1"],
+          "direct_or_derived": "direct",
+          "scope_id": "design_wide",
+          "scope": "LAG-1's 'Beam 7,68m' row (overall catamaran beam across both hulls; design-wide, does not vary by any documented configuration)."
+        },
+        "draft_max_m": {
+          "state": "resolved",
+          "value": 1.26,
+          "evidence_refs": ["LAG-1"],
+          "direct_or_derived": "direct",
+          "scope_id": "design_wide",
+          "scope": "LAG-1's 'Water draft 1,26m' row, carrying no '(opt.)' marker unlike the same block's genuinely optional sail items -- see configuration_space_complete_basis above."
+        }
+      },
+      "categorical_fields": {}
+    }
+  ],
+  "fields_deliberately_left_unresolved_design_wide": [
+    {
+      "field": "displacement_kg",
+      "reason": "LAG-1 states 'Light displacement (EEC) 12,1 t', an EEC-basis figure not stated to be on the same measurement basis HullQ's accepted derived-metric/canonical displacement field requires. Not needed by Q1/Q2/Q10 (Q3 is out of scope for this slice); left unresolved per the slice's instruction to research only what Q1/Q2/Q10 require."
+    },
+    {
+      "field": "appendages.keel_type",
+      "reason": "Not researched: outside the Q1/Q2/Q10 field set and explicitly out of scope for this slice."
+    },
+    {
+      "field": "rig.sailplan",
+      "reason": "Not researched: outside the Q1/Q2/Q10 field set and explicitly out of scope for this slice."
+    }
+  ],
+  "mte_classification": {
+    "note": "loa_m, beam_m and draft_max_m are BOAT_DESIGN_SCHEMA.v0.6 principal-dimension fields, outside the MARINE_TECHNICAL_ENTAILMENT.v0.1.md fixed field inventory; no MTE classification applies to them, by design. No categorical field was qualified for this design, so no entailment rule's prerequisite is met.",
+    "derived_facts_materialized": [],
+    "derived_facts_materialized_note": "Zero. Every fact admitted for this design is direct_or_derived=direct; no derived fact is authorized by the oracle."
+  }
+}

@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0039  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** Phase B — bounded Seed Corpus for Gate 1  
 **Depends on:** SLICE-0038 owner-accepted / DONE; `docs/PRODUCT_EXECUTION_PLAN.md` controlling; accepted `specs/SEARCH_BENCHMARK.v0.1.md`  
 **Blocks:** first inspectable multi-design real Seed-Corpus Search cohort and the next Gate-1 corpus/Concierge decision
@@ -259,25 +259,25 @@ Do not duplicate the accepted Oceanis 30.1 evidence/projection into the new fold
 
 ## Acceptance criteria
 
-- [ ] Exactly Bavaria Cruiser 34, Contessa 32, Oceanis 30.1 and Lagoon 42 form the Wave-1 Search cohort.
-- [ ] Product execution checks remain PASS with no scope expansion.
-- [ ] Existing Oceanis 30.1 accepted projection is reused unchanged.
-- [ ] Bavaria Cruiser 34, Contessa 32 and Lagoon 42 are represented by real `is_fixture=False` provenance-backed projections.
-- [ ] Only facts required by Q1/Q2/Q10 are researched/admitted except where a minimal identity/configuration prerequisite is unavoidable.
-- [ ] External technical-evidence research stays within the 12-surface / 5-per-design cap.
-- [ ] No marketplace/competitor/reference result self-authorizes technical Search truth.
-- [ ] No historical SailboatData scrape value becomes canonical Search truth.
-- [ ] Multiple material factory configurations are explicit where proven and are not collapsed.
-- [ ] Q1, Q2 and Q10 are invoked unchanged through the existing configuration-aware Search kernel.
-- [ ] Every query partitions all four designs into confirmed match / confirmed non-match / insufficient data exactly once.
-- [ ] Every confirmed match exposes at least one matching configuration ID.
-- [ ] Q1, Q2 and Q10 each achieve at least 3/4 evaluability without truth relaxation.
-- [ ] `FALSE_CONFIRMED_RESULT = 0`.
-- [ ] Owner command visibly prints the four-design real Search results and reasons.
-- [ ] Offline tests are deterministic and require no live network.
-- [ ] Repository validation, ruff, mypy and full test suite pass; project coverage remains >=90%.
-- [ ] Exact-head CI and Manufacturer artifact reproducibility are green before review acceptance.
-- [ ] No next Seed-Corpus wave, Concierge test, market-access implementation or Phase-E work is started automatically.
+- [x] Exactly Bavaria Cruiser 34, Contessa 32, Oceanis 30.1 and Lagoon 42 form the Wave-1 Search cohort.
+- [x] Product execution checks remain PASS with no scope expansion.
+- [x] Existing Oceanis 30.1 accepted projection is reused unchanged.
+- [x] Bavaria Cruiser 34, Contessa 32 and Lagoon 42 are represented by real `is_fixture=False` provenance-backed projections.
+- [x] Only facts required by Q1/Q2/Q10 are researched/admitted except where a minimal identity/configuration prerequisite is unavoidable.
+- [x] External technical-evidence research stays within the 12-surface / 5-per-design cap.
+- [x] No marketplace/competitor/reference result self-authorizes technical Search truth.
+- [x] No historical SailboatData scrape value becomes canonical Search truth.
+- [x] Multiple material factory configurations are explicit where proven and are not collapsed.
+- [x] Q1, Q2 and Q10 are invoked unchanged through the existing configuration-aware Search kernel.
+- [x] Every query partitions all four designs into confirmed match / confirmed non-match / insufficient data exactly once.
+- [x] Every confirmed match exposes at least one matching configuration ID.
+- [x] Q1, Q2 and Q10 each achieve at least 3/4 evaluability without truth relaxation.
+- [x] `FALSE_CONFIRMED_RESULT = 0`.
+- [x] Owner command visibly prints the four-design real Search results and reasons.
+- [x] Offline tests are deterministic and require no live network.
+- [x] Repository validation, ruff, mypy and full test suite pass; project coverage remains >=90%.
+- [ ] Exact-head CI and Manufacturer artifact reproducibility are green before review acceptance. **NOT VERIFIED locally** — requires remote CI observation on the exact final pushed HEAD SHA; see completion report.
+- [x] No next Seed-Corpus wave, Concierge test, market-access implementation or Phase-E work is started automatically.
 
 ## Expected touch points
 

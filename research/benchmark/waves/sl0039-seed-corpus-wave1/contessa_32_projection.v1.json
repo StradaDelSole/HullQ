@@ -1,0 +1,45 @@
+{
+  "design_id": "contessa-32",
+  "identity": {
+    "designation": "Contessa 32",
+    "builder": "Jeremy Rogers Ltd (original 1970-1983 production; bespoke new-build production resumed 1996-present)",
+    "naval_architect": "David Sadler",
+    "introduced": "1970",
+    "introduced_evidence_ref": "CON-2",
+    "production_end": null,
+    "production_end_note": "The Contessa 32 is a one-design class still in bespoke new-build production by Jeremy Rogers Ltd as of this research (2026-09-01); CON-1 is explicitly titled 'New Build Contessa 32 Specification, 2023'. No production-end date is asserted."
+  },
+  "configuration_space_complete": false,
+  "configuration_space_complete_basis": "Only one hull/keel/rudder configuration is documented for this one-design class (Class Racing Rules Part 2 require yachts to be 'standard mouldings from the original J C Rogers moulds'); no source enumerates alternative factory draught/keel options the way BAV-1 or the Oceanis 30.1 pilot's SRC-1 did. configuration_space_complete is nonetheless left False: absence of a stated option is not positive evidence that the configuration space is exhaustively documented (CLAUDE.md core provenance guardrail), and this design in any case has zero resolved numeric facts below, so the flag has no effect on any Q1/Q2/Q10 result for this design (INSUFFICIENT_DATA follows directly from VALUE_MISSING on every criterion regardless of this flag's value).",
+  "self_authorization_boundary_note": "This file is a retained, editable research artifact, not a truth-authorizing one. scripts/search_seed_corpus_wave1.py's shared independent admission oracle (CONTESSA_ORACLE) independently re-derives design_id, configuration_space_complete, the exact configuration_id set, and the closed (here: empty) set of authorized numeric/categorical facts against hardcoded, code-side-only expectations before this file's content is permitted to become Search input, mirroring SLICE-0037 Required Behavior A.",
+  "configurations": [
+    {
+      "configuration_id": "contessa-32-baseline",
+      "named_variant_id": null,
+      "applied_option_ids": [],
+      "configuration_evidence_refs": ["CON-1", "CON-2"],
+      "configuration_basis": "The one-design class hull, as built to the original J C Rogers moulds (CON-1: current builder's 'New Build Contessa 32 Specification, 2023'; CON-2: Jeremy Rogers Ltd's own 'All about Contessa' history page identifying David Sadler as designer and 1970 as the design year). `configuration_evidence_refs` is machine-checked identity evidence; `configuration_basis` remains human-readable audit prose only.",
+      "numeric_fields": {},
+      "categorical_fields": {}
+    }
+  ],
+  "fields_deliberately_left_unresolved_design_wide": [
+    {
+      "field": "loa_m",
+      "reason": "Within the bounded research cap (5 external technical-evidence surfaces: CON-1 current builder specification page, CON-2 current builder 'All about Contessa' history page, CON-3 current builder 'Contessa 32 New Build' landing page, CON-4 Contessa 32 Class Association homepage, CON-5 Contessa 32 Class Racing Rules v3.3 document), no rights-cleared authoritative primary source (current builder Jeremy Rogers Ltd, or the Contessa 32 Class Association) states a numeric Length Overall figure. CON-1's own 'Specification' page documents construction/equipment/weight/displacement in detail but contains no principal-dimension table; CON-5's Class Racing Rules Part 2/3 specify mast, boom, sail and rigging dimensions (one-design measurement limits) but not hull LOA/beam/draft. Third-party reference/aggregator/encyclopedia sources (e.g. Wikipedia, sailboat-data sites) do state a figure, but per this slice's source discipline (Source and research discipline, item 3) a reference database/encyclopedia may identify a research lead but may not self-authorize a Search technical fact, and none is used here. Left MISSING (VALUE_MISSING) rather than adopting a lead-only figure."
+    },
+    {
+      "field": "beam_m",
+      "reason": "Same evidence-gap basis as loa_m above: no rights-cleared authoritative primary source within the bounded research cap states a numeric beam figure. Left MISSING."
+    },
+    {
+      "field": "draft_max_m",
+      "reason": "Same evidence-gap basis as loa_m above: no rights-cleared authoritative primary source within the bounded research cap states a numeric draft figure. Left MISSING. (CON-1 does confirm the rudder is skeg-supported -- 'stainless steel lower attachment plate at the base of the skeg' -- a real direct appendages.rudder_support fact, but it is not needed by Q1/Q2/Q10 and is not projected into Search here.)"
+    }
+  ],
+  "mte_classification": {
+    "note": "No numeric or categorical field was qualified to CONFIRMED for this design; no MTE entailment rule's prerequisite is met. loa_m/beam_m/draft_max_m are BOAT_DESIGN_SCHEMA.v0.6 principal-dimension fields outside the MARINE_TECHNICAL_ENTAILMENT.v0.1.md fixed field inventory in any case.",
+    "derived_facts_materialized": [],
+    "derived_facts_materialized_note": "Zero -- no fact was resolved at all for this design within the bounded research cap."
+  }
+}
