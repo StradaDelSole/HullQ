@@ -139,3 +139,30 @@ The accepted strategic direction is:
 - zero-budget authority should compound through original HullQ data, shareable search/compare/entity pages, methodology transparency and legitimate community/earned-media use.
 
 These principles do **not** resolve OQ-018's exact URL grammar, indexability thresholds, robots/noindex rules, page taxonomy, schema mapping, language choice or release budgets. Those remain explicit pre-public implementation decisions.
+
+## 14. Truth-backed SEO execution invariants
+
+Competitive review in August 2026 showed that large indexable sailboat corpora can create a damaging split between an SEO page's promise and the actual technical result set. HullQ MUST avoid that split by making public technical/discovery pages projections of the same accepted truth/search semantics used by the product.
+
+The following invariants are architectural requirements for OQ-018 and later public implementation:
+
+1. **One truth engine.** Every indexable technical discovery/selection page MUST be backed by an explicit deterministic controlling HullQ query or equally deterministic accepted data derivation. A separate SEO-only eligibility implementation is not allowed.
+2. **Search selects; editorial explains.** Editorial or AI-generated prose MAY explain a result set but MUST NOT widen, substitute, or silently override the controlling candidate set.
+3. **Mechanical promise validation.** A hard numeric/categorical promise in a page identity, title, H1 or canonical intent (for example `under 40 ft`, `draft <= 1.50 m`, `full keel`) MUST be mechanically validated against every item presented as satisfying that promise. Known violations block indexability/release of that page state.
+4. **Configuration scope survives publication.** Where material factory configurations differ, a public model/design page MUST NOT collapse them into one value in a way that implies universal applicability. Configuration-specific facts, ranges and explicit UNKNOWN/conflict states must remain representable and visible.
+5. **No model-to-physical promotion.** Model/design/configuration facts MAY contextualize a market listing but MUST NOT become claims about the concrete physical boat without admissible listing-specific evidence under the market truth contract.
+6. **Same truth read model.** Visible technical content, metadata, structured data and the controlling Search transition MUST derive from the same canonical/provenance-aware read model. Structured data cannot contain a stronger claim than the visible page.
+7. **Executable continuation.** An indexable technical discovery page SHOULD provide a direct transition into interactive HullQ Search with the same controlling criteria, so the organic landing page is a product entry point rather than a disconnected article.
+8. **Original-data preference.** Data studies/linkable assets SHOULD preferentially derive from unique HullQ datasets and accepted relationships — technical/configuration data and, when lawfully available later, market observations, price changes, Days-on-Market and provenance — rather than generic AI prose that merely restates existing web material.
+9. **Demand-driven comparisons.** Comparison pages SHOULD be promoted from real external/internal demand and canonical comparable identities, not generated as an uncontrolled Cartesian product of models.
+10. **No ranking folklore as architecture.** HullQ MUST NOT encode unsupported assumptions such as `bounce rate directly determines Google ranking`. SEO decisions must trace to current primary search-engine guidance or measured HullQ telemetry.
+
+The implementation maxim is:
+
+> **Do not write content around the product. Make the product generate uniquely useful indexable knowledge.**
+
+And for technical landing pages:
+
+> **Every important HullQ SEO page is backed by the same truth engine that powers HullQ Search.**
+
+These invariants do not authorize early SEO implementation. They constrain later OQ-018/public-surface work when that work becomes the active capability under the Product Execution Plan.
