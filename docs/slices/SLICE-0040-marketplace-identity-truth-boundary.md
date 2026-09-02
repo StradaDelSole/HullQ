@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0040  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** Native Marketplace Foundation — identity/truth boundary  
 **Depends on:** SLICE-0039 terminal outcome accepted/closed; 2026-09-02 Architecture Rebaseline accepted/merged; `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_RECONCILIATION_2026-09-02.md` controlling  
 **Blocks:** later native-listing persistence, professional publishing eligibility, physical-vessel identity/dedup, listing lifecycle/freshness and market-observation integration
@@ -296,24 +296,24 @@ Do not create persistence/API/frontend/integration scaffolding as placeholders.
 
 ## Acceptance criteria
 
-- [ ] Product execution checks remain `PASS` with no scope widening.
-- [ ] Compact normative market-identity contract exists without adjacent feature semantics.
-- [ ] BoatDesignRef, PhysicalBoatId, MarketEpisodeId, NativeListingId and ExternalMarketObservationId are distinct runtime identity kinds.
-- [ ] Equal raw tokens across different identity kinds remain distinct/non-interchangeable.
-- [ ] Wrong-kind relationship references fail closed.
-- [ ] PhysicalBoat can reference BoatDesign without becoming/mutating BoatDesign and may remain design-unresolved.
-- [ ] One PhysicalBoat can have multiple MarketEpisodes.
-- [ ] NativeListing is a distinct identity, may remain MarketEpisode-unresolved and, when resolved, accepts only a typed MarketEpisode link.
-- [ ] ExternalMarketObservation is source-specific, may remain unresolved and, when resolved, accepts only a typed MarketEpisode link.
-- [ ] One MarketEpisode can be referenced by native and external appearances without collapsing appearance identities.
-- [ ] No automatic BoatDesign/configuration -> physical/listing truth projection is introduced.
-- [ ] No dedup/identity-resolution or episode-continuity inference is implemented.
-- [ ] No persistence/API/auth/publishing/lifecycle/freshness/media/lead/referral/UI work is started.
-- [ ] Owner command verifies the real objects and reports `BOUNDARY RESULT: PASS` only if required invariants hold.
-- [ ] Owner command is deterministic/offline and requires no credentials/network.
-- [ ] Repository validation, ruff, mypy and full test suite pass; project coverage remains >=90%.
-- [ ] Exact-head CI and Manufacturer artifact reproducibility are green before review acceptance where applicable.
-- [ ] No SLICE-0041 or later work starts automatically.
+- [x] Product execution checks remain `PASS` with no scope widening.
+- [x] Compact normative market-identity contract exists without adjacent feature semantics.
+- [x] BoatDesignRef, PhysicalBoatId, MarketEpisodeId, NativeListingId and ExternalMarketObservationId are distinct runtime identity kinds.
+- [x] Equal raw tokens across different identity kinds remain distinct/non-interchangeable.
+- [x] Wrong-kind relationship references fail closed.
+- [x] PhysicalBoat can reference BoatDesign without becoming/mutating BoatDesign and may remain design-unresolved.
+- [x] One PhysicalBoat can have multiple MarketEpisodes.
+- [x] NativeListing is a distinct identity, may remain MarketEpisode-unresolved and, when resolved, accepts only a typed MarketEpisode link.
+- [x] ExternalMarketObservation is source-specific, may remain unresolved and, when resolved, accepts only a typed MarketEpisode link.
+- [x] One MarketEpisode can be referenced by native and external appearances without collapsing appearance identities.
+- [x] No automatic BoatDesign/configuration -> physical/listing truth projection is introduced.
+- [x] No dedup/identity-resolution or episode-continuity inference is implemented.
+- [x] No persistence/API/auth/publishing/lifecycle/freshness/media/lead/referral/UI work is started.
+- [x] Owner command verifies the real objects and reports `BOUNDARY RESULT: PASS` only if required invariants hold.
+- [x] Owner command is deterministic/offline and requires no credentials/network.
+- [x] Repository validation, ruff, mypy and full test suite pass; project coverage remains >=90%.
+- [ ] Exact-head CI and Manufacturer artifact reproducibility are green before review acceptance where applicable. — NOT VERIFIED locally; requires remote CI observation on the exact final HEAD.
+- [x] No SLICE-0041 or later work starts automatically.
 
 ## Expected touch points
 
