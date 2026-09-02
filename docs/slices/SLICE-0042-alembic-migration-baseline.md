@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0042  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** Native Marketplace Foundation — post-rebaseline database migration boundary  
 **Depends on:** SLICE-0041 owner-accepted / DONE; 2026-09-02 Architecture Rebaseline accepted/merged  
 **Blocks:** first post-rebaseline marketplace schema migration, including NativeListing persistence
@@ -407,24 +407,24 @@ Do not create NativeListing persistence scaffolding as a placeholder.
 
 ## Acceptance criteria
 
-- [ ] Product execution checks remain `PASS` with no scope widening.
-- [ ] Alembic is the authoritative mechanism for every future post-baseline schema migration.
-- [ ] Existing legacy migrations 001/002 remain unchanged historical bootstrap artifacts.
-- [ ] No post-002 migration is added to the legacy SQL migration sequence.
-- [ ] Baseline revision represents accepted legacy state after 001 + 002 and adds no application/marketplace schema.
-- [ ] Fresh PostgreSQL 18 database can deterministically reach the baseline.
-- [ ] Existing accepted legacy PostgreSQL 18 database can be safely adopted without data loss/change.
-- [ ] Already-baselined database adoption is idempotent.
-- [ ] Partial/unknown/conflicting database state fails closed and is not automatically stamped/reset.
-- [ ] Verification uses both migration-history and structural evidence before stamping an existing database.
-- [ ] Standard Alembic current/heads/upgrade-head behavior is proven.
-- [ ] Repository guard prevents accidental future `003_*.sql` legacy migration continuation.
-- [ ] No SQLAlchemy ORM/domain rewrite is introduced.
-- [ ] No NativeListing or other marketplace DDL is introduced.
-- [ ] Owner command executes real PostgreSQL/Alembic transitions and reports `MIGRATION BASELINE RESULT: PASS` only when all required scenarios pass.
-- [ ] Repository validation, ruff, mypy and full test suite pass; project coverage remains >=90%.
-- [ ] Exact-head CI, including PostgreSQL 18 integration, and Manufacturer artifact reproducibility are green before review acceptance where applicable.
-- [ ] No SLICE-0043 or later work starts automatically.
+- [x] Product execution checks remain `PASS` with no scope widening.
+- [x] Alembic is the authoritative mechanism for every future post-baseline schema migration.
+- [x] Existing legacy migrations 001/002 remain unchanged historical bootstrap artifacts.
+- [x] No post-002 migration is added to the legacy SQL migration sequence.
+- [x] Baseline revision represents accepted legacy state after 001 + 002 and adds no application/marketplace schema.
+- [x] Fresh PostgreSQL 18 database can deterministically reach the baseline.
+- [x] Existing accepted legacy PostgreSQL 18 database can be safely adopted without data loss/change.
+- [x] Already-baselined database adoption is idempotent.
+- [x] Partial/unknown/conflicting database state fails closed and is not automatically stamped/reset.
+- [x] Verification uses both migration-history and structural evidence before stamping an existing database.
+- [x] Standard Alembic current/heads/upgrade-head behavior is proven.
+- [x] Repository guard prevents accidental future `003_*.sql` legacy migration continuation.
+- [x] No SQLAlchemy ORM/domain rewrite is introduced.
+- [x] No NativeListing or other marketplace DDL is introduced.
+- [x] Owner command executes real PostgreSQL/Alembic transitions and reports `MIGRATION BASELINE RESULT: PASS` only when all required scenarios pass.
+- [x] Repository validation, ruff, mypy and full test suite pass; project coverage remains >=90%.
+- [ ] Exact-head CI, including PostgreSQL 18 integration, and Manufacturer artifact reproducibility are green before review acceptance where applicable. (NOT VERIFIED locally — requires remote observation on final HEAD)
+- [x] No SLICE-0043 or later work starts automatically.
 
 ## Expected touch points
 
