@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0041  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** Native Marketplace Foundation — professional publishing authorization boundary  
 **Depends on:** SLICE-0040 owner-accepted / DONE; 2026-09-02 Architecture Rebaseline accepted/merged; `docs/PRIVATE_SELLER_POLICY_2026-09-02.md` controlling for public/private supply  
 **Blocks:** later NativeListing creation/persistence, broker inventory intake and server-side publishing authorization
@@ -498,27 +498,27 @@ Do not create persistence/API/auth/frontend scaffolding as placeholders.
 
 ## Acceptance criteria
 
-- [ ] Product execution checks remain `PASS` with no scope widening.
-- [ ] Compact normative publishing-eligibility contract exists without adjacent feature semantics.
-- [ ] AccountId, MarketplaceOrganizationId and OrganizationMembershipId are runtime-distinct identity kinds.
-- [ ] Candidate publishing principal is explicit; authorization is never global/account-only.
-- [ ] Professional category is explicit and limited to BROKER / DEALER / OTHER_PROFESSIONAL.
-- [ ] Organization publishing eligibility distinguishes ELIGIBLE / INELIGIBLE / UNVERIFIED and fails closed unless ELIGIBLE.
-- [ ] OrganizationMembership binds exact Account, Organization, role set and active/inactive state.
-- [ ] `PUBLISHER` must be explicitly present for publishing eligibility; OWNER/ADMIN/MEMBER alone do not imply it.
-- [ ] Consumer-only Account with no qualifying membership is denied.
-- [ ] Wrong-account membership is denied.
-- [ ] Cross-Organization membership cannot authorize another principal.
-- [ ] Active membership with explicit PUBLISHER role in an eligible professional Organization is allowed for that explicit principal.
-- [ ] Denial returns an explicit deterministic reason.
-- [ ] No Auth0/email/name-string inference determines professional eligibility.
-- [ ] `ALLOWED` is documented as domain eligibility only and does not claim MFA/authentication or actual publication has occurred.
-- [ ] No NativeListing creation/persistence, broker verification, Auth0, MFA, lifecycle, freshness, media, lead, referral or UI work is started.
-- [ ] Owner command exercises real domain code and visibly proves consumer denial, least privilege and cross-Organization isolation.
-- [ ] Owner command is deterministic/offline and requires no credentials/network.
-- [ ] Repository validation, ruff, mypy and full test suite pass; project coverage remains >=90%.
-- [ ] Exact-head CI and Manufacturer artifact reproducibility are green before review acceptance where applicable.
-- [ ] No SLICE-0042 or later work starts automatically.
+- [x] Product execution checks remain `PASS` with no scope widening.
+- [x] Compact normative publishing-eligibility contract exists without adjacent feature semantics.
+- [x] AccountId, MarketplaceOrganizationId and OrganizationMembershipId are runtime-distinct identity kinds.
+- [x] Candidate publishing principal is explicit; authorization is never global/account-only.
+- [x] Professional category is explicit and limited to BROKER / DEALER / OTHER_PROFESSIONAL.
+- [x] Organization publishing eligibility distinguishes ELIGIBLE / INELIGIBLE / UNVERIFIED and fails closed unless ELIGIBLE.
+- [x] OrganizationMembership binds exact Account, Organization, role set and active/inactive state.
+- [x] `PUBLISHER` must be explicitly present for publishing eligibility; OWNER/ADMIN/MEMBER alone do not imply it.
+- [x] Consumer-only Account with no qualifying membership is denied.
+- [x] Wrong-account membership is denied.
+- [x] Cross-Organization membership cannot authorize another principal.
+- [x] Active membership with explicit PUBLISHER role in an eligible professional Organization is allowed for that explicit principal.
+- [x] Denial returns an explicit deterministic reason.
+- [x] No Auth0/email/name-string inference determines professional eligibility.
+- [x] `ALLOWED` is documented as domain eligibility only and does not claim MFA/authentication or actual publication has occurred.
+- [x] No NativeListing creation/persistence, broker verification, Auth0, MFA, lifecycle, freshness, media, lead, referral or UI work is started.
+- [x] Owner command exercises real domain code and visibly proves consumer denial, least privilege and cross-Organization isolation.
+- [x] Owner command is deterministic/offline and requires no credentials/network.
+- [x] Repository validation, ruff, mypy and full test suite pass; project coverage remains >=90%.
+- [ ] Exact-head CI and Manufacturer artifact reproducibility are green before review acceptance where applicable. (NOT VERIFIED locally — requires remote observation on final HEAD)
+- [x] No SLICE-0042 or later work starts automatically.
 
 ## Expected touch points
 
