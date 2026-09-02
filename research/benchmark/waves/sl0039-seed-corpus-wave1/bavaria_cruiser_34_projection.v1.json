@@ -1,0 +1,104 @@
+{
+  "design_id": "bavaria-cruiser-34",
+  "identity": {
+    "designation": "BAVARIA Cruiser 34",
+    "builder": "Bavaria Yachtbau GmbH",
+    "naval_architect": "Farr Yacht Design",
+    "introduced": null,
+    "introduced_evidence_ref": null,
+    "production_end": null,
+    "production_end_note": "No production-start/end date is asserted; the model is listed on the live current BAVARIA CRUISER LINE range as of BAV-1's retrieval on 2026-09-01. No epoch boundary is invented from the model name alone."
+  },
+  "configuration_space_complete": false,
+  "configuration_space_complete_basis": "BAV-1's 'Technical data' table lists exactly two named draught rows ('Draught standard' and 'Draught option') alongside one ballast/displacement figure each. No source states this is the complete factory-relevant configuration space (e.g. rig-only options, regional variants unrelated to draught). configuration_space_complete is left False per the same discipline SLICE-0037 applied to the Oceanis 30.1's three named ballast options: the number of discovered named options is never itself treated as proof of completeness.",
+  "self_authorization_boundary_note": "This file is a retained, editable research artifact, not a truth-authorizing one. scripts/search_seed_corpus_wave1.py's shared independent admission oracle (BAVARIA_ORACLE) independently re-derives design_id, configuration_space_complete, the exact configuration_id/named_variant_id set, and every field's exact value/evidence_refs/scope/direct_or_derived against hardcoded, code-side-only expectations before this file's content is permitted to become Search input -- it never trusts this file's own claims about itself, mirroring SLICE-0037 Required Behavior A.",
+  "configurations": [
+    {
+      "configuration_id": "bavaria-cruiser-34-standard-draft",
+      "named_variant_id": "standard-draft",
+      "applied_option_ids": [],
+      "configuration_evidence_refs": ["BAV-1"],
+      "configuration_basis": "BAV-1's 'Technical data' table row 'Draught standard 2,04 m', the design's factory-default keel/ballast configuration (paired with 'Ballast standard 1.363 kg' / 'Displacement standard 5.298 kg' on the same row set). `configuration_evidence_refs` is machine-checked identity evidence; `configuration_basis` remains human-readable audit prose only and is never itself the truth-authorizing mechanism.",
+      "numeric_fields": {
+        "loa_m": {
+          "state": "resolved",
+          "value": 9.99,
+          "evidence_refs": ["BAV-1"],
+          "direct_or_derived": "direct",
+          "scope_id": "design_wide",
+          "scope": "BAV-1's unqualified 'Length over all 9,99 m' row (design-wide hull-mold dimension; does not vary by draught option). Distinct from the same table's separately labelled 'Length over all (incl. bowsprit) 10,67 m' row, which is not used here -- the unqualified 'Length over all' is the literal, direct match for the generic loa_m field."
+        },
+        "beam_m": {
+          "state": "resolved",
+          "value": 3.42,
+          "evidence_refs": ["BAV-1"],
+          "direct_or_derived": "direct",
+          "scope_id": "design_wide",
+          "scope": "BAV-1's 'Beam of hull 3,42 m' (design-wide hull-mold dimension; does not vary by draught option)."
+        },
+        "draft_max_m": {
+          "state": "resolved",
+          "value": 2.04,
+          "evidence_refs": ["BAV-1"],
+          "direct_or_derived": "direct",
+          "scope_id": "standard_draft",
+          "scope": "BAV-1's 'Technical data' table row 'Draught standard 2,04 m', bound specifically to this factory-default configuration. BAV-1 separately captions a VPP (velocity prediction program) performance chart with 'deep keel 2.02 m'; this narrative/marketing caption figure is NOT used as this configuration's value (it is not on the same side of any Q1/Q2/Q10 threshold as 2.04 m either way, so the discrepancy is immaterial to every locked query, but the structured 'Technical data' table figure is preferred as the more literal, direct source statement over marketing-caption prose, consistent with the Oceanis 30.1 pilot's preference for structured spec-table facts)."
+        }
+      },
+      "categorical_fields": {}
+    },
+    {
+      "configuration_id": "bavaria-cruiser-34-shoal-draft-option",
+      "named_variant_id": "shoal-draft-option",
+      "applied_option_ids": [],
+      "configuration_evidence_refs": ["BAV-1"],
+      "configuration_basis": "BAV-1's 'Technical data' table row 'Draught option 1,58 m', the factory-offered shoal-draught alternative to the standard configuration. `configuration_evidence_refs` is machine-checked identity evidence; `configuration_basis` remains human-readable audit prose only.",
+      "numeric_fields": {
+        "loa_m": {
+          "state": "resolved",
+          "value": 9.99,
+          "evidence_refs": ["BAV-1"],
+          "direct_or_derived": "direct",
+          "scope_id": "design_wide",
+          "scope": "design-wide; identical hull mold as the standard-draught configuration."
+        },
+        "beam_m": {
+          "state": "resolved",
+          "value": 3.42,
+          "evidence_refs": ["BAV-1"],
+          "direct_or_derived": "direct",
+          "scope_id": "design_wide",
+          "scope": "design-wide; identical hull mold as the standard-draught configuration."
+        },
+        "draft_max_m": {
+          "state": "resolved",
+          "value": 1.58,
+          "evidence_refs": ["BAV-1"],
+          "direct_or_derived": "direct",
+          "scope_id": "shoal_draft_option",
+          "scope": "BAV-1's 'Technical data' table row 'Draught option 1,58 m', bound specifically to this factory-offered shoal-draught configuration."
+        }
+      },
+      "categorical_fields": {}
+    }
+  ],
+  "fields_deliberately_left_unresolved_design_wide": [
+    {
+      "field": "displacement_kg",
+      "reason": "BAV-1 states 'Displacement standard 5.298 kg' on the same technical-data block as the standard draught, without an independently stated corresponding figure for the shoal-draught-option configuration (ballast differs: 'Ballast standard 1.363 kg' is the only ballast figure given). Not needed by Q1/Q2/Q10 (SEARCH_BENCHMARK.v0.1.md Q3 is out of scope for this slice); left unresolved per the slice's instruction to research only what Q1/Q2/Q10 require."
+    },
+    {
+      "field": "rig.sailplan",
+      "reason": "Not researched: outside the Q1/Q2/Q10 field set and explicitly out of scope for this slice (Q4/Q8/Q9 are not in scope)."
+    },
+    {
+      "field": "appendages.keel_type",
+      "reason": "BAV-1 names the two configurations by draught ('standard'/'option') and separately shows a VPP caption referring to 'deep keel', but does not state a controlled keel_type enum token (fin/bulb/etc.) for either configuration. Not needed by Q1/Q2/Q10; not researched further."
+    }
+  ],
+  "mte_classification": {
+    "note": "loa_m, beam_m and draft_max_m are BOAT_DESIGN_SCHEMA.v0.6 principal-dimension fields, outside the MARINE_TECHNICAL_ENTAILMENT.v0.1.md fixed field inventory (hull/keel/rudder/rig/cockpit-helm classification fields only); no MTE classification applies to them, by design. No categorical field was qualified for this design, so no entailment rule's prerequisite is met.",
+    "derived_facts_materialized": [],
+    "derived_facts_materialized_note": "Zero. Every fact admitted for this design is direct_or_derived=direct; no derived fact is authorized by the oracle."
+  }
+}
