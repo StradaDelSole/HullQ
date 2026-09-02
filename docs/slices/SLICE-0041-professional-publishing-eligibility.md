@@ -11,7 +11,7 @@
 
 Deliver exactly one inspectable domain capability:
 
-> **Given a HullQ Account, an explicit candidate publishing-principal Organization and the relevant OrganizationMembership, deterministically decide whether that Account is eligible to publish a public NativeListing on behalf of that Organization — with private/consumer-only accounts, wrong-organization memberships, inactive memberships, insufficient roles and non-eligible professional Organizations failing closed.**
+> **Given a HullQ Account, an explicit candidate publishing-principal Organization and the relevant OrganizationMembership, deterministically decide whether that Account is eligible to publish a public NativeListing on behalf of that Organization — with private/consumer-only accounts, wrong-organization memberships, inactive memberships, missing explicit PUBLISHER role and non-eligible professional Organizations failing closed.**
 
 This slice answers only **who may act as the professional publishing principal**. It does not create a listing, persist marketplace actors, integrate Auth0, verify a broker externally, enforce MFA, or expose an API/UI.
 
@@ -21,7 +21,7 @@ This slice answers only **who may act as the professional publishing principal**
 One capability only: deterministic professional NativeListing publishing-eligibility evaluation for an explicit Account + Organization principal.
 
 **VISIBLE-RESULT CHECK:** PASS  
-The Project Owner can run one deterministic offline command and inspect allowed and denied publishing scenarios, including consumer-only denial and cross-Organization isolation.
+The Project Owner can run one deterministic offline command and inspect allowed and denied publishing scenarios, including consumer-only denial, least-privilege role behavior and cross-Organization isolation.
 
 **PRODUCT EXECUTION PLAN ALIGNMENT:** PASS  
 The accepted marketplace rebaseline requires the professional publishing-principal authorization boundary before public NativeListing creation. SLICE-0041 stops before persistence, actual listing creation, Auth0, MFA enforcement, feeds, lifecycle, freshness, media, leads, referrals or UI.
@@ -94,13 +94,15 @@ Publishing eligibility is evaluated for one **explicit candidate Organization pr
 
 The principal must be represented by a HullQ-owned marketplace Organization identity that remains distinct from Account identity and from SLICE-0040 market identities.
 
-For this capability, professional category may be limited to the accepted public-supply classes:
+For this capability, professional category is limited to the accepted public-supply classes:
 
 ```text
 BROKER
 DEALER
-OTHER_ELIGIBLE_PROFESSIONAL
+OTHER_PROFESSIONAL
 ```
+
+The category itself does not imply eligibility. Eligibility is a separate adjudicated state.
 
 Do not infer category from an Organization name, email domain, website, string pattern or Auth0 metadata.
 
@@ -131,7 +133,7 @@ A membership binds exactly:
 ```text
 AccountId
 → MarketplaceOrganizationId
-→ MembershipRole
+→ set of MembershipRole values
 → MembershipState
 ```
 
@@ -153,17 +155,26 @@ PUBLISHER
 MEMBER
 ```
 
-Publishing-capable roles are exactly:
+Roles may coexist on one membership. This permits, for example, an Organization owner who also explicitly has publishing capability without making ownership itself equivalent to publishing permission.
+
+Hard least-privilege rule:
+
+> `PUBLISHER` MUST be explicitly present in the membership role set for NativeListing publishing eligibility.
+
+Therefore:
 
 ```text
-OWNER
-ADMIN
-PUBLISHER
+OWNER only      -> not publishing-capable
+ADMIN only      -> not publishing-capable
+MEMBER only     -> not publishing-capable
+PUBLISHER       -> publishing-capable role present
+OWNER+PUBLISHER -> publishing-capable role present
+ADMIN+PUBLISHER -> publishing-capable role present
 ```
 
-`MEMBER` does not carry NativeListing publishing eligibility.
+This preserves the architecture's distinction between privileged Organization roles and publishing-capable accounts. It avoids inventing an implication that every Owner/Admin automatically publishes inventory.
 
-This role vocabulary is intentionally narrow. Do not build a generic RBAC framework, permission inheritance system or custom-role editor.
+Do not build a generic RBAC framework, permission inheritance system or custom-role editor.
 
 ### 5. Private / consumer-only accounts
 
@@ -176,7 +187,7 @@ Instead:
 This correctly handles both:
 
 - a normal consumer-only user with no professional membership → denied;
-- the same human using HullQ privately but also holding an authorized role in an eligible broker Organization → may be eligible **only when acting explicitly for that Organization**.
+- the same human using HullQ privately but also holding an active `PUBLISHER` role for an eligible broker Organization → may be eligible **only when acting explicitly for that Organization**.
 
 A private-sale intention remains a future/separate `BrokerageRequest` path and must not be converted into a NativeListing by this slice.
 
@@ -217,7 +228,7 @@ NO_MEMBERSHIP
 ACCOUNT_MISMATCH
 ORGANIZATION_MISMATCH
 MEMBERSHIP_INACTIVE
-ROLE_NOT_PUBLISHING_CAPABLE
+PUBLISHER_ROLE_REQUIRED
 ORGANIZATION_INELIGIBLE
 ORGANIZATION_UNVERIFIED
 ```
@@ -261,8 +272,8 @@ membership exists
 AND membership.account_id == account_id
 AND membership.organization_id == candidate_organization.id
 AND membership.state == ACTIVE
-AND membership.role in {OWNER, ADMIN, PUBLISHER}
-AND candidate_organization.professional_category is accepted
+AND PUBLISHER is explicitly present in membership.roles
+AND candidate_organization.professional_category is one of the accepted classes
 AND candidate_organization.publishing_eligibility == ELIGIBLE
 ```
 
@@ -285,12 +296,12 @@ No fallback may:
 - auto-enroll the Account into a professional Organization;
 - reinterpret a `BrokerageRequest` as a listing.
 
-## Required behavior D — cross-Organization isolation
+## Required behavior D — cross-Organization isolation and least privilege
 
 Focused adversarial behavior is mandatory:
 
 ```text
-Account X is PUBLISHER in Organization A
+Account X has PUBLISHER in Organization A
 candidate principal = Organization B
 → DENIED ORGANIZATION_MISMATCH
 ```
@@ -298,8 +309,23 @@ candidate principal = Organization B
 Also prove:
 
 ```text
-Account X is OWNER/ADMIN/PUBLISHER in eligible Organization A
+Account X has PUBLISHER in eligible Organization A
 candidate principal = Organization A
+→ ALLOWED
+```
+
+```text
+Account X has OWNER only in eligible Organization A
+→ DENIED PUBLISHER_ROLE_REQUIRED
+```
+
+```text
+Account X has ADMIN only in eligible Organization A
+→ DENIED PUBLISHER_ROLE_REQUIRED
+```
+
+```text
+Account X has OWNER + PUBLISHER in eligible Organization A
 → ALLOWED
 ```
 
@@ -316,7 +342,7 @@ No Organization identifier may be taken from client-facing claims and trusted wi
 
 This slice evaluates **domain publishing eligibility**, not the complete runtime security ceremony for an eventual publish action.
 
-The accepted architecture still requires MFA for publishing-capable broker accounts. SLICE-0041 must not weaken or supersede that rule.
+The accepted architecture still requires MFA for publishing-capable broker accounts and Organization Owner/Admin accounts. SLICE-0041 must not weaken or supersede that rule.
 
 However this slice must **not** implement:
 
@@ -371,18 +397,20 @@ It must use synthetic/local domain objects only and visibly execute representati
 ```text
 PROFESSIONAL PUBLISHING ELIGIBILITY
 
-eligible broker OWNER                 -> ALLOWED
-eligible dealer ADMIN                 -> ALLOWED
-eligible professional PUBLISHER       -> ALLOWED
-consumer with no membership           -> DENIED: NO_MEMBERSHIP
-eligible org MEMBER role              -> DENIED: ROLE_NOT_PUBLISHING_CAPABLE
-inactive broker PUBLISHER membership  -> DENIED: MEMBERSHIP_INACTIVE
-unverified broker organization        -> DENIED: ORGANIZATION_UNVERIFIED
-ineligible organization               -> DENIED: ORGANIZATION_INELIGIBLE
-publisher in Org A acting for Org B   -> DENIED: ORGANIZATION_MISMATCH
-membership for another Account        -> DENIED: ACCOUNT_MISMATCH
+eligible broker PUBLISHER             -> ALLOWED
+eligible broker OWNER only             -> DENIED: PUBLISHER_ROLE_REQUIRED
+eligible dealer ADMIN only             -> DENIED: PUBLISHER_ROLE_REQUIRED
+eligible broker OWNER+PUBLISHER        -> ALLOWED
+eligible dealer ADMIN+PUBLISHER        -> ALLOWED
+consumer with no membership            -> DENIED: NO_MEMBERSHIP
+inactive broker PUBLISHER membership   -> DENIED: MEMBERSHIP_INACTIVE
+unverified broker organization         -> DENIED: ORGANIZATION_UNVERIFIED
+ineligible organization                -> DENIED: ORGANIZATION_INELIGIBLE
+publisher in Org A acting for Org B    -> DENIED: ORGANIZATION_MISMATCH
+membership for another Account         -> DENIED: ACCOUNT_MISMATCH
 
 PRIVATE/CONSUMER FSBO PUBLISHING: DENIED
+LEAST-PRIVILEGE PUBLISHER ROLE: PASS
 CROSS-ORGANIZATION ISOLATION: PASS
 ELIGIBILITY RESULT: PASS
 ```
@@ -400,16 +428,17 @@ Focused tests must cover at least:
 - accepted professional categories are explicit and not inferred from names/strings;
 - ELIGIBLE / INELIGIBLE / UNVERIFIED remain distinct;
 - consumer Account with no membership is denied;
-- active OWNER in an eligible professional Organization is allowed;
-- active ADMIN in an eligible professional Organization is allowed;
 - active PUBLISHER in an eligible professional Organization is allowed;
-- active MEMBER is denied;
-- inactive OWNER/ADMIN/PUBLISHER is denied;
+- active OWNER without PUBLISHER is denied;
+- active ADMIN without PUBLISHER is denied;
+- active MEMBER without PUBLISHER is denied;
+- OWNER+PUBLISHER and ADMIN+PUBLISHER can satisfy the role gate;
+- inactive membership with PUBLISHER is denied;
 - UNVERIFIED Organization is denied;
 - INELIGIBLE Organization is denied;
 - wrong Account on a membership is denied with ACCOUNT_MISMATCH-equivalent reason;
 - membership for Organization A cannot authorize candidate Organization B;
-- one Account may independently evaluate valid memberships for two different eligible Organizations without cross-tenant leakage;
+- one Account may independently evaluate valid PUBLISHER memberships for two different eligible Organizations without cross-tenant leakage;
 - denial result exposes deterministic reason rather than only `False`;
 - evaluation does not inspect Auth0 claims, email domain or Organization name to infer eligibility;
 - no NativeListing creation/persistence or BrokerageRequest fallback exists;
@@ -421,9 +450,10 @@ Focused tests must cover at least:
 - compact normative publishing-eligibility contract;
 - smallest immutable Account/marketplace-Organization/membership domain primitives needed for the decision;
 - explicit professional category and adjudicated eligibility state;
-- narrow membership role/state vocabulary;
+- narrow composable membership role set and active/inactive state;
 - deterministic `ALLOWED` / `DENIED(reason)` evaluator;
 - cross-Organization fail-closed checks;
+- least-privilege explicit PUBLISHER role requirement;
 - deterministic offline owner-test;
 - focused tests;
 - only minimal package-export changes if existing conventions require them.
@@ -472,19 +502,19 @@ Do not create persistence/API/auth/frontend scaffolding as placeholders.
 - [ ] Compact normative publishing-eligibility contract exists without adjacent feature semantics.
 - [ ] AccountId, MarketplaceOrganizationId and OrganizationMembershipId are runtime-distinct identity kinds.
 - [ ] Candidate publishing principal is explicit; authorization is never global/account-only.
-- [ ] Professional category is explicit and limited to accepted public-supply categories.
+- [ ] Professional category is explicit and limited to BROKER / DEALER / OTHER_PROFESSIONAL.
 - [ ] Organization publishing eligibility distinguishes ELIGIBLE / INELIGIBLE / UNVERIFIED and fails closed unless ELIGIBLE.
-- [ ] OrganizationMembership binds exact Account, Organization, role and active/inactive state.
-- [ ] Exactly OWNER / ADMIN / PUBLISHER roles are publishing-capable for this boundary; MEMBER is not.
+- [ ] OrganizationMembership binds exact Account, Organization, role set and active/inactive state.
+- [ ] `PUBLISHER` must be explicitly present for publishing eligibility; OWNER/ADMIN/MEMBER alone do not imply it.
 - [ ] Consumer-only Account with no qualifying membership is denied.
 - [ ] Wrong-account membership is denied.
 - [ ] Cross-Organization membership cannot authorize another principal.
-- [ ] Active publishing-capable membership in an eligible professional Organization is allowed for that explicit principal.
+- [ ] Active membership with explicit PUBLISHER role in an eligible professional Organization is allowed for that explicit principal.
 - [ ] Denial returns an explicit deterministic reason.
 - [ ] No Auth0/email/name-string inference determines professional eligibility.
 - [ ] `ALLOWED` is documented as domain eligibility only and does not claim MFA/authentication or actual publication has occurred.
 - [ ] No NativeListing creation/persistence, broker verification, Auth0, MFA, lifecycle, freshness, media, lead, referral or UI work is started.
-- [ ] Owner command exercises real domain code and visibly proves consumer denial and cross-Organization isolation.
+- [ ] Owner command exercises real domain code and visibly proves consumer denial, least privilege and cross-Organization isolation.
 - [ ] Owner command is deterministic/offline and requires no credentials/network.
 - [ ] Repository validation, ruff, mypy and full test suite pass; project coverage remains >=90%.
 - [ ] Exact-head CI and Manufacturer artifact reproducibility are green before review acceptance where applicable.
@@ -526,6 +556,7 @@ Stop and report rather than inventing policy when:
 - actual NativeListing creation/persistence is required to demonstrate the decision;
 - passing the slice would require treating UNVERIFIED as eligible;
 - membership in one Organization would have to authorize another Organization;
+- OWNER or ADMIN would have to imply PUBLISHER without an explicit publisher role;
 - scope pressure pulls professional verification, persistence, lifecycle, Freshness, media, feeds, leads, referrals or UI into SLICE-0041.
 
 ## Status handoff rule
