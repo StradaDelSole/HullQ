@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0039  
 **Type:** IMPLEMENTATION  
-**Status:** REVIEW  
+**Status:** BLOCKED  
 **Stage:** Phase B — bounded Seed Corpus for Gate 1  
 **Depends on:** SLICE-0038 owner-accepted / DONE; `docs/PRODUCT_EXECUTION_PLAN.md` controlling; accepted `specs/SEARCH_BENCHMARK.v0.1.md`  
 **Blocks:** first inspectable multi-design real Seed-Corpus Search cohort and the next Gate-1 corpus/Concierge decision
@@ -14,6 +14,43 @@ Deliver exactly one user-visible capability:
 > Run the existing strict configuration-aware HullQ Search across the accepted Wave-1 real BoatDesign cohort — Bavaria Cruiser 34, Contessa 32, BENETEAU Oceanis 30.1 and Lagoon 42 — for the unchanged locked Q1, Q2 and Q10 hard-constraint queries, with real provenance-backed facts, explicit configurations where supported, and visible `CONFIRMED_MATCH` / `CONFIRMED_NON_MATCH` / `INSUFFICIENT_DATA` results.
 
 This slice converts the first accepted benchmark wave from research evidence into an actual multi-design, non-fixture Search surface. It does not attempt to complete the entire 20–30-design Seed Corpus.
+
+## BLOCKED — amendment outcome
+
+Independent review found that the original submission's Lagoon 42
+`configuration_space_complete=True` was not supported by sufficient
+authoritative evidence: absence of a stated second keel/draft option on one
+manufacturer product page does not prove the factory-relevant configuration
+space is exhaustive, and general reasoning about how production catamarans
+of this class are typically built is not admissible proof either.
+
+Following the review's instruction, research was extended for Lagoon 42
+only (within the remaining per-design/total caps: Lagoon reached 3/5,
+total 9/12) to two additional authoritative sources, including the official
+RCD-2 Owner's Manual — a comprehensive homologation-adjacent technical
+document. No source obtained, including that manual, contains an
+affirmative statement that the documented single configuration is the
+complete factory-relevant configuration space. `configuration_space_complete`
+is therefore corrected to `False` for Lagoon 42, matching the conservative
+treatment already applied to Oceanis 30.1 and Bavaria Cruiser 34.
+
+This correction removes Lagoon's Q1/Q2 `CONFIRMED_NON_MATCH` results, which
+were the only thing keeping Q1 and Q2 at the required 3/4 evaluability
+gate. **Q1 and Q2 now evaluate at 2/4** (Oceanis 30.1 and Bavaria Cruiser 34
+confirmed match; Contessa 32 and Lagoon 42 insufficient data); only Q10
+still meets the 3/4 gate. Per this slice's explicit stop condition ("meeting
+the utility gate would require replacing a design, guessing a value,
+weakening UNKNOWN, or widening the slice" → stop and report), this slice is
+reported `BLOCKED` rather than `REVIEW`. No design was replaced, no value
+was guessed, and no alternate route to `CONFIRMED_NON_MATCH` was
+manufactured to avoid this outcome. See
+`research/benchmark/waves/sl0039-seed-corpus-wave1/REPORT.md` §5–§6 for the
+full corrected evidence and result distribution.
+
+A separate documentation typo (Bavaria Cruiser 34's standard-draught value
+in REPORT.md §3, which read `1.85… (exact: 2.04 m)`) is also corrected in
+this amendment; the underlying projection/oracle value was always `2.04 m`
+and is unaffected.
 
 ## Product execution checks
 
@@ -271,7 +308,7 @@ Do not duplicate the accepted Oceanis 30.1 evidence/projection into the new fold
 - [x] Q1, Q2 and Q10 are invoked unchanged through the existing configuration-aware Search kernel.
 - [x] Every query partitions all four designs into confirmed match / confirmed non-match / insufficient data exactly once.
 - [x] Every confirmed match exposes at least one matching configuration ID.
-- [x] Q1, Q2 and Q10 each achieve at least 3/4 evaluability without truth relaxation.
+- [ ] Q1, Q2 and Q10 each achieve at least 3/4 evaluability without truth relaxation. **FAILS for Q1/Q2 (2/4) after correcting Lagoon 42's configuration_space_complete to the evidence-supported False; only Q10 (3/4) meets the gate. See "BLOCKED — amendment outcome" above. Not relaxed/worked around.**
 - [x] `FALSE_CONFIRMED_RESULT = 0`.
 - [x] Owner command visibly prints the four-design real Search results and reasons.
 - [x] Offline tests are deterministic and require no live network.

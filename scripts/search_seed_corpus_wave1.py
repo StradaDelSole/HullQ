@@ -173,20 +173,36 @@ LAGOON_STANDARD: Final = "lagoon-42-standard"
 
 LAGOON_ORACLE: Final = _DesignOracle(
     design_id="lagoon-42",
-    configuration_space_complete=True,
+    # REVIEW amendment: independent review correctly rejected the original
+    # submission's `True` here -- absence of a stated second keel/draft
+    # option on one product page does not prove the factory-relevant
+    # configuration space is exhaustive, and even the strongest additional
+    # evidence obtained (LAG-3, the official RCD-2 Owner's Manual) remains an
+    # absence-of-mention, not an affirmative completeness statement. See
+    # research/benchmark/waves/sl0039-seed-corpus-wave1/lagoon_42_projection.v1.json's
+    # `configuration_space_complete_basis` for the full reasoning. The
+    # oracle fixes this exact boolean in both directions: a tampered edit
+    # back to `True` fails admission exactly like a tampered edit away from
+    # `False` would for Bavaria/Contessa.
+    configuration_space_complete=False,
     configuration_ids=frozenset({LAGOON_STANDARD}),
     named_variant_ids={LAGOON_STANDARD: None},
-    allowed_evidence_source_ids=frozenset({"LAG-1"}),
-    configuration_evidence_refs={LAGOON_STANDARD: frozenset({"LAG-1"})},
+    allowed_evidence_source_ids=frozenset({"LAG-1", "LAG-2", "LAG-3"}),
+    configuration_evidence_refs={LAGOON_STANDARD: frozenset({"LAG-1", "LAG-2", "LAG-3"})},
     authorized_numeric_facts={
+        # REVIEW amendment: 12.92 m is LAG-3's "L.O.A (Lmax): standard"
+        # figure; the previously authorized 13.22 m was LAG-1's unqualified
+        # "Length overall", which LAG-3 reveals to be the spinnaker-pole-
+        # inclusive maximum, not the standard LOA. Does not change any
+        # Q1/Q2/Q10 result (12.92 m still exceeds both range upper bounds).
         (LAGOON_STANDARD, "loa_m"): _AuthorizedFact(
-            13.22, frozenset({"LAG-1"}), "direct", "design_wide"
+            12.92, frozenset({"LAG-3"}), "direct", "design_wide"
         ),
         (LAGOON_STANDARD, "beam_m"): _AuthorizedFact(
-            7.68, frozenset({"LAG-1"}), "direct", "design_wide"
+            7.68, frozenset({"LAG-1", "LAG-2", "LAG-3"}), "direct", "design_wide"
         ),
         (LAGOON_STANDARD, "draft_max_m"): _AuthorizedFact(
-            1.26, frozenset({"LAG-1"}), "direct", "design_wide"
+            1.26, frozenset({"LAG-1", "LAG-2", "LAG-3"}), "direct", "design_wide"
         ),
     },
     authorized_categorical_facts={},

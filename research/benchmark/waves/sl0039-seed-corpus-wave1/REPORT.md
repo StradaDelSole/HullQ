@@ -6,6 +6,20 @@ BoatDesign admission; not the twelve-design `SEARCH_BENCHMARK.v0.1.md`
 corpus; not a general ingestion adapter for any of the three manufacturers/
 class associations involved.
 
+**REVIEW amendment (this revision):** independent review found that the
+original submission's Lagoon 42 `configuration_space_complete=True` was not
+supported by sufficient authoritative evidence (see §5). Research was
+extended within the remaining per-design cap; no sufficient evidence was
+found, so the flag is corrected to `False`. This removes Lagoon's Q1/Q2
+`CONFIRMED_NON_MATCH` results, which were the only thing keeping Q1 and Q2
+at the required 3/4 evaluability gate. **Q1 and Q2 now evaluate at 2/4,
+below the minimum utility gate; SLICE-0039 is therefore reported `BLOCKED`**
+per the slice's explicit stop condition, not silently patched by
+manufacturing another route to `CONFIRMED_NON_MATCH`. See §5 and §6 for the
+corrected evidence and result distribution, and the slice document for the
+formal `BLOCKED` report. A separate typo in §3 (Bavaria's standard-draught
+value) is also corrected in this revision.
+
 This wave converts the accepted Wave-1 benchmark cohort (Bavaria Cruiser 34,
 Contessa 32, BENETEAU Oceanis 30.1, Lagoon 42) into a real, non-fixture,
 multi-design Search cohort for exactly Q1, Q2 and Q10. The BENETEAU Oceanis
@@ -38,11 +52,14 @@ access/reuse). Actual usage (`source_retrieval_log.json`
 |---|---|---|
 | Bavaria Cruiser 34 | 1 (BAV-1) | 5 |
 | Contessa 32 | 5 (CON-1..CON-5) | 5 |
-| Lagoon 42 | 1 (LAG-1) | 5 |
-| **Total** | **7** | **12** |
+| Lagoon 42 | 3 (LAG-1..LAG-3) | 5 |
+| **Total** | **9** | **12** |
 
 Neither the 12-total nor the 5-per-design cap was exceeded. Contessa 32
 reached its per-design cap without establishing LOA/beam/draft (see §4).
+Lagoon 42's count reflects the REVIEW-amendment research extension (LAG-2,
+LAG-3) undertaken specifically to seek configuration-space-completeness
+evidence; see §5.
 Legal/terms pages checked to assess source-rights disposition
 (bavariayachts.com Imprint, jeremyrogers.co.uk Privacy Policy,
 catamarans-lagoon.com Terms of Use, and BENETEAU's already-reviewed
@@ -67,7 +84,7 @@ projection's scope note), `beam_m = 3.42` ("Beam of hull").
 (labelled "Draught standard" and "Draught option", each paired with its own
 ballast/displacement figure on the source page):
 
-- **Standard draught** — `draft_max_m = 1.85`… (exact: `2.04` m).
+- **Standard draught** — `draft_max_m = 2.04` m.
 - **Shoal draught option** — `draft_max_m = 1.58` m.
 
 BAV-1 separately captions a VPP (velocity prediction program) performance
@@ -145,51 +162,88 @@ gap, not a guessed value and not a cohort substitution (`SEARCH_BENCHMARK.v0.1.m
 §4 forbids replacing a locked corpus member merely because research becomes
 difficult or sparse).
 
-## 5. Lagoon 42 — real single-configuration design, confirmed non-match evidence
+## 5. Lagoon 42 — real single-configuration design; configuration-space completeness NOT established
 
-**Source:** LAG-1, `https://www.catamarans-lagoon.com/boats/lagoon-42`
-(official current manufacturer product page; `robots.txt` is a blanket
-`Allow: /`; retrieved by raw HTTP GET + HTML tag-stripping). The page
-explicitly labels this as the **previous** model relative to a newer
-"Lagoon 42 Millennium" refresh — confirming the projection is correctly
-scoped to the same original Lagoon 42 generation named in
-`research/benchmark/SEED_RESEARCH_NOTES.md` SEED-18 (researched years before
-the Millennium refresh existed), not conflated with the newer variant.
+**Sources:**
 
-**Facts:** `loa_m = 13.22` ("Length overall"; the separate "Hull length
-12.79 m" row is not used — see the projection's scope note, though using it
-instead would not change any Q1/Q2 outcome), `beam_m = 7.68` ("Beam"),
-`draft_max_m = 1.26` ("Water draft").
+- **LAG-1** — `https://www.catamarans-lagoon.com/boats/lagoon-42` (official
+  current manufacturer product page; `robots.txt` is a blanket `Allow: /`;
+  retrieved by raw HTTP GET + HTML tag-stripping). The page explicitly
+  labels this as the **previous** model relative to a newer "Lagoon 42
+  Millennium" refresh — confirming the projection is correctly scoped to
+  the same original Lagoon 42 generation named in
+  `research/benchmark/SEED_RESEARCH_NOTES.md` SEED-18, not conflated with
+  the newer Millennium variant, nor (as a REVIEW-amendment cross-check
+  against a Wikipedia lead confirmed) with an unrelated, much older c.1990
+  Van Peteghem/Lauriot-Prevost "Lagoon 42" built by Jeanneau/TPI
+  Composites/CNB.
+- **LAG-2** — `https://www.lagoon-catamaran.de/en/lagoon-models/lagoon-42-catamaran/technical-specifications.html`
+  (an authorized German regional dealer's technical-specification page).
+  Independently corroborates LAG-1's length/beam/draught/displacement
+  figures exactly and adds the naval architect (VPLP Design) and CE
+  certification category. No keel/draft option language.
+- **LAG-3** — `https://www.lagoon-catamaran.de/fileadmin/L42_Benutzerhandbuch_en.pdf`
+  ("189199 RCD-2, Index G, LAGOON 42 OWNER'S MANUAL"), the official
+  homologation-adjacent RCD technical manual (~50 pages: general
+  dimensions, design categories/displacement, electricity, capacities,
+  sails/rigging, safety). Retrieved as the strongest available primary
+  document, specifically to seek configuration-space-completeness evidence
+  per independent review's instruction.
 
-**`configuration_space_complete = True`** — the one determination in this
-wave that departs from the otherwise-uniform conservative `False` default.
-Justification (recorded in full in the projection JSON's
-`configuration_space_complete_basis`): unlike Oceanis 30.1 (three named
-ballast options) and Bavaria Cruiser 34 (two named draught rows), LAG-1
-names exactly one hull/keel configuration with no option language anywhere,
-and the source's own labelling convention explicitly marks other genuinely
-optional items on the same specification block (`"Square top mainsail
-(opt.)"`, `"Code 0 (opt.)"`) while `"Water draft"` carries no such marker.
-This is independently consistent with production catamarans in this class
-using one fixed, hull-integral keel per mould rather than an interchangeable
-ballast casting. Critically, this determination only licenses
-`CONFIRMED_NON_MATCH` for Q1/Q2 through the `loa_m`/`beam_m` fields, both of
-which are design-wide hull-mould dimensions that cannot vary by any
-hypothetical undiscovered appendage configuration in any case — the same
-physical reasoning that makes an LOA/beam-driven non-match sound regardless
-of how many (if any) undiscovered keel variants might exist. The admission
-oracle fixes this exact boolean in both directions: a tampered flip to
-`False` fails admission exactly like a tampered flip to `True` would for
-Bavaria/Contessa (see `tests/unit/test_search_seed_corpus_wave1.py`).
+**Facts:** `loa_m = 12.92` (LAG-3's "L.O.A (Lmax): standard"; **REVIEW
+amendment correction** — the value originally retained, 13.22 m from LAG-1's
+unqualified "Length overall" row, is now understood via LAG-3 to be the
+spinnaker-pole-inclusive maximum LOA, not the standard figure; this does not
+change any Q1/Q2/Q10 result, since 12.92 m still exceeds both the `8–11 m`
+and `9–12 m` range upper bounds), `beam_m = 7.68` (corroborated by all three
+sources), `draft_max_m = 1.26` (corroborated by all three sources).
 
-**Q1/Q2/Q10 outcome:** `CONFIRMED_NON_MATCH` on Q1 and Q2 (LOA `13.22 m`
-exceeds both the `8–11 m` and `9–12 m` ranges; beam `7.68 m` also exceeds
-Q2's `3.60 m` maximum), `CONFIRMED_MATCH` on Q10 (`1.26 m ≤ 1.60 m`). This is
-the wave's only genuine `CONFIRMED_NON_MATCH` result — the Oceanis 30.1
-pilot never produced one, because its `configuration_space_complete = False`
-uniformly blocks non-match there.
+**`configuration_space_complete` — corrected to `False`.** The original
+submission set this `True` on the reasoning that LAG-1 named only one
+hull/keel configuration while explicitly marking other optional equipment
+(mainsail/Code 0) with `(opt.)` and leaving draught unmarked. Independent
+review correctly rejected this: absence of a stated second keel/draft option
+on one product page does not prove the factory-relevant configuration space
+is exhaustive, and general reasoning about how production catamarans of this
+class are typically built ("one fixed, hull-integral keel per mould") is not
+admissible proof either.
 
-## 6. Exact Wave-1 Q1/Q2/Q10 result distribution
+Research was extended to LAG-2 and LAG-3 specifically to look for stronger
+evidence. **LAG-3 is the strongest document obtained**: it explicitly tags
+several genuinely optional items throughout ("Auxiliary switch (option)",
+"Fresh water tank - Port/Starboard (option)") yet states exactly one
+draught figure and no second keel configuration anywhere in the document,
+including its dedicated design-category/displacement chapter. This is
+materially stronger than a single marketing page, but it remains, in
+substance, an absence-of-mention — no source obtained, including LAG-3,
+contains an affirmative statement that the documented configuration is the
+complete factory-relevant configuration space. Per CLAUDE.md's core
+guardrail ("Missing/unknown is not evidence that a characteristic is
+absent") and the review's explicit standard, this is not sufficient to
+license `configuration_space_complete=True`. The flag is therefore reverted
+to the conservative `False` default — the same treatment already applied to
+Oceanis 30.1 and Bavaria Cruiser 34 in this wave, both of which have
+*explicitly enumerated multiple* named options and are still held to
+`False`, an even stronger evidentiary position than Lagoon 42's single,
+undifferentiated configuration. The admission oracle fixes this exact
+boolean in both directions: a tampered flip to `True` fails admission
+exactly like a tampered flip away from `False` would for Bavaria/Contessa
+(see `tests/unit/test_search_seed_corpus_wave1.py`).
+
+**Q1/Q2/Q10 outcome (corrected):** Lagoon's single configuration is a
+confirmed `FALSE` on Q1 and Q2 (LOA `12.92 m` exceeds both the `8–11 m` and
+`9–12 m` ranges; beam `7.68 m` also exceeds Q2's `3.60 m` maximum), but with
+`configuration_space_complete=False` the unchanged engine cannot license a
+design-level `CONFIRMED_NON_MATCH` from that alone — it yields
+`INSUFFICIENT_DATA` (reason `CONFIGURATION_AMBIGUOUS`), exactly the same
+engine behaviour already documented for the Oceanis 30.1 pilot's Q4/Q8/Q9.
+Q10 remains `CONFIRMED_MATCH` (`1.26 m ≤ 1.60 m`), since an existential match
+never depends on completeness. **This wave therefore has zero genuine
+`CONFIRMED_NON_MATCH` results** — the same situation the Oceanis 30.1 pilot
+already documented as "expected, correct, existing-engine behaviour" for its
+own configuration-incomplete design.
+
+## 6. Exact Wave-1 Q1/Q2/Q10 result distribution (corrected)
 
 Produced by `uv run python scripts/search_seed_corpus_wave1.py`, which runs
 the unchanged locked Q1/Q2/Q10 shapes through the unmodified
@@ -197,14 +251,17 @@ the unchanged locked Q1/Q2/Q10 shapes through the unmodified
 
 | Query | CONFIRMED_MATCH | CONFIRMED_NON_MATCH | INSUFFICIENT_DATA | Evaluable |
 |---|---|---|---|---|
-| Q1 (LOA 8–11 AND Draft≤1.80) | Oceanis 30.1, Bavaria Cruiser 34 | Lagoon 42 | Contessa 32 | 3/4 |
-| Q2 (LOA 9–12 AND Beam≤3.60 AND Draft≤2.00) | Oceanis 30.1, Bavaria Cruiser 34 | Lagoon 42 | Contessa 32 | 3/4 |
+| Q1 (LOA 8–11 AND Draft≤1.80) | Oceanis 30.1, Bavaria Cruiser 34 | — | Contessa 32, Lagoon 42 | **2/4** |
+| Q2 (LOA 9–12 AND Beam≤3.60 AND Draft≤2.00) | Oceanis 30.1, Bavaria Cruiser 34 | — | Contessa 32, Lagoon 42 | **2/4** |
 | Q10 (Draft≤1.60) | Oceanis 30.1, Bavaria Cruiser 34, Lagoon 42 | — | Contessa 32 | 3/4 |
 
-Every query meets the minimum 3/4 evaluability gate exactly. Contessa 32 is
-`INSUFFICIENT_DATA` on all three queries (§4); this is allowed under the
-slice's minimum-utility gate because the other three designs remain fully
-evaluable for every query.
+**Q1 and Q2 now fall below the slice's required 3/4 minimum evaluability
+gate.** Only Q10 meets it. Per SLICE-0039's explicit stop condition
+("meeting the utility gate would require replacing a design, guessing a
+value, weakening UNKNOWN, or widening the slice" → stop and report rather
+than invent a solution), this wave is reported **`BLOCKED`**, not `REVIEW`.
+No design was replaced, no value was guessed, and no alternate route to
+`CONFIRMED_NON_MATCH` was manufactured to avoid this outcome.
 
 **Matching configuration IDs** — every confirmed match identifies its exact
 matching configuration(s), never a design-wide flattened value:
@@ -220,33 +277,36 @@ matching configuration(s), never a design-wide flattened value:
 | Oceanis 30.1 (reused) | 3 (deep-keel, shallow-keel, retractable-keel) | Yes — draft varies by keel |
 | Bavaria Cruiser 34 | 2 (standard-draft, shoal-draft-option) | Yes — draft varies by keel |
 | Contessa 32 | 1 (baseline; one-design class hull) | No known configuration sensitivity within researched evidence |
-| Lagoon 42 | 1 (standard) | No documented configuration sensitivity |
+| Lagoon 42 | 1 (standard) | No documented configuration sensitivity; configuration-space completeness not established (§5) |
 
 ## 8. `FALSE_CONFIRMED_RESULT` assessment
 
-**Zero.** Every `CONFIRMED_MATCH`/`CONFIRMED_NON_MATCH` above is directly
-traceable to a specific, rights-cleared, cited source figure for that exact
-configuration:
+**Zero.** Every `CONFIRMED_MATCH` above is directly traceable to a specific,
+rights-cleared, cited source figure for that exact configuration:
 
 - Bavaria's match traces to BAV-1's "Draught option 1.58 m" row (and design-wide LOA/beam).
-- Lagoon's non-match traces to LAG-1's "Length overall 13.22 m" (and, for Q2, "Beam 7.68 m").
-- Lagoon's Q10 match traces to LAG-1's "Water draft 1.26 m".
+- Lagoon's Q10 match traces to LAG-1/LAG-2/LAG-3's corroborated "1.26 m" draught figure.
 - Every Oceanis result is unchanged from the SLICE-0037 pilot's own assessment.
 
-Contessa 32's `INSUFFICIENT_DATA` result is never converted to a guessed
-match or non-match. `tests/unit/test_search_seed_corpus_wave1.py` includes
-adversarial coverage proving: design identity tampering, confirmed-value
-tampering (including same-threshold-side edits that would not change the
-Search outcome), configuration-ID/scope tampering, evidence-reference
-tampering (including an allowed-but-wrong source substitution), unauthorized
-extra fields, unexpected extra/missing configurations, and
-`configuration_space_complete` tampering in **both directions** (Bavaria/
-Contessa reject a tampered `True`; Lagoon rejects a tampered `False`) all
-fail admission before any of it can reach the Search kernel — including a
-adversarial attempt to inject the well-known but non-authorized Contessa 32
-LOA figure (`9.75` m), which is rejected purely because it is not in the
-independently authorized (empty) fact set for this design, regardless of
-its real-world plausibility.
+This wave produces **zero `CONFIRMED_NON_MATCH` results** (§5/§6) — the
+correction removed the one design that previously produced one (Lagoon),
+because `configuration_space_complete=False` uniformly blocks non-match for
+every design in this wave, exactly as it already did for the Oceanis 30.1
+pilot. Both Contessa 32's and Lagoon's `INSUFFICIENT_DATA` results are never
+converted to a guessed match or non-match. `tests/unit/test_search_seed_corpus_wave1.py`
+includes adversarial coverage proving: design identity tampering,
+confirmed-value tampering (including same-threshold-side edits that would
+not change the Search outcome), configuration-ID/scope tampering,
+evidence-reference tampering (including an allowed-but-wrong source
+substitution), unauthorized extra fields, unexpected extra/missing
+configurations, and `configuration_space_complete` tampering in **both
+directions for every design** (Bavaria/Contessa reject a tampered `True`;
+Lagoon now also rejects a tampered `True`, matching its corrected
+authorized value of `False`) all fail admission before any of it can reach
+the Search kernel — including an adversarial attempt to inject the
+well-known but non-authorized Contessa 32 LOA figure (`9.75` m), which is
+rejected purely because it is not in the independently authorized (empty)
+fact set for this design, regardless of its real-world plausibility.
 
 ## 9. Local owner-test command result
 

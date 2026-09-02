@@ -4,6 +4,7 @@
   "retrieval_ceiling_total": 12,
   "retrieval_ceiling_per_design": 5,
   "note": "Web-search-engine navigation calls (used only to locate candidate official/architect/class-association URLs) are not counted as semantic retrievals, per the same convention established in research/benchmark/waves/sl0037-oceanis-30-1/source_retrieval_log.json. A retrieval that returned zero extractable content (e.g. CON-5's initial direct-download attempt) is still logged for audit transparency but did not by itself add usable evidence; the archived copy of the same document (CON-5b) is what actually supplied content and counts as the same logical surface, not an additional one.",
+  "review_amendment_note": "REVIEW amendment: independent review rejected the original submission's Lagoon 42 `configuration_space_complete=True` (absence of a stated second keel/draft option on LAG-1 alone does not prove the factory-relevant configuration space is exhaustive). LAG-2 and LAG-3 below were added within the remaining per-design cap (Lagoon was at 1/5) specifically to seek stronger authoritative evidence per the review's instruction. Even LAG-3 (the official RCD-2 Owner's Manual, a comprehensive homologation-adjacent technical document) does not contain an affirmative completeness statement, so `configuration_space_complete` is corrected to `False`; see lagoon_42_projection.v1.json's `configuration_space_complete_basis` for the full reasoning. LAG-3 also surfaced a correction to `loa_m` (12.92 m 'standard' L.O.A, not the 13.22 m spinnaker-pole-inclusive figure originally used from LAG-1) -- this does not change any Q1/Q2/Q10 result.",
   "sources": [
     {
       "id": "BAV-1",
@@ -267,12 +268,190 @@
       "used_as_positive_evidence": true,
       "facts_supplied": [
         "Hull length 12.79 m (not used as loa_m -- see projection scope note)",
-        "Length overall 13.22 m (used as loa_m, design-wide)",
-        "Beam 7.68 m (design-wide)",
-        "Water draft 1.26 m (design-wide; no '(opt.)' marker, unlike the same block's genuinely optional sail items)",
+        "Length overall 13.22 m (REVIEW amendment: now understood, per LAG-3, to be the spinnaker-pole-inclusive maximum LOA, not the standard LOA; superseded as the loa_m value by LAG-3's 12.92 m 'standard' figure -- does not change any Q1/Q2/Q10 result)",
+        "Beam 7.68 m (design-wide; corroborated by LAG-2/LAG-3)",
+        "Water draft 1.26 m (design-wide; no '(opt.)' marker, unlike the same block's genuinely optional sail items; corroborated by LAG-2/LAG-3)",
         "Air draft 20.6 m (not used -- not needed by Q1/Q2/Q10)",
         "Light displacement (EEC) 12.1 t (not used -- not needed by Q1/Q2/Q10)",
         "Page explicitly labels this as the 'previous model' relative to the newer 'Lagoon 42 Millennium' -- confirms correct generation/identity scope"
+      ]
+    },
+    {
+      "id": "LAG-2",
+      "design": "lagoon-42",
+      "url": "https://www.lagoon-catamaran.de/en/lagoon-models/lagoon-42-catamaran/technical-specifications.html",
+      "source_class": "official_regional_dealer_technical_specification_page",
+      "domain": "www.lagoon-catamaran.de",
+      "retrieved_at": "2026-09-02",
+      "retrieval_method": "raw HTTP GET (curl) + HTML tag stripping, read directly by the agent",
+      "robots_txt_checked": true,
+      "robots_txt_result": "www.lagoon-catamaran.de/robots.txt allows all paths by default (User-Agent: * / Allow: /) and disallows only /admin/, /typo3/, /typo3_src/, /typo3conf/ and a handful of query-parameter patterns (?id=, cHash, tx_powermail_pi1); the fetched /en/lagoon-models/... path is not disallowed.",
+      "rights": {
+        "assessment_status": "assessed",
+        "rights_basis": "unlicensed_factual_reference",
+        "rights_holder": "Lagoon Katamaran Nord GmbH (authorized regional Lagoon dealer)",
+        "license_expression": null,
+        "license_name": null,
+        "license_url": null,
+        "license_scope": ["unknown"],
+        "access": {
+          "method": "public_web",
+          "public_access": true,
+          "automated_access": "conditional",
+          "terms_url": "https://www.lagoon-catamaran.de/kontakt/impressum.html",
+          "terms_reviewed_at": "2026-09-02",
+          "tdm_reservation": "none_observed",
+          "rate_limit_notes": "One bounded, single-session, non-recurring page retrieval."
+        },
+        "permissions": {
+          "commercial_use": "unknown",
+          "extract_facts": "conditional",
+          "normalize": "conditional",
+          "store_canonical_values": "conditional",
+          "bulk_ingest": "unknown",
+          "automated_extract": "conditional",
+          "redistribute_source_material": "prohibited",
+          "publish_derived_database": "unknown"
+        },
+        "obligations": {
+          "attribution_required": "no",
+          "share_alike": "no",
+          "notice_required": "no",
+          "attribution_instructions": null,
+          "other_conditions": [
+            "Impressum 'Urheberrecht' clause reserves duplication/use of graphics, sounds or texts without express consent; this pilot extracts discrete numeric/technical facts only (SR-6.6 condition 2)."
+          ]
+        },
+        "clearance": {
+          "research_reference": "allowed",
+          "research_lead": "allowed",
+          "identity_seed": "conditional",
+          "production_value": "conditional",
+          "bulk_bootstrap": "unknown",
+          "automated_ingestion": "conditional",
+          "artifact_redistribution": "prohibited"
+        },
+        "rights_evidence": [
+          {
+            "evidence_type": "terms_page",
+            "url": "https://www.lagoon-catamaran.de/kontakt/impressum.html",
+            "document_identifier": null,
+            "accessed_at": "2026-09-02",
+            "sha256": null,
+            "notes": "Lagoon Katamaran Nord GmbH Impressum, including its 'Urheberrecht' (copyright) clause. No clause addresses robots/bots/crawlers/automated access/scraping/text-and-data-mining in either direction."
+          },
+          {
+            "evidence_type": "machine_readable_reservation",
+            "url": "https://www.lagoon-catamaran.de/robots.txt",
+            "document_identifier": null,
+            "accessed_at": "2026-09-02",
+            "sha256": null,
+            "notes": "'Allow: /' with a short admin/typo3/query-parameter disallow list; the fetched path is not disallowed."
+          }
+        ],
+        "review": {
+          "reviewed_at": "2026-09-02",
+          "reviewer": "SLICE-0039 implementation agent (Claude Sonnet 5)",
+          "rationale": "Same bounded-pilot rationale as LAG-1/BAV-1: robots.txt does not disallow the fetched path, no TDM reservation was found, and no explicit bot/automated-access position was stated either way; automated_access is assessed 'conditional', bounded to one non-recurring, low-volume, discrete-fact-only retrieval.",
+          "next_review_at": null
+        }
+      },
+      "used_as_positive_evidence": true,
+      "sr_6_6_disposition": "used_as_corroborating_evidence_only",
+      "facts_supplied": [
+        "Length 13.22 m; Width 7.68 m; Displacement (empty) 12.10 t; Length waterline 12.79 m; Draught 1.26 m -- corroborates LAG-1's figures exactly",
+        "Constructors: VPLP Design (naval architect identity, not previously captured)",
+        "CE certification A:12/B:14/C:20/D:30",
+        "No keel/draft option language present"
+      ]
+    },
+    {
+      "id": "LAG-3",
+      "design": "lagoon-42",
+      "url": "https://www.lagoon-catamaran.de/fileadmin/L42_Benutzerhandbuch_en.pdf",
+      "source_class": "official_rcd_owners_manual",
+      "document_identifier": "189199 RCD-2, Index G, LAGOON 42 OWNER'S MANUAL",
+      "domain": "www.lagoon-catamaran.de",
+      "retrieved_at": "2026-09-02",
+      "retrieval_method": "direct HTTP GET (curl) of the published PDF, converted to text with pdftotext -layout and read directly by the agent",
+      "robots_txt_checked": true,
+      "robots_txt_result": "Same www.lagoon-catamaran.de robots.txt as LAG-2; /fileadmin/ is not disallowed (only /admin/, /typo3/, /typo3_src/, /typo3conf/ and specific query-parameter patterns are).",
+      "rights": {
+        "assessment_status": "assessed",
+        "rights_basis": "unlicensed_factual_reference",
+        "rights_holder": "Lagoon Katamaran Nord GmbH / Groupe Beneteau (Lagoon Catamarans)",
+        "license_expression": null,
+        "license_name": null,
+        "license_url": null,
+        "license_scope": ["unknown"],
+        "access": {
+          "method": "public_web",
+          "public_access": true,
+          "automated_access": "conditional",
+          "terms_url": "https://www.lagoon-catamaran.de/kontakt/impressum.html",
+          "terms_reviewed_at": "2026-09-02",
+          "tdm_reservation": "none_observed",
+          "rate_limit_notes": "One bounded, single-session, non-recurring document retrieval; same domain-wide assessment as LAG-2."
+        },
+        "permissions": {
+          "commercial_use": "unknown",
+          "extract_facts": "conditional",
+          "normalize": "conditional",
+          "store_canonical_values": "conditional",
+          "bulk_ingest": "unknown",
+          "automated_extract": "conditional",
+          "redistribute_source_material": "prohibited",
+          "publish_derived_database": "unknown"
+        },
+        "obligations": {
+          "attribution_required": "no",
+          "share_alike": "no",
+          "notice_required": "no",
+          "attribution_instructions": null,
+          "other_conditions": [
+            "Same Impressum 'Urheberrecht' clause as LAG-2 (same domain/publisher); this pilot extracts discrete numeric/technical facts (dimensions, draught, displacement-by-design-category) only, not reproduction of the manual's illustrations, diagrams or full text."
+          ]
+        },
+        "clearance": {
+          "research_reference": "allowed",
+          "research_lead": "allowed",
+          "identity_seed": "conditional",
+          "production_value": "conditional",
+          "bulk_bootstrap": "unknown",
+          "automated_ingestion": "conditional",
+          "artifact_redistribution": "prohibited"
+        },
+        "rights_evidence": [
+          {
+            "evidence_type": "terms_page",
+            "url": "https://www.lagoon-catamaran.de/kontakt/impressum.html",
+            "document_identifier": null,
+            "accessed_at": "2026-09-02",
+            "sha256": null,
+            "notes": "Same Impressum reviewed for LAG-2; applies domain-wide."
+          },
+          {
+            "evidence_type": "machine_readable_reservation",
+            "url": "https://www.lagoon-catamaran.de/robots.txt",
+            "document_identifier": null,
+            "accessed_at": "2026-09-02",
+            "sha256": null,
+            "notes": "Same robots.txt reviewed for LAG-2; /fileadmin/ is not disallowed."
+          }
+        ],
+        "review": {
+          "reviewed_at": "2026-09-02",
+          "reviewer": "SLICE-0039 implementation agent (Claude Sonnet 5)",
+          "rationale": "Same bounded-pilot rationale as LAG-1/LAG-2: robots.txt does not disallow the fetched path, no TDM reservation was found, and no explicit bot/automated-access position was stated either way; automated_access is assessed 'conditional', bounded to one non-recurring, low-volume, discrete-fact-only retrieval of this one published document.",
+          "next_review_at": null
+        }
+      },
+      "used_as_positive_evidence": true,
+      "sr_6_6_disposition": "used_as_strongest_available_evidence_still_insufficient_for_completeness",
+      "facts_supplied": [
+        "'1.2 GENERAL DIMENSIONS': L.O.A (Lmax) standard 12.92 m; L.O.A (Lmax) with Spinnaker pole 13.22 m; Hull length (Lh) 12.79 m; Overall width (Bmax) 7.68 m; Beam (Bh) 7.68 m; Air draft (empty vessel) 20.60 m; Draught (boat fully laden) 1.26 m",
+        "'2 DESIGN CATEGORIES AND DISPLACEMENT': per-design-category (A/B/C/D) light displacement and maximum-load figures; no second draught/keel configuration named anywhere in this or any other section (electricity, capacities, sails, rigging, safety) of the ~50-page document",
+        "Document explicitly tags other genuinely optional equipment throughout ('Auxiliary switch (option)', 'Fresh water tank - Port/Starboard (option)') while stating exactly one draught figure with no equivalent marker -- the strongest evidence obtained, but still an absence-of-mention, not an affirmative completeness statement (see lagoon_42_projection.v1.json)"
       ]
     }
   ],
@@ -282,13 +461,15 @@
   "disallowed_sources_not_used": [
     "en.wikipedia.org/wiki/Contessa_32 (fetched only to identify the co32.org Class Association as a research lead per its citation list; its infobox LOA/beam/draft figures are NOT used as evidence anywhere in this package)",
     "goodoldboat.com, sailboat.guide, canadianboating.ca, pbo.co.uk, yachtingmonthly.com (surfaced only in search-engine results; never fetched or used as evidence)",
-    "sailboatdata.com (not attempted; historical SailboatData scrape is never a canonical Search-fact source per CLAUDE.md)"
+    "sailboatdata.com (not attempted; historical SailboatData scrape is never a canonical Search-fact source per CLAUDE.md)",
+    "en.wikipedia.org/wiki/Lagoon_42 and en.wikipedia.org/wiki/Lagoon_42-2 (fetched only as REVIEW-amendment leads; the former turned out to describe an unrelated c.1990 Jeanneau/TPI-built Lagoon 42 generation, confirming this wave's LAG-1/2/3 evidence targets the correct, distinct generation -- neither Wikipedia article's own figures are used as evidence)",
+    "rightboat.com/blog/lagoon-42-catamaran-review, itboat.com, samboat.com, katamarans.com, theglobesailor.com, boattrader.com, boats.com (surfaced only in search-engine results/summaries during REVIEW-amendment research, one of which suggested a possible 'shoal/deep keel option' that could not be corroborated by any authoritative source; never used as evidence)"
   ],
   "external_evidence_surface_count": {
     "bavaria-cruiser-34": 1,
     "contessa-32": 5,
-    "lagoon-42": 1,
-    "total": 7
+    "lagoon-42": 3,
+    "total": 9
   },
-  "unclaimed_clearances_explicit_statement": "Across every source used as positive evidence (BAV-1, LAG-1), `clearance.bulk_bootstrap` is 'unknown' and `clearance.automated_ingestion` is 'conditional' scoped narrowly to this one bounded, non-recurring, low-volume, single-pilot-design retrieval. No source's `automated_ingestion` clearance is claimed to extend to a recurring, scheduled, or bulk retrieval pipeline for this or any other BoatDesign."
+  "unclaimed_clearances_explicit_statement": "Across every source used as positive evidence (BAV-1, LAG-1, LAG-2, LAG-3), `clearance.bulk_bootstrap` is 'unknown' and `clearance.automated_ingestion` is 'conditional' scoped narrowly to this one bounded, non-recurring, low-volume, single-pilot-design retrieval. No source's `automated_ingestion` clearance is claimed to extend to a recurring, scheduled, or bulk retrieval pipeline for this or any other BoatDesign."
 }

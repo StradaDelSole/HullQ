@@ -22,7 +22,7 @@ from typing import Any
 import pytest
 
 from hullq.search.configuration_engine import run_configuration_query
-from hullq.search.types import TruthState
+from hullq.search.types import ReasonCode, TruthState
 from scripts.search_seed_corpus_wave1 import (
     BAVARIA_PROJECTION_PATH,
     BAVARIA_SHOAL,
@@ -152,17 +152,28 @@ def test_contessa_insufficient_data_on_all_three_queries() -> None:
         assert config_eval.truth is TruthState.UNKNOWN
 
 
-def test_lagoon_confirmed_non_match_on_q1_and_q2_confirmed_match_on_q10() -> None:
+def test_lagoon_insufficient_data_on_q1_and_q2_confirmed_match_on_q10() -> None:
+    """REVIEW amendment: `configuration_space_complete=False` (corrected from
+    the original submission's unsupported `True`) means Lagoon's single
+    confirmed-FALSE configuration on Q1/Q2 (LOA out of range) cannot license
+    a design-level CONFIRMED_NON_MATCH -- the unchanged engine's own
+    completeness gate forces INSUFFICIENT_DATA/CONFIGURATION_AMBIGUOUS
+    instead, exactly as it already does for Oceanis 30.1's Q4/Q8/Q9. Q10
+    still reaches CONFIRMED_MATCH because a TRUE configuration exists
+    (existential match never needs completeness).
+    """
     queries = {q[0]: q[3] for q in load_wave1_queries()}
     cohort = load_wave1_cohort()
 
     q1_outcome = run_configuration_query(queries["Q1"], cohort)
-    lagoon_q1 = next(e for e in q1_outcome.confirmed_non_matches if e.design_id == LAGOON_DESIGN_ID)
+    lagoon_q1 = next(e for e in q1_outcome.insufficient_data if e.design_id == LAGOON_DESIGN_ID)
     assert lagoon_q1.matching_configuration_ids == ()
+    assert lagoon_q1.reason is ReasonCode.CONFIGURATION_AMBIGUOUS
 
     q2_outcome = run_configuration_query(queries["Q2"], cohort)
-    lagoon_q2 = next(e for e in q2_outcome.confirmed_non_matches if e.design_id == LAGOON_DESIGN_ID)
+    lagoon_q2 = next(e for e in q2_outcome.insufficient_data if e.design_id == LAGOON_DESIGN_ID)
     assert lagoon_q2.matching_configuration_ids == ()
+    assert lagoon_q2.reason is ReasonCode.CONFIGURATION_AMBIGUOUS
 
     q10_outcome = run_configuration_query(queries["Q10"], cohort)
     lagoon_q10 = next(e for e in q10_outcome.confirmed_matches if e.design_id == LAGOON_DESIGN_ID)
@@ -202,16 +213,38 @@ def test_every_confirmed_match_identifies_at_least_one_matching_configuration(
 
 # ---------------------------------------------------------------------------
 # Minimum utility gate — 3/4 evaluability per query
+#
+# REVIEW amendment: correcting Lagoon 42's configuration_space_complete to
+# the evidence-supported False (§ above) removes its Q1/Q2 CONFIRMED_NON_MATCH
+# results, which were the only thing keeping Q1/Q2 at the 3/4 gate. Q1 and
+# Q2 now honestly fall to 2/4 -- below the slice's minimum utility gate --
+# while Q10 remains at 3/4. This is not a defect to be worked around: per
+# SLICE-0039's explicit stop condition, falling below the gate after
+# correcting a truth issue must be reported BLOCKED, not silently patched by
+# manufacturing another route to CONFIRMED_NON_MATCH. These tests record the
+# exact, honest evaluability state rather than asserting a gate the real
+# evidence no longer supports.
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("query_id", list(WAVE1_QUERY_IDS))
-def test_minimum_3_of_4_evaluability_gate(query_id: str) -> None:
+def test_q10_meets_the_minimum_evaluability_gate() -> None:
+    queries = {q[0]: q[3] for q in load_wave1_queries()}
+    cohort = load_wave1_cohort()
+    outcome = run_configuration_query(queries["Q10"], cohort)
+    evaluable = outcome.confirmed_match_count + outcome.confirmed_non_match_count
+    assert evaluable == 3
+
+
+@pytest.mark.parametrize("query_id", ["Q1", "Q2"])
+def test_q1_and_q2_fall_below_the_minimum_evaluability_gate_documenting_the_block(
+    query_id: str,
+) -> None:
     queries = {q[0]: q[3] for q in load_wave1_queries()}
     cohort = load_wave1_cohort()
     outcome = run_configuration_query(queries[query_id], cohort)
     evaluable = outcome.confirmed_match_count + outcome.confirmed_non_match_count
-    assert evaluable >= 3
+    assert evaluable == 2
+    assert evaluable < 3  # below the slice's minimum utility gate -- SLICE-0039 is BLOCKED
 
 
 def test_false_confirmed_result_is_zero_across_the_locked_wave1_suite() -> None:
@@ -227,13 +260,13 @@ def test_false_confirmed_result_is_zero_across_the_locked_wave1_suite() -> None:
         "Q10": {OCEANIS_DESIGN_ID, BAVARIA_DESIGN_ID, LAGOON_DESIGN_ID},
     }
     expected_non_matches = {
-        "Q1": {LAGOON_DESIGN_ID},
-        "Q2": {LAGOON_DESIGN_ID},
+        "Q1": set(),
+        "Q2": set(),
         "Q10": set(),
     }
     expected_insufficient = {
-        "Q1": {CONTESSA_DESIGN_ID},
-        "Q2": {CONTESSA_DESIGN_ID},
+        "Q1": {CONTESSA_DESIGN_ID, LAGOON_DESIGN_ID},
+        "Q2": {CONTESSA_DESIGN_ID, LAGOON_DESIGN_ID},
         "Q10": {CONTESSA_DESIGN_ID},
     }
 
@@ -452,7 +485,11 @@ def test_contessa_configuration_space_complete_forced_true_is_rejected(tmp_path:
 def test_lagoon_legitimate_payload_loads() -> None:
     config_set = load_lagoon_42_configuration_set()
     assert config_set.is_fixture is False
-    assert config_set.configuration_space_complete is True
+    # REVIEW amendment: corrected from the original submission's unsupported
+    # True -- no authoritative evidence obtained (including the official
+    # RCD-2 Owner's Manual) affirmatively proves the factory configuration
+    # space is exhaustive.
+    assert config_set.configuration_space_complete is False
 
 
 def test_lagoon_design_id_tampered_is_rejected(tmp_path: Path) -> None:
@@ -468,8 +505,8 @@ def test_lagoon_loa_value_tampered_to_still_out_of_range_number_is_rejected(
     tmp_path: Path,
 ) -> None:
     """13.50 is still outside the Q1/Q2 LOA ranges (same Search result as
-    13.22), but the independent oracle must reject any value mismatch
-    regardless of whether it would change the outcome.
+    the authorized 12.92), but the independent oracle must reject any value
+    mismatch regardless of whether it would change the outcome.
     """
     payload = _payload(LAGOON_PROJECTION_PATH)
     _configuration(payload, LAGOON_STANDARD)["numeric_fields"]["loa_m"]["value"] = 13.50
@@ -479,13 +516,16 @@ def test_lagoon_loa_value_tampered_to_still_out_of_range_number_is_rejected(
         load_lagoon_42_configuration_set(path=tampered)
 
 
-def test_lagoon_configuration_space_complete_forced_false_is_rejected(tmp_path: Path) -> None:
-    """The independent oracle fixes this design's completeness determination
-    in both directions -- a tampered downgrade to False must fail admission
-    exactly like a tampered upgrade would for the other two designs.
+def test_lagoon_configuration_space_complete_forced_true_is_rejected(tmp_path: Path) -> None:
+    """REVIEW amendment: the independently authorized value is now False (no
+    sufficient evidence of configuration-space exhaustiveness was found even
+    after extending research to the official RCD-2 Owner's Manual). The
+    oracle fixes this determination in both directions -- a tampered
+    upgrade to True must fail admission exactly like a tampered downgrade
+    would for Bavaria/Contessa.
     """
     payload = _payload(LAGOON_PROJECTION_PATH)
-    payload["configuration_space_complete"] = False
+    payload["configuration_space_complete"] = True
     tampered = tmp_path / "tampered.json"
     tampered.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(SeedCorpusProjectionAdmissionError, match="configuration_space_complete"):
@@ -551,7 +591,7 @@ def test_no_sailboatdata_scrape_or_reference_aggregator_used_as_evidence() -> No
             assert "wikipedia.org" not in source["url"]
 
 
-@pytest.mark.parametrize("source_id", ["BAV-1", "LAG-1"])
+@pytest.mark.parametrize("source_id", ["BAV-1", "LAG-1", "LAG-2", "LAG-3"])
 def test_positive_evidence_sources_record_honest_automated_access_disposition(
     source_id: str,
 ) -> None:
@@ -559,3 +599,19 @@ def test_positive_evidence_sources_record_honest_automated_access_disposition(
     assert source["used_as_positive_evidence"] is True
     assert source["rights"]["access"]["automated_access"] == "conditional"
     assert source["rights"]["clearance"]["bulk_bootstrap"] != "allowed"
+
+
+def test_lagoon_completeness_evidence_is_recorded_as_insufficient_not_silently_dropped() -> None:
+    """REVIEW amendment audit: LAG-3 (the strongest evidence obtained) must
+    be present and its own facts_supplied text must not claim it proves
+    configuration-space completeness -- it should record the honest
+    'still insufficient' disposition.
+    """
+    log = _retrieval_log()
+    lag3 = next(s for s in log["sources"] if s["id"] == "LAG-3")
+    assert lag3["used_as_positive_evidence"] is True
+    assert "insufficient" in lag3["sr_6_6_disposition"]
+    assert log["external_evidence_surface_count"]["lagoon-42"] == 3
+    assert (
+        log["external_evidence_surface_count"]["lagoon-42"] <= log["retrieval_ceiling_per_design"]
+    )
