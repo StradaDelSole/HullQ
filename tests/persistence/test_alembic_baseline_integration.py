@@ -14,12 +14,14 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Generator
+from pathlib import Path
 from urllib.parse import quote, urlsplit, urlunsplit
 
 import psycopg
 import pytest
 from psycopg.types.json import Jsonb
 
+import hullq.persistence.migrations as migrations_mod
 from hullq.persistence.alembic_baseline import (
     ALEMBIC_VERSION_TABLE,
     BASELINE_REVISION,
@@ -115,6 +117,65 @@ def test_fresh_database_bootstraps_and_stamps(scenario_url: str) -> None:
     finally:
         conn.close()
     assert applied == REQUIRED_LEGACY_MIGRATION_IDS
+
+
+def _table_names(url: str) -> set[str]:
+    conn = psycopg.connect(url)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT table_name FROM information_schema.tables "
+                "WHERE table_schema = current_schema()"
+            )
+            return {row[0] for row in cur.fetchall()}
+    finally:
+        conn.close()
+
+
+def test_pre_existing_non_fingerprint_table_blocks_fresh_bootstrap(scenario_url: str) -> None:
+    """A HullQ table outside REPRESENTATIVE_LEGACY_TABLES (e.g. canonical_brands)
+    must still prevent the database from being misclassified as genuinely
+    empty — otherwise apply_migrations() could commit 001 before failing on
+    002's pre-existing table, leaving a partially-migrated database."""
+    conn = psycopg.connect(scenario_url)
+    try:
+        with conn.cursor() as cur:
+            cur.execute("CREATE TABLE canonical_brands (id TEXT PRIMARY KEY)")
+        conn.commit()
+    finally:
+        conn.close()
+
+    result = prepare_alembic_baseline(scenario_url)
+
+    assert result.outcome is BaselineOutcome.REJECTED_UNSAFE_STATE
+    assert result.reason is not None
+    assert read_alembic_version(scenario_url) is None
+    # No legacy/tracking tables were added as a side effect of the rejected attempt.
+    assert _table_names(scenario_url) == {"canonical_brands"}
+
+
+def test_fresh_bootstrap_is_blocked_by_frozen_legacy_guard(
+    scenario_url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The actual preparation path (not just the isolated guard function)
+    must refuse to run the legacy bootstrap when a post-002 legacy SQL
+    migration file is present, and must do so before any database mutation."""
+    for stem in sorted(REQUIRED_LEGACY_MIGRATION_IDS):
+        (tmp_path / f"{stem}.sql").write_text(
+            (MIGRATIONS_DIR / f"{stem}.sql").read_text(encoding="utf-8"), encoding="utf-8"
+        )
+    (tmp_path / "003_unexpected.sql").write_text(
+        "-- would-be post-baseline marketplace DDL", encoding="utf-8"
+    )
+    monkeypatch.setattr(migrations_mod, "MIGRATIONS_DIR", tmp_path)
+
+    result = prepare_alembic_baseline(scenario_url)
+
+    assert result.outcome is BaselineOutcome.REJECTED_UNSAFE_STATE
+    assert result.reason is not None and "003_unexpected" in result.reason
+    assert read_alembic_version(scenario_url) is None
+    # The legacy runner must never have been invoked: no tables at all.
+    assert _table_names(scenario_url) == set()
 
 
 def test_existing_legacy_database_verified_and_data_preserved(scenario_url: str) -> None:

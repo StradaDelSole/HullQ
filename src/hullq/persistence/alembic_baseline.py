@@ -16,6 +16,7 @@ supplied by the caller (mirroring ``hullq.persistence.connection``).
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -105,6 +106,47 @@ def _existing_table_names(conn: Any, candidates: set[str]) -> set[str]:
             [list(candidates)],
         )
         return {row[0] for row in cur.fetchall()}
+
+
+_CREATE_TABLE_PATTERN = re.compile(r"CREATE TABLE\s+(\w+)", re.IGNORECASE)
+
+
+def _all_legacy_table_names(directory: Path | None = None) -> set[str]:
+    """Every table name the accepted legacy 001+002 SQL migrations create.
+
+    Parsed directly from the immutable historical SQL files themselves —
+    never hand-duplicated — so this can never silently drift from what
+    001/002 actually create. Used only to decide whether a database is
+    genuinely empty (REPRESENTATIVE_LEGACY_TABLES is deliberately a smaller
+    fingerprint used only to verify an *already-legacy* database, per the
+    SLICE-0042 "not a full semantic reconstruction" boundary).
+    """
+    from hullq.persistence.migrations import MIGRATIONS_DIR
+
+    resolved = directory if directory is not None else MIGRATIONS_DIR
+    names: set[str] = set()
+    for migration_id in REQUIRED_LEGACY_MIGRATION_IDS:
+        text = (resolved / f"{migration_id}.sql").read_text(encoding="utf-8")
+        names.update(match.group(1) for match in _CREATE_TABLE_PATTERN.finditer(text))
+    return names
+
+
+def _any_legacy_table_present(conn: Any) -> bool:
+    """True if any table 001/002 would create already exists in the schema.
+
+    Used only to gate the "genuinely empty" fresh-bootstrap path: a
+    pre-existing HullQ/application relation that happens to fall outside the
+    REPRESENTATIVE_LEGACY_TABLES fingerprint (e.g. ``canonical_brands``)
+    must still block treating the database as empty.
+    """
+    all_names = _all_legacy_table_names()
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT 1 FROM information_schema.tables "
+            "WHERE table_schema = current_schema() AND table_name = ANY(%s) LIMIT 1",
+            [list(all_names)],
+        )
+        return cur.fetchone() is not None
 
 
 def _applied_legacy_migration_ids(conn: Any) -> set[str] | None:
@@ -211,7 +253,7 @@ def _prepare(conn: Any, database_url: str) -> BaselineResult:
     if alembic_rows is not None:
         return _prepare_already_stamped(alembic_rows, legacy_ids, present_tables)
 
-    if legacy_ids is None and not present_tables:
+    if legacy_ids is None and not _any_legacy_table_present(conn):
         return _prepare_fresh(conn, database_url)
 
     if (
@@ -254,6 +296,14 @@ def _prepare_already_stamped(
 
 
 def _prepare_fresh(conn: Any, database_url: str) -> BaselineResult:
+    # Fresh bootstrap must be mechanically bounded to legacy 001+002 only:
+    # fail closed *before* the legacy runner can apply anything if a post-002
+    # legacy SQL migration file has appeared.
+    try:
+        guard_no_post_002_legacy_migrations()
+    except UnexpectedLegacyMigrationError as exc:
+        return BaselineResult(BaselineOutcome.REJECTED_UNSAFE_STATE, str(exc))
+
     apply_migrations(conn)
     legacy_ids = _applied_legacy_migration_ids(conn)
     present_tables = _existing_table_names(conn, REPRESENTATIVE_LEGACY_TABLES)
