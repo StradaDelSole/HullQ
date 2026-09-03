@@ -27,7 +27,6 @@ from hullq.persistence.alembic_baseline import (
     BASELINE_REVISION,
     REQUIRED_LEGACY_MIGRATION_IDS,
     BaselineOutcome,
-    alembic_heads,
     alembic_upgrade_head,
     prepare_alembic_baseline,
     read_alembic_version,
@@ -324,11 +323,20 @@ def test_alembic_current_reports_expected_baseline_after_adoption(scenario_url: 
     result = prepare_alembic_baseline(scenario_url)
     assert result.outcome is BaselineOutcome.FRESH_BOOTSTRAPPED_AND_STAMPED
 
+    # prepare_alembic_baseline() stamps to the baseline only — it does not
+    # run `alembic upgrade head` — so the stamped revision is expected to
+    # differ from the script directory's current head once later revisions
+    # (e.g. SLICE-0043's native_listing_persistence) exist on top of it.
     assert read_alembic_version(scenario_url) == BASELINE_REVISION
-    assert alembic_heads(scenario_url) == [BASELINE_REVISION]
 
 
-def test_alembic_upgrade_head_is_schema_and_data_neutral(scenario_url: str) -> None:
+def test_alembic_upgrade_head_from_baseline_adds_only_the_authorized_native_listings_table(
+    scenario_url: str,
+) -> None:
+    """SLICE-0042's baseline revision itself remains schema-neutral, but
+    `alembic upgrade head` from that baseline now also applies SLICE-0043's
+    native_listing_persistence revision — which is expected to add exactly
+    the one authorized `native_listings` table and nothing else."""
     result = prepare_alembic_baseline(scenario_url)
     assert result.outcome is BaselineOutcome.FRESH_BOOTSTRAPPED_AND_STAMPED
 
@@ -339,7 +347,7 @@ def test_alembic_upgrade_head_is_schema_and_data_neutral(scenario_url: str) -> N
                 "SELECT table_name FROM information_schema.tables "
                 "WHERE table_schema = current_schema() ORDER BY table_name"
             )
-            before = [row[0] for row in cur.fetchall()]
+            before = {row[0] for row in cur.fetchall()}
     finally:
         conn.close()
 
@@ -352,9 +360,9 @@ def test_alembic_upgrade_head_is_schema_and_data_neutral(scenario_url: str) -> N
                 "SELECT table_name FROM information_schema.tables "
                 "WHERE table_schema = current_schema() ORDER BY table_name"
             )
-            after = [row[0] for row in cur.fetchall()]
+            after = {row[0] for row in cur.fetchall()}
     finally:
         conn.close()
 
-    assert after == before
-    assert read_alembic_version(scenario_url) == BASELINE_REVISION
+    assert after - before == {"native_listings"}
+    assert read_alembic_version(scenario_url) != BASELINE_REVISION

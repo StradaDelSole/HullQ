@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0043  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** Native Marketplace Foundation — first durable professional NativeListing  
 **Depends on:** SLICE-0040 owner-accepted / DONE; SLICE-0041 owner-accepted / DONE; SLICE-0042 owner-accepted / DONE; 2026-09-02 Architecture Rebaseline accepted/merged  
 **Blocks:** later physical/listing fact contract, broker listing workspace, public broker/profile surfaces, listing read/search, lifecycle/freshness, media, scalable intake
@@ -663,30 +663,30 @@ Do not modify legacy `src/hullq/persistence/sql/001_initial_schema.sql`, `002_ca
 
 ## Acceptance criteria
 
-- [ ] Product execution checks remain `PASS` with no scope widening.
-- [ ] Compact normative NativeListing persistence contract exists and matches implementation/tests.
-- [ ] One post-baseline Alembic revision adds only the minimal NativeListing persistence table needed by this capability.
-- [ ] The revision descends from the accepted SLICE-0042 Alembic baseline/head and no post-002 legacy SQL migration is added.
-- [ ] Legacy 001/002 artifacts remain unchanged.
-- [ ] Creation uses the accepted SLICE-0040 NativeListing identity model and does not create a competing listing identity type.
-- [ ] Publishing Organization and creator Account persisted IDs are derived from the exact authorization context, not independently trusted request fields.
-- [ ] Real SLICE-0041 publishing eligibility is evaluated before any NativeListing DB write.
-- [ ] Eligible professional PUBLISHER can create one durable NativeListing.
-- [ ] Every tested denied eligibility path writes zero NativeListing rows and preserves deterministic denial reason.
-- [ ] Cross-Organization authorization fails closed and writes zero rows.
-- [ ] Unresolved NativeListing can be persisted/read back without inventing MarketEpisode/PhysicalBoat identity.
-- [ ] Explicit typed MarketEpisodeId can be preserved without automatic identity resolution or false FK semantics.
-- [ ] Optional broker listing reference is preserved but is not treated as HullQ identity/dedup authority.
-- [ ] `created_at` is durable creation metadata, database-generated/non-client-trusted and stable on idempotent retry.
-- [ ] Identical repeat creation is idempotent and produces exactly one row.
-- [ ] Same NativeListingId with a different immutable creation envelope fails closed as CONFLICT-equivalent and never overwrites the original row.
-- [ ] Persistence is transactionally coherent and race-safe at the SQL identity boundary.
-- [ ] Exact readback preserves runtime-distinct NativeListingId, MarketEpisodeId where present, MarketplaceOrganizationId and AccountId types.
-- [ ] No complete yacht/listing field catalog is invented.
-- [ ] No BoatDesign/configuration facts are projected into physical/listing truth.
-- [ ] No lifecycle/freshness/publication/media/lead/referral/API/UI/actor-persistence scope is introduced.
-- [ ] Owner command executes real PostgreSQL 18 + Alembic + authorization + persistence/readback and reports `NATIVE LISTING RESULT: PASS` only when all required scenarios pass.
-- [ ] Repository validation, ruff, mypy and full test suite pass; project coverage remains >=90%.
+- [x] Product execution checks remain `PASS` with no scope widening.
+- [x] Compact normative NativeListing persistence contract exists and matches implementation/tests.
+- [x] One post-baseline Alembic revision adds only the minimal NativeListing persistence table needed by this capability.
+- [x] The revision descends from the accepted SLICE-0042 Alembic baseline/head and no post-002 legacy SQL migration is added.
+- [x] Legacy 001/002 artifacts remain unchanged.
+- [x] Creation uses the accepted SLICE-0040 NativeListing identity model and does not create a competing listing identity type.
+- [x] Publishing Organization and creator Account persisted IDs are derived from the exact authorization context, not independently trusted request fields.
+- [x] Real SLICE-0041 publishing eligibility is evaluated before any NativeListing DB write.
+- [x] Eligible professional PUBLISHER can create one durable NativeListing.
+- [x] Every tested denied eligibility path writes zero NativeListing rows and preserves deterministic denial reason.
+- [x] Cross-Organization authorization fails closed and writes zero rows.
+- [x] Unresolved NativeListing can be persisted/read back without inventing MarketEpisode/PhysicalBoat identity.
+- [x] Explicit typed MarketEpisodeId can be preserved without automatic identity resolution or false FK semantics.
+- [x] Optional broker listing reference is preserved but is not treated as HullQ identity/dedup authority.
+- [x] `created_at` is durable creation metadata, database-generated/non-client-trusted and stable on idempotent retry.
+- [x] Identical repeat creation is idempotent and produces exactly one row.
+- [x] Same NativeListingId with a different immutable creation envelope fails closed as CONFLICT-equivalent and never overwrites the original row.
+- [x] Persistence is transactionally coherent and race-safe at the SQL identity boundary.
+- [x] Exact readback preserves runtime-distinct NativeListingId, MarketEpisodeId where present, MarketplaceOrganizationId and AccountId types.
+- [x] No complete yacht/listing field catalog is invented.
+- [x] No BoatDesign/configuration facts are projected into physical/listing truth.
+- [x] No lifecycle/freshness/publication/media/lead/referral/API/UI/actor-persistence scope is introduced.
+- [x] Owner command executes real PostgreSQL 18 + Alembic + authorization + persistence/readback and reports `NATIVE LISTING RESULT: PASS` only when all required scenarios pass.
+- [x] Repository validation, ruff, mypy and full test suite pass; project coverage remains >=90%.
 - [ ] Exact-head CI, including PostgreSQL 18 integration, and Manufacturer artifact reproducibility are green before review acceptance where applicable.
 - [ ] No SLICE-0044 or later work starts automatically.
 
