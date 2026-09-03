@@ -17,6 +17,7 @@ from urllib.parse import quote, urlsplit, urlunsplit
 import psycopg
 import pytest
 from psycopg.errors import CheckViolation
+from psycopg.pq import TransactionStatus
 
 from hullq.domain.market_identity import MarketEpisodeId, NativeListing, NativeListingId
 from hullq.domain.publishing_eligibility import (
@@ -34,6 +35,7 @@ from hullq.domain.publishing_eligibility import (
 from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
 from hullq.persistence.native_listing import (
     NativeListingCreationStatus,
+    NativeListingTransactionOwnershipError,
     create_native_listing,
     fetch_native_listing,
 )
@@ -404,6 +406,106 @@ def test_broker_listing_reference_round_trips_exactly(listing_conn: Any) -> None
 
 
 # ---------------------------------------------------------------------------
+# Transaction ownership — CREATED must always mean durably committed
+# ---------------------------------------------------------------------------
+
+
+def test_create_on_a_connection_with_an_open_implicit_transaction_fails_closed(
+    listing_conn: Any, listing_url: str
+) -> None:
+    """Regression test for a material transaction-ownership defect found on
+    independent exact-head review.
+
+    If the supplied connection already has an open transaction (here: opened
+    implicitly by a prior readback SELECT, without an explicit commit/
+    rollback), psycopg's ``conn.transaction()`` degrades to a nested
+    SAVEPOINT rather than an independently committed top-level transaction.
+    Proceeding to write under that condition could return CREATED for a row
+    that is only durable once the caller's own pre-existing transaction is
+    later committed — silently breaking the durable-creation guarantee if
+    the connection is closed without that caller commit.
+
+    create_native_listing() must instead fail closed before attempting any
+    write, and must not have written or committed a row as a side effect of
+    that failure.
+    """
+    account = _account("ACC-TXN1")
+    org = _org("ORG-TXN1")
+    membership = _membership("OM-TXN1", account, org, frozenset({MembershipRole.PUBLISHER}))
+    listing_id = NativeListingId("NL-TXN-001")
+
+    # Step 1: open an implicit transaction on listing_conn via a readback,
+    # exactly as a caller composing "check, then create" on one connection
+    # would naturally do.
+    pre_existing = fetch_native_listing(listing_conn, listing_id)
+    assert pre_existing is None
+    assert listing_conn.info.transaction_status != TransactionStatus.IDLE
+
+    # Step 2: attempt creation on that same, still-open-transaction connection.
+    with pytest.raises(NativeListingTransactionOwnershipError):
+        create_native_listing(
+            listing_conn,
+            account_id=account,
+            candidate_organization=org,
+            membership=membership,
+            listing=_listing("NL-TXN-001"),
+        )
+
+    # Step 3: prove the safe behavior deterministically — no row was written
+    # (whether or not the caller's still-open transaction is ever committed),
+    # and the connection remains usable afterwards.
+    listing_conn.rollback()
+    assert _row_count(listing_conn, "NL-TXN-001") == 0
+
+    verify = psycopg.connect(listing_url)
+    try:
+        assert fetch_native_listing(verify, listing_id) is None
+    finally:
+        verify.close()
+
+
+def test_created_result_is_immediately_durable_from_a_separate_connection(
+    listing_url: str,
+) -> None:
+    """The normal IDLE-connection path: create_native_listing() must own and
+    commit its own top-level transaction, so a CREATED result is already
+    durably visible from a completely separate, freshly opened connection —
+    with no explicit commit() call by the original caller at all, and even
+    if the original connection is closed immediately afterwards."""
+    account = _account("ACC-TXN2")
+    org = _org("ORG-TXN2")
+    membership = _membership("OM-TXN2", account, org, frozenset({MembershipRole.PUBLISHER}))
+    listing = _listing("NL-TXN-002", market_episode_id="ME-TXN-002")
+
+    writer_conn = psycopg.connect(listing_url)
+    try:
+        assert writer_conn.info.transaction_status == TransactionStatus.IDLE
+        result = create_native_listing(
+            writer_conn,
+            account_id=account,
+            candidate_organization=org,
+            membership=membership,
+            listing=listing,
+            broker_listing_reference="BROKER-REF-TXN2",
+        )
+        assert result.status is NativeListingCreationStatus.CREATED
+        # No writer_conn.commit() call here — durability must not depend on it.
+    finally:
+        writer_conn.close()
+
+    reader_conn = psycopg.connect(listing_url)
+    try:
+        record = fetch_native_listing(reader_conn, listing.id)
+    finally:
+        reader_conn.close()
+
+    assert record is not None
+    assert record.publishing_organization_id == org.id
+    assert record.created_by_account_id == account
+    assert record.broker_listing_reference == "BROKER-REF-TXN2"
+
+
+# ---------------------------------------------------------------------------
 # Idempotency
 # ---------------------------------------------------------------------------
 
@@ -425,6 +527,10 @@ def test_identical_retry_is_idempotent_and_preserves_created_at(listing_conn: An
     assert first.status is NativeListingCreationStatus.CREATED
     first_record = fetch_native_listing(listing_conn, listing.id)
     assert first_record is not None
+    # The SELECT above opened an implicit transaction on listing_conn; end it
+    # so the next create_native_listing() call can own its own top-level
+    # transaction again (see NativeListingTransactionOwnershipError).
+    listing_conn.commit()
 
     second = create_native_listing(
         listing_conn,
@@ -464,6 +570,7 @@ def test_same_id_different_broker_reference_conflicts(listing_conn: Any) -> None
     )
     original = fetch_native_listing(listing_conn, listing.id)
     assert original is not None
+    listing_conn.commit()  # end the SELECT's implicit transaction before the next create
 
     conflict = create_native_listing(
         listing_conn,
@@ -495,6 +602,7 @@ def test_same_id_different_market_episode_conflicts(listing_conn: Any) -> None:
     )
     original = fetch_native_listing(listing_conn, NativeListingId("NL-CONF-002"))
     assert original is not None
+    listing_conn.commit()  # end the SELECT's implicit transaction before the next create
 
     conflict = create_native_listing(
         listing_conn,
@@ -530,6 +638,7 @@ def test_same_id_under_another_organization_conflicts_rather_than_overwriting(
     original = fetch_native_listing(listing_conn, listing.id)
     assert original is not None
     assert original.publishing_organization_id == org_a.id
+    listing_conn.commit()  # end the SELECT's implicit transaction before the next create
 
     conflict = create_native_listing(
         listing_conn,
@@ -566,6 +675,7 @@ def test_same_id_by_another_account_conflicts_rather_than_overwriting_provenance
     original = fetch_native_listing(listing_conn, listing.id)
     assert original is not None
     assert original.created_by_account_id == account_a
+    listing_conn.commit()  # end the SELECT's implicit transaction before the next create
 
     conflict = create_native_listing(
         listing_conn,

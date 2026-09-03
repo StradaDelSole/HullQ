@@ -38,9 +38,32 @@ __all__ = [
     "NativeListingCreationResult",
     "NativeListingCreationStatus",
     "NativeListingRecord",
+    "NativeListingTransactionOwnershipError",
     "create_native_listing",
     "fetch_native_listing",
 ]
+
+
+class NativeListingTransactionOwnershipError(RuntimeError):
+    """create_native_listing cannot safely own a top-level transaction on *conn*.
+
+    Durable creation requires create_native_listing to open and commit its
+    own top-level PostgreSQL transaction, so that a CREATED result always
+    means the row is already durably committed. psycopg's
+    ``conn.transaction()`` only behaves this way when *conn* is IDLE
+    (no transaction already open): if the caller already ran a statement on
+    the same connection (for example ``fetch_native_listing()``) without
+    committing or rolling back, ``conn.transaction()`` silently degrades to
+    a nested SAVEPOINT that is released, not committed, on exit — the new
+    row would then remain durable only if and when the *caller's*
+    pre-existing transaction is later committed, quietly breaking the
+    "CREATED implies durably committed" guarantee.
+
+    Rather than committing that unrelated pre-existing work on the caller's
+    behalf, this fails closed before any write is attempted. Pass a
+    connection with no open transaction: call ``conn.commit()`` /
+    ``conn.rollback()`` first, or use a freshly opened connection.
+    """
 
 
 _INSERT_NATIVE_LISTING = """
@@ -144,6 +167,10 @@ def create_native_listing(
     original row untouched. Same NativeListingId + a different immutable
     envelope (publishing Organization, creator Account, MarketEpisode link or
     broker reference) -> CONFLICT, and the original row is never overwritten.
+
+    Raises NativeListingTransactionOwnershipError, before any write is
+    attempted, if *conn* already has an open transaction: proceeding would
+    risk returning CREATED for a row that is not actually durably committed.
     """
     if not isinstance(listing, NativeListing):
         raise TypeError(f"listing must be a NativeListing, got {type(listing).__name__}")
@@ -156,6 +183,17 @@ def create_native_listing(
         assert decision.reason is not None
         return NativeListingCreationResult(
             status=NativeListingCreationStatus.DENIED, denial_reason=decision.reason
+        )
+
+    from psycopg.pq import TransactionStatus  # deferred: no module-level psycopg dependency
+
+    if conn.info.transaction_status != TransactionStatus.IDLE:
+        raise NativeListingTransactionOwnershipError(
+            "conn already has an open transaction (transaction_status="
+            f"{conn.info.transaction_status!r}); create_native_listing() requires an "
+            "IDLE connection so it can safely own and commit its own top-level "
+            "transaction. Call conn.commit()/conn.rollback() first, or pass a freshly "
+            "opened connection."
         )
 
     market_episode_id = listing.market_episode_id.value if listing.market_episode_id else None

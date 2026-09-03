@@ -29,6 +29,7 @@ from hullq.domain.publishing_eligibility import (
 from hullq.persistence.native_listing import (
     NativeListingCreationResult,
     NativeListingCreationStatus,
+    NativeListingTransactionOwnershipError,
     create_native_listing,
     fetch_native_listing,
 )
@@ -42,6 +43,19 @@ class _ConnectionMustNotBeTouched:
 
     def transaction(self, *args: Any, **kwargs: Any) -> Any:
         raise AssertionError("connection.transaction() must not be called")
+
+
+class _FakeConnectionInfo:
+    def __init__(self, transaction_status: Any) -> None:
+        self.transaction_status = transaction_status
+
+
+class _NonIdleConnection(_ConnectionMustNotBeTouched):
+    """Reports a non-IDLE transaction_status; still fails if cursor()/
+    transaction() is ever reached, proving the ownership check runs first."""
+
+    def __init__(self, transaction_status: Any) -> None:
+        self.info = _FakeConnectionInfo(transaction_status)
 
 
 def _account(value: str = "ACC-1") -> AccountId:
@@ -268,3 +282,60 @@ def test_organization_side_gate_denies_without_touching_the_connection(
 
     assert result.status is NativeListingCreationStatus.DENIED
     assert result.denial_reason is expected_reason
+
+
+# ---------------------------------------------------------------------------
+# Transaction ownership: an ALLOWED decision must still refuse to write
+# unless it can safely own and commit its own top-level transaction.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "non_idle_status",
+    ["ACTIVE", "INTRANS", "INERROR"],
+)
+def test_allowed_creation_rejects_a_non_idle_connection_before_any_write(
+    non_idle_status: str,
+) -> None:
+    """If *conn* already has an open transaction, psycopg's conn.transaction()
+    degrades to a nested SAVEPOINT rather than an independently committed
+    top-level transaction, so a CREATED result could be returned for a row
+    that is not actually durable. create_native_listing must fail closed
+    before touching cursor()/transaction() at all — proven here by the fact
+    that _NonIdleConnection raises AssertionError if either is reached."""
+    from psycopg.pq import TransactionStatus
+
+    account = _account("ACC-1")
+    org = _org("ORG-A")
+    membership = _publisher_membership(account, org)
+    conn = _NonIdleConnection(TransactionStatus[non_idle_status])
+
+    with pytest.raises(NativeListingTransactionOwnershipError):
+        create_native_listing(
+            conn,
+            account_id=account,
+            candidate_organization=org,
+            membership=membership,
+            listing=_listing(),
+        )
+
+
+def test_allowed_creation_accepts_an_idle_connection_marker() -> None:
+    """Sanity check that IDLE is the only status the ownership guard accepts
+    -- reaching the real cursor()/transaction() calls (which
+    _ConnectionMustNotBeTouched forbids) proves the guard let it through."""
+    from psycopg.pq import TransactionStatus
+
+    account = _account("ACC-1")
+    org = _org("ORG-A")
+    membership = _publisher_membership(account, org)
+    conn = _NonIdleConnection(TransactionStatus.IDLE)
+
+    with pytest.raises(AssertionError, match="transaction"):
+        create_native_listing(
+            conn,
+            account_id=account,
+            candidate_organization=org,
+            membership=membership,
+            listing=_listing(),
+        )

@@ -4,7 +4,8 @@ Executes real PostgreSQL/Alembic behavior to demonstrate the durable
 NativeListing creation capability required by SLICE-0043: authorized
 creation, exact typed readback, idempotent retry, fail-closed conflict on a
 reused NativeListingId with a changed envelope, denied/cross-Organization
-creation writing zero rows, and the absence of any BoatDesign-fact
+creation writing zero rows, the transaction-ownership guarantee behind
+"CREATED implies durably committed", and the absence of any BoatDesign-fact
 projection or listing lifecycle/publication state.
 
 Run: uv run python scripts/inspect_native_listing_persistence.py
@@ -24,6 +25,7 @@ import uuid
 from urllib.parse import quote, urlsplit, urlunsplit
 
 import psycopg
+from psycopg.pq import TransactionStatus
 
 from hullq.domain.market_identity import NativeListing, NativeListingId
 from hullq.domain.publishing_eligibility import (
@@ -42,6 +44,7 @@ from hullq.persistence.connection import HULLQ_TEST_DATABASE_URL_ENV
 from hullq.persistence.native_listing import (
     NativeListingCreationStatus,
     NativeListingRecord,
+    NativeListingTransactionOwnershipError,
     create_native_listing,
     fetch_native_listing,
 )
@@ -125,6 +128,99 @@ def _actual_columns(conn: psycopg.Connection) -> set[str]:
         return {row[0] for row in cur.fetchall()}
 
 
+def _transaction_ownership_scenario(url: str) -> bool:
+    """Demonstrates the "CREATED implies durably committed" guarantee.
+
+    Two sub-checks, both against real PostgreSQL connections:
+
+    1. A connection that already has an open transaction (opened here by an
+       ordinary readback SELECT, exactly as a caller composing "check, then
+       create" on one connection would do) must be rejected before any write
+       is attempted — rather than silently returning CREATED for a row that
+       is only durable once the caller's own pre-existing transaction is
+       later committed.
+    2. On a normal IDLE connection, a CREATED result must already be durably
+       visible from a completely separate, freshly opened connection, with
+       no explicit commit() call by the original caller at all.
+    """
+    account = AccountId("ACCOUNT-TXN")
+    org = MarketplaceOrganization(
+        id=MarketplaceOrganizationId("ORG-TXN"),
+        professional_category=ProfessionalCategory.BROKER,
+        publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+    )
+    membership = OrganizationMembership(
+        id=OrganizationMembershipId("OM-TXN"),
+        account_id=account,
+        organization_id=org.id,
+        roles=frozenset({MembershipRole.PUBLISHER}),
+        state=MembershipState.ACTIVE,
+    )
+
+    # -- 1. non-IDLE connection must fail closed before any write ----------
+    non_idle_conn = psycopg.connect(url)
+    try:
+        rejected_listing_id = "NL-0043-TXN-REJECTED"
+        fetch_native_listing(non_idle_conn, NativeListingId(rejected_listing_id))
+        opened_implicit_txn = non_idle_conn.info.transaction_status != TransactionStatus.IDLE
+
+        rejected = False
+        try:
+            create_native_listing(
+                non_idle_conn,
+                account_id=account,
+                candidate_organization=org,
+                membership=membership,
+                listing=NativeListing(id=NativeListingId(rejected_listing_id)),
+            )
+        except NativeListingTransactionOwnershipError:
+            rejected = True
+        non_idle_conn.rollback()
+        rows_written = _row_count(non_idle_conn, rejected_listing_id)
+    finally:
+        non_idle_conn.close()
+
+    fail_closed_ok = opened_implicit_txn and rejected and rows_written == 0
+    print(
+        "implicit-transaction connection create -> "
+        f"{'REJECTED' if rejected else 'NOT REJECTED (unsafe)'}"
+    )
+    print(f"rows written by rejected attempt        -> {rows_written}")
+
+    # -- 2. IDLE-connection CREATED must be durable without a caller commit -
+    durable_listing_id = "NL-0043-TXN-DURABLE"
+    writer_conn = psycopg.connect(url)
+    try:
+        was_idle = writer_conn.info.transaction_status == TransactionStatus.IDLE
+        result = create_native_listing(
+            writer_conn,
+            account_id=account,
+            candidate_organization=org,
+            membership=membership,
+            listing=NativeListing(id=NativeListingId(durable_listing_id)),
+        )
+        created_ok = result.status is NativeListingCreationStatus.CREATED
+        # No writer_conn.commit() call — durability must not depend on it.
+    finally:
+        writer_conn.close()
+
+    reader_conn = psycopg.connect(url)
+    try:
+        visible_from_other_connection = (
+            fetch_native_listing(reader_conn, NativeListingId(durable_listing_id)) is not None
+        )
+    finally:
+        reader_conn.close()
+
+    durable_ok = was_idle and created_ok and visible_from_other_connection
+    print(
+        "durable creation visible from a separate connection -> "
+        f"{'YES' if visible_from_other_connection else 'NO'}\n"
+    )
+
+    return fail_closed_ok and durable_ok
+
+
 def main() -> int:
     base_url = _base_url()
     schema_name = f"hullq_s0043_{uuid.uuid4().hex[:16]}"
@@ -168,6 +264,12 @@ def main() -> int:
                 broker_listing_reference=_BROKER_REFERENCE,
             )
             record = fetch_native_listing(conn, listing.id)
+            # The readback above opened an implicit transaction on conn; end
+            # it so the next create_native_listing() call below can again
+            # safely own its own top-level transaction (see
+            # NativeListingTransactionOwnershipError / the dedicated
+            # transaction-ownership scenario further down).
+            conn.commit()
             readback_exact = (
                 record is not None
                 and record.listing == listing
@@ -204,6 +306,7 @@ def main() -> int:
             )
             row_count_after_retry = _row_count(conn, _LISTING_ID)
             retry_record = fetch_native_listing(conn, listing.id)
+            conn.commit()  # end the readback's implicit transaction (see above)
             created_at_preserved = (
                 retry_record is not None and retry_record.created_at == first_created_at
             )
@@ -227,6 +330,7 @@ def main() -> int:
                 broker_listing_reference="BROKER-REF-CHANGED",
             )
             after_conflict = fetch_native_listing(conn, listing.id)
+            conn.commit()  # end the readback's implicit transaction (see above)
             original_unchanged = (
                 after_conflict is not None
                 and after_conflict.broker_listing_reference == _BROKER_REFERENCE
@@ -283,6 +387,7 @@ def main() -> int:
                 _row_count(conn, "NL-0043-OWNER-DENIED") > 0
                 or _row_count(conn, "NL-0043-CROSSORG-DENIED") > 0
             )
+            conn.commit()  # end the row-count readbacks' implicit transaction
             denial_ok = owner_denied_ok and cross_org_denied_ok and not denied_wrote_rows
             ok &= denial_ok
             print(
@@ -296,6 +401,10 @@ def main() -> int:
             )
             print(f"denied attempts wrote rows -> {'YES' if denied_wrote_rows else 'NO'}\n")
 
+            # -- transaction ownership: CREATED must always mean durable -----
+            transaction_ownership_ok = _transaction_ownership_scenario(url)
+            ok &= transaction_ownership_ok
+
             # -- scope/truth regression: no design facts, no lifecycle state --
             record_fields = {f.name for f in dataclasses.fields(NativeListingRecord)}
             no_design_facts = record_fields == {
@@ -306,6 +415,7 @@ def main() -> int:
                 "created_at",
             }
             actual_columns = _actual_columns(conn)
+            conn.commit()  # end the columns readback's implicit transaction
             no_lifecycle_columns = actual_columns == _EXPECTED_COLUMNS
             ok &= no_design_facts and no_lifecycle_columns
             print(f"DESIGN FACTS PROJECTED      -> {'NO' if no_design_facts else 'YES'}")

@@ -190,10 +190,26 @@ MarketEpisode table or synthesize BoatDesign/PhysicalBoat facts.
 
 - Authorization is evaluated before any `NativeListing` write; a `DENIED`
   decision never opens a persistence transaction.
-- A successful new creation commits exactly one durable row.
+- A successful new creation commits exactly one durable row: a `CREATED`
+  result MUST NEVER be returned unless that row is already durably
+  committed, independent of anything the caller does with its connection
+  afterwards (including closing it without an explicit `commit()`).
 - An identical retry produces no duplicate row.
 - A conflict leaves the existing row unchanged.
 - A persistence exception does not leave a partial `NativeListing` row.
+- The create boundary MUST own and commit its own top-level transaction on
+  the supplied connection. It MUST NOT assume the connection is free of a
+  pre-existing open transaction: on a connection driver where opening a
+  nested transaction block silently degrades to a savepoint under an
+  already-open outer transaction (for example psycopg, when the connection
+  is not IDLE), committing the create boundary's own block would release
+  only that savepoint — the row would remain durable only once the
+  caller's unrelated pre-existing transaction is itself later committed,
+  which would break the "`CREATED` implies durably committed" guarantee
+  above. The create boundary MUST therefore verify, before any write, that
+  it can safely own a top-level transaction, and MUST fail closed (writing
+  zero rows) rather than silently committing or otherwise disposing of the
+  caller's unrelated pre-existing transaction on the caller's behalf.
 
 ## 8. Schema authority
 
