@@ -154,6 +154,43 @@ def test_pre_existing_non_fingerprint_table_blocks_fresh_bootstrap(scenario_url:
     assert _table_names(scenario_url) == {"canonical_brands"}
 
 
+def test_unrecognized_untracked_table_blocks_fresh_bootstrap(scenario_url: str) -> None:
+    """A table that belongs to neither the legacy 001/002 schema nor Alembic
+    (e.g. an unrelated ``hullq_untracked_probe``) must also block treating
+    the database as genuinely empty — "empty" means no relation of any
+    kind, not merely "no relation we happen to recognize." Otherwise
+    apply_migrations() would run against, and Alembic baseline stamping
+    could legitimize, a previously unknown schema state."""
+    conn = psycopg.connect(scenario_url)
+    try:
+        with conn.cursor() as cur:
+            cur.execute("CREATE TABLE hullq_untracked_probe (id TEXT PRIMARY KEY, note TEXT)")
+            cur.execute(
+                "INSERT INTO hullq_untracked_probe (id, note) VALUES (%s, %s)", ["P1", "untouched"]
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+    result = prepare_alembic_baseline(scenario_url)
+
+    assert result.outcome is BaselineOutcome.REJECTED_UNSAFE_STATE
+    assert result.reason is not None
+    assert read_alembic_version(scenario_url) is None
+    # No legacy application tables (including the hullq_schema_migrations
+    # tracking table) were added as a side effect of the rejected attempt.
+    assert _table_names(scenario_url) == {"hullq_untracked_probe"}
+
+    conn = psycopg.connect(scenario_url)
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, note FROM hullq_untracked_probe")
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+    assert rows == [("P1", "untouched")]
+
+
 def test_fresh_bootstrap_is_blocked_by_frozen_legacy_guard(
     scenario_url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

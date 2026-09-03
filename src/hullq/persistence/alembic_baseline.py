@@ -16,7 +16,6 @@ supplied by the caller (mirroring ``hullq.persistence.connection``).
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -108,43 +107,20 @@ def _existing_table_names(conn: Any, candidates: set[str]) -> set[str]:
         return {row[0] for row in cur.fetchall()}
 
 
-_CREATE_TABLE_PATTERN = re.compile(r"CREATE TABLE\s+(\w+)", re.IGNORECASE)
+def _schema_has_any_table(conn: Any) -> bool:
+    """True if the target schema already contains any table/view at all.
 
-
-def _all_legacy_table_names(directory: Path | None = None) -> set[str]:
-    """Every table name the accepted legacy 001+002 SQL migrations create.
-
-    Parsed directly from the immutable historical SQL files themselves —
-    never hand-duplicated — so this can never silently drift from what
-    001/002 actually create. Used only to decide whether a database is
-    genuinely empty (REPRESENTATIVE_LEGACY_TABLES is deliberately a smaller
-    fingerprint used only to verify an *already-legacy* database, per the
-    SLICE-0042 "not a full semantic reconstruction" boundary).
+    Used only to gate the "genuinely empty" fresh-bootstrap path. Checking
+    only against the tables 001/002 are known to create is not sufficient:
+    an unrecognized/untracked user or application relation (e.g. a
+    ``native_listings`` or other table that belongs to neither the legacy
+    schema nor Alembic) must also block bootstrap — "genuinely empty" means
+    the schema has no relation of any kind, not merely "no table we happen
+    to recognize."
     """
-    from hullq.persistence.migrations import MIGRATIONS_DIR
-
-    resolved = directory if directory is not None else MIGRATIONS_DIR
-    names: set[str] = set()
-    for migration_id in REQUIRED_LEGACY_MIGRATION_IDS:
-        text = (resolved / f"{migration_id}.sql").read_text(encoding="utf-8")
-        names.update(match.group(1) for match in _CREATE_TABLE_PATTERN.finditer(text))
-    return names
-
-
-def _any_legacy_table_present(conn: Any) -> bool:
-    """True if any table 001/002 would create already exists in the schema.
-
-    Used only to gate the "genuinely empty" fresh-bootstrap path: a
-    pre-existing HullQ/application relation that happens to fall outside the
-    REPRESENTATIVE_LEGACY_TABLES fingerprint (e.g. ``canonical_brands``)
-    must still block treating the database as empty.
-    """
-    all_names = _all_legacy_table_names()
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT 1 FROM information_schema.tables "
-            "WHERE table_schema = current_schema() AND table_name = ANY(%s) LIMIT 1",
-            [list(all_names)],
+            "SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() LIMIT 1"
         )
         return cur.fetchone() is not None
 
@@ -253,7 +229,7 @@ def _prepare(conn: Any, database_url: str) -> BaselineResult:
     if alembic_rows is not None:
         return _prepare_already_stamped(alembic_rows, legacy_ids, present_tables)
 
-    if legacy_ids is None and not _any_legacy_table_present(conn):
+    if legacy_ids is None and not _schema_has_any_table(conn):
         return _prepare_fresh(conn, database_url)
 
     if (
