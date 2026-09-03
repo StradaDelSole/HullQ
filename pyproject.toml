@@ -5,10 +5,12 @@ description = "Technical-first sailboat discovery and market matching"
 readme = "README.md"
 requires-python = ">=3.14,<3.15"
 dependencies = [
+  "alembic>=1.13,<2",
   "httpx>=0.28,<1",
   "jsonschema>=4.26,<5",
   "psycopg[binary]>=3.2,<4",
   "referencing>=0.37,<1",
+  "sqlalchemy>=2.0,<3",
 ]
 
 [build-system]
