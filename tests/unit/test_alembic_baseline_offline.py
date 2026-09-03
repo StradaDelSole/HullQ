@@ -20,7 +20,6 @@ from hullq.persistence.alembic_baseline import (
     UnexpectedLegacyMigrationError,
     _as_sqlalchemy_url,
     alembic_config,
-    alembic_heads,
     guard_no_post_002_legacy_migrations,
 )
 
@@ -40,18 +39,32 @@ def test_alembic_ini_and_script_location_exist() -> None:
     assert (ALEMBIC_SCRIPT_LOCATION / "versions").is_dir()
 
 
-def test_baseline_revision_is_the_single_head() -> None:
-    heads = alembic_heads("postgresql://unused:unused@localhost/unused")
-    assert heads == [BASELINE_REVISION]
+def test_baseline_revision_is_the_sole_root_of_every_head() -> None:
+    """The baseline remains the single well-defined parent every later
+    schema-evolution revision (e.g. SLICE-0043's native_listing_persistence)
+    descends from — it need not remain the sole *head* once later revisions
+    exist on top of it."""
+    from alembic.script import ScriptDirectory
+
+    script = ScriptDirectory.from_config(
+        alembic_config("postgresql://unused:unused@localhost/unused")
+    )
+    baseline = script.get_revision(BASELINE_REVISION)
+    assert baseline is not None
+    assert baseline.down_revision is None
+    for head in script.get_heads():
+        ancestor_ids = {rev.revision for rev in script.iterate_revisions(head, "base")}
+        assert BASELINE_REVISION in ancestor_ids
 
 
 def test_baseline_revision_introduces_no_application_ddl() -> None:
-    revision_files = list((ALEMBIC_SCRIPT_LOCATION / "versions").glob("*.py"))
+    revision_files = list((ALEMBIC_SCRIPT_LOCATION / "versions").glob(f"{BASELINE_REVISION}_*.py"))
     assert len(revision_files) == 1
     text = revision_files[0].read_text(encoding="utf-8")
     assert BASELINE_REVISION in text
     assert "down_revision: str | None = None" in text
-    # Must not invoke `op.*` DDL helpers — the revision is a pure marker.
+    # Must not invoke `op.*` DDL helpers — the baseline marker revision
+    # itself remains a pure no-op; later revisions may add real DDL.
     assert "op." not in text
 
 
