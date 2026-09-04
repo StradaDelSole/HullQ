@@ -144,7 +144,6 @@ def test_non_denied_result_rejects_a_reason() -> None:
         NativeListingOfferWriteStatus.CREATED,
         NativeListingOfferWriteStatus.REVISED,
         NativeListingOfferWriteStatus.ALREADY_EXISTS,
-        NativeListingOfferWriteStatus.CONFLICT,
     ],
 )
 def test_statuses_requiring_a_current_revision_reject_a_missing_one(
@@ -168,6 +167,23 @@ def test_statuses_without_a_current_revision_reject_one_being_supplied(
         NativeListingOfferWriteResult(
             status=status, current_revision_id=NativeListingOfferRevisionId("REV-1")
         )
+
+
+def test_conflict_may_carry_no_current_revision() -> None:
+    """CONFLICT can occur for a NativeListing that has no current revision at
+    all yet -- e.g. a revision-id collision against a completely different
+    NativeListing, or a stale expected_current_revision_id supplied for a
+    listing that has never been written."""
+    result = NativeListingOfferWriteResult(status=NativeListingOfferWriteStatus.CONFLICT)
+    assert result.current_revision_id is None
+
+
+def test_conflict_may_carry_a_current_revision() -> None:
+    result = NativeListingOfferWriteResult(
+        status=NativeListingOfferWriteStatus.CONFLICT,
+        current_revision_id=NativeListingOfferRevisionId("REV-1"),
+    )
+    assert result.current_revision_id == NativeListingOfferRevisionId("REV-1")
 
 
 # ---------------------------------------------------------------------------

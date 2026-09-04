@@ -98,12 +98,18 @@ class NativeListingOfferWriteStatus(StrEnum):
     NATIVE_LISTING_NOT_FOUND = "native_listing_not_found"
 
 
-_STATUSES_WITH_CURRENT_REVISION = frozenset(
+_STATUSES_REQUIRING_CURRENT_REVISION = frozenset(
     {
         NativeListingOfferWriteStatus.CREATED,
         NativeListingOfferWriteStatus.REVISED,
         NativeListingOfferWriteStatus.ALREADY_EXISTS,
-        NativeListingOfferWriteStatus.CONFLICT,
+    }
+)
+_STATUSES_FORBIDDING_CURRENT_REVISION = frozenset(
+    {
+        NativeListingOfferWriteStatus.DENIED,
+        NativeListingOfferWriteStatus.CROSS_ORGANIZATION_DENIED,
+        NativeListingOfferWriteStatus.NATIVE_LISTING_NOT_FOUND,
     }
 )
 
@@ -117,9 +123,14 @@ class NativeListingOfferWriteResult:
     the caller is eligible within their own Organization, but that
     Organization does not match the target NativeListing's persisted
     publishing Organization. `current_revision_id` reflects the real durable
-    current head after this call (the new revision for CREATED/REVISED, the
-    pre-existing current revision for ALREADY_EXISTS/CONFLICT) and is never
-    populated for a case that wrote nothing / never reached the head.
+    current head of *this* NativeListing after this call (the new revision
+    for CREATED/REVISED, the pre-existing current revision for
+    ALREADY_EXISTS) and is never populated for a case that wrote nothing /
+    never reached the head. `CONFLICT` may or may not carry one: a stale
+    `expected_current_revision_id` or a revision-id collision are both
+    reported as CONFLICT even when this NativeListing has no current
+    revision at all yet (for example, a revision id collision against a
+    completely different NativeListing that itself has never been written).
     """
 
     status: NativeListingOfferWriteStatus
@@ -133,12 +144,15 @@ class NativeListingOfferWriteResult:
         elif self.denial_reason is not None:
             raise ValueError("Only a DENIED write result may carry a denial reason")
 
-        if self.status in _STATUSES_WITH_CURRENT_REVISION:
+        if self.status in _STATUSES_REQUIRING_CURRENT_REVISION:
             if self.current_revision_id is None:
                 raise ValueError(
                     f"A {self.status.value.upper()} write result must carry current_revision_id"
                 )
-        elif self.current_revision_id is not None:
+        elif (
+            self.status in _STATUSES_FORBIDDING_CURRENT_REVISION
+            and self.current_revision_id is not None
+        ):
             raise ValueError(
                 f"A {self.status.value.upper()} write result must not carry current_revision_id"
             )
@@ -160,13 +174,12 @@ class NativeListingOfferRevisionRecord:
 # SQL
 # ---------------------------------------------------------------------------
 
-_SELECT_LISTING_ORG = (
-    "SELECT publishing_organization_id FROM native_listings WHERE native_listing_id = %s"
+_SELECT_LISTING_ORG_FOR_UPDATE = (
+    "SELECT publishing_organization_id FROM native_listings WHERE native_listing_id = %s FOR UPDATE"
 )
 
-_SELECT_HEAD_FOR_UPDATE = (
-    "SELECT current_offer_revision_id FROM native_listing_offer_heads "
-    "WHERE native_listing_id = %s FOR UPDATE"
+_SELECT_HEAD = (
+    "SELECT current_offer_revision_id FROM native_listing_offer_heads WHERE native_listing_id = %s"
 )
 
 _SELECT_REVISION_BY_ID = (
@@ -414,7 +427,14 @@ def write_native_listing_offer_revision(
     )
 
     with conn.transaction(), conn.cursor() as cur:
-        cur.execute(_SELECT_LISTING_ORG, [native_listing_id.value])
+        # Locks the (already-existing) native_listings row for the duration
+        # of this transaction, serializing all concurrent offer writes for
+        # this NativeListingId. Without this, two concurrent first-time
+        # writers could each observe "no head row yet" and both proceed to
+        # INSERT a distinct first revision -- a lost-update race, since
+        # native_listing_offer_heads has no row to lock via FOR UPDATE
+        # before it exists.
+        cur.execute(_SELECT_LISTING_ORG_FOR_UPDATE, [native_listing_id.value])
         listing_row = cur.fetchone()
         if listing_row is None:
             return NativeListingOfferWriteResult(
@@ -427,7 +447,7 @@ def write_native_listing_offer_revision(
                 status=NativeListingOfferWriteStatus.CROSS_ORGANIZATION_DENIED
             )
 
-        cur.execute(_SELECT_HEAD_FOR_UPDATE, [native_listing_id.value])
+        cur.execute(_SELECT_HEAD, [native_listing_id.value])
         head_row = cur.fetchone()
         actual_current_id: str | None = head_row[0] if head_row is not None else None
 

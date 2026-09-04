@@ -27,7 +27,6 @@ from hullq.persistence.alembic_baseline import (
     BASELINE_REVISION,
     REQUIRED_LEGACY_MIGRATION_IDS,
     BaselineOutcome,
-    alembic_upgrade_head,
     prepare_alembic_baseline,
     read_alembic_version,
 )
@@ -330,13 +329,21 @@ def test_alembic_current_reports_expected_baseline_after_adoption(scenario_url: 
     assert read_alembic_version(scenario_url) == BASELINE_REVISION
 
 
-def test_alembic_upgrade_head_from_baseline_adds_only_the_authorized_native_listings_table(
+def test_alembic_upgrade_to_native_listing_persistence_adds_only_the_authorized_native_listings_table(
     scenario_url: str,
 ) -> None:
     """SLICE-0042's baseline revision itself remains schema-neutral, but
-    `alembic upgrade head` from that baseline now also applies SLICE-0043's
-    native_listing_persistence revision — which is expected to add exactly
-    the one authorized `native_listings` table and nothing else."""
+    upgrading from that baseline to SLICE-0043's native_listing_persistence
+    revision specifically is expected to add exactly the one authorized
+    `native_listings` table and nothing else.
+
+    Pinned to the exact SLICE-0043 revision id (not "head") because later
+    slices (starting with SLICE-0045) add further revisions on top; this
+    test asserts what SLICE-0043's own revision introduces, independent of
+    how far the repository's Alembic chain has grown since."""
+    from alembic import command
+    from hullq.persistence.alembic_baseline import alembic_config
+
     result = prepare_alembic_baseline(scenario_url)
     assert result.outcome is BaselineOutcome.FRESH_BOOTSTRAPPED_AND_STAMPED
 
@@ -351,7 +358,7 @@ def test_alembic_upgrade_head_from_baseline_adds_only_the_authorized_native_list
     finally:
         conn.close()
 
-    alembic_upgrade_head(scenario_url)
+    command.upgrade(alembic_config(scenario_url), "1bb00df4a018")
 
     conn = psycopg.connect(scenario_url)
     try:
@@ -365,4 +372,4 @@ def test_alembic_upgrade_head_from_baseline_adds_only_the_authorized_native_list
         conn.close()
 
     assert after - before == {"native_listings"}
-    assert read_alembic_version(scenario_url) != BASELINE_REVISION
+    assert read_alembic_version(scenario_url) == "1bb00df4a018"
