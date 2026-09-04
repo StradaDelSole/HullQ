@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0045  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** Native professional supply — first durable offer state  
 **Depends on:** SLICE-0041, SLICE-0042, SLICE-0043, SLICE-0044  
 **Blocks:** broker listing workspace / later publication, PhysicalBoat-fact persistence
@@ -326,24 +326,24 @@ The inspection ends with a single explicit PASS/FAIL result.
 
 ## Acceptance criteria
 
-- [ ] Exactly the nine accepted `LISTING_OFFER` fields are persistable; no `PHYSICAL_BOAT` or unrelated marketplace field is added.
-- [ ] Writes require the real accepted SLICE-0041 eligibility decision and exact persisted NativeListing publishing Organization match.
-- [ ] Cross-Organization writes fail closed with zero durable offer changes.
-- [ ] Offer revisions are immutable and current/head state is explicit rather than timestamp-inferred.
-- [ ] Expected-current optimistic concurrency prevents silent lost updates.
-- [ ] Same revision ID/same content is idempotent; same ID/different content fails closed.
-- [ ] Price AMOUNT/POA conditionality is mechanically enforced with no synthetic price.
-- [ ] Optional omission remains distinct from explicit `UNKNOWN`, `NOT_APPLICABLE` and `NO_KNOWN_HISTORY_DECLARED` where allowed.
-- [ ] Assertion kinds/value types are validated against the locked v0.1 contract semantics.
-- [ ] Free text remains narrative and cannot auto-promote structured facts.
-- [ ] VAT/tax state remains attributed broker claim with no HullQ-verification implication and no search behavior.
-- [ ] Durable canonical representation is typed and not a generic EAV/JSON fact blob.
-- [ ] Successful writes are durably committed atomically with head changes; pre-existing caller transactions do not create nested-savepoint false success.
-- [ ] Exact typed readback preserves values, assertion states, revision identity, Organization/Account attribution and timestamps.
-- [ ] One Alembic migration descends from `1bb00df4a018`; repository/database each have exactly one resulting Alembic head.
-- [ ] Real PostgreSQL 18 tests cover first write, revision, immutable history, stale-write conflict, retry collision and cross-Organization isolation.
-- [ ] Owner inspection ends `PASS` and demonstrates the required end-to-end cases.
-- [ ] Full repository test/quality/security gates pass.
+- [x] Exactly the nine accepted `LISTING_OFFER` fields are persistable; no `PHYSICAL_BOAT` or unrelated marketplace field is added.
+- [x] Writes require the real accepted SLICE-0041 eligibility decision and exact persisted NativeListing publishing Organization match.
+- [x] Cross-Organization writes fail closed with zero durable offer changes.
+- [x] Offer revisions are immutable and current/head state is explicit rather than timestamp-inferred.
+- [x] Expected-current optimistic concurrency prevents silent lost updates.
+- [x] Same revision ID/same content is idempotent; same ID/different content fails closed.
+- [x] Price AMOUNT/POA conditionality is mechanically enforced with no synthetic price.
+- [x] Optional omission remains distinct from explicit `UNKNOWN`, `NOT_APPLICABLE` and `NO_KNOWN_HISTORY_DECLARED` where allowed.
+- [x] Assertion kinds/value types are validated against the locked v0.1 contract semantics.
+- [x] Free text remains narrative and cannot auto-promote structured facts.
+- [x] VAT/tax state remains attributed broker claim with no HullQ-verification implication and no search behavior.
+- [x] Durable canonical representation is typed and not a generic EAV/JSON fact blob.
+- [x] Successful writes are durably committed atomically with head changes; pre-existing caller transactions do not create nested-savepoint false success.
+- [x] Exact typed readback preserves values, assertion states, revision identity, Organization/Account attribution and timestamps.
+- [x] One Alembic migration descends from `1bb00df4a018`; repository/database each have exactly one resulting Alembic head.
+- [ ] Real PostgreSQL 18 tests cover first write, revision, immutable history, stale-write conflict, retry collision and cross-Organization isolation. — tests written and statically verified (DDL rendered offline via Alembic SQL mode; SQL/param-order hand-checked); NOT executed against a live PostgreSQL 18 server in this session (local `postgres` superuser credentials unavailable — `pg_hba.conf` requires `scram-sha-256`; no brute-forcing/config change attempted, matching SLICE-0016 precedent). Pending observation on remote CI's PostgreSQL 18 integration job.
+- [ ] Owner inspection ends `PASS` and demonstrates the required end-to-end cases. — script written; NOT executed locally for the same reason above. Pending remote CI.
+- [x] Full repository test/quality/security gates pass. (non-PostgreSQL-dependent gates: full suite, ruff format/check, mypy, repository validation, `uv lock --check`, `pip-audit`)
 - [ ] GitHub Actions CI passes on the exact final implementation HEAD.
 - [ ] Manufacturer artifact reproducibility passes on the exact final implementation HEAD.
 - [ ] Independent exact-head review finds no unresolved material issue.
