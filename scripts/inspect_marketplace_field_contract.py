@@ -26,6 +26,7 @@ from __future__ import annotations
 import json
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -109,15 +110,34 @@ class _RefitTiming:
     approximate_period: str | None = None
 
 
+def _is_valid_iso_calendar_date(value: str) -> bool:
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        return False
+    return True
+
+
 def _validate_refit_timing(timing: _RefitTiming) -> bool:
-    has_exact = timing.exact_year is not None or timing.exact_date is not None
-    has_approximate = bool(timing.approximate_period)
+    exact_year = timing.exact_year
+    exact_date = timing.exact_date
+    approximate_period = timing.approximate_period
+
     if timing.precision == "EXACT":
-        return has_exact and not has_approximate
+        if approximate_period is not None:
+            return False
+        if (exact_year is None) == (exact_date is None):
+            return False
+        return exact_date is None or _is_valid_iso_calendar_date(exact_date)
+
     if timing.precision == "APPROXIMATE":
-        return has_approximate and not has_exact
+        if exact_year is not None or exact_date is not None:
+            return False
+        return approximate_period is not None and bool(approximate_period.strip())
+
     if timing.precision == "UNKNOWN":
-        return not has_exact and not has_approximate
+        return exact_year is None and exact_date is None and approximate_period is None
+
     raise ValueError(f"unrecognized precision {timing.precision!r}")
 
 
@@ -137,6 +157,57 @@ def _validate_broad_use_history(
             return False
         return set(values) <= allowed
     raise ValueError(f"unrecognized assertion_kind {assertion_kind!r}")
+
+
+@dataclass(frozen=True)
+class _UseHistoryObservation:
+    observation_id: str
+    claim_authority: str
+    assertion_kind: str
+    values: frozenset[str] | None = None
+    supersedes_observation_id: str | None = None
+
+
+@dataclass(frozen=True)
+class _UseHistoryResolution:
+    known_positive_uses: frozenset[str]
+    by_authority: dict[str, frozenset[str] | None]
+
+
+def _resolve_broad_use_history(
+    observations: list[_UseHistoryObservation],
+) -> _UseHistoryResolution:
+    """TEST-ONLY open-world resolver; see the equivalent, independently
+    written implementation in tests/contract/test_marketplace_fact_contract.py
+    for the full explanation. Deliberately distinct from _resolve_fact_topic:
+    there is no CONFLICT state here at all -- positive sets from different
+    sources are additive, never competing, and the union is presentation
+    convenience only, never a stronger jointly-verified fact."""
+    by_authority_observations: dict[str, list[_UseHistoryObservation]] = defaultdict(list)
+    for observation in observations:
+        by_authority_observations[observation.claim_authority].append(observation)
+
+    current_by_authority: dict[str, frozenset[str] | None] = {}
+    aggregate: set[str] = set()
+    for authority, own_observations in by_authority_observations.items():
+        superseded_ids = {
+            o.supersedes_observation_id for o in own_observations if o.supersedes_observation_id
+        }
+        current = [o for o in own_observations if o.observation_id not in superseded_ids]
+        distinct_current = {(o.assertion_kind, o.values) for o in current}
+        if len(distinct_current) != 1:
+            continue
+        assertion_kind, values = next(iter(distinct_current))
+        if assertion_kind == "VALUE_ASSERTION":
+            current_by_authority[authority] = values
+            if values:
+                aggregate |= values
+        else:
+            current_by_authority[authority] = None
+
+    return _UseHistoryResolution(
+        known_positive_uses=frozenset(aggregate), by_authority=current_by_authority
+    )
 
 
 def main() -> int:
@@ -270,7 +341,11 @@ def main() -> int:
     refit_timing_cases = [
         (_RefitTiming(precision="EXACT"), False),
         (_RefitTiming(precision="EXACT", exact_year=2022), True),
+        (_RefitTiming(precision="EXACT", exact_date="2022-05-01"), True),
+        (_RefitTiming(precision="EXACT", exact_year=2022, exact_date="2022-05-01"), False),
+        (_RefitTiming(precision="EXACT", exact_date="2022-13-40"), False),
         (_RefitTiming(precision="APPROXIMATE"), False),
+        (_RefitTiming(precision="APPROXIMATE", approximate_period="   "), False),
         (_RefitTiming(precision="APPROXIMATE", approximate_period="early 2020s"), True),
         (_RefitTiming(precision="UNKNOWN"), True),
         (_RefitTiming(precision="UNKNOWN", exact_year=2022), False),
@@ -291,7 +366,7 @@ def main() -> int:
     ok &= category_ok
     print(f"refit category vocabulary               -> {'BOUNDED' if category_ok else 'FAIL'}")
 
-    # -- broad_use_history: bounded multi-value set, no false conflict -------
+    # -- broad_use_history: bounded multi-value set, open-world resolution ---
     use_history_values = frozenset(
         fields["physical_boat.broad_use_history"]["value_type"]["values"] or []
     )
@@ -305,20 +380,48 @@ def main() -> int:
         )
         and not _validate_broad_use_history("VALUE_ASSERTION", [], use_history_values)
     )
-    same_set_different_order = (
-        _resolve_fact_topic(
-            [
-                _Observation("A-1", "ORG-A", ",".join(sorted({"CHARTER", "PRIVATE"}))),
-                _Observation("B-1", "ORG-B", ",".join(sorted({"PRIVATE", "CHARTER"}))),
-            ]
-        ).state
-        == "RESOLVED"
-    )
+    not_conflict_subset = _resolve_broad_use_history(
+        [
+            _UseHistoryObservation("A-1", "ORG-A", "VALUE_ASSERTION", frozenset({"PRIVATE"})),
+            _UseHistoryObservation(
+                "B-1", "ORG-B", "VALUE_ASSERTION", frozenset({"PRIVATE", "CHARTER"})
+            ),
+        ]
+    ).known_positive_uses == frozenset({"PRIVATE", "CHARTER"})
+    not_conflict_disjoint = _resolve_broad_use_history(
+        [
+            _UseHistoryObservation("A-1", "ORG-A", "VALUE_ASSERTION", frozenset({"PRIVATE"})),
+            _UseHistoryObservation("B-1", "ORG-B", "VALUE_ASSERTION", frozenset({"CHARTER"})),
+        ]
+    ).known_positive_uses == frozenset({"PRIVATE", "CHARTER"})
+    unknown_does_not_erase = _resolve_broad_use_history(
+        [
+            _UseHistoryObservation("A-1", "ORG-A", "UNKNOWN", None),
+            _UseHistoryObservation("B-1", "ORG-B", "VALUE_ASSERTION", frozenset({"PRIVATE"})),
+        ]
+    ).known_positive_uses == frozenset({"PRIVATE"})
+    supersession_ok = _resolve_broad_use_history(
+        [
+            _UseHistoryObservation("A-1", "ORG-A", "VALUE_ASSERTION", frozenset({"PRIVATE"})),
+            _UseHistoryObservation(
+                "A-2",
+                "ORG-A",
+                "VALUE_ASSERTION",
+                frozenset({"PRIVATE", "CHARTER"}),
+                supersedes_observation_id="A-1",
+            ),
+        ]
+    ).by_authority == {"ORG-A": frozenset({"PRIVATE", "CHARTER"})}
     use_history_ok = (
-        use_history_valid_cases and use_history_invalid_cases and same_set_different_order
+        use_history_valid_cases
+        and use_history_invalid_cases
+        and not_conflict_subset
+        and not_conflict_disjoint
+        and unknown_does_not_erase
+        and supersession_ok
     )
     ok &= use_history_ok
-    print(f"broad_use_history multi-value           -> {'PASS' if use_history_ok else 'FAIL'}\n")
+    print(f"broad_use_history open-world union      -> {'PASS' if use_history_ok else 'FAIL'}\n")
 
     # -- sensitive plain assertion forbidden ---------------------------------
     sensitive_fields = {

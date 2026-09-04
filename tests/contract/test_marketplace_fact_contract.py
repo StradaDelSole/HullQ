@@ -29,6 +29,7 @@ from __future__ import annotations
 import json
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -957,35 +958,69 @@ class _RefitTiming:
     approximate_period: str | None = None
 
 
+def _is_valid_iso_calendar_date(value: str) -> bool:
+    """TEST-ONLY: True only for a real, parseable ISO 8601 calendar date --
+    not merely any string (rejects malformed/impossible dates like
+    "2022-13-40" or "not-a-date")."""
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        return False
+    return True
+
+
 def _validate_refit_timing(timing: _RefitTiming) -> bool:
     """TEST-ONLY reference validator implementing MARKETPLACE_FACT_CONTRACT.v0.1
-    section 9: the actual temporal payload must match its declared precision;
-    no precision may carry another precision's payload or a fabricated value."""
-    has_exact = timing.exact_year is not None or timing.exact_date is not None
-    has_approximate = bool(timing.approximate_period)
+    section 9: the actual temporal payload must match its declared precision.
+    EXACT requires exactly one of exact_year/exact_date (never neither, never
+    both), and a supplied exact_date must be a genuine ISO calendar date.
+    APPROXIMATE requires a non-empty, non-whitespace-only approximate_period.
+    No precision may carry another precision's payload or a fabricated value."""
+    exact_year = timing.exact_year
+    exact_date = timing.exact_date
+    approximate_period = timing.approximate_period
+
     if timing.precision == "EXACT":
-        return has_exact and not has_approximate
+        if approximate_period is not None:
+            return False
+        if (exact_year is None) == (exact_date is None):
+            # Both True (neither supplied) or both False (both supplied) are
+            # invalid; exactly one of the two must be non-null.
+            return False
+        return exact_date is None or _is_valid_iso_calendar_date(exact_date)
+
     if timing.precision == "APPROXIMATE":
-        return has_approximate and not has_exact
+        if exact_year is not None or exact_date is not None:
+            return False
+        return approximate_period is not None and bool(approximate_period.strip())
+
     if timing.precision == "UNKNOWN":
-        return not has_exact and not has_approximate
+        return exact_year is None and exact_date is None and approximate_period is None
+
     raise ValueError(f"unrecognized precision {timing.precision!r}")
 
 
 @pytest.mark.parametrize(
     ("timing", "expected_valid"),
     [
+        # EXACT: exactly one of exact_year/exact_date, never neither/both.
         (_RefitTiming(precision="EXACT"), False),
         (_RefitTiming(precision="EXACT", exact_year=2022), True),
         (_RefitTiming(precision="EXACT", exact_date="2022-05-01"), True),
+        (_RefitTiming(precision="EXACT", exact_year=2022, exact_date="2022-05-01"), False),
+        (_RefitTiming(precision="EXACT", exact_date="2022-13-40"), False),
+        (_RefitTiming(precision="EXACT", exact_date="not-a-date"), False),
         (
             _RefitTiming(precision="EXACT", exact_year=2022, approximate_period="early 2020s"),
             False,
         ),
+        # APPROXIMATE: non-empty, non-whitespace-only period; no exact payload.
         (_RefitTiming(precision="APPROXIMATE"), False),
         (_RefitTiming(precision="APPROXIMATE", approximate_period=""), False),
+        (_RefitTiming(precision="APPROXIMATE", approximate_period="   "), False),
         (_RefitTiming(precision="APPROXIMATE", approximate_period="early 2020s"), True),
         (_RefitTiming(precision="APPROXIMATE", exact_year=2022), False),
+        # UNKNOWN: no payload at all, of any kind.
         (_RefitTiming(precision="UNKNOWN"), True),
         (_RefitTiming(precision="UNKNOWN", exact_year=2022), False),
         (_RefitTiming(precision="UNKNOWN", exact_date="2022-05-01"), False),
@@ -1001,6 +1036,12 @@ def test_refit_timing_validity_matches_the_locked_truth_table(
 def test_unrecognized_precision_fails_closed_not_open() -> None:
     with pytest.raises(ValueError):
         _validate_refit_timing(_RefitTiming(precision="SOMEDAY"))
+
+
+def test_iso_calendar_date_helper_accepts_real_dates_and_rejects_malformed_ones() -> None:
+    assert _is_valid_iso_calendar_date("2022-05-01") is True
+    assert _is_valid_iso_calendar_date("2022-13-40") is False
+    assert _is_valid_iso_calendar_date("not-a-date") is False
 
 
 # ---------------------------------------------------------------------------
@@ -1071,29 +1112,184 @@ def test_broad_use_history_validity_matches_the_locked_truth_table(
     assert _validate_broad_use_history(assertion_kind, values) is expected_valid
 
 
-def _canonicalize_multi_value(values: list[str]) -> str:
-    """TEST-ONLY canonical form for a set-valued observation so the existing
-    generic single-string _resolve_fact_topic resolver compares the declared
-    set, not raw list insertion order/identity."""
-    return ",".join(sorted(set(values)))
+@dataclass(frozen=True)
+class _UseHistoryObservation:
+    observation_id: str
+    claim_authority: str
+    assertion_kind: str  # "VALUE_ASSERTION" | "UNKNOWN"
+    values: frozenset[str] | None = None
+    supersedes_observation_id: str | None = None
 
 
-def test_same_declared_set_in_different_order_from_two_sources_is_not_a_false_conflict() -> None:
+@dataclass(frozen=True)
+class _UseHistoryResolution:
+    known_positive_uses: frozenset[str]
+    by_authority: dict[str, frozenset[str] | None]
+
+
+def _resolve_broad_use_history(
+    observations: list[_UseHistoryObservation],
+) -> _UseHistoryResolution:
+    """TEST-ONLY reference resolver for the OPEN-WORLD, non-exclusive
+    broad_use_history fact topic (MARKETPLACE_FACT_CONTRACT.v0.1 section
+    10.4) -- deliberately distinct from the generic single-valued, equality-
+    based _resolve_fact_topic used for every other fact topic in this file.
+
+    Positive category declarations from different sources are additive, not
+    competing: one source's declared set never conflicts with a different
+    source's set merely because membership differs, since the absence of a
+    category from a source's declaration is not a negative claim about that
+    category. There is therefore no CONFLICT state at all in this resolver's
+    return type -- only a per-authority current view and a convenience
+    union.
+
+    Within one authority, the existing supersession rule still governs which
+    observation is that authority's current statement (no silent latest-
+    wins): a same-authority contradiction with no explicit supersession link
+    leaves that authority's own contribution ambiguous (excluded from the
+    result) rather than guessing which of its un-linked observations is
+    current.
+
+    Each source's original observation remains independently present in
+    ``observations`` (nothing here mutates or discards it), and
+    ``by_authority`` exposes each authority's own current set separately
+    from the ``known_positive_uses`` union -- the union is a presentation
+    convenience only and must never be read as itself a stronger, jointly-
+    verified fact than what any one source individually asserted.
+    """
+    by_authority_observations: dict[str, list[_UseHistoryObservation]] = defaultdict(list)
+    for observation in observations:
+        by_authority_observations[observation.claim_authority].append(observation)
+
+    current_by_authority: dict[str, frozenset[str] | None] = {}
+    aggregate: set[str] = set()
+    for authority, own_observations in by_authority_observations.items():
+        superseded_ids = {
+            o.supersedes_observation_id for o in own_observations if o.supersedes_observation_id
+        }
+        current = [o for o in own_observations if o.observation_id not in superseded_ids]
+        distinct_current = {(o.assertion_kind, o.values) for o in current}
+        if len(distinct_current) != 1:
+            # Ambiguous same-authority contradiction with no explicit
+            # supersession link: contribute nothing rather than guess.
+            continue
+        assertion_kind, values = next(iter(distinct_current))
+        if assertion_kind == "VALUE_ASSERTION":
+            current_by_authority[authority] = values
+            if values:
+                aggregate |= values
+        else:
+            current_by_authority[authority] = None
+
+    return _UseHistoryResolution(
+        known_positive_uses=frozenset(aggregate), by_authority=current_by_authority
+    )
+
+
+def test_org_a_private_org_b_private_charter_is_not_a_conflict() -> None:
+    resolution = _resolve_broad_use_history(
+        [
+            _UseHistoryObservation("A-1", "ORG-A", "VALUE_ASSERTION", frozenset({"PRIVATE"})),
+            _UseHistoryObservation(
+                "B-1", "ORG-B", "VALUE_ASSERTION", frozenset({"PRIVATE", "CHARTER"})
+            ),
+        ]
+    )
+    # No CONFLICT state exists in this resolver's return type at all -- the
+    # absence of any conflict signal is itself the proof.
+    assert resolution.known_positive_uses == frozenset({"PRIVATE", "CHARTER"})
+    assert resolution.by_authority == {
+        "ORG-A": frozenset({"PRIVATE"}),
+        "ORG-B": frozenset({"PRIVATE", "CHARTER"}),
+    }
+
+
+def test_org_a_private_org_b_charter_is_not_a_conflict_merely_because_sets_differ() -> None:
+    resolution = _resolve_broad_use_history(
+        [
+            _UseHistoryObservation("A-1", "ORG-A", "VALUE_ASSERTION", frozenset({"PRIVATE"})),
+            _UseHistoryObservation("B-1", "ORG-B", "VALUE_ASSERTION", frozenset({"CHARTER"})),
+        ]
+    )
+    assert resolution.known_positive_uses == frozenset({"PRIVATE", "CHARTER"})
+    assert resolution.by_authority == {
+        "ORG-A": frozenset({"PRIVATE"}),
+        "ORG-B": frozenset({"CHARTER"}),
+    }
+
+
+def test_same_categories_in_different_declaration_order_are_the_same_claim() -> None:
+    resolution_a_first = _resolve_broad_use_history(
+        [
+            _UseHistoryObservation(
+                "A-1", "ORG-A", "VALUE_ASSERTION", frozenset({"CHARTER", "PRIVATE"})
+            ),
+        ]
+    )
+    resolution_b_first = _resolve_broad_use_history(
+        [
+            _UseHistoryObservation(
+                "A-1", "ORG-A", "VALUE_ASSERTION", frozenset({"PRIVATE", "CHARTER"})
+            ),
+        ]
+    )
+    assert resolution_a_first == resolution_b_first
+    assert resolution_a_first.known_positive_uses == frozenset({"PRIVATE", "CHARTER"})
+
+
+def test_unknown_source_does_not_erase_a_positive_source_declaration() -> None:
+    resolution = _resolve_broad_use_history(
+        [
+            _UseHistoryObservation("A-1", "ORG-A", "UNKNOWN", None),
+            _UseHistoryObservation("B-1", "ORG-B", "VALUE_ASSERTION", frozenset({"PRIVATE"})),
+        ]
+    )
+    assert resolution.known_positive_uses == frozenset({"PRIVATE"})
+    assert resolution.by_authority == {"ORG-A": None, "ORG-B": frozenset({"PRIVATE"})}
+
+
+def test_same_authority_explicit_supersession_replaces_that_authoritys_current_set() -> None:
     observations = [
-        _Observation("A-1", "ORG-A", _canonicalize_multi_value(["CHARTER", "PRIVATE"])),
-        _Observation("B-1", "ORG-B", _canonicalize_multi_value(["PRIVATE", "CHARTER"])),
+        _UseHistoryObservation("A-1", "ORG-A", "VALUE_ASSERTION", frozenset({"PRIVATE"})),
+        _UseHistoryObservation(
+            "A-2",
+            "ORG-A",
+            "VALUE_ASSERTION",
+            frozenset({"PRIVATE", "CHARTER"}),
+            supersedes_observation_id="A-1",
+        ),
     ]
-    result = _resolve_fact_topic(observations)
-    assert result == _ResolutionResult(state="RESOLVED", value="CHARTER,PRIVATE")
+    resolution = _resolve_broad_use_history(observations)
+    assert resolution.by_authority == {"ORG-A": frozenset({"PRIVATE", "CHARTER"})}
+    assert resolution.known_positive_uses == frozenset({"PRIVATE", "CHARTER"})
+    # The prior observation remains independently retained (audit/history),
+    # not deleted or mutated by resolution.
+    assert observations[0].values == frozenset({"PRIVATE"})
 
 
-def test_a_genuinely_different_declared_set_still_resolves_to_conflict() -> None:
-    observations = [
-        _Observation("A-1", "ORG-A", _canonicalize_multi_value(["PRIVATE"])),
-        _Observation("B-1", "ORG-B", _canonicalize_multi_value(["PRIVATE", "CHARTER"])),
-    ]
-    result = _resolve_fact_topic(observations)
-    assert result.state == "CONFLICT"
+def test_a_same_authority_contradiction_without_supersession_contributes_nothing() -> None:
+    resolution = _resolve_broad_use_history(
+        [
+            _UseHistoryObservation("A-1", "ORG-A", "VALUE_ASSERTION", frozenset({"PRIVATE"})),
+            _UseHistoryObservation("A-2", "ORG-A", "VALUE_ASSERTION", frozenset({"CHARTER"})),
+        ]
+    )
+    assert "ORG-A" not in resolution.by_authority
+    assert resolution.known_positive_uses == frozenset()
+
+
+def test_the_union_is_presentation_convenience_not_a_stronger_verified_fact() -> None:
+    # A category absent from the aggregate is not proven absent -- and the
+    # aggregate never claims completeness. Demonstrated structurally: the
+    # aggregate is derived only from what sources positively declared, with
+    # per-authority provenance preserved separately in by_authority rather
+    # than collapsed into the union.
+    resolution = _resolve_broad_use_history(
+        [_UseHistoryObservation("A-1", "ORG-A", "VALUE_ASSERTION", frozenset({"PRIVATE"}))]
+    )
+    assert "RACING" not in resolution.known_positive_uses
+    assert resolution.by_authority["ORG-A"] == frozenset({"PRIVATE"})
+    assert resolution.known_positive_uses is not resolution.by_authority["ORG-A"]
 
 
 # ---------------------------------------------------------------------------

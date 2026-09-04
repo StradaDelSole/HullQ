@@ -1033,7 +1033,7 @@
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
       "event_structure_ref": null,
-      "notes": null
+      "notes": "Open-world, non-exclusive positive-known-use set: each VALUE_ASSERTION declares categories of use its source positively knows about. Absence of a category from one source's set is not a negative claim about that category. Different sources' positive sets never conflict merely because their membership differs -- resolution is additive per source (union for convenience/display), with each source's original declaration independently retained; the union does not upgrade provenance or verification strength beyond what each source individually asserted. UNKNOWN from one source never erases another source's positive declaration."
     },
     "physical_boat.grounding_history": {
       "topic": "grounding history",
@@ -1234,7 +1234,7 @@
         "data_type": "timing_structure",
         "values": null,
         "required": true,
-        "notes": "precision selects which payload component(s) are populated. EXACT requires exact_year and/or exact_date and forbids approximate_period. APPROXIMATE requires a non-empty approximate_period and forbids exact_year/exact_date. UNKNOWN forbids all three payload components (no fabricated precision).",
+        "notes": "precision selects which payload component(s) are populated. EXACT requires exactly one of exact_year/exact_date (not neither, not both) and forbids approximate_period. APPROXIMATE requires a non-empty, non-whitespace-only approximate_period and forbids exact_year/exact_date. UNKNOWN forbids all three payload components (no fabricated precision).",
         "components": {
           "precision": {
             "data_type": "categorical",
@@ -1250,19 +1250,19 @@
             "data_type": "integer",
             "values": null,
             "required": false,
-            "notes": "Non-null only when precision=EXACT. At least one of exact_year/exact_date must be non-null when precision=EXACT."
+            "notes": "Non-null only when precision=EXACT. Exactly one of exact_year/exact_date must be non-null when precision=EXACT -- never both, never neither."
           },
           "exact_date": {
             "data_type": "string",
             "values": null,
             "required": false,
-            "notes": "ISO 8601 date. Non-null only when precision=EXACT. At least one of exact_year/exact_date must be non-null when precision=EXACT."
+            "notes": "A valid ISO 8601 calendar date (not merely any string). Non-null only when precision=EXACT. Exactly one of exact_year/exact_date must be non-null when precision=EXACT -- never both, never neither."
           },
           "approximate_period": {
             "data_type": "string",
             "values": null,
             "required": false,
-            "notes": "Non-empty only when precision=APPROXIMATE; required (non-null, non-empty) in that case."
+            "notes": "Non-empty, non-whitespace-only text, only when precision=APPROXIMATE; required in that case."
           }
         }
       },

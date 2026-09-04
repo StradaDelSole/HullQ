@@ -337,20 +337,30 @@ requires — a bare `EXACT` with no year/date is not a usable claim:
 ```text
 precision:           EXACT | APPROXIMATE | UNKNOWN
 exact_year:          integer | null
-exact_date:          ISO 8601 date | null
-approximate_period:  short text | null
+exact_date:          valid ISO 8601 calendar date | null
+approximate_period:  non-empty, non-whitespace-only short text | null
 ```
 
 Hard, per precision:
 
 ```text
-precision = EXACT       -> at least one of exact_year/exact_date is non-null
+precision = EXACT       -> exactly one of exact_year/exact_date is non-null
+                            (never neither, never both)
+                            AND if exact_date is given it MUST parse as a
+                            real ISO 8601 calendar date, not merely any
+                            string
                             AND approximate_period is null
-precision = APPROXIMATE -> approximate_period is non-null/non-empty
+precision = APPROXIMATE -> approximate_period is non-null and non-empty
+                            after stripping whitespace (whitespace-only is
+                            invalid)
                             AND exact_year and exact_date are both null
 precision = UNKNOWN     -> exact_year, exact_date and approximate_period are
                             all null (no fabricated precision)
 ```
+
+`exact_year` and `exact_date` are alternative ways to state the same single
+exact point in time, not independent facts that may both be populated;
+supplying both is invalid even though each alone would be valid.
 
 Claim authority/provenance belongs to the observation envelope/context, not
 uncontrolled text inside the event. No invoice/PDF upload follows from
@@ -455,13 +465,48 @@ assertion_kind = VALUE_ASSERTION  -> non-empty subset of the closed
 
 `UNKNOWN` (nothing declared) remains semantically distinct from any declared
 non-empty set; there is no "empty declared set" representation, so an asserted
-value with zero members is invalid, not a synonym for `UNKNOWN`. Two
-observations that declare the same set of categories in a different order are
-the same claim (the set, not its input order or textual form, is what is
-compared for resolution), so legitimately overlapping-but-differently-ordered
-declarations from different sources do not manufacture a false `CONFLICT`; a
-genuinely different set of declared categories is still a real disagreement
-and resolves as `CONFLICT` per §6/§13 like any other fact topic.
+value with zero members is invalid, not a synonym for `UNKNOWN`.
+
+`broad_use_history` categories are lifetime, non-exclusive, **open-world
+positive** facts, not a single closed-world value under the generic §6
+same-topic resolution model. A source declaring `{PRIVATE}` states only what
+that source positively knows; it does not implicitly claim `CHARTER`,
+`RACING` or any other category never occurred. Consequently:
+
+```text
+Org A: {PRIVATE}
+Org B: {PRIVATE, CHARTER}
+-> NOT CONFLICT (Org B simply knows more than Org A declared)
+
+Org A: {PRIVATE}
+Org B: {CHARTER}
+-> NOT CONFLICT merely because the declared sets differ
+
+Org A: {PRIVATE, CHARTER}
+Org B: {CHARTER, PRIVATE}
+-> the same claim (member order is not significant)
+```
+
+Resolution for this field is additive per source, not equality-based: each
+source's current declared set (governed by the same same-authority
+supersession/no-cross-source-overwrite rules as every other fact topic, §6)
+is independently retained, and a convenience aggregate may union the current
+positive sets across sources for display. That union is presentation
+convenience only — it does **not** upgrade provenance or verification
+strength beyond what each source individually asserted, and it never implies
+"this is the complete list of all uses"; a category absent from the
+aggregate is simply not positively known by any current source, not proven
+absent. `UNKNOWN` from one source contributes nothing to the aggregate but
+never erases another source's already-retained positive declaration. A
+same-authority explicit correction/supersession still replaces that
+authority's own current active set exactly as §6.1 requires; a same-authority
+contradiction without an explicit supersession link remains ambiguous for
+that authority alone.
+
+This field never produces a cross-source `CONFLICT` in v0.1: there is no
+negative/exclusion signal in the Gate-1 vocabulary (no way to declare "used
+only for X, never Y"), so two sources' differing positive sets are never
+competing claims about the same value.
 
 History-sensitive topics allow `UNKNOWN` and, where logically appropriate,
 `NO_KNOWN_HISTORY_DECLARED`; silence cannot become proven absence.
@@ -522,14 +567,16 @@ Machine validation fails if any of the following occur (enforced by
 16. Brand and Builder collapse;
 17. a different source supersedes another source by recency alone;
 18. a refit event's `timing.precision` does not match its own temporal
-    payload (`EXACT` without an `exact_year`/`exact_date`; `APPROXIMATE`
-    without a non-empty `approximate_period`; `UNKNOWN` with any fabricated
-    `exact_year`/`exact_date`/`approximate_period`);
+    payload (`EXACT` without exactly one of `exact_year`/`exact_date`, or
+    with both, or with a malformed/impossible `exact_date`; `APPROXIMATE`
+    without a non-empty, non-whitespace-only `approximate_period`; `UNKNOWN`
+    with any fabricated `exact_year`/`exact_date`/`approximate_period`);
 19. a refit event's `category` is outside the closed Gate-1 vocabulary;
 20. `broad_use_history` is treated as single-valued, allows a duplicate
-    member, allows an empty declared set distinct from `UNKNOWN`, or two
-    observations of the same declared set (in different member order) are
-    treated as a false `CONFLICT`.
+    member, allows an empty declared set distinct from `UNKNOWN`, treats
+    differing (including non-overlapping) positive sets from different
+    sources as a `CONFLICT`, or lets `UNKNOWN` from one source erase another
+    source's already-retained positive declaration.
 
 ## 13. Required adversarial examples
 
@@ -557,20 +604,24 @@ introduced by this contract):
   `POA` + a synthetic/invented amount is invalid;
 - free-text extraction of "Rigging was done by the previous owner a few years
   ago" does not become an exact-year structured claim;
-- refit `timing` validity: `EXACT` with no `exact_year`/`exact_date` is
-  invalid; `APPROXIMATE` with no `approximate_period` is invalid; `UNKNOWN`
-  with a fabricated `exact_year`, `exact_date` or `approximate_period` is
-  invalid; a valid exact year/date, a valid approximate period, and an
-  `UNKNOWN` with no payload are each accepted; mixing an `EXACT`/`APPROXIMATE`
-  payload onto the other precision is invalid;
+- refit `timing` validity: `EXACT` with neither `exact_year` nor
+  `exact_date` is invalid; `EXACT` with a valid year only is valid; `EXACT`
+  with a valid date only is valid; `EXACT` with both is invalid; `EXACT`
+  with a malformed/impossible date (e.g. `2022-13-40`) is invalid;
+  `APPROXIMATE` with a whitespace-only period is invalid; `APPROXIMATE`
+  with a real period is valid; `UNKNOWN` with any timing payload at all is
+  invalid; `UNKNOWN` with no payload is valid;
 - an out-of-vocabulary refit `category` (e.g. a token outside the closed
   Gate-1 list) is rejected;
 - `broad_use_history` accepts a legitimate multi-category declaration (e.g.
   `{CHARTER, PRIVATE}` or `{RACING, PRIVATE}`); rejects a duplicate member,
-  an empty declared set, and an out-of-vocabulary member; and two sources
-  declaring the same set in different member order resolve without a false
-  `CONFLICT`, while two sources declaring genuinely different sets still
-  resolve to `CONFLICT`.
+  an empty declared set, and an out-of-vocabulary member; Org A `{PRIVATE}`
+  vs. Org B `{PRIVATE, CHARTER}` is NOT a conflict; Org A `{PRIVATE}` vs.
+  Org B `{CHARTER}` is NOT a conflict merely because the sets differ; the
+  same categories in different member order are the same claim; an
+  `UNKNOWN` source does not erase a positive declaration from another
+  source; and a same-authority explicit correction/supersession still
+  replaces that authority's own current set.
 
 ## 14. Non-goals
 
