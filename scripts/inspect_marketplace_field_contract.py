@@ -180,9 +180,17 @@ def _resolve_broad_use_history(
     """TEST-ONLY open-world resolver; see the equivalent, independently
     written implementation in tests/contract/test_marketplace_fact_contract.py
     for the full explanation. Deliberately distinct from _resolve_fact_topic:
-    there is no CONFLICT state here at all -- positive sets from different
-    sources are additive, never competing, and the union is presentation
-    convenience only, never a stronger jointly-verified fact."""
+    there is no CONFLICT state here at all. Positive category declarations
+    are additive, not competing, both ACROSS sources and WITHIN one source:
+    two still-active observations from the same authority with no
+    supersession link between them are unioned, never discarded as
+    ambiguous, since both are simultaneously-true positive facts. Only an
+    explicit supersedes_observation_id link retracts/replaces a prior
+    observation (excluded from the union, a real correction, not an
+    automatic merge with what it replaced). UNKNOWN contributes no category
+    but never erases another active positive observation. The union is
+    presentation/resolution convenience only, never a stronger jointly-
+    verified fact."""
     by_authority_observations: dict[str, list[_UseHistoryObservation]] = defaultdict(list)
     for observation in observations:
         by_authority_observations[observation.claim_authority].append(observation)
@@ -193,17 +201,17 @@ def _resolve_broad_use_history(
         superseded_ids = {
             o.supersedes_observation_id for o in own_observations if o.supersedes_observation_id
         }
-        current = [o for o in own_observations if o.observation_id not in superseded_ids]
-        distinct_current = {(o.assertion_kind, o.values) for o in current}
-        if len(distinct_current) != 1:
-            continue
-        assertion_kind, values = next(iter(distinct_current))
-        if assertion_kind == "VALUE_ASSERTION":
-            current_by_authority[authority] = values
-            if values:
-                aggregate |= values
-        else:
-            current_by_authority[authority] = None
+        active = [o for o in own_observations if o.observation_id not in superseded_ids]
+
+        authority_union: set[str] = set()
+        has_positive = False
+        for observation in active:
+            if observation.assertion_kind == "VALUE_ASSERTION" and observation.values:
+                authority_union |= observation.values
+                has_positive = True
+
+        current_by_authority[authority] = frozenset(authority_union) if has_positive else None
+        aggregate |= authority_union
 
     return _UseHistoryResolution(
         known_positive_uses=frozenset(aggregate), by_authority=current_by_authority
@@ -400,25 +408,32 @@ def main() -> int:
             _UseHistoryObservation("B-1", "ORG-B", "VALUE_ASSERTION", frozenset({"PRIVATE"})),
         ]
     ).known_positive_uses == frozenset({"PRIVATE"})
-    supersession_ok = _resolve_broad_use_history(
+    same_authority_union = _resolve_broad_use_history(
+        [
+            _UseHistoryObservation("A-1", "ORG-A", "VALUE_ASSERTION", frozenset({"PRIVATE"})),
+            _UseHistoryObservation("A-2", "ORG-A", "VALUE_ASSERTION", frozenset({"CHARTER"})),
+        ]
+    ).by_authority == {"ORG-A": frozenset({"PRIVATE", "CHARTER"})}
+    supersession_is_retraction_not_union = _resolve_broad_use_history(
         [
             _UseHistoryObservation("A-1", "ORG-A", "VALUE_ASSERTION", frozenset({"PRIVATE"})),
             _UseHistoryObservation(
                 "A-2",
                 "ORG-A",
                 "VALUE_ASSERTION",
-                frozenset({"PRIVATE", "CHARTER"}),
+                frozenset({"CHARTER"}),
                 supersedes_observation_id="A-1",
             ),
         ]
-    ).by_authority == {"ORG-A": frozenset({"PRIVATE", "CHARTER"})}
+    ).by_authority == {"ORG-A": frozenset({"CHARTER"})}
     use_history_ok = (
         use_history_valid_cases
         and use_history_invalid_cases
         and not_conflict_subset
         and not_conflict_disjoint
         and unknown_does_not_erase
-        and supersession_ok
+        and same_authority_union
+        and supersession_is_retraction_not_union
     )
     ok &= use_history_ok
     print(f"broad_use_history open-world union      -> {'PASS' if use_history_ok else 'FAIL'}\n")

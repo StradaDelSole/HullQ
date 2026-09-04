@@ -487,26 +487,47 @@ Org B: {CHARTER, PRIVATE}
 -> the same claim (member order is not significant)
 ```
 
-Resolution for this field is additive per source, not equality-based: each
-source's current declared set (governed by the same same-authority
-supersession/no-cross-source-overwrite rules as every other fact topic, §6)
-is independently retained, and a convenience aggregate may union the current
-positive sets across sources for display. That union is presentation
-convenience only — it does **not** upgrade provenance or verification
+Resolution for this field is additive, not equality-based, and additive both
+**across** sources and **within** one source. Two still-active observations
+from the same claim authority that declare different categories, with no
+explicit `supersedes_observation_id` link between them, are **not** a
+contradiction: both are simultaneously-true positive facts, so they union
+into that authority's current set rather than being discarded as ambiguous.
+Only an explicit same-authority supersession retracts/replaces a prior
+observation exactly as §6.1 requires — a superseded observation is excluded
+from the union (a real correction, not an automatic merge with what it
+replaced):
+
+```text
+Org A #1: {PRIVATE}
+Org A #2: {CHARTER}        (no supersession link)
+-> Org A current set = {PRIVATE, CHARTER}     (both true, unioned)
+
+Org A #1: {PRIVATE}
+Org A #2: {CHARTER}        (#2 explicitly supersedes #1)
+-> Org A current set = {CHARTER}              (a real retraction, not a union)
+```
+
+Each authority's own current set (after applying its own supersession) is
+independently retained, and a convenience aggregate may union the current
+positive sets across authorities for display. That union — at both the
+per-authority and cross-authority level — is presentation/resolution
+convenience only. It does **not** upgrade provenance or verification
 strength beyond what each source individually asserted, and it never implies
 "this is the complete list of all uses"; a category absent from the
 aggregate is simply not positively known by any current source, not proven
-absent. `UNKNOWN` from one source contributes nothing to the aggregate but
-never erases another source's already-retained positive declaration. A
-same-authority explicit correction/supersession still replaces that
-authority's own current active set exactly as §6.1 requires; a same-authority
-contradiction without an explicit supersession link remains ambiguous for
-that authority alone.
+absent. `UNKNOWN` from one source (or one observation) contributes no
+category but never erases another already-active positive observation, from
+the same authority or a different one. Cross-authority supersession remains
+structurally impossible: a different Organization's observation can never
+retract another Organization's active claim, no matter what
+`supersedes_observation_id` it declares.
 
-This field never produces a cross-source `CONFLICT` in v0.1: there is no
-negative/exclusion signal in the Gate-1 vocabulary (no way to declare "used
-only for X, never Y"), so two sources' differing positive sets are never
-competing claims about the same value.
+This field never produces a `CONFLICT` in v0.1, cross-source or
+same-authority: there is no negative/exclusion signal in the Gate-1
+vocabulary (no way to declare "used only for X, never Y"), so two positive
+declarations are never competing claims about the same value — they simply
+union.
 
 History-sensitive topics allow `UNKNOWN` and, where logically appropriate,
 `NO_KNOWN_HISTORY_DECLARED`; silence cannot become proven absence.
@@ -574,9 +595,12 @@ Machine validation fails if any of the following occur (enforced by
 19. a refit event's `category` is outside the closed Gate-1 vocabulary;
 20. `broad_use_history` is treated as single-valued, allows a duplicate
     member, allows an empty declared set distinct from `UNKNOWN`, treats
-    differing (including non-overlapping) positive sets from different
-    sources as a `CONFLICT`, or lets `UNKNOWN` from one source erase another
-    source's already-retained positive declaration.
+    differing (including non-overlapping) positive sets as a `CONFLICT`
+    (cross-source or same-authority), discards a same-authority
+    non-superseded observation as "ambiguous" instead of unioning it, lets
+    `UNKNOWN` erase an already-active positive observation, or lets an
+    explicit same-authority supersession automatically union with the
+    observation it retracts instead of replacing it.
 
 ## 13. Required adversarial examples
 
@@ -618,10 +642,16 @@ introduced by this contract):
   an empty declared set, and an out-of-vocabulary member; Org A `{PRIVATE}`
   vs. Org B `{PRIVATE, CHARTER}` is NOT a conflict; Org A `{PRIVATE}` vs.
   Org B `{CHARTER}` is NOT a conflict merely because the sets differ; the
-  same categories in different member order are the same claim; an
-  `UNKNOWN` source does not erase a positive declaration from another
-  source; and a same-authority explicit correction/supersession still
-  replaces that authority's own current set.
+  same categories in different member order are the same claim; two
+  still-active same-authority observations with no supersession link (e.g.
+  Org A #1 `{PRIVATE}`, Org A #2 `{CHARTER}`) union to that authority's
+  current set rather than being discarded as ambiguous; an `UNKNOWN`
+  observation does not erase an already-active positive observation, from
+  the same authority or a different one; a same-authority explicit
+  supersession (e.g. `{CHARTER}` supersedes `{PRIVATE}`) is a real
+  retraction that replaces the superseded set rather than automatically
+  unioning with it; and a cross-source supersession attempt still cannot
+  erase another authority's active positive claim.
 
 ## 14. Non-goals
 

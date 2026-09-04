@@ -1135,27 +1135,32 @@ def _resolve_broad_use_history(
     10.4) -- deliberately distinct from the generic single-valued, equality-
     based _resolve_fact_topic used for every other fact topic in this file.
 
-    Positive category declarations from different sources are additive, not
-    competing: one source's declared set never conflicts with a different
-    source's set merely because membership differs, since the absence of a
-    category from a source's declaration is not a negative claim about that
-    category. There is therefore no CONFLICT state at all in this resolver's
-    return type -- only a per-authority current view and a convenience
-    union.
+    Positive category declarations are additive, not competing, both ACROSS
+    sources and WITHIN one source: two still-active observations from the
+    same authority that declare different categories (e.g. {PRIVATE} and
+    {CHARTER}, with no supersession link between them) are NOT a
+    contradiction -- both are simultaneously true positive facts, so they
+    are unioned into that authority's current set rather than being
+    discarded as "ambiguous". Only an explicit supersedes_observation_id
+    link retracts/replaces a prior observation; superseded observations are
+    excluded from the union (a real correction, not an automatic merge with
+    what it replaced). UNKNOWN contributes no category but never erases an
+    already-active positive observation from the same authority. There is
+    no CONFLICT state at all in this resolver's return type -- only a
+    per-authority current view and a convenience cross-authority union.
 
-    Within one authority, the existing supersession rule still governs which
-    observation is that authority's current statement (no silent latest-
-    wins): a same-authority contradiction with no explicit supersession link
-    leaves that authority's own contribution ambiguous (excluded from the
-    result) rather than guessing which of its un-linked observations is
-    current.
+    Cross-authority supersession is structurally impossible: an
+    observation's supersedes_observation_id is only ever resolved against
+    other observations already grouped under its own claim_authority, so a
+    different Organization's observation can never retract another
+    Organization's active claim.
 
     Each source's original observation remains independently present in
     ``observations`` (nothing here mutates or discards it), and
     ``by_authority`` exposes each authority's own current set separately
-    from the ``known_positive_uses`` union -- the union is a presentation
-    convenience only and must never be read as itself a stronger, jointly-
-    verified fact than what any one source individually asserted.
+    from the ``known_positive_uses`` union -- both are presentation/
+    resolution convenience only and must never be read as a stronger,
+    jointly-verified fact than what each source individually asserted.
     """
     by_authority_observations: dict[str, list[_UseHistoryObservation]] = defaultdict(list)
     for observation in observations:
@@ -1167,19 +1172,19 @@ def _resolve_broad_use_history(
         superseded_ids = {
             o.supersedes_observation_id for o in own_observations if o.supersedes_observation_id
         }
-        current = [o for o in own_observations if o.observation_id not in superseded_ids]
-        distinct_current = {(o.assertion_kind, o.values) for o in current}
-        if len(distinct_current) != 1:
-            # Ambiguous same-authority contradiction with no explicit
-            # supersession link: contribute nothing rather than guess.
-            continue
-        assertion_kind, values = next(iter(distinct_current))
-        if assertion_kind == "VALUE_ASSERTION":
-            current_by_authority[authority] = values
-            if values:
-                aggregate |= values
-        else:
-            current_by_authority[authority] = None
+        active = [o for o in own_observations if o.observation_id not in superseded_ids]
+
+        authority_union: set[str] = set()
+        has_positive = False
+        for observation in active:
+            if observation.assertion_kind == "VALUE_ASSERTION" and observation.values:
+                authority_union |= observation.values
+                has_positive = True
+            # UNKNOWN (or a VALUE_ASSERTION with no values) contributes no
+            # category and never erases another active observation's set.
+
+        current_by_authority[authority] = frozenset(authority_union) if has_positive else None
+        aggregate |= authority_union
 
     return _UseHistoryResolution(
         known_positive_uses=frozenset(aggregate), by_authority=current_by_authority
@@ -1267,15 +1272,94 @@ def test_same_authority_explicit_supersession_replaces_that_authoritys_current_s
     assert observations[0].values == frozenset({"PRIVATE"})
 
 
-def test_a_same_authority_contradiction_without_supersession_contributes_nothing() -> None:
+def test_same_authority_two_disjoint_positive_observations_without_supersession_union() -> None:
+    # Required adversarial example 1: Org A #1 {PRIVATE}, Org A #2 {CHARTER},
+    # no supersession -> Org A current positive set {PRIVATE, CHARTER}. Both
+    # are simultaneously-true positive facts, not a contradiction.
     resolution = _resolve_broad_use_history(
         [
             _UseHistoryObservation("A-1", "ORG-A", "VALUE_ASSERTION", frozenset({"PRIVATE"})),
             _UseHistoryObservation("A-2", "ORG-A", "VALUE_ASSERTION", frozenset({"CHARTER"})),
         ]
     )
-    assert "ORG-A" not in resolution.by_authority
-    assert resolution.known_positive_uses == frozenset()
+    assert resolution.by_authority == {"ORG-A": frozenset({"PRIVATE", "CHARTER"})}
+    assert resolution.known_positive_uses == frozenset({"PRIVATE", "CHARTER"})
+
+
+def test_same_authority_overlapping_positive_observations_without_supersession_union() -> None:
+    # Required adversarial example 2: Org A #1 {PRIVATE}, Org A #2
+    # {PRIVATE, CHARTER}, no supersession -> {PRIVATE, CHARTER}; not
+    # ambiguous, not conflict.
+    resolution = _resolve_broad_use_history(
+        [
+            _UseHistoryObservation("A-1", "ORG-A", "VALUE_ASSERTION", frozenset({"PRIVATE"})),
+            _UseHistoryObservation(
+                "A-2", "ORG-A", "VALUE_ASSERTION", frozenset({"PRIVATE", "CHARTER"})
+            ),
+        ]
+    )
+    assert resolution.by_authority == {"ORG-A": frozenset({"PRIVATE", "CHARTER"})}
+    assert resolution.known_positive_uses == frozenset({"PRIVATE", "CHARTER"})
+
+
+def test_same_authority_unknown_and_positive_both_active_retains_the_positive_claim() -> None:
+    # Required adversarial example 3: Org A UNKNOWN, Org A {PRIVATE}, both
+    # active -> {PRIVATE} retained (UNKNOWN never erases an active positive
+    # observation from the same authority).
+    resolution = _resolve_broad_use_history(
+        [
+            _UseHistoryObservation("A-1", "ORG-A", "UNKNOWN", None),
+            _UseHistoryObservation("A-2", "ORG-A", "VALUE_ASSERTION", frozenset({"PRIVATE"})),
+        ]
+    )
+    assert resolution.by_authority == {"ORG-A": frozenset({"PRIVATE"})}
+    assert resolution.known_positive_uses == frozenset({"PRIVATE"})
+
+
+def test_same_authority_explicit_supersession_is_a_real_correction_not_an_automatic_union() -> None:
+    # Required adversarial example 4: A-1 {PRIVATE}; A-2 {CHARTER} supersedes
+    # A-1 -> current authority set is exactly {CHARTER}, reflecting the
+    # explicit correction -- NOT {PRIVATE, CHARTER}, which would happen if
+    # the superseded observation were incorrectly still unioned in.
+    observations = [
+        _UseHistoryObservation("A-1", "ORG-A", "VALUE_ASSERTION", frozenset({"PRIVATE"})),
+        _UseHistoryObservation(
+            "A-2",
+            "ORG-A",
+            "VALUE_ASSERTION",
+            frozenset({"CHARTER"}),
+            supersedes_observation_id="A-1",
+        ),
+    ]
+    resolution = _resolve_broad_use_history(observations)
+    assert resolution.by_authority == {"ORG-A": frozenset({"CHARTER"})}
+    assert resolution.known_positive_uses == frozenset({"CHARTER"})
+    # The superseded observation remains independently retained for
+    # audit/history, not deleted or mutated by resolution.
+    assert observations[0].values == frozenset({"PRIVATE"})
+
+
+def test_cross_source_supersession_attempt_cannot_erase_another_authoritys_positive_claim() -> None:
+    # Required adversarial example 5: Org B declares supersedes_observation_id
+    # pointing at Org A's observation. Grouping is strictly per-authority, so
+    # Org B's declaration has zero effect on Org A's active claim.
+    resolution = _resolve_broad_use_history(
+        [
+            _UseHistoryObservation("A-1", "ORG-A", "VALUE_ASSERTION", frozenset({"PRIVATE"})),
+            _UseHistoryObservation(
+                "B-1",
+                "ORG-B",
+                "VALUE_ASSERTION",
+                frozenset({"CHARTER"}),
+                supersedes_observation_id="A-1",
+            ),
+        ]
+    )
+    assert resolution.by_authority == {
+        "ORG-A": frozenset({"PRIVATE"}),
+        "ORG-B": frozenset({"CHARTER"}),
+    }
+    assert resolution.known_positive_uses == frozenset({"PRIVATE", "CHARTER"})
 
 
 def test_the_union_is_presentation_convenience_not_a_stronger_verified_fact() -> None:
