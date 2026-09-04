@@ -3,55 +3,53 @@
 **ID:** SLICE-0044  
 **Type:** DESIGN_RESEARCH  
 **Status:** READY  
-**Stage:** Native Marketplace Foundation — PhysicalBoat / Listing fact semantics before persistence/workspace  
-**Depends on:** SLICE-0040 owner-accepted / DONE; SLICE-0041 owner-accepted / DONE; SLICE-0042 owner-accepted / DONE; SLICE-0043 owner-accepted / DONE; `docs/MARKETPLACE_FACT_CLAIM_SEMANTICS_2026-09-04.md` accepted/merged  
-**Blocks:** PhysicalBoat/listing-fact persistence, broker listing workspace, listing read/search surfaces, structured refit/history search, sensitive-claim presentation, scalable listing intake
+**Stage:** Native Marketplace Foundation — fact semantics before PhysicalBoat persistence/workspace  
+**Depends on:** SLICE-0040–0043 owner-accepted / DONE; `docs/MARKETPLACE_FACT_CLAIM_SEMANTICS_2026-09-04.md` accepted/merged  
+**Blocks:** PhysicalBoat/listing-fact persistence, broker listing workspace, listing read/search, structured refit/history search, sensitive-claim presentation, scalable listing intake
 
 ## Objective
 
 Answer exactly one business-critical design question and freeze it in machine-checkable form:
 
-> **What is the smallest Gate-1 marketplace fact/field contract that lets a professional broker describe a real yacht and current offer usefully, while preserving HullQ's strict Design-vs-PhysicalBoat truth boundary, provenance, UNKNOWN/CONFLICT semantics, non-destructive corrections and liability-safe treatment of sensitive claims?**
+> **What is the smallest Gate-1 marketplace fact/field contract that lets a professional broker describe a real yacht and current offer usefully, while preserving HullQ's Design-vs-PhysicalBoat truth boundary, provenance, UNKNOWN/CONFLICT semantics, non-destructive corrections and liability-safe treatment of sensitive claims?**
 
-The slice MUST produce a normative marketplace fact contract plus a machine-readable field registry and executable owner inspection. It MUST NOT persist PhysicalBoat facts or build the broker workspace.
+The slice produces a normative contract, machine-readable registry and executable owner inspection. It does **not** persist PhysicalBoat facts or build the broker workspace.
 
 ## Product execution checks
 
 **ONE-CAPABILITY CHECK:** PASS  
-This slice defines one capability boundary only: the machine-checkable semantic/field contract future native listing input must obey.
+One capability only: define and mechanically validate the marketplace field/claim contract future native listing input must obey.
 
 **VISIBLE-RESULT CHECK:** PASS  
-The Project Owner can execute one inspection command and see the exact Gate-1 field matrix plus adversarial semantic checks for Design-vs-PhysicalBoat projection, UNKNOWN/ABSENT/no-known-history distinction, CONFLICT search behavior, sensitive-field classification, document-availability semantics and correction/supersession behavior.
+The owner can run one inspection command and see the exact field matrix plus adversarial semantic proofs.
 
 **PRODUCT EXECUTION PLAN ALIGNMENT:** PASS  
-The accepted native-marketplace execution order requires physical-vessel/listing truth after durable NativeListing creation and before broad listing read/search/workspace implementation. Freezing the field semantics first avoids coupling a new DB schema/UI to an unresolved truth/liability model and remains bounded under ONE-CAPABILITY.
+SLICE-0043 created durable NativeListing identity/persistence. Before physical/listing fact persistence and broad UI/search, the fact model must be frozen so schema/UI convenience cannot weaken truth or liability boundaries.
 
 ## Why this slice exists
 
-SLICE-0043 proved one authorized, durable minimal NativeListing envelope. The next architectural pressure is to attach useful real-yacht and offer information.
+Competitor research showed strong broker UX patterns — structured specs, free-text description, model-data assistance, quality/completeness checks, refit narratives and inventory tooling — but also the common risk of treating manufacturer/model data or broker-entered fields as if they were inherently authoritative facts about the specific yacht.
 
-Competitor research across major boat/yacht marketplaces and broker inventory tools showed that market-standard listing systems commonly provide extensive structured technical fields, free-text descriptions, model-data autofill, quality/completeness scoring, broker profiles and distribution tooling. HullQ should retain broker usability while improving the truth boundary:
+HullQ's target is:
 
 ```text
 free text for narrative
 +
-structured observations for searchable/inspectable facts
+structured observations for facts/claims
 +
-explicit provenance / claim authority
+explicit source/provenance
 +
-UNKNOWN / UNRESOLVED / CONFLICT where appropriate
+UNKNOWN / UNRESOLVED / CONFLICT
 +
-Design reference used as assistance, never silently as this-yacht truth
+Design reference for assistance only
 ```
 
-Additional owner/architecture review identified four important risks that must be solved before persistence/UI:
+The accepted 2026-09-04 Marketplace Fact & Claim Semantics decision adds four important locks:
 
-1. current-state `ABSENT` is not the same as historical `NO_KNOWN_HISTORY_DECLARED`;
-2. release sequencing (`GATE_1_REQUIRED/OPTIONAL/LATER`) must be independent of legal/safety claim risk (`STANDARD/MATERIAL/SENSITIVE`);
-3. conflicting observations must fail closed for hard search/qualification just as existing HullQ Search does;
-4. a claimant correcting its own mistake needs explicit non-destructive supersession, while a different source cannot overwrite prior observations.
-
-The accepted `docs/MARKETPLACE_FACT_CLAIM_SEMANTICS_2026-09-04.md` is now controlling and this slice must operationalize it.
+1. `ABSENT` is not the same as `NO_KNOWN_HISTORY_DECLARED`;
+2. delivery phase and claim-risk class are independent;
+3. UNKNOWN/UNRESOLVED/CONFLICT fail closed for hard search;
+4. correction uses explicit non-destructive supersession; another source cannot overwrite an earlier observation by recency alone.
 
 ## Controlling artifacts
 
@@ -68,72 +66,59 @@ The accepted `docs/MARKETPLACE_FACT_CLAIM_SEMANTICS_2026-09-04.md` is now contro
 
 ### Existing-schema alignment
 
-`FIELD_EVIDENCE_SCHEMA.v0.3` already contains the accepted non-destructive `supersedes_evidence_id` pattern and explicitly separates producer/evidence/claim semantics. `OBSERVATION_APPLICABILITY_SCHEMA.v0.1` already treats unknown scope as unknown rather than global applicability.
+`FIELD_EVIDENCE_SCHEMA.v0.3` already provides the accepted non-destructive `supersedes_evidence_id` precedent and separates producer/evidence/claim semantics. `OBSERVATION_APPLICABILITY_SCHEMA.v0.1` already treats unknown scope as unknown rather than global applicability.
 
-SLICE-0044 MUST align with these principles but MUST NOT repurpose research-evidence schemas as a marketplace persistence model merely for convenience.
+SLICE-0044 MUST align with these principles without repurposing research-evidence schemas as the marketplace persistence model.
 
-`CLAIM_SEMANTICS_SCHEMA.v0.1` remains the semantic role of an observation (for example `individual_hull_value` or `identity_or_chronology_claim`). It MUST NOT be overloaded with marketplace assertion state, resolution, provenance, delivery phase or risk classification.
+`CLAIM_SEMANTICS_SCHEMA.v0.1` remains the semantic role of an observation. It MUST NOT be overloaded with marketplace assertion state, resolution, provenance, requiredness, delivery phase or risk class.
 
 ## In scope
 
-1. A normative `MARKETPLACE_FACT_CONTRACT.v0.1` defining the field/claim meta-model.
-2. A machine-readable v0.1 marketplace field registry with a deliberately bounded Gate-1 core plus a few explicitly deferred sensitive/history exemplars needed to prove the risk/phase model.
-3. Machine-checkable validation of every registry entry.
-4. Explicit semantic distinction among observation assertion kind, cross-observation resolution state, provenance/claim authority, evidence availability, search use, delivery phase and claim-risk class.
-5. Free-text description/narrative fields that remain separate from structured facts.
-6. A minimal repeatable refit/upgrade observation shape suitable for Gate-1 broker entry without document upload.
-7. Explicit same-authority correction/supersession semantics and cross-source conflict semantics at contract/example level.
-8. An owner inspection command showing the final field matrix and required fail-closed examples.
+1. Normative `MARKETPLACE_FACT_CONTRACT.v0.1`.
+2. Machine-readable field-registry schema.
+3. Machine-readable v0.1 registry containing a bounded Gate-1 core plus a few explicitly deferred sensitive/history exemplars.
+4. Contract tests/validation for every registry entry.
+5. Free-text listing narrative separated from structured fact truth.
+6. Minimal repeatable refit/upgrade claim structure with no document upload.
+7. Explicit correction/supersession and cross-source conflict examples.
+8. Owner inspection showing all required invariants.
 
 ## Explicitly out of scope
 
-- PostgreSQL tables/migrations for PhysicalBoat facts, observations or field values;
-- changing the SLICE-0040 identity model;
-- modifying SLICE-0043 NativeListing persistence semantics;
-- automatic PhysicalBoat/MarketEpisode identity resolution or dedup;
-- actual broker listing editor/workspace UI;
-- FastAPI/Astro/React endpoints/surfaces;
-- public listing publication/lifecycle/freshness;
-- document/PDF upload or storage;
-- malware scanner implementation;
+- PostgreSQL/Alembic changes;
+- PhysicalBoat/listing-fact persistence;
+- changes to SLICE-0040 identity or SLICE-0043 persistence semantics;
+- PhysicalBoat/MarketEpisode dedup/resolution;
+- broker workspace UI;
+- FastAPI/Astro/React surfaces;
+- publication/lifecycle/freshness;
+- photo/media/document upload;
+- malware scanning implementation;
 - document verification/adjudication;
-- photo/media upload;
 - LLM extraction implementation;
-- automated free-text-to-fact promotion;
-- full yacht/equipment field catalog;
-- generic CRM;
-- leads/referrals;
-- pricing/entitlements;
-- external NautiX/CSV/feed import implementation;
+- automatic free-text-to-fact promotion;
+- complete yacht/equipment catalog;
+- generic CRM, leads, referrals, pricing, transactions;
+- NautiX/CSV/feed implementation;
 - legal/tax certification by HullQ;
-- SLICE-0045 or later work.
+- SLICE-0045+.
 
-## Required meta-model dimensions
+## Required independent meta-model axes
 
-Every registered field/fact topic MUST define independent values for at least the following dimensions. Do not collapse them into one status enum.
+Every registered field/fact topic MUST explicitly classify the following. Do not collapse them into one status enum.
 
-### 1. Subject / ownership
-
-Minimum semantic classes:
+### Subject
 
 ```text
 PHYSICAL_BOAT
 LISTING_OFFER
 ```
 
-`DESIGN_REFERENCE` must remain representable in examples/validation as a separate source/reference scope, but a design reference is not silently a PhysicalBoat field value.
+`DESIGN_REFERENCE` remains a distinct reference/source scope used in examples and later assistance; it is never silently a PhysicalBoat value.
 
-Examples:
+### Allowed assertion kinds
 
-```text
-standard design draft     -> DESIGN_REFERENCE
-this yacht's actual draft -> PHYSICAL_BOAT
-asking price              -> LISTING_OFFER
-```
-
-### 2. Allowed observation assertion kinds
-
-The final v0.1 names may vary only if semantics remain mechanically distinct:
+The v0.1 names may vary only if these semantics remain mechanically distinct:
 
 ```text
 VALUE_ASSERTION
@@ -146,25 +131,17 @@ NOT_APPLICABLE
 
 Each field declares an allowed subset.
 
-Hard distinction:
+Hard:
 
 ```text
-ABSENT
-!=
-NO_KNOWN_HISTORY_DECLARED
-!=
-UNKNOWN
+ABSENT != NO_KNOWN_HISTORY_DECLARED != UNKNOWN
 ```
 
-`ABSENT` is appropriate to a current/bounded state such as equipment absence.
+`ABSENT` is a current/bounded-state claim (for example equipment absent). `NO_KNOWN_HISTORY_DECLARED` means the claimant declares no relevant history known to them; it is not proof the event never occurred.
 
-`NO_KNOWN_HISTORY_DECLARED` is appropriate where a claimant can only state that no relevant history is known to them. It MUST NOT be interpreted as proof an event never occurred.
+### Resolution state
 
-### 3. Resolution state
-
-Keep cross-observation resolution separate from assertion kind.
-
-Minimum semantics:
+Separate from assertion kind:
 
 ```text
 UNRESOLVED
@@ -172,15 +149,19 @@ RESOLVED
 CONFLICT
 ```
 
-### 4. Claim authority / provenance
+### Claim authority / provenance
 
-The contract must preserve enough context to answer who/what asserted an observation. Gate-1 native input is professional-Organization/broker sourced, but the model must not hard-code that every future observation comes from the current broker.
+The contract must preserve who/what asserted an observation. Gate-1 native input is professional-Organization/broker sourced, but the model must not assume all future observations come from the current broker.
 
-Do not define `BROKER_CLAIM` as equivalent to `VERIFIED_FACT`.
+Hard:
 
-### 5. Supporting evidence state
+```text
+BROKER_CLAIM != VERIFIED_FACT
+```
 
-At minimum keep these concepts separate:
+### Supporting-evidence state
+
+Keep distinct:
 
 ```text
 supporting documentation declared available
@@ -189,44 +170,44 @@ supporting documentation reviewed by HullQ
 claim verified / not verified
 ```
 
-SLICE-0044 MUST NOT introduce an upload path.
+No file upload exists in this slice.
 
-A Gate-1 broker declaration may state documentation is available without HullQ possessing it.
-
-### 6. Presentation
-
-Minimum registry classification:
+### Presentation
 
 ```text
 PUBLIC
 INTERNAL
 ```
 
-### 7. Search use
-
-Minimum registry classification:
+### Search use
 
 ```text
 SEARCHABLE
 DISPLAY_ONLY
 ```
 
-`SEARCHABLE` means the field is intended to be usable by a future structured search capability. It does NOT implement that search in this slice.
+This classifies intended future structured-search use; it does not implement search here.
 
-### 8. Gate-1 requiredness
-
-Minimum classification:
+### Gate-1 requiredness
 
 ```text
 REQUIRED_RESPONSE
+CONDITIONAL
 OPTIONAL
 ```
 
-`REQUIRED_RESPONSE` does not mean the value must be known. A required response may explicitly be `UNKNOWN` where the field allows it.
+`REQUIRED_RESPONSE` means the broker/workflow must answer the field, but the answer MAY be explicit `UNKNOWN` where allowed. Never force a guessed value merely to achieve completeness.
 
-This avoids fake completeness by forcing guessed values.
+`CONDITIONAL` MUST carry a machine-readable condition.
 
-### 9. Delivery phase
+Price lock:
+
+```text
+price_mode = AMOUNT -> amount + currency are required
+price_mode = POA    -> amount is not invented
+```
+
+### Delivery phase
 
 ```text
 GATE_1_REQUIRED
@@ -234,9 +215,7 @@ GATE_1_OPTIONAL
 LATER
 ```
 
-This axis answers **when** HullQ needs the field/capability.
-
-### 10. Claim risk class
+### Claim risk class
 
 ```text
 STANDARD
@@ -244,106 +223,86 @@ MATERIAL
 SENSITIVE
 ```
 
-This axis answers **how carefully the claim must be represented**, independently of delivery phase.
+Delivery phase and risk class are independent. A field may be `GATE_1_OPTIONAL + SENSITIVE`.
 
-A field may therefore validly be:
-
-```text
-GATE_1_OPTIONAL + SENSITIVE
-```
-
-or, where later explicitly justified:
-
-```text
-GATE_1_REQUIRED + SENSITIVE
-```
-
-## Deterministic claim-risk classification rule
-
-The normative contract MUST include a reproducible checklist/rule rather than intuitive labels.
+## Deterministic claim-risk rule
 
 ### SENSITIVE
 
-Classify as `SENSITIVE` when the field's nature creates heightened risk of being relied upon as a legal, regulatory, title/ownership, tax, insurability, major-damage/history, latent-defect/history, safety-condition or warranty-like representation.
+Use when the claim's nature creates heightened risk of being relied on as legal, regulatory, title/ownership, tax, insurability, major-damage/history, latent-defect/history, survey/condition, safety or warranty-like representation.
 
-Strong triggers include:
+Strong triggers:
 
 - HIN/CIN/registration/title/ownership identity where used as legal identity evidence;
-- VAT/tax-paid or equivalent tax status;
+- VAT/tax-paid status;
 - major accident/damage/grounding history;
-- insurance-loss/claim history if later introduced;
-- major latent-defect/history claims such as osmosis treatment/history;
-- current-condition statements that could reasonably be mistaken for a survey/certification or seaworthiness assurance;
-- other claims for which false/outdated presentation could materially affect legality, insurability, safety/seaworthiness or substantial transaction economics and therefore needs special wording/evidence handling.
+- insurance-loss/claim history if later added;
+- osmosis/major latent-defect history;
+- current-condition statements that could be mistaken for a survey/certification/seaworthiness assurance;
+- other statements where false/outdated presentation could materially affect legality, insurability, safety/seaworthiness or substantial transaction economics and therefore require special wording/evidence handling.
 
 ### MATERIAL
 
-Use for commercially/technically important facts that can materially affect suitability/value/search decisions but do not normally imply HullQ legal/survey certification merely by being displayed, e.g. build year, draft, engine hours, key refit claims, price.
+Commercially/technically important values such as price, build year, draft, engine hours and refit claims that materially affect value/suitability but do not by ordinary display imply HullQ legal/survey certification.
 
 ### STANDARD
 
-Use for ordinary narrative/display metadata where inaccurate content is undesirable but does not carry the above heightened legal/history/condition implications.
+Ordinary narrative/display metadata without the heightened implications above.
 
-### Conservative v0.1 presentation rule
+### Conservative v0.1 sensitive-field rule
 
-Every `SENSITIVE` field in registry v0.1 MUST be `DISPLAY_ONLY` and MUST carry a field-level presentation policy requiring visible claim attribution / non-verification context. Search/filtering of sensitive claims requires a later explicit contract amendment/product/legal review.
+Every `SENSITIVE` field in registry v0.1 MUST be `DISPLAY_ONLY`. Every public sensitive field MUST carry a machine-readable attributed/non-verified presentation policy. Sensitive filtering/search requires a later explicit contract amendment and product/legal review.
 
-This is intentionally conservative and may be relaxed field-by-field only by later accepted governance.
+## Hard future-search semantics
 
-## Hard search semantics
-
-Although SLICE-0044 does not implement listing search, the contract MUST lock future search eligibility:
+Although this slice does not implement listing search, it MUST lock future eligibility:
 
 ```text
-RESOLVED compatible value -> eligible to satisfy a future Required constraint
-UNKNOWN                    -> NOT eligible
-UNRESOLVED                 -> NOT eligible
-CONFLICT                   -> NOT eligible
+RESOLVED compatible value -> may satisfy Required
+UNKNOWN                    -> NO
+UNRESOLVED                 -> NO
+CONFLICT                   -> NO
 ```
 
-`CONFLICT` MUST NOT resolve by selecting the observation that happens to satisfy the buyer query.
+A conflicting observation that happens to match the buyer query MUST NOT be selected to manufacture a match.
 
-For `Prefer`, unresolved/conflicting observations MUST NOT receive an invented positive score solely because one candidate value would match.
+For `Prefer`, unresolved/conflicting observations MUST NOT receive an invented positive score merely because one candidate value matches.
 
-For history fields, `NO_KNOWN_HISTORY_DECLARED` MUST NOT satisfy a semantic predicate equivalent to "proven never occurred".
+`NO_KNOWN_HISTORY_DECLARED` MUST NOT satisfy a predicate equivalent to "proven never occurred".
 
-## Correction / supersession semantics
+## Correction / supersession
 
 ### Same-authority correction
 
-A genuine correction of a claimant's own prior statement is represented non-destructively:
+A genuine correction is non-destructive:
 
 ```text
 new observation
 + explicit supersedes_observation_id (or accepted equivalent)
 + same authorized claim authority/context
 -> old observation retained for audit/history
--> new observation becomes claimant's current statement
+-> new observation becomes that claimant's current statement
 ```
 
-The exact field name may align with existing `supersedes_evidence_id` precedent but MUST NOT reuse an evidence ID type where marketplace observation identity requires a distinct type.
+The implementation may align with the existing `supersedes_evidence_id` pattern but MUST NOT incorrectly reuse research-evidence identity where marketplace observation identity requires its own type.
 
 ### Cross-source disagreement
 
+A different Organization/source cannot supersede another merely by being newer.
+
 ```text
-Broker/Org A observation
-!=
-Broker/Org B observation
+Org A: 2021
+Org B: 2022
+-> CONFLICT unless separately resolved
 ```
 
-Broker/Org B cannot supersede A merely by being newer.
+### Same-source contradiction without explicit correction
 
-Contradictory active observations without an accepted resolution remain `CONFLICT`.
-
-### Unmarked contradiction from same authority
-
-A later contradictory observation that is not explicitly identified/authorized as a correction MUST NOT silently become "latest wins". It remains conflict/unresolved until the contract's correction/resolution rules are satisfied.
+No silent "latest wins". A contradictory later observation that is not explicitly authorized as correction remains conflict/unresolved.
 
 ## Free-text rules
 
-Gate-1 MUST retain broker narrative capability.
-
-Registry v0.1 must include:
+Registry v0.1 MUST include:
 
 ```text
 broker_summary
@@ -353,19 +312,16 @@ known_history_narrative
 
 Rules:
 
-- narrative text is preserved as submitted subject to ordinary validation/safety rules;
-- free text is `DISPLAY_ONLY` for structured-truth purposes;
-- free text alone MUST NOT satisfy structured technical Required filters;
-- important technical/commercial/history facts may also be captured as separate structured observations;
-- no LLM/manual parser may auto-promote description text to verified/resolved fact in this slice.
+- narrative remains broker text;
+- narrative is `DISPLAY_ONLY` for structured truth/search;
+- text alone cannot satisfy technical Required filters;
+- structured facts may separately capture important claims mentioned in narrative;
+- no parser/LLM may auto-promote description text into resolved/verified PhysicalBoat truth.
 
-Future extraction may produce suggestions only:
+Future extraction flow, not implemented here:
 
 ```text
-source text
--> candidate extraction
--> extraction uncertainty
--> human confirm/edit/ignore
+text -> candidate extraction -> uncertainty -> human confirm/edit/ignore
 ```
 
 Hard:
@@ -374,11 +330,11 @@ Hard:
 EXTRACTION CONFIDENCE != TRUTH CONFIDENCE
 ```
 
-No LLM extraction implementation belongs in SLICE-0044.
+Example text such as "Rigging was done by the previous owner a few years ago" MUST NOT become an exact 2022 replacement claim automatically.
 
 ## Minimal refit / upgrade structure
 
-Registry/contract v0.1 MUST include one repeatable `refit_events`-equivalent PhysicalBoat claim structure, Gate-1 optional and initially display-only.
+Include one repeatable `refit_events`-equivalent `PHYSICAL_BOAT` claim structure. Gate-1 optional, initially display-only.
 
 Minimum event semantics:
 
@@ -387,7 +343,7 @@ event_kind:
   MAINTENANCE | UPGRADE_OR_REPLACEMENT | MAJOR_REFIT
 
 category:
-  bounded high-level category, not an exhaustive equipment ontology
+  bounded high-level category
 
 topic/item:
   non-empty text or bounded identifier
@@ -396,7 +352,7 @@ action:
   INSTALLED | REPLACED | REFURBISHED | UPGRADED | REPAIRED | OTHER
 
 timing:
-  exact year/date OR approximate timing OR UNKNOWN
+  exact year/date | approximate timing | UNKNOWN
 
 description:
   optional short text
@@ -405,42 +361,35 @@ supporting_documentation_declared_available:
   YES | NO | UNKNOWN
 ```
 
-Claim authority/provenance belongs to the observation envelope/context, not duplicated as uncontrolled free text inside each event.
+Claim authority/provenance belongs to the observation envelope/context, not uncontrolled text inside the event.
 
-The event is about a `PHYSICAL_BOAT`. A new broker may add another observation; it does not overwrite earlier observations merely because it is newer.
+No invoice/PDF upload follows from `documentation_declared_available`.
 
-No invoice/PDF upload is allowed by this structure.
+## v0.1 bounded field registry
 
-## v0.1 field registry — locked bounded set
+The implementation may choose clean machine identifiers, but the semantic topics and classifications below are locked. Do not expand into a complete yacht/equipment catalog.
 
-The implementation may choose clean machine field identifiers, but the semantic topics below are locked. Do not expand into a complete yacht catalog.
+### A. Listing offer
 
-### A. Listing-offer core
+| Topic | Phase | Risk | Presentation | Search | Requiredness |
+|---|---|---|---|---|---|
+| asking price mode (`AMOUNT` / `POA`) | GATE_1_REQUIRED | MATERIAL | PUBLIC | SEARCHABLE | REQUIRED_RESPONSE |
+| asking price amount | GATE_1_REQUIRED | MATERIAL | PUBLIC | SEARCHABLE | CONDITIONAL on `price_mode=AMOUNT` |
+| currency | GATE_1_REQUIRED | MATERIAL | PUBLIC | SEARCHABLE | CONDITIONAL on `price_mode=AMOUNT` |
+| current location country | GATE_1_REQUIRED | STANDARD | PUBLIC | SEARCHABLE | REQUIRED_RESPONSE |
+| current location text/region | GATE_1_OPTIONAL | STANDARD | PUBLIC | SEARCHABLE | OPTIONAL |
+| broker summary | GATE_1_OPTIONAL | STANDARD | PUBLIC | DISPLAY_ONLY | OPTIONAL |
+| broker description | GATE_1_REQUIRED | STANDARD | PUBLIC | DISPLAY_ONLY | REQUIRED_RESPONSE |
+| known-history narrative | GATE_1_OPTIONAL | MATERIAL | PUBLIC | DISPLAY_ONLY | OPTIONAL |
+| VAT/tax status claim | GATE_1_OPTIONAL | SENSITIVE | PUBLIC | DISPLAY_ONLY | OPTIONAL |
 
-| Topic | Subject | Phase | Risk | Presentation | Search | Gate-1 response |
-|---|---|---|---|---|---|---|
-| asking price mode (`AMOUNT` / `POA`) | LISTING_OFFER | GATE_1_REQUIRED | MATERIAL | PUBLIC | SEARCHABLE | REQUIRED_RESPONSE |
-| asking price amount | LISTING_OFFER | GATE_1_REQUIRED conditional on AMOUNT | MATERIAL | PUBLIC | SEARCHABLE | conditional |
-| currency | LISTING_OFFER | GATE_1_REQUIRED conditional on AMOUNT | MATERIAL | PUBLIC | SEARCHABLE | conditional |
-| current location country | LISTING_OFFER | GATE_1_REQUIRED | STANDARD | PUBLIC | SEARCHABLE | REQUIRED_RESPONSE |
-| current location text / region | LISTING_OFFER | GATE_1_OPTIONAL | STANDARD | PUBLIC | SEARCHABLE | OPTIONAL |
-| broker summary | LISTING_OFFER | GATE_1_OPTIONAL | STANDARD | PUBLIC | DISPLAY_ONLY | OPTIONAL |
-| broker description | LISTING_OFFER | GATE_1_REQUIRED | STANDARD | PUBLIC | DISPLAY_ONLY | REQUIRED_RESPONSE |
-| known-history narrative | LISTING_OFFER | GATE_1_OPTIONAL | MATERIAL | PUBLIC | DISPLAY_ONLY | OPTIONAL |
-| VAT/tax status claim | LISTING_OFFER | GATE_1_OPTIONAL | SENSITIVE | PUBLIC | DISPLAY_ONLY | OPTIONAL |
+All are `LISTING_OFFER`.
 
-Price conditionality MUST enforce:
+`POA` MUST NOT create a synthetic asking-price amount.
 
-```text
-AMOUNT -> amount + currency required
-POA    -> amount must not be invented merely to make search easier
-```
+### B. PhysicalBoat identity/basic claims
 
-A future normalized price-search representation is a later capability.
-
-### B. PhysicalBoat identity / basic claims
-
-| Topic | Phase | Risk | Presentation | Search | Gate-1 response |
+| Topic | Phase | Risk | Presentation | Search | Requiredness |
 |---|---|---|---|---|---|
 | marketed brand claim | GATE_1_REQUIRED | MATERIAL | PUBLIC | SEARCHABLE | REQUIRED_RESPONSE |
 | builder claim | GATE_1_OPTIONAL | MATERIAL | PUBLIC | SEARCHABLE | OPTIONAL |
@@ -449,23 +398,25 @@ A future normalized price-search representation is a later capability.
 | build year | GATE_1_REQUIRED | MATERIAL | PUBLIC | SEARCHABLE | REQUIRED_RESPONSE; UNKNOWN allowed |
 | HIN/CIN claim | GATE_1_OPTIONAL | SENSITIVE | INTERNAL | DISPLAY_ONLY | OPTIONAL |
 
+All are `PHYSICAL_BOAT`.
+
 Hard:
 
 ```text
 Brand != Builder
 raw broker brand/model claim != resolved BoatDesignRef
-HIN/CIN claim != proof of ownership/title
+HIN/CIN claim != proof of title/ownership
 ```
 
-A BoatDesign match may assist/relate identity but MUST NOT erase the raw broker claim or project design technical values into this yacht.
+A BoatDesign match may assist identity but does not erase the raw claim or project design specs into this yacht.
 
 ### C. PhysicalBoat technical core
 
-All topics below are `PHYSICAL_BOAT` and `MATERIAL` unless a later contract explicitly reclassifies them.
+All are `PHYSICAL_BOAT` and `MATERIAL`.
 
-| Topic | Phase | Presentation | Search | Gate-1 response |
+| Topic | Phase | Presentation | Search | Requiredness |
 |---|---|---|---|---|
-| LOA / actual length | GATE_1_OPTIONAL | PUBLIC | SEARCHABLE | OPTIONAL; UNKNOWN allowed |
+| actual LOA/length | GATE_1_OPTIONAL | PUBLIC | SEARCHABLE | OPTIONAL; UNKNOWN allowed |
 | beam | GATE_1_OPTIONAL | PUBLIC | SEARCHABLE | OPTIONAL; UNKNOWN allowed |
 | draft | GATE_1_OPTIONAL | PUBLIC | SEARCHABLE | OPTIONAL; UNKNOWN allowed |
 | displacement | GATE_1_OPTIONAL | PUBLIC | SEARCHABLE | OPTIONAL; UNKNOWN allowed |
@@ -482,13 +433,13 @@ All topics below are `PHYSICAL_BOAT` and `MATERIAL` unless a later contract expl
 | berths | GATE_1_OPTIONAL | PUBLIC | SEARCHABLE | OPTIONAL; UNKNOWN allowed |
 | heads | GATE_1_OPTIONAL | PUBLIC | SEARCHABLE | OPTIONAL; UNKNOWN allowed |
 
-Units/types MUST be explicit in the normative registry. Do not use ambiguous raw strings for numeric search fields where a normalized value/unit contract is required.
+Numeric search fields MUST define normalized type/unit semantics; no ambiguous unit-bearing strings as canonical searchable values.
 
-Design/configuration reference values may be shown alongside these facts later, but a missing PhysicalBoat value remains `UNKNOWN`; the registry MUST NOT specify "fall back to BoatDesign value" as physical truth.
+Missing PhysicalBoat values remain UNKNOWN. No rule equivalent to "fall back to BoatDesign value" is allowed.
 
-### D. PhysicalBoat history / refit
+### D. PhysicalBoat history/refit
 
-| Topic | Phase | Risk | Presentation | Search | Gate-1 response |
+| Topic | Phase | Risk | Presentation | Search | Requiredness |
 |---|---|---|---|---|---|
 | refit events | GATE_1_OPTIONAL | MATERIAL | PUBLIC | DISPLAY_ONLY | OPTIONAL |
 | known previous-owner count | GATE_1_OPTIONAL | MATERIAL | PUBLIC | DISPLAY_ONLY | OPTIONAL; UNKNOWN allowed |
@@ -496,11 +447,11 @@ Design/configuration reference values may be shown alongside these facts later, 
 | grounding history | LATER | SENSITIVE | PUBLIC | DISPLAY_ONLY | not Gate-1 |
 | major damage history | LATER | SENSITIVE | PUBLIC | DISPLAY_ONLY | not Gate-1 |
 | osmosis treatment/history | LATER | SENSITIVE | PUBLIC | DISPLAY_ONLY | not Gate-1 |
-| last survey date / survey claim | LATER | SENSITIVE | PUBLIC | DISPLAY_ONLY | not Gate-1 |
+| last survey date/survey claim | LATER | SENSITIVE | PUBLIC | DISPLAY_ONLY | not Gate-1 |
 
-Known previous-owner count MUST NOT capture names/identifying details of prior private owners and MUST NOT be treated as a yacht-quality score.
+Known previous-owner count MUST NOT contain names/identifiers of prior private owners, is not searchable in v0.1 and is not a yacht-quality score.
 
-Broad use history may support values such as:
+Broad use-history values may include:
 
 ```text
 PRIVATE
@@ -512,15 +463,13 @@ COMMERCIAL
 UNKNOWN
 ```
 
-No search/filter behavior for previous-owner count, use history or refit history is required in v0.1.
+History-sensitive topics MUST allow `UNKNOWN` and, where logically appropriate, `NO_KNOWN_HISTORY_DECLARED`; silence cannot become proven absence.
 
-History-sensitive fields MUST allow `UNKNOWN` and, where logically applicable, `NO_KNOWN_HISTORY_DECLARED`; they MUST NOT model lack of reports as proven absence.
+## Sensitive presentation lock
 
-## Sensitive field presentation lock
+Every v0.1 `SENSITIVE` field MUST carry a machine-readable presentation policy that forbids unqualified authoritative wording when HullQ has only a broker claim.
 
-For every v0.1 `SENSITIVE` field, the registry MUST carry a presentation-policy identifier or equivalent machine-readable rule proving that a plain unqualified display is forbidden.
-
-Examples of forbidden output when only a broker claim exists:
+Forbidden examples under an unverified broker claim:
 
 ```text
 VAT: PAID
@@ -529,7 +478,7 @@ Damage history: NONE
 HIN/CIN: VERIFIED
 ```
 
-The contract must preserve enough information for later UI wording equivalent to:
+The contract must preserve enough context for later UI wording equivalent to:
 
 ```text
 broker-declared <value>
@@ -544,128 +493,113 @@ No known grounding history declared by broker
 HullQ verification: none
 ```
 
-Exact legal copy is out of scope and requires later product/legal review.
+Exact legal copy remains later product/legal review.
 
 ## Registry integrity rules
 
-The machine-readable registry MUST fail validation if any of these occur:
+Machine validation MUST fail if any of these occur:
 
-1. field has no subject;
-2. field omits allowed assertion kinds;
-3. `ABSENT` and `NO_KNOWN_HISTORY_DECLARED` are represented as the same value;
-4. delivery phase and risk class are encoded in one combined enum;
-5. a `SENSITIVE` field is `SEARCHABLE` in v0.1;
-6. a `SENSITIVE` public field lacks an explicit attributed/non-verified presentation policy;
-7. free-text narrative is marked as structured `SEARCHABLE` truth;
-8. `known_previous_owner_count` is marked searchable in v0.1;
-9. `refit_events` claims document attachment/verification merely because documentation is declared available;
-10. design reference is allowed to fill a missing PhysicalBoat field automatically;
-11. a numeric technical field lacks explicit normalized type/unit semantics;
-12. a required-response field forbids `UNKNOWN` where the field can truthfully be unknown and no stronger evidence is required;
-13. price `AMOUNT` can exist without currency or amount;
-14. POA invents an amount;
-15. Brand and Builder are collapsed into one canonical identity concept.
+1. field lacks subject;
+2. field lacks allowed assertion kinds;
+3. `ABSENT`, `NO_KNOWN_HISTORY_DECLARED` and `UNKNOWN` collapse;
+4. delivery phase and risk class share one combined enum;
+5. `CONDITIONAL` requiredness lacks a machine-readable condition;
+6. any `SENSITIVE` field is `SEARCHABLE` in v0.1;
+7. public `SENSITIVE` field lacks attributed/non-verified presentation policy;
+8. free-text narrative is structured-search truth;
+9. previous-owner count is searchable in v0.1;
+10. declared documentation availability implies attachment/review/verification;
+11. Design reference may fill a missing PhysicalBoat value;
+12. numeric searchable technical field lacks normalized type/unit semantics;
+13. required-response field forces guessed value where UNKNOWN is legitimate;
+14. `price_mode=AMOUNT` can pass without amount+currency;
+15. `price_mode=POA` invents an amount;
+16. Brand and Builder collapse;
+17. a different source can supersede another source by recency alone.
 
 ## Required adversarial examples/tests
 
-### A. Unknown vs absence vs no-known-history
-
-Prove mechanically:
+### UNKNOWN vs absence/history
 
 ```text
 autopilot UNKNOWN != autopilot ABSENT
 
 grounding UNKNOWN
-!=
-grounding NO_KNOWN_HISTORY_DECLARED
-!=
-proven never grounded (unsupported state)
+!= grounding NO_KNOWN_HISTORY_DECLARED
+!= unsupported "proven never grounded"
 ```
 
-### B. Design projection
-
-Given:
+### Design projection
 
 ```text
 BoatDesign draft = 1.65 m
 PhysicalBoat draft = UNKNOWN
+-> PhysicalBoat draft remains UNKNOWN
 ```
 
-result MUST remain:
-
-```text
-PhysicalBoat draft = UNKNOWN
-```
-
-No registry/default rule may synthesize 1.65 m as this yacht's draft.
-
-### C. Conflicting refit observations
+### Conflicting refit claims
 
 ```text
 Org A: standing rigging replaced 2021
 Org B: standing rigging replaced 2022
+-> CONFLICT
+-> hard-search eligibility NO
 ```
 
-Without accepted resolution:
+### Same-authority correction
 
 ```text
-CONFLICT
-hard-search eligibility -> NO
+Org A #1: 2021
+Org A #2: explicitly supersedes #1 -> 2022
 ```
 
-### D. Same-authority correction
+Expected:
 
 ```text
-Org A observation #1: replaced 2021
-Org A observation #2: explicitly supersedes #1, corrected to 2022
-```
-
-Expected semantic result:
-
-```text
-#1 retained for audit/history
+#1 retained
 #2 current statement for Org A
-not an automatic permanent conflict solely because #1 existed
+no automatic permanent conflict solely because #1 existed
 ```
 
-The example MUST prove explicit same-authority/context validation. A different Organization cannot use supersession to erase Org A's claim.
+A different Organization cannot use supersession to erase Org A's claim.
 
-### E. Documentation availability
+### Documentation availability
 
 ```text
-supporting_documentation_declared_available = YES
+documentation_declared_available = YES
+!= attached
+!= reviewed
+!= verified
 ```
 
-MUST NOT imply:
+### Risk/phase independence
 
-```text
-document attached
-reviewed
-verified
-```
-
-### F. Sensitive + early phase independence
-
-Use VAT/tax status or accepted equivalent to prove:
+VAT/tax status must prove:
 
 ```text
 phase = GATE_1_OPTIONAL
 risk  = SENSITIVE
 ```
 
-No `SENSITIVE_LATER` combined shortcut.
+No `SENSITIVE_LATER` shortcut.
 
-### G. Free-text extraction
+### Conditional price requiredness
 
-Given narrative:
+Prove:
 
 ```text
-"Rigging was done by the previous owner a few years ago."
+AMOUNT + missing amount -> invalid
+AMOUNT + missing currency -> invalid
+AMOUNT + amount + currency -> valid
+POA + no amount -> valid
+POA + synthetic/invented amount -> invalid
 ```
 
-The contract/example MUST reject any deterministic promotion to exact year 2022.
+### Free-text extraction
 
-If candidate extraction metadata is represented at all, exact timing stays unknown/approximate and extraction confidence remains separate from truth/provenance.
+`"Rigging was done by the previous owner a few years ago"` MUST NOT become an exact-year structured claim automatically.
+
+If candidate extraction metadata is modeled at all, timing remains approximate/unknown and extraction confidence remains separate from truth/provenance.
 
 ## Normative deliverables
 
@@ -676,40 +610,39 @@ Normally:
 3. `specs/MARKETPLACE_FIELD_REGISTRY.v0.1.json`
 4. focused contract/registry tests
 5. `scripts/inspect_marketplace_field_contract.py`
-6. this slice doc moved to `REVIEW` at handoff
+6. this slice doc -> `REVIEW` at handoff
 
-A small fixture file for adversarial examples is allowed if it makes the contract clearer/reproducible.
+A small adversarial fixture is allowed if useful.
 
-Changes to runtime marketplace identity or persistence modules should normally be unnecessary. If a runtime implementation change appears necessary merely to define this contract, STOP and report.
+Runtime identity/persistence changes should normally be unnecessary. If runtime implementation seems necessary merely to define the contract, STOP.
 
 ## Owner inspection
 
-Required command, normally:
+Normally:
 
 ```text
 uv run python scripts/inspect_marketplace_field_contract.py
 ```
 
-Expected visible result must be generated from the real registry/contract validation, not hard-coded PASS text.
+The output MUST derive from real registry validation/assertions, not hard-coded PASS text.
 
-Illustrative output:
+Expected semantics:
 
 ```text
 MARKETPLACE FACT CONTRACT
 
-FIELD REGISTRY
 Gate-1 required          -> <count>
 Gate-1 optional          -> <count>
 Later                    -> <count>
 Sensitive                -> <count>
 
-asking price             -> LISTING_OFFER / MATERIAL / SEARCHABLE
-broker description       -> LISTING_OFFER / STANDARD / DISPLAY_ONLY
-draft                    -> PHYSICAL_BOAT / MATERIAL / SEARCHABLE
-known previous owners    -> PHYSICAL_BOAT / MATERIAL / DISPLAY_ONLY
-refit events              -> PHYSICAL_BOAT / MATERIAL / DISPLAY_ONLY
-VAT/tax status           -> LISTING_OFFER / SENSITIVE / DISPLAY_ONLY / GATE_1_OPTIONAL
-grounding history        -> PHYSICAL_BOAT / SENSITIVE / DISPLAY_ONLY / LATER
+price                     -> LISTING_OFFER / MATERIAL / SEARCHABLE
+broker description        -> LISTING_OFFER / STANDARD / DISPLAY_ONLY
+draft                     -> PHYSICAL_BOAT / MATERIAL / SEARCHABLE
+previous-owner count      -> PHYSICAL_BOAT / MATERIAL / DISPLAY_ONLY
+refit events               -> PHYSICAL_BOAT / MATERIAL / DISPLAY_ONLY
+VAT/tax status            -> LISTING_OFFER / SENSITIVE / DISPLAY_ONLY / GATE_1_OPTIONAL
+grounding history         -> PHYSICAL_BOAT / SENSITIVE / DISPLAY_ONLY / LATER
 
 UNKNOWN vs ABSENT                    -> DISTINCT
 ABSENT vs NO_KNOWN_HISTORY_DECLARED -> DISTINCT
@@ -718,44 +651,44 @@ CONFLICT satisfies hard search       -> NO
 same-authority correction            -> EXPLICIT SUPERSESSION
 cross-source overwrite               -> FORBIDDEN
 document declared available          -> NOT ATTACHED / NOT VERIFIED
-sensitive field plain assertion      -> FORBIDDEN
+sensitive plain assertion            -> FORBIDDEN
 free-text auto promotion             -> FORBIDDEN
+conditional price requiredness       -> PASS
 
 MARKETPLACE FACT CONTRACT RESULT -> PASS
 ```
 
-Exact formatting may differ, but all semantics above must be observable.
-
 ## Acceptance criteria
 
-- [ ] ONE-CAPABILITY, VISIBLE-RESULT and Product Execution Plan checks remain PASS.
-- [ ] Normative `MARKETPLACE_FACT_CONTRACT.v0.1` exists and is consistent with all controlling artifacts.
-- [ ] Machine-readable field-registry schema exists.
-- [ ] Machine-readable v0.1 registry contains exactly the bounded semantic topics locked by this readiness; no full yacht/equipment catalog is invented.
-- [ ] Every registry field explicitly classifies subject, assertion kinds, presentation, search use, Gate-1 requiredness, delivery phase and claim-risk class.
-- [ ] Delivery phase and risk class are mechanically independent.
-- [ ] `ABSENT`, `NO_KNOWN_HISTORY_DECLARED` and `UNKNOWN` are mechanically distinct where applicable.
-- [ ] Observation assertion kind and cross-observation resolution state are distinct concepts.
-- [ ] `UNKNOWN`, `UNRESOLVED` and `CONFLICT` cannot satisfy a future hard Required search predicate.
-- [ ] Design-reference values cannot be projected into missing PhysicalBoat fields.
-- [ ] Brand and Builder remain distinct.
-- [ ] Raw broker brand/model claims remain distinct from resolved BoatDesign identity.
-- [ ] Same-authority correction requires explicit non-destructive supersession and preserves audit/history.
-- [ ] Cross-source disagreement cannot overwrite or supersede another source by recency alone.
-- [ ] Supporting-documentation declaration is distinct from attachment/review/verification and no upload path is introduced.
-- [ ] All SENSITIVE v0.1 fields are DISPLAY_ONLY and carry explicit attributed/non-verified presentation policy.
-- [ ] VAT/tax status proves `GATE_1_OPTIONAL + SENSITIVE` can coexist.
-- [ ] Grounding/damage/known-history semantics never convert silence/unknown into proven absence.
-- [ ] Broker summary/description/history narrative remain free text and DISPLAY_ONLY for structured-truth purposes.
-- [ ] Free-text/LLM extraction cannot auto-promote structured truth; extraction confidence is not truth confidence.
-- [ ] Minimal refit-event structure supports exact/approximate/unknown timing and declared-document availability without file upload.
-- [ ] Known previous-owner count is optional/display-only, includes no prior private-owner identity, and is not a quality score.
-- [ ] Owner inspection reports PASS only after real registry validation/adversarial assertions succeed.
-- [ ] No PostgreSQL/Alembic change is introduced.
-- [ ] No PhysicalBoat fact persistence, broker UI, publication/lifecycle/freshness, document/media upload, LLM extraction, dedup or later-slice capability is introduced.
-- [ ] Repository validation, format/lint/type checks and full relevant test suite pass; project coverage remains >=90% where coverage applies.
-- [ ] Exact-head CI and Manufacturer artifact reproducibility are green before acceptance where applicable.
-- [ ] No SLICE-0045 or later work starts automatically.
+- [ ] Product execution checks remain PASS.
+- [ ] `MARKETPLACE_FACT_CONTRACT.v0.1` exists and matches all controlling artifacts.
+- [ ] Machine-readable registry schema and v0.1 registry exist.
+- [ ] Registry contains exactly the bounded semantic topics locked here; no complete yacht/equipment catalog is invented.
+- [ ] Every field classifies subject, allowed assertion kinds, presentation, search use, requiredness, phase and risk.
+- [ ] `REQUIRED_RESPONSE`, `CONDITIONAL` and `OPTIONAL` are distinct; conditional fields carry machine-readable conditions.
+- [ ] Phase and risk are mechanically independent.
+- [ ] `ABSENT`, `NO_KNOWN_HISTORY_DECLARED` and `UNKNOWN` remain distinct.
+- [ ] Assertion kind and resolution state remain distinct.
+- [ ] UNKNOWN/UNRESOLVED/CONFLICT cannot satisfy future hard Required search.
+- [ ] Design values cannot auto-project into missing PhysicalBoat values.
+- [ ] Brand and Builder remain distinct; broker brand/model claims remain distinct from resolved BoatDesign identity.
+- [ ] Same-authority correction uses explicit non-destructive supersession and preserves audit/history.
+- [ ] Cross-source disagreement cannot overwrite/supersede by recency alone.
+- [ ] Documentation declaration is separate from attachment/review/verification; no upload path exists.
+- [ ] Every SENSITIVE v0.1 field is DISPLAY_ONLY and has explicit attributed/non-verified presentation policy.
+- [ ] VAT/tax status proves `GATE_1_OPTIONAL + SENSITIVE` coexist.
+- [ ] Grounding/damage/history semantics never convert silence/unknown into proven absence.
+- [ ] Broker summary/description/history narrative remain free text and DISPLAY_ONLY for structured truth.
+- [ ] LLM/free-text extraction cannot auto-promote truth; extraction confidence is not truth confidence.
+- [ ] Minimal refit structure supports exact/approximate/unknown timing and declared-document availability with no upload.
+- [ ] Previous-owner count is optional/display-only, contains no prior-owner identity and is not a quality score.
+- [ ] Conditional price rules are mechanically enforced.
+- [ ] Owner inspection reports PASS only after real registry/adversarial assertions succeed.
+- [ ] No PostgreSQL/Alembic/runtime marketplace persistence change is introduced.
+- [ ] No broker UI, publication/lifecycle/freshness, document/media upload, LLM extraction, dedup or later capability is introduced.
+- [ ] Repository validation, format/lint/type checks and relevant full suite pass; coverage remains >=90% where applicable.
+- [ ] Exact-head CI and Manufacturer reproducibility are green before acceptance where applicable.
+- [ ] SLICE-0045+ is not started automatically.
 
 ## Expected touch points
 
@@ -764,21 +697,20 @@ Expected only:
 - `specs/MARKETPLACE_FACT_CONTRACT.v0.1.md`
 - `specs/MARKETPLACE_FIELD_REGISTRY_SCHEMA.v0.1.json`
 - `specs/MARKETPLACE_FIELD_REGISTRY.v0.1.json`
-- focused tests under `tests/unit/` or an existing contract-test area
+- focused contract tests
 - `scripts/inspect_marketplace_field_contract.py`
-- optional small adversarial fixture
-- `docs/slices/SLICE-0044-gate1-marketplace-field-contract.md`
+- optional small fixture
+- this slice document
 
-Normally do NOT change:
+Normally do not change:
 
 - `src/hullq/domain/market_identity.py`
 - `src/hullq/persistence/native_listing.py`
-- Alembic revisions
-- legacy SQL migrations
-- Search evaluator production code
-- FastAPI/frontend/media modules
+- Alembic / legacy SQL
+- production Search evaluator
+- FastAPI/frontend/media code
 
-If a controlling semantic defect in an existing accepted schema is discovered, STOP rather than silently amending it inside this slice.
+If an accepted schema itself appears semantically defective, STOP rather than changing it inside this slice.
 
 ## Validation
 
@@ -796,32 +728,28 @@ uv lock --check
 uv run pip-audit
 ```
 
-No database environment is required for the owner result because this slice does not persist marketplace facts.
+No PostgreSQL environment is required for this owner result because this slice does not persist marketplace facts.
 
 ## Stop conditions
 
-STOP and report instead of inventing a workaround if:
+STOP if:
 
-- a required field can only be represented by collapsing BoatDesign and PhysicalBoat truth;
-- `UNKNOWN`, `ABSENT`, `NO_KNOWN_HISTORY_DECLARED` or `CONFLICT` would need to be conflated to fit an existing convenience type;
-- claim-risk and delivery-phase classifications cannot remain independent;
-- a sensitive field would require unqualified "verified" presentation without evidence/verification capability;
-- a required Gate-1 claim would force document/PDF upload;
-- proper correction semantics would require destructive overwrite;
-- cross-source corrections cannot be distinguished from same-authority corrections;
-- the slice would need to rewrite existing accepted `CLAIM_SEMANTICS_SCHEMA.v0.1`, `FIELD_EVIDENCE_SCHEMA.v0.3` or Market Identity semantics without a separate accepted architecture decision;
-- a full yacht/equipment catalog, persistence schema, broker GUI, search implementation, lifecycle/freshness, media, dedup, LLM extraction or other later capability becomes necessary to make the owner inspection PASS.
+- representing a field would require collapsing Design and PhysicalBoat truth;
+- UNKNOWN/ABSENT/NO_KNOWN_HISTORY_DECLARED/CONFLICT must be conflated;
+- phase/risk cannot remain independent;
+- sensitive fields require unqualified verified presentation without evidence capability;
+- Gate-1 would require document/PDF upload;
+- correction requires destructive overwrite;
+- cross-source and same-authority correction cannot be distinguished;
+- accepted ClaimSemantics/FieldEvidence/MarketIdentity semantics would need rewriting;
+- complete yacht/equipment catalog, persistence, broker GUI, search implementation, lifecycle/freshness, media, dedup, LLM extraction or later work becomes necessary for PASS.
 
 ## Status handoff rule
 
-The implementing/research agent may set/recommend `IN_PROGRESS`, `BLOCKED`, or `REVIEW`, but MUST NOT mark SLICE-0044 `DONE`.
+The agent may set/recommend `IN_PROGRESS`, `BLOCKED` or `REVIEW`, never `DONE`.
 
-Any amendment changes HEAD and resets independent exact-head review.
-
-No later slice starts automatically.
+Any amendment changes HEAD and resets exact-head review. No later slice starts automatically.
 
 ## Required completion report
 
-Use the exact completion-report structure in `docs/slices/SLICE_TEMPLATE.md`.
-
-Do not substitute a generic Summary/Test plan response.
+Use the exact structure from `docs/slices/SLICE_TEMPLATE.md`. Do not substitute a generic Summary/Test plan response.
