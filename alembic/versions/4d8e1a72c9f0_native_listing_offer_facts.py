@@ -154,35 +154,48 @@ def upgrade() -> None:
         # so `kind = NULL, value = 'hidden durable value'` would otherwise
         # pass validation and readback would silently discard that value by
         # treating a NULL kind as omission.
+        #
+        # Each OR-ed branch is wrapped in COALESCE(..., FALSE). Without it,
+        # a branch like `kind = 'VALUE_ASSERTION' AND value IS NOT NULL`
+        # still evaluates to NULL (not FALSE) whenever kind IS NULL, because
+        # `NULL = 'VALUE_ASSERTION'` is NULL and `NULL AND TRUE` is NULL --
+        # and `FALSE OR NULL OR FALSE` is NULL, not FALSE, so the whole
+        # CHECK would again silently pass (CHECK only rejects a definite
+        # FALSE) for exactly the `kind IS NULL, value IS NOT NULL` case this
+        # constraint exists to reject. COALESCE forces every branch to a
+        # definite boolean before the OR, so the overall expression is only
+        # ever TRUE (a genuinely valid state) or FALSE (rejected).
         sa.CheckConstraint(
-            "(location_region_assertion_kind IS NULL AND location_region_value IS NULL) "
-            "OR (location_region_assertion_kind = 'VALUE_ASSERTION' "
-            "    AND location_region_value IS NOT NULL AND length(btrim(location_region_value)) > 0) "
-            "OR (location_region_assertion_kind = 'UNKNOWN' AND location_region_value IS NULL)",
+            "COALESCE(location_region_assertion_kind IS NULL AND location_region_value IS NULL, FALSE) "
+            "OR COALESCE(location_region_assertion_kind = 'VALUE_ASSERTION' "
+            "    AND location_region_value IS NOT NULL AND length(btrim(location_region_value)) > 0, FALSE) "
+            "OR COALESCE(location_region_assertion_kind = 'UNKNOWN' AND location_region_value IS NULL, FALSE)",
             name="nl_offer_rev_location_region_state_valid",
         ),
         sa.CheckConstraint(
-            "(broker_summary_assertion_kind IS NULL AND broker_summary_value IS NULL) "
-            "OR (broker_summary_assertion_kind = 'VALUE_ASSERTION' "
-            "    AND broker_summary_value IS NOT NULL AND length(btrim(broker_summary_value)) > 0) "
-            "OR (broker_summary_assertion_kind = 'NOT_APPLICABLE' AND broker_summary_value IS NULL)",
+            "COALESCE(broker_summary_assertion_kind IS NULL AND broker_summary_value IS NULL, FALSE) "
+            "OR COALESCE(broker_summary_assertion_kind = 'VALUE_ASSERTION' "
+            "    AND broker_summary_value IS NOT NULL AND length(btrim(broker_summary_value)) > 0, FALSE) "
+            "OR COALESCE(broker_summary_assertion_kind = 'NOT_APPLICABLE' AND broker_summary_value IS NULL, FALSE)",
             name="nl_offer_rev_broker_summary_state_valid",
         ),
         sa.CheckConstraint(
-            "(known_history_narrative_assertion_kind IS NULL AND known_history_narrative_value IS NULL) "
-            "OR (known_history_narrative_assertion_kind = 'VALUE_ASSERTION' "
+            "COALESCE(known_history_narrative_assertion_kind IS NULL "
+            "    AND known_history_narrative_value IS NULL, FALSE) "
+            "OR COALESCE(known_history_narrative_assertion_kind = 'VALUE_ASSERTION' "
             "    AND known_history_narrative_value IS NOT NULL "
-            "    AND length(btrim(known_history_narrative_value)) > 0) "
-            "OR (known_history_narrative_assertion_kind = 'NO_KNOWN_HISTORY_DECLARED' "
-            "    AND known_history_narrative_value IS NULL) "
-            "OR (known_history_narrative_assertion_kind = 'UNKNOWN' AND known_history_narrative_value IS NULL)",
+            "    AND length(btrim(known_history_narrative_value)) > 0, FALSE) "
+            "OR COALESCE(known_history_narrative_assertion_kind = 'NO_KNOWN_HISTORY_DECLARED' "
+            "    AND known_history_narrative_value IS NULL, FALSE) "
+            "OR COALESCE(known_history_narrative_assertion_kind = 'UNKNOWN' "
+            "    AND known_history_narrative_value IS NULL, FALSE)",
             name="nl_offer_rev_known_history_state_valid",
         ),
         sa.CheckConstraint(
-            "(vat_tax_status_assertion_kind IS NULL AND vat_tax_status_value IS NULL) "
-            "OR (vat_tax_status_assertion_kind = 'VALUE_ASSERTION' "
-            "    AND vat_tax_status_value IN ('VAT_PAID', 'VAT_NOT_PAID', 'VAT_MARGIN_SCHEME', 'OTHER')) "
-            "OR (vat_tax_status_assertion_kind = 'UNKNOWN' AND vat_tax_status_value IS NULL)",
+            "COALESCE(vat_tax_status_assertion_kind IS NULL AND vat_tax_status_value IS NULL, FALSE) "
+            "OR COALESCE(vat_tax_status_assertion_kind = 'VALUE_ASSERTION' "
+            "    AND vat_tax_status_value IN ('VAT_PAID', 'VAT_NOT_PAID', 'VAT_MARGIN_SCHEME', 'OTHER'), FALSE) "
+            "OR COALESCE(vat_tax_status_assertion_kind = 'UNKNOWN' AND vat_tax_status_value IS NULL, FALSE)",
             name="nl_offer_rev_vat_tax_status_state_valid",
         ),
         sa.CheckConstraint(

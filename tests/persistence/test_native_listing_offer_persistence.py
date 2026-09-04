@@ -1247,7 +1247,7 @@ def test_concurrent_cross_listing_revision_id_collision_resolves_to_conflict(
 
     assert not errors, f"Thread errors: {errors}"
     assert len(results) == 2
-    statuses = [status for _, status in results]
+    statuses = [result.status for _, result in results]
     assert statuses.count(NativeListingOfferWriteStatus.CREATED) == 1, statuses
     assert statuses.count(NativeListingOfferWriteStatus.CONFLICT) == 1, statuses
 
