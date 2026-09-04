@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0045  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** Native professional supply — first durable offer state  
 **Depends on:** SLICE-0041, SLICE-0042, SLICE-0043, SLICE-0044  
 **Blocks:** broker listing workspace / later publication, PhysicalBoat-fact persistence
@@ -326,26 +326,26 @@ The inspection ends with a single explicit PASS/FAIL result.
 
 ## Acceptance criteria
 
-- [ ] Exactly the nine accepted `LISTING_OFFER` fields are persistable; no `PHYSICAL_BOAT` or unrelated marketplace field is added.
-- [ ] Writes require the real accepted SLICE-0041 eligibility decision and exact persisted NativeListing publishing Organization match.
-- [ ] Cross-Organization writes fail closed with zero durable offer changes.
-- [ ] Offer revisions are immutable and current/head state is explicit rather than timestamp-inferred.
-- [ ] Expected-current optimistic concurrency prevents silent lost updates.
-- [ ] Same revision ID/same content is idempotent; same ID/different content fails closed.
-- [ ] Price AMOUNT/POA conditionality is mechanically enforced with no synthetic price.
-- [ ] Optional omission remains distinct from explicit `UNKNOWN`, `NOT_APPLICABLE` and `NO_KNOWN_HISTORY_DECLARED` where allowed.
-- [ ] Assertion kinds/value types are validated against the locked v0.1 contract semantics.
-- [ ] Free text remains narrative and cannot auto-promote structured facts.
-- [ ] VAT/tax state remains attributed broker claim with no HullQ-verification implication and no search behavior.
-- [ ] Durable canonical representation is typed and not a generic EAV/JSON fact blob.
-- [ ] Successful writes are durably committed atomically with head changes; pre-existing caller transactions do not create nested-savepoint false success.
-- [ ] Exact typed readback preserves values, assertion states, revision identity, Organization/Account attribution and timestamps.
-- [ ] One Alembic migration descends from `1bb00df4a018`; repository/database each have exactly one resulting Alembic head.
-- [ ] Real PostgreSQL 18 tests cover first write, revision, immutable history, stale-write conflict, retry collision and cross-Organization isolation.
-- [ ] Owner inspection ends `PASS` and demonstrates the required end-to-end cases.
-- [ ] Full repository test/quality/security gates pass.
-- [ ] GitHub Actions CI passes on the exact final implementation HEAD.
-- [ ] Manufacturer artifact reproducibility passes on the exact final implementation HEAD.
+- [x] Exactly the nine accepted `LISTING_OFFER` fields are persistable; no `PHYSICAL_BOAT` or unrelated marketplace field is added.
+- [x] Writes require the real accepted SLICE-0041 eligibility decision and exact persisted NativeListing publishing Organization match.
+- [x] Cross-Organization writes fail closed with zero durable offer changes.
+- [x] Offer revisions are immutable and current/head state is explicit rather than timestamp-inferred.
+- [x] Expected-current optimistic concurrency prevents silent lost updates.
+- [x] Same revision ID/same content is idempotent; same ID/different content fails closed.
+- [x] Price AMOUNT/POA conditionality is mechanically enforced with no synthetic price.
+- [x] Optional omission remains distinct from explicit `UNKNOWN`, `NOT_APPLICABLE` and `NO_KNOWN_HISTORY_DECLARED` where allowed.
+- [x] Assertion kinds/value types are validated against the locked v0.1 contract semantics.
+- [x] Free text remains narrative and cannot auto-promote structured facts.
+- [x] VAT/tax state remains attributed broker claim with no HullQ-verification implication and no search behavior.
+- [x] Durable canonical representation is typed and not a generic EAV/JSON fact blob.
+- [x] Successful writes are durably committed atomically with head changes; pre-existing caller transactions do not create nested-savepoint false success.
+- [x] Exact typed readback preserves values, assertion states, revision identity, Organization/Account attribution and timestamps.
+- [x] One Alembic migration descends from `1bb00df4a018`; repository/database each have exactly one resulting Alembic head.
+- [x] Real PostgreSQL 18 tests cover first write, revision, immutable history, stale-write conflict, retry collision (same-listing and cross-listing) and cross-Organization isolation, plus the exact predecessor chain, composite-FK same-listing integrity, NULL-hole/non-finite CHECK-constraint adversarial cases, equivalent-Decimal-representation idempotency, distinct-high-precision-Decimal CONFLICT, and (this amendment) locale-independent non-blank text rejection (tab/newline, U+00A0 NO-BREAK SPACE, U+001C-U+001F information separators) plus a direct COLLATE "C" vs. default-collation agreement proof. — NOT executed locally in this session (local `postgres` superuser credentials unavailable — `pg_hba.conf` requires `scram-sha-256`, and this session confirmed it cannot reload PostgreSQL config without Windows service-control/admin rights, so this is a structural block, not merely an unknown password). Verified instead by observing the pushed branch's GitHub Actions `db-integration` job on the exact final HEAD (see completion report for the exact run link).
+- [x] Owner inspection ends `PASS` and demonstrates the required end-to-end cases. — Actually executed against real PostgreSQL 18 and observed ending `NATIVE LISTING OFFER FACTS RESULT -> PASS` on intermediate runtime HEAD `4fa6da1` (CI run https://github.com/StradaDelSole/HullQ/actions/runs/33926347812). This third amendment (locale-independent non-blank-text predicate) does not touch any scenario the script exercises — it uses only ordinary, unambiguously non-blank text throughout — so per explicit reviewer direction that evidence remains valid and was not repeated.
+- [x] Full repository test/quality/security gates pass. (full suite locally: 4033 passed/295 skipped; ruff format/check; mypy; repository validation; `uv lock --check`; `pip-audit`; CI `quality`/`dependency audit` jobs)
+- [x] GitHub Actions CI passes on the exact final implementation HEAD.
+- [x] Manufacturer artifact reproducibility passes on the exact final implementation HEAD.
 - [ ] Independent exact-head review finds no unresolved material issue.
 - [ ] Project Owner explicitly accepts the exact reviewed HEAD before merge.
 
