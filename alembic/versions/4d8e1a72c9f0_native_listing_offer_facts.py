@@ -11,10 +11,10 @@ on top of the SLICE-0043 `native_listings` table.
 
 Two tables only:
 
-- ``native_listing_offer_revisions`` — one immutable row per successful
+- ``native_listing_offer_revisions`` -- one immutable row per successful
   offer write. Never updated or deleted by application code; a revision is
   superseded only by a new row plus a head-pointer change.
-- ``native_listing_offer_heads`` — the explicit current-revision pointer per
+- ``native_listing_offer_heads`` -- the explicit current-revision pointer per
   NativeListing, so "current" is never inferred from ``MAX(recorded_at)`` or
   row order.
 
@@ -26,7 +26,7 @@ constraint rejects the PostgreSQL 14+ NUMERIC ``NaN``/``Infinity``/
 ``-Infinity`` special values, mirroring the domain-layer finite check.
 Country/currency CHECK constraints enforce normalized code *shape*
 (ISO 3166-1 alpha-2 / ISO 4217, uppercase) as belt-and-suspenders alongside
-the domain-layer validation in ``hullq.domain.native_listing_offer`` — they
+the domain-layer validation in ``hullq.domain.native_listing_offer`` -- they
 do not by themselves prove membership in the real ISO code lists.
 
 ``previous_offer_revision_id`` records the exact predecessor revision that
@@ -44,9 +44,24 @@ Every optional/conditional assertion-kind/value column pair (location
 region, broker summary, known-history narrative, VAT/tax status) is
 constrained by one explicit three-way CHECK per field enumerating exactly
 the valid states (omitted / a specific non-NULL assertion kind with its
-required value shape) — never `(kind = 'X') = (value IS NOT NULL)`, which
+required value shape) -- never `(kind = 'X') = (value IS NOT NULL)`, which
 is silently satisfied by SQL's NULL-propagation three-valued logic when
 `kind IS NULL` regardless of what `value` holds.
+
+Every non-blank text CHECK (``broker_description`` and the three optional
+``VALUE_ASSERTION`` text fields) matches the domain layer's Python
+``str.strip()`` whitespace semantics exactly, via an explicit enumeration
+of the 29 Unicode code points ``str.isspace()`` recognizes (see
+``_PYTHON_WHITESPACE_CODEPOINTS_INT`` below), rather than PostgreSQL's
+locale-/collation-dependent POSIX character classes: PostgreSQL documents
+that classification of non-ASCII characters by those classes depends on
+the active collation/``LC_CTYPE`` and that the ``C`` locale never treats
+any non-ASCII character as whitespace, so a POSIX-class-based predicate
+alone could accept a lone non-ASCII whitespace character under some
+locales even though Python's ``str.strip()`` -- and therefore typed
+domain readback -- rejects it as blank. Naming each code point directly
+via a regex character-entry escape carries no locale/collation dependency
+at all.
 """
 
 from __future__ import annotations
@@ -62,6 +77,58 @@ revision: str = "4d8e1a72c9f0"
 down_revision: str | None = "1bb00df4a018"
 branch_labels: Sequence[str] | None = None
 depends_on: Sequence[str] | None = None
+
+# The exact 29 Unicode code points Python's str.isspace()/str.strip() treat
+# as whitespace -- i.e. exactly {c for c in range(0x110000) if chr(c).isspace()}.
+# Listed as integer code points (never as literal characters or escape-text
+# in this file's source) so this migration file cannot silently acquire an
+# actual embedded control/whitespace character. Rendered below into
+# PostgreSQL ARE character-entry escapes, each naming one exact code point
+# directly -- not a POSIX named class -- so membership never depends on
+# PostgreSQL locale/collation.
+_PYTHON_WHITESPACE_CODEPOINTS_INT = (
+    0x0009,
+    0x000A,
+    0x000B,
+    0x000C,
+    0x000D,
+    0x001C,
+    0x001D,
+    0x001E,
+    0x001F,
+    0x0020,
+    0x0085,
+    0x00A0,
+    0x1680,
+    0x2000,
+    0x2001,
+    0x2002,
+    0x2003,
+    0x2004,
+    0x2005,
+    0x2006,
+    0x2007,
+    0x2008,
+    0x2009,
+    0x200A,
+    0x2028,
+    0x2029,
+    0x202F,
+    0x205F,
+    0x3000,
+)
+assert len(_PYTHON_WHITESPACE_CODEPOINTS_INT) == 29
+_BACKSLASH = chr(0x5C)
+_PYTHON_WHITESPACE_REGEX_CLASS = "".join(
+    f"{_BACKSLASH}u{cp:04x}" for cp in _PYTHON_WHITESPACE_CODEPOINTS_INT
+)
+
+
+def _non_blank_predicate(column: str) -> str:
+    """SQL predicate: *column* contains at least one character outside the
+    exact Python str.isspace() whitespace set -- i.e. is not blank under
+    the same rule the domain layer's str.strip()-based check applies."""
+    return f"{column} ~ '[^{_PYTHON_WHITESPACE_REGEX_CLASS}]'"
 
 
 def upgrade() -> None:
@@ -141,20 +208,17 @@ def upgrade() -> None:
             name="nl_offer_rev_location_country_code_shape",
         ),
         sa.CheckConstraint(
-            # One-argument btrim() only strips plain ASCII spaces, not
-            # tabs/newlines/other whitespace -- so a tab/newline-only value
-            # would pass `length(btrim(x)) > 0` even though Python's
-            # str.strip() (used by the domain layer's non-blank check)
-            # rejects it, letting a DB-valid row exist that typed readback
-            # cannot reconstruct. `x ~ '\\S'` requires at least one
-            # PostgreSQL regex non-whitespace character (space/tab/
-            # newline/CR/form-feed/vertical-tab), matching the ASCII
-            # whitespace this slice's adversarial tests exercise; like the
-            # ISO country/currency shape checks elsewhere in this
-            # migration, it is not a byte-for-byte replica of Python's
-            # full Unicode-aware str.isspace() for exotic Unicode
-            # whitespace.
-            r"broker_description ~ '\S'",
+            # Deliberately not `length(btrim(x)) > 0` (one-argument btrim()
+            # only strips plain ASCII spaces) nor a POSIX-class-based
+            # predicate (PostgreSQL documents non-ASCII classification for
+            # those classes as collation/LC_CTYPE-dependent, so a lone
+            # non-ASCII whitespace character could pass under some
+            # locales). _non_blank_predicate() instead names the exact 29
+            # Python str.isspace() code points directly via regex
+            # character-entry escapes, so a value the domain layer's
+            # str.strip()-based check rejects as blank can never be
+            # DB-valid regardless of server locale/collation.
+            _non_blank_predicate("broker_description"),
             name="nl_offer_rev_broker_description_non_blank",
         ),
         # Each of the four optional/conditional assertion-kind/value column
@@ -181,14 +245,14 @@ def upgrade() -> None:
         sa.CheckConstraint(
             "COALESCE(location_region_assertion_kind IS NULL AND location_region_value IS NULL, FALSE) "
             "OR COALESCE(location_region_assertion_kind = 'VALUE_ASSERTION' "
-            r"    AND location_region_value IS NOT NULL AND location_region_value ~ '\S', FALSE) "
+            f"    AND location_region_value IS NOT NULL AND {_non_blank_predicate('location_region_value')}, FALSE) "
             "OR COALESCE(location_region_assertion_kind = 'UNKNOWN' AND location_region_value IS NULL, FALSE)",
             name="nl_offer_rev_location_region_state_valid",
         ),
         sa.CheckConstraint(
             "COALESCE(broker_summary_assertion_kind IS NULL AND broker_summary_value IS NULL, FALSE) "
             "OR COALESCE(broker_summary_assertion_kind = 'VALUE_ASSERTION' "
-            r"    AND broker_summary_value IS NOT NULL AND broker_summary_value ~ '\S', FALSE) "
+            f"    AND broker_summary_value IS NOT NULL AND {_non_blank_predicate('broker_summary_value')}, FALSE) "
             "OR COALESCE(broker_summary_assertion_kind = 'NOT_APPLICABLE' AND broker_summary_value IS NULL, FALSE)",
             name="nl_offer_rev_broker_summary_state_valid",
         ),
@@ -197,7 +261,7 @@ def upgrade() -> None:
             "    AND known_history_narrative_value IS NULL, FALSE) "
             "OR COALESCE(known_history_narrative_assertion_kind = 'VALUE_ASSERTION' "
             "    AND known_history_narrative_value IS NOT NULL "
-            r"    AND known_history_narrative_value ~ '\S', FALSE) "
+            f"    AND {_non_blank_predicate('known_history_narrative_value')}, FALSE) "
             "OR COALESCE(known_history_narrative_assertion_kind = 'NO_KNOWN_HISTORY_DECLARED' "
             "    AND known_history_narrative_value IS NULL, FALSE) "
             "OR COALESCE(known_history_narrative_assertion_kind = 'UNKNOWN' "

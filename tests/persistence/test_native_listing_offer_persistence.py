@@ -986,6 +986,88 @@ def test_db_rejects_tab_newline_only_optional_value_assertion_text(offer_conn: A
     offer_conn.rollback()
 
 
+def test_db_rejects_no_break_space_only_broker_description(offer_conn: Any) -> None:
+    """PostgreSQL's `\\s`/`\\S`/`[[:space:]]` classify non-ASCII characters
+    according to the active collation/LC_CTYPE (PostgreSQL documents this
+    explicitly), so a POSIX-class-based predicate alone could accept a
+    lone U+00A0 NO-BREAK SPACE under some locales even though Python's
+    str.strip() -- and therefore typed domain readback -- rejects it as
+    blank. Using chr(0x00A0) here (never a literal character in this
+    file's source) to construct the adversarial value."""
+    from psycopg.errors import CheckViolation
+
+    account = _account("ACC-BLANK3")
+    org = _org("ORG-BLANK3")
+    membership = _membership("OM-BLANK3", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _create_listing(offer_conn, "NL-BLANK-003", account, org, membership)
+    no_break_space_only = chr(0x00A0)
+
+    with pytest.raises(CheckViolation):
+        _raw_insert_revision(
+            offer_conn,
+            native_listing_id="NL-BLANK-003",
+            publishing_organization_id=org.id.value,
+            recorded_by_account_id=account.value,
+            broker_description=no_break_space_only,
+        )
+    offer_conn.rollback()
+
+
+def test_db_rejects_information_separator_only_optional_value_assertion_text(
+    offer_conn: Any,
+) -> None:
+    """U+001C-U+001F (the ASCII information separators) are whitespace
+    under Python's str.isspace() but are not part of the POSIX
+    `[[:space:]]` class in most locales, so a POSIX-class-based predicate
+    would accept a value consisting only of one of these characters even
+    though the domain layer rejects it as blank."""
+    from psycopg.errors import CheckViolation
+
+    account = _account("ACC-BLANK4")
+    org = _org("ORG-BLANK4")
+    membership = _membership("OM-BLANK4", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _create_listing(offer_conn, "NL-BLANK-004", account, org, membership)
+    information_separator_only = chr(0x001E)  # RECORD SEPARATOR, within U+001C..U+001F
+
+    with pytest.raises(CheckViolation):
+        _raw_insert_revision(
+            offer_conn,
+            native_listing_id="NL-BLANK-004",
+            publishing_organization_id=org.id.value,
+            recorded_by_account_id=account.value,
+            broker_summary_assertion_kind="VALUE_ASSERTION",
+            broker_summary_value=information_separator_only,
+        )
+    offer_conn.rollback()
+
+
+def test_non_blank_predicate_result_is_independent_of_collation(offer_conn: Any) -> None:
+    """Direct proof that the chosen predicate does not depend on
+    PostgreSQL locale/collation: evaluating the same regex character-entry-
+    escape predicate against a lone U+00A0 value under the database's
+    default collation and explicitly under COLLATE "C" must agree (both
+    "not non-blank"), unlike a POSIX `[[:space:]]`/`\\s`/`\\S`-based
+    predicate, whose non-ASCII classification PostgreSQL documents as
+    collation/LC_CTYPE-dependent."""
+    whitespace_codepoints = tuple(c for c in range(0x110000) if chr(c).isspace())
+    assert len(whitespace_codepoints) == 29
+    backslash = chr(0x5C)
+    regex_class = "".join(f"{backslash}u{cp:04x}" for cp in whitespace_codepoints)
+    pattern = f"[^{regex_class}]"
+    no_break_space_only = chr(0x00A0)
+
+    with offer_conn.cursor() as cur:
+        cur.execute(
+            'SELECT (%s::text) ~ %s, (%s::text COLLATE "C") ~ %s',
+            [no_break_space_only, pattern, no_break_space_only, pattern],
+        )
+        default_collation_result, c_collation_result = cur.fetchone()
+
+    assert default_collation_result is False
+    assert c_collation_result is False
+    assert default_collation_result == c_collation_result
+
+
 # ---------------------------------------------------------------------------
 # Retry / collision semantics
 # ---------------------------------------------------------------------------
