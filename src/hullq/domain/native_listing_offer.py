@@ -286,6 +286,10 @@ class NativeListingOfferSnapshot:
             _require_kind(
                 self.asking_price_amount, Decimal, "NativeListingOfferSnapshot.asking_price_amount"
             )
+            if not self.asking_price_amount.is_finite():
+                raise ValueError(
+                    f"asking_price_amount must be a finite value, got {self.asking_price_amount!r}"
+                )
             if self.asking_price_amount <= 0:
                 raise ValueError("asking_price_amount must be a positive amount")
         else:  # POA

@@ -82,6 +82,12 @@ def test_amount_mode_rejects_non_positive_amount() -> None:
         NativeListingOfferSnapshot(**_base_kwargs(asking_price_amount=Decimal("-1")))
 
 
+@pytest.mark.parametrize("non_finite", [Decimal("Infinity"), Decimal("-Infinity"), Decimal("NaN")])
+def test_amount_mode_rejects_non_finite_amount(non_finite: Decimal) -> None:
+    with pytest.raises(ValueError, match="finite"):
+        NativeListingOfferSnapshot(**_base_kwargs(asking_price_amount=non_finite))
+
+
 def test_poa_mode_forbids_a_synthetic_amount() -> None:
     with pytest.raises(ValueError, match="no synthetic price"):
         NativeListingOfferSnapshot(

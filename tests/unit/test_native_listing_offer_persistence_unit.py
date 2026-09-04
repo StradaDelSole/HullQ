@@ -14,6 +14,7 @@ from typing import Any
 
 import pytest
 
+import hullq.persistence.native_listing_offer as native_listing_offer_mod
 from hullq.domain.market_identity import NativeListingId
 from hullq.domain.native_listing_offer import (
     AskingPriceMode,
@@ -32,6 +33,7 @@ from hullq.domain.publishing_eligibility import (
     ProfessionalCategory,
     PublishingEligibilityReason,
 )
+from hullq.persistence.fingerprint import fingerprint_dict
 from hullq.persistence.native_listing_offer import (
     NativeListingOfferTransactionOwnershipError,
     NativeListingOfferWriteResult,
@@ -329,3 +331,40 @@ def test_allowed_write_accepts_an_idle_connection_marker() -> None:
 
     with pytest.raises(AssertionError, match="transaction"):
         _call(conn, account=account, org=org, membership=membership)
+
+
+# ---------------------------------------------------------------------------
+# Decimal canonicalization: numerically-equal amounts must fingerprint equal
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "equivalent_amount",
+    [Decimal("125000.00"), Decimal("125000"), Decimal("1.25E+5"), Decimal("125000.000")],
+)
+def test_equivalent_decimal_representations_fingerprint_identically(
+    equivalent_amount: Decimal,
+) -> None:
+    """Decimal('125000.00'), Decimal('125000') and Decimal('1.25E+5') all
+    represent the same monetary value and must produce the same content
+    hash, or an equivalent-content retry would be misdetected as CONFLICT
+    instead of ALREADY_EXISTS. This is a pure function test (no DB);
+    tests/persistence/test_native_listing_offer_persistence.py separately
+    proves the real write_native_listing_offer_revision() outcome."""
+    baseline = native_listing_offer_mod._offer_envelope_dict(
+        "NL-1", "ACC-1", _offer(asking_price_amount=Decimal("125000.00"))
+    )
+    variant = native_listing_offer_mod._offer_envelope_dict(
+        "NL-1", "ACC-1", _offer(asking_price_amount=equivalent_amount)
+    )
+    assert fingerprint_dict(baseline) == fingerprint_dict(variant)
+
+
+def test_different_decimal_amounts_fingerprint_differently() -> None:
+    baseline = native_listing_offer_mod._offer_envelope_dict(
+        "NL-1", "ACC-1", _offer(asking_price_amount=Decimal("125000.00"))
+    )
+    different = native_listing_offer_mod._offer_envelope_dict(
+        "NL-1", "ACC-1", _offer(asking_price_amount=Decimal("125000.01"))
+    )
+    assert fingerprint_dict(baseline) != fingerprint_dict(different)

@@ -354,6 +354,7 @@ def test_readback_reconstructs_exact_offer_state(offer_conn: Any) -> None:
     assert record.recorded_by_account_id == account
     assert record.recorded_at is not None
     assert record.offer == offer
+    assert record.previous_revision_id is None
 
 
 def test_omission_stays_distinct_from_explicit_unknown_on_readback(offer_conn: Any) -> None:
@@ -457,6 +458,7 @@ def test_second_revision_with_correct_expectation_updates_current_state(offer_co
     assert current is not None
     assert current.revision_id == NativeListingOfferRevisionId("REV-OCC-001-B")
     assert current.offer.asking_price_amount == Decimal("95000.00")
+    assert current.previous_revision_id == NativeListingOfferRevisionId("REV-OCC-001-A")
 
     # The first revision remains retained/unchanged for audit.
     first_record = fetch_native_listing_offer_revision(
@@ -464,6 +466,7 @@ def test_second_revision_with_correct_expectation_updates_current_state(offer_co
     )
     assert first_record is not None
     assert first_record.offer.asking_price_amount == Decimal("100000.00")
+    assert first_record.previous_revision_id is None
 
 
 def test_stale_expected_revision_conflicts_and_leaves_current_unchanged(offer_conn: Any) -> None:
@@ -533,6 +536,353 @@ def test_expecting_none_when_a_current_revision_already_exists_conflicts(offer_c
         offer=_amount_offer(asking_price_amount=Decimal("999.00")),
     )
     assert result.status is NativeListingOfferWriteStatus.CONFLICT
+
+
+# ---------------------------------------------------------------------------
+# Exact predecessor relationship (previous_offer_revision_id)
+# ---------------------------------------------------------------------------
+
+
+def test_previous_revision_id_chain_across_three_revisions(offer_conn: Any) -> None:
+    """A -> B -> C: each revision's previous_revision_id is the exact
+    durable head validated immediately before it was inserted, and every
+    historical revision's previous_revision_id remains unchanged after later
+    revisions are written."""
+    account = _account("ACC-CHAIN1")
+    org = _org("ORG-CHAIN1")
+    membership = _membership("OM-CHAIN1", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _create_listing(offer_conn, "NL-CHAIN-001", account, org, membership)
+    listing_id = NativeListingId("NL-CHAIN-001")
+    rev_a = NativeListingOfferRevisionId("REV-CHAIN-001-A")
+    rev_b = NativeListingOfferRevisionId("REV-CHAIN-001-B")
+    rev_c = NativeListingOfferRevisionId("REV-CHAIN-001-C")
+
+    write_native_listing_offer_revision(
+        offer_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=listing_id,
+        revision_id=rev_a,
+        expected_current_revision_id=None,
+        offer=_amount_offer(asking_price_amount=Decimal("300000.00")),
+    )
+    offer_conn.commit()
+
+    write_native_listing_offer_revision(
+        offer_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=listing_id,
+        revision_id=rev_b,
+        expected_current_revision_id=rev_a,
+        offer=_amount_offer(asking_price_amount=Decimal("290000.00")),
+    )
+    offer_conn.commit()
+
+    write_native_listing_offer_revision(
+        offer_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=listing_id,
+        revision_id=rev_c,
+        expected_current_revision_id=rev_b,
+        offer=_amount_offer(asking_price_amount=Decimal("280000.00")),
+    )
+    offer_conn.commit()
+
+    record_a = fetch_native_listing_offer_revision(offer_conn, rev_a)
+    record_b = fetch_native_listing_offer_revision(offer_conn, rev_b)
+    record_c = fetch_native_listing_offer_revision(offer_conn, rev_c)
+    assert record_a is not None and record_a.previous_revision_id is None
+    assert record_b is not None and record_b.previous_revision_id == rev_a
+    assert record_c is not None and record_c.previous_revision_id == rev_b
+
+    current = fetch_current_native_listing_offer(offer_conn, listing_id)
+    assert current is not None
+    assert current.revision_id == rev_c
+    assert current.previous_revision_id == rev_b
+
+    # Historical predecessor values are immutable: re-reading A and B after
+    # C was written must return the exact same previous_revision_id as
+    # observed right after each was created.
+    record_a_again = fetch_native_listing_offer_revision(offer_conn, rev_a)
+    record_b_again = fetch_native_listing_offer_revision(offer_conn, rev_b)
+    assert record_a_again is not None and record_a_again.previous_revision_id is None
+    assert record_b_again is not None and record_b_again.previous_revision_id == rev_a
+
+
+# ---------------------------------------------------------------------------
+# PostgreSQL-enforced same-NativeListing head/predecessor integrity
+# ---------------------------------------------------------------------------
+
+
+def test_db_rejects_a_head_row_pointing_at_a_different_listings_revision(offer_conn: Any) -> None:
+    """heads.native_listing_id = A while
+    heads.current_offer_revision_id = a revision belonging to listing B must
+    be impossible in any DB-valid state -- proven here with a raw SQL
+    attempt that bypasses write_native_listing_offer_revision() entirely."""
+    from psycopg.errors import ForeignKeyViolation
+
+    account = _account("ACC-FKINT1")
+    org = _org("ORG-FKINT1")
+    membership = _membership("OM-FKINT1", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _create_listing(offer_conn, "NL-FKINT-001A", account, org, membership)
+    _create_listing(offer_conn, "NL-FKINT-001B", account, org, membership)
+
+    write_native_listing_offer_revision(
+        offer_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-FKINT-001A"),
+        revision_id=NativeListingOfferRevisionId("REV-FKINT-001A"),
+        expected_current_revision_id=None,
+        offer=_amount_offer(),
+    )
+    offer_conn.commit()
+
+    with pytest.raises(ForeignKeyViolation), offer_conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO native_listing_offer_heads "
+            "(native_listing_id, current_offer_revision_id) VALUES (%s, %s)",
+            ["NL-FKINT-001B", "REV-FKINT-001A"],
+        )
+    offer_conn.rollback()
+
+    assert fetch_current_native_listing_offer(offer_conn, NativeListingId("NL-FKINT-001B")) is None
+
+
+def test_db_rejects_a_previous_revision_pointing_at_a_different_listing(offer_conn: Any) -> None:
+    """previous_offer_revision_id must obey the same same-listing guarantee
+    as the head pointer, proven with a raw SQL insert."""
+    from psycopg.errors import ForeignKeyViolation
+
+    account = _account("ACC-FKINT2")
+    org = _org("ORG-FKINT2")
+    membership = _membership("OM-FKINT2", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _create_listing(offer_conn, "NL-FKINT-002A", account, org, membership)
+    _create_listing(offer_conn, "NL-FKINT-002B", account, org, membership)
+
+    write_native_listing_offer_revision(
+        offer_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-FKINT-002A"),
+        revision_id=NativeListingOfferRevisionId("REV-FKINT-002A"),
+        expected_current_revision_id=None,
+        offer=_amount_offer(),
+    )
+    offer_conn.commit()
+
+    with pytest.raises(ForeignKeyViolation), offer_conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO native_listing_offer_revisions "
+            "(offer_revision_id, native_listing_id, publishing_organization_id, "
+            " recorded_by_account_id, asking_price_mode, location_country, "
+            " broker_description, previous_offer_revision_id, content_hash) "
+            "VALUES (%s, %s, %s, %s, 'POA', 'FR', 'x', %s, %s)",
+            [
+                "REV-FKINT-002B",
+                "NL-FKINT-002B",
+                org.id.value,
+                account.value,
+                "REV-FKINT-002A",  # belongs to listing A, not B
+                "0" * 64,
+            ],
+        )
+    offer_conn.rollback()
+
+    assert (
+        fetch_native_listing_offer_revision(
+            offer_conn, NativeListingOfferRevisionId("REV-FKINT-002B")
+        )
+        is None
+    )
+
+
+# ---------------------------------------------------------------------------
+# SQL assertion-kind/value NULL-hole adversarial tests
+# ---------------------------------------------------------------------------
+
+
+def _raw_insert_revision(conn: Any, **overrides: Any) -> None:
+    columns = {
+        "offer_revision_id": "REV-RAW",
+        "native_listing_id": "NL-RAW",
+        "publishing_organization_id": "ORG-RAW",
+        "recorded_by_account_id": "ACC-RAW",
+        "asking_price_mode": "POA",
+        "location_country": "FR",
+        "broker_description": "x",
+        "content_hash": "0" * 64,
+    }
+    columns.update(overrides)
+    column_names = ", ".join(columns)
+    placeholders = ", ".join(["%s"] * len(columns))
+    with conn.cursor() as cur:
+        cur.execute(
+            f"INSERT INTO native_listing_offer_revisions ({column_names}) VALUES ({placeholders})",
+            list(columns.values()),
+        )
+
+
+@pytest.mark.parametrize(
+    ("kind_column", "value_column", "hidden_value"),
+    [
+        ("location_region_assertion_kind", "location_region_value", "hidden durable value"),
+        ("broker_summary_assertion_kind", "broker_summary_value", "hidden durable value"),
+        (
+            "known_history_narrative_assertion_kind",
+            "known_history_narrative_value",
+            "hidden durable value",
+        ),
+        ("vat_tax_status_assertion_kind", "vat_tax_status_value", "VAT_PAID"),
+    ],
+)
+def test_db_rejects_null_kind_with_a_non_null_value(
+    offer_conn: Any, kind_column: str, value_column: str, hidden_value: str
+) -> None:
+    """kind IS NULL (omission) with a non-NULL value must be rejected --
+    the `(kind = 'VALUE_ASSERTION') = (value IS NOT NULL)` equality form
+    this replaces would have silently accepted this via SQL's NULL-
+    propagating three-valued logic, letting a durable value hide behind an
+    apparently-omitted field."""
+    from psycopg.errors import CheckViolation
+
+    account = _account("ACC-NULLHOLE1")
+    org = _org("ORG-NULLHOLE1")
+    membership = _membership("OM-NULLHOLE1", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _create_listing(offer_conn, "NL-NULLHOLE-001", account, org, membership)
+
+    with pytest.raises(CheckViolation):
+        _raw_insert_revision(
+            offer_conn,
+            native_listing_id="NL-NULLHOLE-001",
+            publishing_organization_id=org.id.value,
+            recorded_by_account_id=account.value,
+            **{value_column: hidden_value},
+        )
+    offer_conn.rollback()
+
+
+@pytest.mark.parametrize(
+    ("kind_column", "value_column", "bad_kind"),
+    [
+        ("location_region_assertion_kind", "location_region_value", "NOT_APPLICABLE"),
+        ("broker_summary_assertion_kind", "broker_summary_value", "UNKNOWN"),
+        ("known_history_narrative_assertion_kind", "known_history_narrative_value", "PRESENT"),
+        ("vat_tax_status_assertion_kind", "vat_tax_status_value", "NOT_APPLICABLE"),
+    ],
+)
+def test_db_rejects_a_disallowed_assertion_kind_for_the_field(
+    offer_conn: Any, kind_column: str, value_column: str, bad_kind: str
+) -> None:
+    from psycopg.errors import CheckViolation
+
+    account = _account("ACC-NULLHOLE2")
+    org = _org("ORG-NULLHOLE2")
+    membership = _membership("OM-NULLHOLE2", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _create_listing(offer_conn, "NL-NULLHOLE-002", account, org, membership)
+
+    with pytest.raises(CheckViolation):
+        _raw_insert_revision(
+            offer_conn,
+            native_listing_id="NL-NULLHOLE-002",
+            publishing_organization_id=org.id.value,
+            recorded_by_account_id=account.value,
+            **{kind_column: bad_kind},
+        )
+    offer_conn.rollback()
+
+
+def test_db_rejects_a_whitespace_only_value_assertion_text(offer_conn: Any) -> None:
+    from psycopg.errors import CheckViolation
+
+    account = _account("ACC-NULLHOLE3")
+    org = _org("ORG-NULLHOLE3")
+    membership = _membership("OM-NULLHOLE3", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _create_listing(offer_conn, "NL-NULLHOLE-003", account, org, membership)
+
+    with pytest.raises(CheckViolation):
+        _raw_insert_revision(
+            offer_conn,
+            native_listing_id="NL-NULLHOLE-003",
+            publishing_organization_id=org.id.value,
+            recorded_by_account_id=account.value,
+            location_region_assertion_kind="VALUE_ASSERTION",
+            location_region_value="   ",
+        )
+    offer_conn.rollback()
+
+
+def test_db_rejects_non_finite_asking_price_amount(offer_conn: Any) -> None:
+    """Defense-in-depth: the DB CHECK constraint independently rejects
+    NaN/Infinity/-Infinity even if a caller bypassed the domain-layer
+    Decimal.is_finite() guard."""
+    from psycopg.errors import CheckViolation
+
+    account = _account("ACC-NULLHOLE4")
+    org = _org("ORG-NULLHOLE4")
+    membership = _membership("OM-NULLHOLE4", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _create_listing(offer_conn, "NL-NULLHOLE-004", account, org, membership)
+
+    with pytest.raises(CheckViolation):
+        _raw_insert_revision(
+            offer_conn,
+            native_listing_id="NL-NULLHOLE-004",
+            publishing_organization_id=org.id.value,
+            recorded_by_account_id=account.value,
+            asking_price_mode="AMOUNT",
+            asking_price_amount="NaN",
+            currency="EUR",
+        )
+    offer_conn.rollback()
+
+
+# ---------------------------------------------------------------------------
+# Decimal canonicalization: equivalent representations are ALREADY_EXISTS
+# ---------------------------------------------------------------------------
+
+
+def test_equivalent_decimal_amount_retry_is_already_exists_not_conflict(offer_conn: Any) -> None:
+    account = _account("ACC-DECIMAL1")
+    org = _org("ORG-DECIMAL1")
+    membership = _membership("OM-DECIMAL1", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _create_listing(offer_conn, "NL-DECIMAL-001", account, org, membership)
+
+    first = write_native_listing_offer_revision(
+        offer_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-DECIMAL-001"),
+        revision_id=NativeListingOfferRevisionId("REV-DECIMAL-001"),
+        expected_current_revision_id=None,
+        offer=_amount_offer(asking_price_amount=Decimal("125000.00")),
+    )
+    assert first.status is NativeListingOfferWriteStatus.CREATED
+    offer_conn.commit()
+
+    retry_with_equivalent_representation = write_native_listing_offer_revision(
+        offer_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-DECIMAL-001"),
+        revision_id=NativeListingOfferRevisionId("REV-DECIMAL-001"),
+        expected_current_revision_id=None,
+        offer=_amount_offer(asking_price_amount=Decimal("125000")),
+    )
+    assert (
+        retry_with_equivalent_representation.status is NativeListingOfferWriteStatus.ALREADY_EXISTS
+    )
+
+    history = list_native_listing_offer_revisions(offer_conn, NativeListingId("NL-DECIMAL-001"))
+    assert len(history) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -837,3 +1187,88 @@ def test_concurrent_conflicting_revisions_resolve_deterministically(offer_url: s
         assert len(history) == 1
     finally:
         verify.close()
+
+
+def test_concurrent_cross_listing_revision_id_collision_resolves_to_conflict(
+    offer_url: str,
+) -> None:
+    """Two DIFFERENT NativeListings racing to claim the SAME client-supplied
+    offer_revision_id must resolve as exactly one CREATED and one CONFLICT,
+    with no unhandled PostgreSQL exception escaping and neither listing
+    ending up pointed at the wrong head. The FOR UPDATE lock taken in
+    write_native_listing_offer_revision() only serializes writers for one
+    NativeListingId; offer_revision_id is a global PRIMARY KEY shared across
+    all listings, so two different listings' writers do not contend for the
+    same row lock and can genuinely race at the database level."""
+    setup_conn = psycopg.connect(offer_url)
+    try:
+        account = _account("ACC-RACE2")
+        org = _org("ORG-RACE2")
+        membership = _membership("OM-RACE2", account, org, frozenset({MembershipRole.PUBLISHER}))
+        _create_listing(setup_conn, "NL-RACE-002A", account, org, membership)
+        _create_listing(setup_conn, "NL-RACE-002B", account, org, membership)
+    finally:
+        setup_conn.close()
+
+    shared_revision_id = "REV-RACE-002-SHARED"
+    results: list[Any] = []
+    errors: list[BaseException] = []
+    barrier = threading.Barrier(2)
+
+    def _worker(listing_suffix: str) -> None:
+        try:
+            conn = psycopg.connect(offer_url)
+            try:
+                barrier.wait(timeout=10)
+                result = write_native_listing_offer_revision(
+                    conn,
+                    account_id=account,
+                    candidate_organization=org,
+                    membership=membership,
+                    native_listing_id=NativeListingId(f"NL-RACE-002{listing_suffix}"),
+                    revision_id=NativeListingOfferRevisionId(shared_revision_id),
+                    expected_current_revision_id=None,
+                    offer=_amount_offer(),
+                )
+                results.append((listing_suffix, result))
+            finally:
+                conn.close()
+        except Exception as exc:  # pragma: no cover - surfaced via errors assertion
+            errors.append(exc)
+
+    threads = [
+        threading.Thread(target=_worker, args=("A",)),
+        threading.Thread(target=_worker, args=("B",)),
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=20)
+
+    assert not errors, f"Thread errors: {errors}"
+    assert len(results) == 2
+    statuses = [status for _, status in results]
+    assert statuses.count(NativeListingOfferWriteStatus.CREATED) == 1, statuses
+    assert statuses.count(NativeListingOfferWriteStatus.CONFLICT) == 1, statuses
+
+    winner_suffix = next(
+        suffix for suffix, r in results if r.status is NativeListingOfferWriteStatus.CREATED
+    )
+    loser_suffix = "B" if winner_suffix == "A" else "A"
+
+    verify = psycopg.connect(offer_url)
+    try:
+        winner_current = fetch_current_native_listing_offer(
+            verify, NativeListingId(f"NL-RACE-002{winner_suffix}")
+        )
+        loser_current = fetch_current_native_listing_offer(
+            verify, NativeListingId(f"NL-RACE-002{loser_suffix}")
+        )
+    finally:
+        verify.close()
+
+    assert winner_current is not None
+    assert winner_current.revision_id == NativeListingOfferRevisionId(shared_revision_id)
+    assert winner_current.native_listing_id == NativeListingId(f"NL-RACE-002{winner_suffix}")
+    # The losing listing must never end up pointed at the winner's revision.
+    assert loser_current is None

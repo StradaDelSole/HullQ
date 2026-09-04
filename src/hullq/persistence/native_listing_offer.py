@@ -160,13 +160,23 @@ class NativeListingOfferWriteResult:
 
 @dataclass(frozen=True)
 class NativeListingOfferRevisionRecord:
-    """Exact typed readback of one persisted NativeListing offer revision."""
+    """Exact typed readback of one persisted NativeListing offer revision.
+
+    `previous_revision_id` is the exact durable current head that was
+    validated (against `expected_current_revision_id`) immediately before
+    this revision was inserted — `None` for a NativeListing's first
+    revision. It is set once at insertion time and never recomputed from
+    timestamps or row order; PostgreSQL enforces that a non-null value
+    always references a revision belonging to this same NativeListing
+    (see the composite foreign key in the SLICE-0045 migration).
+    """
 
     revision_id: NativeListingOfferRevisionId
     native_listing_id: NativeListingId
     publishing_organization_id: MarketplaceOrganizationId
     recorded_by_account_id: AccountId
     offer: NativeListingOfferSnapshot
+    previous_revision_id: NativeListingOfferRevisionId | None
     recorded_at: datetime
 
 
@@ -194,8 +204,10 @@ INSERT INTO native_listing_offer_revisions (
     location_country, location_region_assertion_kind, location_region_value,
     broker_summary_assertion_kind, broker_summary_value, broker_description,
     known_history_narrative_assertion_kind, known_history_narrative_value,
-    vat_tax_status_assertion_kind, vat_tax_status_value, content_hash
-) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    vat_tax_status_assertion_kind, vat_tax_status_value, previous_offer_revision_id,
+    content_hash
+) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+ON CONFLICT (offer_revision_id) DO NOTHING
 """
 
 _UPSERT_HEAD = """
@@ -212,7 +224,8 @@ _REVISION_COLUMNS = """
     r.location_country, r.location_region_assertion_kind, r.location_region_value,
     r.broker_summary_assertion_kind, r.broker_summary_value, r.broker_description,
     r.known_history_narrative_assertion_kind, r.known_history_narrative_value,
-    r.vat_tax_status_assertion_kind, r.vat_tax_status_value, r.recorded_at
+    r.vat_tax_status_assertion_kind, r.vat_tax_status_value, r.previous_offer_revision_id,
+    r.recorded_at
 """
 
 _SELECT_CURRENT_OFFER = f"""
@@ -254,6 +267,21 @@ def _claim_dict(
     return {"assertion_kind": claim.assertion_kind.value, "value": value}
 
 
+def _canonical_decimal_str(value: Decimal) -> str:
+    """Stable string form for a finite Decimal, independent of how it was
+    constructed. `Decimal('125000.00')`, `Decimal('125000')` and
+    `Decimal('1.25E+5')` all represent the same monetary value and must
+    fingerprint identically so an equivalent retry resolves as
+    ALREADY_EXISTS rather than a false CONFLICT. `normalize()` collapses
+    trailing-zero/exponent differences to one canonical coefficient/
+    exponent pair; formatting with the 'f' presentation type then always
+    renders that fixed-point (never scientific-notation) so the string
+    itself is stable regardless of which form `normalize()` happens to
+    prefer for a given magnitude.
+    """
+    return format(value.normalize(), "f")
+
+
 def _offer_envelope_dict(
     native_listing_id: str, recorded_by_account_id: str, offer: NativeListingOfferSnapshot
 ) -> dict[str, Any]:
@@ -261,7 +289,7 @@ def _offer_envelope_dict(
         "native_listing_id": native_listing_id,
         "recorded_by_account_id": recorded_by_account_id,
         "asking_price_mode": offer.asking_price_mode.value,
-        "asking_price_amount": str(offer.asking_price_amount)
+        "asking_price_amount": _canonical_decimal_str(offer.asking_price_amount)
         if offer.asking_price_amount is not None
         else None,
         "currency": offer.currency,
@@ -308,6 +336,7 @@ def _row_to_revision_record(row: tuple[Any, ...]) -> NativeListingOfferRevisionR
         known_history_value,
         vat_kind,
         vat_value,
+        previous_offer_revision_id,
         recorded_at,
     ) = row
 
@@ -344,6 +373,11 @@ def _row_to_revision_record(row: tuple[Any, ...]) -> NativeListingOfferRevisionR
         publishing_organization_id=MarketplaceOrganizationId(publishing_organization_id),
         recorded_by_account_id=AccountId(recorded_by_account_id),
         offer=offer,
+        previous_revision_id=(
+            NativeListingOfferRevisionId(previous_offer_revision_id)
+            if previous_offer_revision_id is not None
+            else None
+        ),
         recorded_at=recorded_at,
     )
 
@@ -451,35 +485,34 @@ def write_native_listing_offer_revision(
         head_row = cur.fetchone()
         actual_current_id: str | None = head_row[0] if head_row is not None else None
 
-        cur.execute(_SELECT_REVISION_BY_ID, [revision_id.value])
-        existing = cur.fetchone()
-        if existing is not None:
-            current_wrapped = (
+        def _current_wrapped() -> NativeListingOfferRevisionId | None:
+            return (
                 NativeListingOfferRevisionId(actual_current_id)
                 if actual_current_id is not None
                 else None
             )
+
+        cur.execute(_SELECT_REVISION_BY_ID, [revision_id.value])
+        existing = cur.fetchone()
+        if existing is not None:
             existing_listing_id, existing_hash = existing
             if existing_listing_id == native_listing_id.value and existing_hash == content_hash:
                 return NativeListingOfferWriteResult(
                     status=NativeListingOfferWriteStatus.ALREADY_EXISTS,
-                    current_revision_id=current_wrapped,
+                    current_revision_id=_current_wrapped(),
                 )
             return NativeListingOfferWriteResult(
-                status=NativeListingOfferWriteStatus.CONFLICT, current_revision_id=current_wrapped
+                status=NativeListingOfferWriteStatus.CONFLICT,
+                current_revision_id=_current_wrapped(),
             )
 
         expected_value = (
             expected_current_revision_id.value if expected_current_revision_id is not None else None
         )
         if expected_value != actual_current_id:
-            current_wrapped = (
-                NativeListingOfferRevisionId(actual_current_id)
-                if actual_current_id is not None
-                else None
-            )
             return NativeListingOfferWriteResult(
-                status=NativeListingOfferWriteStatus.CONFLICT, current_revision_id=current_wrapped
+                status=NativeListingOfferWriteStatus.CONFLICT,
+                current_revision_id=_current_wrapped(),
             )
 
         location_region_kind, location_region_value = _claim_columns(offer.location_region)
@@ -487,6 +520,16 @@ def write_native_listing_offer_revision(
         known_history_kind, known_history_value = _claim_columns(offer.known_history_narrative)
         vat_kind, vat_value = _vat_columns(offer.vat_tax_status_claim)
 
+        # ON CONFLICT DO NOTHING on offer_revision_id (a global PRIMARY KEY,
+        # not scoped to native_listing_id) closes the race window against a
+        # *different* NativeListing concurrently claiming this exact
+        # revision id between the pre-check SELECT above and this INSERT --
+        # the FOR UPDATE lock on native_listings only serializes writers for
+        # *this* NativeListingId, so a same-listing collision is already
+        # impossible, but a cross-listing one is not, without this guard.
+        # previous_offer_revision_id is exactly the current head validated
+        # above (None for a first revision), fixed permanently at insertion
+        # time -- never recomputed from timestamps/row order.
         cur.execute(
             _INSERT_REVISION,
             (
@@ -507,9 +550,22 @@ def write_native_listing_offer_revision(
                 known_history_value,
                 vat_kind,
                 vat_value,
+                actual_current_id,
                 content_hash,
             ),
         )
+        if cur.rowcount == 0:
+            # Lost the race: a different NativeListing committed this exact
+            # offer_revision_id after our pre-check but before our INSERT.
+            # This can never be a match for *our* NativeListing (same-listing
+            # writes are fully serialized by the row lock above), so it is
+            # always a CONFLICT, never ALREADY_EXISTS -- and our own head is
+            # untouched.
+            return NativeListingOfferWriteResult(
+                status=NativeListingOfferWriteStatus.CONFLICT,
+                current_revision_id=_current_wrapped(),
+            )
+
         cur.execute(_UPSERT_HEAD, (native_listing_id.value, revision_id.value))
 
         status = (
