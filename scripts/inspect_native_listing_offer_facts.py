@@ -176,6 +176,7 @@ def main() -> int:
             )
             conn.commit()
             record = fetch_current_native_listing_offer(conn, NativeListingId(_LISTING_A_ID))
+            conn.commit()  # end the readback's implicit transaction before the next write
             readback_exact = (
                 record is not None
                 and record.offer == initial_offer
@@ -223,6 +224,7 @@ def main() -> int:
             first_revision_after_second = fetch_native_listing_offer_revision(
                 conn, NativeListingOfferRevisionId("REV-0045-A1")
             )
+            conn.commit()  # end the readbacks' implicit transaction before the next write
             second_ok = (
                 second_result.status is NativeListingOfferWriteStatus.REVISED
                 and current_after_second is not None
@@ -258,6 +260,7 @@ def main() -> int:
             current_after_stale = fetch_current_native_listing_offer(
                 conn, NativeListingId(_LISTING_A_ID)
             )
+            conn.commit()  # end the readback's implicit transaction before the next write
             stale_ok = (
                 stale_result.status is NativeListingOfferWriteStatus.CONFLICT
                 and current_after_stale is not None
@@ -298,6 +301,7 @@ def main() -> int:
             current_after_cross_org = fetch_current_native_listing_offer(
                 conn, NativeListingId(_LISTING_A_ID)
             )
+            conn.commit()  # end the readback's implicit transaction before the next write
             cross_org_ok = (
                 cross_org_result.status is NativeListingOfferWriteStatus.CROSS_ORGANIZATION_DENIED
                 and current_after_cross_org is not None
@@ -333,6 +337,7 @@ def main() -> int:
             )
             conn.commit()
             poa_record = fetch_current_native_listing_offer(conn, poa_listing.id)
+            conn.commit()  # end the readback's implicit transaction before the next write
             poa_ok = (
                 poa_result.status is NativeListingOfferWriteStatus.CREATED
                 and poa_record is not None
@@ -372,6 +377,7 @@ def main() -> int:
             )
             conn.commit()
             explicit_record = fetch_current_native_listing_offer(conn, explicit_listing.id)
+            conn.commit()  # end the readback's implicit transaction before the next write
             explicit_ok = (
                 explicit_record is not None
                 and explicit_record.offer.known_history_narrative is not None
