@@ -857,14 +857,243 @@ def test_only_refit_events_references_an_event_structure(field_id: str) -> None:
     assert _FIELDS[field_id]["event_structure_ref"] is None
 
 
-def test_refit_event_timing_supports_exact_approximate_and_unknown() -> None:
-    timing = _REGISTRY["event_structures"]["refit_event_v0_1"]["timing"]
-    assert set(timing["values"]) == {"EXACT", "APPROXIMATE", "UNKNOWN"}
-
-
 def test_refit_event_description_is_optional() -> None:
     description = _REGISTRY["event_structures"]["refit_event_v0_1"]["description"]
     assert description["required"] is False
+
+
+# ---------------------------------------------------------------------------
+# Refit category: closed Gate-1 vocabulary, not free text (readiness fix #2).
+# ---------------------------------------------------------------------------
+
+_EXPECTED_REFIT_CATEGORIES = frozenset(
+    {
+        "RIGGING",
+        "SAILS",
+        "ENGINE_PROPULSION",
+        "ELECTRICAL_ENERGY",
+        "NAVIGATION",
+        "HULL",
+        "DECK",
+        "PLUMBING",
+        "HVAC_COMFORT",
+        "INTERIOR",
+        "SAFETY",
+        "OTHER",
+    }
+)
+
+
+def test_refit_category_is_a_closed_bounded_vocabulary_matching_the_independent_set() -> None:
+    category = _REGISTRY["event_structures"]["refit_event_v0_1"]["category"]
+    assert category["data_type"] == "categorical"
+    assert category["values"] is not None
+    assert set(category["values"]) == _EXPECTED_REFIT_CATEGORIES
+    assert len(category["values"]) == len(set(category["values"]))
+
+
+def _validate_refit_category(category: str) -> bool:
+    """TEST-ONLY reference validator: a refit category must be drawn from the
+    closed Gate-1 vocabulary declared in the registry, never free text."""
+    return category in _EXPECTED_REFIT_CATEGORIES
+
+
+@pytest.mark.parametrize("category", sorted(_EXPECTED_REFIT_CATEGORIES))
+def test_every_registered_category_token_is_accepted(category: str) -> None:
+    assert _validate_refit_category(category) is True
+
+
+@pytest.mark.parametrize("category", ["PAINT_JOB", "rigging", "GALLEY", ""])
+def test_an_out_of_vocabulary_category_is_rejected(category: str) -> None:
+    assert _validate_refit_category(category) is False
+
+
+def test_a_tampered_category_registry_missing_a_token_would_be_caught() -> None:
+    category = _REGISTRY["event_structures"]["refit_event_v0_1"]["category"]
+    tampered = set(category["values"]) - {"SAFETY"}
+    assert tampered != _EXPECTED_REFIT_CATEGORIES
+
+
+# ---------------------------------------------------------------------------
+# Refit timing: structured precision + the actual temporal payload, not a
+# bare precision token (readiness fix #1).
+# ---------------------------------------------------------------------------
+
+
+def test_refit_event_timing_is_a_structured_shape_not_a_bare_token() -> None:
+    timing = _REGISTRY["event_structures"]["refit_event_v0_1"]["timing"]
+    assert timing["data_type"] == "timing_structure"
+    assert timing["values"] is None
+    assert set(timing["components"]) == {
+        "precision",
+        "exact_year",
+        "exact_date",
+        "approximate_period",
+    }
+
+
+def test_refit_timing_precision_component_supports_exact_approximate_and_unknown() -> None:
+    precision = _REGISTRY["event_structures"]["refit_event_v0_1"]["timing"]["components"][
+        "precision"
+    ]
+    assert set(precision["values"]) == {"EXACT", "APPROXIMATE", "UNKNOWN"}
+
+
+def test_a_scalar_timing_field_would_fail_schema_validation() -> None:
+    # Guards against silently reverting to the pre-amendment bare-token shape:
+    # a scalar (non-object) components value is schema-invalid for
+    # data_type=timing_structure.
+    mutated = json.loads(json.dumps(_REGISTRY))
+    mutated["event_structures"]["refit_event_v0_1"]["timing"]["components"] = None
+    with pytest.raises(ValidationError):
+        _CONTRACTS.validator_by_name(SCHEMA_NAME).validate(mutated)
+
+
+@dataclass(frozen=True)
+class _RefitTiming:
+    precision: str
+    exact_year: int | None = None
+    exact_date: str | None = None
+    approximate_period: str | None = None
+
+
+def _validate_refit_timing(timing: _RefitTiming) -> bool:
+    """TEST-ONLY reference validator implementing MARKETPLACE_FACT_CONTRACT.v0.1
+    section 9: the actual temporal payload must match its declared precision;
+    no precision may carry another precision's payload or a fabricated value."""
+    has_exact = timing.exact_year is not None or timing.exact_date is not None
+    has_approximate = bool(timing.approximate_period)
+    if timing.precision == "EXACT":
+        return has_exact and not has_approximate
+    if timing.precision == "APPROXIMATE":
+        return has_approximate and not has_exact
+    if timing.precision == "UNKNOWN":
+        return not has_exact and not has_approximate
+    raise ValueError(f"unrecognized precision {timing.precision!r}")
+
+
+@pytest.mark.parametrize(
+    ("timing", "expected_valid"),
+    [
+        (_RefitTiming(precision="EXACT"), False),
+        (_RefitTiming(precision="EXACT", exact_year=2022), True),
+        (_RefitTiming(precision="EXACT", exact_date="2022-05-01"), True),
+        (
+            _RefitTiming(precision="EXACT", exact_year=2022, approximate_period="early 2020s"),
+            False,
+        ),
+        (_RefitTiming(precision="APPROXIMATE"), False),
+        (_RefitTiming(precision="APPROXIMATE", approximate_period=""), False),
+        (_RefitTiming(precision="APPROXIMATE", approximate_period="early 2020s"), True),
+        (_RefitTiming(precision="APPROXIMATE", exact_year=2022), False),
+        (_RefitTiming(precision="UNKNOWN"), True),
+        (_RefitTiming(precision="UNKNOWN", exact_year=2022), False),
+        (_RefitTiming(precision="UNKNOWN", exact_date="2022-05-01"), False),
+        (_RefitTiming(precision="UNKNOWN", approximate_period="early 2020s"), False),
+    ],
+)
+def test_refit_timing_validity_matches_the_locked_truth_table(
+    timing: _RefitTiming, expected_valid: bool
+) -> None:
+    assert _validate_refit_timing(timing) is expected_valid
+
+
+def test_unrecognized_precision_fails_closed_not_open() -> None:
+    with pytest.raises(ValueError):
+        _validate_refit_timing(_RefitTiming(precision="SOMEDAY"))
+
+
+# ---------------------------------------------------------------------------
+# broad_use_history: bounded, duplicate-free multi-value set (readiness fix
+# #3). UNKNOWN carries no values payload; equal sets in different member
+# order do not manufacture a false CONFLICT.
+# ---------------------------------------------------------------------------
+
+_EXPECTED_USE_HISTORY_VALUES = frozenset(
+    {"PRIVATE", "CHARTER", "SAILING_SCHOOL", "RACING", "LIVEABOARD", "COMMERCIAL"}
+)
+
+
+def test_broad_use_history_has_multi_cardinality_and_the_independent_vocabulary() -> None:
+    value_type = _FIELDS["physical_boat.broad_use_history"]["value_type"]
+    assert value_type["cardinality"] == "MULTI"
+    assert value_type["values"] is not None
+    assert set(value_type["values"]) == _EXPECTED_USE_HISTORY_VALUES
+
+
+@pytest.mark.parametrize(
+    "field_id", sorted(_EXPECTED_ALL_FIELDS - {"physical_boat.broad_use_history"})
+)
+def test_every_other_field_has_single_cardinality(field_id: str) -> None:
+    assert _FIELDS[field_id]["value_type"]["cardinality"] == "SINGLE"
+
+
+def test_a_multi_field_without_a_values_vocabulary_would_fail_schema_validation() -> None:
+    mutated = json.loads(json.dumps(_REGISTRY))
+    mutated["fields"]["physical_boat.broad_use_history"]["value_type"]["values"] = None
+    with pytest.raises(ValidationError):
+        _CONTRACTS.validator_by_name(SCHEMA_NAME).validate(mutated)
+
+
+def _validate_broad_use_history(assertion_kind: str, values: list[str] | None) -> bool:
+    """TEST-ONLY reference validator implementing
+    MARKETPLACE_FACT_CONTRACT.v0.1 section 10.4: UNKNOWN carries no values
+    payload at all; a VALUE_ASSERTION carries a non-empty, duplicate-free
+    subset of the closed vocabulary. An empty declared set is invalid, not a
+    synonym for UNKNOWN."""
+    if assertion_kind == "UNKNOWN":
+        return values is None
+    if assertion_kind == "VALUE_ASSERTION":
+        if not values:
+            return False
+        if len(values) != len(set(values)):
+            return False
+        return set(values) <= _EXPECTED_USE_HISTORY_VALUES
+    raise ValueError(f"unrecognized assertion_kind {assertion_kind!r}")
+
+
+@pytest.mark.parametrize(
+    ("assertion_kind", "values", "expected_valid"),
+    [
+        ("UNKNOWN", None, True),
+        ("UNKNOWN", ["PRIVATE"], False),
+        ("VALUE_ASSERTION", ["PRIVATE"], True),
+        ("VALUE_ASSERTION", ["CHARTER", "PRIVATE"], True),
+        ("VALUE_ASSERTION", ["RACING", "PRIVATE"], True),
+        ("VALUE_ASSERTION", ["PRIVATE", "PRIVATE"], False),
+        ("VALUE_ASSERTION", [], False),
+        ("VALUE_ASSERTION", ["SOMETHING_ELSE"], False),
+    ],
+)
+def test_broad_use_history_validity_matches_the_locked_truth_table(
+    assertion_kind: str, values: list[str] | None, expected_valid: bool
+) -> None:
+    assert _validate_broad_use_history(assertion_kind, values) is expected_valid
+
+
+def _canonicalize_multi_value(values: list[str]) -> str:
+    """TEST-ONLY canonical form for a set-valued observation so the existing
+    generic single-string _resolve_fact_topic resolver compares the declared
+    set, not raw list insertion order/identity."""
+    return ",".join(sorted(set(values)))
+
+
+def test_same_declared_set_in_different_order_from_two_sources_is_not_a_false_conflict() -> None:
+    observations = [
+        _Observation("A-1", "ORG-A", _canonicalize_multi_value(["CHARTER", "PRIVATE"])),
+        _Observation("B-1", "ORG-B", _canonicalize_multi_value(["PRIVATE", "CHARTER"])),
+    ]
+    result = _resolve_fact_topic(observations)
+    assert result == _ResolutionResult(state="RESOLVED", value="CHARTER,PRIVATE")
+
+
+def test_a_genuinely_different_declared_set_still_resolves_to_conflict() -> None:
+    observations = [
+        _Observation("A-1", "ORG-A", _canonicalize_multi_value(["PRIVATE"])),
+        _Observation("B-1", "ORG-B", _canonicalize_multi_value(["PRIVATE", "CHARTER"])),
+    ]
+    result = _resolve_fact_topic(observations)
+    assert result.state == "CONFLICT"
 
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,9 @@
 {
   "schema_version": "0.1",
-  "subjects": ["PHYSICAL_BOAT", "LISTING_OFFER"],
+  "subjects": [
+    "PHYSICAL_BOAT",
+    "LISTING_OFFER"
+  ],
   "assertion_kinds": [
     "VALUE_ASSERTION",
     "PRESENT",
@@ -9,21 +12,58 @@
     "UNKNOWN",
     "NOT_APPLICABLE"
   ],
-  "resolution_states": ["UNRESOLVED", "RESOLVED", "CONFLICT"],
-  "presentation_values": ["PUBLIC", "INTERNAL"],
-  "search_use_values": ["SEARCHABLE", "DISPLAY_ONLY"],
-  "requiredness_kinds": ["REQUIRED_RESPONSE", "CONDITIONAL", "OPTIONAL"],
-  "delivery_phases": ["GATE_1_REQUIRED", "GATE_1_OPTIONAL", "LATER"],
-  "claim_risk_classes": ["STANDARD", "MATERIAL", "SENSITIVE"],
+  "resolution_states": [
+    "UNRESOLVED",
+    "RESOLVED",
+    "CONFLICT"
+  ],
+  "presentation_values": [
+    "PUBLIC",
+    "INTERNAL"
+  ],
+  "search_use_values": [
+    "SEARCHABLE",
+    "DISPLAY_ONLY"
+  ],
+  "requiredness_kinds": [
+    "REQUIRED_RESPONSE",
+    "CONDITIONAL",
+    "OPTIONAL"
+  ],
+  "delivery_phases": [
+    "GATE_1_REQUIRED",
+    "GATE_1_OPTIONAL",
+    "LATER"
+  ],
+  "claim_risk_classes": [
+    "STANDARD",
+    "MATERIAL",
+    "SENSITIVE"
+  ],
   "fields": {
     "listing_offer.asking_price_mode": {
       "topic": "asking price mode",
       "subject": "LISTING_OFFER",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION"],
-      "value_type": { "data_type": "categorical", "unit": null, "unit_system": null, "values": ["AMOUNT", "POA"] },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION"
+      ],
+      "value_type": {
+        "data_type": "categorical",
+        "unit": null,
+        "unit_system": null,
+        "values": [
+          "AMOUNT",
+          "POA"
+        ],
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "REQUIRED_RESPONSE", "allows_unknown_response": false, "condition": null },
+      "requiredness": {
+        "kind": "REQUIRED_RESPONSE",
+        "allows_unknown_response": false,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_REQUIRED",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -33,8 +73,16 @@
     "listing_offer.asking_price_amount": {
       "topic": "asking price amount",
       "subject": "LISTING_OFFER",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION"],
-      "value_type": { "data_type": "decimal", "unit": null, "unit_system": "CURRENCY_DECLARED_BY_SIBLING_FIELD", "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION"
+      ],
+      "value_type": {
+        "data_type": "decimal",
+        "unit": null,
+        "unit_system": "CURRENCY_DECLARED_BY_SIBLING_FIELD",
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
       "requiredness": {
@@ -55,8 +103,16 @@
     "listing_offer.currency": {
       "topic": "currency",
       "subject": "LISTING_OFFER",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION"],
-      "value_type": { "data_type": "string", "unit": null, "unit_system": "ISO_4217_CODE", "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION"
+      ],
+      "value_type": {
+        "data_type": "string",
+        "unit": null,
+        "unit_system": "ISO_4217_CODE",
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
       "requiredness": {
@@ -77,11 +133,23 @@
     "listing_offer.location_country": {
       "topic": "current location country",
       "subject": "LISTING_OFFER",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION"],
-      "value_type": { "data_type": "string", "unit": null, "unit_system": "ISO_3166_COUNTRY_CODE", "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION"
+      ],
+      "value_type": {
+        "data_type": "string",
+        "unit": null,
+        "unit_system": "ISO_3166_COUNTRY_CODE",
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "REQUIRED_RESPONSE", "allows_unknown_response": false, "condition": null },
+      "requiredness": {
+        "kind": "REQUIRED_RESPONSE",
+        "allows_unknown_response": false,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_REQUIRED",
       "claim_risk_class": "STANDARD",
       "presentation_policy": null,
@@ -91,11 +159,24 @@
     "listing_offer.location_region": {
       "topic": "current location text/region",
       "subject": "LISTING_OFFER",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "UNKNOWN"],
-      "value_type": { "data_type": "string", "unit": null, "unit_system": null, "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "string",
+        "unit": null,
+        "unit_system": null,
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "STANDARD",
       "presentation_policy": null,
@@ -105,11 +186,24 @@
     "listing_offer.broker_summary": {
       "topic": "broker summary",
       "subject": "LISTING_OFFER",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "NOT_APPLICABLE"],
-      "value_type": { "data_type": "free_text", "unit": null, "unit_system": null, "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "NOT_APPLICABLE"
+      ],
+      "value_type": {
+        "data_type": "free_text",
+        "unit": null,
+        "unit_system": null,
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "DISPLAY_ONLY",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": false, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": false,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "STANDARD",
       "presentation_policy": null,
@@ -119,11 +213,23 @@
     "listing_offer.broker_description": {
       "topic": "broker description",
       "subject": "LISTING_OFFER",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION"],
-      "value_type": { "data_type": "free_text", "unit": null, "unit_system": null, "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION"
+      ],
+      "value_type": {
+        "data_type": "free_text",
+        "unit": null,
+        "unit_system": null,
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "DISPLAY_ONLY",
-      "requiredness": { "kind": "REQUIRED_RESPONSE", "allows_unknown_response": false, "condition": null },
+      "requiredness": {
+        "kind": "REQUIRED_RESPONSE",
+        "allows_unknown_response": false,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_REQUIRED",
       "claim_risk_class": "STANDARD",
       "presentation_policy": null,
@@ -133,11 +239,25 @@
     "listing_offer.known_history_narrative": {
       "topic": "known-history narrative",
       "subject": "LISTING_OFFER",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "NO_KNOWN_HISTORY_DECLARED", "UNKNOWN"],
-      "value_type": { "data_type": "free_text", "unit": null, "unit_system": null, "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "NO_KNOWN_HISTORY_DECLARED",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "free_text",
+        "unit": null,
+        "unit_system": null,
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "DISPLAY_ONLY",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -147,16 +267,29 @@
     "listing_offer.vat_tax_status_claim": {
       "topic": "VAT/tax status claim",
       "subject": "LISTING_OFFER",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "UNKNOWN"],
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "UNKNOWN"
+      ],
       "value_type": {
         "data_type": "categorical",
         "unit": null,
         "unit_system": null,
-        "values": ["VAT_PAID", "VAT_NOT_PAID", "VAT_MARGIN_SCHEME", "OTHER"]
+        "values": [
+          "VAT_PAID",
+          "VAT_NOT_PAID",
+          "VAT_MARGIN_SCHEME",
+          "OTHER"
+        ],
+        "cardinality": "SINGLE"
       },
       "presentation": "PUBLIC",
       "search_use": "DISPLAY_ONLY",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "SENSITIVE",
       "presentation_policy": {
@@ -173,11 +306,23 @@
     "physical_boat.marketed_brand_claim": {
       "topic": "marketed brand claim",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION"],
-      "value_type": { "data_type": "string", "unit": null, "unit_system": null, "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION"
+      ],
+      "value_type": {
+        "data_type": "string",
+        "unit": null,
+        "unit_system": null,
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "REQUIRED_RESPONSE", "allows_unknown_response": false, "condition": null },
+      "requiredness": {
+        "kind": "REQUIRED_RESPONSE",
+        "allows_unknown_response": false,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_REQUIRED",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -187,11 +332,24 @@
     "physical_boat.builder_claim": {
       "topic": "builder claim",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "UNKNOWN"],
-      "value_type": { "data_type": "string", "unit": null, "unit_system": null, "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "string",
+        "unit": null,
+        "unit_system": null,
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -201,11 +359,23 @@
     "physical_boat.model_designation_claim": {
       "topic": "model/designation claim",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION"],
-      "value_type": { "data_type": "string", "unit": null, "unit_system": null, "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION"
+      ],
+      "value_type": {
+        "data_type": "string",
+        "unit": null,
+        "unit_system": null,
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "REQUIRED_RESPONSE", "allows_unknown_response": false, "condition": null },
+      "requiredness": {
+        "kind": "REQUIRED_RESPONSE",
+        "allows_unknown_response": false,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_REQUIRED",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -215,11 +385,25 @@
     "physical_boat.boat_name": {
       "topic": "boat name",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "ABSENT", "UNKNOWN"],
-      "value_type": { "data_type": "string", "unit": null, "unit_system": null, "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "ABSENT",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "string",
+        "unit": null,
+        "unit_system": null,
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "DISPLAY_ONLY",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "STANDARD",
       "presentation_policy": null,
@@ -229,11 +413,24 @@
     "physical_boat.build_year": {
       "topic": "build year",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "UNKNOWN"],
-      "value_type": { "data_type": "integer", "unit": "year", "unit_system": "CALENDAR_YEAR", "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "integer",
+        "unit": "year",
+        "unit_system": "CALENDAR_YEAR",
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "REQUIRED_RESPONSE", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "REQUIRED_RESPONSE",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_REQUIRED",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -243,11 +440,25 @@
     "physical_boat.hin_cin_claim": {
       "topic": "HIN/CIN claim",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "ABSENT", "UNKNOWN"],
-      "value_type": { "data_type": "string", "unit": null, "unit_system": null, "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "ABSENT",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "string",
+        "unit": null,
+        "unit_system": null,
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "INTERNAL",
       "search_use": "DISPLAY_ONLY",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "SENSITIVE",
       "presentation_policy": {
@@ -264,11 +475,24 @@
     "physical_boat.loa_length": {
       "topic": "actual LOA/length",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "UNKNOWN"],
-      "value_type": { "data_type": "decimal", "unit": "meter", "unit_system": "SI", "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "decimal",
+        "unit": "meter",
+        "unit_system": "SI",
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -278,11 +502,24 @@
     "physical_boat.beam": {
       "topic": "beam",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "UNKNOWN"],
-      "value_type": { "data_type": "decimal", "unit": "meter", "unit_system": "SI", "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "decimal",
+        "unit": "meter",
+        "unit_system": "SI",
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -292,11 +529,24 @@
     "physical_boat.draft": {
       "topic": "draft",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "UNKNOWN"],
-      "value_type": { "data_type": "decimal", "unit": "meter", "unit_system": "SI", "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "decimal",
+        "unit": "meter",
+        "unit_system": "SI",
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -306,11 +556,24 @@
     "physical_boat.displacement": {
       "topic": "displacement",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "UNKNOWN"],
-      "value_type": { "data_type": "decimal", "unit": "kilogram", "unit_system": "SI", "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "decimal",
+        "unit": "kilogram",
+        "unit_system": "SI",
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -320,16 +583,32 @@
     "physical_boat.hull_material": {
       "topic": "hull material",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "UNKNOWN"],
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "UNKNOWN"
+      ],
       "value_type": {
         "data_type": "categorical",
         "unit": null,
         "unit_system": null,
-        "values": ["GRP_FIBERGLASS", "STEEL", "ALUMINUM", "WOOD", "FERROCEMENT", "CARBON_COMPOSITE", "OTHER"]
+        "values": [
+          "GRP_FIBERGLASS",
+          "STEEL",
+          "ALUMINUM",
+          "WOOD",
+          "FERROCEMENT",
+          "CARBON_COMPOSITE",
+          "OTHER"
+        ],
+        "cardinality": "SINGLE"
       },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -339,16 +618,33 @@
     "physical_boat.keel_configuration": {
       "topic": "keel configuration",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "UNKNOWN"],
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "UNKNOWN"
+      ],
       "value_type": {
         "data_type": "categorical",
         "unit": null,
         "unit_system": null,
-        "values": ["FIN", "FIN_WITH_BULB", "LONG_KEEL", "WING", "CENTERBOARD", "LIFTING_KEEL", "TWIN_KEEL", "OTHER"]
+        "values": [
+          "FIN",
+          "FIN_WITH_BULB",
+          "LONG_KEEL",
+          "WING",
+          "CENTERBOARD",
+          "LIFTING_KEEL",
+          "TWIN_KEEL",
+          "OTHER"
+        ],
+        "cardinality": "SINGLE"
       },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -358,16 +654,30 @@
     "physical_boat.rudder_configuration": {
       "topic": "rudder configuration",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "UNKNOWN"],
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "UNKNOWN"
+      ],
       "value_type": {
         "data_type": "categorical",
         "unit": null,
         "unit_system": null,
-        "values": ["SPADE", "SKEG_HUNG", "TRANSOM_HUNG", "TWIN", "OTHER"]
+        "values": [
+          "SPADE",
+          "SKEG_HUNG",
+          "TRANSOM_HUNG",
+          "TWIN",
+          "OTHER"
+        ],
+        "cardinality": "SINGLE"
       },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -377,16 +687,32 @@
     "physical_boat.rig_configuration": {
       "topic": "rig configuration",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "UNKNOWN"],
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "UNKNOWN"
+      ],
       "value_type": {
         "data_type": "categorical",
         "unit": null,
         "unit_system": null,
-        "values": ["SLOOP", "CUTTER", "KETCH", "YAWL", "SCHOONER", "CAT", "OTHER"]
+        "values": [
+          "SLOOP",
+          "CUTTER",
+          "KETCH",
+          "YAWL",
+          "SCHOONER",
+          "CAT",
+          "OTHER"
+        ],
+        "cardinality": "SINGLE"
       },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -396,11 +722,25 @@
     "physical_boat.engine_make": {
       "topic": "engine make",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "ABSENT", "UNKNOWN"],
-      "value_type": { "data_type": "string", "unit": null, "unit_system": null, "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "ABSENT",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "string",
+        "unit": null,
+        "unit_system": null,
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -410,11 +750,25 @@
     "physical_boat.engine_model": {
       "topic": "engine model",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "ABSENT", "UNKNOWN"],
-      "value_type": { "data_type": "string", "unit": null, "unit_system": null, "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "ABSENT",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "string",
+        "unit": null,
+        "unit_system": null,
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -424,11 +778,25 @@
     "physical_boat.engine_power": {
       "topic": "engine power",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "ABSENT", "UNKNOWN"],
-      "value_type": { "data_type": "decimal", "unit": "kilowatt", "unit_system": "SI", "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "ABSENT",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "decimal",
+        "unit": "kilowatt",
+        "unit_system": "SI",
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -438,11 +806,25 @@
     "physical_boat.engine_hours": {
       "topic": "engine hours",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "ABSENT", "UNKNOWN"],
-      "value_type": { "data_type": "integer", "unit": "hour", "unit_system": "COUNT", "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "ABSENT",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "integer",
+        "unit": "hour",
+        "unit_system": "COUNT",
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -452,16 +834,31 @@
     "physical_boat.fuel_type": {
       "topic": "fuel type",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "ABSENT", "UNKNOWN"],
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "ABSENT",
+        "UNKNOWN"
+      ],
       "value_type": {
         "data_type": "categorical",
         "unit": null,
         "unit_system": null,
-        "values": ["DIESEL", "PETROL_GASOLINE", "ELECTRIC", "HYBRID", "OTHER"]
+        "values": [
+          "DIESEL",
+          "PETROL_GASOLINE",
+          "ELECTRIC",
+          "HYBRID",
+          "OTHER"
+        ],
+        "cardinality": "SINGLE"
       },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -471,11 +868,24 @@
     "physical_boat.cabins": {
       "topic": "cabins",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "UNKNOWN"],
-      "value_type": { "data_type": "integer", "unit": "count", "unit_system": "COUNT", "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "integer",
+        "unit": "count",
+        "unit_system": "COUNT",
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -485,11 +895,24 @@
     "physical_boat.berths": {
       "topic": "berths",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "UNKNOWN"],
-      "value_type": { "data_type": "integer", "unit": "count", "unit_system": "COUNT", "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "integer",
+        "unit": "count",
+        "unit_system": "COUNT",
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -499,11 +922,24 @@
     "physical_boat.heads": {
       "topic": "heads",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "UNKNOWN"],
-      "value_type": { "data_type": "integer", "unit": "count", "unit_system": "COUNT", "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "integer",
+        "unit": "count",
+        "unit_system": "COUNT",
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "SEARCHABLE",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -513,11 +949,25 @@
     "physical_boat.refit_events": {
       "topic": "refit events",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "NO_KNOWN_HISTORY_DECLARED", "UNKNOWN"],
-      "value_type": { "data_type": "structured_event_array", "unit": null, "unit_system": null, "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "NO_KNOWN_HISTORY_DECLARED",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "structured_event_array",
+        "unit": null,
+        "unit_system": null,
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "DISPLAY_ONLY",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -527,11 +977,24 @@
     "physical_boat.known_previous_owner_count": {
       "topic": "known previous-owner count",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "UNKNOWN"],
-      "value_type": { "data_type": "integer", "unit": "count", "unit_system": "COUNT", "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "integer",
+        "unit": "count",
+        "unit_system": "COUNT",
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "DISPLAY_ONLY",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -541,16 +1004,31 @@
     "physical_boat.broad_use_history": {
       "topic": "broad use history",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "UNKNOWN"],
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "UNKNOWN"
+      ],
       "value_type": {
         "data_type": "categorical",
         "unit": null,
         "unit_system": null,
-        "values": ["PRIVATE", "CHARTER", "SAILING_SCHOOL", "RACING", "LIVEABOARD", "COMMERCIAL"]
+        "values": [
+          "PRIVATE",
+          "CHARTER",
+          "SAILING_SCHOOL",
+          "RACING",
+          "LIVEABOARD",
+          "COMMERCIAL"
+        ],
+        "cardinality": "MULTI"
       },
       "presentation": "PUBLIC",
       "search_use": "DISPLAY_ONLY",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "GATE_1_OPTIONAL",
       "claim_risk_class": "MATERIAL",
       "presentation_policy": null,
@@ -560,11 +1038,25 @@
     "physical_boat.grounding_history": {
       "topic": "grounding history",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "NO_KNOWN_HISTORY_DECLARED", "UNKNOWN"],
-      "value_type": { "data_type": "free_text", "unit": null, "unit_system": null, "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "NO_KNOWN_HISTORY_DECLARED",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "free_text",
+        "unit": null,
+        "unit_system": null,
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "DISPLAY_ONLY",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "LATER",
       "claim_risk_class": "SENSITIVE",
       "presentation_policy": {
@@ -581,11 +1073,25 @@
     "physical_boat.major_damage_history": {
       "topic": "major damage history",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "NO_KNOWN_HISTORY_DECLARED", "UNKNOWN"],
-      "value_type": { "data_type": "free_text", "unit": null, "unit_system": null, "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "NO_KNOWN_HISTORY_DECLARED",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "free_text",
+        "unit": null,
+        "unit_system": null,
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "DISPLAY_ONLY",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "LATER",
       "claim_risk_class": "SENSITIVE",
       "presentation_policy": {
@@ -602,11 +1108,25 @@
     "physical_boat.osmosis_treatment_history": {
       "topic": "osmosis treatment/history",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "NO_KNOWN_HISTORY_DECLARED", "UNKNOWN"],
-      "value_type": { "data_type": "free_text", "unit": null, "unit_system": null, "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "NO_KNOWN_HISTORY_DECLARED",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "free_text",
+        "unit": null,
+        "unit_system": null,
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "DISPLAY_ONLY",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "LATER",
       "claim_risk_class": "SENSITIVE",
       "presentation_policy": {
@@ -623,11 +1143,25 @@
     "physical_boat.last_survey_date_claim": {
       "topic": "last survey date/survey claim",
       "subject": "PHYSICAL_BOAT",
-      "allowed_assertion_kinds": ["VALUE_ASSERTION", "NO_KNOWN_HISTORY_DECLARED", "UNKNOWN"],
-      "value_type": { "data_type": "string", "unit": null, "unit_system": "ISO_8601_DATE_OR_APPROXIMATE", "values": null },
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "NO_KNOWN_HISTORY_DECLARED",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "string",
+        "unit": null,
+        "unit_system": "ISO_8601_DATE_OR_APPROXIMATE",
+        "values": null,
+        "cardinality": "SINGLE"
+      },
       "presentation": "PUBLIC",
       "search_use": "DISPLAY_ONLY",
-      "requiredness": { "kind": "OPTIONAL", "allows_unknown_response": true, "condition": null },
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
       "delivery_phase": "LATER",
       "claim_risk_class": "SENSITIVE",
       "presentation_policy": {
@@ -646,45 +1180,109 @@
     "refit_event_v0_1": {
       "event_kind": {
         "data_type": "categorical",
-        "values": ["MAINTENANCE", "UPGRADE_OR_REPLACEMENT", "MAJOR_REFIT"],
+        "values": [
+          "MAINTENANCE",
+          "UPGRADE_OR_REPLACEMENT",
+          "MAJOR_REFIT"
+        ],
         "required": true,
-        "notes": null
+        "notes": null,
+        "components": null
       },
       "category": {
-        "data_type": "string",
-        "values": null,
+        "data_type": "categorical",
+        "values": [
+          "RIGGING",
+          "SAILS",
+          "ENGINE_PROPULSION",
+          "ELECTRICAL_ENERGY",
+          "NAVIGATION",
+          "HULL",
+          "DECK",
+          "PLUMBING",
+          "HVAC_COMFORT",
+          "INTERIOR",
+          "SAFETY",
+          "OTHER"
+        ],
         "required": true,
-        "notes": "Bounded high-level category (e.g. rigging, engine, electronics, hull, safety)."
+        "notes": "Bounded Gate-1 category vocabulary; not free text.",
+        "components": null
       },
       "topic": {
         "data_type": "string",
         "values": null,
         "required": true,
-        "notes": "Non-empty text or bounded identifier naming the specific item."
+        "notes": "Non-empty text or bounded identifier naming the specific item.",
+        "components": null
       },
       "action": {
         "data_type": "categorical",
-        "values": ["INSTALLED", "REPLACED", "REFURBISHED", "UPGRADED", "REPAIRED", "OTHER"],
+        "values": [
+          "INSTALLED",
+          "REPLACED",
+          "REFURBISHED",
+          "UPGRADED",
+          "REPAIRED",
+          "OTHER"
+        ],
         "required": true,
-        "notes": null
+        "notes": null,
+        "components": null
       },
       "timing": {
-        "data_type": "timing",
-        "values": ["EXACT", "APPROXIMATE", "UNKNOWN"],
+        "data_type": "timing_structure",
+        "values": null,
         "required": true,
-        "notes": "EXACT carries a year/date; APPROXIMATE carries a bounded/fuzzy period; UNKNOWN carries neither."
+        "notes": "precision selects which payload component(s) are populated. EXACT requires exact_year and/or exact_date and forbids approximate_period. APPROXIMATE requires a non-empty approximate_period and forbids exact_year/exact_date. UNKNOWN forbids all three payload components (no fabricated precision).",
+        "components": {
+          "precision": {
+            "data_type": "categorical",
+            "values": [
+              "EXACT",
+              "APPROXIMATE",
+              "UNKNOWN"
+            ],
+            "required": true,
+            "notes": null
+          },
+          "exact_year": {
+            "data_type": "integer",
+            "values": null,
+            "required": false,
+            "notes": "Non-null only when precision=EXACT. At least one of exact_year/exact_date must be non-null when precision=EXACT."
+          },
+          "exact_date": {
+            "data_type": "string",
+            "values": null,
+            "required": false,
+            "notes": "ISO 8601 date. Non-null only when precision=EXACT. At least one of exact_year/exact_date must be non-null when precision=EXACT."
+          },
+          "approximate_period": {
+            "data_type": "string",
+            "values": null,
+            "required": false,
+            "notes": "Non-empty only when precision=APPROXIMATE; required (non-null, non-empty) in that case."
+          }
+        }
       },
       "description": {
         "data_type": "free_text",
         "values": null,
         "required": false,
-        "notes": "Optional short text."
+        "notes": "Optional short text.",
+        "components": null
       },
       "supporting_documentation_declared_available": {
         "data_type": "tri_state",
-        "values": ["YES", "NO", "UNKNOWN"],
+        "values": [
+          "YES",
+          "NO",
+          "UNKNOWN"
+        ],
         "required": true,
-        "notes": "Declaration only; does not imply attachment, review or verification. No file upload path exists."
+        "notes": "Declaration only; does not imply attachment, review or verification. No file upload path exists.",
+        "components": null
       }
     }
   }

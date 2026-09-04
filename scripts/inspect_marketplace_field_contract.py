@@ -101,6 +101,44 @@ def _physical_boat_value(
     return physical_observations.get(field, "UNKNOWN")
 
 
+@dataclass(frozen=True)
+class _RefitTiming:
+    precision: str
+    exact_year: int | None = None
+    exact_date: str | None = None
+    approximate_period: str | None = None
+
+
+def _validate_refit_timing(timing: _RefitTiming) -> bool:
+    has_exact = timing.exact_year is not None or timing.exact_date is not None
+    has_approximate = bool(timing.approximate_period)
+    if timing.precision == "EXACT":
+        return has_exact and not has_approximate
+    if timing.precision == "APPROXIMATE":
+        return has_approximate and not has_exact
+    if timing.precision == "UNKNOWN":
+        return not has_exact and not has_approximate
+    raise ValueError(f"unrecognized precision {timing.precision!r}")
+
+
+def _validate_refit_category(category: str, allowed: frozenset[str]) -> bool:
+    return category in allowed
+
+
+def _validate_broad_use_history(
+    assertion_kind: str, values: list[str] | None, allowed: frozenset[str]
+) -> bool:
+    if assertion_kind == "UNKNOWN":
+        return values is None
+    if assertion_kind == "VALUE_ASSERTION":
+        if not values:
+            return False
+        if len(values) != len(set(values)):
+            return False
+        return set(values) <= allowed
+    raise ValueError(f"unrecognized assertion_kind {assertion_kind!r}")
+
+
 def main() -> int:
     registry = _load_registry()
     contracts = ContractRegistry.from_directory(SPECS)
@@ -227,6 +265,60 @@ def main() -> int:
         "document declared available          -> "
         f"{'NOT ATTACHED / NOT VERIFIED' if doc_independent else 'FAIL'}"
     )
+
+    # -- refit timing: precision must match its actual temporal payload ------
+    refit_timing_cases = [
+        (_RefitTiming(precision="EXACT"), False),
+        (_RefitTiming(precision="EXACT", exact_year=2022), True),
+        (_RefitTiming(precision="APPROXIMATE"), False),
+        (_RefitTiming(precision="APPROXIMATE", approximate_period="early 2020s"), True),
+        (_RefitTiming(precision="UNKNOWN"), True),
+        (_RefitTiming(precision="UNKNOWN", exact_year=2022), False),
+    ]
+    refit_timing_ok = all(
+        _validate_refit_timing(timing) == expected for timing, expected in refit_timing_cases
+    )
+    ok &= refit_timing_ok
+    print(f"refit timing payload matches precision -> {'PASS' if refit_timing_ok else 'FAIL'}")
+
+    # -- refit category: closed Gate-1 vocabulary, not free text -------------
+    refit_categories = frozenset(
+        registry["event_structures"]["refit_event_v0_1"]["category"]["values"] or []
+    )
+    category_ok = _validate_refit_category(
+        "RIGGING", refit_categories
+    ) and not _validate_refit_category("PAINT_JOB", refit_categories)
+    ok &= category_ok
+    print(f"refit category vocabulary               -> {'BOUNDED' if category_ok else 'FAIL'}")
+
+    # -- broad_use_history: bounded multi-value set, no false conflict -------
+    use_history_values = frozenset(
+        fields["physical_boat.broad_use_history"]["value_type"]["values"] or []
+    )
+    use_history_valid_cases = _validate_broad_use_history(
+        "UNKNOWN", None, use_history_values
+    ) and _validate_broad_use_history("VALUE_ASSERTION", ["CHARTER", "PRIVATE"], use_history_values)
+    use_history_invalid_cases = (
+        not _validate_broad_use_history("UNKNOWN", ["PRIVATE"], use_history_values)
+        and not _validate_broad_use_history(
+            "VALUE_ASSERTION", ["PRIVATE", "PRIVATE"], use_history_values
+        )
+        and not _validate_broad_use_history("VALUE_ASSERTION", [], use_history_values)
+    )
+    same_set_different_order = (
+        _resolve_fact_topic(
+            [
+                _Observation("A-1", "ORG-A", ",".join(sorted({"CHARTER", "PRIVATE"}))),
+                _Observation("B-1", "ORG-B", ",".join(sorted({"PRIVATE", "CHARTER"}))),
+            ]
+        ).state
+        == "RESOLVED"
+    )
+    use_history_ok = (
+        use_history_valid_cases and use_history_invalid_cases and same_set_different_order
+    )
+    ok &= use_history_ok
+    print(f"broad_use_history multi-value           -> {'PASS' if use_history_ok else 'FAIL'}\n")
 
     # -- sensitive plain assertion forbidden ---------------------------------
     sensitive_fields = {

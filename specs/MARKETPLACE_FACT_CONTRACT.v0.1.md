@@ -316,12 +316,40 @@ One repeatable `PHYSICAL_BOAT` claim structure, `refit_event_v0_1`
 
 ```text
 event_kind:  MAINTENANCE | UPGRADE_OR_REPLACEMENT | MAJOR_REFIT
-category:    bounded high-level category
+category:    bounded Gate-1 category vocabulary (RIGGING, SAILS,
+             ENGINE_PROPULSION, ELECTRICAL_ENERGY, NAVIGATION, HULL, DECK,
+             PLUMBING, HVAC_COMFORT, INTERIOR, SAFETY, OTHER)
 topic:       non-empty text or bounded identifier
 action:      INSTALLED | REPLACED | REFURBISHED | UPGRADED | REPAIRED | OTHER
-timing:      EXACT | APPROXIMATE | UNKNOWN
+timing:      precision + the actual temporal payload for that precision
+             (see below)
 description: optional short text
 supporting_documentation_declared_available: YES | NO | UNKNOWN
+```
+
+`category` is a closed Gate-1 vocabulary, not free text; an out-of-vocabulary
+category is invalid.
+
+`timing` is a structured value, not a bare precision token, so it can
+mechanically carry the actual year/date or approximate period the readiness
+requires — a bare `EXACT` with no year/date is not a usable claim:
+
+```text
+precision:           EXACT | APPROXIMATE | UNKNOWN
+exact_year:          integer | null
+exact_date:          ISO 8601 date | null
+approximate_period:  short text | null
+```
+
+Hard, per precision:
+
+```text
+precision = EXACT       -> at least one of exact_year/exact_date is non-null
+                            AND approximate_period is null
+precision = APPROXIMATE -> approximate_period is non-null/non-empty
+                            AND exact_year and exact_date are both null
+precision = UNKNOWN     -> exact_year, exact_date and approximate_period are
+                            all null (no fabricated precision)
 ```
 
 Claim authority/provenance belongs to the observation envelope/context, not
@@ -402,7 +430,7 @@ allow `ABSENT` to represent a current claim of no auxiliary engine fitted.
 |---|---|---|---|---|---|
 | `physical_boat.refit_events` | GATE_1_OPTIONAL | MATERIAL | PUBLIC | DISPLAY_ONLY | OPTIONAL |
 | `physical_boat.known_previous_owner_count` | GATE_1_OPTIONAL | MATERIAL | PUBLIC | DISPLAY_ONLY | OPTIONAL; UNKNOWN allowed |
-| `physical_boat.broad_use_history` | GATE_1_OPTIONAL | MATERIAL | PUBLIC | DISPLAY_ONLY | OPTIONAL; UNKNOWN allowed |
+| `physical_boat.broad_use_history` | GATE_1_OPTIONAL | MATERIAL | PUBLIC | DISPLAY_ONLY | OPTIONAL; UNKNOWN allowed; MULTI-value |
 | `physical_boat.grounding_history` | LATER | SENSITIVE | PUBLIC | DISPLAY_ONLY | not Gate-1 |
 | `physical_boat.major_damage_history` | LATER | SENSITIVE | PUBLIC | DISPLAY_ONLY | not Gate-1 |
 | `physical_boat.osmosis_treatment_history` | LATER | SENSITIVE | PUBLIC | DISPLAY_ONLY | not Gate-1 |
@@ -410,9 +438,32 @@ allow `ABSENT` to represent a current claim of no auxiliary engine fitted.
 
 `known_previous_owner_count` MUST NOT contain names/identifiers of prior private
 owners, is not searchable in v0.1 and is not a yacht-quality score.
-`broad_use_history` values: `PRIVATE`, `CHARTER`, `SAILING_SCHOOL`, `RACING`,
-`LIVEABOARD`, `COMMERCIAL`, plus assertion kind `UNKNOWN`. History-sensitive
-topics allow `UNKNOWN` and, where logically appropriate,
+
+`broad_use_history` values are drawn from `PRIVATE`, `CHARTER`,
+`SAILING_SCHOOL`, `RACING`, `LIVEABOARD`, `COMMERCIAL`. A single yacht's
+lifetime use is not mutually exclusive across these categories (for example a
+yacht legitimately used for both `CHARTER` and `PRIVATE` use), so this field
+has `cardinality: MULTI` in `value_type`: a `VALUE_ASSERTION` observation
+carries a bounded, duplicate-free, non-empty subset of the closed vocabulary,
+not a single scalar token. Hard:
+
+```text
+assertion_kind = UNKNOWN          -> no values payload at all
+assertion_kind = VALUE_ASSERTION  -> non-empty subset of the closed
+                                      vocabulary, no duplicate members
+```
+
+`UNKNOWN` (nothing declared) remains semantically distinct from any declared
+non-empty set; there is no "empty declared set" representation, so an asserted
+value with zero members is invalid, not a synonym for `UNKNOWN`. Two
+observations that declare the same set of categories in a different order are
+the same claim (the set, not its input order or textual form, is what is
+compared for resolution), so legitimately overlapping-but-differently-ordered
+declarations from different sources do not manufacture a false `CONFLICT`; a
+genuinely different set of declared categories is still a real disagreement
+and resolves as `CONFLICT` per §6/§13 like any other fact topic.
+
+History-sensitive topics allow `UNKNOWN` and, where logically appropriate,
 `NO_KNOWN_HISTORY_DECLARED`; silence cannot become proven absence.
 
 ## 11. Sensitive presentation lock
@@ -469,7 +520,16 @@ Machine validation fails if any of the following occur (enforced by
 14. `price_mode=AMOUNT` passes without amount + currency;
 15. `price_mode=POA` invents an amount;
 16. Brand and Builder collapse;
-17. a different source supersedes another source by recency alone.
+17. a different source supersedes another source by recency alone;
+18. a refit event's `timing.precision` does not match its own temporal
+    payload (`EXACT` without an `exact_year`/`exact_date`; `APPROXIMATE`
+    without a non-empty `approximate_period`; `UNKNOWN` with any fabricated
+    `exact_year`/`exact_date`/`approximate_period`);
+19. a refit event's `category` is outside the closed Gate-1 vocabulary;
+20. `broad_use_history` is treated as single-valued, allows a duplicate
+    member, allows an empty declared set distinct from `UNKNOWN`, or two
+    observations of the same declared set (in different member order) are
+    treated as a false `CONFLICT`.
 
 ## 13. Required adversarial examples
 
@@ -496,7 +556,21 @@ introduced by this contract):
   invalid; `AMOUNT` + amount + currency is valid; `POA` + no amount is valid;
   `POA` + a synthetic/invented amount is invalid;
 - free-text extraction of "Rigging was done by the previous owner a few years
-  ago" does not become an exact-year structured claim.
+  ago" does not become an exact-year structured claim;
+- refit `timing` validity: `EXACT` with no `exact_year`/`exact_date` is
+  invalid; `APPROXIMATE` with no `approximate_period` is invalid; `UNKNOWN`
+  with a fabricated `exact_year`, `exact_date` or `approximate_period` is
+  invalid; a valid exact year/date, a valid approximate period, and an
+  `UNKNOWN` with no payload are each accepted; mixing an `EXACT`/`APPROXIMATE`
+  payload onto the other precision is invalid;
+- an out-of-vocabulary refit `category` (e.g. a token outside the closed
+  Gate-1 list) is rejected;
+- `broad_use_history` accepts a legitimate multi-category declaration (e.g.
+  `{CHARTER, PRIVATE}` or `{RACING, PRIVATE}`); rejects a duplicate member,
+  an empty declared set, and an out-of-vocabulary member; and two sources
+  declaring the same set in different member order resolve without a false
+  `CONFLICT`, while two sources declaring genuinely different sets still
+  resolve to `CONFLICT`.
 
 ## 14. Non-goals
 

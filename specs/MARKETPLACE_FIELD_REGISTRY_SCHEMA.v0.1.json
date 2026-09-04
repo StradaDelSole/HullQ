@@ -201,7 +201,7 @@
     "valueType": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["data_type", "unit", "unit_system", "values"],
+      "required": ["data_type", "unit", "unit_system", "values", "cardinality"],
       "properties": {
         "data_type": {
           "enum": [
@@ -221,8 +221,18 @@
             { "type": "null" },
             { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true }
           ]
+        },
+        "cardinality": {
+          "description": "SINGLE: one value per observation. MULTI: a bounded, duplicate-free subset of `values` per observation (e.g. broad_use_history); UNKNOWN assertions never carry a values payload regardless of cardinality.",
+          "enum": ["SINGLE", "MULTI"]
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["cardinality"], "properties": { "cardinality": { "const": "MULTI" } } },
+          "then": { "required": ["values"], "properties": { "values": { "type": "array" } } }
+        }
+      ]
     },
     "presentationPolicy": {
       "type": "object",
@@ -252,9 +262,48 @@
     "eventFieldDescriptor": {
       "type": "object",
       "additionalProperties": false,
+      "required": ["data_type", "values", "required", "notes", "components"],
+      "properties": {
+        "data_type": {
+          "enum": ["categorical", "string", "timing_structure", "tri_state", "free_text"]
+        },
+        "values": {
+          "anyOf": [
+            { "type": "null" },
+            { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true }
+          ]
+        },
+        "required": { "type": "boolean" },
+        "notes": { "type": ["string", "null"] },
+        "components": {
+          "description": "Non-null only for data_type=timing_structure: the nested precision/exact/approximate sub-fields that together represent the actual temporal value, not just a precision token.",
+          "anyOf": [
+            {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": { "$ref": "#/$defs/eventTimingComponent" }
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["data_type"],
+            "properties": { "data_type": { "const": "timing_structure" } }
+          },
+          "then": { "properties": { "components": { "type": "object" } } },
+          "else": { "properties": { "components": { "type": "null" } } }
+        }
+      ]
+    },
+    "eventTimingComponent": {
+      "type": "object",
+      "additionalProperties": false,
       "required": ["data_type", "values", "required", "notes"],
       "properties": {
-        "data_type": { "enum": ["categorical", "string", "timing", "tri_state", "free_text"] },
+        "data_type": { "enum": ["categorical", "integer", "string"] },
         "values": {
           "anyOf": [
             { "type": "null" },
