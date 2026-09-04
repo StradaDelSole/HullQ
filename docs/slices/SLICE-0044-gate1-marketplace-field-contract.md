@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0044  
 **Type:** DESIGN_RESEARCH  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** Native Marketplace Foundation — fact semantics before PhysicalBoat persistence/workspace  
 **Depends on:** SLICE-0040–0043 owner-accepted / DONE; `docs/MARKETPLACE_FACT_CLAIM_SEMANTICS_2026-09-04.md` accepted/merged  
 **Blocks:** PhysicalBoat/listing-fact persistence, broker listing workspace, listing read/search, structured refit/history search, sensitive-claim presentation, scalable listing intake
@@ -660,35 +660,35 @@ MARKETPLACE FACT CONTRACT RESULT -> PASS
 
 ## Acceptance criteria
 
-- [ ] Product execution checks remain PASS.
-- [ ] `MARKETPLACE_FACT_CONTRACT.v0.1` exists and matches all controlling artifacts.
-- [ ] Machine-readable registry schema and v0.1 registry exist.
-- [ ] Registry contains exactly the bounded semantic topics locked here; no complete yacht/equipment catalog is invented.
-- [ ] Every field classifies subject, allowed assertion kinds, presentation, search use, requiredness, phase and risk.
-- [ ] `REQUIRED_RESPONSE`, `CONDITIONAL` and `OPTIONAL` are distinct; conditional fields carry machine-readable conditions.
-- [ ] Phase and risk are mechanically independent.
-- [ ] `ABSENT`, `NO_KNOWN_HISTORY_DECLARED` and `UNKNOWN` remain distinct.
-- [ ] Assertion kind and resolution state remain distinct.
-- [ ] UNKNOWN/UNRESOLVED/CONFLICT cannot satisfy future hard Required search.
-- [ ] Design values cannot auto-project into missing PhysicalBoat values.
-- [ ] Brand and Builder remain distinct; broker brand/model claims remain distinct from resolved BoatDesign identity.
-- [ ] Same-authority correction uses explicit non-destructive supersession and preserves audit/history.
-- [ ] Cross-source disagreement cannot overwrite/supersede by recency alone.
-- [ ] Documentation declaration is separate from attachment/review/verification; no upload path exists.
-- [ ] Every SENSITIVE v0.1 field is DISPLAY_ONLY and has explicit attributed/non-verified presentation policy.
-- [ ] VAT/tax status proves `GATE_1_OPTIONAL + SENSITIVE` coexist.
-- [ ] Grounding/damage/history semantics never convert silence/unknown into proven absence.
-- [ ] Broker summary/description/history narrative remain free text and DISPLAY_ONLY for structured truth.
-- [ ] LLM/free-text extraction cannot auto-promote truth; extraction confidence is not truth confidence.
-- [ ] Minimal refit structure supports exact/approximate/unknown timing and declared-document availability with no upload.
-- [ ] Previous-owner count is optional/display-only, contains no prior-owner identity and is not a quality score.
-- [ ] Conditional price rules are mechanically enforced.
-- [ ] Owner inspection reports PASS only after real registry/adversarial assertions succeed.
-- [ ] No PostgreSQL/Alembic/runtime marketplace persistence change is introduced.
-- [ ] No broker UI, publication/lifecycle/freshness, document/media upload, LLM extraction, dedup or later capability is introduced.
-- [ ] Repository validation, format/lint/type checks and relevant full suite pass; coverage remains >=90% where applicable.
+- [x] Product execution checks remain PASS.
+- [x] `MARKETPLACE_FACT_CONTRACT.v0.1` exists and matches all controlling artifacts.
+- [x] Machine-readable registry schema and v0.1 registry exist.
+- [x] Registry contains exactly the bounded semantic topics locked here; no complete yacht/equipment catalog is invented.
+- [x] Every field classifies subject, allowed assertion kinds, presentation, search use, requiredness, phase and risk.
+- [x] `REQUIRED_RESPONSE`, `CONDITIONAL` and `OPTIONAL` are distinct; conditional fields carry machine-readable conditions.
+- [x] Phase and risk are mechanically independent.
+- [x] `ABSENT`, `NO_KNOWN_HISTORY_DECLARED` and `UNKNOWN` remain distinct.
+- [x] Assertion kind and resolution state remain distinct.
+- [x] UNKNOWN/UNRESOLVED/CONFLICT cannot satisfy future hard Required search.
+- [x] Design values cannot auto-project into missing PhysicalBoat values.
+- [x] Brand and Builder remain distinct; broker brand/model claims remain distinct from resolved BoatDesign identity.
+- [x] Same-authority correction uses explicit non-destructive supersession and preserves audit/history.
+- [x] Cross-source disagreement cannot overwrite/supersede by recency alone.
+- [x] Documentation declaration is separate from attachment/review/verification; no upload path exists.
+- [x] Every SENSITIVE v0.1 field is DISPLAY_ONLY and has explicit attributed/non-verified presentation policy.
+- [x] VAT/tax status proves `GATE_1_OPTIONAL + SENSITIVE` coexist.
+- [x] Grounding/damage/history semantics never convert silence/unknown into proven absence.
+- [x] Broker summary/description/history narrative remain free text and DISPLAY_ONLY for structured truth.
+- [x] LLM/free-text extraction cannot auto-promote truth; extraction confidence is not truth confidence.
+- [x] Minimal refit structure supports exact/approximate/unknown timing and declared-document availability with no upload.
+- [x] Previous-owner count is optional/display-only, contains no prior-owner identity and is not a quality score.
+- [x] Conditional price rules are mechanically enforced.
+- [x] Owner inspection reports PASS only after real registry/adversarial assertions succeed.
+- [x] No PostgreSQL/Alembic/runtime marketplace persistence change is introduced.
+- [x] No broker UI, publication/lifecycle/freshness, document/media upload, LLM extraction, dedup or later capability is introduced.
+- [x] Repository validation, format/lint/type checks and relevant full suite pass; coverage remains >=90% where applicable.
 - [ ] Exact-head CI and Manufacturer reproducibility are green before acceptance where applicable.
-- [ ] SLICE-0045+ is not started automatically.
+- [x] SLICE-0045+ is not started automatically.
 
 ## Expected touch points
 

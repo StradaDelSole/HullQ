@@ -1,0 +1,318 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.local/schemas/marketplace-field-registry/0.1",
+  "title": "HullQ Marketplace Field Registry v0.1",
+  "description": "Machine-readable Gate-1 marketplace fact/field registry contract (SLICE-0044). Every entry classifies subject, allowed assertion kinds, presentation, search use, requiredness, delivery phase and claim risk class as independent axes. Companion normative document: specs/MARKETPLACE_FACT_CONTRACT.v0.1.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "subjects",
+    "assertion_kinds",
+    "resolution_states",
+    "presentation_values",
+    "search_use_values",
+    "requiredness_kinds",
+    "delivery_phases",
+    "claim_risk_classes",
+    "fields",
+    "event_structures"
+  ],
+  "properties": {
+    "schema_version": { "const": "0.1" },
+    "subjects": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "assertion_kinds": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "resolution_states": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "presentation_values": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "search_use_values": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "requiredness_kinds": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "delivery_phases": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "claim_risk_classes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "fields": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/fieldEntry" },
+      "propertyNames": { "pattern": "^(physical_boat|listing_offer)\\.[a-z][a-z0-9_]*$" }
+    },
+    "event_structures": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/eventStructure" }
+    }
+  },
+  "$defs": {
+    "fieldEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "topic",
+        "subject",
+        "allowed_assertion_kinds",
+        "value_type",
+        "presentation",
+        "search_use",
+        "requiredness",
+        "delivery_phase",
+        "claim_risk_class",
+        "presentation_policy",
+        "event_structure_ref",
+        "notes"
+      ],
+      "properties": {
+        "topic": { "type": "string", "minLength": 1 },
+        "subject": { "enum": ["PHYSICAL_BOAT", "LISTING_OFFER"] },
+        "allowed_assertion_kinds": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "VALUE_ASSERTION",
+              "PRESENT",
+              "ABSENT",
+              "NO_KNOWN_HISTORY_DECLARED",
+              "UNKNOWN",
+              "NOT_APPLICABLE"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "value_type": { "$ref": "#/$defs/valueType" },
+        "presentation": { "enum": ["PUBLIC", "INTERNAL"] },
+        "search_use": { "enum": ["SEARCHABLE", "DISPLAY_ONLY"] },
+        "requiredness": { "$ref": "#/$defs/requiredness" },
+        "delivery_phase": { "enum": ["GATE_1_REQUIRED", "GATE_1_OPTIONAL", "LATER"] },
+        "claim_risk_class": { "enum": ["STANDARD", "MATERIAL", "SENSITIVE"] },
+        "presentation_policy": {
+          "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/presentationPolicy" }]
+        },
+        "event_structure_ref": { "type": ["string", "null"] },
+        "notes": { "type": ["string", "null"] }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["claim_risk_class"],
+            "properties": { "claim_risk_class": { "const": "SENSITIVE" } }
+          },
+          "then": {
+            "properties": {
+              "search_use": { "const": "DISPLAY_ONLY" },
+              "presentation_policy": { "$ref": "#/$defs/presentationPolicy" }
+            }
+          },
+          "else": {
+            "properties": { "presentation_policy": { "type": "null" } }
+          }
+        },
+        {
+          "if": {
+            "required": ["requiredness"],
+            "properties": {
+              "requiredness": {
+                "type": "object",
+                "required": ["kind"],
+                "properties": { "kind": { "const": "CONDITIONAL" } }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "requiredness": {
+                "type": "object",
+                "required": ["condition"],
+                "properties": { "condition": { "$ref": "#/$defs/requirednessCondition" } }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "requiredness": {
+                "type": "object",
+                "required": ["condition"],
+                "properties": { "condition": { "type": "null" } }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "requiredness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "allows_unknown_response", "condition"],
+      "properties": {
+        "kind": { "enum": ["REQUIRED_RESPONSE", "CONDITIONAL", "OPTIONAL"] },
+        "allows_unknown_response": { "type": "boolean" },
+        "condition": {
+          "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/requirednessCondition" }]
+        }
+      }
+    },
+    "requirednessCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["depends_on_field", "when_value", "required_when_true"],
+      "properties": {
+        "depends_on_field": { "type": "string", "minLength": 1 },
+        "when_value": { "type": "string", "minLength": 1 },
+        "required_when_true": { "type": "boolean" }
+      }
+    },
+    "valueType": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["data_type", "unit", "unit_system", "values", "cardinality"],
+      "properties": {
+        "data_type": {
+          "enum": [
+            "decimal",
+            "integer",
+            "categorical",
+            "string",
+            "tri_state",
+            "structured_event_array",
+            "free_text"
+          ]
+        },
+        "unit": { "type": ["string", "null"] },
+        "unit_system": { "type": ["string", "null"] },
+        "values": {
+          "anyOf": [
+            { "type": "null" },
+            { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true }
+          ]
+        },
+        "cardinality": {
+          "description": "SINGLE: one value per observation. MULTI: a bounded, duplicate-free subset of `values` per observation (e.g. broad_use_history); UNKNOWN assertions never carry a values payload regardless of cardinality.",
+          "enum": ["SINGLE", "MULTI"]
+        }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["cardinality"], "properties": { "cardinality": { "const": "MULTI" } } },
+          "then": { "required": ["values"], "properties": { "values": { "type": "array" } } }
+        }
+      ]
+    },
+    "presentationPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "forbids_unqualified_assertion",
+        "requires_attribution",
+        "requires_last_confirmed_disclosure",
+        "requires_verification_status_disclosure",
+        "verification_status_default",
+        "template_hint"
+      ],
+      "properties": {
+        "forbids_unqualified_assertion": { "const": true },
+        "requires_attribution": { "const": true },
+        "requires_last_confirmed_disclosure": { "const": true },
+        "requires_verification_status_disclosure": { "const": true },
+        "verification_status_default": { "const": "NONE" },
+        "template_hint": { "type": "string", "minLength": 1 }
+      }
+    },
+    "eventStructure": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/eventFieldDescriptor" }
+    },
+    "eventFieldDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["data_type", "values", "required", "notes", "components"],
+      "properties": {
+        "data_type": {
+          "enum": ["categorical", "string", "timing_structure", "tri_state", "free_text"]
+        },
+        "values": {
+          "anyOf": [
+            { "type": "null" },
+            { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true }
+          ]
+        },
+        "required": { "type": "boolean" },
+        "notes": { "type": ["string", "null"] },
+        "components": {
+          "description": "Non-null only for data_type=timing_structure: the nested precision/exact/approximate sub-fields that together represent the actual temporal value, not just a precision token.",
+          "anyOf": [
+            {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": { "$ref": "#/$defs/eventTimingComponent" }
+            },
+            { "type": "null" }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["data_type"],
+            "properties": { "data_type": { "const": "timing_structure" } }
+          },
+          "then": { "properties": { "components": { "type": "object" } } },
+          "else": { "properties": { "components": { "type": "null" } } }
+        }
+      ]
+    },
+    "eventTimingComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["data_type", "values", "required", "notes"],
+      "properties": {
+        "data_type": { "enum": ["categorical", "integer", "string"] },
+        "values": {
+          "anyOf": [
+            { "type": "null" },
+            { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true }
+          ]
+        },
+        "required": { "type": "boolean" },
+        "notes": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
