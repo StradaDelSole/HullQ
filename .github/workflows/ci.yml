@@ -98,16 +98,6 @@ jobs:
           HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
         run: uv run pytest tests/persistence/ -v
 
-      # TEMPORARY (SLICE-0045 amendment review verification only): no local
-      # PostgreSQL superuser credentials are available in this session, so
-      # this CI job is the only way to actually execute and observe the
-      # owner-inspection script before the standalone owner-inspection
-      # acceptance criterion may be checked. Removed once observed.
-      - name: SLICE-0045 owner inspection (temporary verification run)
-        env:
-          HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
-        run: uv run python scripts/inspect_native_listing_offer_facts.py
-
       - name: Run benchmark runner against PostgreSQL 18
         env:
           HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
