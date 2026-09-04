@@ -885,6 +885,107 @@ def test_equivalent_decimal_amount_retry_is_already_exists_not_conflict(offer_co
     assert len(history) == 1
 
 
+def test_distinct_high_precision_decimal_amounts_conflict_not_already_exists(
+    offer_conn: Any,
+) -> None:
+    """Two distinct finite values with more than the default Decimal
+    context's 28-significant-digit precision must resolve as a genuine
+    CONFLICT, not a false ALREADY_EXISTS. Decimal.normalize() (the earlier
+    canonicalization implementation) rounds to the ambient context's
+    precision before reducing the representation, so these two
+    29-significant-digit values -- differing only in their final digit --
+    would incorrectly normalize() to the same result."""
+    account = _account("ACC-DECIMAL2")
+    org = _org("ORG-DECIMAL2")
+    membership = _membership("OM-DECIMAL2", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _create_listing(offer_conn, "NL-DECIMAL-002", account, org, membership)
+    high_precision_a = Decimal("1." + "0" * 27 + "1")
+    high_precision_b = Decimal("1." + "0" * 27 + "2")
+    assert (
+        high_precision_a.normalize() == high_precision_b.normalize()
+    )  # the bug this guards against
+
+    first = write_native_listing_offer_revision(
+        offer_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-DECIMAL-002"),
+        revision_id=NativeListingOfferRevisionId("REV-DECIMAL-002"),
+        expected_current_revision_id=None,
+        offer=_amount_offer(asking_price_amount=high_precision_a),
+    )
+    assert first.status is NativeListingOfferWriteStatus.CREATED
+    offer_conn.commit()
+
+    retry_with_distinct_high_precision_amount = write_native_listing_offer_revision(
+        offer_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-DECIMAL-002"),
+        revision_id=NativeListingOfferRevisionId("REV-DECIMAL-002"),
+        expected_current_revision_id=None,
+        offer=_amount_offer(asking_price_amount=high_precision_b),
+    )
+    assert (
+        retry_with_distinct_high_precision_amount.status is NativeListingOfferWriteStatus.CONFLICT
+    )
+
+    history = list_native_listing_offer_revisions(offer_conn, NativeListingId("NL-DECIMAL-002"))
+    assert len(history) == 1
+    assert history[0].offer.asking_price_amount == high_precision_a
+
+
+# ---------------------------------------------------------------------------
+# PostgreSQL non-blank text must match domain str.strip() semantics
+# ---------------------------------------------------------------------------
+
+
+def test_db_rejects_tab_newline_only_broker_description(offer_conn: Any) -> None:
+    """One-argument btrim() only strips plain ASCII spaces, so a tab/
+    newline-only broker_description would previously pass the DB CHECK
+    even though the domain layer's str.strip()-based non-blank check
+    rejects it -- a DB-valid row that typed readback could not
+    reconstruct."""
+    from psycopg.errors import CheckViolation
+
+    account = _account("ACC-BLANK1")
+    org = _org("ORG-BLANK1")
+    membership = _membership("OM-BLANK1", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _create_listing(offer_conn, "NL-BLANK-001", account, org, membership)
+
+    with pytest.raises(CheckViolation):
+        _raw_insert_revision(
+            offer_conn,
+            native_listing_id="NL-BLANK-001",
+            publishing_organization_id=org.id.value,
+            recorded_by_account_id=account.value,
+            broker_description="\t\n",
+        )
+    offer_conn.rollback()
+
+
+def test_db_rejects_tab_newline_only_optional_value_assertion_text(offer_conn: Any) -> None:
+    from psycopg.errors import CheckViolation
+
+    account = _account("ACC-BLANK2")
+    org = _org("ORG-BLANK2")
+    membership = _membership("OM-BLANK2", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _create_listing(offer_conn, "NL-BLANK-002", account, org, membership)
+
+    with pytest.raises(CheckViolation):
+        _raw_insert_revision(
+            offer_conn,
+            native_listing_id="NL-BLANK-002",
+            publishing_organization_id=org.id.value,
+            recorded_by_account_id=account.value,
+            location_region_assertion_kind="VALUE_ASSERTION",
+            location_region_value="\t\n",
+        )
+    offer_conn.rollback()
+
+
 # ---------------------------------------------------------------------------
 # Retry / collision semantics
 # ---------------------------------------------------------------------------

@@ -141,7 +141,20 @@ def upgrade() -> None:
             name="nl_offer_rev_location_country_code_shape",
         ),
         sa.CheckConstraint(
-            "length(btrim(broker_description)) > 0",
+            # One-argument btrim() only strips plain ASCII spaces, not
+            # tabs/newlines/other whitespace -- so a tab/newline-only value
+            # would pass `length(btrim(x)) > 0` even though Python's
+            # str.strip() (used by the domain layer's non-blank check)
+            # rejects it, letting a DB-valid row exist that typed readback
+            # cannot reconstruct. `x ~ '\\S'` requires at least one
+            # PostgreSQL regex non-whitespace character (space/tab/
+            # newline/CR/form-feed/vertical-tab), matching the ASCII
+            # whitespace this slice's adversarial tests exercise; like the
+            # ISO country/currency shape checks elsewhere in this
+            # migration, it is not a byte-for-byte replica of Python's
+            # full Unicode-aware str.isspace() for exotic Unicode
+            # whitespace.
+            r"broker_description ~ '\S'",
             name="nl_offer_rev_broker_description_non_blank",
         ),
         # Each of the four optional/conditional assertion-kind/value column
@@ -168,14 +181,14 @@ def upgrade() -> None:
         sa.CheckConstraint(
             "COALESCE(location_region_assertion_kind IS NULL AND location_region_value IS NULL, FALSE) "
             "OR COALESCE(location_region_assertion_kind = 'VALUE_ASSERTION' "
-            "    AND location_region_value IS NOT NULL AND length(btrim(location_region_value)) > 0, FALSE) "
+            r"    AND location_region_value IS NOT NULL AND location_region_value ~ '\S', FALSE) "
             "OR COALESCE(location_region_assertion_kind = 'UNKNOWN' AND location_region_value IS NULL, FALSE)",
             name="nl_offer_rev_location_region_state_valid",
         ),
         sa.CheckConstraint(
             "COALESCE(broker_summary_assertion_kind IS NULL AND broker_summary_value IS NULL, FALSE) "
             "OR COALESCE(broker_summary_assertion_kind = 'VALUE_ASSERTION' "
-            "    AND broker_summary_value IS NOT NULL AND length(btrim(broker_summary_value)) > 0, FALSE) "
+            r"    AND broker_summary_value IS NOT NULL AND broker_summary_value ~ '\S', FALSE) "
             "OR COALESCE(broker_summary_assertion_kind = 'NOT_APPLICABLE' AND broker_summary_value IS NULL, FALSE)",
             name="nl_offer_rev_broker_summary_state_valid",
         ),
@@ -184,7 +197,7 @@ def upgrade() -> None:
             "    AND known_history_narrative_value IS NULL, FALSE) "
             "OR COALESCE(known_history_narrative_assertion_kind = 'VALUE_ASSERTION' "
             "    AND known_history_narrative_value IS NOT NULL "
-            "    AND length(btrim(known_history_narrative_value)) > 0, FALSE) "
+            r"    AND known_history_narrative_value ~ '\S', FALSE) "
             "OR COALESCE(known_history_narrative_assertion_kind = 'NO_KNOWN_HISTORY_DECLARED' "
             "    AND known_history_narrative_value IS NULL, FALSE) "
             "OR COALESCE(known_history_narrative_assertion_kind = 'UNKNOWN' "

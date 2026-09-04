@@ -368,3 +368,59 @@ def test_different_decimal_amounts_fingerprint_differently() -> None:
         "NL-1", "ACC-1", _offer(asking_price_amount=Decimal("125000.01"))
     )
     assert fingerprint_dict(baseline) != fingerprint_dict(different)
+
+
+def test_distinct_high_precision_amounts_fingerprint_differently() -> None:
+    """Two distinct finite values with more than the default Decimal
+    context's 28-significant-digit precision must NOT collapse to the same
+    fingerprint. Decimal.normalize() (the previous implementation) rounds
+    to the ambient context's precision before reducing the representation,
+    so these two 29-significant-digit values -- which differ only in their
+    final digit -- would incorrectly normalize() to the same result and be
+    misdetected as ALREADY_EXISTS instead of a genuine CONFLICT."""
+    high_precision_a = Decimal("1." + "0" * 27 + "1")
+    high_precision_b = Decimal("1." + "0" * 27 + "2")
+    assert len(high_precision_a.as_tuple().digits) == 29
+    assert (
+        high_precision_a.normalize() == high_precision_b.normalize()
+    )  # the bug this guards against
+
+    baseline = native_listing_offer_mod._offer_envelope_dict(
+        "NL-1", "ACC-1", _offer(asking_price_amount=high_precision_a)
+    )
+    distinct = native_listing_offer_mod._offer_envelope_dict(
+        "NL-1", "ACC-1", _offer(asking_price_amount=high_precision_b)
+    )
+    assert fingerprint_dict(baseline) != fingerprint_dict(distinct)
+
+
+def test_canonicalization_is_independent_of_ambient_decimal_context_precision() -> None:
+    """Changing getcontext().prec must not change the fingerprint of the
+    same offer -- canonicalization must not go through any Decimal
+    operation that implicitly applies the ambient context."""
+    import decimal
+
+    amount = Decimal("125000.00")
+    offer = _offer(asking_price_amount=amount)
+    envelope_default_context = native_listing_offer_mod._offer_envelope_dict("NL-1", "ACC-1", offer)
+
+    original_prec = decimal.getcontext().prec
+    decimal.getcontext().prec = 5  # far below this value's 8 significant digits
+    try:
+        envelope_reduced_context = native_listing_offer_mod._offer_envelope_dict(
+            "NL-1", "ACC-1", offer
+        )
+    finally:
+        decimal.getcontext().prec = original_prec
+
+    assert fingerprint_dict(envelope_default_context) == fingerprint_dict(envelope_reduced_context)
+
+
+@pytest.mark.parametrize(
+    "equivalent_amount",
+    [Decimal("125000.00"), Decimal("125000"), Decimal("1.25E+5"), Decimal("125000.000")],
+)
+def test_canonical_decimal_str_is_stable_across_representations(equivalent_amount: Decimal) -> None:
+    assert native_listing_offer_mod._canonical_decimal_str(
+        equivalent_amount
+    ) == native_listing_offer_mod._canonical_decimal_str(Decimal("125000.00"))

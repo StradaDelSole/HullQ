@@ -268,18 +268,44 @@ def _claim_dict(
 
 
 def _canonical_decimal_str(value: Decimal) -> str:
-    """Stable string form for a finite Decimal, independent of how it was
-    constructed. `Decimal('125000.00')`, `Decimal('125000')` and
-    `Decimal('1.25E+5')` all represent the same monetary value and must
-    fingerprint identically so an equivalent retry resolves as
-    ALREADY_EXISTS rather than a false CONFLICT. `normalize()` collapses
-    trailing-zero/exponent differences to one canonical coefficient/
-    exponent pair; formatting with the 'f' presentation type then always
-    renders that fixed-point (never scientific-notation) so the string
-    itself is stable regardless of which form `normalize()` happens to
-    prefer for a given magnitude.
+    """Stable string form for a finite Decimal, independent of the active
+    Decimal context and lossless for every accepted finite value.
+
+    `Decimal('125000.00')`, `Decimal('125000')` and `Decimal('1.25E+5')`
+    all represent the same monetary value and must fingerprint identically
+    so an equivalent retry resolves as ALREADY_EXISTS rather than a false
+    CONFLICT -- but `Decimal.normalize()` (used by an earlier version of
+    this function) implicitly rounds to the *ambient* Decimal context's
+    precision (28 significant digits by default) before reducing the
+    representation. Two distinct finite values with more than 28
+    significant digits differing only past that many digits would
+    therefore normalize to the same rounded result and be misdetected as
+    the same revision content -- silently accepting a genuinely different
+    price as ALREADY_EXISTS instead of CONFLICT.
+
+    `Decimal.as_tuple()` instead returns the exact (sign, digit, exponent)
+    representation as originally parsed/constructed, with no context
+    rounding applied. Stripping only trailing coefficient zeros (adjusting
+    the exponent to compensate, exactly as `normalize()` does for that
+    part) canonicalizes trailing-zero/exponent notation differences while
+    never discarding a significant digit, so the result is both lossless
+    and independent of `getcontext().prec`.
     """
-    return format(value.normalize(), "f")
+    sign, digits_tuple, exponent = value.as_tuple()
+    if not isinstance(exponent, int):
+        # Non-finite (Infinity/-Infinity/NaN) values are rejected by
+        # NativeListingOfferSnapshot before persistence ever calls this;
+        # this is an unreachable defensive guard, not a normal code path.
+        raise ValueError(f"asking_price_amount must be finite, got {value!r}")
+    digits = list(digits_tuple)
+    while len(digits) > 1 and digits[-1] == 0:
+        digits.pop()
+        exponent += 1
+    if digits == [0]:
+        exponent = 0
+    coefficient = "".join(str(d) for d in digits)
+    sign_str = "-" if sign else ""
+    return f"{sign_str}{coefficient}E{exponent}"
 
 
 def _offer_envelope_dict(
