@@ -13,6 +13,14 @@ supplied field — so a listing payload cannot spoof its principal. A DENIED
 authorization decision writes zero rows; identical retries are idempotent; a
 reused NativeListingId with a different immutable envelope fails closed as
 CONFLICT rather than being overwritten.
+
+SLICE-0047 completes the previously-unenforced nullable
+``market_episode_id`` creation-envelope field with a real foreign key into
+the durable ``market_episodes`` authority (see
+``hullq.persistence.market_episode``): NULL remains valid/unresolved, and a
+genuinely new NativeListingId with a non-null, unknown MarketEpisodeId fails
+closed as MARKET_EPISODE_NOT_FOUND and writes zero rows. This slice adds no
+post-creation attach/detach mutation to that link.
 """
 
 from __future__ import annotations
@@ -90,6 +98,7 @@ class NativeListingCreationStatus(StrEnum):
     ALREADY_EXISTS = "already_exists"
     DENIED = "denied"
     CONFLICT = "conflict"
+    MARKET_EPISODE_NOT_FOUND = "market_episode_not_found"
 
 
 @dataclass(frozen=True)
@@ -168,6 +177,15 @@ def create_native_listing(
     envelope (publishing Organization, creator Account, MarketEpisode link or
     broker reference) -> CONFLICT, and the original row is never overwritten.
 
+    A genuinely new NativeListingId with a non-null MarketEpisodeId unknown
+    to ``market_episodes`` fails closed as MARKET_EPISODE_NOT_FOUND and
+    writes zero rows: PostgreSQL's ON CONFLICT arbiter check for an already-
+    occupied NativeListingId is resolved before the foreign-key constraint
+    on the (unused) proposed row would ever be checked, so an already-
+    occupied NativeListingId with a different/unknown MarketEpisodeId always
+    reaches the existing-envelope CONFLICT path above instead, never this
+    outcome.
+
     Raises NativeListingTransactionOwnershipError, before any write is
     attempted, if *conn* already has an open transaction: proceeding would
     risk returning CREATED for a row that is not actually durably committed.
@@ -204,22 +222,29 @@ def create_native_listing(
         broker_listing_reference,
     )
 
-    with conn.transaction(), conn.cursor() as cur:
-        cur.execute(
-            _INSERT_NATIVE_LISTING,
-            (
-                listing.id.value,
-                candidate_organization.id.value,
-                account_id.value,
-                market_episode_id,
-                broker_listing_reference,
-                content_hash,
-            ),
+    from psycopg.errors import ForeignKeyViolation  # deferred: no module-level psycopg dependency
+
+    try:
+        with conn.transaction(), conn.cursor() as cur:
+            cur.execute(
+                _INSERT_NATIVE_LISTING,
+                (
+                    listing.id.value,
+                    candidate_organization.id.value,
+                    account_id.value,
+                    market_episode_id,
+                    broker_listing_reference,
+                    content_hash,
+                ),
+            )
+            if cur.rowcount > 0:
+                return NativeListingCreationResult(status=NativeListingCreationStatus.CREATED)
+            cur.execute(_SELECT_NATIVE_LISTING_HASH, [listing.id.value])
+            existing = cur.fetchone()
+    except ForeignKeyViolation:
+        return NativeListingCreationResult(
+            status=NativeListingCreationStatus.MARKET_EPISODE_NOT_FOUND
         )
-        if cur.rowcount > 0:
-            return NativeListingCreationResult(status=NativeListingCreationStatus.CREATED)
-        cur.execute(_SELECT_NATIVE_LISTING_HASH, [listing.id.value])
-        existing = cur.fetchone()
 
     if existing is not None and existing[0] == content_hash:
         return NativeListingCreationResult(status=NativeListingCreationStatus.ALREADY_EXISTS)
