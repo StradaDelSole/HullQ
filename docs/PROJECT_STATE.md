@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0046 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0047 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0047 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0048 -->
 
 **Updated:** 2026-09-05  
-**Latest owner-accepted / DONE slice:** SLICE-0046  
-**Current queue:** SLICE-0047 — MarketEpisode persistence + controlled NativeListing attachment; readiness not yet merged.  
+**Latest owner-accepted / DONE slice:** SLICE-0047  
+**Current queue:** SLICE-0048 — first visible listing vertical slice; readiness not yet merged.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs/ADRs remain authoritative where they apply.
@@ -65,18 +65,19 @@ The repository currently has accepted, tested foundations for:
 - durable immutable NativeListing identity persistence (SLICE-0043);
 - Gate-1 marketplace fact/claim semantics and bounded field registry (SLICE-0044);
 - durable revisioned NativeListing offer-fact persistence for the nine `LISTING_OFFER` fields (SLICE-0045);
-- durable PhysicalBoat identity persistence with optional validated canonical `BoatDesignRef`, deterministic collision semantics and exact typed readback (SLICE-0046).
+- durable PhysicalBoat identity persistence with optional validated canonical `BoatDesignRef`, deterministic collision semantics and exact typed readback (SLICE-0046);
+- durable MarketEpisode identity linked to exactly one PhysicalBoat plus PostgreSQL-backed optional NativeListing→MarketEpisode linkage and typed missing-reference semantics (SLICE-0047).
 
 The accepted PhysicalBoat persistence preserves unresolved identity (`BoatDesignRef = NONE`), permits sister ships to share one BoatDesign, rejects unknown design refs for new PhysicalBoat identities, and never projects BoatDesign baseline data into individual-yacht truth.
+
+The accepted MarketEpisode/NativeListing linkage preserves the immutable NativeListing creation envelope: there is no post-creation attach/detach mutation. A NativeListing may remain unresolved with `market_episode_id = NONE`; when a non-null MarketEpisodeId is supplied for a new NativeListing it must already exist durably.
 
 ## What is not built yet
 
 There is still no completed public product surface for marketplace listings:
 
-- no durable MarketEpisode yet;
-- no NativeListing→MarketEpisode durable attachment yet;
 - no PhysicalBoat marketplace fact persistence yet;
-- no public FastAPI listing endpoint;
+- no public FastAPI listing read endpoint;
 - no broker workspace/form;
 - no public listing detail page;
 - no media upload flow;
@@ -84,26 +85,30 @@ There is still no completed public product surface for marketplace listings:
 
 This absence is treated as a product-execution constraint, not merely a roadmap note.
 
-## Near-term execution path to first visible listing
+## Immediate execution path to first visible listing
 
-The project must optimize for the shortest safe path to a listing that can be entered and viewed outside repository internals.
-
-Current intended path:
+The minimum durable identity chain required for a real listing now exists:
 
 ```text
-SLICE-0047
-MarketEpisode persistence + controlled NativeListing attachment
+PhysicalBoat
+→ MarketEpisode
+→ NativeListing
+→ revisioned LISTING_OFFER facts
+```
 
+Current queue:
+
+```text
 SLICE-0048 target
 first visible listing vertical slice:
 minimal listing intake path + FastAPI read boundary + simplest public listing rendering
 ```
 
-Current estimated distance to first externally visible listing: **2 slices including the current SLICE-0047 queue and the SLICE-0048 vertical target**.
+Current estimated distance to first externally visible listing: **1 slice — SLICE-0048**.
 
 SLICE-0048 should prefer a deliberately narrow vertical slice over waiting for media, full broker workspace, lifecycle polish or every PhysicalBoat fact to be complete. A CLI/operator-assisted intake is acceptable for the first visible proof if it avoids blocking on full Auth0/workspace UX.
 
-A later slice can replace that temporary intake with the proper Auth0-backed broker workspace.
+A later slice can replace temporary intake with the proper Auth0-backed broker workspace.
 
 At every post-slice architecture reassessment, the reviewer must explicitly ask:
 
@@ -113,19 +118,11 @@ At every post-slice architecture reassessment, the reviewer must explicitly ask:
 
 A foundation slice that does not materially unblock the first visible listing requires explicit justification.
 
-## Current queue — SLICE-0047
+## Current queue — SLICE-0048
 
-SLICE-0047 should remain bounded to the minimum identity/linkage capability needed to unblock the first visible listing:
+SLICE-0048 is the committed first-visible-listing vertical target. Readiness must optimize for the narrowest safe end-to-end path that lets one listing be entered through an operator/CLI-assisted path if necessary, read through FastAPI, and rendered on the simplest public web surface.
 
-```text
-MarketEpisodeId
-→ exact PhysicalBoatId
-
-NativeListing
-→ optional controlled MarketEpisode attachment
-```
-
-The readiness must decide the smallest durable attachment semantics without collapsing `PhysicalBoat`, `MarketEpisode` and `NativeListing`, without adding lifecycle/freshness/media/UI scope, and without delaying SLICE-0048 for unrelated marketplace completeness.
+Do not insert media, full broker workspace/Auth0 UX, lifecycle/freshness polish, complete PhysicalBoat fact coverage, search/ranking expansion, monitoring/alerts or unrelated marketplace completeness ahead of this visible proof unless a concrete blocker makes the vertical path impossible.
 
 ## Marketplace fact semantics already frozen
 
@@ -202,5 +199,7 @@ Do not introduce a second business-logic backend, dedicated search engine, Kuber
 - `FINISH_SLICE.bat` closes the local slice only after remote closure.
 
 `docs/PROJECT_STATE.md` is mechanically freshness-gated by `scripts/validate_repository.py`: its `PROJECT_STATE_ACCEPTED_SLICE` marker must equal the highest accepted slice represented by an `SLICE-XXXX-acceptance-closure.md` file. Therefore each acceptance closure that advances the accepted slice number must update this document in the same closure change or repository validation fails.
+
+The queue contract is also validated so merged readiness remains startable while a genuine implementation handoff may move the active slice to `REVIEW`/`BLOCKED` only with the required handoff marker.
 
 For exact historical evidence, hashes, amendments and CI runs, read the corresponding `docs/slices/SLICE-XXXX-acceptance-closure.md` rather than expanding this file into a second history log.
