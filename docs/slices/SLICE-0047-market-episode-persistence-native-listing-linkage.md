@@ -241,7 +241,18 @@ eligible publisher
 → zero NativeListing row
 ```
 
-For an already-existing `NativeListingId`, preserve SLICE-0043 collision semantics. Existing-ID comparison remains authoritative:
+### 7.1 NativeListing outcome priority
+
+Preserve SLICE-0043's authorization-first boundary. Result priority must be deterministic:
+
+```text
+1. evaluate accepted SLICE-0041 publishing eligibility
+2. if DENIED → DENIED, before any database write or linkage classification
+3. only for ALLOWED callers, preserve existing NativeListingId collision semantics
+4. only for a genuinely new NativeListingId may an unknown non-null MarketEpisodeId become MARKET_EPISODE_NOT_FOUND
+```
+
+For an ALLOWED caller and an already-existing `NativeListingId`, existing-envelope comparison is authoritative:
 
 ```text
 existing NativeListingId + exact original immutable envelope
@@ -251,9 +262,9 @@ existing NativeListingId + different immutable envelope
 → CONFLICT
 ```
 
-An unknown different MarketEpisodeId supplied against an already-occupied NativeListingId must not relabel that existing-envelope conflict as `MARKET_EPISODE_NOT_FOUND`.
+An unknown different MarketEpisodeId supplied against an already-occupied NativeListingId by an ALLOWED caller must not relabel that existing-envelope conflict as `MARKET_EPISODE_NOT_FOUND`.
 
-Authorization remains independently enforced by the accepted SLICE-0041 evaluator. `MARKET_EPISODE_NOT_FOUND` must never be used as a substitute for `DENIED`.
+Authorization remains independently enforced by the accepted SLICE-0041 evaluator. An ineligible caller remains `DENIED` regardless of whether the requested episode exists; `MARKET_EPISODE_NOT_FOUND` must never leak or substitute for the authorization decision.
 
 ## 8. Migration governance and existing data
 
@@ -267,9 +278,13 @@ After 0047 there must still be exactly one Alembic head.
 
 Do not synthesize placeholder `MarketEpisode` or `PhysicalBoat` identities to make old data fit.
 
-If a database contains a pre-existing non-null `native_listings.market_episode_id` for which no valid MarketEpisode can exist at migration time, the migration must fail closed rather than fabricate identity truth or silently null the value.
+A pre-0047 database may contain non-null `native_listings.market_episode_id` text because SLICE-0043 intentionally stored the creation-envelope field before a durable MarketEpisode authority existed. 0047 has no truthful PhysicalBoat mapping from which it could reconstruct such an episode.
+
+Therefore if any such pre-existing non-null value would be orphaned by the new FK, upgrade must fail closed rather than fabricate a MarketEpisode, silently null the value, or rewrite the NativeListing envelope. A clear migration failure is preferable to invented identity truth.
 
 Existing `NULL` NativeListing episode links remain valid through upgrade.
+
+Do not introduce cascade-delete behavior across either identity FK in this slice.
 
 ## 9. Typed readback
 
@@ -317,7 +332,8 @@ Real PostgreSQL 18 tests must cover at minimum:
 19. authorization DENIED remains DENIED and writes zero rows regardless of episode input;
 20. raw SQL cannot persist a non-null NativeListing episode reference that violates the FK;
 21. migration from the prior accepted head preserves existing NULL NativeListing episode links;
-22. Alembic reports exactly one head after upgrade.
+22. migration from the prior accepted head with a pre-existing orphan non-null NativeListing episode reference fails closed and does not fabricate/null/rewrite identity state;
+23. Alembic reports exactly one head after upgrade.
 
 Tests should prefer semantic assertions over implementation-specific SQL shape.
 
