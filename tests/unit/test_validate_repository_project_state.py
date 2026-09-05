@@ -32,6 +32,10 @@ def _ready_slice_text(*, slice_type: str = "IMPLEMENTATION", status: str = "READ
     )
 
 
+def _handoff_slice_text(status: str) -> str:
+    return _ready_slice_text(status=status) + f"**Status set by this handoff:** `{status}`\n"
+
+
 def test_latest_acceptance_closure_slice_uses_highest_number(tmp_path: Path) -> None:
     (tmp_path / "SLICE-0044-acceptance-closure.md").write_text("x", encoding="utf-8")
     (tmp_path / "SLICE-0045-acceptance-closure.md").write_text("x", encoding="utf-8")
@@ -112,7 +116,7 @@ def test_queue_startability_reproduces_0047_bad_type_header(tmp_path: Path) -> N
         queue_slice_startability_check(slices_dir=slices, project_state=state)
 
 
-def test_queue_startability_rejects_non_ready_status(tmp_path: Path) -> None:
+def test_queue_startability_rejects_transitional_readiness_status(tmp_path: Path) -> None:
     slices = tmp_path / "slices"
     slices.mkdir()
     slice_path = slices / "SLICE-0047-market-episode.md"
@@ -120,7 +124,56 @@ def test_queue_startability_rejects_non_ready_status(tmp_path: Path) -> None:
     state = tmp_path / "PROJECT_STATE.md"
     _write_state(state, "0046", "0047")
 
-    with pytest.raises(ValueError, match="not 'READY'"):
+    with pytest.raises(ValueError, match="expected 'READY'"):
+        queue_slice_startability_check(slices_dir=slices, project_state=state)
+
+
+def test_queue_startability_rejects_review_without_matching_handoff_marker(tmp_path: Path) -> None:
+    slices = tmp_path / "slices"
+    slices.mkdir()
+    slice_path = slices / "SLICE-0047-market-episode.md"
+    slice_path.write_text(_ready_slice_text(status="REVIEW"), encoding="utf-8")
+    state = tmp_path / "PROJECT_STATE.md"
+    _write_state(state, "0046", "0047")
+
+    with pytest.raises(ValueError, match="lacks the matching implementation handoff marker"):
+        queue_slice_startability_check(slices_dir=slices, project_state=state)
+
+
+def test_queue_startability_allows_explicit_review_handoff(tmp_path: Path) -> None:
+    slices = tmp_path / "slices"
+    slices.mkdir()
+    filename = "SLICE-0047-market-episode.md"
+    (slices / filename).write_text(_handoff_slice_text("REVIEW"), encoding="utf-8")
+    state = tmp_path / "PROJECT_STATE.md"
+    _write_state(state, "0046", "0047")
+
+    assert queue_slice_startability_check(slices_dir=slices, project_state=state) == (47, filename)
+
+
+def test_queue_startability_allows_explicit_blocked_handoff(tmp_path: Path) -> None:
+    slices = tmp_path / "slices"
+    slices.mkdir()
+    filename = "SLICE-0047-market-episode.md"
+    (slices / filename).write_text(_handoff_slice_text("BLOCKED"), encoding="utf-8")
+    state = tmp_path / "PROJECT_STATE.md"
+    _write_state(state, "0046", "0047")
+
+    assert queue_slice_startability_check(slices_dir=slices, project_state=state) == (47, filename)
+
+
+def test_queue_startability_rejects_mismatched_handoff_marker(tmp_path: Path) -> None:
+    slices = tmp_path / "slices"
+    slices.mkdir()
+    slice_path = slices / "SLICE-0047-market-episode.md"
+    slice_path.write_text(
+        _ready_slice_text(status="REVIEW") + "**Status set by this handoff:** `BLOCKED`\n",
+        encoding="utf-8",
+    )
+    state = tmp_path / "PROJECT_STATE.md"
+    _write_state(state, "0046", "0047")
+
+    with pytest.raises(ValueError, match="lacks the matching implementation handoff marker"):
         queue_slice_startability_check(slices_dir=slices, project_state=state)
 
 
