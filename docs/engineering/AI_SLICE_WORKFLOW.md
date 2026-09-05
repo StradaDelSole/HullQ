@@ -16,6 +16,21 @@ The setup is idempotent: running it again updates the same `HullQ main protectio
 
 The GitHub ruleset protects `main` by requiring a pull request, the existing Ubuntu/Windows/dependency-audit checks, an up-to-date branch, linear history, and by blocking force-push/deletion. It deliberately requires zero formal GitHub approvals because project-owner acceptance and independent AI review are tracked by the HullQ slice workflow rather than a second GitHub account.
 
+### Readiness handoff invariant
+
+A readiness document merged to `main` for the current queue must already be directly consumable by `START_SLICE`.
+
+The primary queued slice document therefore MUST use the canonical `SLICE_TEMPLATE.md` header vocabulary, in particular:
+
+```text
+**Type:** BOOTSTRAP | DESIGN_RESEARCH | IMPLEMENTATION | VALIDATION
+**Status:** READY
+```
+
+Do not merge a queued implementation document with transitional header values such as `IMPLEMENTATION READINESS` or `READY_FOR_REVIEW`. Review state belongs to the readiness PR/review process; the artifact merged to `main` is the final authorized `READY` implementation contract.
+
+`scripts/validate_repository.py` mechanically validates this for the current `PROJECT_STATE_QUEUE_SLICE` whenever a queue document exists. It mirrors the `START_SLICE` primary-document header rules and post-SLICE-0038 product checks, so an unstartable readiness artifact must fail CI before merge rather than fail later on the project owner's machine.
+
 ### Start a slice
 
 1. Double-click `START_SLICE.bat` in the normal HullQ folder.
