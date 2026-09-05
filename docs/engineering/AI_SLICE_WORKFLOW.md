@@ -53,6 +53,21 @@ If an amendment is required:
 - do not reload previous project background that is unrelated to the finding;
 - Claude applies only the requested amendment plus necessary tests/validation and reports a new exact HEAD.
 
+### Acceptance closure and PROJECT_STATE freshness
+
+The acceptance closure is not complete until `docs/PROJECT_STATE.md` reflects the newly accepted slice.
+
+Every closure that creates a new highest `SLICE-XXXX-acceptance-closure.md` MUST, in the same closure change:
+
+1. update the `PROJECT_STATE_ACCEPTED_SLICE` marker to that exact slice number;
+2. update the human-readable latest accepted/current queue text;
+3. keep the file compact by replacing stale current-state prose rather than appending another historical report;
+4. update the near-term product-execution path when the accepted slice changes the route to the first visible listing.
+
+`scripts/validate_repository.py` mechanically compares the `PROJECT_STATE_ACCEPTED_SLICE` marker with the highest acceptance-closure filename. A stale or ahead-of-history state document fails repository validation and therefore CI.
+
+At every post-slice reassessment, explicitly record the estimated remaining slice distance to the first externally visible listing. Any proposed foundation-only slice must explain why it cannot safely be deferred until after that visible vertical slice.
+
 ### Finish a slice
 
 Only after the slice PR has been merged, explicit owner acceptance has been recorded, and the separate closure is complete:
