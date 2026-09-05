@@ -13,7 +13,16 @@ SLICES = ROOT / "docs" / "slices"
 PROJECT_STATE = ROOT / "docs" / "PROJECT_STATE.md"
 
 _PROJECT_STATE_ACCEPTED_RE = re.compile(r"<!--\s*PROJECT_STATE_ACCEPTED_SLICE:\s*(\d{4})\s*-->")
+_PROJECT_STATE_QUEUE_RE = re.compile(r"<!--\s*PROJECT_STATE_QUEUE_SLICE:\s*(\d{4})\s*-->")
 _ACCEPTANCE_CLOSURE_RE = re.compile(r"^SLICE-(\d{4})-.*acceptance-closure\.md$")
+_SLICE_TYPE_RE = re.compile(r"(?m)^\*\*Type:\*\*\s*([A-Z_]+)\s*$")
+_SLICE_STATUS_RE = re.compile(r"(?m)^\*\*Status:\*\*\s*([A-Z_]+)\s*$")
+_ALLOWED_SLICE_TYPES = frozenset({"BOOTSTRAP", "DESIGN_RESEARCH", "IMPLEMENTATION", "VALIDATION"})
+_POST_0038_PRODUCT_CHECKS = (
+    "ONE-CAPABILITY CHECK",
+    "VISIBLE-RESULT CHECK",
+    "PRODUCT EXECUTION PLAN ALIGNMENT",
+)
 
 
 def requirements_check() -> tuple[int, int]:
@@ -60,6 +69,17 @@ def declared_project_state_slice(project_state: Path = PROJECT_STATE) -> int:
     return int(matches[0])
 
 
+def declared_project_queue_slice(project_state: Path = PROJECT_STATE) -> int:
+    """Read the machine-readable current-queue marker from PROJECT_STATE."""
+    text = project_state.read_text(encoding="utf-8")
+    matches = _PROJECT_STATE_QUEUE_RE.findall(text)
+    if len(matches) != 1:
+        raise ValueError(
+            "docs/PROJECT_STATE.md must contain exactly one PROJECT_STATE_QUEUE_SLICE marker"
+        )
+    return int(matches[0])
+
+
 def project_state_freshness_check(
     *, slices_dir: Path = SLICES, project_state: Path = PROJECT_STATE
 ) -> tuple[int, int]:
@@ -82,15 +102,86 @@ def project_state_freshness_check(
     return declared, latest
 
 
+def queue_slice_startability_check(
+    *, slices_dir: Path = SLICES, project_state: Path = PROJECT_STATE
+) -> tuple[int, str | None]:
+    """Fail when the queued slice has a primary document that START_SLICE cannot parse.
+
+    It is valid for PROJECT_STATE to name the next queue before its readiness
+    document exists. Once one or more non-closure documents for that queue are
+    present, however, exactly one must be a START_SLICE-compatible primary
+    document and it must already be READY with the post-0038 product checks.
+    This keeps readiness merge state mechanically aligned with
+    scripts/workflow/start-slice.ps1.
+    """
+    queue = declared_project_queue_slice(project_state)
+    candidates = sorted(
+        path
+        for path in slices_dir.glob(f"SLICE-{queue:04d}-*.md")
+        if not path.name.endswith("-acceptance-closure.md")
+    )
+    if not candidates:
+        return queue, None
+
+    primary: list[tuple[Path, str, re.Match[str]]] = []
+    for path in candidates:
+        text = path.read_text(encoding="utf-8")
+        type_match = _SLICE_TYPE_RE.search(text)
+        if type_match is not None:
+            primary.append((path, text, type_match))
+
+    if len(primary) != 1:
+        names = ", ".join(path.name for path in candidates)
+        raise ValueError(
+            f"SLICE-{queue:04d} queue is not START_SLICE-compatible: expected exactly one "
+            "primary non-closure document with a '**Type:** <TOKEN>' header; "
+            f"found {len(primary)}. Eligible files: {names}"
+        )
+
+    path, text, type_match = primary[0]
+    slice_type = type_match.group(1)
+    if slice_type not in _ALLOWED_SLICE_TYPES:
+        allowed = ", ".join(sorted(_ALLOWED_SLICE_TYPES))
+        raise ValueError(
+            f"SLICE-{queue:04d} has unsupported Type {slice_type!r}; allowed values: {allowed}"
+        )
+
+    status_match = _SLICE_STATUS_RE.search(text)
+    if status_match is None:
+        raise ValueError(f"SLICE-{queue:04d} primary document must contain a **Status:** header")
+    status = status_match.group(1)
+    if status != "READY":
+        raise ValueError(
+            f"SLICE-{queue:04d} queue document {path.name} is {status!r}, not 'READY'; "
+            "a readiness PR must reach final READY state before merge to main"
+        )
+
+    if queue >= 39:
+        for check in _POST_0038_PRODUCT_CHECKS:
+            pattern = re.compile(rf"(?m)^\*\*{re.escape(check)}:\*\*\s*PASS\s*$")
+            if pattern.search(text) is None:
+                raise ValueError(
+                    f"SLICE-{queue:04d} queue document {path.name} must contain "
+                    f"'**{check}:** PASS' before it is startable"
+                )
+
+    return queue, path.name
+
+
 def main() -> None:
     registry = ContractRegistry.from_directory(SPECS)
     req_count, acceptance_count = requirements_check()
     no_active_drafts_check()
     state_slice, _ = project_state_freshness_check()
+    queue_slice, queue_file = queue_slice_startability_check()
     print(f"active schemas: {len(registry.schema_names)}")
     print(f"requirements: {req_count}")
     print(f"acceptance criteria: {acceptance_count}")
     print(f"project state accepted through: SLICE-{state_slice:04d}")
+    if queue_file is None:
+        print(f"queue readiness document: not yet present for SLICE-{queue_slice:04d}")
+    else:
+        print(f"queue slice startable: SLICE-{queue_slice:04d} ({queue_file})")
     print("repository governance validation: PASS")
 
 
