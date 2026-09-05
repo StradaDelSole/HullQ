@@ -1,7 +1,7 @@
 # SLICE-0047 — MarketEpisode persistence + controlled NativeListing linkage
 
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Base main:** `3c3599c9131c7226fb73042bf4ea4f537179f635`  
 **Product horizon:** this slice must unblock SLICE-0048, the first visible listing vertical slice.
 
@@ -435,3 +435,45 @@ PROJECT_STATE_QUEUE_SLICE: 0048
 ```
 
 and the current product horizon should state that the next slice is the first visible listing vertical slice.
+
+## Implementation evidence (added at handoff)
+
+**Status set by this handoff:** `REVIEW` (not `DONE` — see CLAUDE.md acceptance rule).
+
+- [x] Durable `market_episodes` table added with exactly `market_episode_id`, `physical_boat_id` (FK -> `physical_boats.physical_boat_id`), `created_at`; no lifecycle/status/freshness/seller/price/observation/continuity/dedup column. Verified structurally in `tests/persistence/test_market_episode_persistence.py::test_market_episodes_columns_are_exactly_the_minimal_identity_envelope` and in the inspection script.
+- [x] `create_market_episode` / `fetch_market_episode` implemented in `src/hullq/persistence/market_episode.py` using the accepted SLICE-0040 `MarketEpisode`/`MarketEpisodeId`/`PhysicalBoatId` types; no parallel identity classes.
+- [x] Deterministic outcomes CREATED / ALREADY_EXISTS / CONFLICT / PHYSICAL_BOAT_NOT_FOUND, with the collision priority in section 5.1 (existing-ID classification always reads the durable stored `physical_boat_id`, never the requested value).
+- [x] Race-safety proven with real concurrent PostgreSQL connections (same/same -> CREATED+ALREADY_EXISTS; same/different -> CREATED+CONFLICT).
+- [x] Transaction ownership: `create_market_episode` fails closed with `MarketEpisodeTransactionOwnershipError` before any write on a non-IDLE connection, and a CREATED result is durable from a separate connection without a caller commit (mirrors SLICE-0043/0046).
+- [x] `native_listings.market_episode_id` completed with a real FK into `market_episodes(market_episode_id)`; NULL remains valid. `NativeListingCreationStatus.MARKET_EPISODE_NOT_FOUND` added; priority proven so an already-occupied NativeListingId with a different/unknown episode remains CONFLICT, never relabeled, and DENIED remains authoritative regardless of episode input.
+- [x] No mutable attach/detach table or function was introduced; the inspection script explicitly checks for their absence.
+- [x] One Alembic revision `alembic/versions/4c9a0dcc98bb_market_episode_linkage.py`, `down_revision = 7a3f0e5c1b6d`; `uv run alembic heads` -> single head `4c9a0dcc98bb`. `ADD CONSTRAINT ... FOREIGN KEY` (no `NOT VALID`) validates existing data by default, so a pre-existing orphaned non-null `native_listings.market_episode_id` fails the upgrade closed without fabricating/nulling/rewriting state — proven in `tests/persistence/test_native_listing_market_episode_linkage.py::test_migration_with_orphan_non_null_episode_reference_fails_closed`; the NULL-preserving path is proven in the adjacent `test_migration_preserves_existing_null_native_listing_episode_links`.
+- [x] Real PostgreSQL 18 adversarial coverage: all 23 required cases in section 10 are covered by `tests/persistence/test_market_episode_persistence.py` (17 tests) and `tests/persistence/test_native_listing_market_episode_linkage.py` (13 tests); 4 pre-existing SLICE-0043 tests in `tests/persistence/test_native_listing_persistence.py` that used a free-form, previously-unenforced `market_episode_id` string were updated to seed a real durable PhysicalBoat+MarketEpisode first (bounded consequence of adding the FK — see Findings below), and the full existing native-listing/physical-boat suites remain green.
+- [x] Owner inspection script `scripts/inspect_market_episode_linkage.py` executed locally against real PostgreSQL 18; ended `MARKET EPISODE LINKAGE RESULT -> PASS`.
+- [ ] GitHub Actions CI on the exact final HEAD — NOT VERIFIED locally; pending remote observation per CLAUDE.md.
+- [ ] Manufacturer artifact reproducibility on the exact final HEAD — NOT VERIFIED locally; pending remote observation.
+- [ ] Independent exact-head review.
+- [ ] Explicit Project Owner acceptance.
+
+### Local validation commands run
+
+```bash
+uv run python scripts/inspect_market_episode_linkage.py
+HULLQ_TEST_DATABASE_URL="postgresql://hullq_test:hullq_test@localhost:5432/hullq_test" uv run python -m pytest tests/persistence/ tests/unit/ -q
+uv run coverage run -m pytest
+uv run coverage report
+uv run ruff format --check .
+uv run ruff check .
+uv run mypy src
+uv run python scripts/validate_repository.py
+uv lock --check
+uv run pip-audit
+uv run alembic heads
+```
+
+All commands were run locally against a real local PostgreSQL 18 instance. Exact pass/fail counts and coverage percentage are reported in the completion report at the end of this handoff, not duplicated here.
+
+### Findings / scope notes
+
+- Adding the new FK necessarily changes runtime behavior for any `native_listings.market_episode_id` value that does not correspond to a real `market_episodes` row: 4 pre-existing SLICE-0043 tests relied on this previously being unenforced free text. They were updated (not removed or weakened) to seed a real MarketEpisode via `create_physical_boat`/`create_market_episode` first, which is the intended SLICE-0047 behavior change, not a scope deviation.
+- No 0048/API/UI/marketplace-fact/lifecycle scope was started.

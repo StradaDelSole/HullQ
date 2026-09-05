@@ -19,7 +19,14 @@ import pytest
 from psycopg.errors import CheckViolation
 from psycopg.pq import TransactionStatus
 
-from hullq.domain.market_identity import MarketEpisodeId, NativeListing, NativeListingId
+from hullq.domain.market_identity import (
+    MarketEpisode,
+    MarketEpisodeId,
+    NativeListing,
+    NativeListingId,
+    PhysicalBoat,
+    PhysicalBoatId,
+)
 from hullq.domain.publishing_eligibility import (
     AccountId,
     MarketplaceOrganization,
@@ -33,12 +40,14 @@ from hullq.domain.publishing_eligibility import (
     PublishingEligibilityReason,
 )
 from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
+from hullq.persistence.market_episode import create_market_episode
 from hullq.persistence.native_listing import (
     NativeListingCreationStatus,
     NativeListingTransactionOwnershipError,
     create_native_listing,
     fetch_native_listing,
 )
+from hullq.persistence.physical_boat import create_physical_boat
 
 # ---------------------------------------------------------------------------
 # Disposable-schema fixture: genuinely-empty schema -> SLICE-0043 Alembic head
@@ -155,6 +164,22 @@ def _listing(value: str, *, market_episode_id: str | None = None) -> NativeListi
         id=NativeListingId(value),
         market_episode_id=MarketEpisodeId(market_episode_id) if market_episode_id else None,
     )
+
+
+def _seed_market_episode(conn: Any, market_episode_id: str, physical_boat_id: str) -> None:
+    """Seed one real durable PhysicalBoat + MarketEpisode (SLICE-0046/0047)
+    so a NativeListing test fixture's market_episode_id satisfies the
+    SLICE-0047 foreign key -- these tests exercise NativeListing envelope
+    semantics, not MarketEpisode creation itself."""
+    create_physical_boat(conn, physical_boat=PhysicalBoat(id=PhysicalBoatId(physical_boat_id)))
+    conn.commit()
+    create_market_episode(
+        conn,
+        market_episode=MarketEpisode(
+            id=MarketEpisodeId(market_episode_id), physical_boat_id=PhysicalBoatId(physical_boat_id)
+        ),
+    )
+    conn.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -337,6 +362,7 @@ def test_publisher_for_org_a_cannot_create_on_behalf_of_org_b(listing_conn: Any)
 
 
 def test_readback_reconstructs_typed_identities(listing_conn: Any) -> None:
+    _seed_market_episode(listing_conn, "ME-RB-001", "PB-RB-001")
     account = _account("ACC-RB1")
     org = _org("ORG-RB1")
     membership = _membership("OM-RB1", account, org, frozenset({MembershipRole.PUBLISHER}))
@@ -472,6 +498,12 @@ def test_created_result_is_immediately_durable_from_a_separate_connection(
     durably visible from a completely separate, freshly opened connection —
     with no explicit commit() call by the original caller at all, and even
     if the original connection is closed immediately afterwards."""
+    seed_conn = psycopg.connect(listing_url)
+    try:
+        _seed_market_episode(seed_conn, "ME-TXN-002", "PB-TXN-002")
+    finally:
+        seed_conn.close()
+
     account = _account("ACC-TXN2")
     org = _org("ORG-TXN2")
     membership = _membership("OM-TXN2", account, org, frozenset({MembershipRole.PUBLISHER}))
@@ -511,6 +543,7 @@ def test_created_result_is_immediately_durable_from_a_separate_connection(
 
 
 def test_identical_retry_is_idempotent_and_preserves_created_at(listing_conn: Any) -> None:
+    _seed_market_episode(listing_conn, "ME-IDEM-001", "PB-IDEM-001")
     account = _account("ACC-IDEM1")
     org = _org("ORG-IDEM1")
     membership = _membership("OM-IDEM1", account, org, frozenset({MembershipRole.PUBLISHER}))
@@ -589,6 +622,8 @@ def test_same_id_different_broker_reference_conflicts(listing_conn: Any) -> None
 
 
 def test_same_id_different_market_episode_conflicts(listing_conn: Any) -> None:
+    _seed_market_episode(listing_conn, "ME-ORIGINAL", "PB-CONF2-ORIGINAL")
+    _seed_market_episode(listing_conn, "ME-CHANGED", "PB-CONF2-CHANGED")
     account = _account("ACC-CONF2")
     org = _org("ORG-CONF2")
     membership = _membership("OM-CONF2", account, org, frozenset({MembershipRole.PUBLISHER}))
