@@ -87,7 +87,7 @@ A PhysicalBoat is global yacht identity. It is not owned by the broker Organizat
 - Caller-supplied stable `PhysicalBoatId` as the durable primary identity.
 - Optional `BoatDesignRef` persisted as a real foreign key to `canonical_boat_designs(id)`.
 - Creation timestamp generated durably by the server/database.
-- Internal deterministic semantic fingerprint/hash if useful for exact idempotency/collision proof; it is not a marketplace field.
+- Internal deterministic semantic fingerprint/hash if useful for exact idempotency/collision proof; it is not a marketplace field and MUST NOT be the sole authority for deciding semantic equality of an already-persisted PhysicalBoat.
 - Create/read persistence functions with deterministic `CREATED | ALREADY_EXISTS | CONFLICT | DESIGN_NOT_FOUND` (or equivalently precise typed) outcomes.
 - Race-safe concurrent creation semantics.
 - Top-level transaction ownership/durability semantics consistent with SLICE-0043/0045.
@@ -172,9 +172,9 @@ PhysicalBoat created with BoatDesignRef = NONE
 
 A later explicit identity-resolution/correction capability may add a provenance-preserving association workflow. This slice must not silently mutate `NONE → value` or `value A → value B` merely because newer broker/design information appears.
 
-### 3. Canonical BoatDesignRef integrity
+### 3. Canonical BoatDesignRef integrity and result precedence
 
-When a `BoatDesignRef` is supplied, it MUST already exist in the accepted canonical authority:
+When a `BoatDesignRef` is supplied for a **new** `PhysicalBoatId`, it MUST already exist in the accepted canonical authority:
 
 ```text
 canonical_boat_designs(id)
@@ -182,10 +182,11 @@ canonical_boat_designs(id)
 
 The database MUST enforce this with a foreign key (or an equally strong already-existing referential mechanism).
 
-Hard:
+Hard for a not-yet-persisted PhysicalBoatId:
 
 ```text
-unknown BoatDesignRef
+new PhysicalBoatId
++ unknown BoatDesignRef
 → no PhysicalBoat row
 → typed DESIGN_NOT_FOUND / equivalent fail-closed result
 ```
@@ -193,6 +194,28 @@ unknown BoatDesignRef
 Do not create a placeholder canonical BoatDesign row merely to satisfy the FK.
 
 `BoatDesignRef = NONE` is valid and means unresolved design identity, not design absence.
+
+For an **already-persisted** `PhysicalBoatId`, existing identity wins result classification before validating a different requested design reference as a new association. The implementation MUST compare the request against the exact durable `boat_design_ref` already stored for that PhysicalBoat:
+
+```text
+existing PhysicalBoatId + same stored BoatDesignRef
+→ ALREADY_EXISTS
+
+existing PhysicalBoatId + different requested BoatDesignRef
+→ CONFLICT
+```
+
+This includes an existing PhysicalBoatId where the different requested BoatDesignRef is itself unknown to `canonical_boat_designs`:
+
+```text
+existing PhysicalBoatId stores X
++ retry/request supplies unknown Y
+→ CONFLICT
+→ NOT DESIGN_NOT_FOUND
+→ existing row unchanged
+```
+
+The purpose is deterministic identity-collision semantics: once a PhysicalBoatId is occupied, the question is whether the immutable creation envelope matches the durable row, not whether a proposed replacement association could be admitted.
 
 ### 4. Sister-ship semantics
 
@@ -240,6 +263,8 @@ No last-write-wins behavior and no implicit repair/update.
 
 `created_at` is server-generated and MUST NOT make an otherwise identical retry conflict.
 
+For an existing PhysicalBoatId, semantic equality/collision MUST be decided by exact comparison of the durable business envelope, specifically the stored nullable `boat_design_ref` versus the requested nullable `BoatDesignRef`. An internal fingerprint/hash may be used as an optimization or diagnostic but MUST NOT be the sole authority for returning `ALREADY_EXISTS` or `CONFLICT`.
+
 ### 6. Race-safe concurrent creation
 
 Two concurrent calls for the same `PhysicalBoatId` must not leak a database uniqueness exception as the public persistence result.
@@ -261,6 +286,8 @@ same ID + different envelope
 The database ends with exactly one row for that PhysicalBoatId.
 
 Use `INSERT ... ON CONFLICT ...` or an equivalently race-safe mechanism; do not rely on a check-then-insert window.
+
+After any insert conflict caused by an occupied PhysicalBoatId, fetch/compare the actual durable row and classify the result from its exact stored nullable `boat_design_ref`; do not infer equality only from caller inputs or a hash.
 
 ### 7. No broker ownership or claim-authority implication
 
@@ -359,6 +386,11 @@ same A + different BoatDesignRef Y
 → CONFLICT
 → A still references X
 
+same existing A + unknown BoatDesignRef Z
+→ CONFLICT
+→ not DESIGN_NOT_FOUND
+→ A still references X
+
 PhysicalBoat B + BoatDesignRef NONE
 → CREATED
 → exact readback keeps NONE
@@ -371,7 +403,7 @@ PhysicalBoat C + same BoatDesignRef X
 → CREATED
 → A and C coexist as sister ships
 
-PhysicalBoat D + unknown BoatDesignRef
+new PhysicalBoat D + unknown BoatDesignRef
 → DESIGN_NOT_FOUND / equivalent
 → zero row for D
 
@@ -406,8 +438,10 @@ PHYSICAL BOAT IDENTITY RESULT -> PASS
 
 - [ ] `PhysicalBoatId` is durably persisted as a distinct real-yacht identity and is not interchangeable with BoatDesign/MarketEpisode/NativeListing identities.
 - [ ] The durable creation envelope contains only PhysicalBoatId, optional BoatDesignRef, server-side created timestamp and permitted internal collision metadata.
-- [ ] A supplied BoatDesignRef is enforced against existing `canonical_boat_designs(id)`; unresolved/NONE remains valid.
-- [ ] Unknown BoatDesignRef fails closed and creates no placeholder design or PhysicalBoat row.
+- [ ] A supplied BoatDesignRef for a new PhysicalBoatId is enforced against existing `canonical_boat_designs(id)`; unresolved/NONE remains valid.
+- [ ] New PhysicalBoatId + unknown BoatDesignRef fails closed with DESIGN_NOT_FOUND/equivalent and creates no placeholder design or PhysicalBoat row.
+- [ ] Existing PhysicalBoatId result classification is based on exact comparison with its durable stored nullable BoatDesignRef: same → ALREADY_EXISTS; different → CONFLICT, even when the newly supplied different ref is unknown.
+- [ ] Internal fingerprints/hashes are never the sole authority for semantic retry/collision classification.
 - [ ] Multiple PhysicalBoatIds may reference the same BoatDesignRef; sharing a design never deduplicates real yachts.
 - [ ] Same ID/same envelope is idempotent; same ID/different immutable envelope returns CONFLICT without mutation.
 - [ ] Existing unresolved PhysicalBoat identity is not silently mutated to a resolved design link in this slice.
@@ -418,7 +452,7 @@ PHYSICAL BOAT IDENTITY RESULT -> PASS
 - [ ] Typed readback returns exactly PhysicalBoatId, optional BoatDesignRef and created_at, with not-found handled explicitly.
 - [ ] Exactly one Alembic migration descends from `4d8e1a72c9f0`; repository/database each retain one Alembic head.
 - [ ] Legacy 001/002 SQL schema files remain unchanged.
-- [ ] Real PostgreSQL 18 tests cover FK integrity, unresolved design, sister ships, retry/collision, concurrency, durability and readback.
+- [ ] Real PostgreSQL 18 tests cover FK integrity, unresolved design, sister ships, retry/collision, result precedence, concurrency, durability and readback.
 - [ ] Owner inspection actually runs against PostgreSQL 18 and ends `PHYSICAL BOAT IDENTITY RESULT -> PASS`.
 - [ ] Full repository test/quality/security gates pass.
 - [ ] GitHub Actions CI passes on the exact final implementation HEAD.
@@ -451,17 +485,19 @@ At minimum, independently observable tests must cover:
 5. same ID/same envelope idempotent retry;
 6. same ID `NONE` vs design collision;
 7. same ID design X vs design Y collision;
-8. unknown design FK/reference failure produces typed fail-closed result and zero row;
-9. two different PhysicalBoatIds sharing one BoatDesignRef both persist;
-10. no uniqueness on BoatDesignRef;
-11. concurrent same-ID/same-envelope create;
-12. concurrent same-ID/different-envelope create;
-13. transaction called while connection already has caller-owned transaction fails before write;
-14. successful CREATED survives independent subsequent connection/readback without caller commit;
-15. rollback/error does not leave partial row;
-16. migration has exactly one parent `4d8e1a72c9f0` and leaves one Alembic head;
-17. raw PostgreSQL rejects a non-existent non-null BoatDesignRef through FK;
-18. persisted schema contains no MarketEpisode/listing attachment/Organization ownership/PhysicalBoat fact columns.
+8. new ID + unknown design FK/reference failure produces typed DESIGN_NOT_FOUND/equivalent and zero row;
+9. existing ID + different unknown design produces CONFLICT, not DESIGN_NOT_FOUND, and leaves the row unchanged;
+10. direct exact durable-row comparison is authoritative for existing-ID idempotency/collision classification; a stored hash alone cannot authorize ALREADY_EXISTS;
+11. two different PhysicalBoatIds sharing one BoatDesignRef both persist;
+12. no uniqueness on BoatDesignRef;
+13. concurrent same-ID/same-envelope create;
+14. concurrent same-ID/different-envelope create;
+15. transaction called while connection already has caller-owned transaction fails before write;
+16. successful CREATED survives independent subsequent connection/readback without caller commit;
+17. rollback/error does not leave partial row;
+18. migration has exactly one parent `4d8e1a72c9f0` and leaves one Alembic head;
+19. raw PostgreSQL rejects a non-existent non-null BoatDesignRef through FK;
+20. persisted schema contains no MarketEpisode/listing attachment/Organization ownership/PhysicalBoat fact columns.
 
 ## Handoff rule
 
