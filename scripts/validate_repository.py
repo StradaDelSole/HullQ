@@ -12,9 +12,7 @@ SPECS = ROOT / "specs"
 SLICES = ROOT / "docs" / "slices"
 PROJECT_STATE = ROOT / "docs" / "PROJECT_STATE.md"
 
-_PROJECT_STATE_ACCEPTED_RE = re.compile(
-    r"<!--\s*PROJECT_STATE_ACCEPTED_SLICE:\s*(\d{4})\s*-->"
-)
+_PROJECT_STATE_ACCEPTED_RE = re.compile(r"<!--\s*PROJECT_STATE_ACCEPTED_SLICE:\s*(\d{4})\s*-->")
 _ACCEPTANCE_CLOSURE_RE = re.compile(r"^SLICE-(\d{4})-.*acceptance-closure\.md$")
 
 
@@ -57,8 +55,7 @@ def declared_project_state_slice(project_state: Path = PROJECT_STATE) -> int:
     matches = _PROJECT_STATE_ACCEPTED_RE.findall(text)
     if len(matches) != 1:
         raise ValueError(
-            "docs/PROJECT_STATE.md must contain exactly one "
-            "PROJECT_STATE_ACCEPTED_SLICE marker"
+            "docs/PROJECT_STATE.md must contain exactly one PROJECT_STATE_ACCEPTED_SLICE marker"
         )
     return int(matches[0])
 
