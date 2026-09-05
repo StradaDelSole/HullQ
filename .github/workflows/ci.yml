@@ -53,11 +53,8 @@ jobs:
       - name: Type check
         run: uv run mypy src
 
-      - name: Test with branch coverage
-        run: uv run coverage run -m pytest
-
-      - name: Enforce coverage
-        run: uv run coverage report
+      - name: Test cross-platform suite
+        run: uv run python -m pytest
 
   db-integration:
     name: db integration (PostgreSQL 18)
@@ -93,10 +90,13 @@ jobs:
       - name: Sync environment
         run: uv sync --locked --all-groups
 
-      - name: Apply migrations and run integration tests
+      - name: Run full suite with branch coverage against PostgreSQL 18
         env:
           HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
-        run: uv run pytest tests/persistence/ -v
+        run: uv run coverage run -m pytest
+
+      - name: Enforce full-suite coverage
+        run: uv run coverage report
 
       - name: Run benchmark runner against PostgreSQL 18
         env:
