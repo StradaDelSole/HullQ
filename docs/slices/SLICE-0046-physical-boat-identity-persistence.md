@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0046  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** Native professional supply — physical-yacht identity backbone  
 **Depends on:** SLICE-0040, SLICE-0042, SLICE-0043, SLICE-0044, SLICE-0045 owner-accepted / DONE  
 **Blocks:** MarketEpisode persistence, NativeListing→MarketEpisode attachment, PhysicalBoat fact persistence
@@ -436,27 +436,27 @@ PHYSICAL BOAT IDENTITY RESULT -> PASS
 
 ## Acceptance criteria
 
-- [ ] `PhysicalBoatId` is durably persisted as a distinct real-yacht identity and is not interchangeable with BoatDesign/MarketEpisode/NativeListing identities.
-- [ ] The durable creation envelope contains only PhysicalBoatId, optional BoatDesignRef, server-side created timestamp and permitted internal collision metadata.
-- [ ] A supplied BoatDesignRef for a new PhysicalBoatId is enforced against existing `canonical_boat_designs(id)`; unresolved/NONE remains valid.
-- [ ] New PhysicalBoatId + unknown BoatDesignRef fails closed with DESIGN_NOT_FOUND/equivalent and creates no placeholder design or PhysicalBoat row.
-- [ ] Existing PhysicalBoatId result classification is based on exact comparison with its durable stored nullable BoatDesignRef: same → ALREADY_EXISTS; different → CONFLICT, even when the newly supplied different ref is unknown.
-- [ ] Internal fingerprints/hashes are never the sole authority for semantic retry/collision classification.
-- [ ] Multiple PhysicalBoatIds may reference the same BoatDesignRef; sharing a design never deduplicates real yachts.
-- [ ] Same ID/same envelope is idempotent; same ID/different immutable envelope returns CONFLICT without mutation.
-- [ ] Existing unresolved PhysicalBoat identity is not silently mutated to a resolved design link in this slice.
-- [ ] Concurrent same-ID creation is race-safe and returns deterministic typed outcomes rather than leaking uniqueness errors.
-- [ ] No Organization/account ownership or broker claim authority is attached to PhysicalBoat identity.
-- [ ] BoatDesign linkage does not project design/configuration baseline data into PhysicalBoat truth.
-- [ ] Successful creation is durably committed; pre-existing caller transactions cannot produce nested-transaction false success.
-- [ ] Typed readback returns exactly PhysicalBoatId, optional BoatDesignRef and created_at, with not-found handled explicitly.
-- [ ] Exactly one Alembic migration descends from `4d8e1a72c9f0`; repository/database each retain one Alembic head.
-- [ ] Legacy 001/002 SQL schema files remain unchanged.
-- [ ] Real PostgreSQL 18 tests cover FK integrity, unresolved design, sister ships, retry/collision, result precedence, concurrency, durability and readback.
-- [ ] Owner inspection actually runs against PostgreSQL 18 and ends `PHYSICAL BOAT IDENTITY RESULT -> PASS`.
-- [ ] Full repository test/quality/security gates pass.
-- [ ] GitHub Actions CI passes on the exact final implementation HEAD.
-- [ ] Manufacturer artifact reproducibility passes on the exact final implementation HEAD.
+- [x] `PhysicalBoatId` is durably persisted as a distinct real-yacht identity and is not interchangeable with BoatDesign/MarketEpisode/NativeListing identities.
+- [x] The durable creation envelope contains only PhysicalBoatId, optional BoatDesignRef, server-side created timestamp and permitted internal collision metadata. (No internal hash column was added at all — see next item.)
+- [x] A supplied BoatDesignRef for a new PhysicalBoatId is enforced against existing `canonical_boat_designs(id)`; unresolved/NONE remains valid.
+- [x] New PhysicalBoatId + unknown BoatDesignRef fails closed with DESIGN_NOT_FOUND/equivalent and creates no placeholder design or PhysicalBoat row.
+- [x] Existing PhysicalBoatId result classification is based on exact comparison with its durable stored nullable BoatDesignRef: same → ALREADY_EXISTS; different → CONFLICT, even when the newly supplied different ref is unknown.
+- [x] Internal fingerprints/hashes are never the sole authority for semantic retry/collision classification. (`physical_boats` has no content_hash column; classification reads and compares the stored `boat_design_ref` column directly.)
+- [x] Multiple PhysicalBoatIds may reference the same BoatDesignRef; sharing a design never deduplicates real yachts.
+- [x] Same ID/same envelope is idempotent; same ID/different immutable envelope returns CONFLICT without mutation.
+- [x] Existing unresolved PhysicalBoat identity is not silently mutated to a resolved design link in this slice.
+- [x] Concurrent same-ID creation is race-safe and returns deterministic typed outcomes rather than leaking uniqueness errors.
+- [x] No Organization/account ownership or broker claim authority is attached to PhysicalBoat identity.
+- [x] BoatDesign linkage does not project design/configuration baseline data into PhysicalBoat truth.
+- [x] Successful creation is durably committed; pre-existing caller transactions cannot produce nested-transaction false success.
+- [x] Typed readback returns exactly PhysicalBoatId, optional BoatDesignRef and created_at, with not-found handled explicitly.
+- [x] Exactly one Alembic migration descends from `4d8e1a72c9f0`; repository/database each retain one Alembic head. (Verified via `uv run alembic heads` -> single head `7a3f0e5c1b6d`.)
+- [x] Legacy 001/002 SQL schema files remain unchanged. (Not touched; verified via `git status`/diff.)
+- [x] Real PostgreSQL 18 tests cover FK integrity, unresolved design, sister ships, retry/collision, result precedence, concurrency, durability and readback. (20 tests in `tests/persistence/test_physical_boat_persistence.py`, executed against a real local PostgreSQL 18 instance — all passed.)
+- [x] Owner inspection actually runs against PostgreSQL 18 and ends `PHYSICAL BOAT IDENTITY RESULT -> PASS`. (Executed locally against real PostgreSQL 18; ended `PASS`.)
+- [x] Full repository test/quality/security gates pass. (Local execution: full suite 4360 passed/2 skipped, coverage 93.32%, ruff format/check, mypy strict, `uv lock --check`, `pip-audit`, `scripts/validate_repository.py` — all green.)
+- [ ] GitHub Actions CI passes on the exact final implementation HEAD. — NOT VERIFIED locally; pending remote observation per CLAUDE.md (local green is never proof of remote CI).
+- [ ] Manufacturer artifact reproducibility passes on the exact final implementation HEAD. — NOT VERIFIED locally; pending remote observation.
 - [ ] Independent exact-head review finds no unresolved material issue.
 - [ ] Project Owner explicitly accepts the exact reviewed HEAD before merge.
 
@@ -498,6 +498,25 @@ At minimum, independently observable tests must cover:
 18. migration has exactly one parent `4d8e1a72c9f0` and leaves one Alembic head;
 19. raw PostgreSQL rejects a non-existent non-null BoatDesignRef through FK;
 20. persisted schema contains no MarketEpisode/listing attachment/Organization ownership/PhysicalBoat fact columns.
+
+## Validation
+
+```bash
+uv run python scripts/inspect_physical_boat_identity.py
+HULLQ_TEST_DATABASE_URL="postgresql://hullq_test:hullq_test@localhost:5432/hullq_test" uv run python -m pytest tests/persistence/test_physical_boat_persistence.py -v
+uv run python -m pytest tests/unit/test_physical_boat_persistence_unit.py -v
+uv run coverage run -m pytest
+uv run coverage report
+uv run ruff format --check .
+uv run ruff check .
+uv run mypy src
+uv run python scripts/validate_repository.py
+uv lock --check
+uv run pip-audit
+uv run alembic heads
+```
+
+All commands above were run locally against a real PostgreSQL 18 instance and passed. See the completion report for exact results.
 
 ## Handoff rule
 
