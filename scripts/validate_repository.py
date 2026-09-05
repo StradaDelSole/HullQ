@@ -17,6 +17,9 @@ _PROJECT_STATE_QUEUE_RE = re.compile(r"<!--\s*PROJECT_STATE_QUEUE_SLICE:\s*(\d{4
 _ACCEPTANCE_CLOSURE_RE = re.compile(r"^SLICE-(\d{4})-.*acceptance-closure\.md$")
 _SLICE_TYPE_RE = re.compile(r"(?m)^\*\*Type:\*\*\s*([A-Z_]+)\s*$")
 _SLICE_STATUS_RE = re.compile(r"(?m)^\*\*Status:\*\*\s*([A-Z_]+)\s*$")
+_HANDOFF_STATUS_RE = re.compile(
+    r"(?m)^\*\*Status set by this handoff:\*\*\s*`(REVIEW|BLOCKED)`(?:\s|$)"
+)
 _ALLOWED_SLICE_TYPES = frozenset({"BOOTSTRAP", "DESIGN_RESEARCH", "IMPLEMENTATION", "VALIDATION"})
 _POST_0038_PRODUCT_CHECKS = (
     "ONE-CAPABILITY CHECK",
@@ -105,14 +108,21 @@ def project_state_freshness_check(
 def queue_slice_startability_check(
     *, slices_dir: Path = SLICES, project_state: Path = PROJECT_STATE
 ) -> tuple[int, str | None]:
-    """Fail when the queued slice has a primary document that START_SLICE cannot parse.
+    """Validate the queued slice across readiness and implementation handoff.
 
-    It is valid for PROJECT_STATE to name the next queue before its readiness
-    document exists. Once one or more non-closure documents for that queue are
-    present, however, exactly one must be a START_SLICE-compatible primary
-    document and it must already be READY with the post-0038 product checks.
-    This keeps readiness merge state mechanically aligned with
-    scripts/workflow/start-slice.ps1.
+    Before execution, a queued primary document must be exactly START_SLICE-
+    compatible: canonical Type, Status READY, and the post-0038 product checks.
+
+    Once implementation has actually reached an agent handoff, that same queued
+    document may legitimately move to REVIEW or BLOCKED before acceptance closure
+    advances PROJECT_STATE to the next slice. To distinguish that execution state
+    from a malformed readiness artifact, REVIEW/BLOCKED is allowed only when the
+    document contains the matching explicit handoff marker line:
+
+        **Status set by this handoff:** `REVIEW`
+        **Status set by this handoff:** `BLOCKED`
+
+    Transitional readiness values such as READY_FOR_REVIEW remain invalid.
     """
     queue = declared_project_queue_slice(project_state)
     candidates = sorted(
@@ -150,10 +160,19 @@ def queue_slice_startability_check(
     if status_match is None:
         raise ValueError(f"SLICE-{queue:04d} primary document must contain a **Status:** header")
     status = status_match.group(1)
-    if status != "READY":
+    if status == "READY":
+        pass
+    elif status in {"REVIEW", "BLOCKED"}:
+        handoff_match = _HANDOFF_STATUS_RE.search(text)
+        if handoff_match is None or handoff_match.group(1) != status:
+            raise ValueError(
+                f"SLICE-{queue:04d} queue document {path.name} is {status!r} but lacks the "
+                f"matching implementation handoff marker '**Status set by this handoff:** `{status}`'"
+            )
+    else:
         raise ValueError(
-            f"SLICE-{queue:04d} queue document {path.name} is {status!r}, not 'READY'; "
-            "a readiness PR must reach final READY state before merge to main"
+            f"SLICE-{queue:04d} queue document {path.name} is {status!r}; expected 'READY' "
+            "before execution or an explicitly marked implementation handoff state REVIEW/BLOCKED"
         )
 
     if queue >= 39:
@@ -161,8 +180,7 @@ def queue_slice_startability_check(
             pattern = re.compile(rf"(?m)^\*\*{re.escape(check)}:\*\*\s*PASS\s*$")
             if pattern.search(text) is None:
                 raise ValueError(
-                    f"SLICE-{queue:04d} queue document {path.name} must contain "
-                    f"'**{check}:** PASS' before it is startable"
+                    f"SLICE-{queue:04d} queue document {path.name} must contain '**{check}:** PASS'"
                 )
 
     return queue, path.name
@@ -181,7 +199,7 @@ def main() -> None:
     if queue_file is None:
         print(f"queue readiness document: not yet present for SLICE-{queue_slice:04d}")
     else:
-        print(f"queue slice startable: SLICE-{queue_slice:04d} ({queue_file})")
+        print(f"queue contract valid: SLICE-{queue_slice:04d} ({queue_file})")
     print("repository governance validation: PASS")
 
 
