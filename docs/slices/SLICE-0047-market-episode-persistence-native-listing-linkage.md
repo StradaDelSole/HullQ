@@ -1,7 +1,7 @@
 # SLICE-0047 — MarketEpisode persistence + controlled NativeListing linkage
 
-**Type:** IMPLEMENTATION READINESS  
-**Status:** READY_FOR_REVIEW  
+**Type:** IMPLEMENTATION  
+**Status:** READY  
 **Base main:** `3c3599c9131c7226fb73042bf4ea4f537179f635`  
 **Product horizon:** this slice must unblock SLICE-0048, the first visible listing vertical slice.
 
