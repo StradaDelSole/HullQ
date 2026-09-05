@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0045 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0046 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0046 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0047 -->
 
 **Updated:** 2026-09-05  
-**Latest owner-accepted / DONE slice:** SLICE-0045  
-**Current queue:** SLICE-0046 — PhysicalBoat Identity Persistence; readiness is merged, implementation is not yet owner-accepted.  
+**Latest owner-accepted / DONE slice:** SLICE-0046  
+**Current queue:** SLICE-0047 — MarketEpisode persistence + controlled NativeListing attachment; readiness not yet merged.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs/ADRs remain authoritative where they apply.
@@ -64,15 +64,15 @@ The repository currently has accepted, tested foundations for:
 - Alembic as the sole forward migration path (SLICE-0042);
 - durable immutable NativeListing identity persistence (SLICE-0043);
 - Gate-1 marketplace fact/claim semantics and bounded field registry (SLICE-0044);
-- durable revisioned NativeListing offer-fact persistence for the nine `LISTING_OFFER` fields (SLICE-0045).
+- durable revisioned NativeListing offer-fact persistence for the nine `LISTING_OFFER` fields (SLICE-0045);
+- durable PhysicalBoat identity persistence with optional validated canonical `BoatDesignRef`, deterministic collision semantics and exact typed readback (SLICE-0046).
 
-The accepted offer persistence includes explicit revision history/head semantics, optimistic concurrency, PostgreSQL integrity constraints, organization isolation and exact typed readback.
+The accepted PhysicalBoat persistence preserves unresolved identity (`BoatDesignRef = NONE`), permits sister ships to share one BoatDesign, rejects unknown design refs for new PhysicalBoat identities, and never projects BoatDesign baseline data into individual-yacht truth.
 
 ## What is not built yet
 
-As of this state document there is still no completed public product surface for marketplace listings:
+There is still no completed public product surface for marketplace listings:
 
-- no durable PhysicalBoat identity yet;
 - no durable MarketEpisode yet;
 - no NativeListing→MarketEpisode durable attachment yet;
 - no PhysicalBoat marketplace fact persistence yet;
@@ -82,7 +82,7 @@ As of this state document there is still no completed public product surface for
 - no media upload flow;
 - no public lifecycle/freshness presentation.
 
-This absence is now treated as a product-execution constraint, not merely a future roadmap note.
+This absence is treated as a product-execution constraint, not merely a roadmap note.
 
 ## Near-term execution path to first visible listing
 
@@ -91,9 +91,6 @@ The project must optimize for the shortest safe path to a listing that can be en
 Current intended path:
 
 ```text
-SLICE-0046
-PhysicalBoat identity persistence
-
 SLICE-0047
 MarketEpisode persistence + controlled NativeListing attachment
 
@@ -101,6 +98,8 @@ SLICE-0048 target
 first visible listing vertical slice:
 minimal listing intake path + FastAPI read boundary + simplest public listing rendering
 ```
+
+Current estimated distance to first externally visible listing: **2 slices including the current SLICE-0047 queue and the SLICE-0048 vertical target**.
 
 SLICE-0048 should prefer a deliberately narrow vertical slice over waiting for media, full broker workspace, lifecycle polish or every PhysicalBoat fact to be complete. A CLI/operator-assisted intake is acceptable for the first visible proof if it avoids blocking on full Auth0/workspace UX.
 
@@ -114,32 +113,19 @@ At every post-slice architecture reassessment, the reviewer must explicitly ask:
 
 A foundation slice that does not materially unblock the first visible listing requires explicit justification.
 
-## Current queue — SLICE-0046
+## Current queue — SLICE-0047
 
-SLICE-0046 is intentionally narrow:
-
-```text
-PhysicalBoatId
-+ optional existing canonical BoatDesignRef
-+ created_at
-```
-
-The optional BoatDesignRef must reference the existing `canonical_boat_designs(id)` authority. An unresolved PhysicalBoat (`BoatDesignRef = NONE`) is valid.
-
-SLICE-0046 must not add MarketEpisode, listing attachment, PhysicalBoat facts, HIN/CIN identity proof, broker ownership, automatic dedup/merge, API or UI.
-
-Collision semantics are deterministic:
+SLICE-0047 should remain bounded to the minimum identity/linkage capability needed to unblock the first visible listing:
 
 ```text
-existing PhysicalBoatId + same stored nullable BoatDesignRef
-→ ALREADY_EXISTS
+MarketEpisodeId
+→ exact PhysicalBoatId
 
-existing PhysicalBoatId + different nullable BoatDesignRef
-→ CONFLICT
-
-new PhysicalBoatId + unknown non-null BoatDesignRef
-→ DESIGN_NOT_FOUND
+NativeListing
+→ optional controlled MarketEpisode attachment
 ```
+
+The readiness must decide the smallest durable attachment semantics without collapsing `PhysicalBoat`, `MarketEpisode` and `NativeListing`, without adding lifecycle/freshness/media/UI scope, and without delaying SLICE-0048 for unrelated marketplace completeness.
 
 ## Marketplace fact semantics already frozen
 
@@ -215,6 +201,6 @@ Do not introduce a second business-logic backend, dedicated search engine, Kuber
 - acceptance closure follows the implementation merge;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure.
 
-`docs/PROJECT_STATE.md` is mechanically freshness-gated by `scripts/validate_repository.py`: its `PROJECT_STATE_ACCEPTED_SLICE` marker must equal the highest accepted slice represented by an `SLICE-XXXX-acceptance-closure.md` file. Therefore each future acceptance closure that advances the accepted slice number must update this document in the same closure change or repository validation fails.
+`docs/PROJECT_STATE.md` is mechanically freshness-gated by `scripts/validate_repository.py`: its `PROJECT_STATE_ACCEPTED_SLICE` marker must equal the highest accepted slice represented by an `SLICE-XXXX-acceptance-closure.md` file. Therefore each acceptance closure that advances the accepted slice number must update this document in the same closure change or repository validation fails.
 
 For exact historical evidence, hashes, amendments and CI runs, read the corresponding `docs/slices/SLICE-XXXX-acceptance-closure.md` rather than expanding this file into a second history log.
