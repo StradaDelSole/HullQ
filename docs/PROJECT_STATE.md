@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-05  
 **Latest owner-accepted / DONE slice:** SLICE-0047  
-**Current queue:** SLICE-0048 — first visible listing vertical slice; readiness not yet merged.  
+**Current queue:** SLICE-0048 — first browser-visible listing preview vertical; readiness READY.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs/ADRs remain authoritative where they apply.
@@ -99,16 +99,16 @@ PhysicalBoat
 Current queue:
 
 ```text
-SLICE-0048 target
-first visible listing vertical slice:
-minimal listing intake path + FastAPI read boundary + simplest public listing rendering
+SLICE-0048
+first browser-visible listing preview vertical:
+operator-assisted intake + signed finite preview capability + FastAPI read boundary + Astro SSR preview
 ```
 
-Current estimated distance to first externally visible listing: **1 slice — SLICE-0048**.
+Current estimated distance to first browser-visible real listing: **1 slice — SLICE-0048**.
 
-SLICE-0048 should prefer a deliberately narrow vertical slice over waiting for media, full broker workspace, lifecycle polish or every PhysicalBoat fact to be complete. A CLI/operator-assisted intake is acceptable for the first visible proof if it avoids blocking on full Auth0/workspace UX.
+SLICE-0048 deliberately uses a shareable, time-bounded, non-indexed preview rather than silently treating durable NativeListing creation as production publication. This preserves the accepted `DURABLE CREATION != PUBLICATION` boundary while still delivering the first real HTTP/browser-visible product proof.
 
-A later slice can replace temporary intake with the proper Auth0-backed broker workspace.
+A CLI/operator-assisted intake is acceptable for this first visible proof. A later slice can replace temporary intake with the proper Auth0-backed broker workspace and separately define production publication/lifecycle/canonical public URL semantics.
 
 At every post-slice architecture reassessment, the reviewer must explicitly ask:
 
@@ -120,9 +120,19 @@ A foundation slice that does not materially unblock the first visible listing re
 
 ## Current queue — SLICE-0048
 
-SLICE-0048 is the committed first-visible-listing vertical target. Readiness must optimize for the narrowest safe end-to-end path that lets one listing be entered through an operator/CLI-assisted path if necessary, read through FastAPI, and rendered on the simplest public web surface.
+SLICE-0048 is the committed first-visible-listing vertical target and its readiness is READY. The narrow safe end-to-end path is:
 
-Do not insert media, full broker workspace/Auth0 UX, lifecycle/freshness polish, complete PhysicalBoat fact coverage, search/ranking expansion, monitoring/alerts or unrelated marketplace completeness ahead of this visible proof unless a concrete blocker makes the vertical path impossible.
+```text
+explicit operator publisher/input
+→ accepted durable identity + offer persistence
+→ finite signed bearer preview capability
+→ FastAPI preview read model
+→ Astro SSR browser preview
+```
+
+The preview is explicitly `PREVIEWABLE != PUBLISHED`: it is non-indexed, time-bounded and not a canonical production listing URL. This avoids inventing lifecycle/publication state merely to make the first product surface visible.
+
+Do not insert media, full broker workspace/Auth0 UX, production publication/lifecycle, complete PhysicalBoat fact coverage, search/ranking expansion, monitoring/alerts or unrelated marketplace completeness ahead of this visible proof unless a concrete blocker makes the vertical path impossible.
 
 ## Marketplace fact semantics already frozen
 
