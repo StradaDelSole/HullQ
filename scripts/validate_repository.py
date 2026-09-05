@@ -180,8 +180,7 @@ def queue_slice_startability_check(
             pattern = re.compile(rf"(?m)^\*\*{re.escape(check)}:\*\*\s*PASS\s*$")
             if pattern.search(text) is None:
                 raise ValueError(
-                    f"SLICE-{queue:04d} queue document {path.name} must contain "
-                    f"'**{check}:** PASS'"
+                    f"SLICE-{queue:04d} queue document {path.name} must contain '**{check}:** PASS'"
                 )
 
     return queue, path.name
