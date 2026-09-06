@@ -1,0 +1,15 @@
+{
+  "account_id": "ACC-0049-EXAMPLE",
+  "organization": {
+    "id": "ORG-0049-EXAMPLE",
+    "professional_category": "BROKER",
+    "publishing_eligibility": "ELIGIBLE"
+  },
+  "membership": {
+    "id": "OM-0049-EXAMPLE",
+    "account_id": "ACC-0049-EXAMPLE",
+    "organization_id": "ORG-0049-EXAMPLE",
+    "roles": ["PUBLISHER"],
+    "state": "ACTIVE"
+  }
+}

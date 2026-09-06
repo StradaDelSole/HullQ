@@ -1,10 +1,23 @@
-"""SLICE-0048 preview FastAPI application.
+"""SLICE-0048/0049 FastAPI application.
 
 The repository's first FastAPI surface. FastAPI remains the sole Python HTTP
-backend; this module adds exactly one explicitly unstable, non-canonical
-route (`GET /api/_preview/listings/{preview_token}`) and freezes no
-`/api/v1/...` contract. The route handler stays thin: all previewable-read
-composition lives in `hullq.application.preview_read`.
+backend. This module adds:
+
+- `GET /api/_preview/listings/{preview_token}` (SLICE-0048): an explicitly
+  unstable, non-canonical, bearer-capability-gated preview route;
+- `GET /api/listings/{native_listing_id}` (SLICE-0049): the first
+  production-public NativeListing read route -- no preview token required,
+  gated solely on the accepted ACTIVE + complete-chain predicate.
+
+Neither route freezes an `/api/v1/...` contract. Both handlers stay thin:
+all read composition lives in `hullq.application.preview_read` /
+`hullq.application.public_listing_read`.
+
+The two routes deliberately carry different response-header semantics
+(SLICE-0049 §12): the preview route's private/no-store/no-referrer bearer-
+capability headers apply only to `/api/_preview/...` and MUST NOT be copied
+onto the public route, which is intentionally public-but-noindex rather than
+confidential.
 
 No third-party analytics/tracker/subresource is loaded by this API; the
 interactive OpenAPI/Swagger docs routes are disabled so this proof surface
@@ -19,18 +32,31 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from hullq.application.preview_read import get_preview_read_model
+from hullq.application.public_listing_read import get_public_listing_read_model
+from hullq.domain.market_identity import NativeListingId
 from hullq.persistence.connection import get_database_url, open_connection
 from hullq.security.preview_signing import get_preview_signing_secret
 
 __all__ = ["create_app"]
 
-# Sent on every response from this preview surface: a preview token is a
+_PREVIEW_PATH_PREFIX = "/api/_preview/"
+_PUBLIC_LISTINGS_PATH_PREFIX = "/api/listings/"
+
+# Sent on every response from the preview surface only: a preview token is a
 # bearer capability carried in the URL path, never a publicly indexable or
 # cacheable resource (SLICE-0048 §5.2).
 _PREVIEW_RESPONSE_HEADERS = {
     "Cache-Control": "private, no-store",
     "Referrer-Policy": "no-referrer",
     "X-Robots-Tag": "noindex, nofollow, noarchive",
+}
+
+# Sent on every response from the public listing surface only (SLICE-0049
+# §9.1/§12): public availability is not equivalent to organic indexation,
+# but the public route is otherwise ordinary -- no private/no-store/
+# no-referrer bearer-capability confidentiality is copied onto it.
+_PUBLIC_LISTING_RESPONSE_HEADERS = {
+    "X-Robots-Tag": "noindex",
 }
 
 
@@ -64,10 +90,19 @@ def create_app(
     )
 
     @app.middleware("http")
-    async def _preview_response_headers(request: Request, call_next: Any) -> Any:
+    async def _scoped_response_headers(request: Request, call_next: Any) -> Any:
+        # Scoped by exact path prefix so neither route's header semantics
+        # ever leaks onto the other (SLICE-0049 §12): the preview route's
+        # bearer-capability confidentiality headers must never appear on the
+        # public route, and vice versa.
         response = await call_next(request)
-        for key, value in _PREVIEW_RESPONSE_HEADERS.items():
-            response.headers[key] = value
+        path = request.url.path
+        if path.startswith(_PREVIEW_PATH_PREFIX):
+            for key, value in _PREVIEW_RESPONSE_HEADERS.items():
+                response.headers[key] = value
+        elif path.startswith(_PUBLIC_LISTINGS_PATH_PREFIX):
+            for key, value in _PUBLIC_LISTING_RESPONSE_HEADERS.items():
+                response.headers[key] = value
         return response
 
     @app.get("/api/_preview/listings/{preview_token}")
@@ -83,6 +118,21 @@ def create_app(
             # ordinary not-found response (SLICE-0048 §6.2): this route must
             # never be usable as a NativeListingId existence oracle.
             raise HTTPException(status_code=404, detail="listing preview not found")
+        return JSONResponse(model.to_public_dict())
+
+    @app.get("/api/listings/{native_listing_id}")
+    def get_public_listing(native_listing_id: str) -> JSONResponse:
+        conn = open_connection(resolved_database_url)
+        try:
+            model = get_public_listing_read_model(conn, NativeListingId(native_listing_id))
+        finally:
+            conn.close()
+        if model is None:
+            # DRAFT, WITHDRAWN, missing and incomplete all collapse to this
+            # identical ordinary not-found response (SLICE-0049 §8/§9): this
+            # route must never be usable as a NativeListingId existence
+            # oracle, and no preview token is required or accepted here.
+            raise HTTPException(status_code=404, detail="listing not found")
         return JSONResponse(model.to_public_dict())
 
     return app

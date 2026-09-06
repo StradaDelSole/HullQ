@@ -1,0 +1,94 @@
+---
+// SLICE-0049: the first production-public NativeListing page class.
+//
+// PUBLIC != INDEXABLE. This page renders whenever FastAPI's public route
+// resolves the exact NativeListingId to lifecycle == ACTIVE with a complete
+// durable chain; DRAFT, WITHDRAWN, missing and incomplete all render the
+// identical "not found" state below and return HTTP 404 -- this page must
+// never become a NativeListingId existence oracle. No preview token is read
+// or accepted anywhere on this route.
+//
+// No PostgreSQL access and no Python domain-rule reimplementation happens
+// here: `fetchPublicListing` is the only way this page learns anything, and
+// it always goes through FastAPI's public route (never the SLICE-0048
+// preview route).
+export const prerender = false;
+
+import { fetchPublicListing } from "../../lib/publicListingApi";
+import {
+  askingPriceText,
+  brokerSummaryText,
+  knownHistoryText,
+  unknownableClaimText,
+} from "../../lib/previewText";
+
+const nativeListingId = Astro.params.native_listing_id;
+// `process.env`, not `import.meta.env`: the latter is statically replaced
+// by Vite at build time, so it can never see a value only known at server
+// start time.
+const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
+
+// SLICE-0049 §9.1: this page class is public but deliberately not
+// organic-search-indexable in this slice. Unlike the SLICE-0048 preview
+// surface, no Cache-Control/Referrer-Policy confidentiality header is set
+// here -- this is ordinary public content, just intentionally non-indexed.
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+
+const data = nativeListingId ? await fetchPublicListing(apiBaseUrl, nativeListingId) : null;
+
+if (data === null) {
+  Astro.response.status = 404;
+}
+
+// REQ-SEO-004: the clean ID-based path is always the canonical URL, and
+// query parameters never participate in it -- `Astro.params` already
+// carries only the path segment, never the query string, so no explicit
+// stripping is needed here.
+const canonicalUrl = nativeListingId
+  ? new URL(`/listings/${nativeListingId}`, Astro.url).toString()
+  : null;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    {data !== null && canonicalUrl !== null && <link rel="canonical" href={canonicalUrl} />}
+    <title>HullQ listing</title>
+  </head>
+  <body>
+    {
+      data === null ? (
+        <main>
+          <h1>Listing not found</h1>
+          <p>This listing is not currently available.</p>
+        </main>
+      ) : (
+        <main>
+          <h1>{askingPriceText(data)}</h1>
+
+          <p>Country: {data.location_country}</p>
+          {data.location_region !== null && <p>Region: {unknownableClaimText(data.location_region)}</p>}
+
+          {brokerSummaryText(data.broker_summary) !== null && <p>{brokerSummaryText(data.broker_summary)}</p>}
+
+          <p>{data.broker_description}</p>
+
+          {knownHistoryText(data.known_history_narrative) !== null && (
+            <p>{knownHistoryText(data.known_history_narrative)}</p>
+          )}
+
+          {data.vat_tax_status_claim !== null && (
+            <section>
+              <p>VAT/tax status: broker-declared {unknownableClaimText(data.vat_tax_status_claim)}</p>
+              <p>Publishing organization: {data.publishing_organization_id}</p>
+              <p>Broker declaration recorded/last confirmed in HullQ: {data.offer_recorded_at}</p>
+              <p>HullQ legal verification: none</p>
+            </section>
+          )}
+        </main>
+      )
+    }
+  </body>
+</html>
