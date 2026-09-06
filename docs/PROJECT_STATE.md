@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-06  
 **Latest owner-accepted / DONE slice:** SLICE-0048  
-**Current queue:** SLICE-0049 — post-0048 architecture/product reassessment pending; no readiness or implementation capability is authorized yet.  
+**Current queue:** SLICE-0049 — first production-public NativeListing vertical; readiness READY.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs/ADRs remain authoritative where they apply.
@@ -100,37 +100,74 @@ The preview URL is time-bounded, bearer-capability gated, non-indexed, non-canon
 
 Important marketplace/product capabilities still absent include:
 
-- production publication/lifecycle state (`publish`, `withdraw`, `sold`, freshness/expiry policy);
-- canonical/indexable public listing URL semantics;
+- production publication/lifecycle state and public NativeListing route (targeted by READY SLICE-0049);
 - authenticated Auth0-backed broker workspace/form;
 - persisted marketplace actor directory beyond accepted runtime eligibility types;
 - PhysicalBoat marketplace fact persistence beyond identity;
 - media upload/storage/presentation;
 - public listing search/ranking over native inventory;
 - lead/contact workflow;
-- saved-search monitoring/alerts and price-history intelligence.
+- saved-search monitoring/alerts and price-history intelligence;
+- full listing SEO/indexation/sitemap/hreflang distribution semantics beyond the bounded 0049 noindex page-class decision.
 
-These are candidates for post-0048 prioritization, not implied requirements for the accepted preview proof.
+## Post-0048 reassessment result
 
-## Product execution checkpoint after SLICE-0048
+The post-0048 architecture/product reassessment is complete. The next capability was chosen by direct product leverage rather than architectural completeness.
 
-The previous execution target has been achieved:
-
-```text
-FIRST BROWSER-VISIBLE REAL LISTING = BUILT
-```
-
-There is therefore no longer a valid reason to keep the old “distance to first visible listing” metric as the controlling queue rule.
-
-Before authorizing SLICE-0049, perform a fresh architecture/product reassessment and choose the next capability by direct product leverage. The reassessment must explicitly compare at least:
+The compared candidates were:
 
 1. production publication/lifecycle + canonical public listing page;
 2. broker intake/workspace/authentication;
 3. minimal native-inventory search/discovery;
 4. PhysicalBoat marketplace fact capture needed for useful buyer filtering;
-5. media, only if it materially blocks the chosen next buyer/broker loop.
+5. media where materially blocking.
 
-Do not automatically choose architectural completeness. Prefer the smallest capability that turns the accepted 0048 proof into a more usable market loop.
+The selected next step is SLICE-0049 because the accepted 0048 preview proves the full persisted application path but deliberately stops at `PREVIEWABLE != PUBLISHED`. Real publication is therefore the narrowest missing bridge before broker workflow and buyer discovery can operate on genuine public inventory.
+
+## Current queue — SLICE-0049
+
+SLICE-0049 readiness is READY for independent review and, once accepted/merged, implementation through the normal `START_SLICE.bat` workflow.
+
+The bounded capability is:
+
+```text
+existing complete durable NativeListing
+→ explicit SLICE-0041-authorized operator publish
+→ DRAFT → ACTIVE
+→ public FastAPI read
+→ Astro SSR
+→ /listings/{NativeListingId}
+→ normal visitor can read without preview token
+```
+
+and controlled removal:
+
+```text
+ACTIVE
+→ explicit SLICE-0041-authorized owning-publisher withdraw
+→ WITHDRAWN
+→ public API/web route becomes ordinary not-found
+```
+
+The 0049 lifecycle is intentionally only:
+
+```text
+DRAFT → ACTIVE → WITHDRAWN
+```
+
+No republish, SOLD, ARCHIVED or freshness transition is authorized. Every pre-0049 NativeListing migrates to DRAFT and must never auto-publish.
+
+Every successful publication transition must atomically append an immutable transition record identifying the listing, transition, actor, publishing Organization and time. Denied, failed or unsupported transitions change neither state nor history.
+
+The first public NativeListing page identity is deliberately stable and ID-based:
+
+```text
+/listings/{NativeListingId}
+```
+
+No slug is introduced in 0049. The page is public but deliberately `noindex`; listing sitemap publication, hreflang expansion and broader OQ-018 resolution remain later work.
+
+Do not pull Auth0, broker workspace, persisted generic actor directory, public search/discovery, PhysicalBoat marketplace facts, media, freshness, leads, republish or broad SEO distribution into 0049.
 
 ## Marketplace fact semantics already frozen
 
@@ -153,7 +190,11 @@ Sensitive claims such as ownership/title, VAT/tax, major accident/damage/groundi
 
 Search architecture and SEO remain part of product architecture, not later marketing.
 
-SLICE-0048 preview routes are deliberately excluded from canonical public SEO architecture. Production public URL/indexability/rendering decisions must preserve deterministic search semantics and avoid turning arbitrary facet combinations into indexable pages.
+SLICE-0048 preview routes remain excluded from canonical public SEO architecture.
+
+SLICE-0049 resolves only the first bounded NativeListing public page class: `/listings/{NativeListingId}` uses the stable domain identity, introduces no slug and remains deliberately `noindex` in this slice. It does not authorize listing sitemap publication, hreflang trees, faceted landing pages or broad resolution of OQ-018.
+
+Production public URL/indexability/rendering decisions beyond that bounded page class must preserve deterministic search semantics and avoid turning arbitrary facet combinations into indexable pages.
 
 Mandatory public languages remain:
 
