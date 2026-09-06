@@ -59,7 +59,8 @@ Implementation must preserve the accepted boundaries in:
 - `docs/PRIVATE_SELLER_POLICY_2026-09-02.md`;
 - `architecture/SEARCH_AND_SEO_ARCHITECTURE.md`, specifically the requirement that public URL/indexation semantics are intentional and that stable domain IDs remain the identity anchor;
 - `specs/MARKETPLACE_PUBLISHING_ELIGIBILITY_CONTRACT.v0.1.md` and accepted SLICE-0041 implementation/closure for professional publisher eligibility;
-- accepted SLICE-0043/0047 NativeListing persistence and MarketEpisode linkage semantics;
+- accepted SLICE-0043 immutable NativeListing creation-envelope/idempotency/transaction semantics;
+- accepted SLICE-0047 MarketEpisode linkage semantics;
 - accepted SLICE-0045 current `LISTING_OFFER` revision/head semantics;
 - accepted SLICE-0046 PhysicalBoat identity/truth separation;
 - accepted SLICE-0048 preview/read-model/security semantics where reused by the public read model.
@@ -100,16 +101,36 @@ freshness != lifecycle
 
 `SOLD`, `ARCHIVED`, stale/disappeared semantics and any other lifecycle/freshness state are out of scope and MUST NOT be inferred or introduced.
 
-### 4.1 Migration safety
+### 4.1 Creation-envelope and migration safety
 
-Every NativeListing that exists before the 0049 lifecycle migration MUST enter the new lifecycle as `DRAFT`.
+SLICE-0043's accepted immutable NativeListing creation envelope remains exactly:
+
+```text
+NativeListingId
+publishing_organization_id
+created_by_account_id
+optional MarketEpisodeId
+optional broker_listing_reference
+internal deterministic content_hash
+created_at
+```
+
+0049 MUST NOT reinterpret lifecycle state as part of that immutable semantic envelope. In particular lifecycle changes MUST NOT alter the accepted creation `content_hash`, creation idempotency/collision comparison, `created_at`, publishing Organization, creator Account, MarketEpisode link or broker listing reference.
+
+Every NativeListing that exists before the 0049 lifecycle migration MUST enter the new lifecycle as `DRAFT`. Every NativeListing created after the migration MUST also begin as `DRAFT`.
 
 Hard:
 
 ```text
 pre-existing listing → DRAFT
+new listing → DRAFT
 pre-existing listing → never automatically ACTIVE
+new listing → never automatically ACTIVE
 ```
+
+A lifecycle implementation may use an added current-state column or a separate one-to-one current-state projection/table, but either way lifecycle state is semantically outside the accepted 0043 immutable creation envelope and outside its deterministic content hash/collision semantics.
+
+If the existing create path must be extended so a newly created NativeListing receives explicit DRAFT lifecycle state, that extension MUST preserve all accepted 0043 transaction-ownership, durable-commit, idempotency and conflict guarantees. An exact retry of the same immutable NativeListing creation request MUST NOT conflict merely because lifecycle state later changed.
 
 The migration MUST NOT make any previously durable or previewable listing publicly readable merely because 0049 is deployed.
 
@@ -140,9 +161,10 @@ publication history is append-only
 publication history is not rewritten
 publication history is not deleted to clean up state
 current lifecycle state != historical truth
+current lifecycle state != 0043 immutable creation-envelope truth
 ```
 
-The implementation MAY retain/project the current lifecycle state directly on NativeListing or in another bounded current-state projection for efficient reads, but the current-state change and corresponding immutable transition record MUST commit atomically. A successful lifecycle transition with no durable audit record, or an audit record with no matching state transition, is forbidden.
+The current lifecycle-state change and corresponding immutable transition record MUST commit atomically. A successful lifecycle transition with no durable audit record, or an audit record with no matching state transition, is forbidden.
 
 Do not serialize or persist arbitrary internal SLICE-0041 runtime object graphs merely for audit. Retain the minimum durable actor/Organization/transition identity required by this contract.
 
@@ -327,19 +349,22 @@ Minimum proof:
 
 1. migrate database to one current Alembic head;
 2. demonstrate a pre-existing/migrated listing is DRAFT and not publicly readable;
-3. create/reuse one complete accepted listing chain and current offer;
-4. attempt publish with a denied/wrong-Organization principal and prove no state/history/public visibility change;
-5. publish with an explicit eligible owning principal;
-6. prove exactly one immutable DRAFT → ACTIVE record exists;
-7. fetch the production public FastAPI route without preview token and verify accepted persisted content;
-8. fetch `/listings/{NativeListingId}` over Astro SSR in a normal browser/HTTP client without preview token and verify visible persisted listing content;
-9. verify the page is deliberately noindex and has the intended self-canonical public identity;
-10. withdraw with an authorized owning principal;
-11. prove exactly one immutable ACTIVE → WITHDRAWN record was appended;
-12. prove the production API and Astro public URL now return ordinary not-found and reveal no hidden listing state;
-13. prove `WITHDRAWN → ACTIVE` is unsupported and leaves state/history unchanged;
-14. prove the 0048 preview boundary still behaves according to its accepted contract;
-15. end with:
+3. demonstrate a newly created listing also begins DRAFT without changing 0043 immutable create idempotency/collision semantics;
+4. create/reuse one complete accepted listing chain and current offer;
+5. attempt publish with a denied/wrong-Organization principal and prove no state/history/public visibility change;
+6. publish with an explicit eligible owning principal;
+7. prove exactly one immutable DRAFT → ACTIVE record exists;
+8. fetch the production public FastAPI route without preview token and verify accepted persisted content;
+9. fetch `/listings/{NativeListingId}` over Astro SSR in a normal browser/HTTP client without preview token and verify visible persisted listing content;
+10. verify the page is deliberately noindex and has the intended self-canonical public identity;
+11. prove an exact retry of the original immutable NativeListing creation envelope does not conflict merely because lifecycle is ACTIVE;
+12. withdraw with an authorized owning principal;
+13. prove exactly one immutable ACTIVE → WITHDRAWN record was appended;
+14. prove the production API and Astro public URL now return ordinary not-found and reveal no hidden listing state;
+15. prove `WITHDRAWN → ACTIVE` is unsupported and leaves state/history unchanged;
+16. prove another exact retry of the original immutable NativeListing creation envelope still preserves accepted 0043 idempotency after withdrawal;
+17. prove the 0048 preview boundary still behaves according to its accepted contract;
+18. end with:
 
 ```text
 FIRST PRODUCTION PUBLIC LISTING RESULT -> PASS
@@ -353,15 +378,19 @@ Loopback/local HTTP is sufficient for acceptance. Production VPS/Cloudflare depl
 
 Cover:
 
-- all pre-existing NativeListings become DRAFT;
-- no migration path creates ACTIVE listings;
+- all pre-existing NativeListings begin DRAFT;
+- all newly created NativeListings begin DRAFT;
+- no migration/create path automatically creates ACTIVE listings;
 - lifecycle-state database constraint/typed mapping;
+- lifecycle state is excluded from 0043 immutable content hash and creation collision semantics;
+- exact immutable creation retry remains `ALREADY_EXISTS`/accepted equivalent after ACTIVE and WITHDRAWN lifecycle changes;
 - immutable publication-transition records;
 - atomic current-state + audit write;
 - rollback on audit/state write failure;
 - concurrent same-state transition safety;
 - stale expected-state rejection;
-- no duplicate audit on denied/failed/unsupported transition.
+- no duplicate audit on denied/failed/unsupported transition;
+- accepted 0043 top-level transaction ownership and durability guarantees remain intact if create persistence is touched.
 
 ### Authorization
 
@@ -461,7 +490,7 @@ Likely smallest coherent set includes:
 
 - one Alembic migration for lifecycle + immutable publication-transition persistence;
 - bounded lifecycle domain/application types/use case;
-- persistence operations/tests for atomic transitions/history;
+- persistence operations/tests for current lifecycle and atomic transition history while preserving the 0043 immutable creation envelope;
 - operator lifecycle command/inspection fixture;
 - FastAPI public listing read route/use case;
 - Astro `/listings/{NativeListingId}` SSR route;
@@ -478,31 +507,34 @@ Accept only if all are true on exact final implementation PR HEAD:
 
 1. lifecycle vocabulary is exactly DRAFT / ACTIVE / WITHDRAWN for this slice;
 2. only DRAFT → ACTIVE and ACTIVE → WITHDRAWN are supported;
-3. pre-existing listings migrate to DRAFT and never auto-publish;
-4. real SLICE-0041 eligibility is exercised for publish and withdraw;
-5. cross-Organization lifecycle mutation fails closed;
-6. every successful transition atomically appends one immutable audit record;
-7. denied/failed/unsupported transitions append no audit and change no state;
-8. concurrent/stale lifecycle writes cannot double-apply or overwrite newer state;
-9. only complete ACTIVE listings are publicly readable;
-10. DRAFT/WITHDRAWN/missing/incomplete listings are externally not-found-equivalent;
-11. ACTIVE listing is readable through FastAPI without preview token;
-12. ACTIVE listing is browser-visible through Astro at `/listings/{NativeListingId}` without preview token;
-13. ACTIVE public page is self-canonical and deliberately noindex in 0049;
-14. no sitemap/hreflang/search/faceted SEO expansion is introduced;
-15. accepted 0048 preview security and behavior remain intact;
-16. owner-visible PostgreSQL + real HTTP proof ends `FIRST PRODUCTION PUBLIC LISTING RESULT -> PASS`;
-17. full local/repository/CI gates pass on the exact implementation HEAD;
-18. no out-of-scope Auth0/workspace/search/media/freshness/republish work is pulled forward;
-19. exact-head independent implementation review has no material finding;
-20. explicit Project Owner acceptance occurs before implementation merge.
+3. pre-existing and newly created listings begin DRAFT and never auto-publish;
+4. 0043 immutable creation-envelope fields, content hash, idempotency/collision and created-at semantics remain unchanged by lifecycle transitions;
+5. exact immutable create retries remain accepted/idempotent after lifecycle changes;
+6. real SLICE-0041 eligibility is exercised for publish and withdraw;
+7. cross-Organization lifecycle mutation fails closed;
+8. every successful transition atomically appends one immutable audit record;
+9. denied/failed/unsupported transitions append no audit and change no state;
+10. concurrent/stale lifecycle writes cannot double-apply or overwrite newer state;
+11. only complete ACTIVE listings are publicly readable;
+12. DRAFT/WITHDRAWN/missing/incomplete listings are externally not-found-equivalent;
+13. ACTIVE listing is readable through FastAPI without preview token;
+14. ACTIVE listing is browser-visible through Astro at `/listings/{NativeListingId}` without preview token;
+15. ACTIVE public page is self-canonical and deliberately noindex in 0049;
+16. no sitemap/hreflang/search/faceted SEO expansion is introduced;
+17. accepted 0048 preview security and behavior remain intact;
+18. owner-visible PostgreSQL + real HTTP proof ends `FIRST PRODUCTION PUBLIC LISTING RESULT -> PASS`;
+19. full local/repository/CI gates pass on the exact implementation HEAD;
+20. no out-of-scope Auth0/workspace/search/media/freshness/republish work is pulled forward;
+21. exact-head independent implementation review has no material finding;
+22. explicit Project Owner acceptance occurs before implementation merge.
 
 ## 19. Stop conditions
 
 Stop and return `BLOCKED` rather than inventing policy if implementation reveals that any of the following cannot be satisfied within this contract:
 
-- existing NativeListing persistence cannot represent the accepted owning MarketplaceOrganization without changing the previously accepted identity/ownership contract;
-- a safe DRAFT backfill cannot be performed without making existing listings public or rewriting accepted history;
+- lifecycle implementation would require mutating or rehashing any accepted 0043 immutable NativeListing creation-envelope field;
+- lifecycle state cannot remain outside 0043 creation idempotency/collision semantics;
+- a safe DRAFT backfill/new-listing DRAFT default cannot be implemented without making listings public or weakening accepted create durability;
 - atomic lifecycle-state + immutable-history persistence cannot be achieved within the existing PostgreSQL persistence boundary;
 - production public read requires a new truth claim or PhysicalBoat/model projection not already accepted;
 - the chosen public route would require resolving broader OQ-018/i18n/search policy rather than remaining the bounded ID-based noindex page class defined here;
