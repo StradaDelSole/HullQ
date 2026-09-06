@@ -1,7 +1,8 @@
 # SLICE-0048 — First browser-visible listing preview vertical
 
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
+**Status set by this handoff:** `REVIEW`  
 **Base main:** `8418c99dd7d766dff78293bafe898cc180e8812e`  
 **Product horizon:** this is the committed first-visible-listing vertical; no foundation-only slice may be inserted ahead of it.
 

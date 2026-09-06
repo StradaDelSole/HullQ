@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.internal/schemas/slice_0048/listing_intake_request.schema.v0.1.json",
+  "title": "SLICE-0048 operator-assisted listing intake request",
+  "description": "Structural/typed validation only for the one versioned JSON intake input accepted by scripts/intake_listing_preview.py. Cross-field domain semantics (e.g. VALUE_ASSERTION requiring a non-null claim value, AMOUNT requiring asking_price_amount/currency) are enforced by the accepted hullq.domain constructors at object-construction time, not by this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "account_id",
+    "organization",
+    "membership",
+    "physical_boat_id",
+    "market_episode_id",
+    "native_listing_id",
+    "offer_revision_id",
+    "offer"
+  ],
+  "properties": {
+    "account_id": { "type": "string", "minLength": 1 },
+    "organization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "professional_category", "publishing_eligibility"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "professional_category": {
+          "type": "string",
+          "enum": ["BROKER", "DEALER", "OTHER_PROFESSIONAL"]
+        },
+        "publishing_eligibility": {
+          "type": "string",
+          "enum": ["ELIGIBLE", "INELIGIBLE", "UNVERIFIED"]
+        }
+      }
+    },
+    "membership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "account_id", "organization_id", "roles", "state"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "account_id": { "type": "string", "minLength": 1 },
+        "organization_id": { "type": "string", "minLength": 1 },
+        "roles": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["OWNER", "ADMIN", "PUBLISHER", "MEMBER"] },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "state": { "type": "string", "enum": ["ACTIVE", "INACTIVE"] }
+      }
+    },
+    "physical_boat_id": { "type": "string", "minLength": 1 },
+    "boat_design_ref": { "type": ["string", "null"], "minLength": 1 },
+    "market_episode_id": { "type": "string", "minLength": 1 },
+    "native_listing_id": { "type": "string", "minLength": 1 },
+    "broker_listing_reference": { "type": ["string", "null"], "minLength": 1 },
+    "offer_revision_id": { "type": "string", "minLength": 1 },
+    "offer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asking_price_mode", "location_country", "broker_description"],
+      "properties": {
+        "asking_price_mode": { "type": "string", "enum": ["AMOUNT", "POA"] },
+        "asking_price_amount": { "type": ["string", "null"], "minLength": 1 },
+        "currency": { "type": ["string", "null"], "pattern": "^[A-Z]{3}$" },
+        "location_country": { "type": "string", "pattern": "^[A-Z]{2}$" },
+        "broker_description": { "type": "string", "minLength": 1 },
+        "location_region": { "$ref": "#/$defs/claimUnknownable" },
+        "broker_summary": { "$ref": "#/$defs/claimNotApplicable" },
+        "known_history_narrative": { "$ref": "#/$defs/claimHistory" },
+        "vat_tax_status_claim": { "$ref": "#/$defs/claimVat" }
+      }
+    }
+  },
+  "$defs": {
+    "claimUnknownable": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["assertion_kind"],
+      "properties": {
+        "assertion_kind": { "type": "string", "enum": ["VALUE_ASSERTION", "UNKNOWN"] },
+        "value": { "type": ["string", "null"] }
+      }
+    },
+    "claimNotApplicable": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["assertion_kind"],
+      "properties": {
+        "assertion_kind": { "type": "string", "enum": ["VALUE_ASSERTION", "NOT_APPLICABLE"] },
+        "value": { "type": ["string", "null"] }
+      }
+    },
+    "claimHistory": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["assertion_kind"],
+      "properties": {
+        "assertion_kind": {
+          "type": "string",
+          "enum": ["VALUE_ASSERTION", "NO_KNOWN_HISTORY_DECLARED", "UNKNOWN"]
+        },
+        "value": { "type": ["string", "null"] }
+      }
+    },
+    "claimVat": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["assertion_kind"],
+      "properties": {
+        "assertion_kind": { "type": "string", "enum": ["VALUE_ASSERTION", "UNKNOWN"] },
+        "value": {
+          "type": ["string", "null"],
+          "enum": ["VAT_PAID", "VAT_NOT_PAID", "VAT_MARGIN_SCHEME", "OTHER", null]
+        }
+      }
+    }
+  }
+}

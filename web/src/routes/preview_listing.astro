@@ -1,0 +1,91 @@
+---
+// SLICE-0048: the one bounded SSR preview route this slice introduces.
+//
+// PREVIEWABLE != PUBLISHED. This page renders only when FastAPI's preview
+// route resolves the token to a complete durable chain; every failure case
+// (invalid/tampered/expired token, missing listing, incomplete chain)
+// renders the identical "not found" state below and returns HTTP 404 --
+// this page must never become a NativeListingId existence oracle either.
+//
+// No PostgreSQL access and no Python domain-rule reimplementation happens
+// here: `fetchListingPreview` is the only way this page learns anything,
+// and it always goes through FastAPI.
+export const prerender = false;
+
+import { fetchListingPreview } from "../lib/previewApi";
+import {
+  askingPriceText,
+  brokerSummaryText,
+  knownHistoryText,
+  unknownableClaimText,
+} from "../lib/previewText";
+
+const previewToken = Astro.params.preview_token;
+// `process.env`, not `import.meta.env`: the latter is statically replaced
+// by Vite at build time, so it can never see a value only known at server
+// start time (SLICE-0048 §8 configures this purely through the runtime
+// environment).
+const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
+
+// A preview token is a bearer capability carried in the URL path
+// (SLICE-0048 §5.2): every response from this route -- found or not found
+// -- is private, non-cacheable and mechanically non-indexable.
+Astro.response.headers.set("Cache-Control", "private, no-store");
+Astro.response.headers.set("Referrer-Policy", "no-referrer");
+Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+
+const data = previewToken ? await fetchListingPreview(apiBaseUrl, previewToken) : null;
+
+if (data === null) {
+  Astro.response.status = 404;
+}
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <title>HullQ listing preview</title>
+  </head>
+  <body>
+    {
+      data === null ? (
+        <main>
+          <h1>Preview not found</h1>
+          <p>This preview link is invalid, expired, or no longer available.</p>
+        </main>
+      ) : (
+        <main>
+          <p class="preview-banner">HullQ listing preview — Preview: not a published listing</p>
+
+          <h1>{askingPriceText(data)}</h1>
+
+          <p>Country: {data.location_country}</p>
+          {data.location_region !== null && <p>Region: {unknownableClaimText(data.location_region)}</p>}
+
+          {brokerSummaryText(data.broker_summary) !== null && <p>{brokerSummaryText(data.broker_summary)}</p>}
+
+          <p>{data.broker_description}</p>
+
+          {knownHistoryText(data.known_history_narrative) !== null && (
+            <p>{knownHistoryText(data.known_history_narrative)}</p>
+          )}
+
+          {data.vat_tax_status_claim !== null && (
+            <section>
+              <p>VAT/tax status: broker-declared {unknownableClaimText(data.vat_tax_status_claim)}</p>
+              <p>Publishing organization: {data.publishing_organization_id}</p>
+              <p>Broker declaration recorded/last confirmed in HullQ: {data.offer_recorded_at}</p>
+              <p>HullQ legal verification: none</p>
+            </section>
+          )}
+
+          <footer>
+            <p>This preview link expires at {data.preview_expires_at}.</p>
+          </footer>
+        </main>
+      )
+    }
+  </body>
+</html>
