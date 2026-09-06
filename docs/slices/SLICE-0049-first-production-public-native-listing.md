@@ -1,7 +1,8 @@
 # SLICE-0049 — First production-public NativeListing vertical
 
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
+**Status set by this handoff:** `REVIEW`  
 **Base main:** `967967d078862e527c53a22346ba2ed2e7f95338`  
 **Product horizon:** convert the accepted browser-visible preview proof into the first real public NativeListing publication capability without pulling Auth0, broker workspace, search/discovery, freshness, media or full SEO distribution forward.
 
