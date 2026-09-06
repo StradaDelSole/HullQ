@@ -1,0 +1,26 @@
+{
+  "name": "hullq-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "start": "node ./dist/server/entry.mjs",
+    "check": "astro check",
+    "test": "node --test src/lib/__tests__/*.test.ts"
+  },
+  "dependencies": {
+    "@astrojs/node": "11.1.5",
+    "astro": "7.3.1"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.10",
+    "@types/node": "24.13.3",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "account_id": "ACC-0048-DEMO",
+  "organization": {
+    "id": "ORG-0048-DEMO",
+    "professional_category": "BROKER",
+    "publishing_eligibility": "ELIGIBLE"
+  },
+  "membership": {
+    "id": "OM-0048-DEMO",
+    "account_id": "ACC-0048-DEMO",
+    "organization_id": "ORG-0048-DEMO",
+    "roles": ["PUBLISHER"],
+    "state": "ACTIVE"
+  },
+  "physical_boat_id": "PB-0048-DEMO-001",
+  "boat_design_ref": null,
+  "market_episode_id": "ME-0048-DEMO-001",
+  "native_listing_id": "NL-0048-DEMO-001",
+  "broker_listing_reference": null,
+  "offer_revision_id": "REV-0048-DEMO-001",
+  "offer": {
+    "asking_price_mode": "AMOUNT",
+    "location_country": "FR",
+    "broker_description": "A well-maintained cruising sloop, blue-water ready, single owner since new.",
+    "asking_price_amount": "125000.00",
+    "currency": "EUR",
+    "location_region": { "assertion_kind": "VALUE_ASSERTION", "value": "Brittany" },
+    "broker_summary": {
+      "assertion_kind": "VALUE_ASSERTION",
+      "value": "Turn-key cruiser, recent standing rigging, ready to sail away."
+    },
+    "known_history_narrative": { "assertion_kind": "NO_KNOWN_HISTORY_DECLARED" },
+    "vat_tax_status_claim": { "assertion_kind": "VALUE_ASSERTION", "value": "VAT_PAID" }
+  }
+}
