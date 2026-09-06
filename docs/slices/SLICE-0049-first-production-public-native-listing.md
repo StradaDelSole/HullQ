@@ -58,6 +58,7 @@ Implementation must preserve the accepted boundaries in:
 - `docs/ARCHITECTURE_REBASELINE_2026-09-02.md`;
 - `docs/PRIVATE_SELLER_POLICY_2026-09-02.md`;
 - `architecture/SEARCH_AND_SEO_ARCHITECTURE.md`, specifically the requirement that public URL/indexation semantics are intentional and that stable domain IDs remain the identity anchor;
+- `specs/NATIVE_LISTING_PUBLIC_SURFACE_SEO_CONTRACT.v0.1.md`, the bounded REQ-SEO contract that closes OQ-018 only for this first NativeListing page class;
 - `specs/MARKETPLACE_PUBLISHING_ELIGIBILITY_CONTRACT.v0.1.md` and accepted SLICE-0041 implementation/closure for professional publisher eligibility;
 - accepted SLICE-0043 immutable NativeListing creation-envelope/idempotency/transaction semantics;
 - accepted SLICE-0047 MarketEpisode linkage semantics;
@@ -282,7 +283,9 @@ X-Robots-Tag: noindex
 <meta name="robots" content="noindex">
 ```
 
-The ACTIVE page MUST identify `/listings/{NativeListingId}` as its own canonical URL. 0049 MUST NOT add listing URLs to XML sitemaps, generate hreflang trees, create faceted/listing landing pages, or claim resolution of OQ-018 beyond this single bounded NativeListing page-class decision.
+The ACTIVE page MUST identify `/listings/{NativeListingId}` as its own canonical URL. Query parameters are non-canonical and MUST NOT alter listing identity, lifecycle truth or canonical URL. No alternate/legacy NativeListing route or redirect grammar is introduced in 0049; future grammar changes require an explicit migration/redirect decision before deployment. These rules are frozen by `specs/NATIVE_LISTING_PUBLIC_SURFACE_SEO_CONTRACT.v0.1.md`.
+
+0049 MUST NOT add listing URLs to XML sitemaps, generate hreflang trees, create faceted/listing landing pages, or claim resolution of OQ-018 beyond this single bounded NativeListing page-class decision.
 
 The preview URLs from 0048 remain non-canonical, capability-gated and excluded from public linking/indexation.
 
@@ -446,6 +449,8 @@ Cover:
 - no client-side reimplementation of lifecycle authorization;
 - deliberate noindex directive;
 - self-canonical stable ID-based public identity;
+- query parameters never create a second canonical identity;
+- no alternate/legacy listing redirect grammar is invented;
 - no sitemap/hreflang/faceted SEO expansion;
 - 0048 preview route remains distinct and protected.
 
@@ -520,13 +525,15 @@ Accept only if all are true on exact final implementation PR HEAD:
 13. ACTIVE listing is readable through FastAPI without preview token;
 14. ACTIVE listing is browser-visible through Astro at `/listings/{NativeListingId}` without preview token;
 15. ACTIVE public page is self-canonical and deliberately noindex in 0049;
-16. no sitemap/hreflang/search/faceted SEO expansion is introduced;
-17. accepted 0048 preview security and behavior remain intact;
-18. owner-visible PostgreSQL + real HTTP proof ends `FIRST PRODUCTION PUBLIC LISTING RESULT -> PASS`;
-19. full local/repository/CI gates pass on the exact implementation HEAD;
-20. no out-of-scope Auth0/workspace/search/media/freshness/republish work is pulled forward;
-21. exact-head independent implementation review has no material finding;
-22. explicit Project Owner acceptance occurs before implementation merge.
+16. query parameters cannot create a second NativeListing content identity or canonical URL;
+17. no alternate/legacy NativeListing route or migration redirect is invented in 0049;
+18. no sitemap/hreflang/search/faceted SEO expansion is introduced;
+19. accepted 0048 preview security and behavior remain intact;
+20. owner-visible PostgreSQL + real HTTP proof ends `FIRST PRODUCTION PUBLIC LISTING RESULT -> PASS`;
+21. full local/repository/CI gates pass on the exact implementation HEAD;
+22. no out-of-scope Auth0/workspace/search/media/freshness/republish work is pulled forward;
+23. exact-head independent implementation review has no material finding;
+24. explicit Project Owner acceptance occurs before implementation merge.
 
 ## 19. Stop conditions
 
