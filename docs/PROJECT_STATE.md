@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0047 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0048 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0048 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0049 -->
 
-**Updated:** 2026-09-05  
-**Latest owner-accepted / DONE slice:** SLICE-0047  
-**Current queue:** SLICE-0048 — first browser-visible listing preview vertical; readiness READY.  
+**Updated:** 2026-09-06  
+**Latest owner-accepted / DONE slice:** SLICE-0048  
+**Current queue:** SLICE-0049 — post-0048 architecture/product reassessment pending; no readiness or implementation capability is authorized yet.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs/ADRs remain authoritative where they apply.
@@ -66,73 +66,71 @@ The repository currently has accepted, tested foundations for:
 - Gate-1 marketplace fact/claim semantics and bounded field registry (SLICE-0044);
 - durable revisioned NativeListing offer-fact persistence for the nine `LISTING_OFFER` fields (SLICE-0045);
 - durable PhysicalBoat identity persistence with optional validated canonical `BoatDesignRef`, deterministic collision semantics and exact typed readback (SLICE-0046);
-- durable MarketEpisode identity linked to exactly one PhysicalBoat plus PostgreSQL-backed optional NativeListing→MarketEpisode linkage and typed missing-reference semantics (SLICE-0047).
+- durable MarketEpisode identity linked to exactly one PhysicalBoat plus PostgreSQL-backed optional NativeListing→MarketEpisode linkage (SLICE-0047);
+- first browser-visible real listing preview vertical (SLICE-0048): operator-assisted intake, finite signed preview capability, FastAPI preview read model and Astro SSR page over real persisted listing data.
 
 The accepted PhysicalBoat persistence preserves unresolved identity (`BoatDesignRef = NONE`), permits sister ships to share one BoatDesign, rejects unknown design refs for new PhysicalBoat identities, and never projects BoatDesign baseline data into individual-yacht truth.
 
 The accepted MarketEpisode/NativeListing linkage preserves the immutable NativeListing creation envelope: there is no post-creation attach/detach mutation. A NativeListing may remain unresolved with `market_episode_id = NONE`; when a non-null MarketEpisodeId is supplied for a new NativeListing it must already exist durably.
 
-## What is not built yet
-
-There is still no completed public product surface for marketplace listings:
-
-- no PhysicalBoat marketplace fact persistence yet;
-- no public FastAPI listing read endpoint;
-- no broker workspace/form;
-- no public listing detail page;
-- no media upload flow;
-- no public lifecycle/freshness presentation.
-
-This absence is treated as a product-execution constraint, not merely a roadmap note.
-
-## Immediate execution path to first visible listing
-
-The minimum durable identity chain required for a real listing now exists:
+SLICE-0048 proves the complete application path:
 
 ```text
-PhysicalBoat
+operator-assisted intake
+→ PhysicalBoat
 → MarketEpisode
 → NativeListing
-→ revisioned LISTING_OFFER facts
+→ current LISTING_OFFER
+→ finite signed preview capability
+→ FastAPI
+→ Astro SSR
+→ browser-visible persisted listing
 ```
 
-Current queue:
+Its preview remains explicitly:
 
 ```text
-SLICE-0048
-first browser-visible listing preview vertical:
-operator-assisted intake + signed finite preview capability + FastAPI read boundary + Astro SSR preview
+PREVIEWABLE != PUBLISHED
+DURABLE CREATION != PUBLICATION
 ```
 
-Current estimated distance to first browser-visible real listing: **1 slice — SLICE-0048**.
+The preview URL is time-bounded, bearer-capability gated, non-indexed, non-canonical and protected by no-store/no-referrer rules. It does not create production publication/lifecycle semantics.
 
-SLICE-0048 deliberately uses a shareable, time-bounded, non-indexed preview rather than silently treating durable NativeListing creation as production publication. This preserves the accepted `DURABLE CREATION != PUBLICATION` boundary while still delivering the first real HTTP/browser-visible product proof.
+## What is not built yet
 
-A CLI/operator-assisted intake is acceptable for this first visible proof. A later slice can replace temporary intake with the proper Auth0-backed broker workspace and separately define production publication/lifecycle/canonical public URL semantics.
+Important marketplace/product capabilities still absent include:
 
-At every post-slice architecture reassessment, the reviewer must explicitly ask:
+- production publication/lifecycle state (`publish`, `withdraw`, `sold`, freshness/expiry policy);
+- canonical/indexable public listing URL semantics;
+- authenticated Auth0-backed broker workspace/form;
+- persisted marketplace actor directory beyond accepted runtime eligibility types;
+- PhysicalBoat marketplace fact persistence beyond identity;
+- media upload/storage/presentation;
+- public listing search/ranking over native inventory;
+- lead/contact workflow;
+- saved-search monitoring/alerts and price-history intelligence.
 
-1. How many slices remain to first visible listing?
-2. Can the next proposed foundation capability be deferred until after that vertical slice?
-3. Does the next slice reduce time-to-visible-product, or only increase architectural completeness?
+These are candidates for post-0048 prioritization, not implied requirements for the accepted preview proof.
 
-A foundation slice that does not materially unblock the first visible listing requires explicit justification.
+## Product execution checkpoint after SLICE-0048
 
-## Current queue — SLICE-0048
-
-SLICE-0048 is the committed first-visible-listing vertical target and its readiness is READY. The narrow safe end-to-end path is:
+The previous execution target has been achieved:
 
 ```text
-explicit operator publisher/input
-→ accepted durable identity + offer persistence
-→ finite signed bearer preview capability
-→ FastAPI preview read model
-→ Astro SSR browser preview
+FIRST BROWSER-VISIBLE REAL LISTING = BUILT
 ```
 
-The preview is explicitly `PREVIEWABLE != PUBLISHED`: it is non-indexed, time-bounded and not a canonical production listing URL. This avoids inventing lifecycle/publication state merely to make the first product surface visible.
+There is therefore no longer a valid reason to keep the old “distance to first visible listing” metric as the controlling queue rule.
 
-Do not insert media, full broker workspace/Auth0 UX, production publication/lifecycle, complete PhysicalBoat fact coverage, search/ranking expansion, monitoring/alerts or unrelated marketplace completeness ahead of this visible proof unless a concrete blocker makes the vertical path impossible.
+Before authorizing SLICE-0049, perform a fresh architecture/product reassessment and choose the next capability by direct product leverage. The reassessment must explicitly compare at least:
+
+1. production publication/lifecycle + canonical public listing page;
+2. broker intake/workspace/authentication;
+3. minimal native-inventory search/discovery;
+4. PhysicalBoat marketplace fact capture needed for useful buyer filtering;
+5. media, only if it materially blocks the chosen next buyer/broker loop.
+
+Do not automatically choose architectural completeness. Prefer the smallest capability that turns the accepted 0048 proof into a more usable market loop.
 
 ## Marketplace fact semantics already frozen
 
@@ -155,7 +153,7 @@ Sensitive claims such as ownership/title, VAT/tax, major accident/damage/groundi
 
 Search architecture and SEO remain part of product architecture, not later marketing.
 
-Public URL/indexability/rendering decisions must preserve deterministic search semantics and avoid turning arbitrary facet combinations into indexable pages. Product-led SEO remains the primary zero-budget acquisition direction.
+SLICE-0048 preview routes are deliberately excluded from canonical public SEO architecture. Production public URL/indexability/rendering decisions must preserve deterministic search semantics and avoid turning arbitrary facet combinations into indexable pages.
 
 Mandatory public languages remain:
 
@@ -195,7 +193,7 @@ portable Linux VPS
       \-- simple VPS deployment / Caddy baseline
 ```
 
-Do not introduce a second business-logic backend, dedicated search engine, Kubernetes/distributed infrastructure or paid managed dependency without measured need and an accepted decision.
+SLICE-0048 is the first accepted implementation of the FastAPI + Astro application surface. Do not introduce a second business-logic backend, dedicated search engine, Kubernetes/distributed infrastructure or paid managed dependency without measured need and an accepted decision.
 
 ## Development workflow
 
