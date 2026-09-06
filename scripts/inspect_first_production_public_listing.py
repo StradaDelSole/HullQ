@@ -4,8 +4,12 @@ Executes the full committed first-production-public-listing vertical
 against a real, disposable PostgreSQL 18 schema and real local HTTP servers
 (FastAPI + built Astro/Node SSR), per SLICE-0049 §13:
 
-    1. Alembic to single current head
-    2. a pre-existing (migrated) listing is DRAFT and not publicly readable
+    1. Alembic to single current head, after a listing is created while the
+       database is genuinely still pinned at the pre-SLICE-0049 revision
+    2. that genuinely pre-existing (pre-migration) listing becomes DRAFT,
+       is never automatically ACTIVE, and -- once FastAPI/Astro are serving
+       -- its public API/web routes are ordinary not-found, identical to a
+       never-created identity
     3. a newly created listing also begins DRAFT; exact create retry is
        idempotent
     4. create one complete accepted listing chain + current offer
@@ -56,6 +60,7 @@ from urllib.parse import quote, urlsplit, urlunsplit
 
 import psycopg
 
+from alembic import command
 from hullq.application.listing_intake import (
     ListingIntakeOutcome,
     ListingIntakeRequest,
@@ -81,7 +86,11 @@ from hullq.domain.publishing_eligibility import (
     OrganizationPublishingEligibility,
     ProfessionalCategory,
 )
-from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
+from hullq.persistence.alembic_baseline import (
+    alembic_config,
+    alembic_upgrade_head,
+    prepare_alembic_baseline,
+)
 from hullq.persistence.connection import HULLQ_TEST_DATABASE_URL_ENV
 from hullq.persistence.market_episode import create_market_episode
 from hullq.persistence.native_listing import (
@@ -277,8 +286,6 @@ def main() -> int:
         if not baseline.accepted:
             print(f"Alembic baseline preparation failed: {baseline.reason}", file=sys.stderr)
             return 1
-        alembic_upgrade_head(url)
-        print("1. Alembic upgraded to single current head -> OK\n")
 
         account = AccountId("ACC-0049-E2E")
         org = _org("ORG-0049-E2E")
@@ -287,11 +294,19 @@ def main() -> int:
         other_org = _org("ORG-0049-E2E-OTHER")
         other_membership = _membership("OM-0049-E2E-OTHER", other_account, other_org)
 
-        conn = psycopg.connect(url)
+        # Seed one genuinely pre-existing NativeListing while the schema is
+        # still pinned at the pre-SLICE-0049 Alembic revision: at this
+        # revision native_listings has no lifecycle_state column at all, so
+        # this is a real row that predates the migration -- not merely a
+        # listing created after upgrading to head. physical_boats/
+        # market_episodes/native_listings/offer tables already exist at this
+        # revision (SLICE-0045/0046/0047), so the ordinary accepted
+        # persistence functions apply unchanged.
+        command.upgrade(alembic_config(url), "4c9a0dcc98bb")  # pre-0049 head
+        pre_conn = psycopg.connect(url)
         try:
-            # 2. a pre-existing/migrated listing is DRAFT and not publicly readable.
             _create_complete_chain(
-                conn,
+                pre_conn,
                 listing_id=_DRAFT_ONLY_LISTING_ID,
                 physical_boat_id="PB-0049-DRAFT-ONLY",
                 market_episode_id="ME-0049-DRAFT-ONLY",
@@ -301,12 +316,37 @@ def main() -> int:
                 membership=membership,
                 broker_description="Never published.",
             )
-            conn.commit()
+            pre_conn.commit()
+        finally:
+            pre_conn.close()
+
+        alembic_upgrade_head(url)
+        print(
+            "1. Alembic upgraded to single current head "
+            "(after seeding one genuinely pre-migration listing) -> OK\n"
+        )
+
+        conn = psycopg.connect(url)
+        try:
+            # 2a. the genuinely pre-existing listing becomes DRAFT, is never
+            # automatically ACTIVE, and has no publication-transition
+            # history at all (the ADD COLUMN ... DEFAULT 'DRAFT' backfill is
+            # the only thing that touched it).
             draft_only_state = fetch_lifecycle_state(conn, NativeListingId(_DRAFT_ONLY_LISTING_ID))
+            draft_only_transitions = list_publication_transitions(
+                conn, NativeListingId(_DRAFT_ONLY_LISTING_ID)
+            )
             conn.commit()  # release the implicit read transaction before the next write
-            step2_ok = draft_only_state is not None and draft_only_state.value == "DRAFT"
-            ok &= step2_ok
-            print(f"2. pre-existing listing begins DRAFT -> {'OK' if step2_ok else 'FAIL'}")
+            step2a_ok = (
+                draft_only_state is not None
+                and draft_only_state.value == "DRAFT"
+                and draft_only_transitions == []
+            )
+            ok &= step2a_ok
+            print(
+                "2a. genuinely pre-existing (pre-migration) listing becomes DRAFT, "
+                f"never auto-ACTIVE -> {'OK' if step2a_ok else 'FAIL'}"
+            )
 
             # 3. a newly created listing also begins DRAFT; exact create retry idempotent.
             first_status = _create_complete_chain(
@@ -490,6 +530,36 @@ def main() -> int:
         if not ok:
             print("FIRST PRODUCTION PUBLIC LISTING RESULT -> FAIL")
             return 1
+
+        # 2b. now that FastAPI/Astro are serving, the genuinely pre-existing
+        # (still-DRAFT) listing's public API/web routes must be ordinary
+        # not-found, identical in shape to a never-created identity --
+        # revealing no hidden DRAFT/pre-migration listing state.
+        draft_only_api_status, _, draft_only_api_body = _http_get(
+            f"{api_base}/api/listings/{_DRAFT_ONLY_LISTING_ID}"
+        )
+        never_created_api_status_early, _, never_created_api_body_early = _http_get(
+            f"{api_base}/api/listings/{_NEVER_CREATED_ID}"
+        )
+        draft_only_web_status, _, draft_only_web_body = _http_get(
+            f"{web_base}/listings/{_DRAFT_ONLY_LISTING_ID}"
+        )
+        never_created_web_status_early, _, never_created_web_body_early = _http_get(
+            f"{web_base}/listings/{_NEVER_CREATED_ID}"
+        )
+        step2b_ok = (
+            draft_only_api_status == 404
+            and never_created_api_status_early == 404
+            and draft_only_api_body == never_created_api_body_early
+            and draft_only_web_status == 404
+            and never_created_web_status_early == 404
+            and draft_only_web_body == never_created_web_body_early
+        )
+        ok &= step2b_ok
+        print(
+            "2b. pre-existing DRAFT listing's public API/web routes are ordinary "
+            f"not-found, identical to never-created -> {'OK' if step2b_ok else 'FAIL'}\n"
+        )
 
         # 8. fetch the production public FastAPI route without preview token.
         api_status, api_headers, api_body = _http_get(

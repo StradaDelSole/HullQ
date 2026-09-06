@@ -473,6 +473,16 @@ def test_publish_denied_for_wrong_organization_leaves_state_and_history_unchange
         (lambda acc, org: None, PublishingEligibilityReason.NO_MEMBERSHIP),
         (
             lambda acc, org: OrganizationMembership(
+                id=OrganizationMembershipId("OM-ACCOUNT-MISMATCH"),
+                account_id=AccountId("ACC-SOMEONE-ELSE"),
+                organization_id=org.id,
+                roles=frozenset({MembershipRole.PUBLISHER}),
+                state=MembershipState.ACTIVE,
+            ),
+            PublishingEligibilityReason.ACCOUNT_MISMATCH,
+        ),
+        (
+            lambda acc, org: OrganizationMembership(
                 id=OrganizationMembershipId("OM-NOROLE"),
                 account_id=acc,
                 organization_id=org.id,
@@ -678,6 +688,127 @@ def test_withdraw_denied_for_wrong_organization_leaves_state_and_history_unchang
         NativeListingLifecycleState.ACTIVE
     )
     assert len(list_publication_transitions(lifecycle_conn, NativeListingId("NL-WDW"))) == 1
+
+
+@pytest.mark.parametrize(
+    ("membership_factory", "expected_reason"),
+    [
+        (lambda acc, org: None, PublishingEligibilityReason.NO_MEMBERSHIP),
+        (
+            lambda acc, org: OrganizationMembership(
+                id=OrganizationMembershipId("OM-WD-ACCOUNT-MISMATCH"),
+                account_id=AccountId("ACC-WD-SOMEONE-ELSE"),
+                organization_id=org.id,
+                roles=frozenset({MembershipRole.PUBLISHER}),
+                state=MembershipState.ACTIVE,
+            ),
+            PublishingEligibilityReason.ACCOUNT_MISMATCH,
+        ),
+        (
+            lambda acc, org: OrganizationMembership(
+                id=OrganizationMembershipId("OM-WD-NOROLE"),
+                account_id=acc,
+                organization_id=org.id,
+                roles=frozenset({MembershipRole.MEMBER}),
+                state=MembershipState.ACTIVE,
+            ),
+            PublishingEligibilityReason.PUBLISHER_ROLE_REQUIRED,
+        ),
+        (
+            lambda acc, org: OrganizationMembership(
+                id=OrganizationMembershipId("OM-WD-INACTIVE"),
+                account_id=acc,
+                organization_id=org.id,
+                roles=frozenset({MembershipRole.PUBLISHER}),
+                state=MembershipState.INACTIVE,
+            ),
+            PublishingEligibilityReason.MEMBERSHIP_INACTIVE,
+        ),
+    ],
+)
+def test_withdraw_denied_authorization_matrix_leaves_state_and_history_unchanged(
+    lifecycle_conn: Any, membership_factory: Any, expected_reason: PublishingEligibilityReason
+) -> None:
+    account = _account("ACC-WDMATRIX")
+    org = _org("ORG-WDMATRIX")
+    creation_membership = _membership("OM-WDCREATE", account, org)
+    _published(
+        lifecycle_conn,
+        listing_id="NL-WDMATRIX",
+        account=account,
+        org=org,
+        membership=creation_membership,
+        physical_boat_id="PB-WDMATRIX",
+        market_episode_id="ME-WDMATRIX",
+        offer_revision_id="REV-WDMATRIX",
+    )
+
+    result = withdraw_native_listing(
+        lifecycle_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership_factory(account, org),
+        native_listing_id=NativeListingId("NL-WDMATRIX"),
+    )
+
+    assert result.status is LifecycleTransitionStatus.DENIED
+    assert result.denial_reason is expected_reason
+    assert fetch_lifecycle_state(lifecycle_conn, NativeListingId("NL-WDMATRIX")) is (
+        NativeListingLifecycleState.ACTIVE
+    )
+    # Exactly the original publish transition -- the denied withdraw attempt
+    # appends no additional audit row.
+    assert len(list_publication_transitions(lifecycle_conn, NativeListingId("NL-WDMATRIX"))) == 1
+
+
+@pytest.mark.parametrize(
+    ("eligibility", "expected_reason"),
+    [
+        (
+            OrganizationPublishingEligibility.INELIGIBLE,
+            PublishingEligibilityReason.ORGANIZATION_INELIGIBLE,
+        ),
+        (
+            OrganizationPublishingEligibility.UNVERIFIED,
+            PublishingEligibilityReason.ORGANIZATION_UNVERIFIED,
+        ),
+    ],
+)
+def test_withdraw_denied_for_ineligible_or_unverified_organization(
+    lifecycle_conn: Any, eligibility: OrganizationPublishingEligibility, expected_reason: Any
+) -> None:
+    account = _account("ACC-WDORGSTATE")
+    eligible_org = _org("ORG-WDORGSTATE")
+    membership = _membership("OM-WDORGSTATE", account, eligible_org)
+    _published(
+        lifecycle_conn,
+        listing_id="NL-WDORGSTATE",
+        account=account,
+        org=eligible_org,
+        membership=membership,
+        physical_boat_id="PB-WDORGSTATE",
+        market_episode_id="ME-WDORGSTATE",
+        offer_revision_id="REV-WDORGSTATE",
+    )
+
+    # Same Organization identity, now re-evaluated with a degraded eligibility
+    # state -- proves the Organization-side gate is re-checked at withdraw
+    # time too, not only at publish/creation time.
+    degraded_org = _org("ORG-WDORGSTATE", eligibility=eligibility)
+    result = withdraw_native_listing(
+        lifecycle_conn,
+        account_id=account,
+        candidate_organization=degraded_org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-WDORGSTATE"),
+    )
+
+    assert result.status is LifecycleTransitionStatus.DENIED
+    assert result.denial_reason is expected_reason
+    assert fetch_lifecycle_state(lifecycle_conn, NativeListingId("NL-WDORGSTATE")) is (
+        NativeListingLifecycleState.ACTIVE
+    )
+    assert len(list_publication_transitions(lifecycle_conn, NativeListingId("NL-WDORGSTATE"))) == 1
 
 
 def test_withdraw_of_never_created_listing_not_found(lifecycle_conn: Any) -> None:
@@ -937,5 +1068,96 @@ def test_concurrent_publish_attempts_apply_exactly_once(lifecycle_url: str) -> N
         )
         transitions = list_publication_transitions(verify, NativeListingId("NL-CRACE"))
         assert len(transitions) == 1
+    finally:
+        verify.close()
+
+
+# ---------------------------------------------------------------------------
+# Atomic rollback / lifecycle CHECK constraint
+# ---------------------------------------------------------------------------
+
+
+def test_transition_rolls_back_atomically_when_the_audit_insert_fails(
+    lifecycle_conn: Any, lifecycle_url: str
+) -> None:
+    """Inject a real PostgreSQL failure between the lifecycle UPDATE and the
+    publication-transition INSERT -- both inside the same
+    ``with conn.transaction()`` block in ``_apply_transition`` -- via a
+    temporary CHECK constraint on the audit table that only this test's
+    NativeListingId violates. Production code is not touched or weakened;
+    the failure is injected purely through a schema object scoped to this
+    test's disposable schema.
+
+    The whole transaction must roll back: the lifecycle UPDATE that already
+    ran earlier in the same transaction must be undone too, and no
+    unmatched/partial audit row may exist."""
+    account = _account("ACC-ROLLBACK")
+    org = _org("ORG-ROLLBACK")
+    membership = _membership("OM-ROLLBACK", account, org)
+    _create_complete_listing(
+        lifecycle_conn,
+        listing_id="NL-ROLLBACK",
+        account=account,
+        org=org,
+        membership=membership,
+        physical_boat_id="PB-ROLLBACK",
+        market_episode_id="ME-ROLLBACK",
+        offer_revision_id="REV-ROLLBACK",
+    )
+    with lifecycle_conn.cursor() as cur:
+        cur.execute(
+            "ALTER TABLE native_listing_publication_transitions "
+            "ADD CONSTRAINT test_fail_inject_rollback "
+            "CHECK (native_listing_id <> 'NL-ROLLBACK')"
+        )
+    lifecycle_conn.commit()
+
+    with pytest.raises(psycopg.errors.CheckViolation):
+        publish_native_listing(
+            lifecycle_conn,
+            account_id=account,
+            candidate_organization=org,
+            membership=membership,
+            native_listing_id=NativeListingId("NL-ROLLBACK"),
+        )
+    # psycopg's `with conn.transaction()` already issued the ROLLBACK as part
+    # of propagating the exception; this is a defensive no-op if so.
+    lifecycle_conn.rollback()
+
+    verify = psycopg.connect(lifecycle_url)
+    try:
+        state = fetch_lifecycle_state(verify, NativeListingId("NL-ROLLBACK"))
+        assert state is NativeListingLifecycleState.DRAFT
+        assert list_publication_transitions(verify, NativeListingId("NL-ROLLBACK")) == []
+    finally:
+        verify.close()
+
+
+def test_lifecycle_state_check_constraint_rejects_invalid_value(
+    lifecycle_conn: Any, lifecycle_url: str
+) -> None:
+    """The ``native_listings_lifecycle_state_valid`` CHECK constraint added
+    by the SLICE-0049 migration must reject any value outside
+    DRAFT/ACTIVE/WITHDRAWN at the database level -- not merely at the Python
+    enum layer -- and must leave the durable valid value untouched."""
+    account = _account("ACC-CHECK")
+    org = _org("ORG-CHECK")
+    membership = _membership("OM-CHECK", account, org)
+    _create_incomplete_listing(
+        lifecycle_conn, listing_id="NL-CHECK", account=account, org=org, membership=membership
+    )
+    lifecycle_conn.commit()
+
+    with pytest.raises(psycopg.errors.CheckViolation), lifecycle_conn.cursor() as cur:
+        cur.execute(
+            "UPDATE native_listings SET lifecycle_state = %s WHERE native_listing_id = %s",
+            ("BOGUS", "NL-CHECK"),
+        )
+    lifecycle_conn.rollback()
+
+    verify = psycopg.connect(lifecycle_url)
+    try:
+        state = fetch_lifecycle_state(verify, NativeListingId("NL-CHECK"))
+        assert state is NativeListingLifecycleState.DRAFT
     finally:
         verify.close()
