@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-06  
 **Latest owner-accepted / DONE slice:** SLICE-0049  
-**Current queue:** SLICE-0050 — capability not yet selected; post-0049 architecture/product reassessment required.  
+**Current queue:** SLICE-0050 — first buyer-critical PhysicalBoat truth vertical; readiness READY for independent review.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs/ADRs remain authoritative where they apply.
@@ -26,6 +26,31 @@ technical requirements
 ```
 
 Phase-1 public supply is broker/dealer/eligible-professional only. Independent private FSBO remains out of scope; a later owner-to-broker referral path may be added separately.
+
+## Business / market validation classification
+
+The base category is not an unvalidated business-model hypothesis.
+
+Current controlling classification from `docs/MARKET_AND_BUSINESS_MODEL_VALIDATION_RECLASSIFICATION_2026-09-06.md`:
+
+```text
+MARKET VALIDATION                  = YES
+ONLINE BOAT MARKETPLACE MODEL      = YES
+DEMAND FOR ONLINE BOAT SEARCH      = YES
+
+STILL TO VALIDATE:
+HullQ-specific product advantage,
+buyer adoption/behavior,
+native inventory acquisition/access,
+broker participation,
+and sustainable unit economics at HullQ scale.
+```
+
+Preferred project-overview wording:
+
+> **Business model and market demand: validated by the existing category. HullQ-specific product advantage, inventory acquisition and user adoption: not yet validated at scale.**
+
+The main execution question is therefore not whether people use online boat marketplaces. It is whether HullQ is sufficiently better for serious sailboat buyers that its deterministic technical Search, configuration awareness, concrete-boat truth and explicit UNKNOWN semantics change buyer behavior and create broker pull.
 
 ## Current architecture boundary
 
@@ -167,21 +192,56 @@ No slug is introduced. Query parameters do not alter listing identity or lifecyc
 
 The existing SLICE-0048 preview route remains a separate finite bearer capability with private/no-store, no-referrer, non-canonical and noindex behavior.
 
-## Current queue — SLICE-0050
+## Post-0049 reassessment result / current queue — SLICE-0050
 
-SLICE-0050 is intentionally unassigned at acceptance closure time.
+The post-0049 reassessment is complete.
 
-Before readiness is written, perform a post-0049 product/architecture reassessment and select exactly one highest-leverage continuation of the buyer/broker loop.
+Compared capability families:
 
-Candidate capability families include, without pre-selecting the answer:
+1. broker operating surface / authenticated intake;
+2. richer PhysicalBoat/listing facts;
+3. minimal native-inventory search/discovery;
+4. media;
+5. buyer save/monitor/contact.
 
-1. broker operating surface / authenticated intake and management;
-2. richer PhysicalBoat/listing facts needed for useful buyer decisions and filtering;
-3. minimal native-inventory search/discovery over public listings;
-4. media where materially blocking the chosen product loop;
-5. buyer save/monitor/contact capability.
+Selected capability: **first buyer-critical PhysicalBoat truth vertical**.
 
-The next slice must be chosen by direct product leverage rather than foundation completeness. Do not start SLICE-0050 until readiness is explicitly defined, independently exact-head reviewed and merged.
+Reasoning:
+
+- operator-assisted intake already supplies a usable temporary broker path;
+- generic public search over current offer fields would still resemble ordinary price/location filtering and would not yet expose HullQ's strongest differentiator;
+- media is important later but does not establish technical buyer value and brings rights/storage/quarantine scope;
+- save/monitor/contact should follow a sufficiently informative discovery/truth surface;
+- concrete-yacht claims are the missing bridge between accepted BoatDesign/configuration truth and a genuinely differentiated native listing/search product.
+
+SLICE-0050 therefore implements exactly seven already-accepted PhysicalBoat claim fields:
+
+```text
+physical_boat.marketed_brand_claim
+physical_boat.model_designation_claim
+physical_boat.build_year
+physical_boat.loa_length
+physical_boat.draft
+physical_boat.keel_configuration
+physical_boat.rudder_configuration
+```
+
+The intended visible result is:
+
+```text
+ACTIVE public NativeListing
+→ THIS BOAT — broker-declared
+→ brand / model / build year
+→ actual LOA / draft / keel / rudder where supplied
+→ explicit UNKNOWN / not supplied remains visible
+→ no BoatDesign fallback
+```
+
+The claims are persisted as immutable revisions with an explicit current head per `(PhysicalBoatId, claiming OrganizationId)` and are displayed only as that publishing Organization's current broker claims. Cross-source resolution, native-inventory search, Auth0/broker UI, media and the remaining PhysicalBoat field catalog are explicitly out of scope.
+
+Readiness contract: `docs/slices/SLICE-0050-first-buyer-critical-physical-boat-truth.md`.
+
+Do not run `START_SLICE.bat` until this readiness exact HEAD has passed independent review/CI and the readiness PR is merged to `main`.
 
 ## Marketplace fact semantics already frozen
 
@@ -209,6 +269,8 @@ SLICE-0048 preview routes remain excluded from canonical public SEO architecture
 SLICE-0049 accepts only the first bounded NativeListing public page class: `/listings/{NativeListingId}` uses the stable domain identity, introduces no slug and remains deliberately `noindex`. Query parameters are non-canonical and cannot change the selected listing/content/lifecycle truth. No alternate/legacy listing grammar was invented.
 
 It does not authorize NativeListing sitemap publication, hreflang trees, faceted landing pages, broad structured-data expansion or full resolution of OQ-018.
+
+SLICE-0050 materially changes the public listing content but does not change route identity or indexability. `docs/PRODUCT_UX_PRINCIPLES.md` is controlling for its `THIS BOAT` presentation.
 
 Production public URL/indexability/rendering decisions beyond that bounded page class must preserve deterministic search semantics and avoid turning arbitrary facet combinations into indexable pages.
 
