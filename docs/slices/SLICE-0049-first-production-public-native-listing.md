@@ -2,6 +2,7 @@
 
 **Type:** IMPLEMENTATION  
 **Status:** READY  
+**Base main:** `967967d078862e527c53a22346ba2ed2e7f95338`  
 **Product horizon:** convert the accepted browser-visible preview proof into the first real public NativeListing publication capability without pulling Auth0, broker workspace, search/discovery, freshness, media or full SEO distribution forward.
 
 ## Product execution checks
@@ -35,7 +36,37 @@ ACTIVE
 
 This slice does not create a broker workspace, end-user authentication system, marketplace search surface or final SEO-distribution system.
 
-## 2. Lifecycle contract
+## 2. Why this slice exists
+
+SLICE-0048 proved the full real-data application path through persistence, FastAPI, Astro and a browser while deliberately preserving:
+
+```text
+PREVIEWABLE != PUBLISHED
+DURABLE CREATION != PUBLICATION
+```
+
+The post-0048 reassessment compared publication/lifecycle, broker workspace/authentication, native-inventory discovery, PhysicalBoat marketplace facts and media. Publication is the narrowest missing product bridge: broker workflow and buyer discovery should operate on genuine public inventory rather than on preview capabilities.
+
+0049 therefore closes exactly that bridge and no more.
+
+## 3. Controlling artifacts
+
+Implementation must preserve the accepted boundaries in:
+
+- `docs/PRODUCT_EXECUTION_PLAN.md`;
+- `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_RECONCILIATION_2026-09-02.md`;
+- `docs/ARCHITECTURE_REBASELINE_2026-09-02.md`;
+- `docs/PRIVATE_SELLER_POLICY_2026-09-02.md`;
+- `architecture/SEARCH_AND_SEO_ARCHITECTURE.md`, specifically the requirement that public URL/indexation semantics are intentional and that stable domain IDs remain the identity anchor;
+- `specs/MARKETPLACE_PUBLISHING_ELIGIBILITY_CONTRACT.v0.1.md` and accepted SLICE-0041 implementation/closure for professional publisher eligibility;
+- accepted SLICE-0043/0047 NativeListing persistence and MarketEpisode linkage semantics;
+- accepted SLICE-0045 current `LISTING_OFFER` revision/head semantics;
+- accepted SLICE-0046 PhysicalBoat identity/truth separation;
+- accepted SLICE-0048 preview/read-model/security semantics where reused by the public read model.
+
+Where this slice makes a deliberately narrower production-public page-class decision, it does not authorize reinterpretation of unrelated OQ-018/search/SEO questions.
+
+## 4. Lifecycle contract
 
 The only lifecycle states introduced by 0049 are:
 
@@ -69,7 +100,7 @@ freshness != lifecycle
 
 `SOLD`, `ARCHIVED`, stale/disappeared semantics and any other lifecycle/freshness state are out of scope and MUST NOT be inferred or introduced.
 
-### 2.1 Migration safety
+### 4.1 Migration safety
 
 Every NativeListing that exists before the 0049 lifecycle migration MUST enter the new lifecycle as `DRAFT`.
 
@@ -82,7 +113,7 @@ pre-existing listing → never automatically ACTIVE
 
 The migration MUST NOT make any previously durable or previewable listing publicly readable merely because 0049 is deployed.
 
-## 3. Immutable publication-transition history
+## 5. Immutable publication-transition history
 
 Every successful lifecycle transition MUST create one append-only immutable publication-transition record.
 
@@ -115,7 +146,7 @@ The implementation MAY retain/project the current lifecycle state directly on Na
 
 Do not serialize or persist arbitrary internal SLICE-0041 runtime object graphs merely for audit. Retain the minimum durable actor/Organization/transition identity required by this contract.
 
-## 4. Authorization boundary
+## 6. Authorization boundary
 
 0049 continues to use a trusted operator/CLI-assisted principal input. This is deliberately not an authenticated browser session.
 
@@ -148,7 +179,7 @@ Denied, mismatched, unsupported or stale transition requests MUST leave both cur
 
 0049 does not persist a general Account/Organization/Membership directory, implement Auth0, establish external broker verification/KYB/KYC, or claim that operator input is a future production session mechanism.
 
-## 5. Publication completeness predicate
+## 7. Publication completeness predicate
 
 A listing MUST NOT become ACTIVE unless its existing durable chain is complete enough to support the accepted public read model.
 
@@ -168,9 +199,9 @@ Use accepted explicit current-head semantics. Do not infer the current offer by 
 
 No BoatDesign/model/configuration value may be promoted into a PhysicalBoat/listing fact merely to satisfy publication completeness.
 
-## 6. Public FastAPI read boundary
+## 8. Public FastAPI read boundary
 
-Add one production-public read route for an exact NativeListing identity. The API MAY use the repository's still-bounded non-final versioning shape, but it MUST NOT reuse the preview bearer-token route as the public contract.
+Add one production-public read route for an exact NativeListing identity. The API route naming/versioning may remain explicitly bounded/non-final if the repository has not yet accepted a stable global API version contract, but it MUST NOT reuse the preview bearer-token route as the public contract and MUST NOT silently freeze an unrelated API-version policy.
 
 The public read predicate is:
 
@@ -194,7 +225,7 @@ The public read model MUST derive from the same accepted truth-bearing current L
 
 Preview-token verification MUST NOT be required for the public ACTIVE route.
 
-## 7. Canonical public web route
+## 9. Canonical public web route
 
 The first production-public NativeListing page class is:
 
@@ -218,7 +249,7 @@ An ACTIVE listing page MUST be viewable in an ordinary browser without preview t
 
 DRAFT and WITHDRAWN identities MUST render the same ordinary not-found result rather than a public status disclosure page.
 
-### 7.1 0049 indexation boundary
+### 9.1 0049 indexation boundary
 
 0049 establishes a stable public listing URL but intentionally does NOT launch the listing class as an organic-search distribution surface.
 
@@ -229,18 +260,18 @@ X-Robots-Tag: noindex
 <meta name="robots" content="noindex">
 ```
 
-A self-referential canonical URL for the ACTIVE listing page is acceptable/required where the web response exposes canonical metadata, but 0049 MUST NOT add listing URLs to XML sitemaps, generate hreflang trees, create faceted/listing landing pages, or claim resolution of OQ-018 beyond this single bounded NativeListing page-class decision.
+The ACTIVE page MUST identify `/listings/{NativeListingId}` as its own canonical URL. 0049 MUST NOT add listing URLs to XML sitemaps, generate hreflang trees, create faceted/listing landing pages, or claim resolution of OQ-018 beyond this single bounded NativeListing page-class decision.
 
 The preview URLs from 0048 remain non-canonical, capability-gated and excluded from public linking/indexation.
 
-## 8. Operator-assisted lifecycle command
+## 10. Operator-assisted lifecycle command
 
 Provide one bounded operator/CLI-assisted lifecycle path for `publish` and `withdraw` using explicit stable identifiers and explicit SLICE-0041 principal inputs.
 
 The command/use case MUST report a deterministic result and MUST NOT silently repair unsupported state. Representative result classes should distinguish at least:
 
 - transition applied;
-- exact unsupported/current-state conflict;
+- unsupported/current-state conflict;
 - listing not found/incomplete;
 - authorization denied;
 - Organization mismatch;
@@ -250,7 +281,7 @@ Exact naming is implementation-specific if semantics remain explicit and typed.
 
 Direct manual database updates are not the acceptance path.
 
-## 9. Concurrency and atomicity
+## 11. Concurrency and atomicity
 
 Lifecycle transitions are state changes and MUST be safe under concurrent attempts.
 
@@ -275,7 +306,7 @@ stale DRAFT → ACTIVE attempt after listing is already ACTIVE/WITHDRAWN
 
 Use PostgreSQL transactional/locking/compare-and-set semantics appropriate to the existing persistence architecture; do not emulate atomicity in application memory.
 
-## 10. Security / presentation boundary
+## 12. Security / presentation boundary
 
 0049 removes the secret bearer capability from the production ACTIVE URL. It therefore MUST NOT copy preview-token confidentiality behavior into the public route.
 
@@ -288,7 +319,7 @@ However:
 
 Do not weaken the security or noindex/no-store constraints of the existing 0048 preview surface while adding the public surface.
 
-## 11. Owner-visible end-to-end proof
+## 13. Owner-visible end-to-end proof
 
 Retain one deterministic local/PostgreSQL 18 + real HTTP proof extending the 0048 vertical.
 
@@ -302,7 +333,7 @@ Minimum proof:
 6. prove exactly one immutable DRAFT → ACTIVE record exists;
 7. fetch the production public FastAPI route without preview token and verify accepted persisted content;
 8. fetch `/listings/{NativeListingId}` over Astro SSR in a normal browser/HTTP client without preview token and verify visible persisted listing content;
-9. verify the page is deliberately `noindex` and uses the intended canonical public identity;
+9. verify the page is deliberately noindex and has the intended self-canonical public identity;
 10. withdraw with an authorized owning principal;
 11. prove exactly one immutable ACTIVE → WITHDRAWN record was appended;
 12. prove the production API and Astro public URL now return ordinary not-found and reveal no hidden listing state;
@@ -316,7 +347,7 @@ FIRST PRODUCTION PUBLIC LISTING RESULT -> PASS
 
 Loopback/local HTTP is sufficient for acceptance. Production VPS/Cloudflare deployment is not required by this slice.
 
-## 12. Testing requirements
+## 14. Testing requirements
 
 ### Migration / persistence
 
@@ -385,19 +416,19 @@ Cover:
 - no direct DB access;
 - no client-side reimplementation of lifecycle authorization;
 - deliberate noindex directive;
-- stable ID-based canonical identity;
+- self-canonical stable ID-based public identity;
 - no sitemap/hreflang/faceted SEO expansion;
 - 0048 preview route remains distinct and protected.
 
-## 13. CI / reproducibility
+## 15. CI / reproducibility
 
 All existing Python quality, PostgreSQL 18, coverage, historical replay/manufacturer reproducibility and web gates remain mandatory and MUST NOT be weakened.
 
 At least one canonical Linux/PostgreSQL job MUST exercise the real lifecycle + HTTP public-listing vertical proof if deterministic.
 
-No quality threshold may be lowered to land 0049.
+Do not reduce the existing Python coverage threshold or weaken current repository-validation gates to land 0049.
 
-## 14. Explicit out of scope
+## 16. Explicit out of scope
 
 Not authorized in SLICE-0049:
 
@@ -424,7 +455,7 @@ Not authorized in SLICE-0049:
 - deployment/VPS/Cloudflare/DNS automation;
 - mobile app.
 
-## 15. Expected touch points
+## 17. Expected touch points
 
 Likely smallest coherent set includes:
 
@@ -436,35 +467,55 @@ Likely smallest coherent set includes:
 - Astro `/listings/{NativeListingId}` SSR route;
 - unit/persistence/web tests;
 - retained real PostgreSQL/HTTP inspection path;
-- CI additions only where required for the new proof.
+- CI additions only where required for the new proof;
+- this slice document for implementation handoff status/evidence.
 
 Do not refactor unrelated marketplace architecture merely because these files are touched.
 
-## 16. Acceptance criteria
+## 18. Acceptance criteria
 
-SLICE-0049 is acceptable only when all are true:
+Accept only if all are true on exact final implementation PR HEAD:
 
-- [ ] lifecycle vocabulary is exactly DRAFT / ACTIVE / WITHDRAWN for this slice;
-- [ ] only DRAFT → ACTIVE and ACTIVE → WITHDRAWN are supported;
-- [ ] pre-existing listings migrate to DRAFT and never auto-publish;
-- [ ] real SLICE-0041 eligibility is exercised for publish and withdraw;
-- [ ] cross-Organization lifecycle mutation fails closed;
-- [ ] every successful transition atomically appends one immutable audit record;
-- [ ] denied/failed/unsupported transitions append no audit and change no state;
-- [ ] concurrent/stale lifecycle writes cannot double-apply or overwrite newer state;
-- [ ] only complete ACTIVE listings are publicly readable;
-- [ ] DRAFT/WITHDRAWN/missing/incomplete listings are externally not-found-equivalent;
-- [ ] ACTIVE listing is readable through FastAPI without preview token;
-- [ ] ACTIVE listing is browser-visible through Astro at `/listings/{NativeListingId}` without preview token;
-- [ ] public listing page is deliberately noindex in 0049;
-- [ ] no sitemap/hreflang/search/faceted SEO expansion is introduced;
-- [ ] accepted 0048 preview security and behavior remain intact;
-- [ ] owner-visible PostgreSQL + real HTTP proof ends `FIRST PRODUCTION PUBLIC LISTING RESULT -> PASS`;
-- [ ] full local/repository/CI gates pass on the exact implementation HEAD;
-- [ ] no out-of-scope Auth0/workspace/search/media/freshness/republish work is pulled forward.
+1. lifecycle vocabulary is exactly DRAFT / ACTIVE / WITHDRAWN for this slice;
+2. only DRAFT → ACTIVE and ACTIVE → WITHDRAWN are supported;
+3. pre-existing listings migrate to DRAFT and never auto-publish;
+4. real SLICE-0041 eligibility is exercised for publish and withdraw;
+5. cross-Organization lifecycle mutation fails closed;
+6. every successful transition atomically appends one immutable audit record;
+7. denied/failed/unsupported transitions append no audit and change no state;
+8. concurrent/stale lifecycle writes cannot double-apply or overwrite newer state;
+9. only complete ACTIVE listings are publicly readable;
+10. DRAFT/WITHDRAWN/missing/incomplete listings are externally not-found-equivalent;
+11. ACTIVE listing is readable through FastAPI without preview token;
+12. ACTIVE listing is browser-visible through Astro at `/listings/{NativeListingId}` without preview token;
+13. ACTIVE public page is self-canonical and deliberately noindex in 0049;
+14. no sitemap/hreflang/search/faceted SEO expansion is introduced;
+15. accepted 0048 preview security and behavior remain intact;
+16. owner-visible PostgreSQL + real HTTP proof ends `FIRST PRODUCTION PUBLIC LISTING RESULT -> PASS`;
+17. full local/repository/CI gates pass on the exact implementation HEAD;
+18. no out-of-scope Auth0/workspace/search/media/freshness/republish work is pulled forward;
+19. exact-head independent implementation review has no material finding;
+20. explicit Project Owner acceptance occurs before implementation merge.
 
-## 17. Implementation handoff rule
+## 19. Stop conditions
 
-Implementation MUST begin only from this readiness contract after it is independently reviewed, accepted and merged to `main`, and after `docs/PROJECT_STATE.md` marks SLICE-0049 READY.
+Stop and return `BLOCKED` rather than inventing policy if implementation reveals that any of the following cannot be satisfied within this contract:
 
-Use the normal `START_SLICE.bat` workflow only after that merge. The implementation agent must leave the slice in `REVIEW` or `BLOCKED`, push the exact slice branch, and stop for independent review; it must not owner-accept or merge its own implementation.
+- existing NativeListing persistence cannot represent the accepted owning MarketplaceOrganization without changing the previously accepted identity/ownership contract;
+- a safe DRAFT backfill cannot be performed without making existing listings public or rewriting accepted history;
+- atomic lifecycle-state + immutable-history persistence cannot be achieved within the existing PostgreSQL persistence boundary;
+- production public read requires a new truth claim or PhysicalBoat/model projection not already accepted;
+- the chosen public route would require resolving broader OQ-018/i18n/search policy rather than remaining the bounded ID-based noindex page class defined here;
+- implementation would require Auth0, a persisted actor directory, broker workspace, freshness, media or public search to make the capability work.
+
+A blocker must be reported with the smallest concrete architectural amendment needed; do not broaden the slice silently.
+
+## 20. Implementation handoff rule
+
+Implementation may begin only after this readiness contract has been independently reviewed, accepted and merged to `main`, with `docs/PROJECT_STATE.md` marking SLICE-0049 READY.
+
+Use the normal `START_SLICE.bat` workflow after that merge. Claude Code may implement only this slice on its generated isolated worktree/branch.
+
+At handoff it MUST set `**Status:** REVIEW` (or `BLOCKED` when applicable), provide the standard completion report with exact branch HEAD, validation, remote CI/manufacturer state and unresolved findings, push the exact slice branch, and stop.
+
+It MUST NOT mark DONE, owner-accept, merge its own implementation or start SLICE-0050.
