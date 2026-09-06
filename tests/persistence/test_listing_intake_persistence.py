@@ -392,6 +392,101 @@ def test_different_existing_offer_head_stops_first_revision_only_intake(intake_c
     assert result.preview_token is None
 
 
+def test_retry_after_head_advanced_past_original_revision_is_offer_failed(intake_conn: Any) -> None:
+    """AMEND regression (PR #156, review 5123788117, finding 1).
+
+    `write_native_listing_offer_revision` returns `ALREADY_EXISTS` whenever
+    the *requested* revision id already exists with identical content --
+    regardless of whether it is still the current head. If a *different*,
+    later accepted revision has since become current, `ALREADY_EXISTS`
+    carries *that* revision's id in `current_revision_id`, not the requested
+    one. The orchestration must not treat this as first-revision-only
+    success (SLICE-0048 §4.1: a different current head stops the intake);
+    it must fail closed and mint no token, exactly like the CONFLICT case
+    covered above.
+    """
+    request = _base_request(
+        physical_boat_id=PhysicalBoatId("PB-ADVANCED"),
+        market_episode_id=MarketEpisodeId("ME-ADVANCED"),
+        native_listing_id=NativeListingId("NL-ADVANCED"),
+        offer_revision_id=NativeListingOfferRevisionId("REV-A"),
+    )
+
+    # 1. Original intake creates REV-A as the current head.
+    first = run_listing_intake(intake_conn, request=request, preview_signing_secret=_SECRET)
+    assert first.outcome is ListingIntakeOutcome.SUCCEEDED
+    assert first.offer is not None
+    assert first.offer.current_revision_id == NativeListingOfferRevisionId("REV-A")
+
+    # 2. A separate accepted SLICE-0045 write advances the current head to
+    #    REV-B, entirely outside this orchestration (e.g. a broker edit).
+    account = AccountId("ACC-0048-T")
+    org = _org("ORG-0048-T")
+    membership = _membership(org, account)
+    advance = write_native_listing_offer_revision(
+        intake_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-ADVANCED"),
+        revision_id=NativeListingOfferRevisionId("REV-B"),
+        expected_current_revision_id=NativeListingOfferRevisionId("REV-A"),
+        offer=_amount_offer(asking_price_amount=Decimal("118000.00")),
+    )
+    assert advance.status is NativeListingOfferWriteStatus.REVISED
+    assert advance.current_revision_id == NativeListingOfferRevisionId("REV-B")
+
+    # 3. Retrying the *exact original* intake request (still REV-A,
+    #    expected_current_revision_id hard-coded to None) must now fail
+    #    closed at the offer stage -- REV-A's content still matches
+    #    (ALREADY_EXISTS), but it is no longer the current head (REV-B is).
+    retry = run_listing_intake(intake_conn, request=request, preview_signing_secret=_SECRET)
+
+    assert retry.outcome is ListingIntakeOutcome.OFFER_FAILED
+    assert retry.physical_boat.status.value == "already_exists"
+    assert (
+        retry.market_episode is not None and retry.market_episode.status.value == "already_exists"
+    )
+    assert (
+        retry.native_listing is not None and retry.native_listing.status.value == "already_exists"
+    )
+    assert retry.offer is not None
+    assert retry.offer.status is NativeListingOfferWriteStatus.ALREADY_EXISTS
+    assert retry.offer.current_revision_id == NativeListingOfferRevisionId("REV-B")
+    assert retry.preview_token is None
+
+    # 4. The real current head is untouched by the failed retry.
+    from hullq.persistence.native_listing_offer import fetch_current_native_listing_offer
+
+    current = fetch_current_native_listing_offer(intake_conn, NativeListingId("NL-ADVANCED"))
+    assert current is not None
+    assert current.revision_id == NativeListingOfferRevisionId("REV-B")
+
+
+def test_exact_retry_still_succeeds_while_original_revision_remains_current(
+    intake_conn: Any,
+) -> None:
+    """Companion to the AMEND regression above: a plain exact retry (no
+    intervening head advance) must still succeed -- the fix must not
+    over-correct into rejecting the legitimate idempotent-retry case.
+    """
+    request = _base_request(
+        physical_boat_id=PhysicalBoatId("PB-STILLCURRENT"),
+        market_episode_id=MarketEpisodeId("ME-STILLCURRENT"),
+        native_listing_id=NativeListingId("NL-STILLCURRENT"),
+        offer_revision_id=NativeListingOfferRevisionId("REV-STILLCURRENT"),
+    )
+    first = run_listing_intake(intake_conn, request=request, preview_signing_secret=_SECRET)
+    assert first.outcome is ListingIntakeOutcome.SUCCEEDED
+
+    retry = run_listing_intake(intake_conn, request=request, preview_signing_secret=_SECRET)
+    assert retry.outcome is ListingIntakeOutcome.SUCCEEDED
+    assert retry.offer is not None
+    assert retry.offer.status is NativeListingOfferWriteStatus.ALREADY_EXISTS
+    assert retry.offer.current_revision_id == NativeListingOfferRevisionId("REV-STILLCURRENT")
+    assert retry.preview_token is not None
+
+
 def test_retry_after_partial_durable_progress_continues_safely(intake_conn: Any) -> None:
     request = _base_request(
         physical_boat_id=PhysicalBoatId("PB-PARTIAL"),

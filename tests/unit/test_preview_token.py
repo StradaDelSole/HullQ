@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import os
+import string
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -153,3 +154,109 @@ def test_different_listing_ids_produce_different_tokens() -> None:
     token_a = mint_preview_token(NativeListingId("NL-A"), secret=_SECRET).token
     token_b = mint_preview_token(NativeListingId("NL-B"), secret=_SECRET).token
     assert token_a != token_b
+
+
+# ---------------------------------------------------------------------------
+# AMEND regression (PR #156, review 5123788117, finding 2).
+#
+# `base64.urlsafe_b64decode()` with its default `validate=False` silently
+# *discards* characters outside the base64 alphabet before decoding, rather
+# than rejecting them. Injecting non-alphabet junk into an otherwise-valid
+# segment can therefore decode to the *exact same bytes* as the clean
+# original -- letting a formally malformed, non-URL-safe alias of a valid
+# bearer token still verify successfully. Every such alias must be rejected.
+# ---------------------------------------------------------------------------
+
+_JUNK_INSERTS = ["!!!!", "%20", "~", "@", "#", "\\", "`", "\t"]
+
+
+@pytest.mark.parametrize("junk", _JUNK_INSERTS)
+def test_junk_characters_injected_into_payload_segment_are_rejected(junk: str) -> None:
+    minted = mint_preview_token(_NLID, secret=_SECRET)
+    payload_part, signature_part = minted.token.split(".")
+    tampered = payload_part[:4] + junk + payload_part[4:] + "." + signature_part
+    with pytest.raises(InvalidPreviewTokenError):
+        verify_and_decode_preview_token(tampered, secret=_SECRET)
+
+
+@pytest.mark.parametrize("junk", _JUNK_INSERTS)
+def test_junk_characters_injected_into_signature_segment_are_rejected(junk: str) -> None:
+    minted = mint_preview_token(_NLID, secret=_SECRET)
+    payload_part, signature_part = minted.token.split(".")
+    tampered = payload_part + "." + signature_part[:4] + junk + signature_part[4:]
+    with pytest.raises(InvalidPreviewTokenError):
+        verify_and_decode_preview_token(tampered, secret=_SECRET)
+
+
+def test_legacy_lax_decoder_would_have_ignored_this_junk_proving_the_attack_is_real() -> None:
+    """Documents *why* the above cases matter: pre-fix, junk characters like
+    these were silently stripped by `base64.urlsafe_b64decode`'s default lax
+    mode, so the tampered segment decoded to the identical bytes as the
+    original -- the exact non-canonical-alias vulnerability this regression
+    guards against.
+    """
+    import base64 as _base64
+
+    original = "AB" + "CDEFGH"
+    junked = "AB!!!!CDEFGH"
+    padded_original = original + ("=" * ((-len(original)) % 4))
+    padded_junked = junked + ("=" * ((-len(junked)) % 4))
+    assert _base64.urlsafe_b64decode(padded_original) == _base64.urlsafe_b64decode(padded_junked)
+
+
+def test_stray_padding_character_inside_segment_is_rejected() -> None:
+    minted = mint_preview_token(_NLID, secret=_SECRET)
+    payload_part, signature_part = minted.token.split(".")
+    # A genuine token this module mints never contains '=' in either
+    # segment (encoding always strips padding); a variant that reintroduces
+    # one must be rejected, not silently re-padded/accepted.
+    tampered = payload_part + "=" + "." + signature_part
+    with pytest.raises(InvalidPreviewTokenError):
+        verify_and_decode_preview_token(tampered, secret=_SECRET)
+
+
+def test_non_ascii_lookalike_character_is_rejected() -> None:
+    minted = mint_preview_token(_NLID, secret=_SECRET)
+    payload_part, signature_part = minted.token.split(".")
+    tampered = payload_part[:4] + chr(0x2013) + payload_part[5:] + "." + signature_part  # en dash
+    with pytest.raises(InvalidPreviewTokenError):
+        verify_and_decode_preview_token(tampered, secret=_SECRET)
+
+
+def test_non_canonical_dont_care_trailing_bits_are_rejected() -> None:
+    """AMEND regression (PR #156, review 5123788117, finding 2 -- extended).
+
+    A 32-byte SHA-256 signature base64url-encodes to 43 characters whose
+    final character has 2 significant bits and 2 "don't-care" trailing
+    bits: up to 4 distinct, fully alphabet-valid characters there all
+    decode to the identical signature bytes. Accepting any of those
+    non-canonical aliases would let a formally different token string
+    still verify as the original -- exactly the "strict, canonical
+    base64url" violation the review's alphabet/`validate=True` fix alone
+    does not catch. Every alphabet-valid substitution of the final
+    signature character other than the one the encoder actually produced
+    must be rejected.
+    """
+    minted = mint_preview_token(_NLID, secret=_SECRET)
+    payload_part, signature_part = minted.token.split(".")
+    assert len(signature_part) == 43  # 32-byte digest -> 43 unpadded base64url chars
+
+    alphabet = string.ascii_letters + string.digits + "-_"
+    rejected_count = 0
+    for candidate_char in alphabet:
+        if candidate_char == signature_part[-1]:
+            continue
+        candidate_token = payload_part + "." + signature_part[:-1] + candidate_char
+        with pytest.raises(InvalidPreviewTokenError):
+            verify_and_decode_preview_token(candidate_token, secret=_SECRET)
+        rejected_count += 1
+    assert rejected_count == len(alphabet) - 1
+
+
+def test_canonical_round_trip_still_accepts_the_real_token() -> None:
+    """Companion to the canonicalization regression: the fix must not
+    over-correct into rejecting the one genuine, correctly encoded token.
+    """
+    minted = mint_preview_token(_NLID, secret=_SECRET)
+    claims = verify_and_decode_preview_token(minted.token, secret=_SECRET)
+    assert claims.native_listing_id == _NLID

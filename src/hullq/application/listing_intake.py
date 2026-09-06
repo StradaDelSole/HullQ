@@ -88,9 +88,33 @@ _MARKET_EPISODE_SUCCESS = frozenset(
 _NATIVE_LISTING_SUCCESS = frozenset(
     {NativeListingCreationStatus.CREATED, NativeListingCreationStatus.ALREADY_EXISTS}
 )
-_OFFER_SUCCESS = frozenset(
-    {NativeListingOfferWriteStatus.CREATED, NativeListingOfferWriteStatus.ALREADY_EXISTS}
-)
+
+
+def _offer_stage_succeeded(
+    offer_result: NativeListingOfferWriteResult,
+    requested_revision_id: NativeListingOfferRevisionId,
+) -> bool:
+    """True iff stage 4 durably left *requested_revision_id* as the current head.
+
+    `CREATED` always means exactly that. `ALREADY_EXISTS` is the accepted
+    SLICE-0045 writer's response whenever *requested_revision_id* already
+    exists with identical content, *regardless of whether it is still the
+    current head* -- its `current_revision_id` then names the actual current
+    head, which may since have advanced to a different, later revision (a
+    concurrent accepted write can always do this between this intake's
+    attempts). Treating that case as first-revision-only success would let a
+    stale retry silently mint a preview token for a listing whose current
+    offer is no longer the one this request describes, contradicting
+    SLICE-0048 §4.1's requirement that a different current head stop the
+    intake. Any other status (`REVISED`, `CONFLICT`, `DENIED`,
+    `CROSS_ORGANIZATION_DENIED`, `NATIVE_LISTING_NOT_FOUND`) is never success
+    here.
+    """
+    if offer_result.status is NativeListingOfferWriteStatus.CREATED:
+        return True
+    if offer_result.status is NativeListingOfferWriteStatus.ALREADY_EXISTS:
+        return offer_result.current_revision_id == requested_revision_id
+    return False
 
 
 @dataclass(frozen=True)
@@ -218,7 +242,7 @@ def run_listing_intake(
         expected_current_revision_id=None,
         offer=request.offer,
     )
-    if offer_result.status not in _OFFER_SUCCESS:
+    if not _offer_stage_succeeded(offer_result, request.offer_revision_id):
         return ListingIntakeResult(
             outcome=ListingIntakeOutcome.OFFER_FAILED,
             physical_boat=physical_boat_result,

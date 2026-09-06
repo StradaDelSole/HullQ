@@ -26,6 +26,7 @@ import binascii
 import hashlib
 import hmac
 import json
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -65,13 +66,51 @@ class PreviewTokenClaims:
     expires_at: datetime
 
 
+_B64URL_SEGMENT_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
 def _b64url_encode(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
 
 
 def _b64url_decode(text: str) -> bytes:
+    """Strictly decode one unpadded base64url token segment.
+
+    Every token this module mints is built purely from `_b64url_encode`,
+    which never emits '=' padding or any character outside the base64url
+    alphabet -- so a genuine token segment always matches
+    `_B64URL_SEGMENT_RE` exactly, and re-encoding its decoded bytes always
+    reproduces it byte-for-byte. Two distinct non-canonical-input problems
+    must both be rejected, not just one:
+
+    1. `base64.b64decode`/`urlsafe_b64decode` with the default
+       `validate=False` silently *discards* any character outside the
+       base64 alphabet before decoding rather than rejecting it, so e.g.
+       "AB!!!!CD" and "ABCD" would decode identically. Rejecting non-
+       alphabet characters via `_B64URL_SEGMENT_RE` first, then decoding
+       with `validate=True` too, closes that.
+
+    2. Even with only alphabet-valid characters, a base64 group whose byte
+       count isn't a multiple of 3 has a final character encoding some
+       "don't-care" trailing bits that carry no information -- e.g. for a
+       32-byte SHA-256 signature the last of 43 base64url characters has 2
+       significant bits and 2 don't-care bits, so up to 4 *different*,
+       fully alphabet-valid characters there all decode to the identical
+       signature bytes. A verifier that only checks decoded bytes would
+       therefore accept several distinct token strings as "the same"
+       token, silently defeating the requirement that a malformed/non-
+       canonical token variant fail closed. Re-encoding the decoded bytes
+       and requiring an exact match against *text* rejects any such
+       non-canonical (nonzero don't-care-bit) alias -- only the one
+       canonical encoding of a given byte string is ever accepted.
+    """
+    if not text or not _B64URL_SEGMENT_RE.fullmatch(text):
+        raise ValueError("token segment is not strict, canonical, unpadded base64url")
     padded = text + ("=" * ((-len(text)) % 4))
-    return base64.urlsafe_b64decode(padded)
+    decoded = base64.b64decode(padded, altchars=b"-_", validate=True)
+    if _b64url_encode(decoded) != text:
+        raise ValueError("token segment is not the canonical base64url encoding of its bytes")
+    return decoded
 
 
 def _sign(payload: bytes, secret: bytes) -> bytes:

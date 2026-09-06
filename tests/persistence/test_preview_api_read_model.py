@@ -305,6 +305,26 @@ def test_malformed_token_is_not_found(client: TestClient) -> None:
     assert response.status_code == 404
 
 
+def test_junk_character_injected_token_is_not_found(api_conn: Any, client: TestClient) -> None:
+    """AMEND regression (PR #156, review 5123788117, finding 2).
+
+    `base64.urlsafe_b64decode`'s default lax mode silently discards
+    characters outside the base64 alphabet, so a non-canonical alias of a
+    valid token (junk spliced into an otherwise-valid segment) could decode
+    to the identical bytes as the original and verify successfully. Such an
+    alias must resolve to the same not-found response as any other invalid
+    token -- never succeed.
+    """
+    request = _full_request()
+    result = run_listing_intake(api_conn, request=request, preview_signing_secret=_SECRET)
+    assert result.preview_token is not None
+    payload_part, signature_part = result.preview_token.split(".")
+    tampered = payload_part[:4] + "!!!!" + payload_part[4:] + "." + signature_part
+
+    response = client.get(f"/api/_preview/listings/{quote(tampered, safe='')}")
+    assert response.status_code == 404
+
+
 def test_wrong_secret_token_is_not_found(api_conn: Any, client: TestClient) -> None:
     other_secret = os.urandom(32)
     minted = mint_preview_token(NativeListingId("NL-API-T"), secret=other_secret)
