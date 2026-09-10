@@ -27,11 +27,16 @@ inferred from `MAX(recorded_at)` or row order. A revision write carries an
 explicit `expected_current_revision_id` (`None` for the first revision for
 that pair, the exact current revision id otherwise); a stale expectation
 fails closed as `CONFLICT` with zero new current state. A client-supplied
-revision id that already exists resolves deterministically: identical
-immutable content is `ALREADY_EXISTS`; different content is `CONFLICT`.
-Neither ever silently overwrites or re-promotes a prior revision, and one
-Organization's claims about a PhysicalBoat never supersede a different
-Organization's claims about the same PhysicalBoat (SLICE-0050 §9).
+revision id that already exists resolves deterministically against the
+*complete* immutable envelope -- same PhysicalBoat, same claiming
+Organization, same recorded predecessor (`previous_claim_revision_id`, fixed
+at that revision's own insertion time -- not the pair's possibly-since-
+advanced current head) and identical seven-field content is `ALREADY_EXISTS`;
+any difference, including a different supplied predecessor for the same
+revision id, is `CONFLICT` (SLICE-0050 §7/§7.3). Neither ever silently
+overwrites or re-promotes a prior revision, and one Organization's claims
+about a PhysicalBoat never supersede a different Organization's claims about
+the same PhysicalBoat (SLICE-0050 §9).
 
 Claim recording is not conditioned on NativeListing lifecycle state: an
 authorized owning publisher may supply/correct claims while its listing is
@@ -205,7 +210,7 @@ _SELECT_HEAD = (
 )
 
 _SELECT_REVISION_BY_ID = (
-    "SELECT physical_boat_id, claiming_organization_id, content_hash "
+    "SELECT physical_boat_id, claiming_organization_id, previous_claim_revision_id, content_hash "
     "FROM physical_boat_claim_revisions WHERE claim_revision_id = %s"
 )
 
@@ -554,13 +559,35 @@ def write_physical_boat_claim_revision(
                 else None
             )
 
+        expected_value = (
+            expected_current_revision_id.value if expected_current_revision_id is not None else None
+        )
+
         cur.execute(_SELECT_REVISION_BY_ID, [revision_id.value])
         existing = cur.fetchone()
         if existing is not None:
-            existing_physical_boat_id, existing_organization_id, existing_hash = existing
+            (
+                existing_physical_boat_id,
+                existing_organization_id,
+                existing_previous_revision_id,
+                existing_hash,
+            ) = existing
+            # An exact retry must match on the full immutable envelope,
+            # which includes the predecessor/supersession identity this
+            # revision was recorded against (SLICE-0050 §7/§7.3) -- not
+            # content_hash alone. Comparing against the *stored*
+            # previous_claim_revision_id (fixed permanently at this
+            # revision's own insertion time), rather than against
+            # actual_current_id (the pair's *current* head, which may have
+            # since advanced past this revision), is what lets a genuine
+            # retry of an old, since-superseded revision still resolve
+            # ALREADY_EXISTS: only a retry supplying a *different*
+            # predecessor than what was originally recorded is a real
+            # conflict.
             if (
                 existing_physical_boat_id == physical_boat_id_value
                 and existing_organization_id == candidate_organization.id.value
+                and existing_previous_revision_id == expected_value
                 and existing_hash == content_hash
             ):
                 return PhysicalBoatClaimWriteResult(
@@ -572,9 +599,6 @@ def write_physical_boat_claim_revision(
                 current_revision_id=_current_wrapped(),
             )
 
-        expected_value = (
-            expected_current_revision_id.value if expected_current_revision_id is not None else None
-        )
         if expected_value != actual_current_id:
             return PhysicalBoatClaimWriteResult(
                 status=PhysicalBoatClaimWriteStatus.CONFLICT,

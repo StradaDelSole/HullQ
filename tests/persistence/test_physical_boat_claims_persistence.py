@@ -685,6 +685,118 @@ def test_stale_predecessor_conflicts_and_leaves_head_unchanged(claim_conn: Any) 
     assert current.revision_id == PhysicalBoatClaimRevisionId("PBCREV-C14-001")
 
 
+def test_reusing_a_revision_id_with_a_different_supplied_predecessor_is_conflict_not_already_exists(
+    claim_conn: Any,
+) -> None:
+    """AMEND review finding 1: an exact retry must match the *complete*
+    immutable envelope, including the predecessor this revision id was
+    originally recorded against -- not content_hash alone. R1 -> R2
+    (superseding R1) -> R3 (superseding R2); reusing R2's revision id with
+    identical seven-field content but a *different* supplied predecessor
+    (R3's own id instead of R2's real recorded predecessor R1) must CONFLICT,
+    leaving history/head untouched. A genuine retry of R2 with its original
+    predecessor (R1) must still resolve ALREADY_EXISTS even though the head
+    has since advanced past R2 to R3."""
+    account = _account("ACC-C22")
+    org = _org("ORG-C22")
+    membership = _membership("OM-C22", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _create_chain(
+        claim_conn,
+        native_listing_id="NL-C22",
+        physical_boat_id="PB-C22",
+        market_episode_id="ME-C22",
+        account=account,
+        org=org,
+        membership=membership,
+    )
+
+    r2_claims = _snapshot(model_designation_claim="Oceanis 34.1")
+
+    r1 = write_physical_boat_claim_revision(
+        claim_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-C22"),
+        revision_id=PhysicalBoatClaimRevisionId("PBCREV-C22-001"),
+        expected_current_revision_id=None,
+        claims=_snapshot(),
+    )
+    assert r1.status is PhysicalBoatClaimWriteStatus.CREATED
+
+    r2 = write_physical_boat_claim_revision(
+        claim_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-C22"),
+        revision_id=PhysicalBoatClaimRevisionId("PBCREV-C22-002"),
+        expected_current_revision_id=PhysicalBoatClaimRevisionId("PBCREV-C22-001"),
+        claims=r2_claims,
+    )
+    assert r2.status is PhysicalBoatClaimWriteStatus.REVISED
+
+    r3 = write_physical_boat_claim_revision(
+        claim_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-C22"),
+        revision_id=PhysicalBoatClaimRevisionId("PBCREV-C22-003"),
+        expected_current_revision_id=PhysicalBoatClaimRevisionId("PBCREV-C22-002"),
+        claims=_snapshot(model_designation_claim="Oceanis 34.1 Mk2"),
+    )
+    assert r3.status is PhysicalBoatClaimWriteStatus.REVISED
+
+    # Reuse R2's revision id + identical seven-field content, but claim a
+    # different predecessor (R3's id) than what R2 was actually recorded
+    # against (R1). This must never be treated as the same immutable
+    # revision merely because the seven-field snapshot matches.
+    forged_predecessor_retry = write_physical_boat_claim_revision(
+        claim_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-C22"),
+        revision_id=PhysicalBoatClaimRevisionId("PBCREV-C22-002"),
+        expected_current_revision_id=PhysicalBoatClaimRevisionId("PBCREV-C22-003"),
+        claims=r2_claims,
+    )
+    assert forged_predecessor_retry.status is PhysicalBoatClaimWriteStatus.CONFLICT
+
+    history_after_forged_retry = list_physical_boat_claim_revisions(
+        claim_conn, PhysicalBoatId("PB-C22"), org.id
+    )
+    current_after_forged_retry = fetch_current_physical_boat_claim(
+        claim_conn, PhysicalBoatId("PB-C22"), org.id
+    )
+    assert len(history_after_forged_retry) == 3  # R1, R2, R3 only -- no forged 4th row
+    assert current_after_forged_retry is not None
+    assert current_after_forged_retry.revision_id == PhysicalBoatClaimRevisionId("PBCREV-C22-003")
+    claim_conn.commit()  # release the implicit read transaction before the next write
+
+    # A genuine retry of R2 with its real original predecessor (R1) must
+    # still resolve ALREADY_EXISTS, even though the current head has since
+    # advanced to R3.
+    genuine_retry = write_physical_boat_claim_revision(
+        claim_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-C22"),
+        revision_id=PhysicalBoatClaimRevisionId("PBCREV-C22-002"),
+        expected_current_revision_id=PhysicalBoatClaimRevisionId("PBCREV-C22-001"),
+        claims=r2_claims,
+    )
+    assert genuine_retry.status is PhysicalBoatClaimWriteStatus.ALREADY_EXISTS
+    assert genuine_retry.current_revision_id == PhysicalBoatClaimRevisionId("PBCREV-C22-003")
+
+    history_after_genuine_retry = list_physical_boat_claim_revisions(
+        claim_conn, PhysicalBoatId("PB-C22"), org.id
+    )
+    assert len(history_after_genuine_retry) == 3  # still no duplicate/forged row
+
+
 # ---------------------------------------------------------------------------
 # Cross-Organization independence (SLICE-0050 §9)
 # ---------------------------------------------------------------------------
@@ -936,6 +1048,130 @@ def test_write_on_a_connection_with_an_open_implicit_transaction_fails_closed(
             claims=_snapshot(),
         )
     claim_conn.rollback()
+
+
+# ---------------------------------------------------------------------------
+# Rollback on head-write failure (SLICE-0050 §8)
+# ---------------------------------------------------------------------------
+
+
+def test_failure_during_head_advance_rolls_back_the_already_inserted_revision(
+    claim_conn: Any,
+) -> None:
+    """AMEND review finding 2: a failure after the immutable revision INSERT
+    but before/while the head UPSERT commits MUST roll back the whole
+    transaction, leaving no orphan revision and no head movement.
+
+    Forces a deterministic DB-side failure with a temporary trigger on
+    ``physical_boat_claim_heads`` that rejects one specific sentinel
+    ``current_claim_revision_id`` value -- a real PostgreSQL failure late in
+    the write transaction, not a production code hook. The trigger and its
+    function are created and dropped entirely within this test against the
+    already-disposable per-test schema.
+    """
+    account = _account("ACC-C23")
+    org = _org("ORG-C23")
+    membership = _membership("OM-C23", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _create_chain(
+        claim_conn,
+        native_listing_id="NL-C23",
+        physical_boat_id="PB-C23",
+        market_episode_id="ME-C23",
+        account=account,
+        org=org,
+        membership=membership,
+    )
+
+    first = write_physical_boat_claim_revision(
+        claim_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-C23"),
+        revision_id=PhysicalBoatClaimRevisionId("PBCREV-C23-001"),
+        expected_current_revision_id=None,
+        claims=_snapshot(),
+    )
+    assert first.status is PhysicalBoatClaimWriteStatus.CREATED
+
+    # A fixed, test-local constant (never external/adversarial input), so it
+    # is safe to embed directly in the function body text below -- a bind
+    # parameter cannot be used here: PostgreSQL cannot infer a parameter's
+    # type when it appears only inside a dollar-quoted function body, which
+    # is opaque to the outer statement's parser until the function itself is
+    # invoked.
+    forced_failure_revision_id = "PBCREV-C23-FORCED-FAILURE"
+    with claim_conn.cursor() as cur:
+        cur.execute(
+            "CREATE OR REPLACE FUNCTION test_pb_claim_force_head_failure() "
+            "RETURNS trigger AS $$ "
+            "BEGIN "
+            f"  IF NEW.current_claim_revision_id = '{forced_failure_revision_id}' THEN "
+            "    RAISE EXCEPTION 'test-injected head write failure'; "
+            "  END IF; "
+            "  RETURN NEW; "
+            "END; $$ LANGUAGE plpgsql"
+        )
+        cur.execute(
+            "CREATE TRIGGER trg_pb_claim_force_head_failure "
+            "BEFORE INSERT OR UPDATE ON physical_boat_claim_heads "
+            "FOR EACH ROW EXECUTE FUNCTION test_pb_claim_force_head_failure()"
+        )
+    claim_conn.commit()
+
+    try:
+        with pytest.raises(psycopg.errors.RaiseException):
+            write_physical_boat_claim_revision(
+                claim_conn,
+                account_id=account,
+                candidate_organization=org,
+                membership=membership,
+                native_listing_id=NativeListingId("NL-C23"),
+                revision_id=PhysicalBoatClaimRevisionId(forced_failure_revision_id),
+                expected_current_revision_id=PhysicalBoatClaimRevisionId("PBCREV-C23-001"),
+                claims=_snapshot(model_designation_claim="Oceanis 34.1"),
+            )
+        # psycopg's conn.transaction() rolls back automatically on the
+        # propagated exception; the connection is IDLE again immediately,
+        # ready for ordinary queries without an explicit rollback() call.
+        assert claim_conn.info.transaction_status.name == "IDLE"
+
+        orphan_revision = fetch_physical_boat_claim_revision(
+            claim_conn, PhysicalBoatClaimRevisionId(forced_failure_revision_id)
+        )
+        current_after_failure = fetch_current_physical_boat_claim(
+            claim_conn, PhysicalBoatId("PB-C23"), org.id
+        )
+        history_after_failure = list_physical_boat_claim_revisions(
+            claim_conn, PhysicalBoatId("PB-C23"), org.id
+        )
+        claim_conn.commit()  # release the implicit read transaction
+
+        assert orphan_revision is None
+        assert current_after_failure is not None
+        assert current_after_failure.revision_id == PhysicalBoatClaimRevisionId("PBCREV-C23-001")
+        assert len(history_after_failure) == 1
+    finally:
+        with claim_conn.cursor() as cur:
+            cur.execute(
+                "DROP TRIGGER IF EXISTS trg_pb_claim_force_head_failure ON physical_boat_claim_heads"
+            )
+            cur.execute("DROP FUNCTION IF EXISTS test_pb_claim_force_head_failure()")
+        claim_conn.commit()
+
+    # The connection remains usable for an ordinary, unaffected write after
+    # the trigger is removed -- the earlier failure left no lasting damage.
+    recovery = write_physical_boat_claim_revision(
+        claim_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-C23"),
+        revision_id=PhysicalBoatClaimRevisionId("PBCREV-C23-002"),
+        expected_current_revision_id=PhysicalBoatClaimRevisionId("PBCREV-C23-001"),
+        claims=_snapshot(model_designation_claim="Oceanis 34.1"),
+    )
+    assert recovery.status is PhysicalBoatClaimWriteStatus.REVISED
 
 
 # ---------------------------------------------------------------------------
