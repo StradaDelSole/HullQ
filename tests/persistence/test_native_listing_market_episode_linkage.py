@@ -521,10 +521,10 @@ def test_migration_with_orphan_non_null_episode_reference_fails_closed(
 
 def test_alembic_reports_exactly_one_head_after_upgrade(link_url: str) -> None:
     """The exact head value is expected to change as later slices add
-    migrations on top of SLICE-0047 (see SLICE-0049's
-    `8b6d3f0a2c17_native_listing_lifecycle` revision, the current head at
+    migrations on top of SLICE-0047 (see SLICE-0050's
+    `9c2e6b4a1d80_physical_boat_claim_facts` revision, the current head at
     time of writing); what this test protects is that there is always
     exactly one head, never a branch."""
     from hullq.persistence.alembic_baseline import alembic_heads
 
-    assert alembic_heads(link_url) == ["8b6d3f0a2c17"]
+    assert alembic_heads(link_url) == ["9c2e6b4a1d80"]

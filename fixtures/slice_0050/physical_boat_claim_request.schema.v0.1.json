@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hullq.internal/schemas/slice_0050/physical_boat_claim_request.schema.v0.1.json",
+  "title": "SLICE-0050 operator-assisted PhysicalBoat claim recording request",
+  "description": "Structural/typed validation only for the one versioned JSON input accepted by scripts/record_physical_boat_claims.py. Cross-field domain semantics (e.g. VALUE_ASSERTION requiring a non-null claim value, positive finite loa_length/draft) are enforced by the accepted hullq.domain constructors at object-construction time, not by this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "account_id",
+    "organization",
+    "membership",
+    "native_listing_id",
+    "claim_revision_id",
+    "claims"
+  ],
+  "properties": {
+    "account_id": { "type": "string", "minLength": 1 },
+    "organization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "professional_category", "publishing_eligibility"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "professional_category": {
+          "type": "string",
+          "enum": ["BROKER", "DEALER", "OTHER_PROFESSIONAL"]
+        },
+        "publishing_eligibility": {
+          "type": "string",
+          "enum": ["ELIGIBLE", "INELIGIBLE", "UNVERIFIED"]
+        }
+      }
+    },
+    "membership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "account_id", "organization_id", "roles", "state"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "account_id": { "type": "string", "minLength": 1 },
+        "organization_id": { "type": "string", "minLength": 1 },
+        "roles": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["OWNER", "ADMIN", "PUBLISHER", "MEMBER"] },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "state": { "type": "string", "enum": ["ACTIVE", "INACTIVE"] }
+      }
+    },
+    "native_listing_id": { "type": "string", "minLength": 1 },
+    "claim_revision_id": { "type": "string", "minLength": 1 },
+    "expected_current_claim_revision_id": { "type": ["string", "null"], "minLength": 1 },
+    "claims": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["marketed_brand_claim", "model_designation_claim", "build_year"],
+      "properties": {
+        "marketed_brand_claim": { "type": "string", "minLength": 1 },
+        "model_designation_claim": { "type": "string", "minLength": 1 },
+        "build_year": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["assertion_kind"],
+          "properties": {
+            "assertion_kind": { "type": "string", "enum": ["VALUE_ASSERTION", "UNKNOWN"] },
+            "value": { "type": ["integer", "null"] }
+          }
+        },
+        "loa_length": { "$ref": "#/$defs/decimalUnknownable" },
+        "draft": { "$ref": "#/$defs/decimalUnknownable" },
+        "keel_configuration": { "$ref": "#/$defs/keelConfigurationUnknownable" },
+        "rudder_configuration": { "$ref": "#/$defs/rudderConfigurationUnknownable" }
+      }
+    }
+  },
+  "$defs": {
+    "decimalUnknownable": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["assertion_kind"],
+      "properties": {
+        "assertion_kind": { "type": "string", "enum": ["VALUE_ASSERTION", "UNKNOWN"] },
+        "value": { "type": ["string", "null"], "minLength": 1 }
+      }
+    },
+    "keelConfigurationUnknownable": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["assertion_kind"],
+      "properties": {
+        "assertion_kind": { "type": "string", "enum": ["VALUE_ASSERTION", "UNKNOWN"] },
+        "value": {
+          "type": ["string", "null"],
+          "enum": [
+            "FIN",
+            "FIN_WITH_BULB",
+            "LONG_KEEL",
+            "WING",
+            "CENTERBOARD",
+            "LIFTING_KEEL",
+            "TWIN_KEEL",
+            "OTHER",
+            null
+          ]
+        }
+      }
+    },
+    "rudderConfigurationUnknownable": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["assertion_kind"],
+      "properties": {
+        "assertion_kind": { "type": "string", "enum": ["VALUE_ASSERTION", "UNKNOWN"] },
+        "value": {
+          "type": ["string", "null"],
+          "enum": ["SPADE", "SKEG_HUNG", "TRANSOM_HUNG", "TWIN", "OTHER", null]
+        }
+      }
+    }
+  }
+}

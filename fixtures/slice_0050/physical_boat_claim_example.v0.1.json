@@ -1,0 +1,27 @@
+{
+  "account_id": "ACC-0050-DEMO",
+  "organization": {
+    "id": "ORG-0050-DEMO",
+    "professional_category": "BROKER",
+    "publishing_eligibility": "ELIGIBLE"
+  },
+  "membership": {
+    "id": "OM-0050-DEMO",
+    "account_id": "ACC-0050-DEMO",
+    "organization_id": "ORG-0050-DEMO",
+    "roles": ["PUBLISHER"],
+    "state": "ACTIVE"
+  },
+  "native_listing_id": "NL-0050-DEMO-001",
+  "claim_revision_id": "PBCREV-0050-DEMO-001",
+  "expected_current_claim_revision_id": null,
+  "claims": {
+    "marketed_brand_claim": "Beneteau",
+    "model_designation_claim": "Oceanis 30.1",
+    "build_year": { "assertion_kind": "VALUE_ASSERTION", "value": 2021 },
+    "loa_length": { "assertion_kind": "VALUE_ASSERTION", "value": "9.14" },
+    "draft": { "assertion_kind": "UNKNOWN" },
+    "keel_configuration": { "assertion_kind": "VALUE_ASSERTION", "value": "FIN" },
+    "rudder_configuration": null
+  }
+}
