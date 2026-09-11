@@ -2,7 +2,8 @@
 
 **ID:** SLICE-0051  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW
+**Status set by this handoff:** `REVIEW`  
 **Stage:** Native marketplace / buyer search  
 **Base main:** `ff2566a84e00b69e607757292c813d0132811d8c`  
 **Depends on:** accepted SLICE-0038, SLICE-0049 and SLICE-0050 behavior; accepted 2026-09-11 marketplace-search resolution/evidence-set decisions; bounded OQ-018 Search decisions; `docs/SLICE_0051_CAPABILITY_SELECTION_2026-09-11.md`; `docs/SLICE_0051_DRAFT_MAX_VERTICAL_DECISION_2026-09-11.md`  

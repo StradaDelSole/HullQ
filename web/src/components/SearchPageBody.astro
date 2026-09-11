@@ -1,0 +1,96 @@
+---
+// SLICE-0051: the one shared Search page presentation for every supported
+// locale. Purely presentational -- props in, HTML out. It never fetches
+// anything and never mutates `Astro.response`/`Astro.redirect`: those calls
+// must happen in the top-level page's own frontmatter (see
+// `web/src/lib/searchPageData.ts`'s docstring for why), before this
+// component ever renders. Each `web/src/pages/{locale}/search.astro` route
+// is a thin wrapper around this component.
+import type { SearchPageData } from "../lib/searchPageData";
+import { searchText, type SupportedLocale } from "../lib/searchText";
+
+// The page's own frontmatter always intercepts `{ kind: "redirect" }` with
+// `return Astro.redirect(...)` before this component ever renders (see
+// searchPageData.ts's docstring) -- excluding it here lets every remaining
+// branch below narrow cleanly between "invalid" and "ok".
+type RenderableSearchPageData = Exclude<SearchPageData, { kind: "redirect" }>;
+
+interface Props {
+  locale: SupportedLocale;
+  data: RenderableSearchPageData;
+  canonicalUrl: string;
+}
+
+const { locale, data, canonicalUrl } = Astro.props;
+const t = searchText[locale];
+const isInvalid = data.kind === "invalid";
+---
+
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    {!isInvalid && <link rel="canonical" href={canonicalUrl} />}
+    <title>{t.title}</title>
+  </head>
+  <body>
+    {
+      data.kind === "invalid" ? (
+        <main>
+          <h1>{t.invalidTitle}</h1>
+          <p>{data.message ?? t.invalidFallback}</p>
+          <p>
+            <a href={`/${locale}/search`}>{t.startOver}</a>
+          </p>
+        </main>
+      ) : (
+        <main>
+          <h1>{t.title}</h1>
+          <p>{t.formInstructions}</p>
+          <form method="get" action={`/${locale}/search`}>
+            <label>
+              {t.draftMaxLabel}
+              <input
+                type="text"
+                name="draft_max"
+                inputmode="decimal"
+                placeholder={t.draftMaxPlaceholder}
+                value={data.activeRequirement?.draft_max ?? ""}
+              />
+            </label>
+            <button type="submit">{t.submit}</button>
+          </form>
+
+          {data.activeRequirement !== null && (
+            <section aria-label="search results">
+              <p>{t.requirementSummary(data.activeRequirement.draft_max)}</p>
+
+              <h2>
+                {t.confirmedHeading} ({data.confirmedMatchCount})
+              </h2>
+              {data.confirmedMatchCount === 0 ? (
+                <p>{t.noConfirmedMatches}</p>
+              ) : (
+                <ul>
+                  {data.confirmedMatches.map((match) => (
+                    <li>
+                      <a href={`/listings/${match.native_listing_id}`}>
+                        {t.viewListing}: {match.native_listing_id}
+                      </a>{" "}
+                      &mdash; {t.resolvedDraftText(match.resolved_draft_m)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {data.insufficientDataCount > 0 && (
+                <p aria-label="insufficient data">{t.insufficientDataText(data.insufficientDataCount)}</p>
+              )}
+            </section>
+          )}
+        </main>
+      )
+    }
+  </body>
+</html>

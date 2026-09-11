@@ -1,0 +1,32 @@
+---
+// SLICE-0051: French locale-prefixed Search surface. Response-mutating
+// decisions (redirect/status) must happen here, in the top-level page's own
+// frontmatter -- see web/src/lib/searchPageData.ts's docstring for why.
+// Presentation itself lives in the shared SearchPageBody.astro component.
+export const prerender = false;
+import SearchPageBody from "../../components/SearchPageBody.astro";
+import { loadSearchPageData } from "../../lib/searchPageData";
+
+const locale = "fr" as const;
+const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+
+const queryString = Astro.url.search.replace(/^\?/, "");
+const data = await loadSearchPageData(apiBaseUrl, locale, queryString);
+
+if (data.kind === "redirect") {
+  return Astro.redirect(data.location, 308);
+}
+if (data.kind === "invalid") {
+  Astro.response.status = 400;
+}
+
+const canonicalPath =
+  data.kind === "ok" && data.activeRequirement !== null
+    ? `/${locale}/search?draft_max=${data.activeRequirement.draft_max}`
+    : `/${locale}/search`;
+const canonicalUrl = new URL(canonicalPath, Astro.url).toString();
+---
+
+<SearchPageBody locale={locale} data={data} canonicalUrl={canonicalUrl} />
