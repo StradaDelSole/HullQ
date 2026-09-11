@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0049 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0050 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0050 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0051 -->
 
-**Updated:** 2026-09-06  
-**Latest owner-accepted / DONE slice:** SLICE-0049  
-**Current queue:** SLICE-0050 — first buyer-critical PhysicalBoat truth vertical; readiness READY for independent review.  
+**Updated:** 2026-09-11  
+**Latest owner-accepted / DONE slice:** SLICE-0050  
+**Current queue:** SLICE-0051 — capability intentionally unassigned pending post-0050 product/architecture reassessment.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs/ADRs remain authoritative where they apply.
@@ -93,7 +93,8 @@ The repository currently has accepted, tested foundations for:
 - durable PhysicalBoat identity persistence with optional validated canonical `BoatDesignRef`, deterministic collision semantics and exact typed readback (SLICE-0046);
 - durable MarketEpisode identity linked to exactly one PhysicalBoat plus PostgreSQL-backed optional NativeListing→MarketEpisode linkage (SLICE-0047);
 - first browser-visible real listing preview vertical (SLICE-0048): operator-assisted intake, finite signed preview capability, FastAPI preview read model and Astro SSR page over real persisted listing data;
-- first production-public NativeListing vertical (SLICE-0049): `DRAFT → ACTIVE → WITHDRAWN`, real SLICE-0041 transition authorization, immutable atomic publication history, public FastAPI exact-listing read and stable Astro SSR `/listings/{NativeListingId}` page without preview token or login.
+- first production-public NativeListing vertical (SLICE-0049): `DRAFT → ACTIVE → WITHDRAWN`, real SLICE-0041 transition authorization, immutable atomic publication history, public FastAPI exact-listing read and stable Astro SSR `/listings/{NativeListingId}` page without preview token or login;
+- first buyer-critical PhysicalBoat truth vertical (SLICE-0050): exactly seven broker-declared concrete-yacht fields, immutable per-Organization revision/current-head semantics, strict omitted-vs-UNKNOWN behavior, no BoatDesign fallback, and a public `THIS BOAT` surface on the existing listing page.
 
 The accepted PhysicalBoat persistence preserves unresolved identity (`BoatDesignRef = NONE`), permits sister ships to share one BoatDesign, rejects unknown design refs for new PhysicalBoat identities, and never projects BoatDesign baseline data into individual-yacht truth.
 
@@ -120,7 +121,7 @@ PREVIEWABLE != PUBLISHED
 DURABLE CREATION != PUBLICATION
 ```
 
-SLICE-0049 now proves the production-public continuation:
+SLICE-0049 proves the production-public continuation:
 
 ```text
 complete durable NativeListing
@@ -147,19 +148,34 @@ All pre-0049 NativeListings migrate to `DRAFT`; no migration or creation path au
 
 Every successful publication transition atomically appends immutable publication history. Denied, failed, stale or unsupported transitions change neither state nor history. Competing same-state transitions are serialized through PostgreSQL so only one succeeds.
 
+SLICE-0050 adds concrete-yacht claims without changing 0049 publication completeness. Claims are immutable revisions with an explicit current head per `(PhysicalBoatId, claiming OrganizationId)`. The public listing uses only its publishing Organization's current claim head; another Organization's claims about the same PhysicalBoat remain independent.
+
+Accepted 0050 public semantics are:
+
+```text
+marketed brand + model
+build year value | UNKNOWN
+LOA omitted | value | UNKNOWN
+draft omitted | value | UNKNOWN
+keel omitted | value | UNKNOWN
+rudder omitted | value | UNKNOWN
+```
+
+Omitted is visibly distinct from explicit `UNKNOWN`, numeric values are lossless decimals, and BoatDesign reference values never backfill PhysicalBoat claims.
+
 ## What is not built yet
 
 Important marketplace/product capabilities still absent include:
 
 - authenticated Auth0-backed broker workspace/form;
 - persisted marketplace actor directory beyond accepted runtime eligibility types;
-- PhysicalBoat marketplace fact persistence beyond identity;
+- PhysicalBoat marketplace fact coverage beyond the seven accepted SLICE-0050 fields, including verification/resolution for broader fact classes;
 - media upload/storage/presentation;
 - public listing search/ranking over native inventory;
 - lead/contact workflow;
 - saved-search monitoring/alerts and price-history intelligence;
 - republish, SOLD/ARCHIVED and freshness/staleness lifecycle behavior;
-- full listing SEO/indexation/sitemap/hreflang distribution semantics beyond the bounded 0049 noindex NativeListing page-class decision.
+- full listing SEO/indexation/sitemap/hreflang distribution semantics beyond the bounded noindex NativeListing page-class decision.
 
 ## Accepted SLICE-0049 result
 
@@ -188,33 +204,15 @@ The production public page identity is:
 /listings/{NativeListingId}
 ```
 
-No slug is introduced. Query parameters do not alter listing identity or lifecycle/content selection. The page is public but deliberately `noindex` in this slice.
+No slug is introduced. Query parameters do not alter listing identity or lifecycle/content selection. The page is public but deliberately `noindex`.
 
 The existing SLICE-0048 preview route remains a separate finite bearer capability with private/no-store, no-referrer, non-canonical and noindex behavior.
 
-## Post-0049 reassessment result / current queue — SLICE-0050
+## Accepted SLICE-0050 result / next queue — SLICE-0051
 
-The post-0049 reassessment is complete.
+The post-0049 reassessment selected **first buyer-critical PhysicalBoat truth vertical** as the highest-leverage continuation after public listing lifecycle.
 
-Compared capability families:
-
-1. broker operating surface / authenticated intake;
-2. richer PhysicalBoat/listing facts;
-3. minimal native-inventory search/discovery;
-4. media;
-5. buyer save/monitor/contact.
-
-Selected capability: **first buyer-critical PhysicalBoat truth vertical**.
-
-Reasoning:
-
-- operator-assisted intake already supplies a usable temporary broker path;
-- generic public search over current offer fields would still resemble ordinary price/location filtering and would not yet expose HullQ's strongest differentiator;
-- media is important later but does not establish technical buyer value and brings rights/storage/quarantine scope;
-- save/monitor/contact should follow a sufficiently informative discovery/truth surface;
-- concrete-yacht claims are the missing bridge between accepted BoatDesign/configuration truth and a genuinely differentiated native listing/search product.
-
-SLICE-0050 therefore implements exactly seven already-accepted PhysicalBoat claim fields:
+SLICE-0050 accepts exactly seven PhysicalBoat claim fields:
 
 ```text
 physical_boat.marketed_brand_claim
@@ -226,7 +224,7 @@ physical_boat.keel_configuration
 physical_boat.rudder_configuration
 ```
 
-The intended visible result is:
+The accepted visible result is:
 
 ```text
 ACTIVE public NativeListing
@@ -237,11 +235,13 @@ ACTIVE public NativeListing
 → no BoatDesign fallback
 ```
 
-The claims are persisted as immutable revisions with an explicit current head per `(PhysicalBoatId, claiming OrganizationId)` and are displayed only as that publishing Organization's current broker claims. Cross-source resolution, native-inventory search, Auth0/broker UI, media and the remaining PhysicalBoat field catalog are explicitly out of scope.
+The claims are persisted as immutable revisions with an explicit current head per `(PhysicalBoatId, claiming OrganizationId)` and are displayed only as that publishing Organization's current broker claims. Exact-retry semantics include the recorded predecessor; stale or forged predecessor attempts conflict. A real PostgreSQL failure-injection regression proves revision append + head advance are atomic and cannot leave orphan revisions.
 
-Readiness contract: `docs/slices/SLICE-0050-first-buyer-critical-physical-boat-truth.md`.
+Cross-source resolution, native-inventory search, Auth0/broker UI, media and the remaining PhysicalBoat field catalog remain out of scope.
 
-Do not run `START_SLICE.bat` until this readiness exact HEAD has passed independent review/CI and the readiness PR is merged to `main`.
+Acceptance closure: `docs/slices/SLICE-0050-acceptance-closure.md`.
+
+SLICE-0051 is intentionally not assigned a capability in this closure. Its content must be selected by the required post-0050 architecture/product reassessment.
 
 ## Marketplace fact semantics already frozen
 
@@ -270,7 +270,7 @@ SLICE-0049 accepts only the first bounded NativeListing public page class: `/lis
 
 It does not authorize NativeListing sitemap publication, hreflang trees, faceted landing pages, broad structured-data expansion or full resolution of OQ-018.
 
-SLICE-0050 materially changes the public listing content but does not change route identity or indexability. `docs/PRODUCT_UX_PRINCIPLES.md` is controlling for its `THIS BOAT` presentation.
+SLICE-0050 materially enriches the public listing content but does not change route identity or indexability. `docs/PRODUCT_UX_PRINCIPLES.md` remains controlling for its `THIS BOAT` presentation.
 
 Production public URL/indexability/rendering decisions beyond that bounded page class must preserve deterministic search semantics and avoid turning arbitrary facet combinations into indexable pages.
 
@@ -312,7 +312,7 @@ portable Linux VPS
       \-- simple VPS deployment / Caddy baseline
 ```
 
-SLICE-0048 is the first accepted implementation of the FastAPI + Astro application surface; SLICE-0049 adds its first production-public NativeListing route on that same boundary. Do not introduce a second business-logic backend, dedicated search engine, Kubernetes/distributed infrastructure or paid managed dependency without measured need and an accepted decision.
+SLICE-0048 is the first accepted implementation of the FastAPI + Astro application surface; SLICE-0049 adds its first production-public NativeListing route on that same boundary; SLICE-0050 enriches that existing route/read model rather than creating a second backend or public listing surface. Do not introduce a second business-logic backend, dedicated search engine, Kubernetes/distributed infrastructure or paid managed dependency without measured need and an accepted decision.
 
 ## Development workflow
 
