@@ -125,15 +125,14 @@ def project_state_freshness_check(
 
 def _is_reconciliation_placeholder(value: str) -> bool:
     normalized = value.strip()
-    return (
-        normalized.upper() in _RECONCILIATION_PLACEHOLDER_VALUES
-        or (normalized.startswith("<") and normalized.endswith(">"))
+    return normalized.upper() in _RECONCILIATION_PLACEHOLDER_VALUES or (
+        normalized.startswith("<") and normalized.endswith(">")
     )
 
 
 def _validate_reconciliation_evidence(*, queue: int, path: Path, text: str) -> None:
     for label in _RECONCILIATION_EVIDENCE_LABELS:
-        pattern = re.compile(rf"(?m)^\*\*{re.escape(label)}:\*\*\s*(\S.*)$")
+        pattern = re.compile(rf"(?m)^\*\*{re.escape(label)}:\*\*[ \t]*(\S[^\r\n]*)[ \t]*$")
         match = pattern.search(text)
         if match is None:
             raise ValueError(
@@ -147,9 +146,9 @@ def _validate_reconciliation_evidence(*, queue: int, path: Path, text: str) -> N
             )
 
     classifications_pattern = re.compile(
-        r"(?m)^\*\*Material classifications:\*\*\s*.*\b(?:"
+        r"(?m)^\*\*Material classifications:\*\*[ \t]*[^\r\n]*\b(?:"
         + "|".join(re.escape(value) for value in _RECONCILIATION_CLASSIFICATIONS)
-        + r")\b.*$"
+        + r")\b[^\r\n]*$"
     )
     if classifications_pattern.search(text) is None:
         allowed = ", ".join(_RECONCILIATION_CLASSIFICATIONS)
