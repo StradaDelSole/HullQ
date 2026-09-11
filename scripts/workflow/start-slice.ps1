@@ -45,14 +45,14 @@ function Assert-ProductExecutionChecks([string]$Number, [string]$Text, [string]$
     }
 
     foreach ($check in $requiredChecks) {
-        $pattern = "(?m)^\*\*$([regex]::Escape($check)):\*\*\s*PASS\s*$"
+        $pattern = "(?m)^\*\*$([regex]::Escape($check)):\*\*[ \t]*PASS[ \t]*$"
         if ($Text -notmatch $pattern) {
             throw "SLICE-$Number cannot start: $FileName must contain '**${check}:** PASS'. Prepare/review the slice against controlling governance before starting Claude."
         }
     }
 
     if ([int]$Number -ge 51) {
-        $reconciliationHeading = '(?m)^## Decision / implementation reconciliation\s*$'
+        $reconciliationHeading = '(?m)^## Decision / implementation reconciliation[ \t]*$'
         if ($Text -notmatch $reconciliationHeading) {
             throw "SLICE-$Number cannot start: $FileName must contain the section '## Decision / implementation reconciliation' required by docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md."
         }
@@ -66,7 +66,7 @@ function Assert-ProductExecutionChecks([string]$Number, [string]$Text, [string]$
             'Material classifications'
         )
         foreach ($label in $evidenceLabels) {
-            $evidencePattern = "(?m)^\*\*$([regex]::Escape($label)):\*\*\s*(\S.*)$"
+            $evidencePattern = "(?m)^\*\*$([regex]::Escape($label)):\*\*[ \t]*(\S[^\r\n]*)[ \t]*$"
             $evidenceMatch = [regex]::Match($Text, $evidencePattern)
             if (-not $evidenceMatch.Success) {
                 throw "SLICE-$Number cannot start: $FileName must contain a non-empty '**${label}:** <evidence>' line in its reconciliation section."
@@ -79,7 +79,7 @@ function Assert-ProductExecutionChecks([string]$Number, [string]$Text, [string]$
             }
         }
 
-        $classificationPattern = '(?m)^\*\*Material classifications:\*\*\s*.*\b(DECIDED_AND_IMPLEMENTED|DECIDED_NOT_YET_IMPLEMENTED|EXPLICITLY_DEFERRED|GENUINELY_OPEN|CONFLICT_OR_REGRESSION)\b.*$'
+        $classificationPattern = '(?m)^\*\*Material classifications:\*\*[ \t]*[^\r\n]*\b(DECIDED_AND_IMPLEMENTED|DECIDED_NOT_YET_IMPLEMENTED|EXPLICITLY_DEFERRED|GENUINELY_OPEN|CONFLICT_OR_REGRESSION)\b[^\r\n]*$'
         if ($Text -notmatch $classificationPattern) {
             throw "SLICE-$Number cannot start: $FileName must name at least one accepted reconciliation classification after '**Material classifications:**'."
         }
