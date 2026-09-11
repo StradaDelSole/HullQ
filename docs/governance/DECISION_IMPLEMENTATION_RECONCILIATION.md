@@ -119,13 +119,28 @@ and a section exactly titled:
 ## Decision / implementation reconciliation
 ```
 
-That section MUST identify, at minimum:
+That section MUST contain all of these machine-checkable, non-empty evidence lines:
 
-- the relevant accepted decisions/records checked;
-- the relevant existing production code/tests/migrations checked;
-- which behavior is already implemented and therefore not being re-decided;
-- which exact gap remains for the proposed slice;
-- whether any accepted-but-unimplemented obligation was found and, if so, where it is owned.
+```text
+**Accepted records checked:** <specific accepted records>
+**Production implementation checked:** <specific code/tests/migrations, or a precise reason none can exist>
+**Already implemented / not re-decided:** <specific behavior>
+**Exact remaining gap:** <single bounded gap owned by this slice>
+**Accepted-but-unimplemented obligations:** <specific owner/deferral, or NONE>
+**Material classifications:** <one or more governance classification tokens>
+```
+
+`Material classifications` MUST use one or more of the exact tokens:
+
+```text
+DECIDED_AND_IMPLEMENTED
+DECIDED_NOT_YET_IMPLEMENTED
+EXPLICITLY_DEFERRED
+GENUINELY_OPEN
+CONFLICT_OR_REGRESSION
+```
+
+The evidence lines are deliberately concise and machine-visible; the surrounding section may add detail where needed. `START_SLICE` and repository validation check their presence and non-empty values. Independent readiness review remains responsible for verifying that the cited records/code actually support the claims; a syntactically complete but false reconciliation is still a review defect.
 
 A slice cannot become `READY` merely because its proposed capability sounds useful. It must demonstrate that it is not duplicating or reopening accepted/implemented work.
 
@@ -137,7 +152,8 @@ Independent readiness review MUST reject a slice if:
 - already-existing production capability is being proposed as new work;
 - an existing accepted semantic is being re-opened without a valid reason;
 - an accepted implementation obligation is known to be missing but is neither owned nor explicitly deferred;
-- the reconciliation claims `PASS` without checking the relevant implementation surface.
+- the reconciliation claims `PASS` without checking the relevant implementation surface;
+- any required reconciliation evidence line is vague, empty or unsupported by the cited repository state.
 
 Implementation review MUST also treat regression from an accepted decision as a defect even when the new code is internally consistent.
 
