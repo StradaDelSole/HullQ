@@ -83,7 +83,9 @@ def test_parse_draft_max_decimal_rejects_broader_spellings(raw: str) -> None:
         ("0.100", "0.1"),
     ],
 )
-def test_canonical_draft_max_str_matches_accepted_examples(raw: str, expected_canonical: str) -> None:
+def test_canonical_draft_max_str_matches_accepted_examples(
+    raw: str, expected_canonical: str
+) -> None:
     value = parse_draft_max_decimal(raw)
     assert canonical_draft_max_str(value) == expected_canonical
 

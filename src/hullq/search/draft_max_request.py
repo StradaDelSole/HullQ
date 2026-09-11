@@ -65,7 +65,9 @@ def canonical_draft_max_str(value: Decimal) -> str:
     ``1.600 -> 1.6``, ``01.60 -> 1.6``, ``10.0 -> 10``, ``10.000 -> 10``.
     """
     if not isinstance(value, Decimal) or not value.is_finite() or value <= 0:
-        raise ValueError(f"canonical_draft_max_str requires a positive finite Decimal; got {value!r}")
+        raise ValueError(
+            f"canonical_draft_max_str requires a positive finite Decimal; got {value!r}"
+        )
 
     _sign, digits_tuple, exponent = value.as_tuple()
     if not isinstance(exponent, int):

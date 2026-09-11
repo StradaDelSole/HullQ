@@ -86,11 +86,15 @@ def test_variant_override_explicit_null_clears_to_missing() -> None:
     design = _design(
         "BD-4",
         baseline_draft_max_m=1.85,
-        named_variants=[{"id": "operator-adjustable", "overrides": {"dimensions": {"draft_max_m": None}}}],
+        named_variants=[
+            {"id": "operator-adjustable", "overrides": {"dimensions": {"draft_max_m": None}}}
+        ],
     )
     config_set = build_boat_design_draft_configuration_set(design)
     variant_config = next(
-        c for c in config_set.configurations if c.identity.configuration_id == "BD-4::operator-adjustable"
+        c
+        for c in config_set.configurations
+        if c.identity.configuration_id == "BD-4::operator-adjustable"
     )
     qualified = variant_config.projection.get_numeric(DRAFT_MAX_PROJECTION_FIELD)
     assert qualified.qualification is ValueQualification.MISSING

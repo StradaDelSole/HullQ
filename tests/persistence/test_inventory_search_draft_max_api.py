@@ -310,9 +310,7 @@ def seeded(api_conn: Any) -> dict[str, Any]:
         _SHALLOW_COMPATIBLE_DESIGN,
         "BM-0051-SHALLOW",
         baseline_draft_max_m=1.85,
-        named_variants=[
-            {"id": "shallow-keel", "overrides": {"dimensions": {"draft_max_m": 1.30}}}
-        ],
+        named_variants=[{"id": "shallow-keel", "overrides": {"dimensions": {"draft_max_m": 1.30}}}],
     )
     _insert_boat_design(
         conn, _TOO_DEEP_DESIGN, "BM-0051-DEEP", baseline_draft_max_m=2.10, named_variants=[]
@@ -518,9 +516,7 @@ def test_evaluate_draft_max_requirement_full_funnel(api_conn: Any, seeded: dict[
 def test_exact_decimal_boundary_no_float_drift(api_conn: Any) -> None:
     """A draft value that would misround under naive binary-float comparison
     must still resolve exactly (slice item B)."""
-    _insert_boat_design(
-        api_conn, "BD-0051-EXACT", "BM-0051-EXACT", baseline_draft_max_m=1.6
-    )
+    _insert_boat_design(api_conn, "BD-0051-EXACT", "BM-0051-EXACT", baseline_draft_max_m=1.6)
     listing = _make_active_listing(
         api_conn,
         listing_id="NL-0051-EXACT",
@@ -558,7 +554,9 @@ def test_base_state_returns_200_with_no_active_requirement(
     assert response.headers.get("x-robots-tag") == "noindex"
 
 
-def test_canonical_result_returns_confirmed_match(client: TestClient, seeded: dict[str, Any]) -> None:
+def test_canonical_result_returns_confirmed_match(
+    client: TestClient, seeded: dict[str, Any]
+) -> None:
     response = client.get("/api/search/en?draft_max=1.6")
     assert response.status_code == 200
     body = response.json()
@@ -576,9 +574,7 @@ def test_noncanonical_value_redirects_308(client: TestClient) -> None:
 
 
 def test_equal_duplicates_redirect_308(client: TestClient) -> None:
-    response = client.get(
-        "/api/search/de?draft_max=1.6&draft_max=1.60", follow_redirects=False
-    )
+    response = client.get("/api/search/de?draft_max=1.6&draft_max=1.60", follow_redirects=False)
     assert response.status_code == 308
     assert response.headers["location"] == "/de/search?draft_max=1.6"
 

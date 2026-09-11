@@ -49,9 +49,7 @@ def test_empty_draft_max_value_is_invalid() -> None:
 
 
 def test_conflicting_duplicate_values_are_invalid() -> None:
-    outcome = evaluate_search_request(
-        None, locale="de", query_params={"draft_max": ["1.6", "1.7"]}
-    )
+    outcome = evaluate_search_request(None, locale="de", query_params={"draft_max": ["1.6", "1.7"]})
     assert outcome.kind is SearchOutcomeKind.INVALID
 
 

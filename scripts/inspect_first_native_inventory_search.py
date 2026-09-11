@@ -152,7 +152,7 @@ def _wait_for_http(url: str, *, timeout_seconds: float = 15.0) -> bool:
             return True
         except urllib.error.HTTPError:
             return True
-        except (urllib.error.URLError, ConnectionError, TimeoutError, OSError):
+        except urllib.error.URLError, ConnectionError, TimeoutError, OSError:
             time.sleep(0.2)
     return False
 
@@ -343,7 +343,9 @@ def main() -> int:
                 physical_boat_id="PB-0051-E2E-MATCH",
                 market_episode_id="ME-0051-E2E-MATCH",
                 boat_design_ref=shallow_ref,
-                draft=DraftClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("1.40")),
+                draft=DraftClaim(
+                    assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("1.40")
+                ),
             )
             _make_listing(
                 conn,
@@ -359,7 +361,9 @@ def main() -> int:
                 physical_boat_id="PB-0051-E2E-DEEP",
                 market_episode_id="ME-0051-E2E-DEEP",
                 boat_design_ref=deep_ref,
-                draft=DraftClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("1.00")),
+                draft=DraftClaim(
+                    assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("1.00")
+                ),
             )
             _make_listing(
                 conn,
@@ -367,7 +371,9 @@ def main() -> int:
                 physical_boat_id="PB-0051-E2E-NOIDENTITY",
                 market_episode_id="ME-0051-E2E-NOIDENTITY",
                 boat_design_ref=None,
-                draft=DraftClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("1.00")),
+                draft=DraftClaim(
+                    assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("1.00")
+                ),
             )
             _make_listing(
                 conn,
@@ -375,7 +381,9 @@ def main() -> int:
                 physical_boat_id="PB-0051-E2E-DRAFTLISTING",
                 market_episode_id="ME-0051-E2E-DRAFTLISTING",
                 boat_design_ref=shallow_ref,
-                draft=DraftClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("1.00")),
+                draft=DraftClaim(
+                    assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("1.00")
+                ),
                 publish=False,
             )
             print(
@@ -450,7 +458,9 @@ def main() -> int:
             and "NL-0051-E2E-MATCH" not in base_text
         )
         ok &= step4_ok
-        print(f"4. base /en/search: 200, noindex, no result evaluation -> {'OK' if step4_ok else 'FAIL'}")
+        print(
+            f"4. base /en/search: 200, noindex, no result evaluation -> {'OK' if step4_ok else 'FAIL'}"
+        )
 
         # 5. Non-canonical numeral redirects 308 to the exact canonical URL.
         # urllib follows redirects by default, so a manual opener is required
@@ -482,7 +492,9 @@ def main() -> int:
         invalid_status, _, invalid_body = _http_get(f"{web_base}/en/search?draft_max=1e0")
         step6_ok = invalid_status == 400 and "NL-0051-E2E-MATCH" not in invalid_body.decode("utf-8")
         ok &= step6_ok
-        print(f"6. /en/search?draft_max=1e0 -> 400, no evaluation -> {'OK' if step6_ok else 'FAIL'}")
+        print(
+            f"6. /en/search?draft_max=1e0 -> 400, no evaluation -> {'OK' if step6_ok else 'FAIL'}"
+        )
 
         # 7. Unsupported locale -> 404.
         unsupported_status, _, _ = _http_get(f"{web_base}/it/search?draft_max=1.6")

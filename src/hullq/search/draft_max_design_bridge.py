@@ -64,7 +64,9 @@ def _qualify_draft_max(raw_value: Any) -> QualifiedNumericValue:
     return QualifiedNumericValue(value=float(raw_value), qualification=ValueQualification.CONFIRMED)
 
 
-def build_boat_design_draft_configuration_set(boat_design: Mapping[str, Any]) -> DesignConfigurationSet:
+def build_boat_design_draft_configuration_set(
+    boat_design: Mapping[str, Any],
+) -> DesignConfigurationSet:
     """Build a `DesignConfigurationSet` projecting only `draft_max_m` for *boat_design*.
 
     *boat_design* is the BOAT_DESIGN_SCHEMA-shaped dict returned by
