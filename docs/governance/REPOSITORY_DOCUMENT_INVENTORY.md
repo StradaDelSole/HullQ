@@ -41,6 +41,7 @@ External source documents do not need to be copied into the repo when redistribu
 
 ### Governance / traceability — PRESENT
 - `docs/governance/DOCUMENT_AUTHORITY.md`
+- `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md` — mandatory pre-decision repository/code reconciliation, immediate owner-decision capture, no-silent-reopening and decision-to-code ownership rule added 2026-09-11.
 - `docs/governance/OPEN_QUESTIONS.md`
 - `docs/governance/OPEN_QUESTION_PROCESS.md`
 - `docs/governance/TRACEABILITY.md`
