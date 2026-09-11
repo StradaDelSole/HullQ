@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-11  
 **Latest owner-accepted / DONE slice:** SLICE-0050  
-**Current queue:** SLICE-0051 — first production buyer-facing technical Requirements → ACTIVE Native Inventory Search vertical over exactly `draft_max`; readiness contract is `READY` for independent exact-head review.  
+**Current queue:** SLICE-0051 — first production buyer-facing technical Requirements → ACTIVE Native Inventory Search vertical over exactly `draft_max`; readiness contract is `READY`, implementation has not started.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs/ADRs remain authoritative where they apply.
@@ -277,7 +277,7 @@ Broader future OQ-018 work such as deliberately indexable SEO landing-page taxon
 
 Readiness contract: `docs/slices/SLICE-0051-first-requirements-native-inventory-search.md`.
 
-Do not run `START_SLICE.bat` until this readiness exact HEAD has passed independent review and required remote gates and the readiness PR is merged to `main`.
+Execution may begin only through `START_SLICE.bat` after this readiness contract has passed exact-head review/gates and is merged to `main`; no manual initial implementation prompt or manually created implementation worktree is authorized.
 
 ## Marketplace fact semantics already frozen
 
