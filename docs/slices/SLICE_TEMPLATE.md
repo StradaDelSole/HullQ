@@ -33,16 +33,18 @@ A required `FAIL` on any of these checks blocks readiness. Genuine prerequisite/
 
 ## Decision / implementation reconciliation
 
-Required for SLICE-0051 and later. Replace every placeholder below with concrete repository-backed evidence before setting the slice to `READY`.
+Required for SLICE-0051 and later. Fill every evidence line with concrete repository-backed content before setting the slice to `READY`; `TODO`, `TBD`, `PLACEHOLDER` and angle-bracket placeholder text are not evidence.
 
-**Accepted records checked:** <specific accepted records>  
-**Production implementation checked:** <specific code/tests/migrations, or a precise reason none can exist>  
-**Already implemented / not re-decided:** <specific behavior>  
-**Exact remaining gap:** <single bounded gap owned by this slice>  
-**Accepted-but-unimplemented obligations:** <specific owner/deferral, or NONE>  
-**Material classifications:** <one or more of DECIDED_AND_IMPLEMENTED | DECIDED_NOT_YET_IMPLEMENTED | EXPLICITLY_DEFERRED | GENUINELY_OPEN | CONFLICT_OR_REGRESSION>
+**Accepted records checked:**  
+**Production implementation checked:**  
+**Already implemented / not re-decided:**  
+**Exact remaining gap:**  
+**Accepted-but-unimplemented obligations:**  
+**Material classifications:**  
 
-The six evidence lines are machine-checked for presence and non-empty values by `START_SLICE` and repository validation. Independent readiness review must still verify that the cited records and implementation actually support the classifications.
+`Accepted-but-unimplemented obligations` may be `NONE` only when the reconciliation found none. `Material classifications` must use one or more of: `DECIDED_AND_IMPLEMENTED`, `DECIDED_NOT_YET_IMPLEMENTED`, `EXPLICITLY_DEFERRED`, `GENUINELY_OPEN`, `CONFLICT_OR_REGRESSION`.
+
+The six evidence lines are machine-checked for presence, non-empty/non-placeholder values and accepted classification tokens by `START_SLICE` and repository validation. Independent readiness review must still verify that the cited records and implementation actually support the classifications.
 
 Classify material points using the governance states in `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md` rather than turning remembered/implemented behavior back into an open question.
 
