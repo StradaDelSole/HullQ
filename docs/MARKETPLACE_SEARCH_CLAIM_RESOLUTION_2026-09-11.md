@@ -75,7 +75,75 @@ BoatDesign baseline wins
 unverified means automatically unusable
 ```
 
-The exact evidence-set/resolution mechanism required by a production native-inventory search capability must be defined in that bounded slice without weakening this decision.
+## Accepted bounded evidence-set rule — Option B
+
+For native-inventory technical evaluation of a concrete NativeListing, the accepted bounded mechanism is:
+
+```text
+publishing Organization's current claim
+→ candidate listing/PhysicalBoat value
+
+all relevant current admissible observations
+for the same field on the same PhysicalBoat
+→ contradiction guard
+```
+
+The publishing Organization's current non-superseded claim is the candidate value attributable to that listing. It is never silently replaced by another Organization's claim.
+
+Search resolution then checks relevant current admissible observations for that same field on the same durable `PhysicalBoatId`:
+
+```text
+publisher claim = admissible concrete value
++ no contradictory current admissible observation
+→ may be RESOLVED for this listing evaluation context
+→ provenance remains the publishing Organization
+→ verification remains unchanged / unverified unless separately established
+```
+
+```text
+publisher claim = admissible concrete value
++ contradictory current admissible observation for same PhysicalBoat/field
+→ CONFLICT
+→ hard Required criterion cannot be satisfied
+→ listing must not appear as CONFIRMED_MATCH on that criterion
+```
+
+Semantically equivalent corroborating current observations do not create a conflict. An omitted/UNKNOWN observation does not defeat a concrete publisher value or manufacture a conflicting value; it remains absence of corroboration, not a contradictory assertion.
+
+Hard boundaries:
+
+- the conflict guard MUST use the same durable `PhysicalBoatId`; fuzzy cross-listing identity inference is not authorized here;
+- another Organization's observation can block a confirmed hard-search match through `CONFLICT`, but it does not overwrite the publishing Organization's displayed claim;
+- no source winner, majority vote, recency winner, broker-priority winner or hidden confidence score is introduced;
+- this is a bounded listing-evaluation conflict guard, **not** a global canonical PhysicalBoat fact resolver;
+- historical superseded revisions from the same authority are audit history, not current contradictory observations;
+- BoatDesign/configuration truth still cannot backfill missing or unresolved PhysicalBoat truth.
+
+This accepted rule is `DECIDED_NOT_YET_IMPLEMENTED` in the generalized production native-inventory search path. Its implementation must remain bounded to the selected search capability rather than expanding into a generic cross-source resolver.
+
+## Product-success and customer-experience priority
+
+For SLICE-0051 selection/readiness and subsequent native-marketplace execution, the Project Owner has reaffirmed that **buyer friendliness, broker friendliness, competitive advantage, commercial success and exceptional implementation quality are first-order product constraints, not polish to add later**.
+
+This preserves the existing `docs/PRODUCT_UX_PRINCIPLES.md` direction of reference-grade truth with consumer-grade clarity and adds an explicit execution-priority rule:
+
+```text
+truth-safe
++ materially easier for serious buyers
++ materially easier for professional brokers
++ meaningfully differentiated from generic boat marketplaces
++ visible/actionable product value
++ exceptional implementation quality
+→ preferred execution path
+```
+
+For buyers, native Search should reduce work and uncertainty: explain why an offer qualifies, distinguish confirmed truth from missing/conflicting evidence, and make the next useful action obvious without requiring database expertise.
+
+For brokers, HullQ should minimize unnecessary data-entry/reconciliation friction, preserve attribution and correction rights, never silently overwrite their claims, and make missing/conflicting information understandable and remediable rather than punitive or opaque.
+
+For prioritization, commodity marketplace parity work MUST NOT outrank a bounded capability that materially strengthens HullQ's accepted technical-search/concrete-boat-truth advantage unless that parity work is a demonstrated prerequisite for the buyer/broker loop.
+
+Success-oriented slices should prefer an inspectable user-facing outcome and evidence that the capability advances the primary buyer/broker loop rather than merely adding infrastructure. Quality does not permit weakening truth semantics: customer friendliness must be achieved through clearer interaction and better data handling, not by converting UNKNOWN/CONFLICT into convenient matches.
 
 ## Design truth remains separate
 
@@ -129,7 +197,7 @@ Relevant production implementation checked:
   - authorized same-Organization correction/supersession semantics;
   - stale predecessor/conflict handling and transaction-owned atomic writes;
   - typed current/revision/history readback without BoatDesign fallback.
-- `alembic/versions/9c2e6b4a1d80_physical_boat_claim_facts.py`
+- `almbic/versions/9c2e6b4a1d80_physical_boat_claim_facts.py`
   - durable revision/head schema and same-boat/same-Organization integrity constraints.
 - `tests/unit/test_physical_boat_claims_domain_unit.py`
   - typed assertion-kind/value, omission-vs-UNKNOWN and Decimal/categorical guards.
@@ -142,7 +210,7 @@ This behavior is not open for re-decision.
 
 ### DECIDED_NOT_YET_IMPLEMENTED
 
-The generalized **production native-inventory search/qualification path** that consumes accepted PhysicalBoat marketplace claims and applies the Option-C resolution-vs-verification rule is not yet implemented as a production capability.
+The generalized **production native-inventory search/qualification path** that consumes accepted PhysicalBoat marketplace claims and applies the Option-C resolution-vs-verification rule plus the Option-B same-PhysicalBoat conflict guard is not yet implemented as a production capability.
 
 That is an implementation gap, not an open semantic question.
 
@@ -173,4 +241,4 @@ This decision must be read together with:
 
 ## Controlling one-sentence rule
 
-> **A sufficiently admissible and resolved broker-declared PhysicalBoat claim may satisfy a hard native-inventory technical search criterion without becoming an independently verified HullQ fact; provenance and verification remain visible/separate, while UNKNOWN, UNRESOLVED or CONFLICT cannot satisfy Required and BoatDesign truth never fills missing concrete-yacht truth.**
+> **A sufficiently admissible current broker-declared PhysicalBoat claim may resolve and satisfy a hard native-inventory technical search criterion for its listing when the same-PhysicalBoat current-observation conflict guard finds no contradictory admissible value; provenance and verification remain separate, contradictory observations produce CONFLICT, UNKNOWN/UNRESOLVED/CONFLICT cannot satisfy Required, and BoatDesign truth never fills missing concrete-yacht truth.**
