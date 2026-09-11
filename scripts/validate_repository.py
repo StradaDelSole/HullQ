@@ -20,7 +20,9 @@ _SLICE_STATUS_RE = re.compile(r"(?m)^\*\*Status:\*\*\s*([A-Z_]+)\s*$")
 _HANDOFF_STATUS_RE = re.compile(
     r"(?m)^\*\*Status set by this handoff:\*\*\s*`(REVIEW|BLOCKED)`(?:\s|$)"
 )
-_RECONCILIATION_SECTION_RE = re.compile(r"(?m)^## Decision / implementation reconciliation\s*$")
+_RECONCILIATION_SECTION_RE = re.compile(
+    r"(?ms)^## Decision / implementation reconciliation[ \t]*\n(.*?)(?=^##[ \t]|\Z)"
+)
 _ALLOWED_SLICE_TYPES = frozenset({"BOOTSTRAP", "DESIGN_RESEARCH", "IMPLEMENTATION", "VALIDATION"})
 _POST_0038_PRODUCT_CHECKS = (
     "ONE-CAPABILITY CHECK",
@@ -130,10 +132,20 @@ def _is_reconciliation_placeholder(value: str) -> bool:
     )
 
 
-def _validate_reconciliation_evidence(*, queue: int, path: Path, text: str) -> None:
+def _reconciliation_section(*, queue: int, path: Path, text: str) -> str:
+    match = _RECONCILIATION_SECTION_RE.search(text)
+    if match is None:
+        raise ValueError(
+            f"SLICE-{queue:04d} queue document {path.name} must contain "
+            "'## Decision / implementation reconciliation'"
+        )
+    return match.group(1)
+
+
+def _validate_reconciliation_evidence(*, queue: int, path: Path, section: str) -> None:
     for label in _RECONCILIATION_EVIDENCE_LABELS:
         pattern = re.compile(rf"(?m)^\*\*{re.escape(label)}:\*\*[ \t]*(\S[^\r\n]*)[ \t]*$")
-        match = pattern.search(text)
+        match = pattern.search(section)
         if match is None:
             raise ValueError(
                 f"SLICE-{queue:04d} queue document {path.name} must contain a non-empty "
@@ -150,7 +162,7 @@ def _validate_reconciliation_evidence(*, queue: int, path: Path, text: str) -> N
         + "|".join(re.escape(value) for value in _RECONCILIATION_CLASSIFICATIONS)
         + r")\b[^\r\n]*$"
     )
-    if classifications_pattern.search(text) is None:
+    if classifications_pattern.search(section) is None:
         allowed = ", ".join(_RECONCILIATION_CLASSIFICATIONS)
         raise ValueError(
             f"SLICE-{queue:04d} queue document {path.name} must name at least one accepted "
@@ -232,7 +244,7 @@ def queue_slice_startability_check(
 
     if queue >= 39:
         for check in _POST_0038_PRODUCT_CHECKS:
-            pattern = re.compile(rf"(?m)^\*\*{re.escape(check)}:\*\*\s*PASS\s*$")
+            pattern = re.compile(rf"(?m)^\*\*{re.escape(check)}:\*\*[ \t]*PASS[ \t]*$")
             if pattern.search(text) is None:
                 raise ValueError(
                     f"SLICE-{queue:04d} queue document {path.name} must contain '**{check}:** PASS'"
@@ -240,19 +252,15 @@ def queue_slice_startability_check(
 
     if queue >= 51:
         reconciliation_pattern = re.compile(
-            rf"(?m)^\*\*{re.escape(_POST_0050_RECONCILIATION_CHECK)}:\*\*\s*PASS\s*$"
+            rf"(?m)^\*\*{re.escape(_POST_0050_RECONCILIATION_CHECK)}:\*\*[ \t]*PASS[ \t]*$"
         )
         if reconciliation_pattern.search(text) is None:
             raise ValueError(
                 f"SLICE-{queue:04d} queue document {path.name} must contain "
                 f"'**{_POST_0050_RECONCILIATION_CHECK}:** PASS'"
             )
-        if _RECONCILIATION_SECTION_RE.search(text) is None:
-            raise ValueError(
-                f"SLICE-{queue:04d} queue document {path.name} must contain "
-                "'## Decision / implementation reconciliation'"
-            )
-        _validate_reconciliation_evidence(queue=queue, path=path, text=text)
+        section = _reconciliation_section(queue=queue, path=path, text=text)
+        _validate_reconciliation_evidence(queue=queue, path=path, section=section)
 
     return queue, path.name
 
