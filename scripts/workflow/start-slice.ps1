@@ -40,10 +40,21 @@ function Assert-ProductExecutionChecks([string]$Number, [string]$Text, [string]$
         'PRODUCT EXECUTION PLAN ALIGNMENT'
     )
 
+    if ([int]$Number -ge 51) {
+        $requiredChecks += 'REPOSITORY RECONCILIATION CHECK'
+    }
+
     foreach ($check in $requiredChecks) {
         $pattern = "(?m)^\*\*$([regex]::Escape($check)):\*\*\s*PASS\s*$"
         if ($Text -notmatch $pattern) {
-            throw "SLICE-$Number cannot start: $FileName must contain '**${check}:** PASS' for post-0038 work. Prepare/review the slice against docs/PRODUCT_EXECUTION_PLAN.md before starting Claude."
+            throw "SLICE-$Number cannot start: $FileName must contain '**${check}:** PASS'. Prepare/review the slice against controlling governance before starting Claude."
+        }
+    }
+
+    if ([int]$Number -ge 51) {
+        $reconciliationHeading = '(?m)^## Decision / implementation reconciliation\s*$'
+        if ($Text -notmatch $reconciliationHeading) {
+            throw "SLICE-$Number cannot start: $FileName must contain the section '## Decision / implementation reconciliation' required by docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md."
         }
     }
 }
@@ -124,6 +135,7 @@ TOKEN/CONTEXT DISCIPLINE:
 EXECUTION:
 - Follow CLAUDE.md and $relativeSliceFile exactly.
 - For SLICE-0039 and later, comply with docs/PRODUCT_EXECUTION_PLAN.md and preserve the slice's PASS product-execution checks.
+- For SLICE-0051 and later, preserve the accepted decision/implementation reconciliation recorded in the slice; do not re-open behavior that the slice identifies as already decided/implemented.
 - Work only on `$branch`; do not modify main or another branch.
 - Do not broaden scope or start another slice.
 - Push this same branch to GitHub at completion.
