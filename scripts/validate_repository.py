@@ -43,6 +43,7 @@ _RECONCILIATION_CLASSIFICATIONS = (
     "GENUINELY_OPEN",
     "CONFLICT_OR_REGRESSION",
 )
+_RECONCILIATION_PLACEHOLDER_VALUES = frozenset({"TODO", "TBD", "PLACEHOLDER"})
 
 
 def requirements_check() -> tuple[int, int]:
@@ -122,13 +123,27 @@ def project_state_freshness_check(
     return declared, latest
 
 
+def _is_reconciliation_placeholder(value: str) -> bool:
+    normalized = value.strip()
+    return (
+        normalized.upper() in _RECONCILIATION_PLACEHOLDER_VALUES
+        or (normalized.startswith("<") and normalized.endswith(">"))
+    )
+
+
 def _validate_reconciliation_evidence(*, queue: int, path: Path, text: str) -> None:
     for label in _RECONCILIATION_EVIDENCE_LABELS:
-        pattern = re.compile(rf"(?m)^\*\*{re.escape(label)}:\*\*\s*\S.*$")
-        if pattern.search(text) is None:
+        pattern = re.compile(rf"(?m)^\*\*{re.escape(label)}:\*\*\s*(\S.*)$")
+        match = pattern.search(text)
+        if match is None:
             raise ValueError(
                 f"SLICE-{queue:04d} queue document {path.name} must contain a non-empty "
                 f"'**{label}:** <evidence>' reconciliation line"
+            )
+        if _is_reconciliation_placeholder(match.group(1)):
+            raise ValueError(
+                f"SLICE-{queue:04d} queue document {path.name} has placeholder rather than "
+                f"repository-backed evidence after '**{label}:**'"
             )
 
     classifications_pattern = re.compile(
