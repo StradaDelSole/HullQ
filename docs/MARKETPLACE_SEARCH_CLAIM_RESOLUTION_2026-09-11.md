@@ -197,7 +197,7 @@ Relevant production implementation checked:
   - authorized same-Organization correction/supersession semantics;
   - stale predecessor/conflict handling and transaction-owned atomic writes;
   - typed current/revision/history readback without BoatDesign fallback.
-- `almbic/versions/9c2e6b4a1d80_physical_boat_claim_facts.py`
+- `alembic/versions/9c2e6b4a1d80_physical_boat_claim_facts.py`
   - durable revision/head schema and same-boat/same-Organization integrity constraints.
 - `tests/unit/test_physical_boat_claims_domain_unit.py`
   - typed assertion-kind/value, omission-vs-UNKNOWN and Decimal/categorical guards.
