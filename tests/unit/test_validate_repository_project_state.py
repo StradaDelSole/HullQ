@@ -260,6 +260,25 @@ def test_queue_0051_rejects_empty_reconciliation_evidence_value(tmp_path: Path) 
         queue_slice_startability_check(slices_dir=slices, project_state=state)
 
 
+@pytest.mark.parametrize("placeholder", ["TODO", "TBD", "PLACEHOLDER", "<specific records>"])
+def test_queue_0051_rejects_placeholder_reconciliation_evidence(
+    tmp_path: Path, placeholder: str
+) -> None:
+    slices = tmp_path / "slices"
+    slices.mkdir()
+    filename = "SLICE-0051-native-inventory-search.md"
+    text = _reconciled_ready_slice_text().replace(
+        "**Accepted records checked:** docs/accepted.md",
+        f"**Accepted records checked:** {placeholder}",
+    )
+    (slices / filename).write_text(text, encoding="utf-8")
+    state = tmp_path / "PROJECT_STATE.md"
+    _write_state(state, "0050", "0051")
+
+    with pytest.raises(ValueError, match="placeholder rather than repository-backed evidence"):
+        queue_slice_startability_check(slices_dir=slices, project_state=state)
+
+
 def test_queue_0051_rejects_unknown_material_classification(tmp_path: Path) -> None:
     slices = tmp_path / "slices"
     slices.mkdir()
