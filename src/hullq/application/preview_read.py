@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from hullq.domain.market_identity import NativeListingId
+from hullq.domain.market_identity import NativeListingId, PhysicalBoatId
 from hullq.domain.native_listing_offer import (
     BrokerSummaryClaim,
     KnownHistoryNarrativeClaim,
@@ -111,11 +111,19 @@ def _vat_claim_dict(claim: VatTaxStatusClaim | None) -> dict[str, Any] | None:
 
 @dataclass(frozen=True)
 class _ResolvedOffer:
-    """Chain-resolved offer state, before the token's own expiry is known."""
+    """Chain-resolved offer state, before the token's own expiry is known.
+
+    `physical_boat_id` (SLICE-0050) is carried here -- not exposed by either
+    `PreviewReadModel` or `PreviewReadModel.to_public_dict` -- purely so
+    `hullq.application.public_listing_read.get_public_listing_read_model`
+    can resolve the publishing Organization's current PhysicalBoat claim
+    snapshot without re-running this same chain resolution a second time.
+    """
 
     offer: NativeListingOfferSnapshot
     publishing_organization_id: MarketplaceOrganizationId
     offer_recorded_at: datetime
+    physical_boat_id: PhysicalBoatId
 
 
 def resolve_previewable_listing(
@@ -159,6 +167,7 @@ def resolve_previewable_listing(
         offer=offer_record.offer,
         publishing_organization_id=offer_record.publishing_organization_id,
         offer_recorded_at=offer_record.recorded_at,
+        physical_boat_id=physical_boat_record.physical_boat.id,
     )
 
 

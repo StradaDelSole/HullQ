@@ -1,5 +1,8 @@
 ---
 // SLICE-0049: the first production-public NativeListing page class.
+// SLICE-0050 adds the "THIS BOAT" section: the publishing Organization's
+// own bounded seven-field broker-declared PhysicalBoat claim snapshot,
+// visually separate from the design-agnostic offer narrative below it.
 //
 // PUBLIC != INDEXABLE. This page renders whenever FastAPI's public route
 // resolves the exact NativeListingId to lifecycle == ACTIVE with a complete
@@ -11,7 +14,9 @@
 // No PostgreSQL access and no Python domain-rule reimplementation happens
 // here: `fetchPublicListing` is the only way this page learns anything, and
 // it always goes through FastAPI's public route (never the SLICE-0048
-// preview route).
+// preview route). `data.physical_boat_claims` is `null` whenever the
+// publishing Organization has not recorded any SLICE-0050 claim -- never a
+// BoatDesign baseline value standing in for it.
 export const prerender = false;
 
 import { fetchPublicListing } from "../../lib/publicListingApi";
@@ -21,6 +26,7 @@ import {
   knownHistoryText,
   unknownableClaimText,
 } from "../../lib/previewText";
+import { boatClaimText, boatClaimTextOrNotSupplied } from "../../lib/physicalBoatClaimText";
 
 const nativeListingId = Astro.params.native_listing_id;
 // `process.env`, not `import.meta.env`: the latter is statically replaced
@@ -66,27 +72,61 @@ const canonicalUrl = nativeListingId
         </main>
       ) : (
         <main>
-          <h1>{askingPriceText(data)}</h1>
+          {
+            data.physical_boat_claims !== null && (
+              <h1>
+                {data.physical_boat_claims.marketed_brand_claim}{" "}
+                {data.physical_boat_claims.model_designation_claim}
+              </h1>
+            )
+          }
+          {
+            data.physical_boat_claims !== null && (
+              <p>Build year: {boatClaimText(data.physical_boat_claims.build_year)}</p>
+            )
+          }
 
+          <p>{askingPriceText(data)}</p>
           <p>Country: {data.location_country}</p>
           {data.location_region !== null && <p>Region: {unknownableClaimText(data.location_region)}</p>}
 
-          {brokerSummaryText(data.broker_summary) !== null && <p>{brokerSummaryText(data.broker_summary)}</p>}
+          {
+            data.physical_boat_claims !== null && (
+              <section aria-label="This boat">
+                <h2>THIS BOAT &mdash; broker-declared</h2>
+                <p>LOA: {boatClaimTextOrNotSupplied(data.physical_boat_claims.loa_length)}</p>
+                <p>Draft: {boatClaimTextOrNotSupplied(data.physical_boat_claims.draft)}</p>
+                <p>
+                  Keel configuration:{" "}
+                  {boatClaimTextOrNotSupplied(data.physical_boat_claims.keel_configuration)}
+                </p>
+                <p>
+                  Rudder configuration:{" "}
+                  {boatClaimTextOrNotSupplied(data.physical_boat_claims.rudder_configuration)}
+                </p>
+              </section>
+            )
+          }
 
-          <p>{data.broker_description}</p>
+          <section aria-label="Offer">
+            <h2>OFFER</h2>
+            {brokerSummaryText(data.broker_summary) !== null && <p>{brokerSummaryText(data.broker_summary)}</p>}
 
-          {knownHistoryText(data.known_history_narrative) !== null && (
-            <p>{knownHistoryText(data.known_history_narrative)}</p>
-          )}
+            <p>{data.broker_description}</p>
 
-          {data.vat_tax_status_claim !== null && (
-            <section>
-              <p>VAT/tax status: broker-declared {unknownableClaimText(data.vat_tax_status_claim)}</p>
-              <p>Publishing organization: {data.publishing_organization_id}</p>
-              <p>Broker declaration recorded/last confirmed in HullQ: {data.offer_recorded_at}</p>
-              <p>HullQ legal verification: none</p>
-            </section>
-          )}
+            {knownHistoryText(data.known_history_narrative) !== null && (
+              <p>{knownHistoryText(data.known_history_narrative)}</p>
+            )}
+
+            {data.vat_tax_status_claim !== null && (
+              <div>
+                <p>VAT/tax status: broker-declared {unknownableClaimText(data.vat_tax_status_claim)}</p>
+                <p>Publishing organization: {data.publishing_organization_id}</p>
+                <p>Broker declaration recorded/last confirmed in HullQ: {data.offer_recorded_at}</p>
+                <p>HullQ legal verification: none</p>
+              </div>
+            )}
+          </section>
         </main>
       )
     }

@@ -1,7 +1,8 @@
 # SLICE-0050 — First buyer-critical PhysicalBoat truth vertical
 
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
+**Status set by this handoff:** `REVIEW`  
 **Base main:** `42ec5597af5b2570b462019680b2ff220440def1`  
 **Product horizon:** make the first production-public NativeListing materially useful for technical buyer decisions by showing what the publishing broker actually declares about the concrete PhysicalBoat, without yet building native-inventory search, Auth0/broker UI, media or broad fact coverage.
 
