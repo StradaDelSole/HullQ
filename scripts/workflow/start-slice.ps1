@@ -66,9 +66,16 @@ function Assert-ProductExecutionChecks([string]$Number, [string]$Text, [string]$
             'Material classifications'
         )
         foreach ($label in $evidenceLabels) {
-            $evidencePattern = "(?m)^\*\*$([regex]::Escape($label)):\*\*\s*\S.*$"
-            if ($Text -notmatch $evidencePattern) {
+            $evidencePattern = "(?m)^\*\*$([regex]::Escape($label)):\*\*\s*(\S.*)$"
+            $evidenceMatch = [regex]::Match($Text, $evidencePattern)
+            if (-not $evidenceMatch.Success) {
                 throw "SLICE-$Number cannot start: $FileName must contain a non-empty '**${label}:** <evidence>' line in its reconciliation section."
+            }
+            $evidenceValue = $evidenceMatch.Groups[1].Value.Trim()
+            $isNamedPlaceholder = $evidenceValue -match '^(?i:TODO|TBD|PLACEHOLDER)$'
+            $isAnglePlaceholder = $evidenceValue.StartsWith('<') -and $evidenceValue.EndsWith('>')
+            if ($isNamedPlaceholder -or $isAnglePlaceholder) {
+                throw "SLICE-$Number cannot start: $FileName has placeholder rather than repository-backed evidence after '**${label}:**'."
             }
         }
 
