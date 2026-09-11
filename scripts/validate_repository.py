@@ -20,9 +20,7 @@ _SLICE_STATUS_RE = re.compile(r"(?m)^\*\*Status:\*\*\s*([A-Z_]+)\s*$")
 _HANDOFF_STATUS_RE = re.compile(
     r"(?m)^\*\*Status set by this handoff:\*\*\s*`(REVIEW|BLOCKED)`(?:\s|$)"
 )
-_RECONCILIATION_SECTION_RE = re.compile(
-    r"(?m)^## Decision / implementation reconciliation\s*$"
-)
+_RECONCILIATION_SECTION_RE = re.compile(r"(?m)^## Decision / implementation reconciliation\s*$")
 _ALLOWED_SLICE_TYPES = frozenset({"BOOTSTRAP", "DESIGN_RESEARCH", "IMPLEMENTATION", "VALIDATION"})
 _POST_0038_PRODUCT_CHECKS = (
     "ONE-CAPABILITY CHECK",
