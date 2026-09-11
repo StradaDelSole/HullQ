@@ -124,10 +124,19 @@ Relevant production implementation checked:
   - Decimal-based numeric values;
   - typed draft/keel/rudder claims;
   - no BoatDesign knowledge/fallback.
-- accepted SLICE-0050 persistence/public-read implementation and closure
-  - immutable revision/current-head semantics per claiming Organization;
-  - no BoatDesign fallback into PhysicalBoat claims;
-  - broker claim remains a claim, not verified fact.
+- `src/hullq/persistence/physical_boat_claims.py`
+  - immutable revision history plus explicit current head per `(PhysicalBoatId, claiming Organization)`;
+  - authorized same-Organization correction/supersession semantics;
+  - stale predecessor/conflict handling and transaction-owned atomic writes;
+  - typed current/revision/history readback without BoatDesign fallback.
+- `alembic/versions/9c2e6b4a1d80_physical_boat_claim_facts.py`
+  - durable revision/head schema and same-boat/same-Organization integrity constraints.
+- `tests/unit/test_physical_boat_claims_domain_unit.py`
+  - typed assertion-kind/value, omission-vs-UNKNOWN and Decimal/categorical guards.
+- `tests/unit/test_physical_boat_claims_persistence_unit.py`
+  - persistence-path authorization, conflict/idempotency/transaction behavior and typed readback unit coverage.
+- `docs/slices/SLICE-0050-acceptance-closure.md`
+  - records OWNER_ACCEPTED production behavior, including retained history, explicit head, rollback/concurrency proof and the hard no-BoatDesign-fallback boundary.
 
 This behavior is not open for re-decision.
 
