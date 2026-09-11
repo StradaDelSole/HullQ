@@ -19,6 +19,8 @@ test("every supported locale has complete non-empty text", () => {
     assert.ok(t.confirmedHeading.length > 0, `${locale}.confirmedHeading`);
     assert.ok(t.noConfirmedMatches.length > 0, `${locale}.noConfirmedMatches`);
     assert.ok(t.viewListing.length > 0, `${locale}.viewListing`);
+    assert.ok(t.serviceUnavailableTitle.length > 0, `${locale}.serviceUnavailableTitle`);
+    assert.ok(t.serviceUnavailableMessage.length > 0, `${locale}.serviceUnavailableMessage`);
   }
 });
 

@@ -81,9 +81,22 @@ def canonical_draft_max_str(value: Decimal) -> str:
         exponent = 0
 
     frac_len = -exponent
-    split_at = len(digits) - frac_len
-    int_digits = digits[:split_at]
-    frac_digits = digits[split_at:]
+    if frac_len > len(digits):
+        # `Decimal.as_tuple()` strips leading zeros from its coefficient
+        # entirely, including ones that fall *after* the decimal point
+        # (e.g. Decimal("0.01").as_tuple() -> digits=(1,), exponent=-2): the
+        # coefficient alone is shorter than the number of fractional digits
+        # the exponent implies. Left-pad the fractional digits with the
+        # zeros the coefficient dropped so no significant leading fractional
+        # zero is ever lost -- without this, "0.01" would previously
+        # (incorrectly) split as int_digits=[] -> "0", frac_digits=[1],
+        # silently changing 0.01 into 0.1.
+        int_digits: list[int] = [0]
+        frac_digits = [0] * (frac_len - len(digits)) + digits
+    else:
+        split_at = len(digits) - frac_len
+        int_digits = digits[:split_at]
+        frac_digits = digits[split_at:]
 
     while frac_digits and frac_digits[-1] == 0:
         frac_digits.pop()

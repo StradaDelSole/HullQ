@@ -81,6 +81,18 @@ def test_parse_draft_max_decimal_rejects_broader_spellings(raw: str) -> None:
         ("100", "100"),
         ("00100", "100"),
         ("0.100", "0.1"),
+        # Amendment review Finding 1: significant leading fractional zeros
+        # must survive canonicalization losslessly -- `Decimal.as_tuple()`
+        # strips them from its own coefficient, so the serializer must
+        # reintroduce them rather than silently changing the value's
+        # magnitude (e.g. "0.01" must never canonicalize to "0.1").
+        ("0.01", "0.01"),
+        ("0.001", "0.001"),
+        ("0.0100", "0.01"),
+        ("0.0010", "0.001"),
+        ("0.00010", "0.0001"),
+        ("0.0001234", "0.0001234"),
+        ("00.01", "0.01"),
     ],
 )
 def test_canonical_draft_max_str_matches_accepted_examples(
@@ -88,6 +100,37 @@ def test_canonical_draft_max_str_matches_accepted_examples(
 ) -> None:
     value = parse_draft_max_decimal(raw)
     assert canonical_draft_max_str(value) == expected_canonical
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "0.01",
+        "0.001",
+        "0.0001",
+        "0.00001234567890123456789",
+        "0.0100",
+        "0.0010000",
+        "1.10000000000000000000001",
+        "99999999999999999999999999999999.6",
+        "0.0000000000000000000000000000001",
+        "1",
+        "0.5",
+    ],
+)
+def test_canonicalization_preserves_exact_value_on_round_trip(raw: str) -> None:
+    """Adversarial round trip: parse -> canonicalize -> parse must never
+    change the represented numeric value, for values spanning many
+    magnitudes of leading/trailing fractional zeros."""
+    original = parse_draft_max_decimal(raw)
+    canonical = canonical_draft_max_str(original)
+    reparsed = parse_draft_max_decimal(canonical)
+    assert reparsed == original, (
+        f"canonicalizing {raw!r} -> {canonical!r} changed the represented value: "
+        f"{original!r} != {reparsed!r}"
+    )
+    # Canonicalizing the canonical form again must be a no-op (idempotence).
+    assert canonical_draft_max_str(reparsed) == canonical
 
 
 def test_canonicalization_introduces_no_binary_float_conversion() -> None:

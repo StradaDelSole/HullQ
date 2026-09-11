@@ -18,12 +18,19 @@ servers (FastAPI + built Astro/Node SSR):
        `/de/search?draft_max=1.6`.
     6. `/en/search?draft_max=1e0` -> 400, localized recovery, no evaluation.
     7. `/it/search?draft_max=1.6` -> 404 (unsupported locale).
-    8. `/en/search?draft_max=1.6` -> 200 with exactly one confirmed match
-       linking to its existing public `/listings/{id}` page, an
-       insufficient-data explanation, and no leakage of the too-deep-design
-       or no-identity listings as matches.
-    9. Following the confirmed match's link renders the existing SLICE-0049/
-       0050 public listing page.
+    8. `/en/search?draft_max=1.6` -> 200, zero confirmed matches. Amendment
+       review Finding 3 established that no accepted production per-field
+       qualification/resolution source exists for `canonical_boat_designs`
+       (see `hullq.search.draft_max_design_bridge`'s module docstring), so
+       `compatible_boat_design_ids` always returns an empty set against real
+       persisted BoatDesign data: even NL-0051-E2E-MATCH, whose own
+       broker-declared concrete draft (1.40 m) would otherwise satisfy this
+       requirement, must NOT appear as a confirmed match. This step proves
+       the fail-closed guarantee holds -- no false positive is ever produced
+       -- pending that missing production prerequisite.
+    9. The pre-existing SLICE-0049/0050 public `/listings/{id}` page for
+       NL-0051-E2E-MATCH still renders correctly when visited directly,
+       unaffected by this slice.
 
 Requires ``HULLQ_TEST_DATABASE_URL`` (a local PostgreSQL 18 instance) and a
 pre-built Astro web package (``uv run`` this only after
@@ -502,8 +509,11 @@ def main() -> int:
         ok &= step7_ok
         print(f"7. /it/search -> 404 -> {'OK' if step7_ok else 'FAIL'}")
 
-        # 8. Canonical result: exactly one confirmed match, insufficient-data
-        # explanation present, too-deep/no-identity/DRAFT listings never leak.
+        # 8. Amendment review Finding 3: zero confirmed matches, even though
+        # NL-0051-E2E-MATCH's own concrete claim (1.40 m) would otherwise
+        # satisfy this requirement -- proving the fail-closed gate holds
+        # (no accepted production BoatDesign qualification source exists
+        # yet) rather than producing a false-positive confirmed match.
         result_status, result_headers, result_body = _http_get(
             f"{web_base}/en/search?draft_max=1.6"
         )
@@ -512,25 +522,25 @@ def main() -> int:
         step8_ok = (
             result_status == 200
             and result_headers_lower.get("x-robots-tag") == "noindex"
-            and "/listings/NL-0051-E2E-MATCH" in result_text
-            and "1.40" in result_text
+            and "/listings/NL-0051-E2E-MATCH" not in result_text
             and "NL-0051-E2E-DEEP" not in result_text
             and "NL-0051-E2E-NOIDENTITY" not in result_text
             and "NL-0051-E2E-DRAFTLISTING" not in result_text
         )
         ok &= step8_ok
         print(
-            f"8. /en/search?draft_max=1.6 -> confirmed match NL-0051-E2E-MATCH, "
-            f"deep/no-identity/DRAFT listings never leak -> {'OK' if step8_ok else 'FAIL'}"
+            f"8. /en/search?draft_max=1.6 -> zero confirmed matches (Finding 3 fail-closed "
+            f"gate holds; no listing ever leaks as a false-positive match) -> "
+            f"{'OK' if step8_ok else 'FAIL'}"
         )
 
-        # 9. Following the confirmed match's link renders the existing public listing page.
+        # 9. The pre-existing public listing page still works directly, unaffected by this slice.
         listing_status, _, listing_body = _http_get(f"{web_base}/listings/NL-0051-E2E-MATCH")
         step9_ok = listing_status == 200 and b"Beneteau" in listing_body
         ok &= step9_ok
         print(
-            f"9. confirmed match links to the existing public listing page -> "
-            f"{'OK' if step9_ok else 'FAIL'}\n"
+            f"9. pre-existing public listing page for NL-0051-E2E-MATCH still renders "
+            f"directly -> {'OK' if step9_ok else 'FAIL'}\n"
         )
 
         print(f"FIRST REQUIREMENTS -> NATIVE INVENTORY SEARCH RESULT -> {'PASS' if ok else 'FAIL'}")

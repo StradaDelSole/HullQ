@@ -494,49 +494,22 @@ def seeded(api_conn: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def test_evaluate_draft_max_requirement_full_funnel(api_conn: Any, seeded: dict[str, Any]) -> None:
+def test_evaluate_draft_max_requirement_is_always_empty_against_real_persisted_data(
+    api_conn: Any, seeded: dict[str, Any]
+) -> None:
+    """Amendment review Finding 3: no accepted production per-field
+    qualification/resolution source exists for `canonical_boat_designs`, so
+    `compatible_boat_design_ids` always returns an empty set against real
+    persisted BoatDesign data (see `hullq.search.draft_max_design_bridge`'s
+    module docstring). This is proven here even though listing A's own
+    concrete claim (1.40 m) would otherwise satisfy `draft_max=1.6` --
+    design-level eligibility never opens the gate for it, so it is excluded
+    like every other seeded listing, never landing in any surface."""
     outcome = evaluate_draft_max_requirement(api_conn, Decimal("1.6"))
-
-    confirmed_ids = {m.native_listing_id.value for m in outcome.confirmed_matches}
-    assert confirmed_ids == {"NL-0051-A"}
-    assert outcome.confirmed_match_count == 1
-
-    match = outcome.confirmed_matches[0]
-    assert match.resolved_draft_m == Decimal("1.40")
-    assert isinstance(match.resolved_draft_m, Decimal)
-
-    # B (non-match) + F (design not compatible) + G (no design identity) +
-    # H (DRAFT, unpublished) must never be counted anywhere.
-    assert outcome.confirmed_non_match_count == 1  # B only
-
-    # C (omitted) + D (UNKNOWN) + E (conflict) -> insufficient data.
-    assert outcome.insufficient_data_count == 3
-
-
-def test_exact_decimal_boundary_no_float_drift(api_conn: Any) -> None:
-    """A draft value that would misround under naive binary-float comparison
-    must still resolve exactly (slice item B)."""
-    _insert_boat_design(api_conn, "BD-0051-EXACT", "BM-0051-EXACT", baseline_draft_max_m=1.6)
-    listing = _make_active_listing(
-        api_conn,
-        listing_id="NL-0051-EXACT",
-        physical_boat_id="PB-0051-EXACT",
-        market_episode_id="ME-0051-EXACT",
-        offer_revision_id="REV-0051-EXACT",
-        boat_design_ref=BoatDesignRef("BD-0051-EXACT"),
-    )
-    _write_draft_claim(
-        api_conn,
-        account=listing[0],
-        org=listing[1],
-        membership=listing[2],
-        listing_id="NL-0051-EXACT",
-        revision_id="PBCREV-0051-EXACT",
-        draft=DraftClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("1.60")),
-    )
-
-    outcome = evaluate_draft_max_requirement(api_conn, Decimal("1.6"))
-    assert {m.native_listing_id.value for m in outcome.confirmed_matches} == {"NL-0051-EXACT"}
+    assert outcome.confirmed_matches == ()
+    assert outcome.confirmed_match_count == 0
+    assert outcome.confirmed_non_match_count == 0
+    assert outcome.insufficient_data_count == 0
 
 
 # ---------------------------------------------------------------------------
@@ -554,17 +527,19 @@ def test_base_state_returns_200_with_no_active_requirement(
     assert response.headers.get("x-robots-tag") == "noindex"
 
 
-def test_canonical_result_returns_confirmed_match(
+def test_canonical_result_is_honestly_empty_pending_finding_3_prerequisite(
     client: TestClient, seeded: dict[str, Any]
 ) -> None:
+    """Mirrors the application-layer proof above through the real HTTP
+    surface: zero confirmed/insufficient results, never a fabricated match,
+    until the Finding 3 production qualification prerequisite is resolved."""
     response = client.get("/api/search/en?draft_max=1.6")
     assert response.status_code == 200
     body = response.json()
     assert body["active_requirement"] == {"draft_max": "1.6"}
-    assert body["confirmed_match_count"] == 1
-    assert [m["native_listing_id"] for m in body["confirmed_matches"]] == ["NL-0051-A"]
-    assert body["confirmed_matches"][0]["resolved_draft_m"] == "1.40"
-    assert body["insufficient_data_count"] == 3
+    assert body["confirmed_match_count"] == 0
+    assert body["confirmed_matches"] == []
+    assert body["insufficient_data_count"] == 0
 
 
 def test_noncanonical_value_redirects_308(client: TestClient) -> None:

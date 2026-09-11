@@ -25,6 +25,10 @@ if (data.kind === "redirect") {
 }
 if (data.kind === "invalid") {
   Astro.response.status = 400;
+} else if (data.kind === "unavailable") {
+  // Amendment review Finding 6: a backend/network failure is not a
+  // malformed buyer requirement -- it gets its own 5xx status, never 400.
+  Astro.response.status = 503;
 }
 
 const canonicalPath =

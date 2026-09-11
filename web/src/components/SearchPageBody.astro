@@ -23,7 +23,7 @@ interface Props {
 
 const { locale, data, canonicalUrl } = Astro.props;
 const t = searchText[locale];
-const isInvalid = data.kind === "invalid";
+const isCanonical = data.kind === "ok";
 ---
 
 <html lang={locale}>
@@ -31,7 +31,7 @@ const isInvalid = data.kind === "invalid";
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
-    {!isInvalid && <link rel="canonical" href={canonicalUrl} />}
+    {isCanonical && <link rel="canonical" href={canonicalUrl} />}
     <title>{t.title}</title>
   </head>
   <body>
@@ -43,6 +43,11 @@ const isInvalid = data.kind === "invalid";
           <p>
             <a href={`/${locale}/search`}>{t.startOver}</a>
           </p>
+        </main>
+      ) : data.kind === "unavailable" ? (
+        <main>
+          <h1>{t.serviceUnavailableTitle}</h1>
+          <p>{t.serviceUnavailableMessage}</p>
         </main>
       ) : (
         <main>

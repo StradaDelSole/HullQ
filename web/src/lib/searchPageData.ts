@@ -8,12 +8,13 @@
 // frontmatter runs. Presentation itself stays in the shared, purely
 // presentational `SearchPageBody.astro` (props in, no fetch, no response
 // mutation), so the actual markup is still written exactly once.
-import { fetchSearch, type SearchConfirmedMatch } from "./searchApi";
-import type { SupportedLocale } from "./searchText";
+import { fetchSearch, type SearchConfirmedMatch } from "./searchApi.ts";
+import type { SupportedLocale } from "./searchText.ts";
 
 export type SearchPageData =
   | { kind: "redirect"; location: string }
   | { kind: "invalid"; message: string | null }
+  | { kind: "unavailable" }
   | {
       kind: "ok";
       activeRequirement: { draft_max: string } | null;
@@ -44,8 +45,15 @@ export async function loadSearchPageData(
     };
   }
 
-  // A real 400 body, or an unexpected/network failure (502): both render
-  // the identical localized recovery state (Required Behavior §1 — invalid/
-  // ambiguous input never gets partial evaluation).
-  return { kind: "invalid", message: response.invalid?.message ?? null };
+  // A real 400 body means the buyer's own request was malformed/ambiguous
+  // (Required Behavior §1 — invalid/ambiguous input never gets partial
+  // evaluation). Amendment review Finding 6: this must stay distinct from a
+  // backend/network failure (502 here, or any other unexpected status) --
+  // an unavailable service is not the same as a malformed buyer requirement
+  // and must never look like either a valid empty result or "you typed
+  // something wrong."
+  if (response.status === 400) {
+    return { kind: "invalid", message: response.invalid?.message ?? null };
+  }
+  return { kind: "unavailable" };
 }

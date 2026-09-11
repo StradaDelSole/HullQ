@@ -20,6 +20,8 @@ export interface SearchText {
   invalidTitle: string;
   invalidFallback: string;
   startOver: string;
+  serviceUnavailableTitle: string;
+  serviceUnavailableMessage: string;
   requirementSummary: (draftMax: string) => string;
   confirmedHeading: string;
   noConfirmedMatches: string;
@@ -39,6 +41,9 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     invalidTitle: "This search link isn't valid",
     invalidFallback: "Enter a maximum draft as a plain decimal number of metres, for example 1.6.",
     startOver: "Start a new search",
+    serviceUnavailableTitle: "Search is temporarily unavailable",
+    serviceUnavailableMessage:
+      "We couldn't complete this search right now. Please try again in a moment.",
     requirementSummary: (draftMax) => `Showing boats confirmed to have a draft of ${draftMax} m or less.`,
     confirmedHeading: "Confirmed matches",
     noConfirmedMatches:
@@ -60,6 +65,9 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     invalidFallback:
       "Geben Sie den maximalen Tiefgang als einfache Dezimalzahl in Metern an, zum Beispiel 1.6.",
     startOver: "Neue Suche beginnen",
+    serviceUnavailableTitle: "Die Suche ist vorübergehend nicht verfügbar",
+    serviceUnavailableMessage:
+      "Diese Suche konnte gerade nicht durchgeführt werden. Bitte versuchen Sie es in Kürze erneut.",
     requirementSummary: (draftMax) => `Boote mit bestätigtem Tiefgang von ${draftMax} m oder weniger.`,
     confirmedHeading: "Bestätigte Treffer",
     noConfirmedMatches:
@@ -81,6 +89,9 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     invalidFallback:
       "Indiquez le tirant d'eau maximal sous forme de nombre décimal simple en mètres, par exemple 1.6.",
     startOver: "Commencer une nouvelle recherche",
+    serviceUnavailableTitle: "La recherche est temporairement indisponible",
+    serviceUnavailableMessage:
+      "Nous n'avons pas pu effectuer cette recherche pour le moment. Veuillez réessayer dans un instant.",
     requirementSummary: (draftMax) => `Bateaux dont le tirant d'eau confirmé est de ${draftMax} m ou moins.`,
     confirmedHeading: "Résultats confirmés",
     noConfirmedMatches:
@@ -102,6 +113,9 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     invalidFallback:
       "Indique o calado máximo como um número decimal simples em metros, por exemplo 1.6.",
     startOver: "Iniciar nova pesquisa",
+    serviceUnavailableTitle: "A pesquisa está temporariamente indisponível",
+    serviceUnavailableMessage:
+      "Não foi possível concluir esta pesquisa neste momento. Tente novamente dentro de instantes.",
     requirementSummary: (draftMax) => `A mostrar barcos com calado confirmado de ${draftMax} m ou menos.`,
     confirmedHeading: "Correspondências confirmadas",
     noConfirmedMatches:
@@ -123,6 +137,9 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     invalidFallback:
       "Indique el calado máximo como un número decimal simple en metros, por ejemplo 1.6.",
     startOver: "Iniciar una nueva búsqueda",
+    serviceUnavailableTitle: "La búsqueda no está disponible temporalmente",
+    serviceUnavailableMessage:
+      "No hemos podido completar esta búsqueda en este momento. Inténtelo de nuevo en unos instantes.",
     requirementSummary: (draftMax) => `Mostrando barcos con calado confirmado de ${draftMax} m o menos.`,
     confirmedHeading: "Coincidencias confirmadas",
     noConfirmedMatches:

@@ -17,9 +17,19 @@ Every stage above is a separate, independently testable step (slice Required
 Behavior §2: "Make these boundaries explicit in code/tests rather than
 collapsing semantics into one opaque SQL predicate"). The concrete
 PhysicalBoat comparison in `_classify_candidate` is exact `Decimal`-to-
-`Decimal`, never a binary float (slice item B) -- unlike the design-level
-eligibility check, which is the accepted legacy float-based Search kernel
-path (slice item B explicitly permits this split).
+`Decimal`, never a binary float (slice item B). `draft_max` flows through the
+design-level eligibility check as the same exact `Decimal` (amendment
+review Finding 2) -- it is never coerced to `float`.
+
+**BLOCKED prerequisite (amendment review Finding 3):** `compatible_boat_design_ids`
+currently always returns an empty set against real persisted BoatDesign
+data, because no accepted production per-field qualification/resolution
+source exists for `canonical_boat_designs` (see
+`hullq.search.draft_max_design_bridge`'s module docstring for the full
+reconciliation). This function therefore currently produces zero confirmed
+matches end to end in production until that prerequisite is resolved and
+wired into the design bridge; every other stage below remains correct and
+independently tested for when it is.
 
 `CONFIRMED_MATCH` is the only primary result set. `CONFIRMED_NON_MATCH` is
 counted (its deterministic classification must be provable — slice item H)
@@ -46,10 +56,7 @@ from hullq.persistence.inventory_search import (
     ActiveDesignLinkedListing,
     list_active_design_linked_listings,
 )
-from hullq.persistence.physical_boat_claims import (
-    fetch_current_physical_boat_claim,
-    list_current_draft_observations_for_physical_boat,
-)
+from hullq.persistence.physical_boat_claims import list_current_draft_observations_for_physical_boat
 from hullq.search.draft_max_design_bridge import compatible_boat_design_ids
 
 __all__ = ["DraftMaxConfirmedMatch", "DraftMaxSearchOutcome", "evaluate_draft_max_requirement"]
@@ -94,11 +101,31 @@ def _classify_candidate(
     Never backfills from BoatDesign/configuration truth (slice item F): the
     only candidate concrete value is the publishing Organization's own
     current `physical_boat.draft` claim.
+
+    Amendment review Finding 5: the publisher's own current claim and the
+    same-PhysicalBoat contradiction guard's cross-Organization observation
+    set are resolved from a *single* call to
+    `list_current_draft_observations_for_physical_boat` -- one SQL
+    statement, therefore one consistent PostgreSQL MVCC snapshot for both --
+    rather than two separate queries. Reading the publisher's claim and the
+    "every current observation" set via two separate statements would let a
+    concurrent claim revision, committed between them, combine a stale
+    publisher value with a newer (or older) cross-Organization observation
+    set, potentially producing a CONFIRMED_MATCH that was never actually
+    true of any single consistent database state.
     """
-    claim_record = fetch_current_physical_boat_claim(
-        conn, candidate.physical_boat_id, candidate.publishing_organization_id
+    observations = list_current_draft_observations_for_physical_boat(
+        conn, candidate.physical_boat_id
     )
-    draft_claim = claim_record.claims.draft if claim_record is not None else None
+    publisher_observation = next(
+        (
+            obs
+            for obs in observations
+            if obs.claiming_organization_id == candidate.publishing_organization_id
+        ),
+        None,
+    )
+    draft_claim = publisher_observation.draft if publisher_observation is not None else None
 
     if draft_claim is None or draft_claim.assertion_kind is AssertionKind.UNKNOWN:
         return "INSUFFICIENT_DATA"
@@ -109,12 +136,10 @@ def _classify_candidate(
     # Same-PhysicalBoat contradiction guard (Option B, slice item G): every
     # claiming Organization's current admissible (VALUE_ASSERTION) draft
     # observation for this exact PhysicalBoatId, including the publisher's
-    # own. Semantically equivalent current values (exact Decimal equality)
-    # never conflict; UNKNOWN/omitted observations never manufacture one;
-    # more than one distinct current value blocks confirmation.
-    observations = list_current_draft_observations_for_physical_boat(
-        conn, candidate.physical_boat_id
-    )
+    # own, drawn from the identical single-query result read above.
+    # Semantically equivalent current values (exact Decimal equality) never
+    # conflict; UNKNOWN/omitted observations never manufacture one; more
+    # than one distinct current value blocks confirmation.
     distinct_values = {
         obs.draft.value
         for obs in observations
@@ -159,7 +184,12 @@ def evaluate_draft_max_requirement(conn: Any, draft_max: Decimal) -> DraftMaxSea
         if raw_design is not None:
             boat_designs.append(raw_design)
 
-    compatible_ids = compatible_boat_design_ids(float(draft_max), boat_designs)
+    # Amendment review Finding 2: pass the exact Decimal requirement through
+    # unchanged -- never coerce to float before design/configuration
+    # eligibility, which could silently change an accepted exact buyer
+    # threshold or overflow/underflow for an otherwise-valid accepted
+    # arbitrary-precision Decimal spelling.
+    compatible_ids = compatible_boat_design_ids(draft_max, boat_designs)
 
     confirmed_matches: list[DraftMaxConfirmedMatch] = []
     confirmed_non_match_count = 0

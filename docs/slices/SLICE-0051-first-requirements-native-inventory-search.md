@@ -2,8 +2,9 @@
 
 **ID:** SLICE-0051  
 **Type:** IMPLEMENTATION  
-**Status:** REVIEW
-**Status set by this handoff:** `REVIEW`  
+**Status:** BLOCKED
+**Status set by this handoff:** `BLOCKED`
+**Blocked reason:** Independent exact-head review (Finding 3, amendment review on `bd3916ef6a8c8b51940f91abda51b4f66c7028a6`) established that no accepted production per-field qualification/resolution source exists for `canonical_boat_designs` (no `FieldResolution` persistence; `hullq.persistence.identity_importer` performs no identity resolution; `quality.status` is a design-wide, not per-field, self-reported descriptor). `SEARCH_QUERY_SEMANTICS.v0.1.md` §3 and `PROVENANCE_AND_QUALITY.md` both require accepted/current resolution before Search may treat a value as `CONFIRMED`. `hullq.search.draft_max_design_bridge.compatible_boat_design_ids` therefore always returns an empty set against real persisted BoatDesign data — every other stage of the funnel is implemented, tested and reviewed, but the slice cannot demonstrate a genuine confirmed match end to end until this prerequisite is resolved (an accepted decision on how `canonical_boat_designs` field values are qualified for Search consumption) and wired into the design bridge. See the amendment completion report for full detail.  
 **Stage:** Native marketplace / buyer search  
 **Base main:** `ff2566a84e00b69e607757292c813d0132811d8c`  
 **Depends on:** accepted SLICE-0038, SLICE-0049 and SLICE-0050 behavior; accepted 2026-09-11 marketplace-search resolution/evidence-set decisions; bounded OQ-018 Search decisions; `docs/SLICE_0051_CAPABILITY_SELECTION_2026-09-11.md`; `docs/SLICE_0051_DRAFT_MAX_VERTICAL_DECISION_2026-09-11.md`  
