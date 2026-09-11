@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-11  
 **Latest owner-accepted / DONE slice:** SLICE-0050  
-**Current queue:** SLICE-0051 — selected as the first production buyer-facing technical Requirements → ACTIVE Native Inventory Search vertical; readiness is not yet complete because bounded OQ-018 public Search/SEO decisions remain open.  
+**Current queue:** SLICE-0051 — first production buyer-facing technical Requirements → ACTIVE Native Inventory Search vertical over exactly `draft_max`; readiness contract is `READY`, implementation has not started.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs/ADRs remain authoritative where they apply.
@@ -208,7 +208,7 @@ No slug is introduced. Query parameters do not alter listing identity or lifecyc
 
 The existing SLICE-0048 preview route remains a separate finite bearer capability with private/no-store, no-referrer, non-canonical and noindex behavior.
 
-## Accepted SLICE-0050 result / next queue — SLICE-0051
+## Accepted SLICE-0050 result / current queue — SLICE-0051
 
 The post-0049 reassessment selected **first buyer-critical PhysicalBoat truth vertical** as the highest-leverage continuation after public listing lifecycle.
 
@@ -237,11 +237,47 @@ ACTIVE public NativeListing
 
 The claims are persisted as immutable revisions with an explicit current head per `(PhysicalBoatId, claiming OrganizationId)` and are displayed only as that publishing Organization's current broker claims. Exact-retry semantics include the recorded predecessor; stale or forged predecessor attempts conflict. A real PostgreSQL failure-injection regression proves revision append + head advance are atomic and cannot leave orphan revisions.
 
-Cross-source resolution, native-inventory search, Auth0/broker UI, media and the remaining PhysicalBoat field catalog remain out of scope.
+Cross-source global resolution, Auth0/broker UI, media and the remaining PhysicalBoat field catalog remain out of scope of SLICE-0050.
 
 Acceptance closure: `docs/slices/SLICE-0050-acceptance-closure.md`.
 
-SLICE-0051 is intentionally not assigned a capability in this closure. Its content must be selected by the required post-0050 architecture/product reassessment.
+The required post-SLICE-0050 reassessment is now complete. The Project Owner selected **buyer-facing Requirements → Native Inventory Search** for SLICE-0051 rather than a separate backend-first search-foundation slice. The minimum production backend bridge required by that visible capability is owned inside SLICE-0051; broader generic/reusable all-field native-inventory Search remains deferred.
+
+The first vertical is intentionally limited to exactly one public hard buyer requirement:
+
+```text
+draft_max=<exact decimal metres>
+```
+
+The accepted production path is:
+
+```text
+buyer draft_max
+→ deterministic BoatDesign/configuration Search
+→ ACTIVE native professional inventory
+→ concrete PhysicalBoat
+→ publishing Organization's current physical_boat.draft claim
+→ accepted same-PhysicalBoat contradiction guard
+→ CONFIRMED_MATCH / CONFIRMED_NON_MATCH / INSUFFICIENT_DATA
+→ buyer-visible Search result
+→ /listings/{NativeListingId}
+```
+
+Hard preserved boundary:
+
+```text
+this design/configuration can satisfy the requirement
+!=
+this concrete offered boat is confirmed to satisfy it
+```
+
+Bounded OQ-018 decisions required for the first production Search surface have been accepted and durably recorded: locale-prefixed Search routes, language-neutral semantic query parameters, deterministic canonical identity/order, exact decimal canonicalization, sparse active state, duplicate/unknown/invalid handling, 308 normalization, empty non-semantic allowlist, noindex first Search surface, bare/unsupported-locale behavior and Astro-SSR/FastAPI rendering ownership.
+
+Broader future OQ-018 work such as deliberately indexable SEO landing-page taxonomy, Search sitemap expansion and structured-data strategy remains outside this first Search slice and is not silently treated as closed.
+
+Readiness contract: `docs/slices/SLICE-0051-first-requirements-native-inventory-search.md`.
+
+Execution may begin only through `START_SLICE.bat` after this readiness contract has passed exact-head review/gates and is merged to `main`; no manual initial implementation prompt or manually created implementation worktree is authorized.
 
 ## Marketplace fact semantics already frozen
 
@@ -271,6 +307,8 @@ SLICE-0049 accepts only the first bounded NativeListing public page class: `/lis
 It does not authorize NativeListing sitemap publication, hreflang trees, faceted landing pages, broad structured-data expansion or full resolution of OQ-018.
 
 SLICE-0050 materially enriches the public listing content but does not change route identity or indexability. `docs/PRODUCT_UX_PRINCIPLES.md` remains controlling for its `THIS BOAT` presentation.
+
+For SLICE-0051, the bounded first production Search surface is accepted as locale-prefixed Astro SSR over the FastAPI application/Search boundary. Its parameterized Search identities are deterministic and public/usable but remain `noindex`; arbitrary facet paths, indexable Search-result combinations, sitemap publication and broad structured-data expansion are not authorized by the slice.
 
 Production public URL/indexability/rendering decisions beyond that bounded page class must preserve deterministic search semantics and avoid turning arbitrary facet combinations into indexable pages.
 
@@ -312,7 +350,7 @@ portable Linux VPS
       \-- simple VPS deployment / Caddy baseline
 ```
 
-SLICE-0048 is the first accepted implementation of the FastAPI + Astro application surface; SLICE-0049 adds its first production-public NativeListing route on that same boundary; SLICE-0050 enriches that existing route/read model rather than creating a second backend or public listing surface. Do not introduce a second business-logic backend, dedicated search engine, Kubernetes/distributed infrastructure or paid managed dependency without measured need and an accepted decision.
+SLICE-0048 is the first accepted implementation of the FastAPI + Astro application surface; SLICE-0049 adds its first production-public NativeListing route on that same boundary; SLICE-0050 enriches that existing route/read model rather than creating a second backend or public listing surface. SLICE-0051 must extend the same application boundary for Search rather than introducing another business-logic backend or dedicated external search service. Do not introduce a second business-logic backend, dedicated search engine, Kubernetes/distributed infrastructure or paid managed dependency without measured need and an accepted decision.
 
 ## Development workflow
 
