@@ -55,6 +55,37 @@ Reopening requires at least one explicit reason:
 
 When reopening is justified, the prior decision and the reason for reconsideration MUST be named explicitly.
 
+## Immediate owner-decision capture
+
+A material decision accepted by the Project Owner during chat, reassessment or review MUST NOT remain only in conversation history or model memory.
+
+Before the project master/reviewer moves on to another material product/domain/data/architecture decision, the accepted decision MUST be promoted into the repository in the smallest appropriate durable artifact, for example:
+
+- an accepted decision/governance/specification document;
+- an ADR when architecturally significant;
+- an updated open-question disposition;
+- or the current slice-readiness reconciliation when that slice is the concrete execution owner.
+
+The durable record MUST state enough to distinguish:
+
+```text
+what was decided
+what prior rule it preserves/supersedes, if any
+whether implementation already exists
+where any remaining implementation is owned or explicitly deferred
+```
+
+Hard:
+
+```text
+owner accepted in chat
++ no durable repository record / execution owner
+→ capture is incomplete
+→ do not rely on memory and continue making dependent decisions
+```
+
+This rule is specifically intended to prevent accepted decisions from being repeatedly re-asked or silently omitted from later production planning.
+
 ## Decision-to-code closure rule
 
 Every accepted decision that requires implementation MUST remain in one of these traceable states:
