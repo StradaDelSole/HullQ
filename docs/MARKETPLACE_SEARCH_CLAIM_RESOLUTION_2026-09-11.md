@@ -121,6 +121,22 @@ Hard boundaries:
 
 This accepted rule is `DECIDED_NOT_YET_IMPLEMENTED` in the generalized production native-inventory search path. Its implementation must remain bounded to the selected search capability rather than expanding into a generic cross-source resolver.
 
+Decision-to-code ownership for this accepted rule is explicit:
+
+```text
+this decision-record PR
+→ records semantics only
+→ implementation is EXPLICITLY_DEFERRED from this PR
+
+first subsequently selected production native-inventory
+technical search/qualification slice
+→ MUST own the Option-B conflict guard
+→ MUST apply Option C resolution-vs-verification semantics
+→ MUST NOT silently omit or re-decide either rule
+```
+
+This deferral exists only because the current post-SLICE-0050 reassessment has not yet assigned the SLICE-0051 capability. Once a production native-inventory technical search/qualification slice is selected, its readiness reconciliation must name this implementation obligation explicitly.
+
 ## Product-success and customer-experience priority
 
 For SLICE-0051 selection/readiness and subsequent native-marketplace execution, the Project Owner has reaffirmed that **buyer friendliness, broker friendliness, competitive advantage, commercial success and exceptional implementation quality are first-order product constraints, not polish to add later**.
@@ -212,12 +228,13 @@ This behavior is not open for re-decision.
 
 The generalized **production native-inventory search/qualification path** that consumes accepted PhysicalBoat marketplace claims and applies the Option-C resolution-vs-verification rule plus the Option-B same-PhysicalBoat conflict guard is not yet implemented as a production capability.
 
-That is an implementation gap, not an open semantic question.
+That is an implementation gap, not an open semantic question. Its immediate implementation is explicitly deferred by this decision record until the current post-SLICE-0050 reassessment selects the first production native-inventory technical search/qualification slice; that slice must then own this obligation in its readiness reconciliation.
 
 ### EXPLICITLY_DEFERRED
 
 This decision does **not** itself implement:
 
+- the accepted Option-B conflict guard / generalized native-inventory technical search path, deferred as described above until its first bounded production-search execution slice is selected;
 - a global cross-Organization PhysicalBoat fact resolver;
 - independent document/survey verification;
 - a generic all-38-field search engine;
@@ -225,7 +242,7 @@ This decision does **not** itself implement:
 - Saved Search / monitoring / alerts;
 - a specific SLICE-0051 capability.
 
-Those remain subject to bounded future capability selection and their controlling accepted contracts.
+Those remain subject to bounded future capability selection and their controlling accepted contracts. The Option-B/Option-C search obligation is the exception to any broad reading of "subject to future decision": its semantics are already decided and may not be re-opened merely because implementation is deferred.
 
 ## Controlling artifacts preserved
 
