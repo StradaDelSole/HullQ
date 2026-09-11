@@ -52,10 +52,12 @@ function Assert-ProductExecutionChecks([string]$Number, [string]$Text, [string]$
     }
 
     if ([int]$Number -ge 51) {
-        $reconciliationHeading = '(?m)^## Decision / implementation reconciliation[ \t]*$'
-        if ($Text -notmatch $reconciliationHeading) {
+        $sectionPattern = '(?ms)^## Decision / implementation reconciliation[ \t]*\r?\n(.*?)(?=^##[ \t]|\z)'
+        $sectionMatch = [regex]::Match($Text, $sectionPattern)
+        if (-not $sectionMatch.Success) {
             throw "SLICE-$Number cannot start: $FileName must contain the section '## Decision / implementation reconciliation' required by docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md."
         }
+        $reconciliationText = $sectionMatch.Groups[1].Value
 
         $evidenceLabels = @(
             'Accepted records checked',
@@ -67,7 +69,7 @@ function Assert-ProductExecutionChecks([string]$Number, [string]$Text, [string]$
         )
         foreach ($label in $evidenceLabels) {
             $evidencePattern = "(?m)^\*\*$([regex]::Escape($label)):\*\*[ \t]*(\S[^\r\n]*)[ \t]*$"
-            $evidenceMatch = [regex]::Match($Text, $evidencePattern)
+            $evidenceMatch = [regex]::Match($reconciliationText, $evidencePattern)
             if (-not $evidenceMatch.Success) {
                 throw "SLICE-$Number cannot start: $FileName must contain a non-empty '**${label}:** <evidence>' line in its reconciliation section."
             }
@@ -80,7 +82,7 @@ function Assert-ProductExecutionChecks([string]$Number, [string]$Text, [string]$
         }
 
         $classificationPattern = '(?m)^\*\*Material classifications:\*\*[ \t]*[^\r\n]*\b(DECIDED_AND_IMPLEMENTED|DECIDED_NOT_YET_IMPLEMENTED|EXPLICITLY_DEFERRED|GENUINELY_OPEN|CONFLICT_OR_REGRESSION)\b[^\r\n]*$'
-        if ($Text -notmatch $classificationPattern) {
+        if ($reconciliationText -notmatch $classificationPattern) {
             throw "SLICE-$Number cannot start: $FileName must name at least one accepted reconciliation classification after '**Material classifications:**'."
         }
     }
