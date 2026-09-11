@@ -139,6 +139,8 @@ This deferral exists only because the current post-SLICE-0050 reassessment has n
 
 ## Product-success and customer-experience priority
 
+The cross-capability controlling direction is `docs/PRODUCT_SUCCESS_CUSTOMER_PRIORITY_2026-09-11.md`.
+
 For SLICE-0051 selection/readiness and subsequent native-marketplace execution, the Project Owner has reaffirmed that **buyer friendliness, broker friendliness, competitive advantage, commercial success and exceptional implementation quality are first-order product constraints, not polish to add later**.
 
 This preserves the existing `docs/PRODUCT_UX_PRINCIPLES.md` direction of reference-grade truth with consumer-grade clarity and adds an explicit execution-priority rule:
@@ -251,6 +253,7 @@ This decision must be read together with:
 - `docs/ARCHITECTURE_REBASELINE_2026-09-02.md`;
 - `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_MARKET_DECISION_2026-09-01.md`;
 - `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_RECONCILIATION_2026-09-02.md`;
+- `docs/PRODUCT_SUCCESS_CUSTOMER_PRIORITY_2026-09-11.md`;
 - `docs/PRODUCT_UX_PRINCIPLES.md`;
 - `docs/MARKETPLACE_FACT_CLAIM_SEMANTICS_2026-09-04.md`;
 - `specs/MARKETPLACE_FACT_CONTRACT.v0.1.md`;
