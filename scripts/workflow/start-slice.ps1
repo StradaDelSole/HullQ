@@ -56,6 +56,26 @@ function Assert-ProductExecutionChecks([string]$Number, [string]$Text, [string]$
         if ($Text -notmatch $reconciliationHeading) {
             throw "SLICE-$Number cannot start: $FileName must contain the section '## Decision / implementation reconciliation' required by docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md."
         }
+
+        $evidenceLabels = @(
+            'Accepted records checked',
+            'Production implementation checked',
+            'Already implemented / not re-decided',
+            'Exact remaining gap',
+            'Accepted-but-unimplemented obligations',
+            'Material classifications'
+        )
+        foreach ($label in $evidenceLabels) {
+            $evidencePattern = "(?m)^\*\*$([regex]::Escape($label)):\*\*\s*\S.*$"
+            if ($Text -notmatch $evidencePattern) {
+                throw "SLICE-$Number cannot start: $FileName must contain a non-empty '**${label}:** <evidence>' line in its reconciliation section."
+            }
+        }
+
+        $classificationPattern = '(?m)^\*\*Material classifications:\*\*\s*.*\b(DECIDED_AND_IMPLEMENTED|DECIDED_NOT_YET_IMPLEMENTED|EXPLICITLY_DEFERRED|GENUINELY_OPEN|CONFLICT_OR_REGRESSION)\b.*$'
+        if ($Text -notmatch $classificationPattern) {
+            throw "SLICE-$Number cannot start: $FileName must name at least one accepted reconciliation classification after '**Material classifications:**'."
+        }
     }
 }
 
