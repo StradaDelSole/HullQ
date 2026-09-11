@@ -10,6 +10,8 @@ Slices are operational documents. They do not override normative specifications,
 
 If a slice conflicts with a controlling artifact, the controlling artifact wins and the slice MUST be corrected before implementation proceeds.
 
+Before a new slice is proposed, the project master/reviewer must perform the pre-decision repository reconciliation defined in `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md`. The check must cover relevant accepted records and existing production code/tests/migrations so already-decided or already-implemented behavior is not reopened as a new product question.
+
 ## Allowed slice types
 
 - `BOOTSTRAP` — tooling, CI, repository and reproducibility work; no product semantics.
@@ -29,6 +31,14 @@ Only these statuses are valid:
 - `DONE`
 
 A slice may become `READY` only when its upstream decisions are resolved, controlling requirements/specs are identified, acceptance criteria are explicit, and the validation method is known.
+
+For `SLICE-0051` and later, readiness additionally requires:
+
+```text
+**REPOSITORY RECONCILIATION CHECK:** PASS
+```
+
+plus the required `## Decision / implementation reconciliation` section from `SLICE_TEMPLATE.md`.
 
 ## Rolling-wave planning
 
@@ -50,14 +60,15 @@ For every assigned slice, the agent MUST:
 2. read `docs/slices/INDEX.md`;
 3. read the assigned slice;
 4. read every controlling artifact named by the slice;
-5. stay inside explicit scope;
-6. add or update tests/fixtures before or with behavior changes;
-7. run the slice validation commands;
-8. report changed files, requirements covered, tests added, commands run, and unresolved findings.
+5. preserve the decision/implementation reconciliation already recorded by readiness; do not reopen behavior classified as already decided/implemented;
+6. stay inside explicit scope;
+7. add or update tests/fixtures before or with behavior changes;
+8. run the slice validation commands;
+9. report changed files, requirements covered, tests added, commands run, and unresolved findings.
 
 The agent MUST NOT automatically begin the next slice.
 
-If a required product/domain/data/licensing/architecture decision is absent, contradictory, or blocked, the agent MUST stop and report the issue rather than resolve it silently in code.
+If a required product/domain/data/licensing/architecture decision is absent, contradictory, or blocked, the agent MUST stop and report the issue rather than resolve it silently in code. Before calling a point unresolved, check the controlling artifacts and implementation surfaces named by the slice rather than relying on conversation memory.
 
 ## Git discipline
 
