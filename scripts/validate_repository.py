@@ -20,12 +20,16 @@ _SLICE_STATUS_RE = re.compile(r"(?m)^\*\*Status:\*\*\s*([A-Z_]+)\s*$")
 _HANDOFF_STATUS_RE = re.compile(
     r"(?m)^\*\*Status set by this handoff:\*\*\s*`(REVIEW|BLOCKED)`(?:\s|$)"
 )
+_RECONCILIATION_SECTION_RE = re.compile(
+    r"(?m)^## Decision / implementation reconciliation\s*$"
+)
 _ALLOWED_SLICE_TYPES = frozenset({"BOOTSTRAP", "DESIGN_RESEARCH", "IMPLEMENTATION", "VALIDATION"})
 _POST_0038_PRODUCT_CHECKS = (
     "ONE-CAPABILITY CHECK",
     "VISIBLE-RESULT CHECK",
     "PRODUCT EXECUTION PLAN ALIGNMENT",
 )
+_POST_0050_RECONCILIATION_CHECK = "REPOSITORY RECONCILIATION CHECK"
 
 
 def requirements_check() -> tuple[int, int]:
@@ -111,7 +115,9 @@ def queue_slice_startability_check(
     """Validate the queued slice across readiness and implementation handoff.
 
     Before execution, a queued primary document must be exactly START_SLICE-
-    compatible: canonical Type, Status READY, and the post-0038 product checks.
+    compatible: canonical Type, Status READY, the post-0038 product checks, and
+    from SLICE-0051 onward the repository reconciliation PASS marker plus its
+    required decision/implementation reconciliation section.
 
     Once implementation has actually reached an agent handoff, that same queued
     document may legitimately move to REVIEW or BLOCKED before acceptance closure
@@ -182,6 +188,21 @@ def queue_slice_startability_check(
                 raise ValueError(
                     f"SLICE-{queue:04d} queue document {path.name} must contain '**{check}:** PASS'"
                 )
+
+    if queue >= 51:
+        reconciliation_pattern = re.compile(
+            rf"(?m)^\*\*{re.escape(_POST_0050_RECONCILIATION_CHECK)}:\*\*\s*PASS\s*$"
+        )
+        if reconciliation_pattern.search(text) is None:
+            raise ValueError(
+                f"SLICE-{queue:04d} queue document {path.name} must contain "
+                f"'**{_POST_0050_RECONCILIATION_CHECK}:** PASS'"
+            )
+        if _RECONCILIATION_SECTION_RE.search(text) is None:
+            raise ValueError(
+                f"SLICE-{queue:04d} queue document {path.name} must contain "
+                "'## Decision / implementation reconciliation'"
+            )
 
     return queue, path.name
 
