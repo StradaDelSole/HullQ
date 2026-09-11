@@ -20,7 +20,7 @@ The only public buyer requirement in this slice is:
 draft_max=<exact decimal metres>
 ```
 
-Example canonical request:
+Canonical example:
 
 ```text
 /de/search?draft_max=1.6
@@ -96,26 +96,24 @@ This is intentionally narrower than a broad marketplace filter system. The goal 
 
 Implementation MUST preserve, and must not silently reinterpret, at least:
 
-- Requirement/query semantics: `specs/SEARCH_QUERY_SEMANTICS.v0.1.md`;
-- Marketplace truth/resolution: `specs/MARKETPLACE_FACT_CONTRACT.v0.1.md`;
-- Marketplace field registry: `specs/MARKETPLACE_FIELD_REGISTRY.v0.1.json`;
-- Claim semantics: `docs/MARKETPLACE_FACT_CLAIM_SEMANTICS_2026-09-04.md`;
-- Search claim resolution/evidence set: `docs/MARKETPLACE_SEARCH_CLAIM_RESOLUTION_2026-09-11.md`;
-- Product/customer priority: `docs/PRODUCT_SUCCESS_CUSTOMER_PRIORITY_2026-09-11.md`;
-- Product UX: `docs/PRODUCT_UX_PRINCIPLES.md`;
-- Architecture: `docs/ARCHITECTURE_REBASELINE_2026-09-02.md`;
-- Product execution precedence: `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_RECONCILIATION_2026-09-02.md`;
-- Native listing market direction: `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_MARKET_DECISION_2026-09-01.md`;
-- Decision/implementation reconciliation: `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md`;
-- Workflow: `docs/engineering/AI_SLICE_WORKFLOW.md`;
-- Capability selection: `docs/SLICE_0051_CAPABILITY_SELECTION_2026-09-11.md`;
-- Exact first criterion: `docs/SLICE_0051_DRAFT_MAX_VERTICAL_DECISION_2026-09-11.md`;
-- Accepted SLICE-0038, SLICE-0049 and SLICE-0050 contracts/closures;
-- all bounded 2026-09-11 OQ-018 public Search decisions named below.
+- `specs/SEARCH_QUERY_SEMANTICS.v0.1.md`;
+- `specs/MARKETPLACE_FACT_CONTRACT.v0.1.md`;
+- `specs/MARKETPLACE_FIELD_REGISTRY.v0.1.json`;
+- `docs/MARKETPLACE_FACT_CLAIM_SEMANTICS_2026-09-04.md`;
+- `docs/MARKETPLACE_SEARCH_CLAIM_RESOLUTION_2026-09-11.md`;
+- `docs/PRODUCT_SUCCESS_CUSTOMER_PRIORITY_2026-09-11.md`;
+- `docs/PRODUCT_UX_PRINCIPLES.md`;
+- `docs/ARCHITECTURE_REBASELINE_2026-09-02.md`;
+- `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_RECONCILIATION_2026-09-02.md`;
+- `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_MARKET_DECISION_2026-09-01.md`;
+- `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md`;
+- `docs/engineering/AI_SLICE_WORKFLOW.md`;
+- `docs/SLICE_0051_CAPABILITY_SELECTION_2026-09-11.md`;
+- `docs/SLICE_0051_DRAFT_MAX_VERTICAL_DECISION_2026-09-11.md`;
+- accepted SLICE-0038, SLICE-0049 and SLICE-0050 contracts/closures;
+- the bounded OQ-018 decision records listed below.
 
 ### Bounded OQ-018 decisions controlling this slice
-
-The following are already accepted implementation obligations, not fresh design questions:
 
 - `docs/OQ_018_PUBLIC_SEARCH_URL_STATE_DECISION_2026-09-11.md`;
 - `docs/OQ_018_SEARCH_LOCALE_ROUTING_DECISION_2026-09-11.md`;
@@ -133,7 +131,54 @@ The following are already accepted implementation obligations, not fresh design 
 - `docs/OQ_018_SEARCH_BARE_AND_UNSUPPORTED_LOCALE_ROUTING_DECISION_2026-09-11.md`;
 - `docs/OQ_018_SEARCH_RENDERING_BOUNDARY_DECISION_2026-09-11.md`.
 
-Broader future OQ-018 work such as deliberately indexable SEO landing-page taxonomy, sitemap expansion and structured-data strategy remains outside SLICE-0051 unless required merely to preserve the accepted future seam.
+Broader future OQ-018 work such as deliberately indexable SEO landing-page taxonomy, sitemap expansion and structured-data strategy remains outside SLICE-0051 except for preserving the accepted future seam.
+
+## Readiness-derived implementation rules
+
+The final OQ-018 rendering record states that the exact smallest 0051 field/query vertical was the only remaining material Owner decision. That decision is now durably resolved by `docs/SLICE_0051_DRAFT_MAX_VERTICAL_DECISION_2026-09-11.md`.
+
+The following bounded details are therefore fixed here as conservative implementation derivations, not new product semantics and not delegated to the implementation agent.
+
+### Base Search state
+
+A canonical locale-prefixed base route with no active buyer criterion, for example:
+
+```text
+/de/search
+```
+
+returns `200`, remains `noindex`, and server-renders the localized Search form/instructions. It MUST NOT execute design/inventory result evaluation and MUST NOT present an unconstrained all-inventory result set/count in SLICE-0051.
+
+Reason: the selected capability is one explicit hard `draft_max` requirement and the existing Search query contract requires a non-empty criterion set. Treating absence of a buyer requirement as an implicit all-inventory query would invent additional Search behavior not selected for this slice.
+
+This does not prohibit a future separately accepted browse/all-inventory capability.
+
+### Conservative `draft_max` lexical envelope
+
+For SLICE-0051 the accepted inbound technical value grammar is deliberately narrow:
+
+```regex
+^[0-9]+(?:\.[0-9]+)?$
+```
+
+Then parse directly to exact Decimal semantics and require the value to be finite and `> 0`.
+
+This accepts already-recorded non-canonical examples such as `01.60`, `1.600`, `10.0` and `10.000`, which then canonicalize without rounding.
+
+The first vertical rejects rather than guesses broader spellings, including:
+
+- leading `+` or `-` signs;
+- comma decimal separators in URLs;
+- exponent/scientific notation;
+- grouping separators;
+- leading/trailing whitespace;
+- a terminal decimal dot such as `1.`;
+- empty values;
+- non-finite spellings.
+
+Localized UI may still display locale-appropriate decimal formatting, but it must submit/navigate through the accepted language-neutral exact technical representation.
+
+Broader numeric input syntax may be introduced later only through an explicit compatible contract; it is not silently generalized here.
 
 ## In scope
 
@@ -161,24 +206,24 @@ No implicit epsilon, fuzzy comparison, locale-dependent numeric meaning or hidde
 
 The public URL value MUST be parsed into an exact decimal semantic value without an intermediate binary-float conversion that can change accepted value/comparison semantics.
 
-For the concrete PhysicalBoat qualification path, comparison MUST be exact Decimal-to-Decimal (or an equivalently lossless exact representation).
+For concrete PhysicalBoat qualification, comparison MUST be exact Decimal-to-Decimal or an equivalently lossless exact representation.
 
 The historical Search v0.1/v0.2 JSON parsers' `float` conversion is accepted legacy behavior but is not permission to weaken this vertical. If the existing design/configuration Search path cannot be reused without precision drift, implement the smallest bounded adapter/refactor necessary and cover it with regression tests. Do not use this slice to modernize unrelated Search criteria.
 
-Canonical numeric examples include:
+Canonical numeric examples:
 
 ```text
-1.600 → 1.6
-01.60 → 1.6
-10.0  → 10
+1.600  → 1.6
+01.60  → 1.6
+10.0   → 10
 10.000 → 10
 ```
 
-Canonical technical values use ASCII `.`, no grouping separator, no exponent notation, no unnecessary leading/trailing zeros and no semantic rounding.
+Canonical values use ASCII `.`, no grouping, no exponent notation, no unnecessary leading/trailing zeros and no semantic rounding.
 
 ### C. Public Search URL / HTTP contract
 
-Public Search routes are:
+Public Search routes:
 
 ```text
 /en/search
@@ -188,18 +233,21 @@ Public Search routes are:
 /es/search
 ```
 
-Locale affects presentation only. `draft_max` and its semantics remain language-neutral.
+Locale affects presentation only. `draft_max` and its meaning remain language-neutral.
 
-The canonical Search URL contains only semantically active constraints. With this slice's single criterion:
+Canonical state is sparse:
 
 ```text
-/de/search                  # no active draft constraint
-/de/search?draft_max=1.6    # canonical active constraint
+/de/search                  # no active draft requirement
+/de/search?draft_max=1.6    # canonical active requirement
 ```
 
-The implementation MUST preserve the accepted cases:
+Required externally observable cases:
 
 ```text
+/search
+→ 308 /en/search
+
 /search?draft_max=1.6
 → 308 /en/search?draft_max=1.6
 
@@ -215,38 +263,41 @@ The implementation MUST preserve the accepted cases:
 /de/search?draft_max=
 → 400, no Search evaluation
 
+/de/search?draft_max=1e0
+→ 400, no Search evaluation in the bounded 0051 lexical envelope
+
 /de/search?foo=bar
 → 400, no Search evaluation
 
 /de/search?utm_source=x
-→ 400, no Search evaluation in SLICE-0051 because the accepted non-semantic allowlist is empty
+→ 400, no Search evaluation because the accepted initial non-semantic allowlist is empty
 
 /it/search?draft_max=1.6
 → 404, no Search evaluation
 ```
 
-Invalid or ambiguous input MUST receive a localized buyer-friendly recovery response identifying the problem sufficiently to correct it. The implementation MUST NOT silently drop, guess or reinterpret invalid buyer constraints.
+Invalid/ambiguous state receives a localized buyer-friendly 400 recovery response and MUST NOT be partially evaluated. Valid non-canonical state uses one `308 Permanent Redirect` to its exact canonical URL where the accepted rules permit direct composition.
 
-Semantically valid non-canonical Search URLs use `308 Permanent Redirect` to the exact canonical URL rather than remaining separate 200 identities.
+Bare `/search` remains a deterministic English entry point and MUST NOT use `Accept-Language`, cookies, session, geography or account state to choose locale. Invalid state on the bare route does not gain validity through locale routing.
 
-### D. Deterministic design/configuration requirement evaluation
+### D. Deterministic design/configuration evaluation
 
-Use the accepted Search semantics and configuration-aware behavior to determine BoatDesign/configuration candidates that can satisfy `draft <= draft_max`.
+Use the accepted Search semantics/configuration behavior to determine BoatDesign/configuration candidates that can satisfy `draft <= draft_max`.
 
 Hard boundaries:
 
-- no separate second Search semantic model;
+- no second Search semantic model;
 - no opaque quality/confidence score;
-- no source-trust ranking hidden inside requirement truth;
+- no hidden source-trust ranking;
 - no fuzzy tolerance;
 - no criterion beyond `draft_max`;
 - design/configuration evaluation alone never confirms a concrete listed yacht.
 
-The existing Search kernel may be adapted only as needed to preserve exact semantics for this bounded vertical.
+The existing Search kernel may be adapted only as needed for exact semantics in this bounded vertical.
 
 ### E. Production native-inventory bridge
 
-Bridge eligible design/configuration candidates into real persisted native inventory using existing durable identities:
+Bridge eligible design/configuration candidates into real persisted inventory through existing durable identities:
 
 ```text
 BoatDesignRef
@@ -255,17 +306,13 @@ BoatDesignRef
 ← NativeListing
 ```
 
-Only `ACTIVE`, complete public native listings admitted under the accepted SLICE-0049 public lifecycle may become buyer-visible Search results.
+Only complete public `ACTIVE` NativeListings admitted under accepted SLICE-0049 lifecycle semantics may become buyer-visible Search results.
 
-A listing whose concrete PhysicalBoat cannot be durably associated with the applicable design identity MUST NOT become a confirmed match merely because other fields look plausible. No fuzzy identity join is authorized.
-
-`DRAFT`, `WITHDRAWN`, incomplete, missing or otherwise non-public listings MUST NOT leak into the public Search result set.
+A listing whose concrete PhysicalBoat cannot be durably associated with the applicable design identity MUST NOT become a confirmed match through fuzzy inference. `DRAFT`, `WITHDRAWN`, incomplete, missing or otherwise non-public listings MUST NOT leak into public Search results.
 
 ### F. Concrete PhysicalBoat draft candidate
 
 For each eligible listing, the candidate concrete value is only the publishing Organization's current `physical_boat.draft` claim for that same durable PhysicalBoat.
-
-Accepted assertion behavior:
 
 ```text
 publisher current VALUE_ASSERTION(Decimal)
@@ -278,9 +325,7 @@ publisher current UNKNOWN
 → insufficient concrete evidence
 ```
 
-Another Organization's current claim MUST NOT silently replace the publishing Organization's claim.
-
-BoatDesign/configuration draft MUST NOT backfill an omitted/UNKNOWN concrete PhysicalBoat draft.
+Another Organization's current claim MUST NOT silently replace the publisher's claim. BoatDesign/configuration draft MUST NOT backfill omitted/UNKNOWN concrete PhysicalBoat draft.
 
 ### G. Same-PhysicalBoat contradiction guard
 
@@ -297,16 +342,14 @@ publisher current concrete draft
 Rules:
 
 - semantically equivalent current concrete values do not conflict;
-- a contradictory current concrete value produces `CONFLICT`;
-- omitted/UNKNOWN observations do not manufacture a contradictory value;
-- superseded historical revisions from the same authority are audit history, not current contradictory observations;
-- another Organization may block a confirmed match through conflict, but may not overwrite the publisher's displayed claim;
-- no latest-source, majority, source-priority, listing-owner-wins or hidden-confidence winner is allowed;
-- this is a listing-evaluation guard, not a global canonical PhysicalBoat fact resolver.
+- contradictory current concrete value → `CONFLICT`;
+- omitted/UNKNOWN observations do not manufacture a contradiction;
+- superseded revisions from the same authority are history, not current contradictory observations;
+- another Organization may block a confirmed match through conflict but may not overwrite the publisher's displayed claim;
+- no latest-source, majority, source-priority, listing-owner-wins or hidden-confidence winner;
+- this is a listing-evaluation guard, not a global PhysicalBoat fact resolver.
 
 ### H. Listing-level qualification
-
-For the bounded `draft_max` criterion:
 
 ```text
 resolved publisher concrete draft <= draft_max
@@ -326,13 +369,13 @@ or evidence CONFLICT
 
 Only `CONFIRMED_MATCH` belongs to the primary result set/count.
 
-`INSUFFICIENT_DATA` MUST remain mechanically and visually separate from confirmed matches. It may be shown as a secondary buyer-helpful section/count, but it MUST NOT be included in the confirmed result count or presented as a match.
+`INSUFFICIENT_DATA` MUST be mechanically and visually separate from confirmed matches. It may appear as a secondary buyer-helpful section/count but MUST NOT be included in the confirmed count or presented as a match.
 
-`CONFIRMED_NON_MATCH` need not be promoted as a buyer result card, but its classification MUST be deterministic and tested.
+`CONFIRMED_NON_MATCH` need not be shown as a buyer result card but its deterministic classification must be tested.
 
-### I. Buyer-facing result explanation
+### I. Buyer-facing explanation and next action
 
-The public SSR result must let a buyer understand, without database vocabulary:
+The SSR result must let a buyer understand, without database vocabulary:
 
 ```text
 what requirement was applied
@@ -340,55 +383,52 @@ why a confirmed boat qualifies
 what concrete draft HullQ used
 that the value is broker-declared unless separately verified
 whether evidence is missing/conflicting
-why an insufficient-data boat is not called a match
+why insufficient evidence is not called a match
 what action is available next
 ```
 
-Every confirmed result links to the already accepted stable public listing identity:
+Confirmed results link to the existing stable public identity:
 
 ```text
 /listings/{NativeListingId}
 ```
 
-Do not invent a second listing URL grammar.
+Do not invent a second listing URL grammar or copy Search parameters onto the listing URL as if they altered listing identity.
 
-### J. Rendering and architecture boundary
+### J. Rendering and application boundary
 
-Astro owns the public Web/presentation layer and MUST server-render meaningful Search/result HTML.
+Astro owns public web/presentation and server-renders meaningful Search/result HTML.
 
-FastAPI remains the sole application/domain/Search semantic boundary. The Astro layer MUST NOT:
+FastAPI remains the sole application/domain/Search semantic boundary. It owns accepted parameter semantics, exact Decimal parsing/canonical state, invalid/duplicate handling, claim resolution, inventory qualification and result classification.
 
-- read PostgreSQL directly;
-- reimplement Python Search truth/resolution rules;
-- become a second Search backend;
-- infer concrete-boat truth from presentation data.
+Astro MUST NOT:
 
-React, if used at all, is limited to bounded progressive enhancement/islands. The Search surface must remain meaningful without client-side semantic re-evaluation.
+- access PostgreSQL directly for Search truth;
+- reimplement Python Search/domain rules;
+- independently resolve claims;
+- independently classify results.
+
+React, if used at all, is bounded progressive enhancement only. Direct canonical Search requests must return meaningful initial HTML without requiring a browser-side second semantic evaluation.
 
 ### K. Language behavior
 
-Public presentation MUST support the five mandatory languages already accepted for HullQ:
+Public presentation supports the five mandatory languages:
 
 ```text
 EN / DE / FR / PT / ES
 ```
 
-Technical parameter names, IDs, Decimal meaning, provenance and Search semantics remain language-neutral. Switching locale must preserve the active canonical technical Search state.
+Technical parameter names, IDs, Decimal meaning, provenance and Search semantics remain language-neutral. Switching locale preserves the active canonical technical Search state.
 
 ### L. SEO behavior for this slice
 
-All locale-prefixed Search surfaces in SLICE-0051 are public/usable but `noindex`.
+All locale-prefixed Search surfaces are public/usable but `noindex`.
 
-The implementation MUST preserve the accepted future SEO seam:
+A canonical 200 Search page MUST identify itself through the exact accepted canonical Search URL state rather than canonicalizing a constrained Search to the unconstrained base route. `noindex` must be mechanically testable. No Search-result sitemap expansion is authorized.
 
-- deterministic locale-prefixed routing;
-- deterministic canonical Search identity;
-- no arbitrary facet-path explosion;
-- server-rendered meaningful HTML;
-- clean separation between current noindex Search results and future deliberately indexable landing-page classes;
-- no Search-result sitemap expansion in this slice.
+No mandatory `hreflang` expansion is introduced for these noindex Search pages in SLICE-0051. If locale-alternate metadata is emitted, it MUST map only semantically equivalent canonical Search states across `{en,de,fr,pt,es}` and MUST NOT invent additional Search semantics.
 
-SEO is not deprioritized by the temporary noindex rule; the implementation must avoid architecture that would require rewriting Search semantics/routing to add deliberate indexable surfaces later.
+Implementation must preserve the later SEO seam: deterministic locale routes, canonical URL ownership, SSR/crawlable architecture, explicit route-class indexability and separation between buyer Search URLs and future deliberate indexable landing pages.
 
 ## Explicitly out of scope
 
@@ -396,9 +436,9 @@ SEO is not deprioritized by the temporary noindex rule; the implementation must 
 - `loa_min` / `loa_max`;
 - build-year criteria;
 - keel/rudder criteria;
-- public Search over any other SLICE-0050 field;
+- any other public SLICE-0050 claim criterion;
 - generic all-field native-inventory Search infrastructure;
-- OR/NOT query expansion or new ranking semantics;
+- OR/NOT expansion or new ranking semantics;
 - Saved Search, monitoring or alerts;
 - price-history/price-change intelligence;
 - recommendation/personalization scoring;
@@ -406,29 +446,28 @@ SEO is not deprioritized by the temporary noindex rule; the implementation must 
 - independent survey/document verification;
 - Auth0 broker workspace/forms;
 - media upload/storage;
-- new listing lifecycle states or freshness/staleness semantics;
+- new listing lifecycle/freshness/staleness semantics;
+- browse/all-inventory result behavior for an unconstrained base Search route;
 - indexable SEO landing pages, Search sitemaps or broad structured-data expansion;
 - marketing/tracking query-parameter acceptance;
-- a dedicated external search engine, second backend, Elasticsearch/OpenSearch/Algolia or other new managed dependency;
+- a dedicated external search engine or second backend;
 - broad refactoring of historical Search numeric contracts unrelated to exact correctness of this vertical.
 
 ## Required behavior
 
-### 1. No result before valid requirement state
+### 1. Request-state separation
 
-The application layer must distinguish:
+The application boundary must distinguish:
 
-- base Search with no active criterion;
-- one valid active `draft_max` criterion;
-- valid but non-canonical syntax requiring redirect;
-- invalid/ambiguous input requiring 400;
-- unsupported locale requiring 404.
-
-Invalid/ambiguous input MUST NOT run downstream Search evaluation.
+- canonical base Search with no active criterion → 200 SSR form/instructions, no Search result evaluation;
+- one valid active `draft_max` criterion → evaluate the bounded vertical;
+- valid but non-canonical syntax → 308 canonical redirect;
+- invalid/ambiguous input → 400 localized recovery, no evaluation;
+- unsupported locale → 404, no evaluation.
 
 ### 2. Truth-preserving candidate funnel
 
-The implementation must make the truth boundaries visible in code/tests rather than collapsing them into one SQL predicate:
+Make these boundaries explicit in code/tests rather than collapsing semantics into one opaque SQL predicate:
 
 ```text
 requirement parse/canonicalize
@@ -439,63 +478,65 @@ requirement parse/canonicalize
 → listing truth classification
 ```
 
-A storage-efficient query plan is permitted, but the semantic stages and their tests must remain explicit and reviewable.
+An efficient query plan is allowed, but semantic stages and tests must remain reviewable.
 
 ### 3. No false confirmation from missing concrete truth
 
-At minimum, regression tests MUST prove:
+At minimum prove:
 
 - shallow-compatible design + publisher concrete shallow draft → confirmed match;
 - shallow-compatible design + publisher concrete deeper draft → confirmed non-match;
 - shallow-compatible design + publisher draft omitted → insufficient data;
 - shallow-compatible design + publisher draft UNKNOWN → insufficient data;
 - shallow-compatible design + contradictory current same-PhysicalBoat draft → conflict/insufficient data;
-- shallow-compatible design + only another Organization's shallow claim and no publisher draft → insufficient data, not a substituted match;
+- shallow-compatible design + only another Organization's shallow claim and no publisher draft → insufficient data, not substitution;
 - design/configuration match alone with no concrete draft → never confirmed;
-- concrete shallow draft on a listing that is not durably admitted to the applicable design identity → never confirmed through fuzzy inference;
-- non-ACTIVE listing → never public Search result.
+- concrete shallow draft without durable applicable design identity → never confirmed through fuzzy inference;
+- non-ACTIVE listing → never public result.
 
-### 4. Provenance and verification remain separate
+### 4. Provenance and verification stay separate
 
-A confirmed search match based on a broker-declared draft may be `RESOLVED` for this evaluation context but MUST remain represented/presentable as broker-declared and not independently verified unless another accepted capability actually established verification.
+A confirmed match based on broker-declared draft may be `RESOLVED` for this evaluation context but remains broker-declared and not independently verified unless another accepted capability established verification.
 
 ### 5. Stable public next action
 
-Confirmed result cards/rows MUST link to `/listings/{NativeListingId}` and preserve the existing public-listing route semantics. Search query parameters must not be copied onto the listing URL as if they changed listing identity.
+Confirmed rows/cards link only to `/listings/{NativeListingId}` and preserve existing public-listing route semantics.
 
 ## Deliverables
 
-- bounded exact-Decimal public Search request/canonicalization adapter for `draft_max`;
-- production application/domain service for the single Requirements → Native Inventory Search vertical;
-- smallest persistence/query support needed to enumerate ACTIVE native listings and current same-PhysicalBoat draft observations without creating a generic fact resolver;
+- exact-Decimal public Search request/canonicalization adapter for `draft_max`;
+- production application/domain service for this single Requirements → Native Inventory Search vertical;
+- smallest persistence/query support needed to enumerate ACTIVE native listings and current same-PhysicalBoat draft observations without a generic fact resolver;
 - FastAPI Search endpoint on the existing application boundary;
 - Astro SSR locale-prefixed Search surface for EN/DE/FR/PT/ES;
 - buyer-visible confirmed-match and insufficient-data presentation with existing listing links;
-- deterministic localized 400 recovery surface plus required 308/404 routing behavior;
-- tests covering public grammar, exact Decimal behavior, design/configuration gating, ACTIVE inventory admission, claim resolution, contradiction guard, result classification, API and SSR behavior;
+- localized 400 recovery plus required 308/404 behavior;
+- tests for lexical grammar, canonicalization, Decimal exactness, design/config gating, ACTIVE inventory admission, claim resolution, contradiction guard, API and SSR behavior;
 - retained real PostgreSQL/API/web proof demonstrating the first production native-inventory Search vertical end to end;
-- slice handoff updates only as required by the normal workflow; no acceptance closure or next-slice work.
+- normal slice handoff updates only; no acceptance closure or next-slice work.
 
 ## Acceptance criteria
 
-- [ ] `/en/search`, `/de/search`, `/fr/search`, `/pt/search`, `/es/search` exist as SSR Search surfaces and support the accepted `draft_max` state without locale-dependent technical semantics.
-- [ ] `/search` returns the accepted deterministic 308 to `/en/search` while preserving supported valid Search state; unsupported locale-prefixed Search routes return real 404 without Search evaluation.
-- [ ] Canonical `draft_max` serialization is exact and deterministic; accepted non-canonical equivalent forms redirect 308 to one canonical identity.
+- [ ] `/en/search`, `/de/search`, `/fr/search`, `/pt/search`, `/es/search` exist as SSR Search surfaces with language-neutral technical semantics.
+- [ ] A locale-prefixed base Search route returns 200/noindex localized form/instructions and executes no result evaluation until `draft_max` is active.
+- [ ] `/search` returns the accepted deterministic 308 to `/en/search` while preserving supported valid Search state; unsupported locale-prefixed Search returns real 404 with no evaluation.
+- [ ] `draft_max` accepts only the bounded ASCII decimal lexical envelope, parses directly to exact Decimal semantics, requires `> 0`, and rejects broader ambiguous spellings fail-closed.
+- [ ] Canonical numeric serialization is exact/deterministic; accepted non-canonical equivalent decimals redirect 308 to one canonical identity.
 - [ ] Invalid/ambiguous/unknown/disallowed query parameters return 400 with localized correction guidance and zero Search evaluation.
-- [ ] Duplicate singleton `draft_max` values that normalize to the same semantic value collapse via canonical redirect; conflicting duplicates fail closed with 400.
-- [ ] URL parsing and concrete PhysicalBoat draft comparison do not introduce binary-float precision loss or semantic rounding.
-- [ ] The existing deterministic configuration-aware Search behavior is reused/preserved; no second Search semantic engine is introduced.
-- [ ] Only real complete `ACTIVE` native listings from the accepted durable identity chain are eligible for public result exposure.
+- [ ] Equal duplicate singleton `draft_max` values normalize/collapse by canonical redirect; conflicting duplicates fail closed with 400.
+- [ ] URL parsing and concrete PhysicalBoat draft comparison introduce no binary-float precision loss or semantic rounding.
+- [ ] Existing deterministic configuration-aware Search behavior is reused/preserved; no second Search semantic engine is introduced.
+- [ ] Only complete public `ACTIVE` NativeListings from the accepted durable identity chain are eligible for public result exposure.
 - [ ] Design/configuration compatibility alone never creates a confirmed concrete-yacht match.
 - [ ] The publishing Organization's current `physical_boat.draft` claim is the listing candidate; no other Organization silently substitutes its value.
-- [ ] Same-PhysicalBoat current contradictory concrete draft evidence produces conflict and prevents `CONFIRMED_MATCH`; equivalent corroboration does not conflict; UNKNOWN/omission does not manufacture a contradiction.
+- [ ] Same-PhysicalBoat contradictory current concrete draft evidence produces conflict and blocks `CONFIRMED_MATCH`; equivalent corroboration does not conflict; UNKNOWN/omission does not manufacture conflict.
 - [ ] Omitted, UNKNOWN, UNRESOLVED and CONFLICT concrete evidence produce `INSUFFICIENT_DATA`, never a hard match.
 - [ ] Concrete draft `<= draft_max` resolves to `CONFIRMED_MATCH`; concrete draft `> draft_max` resolves to `CONFIRMED_NON_MATCH`; comparison is inclusive with no hidden tolerance.
-- [ ] Only `CONFIRMED_MATCH` is included in the primary result set/count; insufficient-data results are mechanically and visually distinct.
-- [ ] Buyer-visible results explain the applied requirement and concrete evidence status clearly enough to distinguish broker-declared confirmation from missing/conflicting evidence.
-- [ ] Confirmed result links use only `/listings/{NativeListingId}` as the public listing identity.
-- [ ] Astro SSR returns meaningful Search/result HTML; FastAPI remains the sole Search/application/domain semantic boundary; the web layer performs no direct PostgreSQL access or semantic reimplementation.
-- [ ] Every Search surface in this slice is `noindex` and preserves deterministic canonical/locale seams for later deliberate SEO surfaces without adding Search-result sitemap/indexable-facet expansion.
+- [ ] Only `CONFIRMED_MATCH` is included in the primary result set/count; insufficient data is mechanically and visually distinct.
+- [ ] Buyer-visible results explain applied requirement and concrete evidence status clearly enough to distinguish broker-declared confirmation from missing/conflicting evidence.
+- [ ] Confirmed links use only `/listings/{NativeListingId}`.
+- [ ] Astro SSR returns meaningful Search/result HTML; FastAPI remains the sole Search/application/domain semantic boundary; web performs no direct PostgreSQL access or semantic reimplementation.
+- [ ] Every Search surface is `noindex`; canonical constrained state is not collapsed to the base route; no Search-result sitemap/indexable-facet expansion is introduced.
 - [ ] Existing SLICE-0038/0049/0050 truth, lifecycle, public-listing and claim regressions remain green.
 - [ ] PostgreSQL integration coverage proves ACTIVE filtering, current-head observation behavior and contradiction handling on real PostgreSQL 18.
 - [ ] A retained owner-visible proof runs the real PostgreSQL → FastAPI → Astro path and demonstrates at least one confirmed match plus insufficient/conflict behavior without fixture-only semantic shortcuts.
@@ -523,38 +564,34 @@ scripts/                    # bounded retained proof only
 docs/slices/SLICE-0051-first-requirements-native-inventory-search.md
 ```
 
-A new migration is NOT expected merely to implement this read/search vertical. If implementation discovers that a schema change is genuinely required for correctness rather than convenience/performance, stop and report the concrete need before inventing new durable semantics.
+A new migration is NOT expected merely for this read/search vertical. If a schema change is genuinely required for correctness rather than convenience/performance, stop and report the concrete need before inventing durable semantics.
 
 ## Validation
 
-Use the repository's existing canonical environments and commands. At minimum the final implementation handoff must report results for the applicable equivalents of:
+Use repository-defined canonical environments/commands. At minimum report the applicable equivalents of:
 
 ```bash
 python scripts/validate_repository.py
 ruff check .
 mypy src
 pytest
-
-# Web package — use the existing package scripts in web/package.json
 npm --prefix web test
 npm --prefix web run build
 ```
 
-Run the focused SLICE-0051 unit/persistence/API/web suites and the retained owner-visible PostgreSQL → FastAPI → Astro proof explicitly in addition to the broad regression suite.
-
-Do not invent a substitute CI command when the repository already defines the canonical workflow; remote required checks remain external evidence.
+Run focused 0051 unit/persistence/API/web suites and the retained owner-visible PostgreSQL → FastAPI → Astro proof explicitly in addition to broad regression tests. Do not invent substitute CI commands when repository workflows already define canonical gates; remote required checks remain external evidence.
 
 ## Stop conditions
 
 Stop and report instead of inventing a solution when:
 
-- any controlling accepted decision named here is absent on the actual slice base or materially contradicts another controlling artifact;
-- implementation would require a second Search semantic model or a second business-logic backend;
+- a controlling accepted decision is absent on the actual slice base or materially contradicts another controlling artifact;
+- implementation would require a second Search semantic model or second business-logic backend;
 - exact `draft_max` semantics cannot be preserved without a broader Search-contract change outside this bounded vertical;
-- a correct same-PhysicalBoat contradiction guard would require a global fact-resolution policy beyond the accepted Option-B rule;
+- the contradiction guard would require a global fact-resolution policy beyond accepted Option B;
 - a required durable identity link would need fuzzy inference or new identity semantics;
-- implementation would have to weaken `UNKNOWN`, `UNRESOLVED`, `CONFLICT`, provenance or verification semantics to produce buyer-friendly results;
-- implementation requires accepting an additional public Search criterion;
+- implementation would have to weaken `UNKNOWN`, `UNRESOLVED`, `CONFLICT`, provenance or verification semantics for friendlier results;
+- implementation requires accepting another public Search criterion;
 - a new persistent schema is required for product semantics not already accepted;
 - source-rights, privacy, authorization or accepted broker-first supply policy would be violated;
 - implementation requires scope outside this slice.
@@ -563,14 +600,14 @@ Stop and report instead of inventing a solution when:
 
 The implementation agent may set this primary slice document to `IN_PROGRESS`, `BLOCKED`, or `REVIEW` as appropriate, but MUST NOT mark it `DONE`.
 
-A successful implementation handoff normally sets:
+Successful handoff normally sets:
 
 ```text
 **Status:** REVIEW
 **Status set by this handoff:** `REVIEW`
 ```
 
-`DONE` requires verified acceptance criteria, required exact-head external gates, independent review and explicit Project Owner acceptance under the canonical HullQ workflow.
+`DONE` requires verified acceptance criteria, exact-head external gates, independent review and explicit Project Owner acceptance under the canonical HullQ workflow.
 
 ## Required completion report
 
