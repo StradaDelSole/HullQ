@@ -214,6 +214,22 @@ def test_queue_0051_rejects_missing_repository_reconciliation_check(tmp_path: Pa
         queue_slice_startability_check(slices_dir=slices, project_state=state)
 
 
+def test_queue_0051_rejects_split_line_repository_reconciliation_check(tmp_path: Path) -> None:
+    slices = tmp_path / "slices"
+    slices.mkdir()
+    filename = "SLICE-0051-native-inventory-search.md"
+    text = _reconciled_ready_slice_text().replace(
+        "**REPOSITORY RECONCILIATION CHECK:** PASS",
+        "**REPOSITORY RECONCILIATION CHECK:**\nPASS",
+    )
+    (slices / filename).write_text(text, encoding="utf-8")
+    state = tmp_path / "PROJECT_STATE.md"
+    _write_state(state, "0050", "0051")
+
+    with pytest.raises(ValueError, match="REPOSITORY RECONCILIATION CHECK"):
+        queue_slice_startability_check(slices_dir=slices, project_state=state)
+
+
 def test_queue_0051_rejects_reconciliation_check_without_required_section(tmp_path: Path) -> None:
     slices = tmp_path / "slices"
     slices.mkdir()
@@ -276,6 +292,23 @@ def test_queue_0051_rejects_placeholder_reconciliation_evidence(
     _write_state(state, "0050", "0051")
 
     with pytest.raises(ValueError, match="placeholder rather than repository-backed evidence"):
+        queue_slice_startability_check(slices_dir=slices, project_state=state)
+
+
+def test_queue_0051_rejects_evidence_outside_reconciliation_section(tmp_path: Path) -> None:
+    slices = tmp_path / "slices"
+    slices.mkdir()
+    filename = "SLICE-0051-native-inventory-search.md"
+    text = _reconciled_ready_slice_text().replace(
+        "\n**Accepted records checked:** docs/accepted.md",
+        "\n## Other section\n\n**Accepted records checked:** docs/accepted.md",
+        1,
+    )
+    (slices / filename).write_text(text, encoding="utf-8")
+    state = tmp_path / "PROJECT_STATE.md"
+    _write_state(state, "0050", "0051")
+
+    with pytest.raises(ValueError, match="Accepted records checked"):
         queue_slice_startability_check(slices_dir=slices, project_state=state)
 
 
