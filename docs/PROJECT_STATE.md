@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-11  
 **Latest owner-accepted / DONE slice:** SLICE-0050  
-**Current queue:** SLICE-0051 — capability intentionally unassigned pending post-0050 product/architecture reassessment.  
+**Current queue:** SLICE-0051 — selected as the first production buyer-facing technical Requirements → ACTIVE Native Inventory Search vertical; readiness is not yet complete because bounded OQ-018 public Search/SEO decisions remain open.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs/ADRs remain authoritative where they apply.
