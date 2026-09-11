@@ -37,7 +37,12 @@ def _reconciled_ready_slice_text(*, status: str = "READY") -> str:
         _ready_slice_text(status=status)
         + "**REPOSITORY RECONCILIATION CHECK:** PASS\n"
         + "\n## Decision / implementation reconciliation\n"
-        + "\nRelevant accepted records and production implementation checked.\n"
+        + "\n**Accepted records checked:** docs/accepted.md\n"
+        + "**Production implementation checked:** src/current.py; tests/unit/test_current.py\n"
+        + "**Already implemented / not re-decided:** existing behavior\n"
+        + "**Exact remaining gap:** one bounded capability\n"
+        + "**Accepted-but-unimplemented obligations:** NONE\n"
+        + "**Material classifications:** DECIDED_AND_IMPLEMENTED; GENUINELY_OPEN\n"
     )
 
 
@@ -221,6 +226,53 @@ def test_queue_0051_rejects_reconciliation_check_without_required_section(tmp_pa
     _write_state(state, "0050", "0051")
 
     with pytest.raises(ValueError, match="Decision / implementation reconciliation"):
+        queue_slice_startability_check(slices_dir=slices, project_state=state)
+
+
+def test_queue_0051_rejects_missing_reconciliation_evidence_line(tmp_path: Path) -> None:
+    slices = tmp_path / "slices"
+    slices.mkdir()
+    filename = "SLICE-0051-native-inventory-search.md"
+    text = _reconciled_ready_slice_text().replace(
+        "**Exact remaining gap:** one bounded capability\n", ""
+    )
+    (slices / filename).write_text(text, encoding="utf-8")
+    state = tmp_path / "PROJECT_STATE.md"
+    _write_state(state, "0050", "0051")
+
+    with pytest.raises(ValueError, match="Exact remaining gap"):
+        queue_slice_startability_check(slices_dir=slices, project_state=state)
+
+
+def test_queue_0051_rejects_empty_reconciliation_evidence_value(tmp_path: Path) -> None:
+    slices = tmp_path / "slices"
+    slices.mkdir()
+    filename = "SLICE-0051-native-inventory-search.md"
+    text = _reconciled_ready_slice_text().replace(
+        "**Accepted records checked:** docs/accepted.md",
+        "**Accepted records checked:**   ",
+    )
+    (slices / filename).write_text(text, encoding="utf-8")
+    state = tmp_path / "PROJECT_STATE.md"
+    _write_state(state, "0050", "0051")
+
+    with pytest.raises(ValueError, match="Accepted records checked"):
+        queue_slice_startability_check(slices_dir=slices, project_state=state)
+
+
+def test_queue_0051_rejects_unknown_material_classification(tmp_path: Path) -> None:
+    slices = tmp_path / "slices"
+    slices.mkdir()
+    filename = "SLICE-0051-native-inventory-search.md"
+    text = _reconciled_ready_slice_text().replace(
+        "DECIDED_AND_IMPLEMENTED; GENUINELY_OPEN",
+        "MAYBE_ALREADY_DONE",
+    )
+    (slices / filename).write_text(text, encoding="utf-8")
+    state = tmp_path / "PROJECT_STATE.md"
+    _write_state(state, "0050", "0051")
+
+    with pytest.raises(ValueError, match="accepted reconciliation classification"):
         queue_slice_startability_check(slices_dir=slices, project_state=state)
 
 
