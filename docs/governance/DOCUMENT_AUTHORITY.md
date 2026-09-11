@@ -18,6 +18,24 @@ The repository SHOULD NOT contain a knowingly inconsistent accepted state.
 
 If an accepted ADR changes a normative behavior, the same change MUST update the affected specification. Therefore the normal authority order remains stable instead of relying on document timestamps.
 
+## Pre-decision repository reconciliation
+
+Before proposing a new product/domain/data/architecture decision, creating an open question, selecting a new slice capability, or asking the Project Owner to decide a material point, the project master/reviewer MUST first reconcile the question against current canonical repository truth.
+
+The mandatory process is defined in `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md` and includes checking both accepted records and relevant production code/tests/migrations.
+
+Hard:
+
+```text
+already accepted + already implemented
+!= open decision
+
+already accepted + not yet implemented
+!= reason to re-decide
+```
+
+A prior decision may be reopened only for an explicit accepted reason such as owner-directed reconsideration, new contradictory evidence, a production regression/conflict, or supersession by a higher-authority artifact.
+
 ## Status labels
 
 Documents that are not yet authoritative MUST clearly use one of:
@@ -46,10 +64,11 @@ If two documents appear to conflict:
 5. update all affected documents in one logical change;
 6. add tests that prevent regression to the conflicting behavior.
 
+Before step 3, the repository reconciliation rule MUST establish that the issue is genuinely unresolved rather than already decided or implemented elsewhere.
+
 ## Evidence and external-review material
 
 - `research/evidence/SOURCE_REGISTER.md` records evidence metadata and canonical locators. It is evidentiary, not itself a production-data license or normative implementation rule.
 - `reference/external_reviews/` contains preserved third-party/LLM opinions. These are **NON-NORMATIVE** and cannot override accepted requirements, specs or ADRs.
 - `reference/imported/` remains historical source/reference material and is not an invisible fallback for production values.
 - A project decision discovered in chat or an external review becomes implementation-authoritative only after promotion through the docs-to-code decision process.
-

@@ -16,6 +16,40 @@ The setup is idempotent: running it again updates the same `HullQ main protectio
 
 The GitHub ruleset protects `main` by requiring a pull request, the existing Ubuntu/Windows/dependency-audit checks, an up-to-date branch, linear history, and by blocking force-push/deletion. It deliberately requires zero formal GitHub approvals because project-owner acceptance and independent AI review are tracked by the HullQ slice workflow rather than a second GitHub account.
 
+### Pre-decision reconciliation invariant
+
+Before a new product/domain/data/architecture question is put to the Project Owner, before a new slice capability is selected, or before an accepted behavior is challenged, the project master/reviewer MUST perform the repository reconciliation defined in:
+
+```text
+docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md
+```
+
+The check is against canonical `origin/main`, not conversation memory alone, and it must cover both:
+
+- accepted decision records/specs/ADRs/governance/slice closures; and
+- relevant existing production code/tests/migrations.
+
+The result must classify the material point as already decided+implemented, decided+not-yet-implemented, explicitly deferred, genuinely open, or conflict/regression.
+
+Hard:
+
+```text
+already decided + implemented
+→ must not be presented as a new owner decision
+
+already decided + not yet implemented
+→ implementation gap, not re-decision
+```
+
+From `SLICE-0051` onward this is mechanically surfaced in the slice contract through:
+
+```text
+**REPOSITORY RECONCILIATION CHECK:** PASS
+## Decision / implementation reconciliation
+```
+
+Both `START_SLICE` and repository validation reject a queued 0051+ slice that lacks these markers.
+
 ### Readiness handoff invariant
 
 A readiness document merged to `main` for the current queue must already be directly consumable by `START_SLICE`.
@@ -43,7 +77,7 @@ or:
 
 This line distinguishes a real implementation handoff from a malformed readiness artifact. A queued `REVIEW`/`BLOCKED` document without the matching handoff line fails repository validation. `READY_FOR_REVIEW` remains invalid everywhere.
 
-`scripts/validate_repository.py` mechanically validates this for the current `PROJECT_STATE_QUEUE_SLICE` whenever a queue document exists. Before execution it mirrors the `START_SLICE` primary-document header rules and post-SLICE-0038 product checks; after an explicit implementation handoff it permits only the tightly marked `REVIEW`/`BLOCKED` states above. This ensures an unstartable readiness artifact fails CI before merge without blocking the normal implementation-review lifecycle.
+`scripts/validate_repository.py` mechanically validates this for the current `PROJECT_STATE_QUEUE_SLICE` whenever a queue document exists. Before execution it mirrors the `START_SLICE` primary-document header rules and post-SLICE-0038 product checks; from SLICE-0051 onward it also requires the repository-reconciliation PASS marker and reconciliation section. After an explicit implementation handoff it permits only the tightly marked `REVIEW`/`BLOCKED` states above. This ensures an unstartable readiness artifact fails CI before merge without blocking the normal implementation-review lifecycle.
 
 ### Start a slice
 
@@ -67,7 +101,7 @@ HullQ uses one Claude session per slice by default.
 - If the same slice becomes large, use `/compact` before continuing rather than carrying excessive exploratory history/logs through every subsequent turn.
 - A useful compact instruction preserves the controlling slice, decisions already made, changed files/current implementation state, validation/CI state, unresolved blockers and exact handoff requirements.
 - Do **not** `/clear` casually mid-slice; it is primarily a slice/task-boundary command.
-- Do not ask Claude to reread full project history merely for reassurance. The controlling slice identifies the required dependencies.
+- Do not ask Claude to reread full project history merely for reassurance. The controlling slice identifies the required dependencies and records the readiness reconciliation.
 
 Detailed rules: `docs/engineering/AI_TOKEN_EFFICIENCY.md`.
 
@@ -81,6 +115,8 @@ If an amendment is required:
 - if the Claude context is already large, run `/compact` before pasting the amendment;
 - do not reload previous project background that is unrelated to the finding;
 - Claude applies only the requested amendment plus necessary tests/validation and reports a new exact HEAD.
+
+Independent review must compare implementation not only with the immediate slice text but with the accepted semantics named by the reconciliation. A regression from previously accepted/implemented behavior is a review defect, not a new design choice.
 
 ### Acceptance closure and PROJECT_STATE freshness
 
@@ -96,6 +132,8 @@ Every closure that creates a new highest `SLICE-XXXX-acceptance-closure.md` MUST
 `scripts/validate_repository.py` mechanically compares the `PROJECT_STATE_ACCEPTED_SLICE` marker with the highest acceptance-closure filename. A stale or ahead-of-history state document fails repository validation and therefore CI.
 
 At every post-slice reassessment, explicitly record the estimated remaining slice distance to the first externally visible listing. Any proposed foundation-only slice must explain why it cannot safely be deferred until after that visible vertical slice.
+
+The same reassessment must apply `DECISION_IMPLEMENTATION_RECONCILIATION.md`: accepted implementation obligations discovered during the check must be identified as implemented, concretely owned by queued/active work, or explicitly deferred. They may not silently disappear from planning.
 
 ### Finish a slice
 
@@ -129,6 +167,7 @@ The helper scripts are intentionally fail-safe:
 - they use `git pull --ff-only` for local main;
 - they never push or merge to `main`;
 - `START_SLICE.bat` never manipulates VS Code windows;
+- from SLICE-0051 onward `START_SLICE` refuses to start a slice without the repository-reconciliation PASS marker and reconciliation section;
 - the finish script does not delete a worktree with substantive uncommitted changes;
 - cleanup is skipped unless a merged PR can be confirmed through GitHub CLI;
 - the setup script verifies the canonical repository before changing GitHub rules;

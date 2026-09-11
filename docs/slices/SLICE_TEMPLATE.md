@@ -13,7 +13,9 @@ One concrete outcome only.
 
 ## Product execution checks
 
-For SLICE-0039 and later, all three checks are mandatory before a primary slice may become `READY`.
+For SLICE-0039 and later, the first three checks are mandatory before a primary slice may become `READY`.
+
+For SLICE-0051 and later, the repository-reconciliation check is additionally mandatory before a primary slice may become `READY`.
 
 **ONE-CAPABILITY CHECK:** PASS | FAIL  
 Does this slice deliver exactly one user-visible capability OR answer exactly one business-critical hypothesis?
@@ -24,7 +26,27 @@ Can the Project Owner personally execute, observe or inspect the result at the e
 **PRODUCT EXECUTION PLAN ALIGNMENT:** PASS | FAIL  
 Does the slice comply with the currently controlling product/architecture governance and explicit gates? For work after SLICE-0039, apply the precedence defined in `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_RECONCILIATION_2026-09-02.md`, including `docs/ARCHITECTURE_REBASELINE_2026-09-02.md` and, where private-owner/public-supply policy is relevant, `docs/PRIVATE_SELLER_POLICY_2026-09-02.md`. Older execution documents remain controlling only where they do not conflict with higher-precedence post-SLICE-0039 decisions.
 
-A `FAIL` on any of these checks blocks readiness. Genuine prerequisite/blocker work must still be cut so the Project Owner can inspect its concrete result and the check can honestly be `PASS`.
+**REPOSITORY RECONCILIATION CHECK:** PASS | FAIL  
+Required for SLICE-0051 and later. Before this slice was proposed, were the relevant accepted CAL/decision/ADR/spec/governance/slice records and the relevant existing production code/tests/migrations checked so this slice does not re-open or duplicate behavior that HullQ has already decided and implemented? See `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md`.
+
+A required `FAIL` on any of these checks blocks readiness. Genuine prerequisite/blocker work must still be cut so the Project Owner can inspect its concrete result and the check can honestly be `PASS`.
+
+## Decision / implementation reconciliation
+
+Required for SLICE-0051 and later. Fill every evidence line with concrete repository-backed content before setting the slice to `READY`; `TODO`, `TBD`, `PLACEHOLDER` and angle-bracket placeholder text are not evidence.
+
+**Accepted records checked:**  
+**Production implementation checked:**  
+**Already implemented / not re-decided:**  
+**Exact remaining gap:**  
+**Accepted-but-unimplemented obligations:**  
+**Material classifications:**  
+
+`Accepted-but-unimplemented obligations` may be `NONE` only when the reconciliation found none. `Material classifications` must use one or more of: `DECIDED_AND_IMPLEMENTED`, `DECIDED_NOT_YET_IMPLEMENTED`, `EXPLICITLY_DEFERRED`, `GENUINELY_OPEN`, `CONFLICT_OR_REGRESSION`.
+
+The six evidence lines are machine-checked for presence, non-empty/non-placeholder values and accepted classification tokens by `START_SLICE` and repository validation. Independent readiness review must still verify that the cited records and implementation actually support the classifications.
+
+Classify material points using the governance states in `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md` rather than turning remembered/implemented behavior back into an open question.
 
 ## Why this slice exists
 
@@ -36,6 +58,7 @@ Explain the problem this slice closes and why it belongs at this point in the ex
 - Specifications:
 - Accepted ADRs:
 - Governance / research protocols:
+- Decision/implementation reconciliation: `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md`
 - Product execution plan: `docs/PRODUCT_EXECUTION_PLAN.md`
 - Post-SLICE-0039 architecture: `docs/ARCHITECTURE_REBASELINE_2026-09-02.md`
 - Post-SLICE-0039 execution reconciliation / precedence: `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_RECONCILIATION_2026-09-02.md`
@@ -82,6 +105,8 @@ Stop and report instead of inventing a solution when:
 
 - a required controlling decision is absent;
 - accepted artifacts contradict each other materially;
+- repository reconciliation shows the proposed behavior is already decided/implemented and the slice has no distinct remaining capability;
+- an accepted implementation obligation is missing and lacks a concrete owner/explicit deferral;
 - the requested behavior would violate source-rights, provenance, identity, search/SEO, product-execution, or other accepted policy;
 - implementation requires scope outside this slice.
 
@@ -111,6 +136,7 @@ Use this structure exactly at the end of the assigned slice.
 - ONE-CAPABILITY CHECK: `PASS` | `FAIL` | `NOT APPLICABLE`
 - VISIBLE-RESULT CHECK: `PASS` | `FAIL` | `NOT APPLICABLE`
 - PRODUCT EXECUTION PLAN ALIGNMENT: `PASS` | `FAIL` | `NOT APPLICABLE`
+- REPOSITORY RECONCILIATION CHECK: `PASS` | `FAIL` | `NOT APPLICABLE`
 
 ### Changes
 

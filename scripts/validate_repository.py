@@ -20,12 +20,32 @@ _SLICE_STATUS_RE = re.compile(r"(?m)^\*\*Status:\*\*\s*([A-Z_]+)\s*$")
 _HANDOFF_STATUS_RE = re.compile(
     r"(?m)^\*\*Status set by this handoff:\*\*\s*`(REVIEW|BLOCKED)`(?:\s|$)"
 )
+_RECONCILIATION_SECTION_RE = re.compile(
+    r"(?ms)^## Decision / implementation reconciliation[ \t]*\n(.*?)(?=^##[ \t]|\Z)"
+)
 _ALLOWED_SLICE_TYPES = frozenset({"BOOTSTRAP", "DESIGN_RESEARCH", "IMPLEMENTATION", "VALIDATION"})
 _POST_0038_PRODUCT_CHECKS = (
     "ONE-CAPABILITY CHECK",
     "VISIBLE-RESULT CHECK",
     "PRODUCT EXECUTION PLAN ALIGNMENT",
 )
+_POST_0050_RECONCILIATION_CHECK = "REPOSITORY RECONCILIATION CHECK"
+_RECONCILIATION_EVIDENCE_LABELS = (
+    "Accepted records checked",
+    "Production implementation checked",
+    "Already implemented / not re-decided",
+    "Exact remaining gap",
+    "Accepted-but-unimplemented obligations",
+    "Material classifications",
+)
+_RECONCILIATION_CLASSIFICATIONS = (
+    "DECIDED_AND_IMPLEMENTED",
+    "DECIDED_NOT_YET_IMPLEMENTED",
+    "EXPLICITLY_DEFERRED",
+    "GENUINELY_OPEN",
+    "CONFLICT_OR_REGRESSION",
+)
+_RECONCILIATION_PLACEHOLDER_VALUES = frozenset({"TODO", "TBD", "PLACEHOLDER"})
 
 
 def requirements_check() -> tuple[int, int]:
@@ -105,13 +125,60 @@ def project_state_freshness_check(
     return declared, latest
 
 
+def _is_reconciliation_placeholder(value: str) -> bool:
+    normalized = value.strip()
+    return normalized.upper() in _RECONCILIATION_PLACEHOLDER_VALUES or (
+        normalized.startswith("<") and normalized.endswith(">")
+    )
+
+
+def _reconciliation_section(*, queue: int, path: Path, text: str) -> str:
+    match = _RECONCILIATION_SECTION_RE.search(text)
+    if match is None:
+        raise ValueError(
+            f"SLICE-{queue:04d} queue document {path.name} must contain "
+            "'## Decision / implementation reconciliation'"
+        )
+    return match.group(1)
+
+
+def _validate_reconciliation_evidence(*, queue: int, path: Path, section: str) -> None:
+    for label in _RECONCILIATION_EVIDENCE_LABELS:
+        pattern = re.compile(rf"(?m)^\*\*{re.escape(label)}:\*\*[ \t]*(\S[^\r\n]*)[ \t]*$")
+        match = pattern.search(section)
+        if match is None:
+            raise ValueError(
+                f"SLICE-{queue:04d} queue document {path.name} must contain a non-empty "
+                f"'**{label}:** <evidence>' reconciliation line"
+            )
+        if _is_reconciliation_placeholder(match.group(1)):
+            raise ValueError(
+                f"SLICE-{queue:04d} queue document {path.name} has placeholder rather than "
+                f"repository-backed evidence after '**{label}:**'"
+            )
+
+    classifications_pattern = re.compile(
+        r"(?m)^\*\*Material classifications:\*\*[ \t]*[^\r\n]*\b(?:"
+        + "|".join(re.escape(value) for value in _RECONCILIATION_CLASSIFICATIONS)
+        + r")\b[^\r\n]*$"
+    )
+    if classifications_pattern.search(section) is None:
+        allowed = ", ".join(_RECONCILIATION_CLASSIFICATIONS)
+        raise ValueError(
+            f"SLICE-{queue:04d} queue document {path.name} must name at least one accepted "
+            f"reconciliation classification after '**Material classifications:**'; allowed: {allowed}"
+        )
+
+
 def queue_slice_startability_check(
     *, slices_dir: Path = SLICES, project_state: Path = PROJECT_STATE
 ) -> tuple[int, str | None]:
     """Validate the queued slice across readiness and implementation handoff.
 
     Before execution, a queued primary document must be exactly START_SLICE-
-    compatible: canonical Type, Status READY, and the post-0038 product checks.
+    compatible: canonical Type, Status READY, the post-0038 product checks, and
+    from SLICE-0051 onward the repository reconciliation PASS marker plus its
+    required decision/implementation reconciliation section and evidence lines.
 
     Once implementation has actually reached an agent handoff, that same queued
     document may legitimately move to REVIEW or BLOCKED before acceptance closure
@@ -177,11 +244,23 @@ def queue_slice_startability_check(
 
     if queue >= 39:
         for check in _POST_0038_PRODUCT_CHECKS:
-            pattern = re.compile(rf"(?m)^\*\*{re.escape(check)}:\*\*\s*PASS\s*$")
+            pattern = re.compile(rf"(?m)^\*\*{re.escape(check)}:\*\*[ \t]*PASS[ \t]*$")
             if pattern.search(text) is None:
                 raise ValueError(
                     f"SLICE-{queue:04d} queue document {path.name} must contain '**{check}:** PASS'"
                 )
+
+    if queue >= 51:
+        reconciliation_pattern = re.compile(
+            rf"(?m)^\*\*{re.escape(_POST_0050_RECONCILIATION_CHECK)}:\*\*[ \t]*PASS[ \t]*$"
+        )
+        if reconciliation_pattern.search(text) is None:
+            raise ValueError(
+                f"SLICE-{queue:04d} queue document {path.name} must contain "
+                f"'**{_POST_0050_RECONCILIATION_CHECK}:** PASS'"
+            )
+        section = _reconciliation_section(queue=queue, path=path, text=text)
+        _validate_reconciliation_evidence(queue=queue, path=path, section=section)
 
     return queue, path.name
 

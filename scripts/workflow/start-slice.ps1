@@ -40,10 +40,50 @@ function Assert-ProductExecutionChecks([string]$Number, [string]$Text, [string]$
         'PRODUCT EXECUTION PLAN ALIGNMENT'
     )
 
+    if ([int]$Number -ge 51) {
+        $requiredChecks += 'REPOSITORY RECONCILIATION CHECK'
+    }
+
     foreach ($check in $requiredChecks) {
-        $pattern = "(?m)^\*\*$([regex]::Escape($check)):\*\*\s*PASS\s*$"
+        $pattern = "(?m)^\*\*$([regex]::Escape($check)):\*\*[ \t]*PASS[ \t]*$"
         if ($Text -notmatch $pattern) {
-            throw "SLICE-$Number cannot start: $FileName must contain '**${check}:** PASS' for post-0038 work. Prepare/review the slice against docs/PRODUCT_EXECUTION_PLAN.md before starting Claude."
+            throw "SLICE-$Number cannot start: $FileName must contain '**${check}:** PASS'. Prepare/review the slice against controlling governance before starting Claude."
+        }
+    }
+
+    if ([int]$Number -ge 51) {
+        $sectionPattern = '(?ms)^## Decision / implementation reconciliation[ \t]*\r?\n(.*?)(?=^##[ \t]|\z)'
+        $sectionMatch = [regex]::Match($Text, $sectionPattern)
+        if (-not $sectionMatch.Success) {
+            throw "SLICE-$Number cannot start: $FileName must contain the section '## Decision / implementation reconciliation' required by docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md."
+        }
+        $reconciliationText = $sectionMatch.Groups[1].Value
+
+        $evidenceLabels = @(
+            'Accepted records checked',
+            'Production implementation checked',
+            'Already implemented / not re-decided',
+            'Exact remaining gap',
+            'Accepted-but-unimplemented obligations',
+            'Material classifications'
+        )
+        foreach ($label in $evidenceLabels) {
+            $evidencePattern = "(?m)^\*\*$([regex]::Escape($label)):\*\*[ \t]*(\S[^\r\n]*)[ \t]*$"
+            $evidenceMatch = [regex]::Match($reconciliationText, $evidencePattern)
+            if (-not $evidenceMatch.Success) {
+                throw "SLICE-$Number cannot start: $FileName must contain a non-empty '**${label}:** <evidence>' line in its reconciliation section."
+            }
+            $evidenceValue = $evidenceMatch.Groups[1].Value.Trim()
+            $isNamedPlaceholder = $evidenceValue -match '^(?i:TODO|TBD|PLACEHOLDER)$'
+            $isAnglePlaceholder = $evidenceValue.StartsWith('<') -and $evidenceValue.EndsWith('>')
+            if ($isNamedPlaceholder -or $isAnglePlaceholder) {
+                throw "SLICE-$Number cannot start: $FileName has placeholder rather than repository-backed evidence after '**${label}:**'."
+            }
+        }
+
+        $classificationPattern = '(?m)^\*\*Material classifications:\*\*[ \t]*[^\r\n]*\b(DECIDED_AND_IMPLEMENTED|DECIDED_NOT_YET_IMPLEMENTED|EXPLICITLY_DEFERRED|GENUINELY_OPEN|CONFLICT_OR_REGRESSION)\b[^\r\n]*$'
+        if ($reconciliationText -notmatch $classificationPattern) {
+            throw "SLICE-$Number cannot start: $FileName must name at least one accepted reconciliation classification after '**Material classifications:**'."
         }
     }
 }
@@ -124,6 +164,7 @@ TOKEN/CONTEXT DISCIPLINE:
 EXECUTION:
 - Follow CLAUDE.md and $relativeSliceFile exactly.
 - For SLICE-0039 and later, comply with docs/PRODUCT_EXECUTION_PLAN.md and preserve the slice's PASS product-execution checks.
+- For SLICE-0051 and later, preserve the accepted decision/implementation reconciliation recorded in the slice; do not re-open behavior that the slice identifies as already decided/implemented.
 - Work only on `$branch`; do not modify main or another branch.
 - Do not broaden scope or start another slice.
 - Push this same branch to GitHub at completion.
