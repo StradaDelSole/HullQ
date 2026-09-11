@@ -33,15 +33,16 @@ A required `FAIL` on any of these checks blocks readiness. Genuine prerequisite/
 
 ## Decision / implementation reconciliation
 
-Required for SLICE-0051 and later.
+Required for SLICE-0051 and later. Replace every placeholder below with concrete repository-backed evidence before setting the slice to `READY`.
 
-Record the targeted pre-decision check here. At minimum state:
+**Accepted records checked:** <specific accepted records>  
+**Production implementation checked:** <specific code/tests/migrations, or a precise reason none can exist>  
+**Already implemented / not re-decided:** <specific behavior>  
+**Exact remaining gap:** <single bounded gap owned by this slice>  
+**Accepted-but-unimplemented obligations:** <specific owner/deferral, or NONE>  
+**Material classifications:** <one or more of DECIDED_AND_IMPLEMENTED | DECIDED_NOT_YET_IMPLEMENTED | EXPLICITLY_DEFERRED | GENUINELY_OPEN | CONFLICT_OR_REGRESSION>
 
-- relevant accepted decisions/records checked;
-- relevant existing production code/tests/migrations checked;
-- behavior already implemented and therefore not being re-decided;
-- the exact remaining gap this slice owns;
-- any accepted-but-unimplemented obligation found, with its concrete owner or explicit deferral.
+The six evidence lines are machine-checked for presence and non-empty values by `START_SLICE` and repository validation. Independent readiness review must still verify that the cited records and implementation actually support the classifications.
 
 Classify material points using the governance states in `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md` rather than turning remembered/implemented behavior back into an open question.
 
