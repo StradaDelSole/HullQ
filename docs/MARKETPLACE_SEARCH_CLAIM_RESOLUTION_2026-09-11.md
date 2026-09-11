@@ -75,7 +75,93 @@ BoatDesign baseline wins
 unverified means automatically unusable
 ```
 
-The exact evidence-set/resolution mechanism required by a production native-inventory search capability must be defined in that bounded slice without weakening this decision.
+## Accepted bounded evidence-set rule — Option B
+
+For native-inventory technical evaluation of a concrete NativeListing, the accepted bounded mechanism is:
+
+```text
+publishing Organization's current claim
+→ candidate listing/PhysicalBoat value
+
+all relevant current admissible observations
+for the same field on the same PhysicalBoat
+→ contradiction guard
+```
+
+The publishing Organization's current non-superseded claim is the candidate value attributable to that listing. It is never silently replaced by another Organization's claim.
+
+Search resolution then checks relevant current admissible observations for that same field on the same durable `PhysicalBoatId`:
+
+```text
+publisher claim = admissible concrete value
++ no contradictory current admissible observation
+→ may be RESOLVED for this listing evaluation context
+→ provenance remains the publishing Organization
+→ verification remains unchanged / unverified unless separately established
+```
+
+```text
+publisher claim = admissible concrete value
++ contradictory current admissible observation for same PhysicalBoat/field
+→ CONFLICT
+→ hard Required criterion cannot be satisfied
+→ listing must not appear as CONFIRMED_MATCH on that criterion
+```
+
+Semantically equivalent corroborating current observations do not create a conflict. An omitted/UNKNOWN observation does not defeat a concrete publisher value or manufacture a conflicting value; it remains absence of corroboration, not a contradictory assertion.
+
+Hard boundaries:
+
+- the conflict guard MUST use the same durable `PhysicalBoatId`; fuzzy cross-listing identity inference is not authorized here;
+- another Organization's observation can block a confirmed hard-search match through `CONFLICT`, but it does not overwrite the publishing Organization's displayed claim;
+- no source winner, majority vote, recency winner, broker-priority winner or hidden confidence score is introduced;
+- this is a bounded listing-evaluation conflict guard, **not** a global canonical PhysicalBoat fact resolver;
+- historical superseded revisions from the same authority are audit history, not current contradictory observations;
+- BoatDesign/configuration truth still cannot backfill missing or unresolved PhysicalBoat truth.
+
+This accepted rule is `DECIDED_NOT_YET_IMPLEMENTED` in the generalized production native-inventory search path. Its implementation must remain bounded to the selected search capability rather than expanding into a generic cross-source resolver.
+
+Decision-to-code ownership for this accepted rule is explicit:
+
+```text
+this decision-record PR
+→ records semantics only
+→ implementation is EXPLICITLY_DEFERRED from this PR
+
+first subsequently selected production native-inventory
+technical search/qualification slice
+→ MUST own the Option-B conflict guard
+→ MUST apply Option C resolution-vs-verification semantics
+→ MUST NOT silently omit or re-decide either rule
+```
+
+This deferral exists only because the current post-SLICE-0050 reassessment has not yet assigned the SLICE-0051 capability. Once a production native-inventory technical search/qualification slice is selected, its readiness reconciliation must name this implementation obligation explicitly.
+
+## Product-success and customer-experience priority
+
+The cross-capability controlling direction is `docs/PRODUCT_SUCCESS_CUSTOMER_PRIORITY_2026-09-11.md`.
+
+For SLICE-0051 selection/readiness and subsequent native-marketplace execution, the Project Owner has reaffirmed that **buyer friendliness, broker friendliness, competitive advantage, commercial success and exceptional implementation quality are first-order product constraints, not polish to add later**.
+
+This preserves the existing `docs/PRODUCT_UX_PRINCIPLES.md` direction of reference-grade truth with consumer-grade clarity and adds an explicit execution-priority rule:
+
+```text
+truth-safe
++ materially easier for serious buyers
++ materially easier for professional brokers
++ meaningfully differentiated from generic boat marketplaces
++ visible/actionable product value
++ exceptional implementation quality
+→ preferred execution path
+```
+
+For buyers, native Search should reduce work and uncertainty: explain why an offer qualifies, distinguish confirmed truth from missing/conflicting evidence, and make the next useful action obvious without requiring database expertise.
+
+For brokers, HullQ should minimize unnecessary data-entry/reconciliation friction, preserve attribution and correction rights, never silently overwrite their claims, and make missing/conflicting information understandable and remediable rather than punitive or opaque.
+
+For prioritization, commodity marketplace parity work MUST NOT outrank a bounded capability that materially strengthens HullQ's accepted technical-search/concrete-boat-truth advantage unless that parity work is a demonstrated prerequisite for the buyer/broker loop.
+
+Success-oriented slices should prefer an inspectable user-facing outcome and evidence that the capability advances the primary buyer/broker loop rather than merely adding infrastructure. Quality does not permit weakening truth semantics: customer friendliness must be achieved through clearer interaction and better data handling, not by converting UNKNOWN/CONFLICT into convenient matches.
 
 ## Design truth remains separate
 
@@ -142,14 +228,15 @@ This behavior is not open for re-decision.
 
 ### DECIDED_NOT_YET_IMPLEMENTED
 
-The generalized **production native-inventory search/qualification path** that consumes accepted PhysicalBoat marketplace claims and applies the Option-C resolution-vs-verification rule is not yet implemented as a production capability.
+The generalized **production native-inventory search/qualification path** that consumes accepted PhysicalBoat marketplace claims and applies the Option-C resolution-vs-verification rule plus the Option-B same-PhysicalBoat conflict guard is not yet implemented as a production capability.
 
-That is an implementation gap, not an open semantic question.
+That is an implementation gap, not an open semantic question. Its immediate implementation is explicitly deferred by this decision record until the current post-SLICE-0050 reassessment selects the first production native-inventory technical search/qualification slice; that slice must then own this obligation in its readiness reconciliation.
 
 ### EXPLICITLY_DEFERRED
 
 This decision does **not** itself implement:
 
+- the accepted Option-B conflict guard / generalized native-inventory technical search path, deferred as described above until its first bounded production-search execution slice is selected;
 - a global cross-Organization PhysicalBoat fact resolver;
 - independent document/survey verification;
 - a generic all-38-field search engine;
@@ -157,7 +244,7 @@ This decision does **not** itself implement:
 - Saved Search / monitoring / alerts;
 - a specific SLICE-0051 capability.
 
-Those remain subject to bounded future capability selection and their controlling accepted contracts.
+Those remain subject to bounded future capability selection and their controlling accepted contracts. The Option-B/Option-C search obligation is the exception to any broad reading of "subject to future decision": its semantics are already decided and may not be re-opened merely because implementation is deferred.
 
 ## Controlling artifacts preserved
 
@@ -166,6 +253,7 @@ This decision must be read together with:
 - `docs/ARCHITECTURE_REBASELINE_2026-09-02.md`;
 - `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_MARKET_DECISION_2026-09-01.md`;
 - `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_RECONCILIATION_2026-09-02.md`;
+- `docs/PRODUCT_SUCCESS_CUSTOMER_PRIORITY_2026-09-11.md`;
 - `docs/PRODUCT_UX_PRINCIPLES.md`;
 - `docs/MARKETPLACE_FACT_CLAIM_SEMANTICS_2026-09-04.md`;
 - `specs/MARKETPLACE_FACT_CONTRACT.v0.1.md`;
@@ -173,4 +261,4 @@ This decision must be read together with:
 
 ## Controlling one-sentence rule
 
-> **A sufficiently admissible and resolved broker-declared PhysicalBoat claim may satisfy a hard native-inventory technical search criterion without becoming an independently verified HullQ fact; provenance and verification remain visible/separate, while UNKNOWN, UNRESOLVED or CONFLICT cannot satisfy Required and BoatDesign truth never fills missing concrete-yacht truth.**
+> **A sufficiently admissible current broker-declared PhysicalBoat claim may resolve and satisfy a hard native-inventory technical search criterion for its listing when the same-PhysicalBoat current-observation conflict guard finds no contradictory admissible value; provenance and verification remain separate, contradictory observations produce CONFLICT, UNKNOWN/UNRESOLVED/CONFLICT cannot satisfy Required, and BoatDesign truth never fills missing concrete-yacht truth.**
