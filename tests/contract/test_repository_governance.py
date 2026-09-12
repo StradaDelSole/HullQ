@@ -52,6 +52,14 @@ def test_current_architecture_artifacts_are_reconciled() -> None:
     assert "Framework choice remains OQ-008" not in search_seo
     assert "bounded public `noindex`" in search_seo
 
+    open_questions = (ROOT / "docs/governance/OPEN_QUESTIONS.md").read_text(encoding="utf-8")
+    assert "| OQ-014 | — | Authentication/account architecture and privacy/security baseline | DECIDED |" in open_questions
+    assert "OQ-014 remains deliberately deferred" not in open_questions
+    assert "Auth0 Public Cloud / EU tenant" in open_questions
+    assert "OQ-018 remains genuinely open only for the broad/indexable organic-discovery system" in open_questions
+    assert "does not block already accepted bounded `noindex` listing/Search surfaces" in open_questions
+    assert "This register records unresolved decisions; it is not a second competing roadmap." in open_questions
+
     adr = (ROOT / "architecture/decisions/ADR-0010-vps-first-application-stack.md").read_text(
         encoding="utf-8"
     )
