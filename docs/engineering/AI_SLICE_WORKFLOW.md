@@ -71,11 +71,13 @@ The trigger section must carry the exact machine-checked evidence fields defined
 The four controlling triggers are:
 
 1. architecture/current-state reconciliation must remain PASS before SLICE-0052+ readiness;
-2. Production Readiness must be PASS before real external broker production inventory is exposed to real external buyers or public production launch begins;
+2. Production Readiness must be PASS before real external broker data is stored/relied upon as HullQ production data, before the first real external production pilot, or before public production launch, whichever comes first;
 3. technical native Search criterion #2 must explicitly compare its bridge/path to SLICE-0051, and criterion #3+ may not create a third structural copy without the abstraction guard PASS;
 4. the current review workflow must be reassessed after SLICE-0056 is owner-accepted or before the first real production pilot, whichever happens first.
 
 The repository validator enforces deterministic marker/state relationships. Independent readiness review must still verify that the claimed comparison, generalization/distinction and readiness evidence are substantively true.
+
+The older accepted database HA minimum remains separately hard: before real external broker inventory is exposed to real external buyers, production PostgreSQL must have automatic failover with at least one standby.
 
 `START_SLICE` runs repository governance validation for SLICE-0052+ before creating/reusing a slice worktree, and separately verifies the required trigger marker/section. A triggered gate therefore cannot be bypassed merely by writing `READY` into a slice document.
 
@@ -202,6 +204,7 @@ The helper scripts are intentionally fail-safe:
 - `START_SLICE.bat` never manipulates VS Code windows;
 - from SLICE-0051 onward `START_SLICE` refuses to start a slice without the repository-reconciliation PASS marker and reconciliation section;
 - from SLICE-0052 onward `START_SLICE` also runs repository trigger validation and refuses to start without the trigger-gates PASS marker/section;
+- real external broker production data cannot become ACTIVE while the production-readiness gate is not PASS;
 - production-pilot/public-launch state cannot be ACTIVE while the production-readiness gate or mandatory pre-pilot workflow reassessment is not PASS;
 - after accepted SLICE-0056 the workflow reassessment cannot remain `NOT_DUE`;
 - the finish script does not delete a worktree with substantive uncommitted changes;
