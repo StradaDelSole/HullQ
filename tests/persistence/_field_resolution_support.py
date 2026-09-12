@@ -40,6 +40,9 @@ from hullq.domain.provenance import (
 )
 from hullq.domain.provenance import FieldResolution as _FieldResolution
 from hullq.persistence.field_resolution import (
+    CanonicalLookupResult,
+    CanonicalLookupStatus,
+    FetchCanonicalValue,
     FieldResolutionWriteStatus,
     encode_canonical_decimal_snapshot,
     write_field_resolution,
@@ -47,12 +50,74 @@ from hullq.persistence.field_resolution import (
 from hullq.persistence.importer import import_research_evidence_bundle
 from hullq.research.jobs import ResearchTarget
 from hullq.research.observations import ResearchEvidenceBundle
+from hullq.search.draft_max_design_bridge import lookup_draft_max_canonical_value
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 WIKIDATA_SOURCE: dict[str, Any] = json.loads(
     (_REPO_ROOT / "fixtures" / "sources" / "wikidata_source.json").read_text(encoding="utf-8")
 )
 WIKIDATA_SOURCE_ID: str = WIKIDATA_SOURCE["source_id"]
+
+
+def matching_canonical_lookup_stub(
+    conn: Any, resolution: _FieldResolution
+) -> CanonicalLookupResult:
+    """Generic Finding-7 `FetchCanonicalValue` stub for tests targeting other
+    invariants: trivially agrees with whatever *resolution* itself asserts,
+    using its own already-encoded `canonical_value_snapshot` verbatim
+    (never round-tripped through `float`, so extreme-precision-Decimal
+    round-trip tests are unaffected). Never consults durable state -- use
+    `hullq.search.draft_max_design_bridge.lookup_draft_max_canonical_value`
+    (this module's `admit_resolved_draft_max` default) instead whenever a
+    test actually needs genuine canonical-consistency enforcement."""
+    snapshot: dict[str, Any] = {}
+    node = snapshot
+    tokens = resolution.field_pointer.tokens
+    for token in tokens[:-1]:
+        node[token] = {}
+        node = node[token]
+    if tokens:
+        node[tokens[-1]] = resolution.canonical_value_snapshot
+    return CanonicalLookupResult(
+        status=CanonicalLookupStatus.FOUND, canonical_subject_snapshot=snapshot
+    )
+
+
+def admit_canonical_boat_design(
+    conn: Any,
+    design_id: str,
+    *,
+    baseline: dict[str, Any] | None = None,
+    named_variants: list[dict[str, Any]] | None = None,
+    boat_model_id: str | None = None,
+) -> None:
+    """Durably insert a minimal `canonical_boat_designs` row (plus its parent
+    `canonical_boat_model`) so that `lookup_draft_max_canonical_value` has
+    real durable state to consult for Finding 7's write-time enforcement.
+    Test-only: `content_hash` is a fixed placeholder, not a real
+    fingerprint."""
+    model_id = boat_model_id or f"BM-{design_id}"
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO canonical_boat_models (id, canonical_name, content_hash) "
+            "VALUES (%s, %s, %s) ON CONFLICT (id) DO NOTHING",
+            [model_id, f"Model {model_id}", "0" * 64],
+        )
+        cur.execute(
+            "INSERT INTO canonical_boat_designs "
+            "(id, boat_model_id, generation, designers, baseline, named_variants, "
+            " design_options, quality, content_hash) "
+            "VALUES (%s, %s, '{}'::jsonb, '[]'::jsonb, %s::jsonb, %s::jsonb, "
+            "'[]'::jsonb, '{}'::jsonb, %s)",
+            [
+                design_id,
+                model_id,
+                json.dumps(baseline or {}),
+                json.dumps(named_variants or []),
+                "1" * 64,
+            ],
+        )
+    conn.commit()
 
 
 def make_evidence(
@@ -133,12 +198,23 @@ def admit_resolved_draft_max(
     value: Decimal,
     resolution_id: str,
     evidence_id: str | None = None,
+    fetch_canonical_value: FetchCanonicalValue | None = None,
 ) -> None:
     """Durably admit one `resolved` `draft_max_m` FieldResolution end to end:
     import one supporting FieldEvidenceV3 (Wikidata source, already-accepted
     `production_value: allowed` clearance) then write the resolution through
     the real accepted `write_field_resolution` path. Asserts success --
-    intended for test/proof setup, not for exercising failure paths."""
+    intended for test/proof setup, not for exercising failure paths.
+
+    `fetch_canonical_value` defaults to the real
+    `hullq.search.draft_max_design_bridge.lookup_draft_max_canonical_value`
+    (Finding 7) -- callers admitting against a real durable
+    `canonical_boat_designs` row (see `admit_canonical_boat_design`) need
+    pass nothing extra to get genuine end-to-end enforcement. Pass
+    `matching_canonical_lookup_stub` explicitly for tests that deliberately
+    never persist a matching canonical row (e.g. tests exercising other
+    FieldResolution invariants in isolation, or a deliberate read-time-only
+    canonical-value-drift scenario)."""
     evidence_id = evidence_id or f"EV-{resolution_id}"
     evidence = make_evidence(
         evidence_id,
@@ -171,6 +247,7 @@ def admit_resolved_draft_max(
         conn,
         resolution=resolution,
         expected_current_resolution_id=None,
+        fetch_canonical_value=fetch_canonical_value or lookup_draft_max_canonical_value,
         available_sources={WIKIDATA_SOURCE_ID: WIKIDATA_SOURCE},
     )
     assert result.status is FieldResolutionWriteStatus.CREATED, result

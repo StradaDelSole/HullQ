@@ -12,11 +12,18 @@ the amendment review Finding 4 required-option exclusion, and the exact
 Decimal, no-float-drift design-level eligibility check.
 
 `build_boat_design_draft_configuration_set`/`compatible_boat_design_ids`
-consult `field_resolutions`/`field_resolution_heads` only -- there is no
-foreign-key dependency on a real `canonical_boat_designs` row (FieldResolution
-subjects are generic and never bound to that table), so these tests
-construct BOAT_DESIGN_SCHEMA-shaped dicts directly in memory rather than
-persisting them.
+consult `field_resolutions`/`field_resolution_heads` and take their
+BOAT_DESIGN_SCHEMA-shaped document as a plain in-memory parameter -- there is
+no foreign-key dependency from `field_resolutions` to `canonical_boat_designs`
+(FieldResolution subjects are generic). Since amendment review Finding 7,
+though, `write_field_resolution` itself enforces canonical-value consistency
+against a *durable* `canonical_boat_designs` row at admission time
+(`hullq.search.draft_max_design_bridge.lookup_draft_max_canonical_value`), so
+most tests here now also durably admit a matching row via
+`admit_canonical_boat_design` before calling `admit_resolved_draft_max` --
+the in-memory dict passed to `build_boat_design_draft_configuration_set`
+afterward is the read path under test, decoupled from (and occasionally,
+deliberately, diverging from) that durable admission-time row.
 """
 
 from __future__ import annotations
@@ -41,7 +48,11 @@ from hullq.search.draft_max_design_bridge import (
 )
 from hullq.search.types import ValueQualification
 
-from ._field_resolution_support import admit_resolved_draft_max
+from ._field_resolution_support import (
+    admit_canonical_boat_design,
+    admit_resolved_draft_max,
+    matching_canonical_lookup_stub,
+)
 
 # ---------------------------------------------------------------------------
 # Disposable-schema fixture
@@ -123,6 +134,7 @@ def test_no_active_resolution_is_missing(conn: Any) -> None:
 
 
 def test_resolved_matching_snapshot_is_confirmed(conn: Any) -> None:
+    admit_canonical_boat_design(conn, "BD-DB-2", baseline={"dimensions": {"draft_max_m": 1.3}})
     admit_resolved_draft_max(
         conn,
         subject_kind=SubjectKind.BOAT_DESIGN,
@@ -143,6 +155,7 @@ def test_resolved_snapshot_mismatching_canonical_value_is_missing(conn: Any) -> 
     """A resolution whose snapshot no longer agrees with the canonical
     value it is supposed to qualify (PROVENANCE_MODEL.v0.1.md §6) must fail
     closed, not silently confirm the (different) current canonical value."""
+    admit_canonical_boat_design(conn, "BD-DB-3", baseline={"dimensions": {"draft_max_m": 1.3}})
     admit_resolved_draft_max(
         conn,
         subject_kind=SubjectKind.BOAT_DESIGN,
@@ -151,6 +164,12 @@ def test_resolved_snapshot_mismatching_canonical_value_is_missing(conn: Any) -> 
         value=Decimal("1.3"),
         resolution_id="FR-DB-3",
     )
+    # This in-memory design image deliberately diverges from the durable
+    # canonical row admitted above (1.5 vs 1.3) to simulate the canonical
+    # record changing *after* the resolution was admitted -- exercising the
+    # independent read-time defensive check in `_qualify_via_field_resolution`,
+    # not Finding 7's write-time gate (which the admit call above already
+    # satisfied against the durable value at write time).
     design = _design("BD-DB-3", baseline_draft_max_m=1.5)  # differs from the resolved snapshot
     config_set = build_boat_design_draft_configuration_set(conn, design)
     qualified = config_set.configurations[0].projection.get_numeric(DRAFT_MAX_PROJECTION_FIELD)
@@ -206,7 +225,11 @@ def test_unresolved_states_are_missing(conn: Any, state_value: str) -> None:
         notes=None,
     )
     result = write_field_resolution(
-        conn, resolution=resolution, expected_current_resolution_id=None, available_sources={}
+        conn,
+        resolution=resolution,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
+        available_sources={},
     )
     assert result.status.value == "created", result
     conn.commit()
@@ -223,6 +246,14 @@ def test_unresolved_states_are_missing(conn: Any, state_value: str) -> None:
 
 
 def test_named_variant_own_override_qualification(conn: Any) -> None:
+    design = _design(
+        "BD-DB-VAR-1",
+        baseline_draft_max_m=1.85,
+        named_variants=[{"id": "VAR-DB-1", "overrides": {"dimensions": {"draft_max_m": 1.30}}}],
+    )
+    admit_canonical_boat_design(
+        conn, design["id"], baseline=design["baseline"], named_variants=design["named_variants"]
+    )
     admit_resolved_draft_max(
         conn,
         subject_kind=SubjectKind.NAMED_VARIANT,
@@ -230,11 +261,6 @@ def test_named_variant_own_override_qualification(conn: Any) -> None:
         field_pointer=DRAFT_MAX_OVERRIDE_FIELD_POINTER,
         value=Decimal("1.30"),
         resolution_id="FR-VAR-DB-1",
-    )
-    design = _design(
-        "BD-DB-VAR-1",
-        baseline_draft_max_m=1.85,
-        named_variants=[{"id": "VAR-DB-1", "overrides": {"dimensions": {"draft_max_m": 1.30}}}],
     )
     config_set = build_boat_design_draft_configuration_set(conn, design)
     variant_config = next(
@@ -248,6 +274,14 @@ def test_named_variant_own_override_qualification(conn: Any) -> None:
 
 
 def test_named_variant_without_own_override_inherits_baseline(conn: Any) -> None:
+    design = _design(
+        "BD-DB-INHERIT-1",
+        baseline_draft_max_m=1.85,
+        named_variants=[{"id": "VAR-INHERIT-1", "overrides": {"dimensions": {}}}],
+    )
+    admit_canonical_boat_design(
+        conn, design["id"], baseline=design["baseline"], named_variants=design["named_variants"]
+    )
     admit_resolved_draft_max(
         conn,
         subject_kind=SubjectKind.BOAT_DESIGN,
@@ -255,11 +289,6 @@ def test_named_variant_without_own_override_inherits_baseline(conn: Any) -> None
         field_pointer=DRAFT_MAX_FIELD_POINTER,
         value=Decimal("1.85"),
         resolution_id="FR-DB-INHERIT-1",
-    )
-    design = _design(
-        "BD-DB-INHERIT-1",
-        baseline_draft_max_m=1.85,
-        named_variants=[{"id": "VAR-INHERIT-1", "overrides": {"dimensions": {}}}],
     )
     config_set = build_boat_design_draft_configuration_set(conn, design)
     variant_config = next(
@@ -275,6 +304,16 @@ def test_named_variant_without_own_override_inherits_baseline(conn: Any) -> None
 def test_named_variant_explicit_null_override_clears_to_missing_despite_confirmed_baseline(
     conn: Any,
 ) -> None:
+    design = _design(
+        "BD-DB-NULLOVERRIDE-1",
+        baseline_draft_max_m=1.85,
+        named_variants=[
+            {"id": "VAR-NULLOVERRIDE-1", "overrides": {"dimensions": {"draft_max_m": None}}}
+        ],
+    )
+    admit_canonical_boat_design(
+        conn, design["id"], baseline=design["baseline"], named_variants=design["named_variants"]
+    )
     admit_resolved_draft_max(
         conn,
         subject_kind=SubjectKind.BOAT_DESIGN,
@@ -282,13 +321,6 @@ def test_named_variant_explicit_null_override_clears_to_missing_despite_confirme
         field_pointer=DRAFT_MAX_FIELD_POINTER,
         value=Decimal("1.85"),
         resolution_id="FR-DB-NULLOVERRIDE-1",
-    )
-    design = _design(
-        "BD-DB-NULLOVERRIDE-1",
-        baseline_draft_max_m=1.85,
-        named_variants=[
-            {"id": "VAR-NULLOVERRIDE-1", "overrides": {"dimensions": {"draft_max_m": None}}}
-        ],
     )
     config_set = build_boat_design_draft_configuration_set(conn, design)
     variant_config = next(
@@ -329,6 +361,8 @@ def test_variant_with_requires_option_ids_still_excluded(conn: Any) -> None:
 
 
 def test_compatible_boat_design_ids_admits_qualified_shallow_design(conn: Any) -> None:
+    design = _design("BD-DB-COMPAT-1", baseline_draft_max_m=1.30)
+    admit_canonical_boat_design(conn, design["id"], baseline=design["baseline"])
     admit_resolved_draft_max(
         conn,
         subject_kind=SubjectKind.BOAT_DESIGN,
@@ -337,12 +371,13 @@ def test_compatible_boat_design_ids_admits_qualified_shallow_design(conn: Any) -
         value=Decimal("1.30"),
         resolution_id="FR-DB-COMPAT-1",
     )
-    design = _design("BD-DB-COMPAT-1", baseline_draft_max_m=1.30)
     compatible = compatible_boat_design_ids(conn, Decimal("1.6"), [design])
     assert compatible == frozenset({"BD-DB-COMPAT-1"})
 
 
 def test_compatible_boat_design_ids_excludes_too_deep_design(conn: Any) -> None:
+    design = _design("BD-DB-COMPAT-2", baseline_draft_max_m=2.10)
+    admit_canonical_boat_design(conn, design["id"], baseline=design["baseline"])
     admit_resolved_draft_max(
         conn,
         subject_kind=SubjectKind.BOAT_DESIGN,
@@ -351,7 +386,6 @@ def test_compatible_boat_design_ids_excludes_too_deep_design(conn: Any) -> None:
         value=Decimal("2.10"),
         resolution_id="FR-DB-COMPAT-2",
     )
-    design = _design("BD-DB-COMPAT-2", baseline_draft_max_m=2.10)
     compatible = compatible_boat_design_ids(conn, Decimal("1.6"), [design])
     assert compatible == frozenset()
 
@@ -363,6 +397,8 @@ def test_compatible_boat_design_ids_exact_decimal_boundary_no_float_drift(conn: 
     precision (a separate, already-acknowledged limitation): a
     higher-precision threshold that is still numerically >= the qualified
     1.6 m design value must admit it."""
+    design = _design("BD-DB-EXACT-1", baseline_draft_max_m=1.6)
+    admit_canonical_boat_design(conn, design["id"], baseline=design["baseline"])
     admit_resolved_draft_max(
         conn,
         subject_kind=SubjectKind.BOAT_DESIGN,
@@ -371,7 +407,6 @@ def test_compatible_boat_design_ids_exact_decimal_boundary_no_float_drift(conn: 
         value=Decimal("1.6"),
         resolution_id="FR-DB-EXACT-1",
     )
-    design = _design("BD-DB-EXACT-1", baseline_draft_max_m=1.6)
     high_precision_threshold = Decimal("1.60000000000000000000001")
     compatible = compatible_boat_design_ids(conn, high_precision_threshold, [design])
     assert compatible == frozenset({"BD-DB-EXACT-1"})

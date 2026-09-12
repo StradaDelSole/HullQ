@@ -14,6 +14,7 @@ resolved production value.
 from __future__ import annotations
 
 import json
+import threading
 import uuid
 from collections.abc import Generator
 from decimal import Decimal
@@ -59,6 +60,9 @@ from hullq.persistence.field_resolution import (
 from hullq.persistence.importer import import_research_evidence_bundle
 from hullq.research.jobs import ResearchTarget
 from hullq.research.observations import ResearchEvidenceBundle
+from hullq.search.draft_max_design_bridge import lookup_draft_max_canonical_value
+
+from ._field_resolution_support import admit_canonical_boat_design, matching_canonical_lookup_stub
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 _WIKIDATA_SOURCE = json.loads(
@@ -279,6 +283,7 @@ def test_create_first_resolution_and_readback(conn: Any) -> None:
         conn,
         resolution=resolution,
         expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
         available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
     )
     assert result.status is FieldResolutionWriteStatus.CREATED
@@ -301,6 +306,7 @@ def test_revision_preserves_old_and_advances_head(conn: Any) -> None:
         conn,
         resolution=first,
         expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
         available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
     )
     conn.commit()
@@ -315,6 +321,7 @@ def test_revision_preserves_old_and_advances_head(conn: Any) -> None:
         conn,
         resolution=second,
         expected_current_resolution_id="FR-REV-1",
+        fetch_canonical_value=matching_canonical_lookup_stub,
         available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
     )
     assert result.status is FieldResolutionWriteStatus.REVISED
@@ -341,13 +348,21 @@ def test_exact_retry_is_idempotent(conn: Any) -> None:
     sources = {_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE}
 
     first = write_field_resolution(
-        conn, resolution=resolution, expected_current_resolution_id=None, available_sources=sources
+        conn,
+        resolution=resolution,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
+        available_sources=sources,
     )
     assert first.status is FieldResolutionWriteStatus.CREATED
     conn.commit()
 
     retry = write_field_resolution(
-        conn, resolution=resolution, expected_current_resolution_id=None, available_sources=sources
+        conn,
+        resolution=resolution,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
+        available_sources=sources,
     )
     assert retry.status is FieldResolutionWriteStatus.ALREADY_EXISTS
     assert retry.current_resolution_id == "FR-IDEMP-1"
@@ -364,7 +379,11 @@ def test_stale_predecessor_conflict_leaves_head_unchanged(conn: Any) -> None:
     sources = {_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE}
     first = _resolution("FR-STALE-1", supporting_evidence_ids=frozenset({"EV-STALE-1"}))
     write_field_resolution(
-        conn, resolution=first, expected_current_resolution_id=None, available_sources=sources
+        conn,
+        resolution=first,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
+        available_sources=sources,
     )
     conn.commit()
 
@@ -378,6 +397,7 @@ def test_stale_predecessor_conflict_leaves_head_unchanged(conn: Any) -> None:
         conn,
         resolution=stale_attempt,
         expected_current_resolution_id="FR-NEVER-EXISTED",  # stale/forged predecessor
+        fetch_canonical_value=matching_canonical_lookup_stub,
         available_sources=sources,
     )
     assert result.status is FieldResolutionWriteStatus.CONFLICT
@@ -407,6 +427,7 @@ def test_first_write_with_nonnull_expected_fails_closed(conn: Any) -> None:
         conn,
         resolution=forged_first,
         expected_current_resolution_id="FR-DOES-NOT-EXIST",
+        fetch_canonical_value=matching_canonical_lookup_stub,
         available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
     )
     assert result.status is FieldResolutionWriteStatus.CONFLICT
@@ -431,6 +452,7 @@ def test_missing_evidence_id_fails_closed(conn: Any) -> None:
         conn,
         resolution=resolution,
         expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
         available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
     )
     assert result.status is FieldResolutionWriteStatus.EVIDENCE_NOT_FOUND
@@ -453,6 +475,7 @@ def test_evidence_subject_mismatch_fails_closed(conn: Any) -> None:
         conn,
         resolution=resolution,
         expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
         available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
     )
     assert result.status is FieldResolutionWriteStatus.INVARIANTS_VIOLATED
@@ -466,6 +489,7 @@ def test_evidence_field_pointer_mismatch_fails_closed(conn: Any) -> None:
         conn,
         resolution=resolution,
         expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
         available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
     )
     assert result.status is FieldResolutionWriteStatus.INVARIANTS_VIOLATED
@@ -482,6 +506,7 @@ def test_supporting_not_subset_of_considered_fails_closed(conn: Any) -> None:
         conn,
         resolution=resolution,
         expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
         available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
     )
     assert result.status is FieldResolutionWriteStatus.INVARIANTS_VIOLATED
@@ -499,6 +524,7 @@ def test_source_not_in_available_sources_fails_closed(conn: Any) -> None:
         conn,
         resolution=resolution,
         expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
         available_sources={},  # the evidence's source is not supplied
     )
     assert result.status is FieldResolutionWriteStatus.SOURCE_NOT_AVAILABLE
@@ -522,6 +548,7 @@ def test_source_use_denied_fails_closed(conn: Any) -> None:
         conn,
         resolution=resolution,
         expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
         available_sources={"SRC-PROHIBITED": prohibited_source},
     )
     assert result.status is FieldResolutionWriteStatus.SOURCE_USE_DENIED
@@ -534,6 +561,7 @@ def test_allowed_source_production_value_clearance_succeeds(conn: Any) -> None:
         conn,
         resolution=resolution,
         expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
         available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
     )
     assert result.status is FieldResolutionWriteStatus.CREATED
@@ -553,7 +581,11 @@ def test_unresolved_state_skips_source_rights_check_entirely(conn: Any) -> None:
         considered_evidence_ids=frozenset(),
     )
     result = write_field_resolution(
-        conn, resolution=resolution, expected_current_resolution_id=None, available_sources={}
+        conn,
+        resolution=resolution,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
+        available_sources={},
     )
     assert result.status is FieldResolutionWriteStatus.CREATED
 
@@ -587,6 +619,7 @@ def test_resolved_with_conflict_retains_contradicting_evidence(conn: Any) -> Non
         conn,
         resolution=resolution,
         expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
         available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
     )
     assert result.status is FieldResolutionWriteStatus.CREATED
@@ -621,6 +654,7 @@ def test_rejected_write_leaves_no_orphan_revision_or_head(conn: Any) -> None:
         conn,
         resolution=resolution,
         expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
         available_sources={"SRC-WILL-BE-DENIED": denied_source},
     )
     assert result.status is FieldResolutionWriteStatus.SOURCE_USE_DENIED
@@ -649,6 +683,7 @@ def test_extreme_precision_decimal_snapshot_round_trips_through_postgresql(conn:
         conn,
         resolution=resolution,
         expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
         available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
     )
     assert result.status is FieldResolutionWriteStatus.CREATED
@@ -661,6 +696,598 @@ def test_extreme_precision_decimal_snapshot_round_trips_through_postgresql(conn:
     assert decode_canonical_decimal_snapshot(current.canonical_value_snapshot) == exact
 
 
+# ---------------------------------------------------------------------------
+# Finding 7: canonical-value consistency enforced at the write boundary
+# ---------------------------------------------------------------------------
+
+
+def test_canonical_subject_not_found_fails_closed(conn: Any) -> None:
+    """A resolved resolution for a BoatDesign never durably admitted into
+    `canonical_boat_designs` must fail closed, not silently succeed against
+    nothing durable to agree with."""
+    _import_evidence(conn, _evidence("EV-NOCANON-1", subject_id="BD-FR-NOCANON"))
+    resolution = _resolution(
+        "FR-NOCANON-1",
+        subject_id="BD-FR-NOCANON",
+        supporting_evidence_ids=frozenset({"EV-NOCANON-1"}),
+    )
+    result = write_field_resolution(
+        conn,
+        resolution=resolution,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=lookup_draft_max_canonical_value,
+        available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+    )
+    assert result.status is FieldResolutionWriteStatus.CANONICAL_SUBJECT_UNRESOLVABLE
+    assert result.current_resolution_id is None
+
+
+def test_canonical_value_mismatch_fails_closed(conn: Any) -> None:
+    """A resolution whose snapshot disagrees with the durable canonical
+    BoatDesign baseline value must be rejected at admission, not merely
+    caught later by Search's own defensive read-time check."""
+    admit_canonical_boat_design(
+        conn, "BD-FR-MISMATCH", baseline={"dimensions": {"draft_max_m": 1.5}}
+    )
+    _import_evidence(conn, _evidence("EV-MISMATCH-1", subject_id="BD-FR-MISMATCH"))
+    resolution = _resolution(
+        "FR-MISMATCH-CANON-1",
+        subject_id="BD-FR-MISMATCH",
+        value=Decimal("1.3"),
+        supporting_evidence_ids=frozenset({"EV-MISMATCH-1"}),
+    )
+    result = write_field_resolution(
+        conn,
+        resolution=resolution,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=lookup_draft_max_canonical_value,
+        available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+    )
+    assert result.status is FieldResolutionWriteStatus.CANONICAL_VALUE_MISMATCH
+    assert result.current_resolution_id is None
+
+
+def test_canonical_value_matching_succeeds_via_real_lookup(conn: Any) -> None:
+    """Positive control: a resolution agreeing with a durably admitted
+    canonical BoatDesign baseline, checked through the real (not stubbed)
+    `lookup_draft_max_canonical_value`, is admitted normally."""
+    admit_canonical_boat_design(conn, "BD-FR-MATCH", baseline={"dimensions": {"draft_max_m": 1.3}})
+    _import_evidence(conn, _evidence("EV-MATCH-1", subject_id="BD-FR-MATCH"))
+    resolution = _resolution(
+        "FR-MATCH-CANON-1",
+        subject_id="BD-FR-MATCH",
+        value=Decimal("1.3"),
+        supporting_evidence_ids=frozenset({"EV-MATCH-1"}),
+    )
+    result = write_field_resolution(
+        conn,
+        resolution=resolution,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=lookup_draft_max_canonical_value,
+        available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+    )
+    assert result.status is FieldResolutionWriteStatus.CREATED
+
+
+def test_named_variant_ambiguous_subject_fails_closed(conn: Any) -> None:
+    """Two different canonical BoatDesigns both containing a NamedVariant
+    with the same id is a data-integrity condition the bounded lookup
+    refuses to silently pick a winner from."""
+    variant = {"id": "VAR-FR-DUP", "overrides": {"dimensions": {"draft_max_m": 1.3}}}
+    admit_canonical_boat_design(
+        conn, "BD-FR-DUP-A", named_variants=[variant], boat_model_id="BM-FR-DUP-A"
+    )
+    admit_canonical_boat_design(
+        conn, "BD-FR-DUP-B", named_variants=[variant], boat_model_id="BM-FR-DUP-B"
+    )
+    _import_evidence(
+        conn,
+        _evidence(
+            "EV-DUP-1",
+            subject_kind=SubjectKind.NAMED_VARIANT,
+            subject_id="VAR-FR-DUP",
+            field_pointer="/overrides/dimensions/draft_max_m",
+        ),
+    )
+    resolution = _resolution(
+        "FR-DUP-1",
+        subject_kind=SubjectKind.NAMED_VARIANT,
+        subject_id="VAR-FR-DUP",
+        field_pointer="/overrides/dimensions/draft_max_m",
+        value=Decimal("1.3"),
+        supporting_evidence_ids=frozenset({"EV-DUP-1"}),
+    )
+    result = write_field_resolution(
+        conn,
+        resolution=resolution,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=lookup_draft_max_canonical_value,
+        available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+    )
+    assert result.status is FieldResolutionWriteStatus.CANONICAL_SUBJECT_UNRESOLVABLE
+
+
+def test_named_variant_not_found_fails_closed(conn: Any) -> None:
+    """A NamedVariant id that appears in no durable `canonical_boat_designs`
+    row at all must fail closed, never fall back to some other meaning."""
+    _import_evidence(
+        conn,
+        _evidence(
+            "EV-NOVAR-1",
+            subject_kind=SubjectKind.NAMED_VARIANT,
+            subject_id="VAR-FR-GHOST",
+            field_pointer="/overrides/dimensions/draft_max_m",
+        ),
+    )
+    resolution = _resolution(
+        "FR-NOVAR-1",
+        subject_kind=SubjectKind.NAMED_VARIANT,
+        subject_id="VAR-FR-GHOST",
+        field_pointer="/overrides/dimensions/draft_max_m",
+        value=Decimal("1.3"),
+        supporting_evidence_ids=frozenset({"EV-NOVAR-1"}),
+    )
+    result = write_field_resolution(
+        conn,
+        resolution=resolution,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=lookup_draft_max_canonical_value,
+        available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+    )
+    assert result.status is FieldResolutionWriteStatus.CANONICAL_SUBJECT_UNRESOLVABLE
+
+
+def test_unresolved_state_with_nonnull_canonical_value_fails_closed(conn: Any) -> None:
+    """REQ-PROV-008: an unresolved (null-snapshot) resolution must not
+    coexist with a non-null durable canonical production value at the same
+    field -- Finding 7 enforces this at write time too, not only for
+    resolved states."""
+    admit_canonical_boat_design(
+        conn, "BD-FR-UNKNOWN-CANON", baseline={"dimensions": {"draft_max_m": 1.3}}
+    )
+    resolution = _resolution(
+        "FR-UNKNOWN-CANON-1",
+        subject_id="BD-FR-UNKNOWN-CANON",
+        state=ResolutionState.UNKNOWN,
+        value=None,
+        supporting_evidence_ids=frozenset(),
+        contradicting_evidence_ids=frozenset(),
+        considered_evidence_ids=frozenset(),
+    )
+    result = write_field_resolution(
+        conn,
+        resolution=resolution,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=lookup_draft_max_canonical_value,
+        available_sources={},
+    )
+    assert result.status is FieldResolutionWriteStatus.CANONICAL_VALUE_MISMATCH
+
+
+# ---------------------------------------------------------------------------
+# Finding 8: supersession identity enforcement
+# ---------------------------------------------------------------------------
+
+
+def test_supersession_mismatch_conflicting_nonnull_values_fails_closed(conn: Any) -> None:
+    _import_evidence(conn, _evidence("EV-SUPMIS-1", subject_id="BD-FR-SUPMIS"))
+    resolution = _resolution(
+        "FR-SUPMIS-1",
+        subject_id="BD-FR-SUPMIS",
+        supporting_evidence_ids=frozenset({"EV-SUPMIS-1"}),
+        supersedes_resolution_id="FR-CLAIMED-PRED",
+    )
+    result = write_field_resolution(
+        conn,
+        resolution=resolution,
+        expected_current_resolution_id="FR-DIFFERENT-EXPECTED",
+        fetch_canonical_value=matching_canonical_lookup_stub,
+        available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+    )
+    assert result.status is FieldResolutionWriteStatus.SUPERSESSION_MISMATCH
+    assert result.current_resolution_id is None
+
+
+def test_supersession_mismatch_resolution_declares_predecessor_caller_expects_none(
+    conn: Any,
+) -> None:
+    _import_evidence(conn, _evidence("EV-SUPMIS-2", subject_id="BD-FR-SUPMIS-2"))
+    resolution = _resolution(
+        "FR-SUPMIS-2",
+        subject_id="BD-FR-SUPMIS-2",
+        supporting_evidence_ids=frozenset({"EV-SUPMIS-2"}),
+        supersedes_resolution_id="FR-GHOST-PRED",
+    )
+    result = write_field_resolution(
+        conn,
+        resolution=resolution,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
+        available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+    )
+    assert result.status is FieldResolutionWriteStatus.SUPERSESSION_MISMATCH
+
+
+def test_supersession_mismatch_resolution_declares_none_caller_expects_existing(
+    conn: Any,
+) -> None:
+    _import_evidence(conn, _evidence("EV-SUPMIS-3A"), _evidence("EV-SUPMIS-3B"))
+    first = _resolution("FR-SUPMIS-3-FIRST", supporting_evidence_ids=frozenset({"EV-SUPMIS-3A"}))
+    write_field_resolution(
+        conn,
+        resolution=first,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
+        available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+    )
+    conn.commit()
+
+    second = _resolution(
+        "FR-SUPMIS-3-SECOND",
+        value=Decimal("1.70"),
+        supporting_evidence_ids=frozenset({"EV-SUPMIS-3B"}),
+        supersedes_resolution_id=None,  # falsely claims to be a first write
+    )
+    result = write_field_resolution(
+        conn,
+        resolution=second,
+        expected_current_resolution_id="FR-SUPMIS-3-FIRST",  # caller correctly knows a head exists
+        fetch_canonical_value=matching_canonical_lookup_stub,
+        available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+    )
+    assert result.status is FieldResolutionWriteStatus.SUPERSESSION_MISMATCH
+
+    current = fetch_current_field_resolution(
+        conn, SubjectKind.BOAT_DESIGN, "BD-FR-TEST", "/baseline/dimensions/draft_max_m"
+    )
+    assert current is not None and current.resolution_id == "FR-SUPMIS-3-FIRST"
+
+
+def test_supersession_match_persists_resolutions_own_value_and_survives_readback(
+    conn: Any,
+) -> None:
+    _import_evidence(conn, _evidence("EV-SUPOK-1"), _evidence("EV-SUPOK-2"))
+    first = _resolution("FR-SUPOK-1", supporting_evidence_ids=frozenset({"EV-SUPOK-1"}))
+    write_field_resolution(
+        conn,
+        resolution=first,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
+        available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+    )
+    conn.commit()
+
+    second = _resolution(
+        "FR-SUPOK-2",
+        value=Decimal("1.70"),
+        supporting_evidence_ids=frozenset({"EV-SUPOK-2"}),
+        supersedes_resolution_id="FR-SUPOK-1",
+    )
+    result = write_field_resolution(
+        conn,
+        resolution=second,
+        expected_current_resolution_id="FR-SUPOK-1",
+        fetch_canonical_value=matching_canonical_lookup_stub,
+        available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+    )
+    assert result.status is FieldResolutionWriteStatus.REVISED
+    conn.commit()
+
+    persisted = fetch_field_resolution(conn, "FR-SUPOK-2")
+    assert persisted is not None
+    assert persisted.supersedes_resolution_id == "FR-SUPOK-1"
+
+
+def test_exact_retry_idempotent_with_nonnull_supersedes_in_fingerprint(conn: Any) -> None:
+    """Regression: adding `supersedes_resolution_id` to the envelope
+    fingerprint (Finding 8) must not break the existing idempotent-retry
+    guarantee for a revision (non-null supersedes_resolution_id)."""
+    _import_evidence(conn, _evidence("EV-SUPIDEMP-1"), _evidence("EV-SUPIDEMP-2"))
+    first = _resolution("FR-SUPIDEMP-1", supporting_evidence_ids=frozenset({"EV-SUPIDEMP-1"}))
+    write_field_resolution(
+        conn,
+        resolution=first,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
+        available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+    )
+    conn.commit()
+
+    second = _resolution(
+        "FR-SUPIDEMP-2",
+        value=Decimal("1.70"),
+        supporting_evidence_ids=frozenset({"EV-SUPIDEMP-2"}),
+        supersedes_resolution_id="FR-SUPIDEMP-1",
+    )
+    sources = {_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE}
+    first_attempt = write_field_resolution(
+        conn,
+        resolution=second,
+        expected_current_resolution_id="FR-SUPIDEMP-1",
+        fetch_canonical_value=matching_canonical_lookup_stub,
+        available_sources=sources,
+    )
+    assert first_attempt.status is FieldResolutionWriteStatus.REVISED
+    conn.commit()
+
+    retry = write_field_resolution(
+        conn,
+        resolution=second,
+        expected_current_resolution_id="FR-SUPIDEMP-1",
+        fetch_canonical_value=matching_canonical_lookup_stub,
+        available_sources=sources,
+    )
+    assert retry.status is FieldResolutionWriteStatus.ALREADY_EXISTS
+
+
+def test_supersession_mismatch_leaves_no_durable_trace(conn: Any) -> None:
+    _import_evidence(conn, _evidence("EV-SUPROLL-1", subject_id="BD-FR-SUPROLL"))
+    resolution = _resolution(
+        "FR-SUPROLL-1",
+        subject_id="BD-FR-SUPROLL",
+        supporting_evidence_ids=frozenset({"EV-SUPROLL-1"}),
+        supersedes_resolution_id="FR-GHOST",
+    )
+    result = write_field_resolution(
+        conn,
+        resolution=resolution,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
+        available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+    )
+    assert result.status is FieldResolutionWriteStatus.SUPERSESSION_MISMATCH
+    assert fetch_field_resolution(conn, "FR-SUPROLL-1") is None
+    assert (
+        fetch_current_field_resolution(
+            conn, SubjectKind.BOAT_DESIGN, "BD-FR-SUPROLL", "/baseline/dimensions/draft_max_m"
+        )
+        is None
+    )
+
+
+# ---------------------------------------------------------------------------
+# Finding 9: Source record binding + schema validation
+# ---------------------------------------------------------------------------
+
+
+def test_source_record_declared_id_mismatch_fails_closed(conn: Any) -> None:
+    """A Source record whose own declared `source_id` disagrees with the key
+    it was resolved under in `available_sources` must never silently
+    authorize a resolution."""
+    mismatched_source = {**_WIKIDATA_SOURCE, "source_id": "SRC-ACTUALLY-DIFFERENT"}
+    _import_evidence(conn, _evidence("EV-SRCID-1", source_id="SRC-CLAIMED"))
+    resolution = _resolution("FR-SRCID-1", supporting_evidence_ids=frozenset({"EV-SRCID-1"}))
+    result = write_field_resolution(
+        conn,
+        resolution=resolution,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
+        available_sources={"SRC-CLAIMED": mismatched_source},
+    )
+    assert result.status is FieldResolutionWriteStatus.SOURCE_RECORD_INVALID
+
+
+def test_source_record_schema_invalid_fails_closed(conn: Any) -> None:
+    """A Source record missing a SOURCE_SCHEMA.v0.2-required field must be
+    rejected before `check_source_use` is ever consulted."""
+    invalid_source = dict(_WIKIDATA_SOURCE)
+    invalid_source.pop("publisher", None)
+    _import_evidence(conn, _evidence("EV-SRCSCHEMA-1", source_id=_WIKIDATA_SOURCE_ID))
+    resolution = _resolution(
+        "FR-SRCSCHEMA-1", supporting_evidence_ids=frozenset({"EV-SRCSCHEMA-1"})
+    )
+    result = write_field_resolution(
+        conn,
+        resolution=resolution,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
+        available_sources={_WIKIDATA_SOURCE_ID: invalid_source},
+    )
+    assert result.status is FieldResolutionWriteStatus.SOURCE_RECORD_INVALID
+
+
+def test_source_record_valid_and_matching_succeeds(conn: Any) -> None:
+    """Positive control: a legitimately schema-valid, correctly-keyed Source
+    record is not blocked by Finding 9's new checks."""
+    _import_evidence(conn, _evidence("EV-SRCOK-1"))
+    resolution = _resolution("FR-SRCOK-1", supporting_evidence_ids=frozenset({"EV-SRCOK-1"}))
+    result = write_field_resolution(
+        conn,
+        resolution=resolution,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
+        available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+    )
+    assert result.status is FieldResolutionWriteStatus.CREATED
+
+
+# ---------------------------------------------------------------------------
+# Finding 10: real PostgreSQL concurrency + genuine post-INSERT rollback
+# ---------------------------------------------------------------------------
+
+
+def test_concurrent_first_write_race_exactly_one_winner(db_url_isolated: str) -> None:
+    """Two threads, two real separate PostgreSQL connections, race to create
+    the FIRST resolution for the same subject field concurrently. Exactly
+    one must win CREATED; the other must lose CONFLICT -- no double-write,
+    no lost update."""
+    setup_conn = psycopg.connect(db_url_isolated)
+    try:
+        _import_evidence(setup_conn, _evidence("EV-RACE1-A"), _evidence("EV-RACE1-B"))
+    finally:
+        setup_conn.close()
+
+    results: list[Any] = []
+    errors: list[BaseException] = []
+    barrier = threading.Barrier(2)
+
+    def _worker(suffix: str, evidence_id: str) -> None:
+        try:
+            race_conn = psycopg.connect(db_url_isolated)
+            try:
+                resolution = _resolution(
+                    f"FR-RACE1-{suffix}", supporting_evidence_ids=frozenset({evidence_id})
+                )
+                barrier.wait(timeout=10)
+                result = write_field_resolution(
+                    race_conn,
+                    resolution=resolution,
+                    expected_current_resolution_id=None,
+                    fetch_canonical_value=matching_canonical_lookup_stub,
+                    available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+                )
+                race_conn.commit()
+                results.append(result)
+            finally:
+                race_conn.close()
+        except BaseException as exc:
+            errors.append(exc)
+
+    threads = [
+        threading.Thread(target=_worker, args=("A", "EV-RACE1-A")),
+        threading.Thread(target=_worker, args=("B", "EV-RACE1-B")),
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=20)
+
+    assert not errors, errors
+    assert len(results) == 2
+    statuses = [r.status for r in results]
+    assert statuses.count(FieldResolutionWriteStatus.CREATED) == 1
+    assert statuses.count(FieldResolutionWriteStatus.CONFLICT) == 1
+
+    verify_conn = psycopg.connect(db_url_isolated)
+    try:
+        history = list_field_resolution_history(
+            verify_conn, SubjectKind.BOAT_DESIGN, "BD-FR-TEST", "/baseline/dimensions/draft_max_m"
+        )
+    finally:
+        verify_conn.close()
+    assert len(history) == 1  # exactly one resolution durably exists, never two
+
+
+def test_concurrent_revision_race_exactly_one_winner(db_url_isolated: str) -> None:
+    """Two threads race to revise the same current resolution concurrently.
+    Exactly one must win REVISED; the other must lose CONFLICT."""
+    setup_conn = psycopg.connect(db_url_isolated)
+    try:
+        _import_evidence(
+            setup_conn,
+            _evidence("EV-RACE2-BASE"),
+            _evidence("EV-RACE2-A"),
+            _evidence("EV-RACE2-B"),
+        )
+        first = _resolution("FR-RACE2-BASE", supporting_evidence_ids=frozenset({"EV-RACE2-BASE"}))
+        write_field_resolution(
+            setup_conn,
+            resolution=first,
+            expected_current_resolution_id=None,
+            fetch_canonical_value=matching_canonical_lookup_stub,
+            available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+        )
+        setup_conn.commit()
+    finally:
+        setup_conn.close()
+
+    results: list[Any] = []
+    errors: list[BaseException] = []
+    barrier = threading.Barrier(2)
+
+    def _worker(suffix: str, evidence_id: str) -> None:
+        try:
+            race_conn = psycopg.connect(db_url_isolated)
+            try:
+                resolution = _resolution(
+                    f"FR-RACE2-{suffix}",
+                    value=Decimal("1.70"),
+                    supporting_evidence_ids=frozenset({evidence_id}),
+                    supersedes_resolution_id="FR-RACE2-BASE",
+                )
+                barrier.wait(timeout=10)
+                result = write_field_resolution(
+                    race_conn,
+                    resolution=resolution,
+                    expected_current_resolution_id="FR-RACE2-BASE",
+                    fetch_canonical_value=matching_canonical_lookup_stub,
+                    available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+                )
+                race_conn.commit()
+                results.append(result)
+            finally:
+                race_conn.close()
+        except BaseException as exc:
+            errors.append(exc)
+
+    threads = [
+        threading.Thread(target=_worker, args=("A", "EV-RACE2-A")),
+        threading.Thread(target=_worker, args=("B", "EV-RACE2-B")),
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=20)
+
+    assert not errors, errors
+    assert len(results) == 2
+    statuses = [r.status for r in results]
+    assert statuses.count(FieldResolutionWriteStatus.REVISED) == 1
+    assert statuses.count(FieldResolutionWriteStatus.CONFLICT) == 1
+
+    verify_conn = psycopg.connect(db_url_isolated)
+    try:
+        history = list_field_resolution_history(
+            verify_conn, SubjectKind.BOAT_DESIGN, "BD-FR-TEST", "/baseline/dimensions/draft_max_m"
+        )
+    finally:
+        verify_conn.close()
+    assert len(history) == 2  # base + exactly one race winner, never both
+
+
+def test_post_insert_pre_head_advance_failure_rolls_back_entire_write(
+    conn: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failure AFTER `INSERT INTO field_resolutions` has already executed
+    (but before the head is advanced) must roll back the *entire*
+    transaction -- including the already-executed INSERT -- not leave an
+    orphan resolution row with no head pointing at it. Unlike
+    `test_rejected_write_leaves_no_orphan_revision_or_head` (which only
+    proves rejection *before* the INSERT ever runs), this forces the failure
+    by breaking the UPSERT_HEAD statement the real write path executes
+    immediately after a successful INSERT, inside the same
+    `with conn.transaction()` block."""
+    import hullq.persistence.field_resolution as field_resolution_module
+
+    monkeypatch.setattr(
+        field_resolution_module,
+        "_UPSERT_HEAD",
+        "INSERT INTO hullq_nonexistent_table_xyz VALUES (1)",
+    )
+
+    _import_evidence(conn, _evidence("EV-POSTINSERT-1"))
+    resolution = _resolution(
+        "FR-POSTINSERT-1", supporting_evidence_ids=frozenset({"EV-POSTINSERT-1"})
+    )
+    with pytest.raises(psycopg.Error):
+        write_field_resolution(
+            conn,
+            resolution=resolution,
+            expected_current_resolution_id=None,
+            fetch_canonical_value=matching_canonical_lookup_stub,
+            available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+        )
+    conn.rollback()  # defensive no-op if conn.transaction() already returned to IDLE
+
+    assert fetch_field_resolution(conn, "FR-POSTINSERT-1") is None
+    assert (
+        fetch_current_field_resolution(
+            conn, SubjectKind.BOAT_DESIGN, "BD-FR-TEST", "/baseline/dimensions/draft_max_m"
+        )
+        is None
+    )
+
+
 def test_small_precision_decimal_snapshot_round_trips_through_postgresql(conn: Any) -> None:
     exact = Decimal("0.0000000000000000000000000001")
     _import_evidence(conn, _evidence("EV-TINY-1", value=str(exact)))
@@ -671,6 +1298,7 @@ def test_small_precision_decimal_snapshot_round_trips_through_postgresql(conn: A
         conn,
         resolution=resolution,
         expected_current_resolution_id=None,
+        fetch_canonical_value=matching_canonical_lookup_stub,
         available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
     )
     conn.commit()

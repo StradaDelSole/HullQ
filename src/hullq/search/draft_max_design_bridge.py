@@ -42,6 +42,19 @@ fabricated confirmed/non-match. Source-rights/evidence admission for a
 `hullq.persistence.field_resolution.write_field_resolution` time, not
 re-verified per read.
 
+## Canonical-value consistency is now also enforced at admission (Finding 7)
+
+`lookup_draft_max_canonical_value` is this slice's one accepted
+`FetchCanonicalValue` implementation, passed to every SLICE-0051
+`write_field_resolution` call so that a resolution disagreeing with the
+durable canonical record it qualifies is rejected at write time, not merely
+caught defensively when Search later reads it. `_qualify_via_field_resolution`
+below performs its own independent read-time comparison regardless -- this is
+deliberate defense-in-depth, not redundant: it protects Search consumption
+even against a future write path that forgets to pass a `fetch_canonical_value`
+callback, or a resolution admitted before this bridge's canonical record was
+updated.
+
 A NamedVariant with no own `draft_max_m` override key inherits the
 already-qualified BoatDesign baseline qualification at this
 configuration-evaluation step, per the blocker resolution: "Do not fabricate
@@ -58,15 +71,19 @@ dependency can never be validly established.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Mapping
 from decimal import Decimal
 from typing import Any, Final
 
-from hullq.domain.provenance import ResolutionState, SubjectKind
+from hullq.domain.provenance import FieldResolution, ResolutionState, SubjectKind
 from hullq.persistence.field_resolution import (
+    CanonicalLookupResult,
+    CanonicalLookupStatus,
     decode_canonical_decimal_snapshot,
     fetch_current_field_resolution,
 )
+from hullq.persistence.identity_readback import fetch_boat_design
 from hullq.search.configuration import (
     ConfigurationIdentity,
     ConfigurationProjection,
@@ -81,9 +98,11 @@ from hullq.search.values import QualifiedNumericValue
 
 __all__ = [
     "DRAFT_MAX_FIELD_POINTER",
+    "DRAFT_MAX_OVERRIDE_FIELD_POINTER",
     "DRAFT_MAX_PROJECTION_FIELD",
     "build_boat_design_draft_configuration_set",
     "compatible_boat_design_ids",
+    "lookup_draft_max_canonical_value",
 ]
 
 #: Opaque projection field name shared by every `ResolvedConfiguration` this
@@ -99,6 +118,78 @@ _RESOLVED_STATES: Final = frozenset(
     {ResolutionState.RESOLVED, ResolutionState.RESOLVED_WITH_CONFLICT}
 )
 _MISSING = QualifiedNumericValue(value=None, qualification=ValueQualification.MISSING)
+
+_SELECT_DESIGNS_CONTAINING_VARIANT = (
+    "SELECT id, named_variants FROM canonical_boat_designs WHERE named_variants @> %s::jsonb"
+)
+
+
+def _lookup_named_variant_canonical_snapshot(conn: Any, variant_id: str) -> CanonicalLookupResult:
+    """Resolve one NamedVariant id to its durable `{"overrides": {...}}` snapshot.
+
+    `named_variants` is opaque JSONB embedded inside `canonical_boat_designs`
+    (SLICE-0016), not a separate durable row -- the only way to dereference a
+    NamedVariant id is a JSONB containment search across every
+    `canonical_boat_designs.named_variants` array. More than one design
+    containing a variant with this exact id is a data integrity condition
+    this bounded lookup refuses to silently pick a winner from -- fails
+    closed as `AMBIGUOUS_SUBJECT`.
+    """
+    with conn.cursor() as cur:
+        cur.execute(_SELECT_DESIGNS_CONTAINING_VARIANT, [json.dumps([{"id": variant_id}])])
+        rows = cur.fetchall()
+    matches = [
+        variant
+        for _design_id, named_variants in rows
+        for variant in (named_variants or [])
+        if variant.get("id") == variant_id
+    ]
+    if not matches:
+        return CanonicalLookupResult(status=CanonicalLookupStatus.SUBJECT_NOT_FOUND)
+    if len(matches) > 1:
+        return CanonicalLookupResult(status=CanonicalLookupStatus.AMBIGUOUS_SUBJECT)
+    return CanonicalLookupResult(
+        status=CanonicalLookupStatus.FOUND,
+        canonical_subject_snapshot={"overrides": matches[0].get("overrides") or {}},
+    )
+
+
+def lookup_draft_max_canonical_value(
+    conn: Any, resolution: FieldResolution
+) -> CanonicalLookupResult:
+    """The only accepted `hullq.persistence.field_resolution.FetchCanonicalValue`
+    implementation for SLICE-0051 (amendment review Finding 7).
+
+    Hard-bounded to exactly the two field meanings this module's docstring
+    authorizes -- any other `(subject_kind, field_pointer)` combination fails
+    closed as `SUBJECT_NOT_FOUND` rather than falling back to some generic
+    all-field resolution mechanism this module deliberately does not
+    implement:
+
+        BoatDesign    /baseline/dimensions/draft_max_m
+        NamedVariant  /overrides/dimensions/draft_max_m
+
+    Queries durable state directly (`fetch_boat_design`, or a JSONB
+    containment search for NamedVariant) -- never the resolution's own
+    caller-supplied fields, which is exactly the trust boundary Finding 7
+    closes.
+    """
+    subject = resolution.subject
+    pointer = resolution.field_pointer.raw
+
+    if subject.kind is SubjectKind.BOAT_DESIGN and pointer == DRAFT_MAX_FIELD_POINTER:
+        design = fetch_boat_design(conn, subject.id)
+        if design is None:
+            return CanonicalLookupResult(status=CanonicalLookupStatus.SUBJECT_NOT_FOUND)
+        return CanonicalLookupResult(
+            status=CanonicalLookupStatus.FOUND,
+            canonical_subject_snapshot={"baseline": design.get("baseline") or {}},
+        )
+
+    if subject.kind is SubjectKind.NAMED_VARIANT and pointer == DRAFT_MAX_OVERRIDE_FIELD_POINTER:
+        return _lookup_named_variant_canonical_snapshot(conn, subject.id)
+
+    return CanonicalLookupResult(status=CanonicalLookupStatus.SUBJECT_NOT_FOUND)
 
 
 def _qualify_via_field_resolution(

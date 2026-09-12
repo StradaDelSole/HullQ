@@ -29,16 +29,40 @@ transaction end. This serializes every concurrent writer for the same
 logical subject field exactly as a row lock would, including the very first
 write for a subject field (where no row yet exists to lock).
 
-## Canonical-value consistency is a Search-consumption concern, not a ledger concern
+## Canonical-value consistency is enforced here, at the write boundary
 
-This module deliberately does **not** verify "canonical subject value ==
-resolution snapshot" (`PROVENANCE_MODEL.v0.1.md` §6): the ledger is generic
-over `subject_kind`/`field_pointer` and has no way to dereference an
-arbitrary subject's canonical document to fetch the value the resolution is
-supposed to agree with. That verification is a *consumption-time* concern
-bounded to SLICE-0051's exact two field meanings and lives in
-`hullq.search.draft_max_design_bridge`, which already holds the relevant
-BoatDesign record when it reads a current resolution.
+Amendment review Finding 7: verifying "canonical subject value == resolution
+snapshot" (`PROVENANCE_MODEL.v0.1.md` §6) only at Search read-time left a
+window where a resolution could be durably admitted while already
+disagreeing with the canonical record it claims to qualify -- a defensive
+Search-side check catches that *for readers*, but does not stop the write
+itself from being accepted. This module is generic over `subject_kind` /
+`field_pointer` and has no way on its own to dereference an arbitrary
+subject's canonical document, so the caller supplies a bounded
+`fetch_canonical_value` callback (required, no default) that resolves
+*resolution.subject* to its durable canonical snapshot; this module then
+checks it against `resolution` (REQ-PROV-005) for every state, not only
+`resolved`/`resolved_with_conflict`. This comparison is Decimal-value-aware,
+not a generic structural `!=` on the two raw representations
+(`hullq.domain.provenance.check_canonical_consistency` is *not* reused here
+for exactly this reason -- see `_check_canonical_value_consistency`'s
+docstring): `canonical_value_snapshot` at this module's boundary is always
+the exact-Decimal string encoding (`encode_canonical_decimal_snapshot`),
+while the durable canonical document stores an ordinary JSON number, so a
+literal string/type comparison would spuriously mismatch equal values
+formatted differently (e.g. `"1.3"` vs `"1.30"`) or crash comparing a
+`float` to a `str`. A callback returning anything other than
+`CanonicalLookupStatus.FOUND` (subject does not durably exist, or resolves to
+more than one candidate) fails the write closed as
+`CANONICAL_SUBJECT_UNRESOLVABLE`; a `FOUND` snapshot that disagrees with the
+resolution fails closed as `CANONICAL_VALUE_MISMATCH`. The only accepted
+production implementation, `hullq.search.draft_max_design_bridge.lookup_draft_max_canonical_value`,
+is itself hard-bounded to SLICE-0051's exact two field meanings -- this
+module does not invent global all-field resolution semantics; it only
+mandates that *some* bounded, subject-aware lookup is consulted before any
+write is admitted. `hullq.search.draft_max_design_bridge`'s own
+read-time consistency check (`_qualify_via_field_resolution`) is retained as
+defense-in-depth, not superseded by this write-time gate.
 
 ## Evidence and source-rights admission
 
@@ -66,16 +90,39 @@ bounded, caller-supplied mechanism consuming existing schema-valid
 module never invents a universal Source-registry table, and the SLICE-0037
 Oceanis pilot's own conditional/non-recurring clearance is never treated as
 a generic production permission.
+
+Amendment review Finding 9: before `check_source_use` is ever called, the
+resolved `available_sources[source_id]` record must itself declare that same
+`source_id` (never trust a caller-supplied mapping key over the record's own
+identity) and must validate against `specs/SOURCE_SCHEMA.v0.2.json`. Either
+failure fails closed as `SOURCE_RECORD_INVALID` -- a malformed or
+mismatched-identity Source record can never silently authorize a resolution.
+
+## Supersession identity (Finding 8)
+
+`resolution.supersedes_resolution_id` -- the resolution's own declared
+predecessor -- must equal the caller's `expected_current_resolution_id`
+before any other check runs; a mismatch fails closed as
+`SUPERSESSION_MISMATCH`, checked before the advisory lock is even acquired
+since it depends on nothing durable. The resolution's own
+`supersedes_resolution_id` (not `expected_current_resolution_id`) is what is
+persisted into the `field_resolutions.supersedes_resolution_id` column and
+what is fingerprinted for idempotency -- the two are guaranteed equal by this
+gate, but the column always reflects what the resolution itself asserts.
 """
 
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
+from pathlib import Path
 from typing import Any
+
+import jsonschema
 
 from hullq.domain.provenance import (
     FieldEvidence,
@@ -94,6 +141,9 @@ from hullq.persistence.readback import fetch_evidence
 from hullq.sources.rights import DecisionOutcome, SourceUse, check_source_use
 
 __all__ = [
+    "CanonicalLookupResult",
+    "CanonicalLookupStatus",
+    "FetchCanonicalValue",
     "FieldResolutionWriteResult",
     "FieldResolutionWriteStatus",
     "encode_canonical_decimal_snapshot",
@@ -102,6 +152,14 @@ __all__ = [
     "list_field_resolution_history",
     "write_field_resolution",
 ]
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_SOURCE_SCHEMA_PATH = _REPO_ROOT / "specs" / "SOURCE_SCHEMA.v0.2.json"
+
+
+def _load_source_schema() -> dict[str, Any]:
+    schema: dict[str, Any] = json.loads(_SOURCE_SCHEMA_PATH.read_text(encoding="utf-8"))
+    return schema
 
 
 class FieldResolutionTransactionOwnershipError(RuntimeError):
@@ -122,9 +180,13 @@ class FieldResolutionWriteStatus(StrEnum):
     REVISED = "revised"
     ALREADY_EXISTS = "already_exists"
     CONFLICT = "conflict"
+    SUPERSESSION_MISMATCH = "supersession_mismatch"
     EVIDENCE_NOT_FOUND = "evidence_not_found"
     INVARIANTS_VIOLATED = "invariants_violated"
+    CANONICAL_SUBJECT_UNRESOLVABLE = "canonical_subject_unresolvable"
+    CANONICAL_VALUE_MISMATCH = "canonical_value_mismatch"
     SOURCE_NOT_AVAILABLE = "source_not_available"
+    SOURCE_RECORD_INVALID = "source_record_invalid"
     SOURCE_USE_DENIED = "source_use_denied"
 
 
@@ -144,9 +206,13 @@ _STATUSES_REQUIRING_CURRENT = frozenset(
 # nothing exists yet -- see test_first_write_with_nonnull_expected_fails_closed).
 _STATUSES_FORBIDDING_CURRENT = frozenset(
     {
+        FieldResolutionWriteStatus.SUPERSESSION_MISMATCH,
         FieldResolutionWriteStatus.EVIDENCE_NOT_FOUND,
         FieldResolutionWriteStatus.INVARIANTS_VIOLATED,
+        FieldResolutionWriteStatus.CANONICAL_SUBJECT_UNRESOLVABLE,
+        FieldResolutionWriteStatus.CANONICAL_VALUE_MISMATCH,
         FieldResolutionWriteStatus.SOURCE_NOT_AVAILABLE,
+        FieldResolutionWriteStatus.SOURCE_RECORD_INVALID,
         FieldResolutionWriteStatus.SOURCE_USE_DENIED,
     }
 )
@@ -177,6 +243,54 @@ class FieldResolutionWriteResult:
             raise ValueError(
                 f"A {self.status.value.upper()} write result must not carry current_resolution_id"
             )
+
+
+# ---------------------------------------------------------------------------
+# Canonical-value consistency lookup contract (Finding 7)
+# ---------------------------------------------------------------------------
+
+
+class CanonicalLookupStatus(StrEnum):
+    """Outcome of a bounded `fetch_canonical_value` lookup."""
+
+    FOUND = "found"
+    SUBJECT_NOT_FOUND = "subject_not_found"
+    AMBIGUOUS_SUBJECT = "ambiguous_subject"
+
+
+@dataclass(frozen=True)
+class CanonicalLookupResult:
+    """Result of resolving one FieldResolution's subject to its durable canonical snapshot.
+
+    `canonical_subject_snapshot` must be shaped so that
+    `resolution.field_pointer.lookup(canonical_subject_snapshot)` retrieves
+    the exact durable canonical value the resolution is required to agree
+    with (`hullq.domain.provenance.check_canonical_consistency`,
+    REQ-PROV-005). Only populated for `FOUND`; every other status means
+    `write_field_resolution` fails the write closed without attempting a
+    value comparison at all.
+    """
+
+    status: CanonicalLookupStatus
+    canonical_subject_snapshot: dict[str, Any] | None = None
+
+    def __post_init__(self) -> None:
+        if self.status is CanonicalLookupStatus.FOUND:
+            if self.canonical_subject_snapshot is None:
+                raise ValueError(
+                    "a FOUND CanonicalLookupResult must carry canonical_subject_snapshot"
+                )
+        elif self.canonical_subject_snapshot is not None:
+            raise ValueError(
+                f"a {self.status.value.upper()} CanonicalLookupResult must not carry "
+                "canonical_subject_snapshot"
+            )
+
+
+#: Resolves *resolution*'s subject to its durable canonical snapshot. Required
+#: (no default) on every `write_field_resolution` call -- see Finding 7 in the
+#: module docstring for why this cannot be optional or Search-side-only.
+FetchCanonicalValue = Callable[[Any, FieldResolution], CanonicalLookupResult]
 
 
 # ---------------------------------------------------------------------------
@@ -235,6 +349,7 @@ def _envelope_dict(resolution: FieldResolution) -> dict[str, Any]:
         "resolver_identifier": resolution.resolver.identifier,
         "resolver_version": resolution.resolver.version,
         "resolved_at": resolution.resolved_at,
+        "supersedes_resolution_id": resolution.supersedes_resolution_id,
         "notes": resolution.notes,
     }
 
@@ -346,6 +461,90 @@ def _row_to_resolution(row: tuple[Any, ...]) -> FieldResolution:
     )
 
 
+def _check_canonical_value_consistency(
+    resolution: FieldResolution, canonical_subject_snapshot: dict[str, Any]
+) -> str | None:
+    """Finding 7: verify *resolution* agrees with its durable canonical subject.
+
+    Deliberately does not reuse `hullq.domain.provenance.check_canonical_consistency`
+    verbatim: that function compares the raw canonical value and
+    `resolution.canonical_value_snapshot` with a plain `!=`, which is correct
+    only when both sides share the same representation. In this module,
+    `canonical_value_snapshot` is always the exact-Decimal string encoding
+    (`encode_canonical_decimal_snapshot`), while the durable canonical
+    document (`canonical_boat_designs.baseline`/`named_variants`) stores an
+    ordinary JSON number -- a literal `!=` would spuriously mismatch equal
+    values formatted differently (`"1.3"` vs `"1.30"`) or simply crash
+    comparing a `float` to a `str`. Both sides are decoded to `Decimal` and
+    compared by value instead, exactly mirroring the accepted read-time
+    comparison in `hullq.search.draft_max_design_bridge._qualify_via_field_resolution`.
+
+    Returns a human-readable diagnostic string on mismatch, or `None` if
+    consistent.
+    """
+    try:
+        raw_canonical_value = resolution.field_pointer.lookup(canonical_subject_snapshot)
+    except KeyError, IndexError, TypeError:
+        raw_canonical_value = None
+
+    if resolution.canonical_value_snapshot is None:
+        if raw_canonical_value is not None:
+            return (
+                "resolution has a null canonical_value_snapshot but the durable canonical "
+                f"subject has non-null value {raw_canonical_value!r} at "
+                f"{resolution.field_pointer.raw}"
+            )
+        return None
+
+    if raw_canonical_value is None:
+        return (
+            f"resolution asserts canonical_value_snapshot={resolution.canonical_value_snapshot!r} "
+            f"but the durable canonical subject has no value at {resolution.field_pointer.raw}"
+        )
+
+    try:
+        canonical_decimal = Decimal(str(raw_canonical_value))
+        snapshot_decimal = decode_canonical_decimal_snapshot(resolution.canonical_value_snapshot)
+    except (ArithmeticError, ValueError) as exc:
+        return f"could not compare durable canonical value to resolution snapshot: {exc}"
+
+    if canonical_decimal != snapshot_decimal:
+        return (
+            f"durable canonical value at {resolution.field_pointer.raw} is {canonical_decimal!r} "
+            f"but resolution snapshot is {snapshot_decimal!r}"
+        )
+    return None
+
+
+def _validate_source_record(source: dict[str, Any], expected_source_id: str) -> str | None:
+    """Validate *source* before it is ever passed to `check_source_use` (Finding 9).
+
+    Returns a human-readable diagnostic string on failure, or `None` when the
+    record passes both checks:
+
+    1. `source["source_id"]` must equal `expected_source_id` -- the id the
+       supporting evidence itself declares. A caller-supplied
+       `available_sources` mapping key is never trusted over the record's
+       own declared identity; a mismatch means the wrong Source record could
+       otherwise silently authorize a resolution.
+    2. `source` must validate against `specs/SOURCE_SCHEMA.v0.2.json`. Never
+       lets a `jsonschema.ValidationError` escape -- always converted to a
+       deterministic rejected-write status by the caller.
+    """
+    declared_source_id = source.get("source_id")
+    if declared_source_id != expected_source_id:
+        return (
+            f"available_sources entry resolved via source_id {expected_source_id!r} declares "
+            f"its own source_id as {declared_source_id!r} -- refusing to trust a mismatched "
+            "Source record"
+        )
+    try:
+        jsonschema.validate(instance=source, schema=_load_source_schema())
+    except jsonschema.ValidationError as exc:
+        return f"source {expected_source_id!r} failed SOURCE_SCHEMA.v0.2 validation: {exc.message}"
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Write
 # ---------------------------------------------------------------------------
@@ -356,10 +555,20 @@ def write_field_resolution(
     *,
     resolution: FieldResolution,
     expected_current_resolution_id: str | None,
+    fetch_canonical_value: FetchCanonicalValue,
     available_sources: dict[str, dict[str, Any]],
 ) -> FieldResolutionWriteResult:
     """Durably write *resolution* as the new current head iff every accepted
     invariant and admission check passes.
+
+    `resolution.supersedes_resolution_id` must equal
+    `expected_current_resolution_id` (Finding 8) -- checked before anything
+    else, since it depends on nothing durable.
+
+    `fetch_canonical_value` (required, no default) resolves *resolution*'s
+    subject to its durable canonical snapshot; the result is checked against
+    `resolution` via `_check_canonical_value_consistency` (REQ-PROV-005) for
+    every state, not only resolved ones (Finding 7).
 
     Evidence existence/subject-field-compatibility/set-relationship checks
     (VAL-PROV-004) always run, regardless of state, using the exact
@@ -369,7 +578,9 @@ def write_field_resolution(
     and only against `supporting_evidence_ids` -- an unresolved state
     (`unknown`/`needs_review`/`conflict`) carries no supporting evidence to
     admit (VAL-PROV-005/007) and is written once its evidence-set invariants
-    pass.
+    pass. Each supporting evidence's Source record is bound to its own
+    declared `source_id` and schema-validated before `check_source_use` is
+    ever called (Finding 9).
 
     Raises FieldResolutionTransactionOwnershipError, before any write is
     attempted, if *conn* already has an open transaction.
@@ -390,6 +601,19 @@ def write_field_resolution(
             f"{conn.info.transaction_status!r}); write_field_resolution() requires an IDLE "
             "connection so it can safely own and commit its own top-level transaction. Call "
             "conn.commit()/conn.rollback() first, or pass a freshly opened connection."
+        )
+
+    # Finding 8: a resolution's own declared predecessor must agree with what
+    # the caller expects the current head to be. Checked before the advisory
+    # lock is even acquired -- a pure comparison of two supplied parameters,
+    # nothing durable to consult yet.
+    if resolution.supersedes_resolution_id != expected_current_resolution_id:
+        return FieldResolutionWriteResult(
+            status=FieldResolutionWriteStatus.SUPERSESSION_MISMATCH,
+            detail=(
+                f"resolution.supersedes_resolution_id={resolution.supersedes_resolution_id!r} "
+                f"does not match expected_current_resolution_id={expected_current_resolution_id!r}"
+            ),
         )
 
     subject_kind = resolution.subject.kind.value
@@ -424,6 +648,30 @@ def write_field_resolution(
                 detail="; ".join(invariant_errors),
             )
 
+        # Finding 7: the resolution must agree with the durable canonical
+        # subject it claims to qualify -- enforced here, at admission, not
+        # only defensively re-checked by Search at read time.
+        lookup = fetch_canonical_value(conn, resolution)
+        if lookup.status is not CanonicalLookupStatus.FOUND:
+            return FieldResolutionWriteResult(
+                status=FieldResolutionWriteStatus.CANONICAL_SUBJECT_UNRESOLVABLE,
+                detail=(
+                    f"fetch_canonical_value could not resolve subject "
+                    f"{resolution.subject.kind.value}:{resolution.subject.id} at "
+                    f"{field_pointer} to a unique durable canonical snapshot "
+                    f"(status={lookup.status.value})"
+                ),
+            )
+        assert lookup.canonical_subject_snapshot is not None  # FOUND guarantees this
+        mismatch_detail = _check_canonical_value_consistency(
+            resolution, lookup.canonical_subject_snapshot
+        )
+        if mismatch_detail is not None:
+            return FieldResolutionWriteResult(
+                status=FieldResolutionWriteStatus.CANONICAL_VALUE_MISMATCH,
+                detail=mismatch_detail,
+            )
+
         if resolution.state in (ResolutionState.RESOLVED, ResolutionState.RESOLVED_WITH_CONFLICT):
             for evidence_id in sorted(resolution.supporting_evidence_ids):
                 source_id = all_evidence[evidence_id].source_id
@@ -434,6 +682,15 @@ def write_field_resolution(
                         detail=(
                             f"supporting evidence {evidence_id!r} references source {source_id!r}, "
                             "which is not among the sources supplied to this admission path"
+                        ),
+                    )
+                invalid_reason = _validate_source_record(source, source_id)
+                if invalid_reason is not None:
+                    return FieldResolutionWriteResult(
+                        status=FieldResolutionWriteStatus.SOURCE_RECORD_INVALID,
+                        detail=(
+                            f"supporting evidence {evidence_id!r} references source "
+                            f"{source_id!r}: {invalid_reason}"
                         ),
                     )
                 decision = check_source_use(source, SourceUse.PRODUCTION_VALUE)
@@ -467,7 +724,7 @@ def write_field_resolution(
                 existing_subject_kind == subject_kind
                 and existing_subject_id == subject_id
                 and existing_field_pointer == field_pointer
-                and existing_supersedes == expected_current_resolution_id
+                and existing_supersedes == resolution.supersedes_resolution_id
                 and existing_hash == content_hash
             ):
                 return FieldResolutionWriteResult(
@@ -506,7 +763,7 @@ def write_field_resolution(
                 resolution.resolver.identifier,
                 resolution.resolver.version,
                 resolution.resolved_at,
-                expected_current_resolution_id,
+                resolution.supersedes_resolution_id,
                 resolution.notes,
                 content_hash,
             ),

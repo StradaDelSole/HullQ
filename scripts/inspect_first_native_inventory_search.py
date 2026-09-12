@@ -148,6 +148,7 @@ from hullq.research.observations import ResearchEvidenceBundle
 from hullq.search.draft_max_design_bridge import (
     DRAFT_MAX_FIELD_POINTER,
     DRAFT_MAX_OVERRIDE_FIELD_POINTER,
+    lookup_draft_max_canonical_value,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -363,6 +364,7 @@ def _admit_shallow_variant_field_resolution(conn: Any) -> None:
         conn,
         resolution=resolution,
         expected_current_resolution_id=None,
+        fetch_canonical_value=lookup_draft_max_canonical_value,
         available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
     )
     assert write_result.status is FieldResolutionWriteStatus.CREATED, write_result
