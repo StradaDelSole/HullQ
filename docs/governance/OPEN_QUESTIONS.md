@@ -20,7 +20,7 @@ This register is canonical for unresolved project decisions. Existing legacy `D-
 | OQ-012 | — | Database/search persistence technology and indexing strategy | DECIDED | Before production persistence/query implementation | PostgreSQL 18; production target DigitalOcean Managed PostgreSQL 18 FRA1; no dedicated search engine until measured need |
 | OQ-013 | — | Market-source access matrix: official API/feed/partner/deep-link/caching/display rights per target platform | RESEARCHING | Before any production external adapter | source-access register + per-source decision |
 | OQ-014 | — | Authentication/account architecture and privacy/security baseline | DECIDED | Before authenticated account/broker capability implementation; production controls also gate real external broker data/use | `docs/ARCHITECTURE_REBASELINE_2026-09-02.md` §§10–11, `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_RECONCILIATION_2026-09-02.md`, and `docs/governance/PRODUCTION_READINESS_GATE.md`: Auth0 Public Cloud EU is authentication-only; HullQ owns Account/Organization/Membership/role/authorization truth in PostgreSQL; privileged broker publishing requires MFA; implementation remains capability-scoped |
-| OQ-015 | — | Stable public API boundary and API-description format/version | DEFERRED | Before exposing a separately supported public developer API | API ADR + OpenAPI contract; current FastAPI application/domain boundary is not by itself a public developer-API commitment |
+| OQ-015 | — | Stable public API boundary and API-description format/version | DEFERRED | Before exposing public HTTP API | API ADR + OpenAPI contract |
 | OQ-016 | — | Final subscription pricing, entitlement limits and alert-frequency differentiation | DEFERRED | Before paid subscription launch | accepted subscription/pricing spec + experiments |
 | OQ-017 | — | Historical market-observation / price-intelligence persistence, lifecycle semantics and source-retention permissions | DEFERRED | Before storing longitudinal listing-price history or shipping Pro price intelligence | market-history/price-intelligence spec + source-rights constraints + tests |
 | OQ-018 | — | Broad/indexable public search/SEO surface details: indexable page taxonomy, broad URL grammar, faceted-navigation crawl/index policy, sitemap/hreflang strategy and broad structured-data mapping | OPEN | Before broad/indexable organic-discovery implementation; does not block already accepted bounded `noindex` listing/Search surfaces | accepted Search/SEO surface spec + tests/SEO release checks; bounded page classes remain governed by their accepted slice/page-class contracts |
@@ -72,11 +72,3 @@ OQ-018 remains genuinely open only for the broad/indexable organic-discovery sys
 Those page classes are deliberately `noindex` and have their own accepted URL/canonicalization semantics.
 
 Before broad/indexable organic discovery is implemented, OQ-018 must still resolve the remaining taxonomy/crawl/index/sitemap/hreflang/structured-data decisions. See `architecture/SEARCH_AND_SEO_ARCHITECTURE.md`.
-
-### OQ-013 — external market access
-
-External market-access research remains commercially relevant but no longer gates native HullQ professional inventory. Any future external adapter still requires its own rights/access decision before production use.
-
-### OQ-006 — freshness vs alerts
-
-OQ-006 remains deferred for automated alert cadence/cache policy. Listing lifecycle/freshness/reconfirmation may be implemented earlier as its own bounded native-marketplace capability under the accepted native-listing reconciliation; that does not silently decide future automated-alert cadence.
