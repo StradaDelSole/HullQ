@@ -62,16 +62,18 @@ Required for SLICE-0052 and later. Use exact values from the canonical gate reco
 **Technical Search criterion ordinal:** NOT_APPLICABLE | <integer>  
 **Second-criterion bridge comparison:** NOT_APPLICABLE | PASS  
 **Third-copy abstraction guard:** NOT_APPLICABLE | PASS  
-**Workflow reassessment status:** NOT_DUE | PASS  
+**Workflow reassessment status:** NOT_DUE | DUE | PASS  
 
 Rules:
 
+- `Production readiness gate` must exactly match `PRODUCTION_READINESS_GATE_STATUS` in `docs/governance/PRODUCTION_READINESS_GATE.md`;
 - if the slice does not add a hard technical native-inventory Search criterion, use `NO` and `NOT_APPLICABLE` for ordinal/comparison/third-copy guard;
 - if it adds criterion #2, the SLICE-0051 bridge/path comparison must be `PASS` and the third-copy guard is `NOT_APPLICABLE`;
 - if it adds criterion #3 or later, both the bridge comparison and third-copy abstraction guard must be `PASS`; the readiness text must prove either common structure is generalized/reused or that the new path is structurally distinct and does not create a third copy;
 - the ordinal must be exactly one greater than `TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT` in `docs/governance/POST_0051_TRIGGER_GATES.md`;
-- workflow status must match the canonical marker; once the five-slice/pre-production-pilot trigger is due, `NOT_DUE` cannot make a slice startable;
-- production readiness does not need to be `PASS` during internal development unless its external-broker/public-launch trigger has been reached.
+- workflow status must exactly match the canonical marker;
+- after accepted SLICE-0056 the canonical workflow state may temporarily be `DUE`, but `DUE` blocks SLICE-0057 readiness/start until the evidence-based reassessment is owner-accepted and the state becomes `PASS`;
+- Production Readiness must become `PASS` before real external broker data is stored/relied upon as HullQ production data, before a real external production pilot, or before public production launch, whichever comes first.
 
 Repository validation checks these deterministic relationships. Independent readiness review must verify that the substantive comparison/generalization/distinction and gate evidence are true.
 
