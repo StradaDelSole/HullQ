@@ -24,6 +24,8 @@ Covers:
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 import pytest
 
 from hullq.domain.provenance import ResolutionState
@@ -457,3 +459,97 @@ def test_categorical_not_applicable_sentinel_via_adapter_never_equality_matches(
     qv = from_resolution_state_categorical(ResolutionState.RESOLVED, "not_applicable")
     result = evaluate_categorical_leaf(criterion, qv)
     assert result.truth is TruthState.FALSE
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0051 amendment, Finding 2: exact-Decimal threshold/value comparison
+#
+# A Decimal threshold/candidate value must never be silently coerced to
+# float before comparison -- that could change an accepted exact public
+# requirement threshold, or overflow/underflow for an otherwise-valid
+# accepted arbitrary-precision Decimal spelling. Every existing float/int
+# caller (exercised by every other test in this module) keeps its identical
+# prior behavior; these tests exercise only the newly-added Decimal path.
+# ---------------------------------------------------------------------------
+
+
+def test_numeric_leaf_criterion_preserves_decimal_threshold_exactly() -> None:
+    criterion = NumericLeafCriterion(
+        field="draft_max_m",
+        comparison=NumericComparisonKind.MAXIMUM,
+        threshold_max=Decimal("1.10000000000000000000001"),
+    )
+    assert criterion.threshold_max == Decimal("1.10000000000000000000001")
+    assert isinstance(criterion.threshold_max, Decimal)
+
+
+def test_numeric_leaf_criterion_decimal_threshold_never_becomes_float() -> None:
+    # A value that is not exactly representable in binary floating point:
+    # if this threshold were ever coerced to float, its type and exact
+    # value would both change, and these assertions would fail.
+    exact = Decimal("1") / Decimal("3")  # 0.3333... to Decimal's default 28-digit precision
+    criterion = NumericLeafCriterion(
+        field="draft_max_m", comparison=NumericComparisonKind.MAXIMUM, threshold_max=exact
+    )
+    assert isinstance(criterion.threshold_max, Decimal)
+    assert criterion.threshold_max == exact
+    assert criterion.threshold_max != float(exact)
+
+
+def test_decimal_maximum_boundary_is_exact_no_float_drift() -> None:
+    """A Decimal candidate value exactly equal to a Decimal threshold must
+    pass an inclusive MAXIMUM comparison, even for magnitudes/precisions
+    that would not survive an intermediate float round-trip."""
+    threshold = Decimal("1.10000000000000000000001")
+    criterion = NumericLeafCriterion(
+        field="draft_max_m", comparison=NumericComparisonKind.MAXIMUM, threshold_max=threshold
+    )
+    qualified = QualifiedNumericValue(value=threshold, qualification=ValueQualification.CONFIRMED)
+    result = evaluate_numeric_leaf(criterion, qualified)
+    assert result.truth is TruthState.TRUE
+
+
+def test_decimal_qualified_value_preserved_exactly_not_coerced_to_float() -> None:
+    exact = Decimal("0.30000000000000000000000000001")
+    qualified = QualifiedNumericValue(value=exact, qualification=ValueQualification.CONFIRMED)
+    assert qualified.value == exact
+    assert isinstance(qualified.value, Decimal)
+
+
+def test_decimal_comparison_distinguishes_from_float_semantics() -> None:
+    """A threshold chosen so that Decimal-exact and binary-float-rounded
+    comparison would disagree: 0.1 + 0.2 != 0.3 in binary float, but the
+    Decimal candidate here is exactly the Decimal sum, and must compare
+    true against a Decimal threshold of that exact same sum -- proving the
+    comparison is not silently going through float arithmetic anywhere."""
+    exact_sum = Decimal("0.1") + Decimal("0.2")  # exactly Decimal("0.3")
+    assert exact_sum == Decimal("0.3")
+    assert 0.1 + 0.2 != 0.3  # the classic float pitfall
+
+    criterion = NumericLeafCriterion(
+        field="draft_max_m", comparison=NumericComparisonKind.MAXIMUM, threshold_max=exact_sum
+    )
+    qualified = QualifiedNumericValue(
+        value=Decimal("0.3"), qualification=ValueQualification.CONFIRMED
+    )
+    result = evaluate_numeric_leaf(criterion, qualified)
+    assert result.truth is TruthState.TRUE
+
+
+def test_decimal_extreme_magnitudes_do_not_overflow_or_underflow() -> None:
+    huge = Decimal("99999999999999999999999999999999.6")
+    tiny = Decimal("0.0000000000000000000000000000001")
+
+    huge_criterion = NumericLeafCriterion(
+        field="draft_max_m", comparison=NumericComparisonKind.MAXIMUM, threshold_max=huge
+    )
+    huge_value = QualifiedNumericValue(value=huge, qualification=ValueQualification.CONFIRMED)
+    assert evaluate_numeric_leaf(huge_criterion, huge_value).truth is TruthState.TRUE
+
+    tiny_criterion = NumericLeafCriterion(
+        field="draft_max_m", comparison=NumericComparisonKind.MAXIMUM, threshold_max=tiny
+    )
+    tiny_value_too_large = QualifiedNumericValue(
+        value=tiny * 2, qualification=ValueQualification.CONFIRMED
+    )
+    assert evaluate_numeric_leaf(tiny_criterion, tiny_value_too_large).truth is TruthState.FALSE

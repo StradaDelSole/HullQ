@@ -2,7 +2,9 @@
 
 **ID:** SLICE-0051  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW
+**Status set by this handoff:** `REVIEW`
+**Blocker resolved:** The prior `BLOCKED` state (Finding 3, amendment review on `bd3916ef6a8c8b51940f91abda51b4f66c7028a6`: no durable production per-field qualification/resolution source existed for `canonical_boat_designs`) is resolved by `docs/SLICE_0051_FIELD_RESOLUTION_BLOCKER_RECONCILIATION_2026-09-12.md` (merged to `main` at `ebe2cda4a10de1f5a4737d2270bf00f35fedeba1`). That reconciliation confirmed FieldResolution (already accepted under OQ-004/ADR-0006) as the governing model rather than reopening the qualification question, and authorized the bounded Alembic persistence migration this amendment adds (`630ac7da649e_field_resolution_persistence`). `hullq.search.draft_max_design_bridge` now consults durable `FieldResolution` records instead of always returning `MISSING`; the retained proof demonstrates a genuine `CONFIRMED_MATCH` end to end. See the amendment completion report for full detail.  
 **Stage:** Native marketplace / buyer search  
 **Base main:** `ff2566a84e00b69e607757292c813d0132811d8c`  
 **Depends on:** accepted SLICE-0038, SLICE-0049 and SLICE-0050 behavior; accepted 2026-09-11 marketplace-search resolution/evidence-set decisions; bounded OQ-018 Search decisions; `docs/SLICE_0051_CAPABILITY_SELECTION_2026-09-11.md`; `docs/SLICE_0051_DRAFT_MAX_VERTICAL_DECISION_2026-09-11.md`  

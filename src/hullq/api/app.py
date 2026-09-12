@@ -29,18 +29,37 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 
 from hullq.application.preview_read import get_preview_read_model
 from hullq.application.public_listing_read import get_public_listing_read_model
+from hullq.application.search_read import SearchOutcomeKind, evaluate_search_request
 from hullq.domain.market_identity import NativeListingId
 from hullq.persistence.connection import get_database_url, open_connection
+from hullq.search.draft_max_request import canonical_draft_max_str
 from hullq.security.preview_signing import get_preview_signing_secret
 
 __all__ = ["create_app"]
 
 _PREVIEW_PATH_PREFIX = "/api/_preview/"
 _PUBLIC_LISTINGS_PATH_PREFIX = "/api/listings/"
+_SEARCH_PATH_PREFIX = "/api/search/"
+
+#: SLICE-0051 bounded public Search surface — HullQ's required public
+#: languages (docs/PRODUCT_LANGUAGE_AND_I18N_REQUIREMENT.md). Locale affects
+#: presentation only; draft_max and its meaning stay language-neutral.
+_SUPPORTED_SEARCH_LOCALES = ("en", "de", "fr", "pt", "es")
+
+#: Localized buyer-friendly 400 recovery guidance (slice §C: "a localized
+#: buyer-friendly 400 recovery response"). Technical parameter names/values
+#: remain language-neutral; only this guidance text is translated.
+_INVALID_SEARCH_REQUEST_MESSAGE = {
+    "en": "This search link isn't valid. Enter a maximum draft as a plain decimal number of metres, for example 1.6.",
+    "de": "Dieser Suchlink ist ungültig. Geben Sie den maximalen Tiefgang als einfache Dezimalzahl in Metern an, zum Beispiel 1.6.",
+    "fr": "Ce lien de recherche n'est pas valide. Indiquez le tirant d'eau maximal sous forme de nombre décimal simple en mètres, par exemple 1.6.",
+    "pt": "Esta ligação de pesquisa não é válida. Indique o calado máximo como um número decimal simples em metros, por exemplo 1.6.",
+    "es": "Este enlace de búsqueda no es válido. Indique el calado máximo como un número decimal simple en metros, por ejemplo 1.6.",
+}
 
 # Sent on every response from the preview surface only: a preview token is a
 # bearer capability carried in the URL path, never a publicly indexable or
@@ -103,6 +122,10 @@ def create_app(
         elif path.startswith(_PUBLIC_LISTINGS_PATH_PREFIX):
             for key, value in _PUBLIC_LISTING_RESPONSE_HEADERS.items():
                 response.headers[key] = value
+        elif path.startswith(_SEARCH_PATH_PREFIX):
+            # SLICE-0051 item L: every Search surface is noindex, including
+            # a canonical 200 result page.
+            response.headers["X-Robots-Tag"] = "noindex"
         return response
 
     @app.get("/api/_preview/listings/{preview_token}")
@@ -134,5 +157,56 @@ def create_app(
             # oracle, and no preview token is required or accepted here.
             raise HTTPException(status_code=404, detail="listing not found")
         return JSONResponse(model.to_public_dict())
+
+    @app.get("/api/search/{locale}")
+    def get_search(locale: str, request: Request) -> Response:
+        # SLICE-0051 item C: bare-locale-routing 404 for an unsupported
+        # locale, independent of any query-parameter validity.
+        if locale not in _SUPPORTED_SEARCH_LOCALES:
+            raise HTTPException(status_code=404, detail="unsupported search locale")
+
+        raw_query_params: dict[str, list[str]] = {
+            key: request.query_params.getlist(key) for key in dict(request.query_params)
+        }
+
+        conn = open_connection(resolved_database_url)
+        try:
+            outcome = evaluate_search_request(conn, locale=locale, query_params=raw_query_params)
+        finally:
+            conn.close()
+
+        if outcome.kind is SearchOutcomeKind.INVALID:
+            message = _INVALID_SEARCH_REQUEST_MESSAGE[locale]
+            return JSONResponse(
+                {"error": "invalid_search_request", "message": message}, status_code=400
+            )
+
+        if outcome.kind is SearchOutcomeKind.REDIRECT:
+            assert outcome.canonical_path is not None
+            return RedirectResponse(url=outcome.canonical_path, status_code=308)
+
+        if outcome.kind is SearchOutcomeKind.BASE:
+            return JSONResponse({"locale": locale, "active_requirement": None})
+
+        assert outcome.kind is SearchOutcomeKind.RESULT
+        assert outcome.draft_max is not None
+        assert outcome.search_outcome is not None
+        search_outcome = outcome.search_outcome
+        return JSONResponse(
+            {
+                "locale": locale,
+                "active_requirement": {"draft_max": canonical_draft_max_str(outcome.draft_max)},
+                "confirmed_matches": [
+                    {
+                        "native_listing_id": match.native_listing_id.value,
+                        "resolved_draft_m": str(match.resolved_draft_m),
+                        "publishing_organization_id": match.publishing_organization_id.value,
+                    }
+                    for match in search_outcome.confirmed_matches
+                ],
+                "confirmed_match_count": search_outcome.confirmed_match_count,
+                "insufficient_data_count": search_outcome.insufficient_data_count,
+            }
+        )
 
     return app

@@ -1,0 +1,13 @@
+---
+// SLICE-0051 item C: the bare `/search` route is a deterministic English
+// entry point only -- a locale-selection redirect, nothing more. It MUST
+// NOT consult Accept-Language, cookies, session, geography or account
+// state, and it never validates/evaluates draft_max itself: the exact raw
+// query string is preserved verbatim onto `/en/search`, which performs the
+// real (and only) validation. Invalid state does not become valid merely by
+// passing through this redirect.
+export const prerender = false;
+
+// Astro.url.search includes the leading "?", or is "" when absent.
+return Astro.redirect(`/en/search${Astro.url.search}`, 308);
+---

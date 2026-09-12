@@ -22,6 +22,7 @@ resolution/aggregation lives in `hullq.search.configuration_engine`.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal
 
 from hullq.search.types import (
     NumericComparisonKind,
@@ -54,6 +55,12 @@ _UNQUALIFIED_REASON: dict[ValueQualification, ReasonCode] = {
 }
 
 
+def _coerce_threshold(threshold: float | Decimal | None) -> float | Decimal | None:
+    if threshold is None or isinstance(threshold, Decimal):
+        return threshold
+    return float(threshold)
+
+
 @dataclass(frozen=True, slots=True)
 class NumericLeafCriterion:
     """One serializable numeric MUST criterion over a named projection field.
@@ -67,8 +74,8 @@ class NumericLeafCriterion:
 
     field: str
     comparison: NumericComparisonKind
-    threshold_min: float | None = None
-    threshold_max: float | None = None
+    threshold_min: float | Decimal | None = None
+    threshold_max: float | Decimal | None = None
     strength: RequirementStrength = RequirementStrength.MUST
 
     def __post_init__(self) -> None:
@@ -114,12 +121,14 @@ class NumericLeafCriterion:
                     f"got {self.threshold_min} > {self.threshold_max}"
                 )
 
-        object.__setattr__(
-            self, "threshold_min", None if self.threshold_min is None else float(self.threshold_min)
-        )
-        object.__setattr__(
-            self, "threshold_max", None if self.threshold_max is None else float(self.threshold_max)
-        )
+        # SLICE-0051 amendment, Finding 2: a Decimal threshold is preserved
+        # exactly, never coerced to float -- coercing an accepted exact
+        # public Decimal requirement threshold to float before comparison
+        # could silently change its value or overflow/underflow for an
+        # otherwise-valid accepted spelling. Every pre-existing int/float
+        # caller keeps its prior float-coercion behavior unchanged.
+        object.__setattr__(self, "threshold_min", _coerce_threshold(self.threshold_min))
+        object.__setattr__(self, "threshold_max", _coerce_threshold(self.threshold_max))
 
 
 @dataclass(frozen=True, slots=True)
@@ -133,7 +142,7 @@ class CriterionEvaluation:
 
 
 def _compare(
-    comparison: NumericComparisonKind, value: float, criterion: NumericLeafCriterion
+    comparison: NumericComparisonKind, value: float | Decimal, criterion: NumericLeafCriterion
 ) -> bool:
     # threshold presence per comparison kind is enforced by NumericLeafCriterion.__post_init__
     if comparison is NumericComparisonKind.MINIMUM:

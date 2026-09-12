@@ -76,12 +76,14 @@ from hullq.domain.publishing_eligibility import (
 from hullq.persistence.fingerprint import fingerprint_dict
 
 __all__ = [
+    "CurrentDraftObservation",
     "PhysicalBoatClaimRevisionRecord",
     "PhysicalBoatClaimTransactionOwnershipError",
     "PhysicalBoatClaimWriteResult",
     "PhysicalBoatClaimWriteStatus",
     "fetch_current_physical_boat_claim",
     "fetch_physical_boat_claim_revision",
+    "list_current_draft_observations_for_physical_boat",
     "list_physical_boat_claim_revisions",
     "write_physical_boat_claim_revision",
 ]
@@ -266,6 +268,14 @@ SELECT {_REVISION_COLUMNS}
 FROM physical_boat_claim_revisions r
 WHERE r.physical_boat_id = %s AND r.claiming_organization_id = %s
 ORDER BY r.recorded_at ASC, r.claim_revision_id ASC
+"""
+
+_SELECT_CURRENT_DRAFT_OBSERVATIONS = """
+SELECT h.claiming_organization_id, r.draft_assertion_kind, r.draft_value
+FROM physical_boat_claim_heads h
+JOIN physical_boat_claim_revisions r ON r.claim_revision_id = h.current_claim_revision_id
+WHERE h.physical_boat_id = %s
+ORDER BY h.claiming_organization_id
 """
 
 
@@ -715,6 +725,57 @@ def fetch_physical_boat_claim_revision(
     if row is None:
         return None
     return _row_to_revision_record(row)
+
+
+@dataclass(frozen=True)
+class CurrentDraftObservation:
+    """One claiming Organization's current `physical_boat.draft` observation.
+
+    `draft` is `None` when that Organization's current claim snapshot omits
+    the field entirely -- mechanically distinct from an explicit `UNKNOWN`
+    `DraftClaim` (`draft.assertion_kind is AssertionKind.UNKNOWN`), exactly
+    like every other optional PhysicalBoat claim field in this module.
+    """
+
+    claiming_organization_id: MarketplaceOrganizationId
+    draft: DraftClaim | None
+
+
+def list_current_draft_observations_for_physical_boat(
+    conn: Any, physical_boat_id: PhysicalBoatId
+) -> list[CurrentDraftObservation]:
+    """Every claiming Organization's *current* `physical_boat.draft` observation.
+
+    Implements the read side of the accepted bounded Option-B same-
+    PhysicalBoat contradiction guard (SLICE-0051 §G): reads only the
+    explicit current head per claiming Organization -- never `MAX(recorded_at)`
+    or row order -- across *every* Organization that has ever claimed this
+    PhysicalBoatId, not only the publishing Organization. A PhysicalBoat with
+    no current claim at all from any Organization returns an empty list.
+    Superseded revisions are history, never observed here.
+    """
+    if not isinstance(physical_boat_id, PhysicalBoatId):
+        raise TypeError(
+            f"physical_boat_id must be a PhysicalBoatId, got {type(physical_boat_id).__name__}"
+        )
+    with conn.cursor() as cur:
+        cur.execute(_SELECT_CURRENT_DRAFT_OBSERVATIONS, [physical_boat_id.value])
+        rows = cur.fetchall()
+    observations = []
+    for claiming_organization_id, draft_kind, draft_value in rows:
+        draft: DraftClaim | None = None
+        if draft_kind is not None:
+            draft = DraftClaim(
+                assertion_kind=AssertionKind(draft_kind),
+                value=Decimal(draft_value) if draft_value is not None else None,
+            )
+        observations.append(
+            CurrentDraftObservation(
+                claiming_organization_id=MarketplaceOrganizationId(claiming_organization_id),
+                draft=draft,
+            )
+        )
+    return observations
 
 
 def list_physical_boat_claim_revisions(

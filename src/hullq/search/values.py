@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Final
 
 from hullq.domain.derived_metrics import MetricStatus
@@ -43,15 +44,23 @@ __all__ = [
 
 
 def is_finite_real_number(value: object) -> bool:
-    """True iff *value* is a finite, non-bool `int`/`float`.
+    """True iff *value* is a finite, non-bool `int`/`float`/`Decimal`.
 
     The single shared guard used everywhere a numeric candidate value or
     threshold enters this package: `bool` is a subclass of `int` in Python
     and would otherwise silently pass an `isinstance(x, (int, float))`
-    check, and `NaN`/`+Infinity`/`-Infinity` are valid `float` values that
-    would otherwise reach comparison logic and produce a bogus TRUE/FALSE.
+    check, and `NaN`/`+Infinity`/`-Infinity` are valid `float`/`Decimal`
+    values that would otherwise reach comparison logic and produce a bogus
+    TRUE/FALSE. `Decimal` support (SLICE-0051 amendment, Finding 2) lets an
+    exact-Decimal public requirement threshold flow through this package
+    without an intermediate binary-float conversion; every pre-existing
+    `int`/`float` caller is unaffected.
     """
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, Decimal):
+        return value.is_finite()
+    return isinstance(value, (int, float)) and math.isfinite(value)
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,10 +75,15 @@ class QualifiedNumericValue:
     provisional, unresolved-conflict, not-applicable, applicability-unknown
     and malformed numeric values from silently reaching comparison logic.
 
-    A `CONFIRMED` `int` value is normalized to `float` on construction.
+    A `CONFIRMED` `int` value is normalized to `float` on construction,
+    exactly as before. A `CONFIRMED` `Decimal` value (SLICE-0051 amendment,
+    Finding 2) is preserved exactly, never coerced to `float`: converting an
+    arbitrary-precision accepted public Decimal requirement to `float` before
+    comparison could silently change its value or overflow/underflow. Every
+    existing `int`/`float` caller keeps its prior behavior unchanged.
     """
 
-    value: float | None
+    value: float | Decimal | None
     qualification: ValueQualification
 
     def __post_init__(self) -> None:
@@ -80,7 +94,8 @@ class QualifiedNumericValue:
                     f"CONFIRMED qualification requires a finite, non-bool numeric value; "
                     f"got {self.value!r}"
                 )
-            object.__setattr__(self, "value", float(self.value))  # type: ignore[arg-type]
+            if not isinstance(self.value, Decimal):
+                object.__setattr__(self, "value", float(self.value))  # type: ignore[arg-type]
         elif self.value is not None:
             raise ValueError(
                 f"Non-CONFIRMED qualification {self.qualification!r} must not carry a value"
@@ -101,9 +116,16 @@ _RESOLUTION_STATE_QUALIFICATION: Final[dict[ResolutionState, ValueQualification]
 
 
 def from_resolution_state(
-    state: ResolutionState, canonical_value: float | None
+    state: ResolutionState, canonical_value: float | Decimal | None
 ) -> QualifiedNumericValue:
     """Build a `QualifiedNumericValue` from an accepted `FieldResolution.state`.
+
+    `canonical_value` accepts `Decimal` (SLICE-0051 amendment) as well as the
+    original `float`/`int`: this adapter is a thin pass-through boundary and
+    must never itself become the place a persisted exact-Decimal
+    `FieldResolution.canonical_value_snapshot` loses precision --
+    `QualifiedNumericValue.__post_init__` already preserves a `Decimal`
+    exactly rather than coercing it to `float` (see that class's docstring).
 
     `resolved`/`resolved_with_conflict` carry an accepted current canonical
     value (SEARCH_QUERY_SEMANTICS.v0.1.md §3: "a source-backed canonical
