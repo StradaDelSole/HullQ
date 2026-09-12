@@ -36,7 +36,7 @@ _WORKFLOW_REASSESSMENT_DUE_RE = re.compile(
     r"<!--\s*WORKFLOW_REASSESSMENT_DUE_AFTER_SLICE:\s*(\d{4})\s*-->"
 )
 _WORKFLOW_REASSESSMENT_STATUS_RE = re.compile(
-    r"<!--\s*WORKFLOW_REASSESSMENT_STATUS:\s*(NOT_DUE|PASS)\s*-->"
+    r"<!--\s*WORKFLOW_REASSESSMENT_STATUS:\s*(NOT_DUE|DUE|PASS)\s*-->"
 )
 _PRODUCTION_READINESS_STATUS_RE = re.compile(
     r"<!--\s*PRODUCTION_READINESS_GATE_STATUS:\s*(NOT_TRIGGERED|IN_PROGRESS|PASS)\s*-->"
@@ -236,10 +236,10 @@ def trigger_gate_state_check(
             "SLICE-0052+ capability readiness is blocked"
         )
 
-    if accepted >= due_after and workflow != "PASS":
+    if accepted >= due_after and workflow == "NOT_DUE":
         raise ValueError(
             f"Workflow reassessment became due after accepted SLICE-{due_after:04d}; "
-            "WORKFLOW_REASSESSMENT_STATUS must be PASS"
+            "WORKFLOW_REASSESSMENT_STATUS must be DUE or PASS"
         )
 
     production_data_active = broker_data == "ACTIVE" or pilot == "ACTIVE" or launch == "ACTIVE"
@@ -257,7 +257,9 @@ def trigger_gate_state_check(
         )
 
     if production == "NOT_TRIGGERED" and production_data_active:
-        raise ValueError("Production readiness cannot remain NOT_TRIGGERED after production data starts")
+        raise ValueError(
+            "Production readiness cannot remain NOT_TRIGGERED after production data starts"
+        )
 
     return architecture, criteria_count, workflow, production
 
@@ -334,7 +336,13 @@ def _trigger_evidence_value(*, queue: int, path: Path, section: str, label: str)
 
 
 def _validate_trigger_gate_evidence(
-    *, queue: int, path: Path, section: str, criteria_count: int, workflow_status: str
+    *,
+    queue: int,
+    path: Path,
+    section: str,
+    criteria_count: int,
+    workflow_status: str,
+    production_status: str,
 ) -> None:
     values = {
         label: _trigger_evidence_value(queue=queue, path=path, section=section, label=label)
@@ -345,6 +353,11 @@ def _validate_trigger_gate_evidence(
     if production_value not in {"NOT_TRIGGERED", "IN_PROGRESS", "PASS"}:
         raise ValueError(
             f"SLICE-{queue:04d} has invalid Production readiness gate value {production_value!r}"
+        )
+    if production_value != production_status:
+        raise ValueError(
+            f"SLICE-{queue:04d} production readiness evidence {production_value!r} does not "
+            f"match canonical status {production_status!r}"
         )
 
     adds = values["Adds technical native Search criterion"]
@@ -358,9 +371,17 @@ def _validate_trigger_gate_evidence(
             f"SLICE-{queue:04d} workflow reassessment evidence {readiness_workflow!r} does not "
             f"match canonical status {workflow_status!r}"
         )
+    if queue >= 57 and workflow_status == "DUE":
+        raise ValueError(
+            f"SLICE-{queue:04d} cannot become startable while workflow reassessment is DUE"
+        )
 
     if adds == "NO":
-        if ordinal != "NOT_APPLICABLE" or second != "NOT_APPLICABLE" or third != "NOT_APPLICABLE":
+        if (
+            ordinal != "NOT_APPLICABLE"
+            or second != "NOT_APPLICABLE"
+            or third != "NOT_APPLICABLE"
+        ):
             raise ValueError(
                 f"SLICE-{queue:04d} does not add a technical native Search criterion; "
                 "ordinal/comparison/third-copy guard must all be NOT_APPLICABLE"
@@ -374,7 +395,8 @@ def _validate_trigger_gate_evidence(
 
     if not ordinal.isdigit():
         raise ValueError(
-            f"SLICE-{queue:04d} technical Search criterion ordinal must be an integer when addition is YES"
+            f"SLICE-{queue:04d} technical Search criterion ordinal must be an integer "
+            "when addition is YES"
         )
     ordinal_number = int(ordinal)
     expected = criteria_count + 1
@@ -463,7 +485,8 @@ def queue_slice_startability_check(
             pattern = re.compile(rf"(?m)^\*\*{re.escape(check)}:\*\*[ \t]*PASS[ \t]*$")
             if pattern.search(text) is None:
                 raise ValueError(
-                    f"SLICE-{queue:04d} queue document {path.name} must contain '**{check}:** PASS'"
+                    f"SLICE-{queue:04d} queue document {path.name} must contain "
+                    f"'**{check}:** PASS'"
                 )
 
     if queue >= 51:
@@ -479,11 +502,14 @@ def queue_slice_startability_check(
         _validate_reconciliation_evidence(queue=queue, path=path, section=section)
 
     if queue >= 52:
-        architecture, criteria_count, workflow_status, _ = trigger_gate_state_check(
+        architecture, criteria_count, workflow_status, production_status = trigger_gate_state_check(
             project_state=project_state
         )
         if architecture != "PASS":
-            raise ValueError(f"SLICE-{queue:04d} cannot become startable before architecture reconciliation PASS")
+            raise ValueError(
+                f"SLICE-{queue:04d} cannot become startable before architecture "
+                "reconciliation PASS"
+            )
         trigger_pattern = re.compile(
             rf"(?m)^\*\*{re.escape(_POST_0051_TRIGGER_GATES_CHECK)}:\*\*[ \t]*PASS[ \t]*$"
         )
@@ -499,6 +525,7 @@ def queue_slice_startability_check(
             section=trigger_section,
             criteria_count=criteria_count,
             workflow_status=workflow_status,
+            production_status=production_status,
         )
 
     return queue, path.name
