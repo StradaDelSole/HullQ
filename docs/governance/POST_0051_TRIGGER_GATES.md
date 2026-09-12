@@ -130,7 +130,7 @@ A mandatory workflow reassessment becomes due at the earlier of:
 
 ```text
 A. five further owner-accepted primary slices after SLICE-0051
-   → after SLICE-0056 is accepted
+   → immediately after SLICE-0056 becomes owner-accepted
 
 B. immediately before the first real production pilot
 ```
@@ -149,15 +149,20 @@ Until a reassessment is completed and owner-accepted, no lighter workflow is aut
 
 ```text
 NOT_DUE
+DUE
 PASS
 ```
 
 Rules:
 
-- through accepted SLICE-0055, `NOT_DUE` is valid unless a production pilot is about to start;
+- through accepted SLICE-0055, `NOT_DUE` is valid unless the production-pilot trigger fires first;
+- the SLICE-0056 acceptance closure MUST atomically move the marker from `NOT_DUE` to `DUE`; this allows that closure to merge without pretending a post-acceptance review happened before acceptance;
 - once SLICE-0056 is accepted, `NOT_DUE` is invalid;
-- SLICE-0057 cannot become/start READY unless the status is `PASS`;
+- `DUE` is a valid canonical between-slice state but it blocks SLICE-0057 readiness/start;
+- before SLICE-0057 can become READY, the evidence-based reassessment must be completed, owner-accepted, and the marker changed to `PASS`;
 - if the production-pilot trigger happens earlier, the reassessment must be `PASS` before that pilot begins.
+
+This sequencing deliberately avoids a deadlock: five accepted post-0051 slices can exist first; only then is their evidence complete enough for the mandatory reassessment.
 
 ## Readiness evidence from SLICE-0052 onward
 
