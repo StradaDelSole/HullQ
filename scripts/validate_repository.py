@@ -190,7 +190,9 @@ def trigger_gate_state_check(
     )
     criteria_count = int(criteria_count_text)
     if criteria_count < 1:
-        raise ValueError("TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT must be at least 1 after SLICE-0051")
+        raise ValueError(
+            "TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT must be at least 1 after SLICE-0051"
+        )
 
     due_after_text = _single_marker(
         text=trigger_text,
@@ -377,11 +379,7 @@ def _validate_trigger_gate_evidence(
         )
 
     if adds == "NO":
-        if (
-            ordinal != "NOT_APPLICABLE"
-            or second != "NOT_APPLICABLE"
-            or third != "NOT_APPLICABLE"
-        ):
+        if ordinal != "NOT_APPLICABLE" or second != "NOT_APPLICABLE" or third != "NOT_APPLICABLE":
             raise ValueError(
                 f"SLICE-{queue:04d} does not add a technical native Search criterion; "
                 "ordinal/comparison/third-copy guard must all be NOT_APPLICABLE"
@@ -485,8 +483,7 @@ def queue_slice_startability_check(
             pattern = re.compile(rf"(?m)^\*\*{re.escape(check)}:\*\*[ \t]*PASS[ \t]*$")
             if pattern.search(text) is None:
                 raise ValueError(
-                    f"SLICE-{queue:04d} queue document {path.name} must contain "
-                    f"'**{check}:** PASS'"
+                    f"SLICE-{queue:04d} queue document {path.name} must contain '**{check}:** PASS'"
                 )
 
     if queue >= 51:
@@ -507,8 +504,7 @@ def queue_slice_startability_check(
         )
         if architecture != "PASS":
             raise ValueError(
-                f"SLICE-{queue:04d} cannot become startable before architecture "
-                "reconciliation PASS"
+                f"SLICE-{queue:04d} cannot become startable before architecture reconciliation PASS"
             )
         trigger_pattern = re.compile(
             rf"(?m)^\*\*{re.escape(_POST_0051_TRIGGER_GATES_CHECK)}:\*\*[ \t]*PASS[ \t]*$"
