@@ -43,6 +43,9 @@ function Assert-ProductExecutionChecks([string]$Number, [string]$Text, [string]$
     if ([int]$Number -ge 51) {
         $requiredChecks += 'REPOSITORY RECONCILIATION CHECK'
     }
+    if ([int]$Number -ge 52) {
+        $requiredChecks += 'TRIGGER GATES CHECK'
+    }
 
     foreach ($check in $requiredChecks) {
         $pattern = "(?m)^\*\*$([regex]::Escape($check)):\*\*[ \t]*PASS[ \t]*$"
@@ -86,6 +89,29 @@ function Assert-ProductExecutionChecks([string]$Number, [string]$Text, [string]$
             throw "SLICE-$Number cannot start: $FileName must name at least one accepted reconciliation classification after '**Material classifications:**'."
         }
     }
+
+    if ([int]$Number -ge 52) {
+        $triggerSectionPattern = '(?ms)^## Trigger gates[ \t]*\r?\n(.*?)(?=^##[ \t]|\z)'
+        $triggerSectionMatch = [regex]::Match($Text, $triggerSectionPattern)
+        if (-not $triggerSectionMatch.Success) {
+            throw "SLICE-$Number cannot start: $FileName must contain the section '## Trigger gates' required by docs/governance/POST_0051_TRIGGER_GATES.md."
+        }
+        $triggerText = $triggerSectionMatch.Groups[1].Value
+        $triggerLabels = @(
+            'Production readiness gate',
+            'Adds technical native Search criterion',
+            'Technical Search criterion ordinal',
+            'Second-criterion bridge comparison',
+            'Third-copy abstraction guard',
+            'Workflow reassessment status'
+        )
+        foreach ($label in $triggerLabels) {
+            $triggerEvidencePattern = "(?m)^\*\*$([regex]::Escape($label)):\*\*[ \t]*(\S[^\r\n]*)[ \t]*$"
+            if ($triggerText -notmatch $triggerEvidencePattern) {
+                throw "SLICE-$Number cannot start: $FileName must contain a non-empty '**${label}:** <value>' line in its trigger-gates section."
+            }
+        }
+    }
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
@@ -103,6 +129,14 @@ Run-Git -GitArgs @('-C', $repoRoot, 'fetch', '--prune', 'origin')
 Run-Git -GitArgs @('-C', $repoRoot, 'switch', 'main')
 Run-Git -GitArgs @('-C', $repoRoot, 'pull', '--ff-only', 'origin', 'main')
 Run-Git -GitArgs @('-C', $repoRoot, 'worktree', 'prune')
+
+if ([int]$sliceNumber -ge 52) {
+    Write-Host "Validating repository trigger gates..."
+    & uv run python (Join-Path $repoRoot 'scripts\validate_repository.py')
+    if ($LASTEXITCODE -ne 0) {
+        throw "SLICE-$sliceNumber cannot start: repository governance/trigger validation failed."
+    }
+}
 
 $sliceFile = Get-PrimarySliceFile -Root $repoRoot -Number $sliceNumber
 $sliceText = Get-Content -Raw $sliceFile.FullName
@@ -165,6 +199,7 @@ EXECUTION:
 - Follow CLAUDE.md and $relativeSliceFile exactly.
 - For SLICE-0039 and later, comply with docs/PRODUCT_EXECUTION_PLAN.md and preserve the slice's PASS product-execution checks.
 - For SLICE-0051 and later, preserve the accepted decision/implementation reconciliation recorded in the slice; do not re-open behavior that the slice identifies as already decided/implemented.
+- For SLICE-0052 and later, preserve the slice's PASS trigger-gates check and do not bypass a production-readiness, Search-abstraction, architecture-reconciliation, or workflow-reassessment trigger.
 - Work only on `$branch`; do not modify main or another branch.
 - Do not broaden scope or start another slice.
 - Push this same branch to GitHub at completion.

@@ -1,8 +1,8 @@
 # HullQ — Product UX Principles
 
-**Status:** PROPOSED PRODUCT UX BASELINE — becomes controlling for Phase E/public UI work when merged  
+**Status:** ACCEPTED PRODUCT UX BASELINE — controlling for public UI work  
 **Purpose:** preserve the useful product/UX lessons from Listings Port, SailboatLab and Keel Index without copying their visual design or weakening HullQ truth semantics.  
-**Execution relationship:** `docs/PRODUCT_EXECUTION_PLAN.md` remains controlling for sequence; this document controls UX/product-surface decisions when a slice builds or materially changes public Search, result, BoatDesign, comparison, market, save/monitor or alert UI.
+**Execution relationship:** `docs/PRODUCT_EXECUTION_PLAN.md`, the accepted post-SLICE-0039 reconciliation/rebaseline, and later accepted slice closures control sequence/scope; this document controls UX/product-surface decisions when a slice builds or materially changes public Search, result, BoatDesign, comparison, market, save/monitor or alert UI.
 
 ## 1. Product experience thesis
 
@@ -272,7 +272,7 @@ The same canonical identity and truth read model should drive all of these surfa
 
 ## 15. Phase E implementation obligation
 
-When Phase E / Web Alpha begins, every slice that creates or materially changes a public Search/result/BoatDesign/market UI **must name this document as a controlling artifact**.
+For current and future public UI work, every slice that creates or materially changes a public Search/result/BoatDesign/market UI **must name this document as a controlling artifact**.
 
 The first Alpha is intentionally small, but must demonstrate these minimum UX semantics:
 

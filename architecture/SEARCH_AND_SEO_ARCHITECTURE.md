@@ -2,7 +2,7 @@
 
 **Status:** ACCEPTED ARCHITECTURAL BASELINE  
 **Decision:** ADR-0007  
-**Detailed public-surface implementation gate:** OQ-018  
+**Detailed broad/indexable public-discovery gate:** OQ-018 and later accepted page-class decisions  
 **Accepted product-led distribution strategy:** `docs/PRODUCT_LED_SEO_STRATEGY.md`
 
 ## Core principle
@@ -13,6 +13,8 @@ HullQ's organic discoverability is not a marketing layer that may be bolted onto
 
 This principle is particularly important for HullQ because the product intentionally creates a large structured evergreen knowledge/search surface over thousands of sailboat identities and technical characteristics.
 
+The existence of bounded public `noindex` listing/Search surfaces does not itself authorize broad organic indexation. OQ-018 and later accepted page-class decisions gate the broader indexable discovery system, not the mere existence of any public SSR route.
+
 ## 1. Two related but distinct search surfaces
 
 HullQ MUST distinguish:
@@ -22,9 +24,11 @@ HullQ MUST distinguish:
 
 Every interactive filter combination MUST NOT automatically become an indexable landing page.
 
+SLICE-0049/0051 public listing/Search page classes remain deliberately bounded and `noindex` under their accepted contracts. They are product surfaces, not an implicit decision to index arbitrary search state.
+
 ## 2. Canonical public entities
 
-Likely public canonical page classes include, subject to OQ-018:
+Potential indexable canonical page classes include, subject to the accepted detailed public-surface gate:
 
 - BoatModel pages;
 - BoatDesign/generation pages where distinct enough to warrant a page;
@@ -36,15 +40,17 @@ Arbitrary transient query state, sort orders, pagination variants, empty result 
 
 ## 3. URL architecture
 
-Before public frontend implementation, OQ-018 MUST define:
+Before **broad/indexable organic-discovery implementation**, the controlling detailed public-surface decision MUST define or explicitly preserve:
 
-- stable public URL grammar;
+- stable indexable public URL grammar;
 - canonical identity/slug behavior and rename handling;
 - representation of intentional technical landing pages;
-- query-parameter handling;
+- query-parameter handling for indexable/crawlable states;
 - canonicalization rules;
 - redirects/migrations for changed public identifiers;
 - which URL classes are crawlable/indexable.
+
+This requirement does not invalidate already accepted bounded public `noindex` listing/Search routes whose URL/canonicalization behavior is defined by their own accepted slice/page-class contracts.
 
 Domain IDs remain stable internal identity. Human-readable slugs MUST NOT become the sole canonical identity key.
 
@@ -59,19 +65,23 @@ The architecture MUST:
 - explicitly choose which technical combinations deserve persistent organic landing pages;
 - retain full interactive filtering for users even when a filter state is intentionally non-indexable.
 
-OQ-018 determines the exact robots/noindex/canonical/linking policy.
+The detailed public-surface decision determines the exact robots/noindex/canonical/linking policy for broad/indexable discovery states. Accepted bounded page-class decisions may keep specific routes `noindex` before that broader system exists.
 
 ## 5. Rendering and crawlability
 
-Framework choice remains OQ-008, but it MUST satisfy the product's search-discovery requirements. Approved indexable pages MUST expose meaningful primary content, crawlable navigation links and metadata reliably.
+Astro is the accepted main public-web framework, with React islands only where interaction justifies them. Approved indexable pages MUST expose meaningful primary content, crawlable navigation links and metadata reliably.
 
-Bot-specific dynamic rendering is not the baseline architecture. The selected frontend approach SHOULD favor server-rendered, statically generated or otherwise reliably rendered HTML for canonical public discovery surfaces while preserving a rich interactive client experience.
+Bot-specific dynamic rendering is not the baseline architecture. Public discovery surfaces SHOULD favor server-rendered, statically generated or otherwise reliably rendered HTML while preserving a rich interactive client experience where justified.
+
+FastAPI remains the sole application/domain API boundary; SEO/public rendering must not create a second implementation of HullQ Search or truth semantics.
 
 ## 6. Canonicalization and sitemaps
 
 HullQ MUST maintain one preferred canonical URL for each intentionally indexable content identity. XML sitemaps MUST be generated from the same canonical page registry rather than from arbitrary observed frontend URLs.
 
-Dataset/model changes that create/remove/migrate public pages MUST update canonical URLs, redirects and sitemap state coherently.
+Dataset/model changes that create/remove/migrate indexable public pages MUST update canonical URLs, redirects and sitemap state coherently.
+
+Current bounded `noindex` listing/Search surfaces do not authorize inclusion of arbitrary Search combinations in sitemaps.
 
 ## 7. Internal linking
 
@@ -89,17 +99,17 @@ Internal links MUST NOT depend exclusively on client-side events that crawlers c
 
 Structured data is an optional representation of truthful visible content, not an SEO invention layer. HullQ MAY emit supported JSON-LD/schema mappings when they accurately describe the page. It MUST NOT manufacture achieved sale prices, ratings, reviews or unsupported attributes for search appearance.
 
-The precise schema mapping belongs in OQ-018 because supported search features can change over time.
+The precise broad schema mapping belongs to the detailed public-surface gate because supported search features can change over time. A slice may introduce only the structured data explicitly authorized for its accepted page class.
 
 ## 9. Performance and UX
 
-SEO architecture MUST NOT sacrifice HullQ's actual product UX. Public pages and interactive search SHOULD share canonical data/read models while allowing different rendering strategies where justified.
+SEO architecture MUST NOT sacrifice HullQ's actual product UX. Public pages and interactive Search SHOULD share canonical data/read models while allowing different rendering strategies where justified.
 
 Core Web Vitals and explicit performance budgets are release-quality concerns. Query interactions, filters and comparison views must remain responsive even as the design universe scales.
 
 ## 10. Observability
 
-Public release SHOULD make organic-search health observable through:
+Public organic release SHOULD make search-discovery health observable through:
 
 - indexation/crawl errors;
 - sitemap health;
@@ -109,17 +119,19 @@ Public release SHOULD make organic-search health observable through:
 - page-performance field/lab signals;
 - unexpected growth in crawlable faceted URL count.
 
-The exact provider/tooling is implementation-specific and not decided here.
+The exact provider/tooling is implementation-specific and not decided here. General production operational observability is separately governed by `docs/governance/PRODUCTION_READINESS_GATE.md`.
 
 ## 11. Docs-to-code consequences
 
-Frontend or routing code MUST NOT silently decide SEO semantics. Changes affecting public URLs, indexation, canonicalization, page taxonomy or rendering MUST trace to REQ-SEO requirements and, when structural, an accepted ADR/spec change.
+Frontend or routing code MUST NOT silently decide SEO semantics. Changes affecting public URLs, indexation, canonicalization, page taxonomy or rendering MUST trace to accepted requirements/page-class decisions and, when structural, an accepted ADR/spec change.
+
+A public route can be implemented while deliberately `noindex`; that does not silently settle the later broad/indexable taxonomy.
 
 ## 12. External guidance baseline
 
-The baseline is informed by current primary guidance registered in `research/evidence/SOURCE_REGISTER.md`, including Google Search Central guidance on URL structure/faceted navigation, JavaScript SEO, canonicalization, sitemaps and structured data, plus web.dev Core Web Vitals guidance. Exact implementation rules MUST be re-verified when OQ-018 is resolved and before public launch because search-engine guidance can change.
+The baseline is informed by current primary guidance registered in `research/evidence/SOURCE_REGISTER.md`, including Google Search Central guidance on URL structure/faceted navigation, JavaScript SEO, canonicalization, sitemaps and structured data, plus web.dev Core Web Vitals guidance. Exact implementation rules MUST be re-verified before broad public organic launch because search-engine guidance can change.
 
-The 2026 product-led SEO research refresh is retained in `docs/research/OQ-018_PRODUCT_LED_SEO_RESEARCH_2026-08-25.md` and includes current Google guidance for faceted navigation, generative-AI search features, Search Console, metadata, internationalization and Core Web Vitals plus Bing/IndexNow discovery guidance.
+The 2026 product-led SEO research refresh is retained in `docs/research/OQ-018_PRODUCT_LED_SEO_RESEARCH_2026-08-25.md` and includes Google guidance for faceted navigation, generative-AI search features, Search Console, metadata, internationalization and Core Web Vitals plus Bing/IndexNow discovery guidance.
 
 ## 13. Product-led organic-distribution doctrine
 
@@ -130,7 +142,7 @@ The accepted strategic direction is:
 - HullQ's canonical data/query engine is the primary organic-content moat;
 - Product-Led SEO is a primary zero-budget distribution strategy;
 - indexability is an intentional promoted page state, not a side effect of generating a route or serializing a user query;
-- arbitrary faceted search remains a product feature while only selected stable intents become public organic landing pages;
+- arbitrary faceted Search remains a product feature while only selected stable intents become public organic landing pages;
 - Search Console/internal-search demand should later feed landing-page promotion and data-enrichment priorities;
 - programmatic pages must provide distinct user utility and must not rely on generic AI filler or doorway behavior;
 - segmented sitemaps should support both discovery and page-class indexation measurement;
@@ -138,13 +150,13 @@ The accepted strategic direction is:
 - multilingual expansion must be designed before translation and must not become thin machine-translated index growth;
 - zero-budget authority should compound through original HullQ data, shareable search/compare/entity pages, methodology transparency and legitimate community/earned-media use.
 
-These principles do **not** resolve OQ-018's exact URL grammar, indexability thresholds, robots/noindex rules, page taxonomy, schema mapping, language choice or release budgets. Those remain explicit pre-public implementation decisions.
+These principles do **not** by themselves resolve every exact URL grammar, indexability threshold, robots/noindex rule, page taxonomy, schema mapping, language choice or release budget. Those details remain explicit decisions for the relevant broad/indexable page classes.
 
 ## 14. Truth-backed SEO execution invariants
 
-Competitive review in August 2026 showed that large indexable sailboat corpora can create a damaging split between an SEO page's promise and the actual technical result set. HullQ MUST avoid that split by making public technical/discovery pages projections of the same accepted truth/search semantics used by the product.
+Competitive review in August 2026 showed that large indexable sailboat corpora can create a damaging split between an SEO page's promise and the actual technical result set. HullQ MUST avoid that split by making public technical/discovery pages projections of the same accepted truth/Search semantics used by the product.
 
-The following invariants are architectural requirements for OQ-018 and later public implementation:
+The following invariants constrain later broad/indexable public implementation:
 
 1. **One truth engine.** Every indexable technical discovery/selection page MUST be backed by an explicit deterministic controlling HullQ query or equally deterministic accepted data derivation. A separate SEO-only eligibility implementation is not allowed.
 2. **Search selects; editorial explains.** Editorial or AI-generated prose MAY explain a result set but MUST NOT widen, substitute, or silently override the controlling candidate set.
@@ -165,4 +177,4 @@ And for technical landing pages:
 
 > **Every important HullQ SEO page is backed by the same truth engine that powers HullQ Search.**
 
-These invariants do not authorize early SEO implementation. They constrain later OQ-018/public-surface work when that work becomes the active capability under the Product Execution Plan.
+These invariants do not authorize broad SEO implementation merely because bounded public routes exist. They constrain the relevant broad/indexable page-class work when that work becomes the active capability under accepted product execution governance.

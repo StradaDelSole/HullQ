@@ -17,6 +17,8 @@ For SLICE-0039 and later, the first three checks are mandatory before a primary 
 
 For SLICE-0051 and later, the repository-reconciliation check is additionally mandatory before a primary slice may become `READY`.
 
+For SLICE-0052 and later, the trigger-gates check is additionally mandatory before a primary slice may become `READY`.
+
 **ONE-CAPABILITY CHECK:** PASS | FAIL  
 Does this slice deliver exactly one user-visible capability OR answer exactly one business-critical hypothesis?
 
@@ -28,6 +30,9 @@ Does the slice comply with the currently controlling product/architecture govern
 
 **REPOSITORY RECONCILIATION CHECK:** PASS | FAIL  
 Required for SLICE-0051 and later. Before this slice was proposed, were the relevant accepted CAL/decision/ADR/spec/governance/slice records and the relevant existing production code/tests/migrations checked so this slice does not re-open or duplicate behavior that HullQ has already decided and implemented? See `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md`.
+
+**TRIGGER GATES CHECK:** PASS | FAIL  
+Required for SLICE-0052 and later. Were `docs/governance/POST_0051_TRIGGER_GATES.md` and `docs/governance/PRODUCTION_READINESS_GATE.md` checked and are all currently applicable architecture-reconciliation, production-readiness, technical-Search-abstraction and workflow-reassessment triggers satisfied?
 
 A required `FAIL` on any of these checks blocks readiness. Genuine prerequisite/blocker work must still be cut so the Project Owner can inspect its concrete result and the check can honestly be `PASS`.
 
@@ -48,6 +53,30 @@ The six evidence lines are machine-checked for presence, non-empty/non-placehold
 
 Classify material points using the governance states in `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md` rather than turning remembered/implemented behavior back into an open question.
 
+## Trigger gates
+
+Required for SLICE-0052 and later. Use exact values from the canonical gate records; do not convert a triggered gate into prose or invent a weaker local interpretation.
+
+**Production readiness gate:** NOT_TRIGGERED | IN_PROGRESS | PASS  
+**Adds technical native Search criterion:** YES | NO  
+**Technical Search criterion ordinal:** NOT_APPLICABLE | <integer>  
+**Second-criterion bridge comparison:** NOT_APPLICABLE | PASS  
+**Third-copy abstraction guard:** NOT_APPLICABLE | PASS  
+**Workflow reassessment status:** NOT_DUE | DUE | PASS  
+
+Rules:
+
+- `Production readiness gate` must exactly match `PRODUCTION_READINESS_GATE_STATUS` in `docs/governance/PRODUCTION_READINESS_GATE.md`;
+- if the slice does not add a hard technical native-inventory Search criterion, use `NO` and `NOT_APPLICABLE` for ordinal/comparison/third-copy guard;
+- if it adds criterion #2, the SLICE-0051 bridge/path comparison must be `PASS` and the third-copy guard is `NOT_APPLICABLE`;
+- if it adds criterion #3 or later, both the bridge comparison and third-copy abstraction guard must be `PASS`; the readiness text must prove either common structure is generalized/reused or that the new path is structurally distinct and does not create a third copy;
+- the ordinal must be exactly one greater than `TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT` in `docs/governance/POST_0051_TRIGGER_GATES.md`;
+- workflow status must exactly match the canonical marker;
+- after accepted SLICE-0056 the canonical workflow state may temporarily be `DUE`, but `DUE` blocks SLICE-0057 readiness/start until the evidence-based reassessment is owner-accepted and the state becomes `PASS`;
+- Production Readiness must become `PASS` before real external broker data is stored/relied upon as HullQ production data, before a real external production pilot, or before public production launch, whichever comes first.
+
+Repository validation checks these deterministic relationships. Independent readiness review must verify that the substantive comparison/generalization/distinction and gate evidence are true.
+
 ## Why this slice exists
 
 Explain the problem this slice closes and why it belongs at this point in the execution order.
@@ -59,6 +88,8 @@ Explain the problem this slice closes and why it belongs at this point in the ex
 - Accepted ADRs:
 - Governance / research protocols:
 - Decision/implementation reconciliation: `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md`
+- Post-0051 trigger gates: `docs/governance/POST_0051_TRIGGER_GATES.md`
+- Production readiness gate: `docs/governance/PRODUCTION_READINESS_GATE.md`
 - Product execution plan: `docs/PRODUCT_EXECUTION_PLAN.md`
 - Post-SLICE-0039 architecture: `docs/ARCHITECTURE_REBASELINE_2026-09-02.md`
 - Post-SLICE-0039 execution reconciliation / precedence: `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_RECONCILIATION_2026-09-02.md`
@@ -107,6 +138,7 @@ Stop and report instead of inventing a solution when:
 - accepted artifacts contradict each other materially;
 - repository reconciliation shows the proposed behavior is already decided/implemented and the slice has no distinct remaining capability;
 - an accepted implementation obligation is missing and lacks a concrete owner/explicit deferral;
+- a post-0051 trigger gate is due but not satisfied;
 - the requested behavior would violate source-rights, provenance, identity, search/SEO, product-execution, or other accepted policy;
 - implementation requires scope outside this slice.
 
@@ -137,6 +169,7 @@ Use this structure exactly at the end of the assigned slice.
 - VISIBLE-RESULT CHECK: `PASS` | `FAIL` | `NOT APPLICABLE`
 - PRODUCT EXECUTION PLAN ALIGNMENT: `PASS` | `FAIL` | `NOT APPLICABLE`
 - REPOSITORY RECONCILIATION CHECK: `PASS` | `FAIL` | `NOT APPLICABLE`
+- TRIGGER GATES CHECK: `PASS` | `FAIL` | `NOT APPLICABLE`
 
 ### Changes
 
