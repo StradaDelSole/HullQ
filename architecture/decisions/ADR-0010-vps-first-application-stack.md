@@ -1,8 +1,11 @@
 # ADR-0010 — VPS-First Application Stack
 
-**Status:** ACCEPTED  
+**Status:** ACCEPTED HISTORICAL — PARTIALLY SUPERSEDED BY 2026-09-02 REBASELINE  
 **Date:** 2026-08-18  
-**Decisions:** OQ-008, OQ-011, OQ-012
+**Decisions:** OQ-008, OQ-011, OQ-012  
+**Current precedence:** `docs/ARCHITECTURE_REBASELINE_2026-09-02.md` and `architecture/SYSTEM_ARCHITECTURE.md` control where this historical ADR conflicts with later accepted owner direction.
+
+> **Reconciliation note (2026-09-13):** This ADR remains the historical record for the Astro/TypeScript/FastAPI/PostgreSQL application-stack choice and related boundaries. Its original Contabo-local-PostgreSQL cost topology and statement that authentication/provider selection remained open were later superseded. Current production target is DigitalOcean Managed PostgreSQL 18 FRA1; Auth0 Public Cloud EU is authentication-only; deployment uses CI-built immutable images, GHCR, versioned Docker Compose and controlled deploy/rollback on replaceable app hosts. Do not re-open those accepted decisions from the historical text below.
 
 ## Context
 
