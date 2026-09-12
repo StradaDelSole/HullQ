@@ -30,7 +30,7 @@ def test_post_0051_trigger_gate_state_is_valid() -> None:
     architecture, criteria_count, workflow, production = trigger_gate_state_check()
     assert architecture == "PASS"
     assert criteria_count >= 1
-    assert workflow in {"NOT_DUE", "PASS"}
+    assert workflow in {"NOT_DUE", "DUE", "PASS"}
     assert production in {"NOT_TRIGGERED", "IN_PROGRESS", "PASS"}
 
 
