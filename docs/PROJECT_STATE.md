@@ -176,7 +176,7 @@ Canonical trigger record:
 docs/governance/POST_0051_TRIGGER_GATES.md
 ```
 
-Canonical operational release gate:
+Canonical operational release/data-use gate:
 
 ```text
 docs/governance/PRODUCTION_READINESS_GATE.md
@@ -188,7 +188,7 @@ Current trigger state:
 architecture/current-state reconciliation before 0052: PASS
 accepted technical native Search criteria: 1 (draft_max)
 workflow reassessment: NOT_DUE; mandatory after SLICE-0056 or before first real production pilot, whichever comes first
-production readiness: NOT_TRIGGERED while no real external broker production pilot/public production launch has begun
+production readiness: NOT_TRIGGERED while no real external broker production data exists and no production pilot/public production launch has begun
 ```
 
 From SLICE-0052 onward every primary readiness contract must contain `**TRIGGER GATES CHECK:** PASS` and the machine-checked `## Trigger gates` evidence section.
@@ -206,12 +206,13 @@ This does not preselect a Search capability for SLICE-0052 and does not authoriz
 Production-readiness rule:
 
 ```text
-first real external broker inventory shown to real external buyers
+first real external broker data stored/relied upon as HullQ production data
+OR first real external production pilot
 OR public production launch
 → PRODUCTION_READINESS_GATE_STATUS MUST be PASS
 ```
 
-The gate covers controlled deploy/rollback, DB HA/recoverability/restore proof, observability/alerting, abuse protection, secrets/privileged access, applicable Auth0/MFA controls, applicable media durability and release verification.
+The gate covers controlled deploy/rollback, DB recoverability/restore proof, observability/alerting, applicable abuse protection, secrets/privileged access, applicable Auth0/MFA controls, applicable media durability and production verification. The older accepted HA minimum remains separately hard: before real broker inventory is exposed to real external buyers, production PostgreSQL must have automatic failover with at least one standby.
 
 The repository validator and `START_SLICE` enforce the deterministic trigger relationships; independent readiness review remains responsible for semantic truth.
 
