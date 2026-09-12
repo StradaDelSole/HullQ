@@ -41,6 +41,9 @@ _WORKFLOW_REASSESSMENT_STATUS_RE = re.compile(
 _PRODUCTION_READINESS_STATUS_RE = re.compile(
     r"<!--\s*PRODUCTION_READINESS_GATE_STATUS:\s*(NOT_TRIGGERED|IN_PROGRESS|PASS)\s*-->"
 )
+_EXTERNAL_BROKER_PRODUCTION_DATA_STATUS_RE = re.compile(
+    r"<!--\s*EXTERNAL_BROKER_PRODUCTION_DATA_STATUS:\s*(NOT_PRESENT|ACTIVE)\s*-->"
+)
 _PRODUCTION_PILOT_STATUS_RE = re.compile(
     r"<!--\s*PRODUCTION_PILOT_STATUS:\s*(NOT_STARTED|ACTIVE)\s*-->"
 )
@@ -165,7 +168,7 @@ def trigger_gate_state_check(
     trigger_gates: Path = POST_0051_TRIGGER_GATES,
     production_gate: Path = PRODUCTION_READINESS_GATE,
 ) -> tuple[str, int, str, str]:
-    """Validate global post-0051 trigger state and release/pilot blocking rules."""
+    """Validate global post-0051 trigger state and production blocking rules."""
     if not trigger_gates.is_file():
         raise ValueError("Missing docs/governance/POST_0051_TRIGGER_GATES.md")
     if not production_gate.is_file():
@@ -211,6 +214,11 @@ def trigger_gate_state_check(
         pattern=_PRODUCTION_READINESS_STATUS_RE,
         label="PRODUCTION_READINESS_GATE_STATUS",
     )
+    broker_data = _single_marker(
+        text=production_text,
+        pattern=_EXTERNAL_BROKER_PRODUCTION_DATA_STATUS_RE,
+        label="EXTERNAL_BROKER_PRODUCTION_DATA_STATUS",
+    )
     pilot = _single_marker(
         text=production_text,
         pattern=_PRODUCTION_PILOT_STATUS_RE,
@@ -234,18 +242,22 @@ def trigger_gate_state_check(
             "WORKFLOW_REASSESSMENT_STATUS must be PASS"
         )
 
-    external_production_active = pilot == "ACTIVE" or launch == "ACTIVE"
-    if external_production_active and production != "PASS":
+    production_data_active = broker_data == "ACTIVE" or pilot == "ACTIVE" or launch == "ACTIVE"
+    if production_data_active and production != "PASS":
         raise ValueError(
-            "Production pilot/public launch is ACTIVE but PRODUCTION_READINESS_GATE_STATUS is not PASS"
+            "External broker production data/pilot/public launch is ACTIVE but "
+            "PRODUCTION_READINESS_GATE_STATUS is not PASS"
         )
-    if external_production_active and workflow != "PASS":
+
+    external_pilot_active = pilot == "ACTIVE" or launch == "ACTIVE"
+    if external_pilot_active and workflow != "PASS":
         raise ValueError(
             "Production pilot/public launch is ACTIVE but the mandatory pre-pilot workflow "
             "reassessment is not PASS"
         )
-    if production == "NOT_TRIGGERED" and external_production_active:
-        raise ValueError("Production readiness cannot remain NOT_TRIGGERED after production starts")
+
+    if production == "NOT_TRIGGERED" and production_data_active:
+        raise ValueError("Production readiness cannot remain NOT_TRIGGERED after production data starts")
 
     return architecture, criteria_count, workflow, production
 
