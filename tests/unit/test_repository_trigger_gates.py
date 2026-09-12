@@ -35,12 +35,14 @@ def _production_gate(
     tmp_path: Path,
     *,
     gate: str = "NOT_TRIGGERED",
+    broker_data: str = "NOT_PRESENT",
     pilot: str = "NOT_STARTED",
     launch: str = "NOT_STARTED",
 ) -> Path:
     return _write(
         tmp_path / "PRODUCTION_READINESS_GATE.md",
         f"<!-- PRODUCTION_READINESS_GATE_STATUS: {gate} -->\n"
+        f"<!-- EXTERNAL_BROKER_PRODUCTION_DATA_STATUS: {broker_data} -->\n"
         f"<!-- PRODUCTION_PILOT_STATUS: {pilot} -->\n"
         f"<!-- PUBLIC_PRODUCTION_LAUNCH_STATUS: {launch} -->\n",
     )
@@ -64,8 +66,28 @@ def test_workflow_reassessment_pass_allows_post_0056_state(tmp_path: Path) -> No
     assert state == ("PASS", 1, "PASS", "NOT_TRIGGERED")
 
 
+def test_broker_production_data_cannot_start_without_readiness_pass(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="External broker production data"):
+        trigger_gate_state_check(
+            project_state=_project_state(tmp_path, 51),
+            trigger_gates=_trigger_gates(tmp_path),
+            production_gate=_production_gate(tmp_path, gate="IN_PROGRESS", broker_data="ACTIVE"),
+        )
+
+
+def test_internal_broker_production_data_does_not_force_workflow_review_before_pilot(
+    tmp_path: Path,
+) -> None:
+    state = trigger_gate_state_check(
+        project_state=_project_state(tmp_path, 51),
+        trigger_gates=_trigger_gates(tmp_path, workflow="NOT_DUE"),
+        production_gate=_production_gate(tmp_path, gate="PASS", broker_data="ACTIVE"),
+    )
+    assert state == ("PASS", 1, "NOT_DUE", "PASS")
+
+
 def test_external_production_cannot_start_without_production_gate_pass(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="Production pilot/public launch is ACTIVE"):
+    with pytest.raises(ValueError, match="External broker production data"):
         trigger_gate_state_check(
             project_state=_project_state(tmp_path, 51),
             trigger_gates=_trigger_gates(tmp_path, workflow="PASS"),
