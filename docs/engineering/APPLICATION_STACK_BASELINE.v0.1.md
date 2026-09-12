@@ -1,8 +1,11 @@
 # HullQ — Application Stack Baseline v0.1
 
-**Status:** ACCEPTED  
+**Status:** ACCEPTED HISTORICAL — PARTIALLY SUPERSEDED BY 2026-09-02 REBASELINE  
 **Date:** 2026-08-18  
-**Controls:** OQ-008, OQ-011, OQ-012 / ADR-0010
+**Controls:** OQ-008, OQ-011, OQ-012  
+**Current precedence:** `docs/ARCHITECTURE_REBASELINE_2026-09-02.md` and `architecture/SYSTEM_ARCHITECTURE.md` control where this historical baseline conflicts with later accepted owner direction.
+
+> **Reconciliation note (2026-09-13):** The Astro/TypeScript/FastAPI/PostgreSQL application boundaries remain accepted. The original near-zero-cost Contabo-local-PostgreSQL topology and the statement that authentication/provider selection remained unresolved were superseded on 2026-09-02. Current production direction is DigitalOcean Managed PostgreSQL 18 FRA1, Auth0 Public Cloud EU as authentication-only provider, independent encrypted R2 backup/restore proof, and CI-built immutable Docker images through GHCR + versioned Docker Compose with controlled deploy/rollback on replaceable app hosts.
 
 ## Purpose
 
