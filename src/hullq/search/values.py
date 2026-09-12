@@ -116,9 +116,16 @@ _RESOLUTION_STATE_QUALIFICATION: Final[dict[ResolutionState, ValueQualification]
 
 
 def from_resolution_state(
-    state: ResolutionState, canonical_value: float | None
+    state: ResolutionState, canonical_value: float | Decimal | None
 ) -> QualifiedNumericValue:
     """Build a `QualifiedNumericValue` from an accepted `FieldResolution.state`.
+
+    `canonical_value` accepts `Decimal` (SLICE-0051 amendment) as well as the
+    original `float`/`int`: this adapter is a thin pass-through boundary and
+    must never itself become the place a persisted exact-Decimal
+    `FieldResolution.canonical_value_snapshot` loses precision --
+    `QualifiedNumericValue.__post_init__` already preserves a `Decimal`
+    exactly rather than coercing it to `float` (see that class's docstring).
 
     `resolved`/`resolved_with_conflict` carry an accepted current canonical
     value (SEARCH_QUERY_SEMANTICS.v0.1.md §3: "a source-backed canonical

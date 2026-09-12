@@ -1,23 +1,14 @@
 """PostgreSQL-backed regression tests for the concrete-listing classification
 funnel in `hullq.application.inventory_search` — SLICE-0051 amendment review.
 
-Amendment review Finding 3 established that `compatible_boat_design_ids`
-must always return an empty set against real persisted BoatDesign data (no
-accepted production per-field qualification/resolution source exists yet).
-That leaves the *downstream* concrete-listing classification stages --
-publisher-claim resolution, the same-PhysicalBoat contradiction guard,
-exact-Decimal comparison (Finding 2) and single-query snapshot consistency
-(Finding 5) -- structurally correct and independently tested, but otherwise
-unreachable through the real design gate today.
-
-Every test in this module monkeypatches
-`hullq.application.inventory_search.compatible_boat_design_ids` to admit an
-explicit design id, standing in for a future accepted qualification source,
-so these downstream stages can be proven correct against real PostgreSQL 18
-now and remain ready for when Finding 3's prerequisite is resolved. This is
-never done in `tests/persistence/test_inventory_search_draft_max_api.py`,
-which proves the real, unmodified, currently-fail-closed production
-behavior.
+Post-FieldResolution-blocker-amendment: the design-level eligibility gate is
+now exercised for real (a genuine `resolved` FieldResolution durably admits
+`_DESIGN_ID`, see `_admit_design_via_real_field_resolution` below) rather
+than by monkeypatching `compatible_boat_design_ids`. This module therefore
+proves the *entire* funnel end to end -- design qualification through
+concrete-listing classification -- against real PostgreSQL 18, with only
+`list_current_draft_observations_for_physical_boat` instrumented (never
+replaced) for the Finding 5 single-query snapshot-consistency proof.
 """
 
 from __future__ import annotations
@@ -51,6 +42,7 @@ from hullq.domain.physical_boat_claims import (
     PhysicalBoatClaimRevisionId,
     PhysicalBoatClaimSnapshot,
 )
+from hullq.domain.provenance import SubjectKind
 from hullq.domain.publishing_eligibility import (
     AccountId,
     MarketplaceOrganization,
@@ -73,6 +65,9 @@ from hullq.persistence.native_listing_offer import (
 )
 from hullq.persistence.physical_boat import create_physical_boat
 from hullq.persistence.physical_boat_claims import write_physical_boat_claim_revision
+from hullq.search.draft_max_design_bridge import DRAFT_MAX_FIELD_POINTER
+
+from ._field_resolution_support import admit_resolved_draft_max
 
 # ---------------------------------------------------------------------------
 # Disposable-schema fixture (mirrors test_inventory_search_draft_max_api.py)
@@ -135,16 +130,21 @@ def api_conn(api_url: str) -> Generator[Any]:
 _DESIGN_ID = "BD-0051-CLS"
 
 
+_DESIGN_BASELINE_DRAFT_MAX_M = Decimal("1.30")
+
+
 @pytest.fixture(autouse=True)
-def _admit_design_via_stand_in_qualification_source(
-    api_conn: Any, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Stand in for a future accepted BoatDesign qualification/resolution
-    source (Finding 3): always admits `_DESIGN_ID` as design-level
-    CONFIRMED_MATCH, regardless of `draft_max`, so these tests exercise only
-    the downstream concrete-listing funnel. A dummy `canonical_boat_designs`
-    row is still required to satisfy `physical_boats.boat_design_ref`'s real
-    foreign key."""
+def _admit_design_via_real_field_resolution(api_conn: Any) -> None:
+    """Durably admits `_DESIGN_ID` as design-level CONFIRMED_MATCH through
+    the real, unmodified production path (post-FieldResolution-blocker
+    amendment): a real `canonical_boat_designs` row whose baseline
+    `draft_max_m` is `_DESIGN_BASELINE_DRAFT_MAX_M`, backed by a real
+    imported FieldEvidence and a real `resolved` FieldResolution whose exact
+    snapshot agrees with that canonical value. Every test in this module
+    uses `draft_max=1.6`, so this design (1.30 m) is always design-level
+    compatible, and downstream concrete-listing classification is exercised
+    against real, unmocked qualification -- no monkeypatching of
+    `compatible_boat_design_ids` is used here any more."""
     with api_conn.cursor() as cur:
         cur.execute(
             "INSERT INTO canonical_boat_models (id, canonical_name, content_hash) "
@@ -161,7 +161,7 @@ def _admit_design_via_stand_in_qualification_source(
                 "BM-0051-CLS",
                 "{}",
                 "[]",
-                json.dumps({"dimensions": {"draft_max_m": None}}),
+                json.dumps({"dimensions": {"draft_max_m": float(_DESIGN_BASELINE_DRAFT_MAX_M)}}),
                 "[]",
                 "[]",
                 "{}",
@@ -170,11 +170,13 @@ def _admit_design_via_stand_in_qualification_source(
         )
     api_conn.commit()
 
-    def _stand_in_compatible_ids(draft_max: Decimal, boat_designs: Any) -> frozenset[str]:
-        return frozenset({_DESIGN_ID})
-
-    monkeypatch.setattr(
-        inventory_search_module, "compatible_boat_design_ids", _stand_in_compatible_ids
+    admit_resolved_draft_max(
+        api_conn,
+        subject_kind=SubjectKind.BOAT_DESIGN,
+        subject_id=_DESIGN_ID,
+        field_pointer=DRAFT_MAX_FIELD_POINTER,
+        value=_DESIGN_BASELINE_DRAFT_MAX_M,
+        resolution_id="FR-0051-CLS-BASELINE",
     )
 
 
@@ -420,14 +422,16 @@ def test_cross_organization_conflict_is_insufficient_data(api_conn: Any) -> None
 
 def test_extreme_precision_decimal_threshold_no_float_drift(api_conn: Any) -> None:
     """Finding 2: a Decimal threshold that would misround under an
-    intermediate float conversion must still compare exactly."""
+    intermediate float conversion must still compare exactly. Chosen just
+    above the fixture design's own qualified baseline (1.30 m) so
+    design-level admission still holds at this higher-precision threshold."""
     listing = _make_active_listing(
         api_conn,
         listing_id="NL-CLS-PREC",
         physical_boat_id="PB-CLS-PREC",
         market_episode_id="ME-CLS-PREC",
     )
-    exact_draft = Decimal("1.10000000000000000000001")
+    exact_draft = Decimal("1.30000000000000000000001")
     _write_draft_claim(
         api_conn,
         account=listing[0],

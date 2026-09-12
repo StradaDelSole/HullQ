@@ -494,17 +494,22 @@ def seeded(api_conn: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def test_evaluate_draft_max_requirement_is_always_empty_against_real_persisted_data(
+def test_evaluate_draft_max_requirement_is_empty_without_an_admitted_field_resolution(
     api_conn: Any, seeded: dict[str, Any]
 ) -> None:
-    """Amendment review Finding 3: no accepted production per-field
-    qualification/resolution source exists for `canonical_boat_designs`, so
-    `compatible_boat_design_ids` always returns an empty set against real
-    persisted BoatDesign data (see `hullq.search.draft_max_design_bridge`'s
-    module docstring). This is proven here even though listing A's own
-    concrete claim (1.40 m) would otherwise satisfy `draft_max=1.6` --
-    design-level eligibility never opens the gate for it, so it is excluded
-    like every other seeded listing, never landing in any surface."""
+    """This fixture inserts real `canonical_boat_designs` rows via direct SQL
+    (mirroring bulk/legacy admission) but never durably admits a
+    FieldResolution for any of them (`hullq.persistence.field_resolution`,
+    the SLICE-0051 FieldResolution blocker amendment). Raw persisted JSON
+    presence alone still never self-authorizes confirmed Search truth
+    (`hullq.search.draft_max_design_bridge`'s module docstring), so
+    `compatible_boat_design_ids` returns an empty set here even though
+    listing A's own concrete claim (1.40 m) would otherwise satisfy
+    `draft_max=1.6` -- design-level eligibility never opens the gate for it,
+    so it is excluded like every other seeded listing, never landing in any
+    surface. `tests/persistence/test_field_resolution_design_bridge.py` and
+    `tests/persistence/test_inventory_search_classification.py` cover the
+    real admitted-resolution path end to end."""
     outcome = evaluate_draft_max_requirement(api_conn, Decimal("1.6"))
     assert outcome.confirmed_matches == ()
     assert outcome.confirmed_match_count == 0
@@ -527,12 +532,12 @@ def test_base_state_returns_200_with_no_active_requirement(
     assert response.headers.get("x-robots-tag") == "noindex"
 
 
-def test_canonical_result_is_honestly_empty_pending_finding_3_prerequisite(
+def test_canonical_result_is_honestly_empty_without_an_admitted_field_resolution(
     client: TestClient, seeded: dict[str, Any]
 ) -> None:
     """Mirrors the application-layer proof above through the real HTTP
     surface: zero confirmed/insufficient results, never a fabricated match,
-    until the Finding 3 production qualification prerequisite is resolved."""
+    for designs with no durably admitted FieldResolution."""
     response = client.get("/api/search/en?draft_max=1.6")
     assert response.status_code == 200
     body = response.json()

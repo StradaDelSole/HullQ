@@ -21,15 +21,12 @@ PhysicalBoat comparison in `_classify_candidate` is exact `Decimal`-to-
 design-level eligibility check as the same exact `Decimal` (amendment
 review Finding 2) -- it is never coerced to `float`.
 
-**BLOCKED prerequisite (amendment review Finding 3):** `compatible_boat_design_ids`
-currently always returns an empty set against real persisted BoatDesign
-data, because no accepted production per-field qualification/resolution
-source exists for `canonical_boat_designs` (see
-`hullq.search.draft_max_design_bridge`'s module docstring for the full
-reconciliation). This function therefore currently produces zero confirmed
-matches end to end in production until that prerequisite is resolved and
-wired into the design bridge; every other stage below remains correct and
-independently tested for when it is.
+`compatible_boat_design_ids` now consults durable `FieldResolution` records
+(`hullq.persistence.field_resolution`, SLICE-0051 FieldResolution blocker
+amendment) rather than treating raw persisted BoatDesign JSON as
+self-authorizing confirmed Search truth -- see
+`hullq.search.draft_max_design_bridge`'s module docstring for the exact
+qualification rule.
 
 `CONFIRMED_MATCH` is the only primary result set. `CONFIRMED_NON_MATCH` is
 counted (its deterministic classification must be provable — slice item H)
@@ -189,7 +186,7 @@ def evaluate_draft_max_requirement(conn: Any, draft_max: Decimal) -> DraftMaxSea
     # eligibility, which could silently change an accepted exact buyer
     # threshold or overflow/underflow for an otherwise-valid accepted
     # arbitrary-precision Decimal spelling.
-    compatible_ids = compatible_boat_design_ids(draft_max, boat_designs)
+    compatible_ids = compatible_boat_design_ids(conn, draft_max, boat_designs)
 
     confirmed_matches: list[DraftMaxConfirmedMatch] = []
     confirmed_non_match_count = 0
