@@ -2,7 +2,7 @@
 
 **Status:** ACCEPTED OWNER DIRECTION
 **Accepted:** 2026-09-13
-**Scope:** post-SLICE-0051 reassessment, slice readiness, production-pilot readiness, and process governance
+**Scope:** post-SLICE-0051 reassessment, slice readiness, production-data/pilot readiness, and process governance
 
 <!-- POST_0051_ARCHITECTURE_RECONCILIATION: PASS -->
 <!-- TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 1 -->
@@ -56,7 +56,7 @@ Historical ADRs/baselines remain valid history. Their superseded portions must n
 
 `POST_0051_ARCHITECTURE_RECONCILIATION` must remain `PASS` for queued slices from SLICE-0052 onward. A later discovered contradiction changes this marker away from PASS until the contradiction is reconciled; it is not permission to silently reinterpret the accepted decision.
 
-## Gate 2 — production readiness before real broker production use
+## Gate 2 — production readiness before real broker production data / public launch
 
 Canonical gate record:
 
@@ -67,16 +67,18 @@ docs/governance/PRODUCTION_READINESS_GATE.md
 Hard trigger:
 
 ```text
-before the first real external broker production inventory
-is made available to real external buyers
+before the first real external broker data is stored/relied upon as HullQ production data
+OR before the first real external production pilot
 OR before public production launch,
 whichever comes first
 → PRODUCTION_READINESS_GATE_STATUS MUST be PASS
 ```
 
-This preserves the stronger already-accepted database rule from the 2026-09-02 architecture rebaseline: before that external broker/buyer threshold, production PostgreSQL must have automatic failover with at least one standby. RTO/cost considerations may justify moving earlier, but they do not weaken that hard latest-allowed trigger.
+This is deliberately earlier than waiting for real broker inventory to become public. The already-accepted 2026-09-02 HA rule remains an independent latest-allowed minimum for external buyer exposure: before real external broker inventory is made available to real external buyers, production PostgreSQL must have automatic failover with at least one standby.
 
-A triggered gate blocks release/pilot progress; it does not force the operational capabilities to be built prematurely while HullQ remains in local/internal development.
+The production-readiness PASS may distinguish conditions that are genuinely not yet applicable during a strictly internal real-data phase, but any later transition to external pilot/buyer exposure must re-evaluate those conditions and may not bypass the accepted HA/security/abuse requirements.
+
+A triggered gate blocks real production-data use/release progress; it does not force the operational capabilities to be built while HullQ remains in local/internal development using synthetic/disposable data.
 
 ## Gate 3 — technical native Search abstraction trigger
 
