@@ -50,6 +50,37 @@ From `SLICE-0051` onward this is mechanically surfaced in the slice contract thr
 
 Both `START_SLICE` and repository validation reject a queued 0051+ slice that lacks these markers.
 
+### Post-SLICE-0051 trigger-gate invariant
+
+From SLICE-0052 onward every capability-selection/readiness pass must also read:
+
+```text
+docs/governance/POST_0051_TRIGGER_GATES.md
+docs/governance/PRODUCTION_READINESS_GATE.md
+```
+
+and every primary queued slice must contain:
+
+```text
+**TRIGGER GATES CHECK:** PASS
+## Trigger gates
+```
+
+The trigger section must carry the exact machine-checked evidence fields defined by `docs/slices/SLICE_TEMPLATE.md`.
+
+The four controlling triggers are:
+
+1. architecture/current-state reconciliation must remain PASS before SLICE-0052+ readiness;
+2. Production Readiness must be PASS before real external broker production inventory is exposed to real external buyers or public production launch begins;
+3. technical native Search criterion #2 must explicitly compare its bridge/path to SLICE-0051, and criterion #3+ may not create a third structural copy without the abstraction guard PASS;
+4. the current review workflow must be reassessed after SLICE-0056 is owner-accepted or before the first real production pilot, whichever happens first.
+
+The repository validator enforces deterministic marker/state relationships. Independent readiness review must still verify that the claimed comparison, generalization/distinction and readiness evidence are substantively true.
+
+`START_SLICE` runs repository governance validation for SLICE-0052+ before creating/reusing a slice worktree, and separately verifies the required trigger marker/section. A triggered gate therefore cannot be bypassed merely by writing `READY` into a slice document.
+
+The trigger gates constrain execution; they do not select the next capability and do not authorize speculative foundation work.
+
 ### Readiness handoff invariant
 
 A readiness document merged to `main` for the current queue must already be directly consumable by `START_SLICE`.
@@ -77,13 +108,13 @@ or:
 
 This line distinguishes a real implementation handoff from a malformed readiness artifact. A queued `REVIEW`/`BLOCKED` document without the matching handoff line fails repository validation. `READY_FOR_REVIEW` remains invalid everywhere.
 
-`scripts/validate_repository.py` mechanically validates this for the current `PROJECT_STATE_QUEUE_SLICE` whenever a queue document exists. Before execution it mirrors the `START_SLICE` primary-document header rules and post-SLICE-0038 product checks; from SLICE-0051 onward it also requires the repository-reconciliation PASS marker and reconciliation section. After an explicit implementation handoff it permits only the tightly marked `REVIEW`/`BLOCKED` states above. This ensures an unstartable readiness artifact fails CI before merge without blocking the normal implementation-review lifecycle.
+`scripts/validate_repository.py` mechanically validates this for the current `PROJECT_STATE_QUEUE_SLICE` whenever a queue document exists. Before execution it mirrors the `START_SLICE` primary-document header rules and post-SLICE-0038 product checks; from SLICE-0051 onward it also requires the repository-reconciliation PASS marker/section, and from SLICE-0052 onward it requires the trigger-gates PASS marker/section and validates the canonical trigger state. After an explicit implementation handoff it permits only the tightly marked `REVIEW`/`BLOCKED` states above. This ensures an unstartable readiness artifact fails CI before merge without blocking the normal implementation-review lifecycle.
 
 ### Start a slice
 
 1. Double-click `START_SLICE.bat` in the normal HullQ folder.
 2. Enter the slice number, for example `0005`.
-3. The script synchronizes local `main` with `origin/main`, creates/reuses an isolated Git worktree and slice branch, and copies the Claude Code instruction to the clipboard.
+3. The script synchronizes local `main` with `origin/main`, validates the applicable governance/readiness gates, creates/reuses an isolated Git worktree and slice branch, and copies the Claude Code instruction to the clipboard.
 4. The script deliberately does **not** open, close, reload, or switch any VS Code window.
 5. Explicitly open the sibling worktree (for example `HullQ-slice-0005`) in the VS Code window that should host Claude Code.
 6. Start a **fresh Claude conversation**. If reusing the current Claude Code session/UI, run `/clear` first.
@@ -101,7 +132,7 @@ HullQ uses one Claude session per slice by default.
 - If the same slice becomes large, use `/compact` before continuing rather than carrying excessive exploratory history/logs through every subsequent turn.
 - A useful compact instruction preserves the controlling slice, decisions already made, changed files/current implementation state, validation/CI state, unresolved blockers and exact handoff requirements.
 - Do **not** `/clear` casually mid-slice; it is primarily a slice/task-boundary command.
-- Do not ask Claude to reread full project history merely for reassurance. The controlling slice identifies the required dependencies and records the readiness reconciliation.
+- Do not ask Claude to reread full project history merely for reassurance. The controlling slice identifies the required dependencies and records the readiness reconciliation/trigger-gate state.
 
 Detailed rules: `docs/engineering/AI_TOKEN_EFFICIENCY.md`.
 
@@ -116,7 +147,7 @@ If an amendment is required:
 - do not reload previous project background that is unrelated to the finding;
 - Claude applies only the requested amendment plus necessary tests/validation and reports a new exact HEAD.
 
-Independent review must compare implementation not only with the immediate slice text but with the accepted semantics named by the reconciliation. A regression from previously accepted/implemented behavior is a review defect, not a new design choice.
+Independent review must compare implementation not only with the immediate slice text but with the accepted semantics named by the reconciliation and trigger-gate records. A regression from previously accepted/implemented behavior is a review defect, not a new design choice.
 
 ### Acceptance closure and PROJECT_STATE freshness
 
@@ -127,13 +158,15 @@ Every closure that creates a new highest `SLICE-XXXX-acceptance-closure.md` MUST
 1. update the `PROJECT_STATE_ACCEPTED_SLICE` marker to that exact slice number;
 2. update the human-readable latest accepted/current queue text;
 3. keep the file compact by replacing stale current-state prose rather than appending another historical report;
-4. update the near-term product-execution path when the accepted slice changes the route to the first visible listing.
+4. update the near-term product-execution path when the accepted slice changes the route to the first visible listing;
+5. update `TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT` in `POST_0051_TRIGGER_GATES.md` if and only if the accepted slice actually added another hard technical native-inventory Search criterion;
+6. if the accepted slice makes the workflow reassessment due, ensure the canonical workflow-reassessment state is no longer invalidly `NOT_DUE`.
 
 `scripts/validate_repository.py` mechanically compares the `PROJECT_STATE_ACCEPTED_SLICE` marker with the highest acceptance-closure filename. A stale or ahead-of-history state document fails repository validation and therefore CI.
 
 At every post-slice reassessment, explicitly record the estimated remaining slice distance to the first externally visible listing. Any proposed foundation-only slice must explain why it cannot safely be deferred until after that visible vertical slice.
 
-The same reassessment must apply `DECISION_IMPLEMENTATION_RECONCILIATION.md`: accepted implementation obligations discovered during the check must be identified as implemented, concretely owned by queued/active work, or explicitly deferred. They may not silently disappear from planning.
+The same reassessment must apply `DECISION_IMPLEMENTATION_RECONCILIATION.md` and the post-0051 trigger gates: accepted implementation obligations discovered during the check must be identified as implemented, concretely owned by queued/active work, or explicitly deferred, and any due trigger must be satisfied before readiness. They may not silently disappear from planning.
 
 ### Finish a slice
 
@@ -168,6 +201,9 @@ The helper scripts are intentionally fail-safe:
 - they never push or merge to `main`;
 - `START_SLICE.bat` never manipulates VS Code windows;
 - from SLICE-0051 onward `START_SLICE` refuses to start a slice without the repository-reconciliation PASS marker and reconciliation section;
+- from SLICE-0052 onward `START_SLICE` also runs repository trigger validation and refuses to start without the trigger-gates PASS marker/section;
+- production-pilot/public-launch state cannot be ACTIVE while the production-readiness gate or mandatory pre-pilot workflow reassessment is not PASS;
+- after accepted SLICE-0056 the workflow reassessment cannot remain `NOT_DUE`;
 - the finish script does not delete a worktree with substantive uncommitted changes;
 - cleanup is skipped unless a merged PR can be confirmed through GitHub CLI;
 - the setup script verifies the canonical repository before changing GitHub rules;
