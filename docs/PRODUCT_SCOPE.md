@@ -24,6 +24,8 @@ HullQ's unknown-model discovery experience requires a broad sailboat design univ
 
 The production dataset may be progressively enriched: broad identity/basic coverage comes first, HullQ-critical fields are prioritized next, and deep primary-source verification grows over time. Sparse records are acceptable; unknown fields must remain explicitly unknown and must not be treated as negative facts during search.
 
+Canonical technical coverage and market discoverability are separate dimensions. A real boat for sale must remain discoverable, subject to market-source rights, even when HullQ has not yet resolved or researched its canonical BoatModel. Missing-model reports, market observations and correction/source hints may feed a research queue but do not become canonical facts without the normal independent provenance workflow. See `docs/MARKET_DISCOVERABILITY_AND_COVERAGE_GROWTH.md`.
+
 ## MVP
 
 ### In scope
@@ -34,7 +36,7 @@ The production dataset may be progressively enriched: broad identity/basic cover
 4. Monohull + catamaran + trimaran support
 5. Model results
 6. Compare
-7. Current-market search
+7. Current-market search, including permitted unresolved market identities when canonical BoatModel linkage is absent
 8. Accounts/login
 9. Saved technical queries
 10. Favorites
@@ -66,6 +68,8 @@ Primary filters: LOA, year, hull configuration, keel, rudder/skeg, draft, displa
 Advanced groups: Dimensions; Hull & Construction; Keel / Rudder / Skeg; Rig; Ratios; Engine / Tanks; Designer / Builder.
 
 Comparison is a first-class workflow. Transparent presets are acceptable; an opaque generic “Bluewater Score” is not part of the current product.
+
+HullQ's broader brand/UI/UX direction is recorded in `docs/BRAND_UI_UX_DIRECTION.md`. The product should project authority, control, precision and strength while remaining calm and highly usable. **Strong must not become aggressive:** gaming, military/tactical, cyberpunk and macho visual language are explicitly outside the intended identity. Quality and usability remain higher priorities than visual theatre.
 
 
 ## Persistent market watch and monetization
