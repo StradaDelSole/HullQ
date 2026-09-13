@@ -179,6 +179,13 @@ def test_broker_product_cannot_be_declared_complete_with_open_commitments() -> N
         assert set(statuses.values()) == {"IMPLEMENTED"}
 
 
+def test_broker_register_requires_post_slice_reassessment_visibility() -> None:
+    text = MANDATORY_REGISTER.read_text(encoding="utf-8")
+    assert "Every normal post-slice capability reassessment" in text
+    assert "A `DUE` broker commitment may be deferred" in text
+    assert "It may not be omitted from consideration" in text
+
+
 def test_broker_workspace_direction_keeps_core_operating_principles() -> None:
     text = PRODUCT_DIRECTION.read_text(encoding="utf-8")
     assert "A broker should never have to enter information twice" in text
