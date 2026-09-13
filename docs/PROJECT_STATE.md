@@ -29,6 +29,38 @@ Phase-1 public supply remains broker/dealer/eligible-professional only. Independ
 
 The category/business-model baseline remains externally validated; HullQ-specific product advantage, buyer adoption, native inventory acquisition, broker participation and sustainable unit economics still require validation at HullQ scale.
 
+## Broker workspace launch-critical direction
+
+Owner-accepted direction on 2026-09-13 makes the professional broker workspace a **core HullQ product surface**, not an admin panel or later UI-polish task.
+
+Controlling product direction:
+
+```text
+docs/BROKER_WORKSPACE_PRODUCT_DIRECTION_2026-09-13.md
+```
+
+Normative requirements:
+
+```text
+specs/BROKER_WORKSPACE_REQUIREMENTS.v0.1.md
+```
+
+Hard product launch gate:
+
+```text
+docs/governance/BROKER_WORKSPACE_LAUNCH_GATE.md
+```
+
+Core operating principle:
+
+> A broker should never have to enter information twice, search for information HullQ already knows, or wonder what happened to a lead.
+
+The broker workstream must ultimately provide low-friction listing creation/editing, safe reuse of known HullQ information, practical media operations, clear separation of publication/freshness/commercial/sale states, durable first-class leads, lead-source attribution, assignment/follow-up workflow, source/performance analytics and explicit sales/outcome handling.
+
+The Broker Workspace Launch Gate is currently `NOT_READY`. It MUST be `PASS` before the first real external broker self-service production pilot, activation of a paid broker plan/subscription, or public production launch, whichever occurs first. CI contains a contract test enforcing those activation relationships.
+
+This direction does **not** modify or enlarge SLICE-0052. Future broker-workspace capabilities remain bounded by the normal one-capability slice/readiness workflow, but they may not be silently dropped from launch scope.
+
 ## Current architecture and precedence
 
 `docs/ARCHITECTURE_REBASELINE_2026-09-02.md` is the accepted post-SLICE-0039 architecture direction. `architecture/SYSTEM_ARCHITECTURE.md` is the current architecture snapshot. Older ADR-0010 / application-stack-baseline text remains historical and is superseded where it conflicts with that later accepted direction.
@@ -182,6 +214,12 @@ Canonical operational release/data-use gate:
 docs/governance/PRODUCTION_READINESS_GATE.md
 ```
 
+Additional broker-product release gate:
+
+```text
+docs/governance/BROKER_WORKSPACE_LAUNCH_GATE.md
+```
+
 Current trigger state:
 
 ```text
@@ -189,6 +227,7 @@ architecture/current-state reconciliation before 0052: PASS
 accepted technical native Search criteria: 1 (draft_max)
 workflow reassessment: NOT_DUE; mandatory after SLICE-0056 or before first real production pilot, whichever comes first
 production readiness: NOT_TRIGGERED while no real external broker production data exists and no production pilot/public production launch has begun
+broker workspace launch gate: NOT_READY; blocks broker self-service production pilot, paid broker activation and public production launch until PASS
 ```
 
 From SLICE-0052 onward every primary readiness contract must contain `**TRIGGER GATES CHECK:** PASS` and the machine-checked `## Trigger gates` evidence section.
@@ -214,7 +253,7 @@ OR public production launch
 
 The gate covers controlled deploy/rollback, DB recoverability/restore proof, observability/alerting, applicable abuse protection, secrets/privileged access, applicable Auth0/MFA controls, applicable media durability and production verification. The older accepted HA minimum remains separately hard: before real broker inventory is exposed to real external buyers, production PostgreSQL must have automatic failover with at least one standby.
 
-The repository validator and `START_SLICE` enforce the deterministic trigger relationships; independent readiness review remains responsible for semantic truth.
+The repository validator and `START_SLICE` enforce the deterministic post-0051 trigger relationships; CI additionally enforces the Broker Workspace Launch Gate activation relationships. Independent readiness review remains responsible for semantic truth.
 
 ## Selected SLICE-0052 capability
 
@@ -253,20 +292,18 @@ Selection/readiness does not mean implementation is complete or started. Impleme
 Important remaining marketplace/product capabilities include:
 
 - the selected SLICE-0052 NativeListing freshness/reconfirmation implementation until that slice is owner-accepted and closed;
-- authenticated Auth0-backed broker workspace/form;
+- launch-grade broker workspace capabilities required by `BROKER_WORKSPACE_PRODUCT_DIRECTION_2026-09-13.md`, including Auth0-backed self-service, low-friction inventory workflow, media operations, commercial/sale outcomes, durable leads, attribution, lead workflow and broker analytics;
 - persisted marketplace actor directory beyond accepted runtime eligibility types;
 - PhysicalBoat marketplace fact coverage beyond the seven accepted SLICE-0050 fields, including broader field-specific verification/resolution;
-- media upload/storage/presentation;
 - broader multi-criterion native-inventory Search and any ranking/recommendation layer beyond the bounded deterministic 0051 result surface;
 - Saved Search persistence, monitoring/alerts and price-history intelligence;
-- lead/contact workflow;
-- republish and SOLD/ARCHIVED lifecycle behavior;
 - independent verification of broker claims;
 - broad/global canonical-field resolution/backfill;
+- payment/subscription implementation and entitlement enforcement for any future paid broker/buyer plans;
 - production deployment/operations capabilities required to make the Production Readiness Gate PASS;
 - full listing/Search SEO indexation, faceted landing-page taxonomy, sitemap/hreflang expansion and broad structured-data strategy beyond the accepted noindex page classes.
 
-Except for the selected 0052 freshness capability, these are not silently queued. Future slices must still be selected by post-slice reassessment, product leverage and repository reconciliation.
+Except for the selected 0052 freshness capability, these are not silently queued. Future slices must still be selected by post-slice reassessment, product leverage and repository reconciliation. The broker-workspace workstream, however, is a hard launch commitment and may not be silently dropped from launch scope.
 
 ## Search and SEO boundary
 
@@ -295,6 +332,8 @@ HullQ Free — Search everything. Save 5 searches.
 ```
 
 Potential Pro surfaces include expanded saved searches, monitoring/alerts and, where rights/data permit, listing price history, price-change alerts, model/generation/configuration market trends, Days-on-Market and price-reduction signals.
+
+No paid broker plan may be activated while `BROKER_WORKSPACE_LAUNCH_GATE_STATUS` is not `PASS`.
 
 ## Execution checkpoint
 
