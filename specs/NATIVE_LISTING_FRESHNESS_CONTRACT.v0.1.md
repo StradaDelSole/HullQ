@@ -135,6 +135,8 @@ same id + different immutable envelope -> CONFLICT
 
 The earlier record is never rewritten.
 
+No separate mutable freshness current-head record is required by this contract. Effective freshness is derived from immutable publication/reconfirmation evidence plus the policy and `as_of`; implementation MUST NOT introduce a current-head/version chain merely to mimic FieldResolution or offer-revision machinery when no conflicting mutable fact is being resolved.
+
 ## 5. Reconfirmation authorization
 
 Reconfirmation uses the same accepted professional publisher trust boundary as publication/withdrawal.
@@ -151,7 +153,7 @@ AND candidate Organization == NativeListing publishing Organization
 AND accepted publishing-eligibility evaluator returns ALLOWED
 ```
 
-Denied, cross-Organization, missing, DRAFT, WITHDRAWN, stale-expectation/id-collision or otherwise invalid attempts MUST append no confirmation event and MUST NOT mutate lifecycle or listing facts.
+Denied, cross-Organization, missing, DRAFT, WITHDRAWN, conflicting confirmation-ID reuse or otherwise invalid attempts MUST append no confirmation event and MUST NOT mutate lifecycle or listing facts.
 
 This contract does not persist a general Account/Organization/Membership directory and does not integrate Auth0. The existing operator-assisted principal input remains the bounded execution mechanism until a later authenticated broker capability owns that gap.
 
