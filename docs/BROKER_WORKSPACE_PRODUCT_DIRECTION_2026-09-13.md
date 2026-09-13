@@ -3,6 +3,7 @@
 **Date:** 2026-09-13  
 **Status:** ACCEPTED OWNER DIRECTION  
 **Scope:** broker/dealer/professional supply-side product, excluding visual-design implementation details  
+**Source addendum retained at:** `docs/BROKER_WORKSPACE_ADDENDUM_2026-09-12.md`
 
 ## 1. Product thesis
 
@@ -25,7 +26,7 @@ This is a product requirement, not merely a UI aspiration.
 
 ## 2. Competitive standard
 
-HullQ must explicitly benchmark the broker workflow against leading broker-marketplace products, including Boats Group / YachtWorld / BoatWizard where accessible and relevant, and against direct feedback from real brokers.
+HullQ must explicitly benchmark the broker workflow against leading broker-marketplace products, including Boats Group / YachtWorld / BoatWizard where accessible and relevant.
 
 The objective is not feature parity for its own sake. HullQ must be materially better on the jobs brokers repeat every day:
 
@@ -40,7 +41,7 @@ The objective is not feature parity for its own sake. HullQ must be materially b
 - record an offer/sale outcome;
 - trace source -> lead -> broker action -> outcome.
 
-Before the Broker Workspace Launch Gate may become PASS, HullQ must have repository-backed usability evidence for these core tasks and an explicit comparison against the selected incumbent benchmark set.
+Before the Broker Workspace Launch Gate may become PASS, HullQ must have repository-backed representative usability evidence for these core tasks and an explicit comparison against the selected incumbent benchmark set. Real external broker participation is not a prerequisite for defining or implementing this first coherent baseline; the external broker pilot begins only after the gate is PASS and then becomes a required source of falsification/improvement evidence before scaling, paid broker activation or broad public launch.
 
 ## 3. Friction budget: listing creation must be exceptionally fast
 
@@ -65,6 +66,7 @@ The workspace must ultimately support, where applicable:
 - intelligent prefill from accepted HullQ design/configuration data;
 - clear distinction between inherited/reference data and yacht-specific asserted facts;
 - autosave and resume without data loss;
+- connectivity-resilient local/client-side recovery where ordinary network loss would otherwise destroy broker work;
 - progressive completion rather than one giant blocking form;
 - keyboard-efficient desktop operation;
 - responsive/mobile-friendly editing for practical broker use;
@@ -73,6 +75,7 @@ The workspace must ultimately support, where applicable:
 - duplicate/clone/relist workflows without unsafe identity copying;
 - reusable broker/office defaults;
 - bulk operations where they reduce repetitive work without weakening truth;
+- structured CSV/equivalent import for scaled onboarding of existing professional inventory;
 - import/feed paths later, without making manual workflow second-class.
 
 A later usability benchmark must measure real task time and interaction count. The gate must not PASS solely because all fields technically exist.
@@ -230,7 +233,8 @@ Useful operational measures include:
 - Days on Market;
 - price changes;
 - under-offer / sold outcomes;
-- source-to-sale conversion where evidence exists.
+- source-to-sale conversion where evidence exists;
+- periodic engagement evidence even when a listing generated no lead.
 
 HullQ must clearly distinguish observed facts from inferred analytics.
 
@@ -268,7 +272,7 @@ The dashboard must support multi-user broker Organizations and eventually office
 
 Payments/subscriptions may monetize broker capabilities later, but payment implementation must not be used to justify a weak broker product.
 
-Before HullQ activates a paid broker plan, the Broker Workspace Launch Gate must be PASS.
+Before HullQ activates a paid broker plan, the Broker Workspace Launch Gate must be PASS and the applicable post-pilot/mandatory-capability triggers in `docs/governance/BROKER_WORKSPACE_MANDATORY_CAPABILITY_REGISTER.md` must also be satisfied.
 
 Entitlements should be capability/data-driven and must not fragment core inventory management into unusable artificial restrictions.
 
@@ -290,7 +294,12 @@ Likely capability families include, subject to normal post-slice reassessment:
 8. lead assignment/pipeline/follow-up;
 9. broker analytics/performance reporting;
 10. payment/subscription/entitlement capability where monetization is activated;
-11. usability/performance hardening against the broker benchmark.
+11. usability/performance hardening against the broker benchmark;
+12. inventory portability/export and broker-branding support;
+13. connectivity-resilient draft recovery;
+14. pre-publication Search-fit diagnostics;
+15. scaled CSV/bulk inventory onboarding;
+16. Search exclusion explainability and privacy-safe aggregate demand insight once production volume makes them useful.
 
 This list is a workstream map, not authorization to combine all capabilities or preassign future slice numbers. The ONE-CAPABILITY rule and normal readiness review remain controlling.
 
@@ -310,6 +319,124 @@ whichever occurs first.
 
 The gate is intended to ensure that authentication, inventory workflow, state/outcome handling, lead attribution/management and evidence-backed usability quality are actually delivered rather than remaining roadmap prose.
 
+Passing the launch gate does not erase later mandatory commitments. `docs/governance/BROKER_WORKSPACE_MANDATORY_CAPABILITY_REGISTER.md` controls capabilities that are committed but may become due only after telemetry, volume or scaling triggers.
+
 ## 15. Controlling product principle
 
 > **HullQ wins professional supply only if brokers can list faster, understand every lead, manage follow-up and outcomes with less friction, and see clearer source-to-sale performance than they can in incumbent marketplace tooling. The broker workspace is therefore a core HullQ product and a launch condition, not back-office software.**
+
+## 16. Search explainability is a broker differentiator
+
+HullQ's deterministic fail-closed technical Search creates a broker-facing opportunity that generic marketplace analytics cannot reproduce cleanly: explain why an otherwise active listing was excluded from relevant technical searches.
+
+The target later capability is conceptually:
+
+```text
+listing
++ deterministic Search eligibility evaluation
++ structured exclusion reason
++ privacy-safe aggregation
+-> broker explanation
+```
+
+Examples may include an UNKNOWN draft, conflicting concrete-yacht evidence or another field-specific insufficient-data reason.
+
+The product goal is to turn data-quality work into visible commercial causality: the broker can see that missing/uncertain facts reduce Search eligibility and can correct the relevant concrete-yacht data.
+
+This feature is mandatory but volume-dependent. The earlier Search/event architecture must therefore preserve structured exclusion/eligibility reason codes or equivalent evidence now, without requiring retention of unnecessary raw buyer queries.
+
+## 17. Pre-publication Search-fit diagnostics
+
+HullQ must connect listing creation to technical Search before publication rather than treating them as separate products.
+
+A broker should eventually be able to preview how a draft listing behaves against representative technical requirements:
+
+```text
+CONFIRMED_MATCH
+CONFIRMED_NON_MATCH
+INSUFFICIENT_DATA
+```
+
+The preview must explain actionable causes, especially missing/UNKNOWN concrete-yacht facts. Representative or synthetic scenarios must never be presented as actual buyer demand.
+
+Unlike aggregate demand insight, this capability does not require real Search volume and is part of the committed broker/Search bridge.
+
+## 18. Broker identity and branding
+
+HullQ is a professional marketplace partner, not an inventory anonymizer.
+
+The publishing Organization/broker identity must be clear on the listing surface. Legitimate broker branding, including compliant broker-provided logos or watermarks in source media, must not be deliberately stripped merely because it is broker branding.
+
+This does not override rights, privacy, security, EXIF-removal, re-encoding or media-validation requirements. It establishes that broker identity itself is not treated as unwanted content.
+
+## 19. Inventory portability and no lock-in
+
+Professional inventory remains the broker's operational asset. HullQ must not make data hostage-taking part of retention.
+
+Authorized broker Organizations must ultimately be able to export their own applicable inventory/listing data in a machine-readable form such as CSV/JSON or equivalent structured export.
+
+Portability does not imply unlimited extraction of buyer personal data, third-party content or rights-restricted data. Authorization, privacy and data rights remain controlling.
+
+The intended trust proposition is:
+
+> easy to enter HullQ, practical to operate in HullQ, and possible to leave with your own inventory data.
+
+## 20. Scaled onboarding and bulk import
+
+Manual listing creation must remain excellent, but HullQ cannot scale professional acquisition by asking an established brokerage to retype dozens or hundreds of existing listings one by one.
+
+Before scaled broker onboarding, HullQ must support a structured CSV or equivalent bulk-import path with mapping, validation and actionable error reporting.
+
+Bulk import must preserve the same identity/truth boundaries as manual intake. It must not turn imported display strings into unverified PhysicalBoat truth or silently duplicate yacht identities.
+
+## 21. Engagement and demand insight
+
+The broker product must create value before the first lead.
+
+Once reliable telemetry exists, HullQ must provide periodic engagement reporting showing supported observed activity such as views and Search appearances, including periods with zero leads.
+
+Once Search volume is sufficiently large for privacy-safe and statistically useful aggregation, HullQ must additionally provide anonymized aggregate demand insight relevant to the broker's inventory/configuration context.
+
+Neither capability may fabricate precision. Individual buyer queries must not be exposed merely to create an attractive dashboard. Aggregate insight requires explicit privacy/minimum-cohort or equivalent safeguards.
+
+## 22. Validation order and real-broker evidence
+
+HullQ will not require real external brokers to design the first coherent broker workspace before the product is ready to be used.
+
+The required order is:
+
+```text
+Owner/product direction
+-> domain + architecture correctness
+-> coherent broker-product baseline
+-> representative internal/task usability testing
+-> incumbent benchmark
+-> Broker Workspace Launch Gate PASS
+-> first real external broker self-service pilot
+-> observe/falsify with real broker behavior
+-> corrective iteration
+-> scaled onboarding / paid activation / broad public rollout
+```
+
+Real broker feedback is therefore mandatory evidence after the first permitted pilot, but it is not a prerequisite for deciding or implementing the initial baseline.
+
+Before scaled broker onboarding, paid broker activation or broad public launch after a pilot, the repository must contain a reviewed post-pilot broker-validation record covering material friction, failures, observed behavior and corrective disposition.
+
+This sequencing prevents two opposite errors:
+
+- refusing to build a coherent product until brokers design it for HullQ;
+- declaring the broker product finished without ever testing it with real professional users.
+
+## 23. Deferred does not mean optional
+
+Some commitments in this direction are deliberately volume-, telemetry- or scale-dependent. Their implementation can occur after the first broker baseline where the prerequisite signal does not yet exist.
+
+They are nevertheless mandatory commitments.
+
+The controlling register is:
+
+```text
+docs/governance/BROKER_WORKSPACE_MANDATORY_CAPABILITY_REGISTER.md
+```
+
+A normal reassessment may change sequence, slice size or implementation approach. It may not silently remove a registered capability. The broker-workspace product may not be declared complete while a registered commitment remains `PENDING` or `DUE` unless an explicit later Project Owner decision supersedes that requirement in a reviewed repository change.
