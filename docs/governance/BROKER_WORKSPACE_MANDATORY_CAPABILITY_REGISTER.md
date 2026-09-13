@@ -133,6 +133,21 @@ REQ-BROKER-028 remains mandatory even if its polished delivery is not part of th
 
 It MUST be implemented before paid broker activation or broad public production launch. The eventual broker-facing report should make useful activity visible even when no lead was generated, while distinguishing observed facts from derived interpretation.
 
+## Mandatory post-slice reassessment
+
+Every normal post-slice capability reassessment after this governance package is merged MUST inspect this register before selecting the next primary capability.
+
+The reassessment must explicitly account for:
+
+- any requirement whose status is `DUE`;
+- any trigger that changed since the prior accepted slice;
+- whether current work would destroy or complicate evidence needed by a still-`PENDING` mandatory capability;
+- whether a non-broker capability still has higher product/risk leverage than the currently due broker commitment.
+
+A `DUE` broker commitment may be deferred to another slice only with an explicit rationale in the reassessment/readiness record. It may not be omitted from consideration.
+
+This rule does not preassign future slice numbers and does not override the one-capability workflow. Its purpose is to prevent mandatory later broker commitments from becoming invisible backlog prose.
+
 ## Product completion boundary
 
 The Broker Workspace Launch Gate and this register answer different questions:
