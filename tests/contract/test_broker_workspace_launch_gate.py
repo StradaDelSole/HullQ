@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 import re
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 BROKER_GATE = ROOT / "docs" / "governance" / "BROKER_WORKSPACE_LAUNCH_GATE.md"
