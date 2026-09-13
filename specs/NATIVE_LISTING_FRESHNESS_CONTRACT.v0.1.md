@@ -2,7 +2,8 @@
 
 **Status:** READY CONTRACT — controls SLICE-0052 implementation when merged  
 **Scope:** manual/operator-assisted native professional listings only  
-**Relationship to lifecycle:** freshness is a separate state dimension; this contract does not add or reinterpret lifecycle states
+**Relationship to lifecycle:** freshness is a separate state dimension; this contract does not add or reinterpret lifecycle states  
+**Normative requirements:** `specs/NATIVE_LISTING_FRESHNESS_REQUIREMENTS.v0.1.md`
 
 ## 1. Purpose
 
@@ -46,6 +47,8 @@ STALE does not imply SOLD
 UNKNOWN does not imply withdrawn, sold or unavailable
 reconfirmation does not create a lifecycle transition
 ```
+
+`ACTIVE` continues to mean that the listing is in the published lifecycle state. After this contract, `ACTIVE` alone no longer proves current-market eligibility: buyer visibility additionally requires admissible freshness under §7. This narrows the current-market read/Search predicate without rewriting lifecycle history or adding a new lifecycle state.
 
 Freshness is evaluated only for an `ACTIVE` NativeListing. DRAFT/WITHDRAWN listings remain non-public under the existing lifecycle rules and do not gain public visibility through freshness state.
 
@@ -208,6 +211,8 @@ SLICE-0051 Search MUST admit only current-market-eligible listings.
 
 A `DUE_FOR_CONFIRMATION` listing may remain in Search during the seven-day grace period, but every returned match MUST carry its freshness status and effective `last_confirmed_at` so the web surface can disclose the due state.
 
+The due-state disclosure MUST be rendered coherently on all five existing public Search locale surfaces (`en`, `de`, `fr`, `pt`, `es`). The canonical freshness enum/value remains language-neutral; only presentation text is localized.
+
 This slice adds **no new technical Search criterion** and does not change `draft_max` qualification, FieldResolution, exact Decimal, configuration, PhysicalBoat contradiction or confirmed-match semantics.
 
 ## 8. Time evaluation boundary
@@ -280,4 +285,4 @@ SLICE-0052 MUST NOT implement or silently decide:
 - generic all-field Search/FieldResolution infrastructure;
 - broad/indexable SEO.
 
-Freshness state is derived at evaluation time from immutable evidence plus `MANUAL_NATIVE_V1`; no scheduled mutation is required for time to move a listing from CONFIRMED to DUE/STale behavior.
+Freshness state is derived at evaluation time from immutable evidence plus `MANUAL_NATIVE_V1`; no scheduled mutation is required for time to move a listing from CONFIRMED to DUE/STALE behavior.
