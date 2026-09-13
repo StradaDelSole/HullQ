@@ -39,6 +39,14 @@ This gate is independent from `docs/governance/PRODUCTION_READINESS_GATE.md`.
 
 Production Readiness answers whether HullQ is operationally safe/recoverable enough for production. This Broker Workspace Launch Gate answers whether the professional supply-side product is good enough to expose/charge for. Both gates may be required at the same boundary.
 
+Later mandatory broker capabilities and their timing triggers are controlled by:
+
+```text
+docs/governance/BROKER_WORKSPACE_MANDATORY_CAPABILITY_REGISTER.md
+```
+
+Passing this gate does not cancel later mandatory commitments.
+
 ## Why this is hard-gated
 
 HullQ is broker-first. Inventory quality and supply retention depend on the daily experience of professional brokers. A technically functional CRUD form is not an acceptable launch substitute.
@@ -54,6 +62,29 @@ Normative requirements:
 ```text
 specs/BROKER_WORKSPACE_REQUIREMENTS.v0.1.md
 ```
+
+Retained source addendum:
+
+```text
+docs/BROKER_WORKSPACE_ADDENDUM_2026-09-12.md
+```
+
+## Validation order
+
+Real external broker participation is deliberately **not** a prerequisite for defining or implementing the first coherent broker-workspace baseline.
+
+Before this gate can become `PASS`, HullQ uses:
+
+- accepted Project Owner/product direction;
+- domain/architecture correctness;
+- representative task/usability testing;
+- explicit incumbent/alternative workflow benchmarking.
+
+`PASS` then permits the first real external broker self-service pilot. The pilot becomes the first required source of real professional-user falsification evidence.
+
+After that pilot, `POST_PILOT_REAL_BROKER_VALIDATION_STATUS` in the Mandatory Capability Register must become `PASS` before scaled broker onboarding, paid broker activation or broad public production launch.
+
+This prevents a circular requirement to obtain real broker feedback before the product is allowed to reach a real broker while still making real broker validation mandatory before scaling/commercial rollout.
 
 ## PASS evidence
 
@@ -73,6 +104,7 @@ The external broker can perform the launch-critical inventory jobs without opera
 
 - create a listing;
 - resume an unfinished listing without data loss;
+- recover recent work from ordinary connectivity interruption without silent loss;
 - edit listing facts/offer facts;
 - update price/status where supported;
 - publish/withdraw/reconfirm according to accepted domain rules;
@@ -81,7 +113,9 @@ The external broker can perform the launch-critical inventory jobs without opera
 
 The workflow must preserve `DESIGN / CONFIGURATION TRUTH != PHYSICAL BOAT / LISTING TRUTH`.
 
-### 3. Media operations
+Before PASS, `REQ_BROKER_024_STATUS` in the Mandatory Capability Register must be `IMPLEMENTED`.
+
+### 3. Media operations and broker identity
 
 If launch listings include media:
 
@@ -89,6 +123,10 @@ If launch listings include media:
 - ordering/cover selection is available;
 - accepted quarantine/validation/re-encode/EXIF/privacy/storage rules are enforced;
 - retry/error recovery does not silently lose listing work.
+
+The publishing Organization/broker identity must be explicit on the broker/listing surface. Legitimate compliant broker branding must not be erased merely because it is broker branding. This does not override media rights/security/privacy rules.
+
+Before PASS, `REQ_BROKER_023_STATUS` in the Mandatory Capability Register must be `IMPLEMENTED`.
 
 ### 4. State and sales/outcome model
 
@@ -180,6 +218,8 @@ For each task, record at least:
 - whether the task completed without operator assistance;
 - corrective disposition for material findings.
 
+Pre-pilot evidence may use representative internal/test participants. It does not require real external brokers. Real external broker evidence begins after PASS through the permitted pilot and then becomes mandatory before scale/commercial rollout as defined above.
+
 ### 10. Competitive benchmark
 
 Before PASS, document a comparison against at least two relevant incumbent/alternative professional broker systems or equivalent available workflows.
@@ -202,6 +242,8 @@ A material `DEFICIENT` result in listing creation, lead-source visibility, lead 
 Before `PAID_BROKER_PLAN_STATUS` becomes `ACTIVE`:
 
 - the Broker Workspace Launch Gate is PASS;
+- post-pilot real-broker validation is PASS if a pilot has occurred;
+- applicable mandatory-capability triggers in `BROKER_WORKSPACE_MANDATORY_CAPABILITY_REGISTER.md` are satisfied;
 - payment/subscription state is durable and auditable;
 - entitlement checks do not make core inventory management unusable;
 - failure/cancellation/retry semantics are specified and tested.
@@ -210,7 +252,14 @@ Exact provider/pricing is owned by the payment/monetization capability and is no
 
 ## PASS record requirement
 
-A PASS change must name concrete implementation slices, tests, retained proof, usability evidence and benchmark artifacts satisfying the sections above.
+A PASS change must name concrete implementation slices, tests, retained proof, representative usability evidence and benchmark artifacts satisfying the sections above.
+
+It must also prove:
+
+```text
+REQ_BROKER_023_STATUS = IMPLEMENTED
+REQ_BROKER_024_STATUS = IMPLEMENTED
+```
 
 Independent review must reject PASS when evidence is limited to screenshots, mockups, feature lists or provider documentation.
 
