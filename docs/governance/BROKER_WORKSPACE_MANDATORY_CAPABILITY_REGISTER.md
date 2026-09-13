@@ -6,6 +6,7 @@
 
 <!-- BROKER_WORKSPACE_MANDATORY_COMMITMENTS_STATUS: OPEN -->
 <!-- BROKER_WORKSPACE_PRODUCT_COMPLETION_STATUS: OPEN -->
+<!-- BROKER_SALE_OUTCOME_WORKFLOW_STATUS: PENDING -->
 <!-- SCALED_BROKER_ONBOARDING_STATUS: NOT_STARTED -->
 <!-- SUFFICIENT_SEARCH_VOLUME_FOR_BROKER_INSIGHTS_STATUS: NOT_REACHED -->
 <!-- POST_PILOT_REAL_BROKER_VALIDATION_STATUS: NOT_STARTED -->
@@ -39,12 +40,15 @@ DUE
 IMPLEMENTED
 ```
 
-`BROKER_WORKSPACE_PRODUCT_COMPLETION_STATUS` may become `COMPLETE` only when every `REQ_BROKER_022_STATUS` through `REQ_BROKER_030_STATUS` is `IMPLEMENTED`.
+`BROKER_SALE_OUTCOME_WORKFLOW_STATUS` is a dedicated status for the already-normative `REQ-BROKER-006` sales/outcome capability because the first deliberately bounded broker pilot may omit that workflow while paid/public rollout may not.
+
+`BROKER_WORKSPACE_PRODUCT_COMPLETION_STATUS` may become `COMPLETE` only when every `REQ_BROKER_022_STATUS` through `REQ_BROKER_030_STATUS` is `IMPLEMENTED`, `BROKER_SALE_OUTCOME_WORKFLOW_STATUS = IMPLEMENTED`, and `BROKER_WORKSPACE_LAUNCH_GATE_STATUS = PASS`.
 
 ## Mandatory capability map
 
 | Requirement | Capability | Timing class | Current status |
 |---|---|---|---|
+| REQ-BROKER-006 | explicit sale/outcome recording | mandatory before paid broker activation / broad public launch | PENDING |
 | REQ-BROKER-022 | inventory portability / no lock-in export | mandatory before paid broker activation / broad public launch | PENDING |
 | REQ-BROKER-023 | broker identity / branding preservation | launch/pilot baseline commitment | PENDING |
 | REQ-BROKER-024 | connectivity-resilient draft/recovery behavior | launch/pilot baseline commitment | PENDING |
@@ -88,15 +92,20 @@ REQ_BROKER_024_STATUS  # connectivity-resilient draft recovery
 
 These are daily usability/trust properties that do not require production Search volume and should be present before asking real external brokers to use the self-service product.
 
+The first deliberately bounded pilot may omit the final sales/outcome close-out UI if its pilot scope does not yet exercise completed sales. That exception ends at paid broker activation or broad public production launch.
+
 ## Trigger: paid broker activation / broad public launch
 
-Before either `PAID_BROKER_PLAN_STATUS` or `PUBLIC_PRODUCTION_LAUNCH_STATUS` becomes `ACTIVE`, these additional commitments MUST be `IMPLEMENTED`:
+Before either `PAID_BROKER_PLAN_STATUS` or `PUBLIC_PRODUCTION_LAUNCH_STATUS` becomes `ACTIVE`, these commitments MUST be `IMPLEMENTED`:
 
 ```text
-REQ_BROKER_022_STATUS  # inventory portability / no lock-in
-REQ_BROKER_026_STATUS  # pre-publication Search-fit diagnostics
-REQ_BROKER_028_STATUS  # engagement/performance reporting
+BROKER_SALE_OUTCOME_WORKFLOW_STATUS  # REQ-BROKER-006 explicit sale/outcome recording
+REQ_BROKER_022_STATUS                # inventory portability / no lock-in
+REQ_BROKER_026_STATUS                # pre-publication Search-fit diagnostics
+REQ_BROKER_028_STATUS                # engagement/performance reporting
 ```
+
+The sale/outcome workflow must preserve the accepted semantics: SOLD/closed is explicit evidence, never inferred from stale/withdrawn/disappeared inventory; unknown achieved price remains unknown rather than being forced.
 
 If the production event model is not yet capable of supporting honest engagement reporting, HullQ is not yet ready to charge brokers for the professional workspace or broadly launch it. The remedy is to implement the required telemetry/reporting capability, not to waive the commitment silently.
 
@@ -140,6 +149,7 @@ Every normal post-slice capability reassessment after this governance package is
 The reassessment must explicitly account for:
 
 - any requirement whose status is `DUE`;
+- `BROKER_SALE_OUTCOME_WORKFLOW_STATUS` before paid/public rollout;
 - any trigger that changed since the prior accepted slice;
 - whether current work would destroy or complicate evidence needed by a still-`PENDING` mandatory capability;
 - whether a non-broker capability still has higher product/risk leverage than the currently due broker commitment.
@@ -154,9 +164,9 @@ The Broker Workspace Launch Gate and this register answer different questions:
 
 - `BROKER_WORKSPACE_LAUNCH_GATE_STATUS = PASS` means the external professional workspace has the accepted first pilot baseline.
 - `BROKER_WORKSPACE_MANDATORY_COMMITMENTS_STATUS = OPEN` means later committed differentiators still remain.
-- `BROKER_WORKSPACE_PRODUCT_COMPLETION_STATUS = COMPLETE` means every requirement in this register has actually been implemented and accepted.
+- `BROKER_WORKSPACE_PRODUCT_COMPLETION_STATUS = COMPLETE` means the launch baseline, explicit sales/outcome workflow and every later requirement in this register have actually been implemented and accepted.
 
-Therefore the first broker pilot or public launch may occur before every volume-dependent capability is available, but HullQ must not describe the accepted broker-product workstream as complete while any registered commitment remains `PENDING` or `DUE`.
+Therefore the first broker pilot or public launch may occur before every volume-dependent capability is available, but HullQ must not describe the accepted broker-product workstream as complete while any registered commitment remains `PENDING` or `DUE` or the sale/outcome workflow remains unimplemented.
 
 ## Evidence to mark IMPLEMENTED
 
