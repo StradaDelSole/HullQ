@@ -11,7 +11,7 @@ This register is canonical for unresolved project decisions. Existing legacy `D-
 | OQ-003 | D-003 | Model vs generation vs variant identity boundary | DECIDED | Before broad canonical ingestion | `specs/IDENTITY_MODEL.v0.1.md` + ADR-0004 |
 | OQ-004 | D-004 | Persistence shape for field-level provenance/evidence | DECIDED | Before persistence implementation | `specs/PROVENANCE_MODEL.v0.1.md` + FieldEvidence/FieldResolution/Derivation contracts + ADR-0006 |
 | OQ-005 | D-005 | Cross-platform physical-listing deduplication identity | DEFERRED | Before multi-source normalized listing UI | dedup spec + test corpus |
-| OQ-006 | D-006 | Alert cadence, freshness and cache TTL policy | DEFERRED | Before automated alerts | alert/freshness spec |
+| OQ-006 | D-006 | Automated alert cadence plus monitoring/cache TTL policy | DEFERRED | Before automated alerts | alert/monitoring policy; manual NativeListing freshness is controlled separately by `specs/NATIVE_LISTING_FRESHNESS_CONTRACT.v0.1.md` |
 | OQ-007 | D-007 | Required source licensing/rights metadata | DECIDED | Before open-data bootstrap ingestion | `specs/SOURCE_SCHEMA.v0.2.json` + `specs/SOURCE_RIGHTS_POLICY.v0.1.md` + ADR-0005 |
 | OQ-008 | D-008 | Final frontend technology | DECIDED | Before frontend implementation | ADR-0010 + later accepted 2026-09-02 rebaseline: Astro + TypeScript; selective React islands only where interaction justifies them |
 | OQ-009 | — | Persisted/derived coverage tiers and unknown-data search semantics | DECIDED | Before query engine implementation | `specs/SEARCH_QUERY_SEMANTICS.v0.1.md` (D1-D10, accepted 2026-08-28/29) + `src/hullq/search/` (SLICE-0033) + tests |
@@ -40,6 +40,19 @@ Execution order is controlled by the higher-precedence post-SLICE-0039 product/a
 This register records unresolved decisions; it is not a second competing roadmap. Historical immediate-order prose that predates the native-listing pivot is not controlling where it conflicts with those later accepted records.
 
 ## Current dispositions that must not be reopened accidentally
+
+### OQ-006 — automated alerts vs NativeListing freshness
+
+The 2026-09-02 marketplace rebaseline separates current-listing freshness from future monitoring/alert cadence. Manual NativeListing freshness/reconfirmation is therefore not blocked by OQ-006 merely because the historical OQ label used the word `freshness`.
+
+SLICE-0052 may define and implement the bounded manual-listing freshness policy under `specs/NATIVE_LISTING_FRESHNESS_CONTRACT.v0.1.md` without deciding:
+
+- automated alert cadence;
+- monitor polling/scheduling cadence;
+- cache TTL policy;
+- subscription-dependent alert frequency.
+
+Those OQ-006 alert/monitoring choices remain `DEFERRED` until an automated-alert capability needs them.
 
 ### OQ-014 — authentication/account architecture
 
