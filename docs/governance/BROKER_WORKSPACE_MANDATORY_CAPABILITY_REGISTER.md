@@ -51,7 +51,7 @@ IMPLEMENTED
 | REQ-BROKER-025 | Search exclusion explainability: why a listing was not found | search-volume-dependent mandatory capability | PENDING |
 | REQ-BROKER-026 | pre-publication Search-fit diagnostics | mandatory before paid broker activation / broad public launch | PENDING |
 | REQ-BROKER-027 | structured CSV/bulk onboarding/import | scale-triggered mandatory capability | PENDING |
-| REQ-BROKER-028 | periodic engagement/performance reporting even without a lead | telemetry-dependent; mandatory before paid broker activation / broad public launch once supported telemetry exists | PENDING |
+| REQ-BROKER-028 | periodic engagement/performance reporting even without a lead | mandatory before paid broker activation / broad public launch | PENDING |
 | REQ-BROKER-029 | privacy-safe aggregate demand insights by relevant configuration | search-volume-dependent mandatory capability | PENDING |
 | REQ-BROKER-030 | validation order: coherent product before real external broker pilot | immediate governance rule | IMPLEMENTED by this governance package when merged |
 
@@ -95,10 +95,10 @@ Before either `PAID_BROKER_PLAN_STATUS` or `PUBLIC_PRODUCTION_LAUNCH_STATUS` bec
 ```text
 REQ_BROKER_022_STATUS  # inventory portability / no lock-in
 REQ_BROKER_026_STATUS  # pre-publication Search-fit diagnostics
-REQ_BROKER_028_STATUS  # engagement/performance reporting, when underlying telemetry is part of production
+REQ_BROKER_028_STATUS  # engagement/performance reporting
 ```
 
-If the production boundary at that point still does not contain the underlying telemetry needed for REQ-BROKER-028, the same reviewed activation change must explicitly prove why the requirement is not yet applicable and must leave it registered as mandatory rather than silently removing it.
+If the production event model is not yet capable of supporting honest engagement reporting, HullQ is not yet ready to charge brokers for the professional workspace or broadly launch it. The remedy is to implement the required telemetry/reporting capability, not to waive the commitment silently.
 
 ## Trigger: scaled broker onboarding
 
@@ -131,7 +131,7 @@ This is an architecture-preservation requirement, not authorization to build a g
 
 REQ-BROKER-028 remains mandatory even if its polished delivery is not part of the first external pilot. Once the underlying production exposure/view/Search-impression telemetry is accepted and reliable, the owning readiness reassessment must treat broker engagement reporting as `DUE` rather than silently leaving it as a vague later idea.
 
-The eventual broker-facing report should make useful activity visible even when no lead was generated, while distinguishing observed facts from derived interpretation.
+It MUST be implemented before paid broker activation or broad public production launch. The eventual broker-facing report should make useful activity visible even when no lead was generated, while distinguishing observed facts from derived interpretation.
 
 ## Product completion boundary
 
