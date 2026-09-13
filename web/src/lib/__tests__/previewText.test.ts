@@ -13,6 +13,7 @@ import { test } from "node:test";
 import {
   askingPriceText,
   brokerSummaryText,
+  freshnessDisclosureText,
   knownHistoryText,
   unknownableClaimText,
 } from "../previewText.ts";
@@ -60,4 +61,21 @@ test("askingPriceText: POA mode shows the price-on-application notice, no synthe
     askingPriceText({ asking_price_mode: "POA", asking_price_amount: null, currency: null }),
     "Price on application",
   );
+});
+
+test("freshnessDisclosureText: DUE_FOR_CONFIRMATION is never worded as simply confirmed", () => {
+  const dueText = freshnessDisclosureText("DUE_FOR_CONFIRMATION", "2026-01-01T00:00:00+00:00");
+  const confirmedText = freshnessDisclosureText("CONFIRMED", "2026-01-01T00:00:00+00:00");
+  assert.notEqual(dueText, confirmedText);
+  assert.doesNotMatch(dueText, /^Confirmed current/);
+});
+
+test("freshnessDisclosureText: CONFIRMED includes the last-confirmed timestamp when present", () => {
+  const text = freshnessDisclosureText("CONFIRMED", "2026-01-01T00:00:00+00:00");
+  assert.match(text, /2026-01-01T00:00:00\+00:00/);
+});
+
+test("freshnessDisclosureText: handles a null last_confirmed_at without throwing", () => {
+  assert.doesNotThrow(() => freshnessDisclosureText("CONFIRMED", null));
+  assert.doesNotThrow(() => freshnessDisclosureText("DUE_FOR_CONFIRMATION", null));
 });

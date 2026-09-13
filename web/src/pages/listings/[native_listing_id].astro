@@ -23,6 +23,7 @@ import { fetchPublicListing } from "../../lib/publicListingApi";
 import {
   askingPriceText,
   brokerSummaryText,
+  freshnessDisclosureText,
   knownHistoryText,
   unknownableClaimText,
 } from "../../lib/previewText";
@@ -85,6 +86,10 @@ const canonicalUrl = nativeListingId
               <p>Build year: {boatClaimText(data.physical_boat_claims.build_year)}</p>
             )
           }
+
+          <p aria-label="freshness status">
+            {freshnessDisclosureText(data.freshness_status, data.last_confirmed_at)}
+          </p>
 
           <p>{askingPriceText(data)}</p>
           <p>Country: {data.location_country}</p>

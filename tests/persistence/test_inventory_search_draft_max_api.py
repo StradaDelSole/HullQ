@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import uuid
 from collections.abc import Generator
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from urllib.parse import quote, urlsplit, urlunsplit
@@ -510,7 +511,7 @@ def test_evaluate_draft_max_requirement_is_empty_without_an_admitted_field_resol
     surface. `tests/persistence/test_field_resolution_design_bridge.py` and
     `tests/persistence/test_inventory_search_classification.py` cover the
     real admitted-resolution path end to end."""
-    outcome = evaluate_draft_max_requirement(api_conn, Decimal("1.6"))
+    outcome = evaluate_draft_max_requirement(api_conn, Decimal("1.6"), as_of=datetime.now(UTC))
     assert outcome.confirmed_matches == ()
     assert outcome.confirmed_match_count == 0
     assert outcome.confirmed_non_match_count == 0

@@ -24,6 +24,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any
@@ -77,7 +78,7 @@ class SearchRequestOutcome:
 
 
 def evaluate_search_request(
-    conn: Any, *, locale: str, query_params: Mapping[str, Sequence[str]]
+    conn: Any, *, locale: str, query_params: Mapping[str, Sequence[str]], as_of: datetime
 ) -> SearchRequestOutcome:
     """Decide the request state for one locale-prefixed Search request.
 
@@ -119,7 +120,7 @@ def evaluate_search_request(
             canonical_path=f"/{locale}/search?{_DRAFT_MAX_KEY}={canonical_value}",
         )
 
-    search_outcome = evaluate_draft_max_requirement(conn, draft_max)
+    search_outcome = evaluate_draft_max_requirement(conn, draft_max, as_of=as_of)
     return SearchRequestOutcome(
         kind=SearchOutcomeKind.RESULT, draft_max=draft_max, search_outcome=search_outcome
     )

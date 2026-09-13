@@ -25,6 +25,14 @@ resolves public *readability* only. Indexation/crawl directives are a
 presentation-boundary concern applied by the FastAPI route and Astro page,
 not by this read model.
 
+SLICE-0052 narrows current-market readability further (contract §7.1):
+`ACTIVE` alone no longer proves eligibility. This module additionally
+resolves freshness (`hullq.application.native_listing_freshness`) at the
+explicit *as_of* boundary supplied by the caller and collapses
+`ACTIVE + STALE`/`ACTIVE + UNKNOWN` to the identical `None` result used for
+DRAFT/WITHDRAWN/missing/incomplete -- never a distinguishable "stale current
+offer" projection. Lifecycle/history are never touched by this read.
+
 DRAFT, WITHDRAWN, missing and incomplete listings all collapse to the
 identical `None` result -- this module (and therefore the public FastAPI
 route built on it) is never a NativeListingId existence oracle, exactly like
@@ -38,8 +46,13 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
+from hullq.application.native_listing_freshness import (
+    is_current_market_eligible,
+    resolve_current_freshness,
+)
 from hullq.application.preview_read import resolve_previewable_listing
 from hullq.domain.market_identity import NativeListingId
+from hullq.domain.native_listing_freshness import FreshnessStatus
 from hullq.domain.native_listing_lifecycle import NativeListingLifecycleState
 from hullq.domain.native_listing_offer import (
     BrokerSummaryClaim,
@@ -84,6 +97,8 @@ class PublicListingReadModel:
     offer: NativeListingOfferSnapshot
     publishing_organization_id: MarketplaceOrganizationId
     offer_recorded_at: datetime
+    freshness_status: FreshnessStatus
+    last_confirmed_at: datetime | None
     physical_boat_claims: PhysicalBoatClaimSnapshot | None = None
 
     def to_public_dict(self) -> dict[str, Any]:
@@ -91,16 +106,19 @@ class PublicListingReadModel:
 
         Mirrors `hullq.application.preview_read.PreviewReadModel.to_public_dict`
         field-for-field (minus `preview_expires_at`, plus
-        `physical_boat_claims`): `asking_price_amount` is a decimal string,
-        never a binary float, and each optional claim field distinguishes
-        omission (`None`) from an explicit
-        UNKNOWN/NOT_APPLICABLE/NO_KNOWN_HISTORY_DECLARED/VALUE_ASSERTION
-        assertion. `physical_boat_claims` is `None` when the publishing
-        Organization has not yet recorded any SLICE-0050 claim for this
-        PhysicalBoat (SLICE-0050 §10: claim absence never fails the
+        `physical_boat_claims`, `freshness_status` and `last_confirmed_at`):
+        `asking_price_amount` is a decimal string, never a binary float, and
+        each optional claim field distinguishes omission (`None`) from an
+        explicit UNKNOWN/NOT_APPLICABLE/NO_KNOWN_HISTORY_DECLARED/
+        VALUE_ASSERTION assertion. `physical_boat_claims` is `None` when the
+        publishing Organization has not yet recorded any SLICE-0050 claim
+        for this PhysicalBoat (SLICE-0050 §10: claim absence never fails the
         listing's own public readability), and otherwise carries only the
         seven bounded fields -- no revision id, recording Account or
-        BoatDesign baseline value.
+        BoatDesign baseline value. `freshness_status` is always one of
+        `CONFIRMED`/`DUE_FOR_CONFIRMATION` here (contract §7.1: STALE/UNKNOWN
+        never reach this dict -- `get_public_listing_read_model` resolves to
+        `None` first).
         """
         offer = self.offer
         return {
@@ -119,6 +137,10 @@ class PublicListingReadModel:
             "offer_recorded_at": self.offer_recorded_at.isoformat(),
             "hullq_vat_verification_status": "NONE",
             "physical_boat_claims": _physical_boat_claims_dict(self.physical_boat_claims),
+            "freshness_status": self.freshness_status.value,
+            "last_confirmed_at": (
+                self.last_confirmed_at.isoformat() if self.last_confirmed_at is not None else None
+            ),
         }
 
 
@@ -183,7 +205,7 @@ def _physical_boat_claims_dict(claims: PhysicalBoatClaimSnapshot | None) -> dict
 
 
 def get_public_listing_read_model(
-    conn: Any, native_listing_id: NativeListingId
+    conn: Any, native_listing_id: NativeListingId, *, as_of: datetime
 ) -> PublicListingReadModel | None:
     """Resolve *native_listing_id* to its public read model, or `None`.
 
@@ -195,12 +217,22 @@ def get_public_listing_read_model(
     has since become incomplete (should not normally happen, since
     publication requires completeness) still fails closed to `None` via
     `resolve_previewable_listing`, never raises.
+
+    SLICE-0052 contract §7.1: current-market eligibility additionally
+    requires freshness CONFIRMED or DUE_FOR_CONFIRMATION at the explicit
+    *as_of* boundary. `ACTIVE + STALE` and `ACTIVE + UNKNOWN` collapse to
+    this identical `None` result -- never a distinguishable stale-offer
+    projection -- without mutating lifecycle/history.
     """
     if fetch_lifecycle_state(conn, native_listing_id) is not NativeListingLifecycleState.ACTIVE:
         return None
 
     resolved = resolve_previewable_listing(conn, native_listing_id)
     if resolved is None:
+        return None
+
+    freshness = resolve_current_freshness(conn, native_listing_id, as_of=as_of)
+    if not is_current_market_eligible(freshness.status):
         return None
 
     # SLICE-0050 §10/§12: the *publishing* Organization's own current claim
@@ -217,5 +249,7 @@ def get_public_listing_read_model(
         offer=resolved.offer,
         publishing_organization_id=resolved.publishing_organization_id,
         offer_recorded_at=resolved.offer_recorded_at,
+        freshness_status=freshness.status,
+        last_confirmed_at=freshness.last_confirmed_at,
         physical_boat_claims=claim_record.claims if claim_record is not None else None,
     )

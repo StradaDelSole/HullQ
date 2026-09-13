@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import uuid
 from collections.abc import Generator
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from urllib.parse import quote, urlsplit, urlunsplit
@@ -128,6 +129,13 @@ def api_conn(api_url: str) -> Generator[Any]:
 # ---------------------------------------------------------------------------
 
 _DESIGN_ID = "BD-0051-CLS"
+
+
+#: SLICE-0052: every listing in this module is published moments before
+#: evaluation, so any real "now" classifies CONFIRMED -- freshness gating
+#: itself is covered by dedicated SLICE-0052 tests, not re-tested here.
+def _as_of() -> datetime:
+    return datetime.now(UTC)
 
 
 _DESIGN_BASELINE_DRAFT_MAX_M = Decimal("1.30")
@@ -311,7 +319,7 @@ def test_confirmed_match_on_inclusive_exact_decimal_boundary(api_conn: Any) -> N
         revision_id="REV-EXACT",
         draft=DraftClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("1.60")),
     )
-    outcome = evaluate_draft_max_requirement(api_conn, Decimal("1.6"))
+    outcome = evaluate_draft_max_requirement(api_conn, Decimal("1.6"), as_of=_as_of())
     assert {m.native_listing_id.value for m in outcome.confirmed_matches} == {"NL-CLS-EXACT"}
     assert outcome.confirmed_matches[0].resolved_draft_m == Decimal("1.60")
 
@@ -332,7 +340,7 @@ def test_confirmed_non_match_above_threshold(api_conn: Any) -> None:
         revision_id="REV-DEEP",
         draft=DraftClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("1.90")),
     )
-    outcome = evaluate_draft_max_requirement(api_conn, Decimal("1.6"))
+    outcome = evaluate_draft_max_requirement(api_conn, Decimal("1.6"), as_of=_as_of())
     assert outcome.confirmed_matches == ()
     assert outcome.confirmed_non_match_count == 1
     assert outcome.insufficient_data_count == 0
@@ -345,7 +353,7 @@ def test_omitted_draft_is_insufficient_data(api_conn: Any) -> None:
         physical_boat_id="PB-CLS-OMIT",
         market_episode_id="ME-CLS-OMIT",
     )
-    outcome = evaluate_draft_max_requirement(api_conn, Decimal("1.6"))
+    outcome = evaluate_draft_max_requirement(api_conn, Decimal("1.6"), as_of=_as_of())
     assert outcome.confirmed_matches == ()
     assert outcome.insufficient_data_count == 1
 
@@ -366,7 +374,7 @@ def test_unknown_draft_is_insufficient_data(api_conn: Any) -> None:
         revision_id="REV-UNK",
         draft=DraftClaim(assertion_kind=AssertionKind.UNKNOWN),
     )
-    outcome = evaluate_draft_max_requirement(api_conn, Decimal("1.6"))
+    outcome = evaluate_draft_max_requirement(api_conn, Decimal("1.6"), as_of=_as_of())
     assert outcome.confirmed_matches == ()
     assert outcome.insufficient_data_count == 1
 
@@ -415,7 +423,7 @@ def test_cross_organization_conflict_is_insufficient_data(api_conn: Any) -> None
         revision_id="REV-CONF-OTHER",
         draft=DraftClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("1.90")),
     )
-    outcome = evaluate_draft_max_requirement(api_conn, Decimal("1.6"))
+    outcome = evaluate_draft_max_requirement(api_conn, Decimal("1.6"), as_of=_as_of())
     assert outcome.confirmed_matches == ()
     assert outcome.insufficient_data_count == 1
 
@@ -441,7 +449,7 @@ def test_extreme_precision_decimal_threshold_no_float_drift(api_conn: Any) -> No
         revision_id="REV-PREC",
         draft=DraftClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=exact_draft),
     )
-    outcome = evaluate_draft_max_requirement(api_conn, exact_draft)
+    outcome = evaluate_draft_max_requirement(api_conn, exact_draft, as_of=_as_of())
     assert {m.native_listing_id.value for m in outcome.confirmed_matches} == {"NL-CLS-PREC"}
     assert outcome.confirmed_matches[0].resolved_draft_m == exact_draft
 
@@ -490,7 +498,7 @@ def test_classification_reads_current_observations_exactly_once_per_candidate(
         _counting_wrapper,
     )
 
-    outcome = evaluate_draft_max_requirement(api_conn, Decimal("1.6"))
+    outcome = evaluate_draft_max_requirement(api_conn, Decimal("1.6"), as_of=_as_of())
     assert outcome.confirmed_match_count == 1
     assert call_count == 1, (
         "expected exactly one snapshot-consistent read per candidate; "
@@ -521,7 +529,7 @@ def test_sequential_revisions_are_never_mixed_old_and_new(api_conn: Any) -> None
         draft=DraftClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("1.40")),
     )
     api_conn.commit()
-    first = evaluate_draft_max_requirement(api_conn, Decimal("1.6"))
+    first = evaluate_draft_max_requirement(api_conn, Decimal("1.6"), as_of=_as_of())
     api_conn.commit()  # leave conn IDLE before the next write requires it
     assert {m.native_listing_id.value for m in first.confirmed_matches} == {"NL-CLS-SEQ"}
     assert first.confirmed_matches[0].resolved_draft_m == Decimal("1.40")
@@ -538,7 +546,7 @@ def test_sequential_revisions_are_never_mixed_old_and_new(api_conn: Any) -> None
         expected_current_revision_id=PhysicalBoatClaimRevisionId("REV-SEQ-1"),
     )
     api_conn.commit()
-    second = evaluate_draft_max_requirement(api_conn, Decimal("1.6"))
+    second = evaluate_draft_max_requirement(api_conn, Decimal("1.6"), as_of=_as_of())
     # The new evaluation must reflect ONLY the new value -- never a mix of
     # the old CONFIRMED_MATCH classification with the new resolved value,
     # or vice versa.

@@ -53,3 +53,22 @@ export function askingPriceText(data: {
   }
   return "Price on application";
 }
+
+/**
+ * SLICE-0052 contract §7.1/§H: `DUE_FOR_CONFIRMATION` must be buyer-visible
+ * as such and MUST NOT be worded as if the listing were still simply
+ * "confirmed" -- the seven-day grace period is disclosed, not hidden.
+ */
+export function freshnessDisclosureText(
+  freshnessStatus: "CONFIRMED" | "DUE_FOR_CONFIRMATION",
+  lastConfirmedAt: string | null,
+): string {
+  if (freshnessStatus === "DUE_FOR_CONFIRMATION") {
+    return lastConfirmedAt !== null
+      ? `Awaiting reconfirmation from the broker (last confirmed ${lastConfirmedAt}). This listing may go stale soon if not reconfirmed.`
+      : "Awaiting reconfirmation from the broker. This listing may go stale soon if not reconfirmed.";
+  }
+  return lastConfirmedAt !== null
+    ? `Confirmed current by the broker (last confirmed ${lastConfirmedAt}).`
+    : "Confirmed current by the broker.";
+}

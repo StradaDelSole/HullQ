@@ -22,10 +22,23 @@ confidential.
 No third-party analytics/tracker/subresource is loaded by this API; the
 interactive OpenAPI/Swagger docs routes are disabled so this proof surface
 never pulls in a third-party CDN asset.
+
+SLICE-0052 adds one internal, server-side-only current-time boundary
+(`_FRESHNESS_AS_OF_OVERRIDE_ENV`) used to resolve freshness on both routes.
+It is resolved once at app-creation time from an explicit constructor
+parameter or the environment -- never from an HTTP request -- so a client
+can never supply an arbitrary "as of" instant (contract §8/§4.2 forbid a
+caller-supplied confirmation timestamp; this is the equivalent guarantee for
+the read-side clock boundary). Production deployments never set the
+environment variable, so `datetime.now(timezone.utc)` is read fresh on every
+request; the retained SLICE-0052 proof and tests are the only intended
+callers of the override.
 """
 
 from __future__ import annotations
 
+import os
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
@@ -40,6 +53,25 @@ from hullq.search.draft_max_request import canonical_draft_max_str
 from hullq.security.preview_signing import get_preview_signing_secret
 
 __all__ = ["create_app"]
+
+#: SLICE-0052: server-side-only freshness clock override, resolved once at
+#: app-creation time. Never read from an HTTP request. Unset in every
+#: production deployment.
+_FRESHNESS_AS_OF_OVERRIDE_ENV = "HULLQ_FRESHNESS_AS_OF_OVERRIDE_ISO"
+
+
+def _resolve_as_of_override_from_env() -> datetime | None:
+    raw = os.environ.get(_FRESHNESS_AS_OF_OVERRIDE_ENV, "").strip()
+    if not raw:
+        return None
+    value = datetime.fromisoformat(raw)
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise RuntimeError(
+            f"{_FRESHNESS_AS_OF_OVERRIDE_ENV} must be a timezone-aware ISO-8601 "
+            f"datetime, got {raw!r}"
+        )
+    return value
+
 
 _PREVIEW_PATH_PREFIX = "/api/_preview/"
 _PUBLIC_LISTINGS_PATH_PREFIX = "/api/listings/"
@@ -83,6 +115,7 @@ def create_app(
     *,
     database_url: str | None = None,
     preview_signing_secret: bytes | None = None,
+    freshness_as_of_override: datetime | None = None,
 ) -> FastAPI:
     """Build the SLICE-0048 preview FastAPI application.
 
@@ -93,6 +126,13 @@ def create_app(
     `hullq.security.preview_signing.get_preview_signing_secret`) -- an
     invalid/missing signing secret must fail app creation, never fall back
     to an insecure default.
+
+    *freshness_as_of_override* fixes the freshness evaluation clock for
+    every request this app instance serves (used by tests and the retained
+    SLICE-0052 proof); otherwise it falls back to
+    `_FRESHNESS_AS_OF_OVERRIDE_ENV`, and when neither is set every request
+    resolves freshness against the real `datetime.now(timezone.utc)` read at
+    request time. Never derived from an HTTP request.
     """
     resolved_database_url = database_url if database_url is not None else get_database_url()
     resolved_secret = (
@@ -100,6 +140,14 @@ def create_app(
         if preview_signing_secret is not None
         else get_preview_signing_secret()
     )
+    resolved_as_of_override = (
+        freshness_as_of_override
+        if freshness_as_of_override is not None
+        else _resolve_as_of_override_from_env()
+    )
+
+    def _current_as_of() -> datetime:
+        return resolved_as_of_override if resolved_as_of_override is not None else datetime.now(UTC)
 
     app = FastAPI(
         title="HullQ preview API (SLICE-0048, unstable, non-canonical)",
@@ -147,7 +195,9 @@ def create_app(
     def get_public_listing(native_listing_id: str) -> JSONResponse:
         conn = open_connection(resolved_database_url)
         try:
-            model = get_public_listing_read_model(conn, NativeListingId(native_listing_id))
+            model = get_public_listing_read_model(
+                conn, NativeListingId(native_listing_id), as_of=_current_as_of()
+            )
         finally:
             conn.close()
         if model is None:
@@ -171,7 +221,9 @@ def create_app(
 
         conn = open_connection(resolved_database_url)
         try:
-            outcome = evaluate_search_request(conn, locale=locale, query_params=raw_query_params)
+            outcome = evaluate_search_request(
+                conn, locale=locale, query_params=raw_query_params, as_of=_current_as_of()
+            )
         finally:
             conn.close()
 
@@ -201,6 +253,12 @@ def create_app(
                         "native_listing_id": match.native_listing_id.value,
                         "resolved_draft_m": str(match.resolved_draft_m),
                         "publishing_organization_id": match.publishing_organization_id.value,
+                        "freshness_status": match.freshness_status.value,
+                        "last_confirmed_at": (
+                            match.last_confirmed_at.isoformat()
+                            if match.last_confirmed_at is not None
+                            else None
+                        ),
                     }
                     for match in search_outcome.confirmed_matches
                 ],

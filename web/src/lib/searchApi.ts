@@ -12,6 +12,9 @@ export interface SearchConfirmedMatch {
   native_listing_id: string;
   resolved_draft_m: string;
   publishing_organization_id: string;
+  /** SLICE-0052: STALE/UNKNOWN matches never reach this response at all. */
+  freshness_status: "CONFIRMED" | "DUE_FOR_CONFIRMATION";
+  last_confirmed_at: string | null;
 }
 
 export interface SearchResultBody {

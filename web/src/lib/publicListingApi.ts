@@ -58,6 +58,14 @@ export interface PublicListingData {
    * BoatDesign baseline fallback, and never another Organization's claim.
    */
   physical_boat_claims: PhysicalBoatClaims | null;
+  /**
+   * SLICE-0052: always `"CONFIRMED"` or `"DUE_FOR_CONFIRMATION"` here --
+   * FastAPI's public route already resolves `STALE`/`UNKNOWN` to the
+   * identical not-found response, so this page never receives them.
+   */
+  freshness_status: "CONFIRMED" | "DUE_FOR_CONFIRMATION";
+  /** ISO-8601 timestamp of the latest admissible confirmation evidence. */
+  last_confirmed_at: string | null;
 }
 
 /**
