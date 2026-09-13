@@ -133,6 +133,8 @@ same id + same immutable envelope -> ALREADY_EXISTS
 same id + different immutable envelope -> CONFLICT
 ```
 
+For idempotency/collision comparison, the caller-controlled immutable envelope is exactly the NativeListing/principal identity being reconfirmed; the system-generated `occurred_at` is **not** part of that comparison. An exact retry MUST retain the original persisted `occurred_at` rather than generating a new semantic event or conflicting merely because wall-clock time advanced.
+
 The earlier record is never rewritten.
 
 No separate mutable freshness current-head record is required by this contract. Effective freshness is derived from immutable publication/reconfirmation evidence plus the policy and `as_of`; implementation MUST NOT introduce a current-head/version chain merely to mimic FieldResolution or offer-revision machinery when no conflicting mutable fact is being resolved.
