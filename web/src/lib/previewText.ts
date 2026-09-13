@@ -55,6 +55,18 @@ export function askingPriceText(data: {
 }
 
 /**
+ * `offer_recorded_at` is the LISTING_OFFER revision timestamp, not the
+ * SLICE-0052 freshness confirmation timestamp: after an authorized
+ * reconfirmation without a new offer revision, `last_confirmed_at` advances
+ * while `offer_recorded_at` does not. This wording must never claim
+ * freshness/"last confirmed" semantics -- see `freshnessDisclosureText` for
+ * the sole buyer-facing freshness wording.
+ */
+export function offerRecordedText(offerRecordedAt: string): string {
+  return `Broker declaration recorded in HullQ: ${offerRecordedAt}`;
+}
+
+/**
  * SLICE-0052 contract §7.1/§H: `DUE_FOR_CONFIRMATION` must be buyer-visible
  * as such and MUST NOT be worded as if the listing were still simply
  * "confirmed" -- the seven-day grace period is disclosed, not hidden.

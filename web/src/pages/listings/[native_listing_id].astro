@@ -25,6 +25,7 @@ import {
   brokerSummaryText,
   freshnessDisclosureText,
   knownHistoryText,
+  offerRecordedText,
   unknownableClaimText,
 } from "../../lib/previewText";
 import { boatClaimText, boatClaimTextOrNotSupplied } from "../../lib/physicalBoatClaimText";
@@ -127,7 +128,7 @@ const canonicalUrl = nativeListingId
               <div>
                 <p>VAT/tax status: broker-declared {unknownableClaimText(data.vat_tax_status_claim)}</p>
                 <p>Publishing organization: {data.publishing_organization_id}</p>
-                <p>Broker declaration recorded/last confirmed in HullQ: {data.offer_recorded_at}</p>
+                <p>{offerRecordedText(data.offer_recorded_at)}</p>
                 <p>HullQ legal verification: none</p>
               </div>
             )}
