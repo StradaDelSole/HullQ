@@ -31,6 +31,14 @@ def _requirement_statuses(text: str) -> dict[int, str]:
     return statuses
 
 
+def _sale_outcome_status(text: str) -> str:
+    return _single_marker(
+        text,
+        r"<!--\s*BROKER_SALE_OUTCOME_WORKFLOW_STATUS:\s*(PENDING|IMPLEMENTED)\s*-->",
+        "BROKER_SALE_OUTCOME_WORKFLOW_STATUS",
+    )
+
+
 def test_broker_workspace_governance_artifacts_exist() -> None:
     assert PRODUCT_DIRECTION.is_file()
     assert SOURCE_ADDENDUM.is_file()
@@ -142,6 +150,7 @@ def test_paid_or_public_activation_requires_post_pilot_commitments() -> None:
 
     if paid_plan == "ACTIVE" or public_launch == "ACTIVE":
         assert post_pilot == "PASS"
+        assert _sale_outcome_status(register_text) == "IMPLEMENTED"
         assert statuses[22] == "IMPLEMENTED"
         assert statuses[26] == "IMPLEMENTED"
         assert statuses[28] == "IMPLEMENTED"
@@ -162,21 +171,29 @@ def test_search_volume_trigger_makes_insight_capabilities_due() -> None:
 
 
 def test_broker_product_cannot_be_declared_complete_with_open_commitments() -> None:
-    text = MANDATORY_REGISTER.read_text(encoding="utf-8")
-    statuses = _requirement_statuses(text)
+    register_text = MANDATORY_REGISTER.read_text(encoding="utf-8")
+    broker_text = BROKER_GATE.read_text(encoding="utf-8")
+    statuses = _requirement_statuses(register_text)
     product_completion = _single_marker(
-        text,
+        register_text,
         r"<!--\s*BROKER_WORKSPACE_PRODUCT_COMPLETION_STATUS:\s*(OPEN|COMPLETE)\s*-->",
         "BROKER_WORKSPACE_PRODUCT_COMPLETION_STATUS",
     )
     commitments = _single_marker(
-        text,
+        register_text,
         r"<!--\s*BROKER_WORKSPACE_MANDATORY_COMMITMENTS_STATUS:\s*(OPEN|COMPLETE)\s*-->",
         "BROKER_WORKSPACE_MANDATORY_COMMITMENTS_STATUS",
+    )
+    gate = _single_marker(
+        broker_text,
+        r"<!--\s*BROKER_WORKSPACE_LAUNCH_GATE_STATUS:\s*(NOT_READY|IN_PROGRESS|PASS)\s*-->",
+        "BROKER_WORKSPACE_LAUNCH_GATE_STATUS",
     )
 
     if product_completion == "COMPLETE" or commitments == "COMPLETE":
         assert set(statuses.values()) == {"IMPLEMENTED"}
+        assert _sale_outcome_status(register_text) == "IMPLEMENTED"
+        assert gate == "PASS"
 
 
 def test_broker_register_requires_post_slice_reassessment_visibility() -> None:
@@ -184,6 +201,7 @@ def test_broker_register_requires_post_slice_reassessment_visibility() -> None:
     assert "Every normal post-slice capability reassessment" in text
     assert "A `DUE` broker commitment may be deferred" in text
     assert "It may not be omitted from consideration" in text
+    assert "BROKER_SALE_OUTCOME_WORKFLOW_STATUS" in text
 
 
 def test_broker_workspace_direction_keeps_core_operating_principles() -> None:
