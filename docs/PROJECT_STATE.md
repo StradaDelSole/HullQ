@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-13  
 **Latest owner-accepted / DONE slice:** SLICE-0051  
-**Current queue:** SLICE-0052 — queue number reserved for the next post-SLICE-0051 capability; capability is **not selected**, no readiness contract exists, and implementation is not authorized until post-slice reassessment/reconciliation/readiness completes.  
+**Current queue:** SLICE-0052 — **NativeListing freshness / reconfirmation**, selected and readiness-defined in `docs/slices/SLICE-0052-native-listing-freshness-reconfirmation.md`; implementation is not authorized until the readiness change is independently accepted/merged and the Project Owner runs `START_SLICE.bat`.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs/accepted decisions remain authoritative where they apply; current architecture precedence is explicit below.
@@ -114,7 +114,7 @@ SLICE-0049 public lifecycle remains intentionally only:
 DRAFT → ACTIVE → WITHDRAWN
 ```
 
-Republish, `SOLD`, `ARCHIVED` and freshness/staleness semantics remain future capabilities.
+Republish, `SOLD` and `ARCHIVED` remain future lifecycle capabilities. Freshness/staleness remains unimplemented on accepted main but is now the selected bounded capability for SLICE-0052; it must remain a separate state dimension and must not be inferred as SOLD/WITHDRAWN.
 
 SLICE-0050 concrete-yacht claims remain immutable revisions with explicit current head per `(PhysicalBoatId, claiming OrganizationId)`. The public listing uses only the publishing Organization's current claims. Omitted and explicit `UNKNOWN` are distinct; numeric values are lossless decimals; BoatDesign facts never backfill concrete-yacht claims.
 
@@ -201,7 +201,7 @@ criterion #2 -> mandatory explicit comparison with the 0051 bridge/path
 criterion #3+ -> no third structural copy without PASS abstraction guard
 ```
 
-This does not preselect a Search capability for SLICE-0052 and does not authorize speculative generic resolution infrastructure.
+SLICE-0052 does not add a technical Search criterion, so the criterion #2 comparison trigger is not activated by the selected freshness capability.
 
 Production-readiness rule:
 
@@ -216,10 +216,43 @@ The gate covers controlled deploy/rollback, DB recoverability/restore proof, obs
 
 The repository validator and `START_SLICE` enforce the deterministic trigger relationships; independent readiness review remains responsible for semantic truth.
 
+## Selected SLICE-0052 capability
+
+SLICE-0052 is the first production NativeListing freshness/reconfirmation vertical for manual/operator-assisted professional listings.
+
+Controlling readiness/specification:
+
+```text
+docs/slices/SLICE-0052-native-listing-freshness-reconfirmation.md
+specs/NATIVE_LISTING_FRESHNESS_CONTRACT.v0.1.md
+specs/NATIVE_LISTING_FRESHNESS_REQUIREMENTS.v0.1.md
+```
+
+The selected policy is bounded to:
+
+```text
+MANUAL_NATIVE_V1
+confirmation TTL = 30 days
+grace period = 7 days
+
+ACTIVE + CONFIRMED/DUE_FOR_CONFIRMATION
+-> may remain on current buyer listing/Search surfaces
+
+ACTIVE + STALE/UNKNOWN
+-> suppressed from current buyer surfaces
+-> lifecycle remains ACTIVE
+-> never inferred SOLD/WITHDRAWN
+```
+
+A successful DRAFT→ACTIVE publication transition is the initial confirmation evidence. Later explicit reconfirmation is an authorized immutable audit event. The slice does not add Auth0, a scheduler, alerts, feed-driven freshness, republish/SOLD/ARCHIVED, media or another technical Search criterion.
+
+Selection/readiness does not mean implementation is complete or started. Implementation begins only through the normal `START_SLICE.bat` workflow after readiness review/merge.
+
 ## What is not built yet
 
 Important remaining marketplace/product capabilities include:
 
+- the selected SLICE-0052 NativeListing freshness/reconfirmation implementation until that slice is owner-accepted and closed;
 - authenticated Auth0-backed broker workspace/form;
 - persisted marketplace actor directory beyond accepted runtime eligibility types;
 - PhysicalBoat marketplace fact coverage beyond the seven accepted SLICE-0050 fields, including broader field-specific verification/resolution;
@@ -227,13 +260,13 @@ Important remaining marketplace/product capabilities include:
 - broader multi-criterion native-inventory Search and any ranking/recommendation layer beyond the bounded deterministic 0051 result surface;
 - Saved Search persistence, monitoring/alerts and price-history intelligence;
 - lead/contact workflow;
-- republish, SOLD/ARCHIVED and freshness/staleness lifecycle behavior;
+- republish and SOLD/ARCHIVED lifecycle behavior;
 - independent verification of broker claims;
 - broad/global canonical-field resolution/backfill;
 - production deployment/operations capabilities required to make the Production Readiness Gate PASS;
 - full listing/Search SEO indexation, faceted landing-page taxonomy, sitemap/hreflang expansion and broad structured-data strategy beyond the accepted noindex page classes.
 
-These are not silently queued. The post-0051 reassessment must select the next capability by product leverage and repository reconciliation.
+Except for the selected 0052 freshness capability, these are not silently queued. Future slices must still be selected by post-slice reassessment, product leverage and repository reconciliation.
 
 ## Search and SEO boundary
 
@@ -281,11 +314,15 @@ Estimated remaining slice distance to the first externally visible listing:
 0
 ```
 
-**SLICE-0052 still has no selected capability.** After this maintenance/reconciliation change is accepted and merged, the next action is the post-SLICE-0051 product/architecture reassessment against canonical `origin/main`, using both `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md` and the post-0051 trigger gates.
+Selected next capability:
 
-That reassessment must select the smallest highest-leverage continuation of the buyer/broker loop rather than automatically broadening Search or inserting a foundation-only slice.
+```text
+SLICE-0052
+= NativeListing freshness / reconfirmation
+= current-inventory trust boundary before broader Search/monitoring
+```
 
-No SLICE-0052 implementation may start until capability selection, readiness, independent readiness review and readiness merge are complete and the Project Owner runs `START_SLICE.bat`.
+No SLICE-0052 implementation may start until this readiness package has passed independent readiness review and merged to canonical `main`, after which the Project Owner must run `START_SLICE.bat` for 0052. `START_SLICE.bat` remains the sole initial Claude implementation prompt.
 
 ## Development workflow
 
