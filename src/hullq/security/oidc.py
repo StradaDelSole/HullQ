@@ -27,6 +27,7 @@ from jwt.algorithms import RSAAlgorithm
 from hullq.domain.broker_access import AuthenticatedIdentity, Provider
 
 __all__ = [
+    "AUTH0_MFA_STEP_UP_ACR_VALUE",
     "AUTH_ALLOWED_ALGORITHMS",
     "AuthProviderConfig",
     "AuthProviderConfigError",
@@ -43,6 +44,38 @@ __all__ = [
 #: algorithm passed to `jwt.decode` is always exactly this fixed allowlist,
 #: never derived from the untrusted token header.
 AUTH_ALLOWED_ALGORITHMS = ("RS256",)
+
+#: The standard OIDC/PAPE ACR value ("multi-factor") HullQ requests as
+#: `acr_values` on the `/authorize` step-up redirect (contract §10;
+#: independent review 2026-09-14, exact-head a7fee1a0). This replaces an
+#: earlier test-only `acr_values=mfa` shorthand with Auth0's own documented
+#: step-up request value -- see
+#: https://auth0.com/docs/secure/multi-factor-authentication/step-up-authentication
+#: -- so the production request FastAPI/Astro send is exactly what a real
+#: Auth0 tenant expects, not a value invented for this repository.
+#:
+#: Requesting this ACR value has no effect by itself: Auth0 does not
+#: interpret `acr_values` as a built-in MFA trigger. The Auth0 tenant must
+#: be configured with a Post-Login Action (Auth0 Actions, "Login / Post
+#: Login" flow) that:
+#:
+#:   1. inspects the incoming authentication request's requested ACR (e.g.
+#:      `event.transaction.acr_values` / `event.request.query.acr_values`,
+#:      exact API per the deployed Auth0 Actions runtime version);
+#:   2. when it contains this exact value, calls
+#:      `api.authentication.challengeWithAny(event.user.enrolledFactors)`
+#:      (or `enrollWithAny(...)` when the user has no enrolled factor yet)
+#:      to force an MFA challenge for that login;
+#:   3. lets Auth0 record the satisfied factor in the issued ID token's
+#:      standard `amr` claim (e.g. `"mfa"`) once the challenge succeeds.
+#:
+#: HullQ never reads Auth0 roles/Organizations/app_metadata to decide MFA;
+#: it reads only the signed ID token's `amr` claim (`validate_id_token`
+#: below) -- exactly the same validated-authentication-strength evidence
+#: this module already required before this change. The ACR value only
+#: ever selects *which* Auth0-side Action logic runs; it never becomes
+#: HullQ authorization truth itself.
+AUTH0_MFA_STEP_UP_ACR_VALUE = "http://schemas.openid.net/pape/policies/2007/06/multi-factor"
 
 _ISSUER_ENV = "HULLQ_AUTH_ISSUER"
 _AUTHORIZE_URL_ENV = "HULLQ_AUTH_AUTHORIZE_URL"

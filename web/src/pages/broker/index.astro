@@ -18,6 +18,11 @@ const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
 const cookieHeader = Astro.request.headers.get("cookie");
 
 Astro.response.headers.set("X-Robots-Tag", "noindex");
+// This page renders Account/Organization context for exactly one
+// signed-in Account: never reusable by a browser/shared cache across
+// Accounts or after logout (independent review 2026-09-14, exact-head
+// a7fee1a0).
+Astro.response.headers.set("Cache-Control", "private, no-store");
 
 const result = await fetchBrokerContext(apiBaseUrl, cookieHeader);
 const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent("/broker")}`;

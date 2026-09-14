@@ -70,11 +70,35 @@ from hullq.security.session_token import (
 __all__ = ["create_app"]
 
 #: SLICE-0053: HullQ-owned browser cookies. Neither is ever readable by
-#: ordinary browser JavaScript (`HttpOnly`); the login-state cookie is
-#: scoped to the auth path prefix only, the session cookie to the whole
-#: origin (contract §6/§11/§12).
-_SESSION_COOKIE_NAME = "hullq_session"
-_LOGIN_STATE_COOKIE_NAME = "hullq_login_state"
+#: ordinary browser JavaScript (`HttpOnly`), both are scoped `Path=/` and
+#: never carry a `Domain` attribute (contract §6/§11/§12).
+#:
+#: Independent review (2026-09-14, exact-head a7fee1a0): a host-only cookie
+#: alone is not sufficient defense. A compromised/hostile sibling subdomain
+#: sharing HullQ's parent domain (e.g. a subdomain takeover) can still set a
+#: `Set-Cookie: hullq_session=...; Domain=<parent-domain>` cookie that this
+#: app -- like any other host under that parent -- would receive and, absent
+#: further defense, accept ("cookie tossing" / session fixation). Two
+#: independent defenses close this:
+#:
+#: 1. `__Host-`-prefixed cookie names in production (`_cookie_name` below):
+#:    per RFC 6265bis, a browser refuses to store a `__Host-`-prefixed
+#:    cookie at all unless it is `Secure`, has no `Domain` attribute and has
+#:    `Path=/` -- exactly the three properties always set below. A sibling
+#:    subdomain cannot set a `Domain=<parent>` cookie under this prefix: the
+#:    browser rejects it outright, so it can never reach this app's request
+#:    handlers. (Requires a real Secure/HTTPS context; the deterministic
+#:    local/CI HTTP proof cannot use it and falls back to the unprefixed
+#:    name via `HULLQ_SESSION_COOKIE_SECURE=false` -- see `_cookie_secure`.)
+#: 2. the login-state cookie's payload is HMAC-signed
+#:    (`hullq.application.broker_login`), not merely opaque: even if a
+#:    tossed/forged cookie somehow reached the callback, it would still
+#:    fail signature verification and be treated as
+#:    `STATE_MISSING_OR_MISMATCH` -- defense in depth independent of the
+#:    cookie-prefix protection above.
+_SESSION_COOKIE_BASE_NAME = "hullq_session"
+_LOGIN_STATE_COOKIE_BASE_NAME = "hullq_login_state"
+_HOST_COOKIE_PREFIX = "__Host-"
 _LOGIN_STATE_COOKIE_MAX_AGE_SECONDS = 600
 _AUTH_REDIRECT_URI_ENV = "HULLQ_AUTH_REDIRECT_URI"
 _WEB_BASE_URL_ENV = "HULLQ_WEB_BASE_URL"
@@ -222,8 +246,17 @@ def create_app(
         raw = os.environ.get(_SESSION_COOKIE_SECURE_ENV, "true").strip().lower()
         return raw not in {"false", "0", "no"}
 
+    def _cookie_name(base_name: str) -> str:
+        return f"{_HOST_COOKIE_PREFIX}{base_name}" if _cookie_secure() else base_name
+
+    def _session_cookie_name() -> str:
+        return _cookie_name(_SESSION_COOKIE_BASE_NAME)
+
+    def _login_state_cookie_name() -> str:
+        return _cookie_name(_LOGIN_STATE_COOKIE_BASE_NAME)
+
     def _require_session(request: Request) -> SessionClaims | None:
-        raw = request.cookies.get(_SESSION_COOKIE_NAME)
+        raw = request.cookies.get(_session_cookie_name())
         if not raw:
             return None
         try:
@@ -358,20 +391,25 @@ def create_app(
     def broker_login(request: Request) -> Response:
         auth_config = _resolve_auth_config()
         redirect_uri = _resolve_redirect_uri()
+        session_secret = _resolve_session_secret()
         next_path = request.query_params.get("next")
         extra_params = {key: value for key, value in request.query_params.items() if key != "next"}
         login_redirect = build_login_redirect(
-            auth_config, redirect_uri=redirect_uri, next_path=next_path, extra_params=extra_params
+            auth_config,
+            redirect_uri=redirect_uri,
+            next_path=next_path,
+            extra_params=extra_params,
+            secret=session_secret,
         )
         response = RedirectResponse(url=login_redirect.authorize_url, status_code=302)
         response.set_cookie(
-            _LOGIN_STATE_COOKIE_NAME,
+            _login_state_cookie_name(),
             login_redirect.state_cookie_value,
             max_age=_LOGIN_STATE_COOKIE_MAX_AGE_SECONDS,
             httponly=True,
             samesite="lax",
             secure=_cookie_secure(),
-            path="/api/auth",
+            path="/",
         )
         return response
 
@@ -382,7 +420,7 @@ def create_app(
         session_secret = _resolve_session_secret()
         code = request.query_params.get("code")
         query_state = request.query_params.get("state")
-        state_cookie_value = request.cookies.get(_LOGIN_STATE_COOKIE_NAME)
+        state_cookie_value = request.cookies.get(_login_state_cookie_name())
 
         conn = open_connection(resolved_database_url)
         try:
@@ -402,7 +440,9 @@ def create_app(
 
         if result.outcome is not CallbackOutcome.SUCCEEDED:
             failure_response = JSONResponse({"error": "authentication_failed"}, status_code=400)
-            failure_response.delete_cookie(_LOGIN_STATE_COOKIE_NAME, path="/api/auth")
+            failure_response.delete_cookie(
+                _login_state_cookie_name(), path="/", secure=_cookie_secure(), samesite="lax"
+            )
             return failure_response
 
         assert result.session_token is not None
@@ -414,9 +454,11 @@ def create_app(
             else result.next_path
         )
         response = RedirectResponse(url=target, status_code=302)
-        response.delete_cookie(_LOGIN_STATE_COOKIE_NAME, path="/api/auth")
+        response.delete_cookie(
+            _login_state_cookie_name(), path="/", secure=_cookie_secure(), samesite="lax"
+        )
         response.set_cookie(
-            _SESSION_COOKIE_NAME,
+            _session_cookie_name(),
             result.session_token.token,
             max_age=max(
                 1, int((result.session_token.expires_at - datetime.now(UTC)).total_seconds())
@@ -431,7 +473,9 @@ def create_app(
     @app.post("/api/auth/logout")
     def broker_logout() -> JSONResponse:
         response = JSONResponse({"status": "logged_out"})
-        response.delete_cookie(_SESSION_COOKIE_NAME, path="/")
+        response.delete_cookie(
+            _session_cookie_name(), path="/", secure=_cookie_secure(), samesite="lax"
+        )
         return response
 
     @app.get("/api/broker/context")

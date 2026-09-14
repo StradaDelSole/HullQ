@@ -15,12 +15,18 @@
 export const prerender = false;
 
 import { fetchOrganizationContext } from "../../../lib/brokerApi";
+import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../lib/authConstants";
 
 const organizationId = Astro.params.organization_id;
 const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
 const cookieHeader = Astro.request.headers.get("cookie");
 
 Astro.response.headers.set("X-Robots-Tag", "noindex");
+// This page renders Account/Organization/role context for exactly one
+// signed-in Account: never reusable by a browser/shared cache across
+// Accounts or after logout (independent review 2026-09-14, exact-head
+// a7fee1a0).
+Astro.response.headers.set("Cache-Control", "private, no-store");
 
 const result = organizationId
   ? await fetchOrganizationContext(apiBaseUrl, organizationId, cookieHeader)
@@ -34,12 +40,10 @@ if (result.kind === "not_found") {
 
 const nextPath = `/broker/organizations/${organizationId ?? ""}`;
 const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(nextPath)}`;
-// `acr_values=mfa` is a standard, harmless-if-ignored OIDC request
-// parameter forwarded verbatim by FastAPI's login endpoint (never given
-// HullQ-specific meaning there); it is the local deterministic test
-// issuer's step-up signal in tests/CI, and Auth0's configured step-up rule
-// in production.
-const stepUpUrl = `${loginUrl}&acr_values=mfa`;
+// The Auth0-documented step-up ACR value (see authConstants.ts), forwarded
+// verbatim by FastAPI's login endpoint without HullQ-specific meaning
+// there; the local deterministic test issuer exercises this exact value.
+const stepUpUrl = `${loginUrl}&acr_values=${encodeURIComponent(AUTH0_MFA_STEP_UP_ACR_VALUE)}`;
 ---
 
 <html lang="en">

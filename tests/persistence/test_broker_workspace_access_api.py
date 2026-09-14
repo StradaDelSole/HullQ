@@ -20,6 +20,8 @@ fast, coverage-counted in-process equivalent of the FastAPI-side vertical.
 
 from __future__ import annotations
 
+import base64
+import json
 import os
 import secrets
 import uuid
@@ -49,7 +51,7 @@ from hullq.persistence.broker_identity import (
     seed_marketplace_organization,
     seed_organization_membership,
 )
-from hullq.security.oidc import AuthProviderConfig, JwksCache
+from hullq.security.oidc import AUTH0_MFA_STEP_UP_ACR_VALUE, AuthProviderConfig, JwksCache
 from hullq.testing.oidc_test_issuer import create_test_issuer_app
 
 _ISSUER_BASE = "http://issuer.test/"
@@ -125,15 +127,8 @@ class _BrowserClient:
         return self.main.cookies
 
 
-@pytest.fixture()
-def client(api_url: str, monkeypatch: pytest.MonkeyPatch) -> Generator[_BrowserClient]:
+def _build_client(api_url: str, *, session_signing_secret: bytes | None = None) -> _BrowserClient:
     from hullq.api.app import create_app
-
-    # This fixture drives the app over plain HTTP (no TLS); a `Secure`
-    # cookie would never be attached to a plain-HTTP request by a real
-    # browser (or by httpx's own cookie jar, which enforces the same RFC
-    # 6265 rule) -- production always leaves this unset/true.
-    monkeypatch.setenv("HULLQ_SESSION_COOKIE_SECURE", "false")
 
     client_secret = secrets.token_urlsafe(24)
     redirect_uri = f"{_API_BASE}/api/auth/callback"
@@ -163,19 +158,55 @@ def client(api_url: str, monkeypatch: pytest.MonkeyPatch) -> Generator[_BrowserC
         database_url=api_url,
         preview_signing_secret=os.urandom(32),
         auth_provider_config=config,
-        session_signing_secret=os.urandom(32),
+        session_signing_secret=session_signing_secret or os.urandom(32),
         auth_redirect_uri=redirect_uri,
         web_base_url=None,
         auth_http_client=issuer_client,
         auth_jwks_cache=jwks_cache,
     )
     main_client = TestClient(app, base_url=_API_BASE, follow_redirects=False)
+    return _BrowserClient(main=main_client, issuer=issuer_client)
 
+
+@pytest.fixture()
+def client(api_url: str, monkeypatch: pytest.MonkeyPatch) -> Generator[_BrowserClient]:
+    # This fixture drives the app over plain HTTP (no TLS); a `Secure`
+    # cookie would never be attached to a plain-HTTP request by a real
+    # browser (or by httpx's own cookie jar, which enforces the same RFC
+    # 6265 rule) -- production always leaves this unset/true. See
+    # `secure_client` below for the production-default cookie-hardening
+    # path (independent review 2026-09-14, exact-head a7fee1a0).
+    monkeypatch.setenv("HULLQ_SESSION_COOKIE_SECURE", "false")
+    browser = _build_client(api_url)
     try:
-        yield _BrowserClient(main=main_client, issuer=issuer_client)
+        yield browser
     finally:
-        main_client.close()
-        issuer_client.close()
+        browser.main.close()
+        browser.issuer.close()
+
+
+@pytest.fixture()
+def secure_client(
+    api_url: str, monkeypatch: pytest.MonkeyPatch
+) -> Generator[tuple[_BrowserClient, bytes]]:
+    """Production-default cookie config: `HULLQ_SESSION_COOKIE_SECURE` unset,
+    so `hullq.api.app` emits `__Host-`-prefixed, `Secure`, `Path=/` cookies.
+
+    Only used to assert the raw `Set-Cookie` header *shape* FastAPI emits
+    (contract §G / independent review 2026-09-14, exact-head a7fee1a0);
+    `httpx`'s own cookie jar correctly refuses to store/resend a `Secure`
+    cookie against a plain `http://` test URL, so tests using this fixture
+    read `response.headers["set-cookie"]` directly rather than relying on
+    the jar to carry the cookie across further requests.
+    """
+    monkeypatch.delenv("HULLQ_SESSION_COOKIE_SECURE", raising=False)
+    secret = os.urandom(32)
+    browser = _build_client(api_url, session_signing_secret=secret)
+    try:
+        yield browser, secret
+    finally:
+        browser.main.close()
+        browser.issuer.close()
 
 
 def _login(
@@ -266,7 +297,7 @@ class TestBrokerWorkspaceAccessVertical:
             client,
             login_hint="int-subject-mfa",
             next_path=f"/broker/organizations/{_ORG_A}",
-            acr_values="mfa",
+            acr_values=AUTH0_MFA_STEP_UP_ACR_VALUE,
         )
 
         authorized = client.get(f"/api/broker/organizations/{_ORG_A}")
@@ -345,3 +376,135 @@ class TestBrokerWorkspaceAccessVertical:
         client.cookies.set("hullq_session", "tampered-garbage-value", domain="api.test")
         response = client.get("/api/broker/context")
         assert response.status_code == 401
+
+    def test_old_mfa_shorthand_no_longer_triggers_step_up(
+        self, client: httpx.Client, api_url: str
+    ) -> None:
+        """Regression guard (independent review 2026-09-14, exact-head
+        a7fee1a0): the retired test-only `acr_values=mfa` shorthand must
+        never again silently satisfy MFA. Only
+        `AUTH0_MFA_STEP_UP_ACR_VALUE` does."""
+        _login(client, login_hint="int-subject-old-shorthand")
+        account_id = client.get("/api/broker/context").json()["account_id"]
+
+        conn = psycopg.connect(api_url)
+        try:
+            seed_marketplace_organization(
+                conn,
+                MarketplaceOrganization(
+                    id=MarketplaceOrganizationId("ORG-INT-OLD-SHORTHAND"),
+                    professional_category=ProfessionalCategory.BROKER,
+                    publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+                ),
+            )
+            seed_organization_membership(
+                conn,
+                OrganizationMembership(
+                    id=OrganizationMembershipId("OM-INT-OLD-SHORTHAND"),
+                    account_id=AccountId(account_id),
+                    organization_id=MarketplaceOrganizationId("ORG-INT-OLD-SHORTHAND"),
+                    roles=frozenset({MembershipRole.OWNER}),
+                    state=MembershipState.ACTIVE,
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        # Re-authenticate using the retired literal shorthand instead of
+        # the real Auth0 ACR value.
+        _login(
+            client,
+            login_hint="int-subject-old-shorthand",
+            next_path="/broker/organizations/ORG-INT-OLD-SHORTHAND",
+            acr_values="mfa",
+        )
+        response = client.get("/api/broker/organizations/ORG-INT-OLD-SHORTHAND")
+        assert response.status_code == 403
+        assert response.json() == {"error": "mfa_required"}
+
+    def test_forged_login_state_cookie_with_correct_state_is_rejected(
+        self, client: httpx.Client
+    ) -> None:
+        """Sibling-subdomain cookie-injection defense (independent review
+        2026-09-14, exact-head a7fee1a0): a login-state cookie carrying the
+        CORRECT `state` but no valid HMAC signature -- exactly what a
+        hostile sibling subdomain could set via a `Domain=<parent>` cookie,
+        never a value this server actually signed -- must be rejected even
+        though the `state` field matches the real callback query string."""
+        login_response = client.get(
+            "/api/auth/login", params={"next": "/broker", "login_hint": "int-subject-forge"}
+        )
+        authorize_response = client.get(login_response.headers["location"])
+        real_callback_url = authorize_response.headers["location"]
+        real_state = real_callback_url.split("state=")[1].split("&")[0]
+
+        forged_payload = (
+            base64.urlsafe_b64encode(
+                json.dumps(
+                    {"state": real_state, "nonce": "attacker-nonce", "next": "/broker"}
+                ).encode("utf-8")
+            )
+            .rstrip(b"=")
+            .decode("ascii")
+        )
+        forged_signature = (
+            base64.urlsafe_b64encode(b"not-a-valid-signature").rstrip(b"=").decode("ascii")
+        )
+        client.cookies.set(
+            "hullq_login_state", f"{forged_payload}.{forged_signature}", domain="api.test"
+        )
+
+        response = client.get(real_callback_url)
+        assert response.status_code == 400
+
+
+class TestProductionCookieHardening:
+    def test_login_state_and_session_cookies_are_host_prefixed_and_hardened(
+        self, secure_client: tuple[_BrowserClient, bytes]
+    ) -> None:
+        """Independent review 2026-09-14, exact-head a7fee1a0: in the
+        production default (Secure cookies), FastAPI must emit `__Host-`-
+        prefixed, `Secure`, `Path=/`, `HttpOnly` cookies with no `Domain`
+        attribute -- the exact properties a real browser requires to accept
+        a `__Host-`-prefixed cookie at all, which is what actually stops a
+        sibling subdomain from injecting one."""
+        client, _secret = secure_client
+
+        login_response = client.get(
+            "/api/auth/login", params={"next": "/broker", "login_hint": "int-subject-secure"}
+        )
+        assert login_response.status_code == 302
+        login_state_set_cookie = login_response.headers.get("set-cookie", "")
+        assert login_state_set_cookie.startswith("__Host-hullq_login_state=")
+        assert "Secure" in login_state_set_cookie
+        assert "HttpOnly" in login_state_set_cookie
+        assert "Path=/" in login_state_set_cookie
+        assert "Domain=" not in login_state_set_cookie
+
+        authorize_response = client.get(login_response.headers["location"])
+        callback_url = authorize_response.headers["location"]
+        # httpx's jar correctly withholds the Secure login-state cookie
+        # from this plain-http:// test request, exactly like a real
+        # browser would -- so it must be forwarded explicitly here.
+        callback_response = client.main.get(
+            callback_url,
+            headers={"Cookie": login_state_set_cookie.split(";", 1)[0]},
+        )
+        assert callback_response.status_code == 302
+        # The callback response carries two Set-Cookie headers (deleting
+        # the login-state cookie and setting the session cookie); pick the
+        # session one out explicitly rather than assuming header order.
+        session_set_cookie = next(
+            (
+                header
+                for header in callback_response.headers.get_list("set-cookie")
+                if header.startswith("__Host-hullq_session=")
+            ),
+            "",
+        )
+        assert session_set_cookie, "expected a __Host-hullq_session Set-Cookie header"
+        assert "Secure" in session_set_cookie
+        assert "HttpOnly" in session_set_cookie
+        assert "Path=/" in session_set_cookie
+        assert "Domain=" not in session_set_cookie

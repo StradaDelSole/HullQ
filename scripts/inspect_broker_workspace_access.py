@@ -22,8 +22,13 @@ Per `specs/BROKER_WORKSPACE_ACCESS_CONTRACT.v0.1.md` §14, demonstrates:
     9. logout/session invalidation removes workspace access
 
 Plus: unauthenticated denial, state-mismatch/tampered-code rejection at the
-callback, `HttpOnly` session cookie, and identical non-enumerating 404
-bodies for an unauthorized-but-existing vs. a never-created Organization.
+callback, identical non-enumerating 404 bodies for an unauthorized-but-
+existing vs. a never-created Organization, the production `__Host-`/
+`Secure`/`Path=/`/`HttpOnly`/no-`Domain` cookie hardening, rejection of a
+forged/tossed login-state cookie (correct `state` field, invalid
+signature -- the sibling-subdomain cookie-injection scenario from the
+2026-09-14 independent review), the Auth0-documented step-up ACR value,
+and `Cache-Control: private, no-store` on both protected Astro pages.
 
 Requires ``HULLQ_TEST_DATABASE_URL`` and a pre-built Astro web package
 (``cd web && npm ci && npm run build``).
@@ -49,7 +54,7 @@ import urllib.request
 import uuid
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote, urlsplit, urlunsplit
+from urllib.parse import parse_qs, quote, urlsplit, urlunsplit
 
 import psycopg
 
@@ -72,6 +77,7 @@ from hullq.persistence.broker_identity import (
     seed_organization_membership,
     update_membership_state,
 )
+from hullq.security.oidc import AUTH0_MFA_STEP_UP_ACR_VALUE
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WEB_DIR = REPO_ROOT / "web"
@@ -139,6 +145,39 @@ def _wait_for_http(url: str, *, timeout_seconds: float = 15.0) -> bool:
 
 def _b64url(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).decode("ascii")
+
+
+def _b64url_nopad(data: bytes) -> str:
+    """Matches `hullq.application.broker_login`'s unpadded cookie-value encoding."""
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+
+#: This proof runs with the real production cookie-hardening default
+#: (`HULLQ_SESSION_COOKIE_SECURE` unset -> Secure/`__Host-`-prefixed): see
+#: independent review 2026-09-14, exact-head a7fee1a0. `BrowserSession`
+#: below is a hand-rolled client, not a real browser -- it does not itself
+#: enforce Secure/`__Host-` acceptance rules, so it can complete a full
+#: round trip over plain HTTP for the proof while this script separately
+#: asserts the emitted `Set-Cookie` headers carry the exact attributes a
+#: real browser requires to accept a `__Host-`-prefixed cookie at all.
+_SESSION_COOKIE_PROD_NAME = "__Host-hullq_session"
+_LOGIN_STATE_COOKIE_PROD_NAME = "__Host-hullq_login_state"
+
+
+def _cookie_set_header(session: BrowserSession, base_name: str) -> str:
+    return next((h for h in session.last_set_cookie_headers if f"{base_name}=" in h), "")
+
+
+def _is_hardened_cookie_header(header: str, *, prod_name: str) -> bool:
+    """True iff *header* satisfies every attribute a browser requires to
+    accept a `__Host-`-prefixed cookie (RFC 6265bis): that exact name,
+    `Secure`, `Path=/`, and no `Domain` attribute at all."""
+    return (
+        header.startswith(f"{prod_name}=")
+        and "Secure" in header
+        and "Path=/" in header
+        and "Domain=" not in header
+    )
 
 
 class _NoRedirect(urllib.request.HTTPErrorProcessor):
@@ -283,7 +322,12 @@ def main() -> int:
         api_env["HULLQ_AUTH_CLIENT_SECRET"] = client_secret
         api_env["HULLQ_AUTH_REDIRECT_URI"] = redirect_uri
         api_env["HULLQ_WEB_BASE_URL"] = web_base
-        api_env["HULLQ_SESSION_COOKIE_SECURE"] = "false"
+        # Deliberately NOT set: the real production default
+        # (HULLQ_SESSION_COOKIE_SECURE unset -> Secure/__Host--prefixed
+        # cookies) is exercised end-to-end below, not the local-HTTP
+        # opt-out. Pop any stale value the parent shell/session happens to
+        # have exported so this proof is deterministic regardless.
+        api_env.pop("HULLQ_SESSION_COOKIE_SECURE", None)
 
         api_log_path = log_dir / "api.log"
         with api_log_path.open("wb") as api_log:
@@ -332,28 +376,53 @@ def main() -> int:
             print("AUTHENTICATED BROKER WORKSPACE ACCESS RESULT -> FAIL")
             return 1
 
-        # 4. unauthenticated /broker: no broker data, login path only.
+        # 4. unauthenticated /broker: no broker data, login path only, never cacheable.
         session = BrowserSession()
-        status, _, body = session.get(f"{web_base}/broker")
+        status, headers, body = session.get(f"{web_base}/broker")
         page_text = body.decode("utf-8")
-        step4_ok = status == 200 and "log in" in page_text and _ORG_A_ID not in page_text
+        step4_ok = (
+            status == 200
+            and "log in" in page_text
+            and _ORG_A_ID not in page_text
+            and headers.get("Cache-Control") == "private, no-store"
+        )
         ok &= step4_ok
         print(
-            f"4. unauthenticated /broker -> login path, no broker data -> {'OK' if step4_ok else 'FAIL'}"
+            f"4. unauthenticated /broker -> login path, no broker data, "
+            f"Cache-Control: private, no-store -> {'OK' if step4_ok else 'FAIL'}"
         )
 
-        # 5. first login creates one stable HullQ Account mapping.
+        # 5. first login creates one stable HullQ Account mapping, and sets
+        # __Host-/Secure/Path=/-hardened, HttpOnly cookies for both the
+        # login-state and session cookies (independent review 2026-09-14,
+        # exact-head a7fee1a0: defense against sibling-subdomain cookie
+        # tossing/session fixation).
         login_url = f"{api_base}/api/auth/login?next=/broker&login_hint={_SUBJECT}"
-        status, headers, body = session.follow_full_login(login_url)
-        first_login_ok = status == 302 and headers.get("Location") == f"{web_base}/broker"
-        session_cookie_header = next(
-            (h for h in session.last_set_cookie_headers if h.startswith("hullq_session=")), ""
+        status, headers, _ = session.get(login_url)
+        login_state_header = _cookie_set_header(session, _LOGIN_STATE_COOKIE_PROD_NAME)
+        login_state_hardened = "HttpOnly" in login_state_header and _is_hardened_cookie_header(
+            login_state_header, prod_name=_LOGIN_STATE_COOKIE_PROD_NAME
         )
-        session_cookie_httponly = "HttpOnly" in session_cookie_header
-        ok &= first_login_ok and session_cookie_httponly
+        assert status == 302, f"expected 302 from /api/auth/login, got {status}"
+        authorize_url = headers["Location"]
+        status, headers, body = session.get(authorize_url)
+        assert status == 302, f"expected 302 from issuer /authorize, got {status}: {body!r}"
+        callback_url = headers["Location"]
+        status, headers, body = session.get(callback_url)
+
+        first_login_ok = status == 302 and headers.get("Location") == f"{web_base}/broker"
+        session_cookie_header = _cookie_set_header(session, _SESSION_COOKIE_PROD_NAME)
+        session_cookie_hardened = (
+            "HttpOnly" in session_cookie_header
+            and _is_hardened_cookie_header(
+                session_cookie_header, prod_name=_SESSION_COOKIE_PROD_NAME
+            )
+        )
+        ok &= first_login_ok and session_cookie_hardened and login_state_hardened
         print(
-            f"5. first login redirects to /broker with an HttpOnly session cookie -> "
-            f"{'OK' if (first_login_ok and session_cookie_httponly) else 'FAIL'}"
+            f"5. first login sets __Host-/Secure/Path=/-hardened, HttpOnly login-state + "
+            f"session cookies and redirects to /broker -> "
+            f"{'OK' if (first_login_ok and session_cookie_hardened and login_state_hardened) else 'FAIL'}"
         )
 
         status, _, body = session.get(f"{api_base}/api/broker/context")
@@ -364,6 +433,38 @@ def main() -> int:
         print(
             f"   fresh Account has zero Organization access (no membership yet) -> "
             f"{'OK' if step5b_ok else 'FAIL'}\n"
+        )
+
+        # Sibling-subdomain cookie-injection defense: a forged login-state
+        # cookie carrying the CORRECT `state` (matching the real callback's
+        # query string) but no valid HMAC signature -- exactly what a
+        # hostile sibling subdomain could set via `Domain=<parent>` cookie
+        # tossing, never a value this server actually signed -- must still
+        # be rejected. This is independent of, and a second layer behind,
+        # the __Host- cookie-prefix defense verified above.
+        forged_session = BrowserSession()
+        status, headers, _ = forged_session.get(login_url)
+        authorize_url = headers["Location"]
+        status, headers, _ = forged_session.get(authorize_url)
+        real_callback_url = headers["Location"]
+        real_state = parse_qs(urlsplit(real_callback_url).query)["state"][0]
+        forged_payload = _b64url_nopad(
+            json.dumps(
+                {"state": real_state, "nonce": "attacker-controlled-nonce", "next": "/broker"}
+            ).encode("utf-8")
+        )
+        forged_login_state_cookie = f"{forged_payload}.{_b64url_nopad(b'not-a-valid-signature-x')}"
+        forged_cookie_key = next(
+            (k for k in forged_session.cookies if "hullq_login_state" in k), None
+        )
+        assert forged_cookie_key is not None, "expected a login-state cookie to forge"
+        forged_session.cookies[forged_cookie_key] = forged_login_state_cookie
+        status, _, body = forged_session.get(real_callback_url)
+        cookie_forgery_rejected_ok = status == 400
+        ok &= cookie_forgery_rejected_ok
+        print(
+            f"   forged/tossed login-state cookie (correct state, invalid signature) "
+            f"rejected -> {'OK' if cookie_forgery_rejected_ok else 'FAIL'}\n"
         )
 
         # 3 (contract numbering). no-membership identity cannot enter an
@@ -462,7 +563,13 @@ def main() -> int:
         )
 
         # 7 (contract). step-up MFA reaches the protected workspace, via Astro.
-        stepup_login_url = f"{api_base}/api/auth/login?next=/broker/organizations/{_ORG_A_ID}&login_hint={_SUBJECT}&acr_values=mfa"
+        # Uses the Auth0-documented step-up ACR value, not a test-only
+        # shorthand (independent review 2026-09-14, exact-head a7fee1a0):
+        # the deterministic issuer exercises this exact value too.
+        stepup_login_url = (
+            f"{api_base}/api/auth/login?next=/broker/organizations/{_ORG_A_ID}"
+            f"&login_hint={_SUBJECT}&acr_values={quote(AUTH0_MFA_STEP_UP_ACR_VALUE, safe='')}"
+        )
         status, headers, body = session.follow_full_login(stepup_login_url)
         stepup_redirect_ok = (
             status == 302
@@ -470,17 +577,19 @@ def main() -> int:
         )
         ok &= stepup_redirect_ok
 
-        status, _, body = session.get(f"{web_base}/broker/organizations/{_ORG_A_ID}")
+        status, headers, body = session.get(f"{web_base}/broker/organizations/{_ORG_A_ID}")
         page_text = body.decode("utf-8")
         stepup_ok = (
             status == 200
             and _ORG_A_ID in page_text
             and "PUBLISHER" in page_text
             and "BROKER" in page_text
+            and headers.get("Cache-Control") == "private, no-store"
         )
         ok &= stepup_ok
         print(
-            f"11. MFA step-up + Astro workspace landing shows Organization/category/roles -> "
+            f"11. MFA step-up (Auth0 ACR value) + Astro workspace landing shows "
+            f"Organization/category/roles, Cache-Control: private, no-store -> "
             f"{'OK' if (stepup_redirect_ok and stepup_ok) else 'FAIL'}"
         )
 
@@ -552,7 +661,9 @@ def main() -> int:
         ) or any(
             "hullq_session=;" in h or "Max-Age=0" in h for h in session.last_set_cookie_headers
         )
-        session.cookies.pop("hullq_session", None)
+        session_cookie_key = next((k for k in session.cookies if "hullq_session" in k), None)
+        if session_cookie_key is not None:
+            session.cookies.pop(session_cookie_key, None)
         status, _, body = session.get(f"{api_base}/api/broker/context")
         post_logout_denied_ok = status == 401
         status, _, body = session.get(f"{web_base}/broker")

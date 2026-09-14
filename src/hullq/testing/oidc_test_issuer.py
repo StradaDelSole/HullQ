@@ -15,14 +15,21 @@ mechanics a real OIDC provider performs: an opaque one-time code, a real
 RSA keypair, real JWKS publication, and real client_id/client_secret/
 redirect_uri checks at the token endpoint.
 
-Test control knobs (never present on a real Auth0 tenant, and never
-interpreted by `hullq.security.oidc`, which only ever consumes the signed
-ID token): `/authorize`'s `login_hint` selects which synthetic `sub` is
-authenticated (default `_DEFAULT_SUBJECT`), and `acr_values=mfa` asserts
-`amr=["mfa"]` on the issued ID token; both parameters are standard,
-harmless-if-ignored OIDC request parameters that Auth0 also accepts (Auth0
-just uses them differently) -- FastAPI's login endpoint forwards them
-verbatim without giving them any HullQ-specific meaning.
+Test control knob: `/authorize`'s `login_hint` selects which synthetic
+`sub` is authenticated (default `_DEFAULT_SUBJECT`); this is a standard
+OIDC request parameter Auth0 also accepts, and FastAPI's login endpoint
+forwards it verbatim without giving it HullQ-specific meaning.
+
+For MFA step-up, this issuer exercises the *exact* Auth0-documented ACR
+value HullQ requests in production
+(`hullq.security.oidc.AUTH0_MFA_STEP_UP_ACR_VALUE`,
+`http://schemas.openid.net/pape/policies/2007/06/multi-factor`): when an
+`/authorize` request's `acr_values` contains that value, this issuer mints
+`amr=["mfa"]` on the ID token, standing in for a real Auth0 tenant's
+Post-Login Action step-up challenge (see that constant's docstring for the
+exact Action configuration a real tenant needs). This is not a test-only
+shorthand -- it is the same value/semantics the production Astro step-up
+link and FastAPI login endpoint actually send.
 """
 
 from __future__ import annotations
@@ -35,6 +42,8 @@ from urllib.parse import urlencode
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import JSONResponse, RedirectResponse
+
+from hullq.security.oidc import AUTH0_MFA_STEP_UP_ACR_VALUE
 
 __all__ = ["create_test_issuer_app"]
 
@@ -139,7 +148,7 @@ def create_test_issuer_app(
         pending[code] = _PendingAuthorization(
             subject=login_hint,
             nonce=nonce,
-            mfa="mfa" in acr_values.split(),
+            mfa=AUTH0_MFA_STEP_UP_ACR_VALUE in acr_values.split(),
             redirect_uri=req_redirect_uri,
             auth_time=int(time.time()),
         )

@@ -69,7 +69,7 @@ def complete_login_callback(
     http_client: Any | None = None,
     jwks_cache: JwksCache | None = None,
 ) -> CallbackResult:
-    login_state = decode_login_state_cookie(state_cookie_value)
+    login_state = decode_login_state_cookie(state_cookie_value, secret=session_signing_secret)
     if login_state is None or not query_state or query_state != login_state.state or not code:
         return CallbackResult(outcome=CallbackOutcome.STATE_MISSING_OR_MISMATCH)
 

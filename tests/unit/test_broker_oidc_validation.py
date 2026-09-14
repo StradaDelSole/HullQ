@@ -17,6 +17,7 @@ from jwt.algorithms import RSAAlgorithm
 
 from hullq.domain.broker_access import Provider
 from hullq.security.oidc import (
+    AUTH0_MFA_STEP_UP_ACR_VALUE,
     AuthProviderConfig,
     AuthProviderConfigError,
     InvalidAuthenticationError,
@@ -229,3 +230,14 @@ def test_jwk_roundtrip_sanity() -> None:
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     jwk_dict = RSAAlgorithm.to_jwk(private_key.public_key(), as_dict=True)
     assert "n" in jwk_dict and "e" in jwk_dict
+
+
+def test_mfa_step_up_acr_value_is_the_auth0_documented_pape_value() -> None:
+    # Regression guard (independent review 2026-09-14, exact-head
+    # a7fee1a0): must stay byte-identical to Auth0's own documented
+    # step-up ACR value, and to web/src/lib/authConstants.ts's copy --
+    # never silently drift back to a test-only shorthand.
+    assert (
+        AUTH0_MFA_STEP_UP_ACR_VALUE
+        == "http://schemas.openid.net/pape/policies/2007/06/multi-factor"
+    )
