@@ -44,7 +44,7 @@ specs/OWNER_DIRECT_LISTING_REQUIREMENTS.v0.1.md
 Selected first owner-direct implementation contract:
 
 ```text
-specs/OWNER_DIRECT_DRAFT_CONTRACT.v0.1.md
+specs/OWNER_DIRECT_LISTING_WORKSPACE_CONTRACT.v0.1.md
 docs/slices/SLICE-0054-authenticated-owner-direct-draft-workspace.md
 ```
 
@@ -451,7 +451,7 @@ Next queue number:
 SLICE-0054
 ```
 
-**Selected capability:** `Authenticated Owner-Direct Listing Draft Workspace`. Readiness is defined by `specs/OWNER_DIRECT_DRAFT_CONTRACT.v0.1.md` and `docs/slices/SLICE-0054-authenticated-owner-direct-draft-workspace.md`. The slice has **not** been started; implementation begins only through the normal `START_SLICE.bat` workflow after readiness review/merge and local sync.
+**Selected capability:** `Authenticated Owner-Direct Listing Draft Workspace`. Readiness is defined by `specs/OWNER_DIRECT_LISTING_WORKSPACE_CONTRACT.v0.1.md` and `docs/slices/SLICE-0054-authenticated-owner-direct-draft-workspace.md`. The slice has **not** been started; implementation begins only through the normal `START_SLICE.bat` workflow after readiness review/merge and local sync.
 
 ## Development workflow
 
