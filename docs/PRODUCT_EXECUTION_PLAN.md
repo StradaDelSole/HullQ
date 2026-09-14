@@ -1,9 +1,11 @@
 # HullQ Product Execution Plan
 
-**Status:** ACCEPTED execution policy  
+**Status:** ACCEPTED execution policy, amended by later marketplace decisions  
 **Applies from:** completion of SLICE-0038 onward  
 **Owner:** Project Owner  
 **Execution principle:** **Strict truth. Fast product. Test the business before building the business.**
+
+> **Current marketplace amendment (2026-09-14):** The early-plan language below predates the accepted native-marketplace implementation and the owner-direct pivot. HullQ is now a native **broker-first mixed-supply** marketplace. `docs/PRODUCT_EXECUTION_PLAN_OWNER_DIRECT_RECONCILIATION_2026-09-14.md`, `docs/OWNER_DIRECT_LISTING_PRODUCT_DIRECTION_2026-09-14.md` and `specs/OWNER_DIRECT_LISTING_REQUIREMENTS.v0.1.md` supersede any statement below that treats a native marketplace as merely possible later, limits private owners to referral-only supply, or treats independent owner-direct listings as out of scope. The execution discipline, truth principles and validation logic in this file remain controlling where non-conflicting.
 
 ## 1. Purpose
 
@@ -34,23 +36,25 @@ this specific offered boat is confirmed to fit
 
 `UNKNOWN` is a valid product result and must never be converted to a plausible guess merely to increase apparent coverage.
 
-The two equal business-validation risks are:
+The two equal business-validation risks originally framed by this plan remain useful:
 
 ```text
 A. Buyer Value Risk
 Does strict configuration/listing truth materially change buyer behavior?
 
-B. Market Access Risk
+B. Market Access / Supply Risk
 Can HullQ obtain enough current inventory on sustainable legal/economic terms?
 ```
 
-Gate 1 addresses A. Gate 2 addresses B. Neither substitutes for the other.
+Later owner-accepted marketplace decisions changed the supply strategy from external-access-first uncertainty to native broker-first marketplace supply and, on 2026-09-14, to broker-first mixed professional + owner-direct supply. That evolution does not relax buyer-value validation or strict truth.
 
-## 2. Locked immediate sequence
+## 2. Original validation sequence and retained principles
+
+The historical Phase A–J plan below is retained because its validation discipline still informs execution. Where a phase assumes that HullQ has no native marketplace yet, read that assumption as historical and defer to the later marketplace reconciliations.
 
 ### Phase A — SLICE-0038 core market proof
 
-Finish SLICE-0038 as currently bounded:
+Finish SLICE-0038 as originally bounded:
 
 ```text
 technical Search
@@ -60,9 +64,9 @@ technical Search
 → physical-listing truth assessment
 ```
 
-Owning.pro is a bounded pilot source, not the long-term market-acquisition strategy.
+Owning.pro was a bounded pilot source, not the long-term market-acquisition strategy.
 
-After SLICE-0038, do **not** automatically build a second marketplace adapter.
+The historical instruction not to automatically build a second marketplace adapter remains a useful anti-scope rule.
 
 ### Phase B — Seed Corpus
 
@@ -144,57 +148,34 @@ If Gate 1 is RED, evaluate only these bounded fallback directions before further
 
 If none shows credible pull, stop HullQ rather than extending the roadmap to justify sunk cost.
 
-### Phase D — Market Access Track (parallel, non-blocking)
+### Phase D — Market Access / Supply Track
 
-Market access research runs in parallel with the first user tests but **must not block a positively validated Web Alpha**.
+The original plan treated external market-access research as a parallel risk. Later owner decisions established native HullQ supply as the strategic foundation, first professional and now broker-first mixed supply.
 
-Start with **3–4 high-quality contacts**, then expand as capacity allows to a maximum of **12 qualified outbound contacts** during this validation pass.
+External APIs/feeds/partnerships remain optional coverage channels where lawful/useful; they are not prerequisites for owner-direct or professional native listings.
 
-Target categories:
+Relevant external target categories may still include:
 
 - public/partner APIs;
 - broker/dealer inventory feeds;
 - broker CRM / MLS / XML/API systems;
-- portal partnerships (including Scanboat/Open Marine where appropriate);
+- portal partnerships;
 - aggregator/data-provider partnerships;
 - selected brokers with direct feed capability.
 
-The concrete ask is whether HullQ may consume current inventory through API/XML/feed, normalize and technically enrich it, show/route qualified buyers with attribution/deep-link, and under what commercial/storage/display terms.
-
-#### Gate 2 — Market Access
-
-Evaluate after **12 qualified outbound contacts OR 21 calendar days after the first qualified request, whichever occurs first**. Do not extend the research phase merely because more possible contacts exist.
-
-- **GREEN:** at least one operationally usable path exists: suitable API rights, real pilot feed, concrete portal/aggregator API/feed/license offer, or a sufficiently repeatable direct-broker feed path.
-- **YELLOW:** technically credible feed/access paths and serious discussions exist, but no usable agreement/path is yet operational. Continue product work while treating market coverage as a material risk.
-- **RED:** relevant providers systematically refuse access or offer only economically/legally unusable terms. Reassess the market-connected business model, but do not retroactively invalidate a useful technical-search product.
-
-A slow third-party response never blocks the first Web Alpha.
+External access must never become an excuse to bypass source rights or first-party marketplace truth.
 
 ### Phase E — Minimal Web Alpha
 
-Build only if Gate 1 is not RED.
+The historical Alpha principle remains: let a normal user express real requirements and see truthful results without requiring accounts/payments/broad SEO simply to prove value.
 
-The Alpha should let a normal user express real requirements and see:
+The current product has advanced beyond the original Alpha assumptions, but any new public surface still follows the same constraint: small, truthful and understandable before broad expansion.
 
-```text
-requirements
-→ matching designs
-→ matching configurations
-→ available current offers / lawful outbound inventory links
-→ CONFIRMED / UNKNOWN / NON-MATCH
-→ why / provenance where useful
-```
-
-Do not require accounts, payments, large UI systems or broad SEO rollout for the first Alpha.
-
-**Phase E UX binding:** every slice that creates or materially changes public Search, Search-result, BoatDesign, comparison, market, save/monitor or alert UI MUST name `docs/PRODUCT_UX_PRINCIPLES.md` as a controlling artifact. The Alpha remains deliberately small, but its truth states, requirement semantics and design-vs-physical-listing boundary must be understandable without training or a developer explanation.
+**UX binding:** every slice that creates or materially changes public Search, Search-result, BoatDesign, comparison, market, save/monitor or alert UI MUST name `docs/PRODUCT_UX_PRINCIPLES.md` as a controlling artifact.
 
 ### Phase F — Demand-driven Coverage
 
-After the Alpha produces real query data, replace Seed-Corpus assumptions with observed demand.
-
-Prioritize new technical coverage by:
+Prioritize technical coverage by:
 
 ```text
 observed search demand × configuration importance × market availability
@@ -208,7 +189,7 @@ Test whether users actually save complex technical searches before monetizing th
 
 ### Phase H — Fit-confirmed Alerts
 
-The core Pro candidate is not merely "new model listed" but:
+The core Pro candidate remains stronger when it means:
 
 ```text
 A new offered boat appeared that is confirmed to satisfy your requirements.
@@ -218,24 +199,31 @@ Measure actual response/use before assuming willingness to pay.
 
 ### Phase I — Monetization Validation
 
-Only after product pull is demonstrated, test:
+Test commercial value only after the corresponding product value exists.
 
-- Free vs Pro boundaries;
+Potential surfaces include:
+
+- Free vs Pro buyer boundaries;
 - saved-search / fit-alert pricing;
 - price-change / market-intelligence value where source rights permit;
 - qualified broker lead economics;
-- feed/data-enrichment value.
+- professional workflow/analytics value;
+- optional owner-direct verification/processing services;
+- neutral seller-to-broker referral economics;
+- relevant later transaction/insurance/finance/title partner economics.
 
-Do not build a native marketplace merely to avoid marketplace-access constraints.
+The historical instruction `do not build a native marketplace merely to avoid marketplace-access constraints` has been overtaken by explicit owner decisions and accepted native-marketplace implementation. It remains useful only as a warning against panic-driven scope changes. The current owner-direct pivot is an explicit owner-accepted product decision, not an access-workaround.
+
+Organic Search is now a hard non-commercial invariant: monetization may not affect organic eligibility, match classification or organic ordering.
 
 ### Phase J — Founder scale decision
 
-After Alpha + product validation + initial market-access evidence, the Project Owner explicitly chooses between:
+The original ambition framing remains a useful planning lens:
 
 - **Lean HullQ:** roughly €1–5k MRR ambition, solo/low-maintenance, limited partnerships; or
 - **Growth HullQ:** roughly €10–20k+ MRR ambition, deliberate B2B sales, contracts, wider coverage and possibly a small team.
 
-Growth is not an automatic continuation of Alpha validation.
+Growth is not an automatic continuation of product validation and never authorizes pay-to-rank organic Search.
 
 ## 3. Product-slice execution rules from SLICE-0039 onward
 
@@ -263,26 +251,29 @@ Additional rules:
 - strict truth/provenance/fail-closed behavior is not relaxed for speed;
 - process/governance work that does not directly remove a real blocker should not interrupt the visible product sequence.
 
-## 4. Strategic freeze
+After the 2026-09-14 pivot, any slice touching listing/supply, seller identity/verification, representation conflict, referral, marketplace monetization or Search must reconcile against the owner-direct product direction/spec and the mixed-supply execution reconciliation.
 
-Before SLICE-0038 is complete, do not reopen the roadmap merely for additional internal analysis.
+## 4. Strategic freeze / explicit pivots
 
-A roadmap reconsideration before then requires a **material new external fact** capable of changing the product/business premise, such as a newly discovered controlling legal restriction, a major competitor capability that invalidates the core differentiation, or decisive real-user evidence.
+The historical strategic freeze prevented casual roadmap reopening. The principle remains valid: do not pivot merely because another feature looks attractive.
 
-After SLICE-0038, decisions follow the gates in this document rather than returning automatically to architecture-first planning.
+The 2026-09-14 owner-direct decision is an explicit Project Owner pivot based on a substantive strategy review (broker channel conflict, Search-ranking economics, private-seller choice, monetization and fraud/trust design). It therefore legitimately supersedes the earlier broker-only public-supply assumption.
 
-## 5. Current market/competitor conclusions retained
+Further material pivots require the same explicit treatment rather than implementation-by-drift.
+
+## 5. Current market/competitor conclusions retained and amended
 
 - Listing aggregation alone is not HullQ's moat.
 - Listings Port validates demand for cross-market sailboat discovery and already covers aggregation/dedup/alerts/history-like use cases; HullQ should not try to win merely by aggregating more sources.
 - SailboatLab demonstrates that buyer-side model comparison, design-vs-ad distinction, scoring and market monitoring already exist; HullQ's stronger differentiation hypothesis is field-level physical-listing evidence, configuration scope, deterministic hard constraints, explicit UNKNOWN/conflict and auditable provenance.
-- Keel Index is a strong benchmark for coherent BoatDesign decision hubs, market-context presentation and product-led/data-driven SEO; HullQ should adopt the useful interaction/information patterns without copying its visual identity or relaxing truth semantics.
-- The long-term composite vision — broad market coverage + strong decision-hub/SEO surfaces + guided discovery + HullQ truth/search integrity + excellent UX — is a **North Star, not an execution roadmap or feature backlog**. It may not be used to widen pre-Gate-1 scope.
-- A potential defensibility path is staged: execution discipline first; only after product value is validated may a proprietary configuration/evidence corpus become an intentional moat investment; later market history, feed relationships and buyer-intent data may compound that advantage. The future moat thesis does not authorize premature corpus expansion.
-- General AI assistants are both a competitive threat and a possible future distribution/API channel for HullQ's verified vertical data. They are an **additional channel, not a distribution foundation**; HullQ should retain direct product/distribution capability rather than depend on another platform's tool/API policies.
-- Scanboat and broker-syndication research indicate that broker/CRM/MLS/feed relationships may be cleaner long-term inventory paths than scraping many public portals.
-- Scraping multiple marketplaces is therefore not the foundational business model.
-- A native marketplace is a possible later outcome only if supply relationships naturally justify it; it is not a panic pivot.
+- Keel Index is a strong benchmark for coherent BoatDesign decision hubs, market-context presentation and product-led/data-driven SEO; HullQ should adopt useful interaction/information patterns without copying visual identity or relaxing truth semantics.
+- The long-term composite vision — broad market coverage + strong decision-hub/SEO surfaces + guided discovery + HullQ truth/search integrity + excellent UX — remains a North Star, not permission to widen one slice.
+- A defensibility path can compound through configuration/evidence quality, PhysicalBoat/MarketEpisode identity, market history, professional workflows, owner-direct workflows, buyer-intent data, marketplace liquidity and trust.
+- General AI assistants are both competitive threat and possible future distribution/API channel; HullQ should retain direct product/distribution capability.
+- Broker/CRM/MLS/feed relationships may remain cleaner external inventory paths than scraping public portals.
+- Scraping multiple marketplaces is not the foundational business model.
+- The native marketplace is no longer a speculative possible-later outcome: it is accepted and partially implemented. Current supply direction is broker-first mixed professional + owner-direct inventory.
+- A meaningful early business-model asymmetry exists where incumbents depend on paid visibility or restrictive supply rules; HullQ's durable moat, however, must come from product/data/network quality rather than incumbent constraints alone.
 
 ## 6. Review obligation
 
@@ -296,4 +287,6 @@ PRODUCT EXECUTION PLAN ALIGNMENT: PASS | FAIL
 
 A failed One-Capability check blocks readiness. A failed Visible-Result check blocks ordinary product work unless the slice documents a genuine prerequisite/blocker exception.
 
-Until Gate 1 has been classified, any readiness/review for a slice whose primary effect is corpus/data growth must additionally state whether it directly serves the bounded Seed Corpus, an active/planned Concierge query, or a real validation blocker. If not, the slice is not aligned with this plan and must be deferred.
+For SLICE-0051 and later, decision/implementation reconciliation remains mandatory under the current slice template. For SLICE-0052 and later, trigger-gate evidence remains mandatory.
+
+From the owner-direct pivot onward, relevant readiness/review must additionally verify that it does not rely on the superseded broker-only/private-FSBO-out-of-scope assumption and that it preserves organic Search commercial independence where Search is affected.
