@@ -117,7 +117,7 @@ def decode_login_state_cookie(raw: str | None) -> LoginState | None:
         padded = raw + ("=" * ((-len(raw)) % 4))
         payload = base64.urlsafe_b64decode(padded)
         data = json.loads(payload.decode("utf-8"))
-    except (binascii.Error, ValueError, UnicodeDecodeError):
+    except binascii.Error, ValueError, UnicodeDecodeError:
         return None
     if not isinstance(data, dict):
         return None
