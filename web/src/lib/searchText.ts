@@ -28,6 +28,11 @@ export interface SearchText {
   resolvedDraftText: (resolvedDraftM: string) => string;
   insufficientDataText: (count: number) => string;
   viewListing: string;
+  /** SLICE-0052: badge/label text distinguishing CONFIRMED from DUE_FOR_CONFIRMATION. */
+  freshnessConfirmedLabel: string;
+  freshnessDueLabel: string;
+  /** MUST NOT word a DUE match as if it were simply "confirmed" (contract §H). */
+  freshnessDueNote: string;
 }
 
 export const searchText: Record<SupportedLocale, SearchText> = {
@@ -53,6 +58,10 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     insufficientDataText: (count) =>
       `${count} additional listing(s) could satisfy this requirement but are not shown as a match: the broker's draft is missing, unknown, or conflicts with another organization's current statement.`,
     viewListing: "View listing",
+    freshnessConfirmedLabel: "Confirmed current",
+    freshnessDueLabel: "Reconfirmation due",
+    freshnessDueNote:
+      "The broker has not reconfirmed this listing recently; it will be hidden soon unless reconfirmed.",
   },
   de: {
     title: "Suche: maximaler Tiefgang",
@@ -77,6 +86,10 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     insufficientDataText: (count) =>
       `${count} weitere(s) Angebot(e) könnten diese Anforderung erfüllen, werden aber nicht als Treffer angezeigt: Der Tiefgang fehlt, ist unbekannt oder widerspricht der aktuellen Angabe einer anderen Organisation.`,
     viewListing: "Angebot ansehen",
+    freshnessConfirmedLabel: "Aktuell bestätigt",
+    freshnessDueLabel: "Bestätigung ausstehend",
+    freshnessDueNote:
+      "Der Makler hat dieses Angebot kürzlich nicht erneut bestätigt; es wird bald ausgeblendet, sofern es nicht erneut bestätigt wird.",
   },
   fr: {
     title: "Recherche : tirant d'eau maximal",
@@ -101,6 +114,10 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     insufficientDataText: (count) =>
       `${count} annonce(s) supplémentaire(s) pourraient satisfaire cette exigence mais ne sont pas affichées comme correspondance : le tirant d'eau est manquant, inconnu, ou contredit la déclaration actuelle d'une autre organisation.`,
     viewListing: "Voir l'annonce",
+    freshnessConfirmedLabel: "Confirmé à jour",
+    freshnessDueLabel: "Reconfirmation attendue",
+    freshnessDueNote:
+      "Le courtier n'a pas reconfirmé cette annonce récemment ; elle sera bientôt masquée si elle n'est pas reconfirmée.",
   },
   pt: {
     title: "Pesquisa: calado máximo",
@@ -125,6 +142,10 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     insufficientDataText: (count) =>
       `${count} anúncio(s) adicional(is) poderiam satisfazer este requisito mas não são apresentados como correspondência: o calado está em falta, é desconhecido, ou entra em conflito com a declaração atual de outra organização.`,
     viewListing: "Ver anúncio",
+    freshnessConfirmedLabel: "Confirmado atual",
+    freshnessDueLabel: "Reconfirmação pendente",
+    freshnessDueNote:
+      "O corretor não reconfirmou este anúncio recentemente; será ocultado em breve caso não seja reconfirmado.",
   },
   es: {
     title: "Búsqueda: calado máximo",
@@ -149,5 +170,9 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     insufficientDataText: (count) =>
       `${count} anuncio(s) adicional(es) podrían cumplir este requisito pero no se muestran como coincidencia: falta el calado, es desconocido, o entra en conflicto con la declaración actual de otra organización.`,
     viewListing: "Ver anuncio",
+    freshnessConfirmedLabel: "Confirmado vigente",
+    freshnessDueLabel: "Reconfirmación pendiente",
+    freshnessDueNote:
+      "El bróker no ha reconfirmado este anuncio recientemente; se ocultará pronto si no se reconfirma.",
   },
 };

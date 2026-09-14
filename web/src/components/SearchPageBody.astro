@@ -84,6 +84,15 @@ const isCanonical = data.kind === "ok";
                         {t.viewListing}: {match.native_listing_id}
                       </a>{" "}
                       &mdash; {t.resolvedDraftText(match.resolved_draft_m)}
+                      {" — "}
+                      <span aria-label="freshness status">
+                        {match.freshness_status === "DUE_FOR_CONFIRMATION"
+                          ? t.freshnessDueLabel
+                          : t.freshnessConfirmedLabel}
+                      </span>
+                      {match.freshness_status === "DUE_FOR_CONFIRMATION" && (
+                        <p aria-label="freshness due note">{t.freshnessDueNote}</p>
+                      )}
                     </li>
                   ))}
                 </ul>

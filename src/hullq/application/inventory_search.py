@@ -37,15 +37,30 @@ candidate at all -- it never enters this classification and is not counted
 in any surface (slice Required Behavior §3: "concrete shallow draft without
 durable applicable design identity -> never confirmed through fuzzy
 inference").
+
+SLICE-0052 contract §7.2 narrows the candidate set further, before any
+technical `draft_max` classification: an ACTIVE listing whose freshness
+(`hullq.application.native_listing_freshness`) is STALE or UNKNOWN at the
+explicit *as_of* boundary is excluded outright. That exclusion is inventory
+freshness, never technical `draft_max` truth, so it is not counted as
+`INSUFFICIENT_DATA`. A `DUE_FOR_CONFIRMATION` listing may still be
+CONFIRMED_MATCH; every returned match carries its freshness status and
+effective `last_confirmed_at` so the web surface can disclose the due state.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
+from hullq.application.native_listing_freshness import (
+    is_current_market_eligible,
+    resolve_current_freshness,
+)
 from hullq.domain.market_identity import NativeListingId
+from hullq.domain.native_listing_freshness import FreshnessStatus
 from hullq.domain.physical_boat_claims import AssertionKind
 from hullq.domain.publishing_eligibility import MarketplaceOrganizationId
 from hullq.persistence.identity_readback import fetch_boat_design
@@ -66,6 +81,8 @@ class DraftMaxConfirmedMatch:
     native_listing_id: NativeListingId
     resolved_draft_m: Decimal
     publishing_organization_id: MarketplaceOrganizationId
+    freshness_status: FreshnessStatus
+    last_confirmed_at: datetime | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,7 +107,12 @@ class DraftMaxSearchOutcome:
 
 
 def _classify_candidate(
-    conn: Any, candidate: ActiveDesignLinkedListing, draft_max: Decimal
+    conn: Any,
+    candidate: ActiveDesignLinkedListing,
+    draft_max: Decimal,
+    *,
+    freshness_status: FreshnessStatus,
+    last_confirmed_at: datetime | None,
 ) -> DraftMaxConfirmedMatch | str:
     """Classify one admitted candidate. Returns a confirmed match or a literal
     `"CONFIRMED_NON_MATCH"` / `"INSUFFICIENT_DATA"` marker.
@@ -151,22 +173,32 @@ def _classify_candidate(
             native_listing_id=candidate.native_listing_id,
             resolved_draft_m=resolved_draft_m,
             publishing_organization_id=candidate.publishing_organization_id,
+            freshness_status=freshness_status,
+            last_confirmed_at=last_confirmed_at,
         )
     return "CONFIRMED_NON_MATCH"
 
 
-def evaluate_draft_max_requirement(conn: Any, draft_max: Decimal) -> DraftMaxSearchOutcome:
+def evaluate_draft_max_requirement(
+    conn: Any, draft_max: Decimal, *, as_of: datetime
+) -> DraftMaxSearchOutcome:
     """Evaluate the complete bounded `draft_max` vertical against real persisted state.
 
     *draft_max* must already be an exact positive finite `Decimal` (see
     `hullq.search.draft_max_request.parse_draft_max_decimal`) -- this function
     performs no additional parsing/canonicalization.
+
+    SLICE-0052 contract §7.2: every ACTIVE design-linked candidate is
+    freshness-resolved at the explicit *as_of* boundary before any technical
+    classification. STALE/UNKNOWN candidates are excluded outright -- never
+    counted as `insufficient_data_count`, since their exclusion is inventory
+    freshness, not missing `draft_max` truth.
     """
     if not isinstance(draft_max, Decimal) or not draft_max.is_finite() or draft_max <= 0:
         raise ValueError(f"draft_max must be a positive finite Decimal; got {draft_max!r}")
 
-    candidates = list_active_design_linked_listings(conn)
-    if not candidates:
+    all_candidates = list_active_design_linked_listings(conn)
+    if not all_candidates:
         return DraftMaxSearchOutcome(
             draft_max=draft_max,
             confirmed_matches=(),
@@ -174,7 +206,21 @@ def evaluate_draft_max_requirement(conn: Any, draft_max: Decimal) -> DraftMaxSea
             insufficient_data_count=0,
         )
 
-    distinct_design_ids = sorted({c.boat_design_ref.value for c in candidates})
+    current_candidates = []
+    for candidate in all_candidates:
+        freshness = resolve_current_freshness(conn, candidate.native_listing_id, as_of=as_of)
+        if is_current_market_eligible(freshness.status):
+            current_candidates.append((candidate, freshness))
+
+    if not current_candidates:
+        return DraftMaxSearchOutcome(
+            draft_max=draft_max,
+            confirmed_matches=(),
+            confirmed_non_match_count=0,
+            insufficient_data_count=0,
+        )
+
+    distinct_design_ids = sorted({c.boat_design_ref.value for c, _ in current_candidates})
     boat_designs = []
     for design_id in distinct_design_ids:
         raw_design = fetch_boat_design(conn, design_id)
@@ -192,10 +238,16 @@ def evaluate_draft_max_requirement(conn: Any, draft_max: Decimal) -> DraftMaxSea
     confirmed_non_match_count = 0
     insufficient_data_count = 0
 
-    for candidate in candidates:
+    for candidate, freshness in current_candidates:
         if candidate.boat_design_ref.value not in compatible_ids:
             continue
-        result = _classify_candidate(conn, candidate, draft_max)
+        result = _classify_candidate(
+            conn,
+            candidate,
+            draft_max,
+            freshness_status=freshness.status,
+            last_confirmed_at=freshness.last_confirmed_at,
+        )
         if isinstance(result, DraftMaxConfirmedMatch):
             confirmed_matches.append(result)
         elif result == "CONFIRMED_NON_MATCH":

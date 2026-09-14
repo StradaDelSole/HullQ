@@ -13,7 +13,9 @@ import { test } from "node:test";
 import {
   askingPriceText,
   brokerSummaryText,
+  freshnessDisclosureText,
   knownHistoryText,
+  offerRecordedText,
   unknownableClaimText,
 } from "../previewText.ts";
 
@@ -60,4 +62,43 @@ test("askingPriceText: POA mode shows the price-on-application notice, no synthe
     askingPriceText({ asking_price_mode: "POA", asking_price_amount: null, currency: null }),
     "Price on application",
   );
+});
+
+test("freshnessDisclosureText: DUE_FOR_CONFIRMATION is never worded as simply confirmed", () => {
+  const dueText = freshnessDisclosureText("DUE_FOR_CONFIRMATION", "2026-01-01T00:00:00+00:00");
+  const confirmedText = freshnessDisclosureText("CONFIRMED", "2026-01-01T00:00:00+00:00");
+  assert.notEqual(dueText, confirmedText);
+  assert.doesNotMatch(dueText, /^Confirmed current/);
+});
+
+test("freshnessDisclosureText: CONFIRMED includes the last-confirmed timestamp when present", () => {
+  const text = freshnessDisclosureText("CONFIRMED", "2026-01-01T00:00:00+00:00");
+  assert.match(text, /2026-01-01T00:00:00\+00:00/);
+});
+
+test("freshnessDisclosureText: handles a null last_confirmed_at without throwing", () => {
+  assert.doesNotThrow(() => freshnessDisclosureText("CONFIRMED", null));
+  assert.doesNotThrow(() => freshnessDisclosureText("DUE_FOR_CONFIRMATION", null));
+});
+
+// PR #193 exact-head review: `offer_recorded_at` is the LISTING_OFFER
+// revision timestamp, not the SLICE-0052 freshness confirmation timestamp.
+// After an authorized reconfirmation without a new offer revision,
+// `last_confirmed_at` advances while `offer_recorded_at` does not -- the
+// rendered page must never present `offer_recorded_at` as "last confirmed".
+test("offerRecordedText: never claims freshness/last-confirmed semantics", () => {
+  const text = offerRecordedText("2026-01-01T00:00:00+00:00");
+  assert.doesNotMatch(text, /confirmed/i);
+});
+
+test("offerRecordedText: post-reconfirmation, a differing offer_recorded_at and last_confirmed_at are never conflated", () => {
+  const offerRecordedAt = "2026-01-01T00:00:00+00:00";
+  const lastConfirmedAt = "2026-02-05T00:00:00+00:00"; // advanced by reconfirmation alone
+  const offerText = offerRecordedText(offerRecordedAt);
+  const freshnessText = freshnessDisclosureText("CONFIRMED", lastConfirmedAt);
+  assert.match(offerText, /Broker declaration recorded in HullQ/);
+  assert.doesNotMatch(offerText, /last confirmed/i);
+  assert.equal(offerText.includes(lastConfirmedAt), false);
+  assert.equal(freshnessText.includes(offerRecordedAt), false);
+  assert.notEqual(offerText, freshnessText);
 });

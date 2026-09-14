@@ -21,6 +21,14 @@ test("every supported locale has complete non-empty text", () => {
     assert.ok(t.viewListing.length > 0, `${locale}.viewListing`);
     assert.ok(t.serviceUnavailableTitle.length > 0, `${locale}.serviceUnavailableTitle`);
     assert.ok(t.serviceUnavailableMessage.length > 0, `${locale}.serviceUnavailableMessage`);
+    assert.ok(t.freshnessConfirmedLabel.length > 0, `${locale}.freshnessConfirmedLabel`);
+    assert.ok(t.freshnessDueLabel.length > 0, `${locale}.freshnessDueLabel`);
+    assert.ok(t.freshnessDueNote.length > 0, `${locale}.freshnessDueNote`);
+    assert.notEqual(
+      t.freshnessConfirmedLabel,
+      t.freshnessDueLabel,
+      `${locale}: DUE must be visibly distinct from CONFIRMED`,
+    );
   }
 });
 
