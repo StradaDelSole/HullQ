@@ -73,7 +73,7 @@ The controlling rule is:
 
 If two sellers provide materially equivalent admissible evidence, HullQ must reach the same truth/evidence outcome regardless of whether one paid HullQ or a partner to produce/process that evidence.
 
-## 5. Truth scopes must remain separate
+## 5. Truth scopes and badge hierarchy must remain separate
 
 HullQ must not collapse different trust questions into one generic `Verified Listing` or `Verified Seller` claim.
 
@@ -105,6 +105,8 @@ VAT/document status = UNKNOWN
 ```
 
 A badge or label must state exactly what HullQ has evidence for and must not imply broader verification.
+
+The UI may use a visually strongest / gold-level badge treatment for `SALE AUTHORITY VERIFIED`, because it represents the strongest seller-authority evidence tier, but the visible label and explanatory copy must remain evidence-specific. Gold styling never means that the entire listing, vessel identity or technical specification set has been independently verified.
 
 `Sale Authority Verified` is preferred over `Ownership Verified` because a legitimate seller may be an owner, co-owner, authorized company representative, estate representative or another properly authorized party.
 
