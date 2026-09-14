@@ -15,6 +15,8 @@ For an assigned slice:
 
 For SLICE-0039 and later, `docs/PRODUCT_EXECUTION_PLAN.md` is a controlling execution-policy document and must be read when named by the primary slice (the normal post-0038 template names it explicitly).
 
+For work after the 2026-09-14 owner-direct marketplace pivot, `docs/OWNER_DIRECT_LISTING_PRODUCT_DIRECTION_2026-09-14.md`, `specs/OWNER_DIRECT_LISTING_REQUIREMENTS.v0.1.md` and `docs/PRODUCT_EXECUTION_PLAN_OWNER_DIRECT_RECONCILIATION_2026-09-14.md` control any slice that touches listing/supply, private-seller identity/verification, representation conflict, seller-to-broker referral, marketplace monetization or Search commercial independence.
+
 When only one section/symbol of a large file is needed, prefer targeted search/narrow reads over loading the entire file.
 
 Use the synchronized local checkout for ordinary repository reads. Do not repeatedly fetch local files through GitHub/API tooling when the local checkout already contains canonical synchronized content.
@@ -32,6 +34,8 @@ When artifacts conflict, authority is:
 5. governance/engineering standards;
 6. `PROJECT_CONTEXT.md` / strategy docs;
 7. `reference/`.
+
+Later explicit Project Owner decisions/reconciliations supersede older current-direction statements within the same authority class. In particular, the 2026-09-14 owner-direct direction supersedes the older broker-only/private-FSBO-out-of-scope supply policy while preserving its decision history.
 
 Slices are operational work contracts and do not override this order. Never turn DRAFT/PROPOSED/BLOCKED material into production semantics without an explicit decision.
 
@@ -99,9 +103,61 @@ FIND DESIGN → FIND BOAT FOR SALE → COMPARE / SAVE → ALERT
 
 Do not broaden it into a generic boating super-app without an accepted scope decision.
 
+## Marketplace supply model after 2026-09-14
+
+HullQ is **broker-first mixed supply**, not broker-only.
+
+Accepted direction:
+
+```text
+professional broker/dealer inventory
++
+bounded owner-direct/private seller inventory
+```
+
+Private sellers may ultimately choose owner-direct listing or voluntarily opt into a broker-referral path. Existing implementation through accepted SLICE-0053 remains professional-only on the write side; do not fake a private seller as a broker/Organization to bypass that implementation boundary.
+
+Hard invariants for relevant work:
+
+```text
+commercial consideration MUST NOT affect
+- organic Search eligibility
+- organic match classification
+- organic ordering
+
+payment may buy a verification service
+payment NEVER buys a truth result or organic position
+```
+
+Seller trust scopes remain separate:
+
+```text
+PHONE VERIFIED
+IDENTITY VERIFIED
+RIGHT-TO-LIST ATTESTED
+SALE AUTHORITY VERIFIED
+```
+
+They do not promote concrete-yacht technical fields. `Sale Authority Verified` is about authority to offer the vessel, not necessarily sole ownership.
+
+Normal future owner-direct publication baseline is intentionally proportionate:
+
+```text
+HullQ account
++ verified phone reachability
++ explicit right-to-list attestation
++ baseline anti-abuse checks
+```
+
+Strong ID verification, vessel documents and physical boat challenges are not universal prerequisites; stronger evidence may be required on risk escalation/dispute.
+
+Professional/owner-direct representation conflict must eventually be modeled through the existing `PhysicalBoat -> MarketEpisode` identity boundary plus explicit representation/sale-authority semantics; do not introduce a naïve global one-listing-per-PhysicalBoat shortcut.
+
+Read the exact owner-direct product direction/spec before touching these domains.
+
 ## Product execution policy (post-SLICE-0038)
 
-`docs/PRODUCT_EXECUTION_PLAN.md` governs product sequencing from SLICE-0039 onward.
+`docs/PRODUCT_EXECUTION_PLAN.md` governs product sequencing from SLICE-0039 onward, as reconciled by later owner-accepted execution records including the 2026-09-14 owner-direct reconciliation.
 
 The execution principle is:
 
@@ -169,7 +225,7 @@ Read these only when the assigned slice touches that architecture.
 
 Key baseline: CPython/FastAPI backend, PostgreSQL production persistence, Astro + TypeScript web with selective React islands, simple portable Linux VPS deployment, responsive web/PWA first and later Flutter consuming the same API. Do not introduce a second business-logic stack, client-only SPA, dedicated search engine or distributed infrastructure without an accepted decision.
 
-Open decisions remain open: do not silently choose auth/session (OQ-014), alert cadence (OQ-006), public API/versioning (OQ-015), or detailed public SEO surface mechanics (OQ-018).
+Open decisions remain open: do not silently choose alert cadence (OQ-006), public API/versioning (OQ-015), or detailed public SEO surface mechanics (OQ-018). Auth/session is no longer broadly open where SLICE-0053 has accepted a concrete broker boundary; read current state/closure before treating an old OQ as authoritative.
 
 ## Search / SEO / internationalization
 
@@ -181,11 +237,15 @@ Search Architecture and SEO are first-class product architecture (ADR-0007). Bef
 
 Do not turn arbitrary faceted search states into an uncontrolled indexable URL universe.
 
+The owner-direct pivot adds a permanent Search-commercial-independence rule: broker/private-seller payments, subscription tier, verification fees, referral economics, affiliate value and advertising relationships may not affect organic eligibility, match classification or organic ordering.
+
 HullQ's required public languages are English, German, French, Portuguese and Spanish. Canonical data/identity/query semantics remain language-neutral; localization rules are governed by `docs/PRODUCT_LANGUAGE_AND_I18N_REQUIREMENT.md` and future OQ-018 implementation decisions.
 
 ## Market integrations
 
-Keep each marketplace behind its own adapter. Verify permitted API/feed/partner/access terms before implementation. Historical price/listing retention is governed separately by source rights and OQ-017.
+Keep each external marketplace behind its own adapter. Verify permitted API/feed/partner/access terms before implementation. Historical price/listing retention is governed separately by source rights and OQ-017.
+
+Native owner-direct supply is not an external marketplace adapter and must use HullQ's accepted first-party marketplace identities/truth/authorization boundaries.
 
 ## Docs-to-code / engineering behavior
 
