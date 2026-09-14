@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-14  
 **Latest owner-accepted / DONE slice:** SLICE-0053  
-**Current queue:** SLICE-0054 — capability **not yet selected**; selection now requires post-pivot/post-SLICE-0053 reassessment, repository reconciliation, trigger-gate inspection, Broker Workspace Mandatory Capability Register inspection and applicable owner-direct requirement inspection before readiness.  
+**Current queue:** SLICE-0054 — **Authenticated Owner-Direct Listing Draft Workspace** selected by the post-pivot/post-SLICE-0053 reassessment; readiness contract prepared, implementation **not started**.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -41,7 +41,16 @@ docs/OWNER_DIRECT_LISTING_PRODUCT_DIRECTION_2026-09-14.md
 specs/OWNER_DIRECT_LISTING_REQUIREMENTS.v0.1.md
 ```
 
-This is a product-direction rebaseline, **not yet an implemented owner-direct publishing capability**. Existing accepted implementation through SLICE-0053 remains professional-only on the write side. No private seller may be represented as a fake professional Organization/member merely to reuse that path.
+Selected first owner-direct implementation contract:
+
+```text
+specs/OWNER_DIRECT_LISTING_WORKSPACE_CONTRACT.v0.1.md
+docs/slices/SLICE-0054-authenticated-owner-direct-draft-workspace.md
+```
+
+The product-direction pivot is **not yet an implemented owner-direct publishing capability**. Existing accepted implementation through SLICE-0053 remains professional-only on the marketplace write side. No private seller may be represented as a fake professional Organization/member merely to reuse that path.
+
+SLICE-0054 is selected to add a separate private pre-market draft boundary. Its draft is explicitly not a `NativeListing`, `PhysicalBoat` or `MarketEpisode` and cannot become public/Search inventory inside that slice.
 
 Primary buyer loop remains:
 
@@ -151,7 +160,7 @@ BROKER_SELF_SERVICE_PILOT_STATUS: NOT_STARTED
 PAID_BROKER_PLAN_STATUS: NOT_STARTED
 ```
 
-The owner-direct pivot does not change those markers or waive any professional-product obligation. `REQ-BROKER-023` broker identity/branding and `REQ-BROKER-024` connectivity-resilient draft recovery remain PENDING and mandatory before Launch Gate PASS, alongside the other trigger-specific mandatory commitments.
+The owner-direct pivot and SLICE-0054 selection do not change those markers or waive any professional-product obligation. `REQ-BROKER-023` broker identity/branding and `REQ-BROKER-024` connectivity-resilient draft recovery remain PENDING and mandatory before Launch Gate PASS, alongside the other trigger-specific mandatory commitments.
 
 Mixed supply creates real channel tension even when Search is fair. HullQ therefore must maintain a positive broker value proposition: technically qualified demand, deterministic Search, legitimate broker branding, strong inventory workflow, lead attribution/workflow, analytics, seller-to-broker referral opportunity and no paid organic ranking.
 
@@ -187,7 +196,7 @@ Accepted boundaries include:
 - independent encrypted backup plus tested restore is required beyond provider DB backup;
 - before real external marketplace inventory is exposed to real external buyers, applicable Production Readiness/HA rules must be reassessed against the mixed-supply boundary rather than assumed to apply only to brokers.
 
-SLICE-0053 adds a current broker-session topology invariant: the browser-visible FastAPI auth/callback and Astro Broker Workspace must share the same hostname while the session remains a host-only cookie. Cross-host configuration fails closed; any later redesign must be explicit.
+SLICE-0053 adds a current host-only-session topology invariant: browser-visible FastAPI auth/callback and authenticated Astro workspace surfaces using that session must share the same hostname. Cross-host configuration fails closed; any later redesign must be explicit. SLICE-0054 reuses that session boundary for `/sell/direct` rather than creating a second authentication stack.
 
 ## Hard truth and identity boundaries
 
@@ -206,6 +215,17 @@ DESIGN / CONFIGURATION TRUTH != PHYSICAL BOAT / LISTING TRUTH
 A design/configuration can establish technical eligibility without establishing a fact about one offered yacht. The same boundary applies to professional and owner-direct inventory.
 
 Seller identity/phone/sale-authority verification is also separate from technical vessel truth.
+
+SLICE-0054 adds a pre-market work-object boundary without changing marketplace identity:
+
+```text
+OwnerDirectListingDraftId
+!= NativeListingId
+!= PhysicalBoatId
+!= MarketEpisodeId
+```
+
+Draft persistence is not marketplace truth and does not itself instantiate any of those market identities.
 
 ## Built and owner-accepted product threshold
 
@@ -236,7 +256,7 @@ docs/slices/SLICE-0052-acceptance-closure.md
 docs/slices/SLICE-0053-acceptance-closure.md
 ```
 
-Owner-direct listing support is accepted product direction after SLICE-0053 but has not yet been implemented/accepted as a slice capability.
+Owner-direct listing support is accepted product direction after SLICE-0053. SLICE-0054 is selected/readiness-only and has not yet been implemented or owner-accepted.
 
 ## NativeListing lifecycle and freshness
 
@@ -270,7 +290,7 @@ ACTIVE + STALE/UNKNOWN
 → never inferred SOLD/WITHDRAWN
 ```
 
-Future owner-direct inventory must preserve these distinct lifecycle/freshness concepts; seller verification must not substitute for listing freshness.
+The selected owner-direct pre-market draft is **not** the `DRAFT` state of this NativeListing lifecycle. It is a separate private work object. Future owner-direct inventory must preserve lifecycle/freshness concepts after marketplace admission; seller verification must not substitute for listing freshness.
 
 ## Accepted technical Search result
 
@@ -290,7 +310,7 @@ Accepted technical native Search criteria count remains:
 1
 ```
 
-The owner-direct pivot adds no Search criterion and does not authorize weaker Search truth for private listings.
+The owner-direct pivot and SLICE-0054 add no Search criterion and do not authorize weaker Search truth for private listings.
 
 ## Post-SLICE-0051 trigger gates
 
@@ -320,7 +340,7 @@ BROKER_SELF_SERVICE_PILOT_STATUS: NOT_STARTED
 PAID_BROKER_PLAN_STATUS: NOT_STARTED
 ```
 
-The existing markers predate the owner-direct pivot. They are not silently reinterpreted to authorize owner-direct production; the first owner-direct production/pilot readiness must explicitly reconcile any broker-specific wording with the mixed-supply boundary before activation.
+The existing legacy broker-production marker is not a loophole for owner-direct production. The Production Readiness gate now governs real external marketplace production data from any seller type. SLICE-0054 readiness assumes local/internal synthetic/disposable draft data only and does not trigger production readiness.
 
 From SLICE-0052 onward every primary readiness contract must contain the canonical trigger-gate evidence. Technical Search criterion #2 must explicitly compare its bridge/path to SLICE-0051; criterion #3+ may not introduce a third structural copy without the abstraction guard PASS.
 
@@ -347,14 +367,17 @@ REQ_BROKER_029_STATUS: PENDING
 REQ_BROKER_030_STATUS: IMPLEMENTED
 ```
 
-SLICE-0053 directly implements REQ-BROKER-014 and REQ-BROKER-015; it does not change the mandatory-register statuses above. Every normal post-slice reassessment must inspect the register before selecting the next capability. The post-pivot reassessment must additionally inspect applicable `REQ-PRIVATE-*` requirements.
+SLICE-0053 directly implements REQ-BROKER-014 and REQ-BROKER-015; it does not change the mandatory-register statuses above. The post-pivot reassessment inspected the register before selecting SLICE-0054 and found no mandatory commitment currently `DUE`; pending commitments remain mandatory under their existing triggers and are not silently dropped.
 
 ## What is not built yet
 
 Important remaining capabilities include:
 
-- **all owner-direct implementation**, including seller choice UI, private publishing authorization, phone verification, attestation, anti-abuse controls, trust badges, risk escalation and representation-conflict handling;
+- SLICE-0054 itself: authenticated private owner-direct draft create/save/list/reopen/update;
+- owner-direct marketplace admission/publication after the draft, including phone verification, right-to-list attestation and baseline anti-abuse controls;
 - stronger private-seller identity and documentary sale-authority verification;
+- owner-direct representation-conflict handling and later trust badges/risk escalation;
+- seller-choice / broker-referral workflow beyond the direct-draft lane selected for 0054;
 - low-friction broker inventory create/edit/publish/reconfirm workflow;
 - broker identity/branding completion and media operations;
 - connectivity-resilient broker drafts/recovery;
@@ -372,13 +395,13 @@ Important remaining capabilities include:
 - any future sponsored/featured inventory surface;
 - any future vetted transaction/escrow partner integration.
 
-None is automatically assigned to SLICE-0054. Mandatory commitments may not be silently dropped.
+Only the first item is assigned to SLICE-0054. The remaining capabilities are not pulled into 0054; mandatory commitments may not be silently dropped.
 
 ## Search / SEO and monetization boundaries
 
 Search architecture and SEO remain product architecture, not later marketing. Stable public listing route remains `/listings/{NativeListingId}`; current public listing/Search page classes remain deliberately `noindex`. Mandatory public languages remain English, German, French, Portuguese and Spanish.
 
-Organic Search eligibility, match classification and ordering are now explicitly non-commercial product truth. No broker/private-seller payment, subscription, verification fee, affiliate value, referral economics or advertising relationship may influence them.
+Organic Search eligibility, match classification and ordering are explicitly non-commercial product truth. No broker/private-seller payment, subscription, verification fee, affiliate value, referral economics or advertising relationship may influence them.
 
 Search remains broadly open; persistence, monitoring and intelligence remain preferred buyer monetization surfaces. No paid broker plan may activate while Broker Workspace launch/mandatory prerequisites remain unsatisfied.
 
@@ -403,23 +426,32 @@ Broker
 → protected Broker Workspace landing
 ```
 
-New accepted-but-not-yet-implemented direction:
+Selected next capability — **not yet implemented**:
 
 ```text
 Private seller
-→ choose owner-direct OR broker referral
-→ low-friction owner-direct baseline
-→ evidence-bounded trust ladder / risk escalation
+→ authenticate as ordinary HullQ Account (zero broker memberships allowed)
+→ private OwnerDirectListingDraft
+→ create / save / list / reopen / update
+→ DRAFT — NOT PUBLIC
+```
+
+Later owner-direct continuation remains separately gated:
+
+```text
+private draft
+→ phone + right-to-list attestation + anti-abuse / applicable escalation
+→ future marketplace admission
 → same marketplace identity + technical truth rules
 ```
 
-Next queue number remains:
+Next queue number:
 
 ```text
 SLICE-0054
 ```
 
-**No SLICE-0054 capability has been selected or authorized by the owner-direct pivot.** Selection must begin with a fresh post-pivot/post-SLICE-0053 repository reassessment across buyer, broker and private-seller leverage, trigger gates, Broker Workspace commitments and applicable `REQ-PRIVATE-*` obligations.
+**Selected capability:** `Authenticated Owner-Direct Listing Draft Workspace`. Readiness is defined by `specs/OWNER_DIRECT_LISTING_WORKSPACE_CONTRACT.v0.1.md` and `docs/slices/SLICE-0054-authenticated-owner-direct-draft-workspace.md`. The slice has **not** been started; implementation begins only through the normal `START_SLICE.bat` workflow after readiness review/merge and local sync.
 
 ## Development workflow
 
