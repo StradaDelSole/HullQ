@@ -1,28 +1,31 @@
 # HullQ Private Seller Policy — Broker-Only Public Supply
 
 **Date:** 2026-09-02  
-**Status:** ACCEPTED OWNER DIRECTION — controlling when merged  
-**Applies to:** native marketplace public supply and private-owner intake
+**Status:** HISTORICAL — SUPERSEDED AS CURRENT SUPPLY POLICY on 2026-09-14  
+**Superseded by:** `docs/OWNER_DIRECT_LISTING_PRODUCT_DIRECTION_2026-09-14.md` and `specs/OWNER_DIRECT_LISTING_REQUIREMENTS.v0.1.md`  
+**Historical scope:** native marketplace public supply and private-owner intake as decided on 2026-09-02
 
-## 1. Phase-1 public supply rule
+> **Current-direction warning:** the broker-only / no-public-FSBO rules below are retained as decision history. They MUST NOT be used as current authority after the 2026-09-14 owner-accepted broker-first mixed-supply pivot. Current direction allows bounded owner-direct/private listings while preserving the referral path, non-commercial organic Search, seller-trust boundaries and the still-mandatory Broker Workspace commitments.
 
-HullQ Phase 1 is strictly **broker/dealer/eligible-professional-only** on the public listing supply side.
+## 1. Phase-1 public supply rule — historical decision
 
-Private consumers may not publish independent public `NativeListing` records that compete with professional broker inventory.
+HullQ Phase 1 was originally decided as strictly **broker/dealer/eligible-professional-only** on the public listing supply side.
 
-This is a domain authorization rule, not only a UI policy.
+Private consumers were not permitted to publish independent public `NativeListing` records that compete with professional broker inventory.
 
-Invariant:
+This was a domain authorization rule, not only a UI policy.
+
+Historical invariant:
 
 > Every publicly published `NativeListing` must have an eligible professional Organization as its publishing principal.
 
-Private accounts do not receive a public NativeListing publishing capability.
+Private accounts did not receive a public NativeListing publishing capability under this 2026-09-02 direction.
 
-## 2. Rationale
+## 2. Rationale at the time
 
-HullQ intentionally avoids the broker-channel conflict created when a marketplace asks brokers to pay/integrate supply while simultaneously selling equivalent public exposure directly to their potential seller customers.
+HullQ intentionally sought to avoid the broker-channel conflict created when a marketplace asks brokers to pay/integrate supply while simultaneously selling equivalent public exposure directly to their potential seller customers.
 
-Additional reasons:
+Additional reasons recorded at the time:
 
 - private-sale fraud, impersonation, fake escrow, overpayment and ownership-verification risk;
 - materially greater moderation/identity/ownership-verification burden;
@@ -30,11 +33,13 @@ Additional reasons:
 - unnecessary Phase-1 regulatory/product complexity from mixing professional traders and private sellers;
 - preservation of broker trust as a strategic supply-acquisition requirement.
 
-Professional supply is not treated as automatically truthful; HullQ truth/provenance rules still apply to broker claims.
+Professional supply was not treated as automatically truthful; HullQ truth/provenance rules still applied to broker claims.
 
-## 3. Private owner path
+The 2026-09-14 pivot did not erase these risks; it adopted a different solution: broker-first mixed supply, non-commercial organic Search, explicit seller trust scopes, low-friction baseline controls plus risk escalation, and a stronger mixed-supply broker value proposition.
 
-Private owners may submit a separate `BrokerageRequest` / referral request.
+## 3. Private owner path — historical referral-only direction
+
+Private owners were originally limited to a separate `BrokerageRequest` / referral request.
 
 Conceptual flow:
 
@@ -47,7 +52,9 @@ private owner
 → possible brokerage mandate
 ```
 
-A BrokerageRequest is **not** a NativeListing and must not be silently transformed into one.
+A BrokerageRequest was **not** a NativeListing and was not to be silently transformed into one.
+
+Under the current 2026-09-14 direction this referral path remains valid, but it is now one voluntary option alongside owner-direct self-listing.
 
 ## 4. Initial broker eligibility
 
@@ -64,6 +71,8 @@ accepted deal segment
 The accepted deal segment may include vessel-length and/or value ranges declared by the broker.
 
 No ML-based matching is required initially.
+
+Current direction additionally requires referral selection/order to remain commercially neutral; broker payment/subscription tier cannot buy shortlist preference.
 
 ## 5. Referral waves
 
@@ -111,7 +120,7 @@ CLOSE_REQUEST
 
 The request must not silently disappear.
 
-HullQ must not create a public FSBO listing as fallback.
+The former statement that HullQ must never create/publicize owner-direct inventory as an alternative is superseded; current direction allows the seller to choose owner-direct independently of referral exhaustion.
 
 ## 7. Anti-gaming / response quality
 
@@ -129,7 +138,7 @@ Referral-quality signals remain internal unless a separate explicit product deci
 
 ## 8. Referral ordering vs buyer search ranking
 
-Hard separation:
+Hard separation remains valid and is strengthened by the 2026-09-14 pivot:
 
 ```text
 seller-referral broker ordering
@@ -137,7 +146,7 @@ seller-referral broker ordering
 organic buyer listing/search relevance
 ```
 
-A broker's referral response speed or referral outcome must never improve organic buyer-search ranking.
+A broker's referral response speed, referral outcome or payment must never improve organic buyer-search ranking.
 
 The referral system is non-pay-to-win.
 
@@ -147,15 +156,15 @@ HullQ should publicly document the factual principles used to distribute private
 
 The purpose is to avoid black-box favoritism and create a clear broker trust promise.
 
-## 10. Phase-1 monetization rule
+## 10. Historical Phase-1 monetization rule
 
-HullQ does not introduce public FSBO listing fees in Phase 1 because public private listings are not part of the Phase-1 marketplace model.
+The 2026-09-02 policy did not introduce public FSBO listing fees because public private listings were outside that model.
 
-A future referral/success-fee model may be evaluated separately, but no such monetization is currently controlling.
+Current 2026-09-14 direction instead sets free basic owner-direct self-listing as the baseline and permits optional verification/processing services, neutral later referral economics and relevant partner services without paid organic ranking.
 
-## 11. Pre-Gate-1 implementation scope
+## 11. Historical Pre-Gate-1 implementation scope
 
-The architecture and authorization boundary must be correct before Gate 1:
+The prior architecture/authorization boundary was:
 
 ```text
 private consumer
@@ -166,12 +175,12 @@ private-owner sale intent
 ≠ NativeListing
 ```
 
-The complete automated referral workflow does not need to be implemented inside the first marketplace slice and may remain post-Gate-1 if not required for the core buyer-marketplace validation.
+That remains an accurate description of the **currently implemented professional-only write path**, but it is no longer the target product policy. A future bounded owner-direct capability must add the correct private-seller authorization/trust path rather than bypassing or faking professional eligibility.
 
 The ONE-CAPABILITY rule remains controlling.
 
 ## 12. Known later extension
 
-Co-brokerage / buyer-broker vs seller-broker relationships are known future domain concerns.
+Co-brokerage / buyer-broker vs seller-broker relationships remain known domain concerns.
 
-They are not part of the Phase-1 private-owner referral implementation and must not expand the current scope.
+The 2026-09-14 pivot additionally makes professional-vs-owner-direct representation conflict a current accepted design obligation: resolution belongs around `PhysicalBoat → MarketEpisode → representation/sale-authority context`, not a naïve permanent one-listing-per-boat rule.

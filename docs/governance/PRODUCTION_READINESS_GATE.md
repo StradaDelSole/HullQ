@@ -1,11 +1,12 @@
 # HullQ — Production Readiness Gate
 
-**Status:** ACCEPTED OWNER DIRECTION
-**Accepted:** 2026-09-13
-**Purpose:** one canonical release/data-use gate for operational obligations that must be closed before real external broker production use
+**Status:** ACCEPTED OWNER DIRECTION — amended by owner-direct marketplace pivot when merged  
+**Accepted:** 2026-09-13; mixed-supply amendment 2026-09-14  
+**Purpose:** one canonical release/data-use gate for operational obligations that must be closed before real external marketplace production use
 
 <!-- PRODUCTION_READINESS_GATE_STATUS: NOT_TRIGGERED -->
 <!-- EXTERNAL_BROKER_PRODUCTION_DATA_STATUS: NOT_PRESENT -->
+<!-- EXTERNAL_OWNER_DIRECT_PRODUCTION_DATA_STATUS: NOT_PRESENT -->
 <!-- PRODUCTION_PILOT_STATUS: NOT_STARTED -->
 <!-- PUBLIC_PRODUCTION_LAUNCH_STATUS: NOT_STARTED -->
 
@@ -14,16 +15,16 @@
 The gate MUST be `PASS` before any of these becomes true:
 
 ```text
-1. real external broker data is stored/relied upon as HullQ production data
+1. real external broker OR owner-direct seller/listing data is stored/relied upon as HullQ production data
 2. a real external production pilot begins
 3. HullQ enters public production launch
 ```
 
 Whichever threshold comes first controls.
 
-This is deliberately stricter than waiting until broker inventory is publicly visible. The older accepted architecture's HA rule remains a hard latest-allowed minimum for buyer exposure; this gate brings the broader production-readiness review forward to the first real external broker production-data boundary.
+This is deliberately stricter than waiting until inventory is publicly visible. The owner-direct pivot must not create a loophole in a gate originally worded around broker production data.
 
-`NOT_TRIGGERED` is valid only while broker production data is `NOT_PRESENT`, the production pilot is `NOT_STARTED`, and public production launch is `NOT_STARTED`.
+`NOT_TRIGGERED` is valid only while BOTH external broker and external owner-direct production data are `NOT_PRESENT`, the production pilot is `NOT_STARTED`, and public production launch is `NOT_STARTED`.
 
 Allowed gate states:
 
@@ -33,7 +34,7 @@ IN_PROGRESS
 PASS
 ```
 
-Allowed broker-production-data states:
+Allowed external-production-data states, independently for broker and owner-direct supply:
 
 ```text
 NOT_PRESENT
@@ -47,7 +48,7 @@ NOT_STARTED
 ACTIVE
 ```
 
-If broker production data, the production pilot, or public launch is `ACTIVE`, the gate MUST be `PASS`.
+If either external production-data marker, the production pilot, or public launch is `ACTIVE`, the gate MUST be `PASS`.
 
 This record is intentionally separate from feature prioritization. It makes operational readiness a hard production-data/release condition without forcing premature infrastructure work during local/internal development with synthetic/disposable data.
 
@@ -65,14 +66,16 @@ Before this gate becomes `PASS`, repository-backed evidence must demonstrate all
 
 ### 2. Database availability and recoverability
 
-Accepted hard latest-allowed HA threshold from `docs/ARCHITECTURE_REBASELINE_2026-09-02.md` remains preserved:
+The hard latest-allowed HA threshold is now stated supply-neutrally after the mixed-supply pivot:
 
 ```text
-before real external broker production inventory is exposed to real external buyers
+before real external marketplace inventory is exposed to real external buyers
 → production PostgreSQL has automatic failover with at least one standby
 ```
 
-Because this production-readiness gate is now due at the earlier real-broker-production-data boundary, a PASS intended to cover continuing production use must document the current HA state and the accepted buyer-exposure trigger. If the first production-data phase is strictly internal and HA has not yet been activated, the PASS evidence must explicitly mark HA as still separately gated before any real-buyer exposure; public/pilot exposure may not start until that HA rule is satisfied.
+The earlier broker-only wording remains historical context, not a permission to expose owner-direct inventory without equivalent database resilience.
+
+Because this production-readiness gate is due at the earlier real-external-production-data boundary, a PASS intended to cover continuing production use must document the current HA state and the buyer-exposure trigger. If the first production-data phase is strictly internal and HA has not yet been activated, the PASS evidence must explicitly mark HA as still separately gated before any real-buyer exposure; public/pilot exposure may not start until that HA rule is satisfied.
 
 The gate also requires:
 
@@ -98,19 +101,22 @@ Exact provider/tooling is not predetermined by this gate.
 
 - Cloudflare or an explicitly superseding accepted edge boundary is configured for production ingress protection before public/pilot exposure;
 - practical rate/abuse controls protect public Search and other costly/sensitive public endpoints before those endpoints are externally exposed;
+- owner-direct creation/publication endpoints receive proportionate anti-spam/abuse/rate controls before external use;
 - bot/scraping controls are proportionate to current threat/load and do not silently change Search/domain semantics;
 - application-level rate limiting is added only where edge controls are insufficient or endpoint semantics require it.
 
-For a strictly internal broker-data phase with no public ingress, external abuse controls may be evidenced as not-yet-applicable, but they become mandatory before pilot/public exposure.
+For a strictly internal real-data phase with no public ingress, external abuse controls may be evidenced as not-yet-applicable, but they become mandatory before pilot/public exposure.
 
 ### 5. Secrets and privileged access
 
 - production secrets/credentials are not committed to the repository;
-- deployment/database/Auth0/backup credentials have defined storage and rotation/recovery handling;
+- deployment/database/Auth0/backup/verification-provider credentials have defined storage and rotation/recovery handling where applicable;
 - least-privilege access is used where practical;
 - privileged operational actions are auditable enough for incident/recovery diagnosis.
 
-### 6. Authentication and broker-publishing controls
+### 6. Authentication / authorization / seller trust controls
+
+#### Professional broker path
 
 When real external brokers can authenticate, publish, or manage inventory:
 
@@ -122,12 +128,27 @@ When real external brokers can authenticate, publish, or manage inventory:
 
 If real broker production data is initially operator-assisted and brokers cannot yet authenticate directly, these interactive broker-auth controls may be recorded as not-yet-applicable; they become mandatory before the corresponding capability is exposed.
 
-### 7. Broker media durability, when applicable
+#### Owner-direct path
 
-If real broker production data contains real broker media:
+Before real external owner-direct public publishing is exposed, the accepted owner-direct product requirements must be implemented for the active boundary, including at minimum:
+
+- verified phone reachability at the normal publication gate;
+- explicit right-to-list attestation;
+- baseline anti-abuse controls;
+- evidence-bounded trust/badge wording;
+- a defined risk-escalation/manual-review responsibility;
+- no use of professional Organization/Membership roles as a fake private-seller authorization shortcut;
+- data-minimization/retention rules for any strong ID-document/selfie/liveness verification that is actually activated.
+
+Strong ID verification and documentary sale-authority verification are not universal prerequisites unless the accepted risk policy requires them for the specific case.
+
+### 7. Media durability and rights, when applicable
+
+If real external production data contains real seller/broker media:
 
 - rights/use state is explicit enough for the intended production use;
 - HullQ has the independently retained production copy required by the accepted architecture rather than depending solely on an external listing URL;
+- quarantine/validation/re-encode/metadata/privacy requirements are applied by the owning media capability;
 - backup/recovery behavior covers HullQ-owned media as applicable.
 
 If the threshold is reached before media exists, this item may be recorded `NOT_APPLICABLE` with evidence; it is not permission to skip the requirement later when media enters production.
@@ -138,7 +159,8 @@ If the threshold is reached before media exists, this item may be recorded `NOT_
 - smoke/health checks exist for the production paths actually being relied upon;
 - rollback/recovery behavior has a named operator path;
 - production operation does not depend on undocumented local-machine state;
-- any strictly internal production-data phase is explicitly distinguished from external pilot/public exposure so later exposure gates cannot be silently skipped.
+- any strictly internal production-data phase is explicitly distinguished from external pilot/public exposure so later exposure gates cannot be silently skipped;
+- the PASS record names which supply paths (professional, owner-direct, or both) are actually covered.
 
 ## PASS record requirement
 
@@ -150,14 +172,17 @@ Independent review must reject a PASS claim that is supported only by intention 
 
 A PASS gate must be reassessed when a material production boundary changes, including:
 
-- internal real broker production data becoming externally buyer-visible;
+- internal real external-seller/listing production data becoming buyer-visible;
+- owner-direct supply entering production when the prior PASS covered professional supply only, or vice versa;
 - a real production pilot beginning;
 - public production launch;
-- a major hosting/database/auth/deployment topology change;
-- real broker media or direct broker authentication entering production when they were previously not applicable.
+- a major hosting/database/auth/verification/deployment topology change;
+- real marketplace media or direct external seller/broker authentication entering production when previously not applicable.
 
-Reassessment need not reopen product decisions; it verifies that the operational evidence still satisfies the accepted production boundary.
+Reassessment need not reopen product decisions; it verifies that operational evidence still satisfies the active production boundary.
 
 ## Relationship to post-0051 trigger gates
 
 `docs/governance/POST_0051_TRIGGER_GATES.md` owns the trigger timing and workflow obligations. This file owns the operational PASS criteria.
+
+The 2026-09-14 owner-direct pivot explicitly requires the post-0051 trigger record to be read supply-neutrally: owner-direct production data/pilots may not bypass a trigger merely because the original wording said `broker`.

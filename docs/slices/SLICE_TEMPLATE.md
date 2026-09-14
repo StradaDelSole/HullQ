@@ -26,13 +26,13 @@ Does this slice deliver exactly one user-visible capability OR answer exactly on
 Can the Project Owner personally execute, observe or inspect the result at the end of this slice?
 
 **PRODUCT EXECUTION PLAN ALIGNMENT:** PASS | FAIL  
-Does the slice comply with the currently controlling product/architecture governance and explicit gates? For work after SLICE-0039, apply the precedence defined in `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_RECONCILIATION_2026-09-02.md`, including `docs/ARCHITECTURE_REBASELINE_2026-09-02.md` and, where private-owner/public-supply policy is relevant, `docs/PRIVATE_SELLER_POLICY_2026-09-02.md`. Older execution documents remain controlling only where they do not conflict with higher-precedence post-SLICE-0039 decisions.
+Does the slice comply with the currently controlling product/architecture governance and explicit gates? For work after SLICE-0039, apply the precedence defined in `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_RECONCILIATION_2026-09-02.md`, including `docs/ARCHITECTURE_REBASELINE_2026-09-02.md` plus later explicit owner-accepted product directions. From the 2026-09-14 marketplace pivot onward, `docs/OWNER_DIRECT_LISTING_PRODUCT_DIRECTION_2026-09-14.md` and `specs/OWNER_DIRECT_LISTING_REQUIREMENTS.v0.1.md` supersede the older broker-only/private-FSBO-out-of-scope current direction where relevant. Historical policy records remain history, not current authority where superseded.
 
 **REPOSITORY RECONCILIATION CHECK:** PASS | FAIL  
-Required for SLICE-0051 and later. Before this slice was proposed, were the relevant accepted CAL/decision/ADR/spec/governance/slice records and the relevant existing production code/tests/migrations checked so this slice does not re-open or duplicate behavior that HullQ has already decided and implemented? See `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md`.
+Required for SLICE-0051 and later. Before this slice was proposed, were the relevant accepted CAL/decision/ADR/spec/governance/slice records and the relevant existing production code/tests/migrations checked so this slice does not re-open or duplicate behavior that HullQ has already decided and implemented? See `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md`. For SLICE-0054 and later, work touching listing/supply, seller identity/verification, representation conflict, referral, marketplace monetization or Search MUST include the owner-direct product direction/requirements in this reconciliation.
 
 **TRIGGER GATES CHECK:** PASS | FAIL  
-Required for SLICE-0052 and later. Were `docs/governance/POST_0051_TRIGGER_GATES.md` and `docs/governance/PRODUCTION_READINESS_GATE.md` checked and are all currently applicable architecture-reconciliation, production-readiness, technical-Search-abstraction and workflow-reassessment triggers satisfied?
+Required for SLICE-0052 and later. Were `docs/governance/POST_0051_TRIGGER_GATES.md` and `docs/governance/PRODUCTION_READINESS_GATE.md` checked and are all currently applicable architecture-reconciliation, production-readiness, technical-Search-abstraction and workflow-reassessment triggers satisfied? Owner-direct production data/pilots are not exempt from Production Readiness merely because older trigger wording was broker-specific.
 
 A required `FAIL` on any of these checks blocks readiness. Genuine prerequisite/blocker work must still be cut so the Project Owner can inspect its concrete result and the check can honestly be `PASS`.
 
@@ -73,9 +73,10 @@ Rules:
 - the ordinal must be exactly one greater than `TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT` in `docs/governance/POST_0051_TRIGGER_GATES.md`;
 - workflow status must exactly match the canonical marker;
 - after accepted SLICE-0056 the canonical workflow state may temporarily be `DUE`, but `DUE` blocks SLICE-0057 readiness/start until the evidence-based reassessment is owner-accepted and the state becomes `PASS`;
-- Production Readiness must become `PASS` before real external broker data is stored/relied upon as HullQ production data, before a real external production pilot, or before public production launch, whichever comes first.
+- Production Readiness must become `PASS` before real external broker OR owner-direct seller/listing data is stored/relied upon as HullQ production data, before a real external production pilot, or before public production launch, whichever comes first;
+- any Search capability must preserve the accepted non-commercial organic Search invariant: seller/broker payments or HullQ revenue opportunity may not affect organic eligibility, match classification or organic ordering.
 
-Repository validation checks these deterministic relationships. Independent readiness review must verify that the substantive comparison/generalization/distinction and gate evidence are true.
+Repository validation checks deterministic relationships it knows about. Independent readiness review must verify substantive comparison/generalization/distinction, owner-direct alignment and gate evidence are true.
 
 ## Why this slice exists
 
@@ -93,7 +94,9 @@ Explain the problem this slice closes and why it belongs at this point in the ex
 - Product execution plan: `docs/PRODUCT_EXECUTION_PLAN.md`
 - Post-SLICE-0039 architecture: `docs/ARCHITECTURE_REBASELINE_2026-09-02.md`
 - Post-SLICE-0039 execution reconciliation / precedence: `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_RECONCILIATION_2026-09-02.md`
-- Private-owner / public-supply policy where relevant: `docs/PRIVATE_SELLER_POLICY_2026-09-02.md`
+- Current owner-direct/private-seller direction where relevant: `docs/OWNER_DIRECT_LISTING_PRODUCT_DIRECTION_2026-09-14.md`
+- Current owner-direct/private-seller requirements where relevant: `specs/OWNER_DIRECT_LISTING_REQUIREMENTS.v0.1.md`
+- Historical private-seller policy where relevant to decision history only: `docs/PRIVATE_SELLER_POLICY_2026-09-02.md`
 - Native listing market decision: `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_MARKET_DECISION_2026-09-01.md`
 - Pre-Gate-1 execution amendment: `docs/PRODUCT_EXECUTION_PLAN_AMENDMENT_2026-09-01.md`
 - Relevant open questions:
@@ -139,7 +142,7 @@ Stop and report instead of inventing a solution when:
 - repository reconciliation shows the proposed behavior is already decided/implemented and the slice has no distinct remaining capability;
 - an accepted implementation obligation is missing and lacks a concrete owner/explicit deferral;
 - a post-0051 trigger gate is due but not satisfied;
-- the requested behavior would violate source-rights, provenance, identity, search/SEO, product-execution, or other accepted policy;
+- the requested behavior would violate source-rights, provenance, identity, search/SEO, product-execution, owner-direct/private-seller or other accepted policy;
 - implementation requires scope outside this slice.
 
 ## Status handoff rule

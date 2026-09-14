@@ -1,7 +1,7 @@
 # HullQ — Search & SEO Architecture
 
-**Status:** ACCEPTED ARCHITECTURAL BASELINE  
-**Decision:** ADR-0007  
+**Status:** ACCEPTED ARCHITECTURAL BASELINE — amended by owner-direct marketplace pivot when merged  
+**Decision:** ADR-0007 + 2026-09-14 owner-direct product direction  
 **Detailed broad/indexable public-discovery gate:** OQ-018 and later accepted page-class decisions  
 **Accepted product-led distribution strategy:** `docs/PRODUCT_LED_SEO_STRATEGY.md`
 
@@ -178,3 +178,32 @@ And for technical landing pages:
 > **Every important HullQ SEO page is backed by the same truth engine that powers HullQ Search.**
 
 These invariants do not authorize broad SEO implementation merely because bounded public routes exist. They constrain the relevant broad/indexable page-class work when that work becomes the active capability under accepted product execution governance.
+
+## 15. Organic Search commercial independence
+
+The 2026-09-14 owner-direct marketplace pivot adds a permanent Search governance invariant across professional and private supply:
+
+```text
+commercial consideration MUST NOT affect
+organic eligibility
+organic match classification
+organic ordering
+```
+
+The following MUST NOT be inputs to organic Search truth/order:
+
+- broker subscription/plan tier;
+- private-seller fees;
+- payment for verification/inspection/document processing;
+- referral economics or expected commission;
+- affiliate value;
+- advertising relationship;
+- any other HullQ revenue opportunity tied to the seller/listing.
+
+Payment may fund a genuine service that produces/processes evidence. The resulting evidence is evaluated under the same accepted rules as materially equivalent evidence supplied without payment. Payment does not buy `CONFIRMED`, eligibility or position.
+
+Future organic ordering may use accepted non-commercial logic such as explicit user sort, objective fit, price, location/distance, recency or another product-justified factor, but any such algorithm requires its own accepted semantics and must remain revenue-independent.
+
+A future sponsored/featured advertising surface is not categorically prohibited, but it is outside the organic result set. If later accepted, it must be mechanically and visually separate: it cannot change organic eligibility/classification/ordering, replace an organic result, consume organic pagination positions or masquerade as an organic recommendation.
+
+Changing the no-pay-to-rank/no-pay-to-organic-truth invariant requires an explicit Project Owner decision that acknowledges it is superseding this architecture rule; an ordinary pricing or growth experiment is insufficient.
