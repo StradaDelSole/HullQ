@@ -177,7 +177,7 @@ SLICE-0054 should provide exactly one visible capability:
 
 The seller sees an explicit `DRAFT — NOT PUBLIC` state. No publish action exists in this slice.
 
-The minimal draft payload is bounded by `specs/OWNER_DIRECT_DRAFT_CONTRACT.v0.1.md`.
+The minimal draft payload is bounded by `specs/OWNER_DIRECT_LISTING_WORKSPACE_CONTRACT.v0.1.md`.
 
 ## 7. Security boundary
 
