@@ -1,0 +1,85 @@
+---
+// SLICE-0053: one explicit Organization-scoped protected workspace landing
+// (contract §9/§11). Organization context is always explicit -- the exact
+// path segment -- never inferred from mutable browser state.
+//
+// unauthenticated             -> login path
+// unknown/unauthorized org    -> ordinary not-found (non-enumerating,
+//                                identical whether the Organization does
+//                                not exist or simply isn't this Account's)
+// privileged membership,
+//   no validated MFA          -> blocked/step-up prompt
+// authorized                  -> workspace landing (Organization ID,
+//                                professional category, publishing
+//                                eligibility, membership roles)
+export const prerender = false;
+
+import { fetchOrganizationContext } from "../../../lib/brokerApi";
+
+const organizationId = Astro.params.organization_id;
+const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
+const cookieHeader = Astro.request.headers.get("cookie");
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+
+const result = organizationId
+  ? await fetchOrganizationContext(apiBaseUrl, organizationId, cookieHeader)
+  : ({ kind: "not_found" } as const);
+
+if (result.kind === "not_found") {
+  Astro.response.status = 404;
+} else if (result.kind === "mfa_required") {
+  Astro.response.status = 403;
+}
+
+const nextPath = `/broker/organizations/${organizationId ?? ""}`;
+const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(nextPath)}`;
+// `acr_values=mfa` is a standard, harmless-if-ignored OIDC request
+// parameter forwarded verbatim by FastAPI's login endpoint (never given
+// HullQ-specific meaning there); it is the local deterministic test
+// issuer's step-up signal in tests/CI, and Auth0's configured step-up rule
+// in production.
+const stepUpUrl = `${loginUrl}&acr_values=mfa`;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>HullQ Broker Workspace</title>
+  </head>
+  <body>
+    <main>
+      {
+        result.kind === "unauthenticated" ? (
+          <>
+            <h1>Broker Workspace</h1>
+            <p>
+              Please <a href={loginUrl}>log in</a> to access this Organization.
+            </p>
+          </>
+        ) : result.kind === "not_found" ? (
+          <>
+            <h1>Not found</h1>
+            <p>This Organization workspace is not available.</p>
+          </>
+        ) : result.kind === "mfa_required" ? (
+          <>
+            <h1>Additional verification required</h1>
+            <p>This Organization membership requires multi-factor authentication.</p>
+            <a href={stepUpUrl}>Verify and continue</a>
+          </>
+        ) : (
+          <>
+            <h1>Organization workspace</h1>
+            <p>Organization ID: {result.data.organization_id}</p>
+            <p>Professional category: {result.data.professional_category}</p>
+            <p>Publishing eligibility: {result.data.publishing_eligibility}</p>
+            <p>Roles: {result.data.roles.join(", ")}</p>
+          </>
+        )
+      }
+    </main>
+  </body>
+</html>

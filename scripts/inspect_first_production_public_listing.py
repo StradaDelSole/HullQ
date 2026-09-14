@@ -173,7 +173,7 @@ def _wait_for_http(url: str, *, timeout_seconds: float = 15.0) -> bool:
             return True
         except urllib.error.HTTPError:
             return True
-        except urllib.error.URLError, ConnectionError, TimeoutError, OSError:
+        except (urllib.error.URLError, ConnectionError, TimeoutError, OSError):
             time.sleep(0.2)
     return False
 

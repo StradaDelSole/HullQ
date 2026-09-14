@@ -161,6 +161,11 @@ jobs:
           HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
         run: uv run python scripts/inspect_native_listing_freshness.py
 
+      - name: SLICE-0053 authenticated-broker-workspace-access real HTTP vertical proof
+        env:
+          HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
+        run: uv run python scripts/inspect_broker_workspace_access.py
+
       - name: Run benchmark runner against PostgreSQL 18
         env:
           HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test

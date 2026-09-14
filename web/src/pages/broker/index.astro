@@ -1,0 +1,62 @@
+---
+// SLICE-0053: the minimal protected Broker Workspace landing (contract §11).
+//
+// Unauthenticated -> login path, no broker data rendered.
+// Authenticated + zero ACTIVE memberships -> safe no-Organization-access
+// state.
+// Authenticated + active memberships -> only the caller's own authorized
+// Organization choices, never another Account's.
+//
+// Organization/membership truth always comes from FastAPI
+// (`fetchBrokerContext`); this page never queries PostgreSQL directly and
+// never reimplements tenant authorization.
+export const prerender = false;
+
+import { fetchBrokerContext } from "../../lib/brokerApi";
+
+const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
+const cookieHeader = Astro.request.headers.get("cookie");
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+
+const result = await fetchBrokerContext(apiBaseUrl, cookieHeader);
+const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent("/broker")}`;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>HullQ Broker Workspace</title>
+  </head>
+  <body>
+    <main>
+      <h1>Broker Workspace</h1>
+      {
+        result.kind === "unauthenticated" ? (
+          <p>
+            Please <a href={loginUrl}>log in</a> to access your Broker Workspace.
+          </p>
+        ) : result.data.organizations.length === 0 ? (
+          <p>Your account currently has no Organization access.</p>
+        ) : (
+          <>
+            <ul>
+              {result.data.organizations.map((org) => (
+                <li>
+                  <a href={`/broker/organizations/${encodeURIComponent(org.organization_id)}`}>
+                    {org.organization_id} &mdash; {org.professional_category}
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <form method="POST" action={`${apiBaseUrl}/api/auth/logout`}>
+              <button type="submit">Log out</button>
+            </form>
+          </>
+        )
+      }
+    </main>
+  </body>
+</html>
