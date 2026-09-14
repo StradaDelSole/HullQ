@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0052 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0053 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0053 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0054 -->
 
 **Updated:** 2026-09-14  
-**Latest owner-accepted / DONE slice:** SLICE-0052  
-**Current queue:** SLICE-0053 — **Authenticated Broker Workspace Access Boundary**, selected by the owner-accepted post-SLICE-0052 reassessment and readiness-defined in `docs/slices/SLICE-0053-broker-workspace-access.md`; implementation is not authorized until this readiness change is independently accepted/merged and the Project Owner runs `START_SLICE.bat`.  
+**Latest owner-accepted / DONE slice:** SLICE-0053  
+**Current queue:** SLICE-0054 — capability **not yet selected**; selection requires post-SLICE-0053 reassessment, repository reconciliation, trigger-gate inspection and Broker Workspace Mandatory Capability Register inspection before readiness.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -27,7 +27,7 @@ technical requirements
 
 Phase-1 public supply remains broker/dealer/eligible-professional only. Independent private FSBO remains out of scope; any later owner-to-broker referral path is separate future work.
 
-Two core product surfaces now control prioritization:
+Two core product surfaces control prioritization:
 
 ```text
 Buyer side
@@ -37,9 +37,7 @@ Provider side
 → best-in-class Broker Workspace
 ```
 
-## Broker Workspace — launch-critical direction
-
-Owner-accepted direction on 2026-09-13 makes the professional Broker Workspace a core HullQ product surface, not an admin panel or optional later polish.
+## Broker Workspace — accepted direction and current baseline
 
 Controlling records:
 
@@ -48,15 +46,27 @@ docs/BROKER_WORKSPACE_PRODUCT_DIRECTION_2026-09-13.md
 specs/BROKER_WORKSPACE_REQUIREMENTS.v0.1.md
 docs/governance/BROKER_WORKSPACE_LAUNCH_GATE.md
 docs/governance/BROKER_WORKSPACE_MANDATORY_CAPABILITY_REGISTER.md
+specs/BROKER_WORKSPACE_ACCESS_CONTRACT.v0.1.md
 ```
 
 Core operating principle:
 
 > A broker should never have to enter information twice, search for information HullQ already knows, or wonder what happened to a lead.
 
-The Broker Workspace must ultimately provide low-friction inventory creation/editing, safe reuse of known HullQ information without truth collapse, practical media operations, clear publication/freshness/commercial/sale state separation, explicit sale/outcome handling, durable first-class leads, source/campaign/Search attribution, assignment/follow-up workflow, response/performance analytics, portability/no lock-in and later triggered differentiators such as Search explainability and privacy-safe demand insight.
+SLICE-0053 now provides the first accepted professional access vertical:
 
-Current hard gate state remains:
+```text
+Auth0-compatible authentication
+→ provider-agnostic HullQ Account
+→ durable Organization / Membership / roles
+→ server-side tenant authorization
+→ privileged-role MFA gate
+→ protected Astro Broker Workspace landing
+```
+
+Auth0 remains authentication-only. HullQ PostgreSQL/domain state remains authoritative for Organization membership, roles and authorization. Email is not the immutable identity key.
+
+Current hard Broker Workspace gate state remains:
 
 ```text
 BROKER_WORKSPACE_LAUNCH_GATE_STATUS: NOT_READY
@@ -64,13 +74,11 @@ BROKER_SELF_SERVICE_PILOT_STATUS: NOT_STARTED
 PAID_BROKER_PLAN_STATUS: NOT_STARTED
 ```
 
-No real external broker self-service production pilot, paid broker activation or broad public production launch may bypass the accepted launch-gate rules.
-
-Every normal post-slice capability reassessment must inspect the Mandatory Capability Register before selecting the next primary capability. `PENDING` does not mean optional; any `DUE` commitment must be explicitly accounted for and may be deferred only with recorded rationale.
+The access boundary does not make the Broker Workspace launch-ready. `REQ-BROKER-023` broker identity/branding and `REQ-BROKER-024` connectivity-resilient draft recovery remain PENDING and mandatory before Launch Gate PASS, alongside the other trigger-specific mandatory commitments.
 
 ## Current architecture and precedence
 
-`docs/ARCHITECTURE_REBASELINE_2026-09-02.md` is the accepted post-SLICE-0039 architecture direction. `architecture/SYSTEM_ARCHITECTURE.md` is the current architecture snapshot. Older ADR-0010 / application-stack-baseline text remains historical where superseded.
+`docs/ARCHITECTURE_REBASELINE_2026-09-02.md` remains the accepted post-SLICE-0039 architecture direction. `architecture/SYSTEM_ARCHITECTURE.md` is the current architecture snapshot.
 
 Current application/production direction:
 
@@ -89,17 +97,17 @@ replaceable Linux app host / Caddy
 DigitalOcean Managed PostgreSQL 18 / FRA1
 ```
 
-Accepted boundaries:
+Accepted boundaries include:
 
-- FastAPI is the sole application/domain API boundary; Astro must not access PostgreSQL directly or become a second semantic Search/domain implementation;
-- Auth0 Public Cloud EU is authentication-only; HullQ owns Account IDs, Organizations, Memberships, roles, listing ownership, verification and authorization in PostgreSQL/domain state;
-- privileged broker publishing requires MFA, preferably passkeys/WebAuthn, with step-up for high-risk actions when those actions exist;
-- deployment uses CI-verified immutable Docker images, GHCR, versioned Docker Compose and controlled deploy/health-check/rollback; no initial Coolify/Dokploy control plane;
-- production application hosts are stateless/replaceable with respect to canonical application data;
-- independent encrypted backup plus tested restore is required in addition to provider DB backup;
+- FastAPI is the sole application/domain API boundary; Astro must not access PostgreSQL directly or become a second semantic backend;
+- Auth0 Public Cloud EU is authentication-only; HullQ owns account/tenant/role/authorization truth;
+- publishing-capable, Owner and Admin broker memberships require validated MFA evidence;
+- deployment uses CI-verified immutable Docker images, GHCR, versioned Docker Compose and controlled deploy/rollback;
+- production app hosts are stateless/replaceable with respect to canonical application data;
+- independent encrypted backup plus tested restore is required beyond provider DB backup;
 - before real broker inventory is exposed to real external buyers, production PostgreSQL must have automatic failover with at least one standby.
 
-Do not introduce a second business-logic backend, dedicated external Search engine, Kubernetes/distributed infrastructure or other operational layer without measured need and an accepted decision.
+SLICE-0053 adds a current session-topology invariant: the browser-visible FastAPI auth/callback and Astro Broker Workspace must share the same hostname while the session remains a host-only cookie. Cross-host configuration fails closed; any later redesign must be explicit.
 
 ## Hard truth and identity boundaries
 
@@ -109,49 +117,41 @@ Accepted marketplace identity boundary:
 BoatDesignRef != PhysicalBoatId != MarketEpisodeId != NativeListingId != ExternalMarketObservationId
 ```
 
-Relationships:
-
-```text
-PhysicalBoat → optional BoatDesignRef
-MarketEpisode → PhysicalBoatId
-NativeListing → optional MarketEpisodeId
-ExternalMarketObservation → optional MarketEpisodeId
-```
-
 Hard truth rule:
 
 ```text
 DESIGN / CONFIGURATION TRUTH != PHYSICAL BOAT / LISTING TRUTH
 ```
 
-A design/configuration can establish technical eligibility without establishing a fact about one offered yacht. No BoatDesign value becomes individual-yacht truth merely because a PhysicalBoat references that design.
+A design/configuration can establish technical eligibility without establishing a fact about one offered yacht.
 
-## What is already built and accepted
+## Built and owner-accepted product threshold
 
-The repository has accepted, tested foundations/product verticals for:
+The repository now includes accepted, tested verticals through:
 
-- canonical sailboat identity/data contracts and PostgreSQL persistence;
-- deterministic technical normalization/Search behavior and provenance boundaries;
-- source-rights gating and retained research/reproducibility paths;
-- marketplace identity and strict design-vs-concrete-boat truth separation (SLICE-0040);
-- Account / Organization / Membership professional publishing eligibility (SLICE-0041);
-- Alembic as the sole forward migration path (SLICE-0042);
-- durable immutable NativeListing identity persistence (SLICE-0043);
-- Gate-1 marketplace fact/claim semantics and bounded field registry (SLICE-0044);
-- durable revisioned NativeListing offer-fact persistence for the nine `LISTING_OFFER` fields (SLICE-0045);
-- durable PhysicalBoat identity persistence with optional validated canonical `BoatDesignRef` (SLICE-0046);
-- durable MarketEpisode identity and NativeListing→MarketEpisode linkage (SLICE-0047);
-- first browser-visible real listing preview vertical (SLICE-0048);
-- first production-public NativeListing lifecycle/read/page vertical (SLICE-0049);
-- first buyer-critical concrete PhysicalBoat truth vertical with exactly seven broker-declared fields and no BoatDesign fallback (SLICE-0050);
-- first production buyer-facing Requirements → Native Inventory Search vertical over exactly `draft_max` plus bounded production FieldResolution persistence (SLICE-0051);
-- evidence-backed NativeListing freshness/reconfirmation with 30-day TTL + 7-day grace, buyer-surface suppression of STALE/UNKNOWN inventory and authorized immutable reconfirmation (SLICE-0052).
+```text
+SLICE-0040 marketplace identity/truth separation
+→ SLICE-0041 professional publishing eligibility
+→ SLICE-0042 Alembic migration baseline
+→ SLICE-0043 NativeListing persistence
+→ SLICE-0044 marketplace field contract
+→ SLICE-0045 revisioned offer facts
+→ SLICE-0046 PhysicalBoat persistence
+→ SLICE-0047 MarketEpisode linkage
+→ SLICE-0048 browser-visible listing preview
+→ SLICE-0049 production-public listing
+→ SLICE-0050 concrete-yacht broker truth
+→ SLICE-0051 first production technical native Search (`draft_max`)
+→ SLICE-0052 evidence-backed listing freshness/reconfirmation
+→ SLICE-0053 authenticated Broker Workspace access boundary
+```
 
-Acceptance closures:
+Latest closures:
 
 ```text
 docs/slices/SLICE-0051-acceptance-closure.md
 docs/slices/SLICE-0052-acceptance-closure.md
+docs/slices/SLICE-0053-acceptance-closure.md
 ```
 
 ## NativeListing lifecycle and freshness
@@ -162,9 +162,7 @@ Public lifecycle remains intentionally:
 DRAFT → ACTIVE → WITHDRAWN
 ```
 
-Republish, `SOLD` and `ARCHIVED` remain future lifecycle capabilities.
-
-Freshness is now separately implemented and accepted under `MANUAL_NATIVE_V1`:
+Freshness remains separate under `MANUAL_NATIVE_V1`:
 
 ```text
 confirmation TTL = 30 days
@@ -176,9 +174,7 @@ STALE
 UNKNOWN
 ```
 
-Initial confirmation evidence is the immutable successful `DRAFT → ACTIVE` publication transition timestamp. Later reconfirmation is an explicit authorized immutable event with database/system timestamp and stable retry-safe `FreshnessConfirmationId`.
-
-Current buyer eligibility is:
+Current buyer eligibility:
 
 ```text
 ACTIVE + CONFIRMED/DUE_FOR_CONFIRMATION
@@ -190,10 +186,6 @@ ACTIVE + STALE/UNKNOWN
 → never inferred SOLD/WITHDRAWN
 ```
 
-No scheduler is required merely to advance freshness with elapsed time; status is derived from immutable evidence plus explicit evaluation time.
-
-The public listing and Search projection carry `freshness_status` and `last_confirmed_at`. Buyer-facing freshness wording uses `last_confirmed_at`; `offer_recorded_at` remains only the LISTING_OFFER revision-recorded timestamp.
-
 ## Accepted technical Search result
 
 SLICE-0051 still defines exactly one public hard technical buyer requirement:
@@ -202,37 +194,15 @@ SLICE-0051 still defines exactly one public hard technical buyer requirement:
 draft_max=<exact decimal metres>
 ```
 
-Public routes:
+Public routes remain `/en/search`, `/de/search`, `/fr/search`, `/pt/search`, `/es/search`.
+
+Only `CONFIRMED_MATCH` is returned in the primary result surface. Insufficient/conflicting technical data is separate and never presented as a match. STALE/UNKNOWN inventory is excluded before technical classification.
+
+Accepted technical native Search criteria count remains:
 
 ```text
-/en/search
-/de/search
-/fr/search
-/pt/search
-/es/search
+1
 ```
-
-Production path:
-
-```text
-buyer draft_max
-→ exact Decimal request parsing/canonicalization
-→ qualified deterministic BoatDesign/configuration Search
-→ ACTIVE native professional inventory
-→ freshness admission
-→ NativeListing → MarketEpisode → PhysicalBoat
-→ publishing Organization's current physical_boat.draft claim
-→ same-PhysicalBoat current-observation contradiction guard
-→ CONFIRMED_MATCH / CONFIRMED_NON_MATCH / INSUFFICIENT_DATA
-→ buyer-visible Search result
-→ /listings/{NativeListingId}
-```
-
-Only `CONFIRMED_MATCH` is returned in the primary result surface. Insufficient/conflicting technical data is separate and never presented as a match. STALE/UNKNOWN inventory is excluded before technical classification and therefore is not counted as technical insufficient data.
-
-A raw value merely present in canonical BoatDesign JSON is not confirmed Search truth. The bounded design/configuration path requires admissible active FieldResolution plus exact canonical-value agreement and accepted production-use evidence/source rights.
-
-SLICE-0052 adds no second technical Search criterion.
 
 ## Post-SLICE-0051 trigger gates
 
@@ -244,43 +214,31 @@ docs/governance/PRODUCTION_READINESS_GATE.md
 docs/governance/BROKER_WORKSPACE_LAUNCH_GATE.md
 ```
 
-Current trigger state:
+Current state:
 
 ```text
-architecture/current-state reconciliation: PASS
-accepted technical native Search criteria: 1 (draft_max)
-workflow reassessment: NOT_DUE; mandatory after SLICE-0056 or before first real production pilot, whichever comes first
-production readiness: NOT_TRIGGERED
-external broker production data: NOT_PRESENT
-production pilot: NOT_STARTED
-public production launch: NOT_STARTED
-broker workspace launch gate: NOT_READY
+POST_0051_ARCHITECTURE_RECONCILIATION: PASS
+TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 1
+WORKFLOW_REASSESSMENT_DUE_AFTER_SLICE: 0056
+WORKFLOW_REASSESSMENT_STATUS: NOT_DUE
+
+PRODUCTION_READINESS_GATE_STATUS: NOT_TRIGGERED
+EXTERNAL_BROKER_PRODUCTION_DATA_STATUS: NOT_PRESENT
+PRODUCTION_PILOT_STATUS: NOT_STARTED
+PUBLIC_PRODUCTION_LAUNCH_STATUS: NOT_STARTED
+
+BROKER_WORKSPACE_LAUNCH_GATE_STATUS: NOT_READY
+BROKER_SELF_SERVICE_PILOT_STATUS: NOT_STARTED
+PAID_BROKER_PLAN_STATUS: NOT_STARTED
 ```
 
-From SLICE-0052 onward every primary readiness contract must contain `**TRIGGER GATES CHECK:** PASS` and the machine-checked `## Trigger gates` evidence section.
+From SLICE-0052 onward every primary readiness contract must contain the canonical trigger-gate evidence. Technical Search criterion #2 must explicitly compare its bridge/path to SLICE-0051; criterion #3+ may not introduce a third structural copy without the abstraction guard PASS.
 
-Technical Search expansion rule:
+Production Readiness must be PASS before real external broker data becomes HullQ production data, before the first real external production pilot, or before public production launch, whichever occurs first. The older PostgreSQL HA minimum remains separately hard before real broker inventory is exposed to real external buyers.
 
-```text
-criterion #1 -> concrete path proved by SLICE-0051
-criterion #2 -> mandatory explicit comparison with the 0051 bridge/path
-criterion #3+ -> no third structural copy without PASS abstraction guard
-```
+## Broker Mandatory Capability Register
 
-Production-readiness rule:
-
-```text
-first real external broker data stored/relied upon as HullQ production data
-OR first real external production pilot
-OR public production launch
-→ PRODUCTION_READINESS_GATE_STATUS MUST be PASS
-```
-
-The older HA minimum remains separately hard before real broker inventory is exposed to real external buyers.
-
-## Broker mandatory commitments after SLICE-0052
-
-The accepted Mandatory Capability Register remains open. Current high-level state remains:
+Current high-level state remains:
 
 ```text
 BROKER_WORKSPACE_MANDATORY_COMMITMENTS_STATUS: OPEN
@@ -301,115 +259,73 @@ REQ_BROKER_029_STATUS: PENDING
 REQ_BROKER_030_STATUS: IMPLEMENTED
 ```
 
-Trigger-specific requirements in the register remain controlling. In particular, first external broker pilot, scaled onboarding, paid activation and broad public launch each have explicit prerequisite relationships that may not be bypassed.
-
-## Selected SLICE-0053 capability
-
-SLICE-0053 is the first authenticated professional Broker Workspace access vertical.
-
-Controlling selection/readiness:
-
-```text
-docs/POST_SLICE_0052_REASSESSMENT_2026-09-14.md
-docs/slices/SLICE-0053-broker-workspace-access.md
-specs/BROKER_WORKSPACE_ACCESS_CONTRACT.v0.1.md
-```
-
-Selected path:
-
-```text
-Auth0 Public Cloud EU authentication
-→ provider-agnostic durable HullQ Account
-→ durable Organization / Membership / roles
-→ server-side FastAPI tenant authorization
-→ protected Astro Broker Workspace landing
-```
-
-Auth0 remains authentication-only. HullQ PostgreSQL/domain state remains authoritative for Organization membership, roles and authorization. Publishing-capable / Owner / Admin memberships require validated MFA authentication evidence before privileged Organization workspace entry.
-
-The slice is intentionally limited to access/identity/tenant truth. It does not add listing CRUD, media, leads, sales/outcomes, analytics, payments or a real broker pilot.
-
-Selection/readiness does not mean implementation is complete or started. Implementation begins only through the normal `START_SLICE.bat` workflow after readiness review/merge.
+SLICE-0053 directly implements REQ-BROKER-014 and REQ-BROKER-015; it does not change the mandatory-register statuses above. Every normal post-slice reassessment must inspect the register before selecting the next capability.
 
 ## What is not built yet
 
-Important remaining marketplace/product capabilities include:
+Important remaining product capabilities include:
 
-- the selected SLICE-0053 authenticated Broker Workspace access implementation until owner-accepted and closed;
-- launch-grade Broker Workspace functionality beyond access, including low-friction inventory workflow, media operations, commercial/sale outcomes, durable leads, attribution, lead workflow and broker analytics;
-- PhysicalBoat marketplace fact coverage beyond the seven accepted SLICE-0050 fields, including broader field-specific verification/resolution;
-- broader multi-criterion native-inventory Search and any ranking/recommendation layer beyond the bounded deterministic `draft_max` surface;
+- low-friction broker inventory create/edit/publish/reconfirm workflow;
+- broker identity/branding completion and media operations;
+- connectivity-resilient broker drafts/recovery;
+- explicit commercial/sale outcome workflow;
+- durable leads/contact requests, attribution, assignment/follow-up and broker analytics;
+- inventory export/portability and later bulk import/feed paths;
+- Search-fit diagnostics, exclusion explainability and privacy-safe demand insight when applicable/triggered;
+- broader PhysicalBoat marketplace fact coverage;
+- broader multi-criterion native-inventory Search and any later ranking/recommendation layer;
 - Saved Search persistence, monitoring/alerts and price-history intelligence;
 - independent verification of broker claims;
-- broad/global canonical-field resolution/backfill;
-- payment/subscription implementation and entitlement enforcement for future paid broker/buyer plans;
-- production deployment/operations capabilities required to make the Production Readiness Gate PASS;
-- full listing/Search SEO indexation, faceted landing-page taxonomy, sitemap/hreflang expansion and broad structured-data strategy beyond current noindex page classes.
+- production deployment/operations required for Production Readiness PASS;
+- broad listing/Search SEO indexation beyond current noindex page classes;
+- future payment/subscription entitlement enforcement.
 
-Except for the selected 0053 access capability, these items are not automatically assigned to later slice numbers. Broker commitments recorded as mandatory may not be silently dropped.
+These are not automatically assigned to SLICE-0054. Mandatory commitments may not be silently dropped.
 
-## Search and SEO boundary
+## Search / SEO and monetization boundaries
 
-Search architecture and SEO remain product architecture, not later marketing.
+Search architecture and SEO remain product architecture, not later marketing. Stable public listing route remains `/listings/{NativeListingId}`; current public listing/Search page classes remain deliberately `noindex`. Mandatory public languages remain English, German, French, Portuguese and Spanish.
 
-Stable public listing route:
-
-```text
-/listings/{NativeListingId}
-```
-
-Current public listing/Search page classes remain deliberately `noindex`. Arbitrary facet paths, indexable Search-result combinations, Search sitemap publication and broad structured-data expansion are not yet authorized.
-
-Mandatory public languages remain English, German, French, Portuguese and Spanish. Canonical IDs, technical values, provenance and Search semantics remain language-neutral.
-
-## Monetization direction
-
-Search remains broadly open; persistence, monitoring and intelligence remain preferred monetization surfaces.
-
-Current framing remains:
-
-```text
-HullQ Free — Search everything. Save 5 searches.
-```
-
-Potential Pro surfaces include expanded saved searches, monitoring/alerts and, where rights/data permit, listing price history, price-change alerts, model/generation/configuration market trends, Days-on-Market and price-reduction signals.
-
-No paid broker plan may be activated while the Broker Workspace launch/mandatory prerequisite gates remain unsatisfied.
+Search remains broadly open; persistence, monitoring and intelligence remain preferred buyer monetization surfaces. No paid broker plan may activate while Broker Workspace launch/mandatory prerequisites remain unsatisfied.
 
 ## Execution checkpoint
 
-Completed product threshold remains:
+Current product position:
 
 ```text
-PERSISTED REAL LISTING
-→ PRODUCTION PUBLIC LISTING
-→ CONCRETE-YACHT BROKER TRUTH
-→ FIRST PRODUCTION BUYER TECHNICAL SEARCH
-→ EVIDENCE-BACKED CURRENT-INVENTORY FRESHNESS
-= BUILT THROUGH SLICE-0052
+Buyer
+→ production public listing
+→ concrete-yacht broker truth
+→ deterministic technical native Search
+→ evidence-backed current-inventory freshness
+
+Broker
+→ external authentication
+→ stable HullQ Account
+→ durable Organization/Membership/roles
+→ tenant-safe + MFA-gated authorization
+→ protected Broker Workspace landing
 ```
 
-Selected next capability:
+Next queue number:
 
 ```text
-SLICE-0053
-= Authenticated Broker Workspace Access Boundary
-= Auth0 authentication → HullQ identity/membership → protected Organization workspace
+SLICE-0054
 ```
 
-No SLICE-0053 implementation may start until this readiness package has passed independent readiness review and merged to canonical `main`, after which the Project Owner must run `START_SLICE.bat` for 0053. `START_SLICE.bat` remains the sole initial Claude implementation prompt.
+No SLICE-0054 capability has been selected or authorized by this closure. Selection must begin with post-SLICE-0053 repository reconciliation, trigger-gate inspection and Mandatory Capability Register inspection, then choose the smallest highest-leverage visible continuation.
 
 ## Development workflow
 
 - `origin/main` is canonical shared truth;
 - one implementation slice per isolated worktree/branch;
 - Claude Code implements; independent reviewer verifies exact implementation HEAD;
-- material finding → `AMEND` on the same branch;
-- clean exact-head review → `ACCEPT`;
+- material finding → amendment on the same branch;
+- clean exact-head review → ACCEPT;
 - explicit Project Owner acceptance is mandatory before implementation merge;
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
-- `FINISH_SLICE.bat` closes the local slice only after remote closure is reviewed and merged;
-- the next slice starts only after post-slice reassessment/readiness and uses a fresh Claude conversation;
-- workflow overhead reassessment becomes mandatory after accepted SLICE-0056 or before an earlier real production pilot, whichever comes first.
+- `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
+- the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
+- workflow reassessment becomes mandatory after accepted SLICE-0056 or before an earlier real production pilot, whichever comes first.
 
-For exact hashes, amendments, gate runs and review history, read the corresponding slice acceptance closure rather than expanding this file into a second historical log.
+For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
