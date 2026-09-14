@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-14  
 **Latest owner-accepted / DONE slice:** SLICE-0052  
-**Current queue:** SLICE-0053 — capability **not yet selected**; selection requires the normal post-slice product/architecture reassessment and repository reconciliation before readiness.  
+**Current queue:** SLICE-0053 — **Authenticated Broker Workspace Access Boundary**, selected by the owner-accepted post-SLICE-0052 reassessment and readiness-defined in `docs/slices/SLICE-0053-broker-workspace-access.md`; implementation is not authorized until this readiness change is independently accepted/merged and the Project Owner runs `START_SLICE.bat`.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -303,12 +303,40 @@ REQ_BROKER_030_STATUS: IMPLEMENTED
 
 Trigger-specific requirements in the register remain controlling. In particular, first external broker pilot, scaled onboarding, paid activation and broad public launch each have explicit prerequisite relationships that may not be bypassed.
 
+## Selected SLICE-0053 capability
+
+SLICE-0053 is the first authenticated professional Broker Workspace access vertical.
+
+Controlling selection/readiness:
+
+```text
+docs/POST_SLICE_0052_REASSESSMENT_2026-09-14.md
+docs/slices/SLICE-0053-broker-workspace-access.md
+specs/BROKER_WORKSPACE_ACCESS_CONTRACT.v0.1.md
+```
+
+Selected path:
+
+```text
+Auth0 Public Cloud EU authentication
+→ provider-agnostic durable HullQ Account
+→ durable Organization / Membership / roles
+→ server-side FastAPI tenant authorization
+→ protected Astro Broker Workspace landing
+```
+
+Auth0 remains authentication-only. HullQ PostgreSQL/domain state remains authoritative for Organization membership, roles and authorization. Publishing-capable / Owner / Admin memberships require validated MFA authentication evidence before privileged Organization workspace entry.
+
+The slice is intentionally limited to access/identity/tenant truth. It does not add listing CRUD, media, leads, sales/outcomes, analytics, payments or a real broker pilot.
+
+Selection/readiness does not mean implementation is complete or started. Implementation begins only through the normal `START_SLICE.bat` workflow after readiness review/merge.
+
 ## What is not built yet
 
 Important remaining marketplace/product capabilities include:
 
-- launch-grade Broker Workspace capabilities required by the accepted direction/register, including authenticated self-service, low-friction inventory workflow, media operations, commercial/sale outcomes, durable leads, attribution, lead workflow and broker analytics;
-- persisted marketplace actor directory beyond accepted runtime eligibility types;
+- the selected SLICE-0053 authenticated Broker Workspace access implementation until owner-accepted and closed;
+- launch-grade Broker Workspace functionality beyond access, including low-friction inventory workflow, media operations, commercial/sale outcomes, durable leads, attribution, lead workflow and broker analytics;
 - PhysicalBoat marketplace fact coverage beyond the seven accepted SLICE-0050 fields, including broader field-specific verification/resolution;
 - broader multi-criterion native-inventory Search and any ranking/recommendation layer beyond the bounded deterministic `draft_max` surface;
 - Saved Search persistence, monitoring/alerts and price-history intelligence;
@@ -318,7 +346,7 @@ Important remaining marketplace/product capabilities include:
 - production deployment/operations capabilities required to make the Production Readiness Gate PASS;
 - full listing/Search SEO indexation, faceted landing-page taxonomy, sitemap/hreflang expansion and broad structured-data strategy beyond current noindex page classes.
 
-These items are not automatically assigned to SLICE-0053. The next capability must be selected through reassessment and repository reconciliation. Broker commitments recorded as mandatory may not be silently dropped.
+Except for the selected 0053 access capability, these items are not automatically assigned to later slice numbers. Broker commitments recorded as mandatory may not be silently dropped.
 
 ## Search and SEO boundary
 
@@ -361,16 +389,15 @@ PERSISTED REAL LISTING
 = BUILT THROUGH SLICE-0052
 ```
 
-Current queue only:
+Selected next capability:
 
 ```text
 SLICE-0053
-= capability NOT YET SELECTED
+= Authenticated Broker Workspace Access Boundary
+= Auth0 authentication → HullQ identity/membership → protected Organization workspace
 ```
 
-Before selecting SLICE-0053, perform the normal post-SLICE-0052 product/architecture reassessment, reconcile actual repository state, inspect all trigger gates and explicitly inspect `docs/governance/BROKER_WORKSPACE_MANDATORY_CAPABILITY_REGISTER.md`.
-
-Do not run `START_SLICE.bat` for 0053 until capability selection/readiness has passed the required review/merge workflow. `START_SLICE.bat` remains the sole initial Claude implementation prompt.
+No SLICE-0053 implementation may start until this readiness package has passed independent readiness review and merged to canonical `main`, after which the Project Owner must run `START_SLICE.bat` for 0053. `START_SLICE.bat` remains the sole initial Claude implementation prompt.
 
 ## Development workflow
 
