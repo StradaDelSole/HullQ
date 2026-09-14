@@ -33,6 +33,25 @@ the read-side clock boundary). Production deployments never set the
 environment variable, so `datetime.now(timezone.utc)` is read fresh on every
 request; the retained SLICE-0052 proof and tests are the only intended
 callers of the override.
+
+SLICE-0053 current session-topology invariant (independent review
+2026-09-14, exact-head 9777496): the HullQ session cookie is host-only (see
+`require_same_host_session_topology` below). The browser-visible FastAPI
+auth/callback endpoint (`HULLQ_AUTH_REDIRECT_URI`'s host) and the Astro
+Broker Workspace surface the browser is sent back to after login
+(`HULLQ_WEB_BASE_URL`'s host, when configured) MUST therefore share the
+exact same hostname -- ports may differ, and a same-host reverse-proxy
+layout in front of both is fine, but e.g. `api.hullq.com` for auth/callback
+against `hullq.com` for `/broker` is not: it would produce a successful
+Auth0 callback immediately followed by an unauthenticated `/broker`, since
+the browser would never send the host-only session cookie set for
+`api.hullq.com` to a request against `hullq.com`. `/api/auth/login` and
+`/api/auth/callback` both fail closed (raise `SessionTopologyError`) rather
+than silently completing that broken loop. This is the current session
+architecture's invariant, not a general redesign; a later slice that needs
+genuinely different auth/workspace hostnames must own that redesign
+explicitly (e.g. a server-side session store keyed by an opaque id instead
+of a host-only cookie carrying the claims directly).
 """
 
 from __future__ import annotations
@@ -40,19 +59,107 @@ from __future__ import annotations
 import os
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 
+from hullq.application.broker_callback import CallbackOutcome, complete_login_callback
+from hullq.application.broker_login import build_login_redirect
+from hullq.application.broker_workspace_read import (
+    OrganizationWorkspaceOutcome,
+    get_broker_context_read_model,
+    get_organization_workspace_result,
+)
 from hullq.application.preview_read import get_preview_read_model
 from hullq.application.public_listing_read import get_public_listing_read_model
 from hullq.application.search_read import SearchOutcomeKind, evaluate_search_request
 from hullq.domain.market_identity import NativeListingId
+from hullq.domain.publishing_eligibility import MarketplaceOrganizationId
 from hullq.persistence.connection import get_database_url, open_connection
 from hullq.search.draft_max_request import canonical_draft_max_str
+from hullq.security.oidc import AuthProviderConfig, get_auth_provider_config
 from hullq.security.preview_signing import get_preview_signing_secret
+from hullq.security.session_signing import get_session_signing_secret
+from hullq.security.session_token import (
+    InvalidSessionTokenError,
+    SessionClaims,
+    verify_and_decode_session_token,
+)
 
-__all__ = ["create_app"]
+__all__ = ["SessionTopologyError", "create_app", "require_same_host_session_topology"]
+
+
+class SessionTopologyError(RuntimeError):
+    """The configured auth/callback host and Broker Workspace host differ.
+
+    See the module docstring's "SLICE-0053 current session-topology
+    invariant" for why this is a hard requirement of the current
+    host-only-cookie session design, not an arbitrary restriction.
+    """
+
+
+def require_same_host_session_topology(*, redirect_uri: str, web_base_url: str | None) -> None:
+    """Fail closed if *redirect_uri* and *web_base_url* have different hosts.
+
+    A `None` *web_base_url* means the post-login redirect target is a
+    relative path, which the browser always resolves against the
+    auth/callback's own origin -- inherently same-host, so there is nothing
+    to check. Raises `SessionTopologyError` (never returns a bool) so a
+    misconfiguration cannot be silently ignored by a caller that forgets to
+    check a return value.
+    """
+    if web_base_url is None:
+        return
+    redirect_host = urlsplit(redirect_uri).hostname
+    web_host = urlsplit(web_base_url).hostname
+    if redirect_host != web_host:
+        raise SessionTopologyError(
+            f"HULLQ_WEB_BASE_URL host {web_host!r} does not match the "
+            f"auth/callback host {redirect_host!r} (from HULLQ_AUTH_REDIRECT_URI "
+            f"{redirect_uri!r}). SLICE-0053's host-only session cookie cannot cross "
+            "hostnames: the Astro Broker Workspace and the FastAPI auth/callback "
+            "endpoint must share the exact same hostname (ports may differ; a "
+            "same-host reverse-proxy layout in front of both is fine)."
+        )
+
+
+#: SLICE-0053: HullQ-owned browser cookies. Neither is ever readable by
+#: ordinary browser JavaScript (`HttpOnly`), both are scoped `Path=/` and
+#: never carry a `Domain` attribute (contract §6/§11/§12).
+#:
+#: Independent review (2026-09-14, exact-head a7fee1a0): a host-only cookie
+#: alone is not sufficient defense. A compromised/hostile sibling subdomain
+#: sharing HullQ's parent domain (e.g. a subdomain takeover) can still set a
+#: `Set-Cookie: hullq_session=...; Domain=<parent-domain>` cookie that this
+#: app -- like any other host under that parent -- would receive and, absent
+#: further defense, accept ("cookie tossing" / session fixation). Two
+#: independent defenses close this:
+#:
+#: 1. `__Host-`-prefixed cookie names in production (`_cookie_name` below):
+#:    per RFC 6265bis, a browser refuses to store a `__Host-`-prefixed
+#:    cookie at all unless it is `Secure`, has no `Domain` attribute and has
+#:    `Path=/` -- exactly the three properties always set below. A sibling
+#:    subdomain cannot set a `Domain=<parent>` cookie under this prefix: the
+#:    browser rejects it outright, so it can never reach this app's request
+#:    handlers. (Requires a real Secure/HTTPS context; the deterministic
+#:    local/CI HTTP proof cannot use it and falls back to the unprefixed
+#:    name via `HULLQ_SESSION_COOKIE_SECURE=false` -- see `_cookie_secure`.)
+#: 2. the login-state cookie's payload is HMAC-signed
+#:    (`hullq.application.broker_login`), not merely opaque: even if a
+#:    tossed/forged cookie somehow reached the callback, it would still
+#:    fail signature verification and be treated as
+#:    `STATE_MISSING_OR_MISMATCH` -- defense in depth independent of the
+#:    cookie-prefix protection above.
+_SESSION_COOKIE_BASE_NAME = "hullq_session"
+_LOGIN_STATE_COOKIE_BASE_NAME = "hullq_login_state"
+_HOST_COOKIE_PREFIX = "__Host-"
+_LOGIN_STATE_COOKIE_MAX_AGE_SECONDS = 600
+_AUTH_REDIRECT_URI_ENV = "HULLQ_AUTH_REDIRECT_URI"
+_WEB_BASE_URL_ENV = "HULLQ_WEB_BASE_URL"
+_SESSION_COOKIE_SECURE_ENV = "HULLQ_SESSION_COOKIE_SECURE"
+_BROKER_PATH_PREFIXES = ("/api/auth/", "/api/broker/")
+_BROKER_RESPONSE_HEADERS = {"Cache-Control": "private, no-store", "X-Robots-Tag": "noindex"}
 
 #: SLICE-0052: server-side-only freshness clock override, resolved once at
 #: app-creation time. Never read from an HTTP request. Unset in every
@@ -116,6 +223,12 @@ def create_app(
     database_url: str | None = None,
     preview_signing_secret: bytes | None = None,
     freshness_as_of_override: datetime | None = None,
+    auth_provider_config: AuthProviderConfig | None = None,
+    session_signing_secret: bytes | None = None,
+    auth_redirect_uri: str | None = None,
+    web_base_url: str | None = None,
+    auth_http_client: Any | None = None,
+    auth_jwks_cache: Any | None = None,
 ) -> FastAPI:
     """Build the SLICE-0048 preview FastAPI application.
 
@@ -133,6 +246,15 @@ def create_app(
     `_FRESHNESS_AS_OF_OVERRIDE_ENV`, and when neither is set every request
     resolves freshness against the real `datetime.now(timezone.utc)` read at
     request time. Never derived from an HTTP request.
+
+    SLICE-0053's auth/broker configuration (*auth_provider_config*,
+    *session_signing_secret*, *auth_redirect_uri*) is deliberately resolved
+    lazily, per-request, inside the `/api/auth/*` and `/api/broker/*`
+    handlers only -- never eagerly here at app-creation time -- so that
+    every pre-existing non-broker route/test continues to work unchanged in
+    an environment that has not configured an authentication provider at
+    all. *auth_http_client*/*auth_jwks_cache* let tests/the retained proof
+    inject a deterministic transport instead of real outbound network I/O.
     """
     resolved_database_url = database_url if database_url is not None else get_database_url()
     resolved_secret = (
@@ -148,6 +270,54 @@ def create_app(
 
     def _current_as_of() -> datetime:
         return resolved_as_of_override if resolved_as_of_override is not None else datetime.now(UTC)
+
+    def _resolve_auth_config() -> AuthProviderConfig:
+        return (
+            auth_provider_config if auth_provider_config is not None else get_auth_provider_config()
+        )
+
+    def _resolve_session_secret() -> bytes:
+        return (
+            session_signing_secret
+            if session_signing_secret is not None
+            else get_session_signing_secret()
+        )
+
+    def _resolve_redirect_uri() -> str:
+        if auth_redirect_uri is not None:
+            return auth_redirect_uri
+        raw = os.environ.get(_AUTH_REDIRECT_URI_ENV, "").strip()
+        if not raw:
+            raise RuntimeError(f"{_AUTH_REDIRECT_URI_ENV} is not set or empty")
+        return raw
+
+    def _resolve_web_base_url() -> str | None:
+        if web_base_url is not None:
+            return web_base_url
+        raw = os.environ.get(_WEB_BASE_URL_ENV, "").strip()
+        return raw or None
+
+    def _cookie_secure() -> bool:
+        raw = os.environ.get(_SESSION_COOKIE_SECURE_ENV, "true").strip().lower()
+        return raw not in {"false", "0", "no"}
+
+    def _cookie_name(base_name: str) -> str:
+        return f"{_HOST_COOKIE_PREFIX}{base_name}" if _cookie_secure() else base_name
+
+    def _session_cookie_name() -> str:
+        return _cookie_name(_SESSION_COOKIE_BASE_NAME)
+
+    def _login_state_cookie_name() -> str:
+        return _cookie_name(_LOGIN_STATE_COOKIE_BASE_NAME)
+
+    def _require_session(request: Request) -> SessionClaims | None:
+        raw = request.cookies.get(_session_cookie_name())
+        if not raw:
+            return None
+        try:
+            return verify_and_decode_session_token(raw, secret=_resolve_session_secret())
+        except InvalidSessionTokenError:
+            return None
 
     app = FastAPI(
         title="HullQ preview API (SLICE-0048, unstable, non-canonical)",
@@ -174,6 +344,11 @@ def create_app(
             # SLICE-0051 item L: every Search surface is noindex, including
             # a canonical 200 result page.
             response.headers["X-Robots-Tag"] = "noindex"
+        elif path.startswith(_BROKER_PATH_PREFIXES):
+            # SLICE-0053: auth/session/membership responses are never
+            # cached and never indexed.
+            for key, value in _BROKER_RESPONSE_HEADERS.items():
+                response.headers[key] = value
         return response
 
     @app.get("/api/_preview/listings/{preview_token}")
@@ -266,5 +441,135 @@ def create_app(
                 "insufficient_data_count": search_outcome.insufficient_data_count,
             }
         )
+
+    @app.get("/api/auth/login")
+    def broker_login(request: Request) -> Response:
+        auth_config = _resolve_auth_config()
+        redirect_uri = _resolve_redirect_uri()
+        require_same_host_session_topology(
+            redirect_uri=redirect_uri, web_base_url=_resolve_web_base_url()
+        )
+        session_secret = _resolve_session_secret()
+        next_path = request.query_params.get("next")
+        extra_params = {key: value for key, value in request.query_params.items() if key != "next"}
+        login_redirect = build_login_redirect(
+            auth_config,
+            redirect_uri=redirect_uri,
+            next_path=next_path,
+            extra_params=extra_params,
+            secret=session_secret,
+        )
+        response = RedirectResponse(url=login_redirect.authorize_url, status_code=302)
+        response.set_cookie(
+            _login_state_cookie_name(),
+            login_redirect.state_cookie_value,
+            max_age=_LOGIN_STATE_COOKIE_MAX_AGE_SECONDS,
+            httponly=True,
+            samesite="lax",
+            secure=_cookie_secure(),
+            path="/",
+        )
+        return response
+
+    @app.get("/api/auth/callback")
+    def broker_callback(request: Request) -> Response:
+        auth_config = _resolve_auth_config()
+        redirect_uri = _resolve_redirect_uri()
+        resolved_web_base_url = _resolve_web_base_url()
+        require_same_host_session_topology(
+            redirect_uri=redirect_uri, web_base_url=resolved_web_base_url
+        )
+        session_secret = _resolve_session_secret()
+        code = request.query_params.get("code")
+        query_state = request.query_params.get("state")
+        state_cookie_value = request.cookies.get(_login_state_cookie_name())
+
+        conn = open_connection(resolved_database_url)
+        try:
+            result = complete_login_callback(
+                conn,
+                config=auth_config,
+                code=code,
+                query_state=query_state,
+                state_cookie_value=state_cookie_value,
+                redirect_uri=redirect_uri,
+                session_signing_secret=session_secret,
+                http_client=auth_http_client,
+                jwks_cache=auth_jwks_cache,
+            )
+        finally:
+            conn.close()
+
+        if result.outcome is not CallbackOutcome.SUCCEEDED:
+            failure_response = JSONResponse({"error": "authentication_failed"}, status_code=400)
+            failure_response.delete_cookie(
+                _login_state_cookie_name(), path="/", secure=_cookie_secure(), samesite="lax"
+            )
+            return failure_response
+
+        assert result.session_token is not None
+        assert result.next_path is not None
+        target = (
+            f"{resolved_web_base_url}{result.next_path}"
+            if resolved_web_base_url is not None
+            else result.next_path
+        )
+        response = RedirectResponse(url=target, status_code=302)
+        response.delete_cookie(
+            _login_state_cookie_name(), path="/", secure=_cookie_secure(), samesite="lax"
+        )
+        response.set_cookie(
+            _session_cookie_name(),
+            result.session_token.token,
+            max_age=max(
+                1, int((result.session_token.expires_at - datetime.now(UTC)).total_seconds())
+            ),
+            httponly=True,
+            samesite="lax",
+            secure=_cookie_secure(),
+            path="/",
+        )
+        return response
+
+    @app.post("/api/auth/logout")
+    def broker_logout() -> JSONResponse:
+        response = JSONResponse({"status": "logged_out"})
+        response.delete_cookie(
+            _session_cookie_name(), path="/", secure=_cookie_secure(), samesite="lax"
+        )
+        return response
+
+    @app.get("/api/broker/context")
+    def broker_context(request: Request) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            model = get_broker_context_read_model(conn, session)
+        finally:
+            conn.close()
+        return JSONResponse(model.to_public_dict())
+
+    @app.get("/api/broker/organizations/{organization_id}")
+    def broker_organization_context(organization_id: str, request: Request) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            result = get_organization_workspace_result(
+                conn, session, MarketplaceOrganizationId(organization_id)
+            )
+        finally:
+            conn.close()
+        if result.outcome is OrganizationWorkspaceOutcome.NOT_FOUND_OR_DENIED:
+            # Contract §9/§E: unknown Organization and unauthorized
+            # Organization membership must be indistinguishable.
+            raise HTTPException(status_code=404, detail="organization not found")
+        if result.outcome is OrganizationWorkspaceOutcome.MFA_REQUIRED:
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        assert result.context is not None
+        return JSONResponse(result.context.to_public_dict())
 
     return app
