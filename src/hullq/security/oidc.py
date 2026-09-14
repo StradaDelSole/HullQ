@@ -59,13 +59,23 @@ AUTH_ALLOWED_ALGORITHMS = ("RS256",)
 #: be configured with a Post-Login Action (Auth0 Actions, "Login / Post
 #: Login" flow) that:
 #:
-#:   1. inspects the incoming authentication request's requested ACR (e.g.
-#:      `event.transaction.acr_values` / `event.request.query.acr_values`,
-#:      exact API per the deployed Auth0 Actions runtime version);
-#:   2. when it contains this exact value, calls
-#:      `api.authentication.challengeWithAny(event.user.enrolledFactors)`
-#:      (or `enrollWithAny(...)` when the user has no enrolled factor yet)
-#:      to force an MFA challenge for that login;
+#:   1. inspects the incoming authentication request's requested ACR via
+#:      `event.transaction.acr_values` (the documented Auth0 Actions field
+#:      for this, per Auth0's step-up authentication guide -- not a request
+#:      query parameter read directly);
+#:   2. when it contains this exact value, forces an MFA challenge for
+#:      that login. Auth0's own step-up guide's primary documented call for
+#:      this is `api.multifactor.enable('any', { allowRememberBrowser:
+#:      false })`. `api.authentication.challengeWithAny(...)` /
+#:      `enrollWithAny(...)` are also valid Auth0 Actions APIs for
+#:      factor-specific flows, but Auth0's examples pass an array of
+#:      *factor descriptor objects* built from the tenant's enrollment
+#:      model -- never `event.user.enrolledFactors` passed straight
+#:      through as-is. Whichever call is used, verify the exact argument
+#:      shape against Auth0's current documentation for your tenant's
+#:      Actions runtime version before deploying; Auth0 Actions APIs
+#:      change over time and this comment is deployment guidance, not a
+#:      tested/executed code path in this repository;
 #:   3. lets Auth0 record the satisfied factor in the issued ID token's
 #:      standard `amr` claim (e.g. `"mfa"`) once the challenge succeeds.
 #:

@@ -23,12 +23,29 @@ Per `specs/BROKER_WORKSPACE_ACCESS_CONTRACT.v0.1.md` §14, demonstrates:
 
 Plus: unauthenticated denial, state-mismatch/tampered-code rejection at the
 callback, identical non-enumerating 404 bodies for an unauthorized-but-
-existing vs. a never-created Organization, the production `__Host-`/
-`Secure`/`Path=/`/`HttpOnly`/no-`Domain` cookie hardening, rejection of a
-forged/tossed login-state cookie (correct `state` field, invalid
-signature -- the sibling-subdomain cookie-injection scenario from the
-2026-09-14 independent review), the Auth0-documented step-up ACR value,
-and `Cache-Control: private, no-store` on both protected Astro pages.
+existing vs. a never-created Organization, rejection of a forged/tossed
+login-state cookie (correct `state` field, invalid signature -- the
+sibling-subdomain cookie-injection scenario from the 2026-09-14 independent
+review), the Auth0-documented step-up ACR value, and
+`Cache-Control: private, no-store` on both protected Astro pages.
+
+This proof runs the deterministic *local* cookie path
+(`HULLQ_SESSION_COOKIE_SECURE=false`, ordinary unprefixed cookie names) so a
+real, standards-compliant `http.cookiejar`-backed client can legitimately
+carry cookies over plain HTTP -- independent review 2026-09-14 (exact-head
+a7fee1a0) found the previous revision's hand-rolled dict-replay client
+non-browser-like (no host/domain/path/Secure/expiry/deletion semantics) and
+therefore able to replay production `Secure`/`__Host-` cookies over plain
+HTTP, which a real browser would refuse. `BrowserSession` below wraps
+`http.cookiejar.CookieJar` + `urllib.request.HTTPCookieProcessor` instead,
+and this proof additionally runs the local OIDC issuer on a genuinely
+distinct loopback hostname (`127.0.0.2`, not just a distinct port on
+`127.0.0.1`) and asserts the jar never attaches a HullQ cookie to a request
+against it. The separate production-default `__Host-`/`Secure`/`Path=/`/
+no-`Domain`/`HttpOnly` wire-shape assertion lives in
+`tests/persistence/test_broker_workspace_access_api.py::TestProductionCookieHardening`,
+which can inspect FastAPI's raw response headers without needing a real TLS
+connection; this proof does not re-test that shape.
 
 Requires ``HULLQ_TEST_DATABASE_URL`` and a pre-built Astro web package
 (``cd web && npm ci && npm run build``).
@@ -40,6 +57,7 @@ from __future__ import annotations
 
 import base64
 import http.client
+import http.cookiejar
 import json
 import os
 import secrets
@@ -124,9 +142,9 @@ def _drop_schema(base_url: str, schema_name: str) -> None:
         conn.close()
 
 
-def _free_port() -> int:
+def _free_port(host: str = "127.0.0.1") -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
-        probe.bind(("127.0.0.1", 0))
+        probe.bind((host, 0))
         return int(probe.getsockname()[1])
 
 
@@ -152,32 +170,24 @@ def _b64url_nopad(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
 
 
-#: This proof runs with the real production cookie-hardening default
-#: (`HULLQ_SESSION_COOKIE_SECURE` unset -> Secure/`__Host-`-prefixed): see
-#: independent review 2026-09-14, exact-head a7fee1a0. `BrowserSession`
-#: below is a hand-rolled client, not a real browser -- it does not itself
-#: enforce Secure/`__Host-` acceptance rules, so it can complete a full
-#: round trip over plain HTTP for the proof while this script separately
-#: asserts the emitted `Set-Cookie` headers carry the exact attributes a
-#: real browser requires to accept a `__Host-`-prefixed cookie at all.
-_SESSION_COOKIE_PROD_NAME = "__Host-hullq_session"
-_LOGIN_STATE_COOKIE_PROD_NAME = "__Host-hullq_login_state"
+_SESSION_COOKIE_NAME = "hullq_session"
+_LOGIN_STATE_COOKIE_NAME = "hullq_login_state"
 
 
-def _cookie_set_header(session: BrowserSession, base_name: str) -> str:
-    return next((h for h in session.last_set_cookie_headers if f"{base_name}=" in h), "")
+def _cookie_set_header(session: BrowserSession, name: str) -> str:
+    return next((h for h in session.last_set_cookie_headers if f"{name}=" in h), "")
 
 
-def _is_hardened_cookie_header(header: str, *, prod_name: str) -> bool:
-    """True iff *header* satisfies every attribute a browser requires to
-    accept a `__Host-`-prefixed cookie (RFC 6265bis): that exact name,
-    `Secure`, `Path=/`, and no `Domain` attribute at all."""
-    return (
-        header.startswith(f"{prod_name}=")
-        and "Secure" in header
-        and "Path=/" in header
-        and "Domain=" not in header
-    )
+def _is_httponly_path_root_cookie(header: str, *, name: str) -> bool:
+    """True iff *header* is this exact local (non-`__Host-`-prefixed)
+    cookie, `HttpOnly`, and scoped `Path=/`. Does *not* check `Secure`/
+    `__Host-`/no-`Domain`: this proof deliberately runs the local,
+    `HULLQ_SESSION_COOKIE_SECURE=false` cookie path (see module docstring),
+    so it never emits those production-only attributes. The production
+    wire shape is asserted separately in
+    `TestProductionCookieHardening` (pytest), not here.
+    """
+    return header.startswith(f"{name}=") and "HttpOnly" in header and "Path=/" in header
 
 
 class _NoRedirect(urllib.request.HTTPErrorProcessor):
@@ -192,41 +202,46 @@ class _NoRedirect(urllib.request.HTTPErrorProcessor):
     https_response = http_response
 
 
-_OPENER = urllib.request.build_opener(_NoRedirect)
-
-
 class BrowserSession:
-    """A minimal, fully manual, real-cookie-jar HTTP client.
+    """A real, standards-compliant cookie-jar HTTP client.
 
-    Deliberately not `http.cookiejar`: real Set-Cookie response headers are
-    parsed and replayed by hand, so every step of this proof can inspect
-    the exact cookie attributes (e.g. `HttpOnly`) a real browser would act
-    on, without any hidden automatic behavior.
+    Independent review (2026-09-14, exact-head a7fee1a0) found the
+    previous hand-rolled dict-replay client insufficiently browser-like: it
+    stored cookies in one global `dict` and replayed all of them on every
+    request regardless of host/domain, path, `Secure`, expiry or deletion
+    semantics -- meaning it could (and, over plain HTTP with the previous
+    `HULLQ_SESSION_COOKIE_SECURE` default, silently did) replay a
+    production `Secure`/`__Host-` cookie that a real browser would refuse
+    to send over plain HTTP, and could leak a HullQ cookie to an unrelated
+    host. This class wraps the standard library's own `http.cookiejar.
+    CookieJar` (via `urllib.request.HTTPCookieProcessor`), which implements
+    real RFC 6265 domain/path/`Secure`/expiry/deletion matching -- exactly
+    contract §14's "real browser-style authorization/session boundary".
     """
 
     def __init__(self) -> None:
-        self.cookies: dict[str, str] = {}
+        self.jar = http.cookiejar.CookieJar()
+        self._opener = urllib.request.build_opener(
+            _NoRedirect, urllib.request.HTTPCookieProcessor(self.jar)
+        )
         self.last_set_cookie_headers: list[str] = []
+        self.last_sent_cookie_header: str | None = None
 
     def request(
         self, method: str, url: str, *, extra_headers: dict[str, str] | None = None
     ) -> tuple[int, http.client.HTTPMessage, bytes]:
-        headers = dict(extra_headers or {})
-        if self.cookies:
-            headers["Cookie"] = "; ".join(f"{k}={v}" for k, v in self.cookies.items())
-        req = urllib.request.Request(url, headers=headers, method=method)
-        response = _OPENER.open(req, timeout=10)
+        req = urllib.request.Request(url, headers=dict(extra_headers or {}), method=method)
+        response = self._opener.open(req, timeout=10)
+        # HTTPCookieProcessor attaches the Cookie header as an "unredirected"
+        # header (never forwarded across a cross-origin redirect); inspect
+        # it here to prove exactly what was actually sent for *this* request.
+        self.last_sent_cookie_header = req.unredirected_hdrs.get("Cookie") or req.headers.get(
+            "Cookie"
+        )
         status = response.status
         resp_headers = response.headers
         body = response.read()
-
-        set_cookie_lines = resp_headers.get_all("Set-Cookie") or []
-        self.last_set_cookie_headers = set_cookie_lines
-        for line in set_cookie_lines:
-            name_value = line.split(";", 1)[0]
-            if "=" in name_value:
-                key, value = name_value.split("=", 1)
-                self.cookies[key.strip()] = value.strip()
+        self.last_set_cookie_headers = resp_headers.get_all("Set-Cookie") or []
         return status, resp_headers, body
 
     def get(self, url: str) -> tuple[int, http.client.HTTPMessage, bytes]:
@@ -244,6 +259,18 @@ class BrowserSession:
         assert status == 302, f"expected 302 from issuer /authorize, got {status}: {body!r}"
         callback_url = headers["Location"]
         return self.get(callback_url)
+
+
+def _forge_jar_cookie_value(session: BrowserSession, *, name_contains: str, new_value: str) -> None:
+    """Mutate an existing cookie's value in place within *session*'s real
+    jar -- simulates a value landing in the browser's cookie storage under
+    the same name (e.g. via a hostile sibling-subdomain `Domain=<parent>`
+    cookie), without the caller needing jar-internal storage access."""
+    for cookie in session.jar:
+        if name_contains in cookie.name:
+            cookie.value = new_value
+            return
+    raise AssertionError(f"no cookie containing {name_contains!r} found in jar")
 
 
 def main() -> int:
@@ -276,10 +303,19 @@ def main() -> int:
         alembic_upgrade_head(url)
         print("0. Alembic upgraded to current head -> OK\n")
 
-        issuer_port = _free_port()
+        # The issuer runs on a genuinely distinct loopback hostname, not
+        # just a distinct port on 127.0.0.1: 127.0.0.0/8 is entirely
+        # loopback on every platform this proof runs on, so 127.0.0.2 needs
+        # no DNS/hosts-file setup, yet cookie-domain matching (which is
+        # host-string-based, not resolved-address-based) treats it as a
+        # different host from 127.0.0.1 -- exactly what's needed to prove
+        # a real cookie jar never sends a HullQ cookie to the issuer
+        # (independent review 2026-09-14, exact-head 9777496).
+        _ISSUER_HOST = "127.0.0.2"
+        issuer_port = _free_port(_ISSUER_HOST)
         api_port = _free_port()
         web_port = _free_port()
-        issuer_base = f"http://127.0.0.1:{issuer_port}/"
+        issuer_base = f"http://{_ISSUER_HOST}:{issuer_port}/"
         api_base = f"http://127.0.0.1:{api_port}"
         web_base = f"http://127.0.0.1:{web_port}"
         redirect_uri = f"{api_base}/api/auth/callback"
@@ -294,7 +330,7 @@ def main() -> int:
             "from hullq.testing.oidc_test_issuer import create_test_issuer_app\n"
             f"app = create_test_issuer_app(issuer={issuer_base!r}, client_id={client_id!r}, "
             f"client_secret={client_secret!r}, redirect_uri={redirect_uri!r})\n"
-            f"uvicorn.run(app, host='127.0.0.1', port={issuer_port}, log_level='warning')\n"
+            f"uvicorn.run(app, host={_ISSUER_HOST!r}, port={issuer_port}, log_level='warning')\n"
         )
         issuer_log_path = log_dir / "issuer.log"
         with issuer_log_path.open("wb") as issuer_log:
@@ -322,12 +358,15 @@ def main() -> int:
         api_env["HULLQ_AUTH_CLIENT_SECRET"] = client_secret
         api_env["HULLQ_AUTH_REDIRECT_URI"] = redirect_uri
         api_env["HULLQ_WEB_BASE_URL"] = web_base
-        # Deliberately NOT set: the real production default
-        # (HULLQ_SESSION_COOKIE_SECURE unset -> Secure/__Host--prefixed
-        # cookies) is exercised end-to-end below, not the local-HTTP
-        # opt-out. Pop any stale value the parent shell/session happens to
-        # have exported so this proof is deterministic regardless.
-        api_env.pop("HULLQ_SESSION_COOKIE_SECURE", None)
+        # Explicit local-only opt-out (independent review 2026-09-14,
+        # exact-head 9777496): this proof runs entirely over plain HTTP, so
+        # a real, standards-compliant `http.cookiejar` client legitimately
+        # cannot carry a `Secure`/`__Host-` cookie here -- exactly the
+        # behavior a real browser enforces. The production wire shape
+        # (`__Host-`/`Secure`/`Path=/`/no-`Domain`/`HttpOnly`) is instead
+        # asserted directly against FastAPI's response headers in
+        # `TestProductionCookieHardening` (pytest), which needs no TLS.
+        api_env["HULLQ_SESSION_COOKIE_SECURE"] = "false"
 
         api_log_path = log_dir / "api.log"
         with api_log_path.open("wb") as api_log:
@@ -393,15 +432,17 @@ def main() -> int:
         )
 
         # 5. first login creates one stable HullQ Account mapping, and sets
-        # __Host-/Secure/Path=/-hardened, HttpOnly cookies for both the
-        # login-state and session cookies (independent review 2026-09-14,
-        # exact-head a7fee1a0: defense against sibling-subdomain cookie
-        # tossing/session fixation).
+        # HttpOnly, Path=/ local cookies for both the login-state and
+        # session cookies via a real cookie jar (contract §14 "real
+        # browser-style authorization/session boundary"; independent
+        # review 2026-09-14, exact-head 9777496). Production `__Host-`/
+        # `Secure`/no-`Domain` wire shape is asserted separately (pytest
+        # `TestProductionCookieHardening`), not re-tested here.
         login_url = f"{api_base}/api/auth/login?next=/broker&login_hint={_SUBJECT}"
         status, headers, _ = session.get(login_url)
-        login_state_header = _cookie_set_header(session, _LOGIN_STATE_COOKIE_PROD_NAME)
-        login_state_hardened = "HttpOnly" in login_state_header and _is_hardened_cookie_header(
-            login_state_header, prod_name=_LOGIN_STATE_COOKIE_PROD_NAME
+        login_state_header = _cookie_set_header(session, _LOGIN_STATE_COOKIE_NAME)
+        login_state_ok = _is_httponly_path_root_cookie(
+            login_state_header, name=_LOGIN_STATE_COOKIE_NAME
         )
         assert status == 302, f"expected 302 from /api/auth/login, got {status}"
         authorize_url = headers["Location"]
@@ -411,18 +452,15 @@ def main() -> int:
         status, headers, body = session.get(callback_url)
 
         first_login_ok = status == 302 and headers.get("Location") == f"{web_base}/broker"
-        session_cookie_header = _cookie_set_header(session, _SESSION_COOKIE_PROD_NAME)
-        session_cookie_hardened = (
-            "HttpOnly" in session_cookie_header
-            and _is_hardened_cookie_header(
-                session_cookie_header, prod_name=_SESSION_COOKIE_PROD_NAME
-            )
+        session_cookie_header = _cookie_set_header(session, _SESSION_COOKIE_NAME)
+        session_cookie_ok = _is_httponly_path_root_cookie(
+            session_cookie_header, name=_SESSION_COOKIE_NAME
         )
-        ok &= first_login_ok and session_cookie_hardened and login_state_hardened
+        ok &= first_login_ok and session_cookie_ok and login_state_ok
         print(
-            f"5. first login sets __Host-/Secure/Path=/-hardened, HttpOnly login-state + "
-            f"session cookies and redirects to /broker -> "
-            f"{'OK' if (first_login_ok and session_cookie_hardened and login_state_hardened) else 'FAIL'}"
+            f"5. first login sets HttpOnly, Path=/ login-state + session cookies "
+            f"(real cookie jar) and redirects to /broker -> "
+            f"{'OK' if (first_login_ok and session_cookie_ok and login_state_ok) else 'FAIL'}"
         )
 
         status, _, body = session.get(f"{api_base}/api/broker/context")
@@ -435,13 +473,26 @@ def main() -> int:
             f"{'OK' if step5b_ok else 'FAIL'}\n"
         )
 
+        # Host-scoping defense: the real cookie jar must never attach a
+        # HullQ cookie to a request against the issuer, which runs on a
+        # genuinely distinct hostname (independent review 2026-09-14,
+        # exact-head 9777496) -- proving the jar enforces real host/domain
+        # scoping, not just replaying every stored cookie everywhere.
+        session.get(f"{issuer_base}.well-known/jwks.json")
+        no_cookie_leak_to_issuer_ok = not session.last_sent_cookie_header
+        ok &= no_cookie_leak_to_issuer_ok
+        print(
+            f"   real cookie jar sends no HullQ cookie to the issuer "
+            f"(distinct host {_ISSUER_HOST}) -> "
+            f"{'OK' if no_cookie_leak_to_issuer_ok else 'FAIL'}\n"
+        )
+
         # Sibling-subdomain cookie-injection defense: a forged login-state
         # cookie carrying the CORRECT `state` (matching the real callback's
         # query string) but no valid HMAC signature -- exactly what a
         # hostile sibling subdomain could set via `Domain=<parent>` cookie
         # tossing, never a value this server actually signed -- must still
-        # be rejected. This is independent of, and a second layer behind,
-        # the __Host- cookie-prefix defense verified above.
+        # be rejected.
         forged_session = BrowserSession()
         status, headers, _ = forged_session.get(login_url)
         authorize_url = headers["Location"]
@@ -454,11 +505,9 @@ def main() -> int:
             ).encode("utf-8")
         )
         forged_login_state_cookie = f"{forged_payload}.{_b64url_nopad(b'not-a-valid-signature-x')}"
-        forged_cookie_key = next(
-            (k for k in forged_session.cookies if "hullq_login_state" in k), None
+        _forge_jar_cookie_value(
+            forged_session, name_contains="hullq_login_state", new_value=forged_login_state_cookie
         )
-        assert forged_cookie_key is not None, "expected a login-state cookie to forge"
-        forged_session.cookies[forged_cookie_key] = forged_login_state_cookie
         status, _, body = forged_session.get(real_callback_url)
         cookie_forgery_rejected_ok = status == 400
         ok &= cookie_forgery_rejected_ok
@@ -656,14 +705,16 @@ def main() -> int:
         # 9 (contract). logout/session invalidation removes workspace access.
         status, headers, _ = session.post(f"{api_base}/api/auth/logout")
         logout_status_ok = status == 200
-        logout_cookie_cleared = "hullq_session=" not in "; ".join(
-            session.last_set_cookie_headers
-        ) or any(
+        logout_cookie_cleared_wire = any(
             "hullq_session=;" in h or "Max-Age=0" in h for h in session.last_set_cookie_headers
         )
-        session_cookie_key = next((k for k in session.cookies if "hullq_session" in k), None)
-        if session_cookie_key is not None:
-            session.cookies.pop(session_cookie_key, None)
+        # The real jar processes that deletion Set-Cookie itself (RFC 6265
+        # expiry/removal semantics) -- no manual cookie-store surgery
+        # needed, unlike the previous hand-rolled dict-replay client.
+        jar_actually_removed_session_cookie = not any(
+            _SESSION_COOKIE_NAME in cookie.name for cookie in session.jar
+        )
+        logout_cookie_cleared = logout_cookie_cleared_wire and jar_actually_removed_session_cookie
         status, _, body = session.get(f"{api_base}/api/broker/context")
         post_logout_denied_ok = status == 401
         status, _, body = session.get(f"{web_base}/broker")

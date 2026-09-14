@@ -127,7 +127,12 @@ class _BrowserClient:
         return self.main.cookies
 
 
-def _build_client(api_url: str, *, session_signing_secret: bytes | None = None) -> _BrowserClient:
+def _build_client(
+    api_url: str,
+    *,
+    session_signing_secret: bytes | None = None,
+    web_base_url: str | None = None,
+) -> _BrowserClient:
     from hullq.api.app import create_app
 
     client_secret = secrets.token_urlsafe(24)
@@ -160,7 +165,7 @@ def _build_client(api_url: str, *, session_signing_secret: bytes | None = None) 
         auth_provider_config=config,
         session_signing_secret=session_signing_secret or os.urandom(32),
         auth_redirect_uri=redirect_uri,
-        web_base_url=None,
+        web_base_url=web_base_url,
         auth_http_client=issuer_client,
         auth_jwks_cache=jwks_cache,
     )
@@ -508,3 +513,47 @@ class TestProductionCookieHardening:
         assert "HttpOnly" in session_set_cookie
         assert "Path=/" in session_set_cookie
         assert "Domain=" not in session_set_cookie
+
+
+@pytest.fixture()
+def mismatched_topology_client(
+    api_url: str, monkeypatch: pytest.MonkeyPatch
+) -> Generator[_BrowserClient]:
+    """auth/callback on `api.test`, post-login redirect target on a
+    DIFFERENT hostname -- the exact misconfiguration independent review
+    2026-09-14 (exact-head 9777496) requires to fail closed rather than
+    silently produce a successful login followed by an unauthenticated
+    `/broker`."""
+    monkeypatch.setenv("HULLQ_SESSION_COOKIE_SECURE", "false")
+    browser = _build_client(api_url, web_base_url="http://different-broker-host.test")
+    try:
+        yield browser
+    finally:
+        browser.main.close()
+        browser.issuer.close()
+
+
+class TestSessionTopologyInvariant:
+    def test_login_fails_closed_on_cross_host_web_base_url(
+        self, mismatched_topology_client: _BrowserClient
+    ) -> None:
+        from hullq.api.app import SessionTopologyError
+
+        with pytest.raises(SessionTopologyError):
+            mismatched_topology_client.get(
+                "/api/auth/login",
+                params={"next": "/broker", "login_hint": "int-subject-topology"},
+            )
+
+    def test_callback_fails_closed_on_cross_host_web_base_url(
+        self, mismatched_topology_client: _BrowserClient
+    ) -> None:
+        from hullq.api.app import SessionTopologyError
+
+        # Even a syntactically well-formed callback request must never get
+        # far enough to run a real token exchange against a topology this
+        # broken -- the check runs before any of that work starts.
+        with pytest.raises(SessionTopologyError):
+            mismatched_topology_client.get(
+                "/api/auth/callback", params={"code": "irrelevant", "state": "irrelevant"}
+            )

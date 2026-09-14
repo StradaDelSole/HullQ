@@ -33,6 +33,25 @@ the read-side clock boundary). Production deployments never set the
 environment variable, so `datetime.now(timezone.utc)` is read fresh on every
 request; the retained SLICE-0052 proof and tests are the only intended
 callers of the override.
+
+SLICE-0053 current session-topology invariant (independent review
+2026-09-14, exact-head 9777496): the HullQ session cookie is host-only (see
+`require_same_host_session_topology` below). The browser-visible FastAPI
+auth/callback endpoint (`HULLQ_AUTH_REDIRECT_URI`'s host) and the Astro
+Broker Workspace surface the browser is sent back to after login
+(`HULLQ_WEB_BASE_URL`'s host, when configured) MUST therefore share the
+exact same hostname -- ports may differ, and a same-host reverse-proxy
+layout in front of both is fine, but e.g. `api.hullq.com` for auth/callback
+against `hullq.com` for `/broker` is not: it would produce a successful
+Auth0 callback immediately followed by an unauthenticated `/broker`, since
+the browser would never send the host-only session cookie set for
+`api.hullq.com` to a request against `hullq.com`. `/api/auth/login` and
+`/api/auth/callback` both fail closed (raise `SessionTopologyError`) rather
+than silently completing that broken loop. This is the current session
+architecture's invariant, not a general redesign; a later slice that needs
+genuinely different auth/workspace hostnames must own that redesign
+explicitly (e.g. a server-side session store keyed by an opaque id instead
+of a host-only cookie carrying the claims directly).
 """
 
 from __future__ import annotations
@@ -40,6 +59,7 @@ from __future__ import annotations
 import os
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
@@ -67,7 +87,42 @@ from hullq.security.session_token import (
     verify_and_decode_session_token,
 )
 
-__all__ = ["create_app"]
+__all__ = ["SessionTopologyError", "create_app", "require_same_host_session_topology"]
+
+
+class SessionTopologyError(RuntimeError):
+    """The configured auth/callback host and Broker Workspace host differ.
+
+    See the module docstring's "SLICE-0053 current session-topology
+    invariant" for why this is a hard requirement of the current
+    host-only-cookie session design, not an arbitrary restriction.
+    """
+
+
+def require_same_host_session_topology(*, redirect_uri: str, web_base_url: str | None) -> None:
+    """Fail closed if *redirect_uri* and *web_base_url* have different hosts.
+
+    A `None` *web_base_url* means the post-login redirect target is a
+    relative path, which the browser always resolves against the
+    auth/callback's own origin -- inherently same-host, so there is nothing
+    to check. Raises `SessionTopologyError` (never returns a bool) so a
+    misconfiguration cannot be silently ignored by a caller that forgets to
+    check a return value.
+    """
+    if web_base_url is None:
+        return
+    redirect_host = urlsplit(redirect_uri).hostname
+    web_host = urlsplit(web_base_url).hostname
+    if redirect_host != web_host:
+        raise SessionTopologyError(
+            f"HULLQ_WEB_BASE_URL host {web_host!r} does not match the "
+            f"auth/callback host {redirect_host!r} (from HULLQ_AUTH_REDIRECT_URI "
+            f"{redirect_uri!r}). SLICE-0053's host-only session cookie cannot cross "
+            "hostnames: the Astro Broker Workspace and the FastAPI auth/callback "
+            "endpoint must share the exact same hostname (ports may differ; a "
+            "same-host reverse-proxy layout in front of both is fine)."
+        )
+
 
 #: SLICE-0053: HullQ-owned browser cookies. Neither is ever readable by
 #: ordinary browser JavaScript (`HttpOnly`), both are scoped `Path=/` and
@@ -391,6 +446,9 @@ def create_app(
     def broker_login(request: Request) -> Response:
         auth_config = _resolve_auth_config()
         redirect_uri = _resolve_redirect_uri()
+        require_same_host_session_topology(
+            redirect_uri=redirect_uri, web_base_url=_resolve_web_base_url()
+        )
         session_secret = _resolve_session_secret()
         next_path = request.query_params.get("next")
         extra_params = {key: value for key, value in request.query_params.items() if key != "next"}
@@ -417,6 +475,10 @@ def create_app(
     def broker_callback(request: Request) -> Response:
         auth_config = _resolve_auth_config()
         redirect_uri = _resolve_redirect_uri()
+        resolved_web_base_url = _resolve_web_base_url()
+        require_same_host_session_topology(
+            redirect_uri=redirect_uri, web_base_url=resolved_web_base_url
+        )
         session_secret = _resolve_session_secret()
         code = request.query_params.get("code")
         query_state = request.query_params.get("state")
@@ -447,7 +509,6 @@ def create_app(
 
         assert result.session_token is not None
         assert result.next_path is not None
-        resolved_web_base_url = _resolve_web_base_url()
         target = (
             f"{resolved_web_base_url}{result.next_path}"
             if resolved_web_base_url is not None
