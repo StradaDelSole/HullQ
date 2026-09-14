@@ -34,7 +34,7 @@ The Production Readiness gate is not triggered; the slice adds no technical Sear
 
 ## Decision / implementation reconciliation
 
-**Accepted records checked:** `docs/OWNER_DIRECT_LISTING_PRODUCT_DIRECTION_2026-09-14.md`; `specs/OWNER_DIRECT_LISTING_REQUIREMENTS.v0.1.md`; `docs/PRODUCT_EXECUTION_PLAN_OWNER_DIRECT_RECONCILIATION_2026-09-14.md`; `specs/OWNER_DIRECT_DRAFT_CONTRACT.v0.1.md`; `specs/MARKETPLACE_FIELD_REGISTRY.v0.1.json`; `specs/NATIVE_LISTING_PERSISTENCE_CONTRACT.v0.1.md`; `specs/BROKER_WORKSPACE_ACCESS_CONTRACT.v0.1.md`; `docs/governance/POST_0051_TRIGGER_GATES.md`; `docs/governance/PRODUCTION_READINESS_GATE.md`; Broker Workspace Launch Gate and Mandatory Capability Register.  
+**Accepted records checked:** `docs/OWNER_DIRECT_LISTING_PRODUCT_DIRECTION_2026-09-14.md`; `specs/OWNER_DIRECT_LISTING_REQUIREMENTS.v0.1.md`; `docs/PRODUCT_EXECUTION_PLAN_OWNER_DIRECT_RECONCILIATION_2026-09-14.md`; `specs/OWNER_DIRECT_LISTING_WORKSPACE_CONTRACT.v0.1.md`; `specs/MARKETPLACE_FIELD_REGISTRY.v0.1.json`; `specs/NATIVE_LISTING_PERSISTENCE_CONTRACT.v0.1.md`; `specs/BROKER_WORKSPACE_ACCESS_CONTRACT.v0.1.md`; `docs/governance/POST_0051_TRIGGER_GATES.md`; `docs/governance/PRODUCTION_READINESS_GATE.md`; Broker Workspace Launch Gate and Mandatory Capability Register.  
 **Production implementation checked:** `src/hullq/security/session_token.py`; `src/hullq/application/broker_login.py`; `src/hullq/persistence/broker_identity.py`; `src/hullq/domain/publishing_eligibility.py`; `src/hullq/persistence/native_listing.py`; `src/hullq/persistence/native_listing_lifecycle.py`; `src/hullq/application/listing_intake.py`; current FastAPI auth/broker routes; current Astro broker API boundary.  
 **Already implemented / not re-decided:** durable provider-agnostic HullQ Account; Auth0-compatible login/session; professional Organization/Membership authorization; professional NativeListing persistence/lifecycle; public listing/Search truth; marketplace field registry; broker privileged-role MFA semantics.  
 **Exact remaining gap:** an Account with zero professional memberships has no distinct, durable, private owner-direct workspace in which to preserve sale-listing work before later publication eligibility exists.  
@@ -93,7 +93,7 @@ The latter is not implemented here.
 ## Controlling artifacts
 
 - Requirement IDs: `REQ-PRIVATE-022` primary; supporting `REQ-PRIVATE-001`, `REQ-PRIVATE-003`, `REQ-PRIVATE-005`, `REQ-PRIVATE-012`, `REQ-PRIVATE-023`, `REQ-PRIVATE-024`
-- Specifications: `specs/OWNER_DIRECT_DRAFT_CONTRACT.v0.1.md`; `specs/OWNER_DIRECT_LISTING_REQUIREMENTS.v0.1.md`; `specs/MARKETPLACE_FIELD_REGISTRY.v0.1.json`; `specs/BROKER_WORKSPACE_ACCESS_CONTRACT.v0.1.md`; existing NativeListing contracts as non-regression boundaries
+- Specifications: `specs/OWNER_DIRECT_LISTING_WORKSPACE_CONTRACT.v0.1.md`; `specs/OWNER_DIRECT_LISTING_REQUIREMENTS.v0.1.md`; `specs/MARKETPLACE_FIELD_REGISTRY.v0.1.json`; `specs/BROKER_WORKSPACE_ACCESS_CONTRACT.v0.1.md`; existing NativeListing contracts as non-regression boundaries
 - Accepted ADRs / architecture: `architecture/SYSTEM_ARCHITECTURE.md`; accepted 2026-09-02 architecture rebaseline where not superseded
 - Governance / research protocols: `docs/governance/POST_0051_TRIGGER_GATES.md`; `docs/governance/PRODUCTION_READINESS_GATE.md`; Broker Workspace Launch Gate / Mandatory Capability Register
 - Decision/implementation reconciliation: `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md`
@@ -109,7 +109,7 @@ The latter is not implemented here.
 
 1. One dedicated durable `OwnerDirectListingDraft` persistence boundary tied to HullQ `AccountId`.
 2. Server-generated opaque `OwnerDirectListingDraftId`, distinct from all marketplace identity IDs.
-3. Finite v0.1 draft payload exactly as defined by `OWNER_DIRECT_DRAFT_CONTRACT.v0.1`.
+3. Finite v0.1 draft payload exactly as defined by `OWNER_DIRECT_LISTING_WORKSPACE_CONTRACT.v0.1`.
 4. Incomplete draft save/reopen.
 5. Atomic optimistic concurrency/version conflict protection.
 6. FastAPI owner-direct draft list/create/read/update endpoints.
@@ -180,7 +180,7 @@ Professional broker access behavior remains unchanged.
 
 ### D. Bounded payload
 
-Only the keys and validation defined in `OWNER_DIRECT_DRAFT_CONTRACT.v0.1` are accepted.
+Only the keys and validation defined in `OWNER_DIRECT_LISTING_WORKSPACE_CONTRACT.v0.1` are accepted.
 
 Unknown keys fail closed. Incomplete drafts remain valid. No missing value is guessed or synthesized.
 
@@ -197,7 +197,7 @@ The existing signed login-state safe-next logic is extended only to `/sell/direc
 POST/PUT owner-direct draft mutations require both:
 
 - exact accepted HullQ browser `Origin`;
-- fixed non-simple HullQ request header per the draft contract.
+- fixed non-simple HullQ request header per the workspace contract.
 
 Missing/mismatched CSRF evidence fails 403 before mutation. No permissive credentialed CORS is introduced.
 
@@ -285,7 +285,7 @@ npm run build
 npm test
 ```
 
-The retained proof must run against PostgreSQL 18 and exercise the real FastAPI/auth/session/persistence/built-Astro path specified by `OWNER_DIRECT_DRAFT_CONTRACT.v0.1`.
+The retained proof must run against PostgreSQL 18 and exercise the real FastAPI/auth/session/persistence/built-Astro path specified by `OWNER_DIRECT_LISTING_WORKSPACE_CONTRACT.v0.1`.
 
 ## Stop conditions
 
