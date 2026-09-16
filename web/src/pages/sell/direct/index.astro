@@ -1,0 +1,92 @@
+---
+// SLICE-0054: the private owner-direct draft workspace landing (contract
+// §10). An authenticated Account with zero professional Organization
+// memberships is a valid, ordinary state here -- this page never queries
+// broker/Organization data.
+//
+// unauthenticated -> login path that returns here after successful auth
+// authenticated    -> list only the current Account's own drafts, and a
+//                      "Start a draft" action
+//
+// The POST handler below is the SLICE-0054 contract §9 CSRF proxy for
+// "start a draft": the browser's own form submission is same-origin to
+// this Astro page, and this frontmatter is the only thing that ever calls
+// FastAPI's state-changing owner-direct endpoint (see ownerDirectDraftApi.ts
+// module docstring for why that boundary must forward the browser's real
+// Origin rather than substitute a trusted one).
+export const prerender = false;
+
+import { createOwnerDirectDraft, fetchOwnerDirectDrafts } from "../../../lib/ownerDirectDraftApi";
+
+const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
+const cookieHeader = Astro.request.headers.get("cookie");
+const originHeader = Astro.request.headers.get("origin");
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+// This page renders drafts for exactly one signed-in Account: never
+// reusable by a browser/shared cache across Accounts or after logout
+// (mirrors the accepted SLICE-0053 Broker Workspace discipline).
+Astro.response.headers.set("Cache-Control", "private, no-store");
+
+let createFailed = false;
+
+if (Astro.request.method === "POST") {
+  const createResult = await createOwnerDirectDraft(apiBaseUrl, cookieHeader, originHeader);
+  if (createResult.kind === "ok") {
+    return Astro.redirect(`/sell/direct/${encodeURIComponent(createResult.data.draft_id)}`, 303);
+  }
+  if (createResult.kind === "invalid") {
+    createFailed = true;
+  }
+  // "unauthenticated" falls through to the ordinary GET rendering below,
+  // which independently resolves to the same login state.
+}
+
+const result = await fetchOwnerDirectDrafts(apiBaseUrl, cookieHeader);
+const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent("/sell/direct")}`;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>HullQ Owner-Direct Drafts</title>
+  </head>
+  <body>
+    <main>
+      <h1>Sell your boat directly</h1>
+      <p>
+        <strong>Draft &mdash; not public.</strong> Nothing here is listed, verified or visible in
+        Search.
+      </p>
+      {
+        result.kind === "unauthenticated" ? (
+          <p>
+            Please <a href={loginUrl}>log in</a> to start or continue a private draft.
+          </p>
+        ) : (
+          <>
+            {createFailed && <p>Could not start a new draft. Please try again.</p>}
+            {result.data.length === 0 ? (
+              <p>You have no drafts yet.</p>
+            ) : (
+              <ul>
+                {result.data.map((draft) => (
+                  <li>
+                    <a href={`/sell/direct/${encodeURIComponent(draft.draft_id)}`}>
+                      {draft["physical_boat.boat_name"] ?? draft.draft_id} (v{draft.version})
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <form method="POST">
+              <button type="submit">Start a draft</button>
+            </form>
+          </>
+        )
+      }
+    </main>
+  </body>
+</html>
