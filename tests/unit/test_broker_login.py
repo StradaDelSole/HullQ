@@ -192,3 +192,58 @@ class TestDecodeLoginStateCookie:
     def test_non_dict_payload_rejected(self) -> None:
         cookie = _correctly_signed_cookie([1, 2, 3])
         assert decode_login_state_cookie(cookie, secret=SECRET) is None
+
+
+class TestSafeNextPathAllowlist:
+    """SLICE-0054 contract §4: the internal-path allowlist bounded-extends
+    from `/broker...` only to also accept `/sell/direct...`, without
+    admitting any absolute/scheme-relative/external redirect target."""
+
+    @pytest.mark.parametrize(
+        "next_path",
+        ["/broker", "/broker/organizations/ORG-1", "/sell/direct", "/sell/direct/draft-123"],
+    )
+    def test_accepted_internal_paths_pass_through(self, next_path: str) -> None:
+        redirect = build_login_redirect(
+            _config(),
+            redirect_uri="https://hullq.example/api/auth/callback",
+            secret=SECRET,
+            next_path=next_path,
+        )
+        decoded = decode_login_state_cookie(redirect.state_cookie_value, secret=SECRET)
+        assert decoded is not None
+        assert decoded.next_path == next_path
+
+    @pytest.mark.parametrize(
+        "adversarial_next_path",
+        [
+            "https://evil.example/phish",
+            "http://evil.example/phish",
+            "//evil.example/phish",
+            "/\\evil.example/phish",
+            "/admin",
+            "/sell-direct",
+            "sell/direct",
+            # 2026-09-17 independent review (PR #201 comment #5701782264,
+            # finding 2): a plain `str.startswith` prefix check also admits
+            # same-character-prefix sibling paths that share no path
+            # separator with the accepted literal -- these must fall back
+            # to the default exactly like any other unrelated path.
+            "/sell/directevil",
+            "/sell/direct-attacker",
+            "/brokerevil",
+            "/broker-attacker",
+        ],
+    )
+    def test_adversarial_or_unrelated_paths_fall_back_to_default(
+        self, adversarial_next_path: str
+    ) -> None:
+        redirect = build_login_redirect(
+            _config(),
+            redirect_uri="https://hullq.example/api/auth/callback",
+            secret=SECRET,
+            next_path=adversarial_next_path,
+        )
+        decoded = decode_login_state_cookie(redirect.state_cookie_value, secret=SECRET)
+        assert decoded is not None
+        assert decoded.next_path == DEFAULT_NEXT_PATH

@@ -52,6 +52,28 @@ __all__ = [
 
 DEFAULT_NEXT_PATH = "/broker"
 
+#: SLICE-0054 bounded extension (contract §4): the login-state internal-path
+#: allowlist accepted `/broker...` only; owner-direct draft login return now
+#: also accepts `/sell/direct` and its child paths. Each entry is matched by
+#: `_is_allowed_next_path` as a *segment*-bounded prefix -- exactly the
+#: literal path, or the literal path followed by `/` -- never a bare
+#: `str.startswith` substring check. A plain substring check would also
+#: admit sibling/prefix-confusion paths sharing the same leading characters
+#: without a path-separator boundary, e.g. `/sell/directevil` or
+#: `/sell/direct-attacker` for the `/sell/direct` entry (2026-09-17
+#: independent review, PR #201 comment #5701782264, finding 2).
+_ALLOWED_NEXT_PATH_PREFIXES = ("/broker", "/sell/direct")
+
+
+def _is_allowed_next_path(candidate: str) -> bool:
+    """True iff *candidate* is exactly one accepted internal prefix, or that
+    prefix followed by `/` -- never merely a same-character-prefix string."""
+    return any(
+        candidate == prefix or candidate.startswith(prefix + "/")
+        for prefix in _ALLOWED_NEXT_PATH_PREFIXES
+    )
+
+
 #: Reserved query parameter names the caller may never override -- FastAPI's
 #: login endpoint always sets these itself so a client cannot smuggle a
 #: different response_type/client_id/redirect_uri/state/nonce/scope into the
@@ -75,7 +97,7 @@ class LoginRedirect:
 
 
 def _safe_next_path(candidate: str | None) -> str:
-    if candidate is None or not candidate.startswith("/broker"):
+    if candidate is None or not _is_allowed_next_path(candidate):
         return DEFAULT_NEXT_PATH
     return candidate
 

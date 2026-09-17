@@ -1,0 +1,270 @@
+---
+// SLICE-0054: one owner-direct draft's private edit/save/reopen surface
+// (contract §10). Renders only an owned draft; a foreign or unknown
+// draft_id is one identical non-enumerating not-found state (contract §3/§9)
+// -- this page never tries to distinguish them.
+//
+// The POST handler below is the SLICE-0054 contract §9 CSRF proxy for
+// "save": see ownerDirectDraftApi.ts's module docstring for why it forwards
+// the browser's real Origin rather than substituting a trusted one. Astro
+// formats/forwards form values here but is never the authoritative field
+// validator, owner-authorizer or concurrency engine (contract §10) -- every
+// field/version decision below is exactly what FastAPI returned.
+export const prerender = false;
+
+import {
+  type OwnerDirectDraft,
+  type OwnerDirectDraftPayloadInput,
+  fetchOwnerDirectDraft,
+  updateOwnerDirectDraft,
+} from "../../../lib/ownerDirectDraftApi";
+
+const draftId = Astro.params.draft_id ?? "";
+const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
+const cookieHeader = Astro.request.headers.get("cookie");
+const originHeader = Astro.request.headers.get("origin");
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+Astro.response.headers.set("Cache-Control", "private, no-store");
+
+type FormFieldKey = keyof OwnerDirectDraftPayloadInput;
+
+function readOptionalField(formData: FormData, key: FormFieldKey): string | undefined {
+  const raw = formData.get(key);
+  if (typeof raw !== "string") return undefined;
+  const trimmed = raw.trim();
+  return trimmed === "" ? undefined : trimmed;
+}
+
+function payloadFromForm(formData: FormData): OwnerDirectDraftPayloadInput {
+  const payload: OwnerDirectDraftPayloadInput = {};
+
+  const brand = readOptionalField(formData, "physical_boat.marketed_brand_claim");
+  if (brand !== undefined) payload["physical_boat.marketed_brand_claim"] = brand;
+
+  const model = readOptionalField(formData, "physical_boat.model_designation_claim");
+  if (model !== undefined) payload["physical_boat.model_designation_claim"] = model;
+
+  const buildYearRaw = readOptionalField(formData, "physical_boat.build_year");
+  if (buildYearRaw !== undefined) {
+    const parsed = Number.parseInt(buildYearRaw, 10);
+    if (Number.isFinite(parsed)) payload["physical_boat.build_year"] = parsed;
+  }
+
+  const boatName = readOptionalField(formData, "physical_boat.boat_name");
+  if (boatName !== undefined) payload["physical_boat.boat_name"] = boatName;
+
+  const priceMode = readOptionalField(formData, "listing_offer.asking_price_mode");
+  if (priceMode === "AMOUNT" || priceMode === "POA") {
+    payload["listing_offer.asking_price_mode"] = priceMode;
+  }
+  // Contract §6.2: asking_price_amount must be absent when mode is POA --
+  // omitted here by construction rather than sent and rejected.
+  if (priceMode !== "POA") {
+    const amount = readOptionalField(formData, "listing_offer.asking_price_amount");
+    if (amount !== undefined) payload["listing_offer.asking_price_amount"] = amount;
+  }
+
+  const currency = readOptionalField(formData, "listing_offer.currency");
+  if (currency !== undefined) payload["listing_offer.currency"] = currency.toUpperCase();
+
+  const country = readOptionalField(formData, "listing_offer.location_country");
+  if (country !== undefined) payload["listing_offer.location_country"] = country.toUpperCase();
+
+  const region = readOptionalField(formData, "listing_offer.location_region");
+  if (region !== undefined) payload["listing_offer.location_region"] = region;
+
+  return payload;
+}
+
+type SaveOutcome = "none" | "saved" | "conflict" | "invalid";
+let saveOutcome: SaveOutcome = "none";
+
+if (Astro.request.method === "POST" && draftId) {
+  const formData = await Astro.request.formData();
+  const expectedVersionRaw = formData.get("expected_version");
+  const expectedVersion =
+    typeof expectedVersionRaw === "string" ? Number.parseInt(expectedVersionRaw, 10) : NaN;
+  if (Number.isFinite(expectedVersion)) {
+    const payload = payloadFromForm(formData);
+    const updateResult = await updateOwnerDirectDraft(
+      apiBaseUrl,
+      draftId,
+      cookieHeader,
+      originHeader,
+      expectedVersion,
+      payload,
+    );
+    if (updateResult.kind === "ok") saveOutcome = "saved";
+    else if (updateResult.kind === "conflict") saveOutcome = "conflict";
+    else if (updateResult.kind === "invalid") saveOutcome = "invalid";
+    // "unauthenticated"/"not_found" fall through to the read below, which
+    // independently resolves to the same state.
+  }
+}
+
+// Always re-read the authoritative persisted state after a POST -- the
+// rendered form must reflect exactly what FastAPI actually stored, never
+// what the browser merely submitted (contract §7/§10: a stale-save
+// conflict must be visible, not silently overwritten).
+const readResult = await fetchOwnerDirectDraft(apiBaseUrl, draftId, cookieHeader);
+
+if (readResult.kind === "not_found") {
+  Astro.response.status = 404;
+}
+
+const draft: OwnerDirectDraft | null = readResult.kind === "ok" ? readResult.data : null;
+const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(`/sell/direct/${draftId}`)}`;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>HullQ Owner-Direct Draft</title>
+  </head>
+  <body>
+    <main>
+      <h1>Owner-direct draft</h1>
+      <p>
+        <strong>Draft &mdash; not public.</strong> This is private workspace data only. There is
+        no publish action here.
+      </p>
+      {
+        readResult.kind === "unauthenticated" ? (
+          <p>
+            Please <a href={loginUrl}>log in</a> to view this draft.
+          </p>
+        ) : readResult.kind === "not_found" ? (
+          <p>This draft is not available.</p>
+        ) : (
+          <>
+            {saveOutcome === "saved" && <p>Saved.</p>}
+            {saveOutcome === "conflict" && (
+              <p>
+                This draft changed elsewhere since you loaded it (current version {draft?.version}
+                ). Your last edits were not saved -- please re-enter them below.
+              </p>
+            )}
+            {saveOutcome === "invalid" && (
+              <p>Some values could not be saved. Please check the fields below.</p>
+            )}
+            <p>Version: {draft?.version}</p>
+            <form method="POST">
+              <input type="hidden" name="expected_version" value={draft?.version} />
+              <p>
+                <label>
+                  Marketed brand claim
+                  <input
+                    type="text"
+                    name="physical_boat.marketed_brand_claim"
+                    value={draft?.["physical_boat.marketed_brand_claim"] ?? ""}
+                  />
+                </label>
+              </p>
+              <p>
+                <label>
+                  Model designation claim
+                  <input
+                    type="text"
+                    name="physical_boat.model_designation_claim"
+                    value={draft?.["physical_boat.model_designation_claim"] ?? ""}
+                  />
+                </label>
+              </p>
+              <p>
+                <label>
+                  Build year
+                  <input
+                    type="number"
+                    name="physical_boat.build_year"
+                    value={draft?.["physical_boat.build_year"] ?? ""}
+                  />
+                </label>
+              </p>
+              <p>
+                <label>
+                  Boat name
+                  <input
+                    type="text"
+                    name="physical_boat.boat_name"
+                    value={draft?.["physical_boat.boat_name"] ?? ""}
+                  />
+                </label>
+              </p>
+              <p>
+                <label>
+                  Asking price mode
+                  <select name="listing_offer.asking_price_mode">
+                    <option value="" selected={!draft?.["listing_offer.asking_price_mode"]}>
+                      -- unset --
+                    </option>
+                    <option
+                      value="AMOUNT"
+                      selected={draft?.["listing_offer.asking_price_mode"] === "AMOUNT"}
+                    >
+                      Amount
+                    </option>
+                    <option
+                      value="POA"
+                      selected={draft?.["listing_offer.asking_price_mode"] === "POA"}
+                    >
+                      Price on application
+                    </option>
+                  </select>
+                </label>
+              </p>
+              <p>
+                <label>
+                  Asking price amount
+                  <input
+                    type="text"
+                    name="listing_offer.asking_price_amount"
+                    value={draft?.["listing_offer.asking_price_amount"] ?? ""}
+                  />
+                </label>
+              </p>
+              <p>
+                <label>
+                  Currency
+                  <input
+                    type="text"
+                    name="listing_offer.currency"
+                    maxlength="3"
+                    value={draft?.["listing_offer.currency"] ?? ""}
+                  />
+                </label>
+              </p>
+              <p>
+                <label>
+                  Location country
+                  <input
+                    type="text"
+                    name="listing_offer.location_country"
+                    maxlength="2"
+                    value={draft?.["listing_offer.location_country"] ?? ""}
+                  />
+                </label>
+              </p>
+              <p>
+                <label>
+                  Location region
+                  <input
+                    type="text"
+                    name="listing_offer.location_region"
+                    value={draft?.["listing_offer.location_region"] ?? ""}
+                  />
+                </label>
+              </p>
+              <button type="submit">Save</button>
+            </form>
+            <p>
+              <a href="/sell/direct">Back to your drafts</a>
+            </p>
+          </>
+        )
+      }
+    </main>
+  </body>
+</html>

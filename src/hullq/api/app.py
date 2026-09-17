@@ -56,6 +56,7 @@ of a host-only cookie carrying the claims directly).
 
 from __future__ import annotations
 
+import json
 import os
 from datetime import UTC, datetime
 from typing import Any
@@ -70,6 +71,16 @@ from hullq.application.broker_workspace_read import (
     OrganizationWorkspaceOutcome,
     get_broker_context_read_model,
     get_organization_workspace_result,
+)
+from hullq.application.owner_direct_draft import (
+    CreateOwnerDirectDraftOutcome,
+    GetOwnerDirectDraftOutcome,
+    UpdateOwnerDirectDraftOutcome,
+    create_owner_direct_draft_for_account,
+    get_owner_direct_draft_for_account,
+    list_owner_direct_drafts_for_account,
+    record_to_public_dict,
+    update_owner_direct_draft_for_account,
 )
 from hullq.application.preview_read import get_preview_read_model
 from hullq.application.public_listing_read import get_public_listing_read_model
@@ -161,6 +172,22 @@ _SESSION_COOKIE_SECURE_ENV = "HULLQ_SESSION_COOKIE_SECURE"
 _BROKER_PATH_PREFIXES = ("/api/auth/", "/api/broker/")
 _BROKER_RESPONSE_HEADERS = {"Cache-Control": "private, no-store", "X-Robots-Tag": "noindex"}
 
+#: SLICE-0054: owner-direct draft workspace is private workspace data, never
+#: cached/indexed (contract §11) -- same private/no-store/noindex shape as
+#: the broker surface, kept as its own constant so the two response-header
+#: policies never need to be edited in lockstep by accident.
+_OWNER_DIRECT_PATH_PREFIX = "/api/owner-direct/"
+_OWNER_DIRECT_RESPONSE_HEADERS = {"Cache-Control": "private, no-store", "X-Robots-Tag": "noindex"}
+
+#: SLICE-0054 contract §9: every state-changing draft request must carry
+#: this exact fixed non-simple header. Its presence alone is not
+#: authorization -- it only forces the browser into a CORS preflight for a
+#: cross-site request, which the accepted mechanism combines with a strict
+#: Origin match rather than any permissive credentialed CORS grant.
+_OWNER_DIRECT_CSRF_HEADER_NAME = "x-hullq-requested-with"
+_OWNER_DIRECT_CSRF_HEADER_VALUE = "owner-direct-draft-v1"
+_WEB_ORIGIN_ENV = "HULLQ_WEB_ORIGIN"
+
 #: SLICE-0052: server-side-only freshness clock override, resolved once at
 #: app-creation time. Never read from an HTTP request. Unset in every
 #: production deployment.
@@ -227,6 +254,7 @@ def create_app(
     session_signing_secret: bytes | None = None,
     auth_redirect_uri: str | None = None,
     web_base_url: str | None = None,
+    web_origin: str | None = None,
     auth_http_client: Any | None = None,
     auth_jwks_cache: Any | None = None,
 ) -> FastAPI:
@@ -255,6 +283,13 @@ def create_app(
     an environment that has not configured an authentication provider at
     all. *auth_http_client*/*auth_jwks_cache* let tests/the retained proof
     inject a deterministic transport instead of real outbound network I/O.
+
+    SLICE-0054's *web_origin* is the one exact accepted browser `Origin`
+    for owner-direct draft CSRF validation (contract §9); like the auth
+    configuration above it is resolved lazily, per-request, falling back
+    to `HULLQ_WEB_ORIGIN` -- so an environment that never configures
+    owner-direct draft access is unaffected, and only the draft POST/PUT
+    handlers ever call the resolver.
     """
     resolved_database_url = database_url if database_url is not None else get_database_url()
     resolved_secret = (
@@ -297,6 +332,14 @@ def create_app(
         raw = os.environ.get(_WEB_BASE_URL_ENV, "").strip()
         return raw or None
 
+    def _resolve_web_origin() -> str:
+        if web_origin is not None:
+            return web_origin
+        raw = os.environ.get(_WEB_ORIGIN_ENV, "").strip()
+        if not raw:
+            raise RuntimeError(f"{_WEB_ORIGIN_ENV} is not set or empty")
+        return raw
+
     def _cookie_secure() -> bool:
         raw = os.environ.get(_SESSION_COOKIE_SECURE_ENV, "true").strip().lower()
         return raw not in {"false", "0", "no"}
@@ -318,6 +361,40 @@ def create_app(
             return verify_and_decode_session_token(raw, secret=_resolve_session_secret())
         except InvalidSessionTokenError:
             return None
+
+    def _normalized_origin(raw: str) -> tuple[str, str, int] | None:
+        parts = urlsplit(raw)
+        if parts.scheme not in ("http", "https") or not parts.hostname:
+            return None
+        default_port = 443 if parts.scheme == "https" else 80
+        port = parts.port if parts.port is not None else default_port
+        return (parts.scheme, parts.hostname.lower(), port)
+
+    def _require_owner_direct_csrf(request: Request) -> None:
+        # Contract §9: an exact Origin match plus a fixed non-simple header
+        # -- never permissive credentialed CORS. Both checked before any
+        # mutation is attempted by the caller.
+        origin_header = request.headers.get("origin")
+        requested_with = request.headers.get(_OWNER_DIRECT_CSRF_HEADER_NAME)
+        accepted = _normalized_origin(_resolve_web_origin())
+        actual = _normalized_origin(origin_header) if origin_header else None
+        if (
+            actual is None
+            or actual != accepted
+            or requested_with != _OWNER_DIRECT_CSRF_HEADER_VALUE
+        ):
+            raise HTTPException(status_code=403, detail="csrf validation failed")
+
+    async def _read_json_body(request: Request, *, allow_empty: bool) -> Any:
+        raw_body = await request.body()
+        if not raw_body:
+            if allow_empty:
+                return None
+            raise HTTPException(status_code=400, detail="request body must be a JSON object")
+        try:
+            return json.loads(raw_body)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail="invalid JSON body") from exc
 
     app = FastAPI(
         title="HullQ preview API (SLICE-0048, unstable, non-canonical)",
@@ -348,6 +425,11 @@ def create_app(
             # SLICE-0053: auth/session/membership responses are never
             # cached and never indexed.
             for key, value in _BROKER_RESPONSE_HEADERS.items():
+                response.headers[key] = value
+        elif path.startswith(_OWNER_DIRECT_PATH_PREFIX):
+            # SLICE-0054 contract §11: owner-direct draft data is private
+            # workspace data, never cached and never indexed.
+            for key, value in _OWNER_DIRECT_RESPONSE_HEADERS.items():
                 response.headers[key] = value
         return response
 
@@ -571,5 +653,71 @@ def create_app(
             return JSONResponse({"error": "mfa_required"}, status_code=403)
         assert result.context is not None
         return JSONResponse(result.context.to_public_dict())
+
+    @app.get("/api/owner-direct/drafts")
+    def list_owner_direct_drafts_route(request: Request) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            records = list_owner_direct_drafts_for_account(conn, session)
+        finally:
+            conn.close()
+        return JSONResponse({"drafts": [record_to_public_dict(r) for r in records]})
+
+    @app.post("/api/owner-direct/drafts")
+    async def create_owner_direct_draft_route(request: Request) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_owner_direct_csrf(request)
+        raw_initial_payload = await _read_json_body(request, allow_empty=True)
+        conn = open_connection(resolved_database_url)
+        try:
+            result = create_owner_direct_draft_for_account(conn, session, raw_initial_payload)
+        finally:
+            conn.close()
+        if result.outcome is CreateOwnerDirectDraftOutcome.INVALID_PAYLOAD:
+            return JSONResponse({"error": "invalid_draft_payload"}, status_code=400)
+        assert result.record is not None
+        return JSONResponse(record_to_public_dict(result.record), status_code=201)
+
+    @app.get("/api/owner-direct/drafts/{draft_id}")
+    def get_owner_direct_draft_route(draft_id: str, request: Request) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            result = get_owner_direct_draft_for_account(conn, session, draft_id)
+        finally:
+            conn.close()
+        if result.outcome is GetOwnerDirectDraftOutcome.NOT_FOUND:
+            # Contract §3/§9: foreign and unknown draft_id are indistinguishable.
+            raise HTTPException(status_code=404, detail="draft not found")
+        assert result.record is not None
+        return JSONResponse(record_to_public_dict(result.record))
+
+    @app.put("/api/owner-direct/drafts/{draft_id}")
+    async def update_owner_direct_draft_route(draft_id: str, request: Request) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_owner_direct_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        conn = open_connection(resolved_database_url)
+        try:
+            result = update_owner_direct_draft_for_account(conn, session, draft_id, raw_body)
+        finally:
+            conn.close()
+        if result.outcome is UpdateOwnerDirectDraftOutcome.INVALID_PAYLOAD:
+            return JSONResponse({"error": "invalid_draft_payload"}, status_code=400)
+        if result.outcome is UpdateOwnerDirectDraftOutcome.NOT_FOUND:
+            raise HTTPException(status_code=404, detail="draft not found")
+        if result.outcome is UpdateOwnerDirectDraftOutcome.VERSION_CONFLICT:
+            return JSONResponse({"error": "version_conflict"}, status_code=409)
+        assert result.record is not None
+        return JSONResponse(record_to_public_dict(result.record))
 
     return app
