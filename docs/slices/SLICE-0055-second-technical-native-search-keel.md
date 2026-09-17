@@ -21,11 +21,41 @@ One Search capability: criterion #2 plus the minimum shared production evaluatio
 **VISIBLE-RESULT CHECK:** PASS  
 A buyer can execute Direct Search with keel alone and draft+keel and receive only confirmed matching native listings.
 
+**PRODUCT EXECUTION PLAN ALIGNMENT:** PASS  
+The accepted execution plan prioritizes one visible buyer capability at a time and preserves strict truth/fail-closed Search. The post-SLICE-0054 buyer reconciliation keeps Direct Search as the primary low-friction entry point and requires later Buyer Requirements to reuse, not replace, the same deterministic Search/evaluation semantics. SLICE-0055 advances that path by exactly one hard native Search criterion while leaving BuyerRequirements, decision tools, shortlist/Compare, monitoring and ranking outside this slice. Organic eligibility, match classification and ordering remain commercially independent.
+
 **REPOSITORY RECONCILIATION CHECK:** PASS  
 The accepted Search kernel already has `CategoricalLeafCriterion`, `MixedAndQuery`, `CriterionEvaluation`, configuration identity/evaluation, and three-valued aggregation. The current SLICE-0051 production bridge is field-specific and currently discards non-match/insufficient criterion detail at the application outcome. BoatDesign v0.6 already models `appendages.keel_type`; PhysicalBoat claims already model `keel_configuration`. The exact remaining gap is to bring categorical keel evaluation into the production native-inventory funnel without a second copied bridge and preserve criterion evidence through the application boundary.
 
 **TRIGGER GATES CHECK:** PASS  
 This is technical native Search criterion ordinal #2. The mandatory second-criterion bridge comparison therefore applies. Criterion count remains 1 until SLICE-0055 is owner-accepted and closed. Workflow reassessment remains due after accepted SLICE-0056, not before 0055. No production-data/pilot trigger is introduced.
+
+## Decision / implementation reconciliation
+
+**Accepted records checked:** `docs/PROJECT_STATE.md`; `docs/PRODUCT_EXECUTION_PLAN.md`; `docs/POST_0054_BUYER_SELLER_PRODUCT_RECONCILIATION_2026-09-17.md`; `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md`; `docs/governance/POST_0051_TRIGGER_GATES.md`; `docs/governance/PRODUCTION_READINESS_GATE.md`; `docs/OWNER_DIRECT_LISTING_PRODUCT_DIRECTION_2026-09-14.md`; `specs/OWNER_DIRECT_LISTING_REQUIREMENTS.v0.1.md`; `docs/slices/SLICE-0035-categorical-configuration-aware-search.md`; `docs/slices/SLICE-0051-first-requirements-native-inventory-search.md`; `docs/slices/SLICE-0051-acceptance-closure.md`; `docs/slices/SLICE-0054-acceptance-closure.md`; `specs/TECHNICAL_NATIVE_SEARCH_CRITERION_2_KEEL_CONTRACT.v0.1.md`; `specs/SEARCH_QUERY_SEMANTICS.v0.1.md`; `specs/BOAT_DESIGN_SCHEMA.v0.6.json`; `specs/MARKETPLACE_FIELD_REGISTRY.v0.1.json`.  
+**Production implementation checked:** `src/hullq/search/criteria.py`; `src/hullq/search/query_mixed.py`; `src/hullq/search/configuration.py`; `src/hullq/search/configuration_engine.py`; `src/hullq/search/draft_max_design_bridge.py`; `src/hullq/search/draft_max_request.py`; current native inventory Search application/API/browser path and retained SLICE-0051 tests/proofs.  
+**Already implemented / not re-decided:** the accepted `draft_max` production native Search criterion; exact Decimal draft semantics; `CategoricalLeafCriterion`; mixed numeric/categorical `MixedAndQuery`; deterministic MUST/AND and three-valued truth semantics; BoatDesign/configuration versus PhysicalBoat truth separation; FieldResolution/current-snapshot qualification; configuration identity; existing BoatDesign `appendages.keel_type` and PhysicalBoat `keel_configuration` vocabularies; owner-direct/professional supply neutrality and organic Search commercial independence.  
+**Exact remaining gap:** production Direct Search cannot yet accept/evaluate `keel_configuration` through the native inventory truth funnel, combine it with `draft_max`, preserve criterion-level match/non-match/insufficient evidence through the application boundary, or do so without structurally copying the SLICE-0051 field-specific production bridge.  
+**Accepted-but-unimplemented obligations:** SLICE-0055 must add the bounded v0.1 `keel_configuration` hard criterion and criterion-#2 shared-bridge/evidence work. Broader BuyerRequirements, buyer explainability/sensitivity, shortlist/Compare/sharing, Saved Search/alerts, Rare Match/comparables, Broker Search Intelligence, owner-direct publication/admission and later technical criteria remain pending under their existing contracts/triggers and are not pulled into this slice.  
+**Material classifications:** `DECIDED_AND_IMPLEMENTED` for the existing Search kernel, `draft_max`, truth/configuration boundaries and accepted keel field vocabularies; `DECIDED_NOT_YET_IMPLEMENTED` for the bounded criterion-#2 production path and criterion-level application evidence; `EXPLICITLY_DEFERRED` for the named out-of-scope buyer/search/seller capabilities; `GENUINELY_OPEN` has no material product/domain/architecture question blocking this bounded slice; `CONFLICT_OR_REGRESSION` has no production-code instance identified by this readiness review, while the readiness-document governance defect is corrected in this amendment.
+
+## Trigger gates
+
+**Production readiness gate:** NOT_TRIGGERED  
+**Adds technical native Search criterion:** YES  
+**Technical Search criterion ordinal:** 2  
+**Second-criterion bridge comparison:** PASS  
+**Third-copy abstraction guard:** NOT_APPLICABLE  
+**Workflow reassessment status:** NOT_DUE
+
+Evidence:
+
+- canonical accepted technical native Search criterion count is `1`, so this capability is exactly criterion #2;
+- the readiness contract explicitly compares the SLICE-0051 draft bridge with the keel path and requires shared production mechanics to be reused/generalized while criterion-specific decoding/mapping stays behind adapters;
+- criterion #2 therefore satisfies the second-criterion comparison obligation, while the third-copy guard does not apply until criterion #3 or later;
+- SLICE-0055 uses internal/synthetic retained proof and introduces no real external marketplace production data, production pilot or public production launch;
+- workflow reassessment remains `NOT_DUE` through accepted SLICE-0055 and becomes due after accepted SLICE-0056 unless a production-pilot trigger fires earlier;
+- Search remains supply-neutral and commercially independent: professional or owner-direct payment/verification state cannot buy organic eligibility, match classification or ordering.
 
 ## Controlling artifacts
 
@@ -33,9 +63,15 @@ This is technical native Search criterion ordinal #2. The mandatory second-crite
 - `specs/SEARCH_QUERY_SEMANTICS.v0.1.md`
 - `specs/BOAT_DESIGN_SCHEMA.v0.6.json`
 - `specs/MARKETPLACE_FIELD_REGISTRY.v0.1.json`
+- `docs/PRODUCT_EXECUTION_PLAN.md`
+- `docs/PRODUCT_UX_PRINCIPLES.md`
+- `docs/OWNER_DIRECT_LISTING_PRODUCT_DIRECTION_2026-09-14.md`
+- `specs/OWNER_DIRECT_LISTING_REQUIREMENTS.v0.1.md`
 - `docs/slices/SLICE-0035-categorical-configuration-aware-search.md`
 - `docs/slices/SLICE-0051-first-requirements-native-inventory-search.md`
+- `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md`
 - `docs/governance/POST_0051_TRIGGER_GATES.md`
+- `docs/governance/PRODUCTION_READINESS_GATE.md`
 - `docs/POST_0054_BUYER_SELLER_PRODUCT_RECONCILIATION_2026-09-17.md`
 
 ## In scope
