@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-17  
 **Latest owner-accepted / DONE slice:** SLICE-0054  
-**Current queue:** SLICE-0055 — capability **not selected**; selection requires the planned post-SLICE-0054 product/repository reconciliation before readiness.  
+**Current queue:** SLICE-0055 — **Second Technical Native Inventory Search Criterion: Keel Configuration + Multi-Criterion Evaluation Evidence**; readiness contract prepared, implementation not started.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -32,6 +32,8 @@ technical requirements
 → save / monitor / alert
 → seller/broker contact / qualified lead
 ```
+
+Direct technical Search remains the primary low-friction buyer entry point. The post-0054 accepted guided Buyer Requirements path is optional and must reuse the same deterministic Search/evaluation semantics.
 
 ## Accepted provider surfaces
 
@@ -129,13 +131,15 @@ docs/slices/SLICE-0054-acceptance-closure.md
 
 ## Accepted technical Search result
 
-SLICE-0051 still defines exactly one public hard technical buyer requirement:
+SLICE-0051 still defines exactly one accepted/closed public hard technical buyer requirement:
 
 ```text
 draft_max=<exact decimal metres>
 ```
 
-Accepted technical native Search criteria count remains `1`. SLICE-0054 adds no Search criterion and does not authorize weaker Search truth for private listings.
+Accepted technical native Search criteria count remains `1` until SLICE-0055 is implemented, independently reviewed, owner-accepted and acceptance-closed.
+
+SLICE-0055 is selected to add criterion #2: bounded categorical `keel_configuration`, alone or AND-combined with `draft_max`, while preserving criterion-level evaluation evidence and satisfying the accepted second-criterion abstraction guard. Controlling readiness artifacts are `specs/TECHNICAL_NATIVE_SEARCH_CRITERION_2_KEEL_CONTRACT.v0.1.md` and `docs/slices/SLICE-0055-second-technical-native-search-keel.md`.
 
 ## Post-SLICE-0051 trigger gates
 
@@ -158,7 +162,7 @@ BROKER_SELF_SERVICE_PILOT_STATUS: NOT_STARTED
 PAID_BROKER_PLAN_STATUS: NOT_STARTED
 ```
 
-SLICE-0054 uses internal/synthetic draft state only and does not trigger production readiness. The Production Readiness gate applies to real external marketplace seller/listing data regardless of seller type. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA/production-readiness rules remain mandatory.
+SLICE-0055 readiness/implementation uses internal/synthetic retained proof and does not itself introduce real external marketplace production data, a production pilot or public production launch. The Production Readiness gate therefore remains untriggered by this capability alone. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA/production-readiness rules remain mandatory.
 
 ## Broker Mandatory Capability Register
 
@@ -181,7 +185,7 @@ REQ_BROKER_029_STATUS: PENDING
 REQ_BROKER_030_STATUS: IMPLEMENTED
 ```
 
-SLICE-0054 changes none of these statuses and waives no professional-product obligation.
+SLICE-0055 changes none of these statuses and waives no professional-product obligation. Broker Search-exclusion intelligence remains tied to REQ-BROKER-025 and its sufficient-Search-volume/privacy trigger; criterion-level evidence created by 0055 does not itself implement that broker feature.
 
 ## Architecture and production direction
 
@@ -189,11 +193,15 @@ Current accepted application direction remains Astro as primary web framework wi
 
 The SLICE-0053 same-host session-topology invariant remains in force for browser-visible FastAPI auth/callback and authenticated Astro workspace surfaces. SLICE-0054 reuses this session boundary rather than creating a second authentication stack.
 
+## Post-0054 buyer/seller reconciliation
+
+`docs/POST_0054_BUYER_SELLER_PRODUCT_RECONCILIATION_2026-09-17.md` records the accepted optional Buyer Requirements/Decision Tools direction and shared Seller Platform direction. Those ideas are not collapsed into SLICE-0055. Direct Search remains primary; Buyer Requirements remain optional; `UNKNOWN != NOT_SATISFIED`; no match scores/winners/hidden weights are authorized; shortlist remains buyer interest rather than HullQ fit.
+
 ## What remains unbuilt
 
-Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; broker inventory workflow, branding/media and resilient drafts; leads/CRM/outcomes/analytics; export/bulk onboarding; Search explainability/demand insight when triggered; broader PhysicalBoat fact coverage and multi-criterion Search; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
+Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; broker inventory workflow, branding/media and resilient drafts; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability and sensitivity; BuyerRequirements persistence; shortlist/Compare/sharing; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-None is allocated to SLICE-0055 by this state update.
+None except the explicitly selected keel Search capability is allocated to SLICE-0055.
 
 ## Next capability selection
 
@@ -203,14 +211,16 @@ Next queue number:
 SLICE-0055
 ```
 
-**Selected capability:** none.
+**Selected capability:** Second Technical Native Inventory Search Criterion — Keel Configuration + Multi-Criterion Evaluation Evidence.
 
-Before selecting SLICE-0055, perform the planned post-SLICE-0054 product/repository reconciliation against actual repository state. Separately discussed Discovery/Search features, Buyer Decision Tools and Seller Workspace architecture are inputs to that reconciliation only; this state record does not make them normative requirements or roadmap commitments.
+Readiness must be independently reviewed and merged before the Project Owner runs `START_SLICE.bat`. Implementation has not started.
 
 ## Development workflow
 
 - `origin/main` is canonical shared truth;
 - one implementation slice per isolated worktree/branch;
+- readiness/specification is independently reviewed and merged before implementation start;
+- Project Owner runs `START_SLICE.bat` only after readiness is accepted;
 - Claude Code implements; independent reviewer verifies exact implementation HEAD;
 - material finding → amendment on the same branch;
 - clean exact-head review → ACCEPT;
