@@ -33,13 +33,13 @@ technical requirements
 → seller/broker contact / qualified lead
 ```
 
-Direct technical Search remains the primary low-friction buyer entry point. The post-0054 accepted guided Buyer Requirements journey is optional and must reuse the same deterministic Search/evaluation semantics.
+Direct technical Search remains the primary low-friction buyer entry point. The post-0054 accepted guided Buyer Requirements path is optional and must reuse the same deterministic Search/evaluation semantics.
 
 ## Accepted provider surfaces
 
 Professional provider direction remains the best-in-class Broker Workspace. SLICE-0053 provides its accepted authentication/account/Organization/Membership/role/MFA access boundary. Auth0 remains authentication-only; HullQ PostgreSQL/domain state owns authorization truth.
 
-SLICE-0054 adds the first accepted owner-direct provider surface:
+SLICE-0054 now adds the first accepted owner-direct provider surface:
 
 ```text
 authenticated ordinary HullQ Account
@@ -49,7 +49,7 @@ authenticated ordinary HullQ Account
 → NOT PUBLIC
 ```
 
-An owner-direct Account does not require a professional Organization or Membership. Ownership is derived from the authenticated session/account, not client input. Draft persistence is private workspace state, not marketplace truth.
+An owner-direct Account does not require a professional Organization or Membership. Ownership is derived from the authenticated session/account, not client input. Foreign/unknown draft access is non-enumerating, updates use optimistic versioning, login-next is bounded to the owner-direct surface, mutating browser requests use the accepted Origin + non-simple-header CSRF boundary, and private pages remain no-store/noindex.
 
 ## Hard truth and identity boundaries
 
@@ -65,11 +65,16 @@ Hard truth rule remains:
 DESIGN / CONFIGURATION TRUTH != PHYSICAL BOAT / LISTING TRUTH
 ```
 
-SLICE-0054 adds:
+SLICE-0054 adds a separate pre-market identity:
 
 ```text
-OwnerDirectListingDraftId != NativeListingId != PhysicalBoatId != MarketEpisodeId
+OwnerDirectListingDraftId
+!= NativeListingId
+!= PhysicalBoatId
+!= MarketEpisodeId
 ```
+
+Draft persistence is not marketplace truth. The accepted retained proof establishes that owner-direct draft operations do not create or mutate `physical_boats`, `market_episodes`, `native_listings`, NativeListing offer revision/head state, publication-transition state or freshness-confirmation state. No public Search promotion occurs.
 
 ## Owner-direct trust direction
 
@@ -82,7 +87,18 @@ HullQ account
 + baseline anti-abuse checks
 ```
 
-Trust scopes remain separate: `PHONE VERIFIED`, `IDENTITY VERIFIED`, `RIGHT-TO-LIST ATTESTED`, `SALE AUTHORITY VERIFIED`. None promotes yacht technical fields. SLICE-0054 implements none of publication/admission, verification escalation, representation-conflict handling, media, enquiries, broker referral, sale outcome, Search eligibility/ranking, payments or production pilot.
+Trust scopes remain separate:
+
+```text
+PHONE VERIFIED
+IDENTITY VERIFIED
+RIGHT-TO-LIST ATTESTED
+SALE AUTHORITY VERIFIED
+```
+
+None promotes yacht technical fields. Strong identity/documentary sale-authority verification remains a separate future trust layer and should minimize HullQ retention of raw ID/selfie/biometric material.
+
+SLICE-0054 implements none of publication/admission, phone verification, right-to-list attestation, identity verification, Sale Authority Verification, representation-conflict handling, media, enquiries/leads, broker referral, sale outcome, Search eligibility/ranking, delete/archive, payments or production pilot.
 
 ## Built and owner-accepted product threshold
 
@@ -104,11 +120,18 @@ SLICE-0040 marketplace identity/truth separation
 → SLICE-0054 authenticated Owner-Direct Listing Draft Workspace
 ```
 
-Latest closures remain `docs/slices/SLICE-0051-acceptance-closure.md` through `SLICE-0054-acceptance-closure.md`.
+Latest closures:
+
+```text
+docs/slices/SLICE-0051-acceptance-closure.md
+docs/slices/SLICE-0052-acceptance-closure.md
+docs/slices/SLICE-0053-acceptance-closure.md
+docs/slices/SLICE-0054-acceptance-closure.md
+```
 
 ## Accepted technical Search result
 
-SLICE-0051 still defines exactly one **accepted/closed** public hard technical buyer requirement:
+SLICE-0051 still defines exactly one accepted/closed public hard technical buyer requirement:
 
 ```text
 draft_max=<exact decimal metres>
@@ -116,7 +139,7 @@ draft_max=<exact decimal metres>
 
 Accepted technical native Search criteria count remains `1` until SLICE-0055 is implemented, independently reviewed, owner-accepted and acceptance-closed.
 
-SLICE-0055 is now selected to add criterion #2: bounded categorical `keel_configuration`, alone or AND-combined with `draft_max`, while preserving criterion-level evaluation evidence and satisfying the accepted second-criterion abstraction guard. Controlling readiness artifacts are `specs/TECHNICAL_NATIVE_SEARCH_CRITERION_2_KEEL_CONTRACT.v0.1.md` and `docs/slices/SLICE-0055-second-technical-native-search-keel.md`.
+SLICE-0055 is selected to add criterion #2: bounded categorical `keel_configuration`, alone or AND-combined with `draft_max`, while preserving criterion-level evaluation evidence and satisfying the accepted second-criterion abstraction guard. Controlling readiness artifacts are `specs/TECHNICAL_NATIVE_SEARCH_CRITERION_2_KEEL_CONTRACT.v0.1.md` and `docs/slices/SLICE-0055-second-technical-native-search-keel.md`.
 
 ## Post-SLICE-0051 trigger gates
 
@@ -139,7 +162,7 @@ BROKER_SELF_SERVICE_PILOT_STATUS: NOT_STARTED
 PAID_BROKER_PLAN_STATUS: NOT_STARTED
 ```
 
-SLICE-0055 uses internal/synthetic retained proof and does not itself introduce external production seller/listing data or a production pilot. The Production Readiness gate therefore remains untriggered by readiness selection alone.
+SLICE-0055 readiness/implementation uses internal/synthetic retained proof and does not itself introduce real external marketplace production data, a production pilot or public production launch. The Production Readiness gate therefore remains untriggered by this capability alone. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA/production-readiness rules remain mandatory.
 
 ## Broker Mandatory Capability Register
 
@@ -162,11 +185,13 @@ REQ_BROKER_029_STATUS: PENDING
 REQ_BROKER_030_STATUS: IMPLEMENTED
 ```
 
-SLICE-0055 changes none of these statuses. Broker Search-exclusion intelligence remains tied to REQ-BROKER-025 and its sufficient-Search-volume/privacy trigger; criterion-level evidence created by 0055 does not itself implement that broker feature.
+SLICE-0055 changes none of these statuses and waives no professional-product obligation. Broker Search-exclusion intelligence remains tied to REQ-BROKER-025 and its sufficient-Search-volume/privacy trigger; criterion-level evidence created by 0055 does not itself implement that broker feature.
 
 ## Architecture and production direction
 
 Current accepted application direction remains Astro as primary web framework with React only for justified interactive islands, FastAPI as sole application/domain API boundary, PostgreSQL 18 production target in DigitalOcean FRA1, Auth0 Public Cloud EU as authentication-only, and immutable container deployment through GHCR/versioned Docker Compose. Production app hosts remain stateless/replaceable; independent encrypted backup plus restore testing remains required.
+
+The SLICE-0053 same-host session-topology invariant remains in force for browser-visible FastAPI auth/callback and authenticated Astro workspace surfaces. SLICE-0054 reuses this session boundary rather than creating a second authentication stack.
 
 ## Post-0054 buyer/seller reconciliation
 
@@ -174,7 +199,7 @@ Current accepted application direction remains Astro as primary web framework wi
 
 ## What remains unbuilt
 
-Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; broker inventory workflow, branding/media and resilient drafts; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability and sensitivity; BuyerRequirements persistence; shortlist/Compare/sharing; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and future transaction/escrow integration.
+Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; broker inventory workflow, branding/media and resilient drafts; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability and sensitivity; BuyerRequirements persistence; shortlist/Compare/sharing; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
 None except the explicitly selected keel Search capability is allocated to SLICE-0055.
 
@@ -204,3 +229,5 @@ Readiness must be independently reviewed and merged before the Project Owner run
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
 - workflow reassessment becomes mandatory after accepted SLICE-0056 or before an earlier real production pilot, whichever comes first.
+
+For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
