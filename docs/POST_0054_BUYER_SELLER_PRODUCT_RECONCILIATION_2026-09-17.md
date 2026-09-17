@@ -1,12 +1,12 @@
 # HullQ — Post-SLICE-0054 Buyer/Seller Product Reconciliation
 
 **Date:** 2026-09-17  
-**Status:** OWNER-ACCEPTED PRODUCT DIRECTION; open questions remain before any SLICE-0055 capability selection  
-**Scope:** Buyer journey, Decision Tools, Discovery/Search feature paper, and Seller Workspace topology after SLICE-0054.  
+**Status:** OWNER-ACCEPTED PRODUCT DIRECTION; repository reconciliation and open questions remain before any SLICE-0055 capability selection  
+**Scope:** Buyer journey, Decision Tools, Discovery/Search feature paper, and Seller Workspace topology after SLICE-0054.
 
 ## 1. Purpose
 
-This document records the product direction accepted after SLICE-0054. It does **not** select or authorize a SLICE-0055 capability. The next capability remains intentionally unselected until the remaining open questions and repository gap analysis are completed.
+This document records the product direction accepted after SLICE-0054. It does **not** select or authorize a SLICE-0055 capability. The next capability remains intentionally unselected until repository reconciliation and the remaining open questions are completed.
 
 Source working papers reconciled here:
 
@@ -24,26 +24,6 @@ A buyer who already knows what they want MUST be able to search directly without
 
 The new guided buyer journey is **optional**. It supplements Search; it does not replace it.
 
-Conceptually:
-
-```text
-                         HULLQ BUYER
-
-                    +------ START ------+
-                    |                   |
-              DIRECT SEARCH       OPTIONAL GUIDED PATH
-                    |                   |
-          filters / criteria      define requirements
-                    |                   |
-                    |            Buyer Requirements
-                    |                   |
-                    +---------+---------+
-                              |
-                    deterministic Search
-                              |
-                       Search Results
-```
-
 Direct Search and Buyer Requirements MUST converge on the same deterministic Search/evaluation semantics rather than creating separate search engines.
 
 ### Hard product invariant
@@ -52,43 +32,92 @@ Direct Search and Buyer Requirements MUST converge on the same deterministic Sea
 
 Applying saved/persisted requirements to an interactive Search must be visible and buyer-controlled. A buyer may freely browse outside their saved requirements.
 
-## 3. Optional Buyer Requirements foundation
+## 3. Buyer Requirements foundation
 
-The structured-requirements idea is no longer treated merely as a replacement filter UI or gamified configurator. Its strategically important output is a structured, potentially persistable representation of buyer-defined requirements/intent.
+Structured Buyer Requirements are not merely a replacement filter UI. They are a buyer-defined requirement/intent representation that may feed Search evaluation, explainability, monitoring, sensitivity analysis, factual decision tools, shortlist comparison and qualified seller/broker contact context.
 
-Potential downstream consumers include:
+### 3.1 Discovery remains open; signup unlocks continuity
 
-```text
-Buyer Requirements
-        |
-        +--> deterministic Search evaluation
-        +--> buyer Search explainability / near-miss reasons
-        +--> Saved Search / monitoring
-        +--> sensitivity analysis
-        +--> factual per-boat requirement fit
-        +--> shortlist comparison
-        +--> qualified seller/broker contact context
-```
+Accepted principle:
 
-This is a product-direction statement, not yet an accepted persistence schema or implementation contract.
+> **Signup unlocks continuity, not discovery.**
 
-## 4. Decision neutrality
+Anonymous users may experience the differentiating buyer tools before account creation. The intended initial boundary is:
+
+**Open / anonymous-capable:**
+- Direct Search;
+- optional guided definition of requirements;
+- requirement evaluation and Search explainability;
+- basic sensitivity analysis;
+- temporary/local shortlist where practical.
+
+**Free-account continuity:**
+- persisted Buyer Requirements;
+- Saved Searches within the future account limits;
+- persistent Shortlist;
+- monitoring/alerts where implemented;
+- cross-device continuity;
+- later privacy-bounded sharing/history capabilities.
+
+The exact Free/Pro boundary is not fixed here.
+
+`BuyerRequirements` MUST NOT conceptually require an `AccountId`. Anonymous requirement state may exist before account creation and may later be persisted/account-owned after explicit signup/save. Initial implementation should prefer browser/session-local anonymous state rather than prematurely creating durable anonymous BuyerIntent records with orphaning, privacy, cleanup and abuse costs.
+
+Where feasible, signup should preserve the buyer's explicitly created anonymous work rather than discarding it.
+
+### 3.2 Requirement importance semantics
+
+The guided Requirements path uses three buyer-selected importance states:
+
+- `MUST_HAVE` — required;
+- `PREFER` — desired but not exclusionary;
+- `DONT_CARE` — irrelevant to this Requirements evaluation.
+
+Direct Search remains a conventional low-friction filtering surface and does not require this three-level semantics for every filter.
+
+For the initial model, all `PREFER` requirements are equal. There are no preference weights, high/medium/low levels, semantic ordering, or HullQ-generated importance weights. A later buyer-controlled prioritization may only be considered if real usage demonstrates a need.
+
+### 3.3 Requirement evaluation states
+
+The canonical product-level evaluation semantics are:
+
+- `SATISFIED` — sufficient applicable evidence confirms the buyer-defined requirement;
+- `NOT_SATISFIED` — sufficient applicable evidence confirms the requirement is not met;
+- `UNKNOWN` — available evidence is insufficient or unresolved.
+
+Hard invariant:
+
+> **UNKNOWN is not NOT_SATISFIED, and UNKNOWN is not SATISFIED.**
+
+Missing evidence must never be silently converted into a negative claim about the boat. Whether an `UNKNOWN` result remains visible in a particular Search-results projection is a buyer-visible Search policy/control concern, not a mutation of the underlying evaluation truth.
+
+### 3.4 No scores, winners or hidden preference model
+
+HullQ MUST NOT derive an overall fit percentage, recommendation score, winner, `best fit`, or implicit preference weighting from requirement evaluations.
+
+For `PREFER`, HullQ may expose each factual state and may provide descriptive counts such as `3 satisfied · 1 not satisfied · 1 unknown`. Those counts are not a score and MUST NOT be converted into an overall evaluative ranking.
+
+HullQ does not infer hidden requirements or preferences from repeated Search behavior.
+
+## 4. Direct Search ↔ Buyer Requirements conversion
+
+Conversion between Direct Search and Buyer Requirements is explicit and buyer-controlled.
+
+A buyer may explicitly choose to use a Direct Search as the basis for Requirements. Compatible Direct Search hard filters may become `MUST_HAVE` requirements only as part of that visible buyer action.
+
+In the reverse direction, `MUST_HAVE` requirements may supply hard Search constraints when the buyer explicitly chooses to Search with those requirements. `PREFER` requirements MUST NOT silently become hard Direct Search filters; they remain evaluation/explainability context unless the buyer explicitly changes their semantic meaning.
+
+Hard invariant:
+
+> **Conversion between Direct Search and Buyer Requirements must never silently change the meaning of a criterion.**
+
+## 5. Decision neutrality and one evaluation truth
 
 HullQ supports buyer agency. HullQ supplies factual evidence and tools; the buyer makes the decision.
 
 HullQ MUST NOT turn Decision Tools into an opaque recommendation system, winner selection, best-boat ranking, purchase recommendation, or hidden preference model.
 
-The earlier working label `Pro/Contra` should therefore not become the canonical product semantics. The preferred conceptual projection is buyer-defined requirement evaluation, for example:
-
-- `MATCHES` / meets the buyer-defined requirement;
-- `DOES_NOT_MATCH` / does not meet the buyer-defined requirement;
-- `UNKNOWN` / evidence is insufficient or unresolved.
-
-The factual explanation should expose the buyer's own criterion, the relevant HullQ truth/evidence, and the resulting deterministic relationship. Example: the buyer defined maximum draft 1.50 m; confirmed draft is 1.55 m; therefore that requirement does not match. HullQ does not assert that 1.55 m draft is inherently good or bad.
-
-## 5. One evaluation truth, multiple projections
-
-Buyer Search explainability and Buyer Decision Tools should not independently reimplement the same rule.
+Buyer Search explainability and Buyer Decision Tools should reuse the same requirement-evaluation truth rather than independently implementing equivalent rules.
 
 Conceptually:
 
@@ -106,57 +135,62 @@ Requirement Evaluation + Evidence
           +--> sensitivity delta
 ```
 
-Exact evaluation states, evidence payloads, persistence boundaries and API contracts remain open for later specification.
+The factual explanation exposes the buyer's own criterion, relevant HullQ truth/evidence and resulting deterministic relationship. HullQ does not assert that a characteristic is inherently good or bad merely because it differs between boats.
 
-## 6. Shortlist is a distinct buyer concept
+## 6. Requirement Sensitivity Analysis
 
-A Shortlist represents boats the buyer chose to continue considering. It is not equivalent to Search state and does not assert that every shortlisted boat satisfies every requirement.
+`Why no match?` is treated as a particularly useful projection of a broader Requirement Sensitivity Analysis, not as an isolated engine.
 
-HullQ MUST NOT silently remove or demote a buyer-selected shortlist item because a requirement fails. The buyer owns the decision.
+HullQ may show the factual consequence of a buyer-controlled requirement change, including when the current Search has zero results or still has results. It does not tell the buyer which criterion they should relax.
 
-Potential future Shortlist consumers:
+Initial accepted constraints:
 
-- side-by-side factual comparison;
-- requirement evaluation;
-- private notes;
-- explicit sharing;
-- seller/broker contact;
-- monitoring.
+- one requirement change at a time;
+- buyer initiated;
+- deterministic;
+- reversible;
+- no automatic optimization;
+- no HullQ-generated multi-criterion relaxation strategy.
 
-No Shortlist persistence or sharing contract is accepted by this document.
+Example semantics: `If maximum draft were changed from 1.60 m to 1.70 m, three additional boats would satisfy all remaining MUST_HAVE requirements.` This is a factual delta, not advice to change the requirement.
 
-## 7. Sharing direction
+Later comparison of multiple buyer-authored changes is not prohibited, but HullQ must not autonomously search for and recommend the combination of requirements the buyer should abandon.
+
+## 7. Shortlist is buyer interest, not HullQ fit
+
+A Shortlist represents boats the buyer explicitly chose to continue considering. It is distinct from Search state and from Buyer Requirements.
+
+Hard invariant:
+
+> **Shortlisting expresses buyer interest, not HullQ fit. Requirement evaluation must never add or remove shortlist membership automatically.**
+
+A boat may remain shortlisted even when the currently selected Requirements produce `NOT_SATISFIED` or `UNKNOWN` states. Different Requirements may later be projected against the same Shortlist.
+
+The initial direction is one ordinary personal Shortlist rather than prematurely introducing multiple named lists. Multiple lists may be added later if real usage supports them.
+
+Potential future Shortlist consumers include factual comparison, requirement evaluation, private notes, explicit sharing, seller/broker contact and monitoring.
+
+## 8. Compare
+
+Compare is useful independently of the guided Requirements journey. A buyer may compare shortlisted boats side-by-side using factual technical, listing, market and truth/evidence data without defining Buyer Requirements.
+
+When Requirements exist, they may add an optional evaluation layer showing `SATISFIED`, `NOT_SATISFIED` and `UNKNOWN` against each compared boat.
+
+Compare MAY highlight factual differences. It MUST NOT, absent an explicit buyer-defined requirement, label one differing value as inherently better or worse.
+
+Compare MUST NOT provide a winner, overall match score, `best fit`, hidden weighting or automatic fit-based ordering. Descriptive evaluation counts may be shown but remain non-evaluative summaries.
+
+## 9. Sharing direction
 
 Shareable buyer shortlists/decision views are a useful future capability for collaboration with a partner, family member, surveyor or other buyer-selected participant.
 
-Sharing must be explicit and privacy-bounded. The conceptual boundary is:
+Sharing must be explicit and privacy-bounded. A later Share Boundary Contract must decide at least data projection, privacy, notes inclusion, revocation, expiry, non-indexability and unguessable access semantics. No exact token/security design is accepted here.
 
-```text
-Private Shortlist
-      |
-      | explicit share
-      v
-Sanitized Share Projection
-      |
-      v
-Shared Decision View
-```
-
-A later Share Boundary Contract must decide at least data projection, privacy, notes inclusion, revocation, expiry, non-indexability and unguessable access semantics. No exact token/security design is accepted here.
-
-## 8. Sensitivity analysis
-
-The `what if I relax one criterion?` idea should be treated as deterministic re-evaluation of buyer-defined requirements, not as a recommendation engine.
-
-It may show the factual consequence of a buyer-controlled criterion change, such as how the eligible/near-miss set changes. HullQ does not tell the buyer which criterion they should relax.
-
-## 9. Discovery/Search working-paper reconciliation
-
-The current feature ideas map conceptually as follows:
+## 10. Discovery/Search working-paper reconciliation
 
 | Working-paper idea | Product/architecture interpretation |
 | --- | --- |
-| Buyer `Why no match?` | buyer-facing Requirement Evaluation projection |
+| Buyer `Why no match?` | buyer-facing Requirement Sensitivity / Evaluation projection |
 | Structured Requirements | optional Buyer Requirements foundation; not a replacement for Direct Search |
 | Rare Match | Search-derived evidence; requires a truthful bounded denominator |
 | Saved Search reactivation | monitoring/retention; must avoid manipulative urgency |
@@ -168,36 +202,9 @@ The current feature ideas map conceptually as follows:
 
 Technical comparability and market/price context are related but separate concerns and must not be collapsed into one unsupported similarity score.
 
-## 10. Seller Platform topology
+## 11. Seller Platform topology
 
 HullQ should not build two unrelated seller-dashboard architectures. The accepted direction is a shared Seller Platform foundation with scoped Owner-Direct and Professional surfaces.
-
-```text
-                     HULLQ SELLER PLATFORM
-                            |
-             +--------------+--------------+
-             |                             |
-      Owner-Direct                    Professional
-       Workspace                       Workspace
-             |                             |
-       My Boat(s)                     Inventory
-       Draft/Edit                     Team / Org
-       Evidence                       Bulk tools
-       Verification                   Branding
-       Enquiries                      Leads / CRM
-       Listing status                 Intelligence
-       Basic insights                 Portfolio analytics
-       Sale outcome                   Sale outcomes
-             |                             |
-             +--------- shared ------------+
-                    Account / Auth
-                    Listing truth
-                    Media/Documents
-                    Verification
-                    Enquiries
-                    Search integration
-                    Notifications
-```
 
 SLICE-0054 `/sell/direct` is the first accepted seed of the Owner-Direct Workspace. It should evolve as part of this Seller Platform direction rather than becoming a disconnected second dashboard implementation.
 
@@ -233,15 +240,15 @@ SLICE-0054 `/sell/direct` is the first accepted seed of the Owner-Direct Workspa
 
 The exact shared-service boundaries remain to be validated against the repository before new implementation.
 
-## 11. Telemetry and seller intelligence
+## 12. Telemetry and seller intelligence
 
-Buyer Search and Decision surfaces may later share privacy/aggregation infrastructure, but their events and semantics must remain distinguishable.
+Buyer Search and Decision surfaces may later share privacy/aggregation infrastructure, but their events and semantics must remain distinguishishable.
 
-For example, a Search exclusion because a field is `UNKNOWN` is not the same signal as a shortlisted boat having unresolved evidence during buyer comparison. Professional intelligence must not collapse these into one metric.
+A Search exclusion because a field is `UNKNOWN` is not the same signal as a shortlisted boat having unresolved evidence during buyer comparison. Professional intelligence must not collapse these into one metric.
 
 Any seller-facing aggregation requires explicit privacy, minimum-volume and abuse boundaries. Existing trigger gates, including REQ-BROKER-025 timing, remain authoritative.
 
-## 12. Existing Search architecture remains authoritative
+## 13. Existing Search architecture remains authoritative
 
 This direction preserves the accepted Search architecture:
 
@@ -253,27 +260,24 @@ This direction preserves the accepted Search architecture:
 
 The optional guided buyer journey does not authorize a second Search implementation or a second truth engine.
 
-## 13. Explicit non-decisions / open questions
+## 14. Explicit remaining non-decisions / open questions
 
-This reconciliation intentionally does **not** yet decide:
+The following remain intentionally unresolved rather than forgotten:
 
-1. whether `BuyerRequirements` is the final domain name or identity model;
-2. whether anonymous requirements exist, authenticated persistence is required, or both;
-3. exact requirement schema, operators, versioning and lifecycle;
-4. exact evaluation result/state model beyond the product-level neutral semantics above;
-5. whether and how an interactive Direct Search can be converted into saved Buyer Requirements;
-6. Shortlist identity, persistence, maximum scope and anonymous/authenticated behavior;
-7. Share Boundary Contract details;
-8. sensitivity-analysis UX and computational contract;
-9. Rare Match denominator/threshold semantics;
-10. technical comparable-vessel rules and separate market-comparison semantics;
-11. Saved Search persistence/alert/reactivation semantics;
-12. telemetry event model, privacy thresholds and aggregation retention;
-13. exact shared Seller infrastructure versus channel-specific modules;
-14. Owner-Direct publication/admission, evidence, verification, enquiries, media and sale-outcome contracts;
-15. which of these gaps should become SLICE-0055.
+1. final `BuyerRequirements` domain name, identity, schema, operators, versioning and lifecycle;
+2. exact anonymous-state transport/lifetime and explicit migration into an authenticated account;
+3. exact Search policy/control for visibility of `UNKNOWN` MUST_HAVE results;
+4. Shortlist identity/persistence/account limits and anonymous local behavior;
+5. Share Boundary Contract details;
+6. Rare Match denominator/threshold semantics;
+7. technical comparable-vessel rules and separate market-comparison semantics;
+8. Saved Search persistence/alert/reactivation semantics and eventual Free/Pro limits;
+9. telemetry event model, privacy thresholds and aggregation retention;
+10. exact shared Seller infrastructure versus channel-specific modules;
+11. Owner-Direct publication/admission, evidence, verification, enquiries, media and sale-outcome contracts;
+12. which of these gaps, if any, should become SLICE-0055.
 
-## 14. Required repository reconciliation before SLICE-0055 selection
+## 15. Required repository reconciliation before SLICE-0055 selection
 
 Before selecting SLICE-0055, inspect actual accepted code/specs/docs for:
 
@@ -288,16 +292,14 @@ Before selecting SLICE-0055, inspect actual accepted code/specs/docs for:
 
 Only after that reconciliation may one capability be proposed for SLICE-0055 readiness.
 
-## 15. Working product model
-
-The accepted working model is therefore:
+## 16. Working product model
 
 ```text
 BUYER
 
 Direct Search ---------------------------+
                                         |
-Optional Buyer Requirements ------------+--> deterministic Search
+Optional Buyer Requirements ------------+--> deterministic Search/evaluation
                                                 |
                                          explain / discover
                                                 |
@@ -326,4 +328,4 @@ Field-level truth + evidence
 Deterministic Search / evaluation semantics
 ```
 
-The implementation principle is: **preserve low-friction Direct Search, make the guided journey optional, reuse one deterministic truth/evaluation engine, and keep the buyer in control of the decision.**
+The implementation principle is: **preserve low-friction Direct Search, expose HullQ's differentiating discovery/evaluation tools before signup, make persistence the account reward, reuse one deterministic truth/evaluation engine, and keep the buyer in control of the decision.**
