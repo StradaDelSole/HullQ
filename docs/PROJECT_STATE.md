@@ -1,20 +1,18 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0053 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0054 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0054 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0055 -->
 
-**Updated:** 2026-09-14  
-**Latest owner-accepted / DONE slice:** SLICE-0053  
-**Current queue:** SLICE-0054 — **Authenticated Owner-Direct Listing Draft Workspace** selected by the post-pivot/post-SLICE-0053 reassessment; readiness contract prepared, implementation **not started**.  
+**Updated:** 2026-09-17  
+**Latest owner-accepted / DONE slice:** SLICE-0054  
+**Current queue:** SLICE-0055 — capability **not selected**; selection requires the planned post-SLICE-0054 product/repository reconciliation before readiness.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
 
 ## Product direction
 
-HullQ is a native **broker-first mixed-supply** sailboat listing and technical-discovery marketplace.
-
-Current accepted supply direction:
+HullQ is a native **broker-first mixed-supply** sailboat listing and technical-discovery marketplace:
 
 ```text
 professional broker/dealer inventory
@@ -22,35 +20,7 @@ professional broker/dealer inventory
 bounded owner-direct/private seller inventory
 ```
 
-The previous current-direction rule that independent private FSBO is out of scope is superseded by the owner-accepted 2026-09-14 pivot.
-
-Private sellers may ultimately choose either:
-
-```text
-self-list directly on HullQ
-OR
-voluntarily choose a broker-referral path
-```
-
-Neither route may be forced as a substitute for the other.
-
-Controlling pivot records:
-
-```text
-docs/OWNER_DIRECT_LISTING_PRODUCT_DIRECTION_2026-09-14.md
-specs/OWNER_DIRECT_LISTING_REQUIREMENTS.v0.1.md
-```
-
-Selected first owner-direct implementation contract:
-
-```text
-specs/OWNER_DIRECT_LISTING_WORKSPACE_CONTRACT.v0.1.md
-docs/slices/SLICE-0054-authenticated-owner-direct-draft-workspace.md
-```
-
-The product-direction pivot is **not yet an implemented owner-direct publishing capability**. Existing accepted implementation through SLICE-0053 remains professional-only on the marketplace write side. No private seller may be represented as a fake professional Organization/member merely to reuse that path.
-
-SLICE-0054 is selected to add a separate private pre-market draft boundary. Its draft is explicitly not a `NativeListing`, `PhysicalBoat` or `MarketEpisode` and cannot become public/Search inventory inside that slice.
+Private sellers may self-list directly or later voluntarily choose a broker-referral path. Neither route may be forced as a substitute for the other. Organic Search eligibility, match classification and ordering remain commercially independent; payment may buy a verification service but never truth, Search eligibility or organic position.
 
 Primary buyer loop remains:
 
@@ -63,144 +33,25 @@ technical requirements
 → seller/broker contact / qualified lead
 ```
 
-Two strategic product surfaces remain central:
+## Accepted provider surfaces
+
+Professional provider direction remains the best-in-class Broker Workspace. SLICE-0053 provides its accepted authentication/account/Organization/Membership/role/MFA access boundary. Auth0 remains authentication-only; HullQ PostgreSQL/domain state owns authorization truth.
+
+SLICE-0054 now adds the first accepted owner-direct provider surface:
 
 ```text
-Buyer side
-→ trustworthy technical discovery
-
-Professional provider side
-→ best-in-class Broker Workspace
+authenticated ordinary HullQ Account
+→ private OwnerDirectListingDraft
+→ create / list / reopen / update own drafts
+→ incomplete pre-market state may persist
+→ NOT PUBLIC
 ```
 
-Owner-direct seller workflows are an additional first-class marketplace lane. They do not weaken the Broker Workspace obligations.
-
-## Owner-direct / private seller direction
-
-Hard current principles:
-
-```text
-ORGANIC SEARCH COMMERCIAL INDEPENDENCE
-commercial consideration MUST NOT affect:
-- organic eligibility
-- match classification
-- organic ordering
-
-PAYMENT / EVIDENCE INDEPENDENCE
-payment may buy a verification service
-payment never buys truth, Search eligibility or organic position
-```
-
-Normal future owner-direct publication baseline is intentionally low-friction:
-
-```text
-HullQ account
-+ verified phone reachability
-+ explicit right-to-list attestation
-+ baseline anti-abuse checks
-```
-
-Strong ID/selfie verification, vessel-document upload and physical-boat challenge are not universal publication prerequisites. Stronger identity and/or documentary sale-authority verification may be required when risk signals, disputes or moderation evidence warrant escalation.
-
-Trust scopes remain separate:
-
-```text
-PHONE VERIFIED
-IDENTITY VERIFIED
-RIGHT-TO-LIST ATTESTED
-SALE AUTHORITY VERIFIED
-```
-
-None of those states promotes yacht technical fields. Concrete-yacht truth remains claim-/field-level under the existing provenance model.
-
-`Sale Authority Verified` is broader and more accurate than `Ownership Verified`: a legitimate seller may be an owner, co-owner or appropriately authorized representative.
-
-Owner-direct and professional representation conflicts must eventually be resolved through the accepted `PhysicalBoat → MarketEpisode → representation/sale-authority context` rather than a naïve permanent one-listing-per-PhysicalBoat rule.
-
-Broker referral begins only after explicit seller opt-in and must remain commercially neutral; broker payments/subscription tiers may not buy referral-shortlist position.
-
-Basic owner-direct self-listing is currently directed to remain free; monetization may use optional verification/processing services, later neutral referral economics and relevant partner services. A paid sponsored/featured surface is deferred and, if later reconsidered, must remain mechanically and visually separate from organic Search.
-
-A vetted third-party escrow/transaction-safety path is a later product opportunity only. HullQ does not become custodian of transaction funds without a separate owner-accepted regulatory/legal/architecture/business decision.
-
-## Broker Workspace — accepted direction and current baseline
-
-Controlling records:
-
-```text
-docs/BROKER_WORKSPACE_PRODUCT_DIRECTION_2026-09-13.md
-specs/BROKER_WORKSPACE_REQUIREMENTS.v0.1.md
-docs/governance/BROKER_WORKSPACE_LAUNCH_GATE.md
-docs/governance/BROKER_WORKSPACE_MANDATORY_CAPABILITY_REGISTER.md
-specs/BROKER_WORKSPACE_ACCESS_CONTRACT.v0.1.md
-```
-
-Core operating principle:
-
-> A broker should never have to enter information twice, search for information HullQ already knows, or wonder what happened to a lead.
-
-SLICE-0053 provides the first accepted professional access vertical:
-
-```text
-Auth0-compatible authentication
-→ provider-agnostic HullQ Account
-→ durable Organization / Membership / roles
-→ server-side tenant authorization
-→ privileged-role MFA gate
-→ protected Astro Broker Workspace landing
-```
-
-Auth0 remains authentication-only. HullQ PostgreSQL/domain state remains authoritative for Organization membership, roles and authorization. Email is not the immutable identity key.
-
-Current hard Broker Workspace gate state remains:
-
-```text
-BROKER_WORKSPACE_LAUNCH_GATE_STATUS: NOT_READY
-BROKER_SELF_SERVICE_PILOT_STATUS: NOT_STARTED
-PAID_BROKER_PLAN_STATUS: NOT_STARTED
-```
-
-The owner-direct pivot and SLICE-0054 selection do not change those markers or waive any professional-product obligation. `REQ-BROKER-023` broker identity/branding and `REQ-BROKER-024` connectivity-resilient draft recovery remain PENDING and mandatory before Launch Gate PASS, alongside the other trigger-specific mandatory commitments.
-
-Mixed supply creates real channel tension even when Search is fair. HullQ therefore must maintain a positive broker value proposition: technically qualified demand, deterministic Search, legitimate broker branding, strong inventory workflow, lead attribution/workflow, analytics, seller-to-broker referral opportunity and no paid organic ranking.
-
-## Current architecture and precedence
-
-`docs/ARCHITECTURE_REBASELINE_2026-09-02.md` remains the accepted post-SLICE-0039 infrastructure/application architecture direction except where later explicit owner-accepted product decisions supersede product-scope statements. `architecture/SYSTEM_ARCHITECTURE.md` is the current architecture snapshot.
-
-Current application/production direction:
-
-```text
-Cloudflare edge
-      |
-      v
-replaceable Linux app host / Caddy
-      |
-      +-- Astro + TypeScript web
-      |     \-- React islands where justified
-      +-- FastAPI / CPython 3.14
-      +-- scheduled/background Python worker when justified
-      |
-      v
-DigitalOcean Managed PostgreSQL 18 / FRA1
-```
-
-Accepted boundaries include:
-
-- FastAPI is the sole application/domain API boundary; Astro must not access PostgreSQL directly or become a second semantic backend;
-- Auth0 Public Cloud EU is authentication-only; HullQ owns account/tenant/role/authorization truth;
-- publishing-capable, Owner and Admin broker memberships require validated MFA evidence;
-- future strong private-seller identity verification must remain distinct from professional Organization authorization and should minimize HullQ retention of raw ID/selfie/biometric material;
-- deployment uses CI-verified immutable Docker images, GHCR, versioned Docker Compose and controlled deploy/rollback;
-- production app hosts are stateless/replaceable with respect to canonical application data;
-- independent encrypted backup plus tested restore is required beyond provider DB backup;
-- before real external marketplace inventory is exposed to real external buyers, applicable Production Readiness/HA rules must be reassessed against the mixed-supply boundary rather than assumed to apply only to brokers.
-
-SLICE-0053 adds a current host-only-session topology invariant: browser-visible FastAPI auth/callback and authenticated Astro workspace surfaces using that session must share the same hostname. Cross-host configuration fails closed; any later redesign must be explicit. SLICE-0054 reuses that session boundary for `/sell/direct` rather than creating a second authentication stack.
+An owner-direct Account does not require a professional Organization or Membership. Ownership is derived from the authenticated session/account, not client input. Foreign/unknown draft access is non-enumerating, updates use optimistic versioning, login-next is bounded to the owner-direct surface, mutating browser requests use the accepted Origin + non-simple-header CSRF boundary, and private pages remain no-store/noindex.
 
 ## Hard truth and identity boundaries
 
-Accepted marketplace identity boundary remains:
+Accepted marketplace identity remains:
 
 ```text
 BoatDesignRef != PhysicalBoatId != MarketEpisodeId != NativeListingId != ExternalMarketObservationId
@@ -212,11 +63,7 @@ Hard truth rule remains:
 DESIGN / CONFIGURATION TRUTH != PHYSICAL BOAT / LISTING TRUTH
 ```
 
-A design/configuration can establish technical eligibility without establishing a fact about one offered yacht. The same boundary applies to professional and owner-direct inventory.
-
-Seller identity/phone/sale-authority verification is also separate from technical vessel truth.
-
-SLICE-0054 adds a pre-market work-object boundary without changing marketplace identity:
+SLICE-0054 adds a separate pre-market identity:
 
 ```text
 OwnerDirectListingDraftId
@@ -225,11 +72,33 @@ OwnerDirectListingDraftId
 != MarketEpisodeId
 ```
 
-Draft persistence is not marketplace truth and does not itself instantiate any of those market identities.
+Draft persistence is not marketplace truth. The accepted retained proof establishes that owner-direct draft operations do not create or mutate `physical_boats`, `market_episodes`, `native_listings`, NativeListing offer revision/head state, publication-transition state or freshness-confirmation state. No public Search promotion occurs.
+
+## Owner-direct trust direction
+
+Future normal publication baseline remains intentionally low-friction:
+
+```text
+HullQ account
++ verified phone reachability
++ explicit right-to-list attestation
++ baseline anti-abuse checks
+```
+
+Trust scopes remain separate:
+
+```text
+PHONE VERIFIED
+IDENTITY VERIFIED
+RIGHT-TO-LIST ATTESTED
+SALE AUTHORITY VERIFIED
+```
+
+None promotes yacht technical fields. Strong identity/documentary sale-authority verification remains a separate future trust layer and should minimize HullQ retention of raw ID/selfie/biometric material.
+
+SLICE-0054 implements none of publication/admission, phone verification, right-to-list attestation, identity verification, Sale Authority Verification, representation-conflict handling, media, enquiries/leads, broker referral, sale outcome, Search eligibility/ranking, delete/archive, payments or production pilot.
 
 ## Built and owner-accepted product threshold
-
-The repository includes accepted, tested implementation through:
 
 ```text
 SLICE-0040 marketplace identity/truth separation
@@ -246,6 +115,7 @@ SLICE-0040 marketplace identity/truth separation
 → SLICE-0051 first production technical native Search (`draft_max`)
 → SLICE-0052 evidence-backed listing freshness/reconfirmation
 → SLICE-0053 authenticated Broker Workspace access boundary
+→ SLICE-0054 authenticated Owner-Direct Listing Draft Workspace
 ```
 
 Latest closures:
@@ -254,43 +124,8 @@ Latest closures:
 docs/slices/SLICE-0051-acceptance-closure.md
 docs/slices/SLICE-0052-acceptance-closure.md
 docs/slices/SLICE-0053-acceptance-closure.md
+docs/slices/SLICE-0054-acceptance-closure.md
 ```
-
-Owner-direct listing support is accepted product direction after SLICE-0053. SLICE-0054 is selected/readiness-only and has not yet been implemented or owner-accepted.
-
-## NativeListing lifecycle and freshness
-
-Public lifecycle remains intentionally:
-
-```text
-DRAFT → ACTIVE → WITHDRAWN
-```
-
-Freshness remains separate under `MANUAL_NATIVE_V1`:
-
-```text
-confirmation TTL = 30 days
-grace period     = 7 days
-
-CONFIRMED
-DUE_FOR_CONFIRMATION
-STALE
-UNKNOWN
-```
-
-Current buyer eligibility for the implemented professional path remains:
-
-```text
-ACTIVE + CONFIRMED/DUE_FOR_CONFIRMATION
-→ current buyer eligible
-
-ACTIVE + STALE/UNKNOWN
-→ suppressed from current listing/Search surfaces
-→ lifecycle remains ACTIVE
-→ never inferred SOLD/WITHDRAWN
-```
-
-The selected owner-direct pre-market draft is **not** the `DRAFT` state of this NativeListing lifecycle. It is a separate private work object. Future owner-direct inventory must preserve lifecycle/freshness concepts after marketplace admission; seller verification must not substitute for listing freshness.
 
 ## Accepted technical Search result
 
@@ -300,29 +135,11 @@ SLICE-0051 still defines exactly one public hard technical buyer requirement:
 draft_max=<exact decimal metres>
 ```
 
-Public routes remain `/en/search`, `/de/search`, `/fr/search`, `/pt/search`, `/es/search`.
-
-Only `CONFIRMED_MATCH` is returned in the primary result surface. Insufficient/conflicting technical data is separate and never presented as a match. STALE/UNKNOWN inventory is excluded before technical classification.
-
-Accepted technical native Search criteria count remains:
-
-```text
-1
-```
-
-The owner-direct pivot and SLICE-0054 add no Search criterion and do not authorize weaker Search truth for private listings.
+Accepted technical native Search criteria count remains `1`. SLICE-0054 adds no Search criterion and does not authorize weaker Search truth for private listings.
 
 ## Post-SLICE-0051 trigger gates
 
-Canonical records:
-
-```text
-docs/governance/POST_0051_TRIGGER_GATES.md
-docs/governance/PRODUCTION_READINESS_GATE.md
-docs/governance/BROKER_WORKSPACE_LAUNCH_GATE.md
-```
-
-Current markers remain:
+Canonical records remain `docs/governance/POST_0051_TRIGGER_GATES.md`, `docs/governance/PRODUCTION_READINESS_GATE.md` and `docs/governance/BROKER_WORKSPACE_LAUNCH_GATE.md`.
 
 ```text
 POST_0051_ARCHITECTURE_RECONCILIATION: PASS
@@ -332,6 +149,7 @@ WORKFLOW_REASSESSMENT_STATUS: NOT_DUE
 
 PRODUCTION_READINESS_GATE_STATUS: NOT_TRIGGERED
 EXTERNAL_BROKER_PRODUCTION_DATA_STATUS: NOT_PRESENT
+EXTERNAL_OWNER_DIRECT_PRODUCTION_DATA_STATUS: NOT_PRESENT
 PRODUCTION_PILOT_STATUS: NOT_STARTED
 PUBLIC_PRODUCTION_LAUNCH_STATUS: NOT_STARTED
 
@@ -340,13 +158,9 @@ BROKER_SELF_SERVICE_PILOT_STATUS: NOT_STARTED
 PAID_BROKER_PLAN_STATUS: NOT_STARTED
 ```
 
-The existing legacy broker-production marker is not a loophole for owner-direct production. The Production Readiness gate now governs real external marketplace production data from any seller type. SLICE-0054 readiness assumes local/internal synthetic/disposable draft data only and does not trigger production readiness.
-
-From SLICE-0052 onward every primary readiness contract must contain the canonical trigger-gate evidence. Technical Search criterion #2 must explicitly compare its bridge/path to SLICE-0051; criterion #3+ may not introduce a third structural copy without the abstraction guard PASS.
+SLICE-0054 uses internal/synthetic draft state only and does not trigger production readiness. The Production Readiness gate applies to real external marketplace seller/listing data regardless of seller type. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA/production-readiness rules remain mandatory.
 
 ## Broker Mandatory Capability Register
-
-Current high-level state remains:
 
 ```text
 BROKER_WORKSPACE_MANDATORY_COMMITMENTS_STATUS: OPEN
@@ -367,91 +181,31 @@ REQ_BROKER_029_STATUS: PENDING
 REQ_BROKER_030_STATUS: IMPLEMENTED
 ```
 
-SLICE-0053 directly implements REQ-BROKER-014 and REQ-BROKER-015; it does not change the mandatory-register statuses above. The post-pivot reassessment inspected the register before selecting SLICE-0054 and found no mandatory commitment currently `DUE`; pending commitments remain mandatory under their existing triggers and are not silently dropped.
+SLICE-0054 changes none of these statuses and waives no professional-product obligation.
 
-## What is not built yet
+## Architecture and production direction
 
-Important remaining capabilities include:
+Current accepted application direction remains Astro as primary web framework with React only for justified interactive islands, FastAPI as sole application/domain API boundary, PostgreSQL 18 production target in DigitalOcean FRA1, Auth0 Public Cloud EU as authentication-only, and immutable container deployment through GHCR/versioned Docker Compose. Production app hosts remain stateless/replaceable; independent encrypted backup plus restore testing remains required.
 
-- SLICE-0054 itself: authenticated private owner-direct draft create/save/list/reopen/update;
-- owner-direct marketplace admission/publication after the draft, including phone verification, right-to-list attestation and baseline anti-abuse controls;
-- stronger private-seller identity and documentary sale-authority verification;
-- owner-direct representation-conflict handling and later trust badges/risk escalation;
-- seller-choice / broker-referral workflow beyond the direct-draft lane selected for 0054;
-- low-friction broker inventory create/edit/publish/reconfirm workflow;
-- broker identity/branding completion and media operations;
-- connectivity-resilient broker drafts/recovery;
-- explicit commercial/sale outcome workflow;
-- durable leads/contact requests, attribution, assignment/follow-up and broker analytics;
-- inventory export/portability and later bulk import/feed paths;
-- Search-fit diagnostics, exclusion explainability and privacy-safe demand insight when applicable/triggered;
-- broader PhysicalBoat marketplace fact coverage;
-- broader multi-criterion native-inventory Search and any later ranking/recommendation layer;
-- Saved Search persistence, monitoring/alerts and price-history intelligence;
-- independent verification of vessel claims;
-- production deployment/operations required for Production Readiness PASS;
-- broad listing/Search SEO indexation beyond current noindex page classes;
-- future payment/subscription entitlement enforcement;
-- any future sponsored/featured inventory surface;
-- any future vetted transaction/escrow partner integration.
+The SLICE-0053 same-host session-topology invariant remains in force for browser-visible FastAPI auth/callback and authenticated Astro workspace surfaces. SLICE-0054 reuses this session boundary rather than creating a second authentication stack.
 
-Only the first item is assigned to SLICE-0054. The remaining capabilities are not pulled into 0054; mandatory commitments may not be silently dropped.
+## What remains unbuilt
 
-## Search / SEO and monetization boundaries
+Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; broker inventory workflow, branding/media and resilient drafts; leads/CRM/outcomes/analytics; export/bulk onboarding; Search explainability/demand insight when triggered; broader PhysicalBoat fact coverage and multi-criterion Search; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-Search architecture and SEO remain product architecture, not later marketing. Stable public listing route remains `/listings/{NativeListingId}`; current public listing/Search page classes remain deliberately `noindex`. Mandatory public languages remain English, German, French, Portuguese and Spanish.
+None is allocated to SLICE-0055 by this state update.
 
-Organic Search eligibility, match classification and ordering are explicitly non-commercial product truth. No broker/private-seller payment, subscription, verification fee, affiliate value, referral economics or advertising relationship may influence them.
-
-Search remains broadly open; persistence, monitoring and intelligence remain preferred buyer monetization surfaces. No paid broker plan may activate while Broker Workspace launch/mandatory prerequisites remain unsatisfied.
-
-Basic owner-direct self-listing is currently directed to remain free. Optional verification service may be monetized only as a service/evidence-production path, never as a purchased truth/ranking outcome.
-
-## Execution checkpoint
-
-Current implemented product position:
-
-```text
-Buyer
-→ production public listing
-→ concrete-yacht professional-seller truth
-→ deterministic technical native Search
-→ evidence-backed current-inventory freshness
-
-Broker
-→ external authentication
-→ stable HullQ Account
-→ durable Organization/Membership/roles
-→ tenant-safe + MFA-gated authorization
-→ protected Broker Workspace landing
-```
-
-Selected next capability — **not yet implemented**:
-
-```text
-Private seller
-→ authenticate as ordinary HullQ Account (zero broker memberships allowed)
-→ private OwnerDirectListingDraft
-→ create / save / list / reopen / update
-→ DRAFT — NOT PUBLIC
-```
-
-Later owner-direct continuation remains separately gated:
-
-```text
-private draft
-→ phone + right-to-list attestation + anti-abuse / applicable escalation
-→ future marketplace admission
-→ same marketplace identity + technical truth rules
-```
+## Next capability selection
 
 Next queue number:
 
 ```text
-SLICE-0054
+SLICE-0055
 ```
 
-**Selected capability:** `Authenticated Owner-Direct Listing Draft Workspace`. Readiness is defined by `specs/OWNER_DIRECT_LISTING_WORKSPACE_CONTRACT.v0.1.md` and `docs/slices/SLICE-0054-authenticated-owner-direct-draft-workspace.md`. The slice has **not** been started; implementation begins only through the normal `START_SLICE.bat` workflow after readiness review/merge and local sync.
+**Selected capability:** none.
+
+Before selecting SLICE-0055, perform the planned post-SLICE-0054 product/repository reconciliation against actual repository state. Separately discussed Discovery/Search features, Buyer Decision Tools and Seller Workspace architecture are inputs to that reconciliation only; this state record does not make them normative requirements or roadmap commitments.
 
 ## Development workflow
 
