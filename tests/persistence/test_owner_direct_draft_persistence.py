@@ -345,10 +345,48 @@ class TestUpdateOwnerDirectDraft:
 
 
 class TestOwnerDirectDraftNonRegression:
-    """Contract §2/§13: draft operations create zero rows in any marketplace
-    identity/inventory table."""
+    """Contract §2/§13.12: draft operations create zero rows in any
+    marketplace identity/inventory table, zero rows in any NativeListing
+    offer revision/fact table, and zero rows in the durable tables that
+    determine public Search-affecting NativeListing state.
 
-    _MARKETPLACE_TABLES = ("physical_boats", "market_episodes", "native_listings")
+    2026-09-17 independent review (PR #201 comment #5701782264, finding 3):
+    the original table set here (`physical_boats`, `market_episodes`,
+    `native_listings`) proved the identity/inventory half of contract §2 but
+    not the "NativeListing offer revision", "NativeListing lifecycle/
+    freshness state" or "Search candidate/eligibility state" half. The four
+    added tables are the actual current-schema tables that carry that
+    remaining meaning (no table is invented):
+
+    - ``native_listing_offer_revisions`` / ``native_listing_offer_heads``
+      (`alembic/versions/4d8e1a72c9f0_native_listing_offer_facts.py`) --
+      the NativeListing offer revision/fact persistence;
+    - ``native_listing_publication_transitions``
+      (`alembic/versions/8b6d3f0a2c17_native_listing_lifecycle.py``) --
+      the immutable ledger of DRAFT->ACTIVE/ACTIVE->WITHDRAWN transitions
+      that is the durable record of public Search-eligible ("ACTIVE")
+      NativeListing state;
+    - ``native_listing_freshness_confirmations``
+      (`alembic/versions/7d4b1a9e3f26_native_listing_freshness.py`) --
+      `hullq.application.inventory_search`'s SLICE-0052 STALE/DUE-FOR-
+      CONFIRMATION exclusion, i.e. public Search-eligibility state derived
+      from this table.
+
+    There is no separate materialized/cached "Search index" table in the
+    current schema: `hullq.persistence.inventory_search` reads
+    `native_listings` (already covered) and the above tables live, so this
+    set is the complete current-schema proof of contract §13.12.
+    """
+
+    _NON_PROMOTION_TABLES = (
+        "physical_boats",
+        "market_episodes",
+        "native_listings",
+        "native_listing_offer_revisions",
+        "native_listing_offer_heads",
+        "native_listing_publication_transitions",
+        "native_listing_freshness_confirmations",
+    )
 
     def test_create_and_update_touch_no_marketplace_table(self, conn: Any) -> None:
         account_id = AccountId(str(uuid.uuid4()))
@@ -357,7 +395,7 @@ class TestOwnerDirectDraftNonRegression:
         def _counts() -> dict[str, int]:
             counts = {}
             with conn.cursor() as cur:
-                for table in self._MARKETPLACE_TABLES:
+                for table in self._NON_PROMOTION_TABLES:
                     cur.execute(f"SELECT COUNT(*) FROM {table}")
                     row = cur.fetchone()
                     assert row is not None

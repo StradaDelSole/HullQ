@@ -224,6 +224,15 @@ class TestSafeNextPathAllowlist:
             "/admin",
             "/sell-direct",
             "sell/direct",
+            # 2026-09-17 independent review (PR #201 comment #5701782264,
+            # finding 2): a plain `str.startswith` prefix check also admits
+            # same-character-prefix sibling paths that share no path
+            # separator with the accepted literal -- these must fall back
+            # to the default exactly like any other unrelated path.
+            "/sell/directevil",
+            "/sell/direct-attacker",
+            "/brokerevil",
+            "/broker-attacker",
         ],
     )
     def test_adversarial_or_unrelated_paths_fall_back_to_default(

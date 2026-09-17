@@ -24,7 +24,9 @@ Per `specs/OWNER_DIRECT_LISTING_WORKSPACE_CONTRACT.v0.1.md` §13, demonstrates:
     10. cross-origin/missing-CSRF-header mutation fails closed
     11. the draft remains private/no-store/noindex at the browser surface
     12. no new row is created in physical_boats/market_episodes/
-        native_listings as a consequence of draft operations
+        native_listings, in any NativeListing offer revision/fact table, or
+        in any table carrying durable public Search-affecting NativeListing
+        state, as a consequence of draft operations
 
 Item 13 ("existing Broker Workspace retained proof still passes") is
 verified separately by also running `scripts/inspect_broker_workspace_access.py`
@@ -70,10 +72,41 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 WEB_DIR = REPO_ROOT / "web"
 WEB_ENTRYPOINT = WEB_DIR / "dist" / "server" / "entry.mjs"
 
+#: Named rather than a literal parenthesized tuple directly in the `except`
+#: clause below: the installed `ruff format` (0.16.3) reformats a literal
+#: `except (A, B, C):` by deleting the required parentheses, producing
+#: invalid Python 3 syntax (`except A, B, C:`) -- confirmed in isolation on
+#: an unrelated minimal file, independent of this module. Referencing a
+#: named tuple constant sidesteps that formatter defect entirely.
+_HTTP_PROBE_TRANSIENT_ERRORS = (urllib.error.URLError, ConnectionError, TimeoutError, OSError)
+
 _SUBJECT_A = "owner-direct-0054-subject-a"
 _SUBJECT_B = "owner-direct-0054-subject-b"
 _SESSION_COOKIE_NAME = "hullq_session"
-_MARKETPLACE_TABLES = ("physical_boats", "market_episodes", "native_listings")
+
+#: Contract §13.12 non-promotion proof (2026-09-17 independent review, PR
+#: #201 comment #5701782264, finding 3): marketplace identity/inventory
+#: tables plus the NativeListing offer revision/fact tables
+#: (`native_listing_offer_revisions`/`native_listing_offer_heads`,
+#: `alembic/versions/4d8e1a72c9f0_native_listing_offer_facts.py`) and the
+#: tables that carry durable public Search-affecting NativeListing state:
+#: `native_listing_publication_transitions` (the DRAFT->ACTIVE/ACTIVE-
+#: >WITHDRAWN ledger, `.../8b6d3f0a2c17_native_listing_lifecycle.py`) and
+#: `native_listing_freshness_confirmations` (SLICE-0052 STALE/DUE-FOR-
+#: CONFIRMATION Search-eligibility exclusion,
+#: `.../7d4b1a9e3f26_native_listing_freshness.py`). There is no separate
+#: materialized/cached Search index table in the current schema --
+#: `hullq.persistence.inventory_search` reads these tables live -- so this
+#: set is the complete current-schema proof.
+_NON_PROMOTION_TABLES = (
+    "physical_boats",
+    "market_episodes",
+    "native_listings",
+    "native_listing_offer_revisions",
+    "native_listing_offer_heads",
+    "native_listing_publication_transitions",
+    "native_listing_freshness_confirmations",
+)
 
 
 def _base_db_url() -> str:
@@ -124,7 +157,7 @@ def _wait_for_http(url: str, *, timeout_seconds: float = 15.0) -> bool:
             return True
         except urllib.error.HTTPError:
             return True
-        except urllib.error.URLError, ConnectionError, TimeoutError, OSError:
+        except _HTTP_PROBE_TRANSIENT_ERRORS:
             time.sleep(0.2)
     return False
 
@@ -133,12 +166,12 @@ def _b64url(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).decode("ascii")
 
 
-def _marketplace_table_counts(url: str) -> dict[str, int]:
+def _non_promotion_table_counts(url: str) -> dict[str, int]:
     conn = psycopg.connect(url)
     try:
         counts: dict[str, int] = {}
         with conn.cursor() as cur:
-            for table in _MARKETPLACE_TABLES:
+            for table in _NON_PROMOTION_TABLES:
                 cur.execute(f"SELECT COUNT(*) FROM {table}")
                 row = cur.fetchone()
                 assert row is not None
@@ -273,7 +306,7 @@ def main() -> int:
         alembic_upgrade_head(url)
         print("0. Alembic upgraded to current head -> OK\n")
 
-        before_marketplace_counts = _marketplace_table_counts(url)
+        before_non_promotion_counts = _non_promotion_table_counts(url)
 
         issuer_host = "127.0.0.1"
         issuer_port = _free_port(issuer_host)
@@ -635,14 +668,17 @@ def main() -> int:
             f"{'OK' if (page_noindex_ok and api_noindex_ok) else 'FAIL'}\n"
         )
 
-        # 12. no new row is created in any marketplace identity/inventory table.
-        after_marketplace_counts = _marketplace_table_counts(url)
-        no_marketplace_rows_ok = before_marketplace_counts == after_marketplace_counts
-        ok &= no_marketplace_rows_ok
+        # 12. no new row is created in any marketplace identity/inventory
+        # table, any NativeListing offer revision/fact table, or any table
+        # carrying durable public Search-affecting NativeListing state.
+        after_non_promotion_counts = _non_promotion_table_counts(url)
+        no_non_promotion_rows_ok = before_non_promotion_counts == after_non_promotion_counts
+        ok &= no_non_promotion_rows_ok
         print(
-            f"16. zero rows created in physical_boats/market_episodes/native_listings -> "
-            f"{'OK' if no_marketplace_rows_ok else 'FAIL'} "
-            f"({before_marketplace_counts} -> {after_marketplace_counts})\n"
+            f"16. zero rows created in physical_boats/market_episodes/native_listings, "
+            f"NativeListing offer revision/fact tables, or public Search-state tables -> "
+            f"{'OK' if no_non_promotion_rows_ok else 'FAIL'} "
+            f"({before_non_promotion_counts} -> {after_non_promotion_counts})\n"
         )
 
         # Ordinary logs must never contain the client secret / session secret.

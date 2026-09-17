@@ -134,13 +134,18 @@ EMPTY_OWNER_DIRECT_DRAFT_PAYLOAD = OwnerDirectDraftPayload()
 
 
 def _require_str(value: Any, field_label: str) -> str:
+    """Contract §6.2: these fields are a "trimmed non-empty string" -- the
+    accepted *value*, not merely the non-emptiness check, so the returned
+    (and therefore persisted/serialized) string is always the stripped form.
+    """
     if not isinstance(value, str):
         raise InvalidOwnerDirectDraftPayloadError(
             f"{field_label} must be a string, got {type(value).__name__}"
         )
-    if not value.strip():
+    trimmed = value.strip()
+    if not trimmed:
         raise InvalidOwnerDirectDraftPayloadError(f"{field_label} must be non-empty when provided")
-    return value
+    return trimmed
 
 
 def _parse_build_year(value: Any) -> int:

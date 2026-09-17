@@ -59,8 +59,11 @@ class TestParseOwnerDirectDraftPayloadStringFields:
         ],
     )
     def test_valid_string_accepted(self, key: str) -> None:
+        """Contract §6.2: these fields are a "trimmed non-empty string" --
+        the persisted/returned value is the stripped form, not the raw
+        input verbatim."""
         payload = parse_owner_direct_draft_payload({key: "  Beneteau  "})
-        assert getattr(payload, key.split(".", 1)[1]) == "  Beneteau  "
+        assert getattr(payload, key.split(".", 1)[1]) == "Beneteau"
 
     @pytest.mark.parametrize(
         "key",
