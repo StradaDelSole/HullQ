@@ -414,6 +414,20 @@ def test_keel_only_confirmed_match(api_conn: Any) -> None:
     assert evidence.criterion.equals == "FIN"
     assert evidence.observed_value == "FIN"
 
+    # Second amendment, Finding 1 (Required tests): the baseline design-side
+    # match exposes its own typed observed canonical value ("FIN", mapped
+    # from the BoatDesign keel_type "fin") and the baseline configuration
+    # identity -- not only the aggregate matching_configuration_ids.
+    assert len(match.design_configuration_evidence) == 1
+    baseline_evidence = match.design_configuration_evidence[0]
+    assert baseline_evidence.configuration_id == "BD-NIQ-1::baseline"
+    assert baseline_evidence.boat_design_id == "BD-NIQ-1"
+    assert baseline_evidence.named_variant_id is None
+    assert baseline_evidence.truth.value == "TRUE"
+    design_keel_evidence = baseline_evidence.criterion_evidence[0]
+    assert design_keel_evidence.criterion.field == "keel_configuration"
+    assert design_keel_evidence.observed_value == "FIN"
+
 
 def test_keel_only_confirmed_non_match(api_conn: Any) -> None:
     _insert_boat_design(api_conn, "BD-NIQ-2", "BM-NIQ-2", baseline_keel_type="fin")
@@ -498,6 +512,24 @@ def test_keel_only_confirmed_match_preserves_named_variant_configuration_identit
     match = outcome.confirmed_matches[0]
     assert match.design_evaluation.matching_configuration_ids == ("BD-NIQ-VAR::VAR-NIQ-1",)
     assert outcome.insufficient_data_count == 0
+
+    # Second amendment, Finding 1 (Required tests): the NamedVariant match
+    # exposes its own typed observed value ("FIN") under the correct
+    # NamedVariant configuration identity, distinct from the baseline's own
+    # (non-matching, "WING") evidence -- both are retained, not only the
+    # matching one.
+    evidence_by_configuration_id = {
+        e.configuration_id: e for e in match.design_configuration_evidence
+    }
+    assert set(evidence_by_configuration_id) == {"BD-NIQ-VAR::baseline", "BD-NIQ-VAR::VAR-NIQ-1"}
+    variant_evidence = evidence_by_configuration_id["BD-NIQ-VAR::VAR-NIQ-1"]
+    assert variant_evidence.named_variant_id == "VAR-NIQ-1"
+    assert variant_evidence.truth.value == "TRUE"
+    assert variant_evidence.criterion_evidence[0].observed_value == "FIN"
+    baseline_evidence = evidence_by_configuration_id["BD-NIQ-VAR::baseline"]
+    assert baseline_evidence.named_variant_id is None
+    assert baseline_evidence.truth.value == "FALSE"
+    assert baseline_evidence.criterion_evidence[0].observed_value == "WING"
 
 
 def test_keel_only_omitted_claim_is_insufficient_data(api_conn: Any) -> None:
@@ -589,6 +621,16 @@ def test_mixed_draft_and_keel_confirmed_joint_match(api_conn: Any) -> None:
     assert keel_evidence.criterion.equals == "FIN"
     assert keel_evidence.observed_value == "FIN"
     assert match.design_evaluation.result_class is ResultClass.CONFIRMED_MATCH
+
+    # Second amendment, Finding 1 (Required tests): both criteria's typed
+    # design-side observed values are preserved on the same resolved
+    # (baseline) configuration.
+    assert len(match.design_configuration_evidence) == 1
+    baseline_evidence = match.design_configuration_evidence[0]
+    assert baseline_evidence.configuration_id == "BD-NIQ-5::baseline"
+    design_evidence_by_field = {e.evaluation.field: e for e in baseline_evidence.criterion_evidence}
+    assert design_evidence_by_field["draft_max_m"].observed_value == Decimal("1.30")
+    assert design_evidence_by_field["keel_configuration"].observed_value == "FIN"
 
 
 def test_draft_true_keel_false_is_non_match_not_match(api_conn: Any) -> None:
@@ -788,6 +830,17 @@ def test_unsupported_design_keel_mapping_fails_closed_but_preserves_design_evide
     assert insufficient.design_evaluation.matching_configuration_ids == ()
     assert insufficient.concrete_criterion_evidence == ()
 
+    # Second amendment, Finding 1 (Required tests): typed design-side
+    # evidence is retained even though the taxonomy mapping is unsupported --
+    # never a fabricated mapped value, just an honest UNKNOWN/None.
+    assert len(insufficient.design_configuration_evidence) == 1
+    baseline_evidence = insufficient.design_configuration_evidence[0]
+    assert baseline_evidence.configuration_id == "BD-NIQ-9::baseline"
+    assert baseline_evidence.truth.value == "UNKNOWN"
+    design_keel_evidence = baseline_evidence.criterion_evidence[0]
+    assert design_keel_evidence.evaluation.truth.value == "UNKNOWN"
+    assert design_keel_evidence.observed_value is None
+
 
 def test_missing_design_side_keel_resolution_is_insufficient_but_preserves_evidence(
     api_conn: Any,
@@ -826,6 +879,18 @@ def test_missing_design_side_keel_resolution_is_insufficient_but_preserves_evide
     assert insufficient.design_evaluation.result_class is ResultClass.INSUFFICIENT_DATA
     assert insufficient.design_evaluation.matching_configuration_ids == ()
     assert insufficient.concrete_criterion_evidence == ()
+
+    # Second amendment, Finding 1 (Required tests): missing FieldResolution
+    # exposes typed UNKNOWN/MISSING design evidence with observed_value is
+    # None -- never a value fabricated from the raw canonical JSON alone.
+    assert len(insufficient.design_configuration_evidence) == 1
+    baseline_evidence = insufficient.design_configuration_evidence[0]
+    assert baseline_evidence.truth.value == "UNKNOWN"
+    design_keel_evidence = baseline_evidence.criterion_evidence[0]
+    assert design_keel_evidence.evaluation.truth.value == "UNKNOWN"
+    assert design_keel_evidence.evaluation.reason is not None
+    assert design_keel_evidence.evaluation.reason.value == "VALUE_MISSING"
+    assert design_keel_evidence.observed_value is None
 
 
 # ---------------------------------------------------------------------------
@@ -912,6 +977,15 @@ def test_criterion_level_evidence_retained_for_every_result_class(api_conn: Any)
         assert evidence.evaluation.field == "keel_configuration"
         assert evidence.evaluation.explanation
         assert evidence.criterion.equals == "FIN"
+        # Second amendment, Finding 1 (Required tests): design-side evidence
+        # is present and identical across all three listings (they share the
+        # same design-level CONFIRMED_MATCH design), and stays completely
+        # separate from -- unaffected by -- each listing's own diverging
+        # concrete PhysicalBoat evidence.
+        assert len(evaluation.design_configuration_evidence) == 1
+        design_evidence = evaluation.design_configuration_evidence[0]
+        assert design_evidence.configuration_id == "BD-NIQ-10::baseline"
+        assert design_evidence.criterion_evidence[0].observed_value == "FIN"
 
     assert outcome.confirmed_matches[0].concrete_criterion_evidence[0].observed_value == "FIN"
     assert outcome.confirmed_non_matches[0].concrete_criterion_evidence[0].observed_value == "WING"

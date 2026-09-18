@@ -285,6 +285,23 @@ def _serialize_design_evaluation(design_evaluation: DesignQueryEvaluation) -> di
     }
 
 
+def _serialize_configuration_evidence(evidence: Any) -> dict[str, Any]:
+    """SLICE-0055 (second amendment, Finding 1): one `hullq.application.
+    native_inventory_query.ConfigurationEvidence` -- one resolved BoatDesign/
+    NamedVariant configuration's typed per-criterion evidence, including the
+    safely resolved/observed canonical value used for each design-side
+    criterion evaluation."""
+    return {
+        "configuration_id": evidence.configuration_id,
+        "boat_design_id": evidence.boat_design_id,
+        "named_variant_id": evidence.named_variant_id,
+        "truth": evidence.truth.value,
+        "criterion_evidence": [
+            _serialize_criterion_evidence(item) for item in evidence.criterion_evidence
+        ],
+    }
+
+
 # Sent on every response from the preview surface only: a preview token is a
 # bearer capability carried in the URL path, never a publicly indexable or
 # cacheable resource (SLICE-0048 §5.2).
@@ -610,6 +627,10 @@ def create_app(
                             else None
                         ),
                         "design_evaluation": _serialize_design_evaluation(match.design_evaluation),
+                        "design_configuration_evidence": [
+                            _serialize_configuration_evidence(evidence)
+                            for evidence in match.design_configuration_evidence
+                        ],
                         "criterion_evidence": [
                             _serialize_criterion_evidence(evidence)
                             for evidence in match.concrete_criterion_evidence

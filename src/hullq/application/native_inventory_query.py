@@ -51,6 +51,22 @@ result classes:
   such a design's listings are classified accordingly and *this* evidence is
   attached, rather than the listing silently disappearing from every result
   surface;
+- `NativeInventoryCandidateEvaluation.design_configuration_evidence` closes
+  the second amendment's Finding 1 gap: `design_evaluation` alone carries
+  each evaluated configuration's `CriterionEvaluation` (typed truth/reason)
+  but not the BoatDesign/NamedVariant canonical value that was actually
+  qualified and compared to produce it -- `evaluate_configuration` reads
+  that value from `ResolvedConfiguration.projection` but does not return it,
+  and the `DesignConfigurationSet`/`ResolvedConfiguration` objects
+  themselves go out of scope once `run_configuration_query` returns. This
+  module retains them (via `hullq.search.boat_design_field_bridge.
+  run_boat_design_configuration_query`'s `configurations_by_id`) and pairs
+  each of `design_evaluation.configuration_evaluations`' own per-criterion
+  `CriterionEvaluation` with the exact requested criterion and the safely
+  resolved/observed canonical value used, one `ConfigurationEvidence` per
+  evaluated BoatDesign/NamedVariant configuration -- present for every
+  design result class (match, non-match, insufficient alike), never only
+  for the configurations that matched;
 - `NativeInventoryCandidateEvaluation.concrete_criterion_evidence` is the
   concrete PhysicalBoat-level evidence, kept separate from the design-level
   evidence above (contract §7 point 6). Each `SearchCriterionEvidence` pairs
@@ -62,12 +78,14 @@ result classes:
   `DraftMaxConfirmedMatch` already carried, generalized to both criteria and
   to the non-match/insufficient classes SLICE-0051 only counted.
 
-No second Search truth engine is introduced: `SearchCriterionEvidence` is a
-bounded typed wrapper around the existing, unmodified
-`NumericLeafCriterion`/`CategoricalLeafCriterion`/`CriterionEvaluation`
-kernel types (SLICE-0033/0035), adding only the one piece of information
-they do not carry (the concrete observed value) -- the established
-`CriterionEvaluation` contract itself is untouched.
+No second Search truth engine is introduced and the established
+`hullq.search.configuration_engine` kernel types
+(`ConfigurationEvaluation`/`DesignQueryEvaluation`/`ConfigurationSearchOutcome`)
+are never modified. `SearchCriterionEvidence`/`ConfigurationEvidence` are
+bounded typed wrappers reused for both the design-side and concrete-side
+evidence, adding only the one piece of information the kernel types do not
+carry (the resolved/observed value) -- never re-derived from
+`CriterionEvaluation.explanation` text.
 """
 
 from __future__ import annotations
@@ -100,7 +118,11 @@ from hullq.search.configuration import (
     ConfigurationProjection,
     ResolvedConfiguration,
 )
-from hullq.search.configuration_engine import DesignQueryEvaluation, evaluate_configuration
+from hullq.search.configuration_engine import (
+    ConfigurationEvaluation,
+    DesignQueryEvaluation,
+    evaluate_configuration,
+)
 from hullq.search.criteria import (
     CategoricalLeafCriterion,
     CriterionEvaluation,
@@ -120,6 +142,7 @@ from hullq.search.types import NumericComparisonKind, ResultClass, TruthState, V
 from hullq.search.values import QualifiedCategoricalValue, QualifiedNumericValue
 
 __all__ = [
+    "ConfigurationEvidence",
     "NativeInventoryCandidateEvaluation",
     "NativeInventorySearchOutcome",
     "SearchCriterionEvidence",
@@ -147,6 +170,31 @@ class SearchCriterionEvidence:
 
 
 @dataclass(frozen=True, slots=True)
+class ConfigurationEvidence:
+    """One resolved BoatDesign/NamedVariant configuration's typed evidence
+    (contract §7, second amendment Finding 1).
+
+    `configuration_id`/`boat_design_id`/`named_variant_id` are the exact
+    resolved configuration identity `hullq.search.configuration.
+    ConfigurationIdentity` already carries (`named_variant_id` is `None`
+    for the baseline configuration). `truth` is this configuration's own
+    aggregate `hullq.search.configuration_engine.ConfigurationEvaluation.truth`.
+    `criterion_evidence` pairs each requested criterion with its
+    per-criterion `CriterionEvaluation` and the safely resolved/observed
+    BoatDesign/NamedVariant canonical value actually used for that
+    evaluation (from the exact `ResolvedConfiguration.projection` that was
+    evaluated) -- never fabricated, and never re-derived from
+    `CriterionEvaluation.explanation` text.
+    """
+
+    configuration_id: str
+    boat_design_id: str
+    named_variant_id: str | None
+    truth: TruthState
+    criterion_evidence: tuple[SearchCriterionEvidence, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class NativeInventoryCandidateEvaluation:
     """One concrete candidate's classification plus full typed evidence.
 
@@ -160,11 +208,19 @@ class NativeInventoryCandidateEvaluation:
     level `CONFIRMED_MATCH`, `concrete_criterion_evidence` carries the
     concrete classification's own per-criterion evidence, and `result_class`
     reflects that concrete classification, not the design-level one.
+
+    `design_configuration_evidence` is always populated, one
+    `ConfigurationEvidence` per entry in
+    `design_evaluation.configuration_evaluations` (baseline and every
+    evaluated NamedVariant alike, regardless of which one(s) matched) --
+    the typed BoatDesign/NamedVariant observed-value evidence
+    `design_evaluation` alone cannot recover (second amendment Finding 1).
     """
 
     native_listing_id: NativeListingId
     result_class: ResultClass
     design_evaluation: DesignQueryEvaluation
+    design_configuration_evidence: tuple[ConfigurationEvidence, ...]
     concrete_criterion_evidence: tuple[SearchCriterionEvidence, ...]
     publishing_organization_id: MarketplaceOrganizationId
     freshness_status: FreshnessStatus
@@ -237,6 +293,66 @@ def _qualify_claim_field(
     if len(cross_organization_values) > 1:
         return (ValueQualification.MISSING, None)
     return (ValueQualification.CONFIRMED, publisher_value)
+
+
+def _observed_projection_value(
+    resolved_configuration: ResolvedConfiguration, criterion: MixedLeafCriterion
+) -> Decimal | str | None:
+    """The safely resolved/observed BoatDesign/NamedVariant canonical value
+    *criterion* was actually compared against in *resolved_configuration*,
+    or `None` when that field's qualification is not `CONFIRMED` -- read
+    directly from `ResolvedConfiguration.projection` (never fabricated, and
+    independent of `CriterionEvaluation.explanation` text).
+    """
+    if isinstance(criterion, NumericLeafCriterion):
+        qualified_numeric = resolved_configuration.projection.get_numeric(criterion.field)
+        if qualified_numeric.qualification is not ValueQualification.CONFIRMED:
+            return None
+        # Every SLICE-0055 numeric FieldProjectionSpec decodes via
+        # decode_decimal_for_qualification, which QualifiedNumericValue
+        # preserves as an exact Decimal, never coerced to float -- see that
+        # class's docstring.
+        assert isinstance(qualified_numeric.value, Decimal)
+        return qualified_numeric.value
+    qualified_categorical = resolved_configuration.projection.get_categorical(criterion.field)
+    if qualified_categorical.qualification is not ValueQualification.CONFIRMED:
+        return None
+    assert qualified_categorical.value is not None
+    return qualified_categorical.value
+
+
+def _build_configuration_evidence(
+    query: MixedAndQuery,
+    configuration_evaluation: ConfigurationEvaluation,
+    resolved_configuration: ResolvedConfiguration,
+) -> ConfigurationEvidence:
+    """Build one `ConfigurationEvidence` for *resolved_configuration* (second
+    amendment Finding 1): pairs each of `query.criteria`, in order, with its
+    `configuration_evaluation.criterion_evaluations` counterpart (the same
+    order `hullq.search.configuration_engine.evaluate_configuration` used to
+    produce them) and the safely resolved/observed canonical value read from
+    `resolved_configuration.projection` -- the exact `ResolvedConfiguration`
+    `build_boat_design_configuration_set` built and `run_configuration_query`
+    evaluated, never re-derived from `CriterionEvaluation.explanation`.
+    """
+    criterion_evidence = tuple(
+        SearchCriterionEvidence(
+            criterion=criterion,
+            evaluation=criterion_evaluation,
+            observed_value=_observed_projection_value(resolved_configuration, criterion),
+        )
+        for criterion, criterion_evaluation in zip(
+            query.criteria, configuration_evaluation.criterion_evaluations, strict=True
+        )
+    )
+    identity = resolved_configuration.identity
+    return ConfigurationEvidence(
+        configuration_id=identity.configuration_id,
+        boat_design_id=identity.boat_design_id,
+        named_variant_id=identity.named_variant_id,
+        truth=configuration_evaluation.truth,
+        criterion_evidence=criterion_evidence,
+    )
 
 
 def _classify_candidate(
@@ -394,6 +510,15 @@ def evaluate_native_inventory_requirements(
     condition from an evaluated-but-insufficient design) is excluded exactly
     as SLICE-0051's own funnel excludes it: there is no `DesignQueryEvaluation`
     to attach because the design was never evaluated at all.
+
+    Finding 1 (second amendment): every candidate's
+    `NativeInventoryCandidateEvaluation.design_configuration_evidence` is
+    populated from `hullq.search.boat_design_field_bridge.
+    run_boat_design_configuration_query`'s `configurations_by_id`, so the
+    safely resolved/observed BoatDesign/NamedVariant canonical value behind
+    each design-side criterion evaluation remains typed and recoverable,
+    not only the aggregate truth/reason `DesignQueryEvaluation` itself
+    carries.
     """
     if draft_max is None and keel_configuration is None:
         raise ValueError("at least one of draft_max/keel_configuration must be supplied")
@@ -459,13 +584,13 @@ def evaluate_native_inventory_requirements(
         if raw_design is not None:
             boat_designs.append(raw_design)
 
-    design_outcome = run_boat_design_configuration_query(conn, query, boat_designs, tuple(specs))
+    design_result = run_boat_design_configuration_query(conn, query, boat_designs, tuple(specs))
     design_evaluation_by_id: dict[str, DesignQueryEvaluation] = {
         evaluation.design_id: evaluation
         for evaluation in (
-            design_outcome.confirmed_matches
-            + design_outcome.confirmed_non_matches
-            + design_outcome.insufficient_data
+            design_result.outcome.confirmed_matches
+            + design_result.outcome.confirmed_non_matches
+            + design_result.outcome.insufficient_data
         )
     }
 
@@ -479,6 +604,15 @@ def evaluate_native_inventory_requirements(
             # Dangling BoatDesignRef (no durable canonical design to
             # evaluate at all) -- never a candidate, exactly like SLICE-0051.
             continue
+
+        design_configuration_evidence = tuple(
+            _build_configuration_evidence(
+                query,
+                configuration_evaluation,
+                design_result.configurations_by_id[configuration_evaluation.configuration_id],
+            )
+            for configuration_evaluation in design_evaluation.configuration_evaluations
+        )
 
         if design_evaluation.result_class is ResultClass.CONFIRMED_MATCH:
             result_class, concrete_evidence = _classify_candidate(
@@ -501,6 +635,7 @@ def evaluate_native_inventory_requirements(
             native_listing_id=candidate.native_listing_id,
             result_class=result_class,
             design_evaluation=design_evaluation,
+            design_configuration_evidence=design_configuration_evidence,
             concrete_criterion_evidence=concrete_evidence,
             publishing_organization_id=candidate.publishing_organization_id,
             freshness_status=freshness.status,

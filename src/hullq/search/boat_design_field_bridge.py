@@ -45,6 +45,7 @@ from hullq.search.types import ValueQualification
 from hullq.search.values import QualifiedCategoricalValue, QualifiedNumericValue
 
 __all__ = [
+    "BoatDesignConfigurationQueryResult",
     "FieldProjectionSpec",
     "build_boat_design_configuration_set",
     "compatible_boat_design_ids_for_query",
@@ -419,14 +420,43 @@ def build_boat_design_configuration_set(
 # ---------------------------------------------------------------------------
 
 
+@dataclass(frozen=True, slots=True)
+class BoatDesignConfigurationQueryResult:
+    """SLICE-0055 §7 (second amendment, Finding 1): the complete typed result
+    of evaluating one query against a batch of designs' configuration sets.
+
+    `outcome` is the unmodified `ConfigurationSearchOutcome` (confirmed
+    matches, confirmed non-matches and insufficient-data designs, each
+    carrying its own `matching_configuration_ids`/`configuration_evaluations`
+    exactly as `hullq.search.configuration_engine.run_configuration_query`
+    produces it -- nothing about that established kernel type is changed).
+
+    `configurations_by_id` is the corresponding resolved
+    configuration/projection evidence, keyed by the exact
+    `configuration_id` every `ConfigurationEvaluation` in `outcome` already
+    references. `evaluate_configuration` computes each configuration's
+    truth from `ResolvedConfiguration.projection`'s qualified numeric/
+    categorical values but does not itself return them; this mapping is
+    what lets a caller recover, for any `(configuration_id, field)` pair
+    already referenced by `outcome`, the exact safely-resolved/observed
+    canonical value that was actually used for that field's evaluation --
+    without re-running or reconstructing Search truth, and without parsing
+    `CriterionEvaluation.explanation`.
+    """
+
+    outcome: ConfigurationSearchOutcome
+    configurations_by_id: Mapping[str, ResolvedConfiguration]
+
+
 def run_boat_design_configuration_query(
     conn: Any,
     query: MixedAndQuery,
     boat_designs: Iterable[Mapping[str, Any]],
     specs: Sequence[FieldProjectionSpec],
-) -> ConfigurationSearchOutcome:
+) -> BoatDesignConfigurationQueryResult:
     """Evaluate *query* against every design's configuration set, preserving
-    the complete typed `ConfigurationSearchOutcome`.
+    both the complete typed `ConfigurationSearchOutcome` and the resolved
+    configuration/projection evidence it was computed from.
 
     *specs* must cover every projection field *query.criteria* addresses
     (draft-only, keel-only, or both together) -- each design's
@@ -436,28 +466,47 @@ def run_boat_design_configuration_query(
     the unchanged `hullq.search.configuration_engine.run_configuration_query`
     kernel.
 
-    SLICE-0055 amendment (Finding 1): returns the complete
+    SLICE-0055 amendment (Finding 1, first pass): returns the complete
     `ConfigurationSearchOutcome` -- confirmed matches, confirmed non-matches
-    and insufficient-data designs alike, each carrying its own
-    `matching_configuration_ids`/`configuration_evaluations` -- rather than
-    collapsing it to a bare set of confirmed design ids. A caller that only
-    needs the confirmed id set (SLICE-0051's/SLICE-0055's own
-    single-criterion bridges, whose established public contracts predate or
-    are bounded to that shape) should use
+    and insufficient-data designs alike -- rather than collapsing it to a
+    bare set of confirmed design ids.
+
+    SLICE-0055 amendment (Finding 1, second pass): also returns
+    `configurations_by_id`, the exact `ResolvedConfiguration` objects
+    `build_boat_design_configuration_set` built and `run_configuration_query`
+    evaluated, so the safely resolved/observed canonical value behind each
+    `outcome` criterion evaluation remains recoverable -- `outcome` alone,
+    once the corresponding `DesignConfigurationSet`s go out of scope, cannot
+    answer "what BoatDesign/NamedVariant value was actually evaluated here."
+
+    A caller that only needs the confirmed id set (SLICE-0051's/SLICE-0055's
+    own single-criterion bridges, whose established public contracts predate
+    or are bounded to that shape) should use
     `compatible_boat_design_ids_for_query`, a thin wrapper over this function
-    that discards the richer evidence; a caller building production
-    application evidence (`hullq.application.native_inventory_query`) should
-    call this function directly and preserve the result.
+    that discards both; a caller building production application evidence
+    (`hullq.application.native_inventory_query`) should call this function
+    directly and preserve the full result.
     """
     boat_designs = tuple(boat_designs)
     if not boat_designs:
-        return ConfigurationSearchOutcome(
-            confirmed_matches=(), confirmed_non_matches=(), insufficient_data=()
+        return BoatDesignConfigurationQueryResult(
+            outcome=ConfigurationSearchOutcome(
+                confirmed_matches=(), confirmed_non_matches=(), insufficient_data=()
+            ),
+            configurations_by_id={},
         )
     configuration_sets = tuple(
         build_boat_design_configuration_set(conn, bd, specs) for bd in boat_designs
     )
-    return run_configuration_query(query, configuration_sets)
+    configurations_by_id = {
+        configuration.identity.configuration_id: configuration
+        for configuration_set in configuration_sets
+        for configuration in configuration_set.configurations
+    }
+    outcome = run_configuration_query(query, configuration_sets)
+    return BoatDesignConfigurationQueryResult(
+        outcome=outcome, configurations_by_id=configurations_by_id
+    )
 
 
 def compatible_boat_design_ids_for_query(
@@ -477,5 +526,5 @@ def compatible_boat_design_ids_for_query(
     established public contract is bounded to a bare id set -- see that
     function's docstring (Finding 1) for the fuller-evidence alternative.
     """
-    outcome = run_boat_design_configuration_query(conn, query, boat_designs, specs)
-    return frozenset(evaluation.design_id for evaluation in outcome.confirmed_matches)
+    result = run_boat_design_configuration_query(conn, query, boat_designs, specs)
+    return frozenset(evaluation.design_id for evaluation in result.outcome.confirmed_matches)
