@@ -167,7 +167,7 @@ def hook_response(payload: dict[str, Any]) -> dict[str, Any] | None:
 def main() -> None:
     try:
         payload = json.load(sys.stdin)
-    except (json.JSONDecodeError, UnicodeDecodeError):
+    except json.JSONDecodeError, UnicodeDecodeError:
         # Malformed hook input must never grant permission.
         return
 
