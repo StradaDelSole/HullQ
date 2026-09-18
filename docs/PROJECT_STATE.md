@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0054 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0055 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0055 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0056 -->
 
-**Updated:** 2026-09-17  
-**Latest owner-accepted / DONE slice:** SLICE-0054  
-**Current queue:** SLICE-0055 — **Second Technical Native Inventory Search Criterion: Keel Configuration + Multi-Criterion Evaluation Evidence**; readiness contract prepared, implementation not started.  
+**Updated:** 2026-09-18  
+**Latest owner-accepted / DONE slice:** SLICE-0055  
+**Current queue:** SLICE-0056 — queue number only; capability not yet selected. Post-SLICE-0055 repository/product reassessment is required before readiness.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -118,28 +118,32 @@ SLICE-0040 marketplace identity/truth separation
 → SLICE-0052 evidence-backed listing freshness/reconfirmation
 → SLICE-0053 authenticated Broker Workspace access boundary
 → SLICE-0054 authenticated Owner-Direct Listing Draft Workspace
+→ SLICE-0055 second technical native Search criterion (`keel_configuration`) + mixed-criterion typed evidence
 ```
 
 Latest closures:
 
 ```text
-docs/slices/SLICE-0051-acceptance-closure.md
 docs/slices/SLICE-0052-acceptance-closure.md
 docs/slices/SLICE-0053-acceptance-closure.md
 docs/slices/SLICE-0054-acceptance-closure.md
+docs/slices/SLICE-0055-acceptance-closure.md
 ```
 
 ## Accepted technical Search result
 
-SLICE-0051 still defines exactly one accepted/closed public hard technical buyer requirement:
+HullQ now has exactly two accepted/closed public hard technical native-inventory Search criteria:
 
 ```text
-draft_max=<exact decimal metres>
+1 — draft_max=<exact positive decimal metres>
+2 — keel_configuration=<canonical v0.1 value>
 ```
 
-Accepted technical native Search criteria count remains `1` until SLICE-0055 is implemented, independently reviewed, owner-accepted and acceptance-closed.
+Accepted public `keel_configuration` values are exactly `FIN`, `FIN_WITH_BULB`, `WING`, `CENTERBOARD`, `LIFTING_KEEL` and `TWIN_KEEL`.
 
-SLICE-0055 is selected to add criterion #2: bounded categorical `keel_configuration`, alone or AND-combined with `draft_max`, while preserving criterion-level evaluation evidence and satisfying the accepted second-criterion abstraction guard. Controlling readiness artifacts are `specs/TECHNICAL_NATIVE_SEARCH_CRITERION_2_KEEL_CONTRACT.v0.1.md` and `docs/slices/SLICE-0055-second-technical-native-search-keel.md`.
+The two criteria may be evaluated alone or together as deterministic hard MUST/AND requirements. SLICE-0055 preserves typed criterion/configuration evidence for confirmed match, confirmed non-match and insufficient-data application outcomes while keeping BoatDesign/configuration truth separate from concrete PhysicalBoat/listing truth.
+
+The accepted technical native Search criteria count is now `2`. Any future criterion #3+ readiness is subject to the accepted third-copy abstraction guard in `docs/governance/POST_0051_TRIGGER_GATES.md`.
 
 ## Post-SLICE-0051 trigger gates
 
@@ -147,7 +151,7 @@ Canonical records remain `docs/governance/POST_0051_TRIGGER_GATES.md`, `docs/gov
 
 ```text
 POST_0051_ARCHITECTURE_RECONCILIATION: PASS
-TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 1
+TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 2
 WORKFLOW_REASSESSMENT_DUE_AFTER_SLICE: 0056
 WORKFLOW_REASSESSMENT_STATUS: NOT_DUE
 
@@ -162,7 +166,7 @@ BROKER_SELF_SERVICE_PILOT_STATUS: NOT_STARTED
 PAID_BROKER_PLAN_STATUS: NOT_STARTED
 ```
 
-SLICE-0055 readiness/implementation uses internal/synthetic retained proof and does not itself introduce real external marketplace production data, a production pilot or public production launch. The Production Readiness gate therefore remains untriggered by this capability alone. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA/production-readiness rules remain mandatory.
+SLICE-0055 used internal/synthetic retained proof and introduced no real external marketplace production data, production pilot or public production launch. The Production Readiness gate therefore remains untriggered after acceptance. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA/production-readiness rules remain mandatory.
 
 ## Broker Mandatory Capability Register
 
@@ -201,19 +205,19 @@ The SLICE-0053 same-host session-topology invariant remains in force for browser
 
 Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; broker inventory workflow, branding/media and resilient drafts; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability and sensitivity; BuyerRequirements persistence; shortlist/Compare/sharing; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-None except the explicitly selected keel Search capability is allocated to SLICE-0055.
+SLICE-0055 is now accepted. No SLICE-0056 capability has been selected or allocated.
 
 ## Next capability selection
 
 Next queue number:
 
 ```text
-SLICE-0055
+SLICE-0056
 ```
 
-**Selected capability:** Second Technical Native Inventory Search Criterion — Keel Configuration + Multi-Criterion Evaluation Evidence.
+**Capability:** not yet selected.
 
-Readiness must be independently reviewed and merged before the Project Owner runs `START_SLICE.bat`. Implementation has not started.
+Before selecting or readying SLICE-0056, perform the normal post-slice Decision/Implementation Reconciliation and trigger-gate check against canonical `origin/main`. This closure does not authorize implementation and does not convert deferred product ideas into the next slice.
 
 ## Development workflow
 
