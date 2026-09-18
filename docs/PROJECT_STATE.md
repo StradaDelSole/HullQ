@@ -244,6 +244,6 @@ The readiness package passed independent exact-head review and exact-head remote
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment is complete and `PASS`; SLICE-0057 still requires normal post-slice reconciliation/capability selection/readiness before `START_SLICE`.
+- the mandatory post-SLICE-0056 workflow reassessment is complete and `PASS`; SLICE-0057 reconciliation, capability selection and readiness are now complete, so `START_SLICE.bat` is the next permitted action.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
