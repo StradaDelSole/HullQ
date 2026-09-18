@@ -151,6 +151,28 @@ If an amendment is required:
 
 Independent review must compare implementation not only with the immediate slice text but with the accepted semantics named by the reconciliation and trigger-gate records. A regression from previously accepted/implemented behavior is a review defect, not a new design choice.
 
+### Reviewer continuation to owner-acceptance boundary
+
+After an independent implementation review finds the exact slice HEAD materially acceptable, the reviewer/project master MUST continue the workflow autonomously through the remaining non-owner gates rather than handing routine monitoring back to the Project Owner.
+
+Normal continuation is:
+
+1. create or verify the implementation pull request for the exact reviewed HEAD;
+2. observe all required remote/external checks on that exact HEAD;
+3. if a check fails, investigate it and either return a targeted same-slice amendment/blocker or re-run only when the failure is demonstrably transient;
+4. re-verify that the PR head SHA remains the reviewed SHA and that the PR remains mergeable/up-to-date as required;
+5. only then hand control to the Project Owner when explicit owner acceptance is the next mandatory action.
+
+Do not interrupt the Project Owner merely because CI is queued/in progress or because another routine reviewer-controlled step remains. Stop earlier only for a genuine blocker, a material new review finding, an authorization/access boundary, or an action that explicitly requires Project Owner approval.
+
+The intended handoff label is:
+
+```text
+OWNER ACCEPTANCE READY
+```
+
+At that point report the exact accepted implementation HEAD, implementation PR, independent review result and exact-head external-gate result, then request the Project Owner's explicit acceptance. Do not merge merely because the implementation is technically ready; owner acceptance remains a separate mandatory gate.
+
 ### Acceptance closure and PROJECT_STATE freshness
 
 The acceptance closure is not complete until `docs/PROJECT_STATE.md` reflects the newly accepted slice.
