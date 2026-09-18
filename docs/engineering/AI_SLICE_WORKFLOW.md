@@ -147,6 +147,8 @@ PermissionRequest(Bash|PowerShell)
 
 The PreToolUse guard rejects routine commands containing shell composition that commonly defeats static permission analysis, including shell/environment-variable expansion, command substitution, loops/control flow, pipes, redirects, subshells and compound separators. This is not a product/security-policy decision and must not be bypassed by spelling the same routine diagnostic differently. Claude should split the operation into separate tool calls, use `Read`/`Grep`/`Glob` for file inspection, `uv run python ...` for Python and standalone npm commands such as `npm ci --prefix web`.
 
+Recurring local diagnostics have a repository-owned helper, `scripts/workflow/claude_diag.py`, so agents do not rebuild environment-prefix commands or PowerShell pipelines. It provides secret-safe environment status, TCP reachability, newest-temp-directory lookup, local PostgreSQL test-script execution, and a bounded local API smoke launcher. Fixed local test credentials/signing values are injected only into child processes and are never printed.
+
 The PermissionRequest hook auto-allows only bounded routine families already intended for autonomous HullQ development. It does not auto-allow destructive Git recovery, force-push/main-push, branch deletion, Alembic downgrade, destructive Docker-volume teardown or other deliberately operator-gated actions.
 
 `scripts/validate_repository.py` validates the hook wiring and required shared permission rules. Since `START_SLICE` runs repository validation for current post-0051 slices, future slice start is blocked if this approval-autonomy mechanism is missing or regresses.
