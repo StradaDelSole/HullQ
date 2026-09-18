@@ -140,7 +140,9 @@ def _pretool_output(reason: str) -> dict[str, Any]:
                 "Read/Grep/Glob for file inspection and one standalone approved process command "
                 "per tool call; use 'uv run python ...' for Python and '--prefix web' for npm "
                 "when applicable. Do not use shell variables, pipes, redirects, loops, "
-                "subshells, command substitution, ';', '&&', or '||' for routine work."
+                "subshells, command substitution, ';', '&&', or '||' for routine work. "
+                "For recurring diagnostics use 'uv run python scripts/workflow/claude_diag.py' "
+                "(env-status, tcp-check, latest-temp-dir, run-local-test-db, or run-local-api)."
             ),
         }
     }
