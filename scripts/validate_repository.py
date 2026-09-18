@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -13,6 +14,9 @@ SLICES = ROOT / "docs" / "slices"
 PROJECT_STATE = ROOT / "docs" / "PROJECT_STATE.md"
 POST_0051_TRIGGER_GATES = ROOT / "docs" / "governance" / "POST_0051_TRIGGER_GATES.md"
 PRODUCTION_READINESS_GATE = ROOT / "docs" / "governance" / "PRODUCTION_READINESS_GATE.md"
+CLAUDE_SETTINGS = ROOT / ".claude" / "settings.json"
+CLAUDE_COMMAND_GUARD = ROOT / "scripts" / "workflow" / "claude_command_guard.py"
+CLAUDE_DIAG = ROOT / "scripts" / "workflow" / "claude_diag.py"
 
 _PROJECT_STATE_ACCEPTED_RE = re.compile(r"<!--\s*PROJECT_STATE_ACCEPTED_SLICE:\s*(\d{4})\s*-->")
 _PROJECT_STATE_QUEUE_RE = re.compile(r"<!--\s*PROJECT_STATE_QUEUE_SLICE:\s*(\d{4})\s*-->")
@@ -102,6 +106,95 @@ def no_active_drafts_check() -> None:
     drafts = sorted(p.relative_to(ROOT) for p in SPECS.glob("*DRAFT*"))
     if drafts:
         raise ValueError(f"Draft artifacts are present in active specs/: {drafts}")
+
+
+def claude_approval_autonomy_check(
+    *,
+    settings_path: Path = CLAUDE_SETTINGS,
+    guard_path: Path = CLAUDE_COMMAND_GUARD,
+    diag_path: Path = CLAUDE_DIAG,
+) -> None:
+    """Require the shared mechanical guard that prevents routine approval stalls."""
+
+    if not settings_path.is_file():
+        raise ValueError("Missing project-level .claude/settings.json")
+    if not guard_path.is_file():
+        raise ValueError("Missing scripts/workflow/claude_command_guard.py")
+    if not diag_path.is_file():
+        raise ValueError("Missing scripts/workflow/claude_diag.py")
+
+    try:
+        settings = json.loads(settings_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(".claude/settings.json is not valid JSON") from exc
+
+    permissions = settings.get("permissions")
+    if not isinstance(permissions, dict):
+        raise ValueError(".claude/settings.json must define a permissions object")
+    if permissions.get("defaultMode") != "acceptEdits":
+        raise ValueError("Claude shared defaultMode must remain acceptEdits")
+    if permissions.get("disableBypassPermissionsMode") != "disable":
+        raise ValueError("Claude bypass-permissions mode must remain disabled")
+
+    allow = permissions.get("allow")
+    if not isinstance(allow, list):
+        raise ValueError("Claude shared permissions.allow must be a list")
+    required_allow = {
+        "Read",
+        "Glob",
+        "Grep",
+        "Bash(uv *)",
+        "PowerShell(uv *)",
+        "Bash(npm ci *)",
+        "PowerShell(npm ci *)",
+    }
+    missing_allow = sorted(required_allow.difference(allow))
+    if missing_allow:
+        raise ValueError(
+            "Claude approval-autonomy allow rules are incomplete: " + ", ".join(missing_allow)
+        )
+
+    hooks = settings.get("hooks")
+    if not isinstance(hooks, dict):
+        raise ValueError(".claude/settings.json must define shared Claude hooks")
+
+    expected_args = [
+        "run",
+        "--no-project",
+        "--python",
+        "3.14",
+        "python",
+        "${CLAUDE_PROJECT_DIR}/scripts/workflow/claude_command_guard.py",
+    ]
+    for event in ("PreToolUse", "PermissionRequest"):
+        groups = hooks.get(event)
+        if not isinstance(groups, list):
+            raise ValueError(f"Claude shared hooks must define {event}")
+        matching_group = next(
+            (
+                group
+                for group in groups
+                if isinstance(group, dict) and group.get("matcher") == "Bash|PowerShell"
+            ),
+            None,
+        )
+        if matching_group is None:
+            raise ValueError(f"Claude {event} must match Bash|PowerShell")
+
+        handlers = matching_group.get("hooks")
+        if not isinstance(handlers, list):
+            raise ValueError(f"Claude {event} Bash|PowerShell group must define handlers")
+        has_guard = any(
+            isinstance(handler, dict)
+            and handler.get("type") == "command"
+            and handler.get("command") == "uv"
+            and handler.get("args") == expected_args
+            for handler in handlers
+        )
+        if not has_guard:
+            raise ValueError(
+                f"Claude {event} must execute the shared claude_command_guard.py via uv"
+            )
 
 
 def latest_acceptance_closure_slice(slices_dir: Path = SLICES) -> int:
@@ -531,10 +624,12 @@ def main() -> None:
     registry = ContractRegistry.from_directory(SPECS)
     req_count, acceptance_count = requirements_check()
     no_active_drafts_check()
+    claude_approval_autonomy_check()
     state_slice, _ = project_state_freshness_check()
     architecture, criteria_count, workflow_status, production_status = trigger_gate_state_check()
     queue_slice, queue_file = queue_slice_startability_check()
     print(f"active schemas: {len(registry.schema_names)}")
+    print("claude approval-autonomy guard: PASS")
     print(f"requirements: {req_count}")
     print(f"acceptance criteria: {acceptance_count}")
     print(f"project state accepted through: SLICE-{state_slice:04d}")
