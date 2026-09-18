@@ -147,8 +147,7 @@ def claude_approval_autonomy_check(
     missing_allow = sorted(required_allow.difference(allow))
     if missing_allow:
         raise ValueError(
-            "Claude approval-autonomy allow rules are incomplete: "
-            + ", ".join(missing_allow)
+            "Claude approval-autonomy allow rules are incomplete: " + ", ".join(missing_allow)
         )
 
     hooks = settings.get("hooks")
