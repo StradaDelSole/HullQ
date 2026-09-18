@@ -208,6 +208,7 @@ EXECUTION:
 - Do not bundle routine checks into shell loops or compound commands (`for ...; do ...; done`, `&&`, `;`). Use one standalone permitted command per tool call. For file comparisons, prefer separate `git diff --no-index <file-a> <file-b>` calls instead of direct `diff`/`cmp`.
 - For read-only repository inspection/search, use Claude Code `Read`, `Grep`, or `Glob` instead of Bash/PowerShell `grep`, `find`, loops, or text-processing pipelines whenever possible.
 - For web dependency installation, use standalone `npm ci --prefix web`; do not use `cd web && npm ci` or append output-redirection/pipeline wrappers such as `2>&1 | tail ...`.
+- HARD APPROVAL-AUTONOMY RULE: for routine diagnostics/inspection/validation setup, never use shell variables, command substitution, pipes, output redirection, compound separators (`;`, `&&`, `||`), subshells, or loops. Split the work into separate tool calls. Use Read/Grep/Glob for file inspection and one standalone approved command for process execution. If routine command spelling would trigger an approval prompt, rewrite it approval-free instead of asking the operator.
 - Do not broaden scope or start another slice.
 - Push this same branch to GitHub at completion.
 - Leave the slice in REVIEW or BLOCKED; never mark DONE and never merge to main.
