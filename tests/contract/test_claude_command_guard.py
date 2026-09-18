@@ -40,9 +40,7 @@ def test_guard_allows_shell_metacharacters_inside_python_code_quotes() -> None:
 
 
 def test_guard_allows_standalone_approved_diagnostics() -> None:
-    assert routine_permission_allowed(
-        'uv run python -c "import sys; print(sys.path[:5])"'
-    )
+    assert routine_permission_allowed('uv run python -c "import sys; print(sys.path[:5])"')
     assert routine_permission_allowed("npm ci --prefix web")
     assert routine_permission_allowed(
         "git diff --no-index web/src/pages/de/search.astro web/src/pages/fr/search.astro"
