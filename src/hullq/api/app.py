@@ -87,6 +87,10 @@ from hullq.application.owner_direct_draft import (
 from hullq.application.preview_read import get_preview_read_model
 from hullq.application.public_listing_read import get_public_listing_read_model
 from hullq.application.search_read import SearchOutcomeKind, evaluate_search_request
+from hullq.application.search_sensitivity import (
+    SensitivityOutcomeKind,
+    evaluate_requirement_sensitivity,
+)
 from hullq.domain.market_identity import NativeListingId
 from hullq.domain.publishing_eligibility import MarketplaceOrganizationId
 from hullq.persistence.connection import get_database_url, open_connection
@@ -232,6 +236,19 @@ _INVALID_SEARCH_REQUEST_MESSAGE = {
     "es": "Este enlace de búsqueda no es válido. Indique el calado máximo como un número decimal simple en metros (por ejemplo 1.6) y/o una configuración de quilla admitida.",
 }
 
+#: SLICE-0057 buyer-requirement-sensitivity localized 400 recovery guidance
+#: (contract §11/§12), mirroring `_INVALID_SEARCH_REQUEST_MESSAGE` above --
+#: one factual, decision-neutral message per locale, independent of exactly
+#: which `SensitivityErrorKind` triggered it (the technical `error` code in
+#: the body stays language-neutral).
+_INVALID_SENSITIVITY_REQUEST_MESSAGE = {
+    "en": "This sensitivity request isn't valid. Choose one currently active requirement (maximum draft or keel configuration) and supply one replacement value for it.",
+    "de": "Diese Sensitivitätsanfrage ist ungültig. Wählen Sie eine derzeit aktive Anforderung (maximaler Tiefgang oder Kielkonfiguration) und geben Sie dafür einen Ersatzwert an.",
+    "fr": "Cette demande de sensibilité n'est pas valide. Choisissez une exigence actuellement active (tirant d'eau maximal ou configuration de quille) et indiquez une valeur de remplacement pour celle-ci.",
+    "pt": "Este pedido de sensibilidade não é válido. Escolha um requisito atualmente ativo (calado máximo ou configuração de quilha) e indique um valor de substituição para o mesmo.",
+    "es": "Esta solicitud de sensibilidad no es válida. Elija un requisito actualmente activo (calado máximo o configuración de quilla) e indique un valor de sustitución para él.",
+}
+
 
 def _serialize_leaf_criterion(criterion: MixedLeafCriterion) -> dict[str, Any]:
     """SLICE-0055: the requested value/comparison for one active criterion
@@ -300,6 +317,52 @@ def _serialize_configuration_evidence(evidence: Any) -> dict[str, Any]:
             _serialize_criterion_evidence(item) for item in evidence.criterion_evidence
         ],
     }
+
+
+def _serialize_sensitivity_requirement(
+    draft_max: Any, keel_configuration: str | None
+) -> dict[str, str]:
+    """SLICE-0057: sparse `current_requirement`/`alternative_requirement`
+    shape (contract §10), mirroring `get_search`'s own `active_requirement`
+    construction above -- `draft_max` and/or `keel_configuration`, never
+    neither (a `SensitivityResult` always carries at least one)."""
+    requirement: dict[str, str] = {}
+    if draft_max is not None:
+        requirement["draft_max"] = canonical_draft_max_str(draft_max)
+    if keel_configuration is not None:
+        requirement["keel_configuration"] = keel_configuration
+    return requirement
+
+
+def _parse_sensitivity_request_body(raw_body: Any) -> tuple[dict[str, str], str, str] | None:
+    """Parse the SLICE-0057 sensitivity request body (contract §5) into
+    `(current, changed_criterion, changed_value)`, or `None` for any
+    malformed shape -- an unknown top-level or `change` key, a non-string
+    value, or a missing `current`/`change` object all fail closed here,
+    before `hullq.application.search_sensitivity.
+    evaluate_requirement_sensitivity` ever sees the raw values (contract §5:
+    "never trusted"). Never validates *content* (numeric syntax, keel
+    vocabulary) -- that stays exclusively the application service's job."""
+    if not isinstance(raw_body, dict):
+        return None
+    if set(raw_body) - {"current", "change"}:
+        return None
+    current_raw = raw_body.get("current")
+    change_raw = raw_body.get("change")
+    if not isinstance(current_raw, dict) or not isinstance(change_raw, dict):
+        return None
+    if set(change_raw) - {"criterion", "value"}:
+        return None
+    current: dict[str, str] = {}
+    for key, value in current_raw.items():
+        if not isinstance(key, str) or not isinstance(value, str):
+            return None
+        current[key] = value
+    changed_criterion = change_raw.get("criterion")
+    changed_value = change_raw.get("value")
+    if not isinstance(changed_criterion, str) or not isinstance(changed_value, str):
+        return None
+    return current, changed_criterion, changed_value
 
 
 # Sent on every response from the preview surface only: a preview token is a
@@ -640,6 +703,69 @@ def create_app(
                 ],
                 "confirmed_match_count": search_outcome.confirmed_match_count,
                 "insufficient_data_count": search_outcome.insufficient_data_count,
+            }
+        )
+
+    @app.post("/api/search/{locale}/sensitivity")
+    async def post_search_sensitivity(locale: str, request: Request) -> Response:
+        # Mirrors get_search's own locale gate: unsupported-locale routing is
+        # decided before any body parsing/evaluation.
+        if locale not in _SUPPORTED_SEARCH_LOCALES:
+            raise HTTPException(status_code=404, detail="unsupported search locale")
+
+        raw_body = await _read_json_body(request, allow_empty=False)
+        parsed = _parse_sensitivity_request_body(raw_body)
+        if parsed is None:
+            return JSONResponse(
+                {
+                    "error": "invalid_sensitivity_request",
+                    "message": _INVALID_SENSITIVITY_REQUEST_MESSAGE[locale],
+                },
+                status_code=400,
+            )
+        current, changed_criterion, changed_value = parsed
+
+        conn = open_connection(resolved_database_url)
+        try:
+            outcome = evaluate_requirement_sensitivity(
+                conn,
+                locale=locale,
+                current=current,
+                changed_criterion=changed_criterion,
+                changed_value=changed_value,
+                as_of=_current_as_of(),
+            )
+        finally:
+            conn.close()
+
+        if outcome.kind is SensitivityOutcomeKind.INVALID:
+            return JSONResponse(
+                {
+                    "error": "invalid_sensitivity_request",
+                    "message": _INVALID_SENSITIVITY_REQUEST_MESSAGE[locale],
+                },
+                status_code=400,
+            )
+
+        assert outcome.result is not None
+        result = outcome.result
+        return JSONResponse(
+            {
+                "locale": result.locale,
+                "current_requirement": _serialize_sensitivity_requirement(
+                    result.current_draft_max, result.current_keel_configuration
+                ),
+                "alternative_requirement": _serialize_sensitivity_requirement(
+                    result.alternative_draft_max, result.alternative_keel_configuration
+                ),
+                "changed_criterion": result.changed_criterion,
+                "current_confirmed_match_count": result.current_confirmed_match_count,
+                "alternative_confirmed_match_count": result.alternative_confirmed_match_count,
+                "newly_confirmed_match_count": result.newly_confirmed_match_count,
+                "no_longer_confirmed_match_count": result.no_longer_confirmed_match_count,
+                "current_insufficient_data_count": result.current_insufficient_data_count,
+                "alternative_insufficient_data_count": result.alternative_insufficient_data_count,
+                "alternative_search_path": result.alternative_search_path,
             }
         )
 

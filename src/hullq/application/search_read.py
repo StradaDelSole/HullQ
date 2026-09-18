@@ -70,7 +70,13 @@ from hullq.search.draft_max_request import (
 )
 from hullq.search.keel_design_bridge import SEARCH_KEEL_CONFIGURATION_VALUES
 
-__all__ = ["SearchOutcomeKind", "SearchRequestOutcome", "evaluate_search_request"]
+__all__ = [
+    "SearchOutcomeKind",
+    "SearchRequestOutcome",
+    "build_canonical_search_path",
+    "evaluate_requirement_search_outcome",
+    "evaluate_search_request",
+]
 
 _DRAFT_MAX_KEY = "draft_max"
 _KEEL_CONFIGURATION_KEY = "keel_configuration"
@@ -125,6 +131,55 @@ class SearchRequestOutcome:
             raise ValueError(
                 "Only a RESULT outcome may carry draft_max/keel_configuration/search_outcome"
             )
+
+
+def build_canonical_search_path(
+    locale: str, *, draft_max: Decimal | None, keel_configuration: str | None
+) -> str:
+    """Build the one canonical, sparse, lexicographically-ordered public
+    Direct Search path for *locale* (`docs/
+    OQ_018_SEARCH_PARAMETER_ORDERING_DECISION_2026-09-11.md`): `draft_max`
+    before `keel_configuration`, only the active criteria included, `draft_max`
+    rendered through `canonical_draft_max_str`.
+
+    Shared by this module's own REDIRECT canonicalization and SLICE-0057's
+    buyer-requirement-sensitivity `alternative_search_path` (contract §9:
+    "The canonical path MUST be built/owned by the Python/FastAPI Search
+    boundary") -- the only place the exact canonical-URL construction rule
+    is expressed.
+    """
+    parts: list[str] = []
+    if draft_max is not None:
+        parts.append(f"{_DRAFT_MAX_KEY}={canonical_draft_max_str(draft_max)}")
+    if keel_configuration is not None:
+        parts.append(f"{_KEEL_CONFIGURATION_KEY}={keel_configuration}")
+    if not parts:
+        return f"/{locale}/search"
+    return f"/{locale}/search?{'&'.join(parts)}"
+
+
+def evaluate_requirement_search_outcome(
+    conn: Any, *, draft_max: Decimal | None, keel_configuration: str | None, as_of: datetime
+) -> DraftMaxSearchOutcome | NativeInventorySearchOutcome:
+    """Evaluate one already-canonical requirement through the accepted Search
+    truth: a pure `draft_max` requirement keeps the unmodified SLICE-0051
+    `evaluate_draft_max_requirement`; any requirement involving
+    `keel_configuration` uses the SLICE-0055
+    `evaluate_native_inventory_requirements` funnel instead (this module's
+    docstring explains why).
+
+    Shared by `evaluate_search_request` (below) and SLICE-0057's buyer-
+    requirement-sensitivity application service, so "one Search truth,
+    evaluated twice" (contract §6) is a literal call-site fact, not merely a
+    documented intent -- there is exactly one dispatch point between the two
+    accepted Search outcome types.
+    """
+    if keel_configuration is None:
+        assert draft_max is not None
+        return evaluate_draft_max_requirement(conn, draft_max, as_of=as_of)
+    return evaluate_native_inventory_requirements(
+        conn, draft_max=draft_max, keel_configuration=keel_configuration, as_of=as_of
+    )
 
 
 def evaluate_search_request(
@@ -206,25 +261,16 @@ def evaluate_search_request(
         keel_is_single_canonical = len(keel_raw_values) == 1
 
     if not (draft_is_single_canonical and keel_is_single_canonical and order_is_canonical):
-        parts = []
-        if draft_max is not None:
-            assert draft_canonical is not None
-            parts.append(f"{_DRAFT_MAX_KEY}={draft_canonical}")
-        if keel_configuration is not None:
-            parts.append(f"{_KEEL_CONFIGURATION_KEY}={keel_configuration}")
         return SearchRequestOutcome(
             kind=SearchOutcomeKind.REDIRECT,
-            canonical_path=f"/{locale}/search?{'&'.join(parts)}",
+            canonical_path=build_canonical_search_path(
+                locale, draft_max=draft_max, keel_configuration=keel_configuration
+            ),
         )
 
-    search_outcome: DraftMaxSearchOutcome | NativeInventorySearchOutcome
-    if keel_configuration is None:
-        assert draft_max is not None
-        search_outcome = evaluate_draft_max_requirement(conn, draft_max, as_of=as_of)
-    else:
-        search_outcome = evaluate_native_inventory_requirements(
-            conn, draft_max=draft_max, keel_configuration=keel_configuration, as_of=as_of
-        )
+    search_outcome = evaluate_requirement_search_outcome(
+        conn, draft_max=draft_max, keel_configuration=keel_configuration, as_of=as_of
+    )
     return SearchRequestOutcome(
         kind=SearchOutcomeKind.RESULT,
         draft_max=draft_max,

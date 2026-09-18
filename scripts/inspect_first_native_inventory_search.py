@@ -103,7 +103,7 @@ import uuid
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote, urlsplit, urlunsplit
+from urllib.parse import quote, urlencode, urlsplit, urlunsplit
 
 import psycopg
 
@@ -199,6 +199,17 @@ _SHALLOW_VARIANT_ID = "VAR-0051-E2E-SHALLOW-KEEL"
 _KEEL_DESIGN_ID = "BD-0056-E2E-KEEL"
 _KEEL_LISTING_ID = "NL-0056-E2E-KEEL"
 
+# SLICE-0057: a fourth design/listing (TWIN_KEEL, same 1.30 m baseline draft
+# as _KEEL_DESIGN_ID's FIN keel) so the sensitivity proof can exercise a
+# genuine same-total/different-membership `keel_configuration` swap: _KEEL_
+# DESIGN_ID is design-level CONFIRMED_NON_MATCH for a TWIN_KEEL query and
+# this design is design-level CONFIRMED_NON_MATCH for a FIN query, so
+# changing keel_configuration from FIN to TWIN_KEEL swaps which single
+# listing is confirmed rather than merely adding/removing one from a shared
+# pool (contract §8/§16 point 5).
+_TWIN_DESIGN_ID = "BD-0057-E2E-TWIN"
+_TWIN_LISTING_ID = "NL-0057-E2E-TWIN"
+
 _WIKIDATA_SOURCE: dict[str, Any] = json.loads(
     (REPO_ROOT / "fixtures" / "sources" / "wikidata_source.json").read_text(encoding="utf-8")
 )
@@ -264,6 +275,46 @@ def _wait_for_http(url: str, *, timeout_seconds: float = 15.0) -> bool:
 
 def _http_get(url: str) -> tuple[int, dict[str, str], bytes]:
     request = urllib.request.Request(url)
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            return response.status, dict(response.headers), response.read()
+    except urllib.error.HTTPError as exc:
+        return exc.code, dict(exc.headers or {}), exc.read()
+
+
+def _http_post_json(url: str, payload: dict[str, Any]) -> tuple[int, dict[str, str], bytes]:
+    """SLICE-0057: POST *payload* as JSON, mirroring `_http_get`'s manual
+    status/header/body capture (used against FastAPI's
+    `POST /api/{locale}/search/sensitivity` JSON contract)."""
+    data = json.dumps(payload).encode("utf-8")
+    request = urllib.request.Request(url, data=data, method="POST")
+    request.add_header("Content-Type", "application/json")
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            return response.status, dict(response.headers), response.read()
+    except urllib.error.HTTPError as exc:
+        return exc.code, dict(exc.headers or {}), exc.read()
+
+
+def _http_post_form(url: str, fields: dict[str, str]) -> tuple[int, dict[str, str], bytes]:
+    """SLICE-0057: POST *fields* as an ordinary
+    `application/x-www-form-urlencoded` browser form submission, mirroring
+    the exact transport the built Astro `/{locale}/search/sensitivity` page
+    receives from `SearchPageBody.astro`'s native `<form method="post">`.
+
+    Sends an explicit same-origin `Origin` header: Astro's built-in
+    cross-site POST-form protection (enabled by default for server-rendered
+    pages) rejects a state-changing form POST whose `Origin` does not match
+    the request's own host -- exactly what a real browser's own same-origin
+    form submission sends, and exactly what this deterministic HTTP client
+    must reproduce to observe genuine page behavior rather than a false
+    CSRF rejection.
+    """
+    origin_parts = urlsplit(url)
+    data = urlencode(fields).encode("utf-8")
+    request = urllib.request.Request(url, data=data, method="POST")
+    request.add_header("Content-Type", "application/x-www-form-urlencoded")
+    request.add_header("Origin", f"{origin_parts.scheme}://{origin_parts.netloc}")
     try:
         with urllib.request.urlopen(request, timeout=10) as response:
             return response.status, dict(response.headers), response.read()
@@ -611,6 +662,176 @@ def _admit_keel_design_field_resolutions(conn: Any) -> None:
     conn.commit()
 
 
+def _admit_twin_design_field_resolutions(conn: Any) -> None:
+    """SLICE-0057: durably admit `draft_max_m`/`keel_type` `resolved`
+    FieldResolutions on `BD-0057-E2E-TWIN`'s baseline -- the same 1.30 m
+    draft as `_admit_keel_design_field_resolutions`'s FIN design, but
+    `keel_type="twin"` (`TWIN_KEEL`). Mirrors that function exactly except
+    for the keel value/identifiers; see this module's docstring and the
+    `_TWIN_DESIGN_ID`/`_TWIN_LISTING_ID` comment for why a fourth design is
+    needed (the sensitivity same-total/different-membership proof)."""
+    draft_evidence_id = "EV-0057-E2E-TWIN-DRAFT"
+    draft_evidence = FieldEvidenceV3(
+        evidence_id=draft_evidence_id,
+        subject=ProvenanceSubject(kind=SubjectKind.BOAT_DESIGN, id=_TWIN_DESIGN_ID),
+        field_pointer=JsonPointer(DRAFT_MAX_FIELD_POINTER),
+        source_id=_WIKIDATA_SOURCE_ID,
+        source_locator=SourceLocator(
+            page=None, section=None, anchor=None, table=None, figure=None, record_key=None
+        ),
+        raw=RawObservation(
+            kind=RawObservationKind.STRUCTURED_RECORD, value="1.30", unit="m", excerpt=None
+        ),
+        normalized_candidate=NormalizedCandidate(
+            value="1.30", unit="m", method_id="proof-normalize", method_version="1"
+        ),
+        evidence_type=EvidenceType.STRUCTURED_DATASET,
+        producer=ProducerMetadata(
+            kind=ProducerKind.DETERMINISTIC_TOOL,
+            identifier="inspect_first_native_inventory_search",
+            version="1",
+            model=None,
+            prompt_or_rule_version=None,
+        ),
+        research_context=ResearchContext(research_job_id=None, activity_id=None),
+        observed_at="2026-09-18T00:00:00+00:00",
+        confidence=ConfidenceLevel.HIGH,
+        supersedes_evidence_id=None,
+        notes=None,
+        claim_semantics=ClaimSemantics.NOMINAL_DESIGN_VALUE,
+        applicability=ObservationApplicability(
+            first_year=None,
+            last_year=None,
+            hull_number_from=None,
+            hull_number_to=None,
+            market_or_region=None,
+            named_variant_hint=None,
+            design_option_hints=None,
+            operating_state_hint=None,
+            individual_hull_or_listing_ref=None,
+            unknown_or_unbounded=True,
+        ),
+    )
+    keel_evidence_id = "EV-0057-E2E-TWIN-TYPE"
+    keel_evidence = FieldEvidenceV3(
+        evidence_id=keel_evidence_id,
+        subject=ProvenanceSubject(kind=SubjectKind.BOAT_DESIGN, id=_TWIN_DESIGN_ID),
+        field_pointer=JsonPointer(KEEL_TYPE_FIELD_POINTER),
+        source_id=_WIKIDATA_SOURCE_ID,
+        source_locator=SourceLocator(
+            page=None, section=None, anchor=None, table=None, figure=None, record_key=None
+        ),
+        raw=RawObservation(
+            kind=RawObservationKind.STRUCTURED_RECORD, value="twin", unit=None, excerpt=None
+        ),
+        normalized_candidate=NormalizedCandidate(
+            value="twin", unit=None, method_id="proof-normalize", method_version="1"
+        ),
+        evidence_type=EvidenceType.STRUCTURED_DATASET,
+        producer=ProducerMetadata(
+            kind=ProducerKind.DETERMINISTIC_TOOL,
+            identifier="inspect_first_native_inventory_search",
+            version="1",
+            model=None,
+            prompt_or_rule_version=None,
+        ),
+        research_context=ResearchContext(research_job_id=None, activity_id=None),
+        observed_at="2026-09-18T00:00:00+00:00",
+        confidence=ConfidenceLevel.HIGH,
+        supersedes_evidence_id=None,
+        notes=None,
+        claim_semantics=ClaimSemantics.NOMINAL_DESIGN_VALUE,
+        applicability=ObservationApplicability(
+            first_year=None,
+            last_year=None,
+            hull_number_from=None,
+            hull_number_to=None,
+            market_or_region=None,
+            named_variant_hint=None,
+            design_option_hints=None,
+            operating_state_hint=None,
+            individual_hull_or_listing_ref=None,
+            unknown_or_unbounded=True,
+        ),
+    )
+    bundle = ResearchEvidenceBundle(
+        bundle_id="BUNDLE-0057-E2E",
+        bundle_version="1",
+        research_target=ResearchTarget(
+            manufacturer=None, model="twin-keel-design", first_built=None
+        ),
+        research_job_id=None,
+        activity_id=None,
+        observations=(),
+        unresolved_findings=(),
+        promoted_evidence=(draft_evidence, keel_evidence),
+        reference_crosschecks=(),
+    )
+    import_result = import_research_evidence_bundle(conn, bundle)
+    assert import_result.status.value in ("imported", "already_imported"), import_result
+    conn.commit()
+
+    draft_resolution = FieldResolution(
+        resolution_id="FR-0057-E2E-TWIN-DRAFT",
+        subject=ProvenanceSubject(kind=SubjectKind.BOAT_DESIGN, id=_TWIN_DESIGN_ID),
+        field_pointer=JsonPointer(DRAFT_MAX_FIELD_POINTER),
+        state=ResolutionState.RESOLVED,
+        canonical_value_snapshot=encode_canonical_decimal_snapshot(Decimal("1.30")),
+        supporting_evidence_ids=frozenset({draft_evidence_id}),
+        contradicting_evidence_ids=frozenset(),
+        considered_evidence_ids=frozenset({draft_evidence_id}),
+        resolution_method=ResolutionMethod.UNANIMOUS_EVIDENCE,
+        policy_version="proof-policy-1",
+        resolver=ResolverMetadata(
+            kind=ResolverKind.DETERMINISTIC_TOOL,
+            identifier="inspect_first_native_inventory_search",
+            version="1",
+        ),
+        resolved_at="2026-09-18T00:00:00+00:00",
+        supersedes_resolution_id=None,
+        notes=None,
+    )
+    draft_write_result = write_field_resolution(
+        conn,
+        resolution=draft_resolution,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=lookup_draft_max_canonical_value,
+        available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+    )
+    assert draft_write_result.status is FieldResolutionWriteStatus.CREATED, draft_write_result
+    conn.commit()
+
+    keel_resolution = FieldResolution(
+        resolution_id="FR-0057-E2E-TWIN-TYPE",
+        subject=ProvenanceSubject(kind=SubjectKind.BOAT_DESIGN, id=_TWIN_DESIGN_ID),
+        field_pointer=JsonPointer(KEEL_TYPE_FIELD_POINTER),
+        state=ResolutionState.RESOLVED,
+        canonical_value_snapshot="twin",
+        supporting_evidence_ids=frozenset({keel_evidence_id}),
+        contradicting_evidence_ids=frozenset(),
+        considered_evidence_ids=frozenset({keel_evidence_id}),
+        resolution_method=ResolutionMethod.UNANIMOUS_EVIDENCE,
+        policy_version="proof-policy-1",
+        resolver=ResolverMetadata(
+            kind=ResolverKind.DETERMINISTIC_TOOL,
+            identifier="inspect_first_native_inventory_search",
+            version="1",
+        ),
+        resolved_at="2026-09-18T00:00:00+00:00",
+        supersedes_resolution_id=None,
+        notes=None,
+    )
+    keel_write_result = write_field_resolution(
+        conn,
+        resolution=keel_resolution,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=lookup_keel_canonical_value,
+        available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+    )
+    assert keel_write_result.status is FieldResolutionWriteStatus.CREATED, keel_write_result
+    conn.commit()
+
+
 def _make_listing(
     conn: Any,
     *,
@@ -889,6 +1110,36 @@ def main() -> int:
                 "2c. seeded 1 ACTIVE keel/draft-qualified BoatDesign + listing "
                 f"({_KEEL_LISTING_ID}, FIN keel, 1.40 m draft) -> OK\n"
             )
+
+            # SLICE-0057: a fourth design/listing (TWIN_KEEL, same 1.30 m
+            # baseline draft) so the sensitivity proof can exercise a real
+            # same-total/different-membership keel_configuration swap
+            # against _KEEL_LISTING_ID (see _TWIN_DESIGN_ID's comment above).
+            _insert_boat_design(
+                conn,
+                _TWIN_DESIGN_ID,
+                "BM-0057-E2E-TWIN",
+                baseline_draft_max_m=1.30,
+                baseline_keel_type="twin",
+            )
+            _admit_twin_design_field_resolutions(conn)
+            _make_listing(
+                conn,
+                listing_id=_TWIN_LISTING_ID,
+                physical_boat_id="PB-0057-E2E-TWIN",
+                market_episode_id="ME-0057-E2E-TWIN",
+                boat_design_ref=BoatDesignRef(_TWIN_DESIGN_ID),
+                draft=DraftClaim(
+                    assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("1.40")
+                ),
+                keel=KeelConfigurationClaim(
+                    assertion_kind=AssertionKind.VALUE_ASSERTION, value=KeelConfiguration.TWIN_KEEL
+                ),
+            )
+            print(
+                "2d. seeded 1 ACTIVE keel/draft-qualified BoatDesign + listing "
+                f"({_TWIN_LISTING_ID}, TWIN_KEEL keel, 1.40 m draft) -> OK\n"
+            )
         finally:
             conn.close()
 
@@ -1159,7 +1410,260 @@ def main() -> int:
             f"{'OK' if step14_ok else 'FAIL'}\n"
         )
 
-        print(f"FIRST REQUIREMENTS -> NATIVE INVENTORY SEARCH RESULT -> {'PASS' if ok else 'FAIL'}")
+        print(
+            f"FIRST REQUIREMENTS -> NATIVE INVENTORY SEARCH RESULT -> {'PASS' if ok else 'FAIL'}\n"
+        )
+
+        # ---------------------------------------------------------------
+        # SLICE-0057: buyer-requirement-sensitivity real vertical proof
+        # (contract §16), extending the same retained PostgreSQL 18 ->
+        # FastAPI -> built Astro SSR proof above rather than a second
+        # script.
+        # ---------------------------------------------------------------
+        sensitivity_ok = True
+
+        # 15. A buyer-authored keel_configuration replacement (FIN ->
+        # TWIN_KEEL) is a genuine same-total/different-membership case:
+        # totals are equal (1 and 1) while the confirmed listing identity
+        # swaps entirely, proving newly_confirmed_match_count/
+        # no_longer_confirmed_match_count are real stable-ID set
+        # differences, never max(0, alternative_total - current_total)
+        # (contract §8's hard requirement, points 4/5/6). Insufficient-data
+        # counts stay identical (5) and separate under either keel value
+        # (point 7): the four ACTIVE SHALLOW/DEEP-family listings (keel_type
+        # never resolved there at all) PLUS the one design that resolves a
+        # *different* keel value than requested -- this repo's design/
+        # configuration bridge always builds an incomplete configuration
+        # space (`configuration_space_complete=False`,
+        # `hullq.search.boat_design_field_bridge.
+        # build_boat_design_configuration_set`), so a design-level FALSE
+        # alone never yields CONFIRMED_NON_MATCH, only INSUFFICIENT_DATA --
+        # a confirmed-different keel value is therefore counted as
+        # insufficient evidence for *this* query, exactly like a missing
+        # one, never a negative match claim.
+        keel_swap_status, _, keel_swap_body = _http_post_json(
+            f"{api_base}/api/search/en/sensitivity",
+            {
+                "current": {"keel_configuration": "FIN"},
+                "change": {"criterion": "keel_configuration", "value": "TWIN_KEEL"},
+            },
+        )
+        keel_swap = json.loads(keel_swap_body.decode("utf-8")) if keel_swap_status == 200 else {}
+        step15_ok = (
+            keel_swap_status == 200
+            and keel_swap.get("current_confirmed_match_count") == 1
+            and keel_swap.get("alternative_confirmed_match_count") == 1
+            and keel_swap.get("newly_confirmed_match_count") == 1
+            and keel_swap.get("no_longer_confirmed_match_count") == 1
+            and keel_swap.get("current_insufficient_data_count") == 5
+            and keel_swap.get("alternative_insufficient_data_count") == 5
+            and keel_swap.get("alternative_search_path")
+            == "/en/search?keel_configuration=TWIN_KEEL"
+        )
+        sensitivity_ok &= step15_ok
+        print(
+            "15. keel_configuration sensitivity FIN -> TWIN_KEEL: same-total "
+            "(1/1) different-membership set-difference (newly=1, no_longer=1), "
+            f"insufficient-data stays separate (5/5) -> {'OK' if step15_ok else 'FAIL'}"
+        )
+
+        # 16. Mixed current requirement (draft_max=1.6 & keel_configuration=
+        # FIN, confirmed only by NL-0056-E2E-KEEL): changing draft_max to
+        # 1.2 while keel_configuration is preserved exactly removes that
+        # confirmed match (its own baseline draft is 1.30 m > 1.2 m) --
+        # "mixed Search can change draft while preserving keel exactly".
+        draft_change_status, _, draft_change_body = _http_post_json(
+            f"{api_base}/api/search/en/sensitivity",
+            {
+                "current": {"draft_max": "1.6", "keel_configuration": "FIN"},
+                "change": {"criterion": "draft_max", "value": "1.2"},
+            },
+        )
+        draft_change = (
+            json.loads(draft_change_body.decode("utf-8")) if draft_change_status == 200 else {}
+        )
+        step16_ok = (
+            draft_change_status == 200
+            and draft_change.get("current_confirmed_match_count") == 1
+            and draft_change.get("alternative_confirmed_match_count") == 0
+            and draft_change.get("no_longer_confirmed_match_count") == 1
+            and draft_change.get("newly_confirmed_match_count") == 0
+            and draft_change.get("alternative_requirement")
+            == {"draft_max": "1.2", "keel_configuration": "FIN"}
+        )
+        sensitivity_ok &= step16_ok
+        print(
+            "16. mixed sensitivity: draft_max 1.6 -> 1.2 removes the one confirmed "
+            "match, keel_configuration=FIN preserved exactly -> "
+            f"{'OK' if step16_ok else 'FAIL'}"
+        )
+
+        # 17. Same mixed current requirement: changing keel_configuration to
+        # TWIN_KEEL while draft_max is preserved exactly swaps the confirmed
+        # listing to NL-0057-E2E-TWIN -- "mixed Search can change keel while
+        # preserving draft exactly".
+        keel_change_status, _, keel_change_body = _http_post_json(
+            f"{api_base}/api/search/en/sensitivity",
+            {
+                "current": {"draft_max": "1.6", "keel_configuration": "FIN"},
+                "change": {"criterion": "keel_configuration", "value": "TWIN_KEEL"},
+            },
+        )
+        keel_change = (
+            json.loads(keel_change_body.decode("utf-8")) if keel_change_status == 200 else {}
+        )
+        step17_ok = (
+            keel_change_status == 200
+            and keel_change.get("current_confirmed_match_count") == 1
+            and keel_change.get("alternative_confirmed_match_count") == 1
+            and keel_change.get("alternative_requirement")
+            == {"draft_max": "1.6", "keel_configuration": "TWIN_KEEL"}
+            and keel_change.get("alternative_search_path")
+            == "/en/search?draft_max=1.6&keel_configuration=TWIN_KEEL"
+        )
+        sensitivity_ok &= step17_ok
+        print(
+            "17. mixed sensitivity: keel_configuration FIN -> TWIN_KEEL swaps the "
+            "confirmed match, draft_max=1.6 preserved exactly, exact canonical "
+            f"alternative_search_path -> {'OK' if step17_ok else 'FAIL'}"
+        )
+
+        # 18. Same-value proposal ("FIN" again) is a deterministic zero
+        # delta -- never an error, never reworded as advice.
+        same_value_status, _, same_value_body = _http_post_json(
+            f"{api_base}/api/search/en/sensitivity",
+            {
+                "current": {"keel_configuration": "FIN"},
+                "change": {"criterion": "keel_configuration", "value": "FIN"},
+            },
+        )
+        same_value = json.loads(same_value_body.decode("utf-8")) if same_value_status == 200 else {}
+        step18_ok = (
+            same_value_status == 200
+            and same_value.get("current_confirmed_match_count")
+            == same_value.get("alternative_confirmed_match_count")
+            and same_value.get("newly_confirmed_match_count") == 0
+            and same_value.get("no_longer_confirmed_match_count") == 0
+        )
+        sensitivity_ok &= step18_ok
+        print(
+            f"18. same-value proposal -> deterministic zero delta -> {'OK' if step18_ok else 'FAIL'}"
+        )
+
+        # 19. The changed criterion must already be active in `current`.
+        inactive_status, _, _ = _http_post_json(
+            f"{api_base}/api/search/en/sensitivity",
+            {
+                "current": {"draft_max": "1.6"},
+                "change": {"criterion": "keel_configuration", "value": "FIN"},
+            },
+        )
+        step19_ok = inactive_status == 400
+        sensitivity_ok &= step19_ok
+        print(
+            "19. changed criterion absent from current Search -> 400, no "
+            f"sensitivity claim -> {'OK' if step19_ok else 'FAIL'}"
+        )
+
+        # 20. Malformed proposed draft_max -> 400.
+        malformed_draft_status, _, _ = _http_post_json(
+            f"{api_base}/api/search/en/sensitivity",
+            {"current": {"draft_max": "1.6"}, "change": {"criterion": "draft_max", "value": "1e0"}},
+        )
+        step20_ok = malformed_draft_status == 400
+        sensitivity_ok &= step20_ok
+        print(f"20. malformed proposed draft_max -> 400 -> {'OK' if step20_ok else 'FAIL'}")
+
+        # 21. Unsupported/tampered proposed keel_configuration -> 400.
+        unsupported_keel_status, _, _ = _http_post_json(
+            f"{api_base}/api/search/en/sensitivity",
+            {
+                "current": {"keel_configuration": "FIN"},
+                "change": {"criterion": "keel_configuration", "value": "LONG_KEEL"},
+            },
+        )
+        step21_ok = unsupported_keel_status == 400
+        sensitivity_ok &= step21_ok
+        print(
+            "21. unsupported/tampered proposed keel_configuration -> 400 -> "
+            f"{'OK' if step21_ok else 'FAIL'}"
+        )
+
+        # 22. Posting through the built locale Astro sensitivity page (not
+        # the bare FastAPI JSON route) renders the factual delta and the
+        # exact canonical alternative Search link -- the same FIN ->
+        # TWIN_KEEL swap as step 15, this time via the real native browser
+        # POST target `SearchPageBody.astro`'s sensitivity form submits to.
+        web_sensitivity_status, web_sensitivity_headers, web_sensitivity_body = _http_post_form(
+            f"{web_base}/en/search/sensitivity",
+            {
+                "current_keel_configuration": "FIN",
+                "changed_criterion": "keel_configuration",
+                "changed_value": "TWIN_KEEL",
+            },
+        )
+        web_sensitivity_headers_lower = {k.lower(): v for k, v in web_sensitivity_headers.items()}
+        web_sensitivity_text = web_sensitivity_body.decode("utf-8")
+        step22_ok = (
+            web_sensitivity_status == 200
+            and web_sensitivity_headers_lower.get("x-robots-tag") == "noindex"
+            and 'href="/en/search?keel_configuration=TWIN_KEEL"' in web_sensitivity_text
+            and 'aria-label="newly confirmed"' in web_sensitivity_text
+            and 'aria-label="no longer confirmed"' in web_sensitivity_text
+            and "recommended" not in web_sensitivity_text.lower()
+            and "optimal" not in web_sensitivity_text.lower()
+        )
+        sensitivity_ok &= step22_ok
+        if not step22_ok:
+            print(
+                f"DEBUG step22 status={web_sensitivity_status} "
+                f"headers={web_sensitivity_headers_lower} body={web_sensitivity_text[:2000]!r}",
+                file=sys.stderr,
+            )
+        print(
+            "22. built Astro /en/search/sensitivity POST renders the factual "
+            "delta and the exact canonical alternative Search link, noindex, "
+            f"no recommendation language -> {'OK' if step22_ok else 'FAIL'}"
+        )
+
+        # 23. Ordinary Direct Search behavior is unchanged by the sensitivity
+        # feature and its extra fixtures: the exact keel-only query from step
+        # 10 still confirms exactly NL-0056-E2E-KEEL (the new TWIN_KEEL
+        # design/listing never leaks in as a FIN match).
+        regression_status, _, regression_body = _http_get(
+            f"{web_base}/en/search?keel_configuration=FIN"
+        )
+        regression_text = regression_body.decode("utf-8")
+        step23_ok = (
+            regression_status == 200
+            and f"/listings/{_KEEL_LISTING_ID}" in regression_text
+            and _TWIN_LISTING_ID not in regression_text
+        )
+        sensitivity_ok &= step23_ok
+        print(
+            "23. ordinary /en/search?keel_configuration=FIN behavior is unchanged "
+            f"by the sensitivity feature -> {'OK' if step23_ok else 'FAIL'}"
+        )
+
+        # 24. A direct GET to the POST-only sensitivity page never
+        # manufactures a sensitivity result (contract §13).
+        get_sensitivity_status, _, get_sensitivity_body = _http_get(
+            f"{web_base}/en/search/sensitivity"
+        )
+        get_sensitivity_text = get_sensitivity_body.decode("utf-8")
+        step24_ok = (
+            get_sensitivity_status >= 400
+            and "newly confirmed" not in get_sensitivity_text
+            and "TWIN_KEEL" not in get_sensitivity_text
+        )
+        sensitivity_ok &= step24_ok
+        print(
+            "24. direct GET to /en/search/sensitivity never manufactures a "
+            f"sensitivity result -> {'OK' if step24_ok else 'FAIL'}\n"
+        )
+
+        ok &= sensitivity_ok
+        print(f"BUYER REQUIREMENT SENSITIVITY RESULT -> {'PASS' if sensitivity_ok else 'FAIL'}")
         return 0 if ok else 1
     finally:
         for proc in (api_proc, web_proc):

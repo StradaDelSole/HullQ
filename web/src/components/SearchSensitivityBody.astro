@@ -1,0 +1,125 @@
+---
+// SLICE-0057: the one shared buyer-requirement-sensitivity page
+// presentation for every supported locale. Purely presentational -- props
+// in, HTML out, mirrors `SearchPageBody.astro`'s own boundary exactly. It
+// never fetches anything and never mutates `Astro.response`: those calls
+// happen in the top-level page's own frontmatter, before this component
+// ever renders. Renders only FastAPI's own decision/result (contract §12)
+// -- never re-evaluates Search truth or independently rebuilds the
+// canonical alternative Search path.
+import type { SearchSensitivityPageData } from "../lib/searchSensitivityPageData";
+import { searchText, type SupportedLocale } from "../lib/searchText";
+
+interface Props {
+  locale: SupportedLocale;
+  /** `null` only for a direct GET to this POST-only page (contract §13). */
+  data: SearchSensitivityPageData | null;
+}
+
+const { locale, data } = Astro.props;
+const t = searchText[locale];
+
+function keelLabel(value: string): string {
+  return (t.keelConfigurationLabels as Record<string, string>)[value] ?? value;
+}
+---
+
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>{t.sensitivityPageTitle}</title>
+  </head>
+  <body>
+    {
+      data === null ? (
+        <main>
+          <h1>{t.sensitivityMethodNotAllowedTitle}</h1>
+          <p>{t.sensitivityMethodNotAllowedMessage}</p>
+          <p>
+            <a href={`/${locale}/search`}>{t.startOver}</a>
+          </p>
+        </main>
+      ) : data.kind === "invalid" ? (
+        <main>
+          <h1>{t.sensitivityInvalidTitle}</h1>
+          <p>{data.message ?? t.sensitivityInvalidFallback}</p>
+          <p>
+            <a href={`/${locale}/search`}>{t.startOver}</a>
+          </p>
+        </main>
+      ) : data.kind === "unavailable" ? (
+        <main>
+          <h1>{t.sensitivityServiceUnavailableTitle}</h1>
+          <p>{t.sensitivityServiceUnavailableMessage}</p>
+        </main>
+      ) : (
+        <main>
+          <h1>{t.sensitivityPageTitle}</h1>
+
+          <section aria-label="current requirement">
+            <h2>{t.sensitivityCurrentHeading}</h2>
+            <ul>
+              {data.result.current_requirement.draft_max !== undefined && (
+                <li>
+                  {t.draftMaxLabel}: {data.result.current_requirement.draft_max}
+                </li>
+              )}
+              {data.result.current_requirement.keel_configuration !== undefined && (
+                <li>
+                  {t.keelConfigurationLabel}: {keelLabel(data.result.current_requirement.keel_configuration)}
+                </li>
+              )}
+            </ul>
+            <p aria-label="current confirmed">
+              {t.sensitivityCurrentConfirmedLabel(data.result.current_confirmed_match_count)}
+            </p>
+            {data.result.current_insufficient_data_count > 0 && (
+              <p aria-label="current insufficient data">
+                {t.sensitivityCurrentInsufficientLabel(data.result.current_insufficient_data_count)}
+              </p>
+            )}
+          </section>
+
+          <section aria-label="alternative requirement">
+            <h2>{t.sensitivityAlternativeHeading}</h2>
+            <ul>
+              {data.result.alternative_requirement.draft_max !== undefined && (
+                <li>
+                  {t.draftMaxLabel}: {data.result.alternative_requirement.draft_max}
+                </li>
+              )}
+              {data.result.alternative_requirement.keel_configuration !== undefined && (
+                <li>
+                  {t.keelConfigurationLabel}: {keelLabel(data.result.alternative_requirement.keel_configuration)}
+                </li>
+              )}
+            </ul>
+            <p aria-label="alternative confirmed">
+              {t.sensitivityAlternativeConfirmedLabel(data.result.alternative_confirmed_match_count)}
+            </p>
+            {data.result.alternative_insufficient_data_count > 0 && (
+              <p aria-label="alternative insufficient data">
+                {t.sensitivityAlternativeInsufficientLabel(data.result.alternative_insufficient_data_count)}
+              </p>
+            )}
+          </section>
+
+          <section aria-label="sensitivity delta">
+            <p aria-label="newly confirmed">
+              {t.sensitivityNewlyConfirmedLabel(data.result.newly_confirmed_match_count)}
+            </p>
+            <p aria-label="no longer confirmed">
+              {t.sensitivityNoLongerConfirmedLabel(data.result.no_longer_confirmed_match_count)}
+            </p>
+          </section>
+
+          <p>
+            <a href={data.result.alternative_search_path}>{t.sensitivityViewAlternativeSearch}</a>
+          </p>
+        </main>
+      )
+    }
+  </body>
+</html>

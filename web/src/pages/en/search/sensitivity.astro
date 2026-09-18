@@ -1,0 +1,43 @@
+---
+// SLICE-0057: English locale-prefixed buyer-requirement-sensitivity
+// surface. POST-only companion to ../search.astro (contract §12/§13) --
+// response-mutating decisions happen here, in the top-level page's own
+// frontmatter; presentation itself lives in the shared
+// SearchSensitivityBody.astro component. This page forwards the posted
+// form's raw values to FastAPI and renders only FastAPI's own result --
+// it never evaluates Search truth or builds a canonical Search URL itself.
+export const prerender = false;
+import SearchSensitivityBody from "../../../components/SearchSensitivityBody.astro";
+import {
+  loadSearchSensitivityPageData,
+  type SearchSensitivityPageData,
+} from "../../../lib/searchSensitivityPageData";
+
+const locale = "en" as const;
+// `process.env`, not `import.meta.env`: mirrors ../search.astro's own
+// convention (see that file for why).
+const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
+
+// SLICE-0057 contract §13: this POST result page is deliberately noindex,
+// exactly like the ordinary Search surface.
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+
+let data: SearchSensitivityPageData | null = null;
+
+if (Astro.request.method === "POST") {
+  const formData = await Astro.request.formData();
+  data = await loadSearchSensitivityPageData(apiBaseUrl, locale, formData);
+  if (data.kind === "invalid") {
+    Astro.response.status = 400;
+  } else if (data.kind === "unavailable") {
+    // A backend/network failure is not a malformed buyer requirement -- its
+    // own 5xx status, never 400 (mirrors ../search.astro's own rule).
+    Astro.response.status = 503;
+  }
+} else {
+  // Contract §13: a direct GET must never manufacture a sensitivity result.
+  Astro.response.status = 405;
+}
+---
+
+<SearchSensitivityBody locale={locale} data={data} />
