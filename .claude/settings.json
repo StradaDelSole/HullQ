@@ -83,7 +83,17 @@
       "PowerShell(git checkout main *)",
       "PowerShell(Remove-Item *)",
       "PowerShell(uv run alembic downgrade *)",
-      "PowerShell(docker compose down -v *)"
+      "PowerShell(docker compose down -v *)",
+      "Bash(git push *:main*)",
+      "Bash(git push *--delete*)",
+      "Bash(git commit --amend *)",
+      "Bash(git branch -D *)",
+      "Bash(git branch -d *)",
+      "PowerShell(git push *:main*)",
+      "PowerShell(git push *--delete*)",
+      "PowerShell(git commit --amend *)",
+      "PowerShell(git branch -D *)",
+      "PowerShell(git branch -d *)"
     ],
     "deny": [
       "Read(.env)",
