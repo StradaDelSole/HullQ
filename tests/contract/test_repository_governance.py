@@ -2,6 +2,7 @@ from pathlib import Path
 
 from hullq.contracts import ContractRegistry
 from scripts.validate_repository import (
+    claude_approval_autonomy_check,
     no_active_drafts_check,
     requirements_check,
     trigger_gate_state_check,
@@ -24,6 +25,10 @@ def test_every_requirement_has_one_acceptance_criterion() -> None:
 
 def test_active_specs_contain_no_draft_files() -> None:
     no_active_drafts_check()
+
+
+def test_claude_approval_autonomy_configuration_is_valid() -> None:
+    claude_approval_autonomy_check()
 
 
 def test_post_0051_trigger_gate_state_is_valid() -> None:
