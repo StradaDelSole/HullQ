@@ -16,6 +16,7 @@ POST_0051_TRIGGER_GATES = ROOT / "docs" / "governance" / "POST_0051_TRIGGER_GATE
 PRODUCTION_READINESS_GATE = ROOT / "docs" / "governance" / "PRODUCTION_READINESS_GATE.md"
 CLAUDE_SETTINGS = ROOT / ".claude" / "settings.json"
 CLAUDE_COMMAND_GUARD = ROOT / "scripts" / "workflow" / "claude_command_guard.py"
+CLAUDE_DIAG = ROOT / "scripts" / "workflow" / "claude_diag.py"
 
 _PROJECT_STATE_ACCEPTED_RE = re.compile(r"<!--\s*PROJECT_STATE_ACCEPTED_SLICE:\s*(\d{4})\s*-->")
 _PROJECT_STATE_QUEUE_RE = re.compile(r"<!--\s*PROJECT_STATE_QUEUE_SLICE:\s*(\d{4})\s*-->")
@@ -111,6 +112,7 @@ def claude_approval_autonomy_check(
     *,
     settings_path: Path = CLAUDE_SETTINGS,
     guard_path: Path = CLAUDE_COMMAND_GUARD,
+    diag_path: Path = CLAUDE_DIAG,
 ) -> None:
     """Require the shared mechanical guard that prevents routine approval stalls."""
 
@@ -118,6 +120,8 @@ def claude_approval_autonomy_check(
         raise ValueError("Missing project-level .claude/settings.json")
     if not guard_path.is_file():
         raise ValueError("Missing scripts/workflow/claude_command_guard.py")
+    if not diag_path.is_file():
+        raise ValueError("Missing scripts/workflow/claude_diag.py")
 
     try:
         settings = json.loads(settings_path.read_text(encoding="utf-8"))
