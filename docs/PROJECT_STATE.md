@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0055 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0056 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0056 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0057 -->
 
 **Updated:** 2026-09-18  
-**Latest owner-accepted / DONE slice:** SLICE-0055  
-**Current queue:** SLICE-0056 — **Public Multi-Criterion Direct Search Browser Completion**; corrective readiness prepared to close the accepted SLICE-0055 browser/API projection regression.  
+**Latest owner-accepted / DONE slice:** SLICE-0056  
+**Current queue:** SLICE-0057 — **BLOCKED pending mandatory workflow reassessment**; no SLICE-0057 capability is selected or authorized while `WORKFLOW_REASSESSMENT_STATUS: DUE`.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -119,6 +119,7 @@ SLICE-0040 marketplace identity/truth separation
 → SLICE-0053 authenticated Broker Workspace access boundary
 → SLICE-0054 authenticated Owner-Direct Listing Draft Workspace
 → SLICE-0055 second technical native Search criterion (`keel_configuration`) + mixed-criterion typed evidence
+→ SLICE-0056 public multi-criterion Direct Search browser completion
 ```
 
 Latest closures:
@@ -128,6 +129,7 @@ docs/slices/SLICE-0052-acceptance-closure.md
 docs/slices/SLICE-0053-acceptance-closure.md
 docs/slices/SLICE-0054-acceptance-closure.md
 docs/slices/SLICE-0055-acceptance-closure.md
+docs/slices/SLICE-0056-acceptance-closure.md
 ```
 
 ## Accepted technical Search result
@@ -153,7 +155,7 @@ Canonical records remain `docs/governance/POST_0051_TRIGGER_GATES.md`, `docs/gov
 POST_0051_ARCHITECTURE_RECONCILIATION: PASS
 TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 2
 WORKFLOW_REASSESSMENT_DUE_AFTER_SLICE: 0056
-WORKFLOW_REASSESSMENT_STATUS: NOT_DUE
+WORKFLOW_REASSESSMENT_STATUS: DUE
 
 PRODUCTION_READINESS_GATE_STATUS: NOT_TRIGGERED
 EXTERNAL_BROKER_PRODUCTION_DATA_STATUS: NOT_PRESENT
@@ -166,7 +168,7 @@ BROKER_SELF_SERVICE_PILOT_STATUS: NOT_STARTED
 PAID_BROKER_PLAN_STATUS: NOT_STARTED
 ```
 
-SLICE-0055 used internal/synthetic retained proof and introduced no real external marketplace production data, production pilot or public production launch. The Production Readiness gate therefore remains untriggered after acceptance. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA/production-readiness rules remain mandatory.
+SLICE-0056 used internal/synthetic retained proof and introduced no real external marketplace production data, production pilot or public production launch. The Production Readiness gate therefore remains untriggered after acceptance. The mandatory workflow reassessment is now `DUE` and blocks SLICE-0057 readiness/start until separately completed and owner-accepted. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA/production-readiness rules remain mandatory.
 
 ## Broker Mandatory Capability Register
 
@@ -189,7 +191,7 @@ REQ_BROKER_029_STATUS: PENDING
 REQ_BROKER_030_STATUS: IMPLEMENTED
 ```
 
-SLICE-0055 changes none of these statuses and waives no professional-product obligation. Broker Search-exclusion intelligence remains tied to REQ-BROKER-025 and its sufficient-Search-volume/privacy trigger; criterion-level evidence created by 0055 does not itself implement that broker feature.
+SLICE-0056 changes none of these statuses and waives no professional-product obligation. Broker Search-exclusion intelligence remains tied to REQ-BROKER-025 and its sufficient-Search-volume/privacy trigger; criterion-level evidence created by 0055 does not itself implement that broker feature.
 
 ## Architecture and production direction
 
@@ -205,24 +207,27 @@ The SLICE-0053 same-host session-topology invariant remains in force for browser
 
 Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; broker inventory workflow, branding/media and resilient drafts; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability and sensitivity; BuyerRequirements persistence; shortlist/Compare/sharing; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-SLICE-0055 is now accepted. No SLICE-0056 capability has been selected or allocated.
+SLICE-0056 is now accepted. No SLICE-0057 capability has been selected or allocated; workflow reassessment is mandatory first.
 
 ## Next capability selection
 
 Next queue number:
 
 ```text
-SLICE-0056
+SLICE-0057
 ```
 
-**Selected capability:** Public Multi-Criterion Direct Search Browser Completion.
+**Selected capability:** NONE — BLOCKED BY MANDATORY WORKFLOW REASSESSMENT.
 
-Post-SLICE-0055 reconciliation found a `CONFLICT_OR_REGRESSION`: the accepted SLICE-0055 FastAPI/application path supports keel-only and draft+keel Search, but the canonical Astro/TypeScript public Search surface still models the older SLICE-0051 draft-only response/form. SLICE-0056 owns only that corrective browser/API projection gap; it does not add a new Search criterion or new buyer/seller semantics.
+SLICE-0056 acceptance triggers the evidence-based workflow reassessment defined in `docs/governance/POST_0051_TRIGGER_GATES.md`.
 
-Readiness artifact: `docs/slices/SLICE-0056-public-multicriterion-search-browser-completion.md`.
-Reassessment: `docs/POST_SLICE_0055_REASSESSMENT_2026-09-18.md`.
+Current gate:
 
-Implementation remains unauthorized until the readiness package passes independent exact-head review/CI and is merged to canonical `main`.
+```text
+WORKFLOW_REASSESSMENT_STATUS: DUE
+```
+
+No SLICE-0057 capability may be readied or started while this marker is `DUE`. The reassessment must examine actual post-SLICE-0051 review/amendment evidence, be explicitly owner-accepted, and move the canonical marker to `PASS` before SLICE-0057 readiness/start.
 
 ## Development workflow
 
@@ -237,6 +242,6 @@ Implementation remains unauthorized until the readiness package passes independe
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- workflow reassessment becomes mandatory after accepted SLICE-0056 or before an earlier real production pilot, whichever comes first.
+- workflow reassessment is now mandatory and `DUE`; SLICE-0057 readiness/start is blocked until the reassessment is owner-accepted and the marker becomes `PASS`.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.

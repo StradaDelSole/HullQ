@@ -7,7 +7,7 @@
 <!-- POST_0051_ARCHITECTURE_RECONCILIATION: PASS -->
 <!-- TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 2 -->
 <!-- WORKFLOW_REASSESSMENT_DUE_AFTER_SLICE: 0056 -->
-<!-- WORKFLOW_REASSESSMENT_STATUS: NOT_DUE -->
+<!-- WORKFLOW_REASSESSMENT_STATUS: DUE -->
 
 ## Purpose
 
@@ -139,7 +139,7 @@ This applies across broker and private inventory. Payment for verification may p
 
 ## Gate 4 — workflow-overhead reassessment
 
-The current independent readiness/exact-head/owner-acceptance/closure workflow remains unchanged now. SLICE-0051 and later reviews demonstrated that the process finds material defects, so it must not be weakened speculatively.
+**Current status: DUE.** SLICE-0056 is owner-accepted, so the five-slice trigger has fired. The current independent readiness/exact-head/owner-acceptance/closure workflow remains unchanged until the evidence-based reassessment is completed and owner-accepted. SLICE-0051 and later reviews demonstrated that the process finds material defects, so it must not be weakened speculatively.
 
 A mandatory workflow reassessment becomes due at the earlier of:
 
@@ -208,10 +208,10 @@ A readiness package may not rely on the superseded broker-only/FSBO-out-of-scope
 
 These gates constrain execution; they do not choose the next product capability.
 
-Current queue after accepted SLICE-0055 is:
+Current queue after accepted SLICE-0056 is:
 
 ```text
-SLICE-0056
+SLICE-0057
 ```
 
-Queue number does **not** select a capability. SLICE-0056 selection requires fresh post-SLICE-0055 reconciliation against canonical `origin/main`, accepted product obligations, the Broker Workspace Mandatory Capability Register, these trigger gates and applicable owner-direct requirements.
+Queue number does **not** select a capability. `WORKFLOW_REASSESSMENT_STATUS: DUE` blocks SLICE-0057 readiness/start. Before any SLICE-0057 capability is selected/readied for implementation, the evidence-based workflow reassessment must be completed, explicitly owner-accepted, and the canonical marker changed to `PASS`.

@@ -82,3 +82,61 @@ test("fetchSearch: network failure collapses to status 502, never throws", async
   assert.equal(response.invalid, null);
   assert.equal(response.location, null);
 });
+
+// SLICE-0056: keel-only/mixed 200 result bodies carry the SLICE-0055 typed
+// `criterion_evidence` shape (contract §D) rather than `resolved_draft_m` --
+// `fetchSearch` classifies the real HTTP status only and must pass this
+// shape through unmodified, exactly as it already does for the draft-only
+// shape above.
+test("fetchSearch: keel-only 200 result body (SLICE-0055 typed-evidence shape) is surfaced as `result`", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          locale: "en",
+          active_requirement: { keel_configuration: "FIN" },
+          confirmed_matches: [
+            {
+              native_listing_id: "NL-1",
+              publishing_organization_id: "ORG-1",
+              freshness_status: "CONFIRMED",
+              last_confirmed_at: null,
+              design_evaluation: { design_id: "BD-1", result_class: "CONFIRMED_MATCH", matching_configuration_ids: ["BD-1::baseline"], reason: null },
+              design_configuration_evidence: [],
+              criterion_evidence: [
+                {
+                  criterion: { kind: "CATEGORICAL", field: "keel_configuration", equals: "FIN" },
+                  field: "keel_configuration",
+                  truth: "TRUE",
+                  reason: null,
+                  explanation: "matched",
+                  observed_value: "FIN",
+                },
+              ],
+            },
+          ],
+          confirmed_match_count: 1,
+          insufficient_data_count: 0,
+        }),
+      );
+    },
+    async (baseUrl) => {
+      const response = await fetchSearch(baseUrl, "en", "keel_configuration=FIN");
+      assert.equal(response.status, 200);
+      assert.deepEqual(response.result?.active_requirement, { keel_configuration: "FIN" });
+      const matches = response.result?.confirmed_matches ?? [];
+      assert.equal(matches.length, 1);
+      assert.deepEqual((matches[0] as { criterion_evidence: unknown }).criterion_evidence, [
+        {
+          criterion: { kind: "CATEGORICAL", field: "keel_configuration", equals: "FIN" },
+          field: "keel_configuration",
+          truth: "TRUE",
+          reason: null,
+          explanation: "matched",
+          observed_value: "FIN",
+        },
+      ]);
+    },
+  );
+});

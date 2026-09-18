@@ -243,3 +243,116 @@ def test_mixed_request_with_invalid_keel_value_is_invalid_even_with_valid_draft(
         as_of=_AS_OF,
     )
     assert outcome.kind is SearchOutcomeKind.INVALID
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0056 independent review Finding 2: canonical parameter *order*
+# (docs/OQ_018_SEARCH_PARAMETER_ORDERING_DECISION_2026-09-11.md,
+# docs/OQ_018_SEARCH_NONCANONICAL_REDIRECT_DECISION_2026-09-11.md)
+# ---------------------------------------------------------------------------
+
+
+def test_canonical_mixed_order_remains_result(monkeypatch) -> None:
+    import hullq.application.search_read as module
+
+    sentinel_outcome = object()
+    monkeypatch.setattr(
+        module,
+        "evaluate_native_inventory_requirements",
+        lambda conn, *, draft_max, keel_configuration, as_of: sentinel_outcome,
+    )
+
+    # dict literal insertion order is itself the incoming raw key order here
+    # -- draft_max before keel_configuration is already canonical.
+    outcome = evaluate_search_request(
+        object(),
+        locale="en",
+        query_params={"draft_max": ["1.6"], "keel_configuration": ["FIN"]},
+        as_of=_AS_OF,
+    )
+    assert outcome.kind is SearchOutcomeKind.RESULT
+    assert outcome.search_outcome is sentinel_outcome
+
+
+def test_reversed_valid_mixed_order_redirects_to_canonical_order() -> None:
+    outcome = evaluate_search_request(
+        None,
+        locale="en",
+        query_params={"keel_configuration": ["FIN"], "draft_max": ["1.6"]},
+        as_of=_AS_OF,
+    )
+    assert outcome.kind is SearchOutcomeKind.REDIRECT
+    assert outcome.canonical_path == "/en/search?draft_max=1.6&keel_configuration=FIN"
+
+
+def test_reversed_order_plus_noncanonical_value_redirects_to_full_canonical() -> None:
+    # Reversed key order AND a non-canonical draft_max numeral together must
+    # still collapse to exactly one 308 to the fully canonical URL -- not two
+    # separate corrections and not a 200.
+    outcome = evaluate_search_request(
+        None,
+        locale="en",
+        query_params={"keel_configuration": ["FIN"], "draft_max": ["1.600"]},
+        as_of=_AS_OF,
+    )
+    assert outcome.kind is SearchOutcomeKind.REDIRECT
+    assert outcome.canonical_path == "/en/search?draft_max=1.6&keel_configuration=FIN"
+
+
+def test_reversed_order_with_invalid_keel_value_is_invalid_not_redirect() -> None:
+    # INVALID precedence: a reversed-order request must not be redirected
+    # merely because its order is also non-canonical when its content is
+    # ambiguous/invalid.
+    outcome = evaluate_search_request(
+        None,
+        locale="en",
+        query_params={"keel_configuration": ["LONG_KEEL"], "draft_max": ["1.6"]},
+        as_of=_AS_OF,
+    )
+    assert outcome.kind is SearchOutcomeKind.INVALID
+
+
+def test_reversed_order_with_conflicting_duplicate_is_invalid_not_redirect() -> None:
+    outcome = evaluate_search_request(
+        None,
+        locale="en",
+        query_params={"keel_configuration": ["FIN"], "draft_max": ["1.6", "1.7"]},
+        as_of=_AS_OF,
+    )
+    assert outcome.kind is SearchOutcomeKind.INVALID
+
+
+def test_reversed_order_with_unknown_parameter_is_invalid_not_redirect() -> None:
+    outcome = evaluate_search_request(
+        None,
+        locale="en",
+        query_params={"keel_configuration": ["FIN"], "draft_max": ["1.6"], "foo": ["bar"]},
+        as_of=_AS_OF,
+    )
+    assert outcome.kind is SearchOutcomeKind.INVALID
+
+
+def test_draft_only_single_key_order_is_unaffected(monkeypatch) -> None:
+    import hullq.application.search_read as module
+
+    monkeypatch.setattr(
+        module, "evaluate_draft_max_requirement", lambda conn, draft_max, *, as_of: object()
+    )
+    outcome = evaluate_search_request(
+        object(), locale="de", query_params={"draft_max": ["1.6"]}, as_of=_AS_OF
+    )
+    assert outcome.kind is SearchOutcomeKind.RESULT
+
+
+def test_keel_only_single_key_order_is_unaffected(monkeypatch) -> None:
+    import hullq.application.search_read as module
+
+    monkeypatch.setattr(
+        module,
+        "evaluate_native_inventory_requirements",
+        lambda conn, *, draft_max, keel_configuration, as_of: object(),
+    )
+    outcome = evaluate_search_request(
+        object(), locale="en", query_params={"keel_configuration": ["FIN"]}, as_of=_AS_OF
+    )
+    assert outcome.kind is SearchOutcomeKind.RESULT

@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import { test } from "node:test";
 
-import { loadSearchPageData } from "../searchPageData.ts";
+import { buildSearchCanonicalPath, loadSearchPageData } from "../searchPageData.ts";
 
 async function withServer(
   handler: http.RequestListener,
@@ -79,5 +79,83 @@ test("loadSearchPageData: a valid 200 result is classified as `ok`, distinct fro
       const data = await loadSearchPageData(baseUrl, "en", "draft_max=1.6");
       assert.equal(data.kind, "ok");
     },
+  );
+});
+
+// SLICE-0056: keel-only and mixed requests carry a sparse `active_requirement`
+// (contract §C) -- `loadSearchPageData` must pass it through exactly as
+// FastAPI returned it, never inventing/defaulting a criterion FastAPI did
+// not include.
+test("loadSearchPageData: a keel-only 200 result carries only keel_configuration in activeRequirement", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          locale: "en",
+          active_requirement: { keel_configuration: "FIN" },
+          confirmed_matches: [],
+          confirmed_match_count: 0,
+          insufficient_data_count: 0,
+        }),
+      );
+    },
+    async (baseUrl) => {
+      const data = await loadSearchPageData(baseUrl, "en", "keel_configuration=FIN");
+      assert.equal(data.kind, "ok");
+      if (data.kind === "ok") {
+        assert.deepEqual(data.activeRequirement, { keel_configuration: "FIN" });
+      }
+    },
+  );
+});
+
+test("loadSearchPageData: a mixed 200 result carries both draft_max and keel_configuration in activeRequirement", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          locale: "en",
+          active_requirement: { draft_max: "1.6", keel_configuration: "FIN" },
+          confirmed_matches: [],
+          confirmed_match_count: 0,
+          insufficient_data_count: 0,
+        }),
+      );
+    },
+    async (baseUrl) => {
+      const data = await loadSearchPageData(baseUrl, "en", "draft_max=1.6&keel_configuration=FIN");
+      assert.equal(data.kind, "ok");
+      if (data.kind === "ok") {
+        assert.deepEqual(data.activeRequirement, { draft_max: "1.6", keel_configuration: "FIN" });
+      }
+    },
+  );
+});
+
+// SLICE-0056: `buildSearchCanonicalPath` must echo FastAPI's own canonical
+// query-part ordering exactly (`src/hullq/application/search_read.py`:
+// draft_max before keel_configuration) rather than independently deciding
+// it.
+test("buildSearchCanonicalPath: null activeRequirement is the bare locale path (base state)", () => {
+  assert.equal(buildSearchCanonicalPath("en", null), "/en/search");
+});
+
+test("buildSearchCanonicalPath: draft-only", () => {
+  assert.equal(buildSearchCanonicalPath("de", { draft_max: "1.6" }), "/de/search?draft_max=1.6");
+});
+
+test("buildSearchCanonicalPath: keel-only", () => {
+  assert.equal(
+    buildSearchCanonicalPath("de", { keel_configuration: "FIN" }),
+    "/de/search?keel_configuration=FIN",
+  );
+});
+
+test("buildSearchCanonicalPath: mixed puts draft_max before keel_configuration", () => {
+  assert.equal(
+    buildSearchCanonicalPath("de", { draft_max: "1.6", keel_configuration: "FIN" }),
+    "/de/search?draft_max=1.6&keel_configuration=FIN",
   );
 });
