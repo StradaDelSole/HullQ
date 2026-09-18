@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-18  
 **Latest owner-accepted / DONE slice:** SLICE-0056  
-**Current queue:** SLICE-0057 — **Buyer Requirement Sensitivity**; readiness prepared on the accepted one-change factual sensitivity boundary. Implementation remains unauthorized until independent exact-head readiness review/CI and readiness merge to `main`.  
+**Current queue:** SLICE-0057 — **Buyer Requirement Sensitivity — READY ON MAIN**; exact-head readiness review and remote CI/repro passed, and PR #213 is merged. The Project Owner may now start SLICE-0057 only through `START_SLICE.bat`.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -207,7 +207,7 @@ The SLICE-0053 same-host session-topology invariant remains in force for browser
 
 Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; broker inventory workflow, branding/media and resilient drafts; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability and sensitivity; BuyerRequirements persistence; shortlist/Compare/sharing; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-SLICE-0056 is now accepted. Post-SLICE-0056 reconciliation selects SLICE-0057 Buyer Requirement Sensitivity as the next bounded capability. No implementation is authorized until readiness is independently accepted and merged.
+SLICE-0056 is now accepted. Post-SLICE-0056 reconciliation selects SLICE-0057 Buyer Requirement Sensitivity as the next bounded capability. Its readiness is accepted and merged to canonical `main`; implementation may begin only through the normal `START_SLICE.bat` handoff.
 
 ## Next capability selection
 
@@ -229,7 +229,7 @@ The capability lets a buyer replace exactly one currently active `draft_max` or 
 
 It adds no Search criterion, recommendation, persistence, account requirement or indexable Search URL class.
 
-Implementation remains unauthorized until the readiness package passes independent exact-head review/CI and is merged to canonical `main`; only then may the Project Owner run `START_SLICE.bat`.
+The readiness package passed independent exact-head review and exact-head remote CI/repro and is merged to canonical `main`. SLICE-0057 is therefore `READY ON MAIN`; the next permitted implementation action is for the Project Owner to run `START_SLICE.bat`.
 
 ## Development workflow
 
@@ -244,6 +244,6 @@ Implementation remains unauthorized until the readiness package passes independe
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment is complete and `PASS`; SLICE-0057 still requires normal post-slice reconciliation/capability selection/readiness before `START_SLICE`.
+- the mandatory post-SLICE-0056 workflow reassessment is complete and `PASS`; SLICE-0057 reconciliation, capability selection and readiness are now complete, so `START_SLICE.bat` is the next permitted action.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
