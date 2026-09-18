@@ -71,6 +71,7 @@ Use `START_SLICE.bat` and `FINISH_SLICE.bat` for the normal lifecycle. Never car
 - Run shell commands directly from the current slice worktree. Do not prepend routine Bash/PowerShell commands with `cd <worktree> &&` / `cd <worktree>;` wrappers; the operator opens Claude Code in the correct worktree.
 - Do not append synthetic exit-code wrappers such as `; echo "---EXIT $LASTEXITCODE---"` unless diagnosing a real shell/tool failure. Use Claude Code's tool result/exit status.
 - Prefer one standalone command per tool call. This keeps commands compatible with the repository's shared `.claude/settings.json` allow/ask rules and avoids unnecessary approval prompts.
+- For ad-hoc Python snippets, syntax/AST checks, and short repository inspection commands, use `uv run python ...` (for example `uv run python -c "..."`) rather than direct `python`, `python3`, or `py` invocations. `uv` is the shared approved execution path and avoids avoidable permission prompts.
 - Routine allowed commands may run autonomously; commands matched by the shared `ask` rules remain operator-gated. Never work around an approval boundary by spelling the same risky operation differently.
 
 While Claude is actively implementing, unrelated changes should not be merged to `main`; blocker-resolution is a deliberate separate workflow.
