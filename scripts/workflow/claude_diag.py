@@ -53,7 +53,11 @@ def run_local_test_db(script: str, args: list[str]) -> int:
     candidate = (ROOT / script).resolve()
     scripts_root = (ROOT / "scripts").resolve()
 
-    if scripts_root not in candidate.parents or candidate.suffix != ".py" or not candidate.is_file():
+    if (
+        scripts_root not in candidate.parents
+        or candidate.suffix != ".py"
+        or not candidate.is_file()
+    ):
         print("Refusing to run a path outside repository scripts/*.py", file=sys.stderr)
         return 2
 
