@@ -201,6 +201,9 @@ EXECUTION:
 - For SLICE-0051 and later, preserve the accepted decision/implementation reconciliation recorded in the slice; do not re-open behavior that the slice identifies as already decided/implemented.
 - For SLICE-0052 and later, preserve the slice's PASS trigger-gates check and do not bypass a production-readiness, Search-abstraction, architecture-reconciliation, or workflow-reassessment trigger.
 - Work only on `$branch`; do not modify main or another branch.
+- Run shell commands directly from the current slice worktree. Do not prepend routine commands with `cd <worktree> &&`, PowerShell `cd <worktree>;`, or equivalent directory-changing wrappers; the operator has already opened Claude Code in the correct worktree.
+- Do not append synthetic exit-code wrappers such as `; echo "---EXIT $LASTEXITCODE---"` unless diagnosing an actual command failure. Use the tool's native result/exit status.
+- Prefer one standalone command per tool call so the shared `.claude/settings.json` permissions can match it cleanly and routine work does not trigger avoidable approvals.
 - Do not broaden scope or start another slice.
 - Push this same branch to GitHub at completion.
 - Leave the slice in REVIEW or BLOCKED; never mark DONE and never merge to main.
