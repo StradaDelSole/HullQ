@@ -207,6 +207,7 @@ EXECUTION:
 - For ad-hoc Python snippets, AST/syntax checks, and short repository inspection commands, use `uv run python ...` instead of direct `python`, `python3`, or `py` invocations so routine checks stay within the shared approved command path.
 - Do not bundle routine checks into shell loops or compound commands (`for ...; do ...; done`, `&&`, `;`). Use one standalone permitted command per tool call. For file comparisons, prefer separate `git diff --no-index <file-a> <file-b>` calls instead of direct `diff`/`cmp`.
 - For read-only repository inspection/search, use Claude Code `Read`, `Grep`, or `Glob` instead of Bash/PowerShell `grep`, `find`, loops, or text-processing pipelines whenever possible.
+- For web dependency installation, use standalone `npm ci --prefix web`; do not use `cd web && npm ci` or append output-redirection/pipeline wrappers such as `2>&1 | tail ...`.
 - Do not broaden scope or start another slice.
 - Push this same branch to GitHub at completion.
 - Leave the slice in REVIEW or BLOCKED; never mark DONE and never merge to main.
