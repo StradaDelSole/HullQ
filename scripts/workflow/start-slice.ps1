@@ -210,6 +210,7 @@ EXECUTION:
 - For web dependency installation, use standalone `npm ci --prefix web`; do not use `cd web && npm ci` or append output-redirection/pipeline wrappers such as `2>&1 | tail ...`.
 - HARD APPROVAL-AUTONOMY RULE: for routine diagnostics/inspection/validation setup, never use shell variables, command substitution, pipes, output redirection, compound separators (`;`, `&&`, `||`), subshells, or loops. Split the work into separate tool calls. Use Read/Grep/Glob for file inspection and one standalone approved command for process execution. If routine command spelling would trigger an approval prompt, rewrite it approval-free instead of asking the operator.
 - Never echo or print secret-bearing environment-variable values such as database URLs, tokens, passwords, or API keys. Check only SET/UNSET state or perform the probe directly without exposing credentials; prefer standalone `uv run python ...` diagnostics.
+- For recurring local diagnostics, use `uv run python scripts/workflow/claude_diag.py`: `env-status <NAME>`, `tcp-check <HOST> <PORT>`, `latest-temp-dir <PREFIX>`, `run-local-test-db <scripts/...py>`, or `run-local-api [--host ... --port ... --seconds ...]`. Never prefix a command with HullQ database/signing environment assignments; the helper injects fixed local-test values only into the child process.
 - Do not broaden scope or start another slice.
 - Push this same branch to GitHub at completion.
 - Leave the slice in REVIEW or BLOCKED; never mark DONE and never merge to main.
