@@ -44,6 +44,27 @@ def test_guard_blocks_all_shell_expansion_forms_and_exec_wrappers() -> None:
     assert composition_reason("find . -name '*.py' -exec cat {} \\;") is not None
 
 
+def test_guard_blocks_inline_hullq_env_and_powershell_pipeline_examples() -> None:
+    inline_db = (
+        'HULLQ_TEST_DATABASE_URL="postgresql://hullq_test:hullq_test@localhost:5432/hullq_test" '
+        "uv run python scripts/inspect_first_native_inventory_search.py"
+    )
+    inline_api = (
+        'HULLQ_DATABASE_URL="postgresql://hullq_test:hullq_test@localhost:5432/hullq_test" '
+        'HULLQ_PREVIEW_SIGNING_SECRET="test-secret" timeout 6 uv run python -m uvicorn '
+        "hullq.api.app:create_app --factory --host 127.0.0.1 --port 18123"
+    )
+    powershell_pipeline = (
+        "Get-ChildItem $env:TEMP -Filter 'hullq_s0051_e2e_*' -Directory | "
+        "Sort-Object LastWriteTime -Descending | Select-Object -First 1 "
+        "-ExpandProperty FullName"
+    )
+
+    assert composition_reason(inline_db) is not None
+    assert composition_reason(inline_api) is not None
+    assert composition_reason(powershell_pipeline) is not None
+
+
 def test_guard_allows_shell_metacharacters_inside_python_code_quotes() -> None:
     command = 'uv run python -c "import ast; print(1); print(2 | 1)"'
     assert composition_reason(command) is None
