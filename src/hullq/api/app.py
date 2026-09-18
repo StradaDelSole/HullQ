@@ -72,6 +72,8 @@ from hullq.application.broker_workspace_read import (
     get_broker_context_read_model,
     get_organization_workspace_result,
 )
+from hullq.application.inventory_search import DraftMaxSearchOutcome
+from hullq.application.native_inventory_query import NativeInventorySearchOutcome
 from hullq.application.owner_direct_draft import (
     CreateOwnerDirectDraftOutcome,
     GetOwnerDirectDraftOutcome,
@@ -88,7 +90,10 @@ from hullq.application.search_read import SearchOutcomeKind, evaluate_search_req
 from hullq.domain.market_identity import NativeListingId
 from hullq.domain.publishing_eligibility import MarketplaceOrganizationId
 from hullq.persistence.connection import get_database_url, open_connection
+from hullq.search.configuration_engine import DesignQueryEvaluation
+from hullq.search.criteria import NumericLeafCriterion
 from hullq.search.draft_max_request import canonical_draft_max_str
+from hullq.search.query_mixed import MixedLeafCriterion
 from hullq.security.oidc import AuthProviderConfig, get_auth_provider_config
 from hullq.security.preview_signing import get_preview_signing_secret
 from hullq.security.session_signing import get_session_signing_secret
@@ -220,12 +225,82 @@ _SUPPORTED_SEARCH_LOCALES = ("en", "de", "fr", "pt", "es")
 #: buyer-friendly 400 recovery response"). Technical parameter names/values
 #: remain language-neutral; only this guidance text is translated.
 _INVALID_SEARCH_REQUEST_MESSAGE = {
-    "en": "This search link isn't valid. Enter a maximum draft as a plain decimal number of metres, for example 1.6.",
-    "de": "Dieser Suchlink ist ungültig. Geben Sie den maximalen Tiefgang als einfache Dezimalzahl in Metern an, zum Beispiel 1.6.",
-    "fr": "Ce lien de recherche n'est pas valide. Indiquez le tirant d'eau maximal sous forme de nombre décimal simple en mètres, par exemple 1.6.",
-    "pt": "Esta ligação de pesquisa não é válida. Indique o calado máximo como um número decimal simples em metros, por exemplo 1.6.",
-    "es": "Este enlace de búsqueda no es válido. Indique el calado máximo como un número decimal simple en metros, por ejemplo 1.6.",
+    "en": "This search link isn't valid. Enter a maximum draft as a plain decimal number of metres (e.g. 1.6) and/or a supported keel configuration.",
+    "de": "Dieser Suchlink ist ungültig. Geben Sie den maximalen Tiefgang als einfache Dezimalzahl in Metern an (z. B. 1.6) und/oder eine unterstützte Kielkonfiguration.",
+    "fr": "Ce lien de recherche n'est pas valide. Indiquez le tirant d'eau maximal sous forme de nombre décimal simple en mètres (par exemple 1.6) et/ou une configuration de quille prise en charge.",
+    "pt": "Esta ligação de pesquisa não é válida. Indique o calado máximo como um número decimal simples em metros (por exemplo 1.6) e/ou uma configuração de quilha suportada.",
+    "es": "Este enlace de búsqueda no es válido. Indique el calado máximo como un número decimal simple en metros (por ejemplo 1.6) y/o una configuración de quilla admitida.",
 }
+
+
+def _serialize_leaf_criterion(criterion: MixedLeafCriterion) -> dict[str, Any]:
+    """SLICE-0055: the requested value/comparison for one active criterion
+    (contract §7), never encoded only inside human-readable explanation
+    text."""
+    if isinstance(criterion, NumericLeafCriterion):
+        return {
+            "kind": "NUMERIC",
+            "field": criterion.field,
+            "comparison": criterion.comparison.value,
+            "threshold_min": (
+                str(criterion.threshold_min) if criterion.threshold_min is not None else None
+            ),
+            "threshold_max": (
+                str(criterion.threshold_max) if criterion.threshold_max is not None else None
+            ),
+        }
+    return {"kind": "CATEGORICAL", "field": criterion.field, "equals": criterion.equals}
+
+
+def _serialize_criterion_evidence(evidence: Any) -> dict[str, Any]:
+    """SLICE-0055: one `hullq.application.native_inventory_query.
+    SearchCriterionEvidence` -- requested criterion, typed truth/reason, and
+    the safely observed concrete canonical value when one exists."""
+    return {
+        "criterion": _serialize_leaf_criterion(evidence.criterion),
+        "field": evidence.evaluation.field,
+        "truth": evidence.evaluation.truth.value,
+        "reason": (
+            evidence.evaluation.reason.value if evidence.evaluation.reason is not None else None
+        ),
+        "explanation": evidence.evaluation.explanation,
+        "observed_value": (
+            str(evidence.observed_value) if evidence.observed_value is not None else None
+        ),
+    }
+
+
+def _serialize_design_evaluation(design_evaluation: DesignQueryEvaluation) -> dict[str, Any]:
+    """SLICE-0055: the complete design/configuration-level evaluation that
+    admitted or failed to admit a listing's BoatDesign (contract §7),
+    including the resolved configuration identity/identities
+    (`matching_configuration_ids`) rather than only a BoatDesign id."""
+    return {
+        "design_id": design_evaluation.design_id,
+        "result_class": design_evaluation.result_class.value,
+        "matching_configuration_ids": list(design_evaluation.matching_configuration_ids),
+        "reason": (
+            design_evaluation.reason.value if design_evaluation.reason is not None else None
+        ),
+    }
+
+
+def _serialize_configuration_evidence(evidence: Any) -> dict[str, Any]:
+    """SLICE-0055 (second amendment, Finding 1): one `hullq.application.
+    native_inventory_query.ConfigurationEvidence` -- one resolved BoatDesign/
+    NamedVariant configuration's typed per-criterion evidence, including the
+    safely resolved/observed canonical value used for each design-side
+    criterion evaluation."""
+    return {
+        "configuration_id": evidence.configuration_id,
+        "boat_design_id": evidence.boat_design_id,
+        "named_variant_id": evidence.named_variant_id,
+        "truth": evidence.truth.value,
+        "criterion_evidence": [
+            _serialize_criterion_evidence(item) for item in evidence.criterion_evidence
+        ],
+    }
+
 
 # Sent on every response from the preview surface only: a preview token is a
 # bearer capability carried in the URL path, never a publicly indexable or
@@ -498,17 +573,52 @@ def create_app(
             return JSONResponse({"locale": locale, "active_requirement": None})
 
         assert outcome.kind is SearchOutcomeKind.RESULT
-        assert outcome.draft_max is not None
         assert outcome.search_outcome is not None
         search_outcome = outcome.search_outcome
+
+        active_requirement: dict[str, str] = {}
+        if outcome.draft_max is not None:
+            active_requirement["draft_max"] = canonical_draft_max_str(outcome.draft_max)
+        if outcome.keel_configuration is not None:
+            active_requirement["keel_configuration"] = outcome.keel_configuration
+
+        if isinstance(search_outcome, DraftMaxSearchOutcome):
+            # SLICE-0051 draft-only shape, unchanged (contract §8 non-regression).
+            return JSONResponse(
+                {
+                    "locale": locale,
+                    "active_requirement": active_requirement,
+                    "confirmed_matches": [
+                        {
+                            "native_listing_id": match.native_listing_id.value,
+                            "resolved_draft_m": str(match.resolved_draft_m),
+                            "publishing_organization_id": match.publishing_organization_id.value,
+                            "freshness_status": match.freshness_status.value,
+                            "last_confirmed_at": (
+                                match.last_confirmed_at.isoformat()
+                                if match.last_confirmed_at is not None
+                                else None
+                            ),
+                        }
+                        for match in search_outcome.confirmed_matches
+                    ],
+                    "confirmed_match_count": search_outcome.confirmed_match_count,
+                    "insufficient_data_count": search_outcome.insufficient_data_count,
+                }
+            )
+
+        # SLICE-0055: keel_configuration alone or combined with draft_max.
+        # Retains typed design-level and concrete-level evidence separately
+        # (contract §6/§7, amendment Finding 1) rather than a flat list of
+        # bare criterion truths.
+        assert isinstance(search_outcome, NativeInventorySearchOutcome)
         return JSONResponse(
             {
                 "locale": locale,
-                "active_requirement": {"draft_max": canonical_draft_max_str(outcome.draft_max)},
+                "active_requirement": active_requirement,
                 "confirmed_matches": [
                     {
                         "native_listing_id": match.native_listing_id.value,
-                        "resolved_draft_m": str(match.resolved_draft_m),
                         "publishing_organization_id": match.publishing_organization_id.value,
                         "freshness_status": match.freshness_status.value,
                         "last_confirmed_at": (
@@ -516,6 +626,15 @@ def create_app(
                             if match.last_confirmed_at is not None
                             else None
                         ),
+                        "design_evaluation": _serialize_design_evaluation(match.design_evaluation),
+                        "design_configuration_evidence": [
+                            _serialize_configuration_evidence(evidence)
+                            for evidence in match.design_configuration_evidence
+                        ],
+                        "criterion_evidence": [
+                            _serialize_criterion_evidence(evidence)
+                            for evidence in match.concrete_criterion_evidence
+                        ],
                     }
                     for match in search_outcome.confirmed_matches
                 ],

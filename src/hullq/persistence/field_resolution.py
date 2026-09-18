@@ -42,27 +42,36 @@ subject's canonical document, so the caller supplies a bounded
 `fetch_canonical_value` callback (required, no default) that resolves
 *resolution.subject* to its durable canonical snapshot; this module then
 checks it against `resolution` (REQ-PROV-005) for every state, not only
-`resolved`/`resolved_with_conflict`. This comparison is Decimal-value-aware,
+`resolved`/`resolved_with_conflict`. This comparison is representation-aware,
 not a generic structural `!=` on the two raw representations
 (`hullq.domain.provenance.check_canonical_consistency` is *not* reused here
 for exactly this reason -- see `_check_canonical_value_consistency`'s
-docstring): `canonical_value_snapshot` at this module's boundary is always
-the exact-Decimal string encoding (`encode_canonical_decimal_snapshot`),
-while the durable canonical document stores an ordinary JSON number, so a
-literal string/type comparison would spuriously mismatch equal values
-formatted differently (e.g. `"1.3"` vs `"1.30"`) or crash comparing a
-`float` to a `str`. A callback returning anything other than
-`CanonicalLookupStatus.FOUND` (subject does not durably exist, or resolves to
-more than one candidate) fails the write closed as
-`CANONICAL_SUBJECT_UNRESOLVABLE`; a `FOUND` snapshot that disagrees with the
-resolution fails closed as `CANONICAL_VALUE_MISMATCH`. The only accepted
-production implementation, `hullq.search.draft_max_design_bridge.lookup_draft_max_canonical_value`,
-is itself hard-bounded to SLICE-0051's exact two field meanings -- this
-module does not invent global all-field resolution semantics; it only
-mandates that *some* bounded, subject-aware lookup is consulted before any
-write is admitted. `hullq.search.draft_max_design_bridge`'s own
-read-time consistency check (`_qualify_via_field_resolution`) is retained as
-defense-in-depth, not superseded by this write-time gate.
+docstring): for a Decimal-shaped field (e.g. `draft_max_m`),
+`canonical_value_snapshot` at this module's boundary is the exact-Decimal
+string encoding (`encode_canonical_decimal_snapshot`), while the durable
+canonical document stores an ordinary JSON number, so a literal string/type
+comparison would spuriously mismatch equal values formatted differently
+(e.g. `"1.3"` vs `"1.30"`) or crash comparing a `float` to a `str` -- both
+sides are decoded to `Decimal` and compared by value instead. SLICE-0055
+extends this to a categorical-shaped field (e.g. `appendages.keel_type`),
+whose `canonical_value_snapshot` is the plain string itself on both sides,
+so it is compared by exact string equality instead (see
+`_check_canonical_value_consistency`'s docstring for the full rule). A
+callback returning anything other than `CanonicalLookupStatus.FOUND`
+(subject does not durably exist, or resolves to more than one candidate)
+fails the write closed as `CANONICAL_SUBJECT_UNRESOLVABLE`; a `FOUND`
+snapshot that disagrees with the resolution fails closed as
+`CANONICAL_VALUE_MISMATCH`. The accepted production implementations --
+`hullq.search.draft_max_design_bridge.lookup_draft_max_canonical_value`
+(SLICE-0051) and `hullq.search.keel_design_bridge.lookup_keel_canonical_value`
+(SLICE-0055) -- are each hard-bounded to their own exact field meanings via
+the shared `hullq.search.boat_design_field_bridge.make_bounded_canonical_value_lookup`
+factory; this module itself does not invent global all-field resolution
+semantics, it only mandates that *some* bounded, subject-aware lookup is
+consulted before any write is admitted. The shared
+`hullq.search.boat_design_field_bridge.qualify_canonical_field`'s own
+read-time consistency check is retained as defense-in-depth, not superseded
+by this write-time gate.
 
 ## Evidence and source-rights admission
 
@@ -469,15 +478,31 @@ def _check_canonical_value_consistency(
     Deliberately does not reuse `hullq.domain.provenance.check_canonical_consistency`
     verbatim: that function compares the raw canonical value and
     `resolution.canonical_value_snapshot` with a plain `!=`, which is correct
-    only when both sides share the same representation. In this module,
-    `canonical_value_snapshot` is always the exact-Decimal string encoding
-    (`encode_canonical_decimal_snapshot`), while the durable canonical
-    document (`canonical_boat_designs.baseline`/`named_variants`) stores an
-    ordinary JSON number -- a literal `!=` would spuriously mismatch equal
-    values formatted differently (`"1.3"` vs `"1.30"`) or simply crash
-    comparing a `float` to a `str`. Both sides are decoded to `Decimal` and
-    compared by value instead, exactly mirroring the accepted read-time
-    comparison in `hullq.search.draft_max_design_bridge._qualify_via_field_resolution`.
+    only when both sides share the same representation, and this boundary
+    admits two different representations depending on the field's shape.
+
+    For a Decimal-shaped field (SLICE-0051's `draft_max_m` and similar exact-
+    numeric canonical facts), `canonical_value_snapshot` is always the
+    exact-Decimal string encoding (`encode_canonical_decimal_snapshot`),
+    while the durable canonical document (`canonical_boat_designs.baseline`/
+    `named_variants`) stores an ordinary JSON number -- a literal `!=` would
+    spuriously mismatch equal values formatted differently (`"1.3"` vs
+    `"1.30"`) or simply crash comparing a `float` to a `str`. Both sides are
+    decoded to `Decimal` and compared by value instead, exactly mirroring the
+    accepted read-time comparison in
+    `hullq.search.boat_design_field_bridge.qualify_canonical_field`.
+
+    For a categorical-shaped field (SLICE-0055's `appendages.keel_type` and
+    similar exact-string canonical facts), `canonical_value_snapshot` is the
+    plain string itself, never the Decimal-string encoding, and the durable
+    canonical document already holds that same plain string -- no
+    Decimal-vs-JSON-number representation asymmetry exists for it the way it
+    does for a Decimal field. `raw_canonical_value` being a `str` is what
+    distinguishes this case (a JSON number field pointer never round-trips
+    through psycopg/JSONB as a Python `str`), so it is compared by exact
+    string equality instead of being forced through
+    `decode_canonical_decimal_snapshot` (which would raise/mismatch on an
+    ordinary non-numeric string like `"fin"`).
 
     Returns a human-readable diagnostic string on mismatch, or `None` if
     consistent.
@@ -501,6 +526,15 @@ def _check_canonical_value_consistency(
             f"resolution asserts canonical_value_snapshot={resolution.canonical_value_snapshot!r} "
             f"but the durable canonical subject has no value at {resolution.field_pointer.raw}"
         )
+
+    if isinstance(raw_canonical_value, str):
+        if raw_canonical_value != resolution.canonical_value_snapshot:
+            return (
+                f"durable canonical value at {resolution.field_pointer.raw} is "
+                f"{raw_canonical_value!r} but resolution snapshot is "
+                f"{resolution.canonical_value_snapshot!r}"
+            )
+        return None
 
     try:
         canonical_decimal = Decimal(str(raw_canonical_value))

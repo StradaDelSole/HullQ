@@ -77,6 +77,7 @@ from hullq.persistence.fingerprint import fingerprint_dict
 
 __all__ = [
     "CurrentDraftObservation",
+    "CurrentPhysicalBoatClaimObservation",
     "PhysicalBoatClaimRevisionRecord",
     "PhysicalBoatClaimTransactionOwnershipError",
     "PhysicalBoatClaimWriteResult",
@@ -84,6 +85,7 @@ __all__ = [
     "fetch_current_physical_boat_claim",
     "fetch_physical_boat_claim_revision",
     "list_current_draft_observations_for_physical_boat",
+    "list_current_physical_boat_claim_observations",
     "list_physical_boat_claim_revisions",
     "write_physical_boat_claim_revision",
 ]
@@ -272,6 +274,15 @@ ORDER BY r.recorded_at ASC, r.claim_revision_id ASC
 
 _SELECT_CURRENT_DRAFT_OBSERVATIONS = """
 SELECT h.claiming_organization_id, r.draft_assertion_kind, r.draft_value
+FROM physical_boat_claim_heads h
+JOIN physical_boat_claim_revisions r ON r.claim_revision_id = h.current_claim_revision_id
+WHERE h.physical_boat_id = %s
+ORDER BY h.claiming_organization_id
+"""
+
+_SELECT_CURRENT_DRAFT_AND_KEEL_OBSERVATIONS = """
+SELECT h.claiming_organization_id, r.draft_assertion_kind, r.draft_value,
+       r.keel_configuration_assertion_kind, r.keel_configuration_value
 FROM physical_boat_claim_heads h
 JOIN physical_boat_claim_revisions r ON r.claim_revision_id = h.current_claim_revision_id
 WHERE h.physical_boat_id = %s
@@ -773,6 +784,73 @@ def list_current_draft_observations_for_physical_boat(
             CurrentDraftObservation(
                 claiming_organization_id=MarketplaceOrganizationId(claiming_organization_id),
                 draft=draft,
+            )
+        )
+    return observations
+
+
+@dataclass(frozen=True)
+class CurrentPhysicalBoatClaimObservation:
+    """One claiming Organization's current `draft` + `keel_configuration`
+    observations for one PhysicalBoatId (SLICE-0055).
+
+    Generalizes `CurrentDraftObservation` to the second technical native
+    Search criterion so a mixed `draft_max AND keel_configuration`
+    evaluation can read both fields' current cross-Organization state from
+    one consistent PostgreSQL MVCC snapshot (mirroring the SLICE-0051
+    Finding 5 single-query rationale for the draft-only funnel) rather than
+    tearing across two separate queries. `draft`/`keel_configuration` are
+    each `None` when that Organization's current claim snapshot omits the
+    field entirely -- mechanically distinct from an explicit `UNKNOWN`
+    claim, exactly like `CurrentDraftObservation.draft`.
+    """
+
+    claiming_organization_id: MarketplaceOrganizationId
+    draft: DraftClaim | None
+    keel_configuration: KeelConfigurationClaim | None
+
+
+def list_current_physical_boat_claim_observations(
+    conn: Any, physical_boat_id: PhysicalBoatId
+) -> list[CurrentPhysicalBoatClaimObservation]:
+    """Every claiming Organization's current `draft` + `keel_configuration`
+    observation for one PhysicalBoatId, from a single query (SLICE-0055).
+
+    Reads only the explicit current head per claiming Organization -- never
+    `MAX(recorded_at)` or row order -- across every Organization that has
+    ever claimed this PhysicalBoatId, not only the publishing Organization.
+    A PhysicalBoat with no current claim at all from any Organization
+    returns an empty list. Superseded revisions are history, never observed
+    here. Used by the SLICE-0055 mixed native-inventory funnel; the
+    SLICE-0051 draft-only funnel keeps using
+    `list_current_draft_observations_for_physical_boat` unchanged.
+    """
+    if not isinstance(physical_boat_id, PhysicalBoatId):
+        raise TypeError(
+            f"physical_boat_id must be a PhysicalBoatId, got {type(physical_boat_id).__name__}"
+        )
+    with conn.cursor() as cur:
+        cur.execute(_SELECT_CURRENT_DRAFT_AND_KEEL_OBSERVATIONS, [physical_boat_id.value])
+        rows = cur.fetchall()
+    observations = []
+    for claiming_organization_id, draft_kind, draft_value, keel_kind, keel_value in rows:
+        draft: DraftClaim | None = None
+        if draft_kind is not None:
+            draft = DraftClaim(
+                assertion_kind=AssertionKind(draft_kind),
+                value=Decimal(draft_value) if draft_value is not None else None,
+            )
+        keel_configuration: KeelConfigurationClaim | None = None
+        if keel_kind is not None:
+            keel_configuration = KeelConfigurationClaim(
+                assertion_kind=AssertionKind(keel_kind),
+                value=KeelConfiguration(keel_value) if keel_value is not None else None,
+            )
+        observations.append(
+            CurrentPhysicalBoatClaimObservation(
+                claiming_organization_id=MarketplaceOrganizationId(claiming_organization_id),
+                draft=draft,
+                keel_configuration=keel_configuration,
             )
         )
     return observations

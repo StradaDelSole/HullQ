@@ -111,7 +111,135 @@ def test_canonical_single_value_proceeds_to_result(monkeypatch) -> None:
 
     assert outcome.kind is SearchOutcomeKind.RESULT
     assert outcome.draft_max == Decimal("1.6")
+    assert outcome.keel_configuration is None
     assert outcome.search_outcome is sentinel_outcome
     assert captured["conn"] is conn_marker
     assert captured["draft_max"] == Decimal("1.6")
     assert captured["as_of"] == _AS_OF
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0055 keel_configuration criterion #2
+# ---------------------------------------------------------------------------
+
+
+def test_unsupported_keel_configuration_value_is_invalid() -> None:
+    outcome = evaluate_search_request(
+        None, locale="de", query_params={"keel_configuration": ["LONG_KEEL"]}, as_of=_AS_OF
+    )
+    assert outcome.kind is SearchOutcomeKind.INVALID
+
+
+def test_empty_keel_configuration_value_is_invalid() -> None:
+    outcome = evaluate_search_request(
+        None, locale="de", query_params={"keel_configuration": [""]}, as_of=_AS_OF
+    )
+    assert outcome.kind is SearchOutcomeKind.INVALID
+
+
+def test_conflicting_keel_configuration_duplicates_are_invalid() -> None:
+    outcome = evaluate_search_request(
+        None,
+        locale="de",
+        query_params={"keel_configuration": ["FIN", "WING"]},
+        as_of=_AS_OF,
+    )
+    assert outcome.kind is SearchOutcomeKind.INVALID
+
+
+def test_duplicate_equal_keel_configuration_redirects_to_canonical_single_value() -> None:
+    outcome = evaluate_search_request(
+        None,
+        locale="de",
+        query_params={"keel_configuration": ["FIN", "FIN"]},
+        as_of=_AS_OF,
+    )
+    assert outcome.kind is SearchOutcomeKind.REDIRECT
+    assert outcome.canonical_path == "/de/search?keel_configuration=FIN"
+
+
+def test_keel_configuration_alone_proceeds_to_result_via_native_inventory_funnel(
+    monkeypatch,
+) -> None:
+    import hullq.application.search_read as module
+
+    sentinel_outcome = object()
+    captured: dict[str, object] = {}
+
+    def fake_evaluate(
+        conn: object, *, draft_max: Decimal | None, keel_configuration: str | None, as_of: datetime
+    ) -> object:
+        captured["conn"] = conn
+        captured["draft_max"] = draft_max
+        captured["keel_configuration"] = keel_configuration
+        captured["as_of"] = as_of
+        return sentinel_outcome
+
+    monkeypatch.setattr(module, "evaluate_native_inventory_requirements", fake_evaluate)
+
+    conn_marker = object()
+    outcome = evaluate_search_request(
+        conn_marker, locale="en", query_params={"keel_configuration": ["FIN"]}, as_of=_AS_OF
+    )
+
+    assert outcome.kind is SearchOutcomeKind.RESULT
+    assert outcome.draft_max is None
+    assert outcome.keel_configuration == "FIN"
+    assert outcome.search_outcome is sentinel_outcome
+    assert captured["conn"] is conn_marker
+    assert captured["draft_max"] is None
+    assert captured["keel_configuration"] == "FIN"
+    assert captured["as_of"] == _AS_OF
+
+
+def test_mixed_draft_and_keel_proceeds_to_result_via_native_inventory_funnel(
+    monkeypatch,
+) -> None:
+    import hullq.application.search_read as module
+
+    sentinel_outcome = object()
+    captured: dict[str, object] = {}
+
+    def fake_evaluate(
+        conn: object, *, draft_max: Decimal | None, keel_configuration: str | None, as_of: datetime
+    ) -> object:
+        captured["draft_max"] = draft_max
+        captured["keel_configuration"] = keel_configuration
+        return sentinel_outcome
+
+    monkeypatch.setattr(module, "evaluate_native_inventory_requirements", fake_evaluate)
+
+    outcome = evaluate_search_request(
+        object(),
+        locale="en",
+        query_params={"draft_max": ["1.6"], "keel_configuration": ["FIN"]},
+        as_of=_AS_OF,
+    )
+
+    assert outcome.kind is SearchOutcomeKind.RESULT
+    assert outcome.draft_max == Decimal("1.6")
+    assert outcome.keel_configuration == "FIN"
+    assert outcome.search_outcome is sentinel_outcome
+    assert captured["draft_max"] == Decimal("1.6")
+    assert captured["keel_configuration"] == "FIN"
+
+
+def test_mixed_noncanonical_draft_redirects_preserving_canonical_keel() -> None:
+    outcome = evaluate_search_request(
+        None,
+        locale="de",
+        query_params={"draft_max": ["1.600"], "keel_configuration": ["FIN"]},
+        as_of=_AS_OF,
+    )
+    assert outcome.kind is SearchOutcomeKind.REDIRECT
+    assert outcome.canonical_path == "/de/search?draft_max=1.6&keel_configuration=FIN"
+
+
+def test_mixed_request_with_invalid_keel_value_is_invalid_even_with_valid_draft() -> None:
+    outcome = evaluate_search_request(
+        None,
+        locale="de",
+        query_params={"draft_max": ["1.6"], "keel_configuration": ["NOT_A_KEEL"]},
+        as_of=_AS_OF,
+    )
+    assert outcome.kind is SearchOutcomeKind.INVALID
