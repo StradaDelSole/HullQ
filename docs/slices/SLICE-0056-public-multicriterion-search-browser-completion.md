@@ -279,10 +279,9 @@ uv run ruff format --check .
 uv run ruff check .
 uv run mypy src
 uv run pytest tests/
-cd web
-npm test
-npm run check
-npm run build
+npm test --prefix web
+npm run check --prefix web
+npm run build --prefix web
 ```
 
 The retained PostgreSQL/FastAPI/Astro proof must also pass locally when the required test database/environment is available and in remote CI.
@@ -303,12 +302,7 @@ Stop and report rather than inventing semantics if:
 
 The implementation agent may set `REVIEW` or `BLOCKED` as appropriate but MUST NOT mark this slice `DONE`.
 
-A successful implementation handoff normally sets:
-
-```text
-**Status:** REVIEW
-**Status set by this handoff:** `REVIEW`
-```
+On handoff, update the primary metadata status and add the matching canonical execution-handoff marker **as a real metadata line next to the header**, not only inside prose or a fenced example. Follow `docs/slices/SLICE_TEMPLATE.md` exactly.
 
 `DONE` requires exact-head independent review, required remote checks and explicit Project Owner acceptance.
 
