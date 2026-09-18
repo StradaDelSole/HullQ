@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-18  
 **Latest owner-accepted / DONE slice:** SLICE-0055  
-**Current queue:** SLICE-0056 — queue number only; capability not yet selected. Post-SLICE-0055 repository/product reassessment is required before readiness.  
+**Current queue:** SLICE-0056 — **Public Multi-Criterion Direct Search Browser Completion**; corrective readiness prepared to close the accepted SLICE-0055 browser/API projection regression.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -215,9 +215,14 @@ Next queue number:
 SLICE-0056
 ```
 
-**Capability:** not yet selected.
+**Selected capability:** Public Multi-Criterion Direct Search Browser Completion.
 
-Before selecting or readying SLICE-0056, perform the normal post-slice Decision/Implementation Reconciliation and trigger-gate check against canonical `origin/main`. This closure does not authorize implementation and does not convert deferred product ideas into the next slice.
+Post-SLICE-0055 reconciliation found a `CONFLICT_OR_REGRESSION`: the accepted SLICE-0055 FastAPI/application path supports keel-only and draft+keel Search, but the canonical Astro/TypeScript public Search surface still models the older SLICE-0051 draft-only response/form. SLICE-0056 owns only that corrective browser/API projection gap; it does not add a new Search criterion or new buyer/seller semantics.
+
+Readiness artifact: `docs/slices/SLICE-0056-public-multicriterion-search-browser-completion.md`.
+Reassessment: `docs/POST_SLICE_0055_REASSESSMENT_2026-09-18.md`.
+
+Implementation remains unauthorized until the readiness package passes independent exact-head review/CI and is merged to canonical `main`.
 
 ## Development workflow
 
