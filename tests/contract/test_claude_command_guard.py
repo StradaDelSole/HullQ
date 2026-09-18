@@ -34,6 +34,16 @@ def test_guard_blocks_variable_expansion_and_substitution() -> None:
     assert composition_reason('python_ver=$(uv run python -c "print(1)")') is not None
 
 
+def test_guard_blocks_all_shell_expansion_forms_and_exec_wrappers() -> None:
+    assert composition_reason('echo "$1"') is not None
+    assert composition_reason('echo "${items[@]}"') is not None
+    assert composition_reason("env NODE_ENV=test npm test") is not None
+    assert composition_reason("echo {a,b}") is not None
+    assert composition_reason("xargs grep canonicalPath") is not None
+    assert composition_reason("bash -c 'npm test'") is not None
+    assert composition_reason("find . -name '*.py' -exec cat {} \\;") is not None
+
+
 def test_guard_allows_shell_metacharacters_inside_python_code_quotes() -> None:
     command = 'uv run python -c "import ast; print(1); print(2 | 1)"'
     assert composition_reason(command) is None
