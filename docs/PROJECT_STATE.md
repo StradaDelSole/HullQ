@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-18  
 **Latest owner-accepted / DONE slice:** SLICE-0056  
-**Current queue:** SLICE-0057 — **BLOCKED pending mandatory workflow reassessment**; no SLICE-0057 capability is selected or authorized while `WORKFLOW_REASSESSMENT_STATUS: DUE`.  
+**Current queue:** SLICE-0057 — **capability not yet selected**; mandatory post-0056 workflow reassessment is complete and `PASS`, but normal post-slice repository/product reassessment must select the next capability before readiness.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -155,7 +155,7 @@ Canonical records remain `docs/governance/POST_0051_TRIGGER_GATES.md`, `docs/gov
 POST_0051_ARCHITECTURE_RECONCILIATION: PASS
 TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 2
 WORKFLOW_REASSESSMENT_DUE_AFTER_SLICE: 0056
-WORKFLOW_REASSESSMENT_STATUS: DUE
+WORKFLOW_REASSESSMENT_STATUS: PASS
 
 PRODUCTION_READINESS_GATE_STATUS: NOT_TRIGGERED
 EXTERNAL_BROKER_PRODUCTION_DATA_STATUS: NOT_PRESENT
@@ -168,7 +168,7 @@ BROKER_SELF_SERVICE_PILOT_STATUS: NOT_STARTED
 PAID_BROKER_PLAN_STATUS: NOT_STARTED
 ```
 
-SLICE-0056 used internal/synthetic retained proof and introduced no real external marketplace production data, production pilot or public production launch. The Production Readiness gate therefore remains untriggered after acceptance. The mandatory workflow reassessment is now `DUE` and blocks SLICE-0057 readiness/start until separately completed and owner-accepted. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA/production-readiness rules remain mandatory.
+SLICE-0056 used internal/synthetic retained proof and introduced no real external marketplace production data, production pilot or public production launch. The Production Readiness gate therefore remains untriggered after acceptance. The mandatory post-0056 workflow reassessment is complete and `PASS`; it does not select SLICE-0057. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA/production-readiness rules remain mandatory.
 
 ## Broker Mandatory Capability Register
 
@@ -207,7 +207,7 @@ The SLICE-0053 same-host session-topology invariant remains in force for browser
 
 Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; broker inventory workflow, branding/media and resilient drafts; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability and sensitivity; BuyerRequirements persistence; shortlist/Compare/sharing; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-SLICE-0056 is now accepted. No SLICE-0057 capability has been selected or allocated; workflow reassessment is mandatory first.
+SLICE-0056 is now accepted. No SLICE-0057 capability has been selected or allocated. The mandatory workflow reassessment is complete; normal post-slice repository/product reassessment is now the next gate before capability selection.
 
 ## Next capability selection
 
@@ -217,17 +217,17 @@ Next queue number:
 SLICE-0057
 ```
 
-**Selected capability:** NONE — BLOCKED BY MANDATORY WORKFLOW REASSESSMENT.
+**Selected capability:** NONE.
 
-SLICE-0056 acceptance triggers the evidence-based workflow reassessment defined in `docs/governance/POST_0051_TRIGGER_GATES.md`.
-
-Current gate:
+The mandatory post-SLICE-0056 workflow reassessment is complete:
 
 ```text
-WORKFLOW_REASSESSMENT_STATUS: DUE
+WORKFLOW_REASSESSMENT_STATUS: PASS
 ```
 
-No SLICE-0057 capability may be readied or started while this marker is `DUE`. The reassessment must examine actual post-SLICE-0051 review/amendment evidence, be explicitly owner-accepted, and move the canonical marker to `PASS` before SLICE-0057 readiness/start.
+Canonical reassessment record: `docs/POST_SLICE_0056_WORKFLOW_REASSESSMENT_2026-09-18.md`.
+
+This removes the workflow-overhead gate block only. It does **not** select or authorize SLICE-0057. The next allowed product step is the normal post-slice repository/product reassessment against canonical `origin/main`, accepted obligations, trigger gates and current implementation before any capability is proposed or readied.
 
 ## Development workflow
 
@@ -242,6 +242,6 @@ No SLICE-0057 capability may be readied or started while this marker is `DUE`. T
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- workflow reassessment is now mandatory and `DUE`; SLICE-0057 readiness/start is blocked until the reassessment is owner-accepted and the marker becomes `PASS`.
+- the mandatory post-SLICE-0056 workflow reassessment is complete and `PASS`; SLICE-0057 still requires normal post-slice reconciliation/capability selection/readiness before `START_SLICE`.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
