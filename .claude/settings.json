@@ -105,5 +105,41 @@
       "Read(~/.aws/**)",
       "Edit(/.claude/settings.json)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv",
+            "args": [
+              "run",
+              "python",
+              "${CLAUDE_PROJECT_DIR}/scripts/workflow/claude_command_guard.py"
+            ],
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv",
+            "args": [
+              "run",
+              "python",
+              "${CLAUDE_PROJECT_DIR}/scripts/workflow/claude_command_guard.py"
+            ],
+            "timeout": 5
+          }
+        ]
+      }
+    ]
   }
 }
