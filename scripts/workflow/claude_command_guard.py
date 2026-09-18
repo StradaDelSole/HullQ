@@ -61,21 +61,8 @@ def _shell_views(command: str) -> tuple[str, str, bool]:
     expandable: list[str] = []
     in_single = False
     in_double = False
-    escaped = False
 
     for char in command:
-        if escaped:
-            outside.append(" ")
-            expandable.append(" ")
-            escaped = False
-            continue
-
-        if char == "\\" and not in_single:
-            outside.append(" ")
-            expandable.append(" ")
-            escaped = True
-            continue
-
         if char == "'" and not in_double:
             in_single = not in_single
             outside.append(" ")
@@ -91,7 +78,7 @@ def _shell_views(command: str) -> tuple[str, str, bool]:
         outside.append(char if not in_single and not in_double else " ")
         expandable.append(char if not in_single else " ")
 
-    return "".join(outside), "".join(expandable), not (in_single or in_double or escaped)
+    return "".join(outside), "".join(expandable), not (in_single or in_double)
 
 
 def composition_reason(command: str) -> str | None:
