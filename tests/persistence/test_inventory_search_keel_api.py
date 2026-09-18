@@ -355,3 +355,34 @@ def test_mixed_noncanonical_draft_308_preserves_keel(client: TestClient) -> None
 def test_keel_search_response_is_noindex(client: TestClient, seeded: dict[str, Any]) -> None:
     response = client.get("/api/search/en?keel_configuration=FIN")
     assert response.headers.get("x-robots-tag") == "noindex"
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0056 independent review Finding 2: canonical parameter *order*,
+# proven through the real FastAPI route (not only the pure
+# `evaluate_search_request` unit tests in tests/unit/test_search_read.py) --
+# proves the raw incoming query-parameter order Starlette/FastAPI hands to
+# `hullq.api.app.get_search` is actually preserved end to end.
+# ---------------------------------------------------------------------------
+
+
+def test_canonical_mixed_order_is_200_not_redirected(client: TestClient) -> None:
+    response = client.get(
+        "/api/search/en?draft_max=1.6&keel_configuration=FIN", follow_redirects=False
+    )
+    assert response.status_code == 200
+
+
+def test_reversed_mixed_order_redirects_to_canonical_order(client: TestClient) -> None:
+    response = client.get(
+        "/api/search/en?keel_configuration=FIN&draft_max=1.6", follow_redirects=False
+    )
+    assert response.status_code == 308
+    assert response.headers["location"] == "/en/search?draft_max=1.6&keel_configuration=FIN"
+
+
+def test_reversed_order_with_invalid_keel_value_is_400_not_redirect(client: TestClient) -> None:
+    response = client.get(
+        "/api/search/en?keel_configuration=LONG_KEEL&draft_max=1.6", follow_redirects=False
+    )
+    assert response.status_code == 400

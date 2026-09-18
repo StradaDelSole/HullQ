@@ -7,8 +7,45 @@
 // route returns a real HTTP 308 with a `Location` header for a non-canonical
 // but valid request, and this page must reissue that exact redirect to the
 // browser rather than transparently following it server-side.
+//
+// SLICE-0056: `active_requirement` is now sparse (`draft_max` and/or
+// `keel_configuration`, mirroring `src/hullq/api/app.py`'s `get_search`
+// route). Which of the two confirmed-match shapes a response carries is
+// determined entirely by whether `keel_configuration` is active -- FastAPI
+// only ever returns the legacy SLICE-0051 `DraftMaxConfirmedMatch` shape
+// (`resolved_draft_m`) for a pure `draft_max` request, and the SLICE-0055
+// typed-evidence shape (`criterion_evidence`) for any request involving
+// `keel_configuration` (`src/hullq/application/search_read.py`, `if
+// keel_configuration is None: ... evaluate_draft_max_requirement ... else:
+// ... evaluate_native_inventory_requirements`). These two response shapes
+// are never mixed within one result.
 
-export interface SearchConfirmedMatch {
+// The exact accepted public v0.1 `keel_configuration` query/display values
+// (specs/TECHNICAL_NATIVE_SEARCH_CRITERION_2_KEEL_CONTRACT.v0.1.md §4,
+// `hullq.search.keel_design_bridge.SEARCH_KEEL_CONFIGURATION_VALUES`).
+// Technical values, language-neutral -- never localized, never remapped.
+export const SEARCH_KEEL_CONFIGURATION_VALUES = [
+  "FIN",
+  "FIN_WITH_BULB",
+  "WING",
+  "CENTERBOARD",
+  "LIFTING_KEEL",
+  "TWIN_KEEL",
+] as const;
+
+export type SearchKeelConfigurationValue = (typeof SEARCH_KEEL_CONFIGURATION_VALUES)[number];
+
+// Mirrors `src/hullq/application/search_read.py`'s sparse
+// `active_requirement` construction: `draft_max` and/or
+// `keel_configuration`, never neither (a `null` `active_requirement` is the
+// base state, represented separately below).
+export type SearchActiveRequirement =
+  | { draft_max: string; keel_configuration?: undefined }
+  | { keel_configuration: string; draft_max?: undefined }
+  | { draft_max: string; keel_configuration: string };
+
+/** SLICE-0051 draft-only confirmed match, unchanged (contract §8 non-regression). */
+export interface DraftOnlyConfirmedMatch {
   native_listing_id: string;
   resolved_draft_m: string;
   publishing_organization_id: string;
@@ -17,9 +54,55 @@ export interface SearchConfirmedMatch {
   last_confirmed_at: string | null;
 }
 
+// Mirrors `src/hullq/api/app.py::_serialize_leaf_criterion` -- the exact
+// requested criterion value/comparison, never re-derived from explanation
+// text.
+export type SearchLeafCriterion =
+  | {
+      kind: "NUMERIC";
+      field: string;
+      comparison: "MINIMUM" | "MAXIMUM" | "RANGE";
+      threshold_min: string | null;
+      threshold_max: string | null;
+    }
+  | { kind: "CATEGORICAL"; field: string; equals: string };
+
+// Mirrors `src/hullq/api/app.py::_serialize_criterion_evidence` /
+// `hullq.application.native_inventory_query.SearchCriterionEvidence`.
+// `observed_value` is `null` whenever the underlying evaluation is not a
+// `CONFIRMED`-qualified value -- never fabricated by this module or a caller.
+export interface SearchCriterionEvidence {
+  criterion: SearchLeafCriterion;
+  field: string;
+  truth: "TRUE" | "FALSE" | "UNKNOWN";
+  reason: string | null;
+  explanation: string;
+  observed_value: string | null;
+}
+
+/**
+ * SLICE-0055 keel-only/mixed confirmed match
+ * (`hullq.application.native_inventory_query.NativeInventoryCandidateEvaluation`).
+ * Only the fields this bounded browser projection actually renders are
+ * typed here -- `design_evaluation`/`design_configuration_evidence` are also
+ * present on the real JSON body but are design-level evidence, out of scope
+ * for this slice's buyer-facing concrete-match rendering (Required Behavior
+ * §D uses `criterion_evidence`, the concrete PhysicalBoat-level evidence,
+ * only).
+ */
+export interface NativeInventoryConfirmedMatch {
+  native_listing_id: string;
+  publishing_organization_id: string;
+  freshness_status: "CONFIRMED" | "DUE_FOR_CONFIRMATION";
+  last_confirmed_at: string | null;
+  criterion_evidence: SearchCriterionEvidence[];
+}
+
+export type SearchConfirmedMatch = DraftOnlyConfirmedMatch | NativeInventoryConfirmedMatch;
+
 export interface SearchResultBody {
   locale: string;
-  active_requirement: { draft_max: string } | null;
+  active_requirement: SearchActiveRequirement | null;
   confirmed_matches?: SearchConfirmedMatch[];
   confirmed_match_count?: number;
   insufficient_data_count?: number;

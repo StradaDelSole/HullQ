@@ -2,7 +2,8 @@
 
 **ID:** SLICE-0056  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
+**Status set by this handoff:** `REVIEW`  
 **Stage:** Public buyer Direct Search — browser/API contract completion  
 **Depends on:** SLICE-0055 owner-accepted / DONE; post-SLICE-0055 reconciliation completed  
 **Blocks:** post-SLICE-0056 mandatory workflow reassessment before SLICE-0057 readiness; later BuyerRequirements/explainability work that depends on a truthful public two-criterion Search surface
