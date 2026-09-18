@@ -26,6 +26,9 @@ dist/
 *.sqlite3
 .local/
 
+# Claude Code personal project overrides
+**/.claude/settings.local.json
+
 # Editors / OS
 .vscode/settings.json
 .idea/
