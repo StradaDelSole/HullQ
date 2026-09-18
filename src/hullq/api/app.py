@@ -72,6 +72,8 @@ from hullq.application.broker_workspace_read import (
     get_broker_context_read_model,
     get_organization_workspace_result,
 )
+from hullq.application.inventory_search import DraftMaxSearchOutcome
+from hullq.application.native_inventory_query import NativeInventorySearchOutcome
 from hullq.application.owner_direct_draft import (
     CreateOwnerDirectDraftOutcome,
     GetOwnerDirectDraftOutcome,
@@ -220,11 +222,11 @@ _SUPPORTED_SEARCH_LOCALES = ("en", "de", "fr", "pt", "es")
 #: buyer-friendly 400 recovery response"). Technical parameter names/values
 #: remain language-neutral; only this guidance text is translated.
 _INVALID_SEARCH_REQUEST_MESSAGE = {
-    "en": "This search link isn't valid. Enter a maximum draft as a plain decimal number of metres, for example 1.6.",
-    "de": "Dieser Suchlink ist ungültig. Geben Sie den maximalen Tiefgang als einfache Dezimalzahl in Metern an, zum Beispiel 1.6.",
-    "fr": "Ce lien de recherche n'est pas valide. Indiquez le tirant d'eau maximal sous forme de nombre décimal simple en mètres, par exemple 1.6.",
-    "pt": "Esta ligação de pesquisa não é válida. Indique o calado máximo como um número decimal simples em metros, por exemplo 1.6.",
-    "es": "Este enlace de búsqueda no es válido. Indique el calado máximo como un número decimal simple en metros, por ejemplo 1.6.",
+    "en": "This search link isn't valid. Enter a maximum draft as a plain decimal number of metres (e.g. 1.6) and/or a supported keel configuration.",
+    "de": "Dieser Suchlink ist ungültig. Geben Sie den maximalen Tiefgang als einfache Dezimalzahl in Metern an (z. B. 1.6) und/oder eine unterstützte Kielkonfiguration.",
+    "fr": "Ce lien de recherche n'est pas valide. Indiquez le tirant d'eau maximal sous forme de nombre décimal simple en mètres (par exemple 1.6) et/ou une configuration de quille prise en charge.",
+    "pt": "Esta ligação de pesquisa não é válida. Indique o calado máximo como um número decimal simples em metros (por exemplo 1.6) e/ou uma configuração de quilha suportada.",
+    "es": "Este enlace de búsqueda no es válido. Indique el calado máximo como un número decimal simple en metros (por ejemplo 1.6) y/o una configuración de quilla admitida.",
 }
 
 # Sent on every response from the preview surface only: a preview token is a
@@ -498,17 +500,49 @@ def create_app(
             return JSONResponse({"locale": locale, "active_requirement": None})
 
         assert outcome.kind is SearchOutcomeKind.RESULT
-        assert outcome.draft_max is not None
         assert outcome.search_outcome is not None
         search_outcome = outcome.search_outcome
+
+        active_requirement: dict[str, str] = {}
+        if outcome.draft_max is not None:
+            active_requirement["draft_max"] = canonical_draft_max_str(outcome.draft_max)
+        if outcome.keel_configuration is not None:
+            active_requirement["keel_configuration"] = outcome.keel_configuration
+
+        if isinstance(search_outcome, DraftMaxSearchOutcome):
+            # SLICE-0051 draft-only shape, unchanged (contract §8 non-regression).
+            return JSONResponse(
+                {
+                    "locale": locale,
+                    "active_requirement": active_requirement,
+                    "confirmed_matches": [
+                        {
+                            "native_listing_id": match.native_listing_id.value,
+                            "resolved_draft_m": str(match.resolved_draft_m),
+                            "publishing_organization_id": match.publishing_organization_id.value,
+                            "freshness_status": match.freshness_status.value,
+                            "last_confirmed_at": (
+                                match.last_confirmed_at.isoformat()
+                                if match.last_confirmed_at is not None
+                                else None
+                            ),
+                        }
+                        for match in search_outcome.confirmed_matches
+                    ],
+                    "confirmed_match_count": search_outcome.confirmed_match_count,
+                    "insufficient_data_count": search_outcome.insufficient_data_count,
+                }
+            )
+
+        # SLICE-0055: keel_configuration alone or combined with draft_max.
+        assert isinstance(search_outcome, NativeInventorySearchOutcome)
         return JSONResponse(
             {
                 "locale": locale,
-                "active_requirement": {"draft_max": canonical_draft_max_str(outcome.draft_max)},
+                "active_requirement": active_requirement,
                 "confirmed_matches": [
                     {
                         "native_listing_id": match.native_listing_id.value,
-                        "resolved_draft_m": str(match.resolved_draft_m),
                         "publishing_organization_id": match.publishing_organization_id.value,
                         "freshness_status": match.freshness_status.value,
                         "last_confirmed_at": (
@@ -516,6 +550,19 @@ def create_app(
                             if match.last_confirmed_at is not None
                             else None
                         ),
+                        "criterion_evaluations": [
+                            {
+                                "field": evaluation.field,
+                                "truth": evaluation.truth.value,
+                                "reason": (
+                                    evaluation.reason.value
+                                    if evaluation.reason is not None
+                                    else None
+                                ),
+                                "explanation": evaluation.explanation,
+                            }
+                            for evaluation in match.criterion_evaluations
+                        ],
                     }
                     for match in search_outcome.confirmed_matches
                 ],

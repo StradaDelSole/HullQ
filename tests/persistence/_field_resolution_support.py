@@ -128,6 +128,7 @@ def make_evidence(
     field_pointer: str,
     value: str,
     source_id: str = WIKIDATA_SOURCE_ID,
+    unit: str | None = "m",
 ) -> FieldEvidenceV3:
     return FieldEvidenceV3(
         evidence_id=evidence_id,
@@ -138,10 +139,10 @@ def make_evidence(
             page=None, section=None, anchor=None, table=None, figure=None, record_key=None
         ),
         raw=RawObservation(
-            kind=RawObservationKind.STRUCTURED_RECORD, value=value, unit="m", excerpt=None
+            kind=RawObservationKind.STRUCTURED_RECORD, value=value, unit=unit, excerpt=None
         ),
         normalized_candidate=NormalizedCandidate(
-            value=value, unit="m", method_id="test-normalize", method_version="1"
+            value=value, unit=unit, method_id="test-normalize", method_version="1"
         ),
         evidence_type=EvidenceType.STRUCTURED_DATASET,
         producer=ProducerMetadata(
@@ -248,6 +249,74 @@ def admit_resolved_draft_max(
         resolution=resolution,
         expected_current_resolution_id=None,
         fetch_canonical_value=fetch_canonical_value or lookup_draft_max_canonical_value,
+        available_sources={WIKIDATA_SOURCE_ID: WIKIDATA_SOURCE},
+    )
+    assert result.status is FieldResolutionWriteStatus.CREATED, result
+    conn.commit()
+
+
+def admit_resolved_categorical_field(
+    conn: Any,
+    *,
+    subject_kind: SubjectKind,
+    subject_id: str,
+    field_pointer: str,
+    value: str,
+    resolution_id: str,
+    fetch_canonical_value: FetchCanonicalValue,
+    evidence_id: str | None = None,
+) -> None:
+    """SLICE-0055 categorical analogue of `admit_resolved_draft_max`: durably
+    admit one `resolved` categorical-string FieldResolution (e.g. BoatDesign
+    `appendages.keel_type`) end to end through the real accepted
+    `write_field_resolution` path.
+
+    Unlike `admit_resolved_draft_max`, *value* is stored as the plain string
+    itself (never `encode_canonical_decimal_snapshot`'s Decimal-string
+    encoding) -- see `hullq.search.boat_design_field_bridge.
+    decode_categorical_string_for_qualification` and
+    `hullq.persistence.field_resolution._check_canonical_value_consistency`'s
+    SLICE-0055 string-comparison branch. *fetch_canonical_value* is required
+    (no default) since there is no single accepted categorical
+    `FetchCanonicalValue` the way `lookup_draft_max_canonical_value` is for
+    `draft_max_m` -- callers pass
+    `hullq.search.keel_design_bridge.lookup_keel_canonical_value` for genuine
+    end-to-end enforcement, or `matching_canonical_lookup_stub` when testing
+    other invariants in isolation."""
+    evidence_id = evidence_id or f"EV-{resolution_id}"
+    evidence = make_evidence(
+        evidence_id,
+        subject_kind=subject_kind,
+        subject_id=subject_id,
+        field_pointer=field_pointer,
+        value=value,
+        unit=None,
+    )
+    import_evidence(conn, evidence)
+
+    resolution = _FieldResolution(
+        resolution_id=resolution_id,
+        subject=ProvenanceSubject(kind=subject_kind, id=subject_id),
+        field_pointer=JsonPointer(field_pointer),
+        state=ResolutionState.RESOLVED,
+        canonical_value_snapshot=value,
+        supporting_evidence_ids=frozenset({evidence_id}),
+        contradicting_evidence_ids=frozenset(),
+        considered_evidence_ids=frozenset({evidence_id}),
+        resolution_method=ResolutionMethod.UNANIMOUS_EVIDENCE,
+        policy_version="test-policy-1",
+        resolver=ResolverMetadata(
+            kind=ResolverKind.DETERMINISTIC_TOOL, identifier="test", version="1"
+        ),
+        resolved_at="2026-09-17T00:00:00+00:00",
+        supersedes_resolution_id=None,
+        notes=None,
+    )
+    result = write_field_resolution(
+        conn,
+        resolution=resolution,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=fetch_canonical_value,
         available_sources={WIKIDATA_SOURCE_ID: WIKIDATA_SOURCE},
     )
     assert result.status is FieldResolutionWriteStatus.CREATED, result

@@ -481,6 +481,19 @@ def _check_canonical_value_consistency(
 
     Returns a human-readable diagnostic string on mismatch, or `None` if
     consistent.
+
+    SLICE-0055 extends this beyond Decimal-shaped fields: a categorical
+    canonical fact (e.g. BOAT_DESIGN_SCHEMA `appendages.keel_type`) stores
+    its `canonical_value_snapshot` as the plain string itself, never the
+    Decimal-string encoding `encode_canonical_decimal_snapshot` produces,
+    and the durable canonical document already holds that same plain string
+    -- no Decimal-vs-JSON-number representation asymmetry exists for it the
+    way it does for a Decimal field. `raw_canonical_value` being a `str` is
+    what distinguishes this case (a JSON number field pointer never
+    round-trips through psycopg/JSONB as a Python `str`), so it is compared
+    by exact string equality instead of being forced through
+    `decode_canonical_decimal_snapshot` (which would raise/mismatch on an
+    ordinary non-numeric string like `"fin"`).
     """
     try:
         raw_canonical_value = resolution.field_pointer.lookup(canonical_subject_snapshot)
@@ -501,6 +514,15 @@ def _check_canonical_value_consistency(
             f"resolution asserts canonical_value_snapshot={resolution.canonical_value_snapshot!r} "
             f"but the durable canonical subject has no value at {resolution.field_pointer.raw}"
         )
+
+    if isinstance(raw_canonical_value, str):
+        if raw_canonical_value != resolution.canonical_value_snapshot:
+            return (
+                f"durable canonical value at {resolution.field_pointer.raw} is "
+                f"{raw_canonical_value!r} but resolution snapshot is "
+                f"{resolution.canonical_value_snapshot!r}"
+            )
+        return None
 
     try:
         canonical_decimal = Decimal(str(raw_canonical_value))
