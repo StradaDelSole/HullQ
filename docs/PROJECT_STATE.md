@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-18  
 **Latest owner-accepted / DONE slice:** SLICE-0056  
-**Current queue:** SLICE-0057 — **capability not yet selected**; mandatory post-0056 workflow reassessment is complete and `PASS`, but normal post-slice repository/product reassessment must select the next capability before readiness.  
+**Current queue:** SLICE-0057 — **Buyer Requirement Sensitivity**; readiness prepared on the accepted one-change factual sensitivity boundary. Implementation remains unauthorized until independent exact-head readiness review/CI and readiness merge to `main`.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -207,7 +207,7 @@ The SLICE-0053 same-host session-topology invariant remains in force for browser
 
 Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; broker inventory workflow, branding/media and resilient drafts; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability and sensitivity; BuyerRequirements persistence; shortlist/Compare/sharing; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-SLICE-0056 is now accepted. No SLICE-0057 capability has been selected or allocated. The mandatory workflow reassessment is complete; normal post-slice repository/product reassessment is now the next gate before capability selection.
+SLICE-0056 is now accepted. Post-SLICE-0056 reconciliation selects SLICE-0057 Buyer Requirement Sensitivity as the next bounded capability. No implementation is authorized until readiness is independently accepted and merged.
 
 ## Next capability selection
 
@@ -217,17 +217,19 @@ Next queue number:
 SLICE-0057
 ```
 
-**Selected capability:** NONE.
+**Selected capability:** Buyer Requirement Sensitivity.
 
-The mandatory post-SLICE-0056 workflow reassessment is complete:
+Selection record: `docs/POST_SLICE_0056_REASSESSMENT_2026-09-18.md`.
 
-```text
-WORKFLOW_REASSESSMENT_STATUS: PASS
-```
+Readiness artifact: `docs/slices/SLICE-0057-buyer-requirement-sensitivity.md`.
 
-Canonical reassessment record: `docs/POST_SLICE_0056_WORKFLOW_REASSESSMENT_2026-09-18.md`.
+Normative bounded contract: `specs/BUYER_REQUIREMENT_SENSITIVITY_CONTRACT.v0.1.md`.
 
-This removes the workflow-overhead gate block only. It does **not** select or authorize SLICE-0057. The next allowed product step is the normal post-slice repository/product reassessment against canonical `origin/main`, accepted obligations, trigger gates and current implementation before any capability is proposed or readied.
+The capability lets a buyer replace exactly one currently active `draft_max` or `keel_configuration` value with one buyer-supplied alternative and inspect the factual confirmed-result-set delta through the same accepted Search truth.
+
+It adds no Search criterion, recommendation, persistence, account requirement or indexable Search URL class.
+
+Implementation remains unauthorized until the readiness package passes independent exact-head review/CI and is merged to canonical `main`; only then may the Project Owner run `START_SLICE.bat`.
 
 ## Development workflow
 
