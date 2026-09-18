@@ -19,6 +19,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 _LOCAL_TEST_DB_URL = "postgresql://hullq_test:hullq_test@localhost:5432/hullq_test"
+_LOCAL_PREVIEW_SIGNING_SECRET = "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
 
 
 def env_status(name: str) -> int:
@@ -67,6 +68,46 @@ def run_local_test_db(script: str, args: list[str]) -> int:
     return completed.returncode
 
 
+def run_local_api(host: str, port: int, seconds: float) -> int:
+    """Start the HullQ API with fixed local-test env for a bounded smoke window."""
+
+    env = os.environ.copy()
+    env["HULLQ_DATABASE_URL"] = _LOCAL_TEST_DB_URL
+    env["HULLQ_PREVIEW_SIGNING_SECRET"] = _LOCAL_PREVIEW_SIGNING_SECRET
+    command = [
+        sys.executable,
+        "-m",
+        "uvicorn",
+        "hullq.api.app:create_app",
+        "--factory",
+        "--host",
+        host,
+        "--port",
+        str(port),
+        "--no-access-log",
+        "--log-level",
+        "warning",
+    ]
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=ROOT,
+            env=env,
+            check=False,
+            timeout=seconds,
+        )
+    except subprocess.TimeoutExpired:
+        print(f"LOCAL_API_STAYED_UP {host}:{port} for {seconds:g}s")
+        return 0
+
+    if completed.returncode == 0:
+        print(f"LOCAL_API_EXITED_CLEANLY {host}:{port}")
+        return 0
+
+    print(f"LOCAL_API_EXITED_EARLY code={completed.returncode}", file=sys.stderr)
+    return completed.returncode
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -86,6 +127,11 @@ def build_parser() -> argparse.ArgumentParser:
     db_parser.add_argument("script")
     db_parser.add_argument("args", nargs=argparse.REMAINDER)
 
+    api_parser = subparsers.add_parser("run-local-api")
+    api_parser.add_argument("--host", default="127.0.0.1")
+    api_parser.add_argument("--port", type=int, default=18123)
+    api_parser.add_argument("--seconds", type=float, default=6.0)
+
     return parser
 
 
@@ -100,6 +146,8 @@ def main() -> int:
         return latest_temp_dir(args.prefix)
     if args.command == "run-local-test-db":
         return run_local_test_db(args.script, args.args)
+    if args.command == "run-local-api":
+        return run_local_api(args.host, args.port, args.seconds)
 
     raise AssertionError(f"Unhandled command: {args.command}")
 
