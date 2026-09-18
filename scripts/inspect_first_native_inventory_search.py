@@ -74,6 +74,11 @@ ACTIVE listing (NL-0056-E2E-KEEL) with its own concrete `draft`/
        canonical ordering draft_max-then-keel_configuration).
    13. `/en/search?keel_configuration=LONG_KEEL` -> 400 localized recovery
        (unsupported public v0.1 keel vocabulary), no Search evaluation.
+   14. `/en/search?keel_configuration=FIN&draft_max=1.6` (canonical values,
+       reversed parameter *order*) -> 308 canonical redirect to
+       `/en/search?draft_max=1.6&keel_configuration=FIN` -- independent
+       review Finding 2: order-only non-canonicity, distinct from step 12's
+       numeral non-canonicity.
 
 Requires ``HULLQ_TEST_DATABASE_URL`` (a local PostgreSQL 18 instance) and a
 pre-built Astro web package (``uv run`` this only after
@@ -1118,7 +1123,40 @@ def main() -> int:
         ok &= step13_ok
         print(
             f"13. /en/search?keel_configuration=LONG_KEEL -> 400, no evaluation -> "
-            f"{'OK' if step13_ok else 'FAIL'}\n"
+            f"{'OK' if step13_ok else 'FAIL'}"
+        )
+
+        # 14. SLICE-0056 independent review Finding 2: a semantically valid
+        # mixed request whose *parameter order* is reversed (both values
+        # already individually canonical) must still 308-redirect to the
+        # exact canonical draft_max-then-keel_configuration order rather than
+        # remain a second successful 200 identity
+        # (docs/OQ_018_SEARCH_PARAMETER_ORDERING_DECISION_2026-09-11.md,
+        # docs/OQ_018_SEARCH_NONCANONICAL_REDIRECT_DECISION_2026-09-11.md).
+        # This exercises order-only non-canonicity, which the pre-existing
+        # step 12 (a non-canonical *numeral* in already-canonical key order)
+        # does not.
+        order_redirect_req = urllib.request.Request(
+            f"{web_base}/en/search?keel_configuration=FIN&draft_max=1.6"
+        )
+        try:
+            order_redirect_resp = no_redirect_opener.open(order_redirect_req, timeout=10)
+            order_redirect_status = order_redirect_resp.status
+            order_redirect_headers = dict(order_redirect_resp.headers)
+        except urllib.error.HTTPError as exc:
+            order_redirect_status = exc.code
+            order_redirect_headers = dict(exc.headers or {})
+        order_redirect_headers_lower = {k.lower(): v for k, v in order_redirect_headers.items()}
+        step14_ok = (
+            order_redirect_status == 308
+            and order_redirect_headers_lower.get("location")
+            == "/en/search?draft_max=1.6&keel_configuration=FIN"
+        )
+        ok &= step14_ok
+        print(
+            f"14. /en/search?keel_configuration=FIN&draft_max=1.6 (reversed canonical order) -> "
+            f"308 /en/search?draft_max=1.6&keel_configuration=FIN -> "
+            f"{'OK' if step14_ok else 'FAIL'}\n"
         )
 
         print(f"FIRST REQUIREMENTS -> NATIVE INVENTORY SEARCH RESULT -> {'PASS' if ok else 'FAIL'}")

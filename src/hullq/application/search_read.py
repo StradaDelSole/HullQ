@@ -30,6 +30,21 @@ canonicalization, `keel_configuration`'s accepted v0.1 values are already
 exact canonical spellings -- no redigitting occurs, only exact-set
 membership validation.
 
+SLICE-0056 independent-review Finding 2: with two public criteria, incoming
+key *order* is itself now an observable non-canonicalization defect --
+`docs/OQ_018_SEARCH_PARAMETER_ORDERING_DECISION_2026-09-11.md` requires
+active technical parameters to be lexicographically ordered (`draft_max`
+before `keel_configuration`), and `docs/
+OQ_018_SEARCH_NONCANONICAL_REDIRECT_DECISION_2026-09-11.md` requires a
+semantically valid but non-canonically ordered request to 308-redirect
+rather than remain a second successful `200` identity. A request whose
+active keys arrive in a different order (e.g.
+`?keel_configuration=FIN&draft_max=1.6`) is therefore folded into the same
+REDIRECT path as a non-canonical *value* (e.g. `draft_max=1.600`), using the
+caller's preserved raw key order (see *query_params* below) -- this is a
+structural key-order comparison, not a second URL parser, and never
+overrides INVALID precedence for malformed/ambiguous/unknown content.
+
 This module never decides locale support/routing (`hullq.api.app` and the
 Astro route tree own that) and never issues an HTTP response itself.
 """
@@ -135,6 +150,23 @@ def evaluate_search_request(
     if not draft_raw_values and not keel_raw_values:
         return SearchRequestOutcome(kind=SearchOutcomeKind.BASE)
 
+    # Independent review Finding 2: `docs/OQ_018_SEARCH_PARAMETER_ORDERING_DECISION_2026-09-11.md`
+    # requires the canonical URL to order active technical parameters
+    # lexicographically (draft_max before keel_configuration for the two
+    # currently accepted criteria); `docs/
+    # OQ_018_SEARCH_NONCANONICAL_REDIRECT_DECISION_2026-09-11.md` requires a
+    # semantically valid but non-canonically ordered request to 308-redirect
+    # rather than remain a second successful 200 identity. `query_params`
+    # already preserves the caller's raw incoming key order (its docstring
+    # above) -- comparing that order against the fixed canonical order below
+    # is a structural check independent of value validity, so it is safe to
+    # compute unconditionally here and combine with the existing per-value
+    # canonicalization flags before deciding REDIRECT vs RESULT.
+    _canonical_key_order = (_DRAFT_MAX_KEY, _KEEL_CONFIGURATION_KEY)
+    canonical_active_key_order = [key for key in _canonical_key_order if key in query_params]
+    actual_active_key_order = [key for key in query_params if key in _ALLOWED_PARAM_KEYS]
+    order_is_canonical = actual_active_key_order == canonical_active_key_order
+
     draft_max: Decimal | None = None
     draft_canonical: str | None = None
     draft_is_single_canonical = True
@@ -173,7 +205,7 @@ def evaluate_search_request(
         # of an identical value) is non-canonical.
         keel_is_single_canonical = len(keel_raw_values) == 1
 
-    if not (draft_is_single_canonical and keel_is_single_canonical):
+    if not (draft_is_single_canonical and keel_is_single_canonical and order_is_canonical):
         parts = []
         if draft_max is not None:
             assert draft_canonical is not None
