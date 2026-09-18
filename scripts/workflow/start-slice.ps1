@@ -204,6 +204,7 @@ EXECUTION:
 - Run shell commands directly from the current slice worktree. Do not prepend routine commands with `cd <worktree> &&`, PowerShell `cd <worktree>;`, or equivalent directory-changing wrappers; the operator has already opened Claude Code in the correct worktree.
 - Do not append synthetic exit-code wrappers such as `; echo "---EXIT $LASTEXITCODE---"` unless diagnosing an actual command failure. Use the tool's native result/exit status.
 - Prefer one standalone command per tool call so the shared `.claude/settings.json` permissions can match it cleanly and routine work does not trigger avoidable approvals.
+- For ad-hoc Python snippets, AST/syntax checks, and short repository inspection commands, use `uv run python ...` instead of direct `python`, `python3`, or `py` invocations so routine checks stay within the shared approved command path.
 - Do not broaden scope or start another slice.
 - Push this same branch to GitHub at completion.
 - Leave the slice in REVIEW or BLOCKED; never mark DONE and never merge to main.
