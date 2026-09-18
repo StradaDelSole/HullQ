@@ -5,7 +5,7 @@
 **Scope:** post-SLICE-0051 reassessment, slice readiness, production-data/pilot readiness, Search abstraction and process governance
 
 <!-- POST_0051_ARCHITECTURE_RECONCILIATION: PASS -->
-<!-- TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 1 -->
+<!-- TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 2 -->
 <!-- WORKFLOW_REASSESSMENT_DUE_AFTER_SLICE: 0056 -->
 <!-- WORKFLOW_REASSESSMENT_STATUS: NOT_DUE -->
 
@@ -87,9 +87,10 @@ Current accepted buyer-facing hard technical native-inventory Search criteria:
 
 ```text
 1 — draft_max
+2 — keel_configuration
 ```
 
-The first criterion proved the concrete end-to-end path. Generalization is deliberately not authorized merely because one implementation exists.
+The first criterion proved the concrete end-to-end path. SLICE-0055 then satisfied the accepted second-criterion comparison obligation and generalized the genuinely shared design/configuration production mechanics while retaining criterion-specific decoding/mapping behind bounded adapters.
 
 ### Second criterion
 
@@ -207,10 +208,10 @@ A readiness package may not rely on the superseded broker-only/FSBO-out-of-scope
 
 These gates constrain execution; they do not choose the next product capability.
 
-Current queue after accepted SLICE-0053 is:
+Current queue after accepted SLICE-0055 is:
 
 ```text
-SLICE-0054
+SLICE-0056
 ```
 
-The owner-direct pivot does **not** select SLICE-0054. Selection requires fresh post-pivot/post-SLICE-0053 reassessment against canonical `origin/main`, the Broker Workspace Mandatory Capability Register, these trigger gates and applicable owner-direct requirements.
+Queue number does **not** select a capability. SLICE-0056 selection requires fresh post-SLICE-0055 reconciliation against canonical `origin/main`, accepted product obligations, the Broker Workspace Mandatory Capability Register, these trigger gates and applicable owner-direct requirements.
