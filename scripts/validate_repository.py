@@ -156,6 +156,9 @@ def claude_approval_autonomy_check(
 
     expected_args = [
         "run",
+        "--no-project",
+        "--python",
+        "3.14",
         "python",
         "${CLAUDE_PROJECT_DIR}/scripts/workflow/claude_command_guard.py",
     ]
