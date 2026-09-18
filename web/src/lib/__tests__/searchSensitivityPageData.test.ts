@@ -137,7 +137,15 @@ test("loadSearchSensitivityPageData: a missing changed_value never reaches the n
   );
 });
 
-test("loadSearchSensitivityPageData: an empty current_keel_configuration field is omitted, never sent as an empty value", async () => {
+// Independent review Finding 2 (2026-09-19): the sensitivity form's
+// `current_*` hidden fields are never buyer-editable -- SearchPageBody.astro
+// only ever renders one for a genuinely active criterion, always with its
+// exact canonical value. A *present* empty value can therefore only be
+// tampered/malformed current state, never "criterion inactive", and MUST
+// reach FastAPI unchanged so the accepted application boundary rejects it
+// with 400 -- silently omitting it would instead narrow the comparison to a
+// different, unintended current requirement.
+test("loadSearchSensitivityPageData: a present empty current_keel_configuration field is forwarded unchanged, never omitted", async () => {
   let capturedRaw = "";
   await withServer(
     (req, res) => {
@@ -163,5 +171,48 @@ test("loadSearchSensitivityPageData: an empty current_keel_configuration field i
     },
   );
   const parsed = JSON.parse(capturedRaw) as { current: Record<string, string> };
+  assert.deepEqual(parsed.current, { draft_max: "1.6", keel_configuration: "" });
+});
+
+test("loadSearchSensitivityPageData: an absent current_keel_configuration field stays absent (genuine 'criterion inactive')", async () => {
+  let capturedRaw = "";
+  await withServer(
+    (req, res) => {
+      req.on("data", (chunk) => {
+        capturedRaw += chunk;
+      });
+      req.on("end", () => {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            locale: "en",
+            current_requirement: { draft_max: "1.6" },
+            alternative_requirement: { draft_max: "1.7" },
+            changed_criterion: "draft_max",
+            current_confirmed_match_count: 0,
+            alternative_confirmed_match_count: 0,
+            newly_confirmed_match_count: 0,
+            no_longer_confirmed_match_count: 0,
+            current_insufficient_data_count: 0,
+            alternative_insufficient_data_count: 0,
+            alternative_search_path: "/en/search?draft_max=1.7",
+          }),
+        );
+      });
+    },
+    async (baseUrl) => {
+      await loadSearchSensitivityPageData(
+        baseUrl,
+        "en",
+        formData({
+          current_draft_max: "1.6",
+          changed_criterion: "draft_max",
+          changed_value: "1.7",
+        }),
+      );
+    },
+  );
+  const parsed = JSON.parse(capturedRaw) as { current: Record<string, string> };
   assert.deepEqual(parsed.current, { draft_max: "1.6" });
+  assert.ok(!("keel_configuration" in parsed.current));
 });

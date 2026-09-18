@@ -201,12 +201,22 @@ _KEEL_LISTING_ID = "NL-0056-E2E-KEEL"
 
 # SLICE-0057: a fourth design/listing (TWIN_KEEL, same 1.30 m baseline draft
 # as _KEEL_DESIGN_ID's FIN keel) so the sensitivity proof can exercise a
-# genuine same-total/different-membership `keel_configuration` swap: _KEEL_
-# DESIGN_ID is design-level CONFIRMED_NON_MATCH for a TWIN_KEEL query and
-# this design is design-level CONFIRMED_NON_MATCH for a FIN query, so
-# changing keel_configuration from FIN to TWIN_KEEL swaps which single
-# listing is confirmed rather than merely adding/removing one from a shared
-# pool (contract §8/§16 point 5).
+# genuine same-total/different-membership `keel_configuration` swap:
+# _KEEL_DESIGN_ID's own resolved keel_type (fin) is a confirmed mismatch
+# against a TWIN_KEEL query, and this design's own resolved keel_type (twin)
+# is a confirmed mismatch against a FIN query -- independent review Finding 4
+# (2026-09-19): this repository's design/configuration bridge always builds
+# an incomplete configuration space
+# (hullq.search.boat_design_field_bridge.build_boat_design_configuration_set
+# `configuration_space_complete=False`), so a resolved-but-different keel
+# value lands in INSUFFICIENT_DATA, never design-level CONFIRMED_NON_MATCH
+# (hullq.search.configuration_engine.evaluate_design_configuration_set only
+# returns CONFIRMED_NON_MATCH when the configuration space is complete).
+# Either way, neither design is ever a confirmed match for the other's own
+# keel value, so changing keel_configuration from FIN to TWIN_KEEL still
+# swaps which single listing is confirmed rather than merely adding/removing
+# one from a shared pool (contract §8/§16 point 5) -- see step 15 below for
+# the exact insufficient-data counts this produces.
 _TWIN_DESIGN_ID = "BD-0057-E2E-TWIN"
 _TWIN_LISTING_ID = "NL-0057-E2E-TWIN"
 

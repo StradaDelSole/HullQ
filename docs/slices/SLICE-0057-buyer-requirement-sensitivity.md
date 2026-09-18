@@ -2,7 +2,8 @@
 
 **ID:** SLICE-0057  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
+**Status set by this handoff:** `REVIEW`  
 **Stage:** Buyer Decision Tools — one-change factual Direct Search sensitivity  
 **Depends on:** SLICE-0056 owner-accepted / acceptance-closed; post-SLICE-0056 workflow reassessment owner-accepted / `PASS`; SLICE-0055 typed Search evidence foundation  
 **Blocks:** later broader Buyer Requirements / explainability / sensitivity capabilities only; no later slice is automatically authorized

@@ -21,16 +21,32 @@ const _CURRENT_KEYS = ["draft_max", "keel_configuration"] as const;
  * Build the raw `current` map FastAPI expects from the posted form's hidden
  * `current_draft_max`/`current_keel_configuration` fields (contract §12:
  * "transports the current canonical active values plus exactly one changed
- * criterion/value") -- an absent or empty field is omitted entirely, never
- * sent as an empty-string criterion value (mirrors
- * `SearchPageBody.astro`'s own untouched-field omission for the ordinary
- * Search form).
+ * criterion/value").
+ *
+ * Independent review Finding 2 (2026-09-19): unlike the *ordinary* Search
+ * form's untouched-`<select>`/`<input>` omission (`SearchPageBody.astro`'s
+ * own `isUntouchedFormFieldValue` disabling, which applies only to that
+ * GET-query-building form), the sensitivity form's `current_*` hidden
+ * fields are never buyer-editable -- `SearchPageBody.astro` only ever
+ * renders one for a criterion that is genuinely active, always with its
+ * exact canonical value. So on this transport there is no legitimate
+ * "buyer left it blank" state to interpret: a *present* `current_draft_max`/
+ * `current_keel_configuration` field, even `""`, can only mean tampered or
+ * malformed current state, and must reach FastAPI exactly as posted so the
+ * accepted application/domain validation (`hullq.application.
+ * search_sensitivity.evaluate_requirement_sensitivity`) can fail closed
+ * with 400 -- never silently reinterpreted here as "criterion inactive",
+ * which would narrow the current requirement into a different, unintended
+ * sensitivity comparison. Only a field's true *absence* (`formData.get`
+ * returning `null`) means "this criterion was not active"; this function
+ * remains a raw-value carrier, never a second Search/current-requirement
+ * parser (contract §4/§9).
  */
 function currentRequirementFromFormData(formData: FormData): Record<string, string> {
   const current: Record<string, string> = {};
   for (const key of _CURRENT_KEYS) {
     const raw = formData.get(`current_${key}`);
-    if (typeof raw === "string" && raw !== "") {
+    if (typeof raw === "string") {
       current[key] = raw;
     }
   }

@@ -5,14 +5,46 @@ Mirrors `tests/persistence/test_inventory_search_keel_api.py`'s real-database
 fixture style. Two BoatDesigns (one FIN-keeled, one TWIN_KEEL-keeled, both
 draft_max_m=1.30) back three ACTIVE listings so the delta tests can exercise
 a genuine same-total/different-membership case through a real
-`keel_configuration` swap (contract §8/§16 point 5): the FIN design is
-`CONFIRMED_NON_MATCH` at the design level for a `TWIN_KEEL` query and vice
-versa, so changing `keel_configuration` from `FIN` to `TWIN_KEEL` swaps which
-single listing is confirmed rather than merely adding/removing one from a
-shared pool -- proving `newly_confirmed_match_count`/
-`no_longer_confirmed_match_count` are real set differences, not
-`max(0, alternative_total - current_total)` arithmetic (contract §8's hard
-requirement).
+`keel_configuration` swap (contract §8/§16 point 5): the FIN design's own
+resolved `keel_type` (`fin`) does not equal a `TWIN_KEEL` query's requested
+value and vice versa, so changing `keel_configuration` from `FIN` to
+`TWIN_KEEL` swaps which single listing is confirmed rather than merely
+adding/removing one from a shared pool -- proving
+`newly_confirmed_match_count`/`no_longer_confirmed_match_count` are real set
+differences, not `max(0, alternative_total - current_total)` arithmetic
+(contract §8's hard requirement).
+
+Independent review Finding 4 (2026-09-19): a resolved-but-different keel
+value does NOT classify as design-level `CONFIRMED_NON_MATCH` in this
+repository today -- `hullq.search.boat_design_field_bridge.
+build_boat_design_configuration_set` always builds an incomplete
+configuration space (`configuration_space_complete=False`), and
+`hullq.search.configuration_engine.evaluate_design_configuration_set` only
+returns `CONFIRMED_NON_MATCH` when the configuration space is complete AND
+every configuration is a confirmed FALSE. A design-level FALSE with an
+incomplete configuration space therefore falls into `INSUFFICIENT_DATA`
+instead (accepted, pre-existing SLICE-0051/0055 kernel behavior; SLICE-0057
+does not change it -- see `_TWIN_DESIGN_ID`'s own module-level comment in
+`scripts/inspect_first_native_inventory_search.py` for the same correction).
+The same-total/different-membership *confirmed*-set proof below remains
+unaffected by this correction; only the insufficient-data explanation
+changes.
+
+Independent review amendment (2026-09-19, Findings 2/3) adds:
+
+- a real-FastAPI proof (not merely a TypeScript-mocked one) that a present-
+  but-empty `current_keel_configuration` value is rejected with 400 rather
+  than silently narrowed to a draft-only comparison (Finding 2);
+- malformed/unknown request-body-shape 400 coverage, an all-five-locales
+  acceptance check, and a genuine backend/database-failure 5xx proof using a
+  real `TestClient(..., raise_server_exceptions=False)` boundary against an
+  unreachable database (Finding 3, contract §11/§17);
+- a direct real-PostgreSQL proof that the current/alternative pair shares
+  one coherent `REPEATABLE READ` snapshot -- a concurrent write committed by
+  a second connection between the two halves must never be observed by the
+  alternative evaluation (Finding 3, contract §7);
+- a direct proof that the sensitivity operation writes no HullQ persistence
+  state (Finding 3, contract §5 "persists nothing").
 """
 
 from __future__ import annotations
@@ -20,6 +52,7 @@ from __future__ import annotations
 import json
 import uuid
 from collections.abc import Generator
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from urllib.parse import quote, urlsplit, urlunsplit
@@ -28,6 +61,11 @@ import psycopg
 import pytest
 from fastapi.testclient import TestClient
 
+from hullq.application import search_sensitivity as search_sensitivity_module
+from hullq.application.search_sensitivity import (
+    SensitivityOutcomeKind,
+    evaluate_requirement_sensitivity,
+)
 from hullq.domain.market_identity import (
     BoatDesignRef,
     MarketEpisode,
@@ -274,9 +312,13 @@ def seeded(api_conn: Any) -> dict[str, Any]:
     listing (on the FIN design) whose concrete draft AND keel claims are both
     omitted -- INSUFFICIENT_DATA for a `draft_max`-only or `keel_configuration
     =FIN`-only query (its own design is eligible but its concrete claim is
-    missing), never INSUFFICIENT_DATA for `keel_configuration=TWIN_KEEL`
-    (its FIN design is itself design-level CONFIRMED_NON_MATCH for that
-    value, so the concrete claim is never even consulted)."""
+    missing), and *also* INSUFFICIENT_DATA (never a confirmed match) for
+    `keel_configuration=TWIN_KEEL`: its FIN design resolves `keel_type=fin`,
+    which is a confirmed mismatch against `TWIN_KEEL` -- this repository's
+    design/configuration bridge always builds an incomplete configuration
+    space, so a design-level mismatch alone lands in INSUFFICIENT_DATA,
+    never CONFIRMED_NON_MATCH (this module's docstring, independent review
+    Finding 4)."""
     _insert_boat_design(api_conn, _FIN_DESIGN_ID, keel_type="fin")
     _insert_boat_design(api_conn, _TWIN_DESIGN_ID, keel_type="twin")
 
@@ -392,6 +434,13 @@ def test_keel_configuration_sensitivity_is_same_total_different_membership(
     assert body["newly_confirmed_match_count"] == 1
     assert body["no_longer_confirmed_match_count"] == 1
     assert body["alternative_search_path"] == "/en/search?keel_configuration=TWIN_KEEL"
+    # Independent review Finding 4: the resolved-but-different-keel design
+    # (TWIN under the current FIN query, FIN under the alternative TWIN_KEEL
+    # query) lands in insufficient-data, never a silent non-match omitted
+    # from every surface -- alongside the listing whose concrete claims are
+    # entirely missing. Both counts equal 2 under either query.
+    assert body["current_insufficient_data_count"] == 2
+    assert body["alternative_insufficient_data_count"] == 2
 
 
 def test_mixed_search_can_change_keel_while_preserving_draft(
@@ -484,3 +533,273 @@ def test_response_is_noindex(client: TestClient, seeded: dict[str, Any]) -> None
         client, current={"draft_max": "1.6"}, criterion="draft_max", value="1.35"
     )
     assert response.headers.get("x-robots-tag") == "noindex"
+
+
+# ---------------------------------------------------------------------------
+# Independent review amendment (2026-09-19)
+# ---------------------------------------------------------------------------
+
+
+def test_tampered_present_empty_current_value_is_400_not_narrowed(
+    client: TestClient, seeded: dict[str, Any]
+) -> None:
+    """Finding 2: a *present* but empty `current_keel_configuration` value
+    (tampered/malformed current state -- the real Search page never renders
+    a hidden field with an empty value for an active criterion) must be
+    rejected with 400 by the real FastAPI boundary, never silently
+    reinterpreted as "keel_configuration inactive" and evaluated as a
+    narrower draft-only comparison."""
+    response = client.post(
+        "/api/search/en/sensitivity",
+        json={
+            "current": {"draft_max": "1.6", "keel_configuration": ""},
+            "change": {"criterion": "draft_max", "value": "1.35"},
+        },
+    )
+    assert response.status_code == 400
+    assert response.json()["error"] == "invalid_sensitivity_request"
+
+
+def test_malformed_body_not_an_object_is_400(client: TestClient, seeded: dict[str, Any]) -> None:
+    """Finding 3: malformed/unknown request-body shape -> 400 (contract §11)."""
+    response = client.post("/api/search/en/sensitivity", json=["not", "an", "object"])
+    assert response.status_code == 400
+
+
+def test_malformed_body_missing_change_key_is_400(
+    client: TestClient, seeded: dict[str, Any]
+) -> None:
+    response = client.post("/api/search/en/sensitivity", json={"current": {"draft_max": "1.6"}})
+    assert response.status_code == 400
+
+
+def test_malformed_body_current_not_an_object_is_400(
+    client: TestClient, seeded: dict[str, Any]
+) -> None:
+    response = client.post(
+        "/api/search/en/sensitivity",
+        json={"current": "not-an-object", "change": {"criterion": "draft_max", "value": "1.7"}},
+    )
+    assert response.status_code == 400
+
+
+def test_malformed_body_unknown_top_level_key_is_400(
+    client: TestClient, seeded: dict[str, Any]
+) -> None:
+    response = client.post(
+        "/api/search/en/sensitivity",
+        json={
+            "current": {"draft_max": "1.6"},
+            "change": {"criterion": "draft_max", "value": "1.7"},
+            "extra": 1,
+        },
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.parametrize("locale", ["en", "de", "fr", "pt", "es"])
+def test_all_five_supported_locales_are_accepted(
+    client: TestClient, seeded: dict[str, Any], locale: str
+) -> None:
+    """Finding 3: every accepted public locale remains accepted by the
+    sensitivity endpoint (contract §5/§17)."""
+    response = _post_sensitivity(
+        client,
+        locale=locale,
+        current={"keel_configuration": "FIN"},
+        criterion="keel_configuration",
+        value="TWIN_KEEL",
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["locale"] == locale
+    assert body["alternative_search_path"] == f"/{locale}/search?keel_configuration=TWIN_KEEL"
+
+
+def test_backend_database_failure_is_5xx_never_400_or_zero_result(
+    seeded: dict[str, Any],
+) -> None:
+    """Finding 3: a genuine backend/database failure must surface as a real
+    5xx response through the actual FastAPI route -- not merely something a
+    browser-side TypeScript mock simulates. Builds a *separate* app instance
+    pointed at an unreachable database (port 1: reserved, nothing listens
+    there, a guaranteed immediate connection failure -- mirrors the existing
+    web-layer test precedent for "an unreachable backend"), then uses
+    `raise_server_exceptions=False` so Starlette's real unhandled-exception
+    ServerErrorMiddleware response is observed as an actual HTTP response
+    rather than re-raised in-process."""
+    from hullq.api.app import create_app
+
+    unreachable_app = create_app(
+        database_url="postgresql://hullq_test:hullq_test@127.0.0.1:1/hullq_test",
+        preview_signing_secret=_SECRET,
+    )
+    unreachable_client = TestClient(unreachable_app, raise_server_exceptions=False)
+    response = _post_sensitivity(
+        unreachable_client, current={"draft_max": "1.6"}, criterion="draft_max", value="1.7"
+    )
+    assert response.status_code >= 500
+    assert response.status_code != 400
+    # Never a fabricated empty/zero sensitivity result either.
+    try:
+        body = response.json()
+    except ValueError:
+        body = None
+    if isinstance(body, dict):
+        assert "current_confirmed_match_count" not in body
+
+
+def test_current_and_alternative_share_one_repeatable_read_snapshot(
+    api_conn: Any,
+    api_url: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Finding 3 (contract §7): the current and alternative evaluation must
+    run inside one coherent `REPEATABLE READ` snapshot, not two independent
+    `READ COMMITTED` reads. A same-value proposal (current == alternative)
+    is a deterministic zero delta *only if* both halves observe the exact
+    same database state -- this test interposes a real committed write from
+    a second connection between the current and alternative evaluation (by
+    monkeypatching the one shared dispatch point,
+    `hullq.application.search_read.evaluate_requirement_search_outcome`, as
+    imported into `hullq.application.search_sensitivity`'s own namespace)
+    and asserts the delta still comes out exactly zero -- proving the
+    alternative evaluation, though it runs strictly *after* that concurrent
+    commit, never observes it. A follow-up plain evaluation on a fresh
+    connection then confirms the concurrent write really did commit (so
+    this is not vacuously true because the write silently failed)."""
+    design_id = "BD-0057-COHERENCE"
+    listing_id = "NL-0057-COHERENCE"
+    _insert_boat_design(api_conn, design_id, keel_type="fin")
+    # _insert_boat_design always writes a fixed 1.30 m baseline draft --
+    # match it exactly so write_field_resolution's Finding-7
+    # canonical-consistency enforcement accepts this resolution.
+    admit_resolved_draft_max(
+        api_conn,
+        subject_kind=SubjectKind.BOAT_DESIGN,
+        subject_id=design_id,
+        field_pointer=DRAFT_MAX_FIELD_POINTER,
+        value=Decimal("1.30"),
+        resolution_id="FR-0057-COHERENCE-DRAFT",
+    )
+    _make_listing(
+        api_conn,
+        listing_id=listing_id,
+        design_id=design_id,
+        draft=DraftClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("1.10")),
+        keel=None,
+    )
+
+    account = AccountId(f"ACC-{listing_id}")
+    org = _org(f"ORG-{listing_id}")
+    membership = _membership(org, account, f"OM-{listing_id}")
+
+    second_conn = psycopg.connect(api_url)
+    original = search_sensitivity_module.evaluate_requirement_search_outcome
+    calls: list[int] = []
+
+    def _patched(conn: Any, **kwargs: Any) -> Any:
+        calls.append(1)
+        result = original(conn, **kwargs)
+        if len(calls) == 1:
+            # Runs after CURRENT is evaluated but before ALTERNATIVE is --
+            # a real committed concurrent write via an independent
+            # connection, exactly like a different buyer/broker action
+            # landing mid-comparison.
+            write_physical_boat_claim_revision(
+                second_conn,
+                account_id=account,
+                candidate_organization=org,
+                membership=membership,
+                native_listing_id=NativeListingId(listing_id),
+                revision_id=PhysicalBoatClaimRevisionId(f"PBCREV2-{listing_id}"),
+                expected_current_revision_id=PhysicalBoatClaimRevisionId(f"PBCREV-{listing_id}"),
+                claims=PhysicalBoatClaimSnapshot(
+                    marketed_brand_claim="Beneteau",
+                    model_designation_claim="Oceanis 30.1",
+                    build_year=BuildYearClaim(
+                        assertion_kind=AssertionKind.VALUE_ASSERTION, value=2021
+                    ),
+                    draft=DraftClaim(
+                        assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("2.00")
+                    ),
+                    keel_configuration=None,
+                ),
+            )
+        return result
+
+    monkeypatch.setattr(search_sensitivity_module, "evaluate_requirement_search_outcome", _patched)
+
+    try:
+        outcome = evaluate_requirement_sensitivity(
+            api_conn,
+            locale="en",
+            current={"draft_max": "1.6"},
+            changed_criterion="draft_max",
+            changed_value="1.6",
+            as_of=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+    finally:
+        second_conn.close()
+
+    assert len(calls) == 2
+    assert outcome.kind is SensitivityOutcomeKind.OK
+    assert outcome.result is not None
+    # If the alternative evaluation had observed the concurrent write, this
+    # listing's draft would read 2.00 m > 1.6 m -- no longer confirmed --
+    # producing a nonzero delta despite an identical current/alternative
+    # requirement. REPEATABLE READ must hide it: the delta must stay zero.
+    assert (
+        outcome.result.current_confirmed_match_count
+        == outcome.result.alternative_confirmed_match_count
+    )
+    assert outcome.result.newly_confirmed_match_count == 0
+    assert outcome.result.no_longer_confirmed_match_count == 0
+
+    # Vacuous-test guard: a fresh connection opened *after* the sensitivity
+    # call must see the concurrent write actually landed.
+    fresh_conn = psycopg.connect(api_url)
+    try:
+        fresh_outcome = evaluate_requirement_sensitivity(
+            fresh_conn,
+            locale="en",
+            current={"draft_max": "1.6"},
+            changed_criterion="draft_max",
+            changed_value="1.6",
+            as_of=datetime(2026, 1, 1, tzinfo=UTC),
+        )
+    finally:
+        fresh_conn.close()
+    assert fresh_outcome.result is not None
+    assert fresh_outcome.result.current_confirmed_match_count == 0
+
+
+def test_sensitivity_writes_no_persistence_state(
+    client: TestClient, seeded: dict[str, Any], api_conn: Any
+) -> None:
+    """Finding 3 (contract §5: "persists nothing"): the sensitivity
+    operation is read-only computation. Row counts across every table this
+    read path touches must be identical before and after a real sensitivity
+    request -- proving no BuyerRequirements/Saved Search/Monitor/Shortlist
+    or any other durable state is created or mutated (contract §14)."""
+
+    def _row_counts() -> tuple[int, int, int, int]:
+        with api_conn.cursor() as cur:
+            cur.execute("SELECT count(*) FROM native_listings")
+            native_listings = cur.fetchone()[0]
+            cur.execute("SELECT count(*) FROM physical_boat_claim_revisions")
+            claim_revisions = cur.fetchone()[0]
+            cur.execute("SELECT count(*) FROM native_listing_offer_revisions")
+            offer_revisions = cur.fetchone()[0]
+            cur.execute("SELECT count(*) FROM field_resolutions")
+            field_resolutions = cur.fetchone()[0]
+        api_conn.commit()
+        return native_listings, claim_revisions, offer_revisions, field_resolutions
+
+    before = _row_counts()
+    response = _post_sensitivity(
+        client, current={"draft_max": "1.6"}, criterion="draft_max", value="1.35"
+    )
+    assert response.status_code == 200
+    after = _row_counts()
+    assert before == after
