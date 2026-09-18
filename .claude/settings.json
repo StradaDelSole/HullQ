@@ -116,6 +116,9 @@
             "command": "uv",
             "args": [
               "run",
+              "--no-project",
+              "--python",
+              "3.14",
               "python",
               "${CLAUDE_PROJECT_DIR}/scripts/workflow/claude_command_guard.py"
             ],
@@ -133,6 +136,9 @@
             "command": "uv",
             "args": [
               "run",
+              "--no-project",
+              "--python",
+              "3.14",
               "python",
               "${CLAUDE_PROJECT_DIR}/scripts/workflow/claude_command_guard.py"
             ],
