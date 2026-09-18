@@ -73,7 +73,7 @@ The four controlling triggers are:
 1. architecture/current-state reconciliation must remain PASS before SLICE-0052+ readiness;
 2. Production Readiness must be PASS before real external broker data is stored/relied upon as HullQ production data, before the first real external production pilot, or before public production launch, whichever comes first;
 3. technical native Search criterion #2 must explicitly compare its bridge/path to SLICE-0051, and criterion #3+ may not create a third structural copy without the abstraction guard PASS;
-4. the current review workflow must be reassessed after SLICE-0056 is owner-accepted or before the first real production pilot, whichever happens first.
+4. the post-SLICE-0056 workflow reassessment must remain `PASS`; the accepted result is recorded in `docs/POST_SLICE_0056_WORKFLOW_REASSESSMENT_2026-09-18.md`.
 
 The repository validator enforces deterministic marker/state relationships. Independent readiness review must still verify that the claimed comparison, generalization/distinction and readiness evidence are substantively true.
 
@@ -188,6 +188,26 @@ If an amendment is required:
 
 Independent review must compare implementation not only with the immediate slice text but with the accepted semantics named by the reconciliation and trigger-gate records. A regression from previously accepted/implemented behavior is a review defect, not a new design choice.
 
+#### Post-SLICE-0056 risk-focused review depth
+
+The evidence-based workflow reassessment in `docs/POST_SLICE_0056_WORKFLOW_REASSESSMENT_2026-09-18.md` found material independent-review defects in every accepted SLICE-0051 through SLICE-0056 implementation slice. Therefore no generic lighter primary `IMPLEMENTATION` lifecycle is authorized.
+
+Review depth is focused by the invariant touched rather than by file extension:
+
+- persistence/migrations/concurrency, auth/session/MFA/CSRF/authorization, identity/ownership/trust/publication, Search semantics/evidence/canonicalization/ranking, payments and production-data/operations are critical boundaries and require cross-boundary review plus appropriate retained proof;
+- browser/API projection, public validation/error behavior, canonical/indexability behavior and buyer/seller copy that assigns truth/lifecycle semantics remain exact-head review territory, but review should stay focused on the changed vertical plus the accepted invariant being projected;
+- pure non-runtime documentation/mechanical maintenance may receive a targeted exact-head review when it genuinely changes no product/runtime/security/CI semantics. Workflow hooks, CI behavior, permission/security policy and required-check topology are not low-risk merely because they live in docs/config/scripts.
+
+For a bounded same-slice amendment, re-review is **delta-first**:
+
+1. compare the previous reviewed exact HEAD with the amended exact HEAD;
+2. inspect every amendment change;
+3. re-check every invariant materially affected by those changes;
+4. verify no unrelated scope entered the branch;
+5. require the final exact-head remote gates.
+
+Do not restart an unrelated whole-repository review unless the amendment broadens scope or touches a new material boundary.
+
 ### Reviewer continuation to owner-acceptance boundary
 
 After an independent implementation review finds the exact slice HEAD materially acceptable, the reviewer/project master MUST continue the workflow autonomously through the remaining non-owner gates rather than handing routine monitoring back to the Project Owner.
@@ -265,7 +285,7 @@ The helper scripts are intentionally fail-safe:
 - from SLICE-0052 onward `START_SLICE` also runs repository trigger validation and refuses to start without the trigger-gates PASS marker/section;
 - real external broker production data cannot become ACTIVE while the production-readiness gate is not PASS;
 - production-pilot/public-launch state cannot be ACTIVE while the production-readiness gate or mandatory pre-pilot workflow reassessment is not PASS;
-- after accepted SLICE-0056 the workflow reassessment cannot remain `NOT_DUE`;
+- after accepted SLICE-0056 the workflow reassessment cannot remain `NOT_DUE`; the accepted post-0056 result is `PASS` and remains a readiness invariant;
 - the finish script does not delete a worktree with substantive uncommitted changes;
 - cleanup is skipped unless a merged PR can be confirmed through GitHub CLI;
 - the setup script verifies the canonical repository before changing GitHub rules;
