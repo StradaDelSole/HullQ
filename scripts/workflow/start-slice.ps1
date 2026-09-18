@@ -205,6 +205,7 @@ EXECUTION:
 - Do not append synthetic exit-code wrappers such as `; echo "---EXIT $LASTEXITCODE---"` unless diagnosing an actual command failure. Use the tool's native result/exit status.
 - Prefer one standalone command per tool call so the shared `.claude/settings.json` permissions can match it cleanly and routine work does not trigger avoidable approvals.
 - For ad-hoc Python snippets, AST/syntax checks, and short repository inspection commands, use `uv run python ...` instead of direct `python`, `python3`, or `py` invocations so routine checks stay within the shared approved command path.
+- Do not bundle routine checks into shell loops or compound commands (`for ...; do ...; done`, `&&`, `;`). Use one standalone permitted command per tool call. For file comparisons, prefer separate `git diff --no-index <file-a> <file-b>` calls instead of direct `diff`/`cmp`.
 - Do not broaden scope or start another slice.
 - Push this same branch to GitHub at completion.
 - Leave the slice in REVIEW or BLOCKED; never mark DONE and never merge to main.
