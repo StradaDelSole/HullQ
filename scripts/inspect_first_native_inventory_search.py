@@ -49,6 +49,32 @@ no monkeypatching, no fixture-only bypass:
     9. Following the confirmed match's link renders the existing SLICE-0049/
        0050 public listing page.
 
+SLICE-0056 extends the same real PostgreSQL + FastAPI + built-Astro-SSR
+proof to the SLICE-0055 `keel_configuration` criterion, closing the browser/
+API contract gap the slice exists to fix: a third BoatDesign
+(BD-0056-E2E-KEEL) admits both `draft_max_m` and `keel_type` FieldResolutions
+directly on its baseline (mirroring `tests/persistence/
+test_inventory_search_keel_api.py`'s fixture, deliberately simpler than the
+SHALLOW/DEEP two-design NamedVariant-override setup above -- a keel-only or
+mixed query needs both criteria resolved on the *same* evaluated
+configuration to produce one design-level confirmed match), backing one
+ACTIVE listing (NL-0056-E2E-KEEL) with its own concrete `draft`/
+`keel_configuration` PhysicalBoat claims:
+
+   10. `/en/search?keel_configuration=FIN` -> 200, keel-only active
+       requirement rendered, NL-0056-E2E-KEEL confirmed with its concrete
+       FIN evidence visible, the unrelated deep/shallow-draft-only listings
+       from steps 1-9 never leak in as keel matches.
+   11. `/en/search?draft_max=1.6&keel_configuration=FIN` -> 200, both active
+       requirements rendered, both concrete criterion values (1.40 m and
+       FIN) visible for the one mixed confirmed match.
+   12. `/de/search?draft_max=1.600&keel_configuration=FIN` -> 308 canonical
+       redirect to `/de/search?draft_max=1.6&keel_configuration=FIN`
+       (draft_max canonicalized, keel_configuration preserved verbatim,
+       canonical ordering draft_max-then-keel_configuration).
+   13. `/en/search?keel_configuration=LONG_KEEL` -> 400 localized recovery
+       (unsupported public v0.1 keel vocabulary), no Search evaluation.
+
 Requires ``HULLQ_TEST_DATABASE_URL`` (a local PostgreSQL 18 instance) and a
 pre-built Astro web package (``uv run`` this only after
 ``cd web && npm ci && npm run build``).
@@ -90,6 +116,8 @@ from hullq.domain.physical_boat_claims import (
     AssertionKind,
     BuildYearClaim,
     DraftClaim,
+    KeelConfiguration,
+    KeelConfigurationClaim,
     PhysicalBoatClaimRevisionId,
     PhysicalBoatClaimSnapshot,
 )
@@ -150,6 +178,7 @@ from hullq.search.draft_max_design_bridge import (
     DRAFT_MAX_OVERRIDE_FIELD_POINTER,
     lookup_draft_max_canonical_value,
 )
+from hullq.search.keel_design_bridge import KEEL_TYPE_FIELD_POINTER, lookup_keel_canonical_value
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WEB_DIR = REPO_ROOT / "web"
@@ -158,6 +187,12 @@ WEB_ENTRYPOINT = WEB_DIR / "dist" / "server" / "entry.mjs"
 _SHALLOW_DESIGN_ID = "BD-0051-E2E-SHALLOW"
 _DEEP_DESIGN_ID = "BD-0051-E2E-DEEP"
 _SHALLOW_VARIANT_ID = "VAR-0051-E2E-SHALLOW-KEEL"
+
+# SLICE-0056: a dedicated third design/listing for the keel-only/mixed
+# browser proof -- see this module's docstring for why it is deliberately
+# simpler than the SHALLOW/DEEP NamedVariant-override setup above.
+_KEEL_DESIGN_ID = "BD-0056-E2E-KEEL"
+_KEEL_LISTING_ID = "NL-0056-E2E-KEEL"
 
 _WIKIDATA_SOURCE: dict[str, Any] = json.loads(
     (REPO_ROOT / "fixtures" / "sources" / "wikidata_source.json").read_text(encoding="utf-8")
@@ -257,6 +292,7 @@ def _insert_boat_design(
     model_id: str,
     *,
     baseline_draft_max_m: float | None,
+    baseline_keel_type: str | None = None,
     named_variants: list[dict[str, Any]] | None = None,
 ) -> None:
     with conn.cursor() as cur:
@@ -264,7 +300,17 @@ def _insert_boat_design(
             "INSERT INTO canonical_boat_models (id, canonical_name, content_hash) VALUES (%s, %s, %s)",
             [model_id, f"Model {model_id}", "0" * 64],
         )
-        baseline_json = json.dumps({"dimensions": {"draft_max_m": baseline_draft_max_m}})
+        baseline: dict[str, Any] = {"dimensions": {"draft_max_m": baseline_draft_max_m}}
+        if baseline_keel_type is not None:
+            # SLICE-0056: `write_field_resolution`'s Finding-7 canonical-
+            # consistency enforcement (`lookup_keel_canonical_value` ->
+            # `hullq.search.boat_design_field_bridge.
+            # lookup_boat_design_baseline_snapshot`) reads this raw baseline
+            # JSONB column directly -- a keel FieldResolution can only be
+            # admitted `resolved` if this durable value already agrees with
+            # it (mirrors `dimensions.draft_max_m` above).
+            baseline["appendages"] = {"keel_type": baseline_keel_type}
+        baseline_json = json.dumps(baseline)
         variants_json = json.dumps(named_variants or [])
         cur.execute(
             "INSERT INTO canonical_boat_designs "
@@ -391,6 +437,175 @@ def _admit_shallow_variant_field_resolution(conn: Any) -> None:
     conn.commit()  # leave conn IDLE before the next write requires it
 
 
+def _admit_keel_design_field_resolutions(conn: Any) -> None:
+    """SLICE-0056: durably admit `draft_max_m` and `keel_type` `resolved`
+    FieldResolutions on the SAME `BD-0056-E2E-KEEL` baseline configuration --
+    unlike `_admit_shallow_variant_field_resolution` above, both criteria
+    must resolve on one evaluated configuration to produce a single
+    design-level confirmed match for a mixed query (this module's docstring
+    explains why the SHALLOW/DEEP design pair above cannot be reused for
+    this). Mirrors `tests/persistence/test_inventory_search_keel_api.py`'s
+    fixture end to end through the real accepted write path."""
+    draft_evidence_id = "EV-0056-E2E-KEEL-DRAFT"
+    draft_evidence = FieldEvidenceV3(
+        evidence_id=draft_evidence_id,
+        subject=ProvenanceSubject(kind=SubjectKind.BOAT_DESIGN, id=_KEEL_DESIGN_ID),
+        field_pointer=JsonPointer(DRAFT_MAX_FIELD_POINTER),
+        source_id=_WIKIDATA_SOURCE_ID,
+        source_locator=SourceLocator(
+            page=None, section=None, anchor=None, table=None, figure=None, record_key=None
+        ),
+        raw=RawObservation(
+            kind=RawObservationKind.STRUCTURED_RECORD, value="1.30", unit="m", excerpt=None
+        ),
+        normalized_candidate=NormalizedCandidate(
+            value="1.30", unit="m", method_id="proof-normalize", method_version="1"
+        ),
+        evidence_type=EvidenceType.STRUCTURED_DATASET,
+        producer=ProducerMetadata(
+            kind=ProducerKind.DETERMINISTIC_TOOL,
+            identifier="inspect_first_native_inventory_search",
+            version="1",
+            model=None,
+            prompt_or_rule_version=None,
+        ),
+        research_context=ResearchContext(research_job_id=None, activity_id=None),
+        observed_at="2026-09-18T00:00:00+00:00",
+        confidence=ConfidenceLevel.HIGH,
+        supersedes_evidence_id=None,
+        notes=None,
+        claim_semantics=ClaimSemantics.NOMINAL_DESIGN_VALUE,
+        applicability=ObservationApplicability(
+            first_year=None,
+            last_year=None,
+            hull_number_from=None,
+            hull_number_to=None,
+            market_or_region=None,
+            named_variant_hint=None,
+            design_option_hints=None,
+            operating_state_hint=None,
+            individual_hull_or_listing_ref=None,
+            unknown_or_unbounded=True,
+        ),
+    )
+    keel_evidence_id = "EV-0056-E2E-KEEL-TYPE"
+    keel_evidence = FieldEvidenceV3(
+        evidence_id=keel_evidence_id,
+        subject=ProvenanceSubject(kind=SubjectKind.BOAT_DESIGN, id=_KEEL_DESIGN_ID),
+        field_pointer=JsonPointer(KEEL_TYPE_FIELD_POINTER),
+        source_id=_WIKIDATA_SOURCE_ID,
+        source_locator=SourceLocator(
+            page=None, section=None, anchor=None, table=None, figure=None, record_key=None
+        ),
+        raw=RawObservation(
+            kind=RawObservationKind.STRUCTURED_RECORD, value="fin", unit=None, excerpt=None
+        ),
+        normalized_candidate=NormalizedCandidate(
+            value="fin", unit=None, method_id="proof-normalize", method_version="1"
+        ),
+        evidence_type=EvidenceType.STRUCTURED_DATASET,
+        producer=ProducerMetadata(
+            kind=ProducerKind.DETERMINISTIC_TOOL,
+            identifier="inspect_first_native_inventory_search",
+            version="1",
+            model=None,
+            prompt_or_rule_version=None,
+        ),
+        research_context=ResearchContext(research_job_id=None, activity_id=None),
+        observed_at="2026-09-18T00:00:00+00:00",
+        confidence=ConfidenceLevel.HIGH,
+        supersedes_evidence_id=None,
+        notes=None,
+        claim_semantics=ClaimSemantics.NOMINAL_DESIGN_VALUE,
+        applicability=ObservationApplicability(
+            first_year=None,
+            last_year=None,
+            hull_number_from=None,
+            hull_number_to=None,
+            market_or_region=None,
+            named_variant_hint=None,
+            design_option_hints=None,
+            operating_state_hint=None,
+            individual_hull_or_listing_ref=None,
+            unknown_or_unbounded=True,
+        ),
+    )
+    bundle = ResearchEvidenceBundle(
+        bundle_id="BUNDLE-0056-E2E",
+        bundle_version="1",
+        research_target=ResearchTarget(manufacturer=None, model="keel-design", first_built=None),
+        research_job_id=None,
+        activity_id=None,
+        observations=(),
+        unresolved_findings=(),
+        promoted_evidence=(draft_evidence, keel_evidence),
+        reference_crosschecks=(),
+    )
+    import_result = import_research_evidence_bundle(conn, bundle)
+    assert import_result.status.value in ("imported", "already_imported"), import_result
+    conn.commit()
+
+    draft_resolution = FieldResolution(
+        resolution_id="FR-0056-E2E-KEEL-DRAFT",
+        subject=ProvenanceSubject(kind=SubjectKind.BOAT_DESIGN, id=_KEEL_DESIGN_ID),
+        field_pointer=JsonPointer(DRAFT_MAX_FIELD_POINTER),
+        state=ResolutionState.RESOLVED,
+        canonical_value_snapshot=encode_canonical_decimal_snapshot(Decimal("1.30")),
+        supporting_evidence_ids=frozenset({draft_evidence_id}),
+        contradicting_evidence_ids=frozenset(),
+        considered_evidence_ids=frozenset({draft_evidence_id}),
+        resolution_method=ResolutionMethod.UNANIMOUS_EVIDENCE,
+        policy_version="proof-policy-1",
+        resolver=ResolverMetadata(
+            kind=ResolverKind.DETERMINISTIC_TOOL,
+            identifier="inspect_first_native_inventory_search",
+            version="1",
+        ),
+        resolved_at="2026-09-18T00:00:00+00:00",
+        supersedes_resolution_id=None,
+        notes=None,
+    )
+    draft_write_result = write_field_resolution(
+        conn,
+        resolution=draft_resolution,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=lookup_draft_max_canonical_value,
+        available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+    )
+    assert draft_write_result.status is FieldResolutionWriteStatus.CREATED, draft_write_result
+    conn.commit()
+
+    keel_resolution = FieldResolution(
+        resolution_id="FR-0056-E2E-KEEL-TYPE",
+        subject=ProvenanceSubject(kind=SubjectKind.BOAT_DESIGN, id=_KEEL_DESIGN_ID),
+        field_pointer=JsonPointer(KEEL_TYPE_FIELD_POINTER),
+        state=ResolutionState.RESOLVED,
+        canonical_value_snapshot="fin",
+        supporting_evidence_ids=frozenset({keel_evidence_id}),
+        contradicting_evidence_ids=frozenset(),
+        considered_evidence_ids=frozenset({keel_evidence_id}),
+        resolution_method=ResolutionMethod.UNANIMOUS_EVIDENCE,
+        policy_version="proof-policy-1",
+        resolver=ResolverMetadata(
+            kind=ResolverKind.DETERMINISTIC_TOOL,
+            identifier="inspect_first_native_inventory_search",
+            version="1",
+        ),
+        resolved_at="2026-09-18T00:00:00+00:00",
+        supersedes_resolution_id=None,
+        notes=None,
+    )
+    keel_write_result = write_field_resolution(
+        conn,
+        resolution=keel_resolution,
+        expected_current_resolution_id=None,
+        fetch_canonical_value=lookup_keel_canonical_value,
+        available_sources={_WIKIDATA_SOURCE_ID: _WIKIDATA_SOURCE},
+    )
+    assert keel_write_result.status is FieldResolutionWriteStatus.CREATED, keel_write_result
+    conn.commit()
+
+
 def _make_listing(
     conn: Any,
     *,
@@ -399,6 +614,7 @@ def _make_listing(
     market_episode_id: str,
     boat_design_ref: BoatDesignRef | None,
     draft: DraftClaim | None,
+    keel: KeelConfigurationClaim | None = None,
     publish: bool = True,
     reuse_physical_boat: bool = False,
 ) -> tuple[AccountId, MarketplaceOrganization, OrganizationMembership]:
@@ -457,6 +673,7 @@ def _make_listing(
             model_designation_claim="Oceanis 30.1",
             build_year=BuildYearClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=2021),
             draft=draft,
+            keel_configuration=keel,
         ),
     )
     if publish:
@@ -638,6 +855,35 @@ def main() -> int:
                 "2b. seeded 5 ACTIVE listings (match/omitted/conflict/unqualified-deep/"
                 "no-identity) + 1 DRAFT (unpublished) listing -> OK\n"
             )
+
+            # SLICE-0056: a dedicated design/listing for the keel-only/mixed
+            # browser proof (this module's docstring explains why it is
+            # separate from the SHALLOW/DEEP pair above).
+            _insert_boat_design(
+                conn,
+                _KEEL_DESIGN_ID,
+                "BM-0056-E2E-KEEL",
+                baseline_draft_max_m=1.30,
+                baseline_keel_type="fin",
+            )
+            _admit_keel_design_field_resolutions(conn)
+            _make_listing(
+                conn,
+                listing_id=_KEEL_LISTING_ID,
+                physical_boat_id="PB-0056-E2E-KEEL",
+                market_episode_id="ME-0056-E2E-KEEL",
+                boat_design_ref=BoatDesignRef(_KEEL_DESIGN_ID),
+                draft=DraftClaim(
+                    assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("1.40")
+                ),
+                keel=KeelConfigurationClaim(
+                    assertion_kind=AssertionKind.VALUE_ASSERTION, value=KeelConfiguration.FIN
+                ),
+            )
+            print(
+                "2c. seeded 1 ACTIVE keel/draft-qualified BoatDesign + listing "
+                f"({_KEEL_LISTING_ID}, FIN keel, 1.40 m draft) -> OK\n"
+            )
         finally:
             conn.close()
 
@@ -787,6 +1033,92 @@ def main() -> int:
         print(
             f"9. confirmed match links to the existing public listing page -> "
             f"{'OK' if step9_ok else 'FAIL'}\n"
+        )
+
+        # 10. SLICE-0056: keel-only Search submitted/rendered through the
+        # public SSR surface (contract §H.2) -- keel-only active requirement
+        # rendered, the concrete FIN evidence visible, none of the
+        # draft-only-scenario listings leak in as keel matches.
+        keel_status, keel_headers, keel_body = _http_get(
+            f"{web_base}/en/search?keel_configuration=FIN"
+        )
+        keel_headers_lower = {k.lower(): v for k, v in keel_headers.items()}
+        keel_text = keel_body.decode("utf-8")
+        step10_ok = (
+            keel_status == 200
+            and keel_headers_lower.get("x-robots-tag") == "noindex"
+            and f"/listings/{_KEEL_LISTING_ID}" in keel_text
+            and "Fin keel" in keel_text
+            and "NL-0051-E2E-MATCH" not in keel_text
+            and "NL-0051-E2E-DEEP" not in keel_text
+        )
+        ok &= step10_ok
+        print(
+            f"10. /en/search?keel_configuration=FIN -> keel-only confirmed match "
+            f"{_KEEL_LISTING_ID} (concrete FIN evidence visible) -> {'OK' if step10_ok else 'FAIL'}"
+        )
+
+        # 11. SLICE-0056: draft+keel Search submitted/rendered through the
+        # public SSR surface (contract §H.3/§H.5) -- both active
+        # requirements and both concrete criterion values visible for the
+        # one mixed confirmed match.
+        mixed_status, mixed_headers, mixed_body = _http_get(
+            f"{web_base}/en/search?draft_max=1.6&keel_configuration=FIN"
+        )
+        mixed_headers_lower = {k.lower(): v for k, v in mixed_headers.items()}
+        mixed_text = mixed_body.decode("utf-8")
+        step11_ok = (
+            mixed_status == 200
+            and mixed_headers_lower.get("x-robots-tag") == "noindex"
+            and f"/listings/{_KEEL_LISTING_ID}" in mixed_text
+            and "1.40" in mixed_text
+            and "Fin keel" in mixed_text
+        )
+        ok &= step11_ok
+        print(
+            f"11. /en/search?draft_max=1.6&keel_configuration=FIN -> mixed confirmed match "
+            f"{_KEEL_LISTING_ID} (both concrete 1.40 m + FIN evidence visible) -> "
+            f"{'OK' if step11_ok else 'FAIL'}"
+        )
+
+        # 12. SLICE-0056: non-canonical mixed request redirects to the exact
+        # canonical Location (draft_max canonicalized, keel_configuration
+        # preserved, canonical ordering draft_max-then-keel_configuration --
+        # contract §H.7).
+        mixed_redirect_req = urllib.request.Request(
+            f"{web_base}/de/search?draft_max=1.600&keel_configuration=FIN"
+        )
+        try:
+            mixed_redirect_resp = no_redirect_opener.open(mixed_redirect_req, timeout=10)
+            mixed_redirect_status = mixed_redirect_resp.status
+            mixed_redirect_headers = dict(mixed_redirect_resp.headers)
+        except urllib.error.HTTPError as exc:
+            mixed_redirect_status = exc.code
+            mixed_redirect_headers = dict(exc.headers or {})
+        mixed_redirect_headers_lower = {k.lower(): v for k, v in mixed_redirect_headers.items()}
+        step12_ok = (
+            mixed_redirect_status == 308
+            and mixed_redirect_headers_lower.get("location")
+            == "/de/search?draft_max=1.6&keel_configuration=FIN"
+        )
+        ok &= step12_ok
+        print(
+            f"12. /de/search?draft_max=1.600&keel_configuration=FIN -> 308 "
+            f"/de/search?draft_max=1.6&keel_configuration=FIN -> {'OK' if step12_ok else 'FAIL'}"
+        )
+
+        # 13. SLICE-0056: unsupported public v0.1 keel vocabulary -> 400
+        # localized recovery, no Search evaluation (contract §H.7).
+        invalid_keel_status, _, invalid_keel_body = _http_get(
+            f"{web_base}/en/search?keel_configuration=LONG_KEEL"
+        )
+        step13_ok = invalid_keel_status == 400 and _KEEL_LISTING_ID not in invalid_keel_body.decode(
+            "utf-8"
+        )
+        ok &= step13_ok
+        print(
+            f"13. /en/search?keel_configuration=LONG_KEEL -> 400, no evaluation -> "
+            f"{'OK' if step13_ok else 'FAIL'}\n"
         )
 
         print(f"FIRST REQUIREMENTS -> NATIVE INVENTORY SEARCH RESULT -> {'PASS' if ok else 'FAIL'}")

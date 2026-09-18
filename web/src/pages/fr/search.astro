@@ -5,7 +5,7 @@
 // Presentation itself lives in the shared SearchPageBody.astro component.
 export const prerender = false;
 import SearchPageBody from "../../components/SearchPageBody.astro";
-import { loadSearchPageData } from "../../lib/searchPageData";
+import { buildSearchCanonicalPath, loadSearchPageData } from "../../lib/searchPageData";
 
 const locale = "fr" as const;
 const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -26,10 +26,10 @@ if (data.kind === "invalid") {
   Astro.response.status = 503;
 }
 
-const canonicalPath =
-  data.kind === "ok" && data.activeRequirement !== null
-    ? `/${locale}/search?draft_max=${data.activeRequirement.draft_max}`
-    : `/${locale}/search`;
+const canonicalPath = buildSearchCanonicalPath(
+  locale,
+  data.kind === "ok" ? data.activeRequirement : null,
+);
 const canonicalUrl = new URL(canonicalPath, Astro.url).toString();
 ---
 

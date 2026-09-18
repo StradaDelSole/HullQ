@@ -6,6 +6,18 @@
 // `web/src/lib/searchPageData.ts`'s docstring for why), before this
 // component ever renders. Each `web/src/pages/{locale}/search.astro` route
 // is a thin wrapper around this component.
+//
+// SLICE-0056: renders all three accepted active-requirement states
+// (draft-only, keel-only, mixed). Draft-only confirmed matches keep the
+// exact SLICE-0051/0052 `resolved_draft_m` rendering (Required Behavior §D
+// non-regression); keel-only/mixed confirmed matches instead read the
+// SLICE-0055 typed `criterion_evidence` -- never re-running Search truth or
+// reconstructing a value from design-level evidence.
+import {
+  SEARCH_KEEL_CONFIGURATION_VALUES,
+  type DraftOnlyConfirmedMatch,
+  type NativeInventoryConfirmedMatch,
+} from "../lib/searchApi";
 import type { SearchPageData } from "../lib/searchPageData";
 import { searchText, type SupportedLocale } from "../lib/searchText";
 
@@ -24,6 +36,43 @@ interface Props {
 const { locale, data, canonicalUrl } = Astro.props;
 const t = searchText[locale];
 const isCanonical = data.kind === "ok";
+
+// The active requirement fully determines which confirmed-match response
+// shape FastAPI returned (searchApi.ts's docstring) -- any request involving
+// `keel_configuration` always uses the SLICE-0055 typed-evidence shape, a
+// pure `draft_max` request always keeps the SLICE-0051 `resolved_draft_m`
+// shape. Never inferred from an individual match.
+const activeRequirement = data.kind === "ok" ? data.activeRequirement : null;
+const isKeelActive = activeRequirement !== null && activeRequirement.keel_configuration !== undefined;
+
+function keelLabel(value: string): string {
+  return (t.keelConfigurationLabels as Record<string, string>)[value] ?? value;
+}
+
+function draftEvidenceText(match: NativeInventoryConfirmedMatch): string | null {
+  const evidence = match.criterion_evidence.find((item) => item.field === "draft_max_m");
+  if (evidence === undefined || evidence.observed_value === null) {
+    return null;
+  }
+  return t.resolvedDraftText(evidence.observed_value);
+}
+
+function keelEvidenceText(match: NativeInventoryConfirmedMatch): string | null {
+  const evidence = match.criterion_evidence.find((item) => item.field === "keel_configuration");
+  if (evidence === undefined || evidence.observed_value === null) {
+    return null;
+  }
+  return t.resolvedKeelText(keelLabel(evidence.observed_value));
+}
+
+// Every entry in `data.confirmedMatches` shares the same shape (determined
+// once by `isKeelActive` above, never per-match, per searchApi.ts's
+// docstring) -- these narrow it once so the template below can iterate
+// without repeating an `as` cast at each call site.
+const draftOnlyMatches: DraftOnlyConfirmedMatch[] =
+  !isKeelActive && data.kind === "ok" ? (data.confirmedMatches as DraftOnlyConfirmedMatch[]) : [];
+const nativeInventoryMatches: NativeInventoryConfirmedMatch[] =
+  isKeelActive && data.kind === "ok" ? (data.confirmedMatches as NativeInventoryConfirmedMatch[]) : [];
 ---
 
 <html lang={locale}>
@@ -53,7 +102,7 @@ const isCanonical = data.kind === "ok";
         <main>
           <h1>{t.title}</h1>
           <p>{t.formInstructions}</p>
-          <form method="get" action={`/${locale}/search`}>
+          <form method="get" action={`/${locale}/search`} id="hullq-search-form">
             <label>
               {t.draftMaxLabel}
               <input
@@ -61,24 +110,102 @@ const isCanonical = data.kind === "ok";
                 name="draft_max"
                 inputmode="decimal"
                 placeholder={t.draftMaxPlaceholder}
-                value={data.activeRequirement?.draft_max ?? ""}
+                value={activeRequirement?.draft_max ?? ""}
               />
+            </label>
+            <label>
+              {t.keelConfigurationLabel}
+              <select name="keel_configuration">
+                <option value="" selected={activeRequirement?.keel_configuration === undefined}>
+                  {t.keelConfigurationAnyOption}
+                </option>
+                {SEARCH_KEEL_CONFIGURATION_VALUES.map((value) => (
+                  <option value={value} selected={activeRequirement?.keel_configuration === value}>
+                    {keelLabel(value)}
+                  </option>
+                ))}
+              </select>
             </label>
             <button type="submit">{t.submit}</button>
           </form>
+          <script>
+            // SLICE-0056: pure HTML cannot represent "buyer left this
+            // criterion unset" as an omitted GET query parameter -- an
+            // unselected/blank <select>/<input> still submits
+            // `name=<empty value>`. The accepted, tested FastAPI contract
+            // treats an explicitly present but blank draft_max/
+            // keel_configuration value as an ambiguous INVALID request, not
+            // an absent criterion
+            // (tests/unit/test_search_read.py::test_empty_draft_max_value_is_invalid,
+            // test_empty_keel_configuration_value_is_invalid) -- so a
+            // criterion the buyer left blank must never reach the request at
+            // all. This only disables blank-valued fields immediately before
+            // the browser's own native submission so they are excluded from
+            // it; it never builds a URL, canonicalizes a value, validates
+            // input or evaluates Search truth itself (all still exclusively
+            // FastAPI's, per Required Behavior §B/§J) -- not a client-side
+            // Search engine.
+            const form = document.getElementById("hullq-search-form");
+            if (form instanceof HTMLFormElement) {
+              form.addEventListener("submit", () => {
+                for (const element of form.elements) {
+                  if (
+                    (element instanceof HTMLInputElement || element instanceof HTMLSelectElement) &&
+                    element.name &&
+                    element.value.trim() === ""
+                  ) {
+                    element.disabled = true;
+                  }
+                }
+              });
+            }
+          </script>
 
-          {data.activeRequirement !== null && (
+          {activeRequirement !== null && (
             <section aria-label="search results">
-              <p>{t.requirementSummary(data.activeRequirement.draft_max)}</p>
+              <p>
+                {activeRequirement.draft_max !== undefined && activeRequirement.keel_configuration !== undefined
+                  ? t.requirementSummaryMixed(activeRequirement.draft_max, keelLabel(activeRequirement.keel_configuration))
+                  : activeRequirement.keel_configuration !== undefined
+                    ? t.requirementSummaryKeelOnly(keelLabel(activeRequirement.keel_configuration))
+                    : t.requirementSummary(activeRequirement.draft_max)}
+              </p>
 
               <h2>
                 {t.confirmedHeading} ({data.confirmedMatchCount})
               </h2>
               {data.confirmedMatchCount === 0 ? (
-                <p>{t.noConfirmedMatches}</p>
+                <p>{isKeelActive ? t.noConfirmedMatchesGeneric : t.noConfirmedMatches}</p>
+              ) : isKeelActive ? (
+                <ul>
+                  {nativeInventoryMatches.map((match) => (
+                    <li>
+                      <a href={`/listings/${match.native_listing_id}`}>
+                        {t.viewListing}: {match.native_listing_id}
+                      </a>
+                      {activeRequirement.draft_max !== undefined && (
+                        <>
+                          {" — "}
+                          {draftEvidenceText(match)}
+                        </>
+                      )}
+                      {" — "}
+                      {keelEvidenceText(match)}
+                      {" — "}
+                      <span aria-label="freshness status">
+                        {match.freshness_status === "DUE_FOR_CONFIRMATION"
+                          ? t.freshnessDueLabel
+                          : t.freshnessConfirmedLabel}
+                      </span>
+                      {match.freshness_status === "DUE_FOR_CONFIRMATION" && (
+                        <p aria-label="freshness due note">{t.freshnessDueNote}</p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               ) : (
                 <ul>
-                  {data.confirmedMatches.map((match) => (
+                  {draftOnlyMatches.map((match) => (
                     <li>
                       <a href={`/listings/${match.native_listing_id}`}>
                         {t.viewListing}: {match.native_listing_id}
@@ -99,7 +226,11 @@ const isCanonical = data.kind === "ok";
               )}
 
               {data.insufficientDataCount > 0 && (
-                <p aria-label="insufficient data">{t.insufficientDataText(data.insufficientDataCount)}</p>
+                <p aria-label="insufficient data">
+                  {isKeelActive
+                    ? t.insufficientDataTextGeneric(data.insufficientDataCount)
+                    : t.insufficientDataText(data.insufficientDataCount)}
+                </p>
               )}
             </section>
           )}
