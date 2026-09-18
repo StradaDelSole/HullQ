@@ -126,6 +126,41 @@ The normal HullQ folder stays on `main`. Claude works in a sibling folder such a
 
 Why VS Code opening is manual: Claude Code UI/session state can be tied to the current VS Code workspace. Automatically reusing a window can replace the current workspace and interrupt an existing Claude session; automatically opening a second window may also be unwanted. The workflow therefore prepares Git state only and leaves the UI decision to the project owner.
 
+### Approval-autonomy guard
+
+Routine Claude Code work must not require the Project Owner to watch the session for avoidable permission popups.
+
+HullQ therefore uses a project-level mechanical approval guard in addition to prompt guidance:
+
+```text
+.claude/settings.json
+→ PreToolUse(Bash|PowerShell)
+→ scripts/workflow/claude_command_guard.py
+→ malformed routine shell composition is denied before permission UI
+→ Claude receives a rewrite reason and retries with standalone calls
+
+PermissionRequest(Bash|PowerShell)
+→ the same guard
+→ bounded routine command families are auto-allowed
+→ destructive / privileged / explicitly operator-gated commands remain on normal permission flow
+```
+
+The PreToolUse guard rejects routine commands containing shell composition that commonly defeats static permission analysis, including shell/environment-variable expansion, command substitution, loops/control flow, pipes, redirects, subshells and compound separators. This is not a product/security-policy decision and must not be bypassed by spelling the same routine diagnostic differently. Claude should split the operation into separate tool calls, use `Read`/`Grep`/`Glob` for file inspection, `uv run python ...` for Python and standalone npm commands such as `npm ci --prefix web`.
+
+The PermissionRequest hook auto-allows only bounded routine families already intended for autonomous HullQ development. It does not auto-allow destructive Git recovery, force-push/main-push, branch deletion, Alembic downgrade, destructive Docker-volume teardown or other deliberately operator-gated actions.
+
+`scripts/validate_repository.py` validates the hook wiring and required shared permission rules. Since `START_SLICE` runs repository validation for current post-0051 slices, future slice start is blocked if this approval-autonomy mechanism is missing or regresses.
+
+This guard complements rather than replaces the shared `allow` / `ask` / `deny` policy. The goal is:
+
+```text
+routine implementation / inspection / tests
+→ autonomous
+
+destructive / privileged / policy-sensitive action
+→ explicit operator approval
+```
+
 ### Token/context discipline during a slice
 
 HullQ uses one Claude session per slice by default.
