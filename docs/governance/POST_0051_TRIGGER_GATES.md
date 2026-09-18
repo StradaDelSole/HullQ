@@ -7,7 +7,7 @@
 <!-- POST_0051_ARCHITECTURE_RECONCILIATION: PASS -->
 <!-- TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 2 -->
 <!-- WORKFLOW_REASSESSMENT_DUE_AFTER_SLICE: 0056 -->
-<!-- WORKFLOW_REASSESSMENT_STATUS: DUE -->
+<!-- WORKFLOW_REASSESSMENT_STATUS: PASS -->
 
 ## Purpose
 
@@ -139,7 +139,7 @@ This applies across broker and private inventory. Payment for verification may p
 
 ## Gate 4 — workflow-overhead reassessment
 
-**Current status: DUE.** SLICE-0056 is owner-accepted, so the five-slice trigger has fired. The current independent readiness/exact-head/owner-acceptance/closure workflow remains unchanged until the evidence-based reassessment is completed and owner-accepted. SLICE-0051 and later reviews demonstrated that the process finds material defects, so it must not be weakened speculatively.
+**Current status: PASS.** The mandatory post-SLICE-0056 evidence-based reassessment is recorded in `docs/POST_SLICE_0056_WORKFLOW_REASSESSMENT_2026-09-18.md`. It found material independent-review defects in all six accepted SLICE-0051 through SLICE-0056 implementation slices, so mandatory implementation review/Owner Acceptance gates remain. Efficiency changes are limited to boundary/risk-focused review, delta-first amendment re-review, autonomous reviewer continuation and approval-autonomy for routine implementation work.
 
 A mandatory workflow reassessment becomes due at the earlier of:
 
@@ -214,4 +214,4 @@ Current queue after accepted SLICE-0056 is:
 SLICE-0057
 ```
 
-Queue number does **not** select a capability. `WORKFLOW_REASSESSMENT_STATUS: DUE` blocks SLICE-0057 readiness/start. Before any SLICE-0057 capability is selected/readied for implementation, the evidence-based workflow reassessment must be completed, explicitly owner-accepted, and the canonical marker changed to `PASS`.
+Queue number does **not** select a capability. The mandatory workflow reassessment is now `PASS`, which removes that specific gate block only. SLICE-0057 still requires normal post-slice repository/product reconciliation, capability selection, readiness preparation, independent readiness review and merge before `START_SLICE`.
