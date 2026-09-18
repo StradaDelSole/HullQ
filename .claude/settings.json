@@ -15,7 +15,6 @@
       "Bash(git diff *)",
       "Bash(git log *)",
       "Bash(git show *)",
-      "Bash(git branch *)",
       "Bash(git rev-parse *)",
       "Bash(git fetch *)",
       "Bash(git add *)",
@@ -41,7 +40,6 @@
       "PowerShell(git diff *)",
       "PowerShell(git log *)",
       "PowerShell(git show *)",
-      "PowerShell(git branch *)",
       "PowerShell(git rev-parse *)",
       "PowerShell(git fetch *)",
       "PowerShell(git add *)",
@@ -100,7 +98,8 @@
       "Read(.env.*)",
       "Read(!.env.example)",
       "Read(~/.ssh/**)",
-      "Read(~/.aws/**)"
+      "Read(~/.aws/**)",
+      "Edit(/.claude/settings.json)"
     ]
   }
 }
