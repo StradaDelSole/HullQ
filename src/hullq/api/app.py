@@ -90,7 +90,10 @@ from hullq.application.search_read import SearchOutcomeKind, evaluate_search_req
 from hullq.domain.market_identity import NativeListingId
 from hullq.domain.publishing_eligibility import MarketplaceOrganizationId
 from hullq.persistence.connection import get_database_url, open_connection
+from hullq.search.configuration_engine import DesignQueryEvaluation
+from hullq.search.criteria import NumericLeafCriterion
 from hullq.search.draft_max_request import canonical_draft_max_str
+from hullq.search.query_mixed import MixedLeafCriterion
 from hullq.security.oidc import AuthProviderConfig, get_auth_provider_config
 from hullq.security.preview_signing import get_preview_signing_secret
 from hullq.security.session_signing import get_session_signing_secret
@@ -228,6 +231,59 @@ _INVALID_SEARCH_REQUEST_MESSAGE = {
     "pt": "Esta ligação de pesquisa não é válida. Indique o calado máximo como um número decimal simples em metros (por exemplo 1.6) e/ou uma configuração de quilha suportada.",
     "es": "Este enlace de búsqueda no es válido. Indique el calado máximo como un número decimal simple en metros (por ejemplo 1.6) y/o una configuración de quilla admitida.",
 }
+
+
+def _serialize_leaf_criterion(criterion: MixedLeafCriterion) -> dict[str, Any]:
+    """SLICE-0055: the requested value/comparison for one active criterion
+    (contract §7), never encoded only inside human-readable explanation
+    text."""
+    if isinstance(criterion, NumericLeafCriterion):
+        return {
+            "kind": "NUMERIC",
+            "field": criterion.field,
+            "comparison": criterion.comparison.value,
+            "threshold_min": (
+                str(criterion.threshold_min) if criterion.threshold_min is not None else None
+            ),
+            "threshold_max": (
+                str(criterion.threshold_max) if criterion.threshold_max is not None else None
+            ),
+        }
+    return {"kind": "CATEGORICAL", "field": criterion.field, "equals": criterion.equals}
+
+
+def _serialize_criterion_evidence(evidence: Any) -> dict[str, Any]:
+    """SLICE-0055: one `hullq.application.native_inventory_query.
+    SearchCriterionEvidence` -- requested criterion, typed truth/reason, and
+    the safely observed concrete canonical value when one exists."""
+    return {
+        "criterion": _serialize_leaf_criterion(evidence.criterion),
+        "field": evidence.evaluation.field,
+        "truth": evidence.evaluation.truth.value,
+        "reason": (
+            evidence.evaluation.reason.value if evidence.evaluation.reason is not None else None
+        ),
+        "explanation": evidence.evaluation.explanation,
+        "observed_value": (
+            str(evidence.observed_value) if evidence.observed_value is not None else None
+        ),
+    }
+
+
+def _serialize_design_evaluation(design_evaluation: DesignQueryEvaluation) -> dict[str, Any]:
+    """SLICE-0055: the complete design/configuration-level evaluation that
+    admitted or failed to admit a listing's BoatDesign (contract §7),
+    including the resolved configuration identity/identities
+    (`matching_configuration_ids`) rather than only a BoatDesign id."""
+    return {
+        "design_id": design_evaluation.design_id,
+        "result_class": design_evaluation.result_class.value,
+        "matching_configuration_ids": list(design_evaluation.matching_configuration_ids),
+        "reason": (
+            design_evaluation.reason.value if design_evaluation.reason is not None else None
+        ),
+    }
+
 
 # Sent on every response from the preview surface only: a preview token is a
 # bearer capability carried in the URL path, never a publicly indexable or
@@ -535,6 +591,9 @@ def create_app(
             )
 
         # SLICE-0055: keel_configuration alone or combined with draft_max.
+        # Retains typed design-level and concrete-level evidence separately
+        # (contract §6/§7, amendment Finding 1) rather than a flat list of
+        # bare criterion truths.
         assert isinstance(search_outcome, NativeInventorySearchOutcome)
         return JSONResponse(
             {
@@ -550,18 +609,10 @@ def create_app(
                             if match.last_confirmed_at is not None
                             else None
                         ),
-                        "criterion_evaluations": [
-                            {
-                                "field": evaluation.field,
-                                "truth": evaluation.truth.value,
-                                "reason": (
-                                    evaluation.reason.value
-                                    if evaluation.reason is not None
-                                    else None
-                                ),
-                                "explanation": evaluation.explanation,
-                            }
-                            for evaluation in match.criterion_evaluations
+                        "design_evaluation": _serialize_design_evaluation(match.design_evaluation),
+                        "criterion_evidence": [
+                            _serialize_criterion_evidence(evidence)
+                            for evidence in match.concrete_criterion_evidence
                         ],
                     }
                     for match in search_outcome.confirmed_matches

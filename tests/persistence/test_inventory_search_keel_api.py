@@ -294,8 +294,14 @@ def test_keel_only_result_200(client: TestClient, seeded: dict[str, Any]) -> Non
     body = response.json()
     assert body["active_requirement"] == {"keel_configuration": "FIN"}
     assert body["confirmed_match_count"] == 1
-    assert body["confirmed_matches"][0]["native_listing_id"] == "NL-0055-KEEL-API"
-    assert body["confirmed_matches"][0]["criterion_evaluations"][0]["field"] == "keel_configuration"
+    match = body["confirmed_matches"][0]
+    assert match["native_listing_id"] == "NL-0055-KEEL-API"
+    assert match["design_evaluation"]["result_class"] == "CONFIRMED_MATCH"
+    assert match["design_evaluation"]["matching_configuration_ids"] == [
+        "BD-0055-KEEL-API::baseline"
+    ]
+    assert match["criterion_evidence"][0]["field"] == "keel_configuration"
+    assert match["criterion_evidence"][0]["observed_value"] == "FIN"
 
 
 def test_mixed_draft_and_keel_result_200(client: TestClient, seeded: dict[str, Any]) -> None:
@@ -304,7 +310,7 @@ def test_mixed_draft_and_keel_result_200(client: TestClient, seeded: dict[str, A
     body = response.json()
     assert body["active_requirement"] == {"draft_max": "1.6", "keel_configuration": "FIN"}
     assert body["confirmed_match_count"] == 1
-    fields = {ce["field"] for ce in body["confirmed_matches"][0]["criterion_evaluations"]}
+    fields = {ce["field"] for ce in body["confirmed_matches"][0]["criterion_evidence"]}
     assert fields == {"draft_max_m", "keel_configuration"}
 
 

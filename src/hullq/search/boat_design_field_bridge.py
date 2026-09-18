@@ -39,7 +39,7 @@ from hullq.search.configuration import (
     DesignConfigurationSet,
     ResolvedConfiguration,
 )
-from hullq.search.configuration_engine import run_configuration_query
+from hullq.search.configuration_engine import ConfigurationSearchOutcome, run_configuration_query
 from hullq.search.query_mixed import MixedAndQuery
 from hullq.search.types import ValueQualification
 from hullq.search.values import QualifiedCategoricalValue, QualifiedNumericValue
@@ -54,6 +54,7 @@ __all__ = [
     "lookup_named_variant_canonical_snapshot",
     "make_bounded_canonical_value_lookup",
     "qualify_canonical_field",
+    "run_boat_design_configuration_query",
 ]
 
 _RESOLVED_STATES: Final = frozenset(
@@ -418,6 +419,47 @@ def build_boat_design_configuration_set(
 # ---------------------------------------------------------------------------
 
 
+def run_boat_design_configuration_query(
+    conn: Any,
+    query: MixedAndQuery,
+    boat_designs: Iterable[Mapping[str, Any]],
+    specs: Sequence[FieldProjectionSpec],
+) -> ConfigurationSearchOutcome:
+    """Evaluate *query* against every design's configuration set, preserving
+    the complete typed `ConfigurationSearchOutcome`.
+
+    *specs* must cover every projection field *query.criteria* addresses
+    (draft-only, keel-only, or both together) -- each design's
+    `DesignConfigurationSet` is built once via
+    `build_boat_design_configuration_set`, carrying every field the active
+    query needs on the same configuration identity, then evaluated through
+    the unchanged `hullq.search.configuration_engine.run_configuration_query`
+    kernel.
+
+    SLICE-0055 amendment (Finding 1): returns the complete
+    `ConfigurationSearchOutcome` -- confirmed matches, confirmed non-matches
+    and insufficient-data designs alike, each carrying its own
+    `matching_configuration_ids`/`configuration_evaluations` -- rather than
+    collapsing it to a bare set of confirmed design ids. A caller that only
+    needs the confirmed id set (SLICE-0051's/SLICE-0055's own
+    single-criterion bridges, whose established public contracts predate or
+    are bounded to that shape) should use
+    `compatible_boat_design_ids_for_query`, a thin wrapper over this function
+    that discards the richer evidence; a caller building production
+    application evidence (`hullq.application.native_inventory_query`) should
+    call this function directly and preserve the result.
+    """
+    boat_designs = tuple(boat_designs)
+    if not boat_designs:
+        return ConfigurationSearchOutcome(
+            confirmed_matches=(), confirmed_non_matches=(), insufficient_data=()
+        )
+    configuration_sets = tuple(
+        build_boat_design_configuration_set(conn, bd, specs) for bd in boat_designs
+    )
+    return run_configuration_query(query, configuration_sets)
+
+
 def compatible_boat_design_ids_for_query(
     conn: Any,
     query: MixedAndQuery,
@@ -426,21 +468,14 @@ def compatible_boat_design_ids_for_query(
 ) -> frozenset[str]:
     """Return the `design_id`s that are a design-level `CONFIRMED_MATCH` for *query*.
 
-    *specs* must cover every projection field *query.criteria* addresses
-    (draft-only, keel-only, or both together) -- each design's
-    `DesignConfigurationSet` is built once via
-    `build_boat_design_configuration_set`, carrying every field the active
-    query needs on the same configuration identity, then evaluated through
-    the unchanged `hullq.search.configuration_engine.run_configuration_query`
-    kernel. A `CONFIRMED_NON_MATCH` or `INSUFFICIENT_DATA` design-level
-    result is simply not included -- neither ever admits a design's
-    PhysicalBoats to the concrete evaluation funnel.
+    A CONFIRMED_NON_MATCH or INSUFFICIENT_DATA design-level result is simply
+    not included -- neither ever admits a design's PhysicalBoats to the
+    concrete evaluation funnel. Thin wrapper over
+    `run_boat_design_configuration_query` for callers (SLICE-0051's
+    `draft_max_design_bridge.compatible_boat_design_ids`, SLICE-0055's
+    `keel_design_bridge.compatible_boat_design_ids_for_keel`) whose own
+    established public contract is bounded to a bare id set -- see that
+    function's docstring (Finding 1) for the fuller-evidence alternative.
     """
-    boat_designs = tuple(boat_designs)
-    if not boat_designs:
-        return frozenset()
-    configuration_sets = tuple(
-        build_boat_design_configuration_set(conn, bd, specs) for bd in boat_designs
-    )
-    outcome = run_configuration_query(query, configuration_sets)
+    outcome = run_boat_design_configuration_query(conn, query, boat_designs, specs)
     return frozenset(evaluation.design_id for evaluation in outcome.confirmed_matches)

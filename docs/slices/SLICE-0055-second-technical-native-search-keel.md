@@ -154,3 +154,16 @@ Existing `draft_max` public syntax, exact Decimal behavior, truth semantics, lis
 ## Stop conditions
 
 Stop and return to readiness review rather than inventing semantics if implementation requires any of: automatic option-combination expansion; a new unreviewed keel taxonomy mapping; weakening FieldResolution qualification; changing the meaning of existing `draft_max`; or a third independent production Search bridge architecture.
+
+## Status handoff rule
+
+The implementation agent may set this primary slice document to `IN_PROGRESS`, `BLOCKED`, or `REVIEW` as appropriate, but MUST NOT mark it `DONE`.
+
+Successful handoff normally sets:
+
+```text
+**Status:** REVIEW
+**Status set by this handoff:** `REVIEW`
+```
+
+`DONE` requires verified acceptance criteria, exact-head external gates, independent review and explicit Project Owner acceptance under the canonical HullQ workflow.

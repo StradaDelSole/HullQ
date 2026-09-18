@@ -8,8 +8,11 @@ exercises `keel_configuration` alone and combined with `draft_max`, proving
 the slice's acceptance criteria: keel-only match/non-match/insufficient,
 mixed joint match, draft TRUE + keel FALSE/UNKNOWN combinations, the
 same-PhysicalBoat cross-Organization keel contradiction guard, an unsupported
-BoatDesign taxonomy mapping never entering any result surface, and
-criterion-level evidence retained for all three result classes.
+BoatDesign taxonomy mapping failing closed while preserving design-side
+evidence, missing/unresolved design-side keel truth likewise preserved, and
+full typed evidence (requested criterion, typed truth/reason, safely
+observed value, resolved configuration identity) retained for all three
+result classes -- amendment Finding 1.
 """
 
 from __future__ import annotations
@@ -68,7 +71,11 @@ from hullq.persistence.native_listing_offer import (
 from hullq.persistence.physical_boat import create_physical_boat
 from hullq.persistence.physical_boat_claims import write_physical_boat_claim_revision
 from hullq.search.draft_max_design_bridge import DRAFT_MAX_FIELD_POINTER
-from hullq.search.keel_design_bridge import KEEL_TYPE_FIELD_POINTER, lookup_keel_canonical_value
+from hullq.search.keel_design_bridge import (
+    KEEL_TYPE_FIELD_POINTER,
+    KEEL_TYPE_OVERRIDE_FIELD_POINTER,
+    lookup_keel_canonical_value,
+)
 from hullq.search.types import ResultClass
 
 from ._field_resolution_support import admit_resolved_categorical_field, admit_resolved_draft_max
@@ -161,6 +168,54 @@ def _insert_boat_design(
             " design_options, quality, content_hash) "
             "VALUES (%s, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s)",
             [design_id, model_id, "{}", "[]", baseline_json, "[]", "[]", "{}", "1" * 64],
+        )
+    conn.commit()
+
+
+def _insert_boat_design_with_keel_variant(
+    conn: Any,
+    design_id: str,
+    model_id: str,
+    *,
+    baseline_keel_type: str,
+    variant_id: str,
+    variant_keel_type: str,
+    baseline_draft_max_m: float = 1.30,
+) -> None:
+    """Same as `_insert_boat_design` but with one NamedVariant carrying its
+    own `appendages.keel_type` override -- used to prove
+    `matching_configuration_ids` correctly identifies a NamedVariant
+    configuration, not merely a BoatDesign id (Finding 1)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO canonical_boat_models (id, canonical_name, content_hash) VALUES (%s, %s, %s)",
+            [model_id, f"Model {model_id}", "0" * 64],
+        )
+        baseline_json = json.dumps(
+            {
+                "dimensions": {"draft_max_m": baseline_draft_max_m},
+                "appendages": {"keel_type": baseline_keel_type},
+            }
+        )
+        named_variants_json = json.dumps(
+            [{"id": variant_id, "overrides": {"appendages": {"keel_type": variant_keel_type}}}]
+        )
+        cur.execute(
+            "INSERT INTO canonical_boat_designs "
+            "(id, boat_model_id, generation, designers, baseline, named_variants, "
+            " design_options, quality, content_hash) "
+            "VALUES (%s, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s)",
+            [
+                design_id,
+                model_id,
+                "{}",
+                "[]",
+                baseline_json,
+                named_variants_json,
+                "[]",
+                "{}",
+                "1" * 64,
+            ],
         )
     conn.commit()
 
@@ -348,6 +403,17 @@ def test_keel_only_confirmed_match(api_conn: Any) -> None:
     assert outcome.confirmed_non_match_count == 0
     assert outcome.insufficient_data_count == 0
 
+    match = outcome.confirmed_matches[0]
+    # Finding 1: the resolved BoatDesign configuration identity that admitted
+    # the match is preserved, not collapsed to a bare design id.
+    assert match.design_evaluation.design_id == "BD-NIQ-1"
+    assert match.design_evaluation.result_class is ResultClass.CONFIRMED_MATCH
+    assert match.design_evaluation.matching_configuration_ids == ("BD-NIQ-1::baseline",)
+    evidence = match.concrete_criterion_evidence[0]
+    assert evidence.criterion.field == "keel_configuration"
+    assert evidence.criterion.equals == "FIN"
+    assert evidence.observed_value == "FIN"
+
 
 def test_keel_only_confirmed_non_match(api_conn: Any) -> None:
     _insert_boat_design(api_conn, "BD-NIQ-2", "BM-NIQ-2", baseline_keel_type="fin")
@@ -374,6 +440,63 @@ def test_keel_only_confirmed_non_match(api_conn: Any) -> None:
     assert outcome.confirmed_matches == ()
     assert outcome.confirmed_non_match_count == 1
     assert outcome.confirmed_non_matches[0].native_listing_id.value == "NL-NIQ-2"
+
+
+def test_keel_only_confirmed_match_preserves_named_variant_configuration_identity(
+    api_conn: Any,
+) -> None:
+    """Finding 1 (Required tests): a NamedVariant match must preserve the
+    correct NamedVariant configuration identity, not the baseline's -- the
+    baseline here is a design-level non-match (`wing`) and only the
+    NamedVariant override (`fin`) makes the design eligible."""
+    _insert_boat_design_with_keel_variant(
+        api_conn,
+        "BD-NIQ-VAR",
+        "BM-NIQ-VAR",
+        baseline_keel_type="wing",
+        variant_id="VAR-NIQ-1",
+        variant_keel_type="fin",
+    )
+    admit_resolved_categorical_field(
+        api_conn,
+        subject_kind=SubjectKind.BOAT_DESIGN,
+        subject_id="BD-NIQ-VAR",
+        field_pointer=KEEL_TYPE_FIELD_POINTER,
+        value="wing",
+        resolution_id="FR-KEEL-BD-NIQ-VAR",
+        fetch_canonical_value=lookup_keel_canonical_value,
+    )
+    admit_resolved_categorical_field(
+        api_conn,
+        subject_kind=SubjectKind.NAMED_VARIANT,
+        subject_id="VAR-NIQ-1",
+        field_pointer=KEEL_TYPE_OVERRIDE_FIELD_POINTER,
+        value="fin",
+        resolution_id="FR-KEEL-VAR-NIQ-1",
+        fetch_canonical_value=lookup_keel_canonical_value,
+    )
+    listing = _make_active_listing(
+        api_conn,
+        listing_id="NL-NIQ-VAR",
+        physical_boat_id="PB-NIQ-VAR",
+        market_episode_id="ME-NIQ-VAR",
+        boat_design_id="BD-NIQ-VAR",
+    )
+    _write_claim(
+        api_conn,
+        account=listing[0],
+        org=listing[1],
+        membership=listing[2],
+        listing_id="NL-NIQ-VAR",
+        revision_id="REV-NIQ-VAR",
+        keel_configuration=_keel_value("FIN"),
+    )
+    outcome = evaluate_native_inventory_requirements(
+        api_conn, draft_max=None, keel_configuration="FIN", as_of=_as_of()
+    )
+    assert {m.native_listing_id.value for m in outcome.confirmed_matches} == {"NL-NIQ-VAR"}
+    match = outcome.confirmed_matches[0]
+    assert match.design_evaluation.matching_configuration_ids == ("BD-NIQ-VAR::VAR-NIQ-1",)
     assert outcome.insufficient_data_count == 0
 
 
@@ -454,8 +577,18 @@ def test_mixed_draft_and_keel_confirmed_joint_match(api_conn: Any) -> None:
     )
     assert {m.native_listing_id.value for m in outcome.confirmed_matches} == {"NL-NIQ-5"}
     match = outcome.confirmed_matches[0]
-    fields = {ce.field for ce in match.criterion_evaluations}
-    assert fields == {"draft_max_m", "keel_configuration"}
+    evidence_by_field = {e.evaluation.field: e for e in match.concrete_criterion_evidence}
+    assert set(evidence_by_field) == {"draft_max_m", "keel_configuration"}
+
+    # Finding 1: requested value/comparison and safely observed value are
+    # both typed, not only embedded in explanation text.
+    draft_evidence = evidence_by_field["draft_max_m"]
+    assert draft_evidence.criterion.threshold_max == Decimal("1.6")
+    assert draft_evidence.observed_value == Decimal("1.40")
+    keel_evidence = evidence_by_field["keel_configuration"]
+    assert keel_evidence.criterion.equals == "FIN"
+    assert keel_evidence.observed_value == "FIN"
+    assert match.design_evaluation.result_class is ResultClass.CONFIRMED_MATCH
 
 
 def test_draft_true_keel_false_is_non_match_not_match(api_conn: Any) -> None:
@@ -487,9 +620,15 @@ def test_draft_true_keel_false_is_non_match_not_match(api_conn: Any) -> None:
     assert outcome.confirmed_non_match_count == 1
     non_match = outcome.confirmed_non_matches[0]
     assert non_match.result_class is ResultClass.CONFIRMED_NON_MATCH
-    truths = {ce.field: ce.truth.value for ce in non_match.criterion_evaluations}
-    assert truths["draft_max_m"] == "TRUE"
-    assert truths["keel_configuration"] == "FALSE"
+    assert non_match.design_evaluation.result_class is ResultClass.CONFIRMED_MATCH
+    evidence_by_field = {e.evaluation.field: e for e in non_match.concrete_criterion_evidence}
+    assert evidence_by_field["draft_max_m"].evaluation.truth.value == "TRUE"
+    assert evidence_by_field["draft_max_m"].observed_value == Decimal("1.40")
+    keel_evidence = evidence_by_field["keel_configuration"]
+    assert keel_evidence.evaluation.truth.value == "FALSE"
+    # The publisher's own contradicting claim is a safely observed value --
+    # a confirmed FALSE is not the same as an unresolved/missing value.
+    assert keel_evidence.observed_value == "WING"
 
 
 def test_draft_true_keel_unknown_is_insufficient_not_match(api_conn: Any) -> None:
@@ -520,9 +659,15 @@ def test_draft_true_keel_unknown_is_insufficient_not_match(api_conn: Any) -> Non
     assert outcome.confirmed_matches == ()
     assert outcome.confirmed_non_match_count == 0
     assert outcome.insufficient_data_count == 1
-    truths = {ce.field: ce.truth.value for ce in outcome.insufficient_data[0].criterion_evaluations}
-    assert truths["draft_max_m"] == "TRUE"
-    assert truths["keel_configuration"] == "UNKNOWN"
+    insufficient = outcome.insufficient_data[0]
+    assert insufficient.design_evaluation.result_class is ResultClass.CONFIRMED_MATCH
+    evidence_by_field = {e.evaluation.field: e for e in insufficient.concrete_criterion_evidence}
+    assert evidence_by_field["draft_max_m"].evaluation.truth.value == "TRUE"
+    assert evidence_by_field["draft_max_m"].observed_value == Decimal("1.40")
+    keel_evidence = evidence_by_field["keel_configuration"]
+    assert keel_evidence.evaluation.truth.value == "UNKNOWN"
+    # An explicit UNKNOWN claim must never invent an observed value.
+    assert keel_evidence.observed_value is None
 
 
 # ---------------------------------------------------------------------------
@@ -582,15 +727,31 @@ def test_cross_organization_keel_contradiction_blocks_confirmed_match(api_conn: 
     )
     assert outcome.confirmed_matches == ()
     assert outcome.insufficient_data_count == 1
-    assert outcome.insufficient_data[0].native_listing_id.value == "NL-NIQ-8"
+    insufficient = outcome.insufficient_data[0]
+    assert insufficient.native_listing_id.value == "NL-NIQ-8"
+    assert insufficient.design_evaluation.result_class is ResultClass.CONFIRMED_MATCH
+    keel_evidence = insufficient.concrete_criterion_evidence[0]
+    assert keel_evidence.evaluation.truth.value == "UNKNOWN"
+    # The contradiction guard fails closed to MISSING even though the
+    # publisher's own claim was VALUE_ASSERTION -- never invent an observed
+    # value from a claim overruled by cross-Organization disagreement.
+    assert keel_evidence.observed_value is None
 
 
 # ---------------------------------------------------------------------------
-# Acceptance criterion 6: unsupported design taxonomy mapping never matches
+# Acceptance criterion 6: unsupported design taxonomy mapping fails closed
 # ---------------------------------------------------------------------------
 
 
-def test_unsupported_design_keel_mapping_never_enters_any_result_surface(api_conn: Any) -> None:
+def test_unsupported_design_keel_mapping_fails_closed_but_preserves_design_evidence(
+    api_conn: Any,
+) -> None:
+    """Finding 1 (amendment): an unsupported BoatDesign keel mapping still
+    fails closed -- the listing never becomes a confirmed match -- but it
+    must no longer disappear from every production application evidence
+    surface. It is classified `INSUFFICIENT_DATA` (design/configuration
+    eligibility never admitted it to the concrete funnel at all) and its
+    `design_evaluation` is retained, never guessed into a match/non-match."""
     _insert_boat_design(api_conn, "BD-NIQ-9", "BM-NIQ-9", baseline_keel_type="full")
     _admit_design_keel_and_draft(api_conn, "BD-NIQ-9", keel_type="full")
     listing = _make_active_listing(
@@ -612,12 +773,59 @@ def test_unsupported_design_keel_mapping_never_enters_any_result_surface(api_con
     outcome = evaluate_native_inventory_requirements(
         api_conn, draft_max=None, keel_configuration="FIN", as_of=_as_of()
     )
-    all_listing_ids = (
-        {m.native_listing_id.value for m in outcome.confirmed_matches}
-        | {m.native_listing_id.value for m in outcome.confirmed_non_matches}
-        | {m.native_listing_id.value for m in outcome.insufficient_data}
+    assert outcome.confirmed_matches == ()
+    assert outcome.confirmed_non_match_count == 0
+    assert outcome.insufficient_data_count == 1
+    insufficient = outcome.insufficient_data[0]
+    assert insufficient.native_listing_id.value == "NL-NIQ-9"
+    # Design-side evidence is retained: no matching configuration (the only
+    # configuration's mapped value is unsupported -> UNKNOWN, never a
+    # guessed TRUE/FALSE), and the concrete PhysicalBoat claim (which *did*
+    # say FIN) was never even consulted -- design/configuration eligibility
+    # never admitted this design to the concrete funnel (Required Behavior §C).
+    assert insufficient.design_evaluation.design_id == "BD-NIQ-9"
+    assert insufficient.design_evaluation.result_class is ResultClass.INSUFFICIENT_DATA
+    assert insufficient.design_evaluation.matching_configuration_ids == ()
+    assert insufficient.concrete_criterion_evidence == ()
+
+
+def test_missing_design_side_keel_resolution_is_insufficient_but_preserves_evidence(
+    api_conn: Any,
+) -> None:
+    """Finding 1 (Required tests): missing/unresolved design-side keel truth
+    (no FieldResolution ever admitted for `appendages.keel_type`, even though
+    the canonical JSON itself already says `fin`) remains outside primary
+    matches but is not silently erased from the application evidence."""
+    _insert_boat_design(api_conn, "BD-NIQ-NORES", "BM-NIQ-NORES", baseline_keel_type="fin")
+    # Deliberately admit no FieldResolution at all for this design's keel
+    # field -- raw canonical JSON presence alone must never self-authorize
+    # confirmed Search truth (SLICE-0051 Finding 3, reused for keel).
+    listing = _make_active_listing(
+        api_conn,
+        listing_id="NL-NIQ-NORES",
+        physical_boat_id="PB-NIQ-NORES",
+        market_episode_id="ME-NIQ-NORES",
+        boat_design_id="BD-NIQ-NORES",
     )
-    assert "NL-NIQ-9" not in all_listing_ids
+    _write_claim(
+        api_conn,
+        account=listing[0],
+        org=listing[1],
+        membership=listing[2],
+        listing_id="NL-NIQ-NORES",
+        revision_id="REV-NIQ-NORES",
+        keel_configuration=_keel_value("FIN"),
+    )
+    outcome = evaluate_native_inventory_requirements(
+        api_conn, draft_max=None, keel_configuration="FIN", as_of=_as_of()
+    )
+    assert outcome.confirmed_matches == ()
+    assert outcome.insufficient_data_count == 1
+    insufficient = outcome.insufficient_data[0]
+    assert insufficient.native_listing_id.value == "NL-NIQ-NORES"
+    assert insufficient.design_evaluation.result_class is ResultClass.INSUFFICIENT_DATA
+    assert insufficient.design_evaluation.matching_configuration_ids == ()
+    assert insufficient.concrete_criterion_evidence == ()
 
 
 # ---------------------------------------------------------------------------
@@ -693,10 +901,65 @@ def test_criterion_level_evidence_retained_for_every_result_class(api_conn: Any)
         outcome.insufficient_data,
     ):
         evaluation = group[0]
-        assert len(evaluation.criterion_evaluations) == 1
-        ce = evaluation.criterion_evaluations[0]
-        assert ce.field == "keel_configuration"
-        assert ce.explanation
+        # Design/configuration evidence is retained for every result class,
+        # including confirmed-non-match/insufficient (Finding 1) -- here all
+        # three listings share the same design-level CONFIRMED_MATCH design,
+        # so they diverge only at the concrete PhysicalBoat level.
+        assert evaluation.design_evaluation.design_id == "BD-NIQ-10"
+        assert evaluation.design_evaluation.result_class is ResultClass.CONFIRMED_MATCH
+        assert len(evaluation.concrete_criterion_evidence) == 1
+        evidence = evaluation.concrete_criterion_evidence[0]
+        assert evidence.evaluation.field == "keel_configuration"
+        assert evidence.evaluation.explanation
+        assert evidence.criterion.equals == "FIN"
+
+    assert outcome.confirmed_matches[0].concrete_criterion_evidence[0].observed_value == "FIN"
+    assert outcome.confirmed_non_matches[0].concrete_criterion_evidence[0].observed_value == "WING"
+    # An UNKNOWN claim never invents an observed value.
+    assert outcome.insufficient_data[0].concrete_criterion_evidence[0].observed_value is None
+
+
+def test_pure_draft_max_request_still_uses_unmodified_0051_outcome_shape(api_conn: Any) -> None:
+    """Finding 1 (Required tests): existing pure `draft_max` SLICE-0051
+    public behavior remains unchanged by this module's evidence-preservation
+    amendment -- `evaluate_draft_max_requirement` (untouched) still returns
+    the original counts-only `DraftMaxSearchOutcome`, never the SLICE-0055
+    `NativeInventorySearchOutcome` shape, for the exact same design/listing
+    this module's own keel funnel would otherwise classify."""
+    from hullq.application.inventory_search import (
+        DraftMaxSearchOutcome,
+        evaluate_draft_max_requirement,
+    )
+
+    _insert_boat_design(
+        api_conn, "BD-NIQ-0051", "BM-NIQ-0051", baseline_keel_type="fin", baseline_draft_max_m=1.30
+    )
+    _admit_design_keel_and_draft(
+        api_conn, "BD-NIQ-0051", keel_type="fin", draft_max_m=Decimal("1.30")
+    )
+    listing = _make_active_listing(
+        api_conn,
+        listing_id="NL-NIQ-0051",
+        physical_boat_id="PB-NIQ-0051",
+        market_episode_id="ME-NIQ-0051",
+        boat_design_id="BD-NIQ-0051",
+    )
+    _write_claim(
+        api_conn,
+        account=listing[0],
+        org=listing[1],
+        membership=listing[2],
+        listing_id="NL-NIQ-0051",
+        revision_id="REV-NIQ-0051",
+        draft=_draft_value("1.40"),
+        keel_configuration=_keel_value("FIN"),
+    )
+    outcome = evaluate_draft_max_requirement(api_conn, Decimal("1.6"), as_of=_as_of())
+    assert isinstance(outcome, DraftMaxSearchOutcome)
+    assert not hasattr(outcome, "query")
+    assert not hasattr(outcome, "design_evaluation")
+    assert {m.native_listing_id.value for m in outcome.confirmed_matches} == {"NL-NIQ-0051"}
+    assert outcome.confirmed_matches[0].resolved_draft_m == Decimal("1.40")
 
 
 # ---------------------------------------------------------------------------
