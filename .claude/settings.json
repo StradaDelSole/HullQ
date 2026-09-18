@@ -5,6 +5,8 @@
     "disableBypassPermissionsMode": "disable",
     "allow": [
       "Read",
+      "Glob",
+      "Grep",
       "Edit",
       "WebFetch",
       "WebSearch",
