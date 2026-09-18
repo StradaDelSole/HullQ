@@ -32,9 +32,16 @@ _ROUTINE_ALLOW_PATTERNS = (
 
 _OPERATOR_RE = re.compile(r"[;&|<>]")
 _CONTROL_WORD_RE = re.compile(r"(^|\s)(?:for|while|until|case|if|function)\b")
-_ASSIGNMENT_RE = re.compile(r"^\s*[A-Za-z_][A-Za-z0-9_]*\s*=")
-_VARIABLE_RE = re.compile(r"\$(?:\{[A-Za-z_][A-Za-z0-9_]*\}|[A-Za-z_][A-Za-z0-9_]*)")
+_ASSIGNMENT_RE = re.compile(r"(^|\s)[A-Za-z_][A-Za-z0-9_]*\s*=")
 _SUBSHELL_RE = re.compile(r"(^|\s)\(")
+_ROUTINE_WRAPPER_RE = re.compile(
+    r"^\s*(?:xargs|watch|setsid|ionice|flock)(?:\s|$)"
+    r"|^\s*(?:bash|sh|zsh|fish)\s+-c(?:\s|$)"
+    r"|^\s*(?:powershell(?:\.exe)?|pwsh)\s+-(?:Command|File)(?:\s|$)"
+    r"|^\s*cmd(?:\.exe)?\s+/c(?:\s|$)",
+    re.IGNORECASE,
+)
+_FIND_EXEC_RE = re.compile(r"^\s*find\b.*(?:-exec|-delete)\b")
 
 _DANGEROUS_ROUTINE_PATTERNS = (
     re.compile(r"^git\s+push\b.*(?:--force|-f(?:\s|$)|origin\s+main(?:\s|$)|:main|--delete)"),
@@ -92,12 +99,18 @@ def composition_reason(command: str) -> str | None:
         return "multiple shell statements/newlines"
     if _CONTROL_WORD_RE.search(outside):
         return "shell control flow/loop"
+    if _ROUTINE_WRAPPER_RE.search(outside):
+        return "shell/exec wrapper"
+    if _FIND_EXEC_RE.search(outside):
+        return "find -exec/-delete"
     if _ASSIGNMENT_RE.search(outside):
         return "shell variable/environment assignment"
     if "$(" in expandable or "`" in expandable:
         return "command substitution"
-    if _VARIABLE_RE.search(expandable):
+    if "$" in expandable:
         return "shell/environment-variable expansion"
+    if "{" in outside or "}" in outside:
+        return "unquoted brace expansion"
     if _SUBSHELL_RE.search(outside):
         return "subshell/group expression"
     if _OPERATOR_RE.search(outside):
