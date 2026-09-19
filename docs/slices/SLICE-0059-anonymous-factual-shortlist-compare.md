@@ -28,7 +28,7 @@ Compare is an accepted Buyer Decision Tool and the next consumer explicitly defe
 Canonical post-0054 buyer/seller direction, accepted 0058 closure/contract, public listing read model, shortlist resolver/store/runtime, UX baseline, broker/owner-direct obligations, architecture and trigger gates were inspected. Existing 0058 identity/current-truth transport is reused rather than duplicated.
 
 **TRIGGER GATES CHECK:** PASS  
-Production Readiness remains `NOT_TRIGGERED`; workflow reassessment remains `PASS`; 0059 adds no technical Search criterion and no real external production data/pilot/launch. The stale broker-only architecture summary found during reassessment is corrected in this readiness package before READY acceptance.
+Production Readiness remains `NOT_TRIGGERED`; workflow reassessment remains `PASS`; 0059 adds no technical Search criterion and no real external production data/pilot/launch. The stale broker-only/private-referral-only architecture statements found during reassessment are reconciled in this readiness package before READY acceptance.
 
 ## Decision / implementation reconciliation
 
@@ -42,7 +42,7 @@ Production Readiness remains `NOT_TRIGGERED`; workflow reassessment remains `PAS
 
 **Accepted-but-unimplemented obligations:** accepted Compare direction allows shortlisted boats to be compared factually using technical/listing/truth data while forbidding winner/overall score/best-fit/hidden weighting; 0059 implements only the anonymous whole-Shortlist factual subset.
 
-**Material classifications:** `DECIDED_AND_IMPLEMENTED` shortlist/current public truth foundation; `DECIDED_NOT_YET_IMPLEMENTED` factual Compare; `EXPLICITLY_DEFERRED` persistence/subset-selection/requirements overlay/sharing/monitor/contact; `GENUINELY_OPEN` later durable compare-selection/account/currency-market semantics; `CONFLICT_OR_REGRESSION` stale broker-only one-sentence architecture corrected by this readiness package.
+**Material classifications:** `DECIDED_AND_IMPLEMENTED` shortlist/current public truth foundation; `DECIDED_NOT_YET_IMPLEMENTED` factual Compare; `EXPLICITLY_DEFERRED` persistence/subset-selection/requirements overlay/sharing/monitor/contact; `GENUINELY_OPEN` later durable compare-selection/account/currency-market semantics; `CONFLICT_OR_REGRESSION` stale broker-only/private-referral-only architecture statements reconciled by this readiness package.
 
 ## Trigger gates
 

@@ -10,6 +10,8 @@ This document freezes the current HullQ product/architecture direction after the
 
 Where an older planning document conflicts with this file, the newer explicit decision in this file controls once merged.
 
+> **Later marketplace-supply amendment (2026-09-14):** `docs/OWNER_DIRECT_LISTING_PRODUCT_DIRECTION_2026-09-14.md` and `specs/OWNER_DIRECT_LISTING_REQUIREMENTS.v0.1.md` supersede this document's original broker-only/private-referral-only supply direction. Current supply is **broker-first mixed supply**: professional broker/dealer inventory plus a bounded owner-direct/private-seller path. Private sellers must not be forced through referral, and neither seller channel may buy organic Search eligibility, match classification or ordering.
+
 All non-conflicting strict-truth, provenance, fail-closed, configuration-scope, explicit `UNKNOWN`, source/media-rights, ONE-CAPABILITY, VISIBLE-RESULT, slice-isolation and exact-head review rules remain in force.
 
 ---
@@ -153,48 +155,44 @@ Quality measurement should consider both false merges and false splits/unresolve
 
 ---
 
-## 5. Broker-only public supply
+## 5. Broker-first mixed-supply public marketplace
 
-Phase-1 public HullQ supply is strictly:
+Current public-supply direction is:
 
 ```text
-BROKER / DEALER / ELIGIBLE PROFESSIONAL ORGANIZATION ONLY
+eligible broker / dealer / professional Organization inventory
++
+bounded owner-direct / private-seller inventory
 ```
 
-A private consumer account must not receive the capability to publish a public `NativeListing`.
+The two seller channels have distinct authorization/trust rules and MUST NOT impersonate one another.
 
-This is a domain authorization rule, not only a UI choice.
+A private seller does not receive professional Organization/Membership authority merely to publish. Owner-direct publication uses its own accepted Account/ownership/admission boundary. Conversely, professional publishing continues to require the accepted Organization/Membership/publishing-eligibility path.
 
 Invariant:
 
-> Every publicly published `NativeListing` must have an eligible professional Organization as its publishing principal.
+> Every publicly published `NativeListing` must have one explicit accepted publishing principal and channel authorization: either an eligible professional Organization or an authorized owner-direct seller path. Payment must not buy truth, organic eligibility or organic position.
 
-Strategic reasons include:
+Professional supply remains strategically central. Owner-direct is an additional first-class path, not a replacement for brokers. Trust, fraud, representation-conflict and disclosure requirements remain channel-appropriate and fail closed where not yet implemented.
 
-- avoid direct channel conflict with the brokers whose inventory HullQ needs;
-- avoid reproducing the documented YachtWorld private-seller/broker trust conflict;
-- reduce fraud/identity/ownership/moderation burden from public FSBO supply;
-- preserve a professional accountability layer while still treating broker claims as evidence rather than unquestioned truth;
-- avoid unnecessary trader/private-seller regulatory and disclosure complexity in Phase 1.
-
-HullQ will not introduce public FSBO listing monetization in Phase 1.
+Basic owner-direct self-listing is free by default direction. Optional verification/processing/referral services may later be monetized only under their accepted independent boundaries; paid organic visibility is not allowed.
 
 ---
 
-## 6. Private-owner referral channel
+## 6. Optional private-owner broker referral channel
 
-Private owners are handled through a separate domain aggregate such as:
+A private owner who explicitly chooses professional representation may enter a separate referral aggregate such as:
 
 ```text
 BrokerageRequest
 ```
 
-not through a hidden or unpublished `NativeListing`.
+The referral path is optional and MUST NOT be used to force a seller away from the owner-direct path. It is also not represented as a hidden or unpublished `NativeListing`.
 
 Conceptual flow:
 
 ```text
-private owner
+private owner explicitly chooses broker referral
 → BrokerageRequest
 → deterministic eligible-broker shortlist
 → broker responses
@@ -242,7 +240,7 @@ RETRY_LATER
 CLOSE_REQUEST
 ```
 
-HullQ must not silently drop the request and must not turn it into a public FSBO listing as a fallback.
+HullQ must not silently drop the request and must not convert the referral request into an owner-direct public listing without a separate explicit seller choice.
 
 ### 6.2 Referral gaming
 
@@ -626,11 +624,11 @@ Current commercial actor model:
 ```text
 Buyer
 Broker / Dealer / Professional Supply
-Private Owner as Referral Source (not public seller)
+Private Owner as Owner-Direct Seller and/or explicit Referral Requester
 Professional/Data Customer (possible later)
 ```
 
-Do not monetize private owners through public FSBO listing fees in Phase 1.
+Basic owner-direct self-listing is free by default direction. Optional verification/processing/referral services may be monetized only without buying truth or organic Search position.
 
 Early broker inventory may rationally be free/very low-friction because inventory itself creates marketplace value.
 
@@ -993,8 +991,8 @@ Superseded. Native marketplace is now part of the product foundation.
 ### External marketplace access required for Gate 1
 Superseded. External sources are optional authorized supplements.
 
-### Public seller / private seller equivalent to broker supply
-Superseded. Public Phase-1 supply is professional/broker-only; private owners use BrokerageRequest/referral.
+### Broker-only / private-referral-only public supply
+Superseded. Current direction is broker-first mixed supply: professional broker/dealer inventory plus a bounded owner-direct/private-seller listing path. Broker referral remains optional and begins only after explicit seller opt-in.
 
 ### Old Free/Plus/Pro pricing
 Superseded. Pricing is reopened.

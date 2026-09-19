@@ -105,11 +105,11 @@ None is required for a v0.1 factual whole-Shortlist comparison.
 
 ### CONFLICT_OR_REGRESSION
 
-One current-facing documentation conflict was found on canonical base:
+One current-facing documentation conflict class was found on canonical base:
 
-`docs/ARCHITECTURE_REBASELINE_2026-09-02.md` still described HullQ in its controlling one-sentence architecture as `broker-only-public-supply`, contradicting the later owner-accepted 2026-09-14 broker-first mixed-supply direction and the current `PROJECT_STATE.md`.
+`docs/ARCHITECTURE_REBASELINE_2026-09-02.md` still retained several active broker-only/private-referral-only statements from the 2026-09-02 architecture, including its supply section, commercial-actor summary, supersession summary and controlling one-sentence architecture. Those statements contradict the later owner-accepted 2026-09-14 broker-first mixed-supply direction and current `PROJECT_STATE.md`.
 
-The SLICE-0059 readiness package corrects that stale phrase to `broker-first mixed-supply` before readiness can be accepted. No production-code conflict was found.
+The SLICE-0059 readiness package reconciles those stale statements to the current broker-first mixed-supply direction while retaining optional seller-initiated broker referral. No production-code conflict was found.
 
 ## 3. Existing implementation foundation
 
@@ -184,7 +184,7 @@ This reassessment inspected the owner-direct direction because Compare consumes 
 - does not use seller payment, verification payment, referral economics or expected revenue as comparison ordering/value judgment;
 - preserves one common current public listing-read boundary.
 
-The stale broker-only architecture summary found during reconciliation is corrected in the readiness package.
+The stale broker-only/private-referral-only architecture statements found during reconciliation are corrected in the readiness package.
 
 ## 7. Trigger gates
 
