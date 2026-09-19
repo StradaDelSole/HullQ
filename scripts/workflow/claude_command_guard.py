@@ -146,9 +146,8 @@ def _readonly_gh_api_allowed(command: str) -> bool:
         if token.startswith("--method="):
             if token.split("=", 1)[1].upper() != "GET":
                 return False
-        elif token.startswith("-X") and token != "-X":
-            if token[2:].upper() != "GET":
-                return False
+        elif token.startswith("-X") and token != "-X" and token[2:].upper() != "GET":
+            return False
 
         # These flags can supply a request body or implicitly change the
         # default method to POST. Leave them operator-gated even if the
