@@ -69,6 +69,33 @@ export interface SearchText {
   freshnessDueLabel: string;
   /** MUST NOT word a DUE match as if it were simply "confirmed" (contract §H). */
   freshnessDueNote: string;
+
+  // SLICE-0057: buyer-requirement-sensitivity text. Factual and
+  // decision-neutral throughout (contract §12/§19) -- never "recommended",
+  // "better", "worse", "optimal", "should" or "relax this".
+  /** Shown alongside each per-active-criterion sensitivity form on the Search page. */
+  sensitivityFormNote: string;
+  sensitivityDraftSubmitLabel: string;
+  sensitivityKeelSubmitLabel: string;
+  sensitivityAlternativeDraftLabel: string;
+  sensitivityAlternativeKeelLabel: string;
+  sensitivityPageTitle: string;
+  sensitivityCurrentHeading: string;
+  sensitivityAlternativeHeading: string;
+  sensitivityCurrentConfirmedLabel: (count: number) => string;
+  sensitivityAlternativeConfirmedLabel: (count: number) => string;
+  sensitivityNewlyConfirmedLabel: (count: number) => string;
+  sensitivityNoLongerConfirmedLabel: (count: number) => string;
+  sensitivityCurrentInsufficientLabel: (count: number) => string;
+  sensitivityAlternativeInsufficientLabel: (count: number) => string;
+  sensitivityViewAlternativeSearch: string;
+  sensitivityInvalidTitle: string;
+  sensitivityInvalidFallback: string;
+  sensitivityServiceUnavailableTitle: string;
+  sensitivityServiceUnavailableMessage: string;
+  /** Shown for a direct GET to the POST-only sensitivity page (contract §13). */
+  sensitivityMethodNotAllowedTitle: string;
+  sensitivityMethodNotAllowedMessage: string;
 }
 
 export const searchText: Record<SupportedLocale, SearchText> = {
@@ -118,6 +145,35 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     freshnessDueLabel: "Reconfirmation due",
     freshnessDueNote:
       "The broker has not reconfirmed this listing recently; it will be hidden soon unless reconfirmed.",
+    sensitivityFormNote:
+      "See how many confirmed matches change if you try a different value for one requirement. This does not change your current search.",
+    sensitivityDraftSubmitLabel: "See the effect of a different maximum draft",
+    sensitivityKeelSubmitLabel: "See the effect of a different keel configuration",
+    sensitivityAlternativeDraftLabel: "Alternative maximum draft (metres)",
+    sensitivityAlternativeKeelLabel: "Alternative keel configuration",
+    sensitivityPageTitle: "Requirement sensitivity",
+    sensitivityCurrentHeading: "Current requirement",
+    sensitivityAlternativeHeading: "Alternative requirement",
+    sensitivityCurrentConfirmedLabel: (count) => `Currently confirmed matches: ${count}`,
+    sensitivityAlternativeConfirmedLabel: (count) =>
+      `Confirmed matches with the alternative: ${count}`,
+    sensitivityNewlyConfirmedLabel: (count) => `${count} newly confirmed with the alternative`,
+    sensitivityNoLongerConfirmedLabel: (count) =>
+      `${count} no longer confirmed with the alternative`,
+    sensitivityCurrentInsufficientLabel: (count) =>
+      `${count} additional listing(s) have insufficient evidence under the current requirement`,
+    sensitivityAlternativeInsufficientLabel: (count) =>
+      `${count} additional listing(s) have insufficient evidence under the alternative requirement`,
+    sensitivityViewAlternativeSearch: "View this search",
+    sensitivityInvalidTitle: "This sensitivity request isn't valid",
+    sensitivityInvalidFallback:
+      "Choose one currently active requirement and supply one replacement value for it.",
+    sensitivityServiceUnavailableTitle: "Sensitivity is temporarily unavailable",
+    sensitivityServiceUnavailableMessage:
+      "We couldn't complete this comparison right now. Please try again in a moment.",
+    sensitivityMethodNotAllowedTitle: "Start from a search",
+    sensitivityMethodNotAllowedMessage:
+      "This page only shows a result after you submit a requirement change from the search page.",
   },
   de: {
     title: "Suche: maximaler Tiefgang",
@@ -165,6 +221,35 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     freshnessDueLabel: "Bestätigung ausstehend",
     freshnessDueNote:
       "Der Makler hat dieses Angebot kürzlich nicht erneut bestätigt; es wird bald ausgeblendet, sofern es nicht erneut bestätigt wird.",
+    sensitivityFormNote:
+      "Sehen Sie, wie viele bestätigte Treffer sich ändern, wenn Sie für eine Anforderung einen anderen Wert ausprobieren. Dies ändert Ihre aktuelle Suche nicht.",
+    sensitivityDraftSubmitLabel: "Auswirkung eines anderen maximalen Tiefgangs anzeigen",
+    sensitivityKeelSubmitLabel: "Auswirkung einer anderen Kielkonfiguration anzeigen",
+    sensitivityAlternativeDraftLabel: "Alternativer maximaler Tiefgang (Meter)",
+    sensitivityAlternativeKeelLabel: "Alternative Kielkonfiguration",
+    sensitivityPageTitle: "Anforderungssensitivität",
+    sensitivityCurrentHeading: "Aktuelle Anforderung",
+    sensitivityAlternativeHeading: "Alternative Anforderung",
+    sensitivityCurrentConfirmedLabel: (count) => `Aktuell bestätigte Treffer: ${count}`,
+    sensitivityAlternativeConfirmedLabel: (count) =>
+      `Bestätigte Treffer mit der Alternative: ${count}`,
+    sensitivityNewlyConfirmedLabel: (count) => `${count} neu bestätigt mit der Alternative`,
+    sensitivityNoLongerConfirmedLabel: (count) =>
+      `${count} nicht mehr bestätigt mit der Alternative`,
+    sensitivityCurrentInsufficientLabel: (count) =>
+      `${count} weitere(s) Angebot(e) haben unter der aktuellen Anforderung unzureichende Nachweise`,
+    sensitivityAlternativeInsufficientLabel: (count) =>
+      `${count} weitere(s) Angebot(e) haben unter der alternativen Anforderung unzureichende Nachweise`,
+    sensitivityViewAlternativeSearch: "Diese Suche ansehen",
+    sensitivityInvalidTitle: "Diese Sensitivitätsanfrage ist ungültig",
+    sensitivityInvalidFallback:
+      "Wählen Sie eine derzeit aktive Anforderung und geben Sie dafür einen Ersatzwert an.",
+    sensitivityServiceUnavailableTitle: "Die Sensitivitätsanalyse ist vorübergehend nicht verfügbar",
+    sensitivityServiceUnavailableMessage:
+      "Dieser Vergleich konnte gerade nicht durchgeführt werden. Bitte versuchen Sie es in Kürze erneut.",
+    sensitivityMethodNotAllowedTitle: "Von einer Suche aus starten",
+    sensitivityMethodNotAllowedMessage:
+      "Diese Seite zeigt ein Ergebnis erst, nachdem Sie über die Suchseite eine Anforderungsänderung gesendet haben.",
   },
   fr: {
     title: "Recherche : tirant d'eau maximal",
@@ -213,6 +298,35 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     freshnessDueLabel: "Reconfirmation attendue",
     freshnessDueNote:
       "Le courtier n'a pas reconfirmé cette annonce récemment ; elle sera bientôt masquée si elle n'est pas reconfirmée.",
+    sensitivityFormNote:
+      "Découvrez combien de résultats confirmés changent si vous essayez une valeur différente pour une exigence. Cela ne modifie pas votre recherche actuelle.",
+    sensitivityDraftSubmitLabel: "Voir l'effet d'un tirant d'eau maximal différent",
+    sensitivityKeelSubmitLabel: "Voir l'effet d'une configuration de quille différente",
+    sensitivityAlternativeDraftLabel: "Tirant d'eau maximal alternatif (mètres)",
+    sensitivityAlternativeKeelLabel: "Configuration de quille alternative",
+    sensitivityPageTitle: "Sensibilité de l'exigence",
+    sensitivityCurrentHeading: "Exigence actuelle",
+    sensitivityAlternativeHeading: "Exigence alternative",
+    sensitivityCurrentConfirmedLabel: (count) => `Résultats actuellement confirmés : ${count}`,
+    sensitivityAlternativeConfirmedLabel: (count) =>
+      `Résultats confirmés avec l'alternative : ${count}`,
+    sensitivityNewlyConfirmedLabel: (count) => `${count} nouvellement confirmé(s) avec l'alternative`,
+    sensitivityNoLongerConfirmedLabel: (count) =>
+      `${count} n'est/ne sont plus confirmé(s) avec l'alternative`,
+    sensitivityCurrentInsufficientLabel: (count) =>
+      `${count} annonce(s) supplémentaire(s) ont des preuves insuffisantes selon l'exigence actuelle`,
+    sensitivityAlternativeInsufficientLabel: (count) =>
+      `${count} annonce(s) supplémentaire(s) ont des preuves insuffisantes selon l'exigence alternative`,
+    sensitivityViewAlternativeSearch: "Voir cette recherche",
+    sensitivityInvalidTitle: "Cette demande de sensibilité n'est pas valide",
+    sensitivityInvalidFallback:
+      "Choisissez une exigence actuellement active et indiquez une valeur de remplacement pour celle-ci.",
+    sensitivityServiceUnavailableTitle: "La sensibilité est temporairement indisponible",
+    sensitivityServiceUnavailableMessage:
+      "Nous n'avons pas pu effectuer cette comparaison pour le moment. Veuillez réessayer dans un instant.",
+    sensitivityMethodNotAllowedTitle: "Commencer par une recherche",
+    sensitivityMethodNotAllowedMessage:
+      "Cette page n'affiche un résultat qu'après l'envoi d'une modification d'exigence depuis la page de recherche.",
   },
   pt: {
     title: "Pesquisa: calado máximo",
@@ -261,6 +375,35 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     freshnessDueLabel: "Reconfirmação pendente",
     freshnessDueNote:
       "O corretor não reconfirmou este anúncio recentemente; será ocultado em breve caso não seja reconfirmado.",
+    sensitivityFormNote:
+      "Veja quantas correspondências confirmadas mudam se experimentar um valor diferente para um requisito. Isto não altera a sua pesquisa atual.",
+    sensitivityDraftSubmitLabel: "Ver o efeito de um calado máximo diferente",
+    sensitivityKeelSubmitLabel: "Ver o efeito de uma configuração de quilha diferente",
+    sensitivityAlternativeDraftLabel: "Calado máximo alternativo (metros)",
+    sensitivityAlternativeKeelLabel: "Configuração de quilha alternativa",
+    sensitivityPageTitle: "Sensibilidade do requisito",
+    sensitivityCurrentHeading: "Requisito atual",
+    sensitivityAlternativeHeading: "Requisito alternativo",
+    sensitivityCurrentConfirmedLabel: (count) => `Correspondências atualmente confirmadas: ${count}`,
+    sensitivityAlternativeConfirmedLabel: (count) =>
+      `Correspondências confirmadas com a alternativa: ${count}`,
+    sensitivityNewlyConfirmedLabel: (count) => `${count} recém-confirmada(s) com a alternativa`,
+    sensitivityNoLongerConfirmedLabel: (count) =>
+      `${count} deixou/deixaram de estar confirmada(s) com a alternativa`,
+    sensitivityCurrentInsufficientLabel: (count) =>
+      `${count} anúncio(s) adicional(is) têm evidência insuficiente ao abrigo do requisito atual`,
+    sensitivityAlternativeInsufficientLabel: (count) =>
+      `${count} anúncio(s) adicional(is) têm evidência insuficiente ao abrigo do requisito alternativo`,
+    sensitivityViewAlternativeSearch: "Ver esta pesquisa",
+    sensitivityInvalidTitle: "Este pedido de sensibilidade não é válido",
+    sensitivityInvalidFallback:
+      "Escolha um requisito atualmente ativo e indique um valor de substituição para o mesmo.",
+    sensitivityServiceUnavailableTitle: "A sensibilidade está temporariamente indisponível",
+    sensitivityServiceUnavailableMessage:
+      "Não foi possível concluir esta comparação neste momento. Tente novamente dentro de instantes.",
+    sensitivityMethodNotAllowedTitle: "Comece a partir de uma pesquisa",
+    sensitivityMethodNotAllowedMessage:
+      "Esta página só mostra um resultado depois de submeter uma alteração de requisito a partir da página de pesquisa.",
   },
   es: {
     title: "Búsqueda: calado máximo",
@@ -309,5 +452,33 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     freshnessDueLabel: "Reconfirmación pendiente",
     freshnessDueNote:
       "El bróker no ha reconfirmado este anuncio recientemente; se ocultará pronto si no se reconfirma.",
+    sensitivityFormNote:
+      "Vea cuántas coincidencias confirmadas cambian si prueba un valor diferente para un requisito. Esto no modifica su búsqueda actual.",
+    sensitivityDraftSubmitLabel: "Ver el efecto de un calado máximo diferente",
+    sensitivityKeelSubmitLabel: "Ver el efecto de una configuración de quilla diferente",
+    sensitivityAlternativeDraftLabel: "Calado máximo alternativo (metros)",
+    sensitivityAlternativeKeelLabel: "Configuración de quilla alternativa",
+    sensitivityPageTitle: "Sensibilidad del requisito",
+    sensitivityCurrentHeading: "Requisito actual",
+    sensitivityAlternativeHeading: "Requisito alternativo",
+    sensitivityCurrentConfirmedLabel: (count) => `Coincidencias actualmente confirmadas: ${count}`,
+    sensitivityAlternativeConfirmedLabel: (count) =>
+      `Coincidencias confirmadas con la alternativa: ${count}`,
+    sensitivityNewlyConfirmedLabel: (count) => `${count} recién confirmada(s) con la alternativa`,
+    sensitivityNoLongerConfirmedLabel: (count) => `${count} ya no confirmada(s) con la alternativa`,
+    sensitivityCurrentInsufficientLabel: (count) =>
+      `${count} anuncio(s) adicional(es) tienen evidencia insuficiente según el requisito actual`,
+    sensitivityAlternativeInsufficientLabel: (count) =>
+      `${count} anuncio(s) adicional(es) tienen evidencia insuficiente según el requisito alternativo`,
+    sensitivityViewAlternativeSearch: "Ver esta búsqueda",
+    sensitivityInvalidTitle: "Esta solicitud de sensibilidad no es válida",
+    sensitivityInvalidFallback:
+      "Elija un requisito actualmente activo e indique un valor de sustitución para él.",
+    sensitivityServiceUnavailableTitle: "La sensibilidad no está disponible temporalmente",
+    sensitivityServiceUnavailableMessage:
+      "No hemos podido completar esta comparación en este momento. Inténtelo de nuevo en unos instantes.",
+    sensitivityMethodNotAllowedTitle: "Comience desde una búsqueda",
+    sensitivityMethodNotAllowedMessage:
+      "Esta página solo muestra un resultado después de enviar un cambio de requisito desde la página de búsqueda.",
   },
 };

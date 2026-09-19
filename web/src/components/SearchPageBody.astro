@@ -230,6 +230,72 @@ const nativeInventoryMatches: NativeInventoryConfirmedMatch[] =
                     : t.insufficientDataText(data.insufficientDataCount)}
                 </p>
               )}
+
+              {
+                // SLICE-0057 contract §12: one bounded, buyer-initiated
+                // one-change sensitivity form per currently active
+                // criterion -- never a prefilled "better" alternative, never
+                // more than one changed criterion per form. Each form is a
+                // native browser POST to the read-only sensitivity surface;
+                // Astro/TypeScript transports these raw values only and
+                // never computes a Search result or delta itself (contract
+                // §4/§9).
+                (activeRequirement.draft_max !== undefined ||
+                  activeRequirement.keel_configuration !== undefined) && (
+                  <section aria-label="requirement sensitivity">
+                    <p>{t.sensitivityFormNote}</p>
+                    {activeRequirement.draft_max !== undefined && (
+                      <form method="post" action={`/${locale}/search/sensitivity`}>
+                        <input type="hidden" name="current_draft_max" value={activeRequirement.draft_max} />
+                        {activeRequirement.keel_configuration !== undefined && (
+                          <input
+                            type="hidden"
+                            name="current_keel_configuration"
+                            value={activeRequirement.keel_configuration}
+                          />
+                        )}
+                        <input type="hidden" name="changed_criterion" value="draft_max" />
+                        <label>
+                          {t.sensitivityAlternativeDraftLabel}
+                          <input
+                            type="text"
+                            name="changed_value"
+                            inputmode="decimal"
+                            placeholder={t.draftMaxPlaceholder}
+                          />
+                        </label>
+                        <button type="submit">{t.sensitivityDraftSubmitLabel}</button>
+                      </form>
+                    )}
+                    {activeRequirement.keel_configuration !== undefined && (
+                      <form method="post" action={`/${locale}/search/sensitivity`}>
+                        {activeRequirement.draft_max !== undefined && (
+                          <input
+                            type="hidden"
+                            name="current_draft_max"
+                            value={activeRequirement.draft_max}
+                          />
+                        )}
+                        <input
+                          type="hidden"
+                          name="current_keel_configuration"
+                          value={activeRequirement.keel_configuration}
+                        />
+                        <input type="hidden" name="changed_criterion" value="keel_configuration" />
+                        <label>
+                          {t.sensitivityAlternativeKeelLabel}
+                          <select name="changed_value">
+                            {SEARCH_KEEL_CONFIGURATION_VALUES.map((value) => (
+                              <option value={value}>{keelLabel(value)}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <button type="submit">{t.sensitivityKeelSubmitLabel}</button>
+                      </form>
+                    )}
+                  </section>
+                )
+              }
             </section>
           )}
         </main>

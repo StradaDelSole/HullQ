@@ -1,0 +1,32 @@
+---
+// SLICE-0057: Portuguese locale-prefixed buyer-requirement-sensitivity
+// surface. Mirrors ../../en/search/sensitivity.astro exactly except for
+// `locale` -- see that file for the full rationale.
+export const prerender = false;
+import SearchSensitivityBody from "../../../components/SearchSensitivityBody.astro";
+import {
+  loadSearchSensitivityPageData,
+  type SearchSensitivityPageData,
+} from "../../../lib/searchSensitivityPageData";
+
+const locale = "pt" as const;
+const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+
+let data: SearchSensitivityPageData | null = null;
+
+if (Astro.request.method === "POST") {
+  const formData = await Astro.request.formData();
+  data = await loadSearchSensitivityPageData(apiBaseUrl, locale, formData);
+  if (data.kind === "invalid") {
+    Astro.response.status = 400;
+  } else if (data.kind === "unavailable") {
+    Astro.response.status = 503;
+  }
+} else {
+  Astro.response.status = 405;
+}
+---
+
+<SearchSensitivityBody locale={locale} data={data} />
