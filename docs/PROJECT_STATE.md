@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0058 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0059 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0059 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0060 -->
 
 **Updated:** 2026-09-19  
-**Latest owner-accepted / DONE slice:** SLICE-0058  
-**Current queue:** SLICE-0059 — **Anonymous Factual Shortlist Compare**; post-SLICE-0058 reconciliation and readiness are prepared on the existing browser-local shortlist/current-public-read boundary. Implementation remains unauthorized until independent exact-head readiness review/CI and readiness merge to `main`.  
+**Latest owner-accepted / DONE slice:** SLICE-0059  
+**Current queue:** SLICE-0060 — **UNSELECTED pending fresh post-SLICE-0059 repository/product reassessment**; no SLICE-0060 capability, readiness package or implementation start is authorized yet.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -122,6 +122,7 @@ SLICE-0040 marketplace identity/truth separation
 → SLICE-0056 public multi-criterion Direct Search browser completion
 → SLICE-0057 buyer-authored one-change Requirement Sensitivity
 → SLICE-0058 anonymous browser-local Shortlist
+→ SLICE-0059 anonymous factual whole-Shortlist Compare
 ```
 
 Latest closures:
@@ -134,6 +135,7 @@ docs/slices/SLICE-0055-acceptance-closure.md
 docs/slices/SLICE-0056-acceptance-closure.md
 docs/slices/SLICE-0057-acceptance-closure.md
 docs/slices/SLICE-0058-acceptance-closure.md
+docs/slices/SLICE-0059-acceptance-closure.md
 ```
 
 ## Accepted technical Search result
@@ -149,7 +151,7 @@ Accepted public `keel_configuration` values are exactly `FIN`, `FIN_WITH_BULB`, 
 
 The two criteria may be evaluated alone or together as deterministic hard MUST/AND requirements. SLICE-0055 preserves typed criterion/configuration evidence for confirmed match, confirmed non-match and insufficient-data application outcomes while keeping BoatDesign/configuration truth separate from concrete PhysicalBoat/listing truth.
 
-The accepted technical native Search criteria count remains `2`. SLICE-0057 adds no criterion: it re-evaluates one buyer-selected replacement value for an already active accepted criterion through the same Search truth, in one coherent comparison snapshot, and exposes only factual set-difference counts plus the backend-owned canonical alternative Search path. SLICE-0058 likewise adds no Search criterion: it records explicit buyer interest locally by stable `NativeListingId` and re-resolves current public listing truth when viewed. Any future criterion #3+ readiness is subject to the accepted third-copy abstraction guard in `docs/governance/POST_0051_TRIGGER_GATES.md`.
+The accepted technical native Search criteria count remains `2`. SLICE-0057 adds no criterion: it re-evaluates one buyer-selected replacement value for an already active accepted criterion through the same Search truth, in one coherent comparison snapshot, and exposes only factual set-difference counts plus the backend-owned canonical alternative Search path. SLICE-0058 likewise adds no Search criterion: it records explicit buyer interest locally by stable `NativeListingId` and re-resolves current public listing truth when viewed. SLICE-0059 adds no Search criterion: it uses that existing explicit Shortlist as the whole Compare set and re-resolves current public listing/PhysicalBoat claim truth into a factual side-by-side matrix without score, winner, recommendation or hidden weighting. Any future criterion #3+ readiness is subject to the accepted third-copy abstraction guard in `docs/governance/POST_0051_TRIGGER_GATES.md`.
 
 ## Post-SLICE-0051 trigger gates
 
@@ -172,7 +174,7 @@ BROKER_SELF_SERVICE_PILOT_STATUS: NOT_STARTED
 PAID_BROKER_PLAN_STATUS: NOT_STARTED
 ```
 
-SLICE-0058 used internal/synthetic retained proof and introduced no real external marketplace production data, production pilot or public production launch. The Production Readiness gate therefore remains untriggered after acceptance. The mandatory post-0056 workflow reassessment remains `PASS`; SLICE-0058 acceptance does not alter that gate. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA/production-readiness rules remain mandatory.
+SLICE-0059 used internal/synthetic retained proof and introduced no real external marketplace production data, production pilot or public production launch. The Production Readiness gate therefore remains untriggered after acceptance. The mandatory post-0056 workflow reassessment remains `PASS`; SLICE-0059 acceptance does not alter that gate. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA/production-readiness rules remain mandatory.
 
 ## Broker Mandatory Capability Register
 
@@ -195,7 +197,7 @@ REQ_BROKER_029_STATUS: PENDING
 REQ_BROKER_030_STATUS: IMPLEMENTED
 ```
 
-SLICE-0058 changes none of these statuses and waives no professional-product obligation. Anonymous local Shortlist membership is buyer-authored interest state only and does not itself implement broker Search-exclusion intelligence, engagement reporting or demand insight.
+SLICE-0059 changes none of these statuses and waives no professional-product obligation. Anonymous factual Compare is buyer decision-support over explicitly shortlisted current listings only and does not itself implement broker Search-exclusion intelligence, engagement reporting or demand insight.
 
 ## Architecture and production direction
 
@@ -205,33 +207,29 @@ The SLICE-0053 same-host session-topology invariant remains in force for browser
 
 ## Post-0054 buyer/seller reconciliation
 
-`docs/POST_0054_BUYER_SELLER_PRODUCT_RECONCILIATION_2026-09-17.md` records the accepted optional Buyer Requirements/Decision Tools direction and shared Seller Platform direction. Direct Search remains primary; Buyer Requirements remain optional; `UNKNOWN != NOT_SATISFIED`; no match scores/winners/hidden weights are authorized. SLICE-0058 now implements the bounded anonymous/local form of one ordinary personal Shortlist while preserving the invariant that shortlist membership is buyer interest rather than HullQ fit.
+`docs/POST_0054_BUYER_SELLER_PRODUCT_RECONCILIATION_2026-09-17.md` records the accepted optional Buyer Requirements/Decision Tools direction and shared Seller Platform direction. Direct Search remains primary; Buyer Requirements remain optional; `UNKNOWN != NOT_SATISFIED`; no match scores/winners/hidden weights are authorized. SLICE-0058 implements the bounded anonymous/local form of one ordinary personal Shortlist, and SLICE-0059 adds a factual whole-Shortlist Compare over current public truth while preserving the invariant that shortlist membership is buyer interest rather than HullQ fit.
 
 ## What remains unbuilt
 
-Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; broker inventory workflow, branding/media and resilient drafts; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; Compare/sharing; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
+Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; broker inventory workflow, branding/media and resilient drafts; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-SLICE-0058 is owner-accepted and merged. Post-SLICE-0058 repository/product reconciliation selects SLICE-0059 Anonymous Factual Shortlist Compare as the next bounded capability. No implementation is authorized until its readiness package is independently accepted and merged.
+SLICE-0059 is owner-accepted and merged. No SLICE-0060 capability has been selected or allocated. Fresh post-SLICE-0059 repository/product reassessment is required before any SLICE-0060 readiness decision.
 
 ## Next capability selection
 
 Next queue number:
 
 ```text
-SLICE-0059
+SLICE-0060
 ```
 
-**Selected capability:** Anonymous Factual Shortlist Compare.
+**Capability:** UNSELECTED.
 
-Selection record: `docs/POST_SLICE_0058_REASSESSMENT_2026-09-19.md`.
+Queue number alone does not select or authorize a capability.
 
-Readiness artifact: `docs/slices/SLICE-0059-anonymous-factual-shortlist-compare.md`.
+Before any SLICE-0060 readiness preparation or implementation start, perform fresh post-SLICE-0059 repository/product reassessment and Decision / Implementation Reconciliation against canonical `origin/main`, including relevant product, broker, owner-direct, Search, shortlist/Compare/decision-tool, governance, architecture and production implementation state.
 
-Normative bounded contract: `specs/ANONYMOUS_FACTUAL_SHORTLIST_COMPARE_CONTRACT.v0.1.md`.
-
-The capability lets an anonymous buyer use the already-explicit browser-local Shortlist as the comparison set and inspect current factual listing/PhysicalBoat claim differences side-by-side. Current truth is re-resolved through the existing accepted shortlist/public-listing transport; no second listing truth model, account persistence, BuyerRequirements scoring, recommendation, sharing, monitoring/contact workflow or new Search criterion is introduced.
-
-Implementation remains unauthorized until the readiness package passes independent exact-head review/CI and is merged to canonical `main`; only then may the Project Owner run `START_SLICE.bat`.
+No SLICE-0060 readiness package exists or is authorized by the SLICE-0059 closure. Do not run `START_SLICE.bat` for SLICE-0060 until a separately reviewed readiness package is READY ON MAIN.
 
 ## Development workflow
 
@@ -246,6 +244,6 @@ Implementation remains unauthorized until the readiness package passes independe
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0059 Anonymous Factual Shortlist Compare is selected/readied but may not start until independent readiness review/CI and readiness merge are complete.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; after SLICE-0059 closure, SLICE-0060 remains unselected until fresh post-SLICE-0059 reassessment/readiness work is separately reviewed and merged.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
