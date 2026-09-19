@@ -123,25 +123,45 @@ export function loadShortlistIds(storage: ShortlistStorageLike): string[] {
   return parseShortlistStore(raw).listing_ids;
 }
 
-function writeShortlistIds(storage: ShortlistStorageLike, ids: string[]): void {
+/**
+ * Reports whether the write actually succeeded -- callers must never treat
+ * an attempted write as a completed mutation (independent review finding
+ * 2026-09-19: a failed `setItem()` must not be presented as a successful
+ * Add/Remove). Storage errors remain non-fatal here: the caller decides
+ * what "actual retained membership" to report back, this function only
+ * tells it whether the write landed.
+ */
+function writeShortlistIds(storage: ShortlistStorageLike, ids: string[]): boolean {
   try {
     storage.setItem(SHORTLIST_STORAGE_KEY, serializeShortlistStore({ version: 1, listing_ids: ids }));
+    return true;
   } catch {
     // Storage unavailable/full/disabled: membership simply doesn't persist
     // for this action. Never crash the page over a storage write failure.
+    return false;
   }
 }
 
+/**
+ * Adds *id* and reports the actual retained membership afterwards -- the
+ * pre-mutation membership if the write failed, never the merely-intended
+ * next state (independent review finding 2026-09-19). A caller comparing
+ * the result against its own pre-call snapshot can therefore always tell
+ * whether the mutation actually took effect.
+ */
 export function addToShortlist(storage: ShortlistStorageLike, id: string): string[] {
-  const next = addListingId({ version: 1, listing_ids: loadShortlistIds(storage) }, id);
-  writeShortlistIds(storage, next.listing_ids);
-  return next.listing_ids;
+  const current = loadShortlistIds(storage);
+  const next = addListingId({ version: 1, listing_ids: current }, id);
+  if (next.listing_ids === current) return current; // already-idempotent no-op
+  return writeShortlistIds(storage, next.listing_ids) ? next.listing_ids : current;
 }
 
+/** Mirrors `addToShortlist`'s actual-retained-membership postcondition for remove. */
 export function removeFromShortlist(storage: ShortlistStorageLike, id: string): string[] {
-  const next = removeListingId({ version: 1, listing_ids: loadShortlistIds(storage) }, id);
-  writeShortlistIds(storage, next.listing_ids);
-  return next.listing_ids;
+  const current = loadShortlistIds(storage);
+  const next = removeListingId({ version: 1, listing_ids: current }, id);
+  if (next.listing_ids === current) return current; // already-idempotent no-op
+  return writeShortlistIds(storage, next.listing_ids) ? next.listing_ids : current;
 }
 
 export function isInShortlist(storage: ShortlistStorageLike, id: string): boolean {

@@ -3,6 +3,7 @@
 **ID:** SLICE-0058  
 **Type:** IMPLEMENTATION  
 **Status:** REVIEW  
+**Status set by this handoff:** `REVIEW`  
 **Stage:** Buyer Decision Tools — anonymous explicit-interest continuity  
 **Depends on:** SLICE-0057 owner-accepted / acceptance-closed; accepted public listing read/freshness boundary; accepted Direct Search public browser surface  
 **Blocks:** later factual Compare and later account-backed shortlist continuity only; no later slice is automatically authorized

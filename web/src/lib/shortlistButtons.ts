@@ -34,12 +34,14 @@ export function initShortlistButtons(root: ParentNode, text: ShortlistButtonText
     applyState(button, isInShortlist(window.localStorage, id), text);
     button.addEventListener("click", () => {
       const currentlySaved = isInShortlist(window.localStorage, id);
-      if (currentlySaved) {
-        removeFromShortlist(window.localStorage, id);
-      } else {
-        addToShortlist(window.localStorage, id);
-      }
-      applyState(button, !currentlySaved, text);
+      // Independent review finding 2026-09-19: derive the button's new
+      // state from the *actual retained membership* the store reports
+      // back, never by blindly toggling the pre-click state -- a failed
+      // storage write must never be displayed as a successful Add/Remove.
+      const actualMembership = currentlySaved
+        ? removeFromShortlist(window.localStorage, id)
+        : addToShortlist(window.localStorage, id);
+      applyState(button, actualMembership.includes(id), text);
     });
   });
 }

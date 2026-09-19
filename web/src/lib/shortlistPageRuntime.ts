@@ -37,7 +37,7 @@ function renderList(
   root: HTMLElement,
   items: ShortlistItemResult[],
   t: ShortlistText,
-  onRemove: (nativeListingId: string) => void,
+  onRemove: (nativeListingId: string) => boolean,
 ): void {
   clearChildren(root);
   const list = document.createElement("ul");
@@ -74,7 +74,13 @@ function renderList(
     removeButton.type = "button";
     removeButton.textContent = t.removeLabel;
     removeButton.addEventListener("click", () => {
-      onRemove(item.native_listing_id);
+      // Independent review finding 2026-09-19: only drop the rendered row
+      // if the store confirms the id is actually gone afterwards -- a
+      // failed storage write must never be displayed as a successful
+      // removal (the row, and the underlying saved id, both stay put so
+      // the buyer can retry).
+      const actuallyRemoved = onRemove(item.native_listing_id);
+      if (!actuallyRemoved) return;
       entry.remove();
       if (list.children.length === 0) {
         renderMessage(root, t.emptyMessage);
@@ -105,6 +111,7 @@ export async function renderShortlistPage(root: HTMLElement | null): Promise<voi
   }
 
   renderList(root, resolution.items, t, (nativeListingId) => {
-    removeFromShortlist(window.localStorage, nativeListingId);
+    const actualMembership = removeFromShortlist(window.localStorage, nativeListingId);
+    return !actualMembership.includes(nativeListingId);
   });
 }
