@@ -1,0 +1,13 @@
+---
+// SLICE-0059: German locale-prefixed anonymous factual shortlist Compare
+// surface. See en/shortlist/compare.astro for the shared rationale.
+export const prerender = false;
+import ShortlistComparePageBody from "../../../components/ShortlistComparePageBody.astro";
+
+const locale = "de" as const;
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+Astro.response.headers.set("Cache-Control", "private, no-store");
+---
+
+<ShortlistComparePageBody locale={locale} />
