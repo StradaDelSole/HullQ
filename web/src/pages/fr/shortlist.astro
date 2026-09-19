@@ -1,0 +1,13 @@
+---
+// SLICE-0058: French locale-prefixed anonymous local shortlist surface. See
+// ../en/shortlist.astro for the shared rationale.
+export const prerender = false;
+import ShortlistPageBody from "../../components/ShortlistPageBody.astro";
+
+const locale = "fr" as const;
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+Astro.response.headers.set("Cache-Control", "private, no-store");
+---
+
+<ShortlistPageBody locale={locale} />

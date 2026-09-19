@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0058  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** Buyer Decision Tools — anonymous explicit-interest continuity  
 **Depends on:** SLICE-0057 owner-accepted / acceptance-closed; accepted public listing read/freshness boundary; accepted Direct Search public browser surface  
 **Blocks:** later factual Compare and later account-backed shortlist continuity only; no later slice is automatically authorized
@@ -201,30 +201,30 @@ Payment/referral/verification economics do not affect membership/order or curren
 
 ## Acceptance criteria
 
-- [ ] Anonymous buyer can add a Search-result listing to the shortlist.
-- [ ] Anonymous buyer can add the public listing page's NativeListingId.
-- [ ] Add existing ID is idempotent.
-- [ ] Remove saved ID works and remove absent ID is idempotent.
-- [ ] Refresh/revisit preserves membership in the same browser storage.
-- [ ] Local persistence contains NativeListingIds/version metadata only, no listing truth payload.
-- [ ] Buyer-authored/insertion order is stable.
-- [ ] Search/Requirement Sensitivity changes never auto-mutate shortlist membership.
-- [ ] All five locale Search surfaces expose equivalent shortlist controls.
-- [ ] All five `/{locale}/shortlist` pages render empty/current/unavailable states.
-- [ ] Shortlist re-resolves current listing truth through the accepted FastAPI public listing read semantics.
-- [ ] DRAFT/WITHDRAWN/missing/incomplete/STALE/freshness-UNKNOWN saved IDs are not distinguishable in the shortlist UI.
-- [ ] Unavailable saved IDs remain stored until explicit buyer removal.
-- [ ] An upstream resolver/API failure is not rendered as normal unavailable or empty truth.
-- [ ] Malformed/wrong-version/non-string/duplicate/oversized local data is handled safely.
-- [ ] No unsafe HTML injection from local storage is possible.
-- [ ] Shortlist order is not fit/revenue/payment ranking.
-- [ ] `/{locale}/shortlist` is noindex and saved IDs never appear in URL/canonical metadata.
-- [ ] No account is required.
-- [ ] No shortlist/BuyerRequirements/Saved Search/Monitor persistence row is written.
-- [ ] No Compare/sharing/notes/alerts/contact/recommendation capability is introduced.
-- [ ] Ordinary Search, Sensitivity and public listing truth remain unchanged.
-- [ ] Retained proof ends with `ANONYMOUS LOCAL SHORTLIST RESULT -> PASS`.
-- [ ] Repository validation, lint, type-check, Python tests, web tests/check/build all pass.
+- [ ] Anonymous buyer can add a Search-result listing to the shortlist. (button renders correctly with the identical mechanism verified on the listing page and via `addToShortlist`; not exercised by an actual browser click against a live Search confirmed-match fixture -- no browser-automation tool is available in this repository. See Findings.)
+- [ ] Anonymous buyer can add the public listing page's NativeListingId. (button rendering verified live via the retained proof; `addToShortlist` itself verified via the Node store harness; the click interaction itself was not driven by a real browser. See Findings.)
+- [x] Add existing ID is idempotent.
+- [x] Remove saved ID works and remove absent ID is idempotent.
+- [ ] Refresh/revisit preserves membership in the same browser storage. (storage get/set round-trip verified by unit tests and the store harness; an actual browser reload was not performed.)
+- [x] Local persistence contains NativeListingIds/version metadata only, no listing truth payload.
+- [x] Buyer-authored/insertion order is stable.
+- [ ] Search/Requirement Sensitivity changes never auto-mutate shortlist membership. (structurally true by construction -- no Search/Sensitivity code path references the shortlist store -- but not exercised by a live combined scenario.)
+- [ ] All five locale Search surfaces expose equivalent shortlist controls. (identical shared `SearchPageBody.astro` markup verified by `astro check`/build for all five locale pages; not exercised against a live confirmed-match fixture. See Findings.)
+- [ ] All five `/{locale}/shortlist` pages render empty/current/unavailable states. (all five pages verified live: 200, `noindex`, `private, no-store`; the client-rendered empty/current/unavailable states themselves were not observed under real browser JS execution.)
+- [x] Shortlist re-resolves current listing truth through the accepted FastAPI public listing read semantics.
+- [x] DRAFT/WITHDRAWN/missing/incomplete/STALE/freshness-UNKNOWN saved IDs are not distinguishable in the shortlist UI. (proof: WITHDRAWN and never-created ids resolve to the byte-identical `{"state":"unavailable"}` shape.)
+- [x] Unavailable saved IDs remain stored until explicit buyer removal.
+- [x] An upstream resolver/API failure is not rendered as normal unavailable or empty truth.
+- [x] Malformed/wrong-version/non-string/duplicate/oversized local data is handled safely.
+- [ ] No unsafe HTML injection from local storage is possible. (structurally guaranteed: all shortlist DOM code uses `textContent`/`createElement` only, never `innerHTML`/`set:html`, verified by code inspection; not probed with a live XSS payload under a real browser.)
+- [x] Shortlist order is not fit/revenue/payment ranking.
+- [x] `/{locale}/shortlist` is noindex and saved IDs never appear in URL/canonical metadata.
+- [x] No account is required.
+- [x] No shortlist/BuyerRequirements/Saved Search/Monitor persistence row is written.
+- [x] No Compare/sharing/notes/alerts/contact/recommendation capability is introduced.
+- [x] Ordinary Search, Sensitivity and public listing truth remain unchanged.
+- [x] Retained proof ends with `ANONYMOUS LOCAL SHORTLIST RESULT -> PASS`.
+- [x] Repository validation, lint, type-check, Python tests, web tests/check/build all pass.
 - [ ] Exact implementation HEAD receives independent review and explicit Owner Acceptance before merge.
 
 ## Expected touch points

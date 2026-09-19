@@ -1,0 +1,44 @@
+---
+// SLICE-0058: the one shared `/{locale}/shortlist` presentation for every
+// supported locale (contract §8). Purely presentational shell -- the page's
+// own frontmatter sets response headers (noindex/private) before this
+// component ever renders, mirroring SearchPageBody.astro's convention. This
+// component itself fetches nothing and knows no membership: all shortlist
+// state is loaded/rendered client-side by `shortlistPageRuntime.ts`, since
+// browser-local storage is inherently client-owned (contract §9).
+import type { SupportedLocale } from "../lib/shortlistText";
+import { shortlistText } from "../lib/shortlistText";
+
+interface Props {
+  locale: SupportedLocale;
+}
+
+const { locale } = Astro.props;
+const t = shortlistText[locale];
+---
+
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>{t.pageTitle}</title>
+  </head>
+  <body>
+    <main>
+      <h1>{t.pageHeading}</h1>
+      <noscript>
+        <p>{t.noscriptMessage}</p>
+      </noscript>
+      <div id="hullq-shortlist-root" data-locale={locale}>
+        <p>{t.loadingMessage}</p>
+      </div>
+    </main>
+    <script>
+      import { renderShortlistPage } from "../lib/shortlistPageRuntime";
+
+      const root = document.getElementById("hullq-shortlist-root");
+      void renderShortlistPage(root);
+    </script>
+  </body>
+</html>
