@@ -79,9 +79,7 @@ def test_guard_allows_standalone_approved_diagnostics() -> None:
     assert routine_permission_allowed(
         "gh pr list --head slice/0059-anonymous-factual-shortlist-compare --json number,url,state"
     )
-    assert routine_permission_allowed(
-        "gh api repos/StradaDelSole/HullQ/issues/comments/5742573799"
-    )
+    assert routine_permission_allowed("gh api repos/StradaDelSole/HullQ/issues/comments/5742573799")
 
 
 def test_guard_does_not_auto_allow_destructive_or_privileged_commands() -> None:

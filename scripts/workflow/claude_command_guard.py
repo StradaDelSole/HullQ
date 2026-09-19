@@ -157,9 +157,7 @@ def _readonly_gh_api_allowed(command: str) -> bool:
             return False
         if token.startswith(("--raw-field=", "--field=", "--input=")):
             return False
-        if (token.startswith("-f") and token != "-f") or (
-            token.startswith("-F") and token != "-F"
-        ):
+        if (token.startswith("-f") and token != "-f") or (token.startswith("-F") and token != "-F"):
             return False
 
         index += 1
