@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import re
+import shlex
 import sys
 from typing import Any
 
@@ -118,6 +119,54 @@ def composition_reason(command: str) -> str | None:
     return None
 
 
+def _readonly_gh_api_allowed(command: str) -> bool:
+    """Allow gh api only for requests that cannot implicitly write.
+
+    `gh api` defaults to GET, but body/field flags can switch it to POST.
+    Keep those and every non-GET explicit method in the normal operator
+    permission flow while allowing ordinary repository API reads.
+    """
+
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        return False
+    if len(tokens) < 3 or tokens[:2] != ["gh", "api"]:
+        return False
+
+    index = 2
+    while index < len(tokens):
+        token = tokens[index]
+
+        if token in {"-X", "--method"}:
+            if index + 1 >= len(tokens) or tokens[index + 1].upper() != "GET":
+                return False
+            index += 2
+            continue
+        if token.startswith("--method="):
+            if token.split("=", 1)[1].upper() != "GET":
+                return False
+        elif token.startswith("-X") and token != "-X":
+            if token[2:].upper() != "GET":
+                return False
+
+        # These flags can supply a request body or implicitly change the
+        # default method to POST. Leave them operator-gated even if the
+        # target endpoint itself looks harmless.
+        if token in {"-f", "--raw-field", "-F", "--field", "--input"}:
+            return False
+        if token.startswith(("--raw-field=", "--field=", "--input=")):
+            return False
+        if (token.startswith("-f") and token != "-f") or (
+            token.startswith("-F") and token != "-F"
+        ):
+            return False
+
+        index += 1
+
+    return True
+
+
 def routine_permission_allowed(command: str) -> bool:
     """Return True only for bounded routine commands eligible for auto-allow."""
 
@@ -126,6 +175,8 @@ def routine_permission_allowed(command: str) -> bool:
         return False
     if any(pattern.search(stripped) for pattern in _DANGEROUS_ROUTINE_PATTERNS):
         return False
+    if _readonly_gh_api_allowed(stripped):
+        return True
     return any(pattern.search(stripped) for pattern in _ROUTINE_ALLOW_PATTERNS)
 
 

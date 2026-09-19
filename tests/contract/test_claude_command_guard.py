@@ -79,6 +79,9 @@ def test_guard_allows_standalone_approved_diagnostics() -> None:
     assert routine_permission_allowed(
         "gh pr list --head slice/0059-anonymous-factual-shortlist-compare --json number,url,state"
     )
+    assert routine_permission_allowed(
+        "gh api repos/StradaDelSole/HullQ/issues/comments/5742573799"
+    )
 
 
 def test_guard_does_not_auto_allow_destructive_or_privileged_commands() -> None:
@@ -88,6 +91,15 @@ def test_guard_does_not_auto_allow_destructive_or_privileged_commands() -> None:
     assert not routine_permission_allowed("git switch main")
     assert not routine_permission_allowed("docker compose down -v")
     assert not routine_permission_allowed("uv run bash -c 'rm -rf build'")
+    assert not routine_permission_allowed(
+        "gh api repos/StradaDelSole/HullQ/issues/1 --method PATCH"
+    )
+    assert not routine_permission_allowed(
+        "gh api repos/StradaDelSole/HullQ/issues/1 -f state=closed"
+    )
+    assert not routine_permission_allowed(
+        "gh api repos/StradaDelSole/HullQ/issues/1 --input payload.json"
+    )
 
 
 def test_permission_request_auto_allows_only_bounded_routine_command() -> None:
