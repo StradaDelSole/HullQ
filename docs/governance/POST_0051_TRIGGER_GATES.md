@@ -208,10 +208,10 @@ A readiness package may not rely on the superseded broker-only/FSBO-out-of-scope
 
 These gates constrain execution; they do not choose the next product capability.
 
-Current queue after accepted SLICE-0058 is:
+Current queue after accepted SLICE-0059 is:
 
 ```text
-SLICE-0059
+SLICE-0060
 ```
 
-Queue number does **not** select a capability. The mandatory post-SLICE-0056 workflow reassessment remains `PASS`; SLICE-0058 acceptance does not change the technical-criterion count, workflow gate, production-readiness gate or launch state. SLICE-0059 requires fresh post-SLICE-0058 repository/product reconciliation, capability selection, readiness preparation, independent readiness review and merge before `START_SLICE`.
+Queue number does **not** select a capability. The mandatory post-SLICE-0056 workflow reassessment remains `PASS`; SLICE-0059 acceptance does not change the technical-criterion count, workflow gate, production-readiness gate or launch state. SLICE-0060 requires fresh post-SLICE-0059 repository/product reconciliation, capability selection, readiness preparation, independent readiness review and merge before `START_SLICE`.
