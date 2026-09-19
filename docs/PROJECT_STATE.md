@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0056 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0057 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0057 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0058 -->
 
-**Updated:** 2026-09-18  
-**Latest owner-accepted / DONE slice:** SLICE-0056  
-**Current queue:** SLICE-0057 — **Buyer Requirement Sensitivity — READY ON MAIN**; exact-head readiness review and remote CI/repro passed, and PR #213 is merged. The Project Owner may now start SLICE-0057 only through `START_SLICE.bat`.  
+**Updated:** 2026-09-19  
+**Latest owner-accepted / DONE slice:** SLICE-0057  
+**Current queue:** SLICE-0058 — **UNSELECTED pending fresh post-SLICE-0057 repository/product reassessment**; no SLICE-0058 capability, readiness package or implementation start is authorized yet.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -120,6 +120,7 @@ SLICE-0040 marketplace identity/truth separation
 → SLICE-0054 authenticated Owner-Direct Listing Draft Workspace
 → SLICE-0055 second technical native Search criterion (`keel_configuration`) + mixed-criterion typed evidence
 → SLICE-0056 public multi-criterion Direct Search browser completion
+→ SLICE-0057 buyer-authored one-change Requirement Sensitivity
 ```
 
 Latest closures:
@@ -130,6 +131,7 @@ docs/slices/SLICE-0053-acceptance-closure.md
 docs/slices/SLICE-0054-acceptance-closure.md
 docs/slices/SLICE-0055-acceptance-closure.md
 docs/slices/SLICE-0056-acceptance-closure.md
+docs/slices/SLICE-0057-acceptance-closure.md
 ```
 
 ## Accepted technical Search result
@@ -145,7 +147,7 @@ Accepted public `keel_configuration` values are exactly `FIN`, `FIN_WITH_BULB`, 
 
 The two criteria may be evaluated alone or together as deterministic hard MUST/AND requirements. SLICE-0055 preserves typed criterion/configuration evidence for confirmed match, confirmed non-match and insufficient-data application outcomes while keeping BoatDesign/configuration truth separate from concrete PhysicalBoat/listing truth.
 
-The accepted technical native Search criteria count is now `2`. Any future criterion #3+ readiness is subject to the accepted third-copy abstraction guard in `docs/governance/POST_0051_TRIGGER_GATES.md`.
+The accepted technical native Search criteria count remains `2`. SLICE-0057 adds no criterion: it re-evaluates one buyer-selected replacement value for an already active accepted criterion through the same Search truth, in one coherent comparison snapshot, and exposes only factual set-difference counts plus the backend-owned canonical alternative Search path. Any future criterion #3+ readiness is subject to the accepted third-copy abstraction guard in `docs/governance/POST_0051_TRIGGER_GATES.md`.
 
 ## Post-SLICE-0051 trigger gates
 
@@ -168,7 +170,7 @@ BROKER_SELF_SERVICE_PILOT_STATUS: NOT_STARTED
 PAID_BROKER_PLAN_STATUS: NOT_STARTED
 ```
 
-SLICE-0056 used internal/synthetic retained proof and introduced no real external marketplace production data, production pilot or public production launch. The Production Readiness gate therefore remains untriggered after acceptance. The mandatory post-0056 workflow reassessment is complete and `PASS`; it does not select SLICE-0057. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA/production-readiness rules remain mandatory.
+SLICE-0057 used internal/synthetic retained proof and introduced no real external marketplace production data, production pilot or public production launch. The Production Readiness gate therefore remains untriggered after acceptance. The mandatory post-0056 workflow reassessment remains `PASS`; SLICE-0057 acceptance does not alter that gate. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA/production-readiness rules remain mandatory.
 
 ## Broker Mandatory Capability Register
 
@@ -191,7 +193,7 @@ REQ_BROKER_029_STATUS: PENDING
 REQ_BROKER_030_STATUS: IMPLEMENTED
 ```
 
-SLICE-0056 changes none of these statuses and waives no professional-product obligation. Broker Search-exclusion intelligence remains tied to REQ-BROKER-025 and its sufficient-Search-volume/privacy trigger; criterion-level evidence created by 0055 does not itself implement that broker feature.
+SLICE-0057 changes none of these statuses and waives no professional-product obligation. Buyer Requirement Sensitivity remains an organic buyer decision-support projection and does not itself implement broker Search-exclusion intelligence, which remains tied to REQ-BROKER-025 and its sufficient-Search-volume/privacy trigger.
 
 ## Architecture and production direction
 
@@ -205,31 +207,23 @@ The SLICE-0053 same-host session-topology invariant remains in force for browser
 
 ## What remains unbuilt
 
-Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; broker inventory workflow, branding/media and resilient drafts; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability and sensitivity; BuyerRequirements persistence; shortlist/Compare/sharing; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
+Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; broker inventory workflow, branding/media and resilient drafts; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; shortlist/Compare/sharing; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-SLICE-0056 is now accepted. Post-SLICE-0056 reconciliation selects SLICE-0057 Buyer Requirement Sensitivity as the next bounded capability. Its readiness is accepted and merged to canonical `main`; implementation may begin only through the normal `START_SLICE.bat` handoff.
+SLICE-0057 is now owner-accepted and merged. No SLICE-0058 capability has been selected or allocated. Fresh post-SLICE-0057 repository/product reassessment is required before any SLICE-0058 readiness decision.
 
 ## Next capability selection
 
 Next queue number:
 
 ```text
-SLICE-0057
+SLICE-0058
 ```
 
-**Selected capability:** Buyer Requirement Sensitivity.
+**Selected capability:** NONE — pending fresh post-SLICE-0057 repository/product reassessment.
 
-Selection record: `docs/POST_SLICE_0056_REASSESSMENT_2026-09-18.md`.
+SLICE-0057 acceptance does not automatically authorize another capability. Before any SLICE-0058 readiness package is created, the normal Decision / Implementation Reconciliation must reconstruct canonical `origin/main`, inspect accepted product/domain/data/architecture obligations and trigger gates, and classify relevant matters as `DECIDED_AND_IMPLEMENTED`, `DECIDED_NOT_YET_IMPLEMENTED`, `EXPLICITLY_DEFERRED`, `GENUINELY_OPEN` or `CONFLICT_OR_REGRESSION`.
 
-Readiness artifact: `docs/slices/SLICE-0057-buyer-requirement-sensitivity.md`.
-
-Normative bounded contract: `specs/BUYER_REQUIREMENT_SENSITIVITY_CONTRACT.v0.1.md`.
-
-The capability lets a buyer replace exactly one currently active `draft_max` or `keel_configuration` value with one buyer-supplied alternative and inspect the factual confirmed-result-set delta through the same accepted Search truth.
-
-It adds no Search criterion, recommendation, persistence, account requirement or indexable Search URL class.
-
-The readiness package passed independent exact-head review and exact-head remote CI/repro and is merged to canonical `main`. SLICE-0057 is therefore `READY ON MAIN`; the next permitted implementation action is for the Project Owner to run `START_SLICE.bat`.
+No `START_SLICE.bat` action for SLICE-0058 is permitted until a separately selected capability passes readiness review and becomes READY on canonical `main`.
 
 ## Development workflow
 
@@ -244,6 +238,6 @@ The readiness package passed independent exact-head review and exact-head remote
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment is complete and `PASS`; SLICE-0057 reconciliation, capability selection and readiness are now complete, so `START_SLICE.bat` is the next permitted action.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; after SLICE-0057 closure, SLICE-0058 remains unselected until fresh post-SLICE-0057 reassessment/readiness work is separately reviewed and merged.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
