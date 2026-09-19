@@ -15,13 +15,30 @@ export type SearchSensitivityPageData =
   | { kind: "unavailable" }
   | { kind: "ok"; result: SensitivityResultBody };
 
-const _CURRENT_KEYS = ["draft_max", "keel_configuration"] as const;
+// The exact accepted browser POST field names (contract §12) -- any other
+// submitted field name is itself a malformed/tampered request.
+const _ACCEPTED_FIELD_NAMES = new Set([
+  "current_draft_max",
+  "current_keel_configuration",
+  "changed_criterion",
+  "changed_value",
+]);
+
+type ParsedSensitivityForm =
+  | { kind: "invalid" }
+  | {
+      kind: "ok";
+      current: Record<string, string>;
+      changedCriterion: string;
+      changedValue: string;
+    };
 
 /**
- * Build the raw `current` map FastAPI expects from the posted form's hidden
- * `current_draft_max`/`current_keel_configuration` fields (contract §12:
- * "transports the current canonical active values plus exactly one changed
- * criterion/value").
+ * Validate and parse the posted sensitivity form's raw *structural* shape
+ * -- field names, occurrence counts and value types only. Never validates
+ * Search semantics (Decimal syntax, keel vocabulary, whether a criterion is
+ * genuinely active): that stays exclusively FastAPI/application's job
+ * (contract §4/§9).
  *
  * Independent review Finding 2 (2026-09-19): unlike the *ordinary* Search
  * form's untouched-`<select>`/`<input>` omission (`SearchPageBody.astro`'s
@@ -29,28 +46,75 @@ const _CURRENT_KEYS = ["draft_max", "keel_configuration"] as const;
  * GET-query-building form), the sensitivity form's `current_*` hidden
  * fields are never buyer-editable -- `SearchPageBody.astro` only ever
  * renders one for a criterion that is genuinely active, always with its
- * exact canonical value. So on this transport there is no legitimate
- * "buyer left it blank" state to interpret: a *present* `current_draft_max`/
+ * exact canonical value. So there is no legitimate "buyer left it blank"
+ * state to interpret here: a *present* `current_draft_max`/
  * `current_keel_configuration` field, even `""`, can only mean tampered or
  * malformed current state, and must reach FastAPI exactly as posted so the
- * accepted application/domain validation (`hullq.application.
- * search_sensitivity.evaluate_requirement_sensitivity`) can fail closed
- * with 400 -- never silently reinterpreted here as "criterion inactive",
- * which would narrow the current requirement into a different, unintended
- * sensitivity comparison. Only a field's true *absence* (`formData.get`
- * returning `null`) means "this criterion was not active"; this function
- * remains a raw-value carrier, never a second Search/current-requirement
- * parser (contract §4/§9).
+ * accepted application/domain validation
+ * (`hullq.application.search_sensitivity.evaluate_requirement_sensitivity`)
+ * can fail closed with 400 -- never silently reinterpreted as "criterion
+ * inactive," which would narrow the current requirement into a different,
+ * unintended sensitivity comparison. Only a field's true *absence* means
+ * "this criterion was not active."
+ *
+ * Independent review Finding 5 (2026-09-19): `FormData.get(...)` alone
+ * silently resolves ambiguity that must instead fail closed --
+ * `FormData.get` returns only the *first* value for a repeated key
+ * (dropping a duplicate/conflicting submission rather than rejecting it),
+ * and iterating only the known field names would silently drop an unknown
+ * field (e.g. a tampered `current_foo`) instead of treating its presence as
+ * malformed. This function instead walks every posted `[name, value]` pair
+ * via `FormData.entries()` once, so an unknown field name, a non-string
+ * value (a `File`), or a field occurring an unexpected number of times all
+ * fail closed as `{ kind: "invalid" }` -- before any network access, and
+ * before `current`'s sparse shape is even built.
  */
-function currentRequirementFromFormData(formData: FormData): Record<string, string> {
-  const current: Record<string, string> = {};
-  for (const key of _CURRENT_KEYS) {
-    const raw = formData.get(`current_${key}`);
-    if (typeof raw === "string") {
-      current[key] = raw;
+function parseSensitivityFormData(formData: FormData): ParsedSensitivityForm {
+  const counts = new Map<string, number>();
+  const values = new Map<string, string>();
+
+  for (const [name, value] of formData.entries()) {
+    if (!_ACCEPTED_FIELD_NAMES.has(name)) {
+      return { kind: "invalid" };
     }
+    if (typeof value !== "string") {
+      return { kind: "invalid" };
+    }
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+    values.set(name, value);
   }
-  return current;
+
+  if ((counts.get("current_draft_max") ?? 0) > 1) {
+    return { kind: "invalid" };
+  }
+  if ((counts.get("current_keel_configuration") ?? 0) > 1) {
+    return { kind: "invalid" };
+  }
+  if ((counts.get("changed_criterion") ?? 0) !== 1) {
+    return { kind: "invalid" };
+  }
+  if ((counts.get("changed_value") ?? 0) !== 1) {
+    return { kind: "invalid" };
+  }
+
+  const current: Record<string, string> = {};
+  const currentDraftMax = values.get("current_draft_max");
+  if (currentDraftMax !== undefined) {
+    current.draft_max = currentDraftMax;
+  }
+  const currentKeelConfiguration = values.get("current_keel_configuration");
+  if (currentKeelConfiguration !== undefined) {
+    current.keel_configuration = currentKeelConfiguration;
+  }
+
+  // Both guaranteed present-exactly-once by the count checks above.
+  const changedCriterion = values.get("changed_criterion");
+  const changedValue = values.get("changed_value");
+  if (changedCriterion === undefined || changedValue === undefined) {
+    return { kind: "invalid" };
+  }
+
+  return { kind: "ok", current, changedCriterion, changedValue };
 }
 
 export async function loadSearchSensitivityPageData(
@@ -58,24 +122,23 @@ export async function loadSearchSensitivityPageData(
   locale: SupportedLocale,
   formData: FormData,
 ): Promise<SearchSensitivityPageData> {
-  const current = currentRequirementFromFormData(formData);
-  const changedCriterion = formData.get("changed_criterion");
-  const changedValue = formData.get("changed_value");
+  const parsed = parseSensitivityFormData(formData);
 
-  // A malformed post (missing/non-string required fields) never reaches
-  // FastAPI at all -- it is exactly as invalid as a body FastAPI itself
-  // would reject with 400, so it collapses to the same `"invalid"` kind
-  // rather than fabricating any sensitivity result (contract §11).
-  if (typeof changedCriterion !== "string" || typeof changedValue !== "string") {
+  // A structurally malformed post (unknown field, duplicated field, a
+  // non-string value) never reaches FastAPI at all -- it is exactly as
+  // invalid as a body FastAPI itself would reject with 400, so it
+  // collapses to the same `"invalid"` kind rather than fabricating any
+  // sensitivity result (contract §11).
+  if (parsed.kind === "invalid") {
     return { kind: "invalid", message: null };
   }
 
   const response = await postSearchSensitivity(
     apiBaseUrl,
     locale,
-    current,
-    changedCriterion,
-    changedValue,
+    parsed.current,
+    parsed.changedCriterion,
+    parsed.changedValue,
   );
 
   if (response.status === 200 && response.result !== null) {

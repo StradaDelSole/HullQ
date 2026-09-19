@@ -306,11 +306,19 @@ def _http_post_json(url: str, payload: dict[str, Any]) -> tuple[int, dict[str, s
         return exc.code, dict(exc.headers or {}), exc.read()
 
 
-def _http_post_form(url: str, fields: dict[str, str]) -> tuple[int, dict[str, str], bytes]:
+def _http_post_form(
+    url: str, fields: dict[str, str] | list[tuple[str, str]]
+) -> tuple[int, dict[str, str], bytes]:
     """SLICE-0057: POST *fields* as an ordinary
     `application/x-www-form-urlencoded` browser form submission, mirroring
     the exact transport the built Astro `/{locale}/search/sensitivity` page
     receives from `SearchPageBody.astro`'s native `<form method="post">`.
+
+    *fields* accepts a `list[tuple[str, str]]` (in addition to the ordinary
+    `dict[str, str]`) so a caller can construct a raw form body with a
+    deliberately duplicated field name -- `urlencode` preserves duplicate
+    keys from a list of pairs, unlike a `dict` -- for independent review
+    Finding 5's tampered-POST proof (step 25 below).
 
     Sends an explicit same-origin `Origin` header: Astro's built-in
     cross-site POST-form protection (enabled by default for server-rendered
@@ -1669,7 +1677,34 @@ def main() -> int:
         sensitivity_ok &= step24_ok
         print(
             "24. direct GET to /en/search/sensitivity never manufactures a "
-            f"sensitivity result -> {'OK' if step24_ok else 'FAIL'}\n"
+            f"sensitivity result -> {'OK' if step24_ok else 'FAIL'}"
+        )
+
+        # 25. Independent review Finding 5 (2026-09-19): a real, browser-
+        # faithful tampered POST -- a duplicated `current_draft_max` field,
+        # ambiguous as to which value is the buyer's real current requirement
+        # -- through the built Astro sensitivity page must fail closed to
+        # the bounded invalid state, never a fabricated sensitivity result.
+        tampered_status, _, tampered_body = _http_post_form(
+            f"{web_base}/en/search/sensitivity",
+            [
+                ("current_draft_max", "1.6"),
+                ("current_draft_max", "1.2"),
+                ("changed_criterion", "draft_max"),
+                ("changed_value", "1.7"),
+            ],
+        )
+        tampered_text = tampered_body.decode("utf-8")
+        step25_ok = (
+            tampered_status == 400
+            and "newly confirmed" not in tampered_text
+            and "no longer confirmed" not in tampered_text
+        )
+        sensitivity_ok &= step25_ok
+        print(
+            "25. tampered POST (duplicated current_draft_max) to "
+            "/en/search/sensitivity fails closed to the bounded invalid "
+            f"state, never a fabricated result -> {'OK' if step25_ok else 'FAIL'}\n"
         )
 
         ok &= sensitivity_ok

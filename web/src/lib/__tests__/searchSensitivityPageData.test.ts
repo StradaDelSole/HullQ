@@ -32,6 +32,18 @@ function formData(fields: Record<string, string>): FormData {
   return data;
 }
 
+// Independent review Finding 5 (2026-09-19): `FormData.set` cannot produce a
+// duplicated field (it overwrites), so the duplicate/unknown-field tests
+// below need `.append` to construct the exact ambiguous/tampered raw form
+// shapes `FormData.get` alone would silently resolve.
+function formDataAppending(pairs: [string, string][]): FormData {
+  const data = new FormData();
+  for (const [key, value] of pairs) {
+    data.append(key, value);
+  }
+  return data;
+}
+
 test("loadSearchSensitivityPageData: a real 200 result is classified as `ok`", async () => {
   await withServer(
     (_req, res) => {
@@ -215,4 +227,75 @@ test("loadSearchSensitivityPageData: an absent current_keel_configuration field 
   const parsed = JSON.parse(capturedRaw) as { current: Record<string, string> };
   assert.deepEqual(parsed.current, { draft_max: "1.6" });
   assert.ok(!("keel_configuration" in parsed.current));
+});
+
+// ---------------------------------------------------------------------------
+// Independent review Finding 5 (2026-09-19): structural form-shape
+// validation. `FormData.get(...)` alone silently resolves a duplicated field
+// to its first value and silently drops an unknown field -- both must
+// instead fail closed as `invalid`, before any network access.
+// ---------------------------------------------------------------------------
+
+async function assertMalformedNeverCallsBackend(fields: [string, string][]): Promise<void> {
+  let calls = 0;
+  await withServer(
+    (_req, res) => {
+      calls += 1;
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end("{}");
+    },
+    async (baseUrl) => {
+      const data = await loadSearchSensitivityPageData(baseUrl, "en", formDataAppending(fields));
+      assert.equal(data.kind, "invalid");
+      if (data.kind === "invalid") {
+        assert.equal(data.message, null);
+      }
+      assert.equal(calls, 0, "a structurally malformed post must never call FastAPI");
+    },
+  );
+}
+
+test("loadSearchSensitivityPageData: duplicate current_draft_max is invalid, FastAPI not called", async () => {
+  await assertMalformedNeverCallsBackend([
+    ["current_draft_max", "1.6"],
+    ["current_draft_max", "1.2"],
+    ["changed_criterion", "draft_max"],
+    ["changed_value", "1.7"],
+  ]);
+});
+
+test("loadSearchSensitivityPageData: duplicate current_keel_configuration is invalid, FastAPI not called", async () => {
+  await assertMalformedNeverCallsBackend([
+    ["current_keel_configuration", "FIN"],
+    ["current_keel_configuration", "TWIN_KEEL"],
+    ["changed_criterion", "keel_configuration"],
+    ["changed_value", "FIN"],
+  ]);
+});
+
+test("loadSearchSensitivityPageData: duplicate changed_criterion is invalid, FastAPI not called", async () => {
+  await assertMalformedNeverCallsBackend([
+    ["current_draft_max", "1.6"],
+    ["changed_criterion", "draft_max"],
+    ["changed_criterion", "keel_configuration"],
+    ["changed_value", "1.7"],
+  ]);
+});
+
+test("loadSearchSensitivityPageData: duplicate changed_value is invalid, FastAPI not called", async () => {
+  await assertMalformedNeverCallsBackend([
+    ["current_draft_max", "1.6"],
+    ["changed_criterion", "draft_max"],
+    ["changed_value", "1.7"],
+    ["changed_value", "1.2"],
+  ]);
+});
+
+test("loadSearchSensitivityPageData: an unknown field (current_foo) is invalid, FastAPI not called", async () => {
+  await assertMalformedNeverCallsBackend([
+    ["current_draft_max", "1.6"],
+    ["current_foo", "bar"],
+    ["changed_criterion", "draft_max"],
+    ["changed_value", "1.7"],
+  ]);
 });
