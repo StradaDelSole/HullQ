@@ -1,0 +1,16 @@
+---
+// SLICE-0058: English locale-prefixed anonymous local shortlist surface.
+// Response headers are set here, in the top-level page's own frontmatter
+// (mirroring the accepted en/search.astro convention) -- this is
+// user-specific browser-local state and must never be cached or indexed
+// (contract §8/§15).
+export const prerender = false;
+import ShortlistPageBody from "../../components/ShortlistPageBody.astro";
+
+const locale = "en" as const;
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+Astro.response.headers.set("Cache-Control", "private, no-store");
+---
+
+<ShortlistPageBody locale={locale} />

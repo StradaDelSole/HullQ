@@ -20,6 +20,7 @@ import {
 } from "../lib/searchApi";
 import type { SearchPageData } from "../lib/searchPageData";
 import { searchText, type SupportedLocale } from "../lib/searchText";
+import { shortlistText } from "../lib/shortlistText";
 
 // The page's own frontmatter always intercepts `{ kind: "redirect" }` with
 // `return Astro.redirect(...)` before this component ever renders (see
@@ -35,6 +36,7 @@ interface Props {
 
 const { locale, data, canonicalUrl } = Astro.props;
 const t = searchText[locale];
+const st = shortlistText[locale];
 const isCanonical = data.kind === "ok";
 
 // The active requirement fully determines which confirmed-match response
@@ -160,7 +162,7 @@ const nativeInventoryMatches: NativeInventoryConfirmedMatch[] =
           </script>
 
           {activeRequirement !== null && (
-            <section aria-label="search results">
+            <section aria-label="search results" data-hullq-locale={locale}>
               <p>
                 {activeRequirement.draft_max !== undefined && activeRequirement.keel_configuration !== undefined
                   ? t.requirementSummaryMixed(activeRequirement.draft_max, keelLabel(activeRequirement.keel_configuration))
@@ -198,6 +200,14 @@ const nativeInventoryMatches: NativeInventoryConfirmedMatch[] =
                       {match.freshness_status === "DUE_FOR_CONFIRMATION" && (
                         <p aria-label="freshness due note">{t.freshnessDueNote}</p>
                       )}
+                      {" "}
+                      <button
+                        type="button"
+                        data-shortlist-toggle
+                        data-native-listing-id={match.native_listing_id}
+                      >
+                        {st.saveLabel}
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -218,6 +228,14 @@ const nativeInventoryMatches: NativeInventoryConfirmedMatch[] =
                       {match.freshness_status === "DUE_FOR_CONFIRMATION" && (
                         <p aria-label="freshness due note">{t.freshnessDueNote}</p>
                       )}
+                      {" "}
+                      <button
+                        type="button"
+                        data-shortlist-toggle
+                        data-native-listing-id={match.native_listing_id}
+                      >
+                        {st.saveLabel}
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -298,6 +316,23 @@ const nativeInventoryMatches: NativeInventoryConfirmedMatch[] =
               }
             </section>
           )}
+
+          <script>
+            // SLICE-0058: wires every add/remove shortlist button rendered
+            // above to the buyer's browser-local shortlist. Only an
+            // explicit click ever mutates membership -- see
+            // `../lib/shortlistButtons.ts`'s module docstring. The active
+            // locale is read from the results section's own data attribute
+            // (never from a second guess at the URL) so the button text
+            // matches the page FastAPI/Astro actually rendered.
+            import { initShortlistButtons } from "../lib/shortlistButtons";
+            import { shortlistText, type SupportedLocale } from "../lib/shortlistText";
+
+            const resultsSection = document.querySelector<HTMLElement>("[data-hullq-locale]");
+            const locale = (resultsSection?.dataset.hullqLocale as SupportedLocale | undefined) ?? "en";
+            const st = shortlistText[locale] ?? shortlistText.en;
+            initShortlistButtons(document, { saveLabel: st.saveLabel, savedLabel: st.savedLabel });
+          </script>
         </main>
       )
     }

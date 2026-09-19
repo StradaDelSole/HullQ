@@ -29,6 +29,12 @@ import {
   unknownableClaimText,
 } from "../../lib/previewText";
 import { boatClaimText, boatClaimTextOrNotSupplied } from "../../lib/physicalBoatClaimText";
+// SLICE-0058: this page keeps its existing English-only convention (no
+// locale-routing redesign is authorized here per contract §8) -- the
+// shortlist add/remove control on this page always uses the English copy.
+import { shortlistText } from "../../lib/shortlistText";
+
+const st = shortlistText.en;
 
 const nativeListingId = Astro.params.native_listing_id;
 // `process.env`, not `import.meta.env`: the latter is statically replaced
@@ -92,6 +98,16 @@ const canonicalUrl = nativeListingId
             {freshnessDisclosureText(data.freshness_status, data.last_confirmed_at)}
           </p>
 
+          {
+            nativeListingId !== undefined && (
+              <p>
+                <button type="button" data-shortlist-toggle data-native-listing-id={nativeListingId}>
+                  {st.saveLabel}
+                </button>
+              </p>
+            )
+          }
+
           <p>{askingPriceText(data)}</p>
           <p>Country: {data.location_country}</p>
           {data.location_region !== null && <p>Region: {unknownableClaimText(data.location_region)}</p>}
@@ -133,6 +149,17 @@ const canonicalUrl = nativeListingId
               </div>
             )}
           </section>
+
+          <script>
+            // SLICE-0058: wires this page's single add/remove shortlist
+            // button to the buyer's browser-local shortlist -- see
+            // `../../lib/shortlistButtons.ts`'s module docstring.
+            import { initShortlistButtons } from "../../lib/shortlistButtons";
+            import { shortlistText } from "../../lib/shortlistText";
+
+            const st = shortlistText.en;
+            initShortlistButtons(document, { saveLabel: st.saveLabel, savedLabel: st.savedLabel });
+          </script>
         </main>
       )
     }

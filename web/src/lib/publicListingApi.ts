@@ -93,3 +93,47 @@ export async function fetchPublicListing(
   }
   return (await response.json()) as PublicListingData;
 }
+
+/**
+ * SLICE-0058 (`specs/ANONYMOUS_LOCAL_SHORTLIST_CONTRACT.v0.1.md` §10/§13):
+ * unlike `fetchPublicListing` above, the shortlist resolver must NOT collapse
+ * a genuine transport/upstream failure into the identical "not found" result
+ * a DRAFT/WITHDRAWN/missing listing produces -- Required Behavior §G
+ * forbids presenting an infrastructure outage as ordinary listing-state
+ * truth. `"unavailable"` is reserved for the real accepted-public-read
+ * not-found boundary (an actual HTTP 404 from `/api/listings/{id}`);
+ * anything else that isn't a clean 2xx (network failure, malformed body, a
+ * 5xx) is `"service_error"` instead, so the caller can render a bounded
+ * retry state without touching local shortlist membership.
+ */
+export type ShortlistPublicListingResult =
+  | { kind: "available"; data: PublicListingData }
+  | { kind: "unavailable" }
+  | { kind: "service_error" };
+
+export async function fetchPublicListingForShortlist(
+  apiBaseUrl: string,
+  nativeListingId: string,
+): Promise<ShortlistPublicListingResult> {
+  const base = apiBaseUrl.replace(/\/+$/, "");
+  const url = `${base}/api/listings/${encodeURIComponent(nativeListingId)}`;
+
+  let response: Response;
+  try {
+    response = await fetch(url, { redirect: "manual" });
+  } catch {
+    return { kind: "service_error" };
+  }
+  if (response.status === 404) {
+    return { kind: "unavailable" };
+  }
+  if (!response.ok) {
+    return { kind: "service_error" };
+  }
+  try {
+    const data = (await response.json()) as PublicListingData;
+    return { kind: "available", data };
+  } catch {
+    return { kind: "service_error" };
+  }
+}
