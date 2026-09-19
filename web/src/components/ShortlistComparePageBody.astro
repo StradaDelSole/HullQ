@@ -1,0 +1,68 @@
+---
+// SLICE-0059: the one shared `/{locale}/shortlist/compare` presentation for
+// every supported locale (contract §10). Purely presentational shell, mirror
+// of `ShortlistPageBody.astro` -- the page's own frontmatter sets response
+// headers (noindex/private) before this component ever renders. This
+// component itself fetches nothing and knows no membership: the compare set
+// is the existing local Shortlist, loaded/rendered entirely client-side by
+// `shortlistCompareRuntime.ts` (contract §2/§11).
+import type { SupportedLocale } from "../lib/shortlistText";
+import { shortlistCompareText } from "../lib/shortlistCompareText";
+
+interface Props {
+  locale: SupportedLocale;
+}
+
+const { locale } = Astro.props;
+const t = shortlistCompareText[locale];
+---
+
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>{t.pageTitle}</title>
+  </head>
+  <body>
+    <main>
+      <h1>{t.pageHeading}</h1>
+      <p>
+        <a href={`/${locale}/shortlist`}>{t.backToShortlistLabel}</a>
+      </p>
+      <noscript>
+        <p>{t.noscriptMessage}</p>
+      </noscript>
+      <div id="hullq-shortlist-compare-root" data-locale={locale}>
+        <p>{t.loadingMessage}</p>
+      </div>
+    </main>
+    <script>
+      import { renderShortlistComparePage } from "../lib/shortlistCompareRuntime";
+
+      const root = document.getElementById("hullq-shortlist-compare-root");
+      void renderShortlistComparePage(root);
+    </script>
+    <style>
+      /* SLICE-0059 independent review 2026-09-19 (PR #221): the aligned
+         Compare matrix must remain usable on narrow screens without
+         assuming desktop-only width (contract §13) -- the table itself
+         stays a normal, fully-rendered table; only this wrapper scrolls
+         horizontally when it overflows. */
+      [data-hullq-compare-wrapper] {
+        overflow-x: auto;
+      }
+      [data-hullq-compare-table] {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      [data-hullq-compare-table] th,
+      [data-hullq-compare-table] td {
+        border: 1px solid;
+        padding: 0.5em 0.75em;
+        text-align: left;
+        white-space: nowrap;
+      }
+    </style>
+  </body>
+</html>

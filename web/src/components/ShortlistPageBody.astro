@@ -27,6 +27,9 @@ const t = shortlistText[locale];
   <body>
     <main>
       <h1>{t.pageHeading}</h1>
+      <p>
+        <a href={`/${locale}/shortlist/compare`}>{t.compareLinkLabel}</a>
+      </p>
       <noscript>
         <p>{t.noscriptMessage}</p>
       </noscript>

@@ -1,0 +1,16 @@
+---
+// SLICE-0059: English locale-prefixed anonymous factual shortlist Compare
+// surface. Response headers are set here, in the top-level page's own
+// frontmatter (mirroring the accepted en/shortlist.astro convention) --
+// this is user-specific browser-local state and must never be cached or
+// indexed (contract §10).
+export const prerender = false;
+import ShortlistComparePageBody from "../../../components/ShortlistComparePageBody.astro";
+
+const locale = "en" as const;
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+Astro.response.headers.set("Cache-Control", "private, no-store");
+---
+
+<ShortlistComparePageBody locale={locale} />

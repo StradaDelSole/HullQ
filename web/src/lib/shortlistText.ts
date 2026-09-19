@@ -24,6 +24,8 @@ export interface ShortlistText {
   savedLabel: string;
   removeLabel: string;
   viewListing: string;
+  /** SLICE-0059: link from `/{locale}/shortlist` into the factual Compare surface. */
+  compareLinkLabel: string;
   priceOnApplicationLabel: string;
   freshnessConfirmedLabel: string;
   freshnessDueLabel: string;
@@ -46,6 +48,7 @@ export const shortlistText: Record<SupportedLocale, ShortlistText> = {
     savedLabel: "Saved",
     removeLabel: "Remove",
     viewListing: "View listing",
+    compareLinkLabel: "Compare shortlist",
     priceOnApplicationLabel: "Price on application",
     freshnessConfirmedLabel: "Confirmed current",
     freshnessDueLabel: "Reconfirmation due",
@@ -66,6 +69,7 @@ export const shortlistText: Record<SupportedLocale, ShortlistText> = {
     savedLabel: "Gespeichert",
     removeLabel: "Entfernen",
     viewListing: "Angebot ansehen",
+    compareLinkLabel: "Merkliste vergleichen",
     priceOnApplicationLabel: "Preis auf Anfrage",
     freshnessConfirmedLabel: "Aktuell bestätigt",
     freshnessDueLabel: "Bestätigung ausstehend",
@@ -87,6 +91,7 @@ export const shortlistText: Record<SupportedLocale, ShortlistText> = {
     savedLabel: "Enregistrée",
     removeLabel: "Retirer",
     viewListing: "Voir l'annonce",
+    compareLinkLabel: "Comparer la liste de favoris",
     priceOnApplicationLabel: "Prix sur demande",
     freshnessConfirmedLabel: "Confirmé à jour",
     freshnessDueLabel: "Reconfirmation attendue",
@@ -108,6 +113,7 @@ export const shortlistText: Record<SupportedLocale, ShortlistText> = {
     savedLabel: "Guardado",
     removeLabel: "Remover",
     viewListing: "Ver anúncio",
+    compareLinkLabel: "Comparar lista de interesses",
     priceOnApplicationLabel: "Preço sob consulta",
     freshnessConfirmedLabel: "Confirmado atual",
     freshnessDueLabel: "Reconfirmação pendente",
@@ -129,6 +135,7 @@ export const shortlistText: Record<SupportedLocale, ShortlistText> = {
     savedLabel: "Guardado",
     removeLabel: "Quitar",
     viewListing: "Ver anuncio",
+    compareLinkLabel: "Comparar lista de interés",
     priceOnApplicationLabel: "Precio a consultar",
     freshnessConfirmedLabel: "Confirmado vigente",
     freshnessDueLabel: "Reconfirmación pendiente",
