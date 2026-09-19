@@ -35,6 +35,14 @@ export interface ShortlistCompareText {
   keelLabel: string;
   rudderLabel: string;
   freshnessLabel: string;
+  /**
+   * Independent review 2026-09-19 (PR #221): `last_confirmed_at` must be
+   * unambiguously labeled as the *last confirmed* timestamp -- on a DUE row,
+   * a bare `(<timestamp>)` next to the DUE status can otherwise read as a
+   * due-by date. This label is prefixed onto that timestamp in every
+   * locale.
+   */
+  lastConfirmedLabel: string;
   /** Broker declared an explicit UNKNOWN for a bounded PhysicalBoat claim field. */
   unknownLabel: string;
   /** The broker never supplied this bounded PhysicalBoat claim field at all. */
@@ -62,6 +70,7 @@ export const shortlistCompareText: Record<SupportedLocale, ShortlistCompareText>
     keelLabel: "Keel configuration",
     rudderLabel: "Rudder configuration",
     freshnessLabel: "Freshness",
+    lastConfirmedLabel: "Last confirmed",
     unknownLabel: "Unknown",
     notSuppliedLabel: "Not supplied",
   },
@@ -86,6 +95,7 @@ export const shortlistCompareText: Record<SupportedLocale, ShortlistCompareText>
     keelLabel: "Kielkonfiguration",
     rudderLabel: "Ruderkonfiguration",
     freshnessLabel: "Aktualität",
+    lastConfirmedLabel: "Zuletzt bestätigt",
     unknownLabel: "Unbekannt",
     notSuppliedLabel: "Nicht angegeben",
   },
@@ -110,6 +120,7 @@ export const shortlistCompareText: Record<SupportedLocale, ShortlistCompareText>
     keelLabel: "Configuration de quille",
     rudderLabel: "Configuration du gouvernail",
     freshnessLabel: "Actualité",
+    lastConfirmedLabel: "Dernière confirmation",
     unknownLabel: "Inconnu",
     notSuppliedLabel: "Non fourni",
   },
@@ -134,6 +145,7 @@ export const shortlistCompareText: Record<SupportedLocale, ShortlistCompareText>
     keelLabel: "Configuração da quilha",
     rudderLabel: "Configuração do leme",
     freshnessLabel: "Atualidade",
+    lastConfirmedLabel: "Última confirmação",
     unknownLabel: "Desconhecido",
     notSuppliedLabel: "Não fornecido",
   },
@@ -157,6 +169,7 @@ export const shortlistCompareText: Record<SupportedLocale, ShortlistCompareText>
     keelLabel: "Configuración de quilla",
     rudderLabel: "Configuración del timón",
     freshnessLabel: "Actualidad",
+    lastConfirmedLabel: "Última confirmación",
     unknownLabel: "Desconocido",
     notSuppliedLabel: "No facilitado",
   },

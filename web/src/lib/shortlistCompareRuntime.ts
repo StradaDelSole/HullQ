@@ -105,20 +105,28 @@ function localizedRegionText(claim: ClaimField | null, t: ShortlistCompareText):
  * rendered English freshness prose. This reuses the already-localized
  * `shortlistText` CONFIRMED/DUE_FOR_CONFIRMATION status labels (shared with
  * `/{locale}/shortlist`, contract §5's "reuse existing localized shortlist
- * status labels") and appends the raw ISO `last_confirmed_at` timestamp --
- * language-neutral, so disclosing it needs no new per-locale sentence
- * template -- without ever wording DUE_FOR_CONFIRMATION as simply confirmed.
+ * status labels") without ever wording DUE_FOR_CONFIRMATION as simply
+ * confirmed.
+ *
+ * Second independent review 2026-09-19 (PR #221, residual A): a bare
+ * `(<timestamp>)` suffix is ambiguous on a DUE row -- it can read as a
+ * due-by date rather than the actual `last_confirmed_at` value. The
+ * timestamp is now unambiguously prefixed with `t.lastConfirmedLabel` in
+ * every locale, e.g. `Reconfirmation due · Last confirmed: <ISO timestamp>`.
  */
 function localizedFreshnessText(
   freshnessStatus: "CONFIRMED" | "DUE_FOR_CONFIRMATION",
   lastConfirmedAt: string | null,
+  t: Pick<ShortlistCompareText, "lastConfirmedLabel">,
   labels: Pick<CompareFieldLabels, "freshnessConfirmedLabel" | "freshnessDueLabel">,
 ): string {
   const statusLabel =
     freshnessStatus === "DUE_FOR_CONFIRMATION"
       ? labels.freshnessDueLabel
       : labels.freshnessConfirmedLabel;
-  return lastConfirmedAt !== null ? `${statusLabel} (${lastConfirmedAt})` : statusLabel;
+  return lastConfirmedAt !== null
+    ? `${statusLabel} · ${t.lastConfirmedLabel}: ${lastConfirmedAt}`
+    : statusLabel;
 }
 
 /**
@@ -146,7 +154,7 @@ export function buildCompareFields(
     draft: claims !== null ? localizedBoatClaimTextOrNotSupplied(claims.draft, t) : null,
     keel: claims !== null ? localizedBoatClaimTextOrNotSupplied(claims.keel_configuration, t) : null,
     rudder: claims !== null ? localizedBoatClaimTextOrNotSupplied(claims.rudder_configuration, t) : null,
-    freshness: localizedFreshnessText(data.freshness_status, data.last_confirmed_at, labels),
+    freshness: localizedFreshnessText(data.freshness_status, data.last_confirmed_at, t, labels),
   };
 }
 

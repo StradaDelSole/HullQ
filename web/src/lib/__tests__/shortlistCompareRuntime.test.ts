@@ -198,6 +198,46 @@ test("buildCompareFields: freshness disclosure never drops the last-confirmed ti
   assert.ok(fields.freshness.includes("2026-03-01T00:00:00Z"));
 });
 
+test("buildCompareFields: the last-confirmed timestamp is unambiguously labeled, even on a DUE row", () => {
+  // Independent review 2026-09-19 (PR #221, residual A): a bare
+  // "Reconfirmation due (<timestamp>)" can read as a due-by date. The
+  // timestamp must be explicitly prefixed with the localized "last
+  // confirmed" label so it can never be misread as anything else.
+  const due = buildCompareFields(
+    baseListing({ freshness_status: "DUE_FOR_CONFIRMATION", last_confirmed_at: "2026-03-01T00:00:00Z" }),
+    t,
+    labels,
+  );
+  assert.ok(due.freshness.includes(`${t.lastConfirmedLabel}: 2026-03-01T00:00:00Z`));
+
+  const confirmed = buildCompareFields(
+    baseListing({ freshness_status: "CONFIRMED", last_confirmed_at: "2026-03-01T00:00:00Z" }),
+    t,
+    labels,
+  );
+  assert.ok(confirmed.freshness.includes(`${t.lastConfirmedLabel}: 2026-03-01T00:00:00Z`));
+});
+
+test("buildCompareFields: the localized last-confirmed label is present for every supported locale", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const localeLabels: CompareFieldLabels = {
+      priceOnApplicationLabel: shortlistText[locale].priceOnApplicationLabel,
+      freshnessConfirmedLabel: shortlistText[locale].freshnessConfirmedLabel,
+      freshnessDueLabel: shortlistText[locale].freshnessDueLabel,
+    };
+    const localeCompareText = shortlistCompareText[locale];
+    assert.ok(localeCompareText.lastConfirmedLabel.length > 0);
+
+    const due = buildCompareFields(
+      baseListing({ freshness_status: "DUE_FOR_CONFIRMATION", last_confirmed_at: "2026-01-01T00:00:00Z" }),
+      localeCompareText,
+      localeLabels,
+    );
+    assert.ok(due.freshness.includes(localeCompareText.lastConfirmedLabel));
+    assert.ok(due.freshness.includes("2026-01-01T00:00:00Z"));
+  }
+});
+
 test("buildCompareFields: freshness disclosure is localized for every supported locale, never hardcoded English", () => {
   for (const locale of SUPPORTED_LOCALES) {
     const localeLabels: CompareFieldLabels = {
