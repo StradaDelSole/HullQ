@@ -76,6 +76,9 @@ def test_guard_allows_standalone_approved_diagnostics() -> None:
     assert routine_permission_allowed(
         "git diff --no-index web/src/pages/de/search.astro web/src/pages/fr/search.astro"
     )
+    assert routine_permission_allowed(
+        "gh pr list --head slice/0059-anonymous-factual-shortlist-compare --json number,url,state"
+    )
 
 
 def test_guard_does_not_auto_allow_destructive_or_privileged_commands() -> None:

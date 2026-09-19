@@ -26,7 +26,7 @@ _ROUTINE_ALLOW_PATTERNS = (
     re.compile(r"^pytest(?:\s|$)"),
     re.compile(r"^npm\s+(?:ci|run|test)(?:\s|$)"),
     re.compile(r"^git\s+(?:status|diff|log|show|rev-parse|fetch|add|commit)(?:\s|$)"),
-    re.compile(r"^gh\s+(?:run\s+(?:list|view|watch)|pr\s+(?:view|checks|diff))(?:\s|$)"),
+    re.compile(r"^gh\s+(?:run\s+(?:list|view|watch)|pr(?:\s|$))"),
     re.compile(r"^docker\s+(?:ps|logs|compose\s+(?:ps|build|up))(?:\s|$)"),
 )
 
