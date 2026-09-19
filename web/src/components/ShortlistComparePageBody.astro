@@ -43,5 +43,26 @@ const t = shortlistCompareText[locale];
       const root = document.getElementById("hullq-shortlist-compare-root");
       void renderShortlistComparePage(root);
     </script>
+    <style>
+      /* SLICE-0059 independent review 2026-09-19 (PR #221): the aligned
+         Compare matrix must remain usable on narrow screens without
+         assuming desktop-only width (contract §13) -- the table itself
+         stays a normal, fully-rendered table; only this wrapper scrolls
+         horizontally when it overflows. */
+      [data-hullq-compare-wrapper] {
+        overflow-x: auto;
+      }
+      [data-hullq-compare-table] {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      [data-hullq-compare-table] th,
+      [data-hullq-compare-table] td {
+        border: 1px solid;
+        padding: 0.5em 0.75em;
+        text-align: left;
+        white-space: nowrap;
+      }
+    </style>
   </body>
 </html>

@@ -9,6 +9,9 @@ built Astro/Node SSR), per
        SLICE-0050 PhysicalBoat claim snapshot, one with a partial snapshot
        mixing VALUE_ASSERTION/UNKNOWN/omitted fields, one WITHDRAWN, one
        never-created)
+    1b. every column of the rendered comparison -- available or
+        unavailable/service-error -- produces the identical aligned row
+        count/order (a genuine side-by-side matrix, not independent cards)
     2. the real shipped `shortlistCompareRuntime.ts`/`shortlistCompareText.ts`
        modules (run under Node, not reimplemented in Python) classify the
        compare set as empty/need-one-more/ready from local membership alone
@@ -31,6 +34,21 @@ built Astro/Node SSR), per
         and `private, no-store`, carry no saved ids in their served markup,
         and the `/{locale}/shortlist` page links to Compare
     11. finish with `ANONYMOUS FACTUAL SHORTLIST COMPARE RESULT -> PASS`
+    12. the compare set is sourced from the real shipped `shortlistStore.ts`
+        in buyer-authored order (not a hand-typed literal id array), and
+        resolving through Compare's own runtime seam
+        (`shortlistResolutionApi.ts`) leaves the stored local membership
+        byte-identical
+    13. after a server-side offer price revision and a PhysicalBoat claim
+        revision, the next resolution reflects both new current values while
+        the stored shortlist payload itself stays unchanged
+
+Steps 12/13 exercise the real shipped store/resolution modules under Node
+against this proof's own running Astro server (with only same-origin-relative
+`fetch()` rewritten onto that server's host:port, since a Node harness has no
+browser origin) -- this proof does not execute a real browser DOM. The
+rendered aligned-matrix HTML itself (blocker 1) is covered separately by
+`web/src/lib/__tests__/shortlistCompareRuntime.test.ts` unit tests.
 
 Requires ``HULLQ_TEST_DATABASE_URL`` (a local PostgreSQL 18 instance), a
 pre-built Astro web package (``cd web && npm ci && npm run build``) and a
@@ -104,6 +122,7 @@ from hullq.persistence.native_listing_lifecycle import (
 )
 from hullq.persistence.native_listing_offer import (
     NativeListingOfferRevisionId,
+    NativeListingOfferWriteStatus,
     write_native_listing_offer_revision,
 )
 from hullq.persistence.physical_boat import create_physical_boat
@@ -117,12 +136,16 @@ WEB_DIR = REPO_ROOT / "web"
 WEB_ENTRYPOINT = WEB_DIR / "dist" / "server" / "entry.mjs"
 COMPARE_RUNTIME_MODULE = WEB_DIR / "src" / "lib" / "shortlistCompareRuntime.ts"
 COMPARE_TEXT_MODULE = WEB_DIR / "src" / "lib" / "shortlistCompareText.ts"
+SHORTLIST_TEXT_MODULE = WEB_DIR / "src" / "lib" / "shortlistText.ts"
+STORE_MODULE = WEB_DIR / "src" / "lib" / "shortlistStore.ts"
+RESOLUTION_API_MODULE = WEB_DIR / "src" / "lib" / "shortlistResolutionApi.ts"
 
 _FULL_CLAIMS_ID = "NL-0059-FULL-CLAIMS"
 _PARTIAL_CLAIMS_ID = "NL-0059-PARTIAL-CLAIMS"
 _WITHDRAWN_ID = "NL-0059-WITHDRAWN"
 _NEVER_CREATED_ID = "NL-0059-NEVER-CREATED"
 _FULL_PRICE = "129000.00"
+_FULL_PRICE_REVISED = "141000.00"
 _PARTIAL_PRICE = "45000.00"
 
 _LOCALES = ("en", "de", "fr", "pt", "es")
@@ -130,12 +153,18 @@ _LOCALES = ("en", "de", "fr", "pt", "es")
 _HARNESS_SCRIPT = """
 import { pathToFileURL } from "node:url";
 
-const [, , runtimeModulePath, textModulePath] = process.argv;
+const [, , runtimeModulePath, textModulePath, shortlistTextModulePath] = process.argv;
 const runtime = await import(pathToFileURL(runtimeModulePath).href);
 const compareText = await import(pathToFileURL(textModulePath).href);
+const shortlistTextModule = await import(pathToFileURL(shortlistTextModulePath).href);
 
 const t = compareText.shortlistCompareText.en;
-const priceOnApplicationLabel = "Price on application";
+const st = shortlistTextModule.shortlistText.en;
+const labels = {
+  priceOnApplicationLabel: st.priceOnApplicationLabel,
+  freshnessConfirmedLabel: st.freshnessConfirmedLabel,
+  freshnessDueLabel: st.freshnessDueLabel,
+};
 
 function listingFixture(overrides) {
   return {
@@ -190,20 +219,20 @@ const partialClaimsListing = listingFixture({
 });
 const noClaimsListing = listingFixture({});
 
-const fullFields = runtime.buildCompareFields(fullClaimsListing, t, priceOnApplicationLabel);
+const fullFields = runtime.buildCompareFields(fullClaimsListing, t, labels);
 out.full_identity = fullFields.identityHeading;
 out.full_build_year = fullFields.buildYear;
 out.full_loa = fullFields.loa;
 out.full_keel = fullFields.keel;
 out.full_price = fullFields.price;
 
-const partialFields = runtime.buildCompareFields(partialClaimsListing, t, priceOnApplicationLabel);
+const partialFields = runtime.buildCompareFields(partialClaimsListing, t, labels);
 out.partial_build_year = partialFields.buildYear;
 out.partial_loa = partialFields.loa;
 out.partial_keel = partialFields.keel;
 out.partial_rudder = partialFields.rudder;
 
-const noClaimsFields = runtime.buildCompareFields(noClaimsListing, t, priceOnApplicationLabel);
+const noClaimsFields = runtime.buildCompareFields(noClaimsListing, t, labels);
 out.no_claims_identity_is_null = noClaimsFields.identityHeading === null;
 out.no_claims_build_year_is_null = noClaimsFields.buildYear === null;
 out.no_claims_loa_is_null = noClaimsFields.loa === null;
@@ -211,9 +240,125 @@ out.no_claims_loa_is_null = noClaimsFields.loa === null;
 const poaFields = runtime.buildCompareFields(
   listingFixture({ asking_price_mode: "POA", asking_price_amount: null, currency: null }),
   t,
-  priceOnApplicationLabel,
+  labels,
 );
 out.poa_price = poaFields.price;
+
+// The aligned side-by-side matrix itself: prove every column (available or
+// not) produces the exact same row count/order, and that an
+// unavailable/service-error column's row values are the neutral
+// placeholder rather than a repeated status sentence (independent review
+// 2026-09-19, PR #221, blocker 1).
+const rowLabels = runtime.compareRowLabels(t);
+out.row_label_count = rowLabels.length;
+out.full_row_values = runtime.compareRowValues(fullFields, t);
+out.placeholder_row_values = runtime.compareRowValues(null, t);
+out.rows_are_aligned =
+  out.full_row_values.length === rowLabels.length &&
+  out.placeholder_row_values.length === rowLabels.length;
+
+process.stdout.write(JSON.stringify(out));
+"""
+
+# Independent review 2026-09-19 (PR #221), blocker 3: the harness above only
+# proves `buildCompareFields`/`compareRowValues` in isolation against
+# hand-built fixture objects -- it never touches the real shipped
+# `shortlistStore.ts`, so it does not prove the Compare set is actually
+# sourced from local Shortlist membership, that using Compare leaves that
+# membership unchanged, or that a later server-side truth change is
+# reflected without ever rewriting the stored payload. This second harness
+# imports the real, unmodified `shortlistStore.ts` and
+# `shortlistResolutionApi.ts` modules (the exact modules
+# `shortlistCompareRuntime.ts` itself calls) under Node and exercises them
+# against the already-running Astro server this proof started -- the only
+# change from real browser behavior is rewriting a same-origin-relative
+# fetch() onto that server's actual host:port, since this harness has no
+# browser origin of its own. It does not execute a real browser DOM; the
+# rendered aligned-matrix HTML is covered separately by
+# `shortlistCompareRuntime.test.ts` unit tests, and that limitation is
+# disclosed here rather than overclaimed.
+_STORE_SOURCED_HARNESS_SCRIPT = """
+import { pathToFileURL } from "node:url";
+
+const [
+  ,
+  ,
+  storeModulePath,
+  resolutionApiModulePath,
+  runtimeModulePath,
+  webBaseUrl,
+  fullId,
+  partialId,
+  withdrawnId,
+  neverCreatedId,
+] = process.argv;
+
+const store = await import(pathToFileURL(storeModulePath).href);
+const resolutionApi = await import(pathToFileURL(resolutionApiModulePath).href);
+const runtime = await import(pathToFileURL(runtimeModulePath).href);
+
+// shortlistResolutionApi.ts calls bare fetch("/api/shortlist/resolve", ...),
+// same-origin-relative by design for the real browser/Astro-proxy topology.
+// This harness process has no browser origin, so it rewrites any
+// leading-slash request onto the live Astro server this proof already
+// started, without touching the module's own (unmodified) request-building
+// logic at all.
+const realFetch = globalThis.fetch;
+globalThis.fetch = (input, init) => {
+  const url =
+    typeof input === "string" && input.startsWith("/") ? new URL(input, webBaseUrl).toString() : input;
+  return realFetch(url, init);
+};
+
+class FakeStorage {
+  constructor() {
+    this.data = new Map();
+  }
+  getItem(key) {
+    return this.data.has(key) ? this.data.get(key) : null;
+  }
+  setItem(key, value) {
+    this.data.set(key, value);
+  }
+}
+
+const storage = new FakeStorage();
+// Buyer-authored add order, via the real shipped store module -- this is
+// the exact seam that makes the compare set "sourced from the accepted
+// versioned Shortlist store" rather than a hand-typed literal array.
+store.addToShortlist(storage, fullId);
+store.addToShortlist(storage, partialId);
+store.addToShortlist(storage, withdrawnId);
+store.addToShortlist(storage, neverCreatedId);
+
+const out = {};
+
+const ids = store.loadShortlistIds(storage);
+out.ids = ids;
+out.compare_state = runtime.compareSetState(ids);
+
+const rawBefore = storage.getItem(store.SHORTLIST_STORAGE_KEY);
+out.raw_before = rawBefore;
+
+// This is the exact resolution call Compare's own runtime makes.
+const resolution = await resolutionApi.resolveShortlistListings(ids);
+
+const rawAfter = storage.getItem(store.SHORTLIST_STORAGE_KEY);
+out.raw_after = rawAfter;
+out.raw_unchanged = rawBefore === rawAfter;
+
+out.resolution_kind = resolution.kind;
+if (resolution.kind === "loaded") {
+  const byId = Object.fromEntries(resolution.items.map((item) => [item.native_listing_id, item]));
+  out.full_state = byId[fullId] ? byId[fullId].state : null;
+  out.full_price = byId[fullId] && byId[fullId].data ? byId[fullId].data.asking_price_amount : null;
+  const partialClaims =
+    byId[partialId] && byId[partialId].data ? byId[partialId].data.physical_boat_claims : null;
+  out.partial_build_year_kind = partialClaims ? partialClaims.build_year.assertion_kind : null;
+  out.partial_build_year_value = partialClaims ? partialClaims.build_year.value : null;
+  out.withdrawn_state = byId[withdrawnId] ? byId[withdrawnId].state : null;
+  out.never_created_state = byId[neverCreatedId] ? byId[neverCreatedId].state : null;
+}
 
 process.stdout.write(JSON.stringify(out));
 """
@@ -448,6 +593,72 @@ def _write_partial_claims(
         raise RuntimeError(f"partial-claims fixture write failed: {result.status}")
 
 
+def _bump_full_price(
+    conn: Any,
+    *,
+    account: AccountId,
+    org: MarketplaceOrganization,
+    membership: OrganizationMembership,
+    new_price: str,
+) -> None:
+    """Write a second offer revision for the full-claims fixture listing,
+    changing only its asking price. Proves (independent review 2026-09-19,
+    PR #221, blocker 3) that a later server-side offer change is reflected
+    on the next Compare resolution."""
+    result = write_native_listing_offer_revision(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId(_FULL_CLAIMS_ID),
+        revision_id=NativeListingOfferRevisionId("REV-0059-FULL-2"),
+        expected_current_revision_id=NativeListingOfferRevisionId("REV-0059-FULL"),
+        offer=NativeListingOfferSnapshot(
+            asking_price_mode=AskingPriceMode.AMOUNT,
+            location_country="FR",
+            broker_description="SLICE-0059 proof fixture listing.",
+            asking_price_amount=Decimal(new_price),
+            currency="EUR",
+        ),
+    )
+    if result.status is not NativeListingOfferWriteStatus.REVISED:
+        raise RuntimeError(f"full-claims price bump failed: {result.status}")
+
+
+def _bump_partial_build_year(
+    conn: Any,
+    *,
+    account: AccountId,
+    org: MarketplaceOrganization,
+    membership: OrganizationMembership,
+) -> None:
+    """Write a second PhysicalBoat claim revision for the partial-claims
+    fixture listing, resolving its build_year from UNKNOWN to a
+    VALUE_ASSERTION. Proves (independent review 2026-09-19, PR #221,
+    blocker 3) that a later server-side concrete-claim change is reflected
+    on the next Compare resolution."""
+    result = write_physical_boat_claim_revision(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId(_PARTIAL_CLAIMS_ID),
+        revision_id=PhysicalBoatClaimRevisionId("PBC-0059-PARTIAL-2"),
+        expected_current_revision_id=PhysicalBoatClaimRevisionId("PBC-0059-PARTIAL"),
+        claims=PhysicalBoatClaimSnapshot(
+            marketed_brand_claim="Jeanneau",
+            model_designation_claim="Sun Odyssey 349",
+            build_year=BuildYearClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=2022),
+            loa_length=None,
+            draft=None,
+            keel_configuration=KeelConfigurationClaim(assertion_kind=AssertionKind.UNKNOWN),
+            rudder_configuration=None,
+        ),
+    )
+    if result.status is not PhysicalBoatClaimWriteStatus.REVISED:
+        raise RuntimeError(f"partial-claims build-year bump failed: {result.status}")
+
+
 def _table_names_matching(conn: Any, needle: str) -> list[str]:
     with conn.cursor() as cur:
         cur.execute(
@@ -464,10 +675,17 @@ def _run_compare_harness() -> tuple[bool, dict[str, Any]]:
     harness_path.write_text(_HARNESS_SCRIPT, encoding="utf-8")
     try:
         result = subprocess.run(
-            ["node", str(harness_path), str(COMPARE_RUNTIME_MODULE), str(COMPARE_TEXT_MODULE)],
+            [
+                "node",
+                str(harness_path),
+                str(COMPARE_RUNTIME_MODULE),
+                str(COMPARE_TEXT_MODULE),
+                str(SHORTLIST_TEXT_MODULE),
+            ],
             cwd=REPO_ROOT,
             capture_output=True,
             text=True,
+            encoding="utf-8",
             timeout=30,
         )
     finally:
@@ -484,6 +702,51 @@ def _run_compare_harness() -> tuple[bool, dict[str, Any]]:
         return False, {}
 
 
+def _run_store_sourced_harness(web_base: str) -> tuple[bool, dict[str, Any]]:
+    """Run `_STORE_SOURCED_HARNESS_SCRIPT` against the real shipped
+    `shortlistStore.ts`/`shortlistResolutionApi.ts`/`shortlistCompareRuntime.ts`
+    modules, resolving through *web_base*'s already-running Astro server
+    (independent review 2026-09-19, PR #221, blocker 3)."""
+    log_dir = Path(tempfile.mkdtemp(prefix="hullq_s0059_store_sourced_harness_"))
+    harness_path = log_dir / "shortlist_compare_store_sourced_harness.mjs"
+    harness_path.write_text(_STORE_SOURCED_HARNESS_SCRIPT, encoding="utf-8")
+    try:
+        result = subprocess.run(
+            [
+                "node",
+                str(harness_path),
+                str(STORE_MODULE),
+                str(RESOLUTION_API_MODULE),
+                str(COMPARE_RUNTIME_MODULE),
+                web_base,
+                _FULL_CLAIMS_ID,
+                _PARTIAL_CLAIMS_ID,
+                _WITHDRAWN_ID,
+                _NEVER_CREATED_ID,
+            ],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=30,
+        )
+    finally:
+        shutil.rmtree(log_dir, ignore_errors=True)
+
+    if result.returncode != 0:
+        print(result.stdout, file=sys.stderr)
+        print(result.stderr, file=sys.stderr)
+        return False, {}
+    try:
+        return True, json.loads(result.stdout)
+    except json.JSONDecodeError:
+        print(
+            f"store-sourced compare harness produced non-JSON stdout: {result.stdout!r}",
+            file=sys.stderr,
+        )
+        return False, {}
+
+
 def main() -> int:
     if not WEB_ENTRYPOINT.exists():
         print(
@@ -492,8 +755,15 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
-    if not COMPARE_RUNTIME_MODULE.exists() or not COMPARE_TEXT_MODULE.exists():
-        print("SLICE-0059 compare runtime/text modules do not exist.", file=sys.stderr)
+    required_modules = (
+        COMPARE_RUNTIME_MODULE,
+        COMPARE_TEXT_MODULE,
+        SHORTLIST_TEXT_MODULE,
+        STORE_MODULE,
+        RESOLUTION_API_MODULE,
+    )
+    if not all(module.exists() for module in required_modules):
+        print("SLICE-0059 compare/shortlist runtime modules do not exist.", file=sys.stderr)
         return 1
 
     base_url = _base_db_url()
@@ -631,7 +901,27 @@ def main() -> int:
         ok &= step5_ok
         print(
             "5. explicit UNKNOWN stays 'Unknown' (distinct from omitted 'Not supplied'); "
-            f"no PhysicalBoat claims recorded leaves every row null, never a fallback -> {'OK' if step5_ok else 'FAIL'}\n"
+            f"no PhysicalBoat claims recorded leaves every row null, never a fallback -> {'OK' if step5_ok else 'FAIL'}"
+        )
+
+        # 1b (independent review 2026-09-19, PR #221, blocker 1): every
+        # column -- available or unavailable/service-error -- produces the
+        # exact same row count in the exact same order, the defining
+        # property of a genuinely aligned side-by-side matrix rather than
+        # independently-shaped cards.
+        step_aligned_ok = (
+            harness_ok
+            and harness.get("row_label_count", 0) > 0
+            and harness.get("full_row_values") is not None
+            and len(harness.get("full_row_values", [])) == harness.get("row_label_count")
+            and len(harness.get("placeholder_row_values", [])) == harness.get("row_label_count")
+            and all(value == "—" for value in harness.get("placeholder_row_values", []))
+            and harness.get("rows_are_aligned") is True
+        )
+        ok &= step_aligned_ok
+        print(
+            "1b. every column (available or unavailable/service-error) renders the identical "
+            f"aligned row count/order -> {'OK' if step_aligned_ok else 'FAIL'}\n"
         )
 
         # Serve FastAPI + Astro.
@@ -733,6 +1023,59 @@ def main() -> int:
             f"WITHDRAWN/never-created stay neutral unavailable, claim distinctions survive transport -> {'OK' if step36_ok else 'FAIL'}\n"
         )
 
+        # 12/13 (independent review 2026-09-19, PR #221, blocker 3): prove
+        # the compare set is sourced from the real shipped shortlist store
+        # in buyer-authored order (not a hand-typed literal), that resolving
+        # through Compare's own runtime seam leaves local membership
+        # byte-identical, and that a later server-side offer/claim revision
+        # is reflected on the next resolution while the local shortlist
+        # payload itself never changes.
+        before_ok, before = _run_store_sourced_harness(web_base)
+        step_store_before_ok = (
+            before_ok
+            and before.get("ids")
+            == [_FULL_CLAIMS_ID, _PARTIAL_CLAIMS_ID, _WITHDRAWN_ID, _NEVER_CREATED_ID]
+            and before.get("compare_state") == "ready"
+            and before.get("raw_unchanged") is True
+            and before.get("full_state") == "available"
+            and before.get("full_price") == _FULL_PRICE
+            and before.get("partial_build_year_kind") == "UNKNOWN"
+            and before.get("withdrawn_state") == "unavailable"
+            and before.get("never_created_state") == "unavailable"
+        )
+        ok &= step_store_before_ok
+        print(
+            "12. compare set is sourced from the real shortlist store in buyer order; resolving "
+            f"through Compare's own seam leaves local membership byte-identical -> {'OK' if step_store_before_ok else 'FAIL'}"
+        )
+
+        conn = psycopg.connect(url)
+        try:
+            _bump_full_price(
+                conn, account=account, org=org, membership=membership, new_price=_FULL_PRICE_REVISED
+            )
+            _bump_partial_build_year(conn, account=account, org=org, membership=membership)
+            conn.commit()
+        finally:
+            conn.close()
+
+        after_ok, after = _run_store_sourced_harness(web_base)
+        step_store_after_ok = (
+            after_ok
+            and after.get("ids") == before.get("ids")
+            and after.get("raw_before") == before.get("raw_before")
+            and after.get("raw_unchanged") is True
+            and after.get("full_price") == _FULL_PRICE_REVISED
+            and after.get("full_price") != before.get("full_price")
+            and after.get("partial_build_year_kind") == "VALUE_ASSERTION"
+            and after.get("partial_build_year_value") == 2022
+        )
+        ok &= step_store_after_ok
+        print(
+            "13. a later server-side offer/claim revision is reflected on the next resolution "
+            f"while the stored shortlist payload stays unchanged -> {'OK' if step_store_after_ok else 'FAIL'}\n"
+        )
+
         # 10. all five locale compare routes exist, are noindex/private, and
         # carry no saved ids in their served (pre-JS) markup.
         locales_ok = True
@@ -760,11 +1103,13 @@ def main() -> int:
 
         # 8. ordinary Search/public-listing behavior is unaffected; Compare
         # is read-only (no shortlist mutation) since the resolver has no
-        # persistence side effect -- already re-verified above by the fact
-        # that repeating step 3/6's exact request against the same schema
-        # produces identical results (checked at the end, after the outage).
+        # persistence side effect. This runs after step 13's price bump, so
+        # the ordinary public listing route must now reflect the revised
+        # price -- the same current truth Compare itself just re-resolved,
+        # proving both surfaces share the identical accepted read model
+        # rather than Compare caching/diverging from it.
         listing_status, _, listing_body = _http_get(f"{api_base}/api/listings/{_FULL_CLAIMS_ID}")
-        step8_ok = listing_status == 200 and f'"{_FULL_PRICE}"'.encode() in listing_body
+        step8_ok = listing_status == 200 and f'"{_FULL_PRICE_REVISED}"'.encode() in listing_body
         ok &= step8_ok
         print(
             f"8. ordinary public listing route unaffected by this slice -> {'OK' if step8_ok else 'FAIL'}\n"
