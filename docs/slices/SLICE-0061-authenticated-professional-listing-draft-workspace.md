@@ -40,7 +40,7 @@ Production Readiness remains `NOT_TRIGGERED`; Broker Workspace Launch Gate remai
 
 **Exact remaining gap:** the professional Organization workspace cannot safely start and persist incomplete listing work before NativeListing creation.
 
-**Accepted-but-unimplemented obligation:** REQ-BROKER-003/004 require resumable low-friction professional listing creation/editing. 0061 implements only the private server-persisted draft foundation, not publication/media/offline-recovery.
+**Accepted-but-unimplemented obligations:** REQ-BROKER-003/004 require resumable low-friction professional listing creation/editing. 0061 implements only the private server-persisted draft foundation, not publication/media/offline-recovery.
 
 **Material classifications:** `DECIDED_AND_IMPLEMENTED` auth/authorization + marketplace truth + owner-direct draft pattern; `DECIDED_NOT_YET_IMPLEMENTED` Organization-owned professional private draft workspace; `EXPLICITLY_DEFERRED` promotion/publish/media/offline recovery/leads/analytics and other listed capabilities; `GENUINELY_OPEN` future promotion transaction, future single-table vs channel-specific Seller draft storage, later clone/relist and local recovery/sync design; `CONFLICT_OR_REGRESSION` none found.
 
@@ -52,6 +52,7 @@ Production Readiness remains `NOT_TRIGGERED`; Broker Workspace Launch Gate remai
 **Paid broker plan:** NOT_STARTED  
 **Adds technical native Search criterion:** NO  
 **Technical Search criterion ordinal:** NOT_APPLICABLE  
+**Second-criterion bridge comparison:** NOT_APPLICABLE  
 **Third-copy abstraction guard:** NOT_APPLICABLE  
 **Workflow reassessment status:** PASS
 
