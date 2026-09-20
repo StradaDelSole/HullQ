@@ -89,6 +89,17 @@ from hullq.application.owner_direct_draft import (
     update_owner_direct_draft_for_account,
 )
 from hullq.application.preview_read import get_preview_read_model
+from hullq.application.professional_listing_draft import (
+    CreateProfessionalDraftOutcome,
+    GetProfessionalDraftOutcome,
+    ListProfessionalDraftsOutcome,
+    UpdateProfessionalDraftOutcome,
+    create_professional_draft_for_organization,
+    get_professional_draft_for_organization,
+    list_professional_drafts_for_organization,
+    professional_draft_record_to_public_dict,
+    update_professional_draft_for_organization,
+)
 from hullq.application.public_listing_read import get_public_listing_read_model
 from hullq.application.search_read import SearchOutcomeKind, evaluate_search_request
 from hullq.application.search_sensitivity import (
@@ -200,6 +211,12 @@ _OWNER_DIRECT_RESPONSE_HEADERS = {"Cache-Control": "private, no-store", "X-Robot
 _OWNER_DIRECT_CSRF_HEADER_NAME = "x-hullq-requested-with"
 _OWNER_DIRECT_CSRF_HEADER_VALUE = "owner-direct-draft-v1"
 _WEB_ORIGIN_ENV = "HULLQ_WEB_ORIGIN"
+
+#: SLICE-0061 contract §8: the identical fixed-header + exact-Origin CSRF
+#: discipline as owner-direct drafts, with its own distinct header value so
+#: the two channels' state-changing requests can never be replayed against
+#: each other.
+_PROFESSIONAL_DRAFT_CSRF_HEADER_VALUE = "professional-listing-draft-v1"
 
 #: SLICE-0052: server-side-only freshness clock override, resolved once at
 #: app-creation time. Never read from an HTTP request. Unset in every
@@ -524,6 +541,21 @@ def create_app(
             actual is None
             or actual != accepted
             or requested_with != _OWNER_DIRECT_CSRF_HEADER_VALUE
+        ):
+            raise HTTPException(status_code=403, detail="csrf validation failed")
+
+    def _require_professional_draft_csrf(request: Request) -> None:
+        # Contract §8: identical exact-Origin-match + fixed non-simple
+        # header discipline as owner-direct, with its own distinct header
+        # value (see `_PROFESSIONAL_DRAFT_CSRF_HEADER_VALUE`).
+        origin_header = request.headers.get("origin")
+        requested_with = request.headers.get(_OWNER_DIRECT_CSRF_HEADER_NAME)
+        accepted = _normalized_origin(_resolve_web_origin())
+        actual = _normalized_origin(origin_header) if origin_header else None
+        if (
+            actual is None
+            or actual != accepted
+            or requested_with != _PROFESSIONAL_DRAFT_CSRF_HEADER_VALUE
         ):
             raise HTTPException(status_code=403, detail="csrf validation failed")
 
@@ -944,6 +976,134 @@ def create_app(
             return JSONResponse({"error": "invalid_cursor"}, status_code=400)
         assert result.page is not None
         return JSONResponse(result.page.to_public_dict())
+
+    def _professional_draft_authorization_error(
+        outcome: Any,
+    ) -> JSONResponse | None:
+        # Shared 401-is-handled-by-caller status mapping for every
+        # professional-draft route (contract §3.2/§3.3): unauthenticated is
+        # checked separately by each handler via `_require_session`.
+        if outcome.name == "NOT_FOUND_OR_DENIED":
+            raise HTTPException(status_code=404, detail="organization not found")
+        if outcome.name == "MFA_REQUIRED":
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if outcome.name == "PUBLISHER_ROLE_REQUIRED":
+            return JSONResponse({"error": "publisher_role_required"}, status_code=403)
+        return None
+
+    @app.get("/api/broker/organizations/{organization_id}/drafts")
+    def list_professional_drafts_route(organization_id: str, request: Request) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+
+        raw_page_size = request.query_params.get("page_size")
+        if raw_page_size is not None:
+            try:
+                page_size: int | None = int(raw_page_size)
+            except ValueError:
+                return JSONResponse({"error": "invalid_page_size"}, status_code=400)
+        else:
+            page_size = None
+        cursor = request.query_params.get("cursor")
+
+        conn = open_connection(resolved_database_url)
+        try:
+            result = list_professional_drafts_for_organization(
+                conn, session, organization_id, page_size=page_size, cursor=cursor
+            )
+        finally:
+            conn.close()
+
+        auth_error = _professional_draft_authorization_error(result.outcome)
+        if auth_error is not None:
+            return auth_error
+        if result.outcome is ListProfessionalDraftsOutcome.INVALID_PAGE_SIZE:
+            return JSONResponse({"error": "invalid_page_size"}, status_code=400)
+        if result.outcome is ListProfessionalDraftsOutcome.INVALID_CURSOR:
+            return JSONResponse({"error": "invalid_cursor"}, status_code=400)
+        assert result.page is not None
+        return JSONResponse(result.page.to_public_dict())
+
+    @app.post("/api/broker/organizations/{organization_id}/drafts")
+    async def create_professional_draft_route(
+        organization_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_professional_draft_csrf(request)
+        raw_initial_request = await _read_json_body(request, allow_empty=True)
+        conn = open_connection(resolved_database_url)
+        try:
+            result = create_professional_draft_for_organization(
+                conn, session, organization_id, raw_initial_request
+            )
+        finally:
+            conn.close()
+
+        auth_error = _professional_draft_authorization_error(result.outcome)
+        if auth_error is not None:
+            return auth_error
+        if result.outcome is CreateProfessionalDraftOutcome.INVALID_PAYLOAD:
+            return JSONResponse({"error": "invalid_draft_payload"}, status_code=400)
+        assert result.record is not None
+        return JSONResponse(
+            professional_draft_record_to_public_dict(result.record), status_code=201
+        )
+
+    @app.get("/api/broker/organizations/{organization_id}/drafts/{draft_id}")
+    def get_professional_draft_route(
+        organization_id: str, draft_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            result = get_professional_draft_for_organization(
+                conn, session, organization_id, draft_id
+            )
+        finally:
+            conn.close()
+
+        auth_error = _professional_draft_authorization_error(result.outcome)
+        if auth_error is not None:
+            return auth_error
+        if result.outcome is GetProfessionalDraftOutcome.DRAFT_NOT_FOUND:
+            # Contract §3.3/§7: foreign and unknown draft_id are indistinguishable.
+            raise HTTPException(status_code=404, detail="draft not found")
+        assert result.record is not None
+        return JSONResponse(professional_draft_record_to_public_dict(result.record))
+
+    @app.put("/api/broker/organizations/{organization_id}/drafts/{draft_id}")
+    async def update_professional_draft_route(
+        organization_id: str, draft_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_professional_draft_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        conn = open_connection(resolved_database_url)
+        try:
+            result = update_professional_draft_for_organization(
+                conn, session, organization_id, draft_id, raw_body
+            )
+        finally:
+            conn.close()
+
+        auth_error = _professional_draft_authorization_error(result.outcome)
+        if auth_error is not None:
+            return auth_error
+        if result.outcome is UpdateProfessionalDraftOutcome.INVALID_PAYLOAD:
+            return JSONResponse({"error": "invalid_draft_payload"}, status_code=400)
+        if result.outcome is UpdateProfessionalDraftOutcome.DRAFT_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="draft not found")
+        if result.outcome is UpdateProfessionalDraftOutcome.VERSION_CONFLICT:
+            return JSONResponse({"error": "version_conflict"}, status_code=409)
+        assert result.record is not None
+        return JSONResponse(professional_draft_record_to_public_dict(result.record))
 
     @app.get("/api/owner-direct/drafts")
     def list_owner_direct_drafts_route(request: Request) -> JSONResponse:
