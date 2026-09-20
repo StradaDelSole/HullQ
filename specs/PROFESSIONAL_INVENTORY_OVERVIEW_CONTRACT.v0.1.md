@@ -141,16 +141,29 @@ if other accepted public-read conditions can make the public read unavailable.
 
 DRAFT and WITHDRAWN items must never receive a fabricated public link.
 
-## 9. Deterministic ordering
+## 9. Deterministic ordering and bounded pagination
 
-The inventory response MUST use one deterministic order.
-
-v0.1 default:
+The inventory response MUST use one deterministic order:
 
 ```text
 created_at DESC
 then native_listing_id ASC
 ```
+
+The read MUST be bounded and keyset-paginated rather than loading an unbounded Organization inventory.
+
+v0.1 contract:
+
+- default page size: 50;
+- maximum page size: 100;
+- page size outside the accepted positive range fails validation rather than silently becoming unbounded;
+- continuation uses a server-issued opaque cursor representing the last accepted sort key;
+- continuation preserves the exact Organization filter and deterministic ordering;
+- invalid/malformed cursors fail as a bounded client error and never weaken Organization isolation;
+- response exposes `next_cursor` only when another page exists;
+- no total-count query is required by v0.1.
+
+New listings created after page 1 need not be injected into an already-started continuation sequence; restarting from page 1 obtains the newest current view.
 
 No revenue, payment, performance, freshness urgency, inferred quality or buyer-demand ranking may alter this order.
 
@@ -199,18 +212,25 @@ Authentication/authorization/MFA outcomes remain distinct from:
 
 Service failure MUST NOT be presented as “no listings”.
 
-## 13. No new persistence
+## 13. Persistence and supporting index boundary
 
-SLICE-0060 creates no:
+SLICE-0060 creates no new domain/application persistence:
 
-- inventory table;
-- broker preference row;
-- inventory cache as source of truth;
-- analytics/telemetry event requirement;
-- new marketplace identity;
-- migration.
+- no inventory table;
+- no broker preference row;
+- no inventory cache as source of truth;
+- no analytics/telemetry event requirement;
+- no new marketplace identity.
 
 The read model is a projection over current accepted state.
+
+Because current `native_listings` persistence has no index on `publishing_organization_id`, implementation is expected to add one Alembic-managed supporting B-tree index aligned to the Organization filter and deterministic keyset order, conceptually:
+
+```text
+(publishing_organization_id, created_at DESC, native_listing_id ASC)
+```
+
+The exact PostgreSQL/Alembic spelling may vary if equivalent planner behavior is proved. This index is performance/access-path infrastructure only; it MUST NOT change listing truth, lifecycle, ownership or identity semantics.
 
 ## 14. Broker mandatory-register boundary
 
@@ -241,6 +261,9 @@ At minimum cover:
 
 - zero-listing Organization;
 - multiple listings in deterministic order;
+- page-size bounds;
+- multi-page keyset continuation with no duplicate/cross-Organization item;
+- malformed cursor rejection;
 - DRAFT item;
 - ACTIVE item;
 - WITHDRAWN item;
@@ -265,13 +288,15 @@ A deterministic PostgreSQL + FastAPI + built Astro proof MUST demonstrate at min
 
 1. one authenticated Account with an authorized Organization;
 2. a second Organization not authorized to that Account or separate from the selected Organization;
-3. selected Organization owns at least DRAFT, ACTIVE and WITHDRAWN representative NativeListings;
+3. selected Organization owns enough representative NativeListings to exercise at least two pages, including DRAFT, ACTIVE and WITHDRAWN states;
 4. another Organization owns a listing that never appears in selected inventory;
-5. lifecycle/offer/freshness facts are current;
-6. public link exists only for the item accepted by current public read;
-7. revoked/unauthorized access fails closed;
-8. empty authorized Organization is distinct from unauthorized/service failure;
-9. finish with:
+5. keyset continuation returns deterministic non-overlapping pages and never escapes the Organization filter;
+6. lifecycle/offer/freshness facts are current;
+7. public link exists only for the item accepted by current public read;
+8. revoked/unauthorized access fails closed;
+9. empty authorized Organization is distinct from unauthorized/service failure;
+10. the supporting Organization/sort-key index exists after migration;
+11. finish with:
 
 ```text
 PROFESSIONAL INVENTORY OVERVIEW RESULT -> PASS
