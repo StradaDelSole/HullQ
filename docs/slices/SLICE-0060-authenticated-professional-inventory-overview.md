@@ -207,7 +207,7 @@ One Alembic supporting index on the Organization filter + deterministic sort key
 - [ ] Service failure remains distinct from authorized empty inventory.
 - [ ] Inventory page is `noindex` and `private, no-store`.
 - [ ] No inventory view action mutates listing/lifecycle/offer/freshness/membership state.
-- [ ] No new inventory persistence/table/migration is introduced.
+- [ ] No new inventory domain persistence/table/column is introduced; the only schema change is the accepted supporting read-path index migration.
 - [ ] Broker mandatory requirement statuses remain unchanged.
 - [ ] Owner-direct workspace behavior remains unchanged.
 - [ ] Search/public buyer behavior remains unchanged.
