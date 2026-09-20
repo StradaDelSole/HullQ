@@ -1,0 +1,195 @@
+---
+// SLICE-0061: the private professional Organization listing-draft
+// collection surface (contract §9). An authenticated Account whose exact
+// current matching ACTIVE OrganizationMembership contains `PUBLISHER` may
+// list and start drafts here; this page never creates/mutates any
+// PhysicalBoat/MarketEpisode/NativeListing state and never exposes a
+// Publish/Withdraw/Reconfirm/media action.
+//
+// unauthenticated             -> login path
+// unknown/unauthorized org    -> ordinary not-found (non-enumerating,
+//                                identical to the existing Organization
+//                                workspace landing's own boundary)
+// privileged membership,
+//   no validated MFA          -> blocked/step-up prompt
+// active membership,
+//   no PUBLISHER role         -> distinct "not authorized to author
+//                                drafts" state (the Account already knows
+//                                its own roles via the workspace landing)
+// authorized                  -> list this Organization's own drafts, and
+//                                a "Start a draft" action
+//
+// The POST handler below is the SLICE-0061 contract §8 CSRF proxy for
+// "start a draft": the browser's own form submission is same-origin to
+// this Astro page, and this frontmatter is the only thing that ever calls
+// FastAPI's state-changing professional-draft endpoint (see
+// professionalDraftApi.ts's module docstring for why that boundary must
+// forward the browser's real Origin rather than substitute a trusted one).
+export const prerender = false;
+
+import {
+  createProfessionalDraft,
+  fetchProfessionalDrafts,
+} from "../../../../../lib/professionalDraftApi";
+import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../../../lib/authConstants";
+
+const organizationId = Astro.params.organization_id ?? "";
+const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
+const cookieHeader = Astro.request.headers.get("cookie");
+const originHeader = Astro.request.headers.get("origin");
+// Contract §9: bounded pagination on the browser collection surface. This
+// opaque cursor is never decoded/reinterpreted here -- it is read from the
+// browser's own query string and forwarded unchanged to FastAPI (via
+// `fetchProfessionalDrafts`), exactly mirroring the accepted SLICE-0060
+// `inventory.astro` cursor-forwarding discipline.
+const cursor = Astro.url.searchParams.get("cursor") ?? undefined;
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+// This page renders one signed-in Account's own authorized Organization
+// drafts: never reusable by a browser/shared cache across Accounts or
+// after logout (same boundary already accepted for the Organization
+// workspace landing and inventory overview).
+Astro.response.headers.set("Cache-Control", "private, no-store");
+
+let createFailed = false;
+
+if (Astro.request.method === "POST" && organizationId) {
+  const createResult = await createProfessionalDraft(
+    apiBaseUrl,
+    organizationId,
+    cookieHeader,
+    originHeader,
+  );
+  if (createResult.kind === "ok") {
+    return Astro.redirect(
+      `/broker/organizations/${encodeURIComponent(organizationId)}/drafts/${encodeURIComponent(
+        createResult.data.draft_id,
+      )}`,
+      303,
+    );
+  }
+  if (createResult.kind === "invalid") {
+    createFailed = true;
+  }
+  // Every other create outcome falls through to the ordinary GET rendering
+  // below, which independently resolves to the identical state.
+}
+
+const result = organizationId
+  ? await fetchProfessionalDrafts(apiBaseUrl, organizationId, cookieHeader, { cursor })
+  : ({ kind: "not_found" } as const);
+
+if (result.kind === "not_found") {
+  Astro.response.status = 404;
+} else if (result.kind === "mfa_required") {
+  Astro.response.status = 403;
+} else if (result.kind === "publisher_role_required") {
+  Astro.response.status = 403;
+} else if (result.kind === "invalid_cursor") {
+  Astro.response.status = 400;
+} else if (result.kind === "service_error") {
+  Astro.response.status = 503;
+}
+
+const nextPath = `/broker/organizations/${organizationId}/drafts`;
+const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(nextPath)}`;
+const stepUpUrl = `${loginUrl}&acr_values=${encodeURIComponent(AUTH0_MFA_STEP_UP_ACR_VALUE)}`;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>HullQ Broker Workspace — Listing Drafts</title>
+  </head>
+  <body>
+    <main>
+      <h1>Professional listing drafts</h1>
+      <p>
+        <strong>Draft &mdash; not public.</strong> Nothing here is listed, verified or visible in
+        Search.
+      </p>
+      {
+        result.kind === "unauthenticated" ? (
+          <p>
+            Please <a href={loginUrl}>log in</a> to view or start a draft.
+          </p>
+        ) : result.kind === "not_found" ? (
+          <>
+            <h2>Not found</h2>
+            <p>This Organization draft workspace is not available.</p>
+          </>
+        ) : result.kind === "mfa_required" ? (
+          <>
+            <h2>Additional verification required</h2>
+            <p>This Organization membership requires multi-factor authentication.</p>
+            <a href={stepUpUrl}>Verify and continue</a>
+          </>
+        ) : result.kind === "publisher_role_required" ? (
+          <>
+            <h2>Not authorized to author drafts</h2>
+            <p>
+              Your current membership in this Organization does not include the PUBLISHER role
+              required to create or edit listing drafts.
+            </p>
+          </>
+        ) : result.kind === "invalid_cursor" ? (
+          <>
+            <h2>Invalid draft list link</h2>
+            <p>
+              This draft list continuation link isn't valid. Return to{" "}
+              <a href={`/broker/organizations/${organizationId}/drafts`}>the first page</a>.
+            </p>
+          </>
+        ) : result.kind === "service_error" ? (
+          <>
+            <h2>Drafts temporarily unavailable</h2>
+            <p>Something went wrong loading this Organization's drafts. Please try again.</p>
+          </>
+        ) : (
+          <>
+            <p>
+              <a href={`/broker/organizations/${organizationId}`}>Back to workspace</a>
+            </p>
+            {createFailed && <p>Could not start a new draft. Please try again.</p>}
+            {result.data.drafts.length === 0 ? (
+              <p>This Organization has no drafts yet.</p>
+            ) : (
+              <ul>
+                {result.data.drafts.map((draft) => (
+                  <li>
+                    <a
+                      href={`/broker/organizations/${organizationId}/drafts/${encodeURIComponent(
+                        draft.draft_id,
+                      )}`}
+                    >
+                      {draft["physical_boat.boat_name"] ??
+                        draft.broker_listing_reference ??
+                        draft.draft_id}{" "}
+                      (v{draft.version})
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {result.data.next_cursor ? (
+              <p>
+                <a
+                  href={`/broker/organizations/${organizationId}/drafts?cursor=${encodeURIComponent(
+                    result.data.next_cursor,
+                  )}`}
+                >
+                  Next page
+                </a>
+              </p>
+            ) : null}
+            <form method="POST">
+              <button type="submit">Start a draft</button>
+            </form>
+          </>
+        )
+      }
+    </main>
+  </body>
+</html>

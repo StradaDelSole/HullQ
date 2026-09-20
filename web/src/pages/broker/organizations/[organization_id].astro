@@ -86,6 +86,11 @@ const stepUpUrl = `${loginUrl}&acr_values=${encodeURIComponent(AUTH0_MFA_STEP_UP
                 View inventory
               </a>
             </p>
+            <p>
+              <a href={`/broker/organizations/${result.data.organization_id}/drafts`}>
+                Listing drafts
+              </a>
+            </p>
           </>
         )
       }
