@@ -12,7 +12,7 @@
 
 This contract adds one professional Broker Workspace capability:
 
-> A currently authorized publishing-capable Account may create, list, reopen, read and update private incomplete professional listing drafts owned by one explicitly selected professional Organization.
+> A currently workspace-authorized Account whose exact current matching ACTIVE OrganizationMembership contains `PUBLISHER` may create, list, reopen, read and update private incomplete professional listing drafts owned by one explicitly selected professional Organization.
 
 The draft is pre-market workflow state.
 
@@ -61,17 +61,19 @@ For list/read/create/update:
 1. validate the current HullQ signed session;
 2. load current requested Organization and current OrganizationMembership from PostgreSQL;
 3. apply existing Broker Workspace non-enumeration and MFA behavior;
-4. evaluate the existing professional publishing-eligibility boundary for the current Account + Organization + Membership;
-5. only if that decision is ALLOWED may the draft operation continue.
+4. require `PUBLISHER` in that exact current matching ACTIVE membership for draft-authoring actions;
+5. do **not** require `OrganizationPublishingEligibility == ELIGIBLE` for private pre-market draft authoring;
+6. only then may the draft operation continue.
 
 This deliberately reuses current accepted semantics including:
 
 - matching Account;
 - matching Organization;
 - ACTIVE membership;
-- `PUBLISHER` role;
-- eligible/verified Organization;
+- `PUBLISHER` role for draft authoring;
 - MFA where required by the existing Broker Workspace access boundary.
+
+The existing `evaluate_native_listing_publishing_eligibility()` MUST NOT be repurposed as the private-draft permission decision. Its normative contract answers whether an Account may publish a public `NativeListing`, and therefore includes the Organization publishing-eligibility gate. For 0061, `ELIGIBLE`, `UNVERIFIED` and `INELIGIBLE` publishing states do not alter whether already-authorized `PUBLISHER` members may retain private draft work. Any later draft-to-marketplace promotion/publication capability MUST re-apply the accepted public NativeListing publishing-eligibility decision and fail closed when it is not ALLOWED.
 
 No new role or provider claim becomes an authorization input.
 
@@ -321,10 +323,10 @@ At minimum cover:
 ### Authorization / tenant isolation
 
 - unauthenticated request;
-- authorized active publishing-capable membership;
+- authorized ACTIVE membership with `PUBLISHER`;
 - missing/inactive membership;
 - active membership without `PUBLISHER`;
-- publishing-ineligible/unverified Organization;
+- `UNVERIFIED`/`INELIGIBLE` publishing state does not destroy private draft-authoring capability but remains non-publishable under the existing public NativeListing contract;
 - privileged membership without MFA;
 - membership/role revocation after prior login;
 - cross-Organization draft access attempt;
@@ -368,7 +370,7 @@ Prove draft operations create/mutate none of the marketplace truth tables/states
 
 One deterministic PostgreSQL 18 + FastAPI + built Astro proof must demonstrate at minimum:
 
-1. real OIDC/session login for an authorized publishing-capable Account;
+1. real OIDC/session login for a workspace-authorized Account whose current membership contains `PUBLISHER`;
 2. selected Organization creates a private draft;
 3. partial draft survives reload/list/read;
 4. valid update increments version;
@@ -392,7 +394,7 @@ CI must execute the retained proof in the normal PostgreSQL/web integration path
 
 Not part of v0.1 / SLICE-0061:
 
-- professional draft promotion to marketplace identities;
+- professional draft promotion to marketplace identities (which must re-apply public NativeListing publishing eligibility);
 - NativeListing edit;
 - publish/withdraw/reconfirm controls;
 - client-side/offline connectivity recovery;
@@ -416,7 +418,7 @@ Accepted v0.1 boundary:
 ```text
 current signed Account
 → current explicit Organization authorization
-→ current professional publishing eligibility
+→ current matching ACTIVE membership + `PUBLISHER` draft-authoring role gate
 → Organization-owned ProfessionalListingDraft
 → private partial save/resume/update with optimistic versioning
 → no marketplace promotion
