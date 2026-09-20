@@ -4,14 +4,14 @@
 **Type:** IMPLEMENTATION  
 **Status:** READY  
 **Stage:** Broker Workspace — private professional listing draft foundation  
-**Depends on:** SLICE-0053 authenticated Broker Workspace access; SLICE-0054 private draft pattern; SLICE-0060 professional Organization inventory surface; accepted professional publishing-eligibility boundary  
+**Depends on:** SLICE-0053 authenticated Broker Workspace access; SLICE-0054 private draft pattern; SLICE-0060 professional Organization inventory surface; accepted membership-role and public NativeListing publishing-eligibility boundaries  
 **Blocks:** later professional draft promotion/publish/edit/media/recovery work only; no later slice is automatically authorized
 
 ## Objective
 
 Deliver exactly one professional capability:
 
-> A currently authorized publishing-capable HullQ Account can create, list, reopen, read and update private incomplete listing drafts owned by one explicitly selected professional Organization, without creating marketplace truth.
+> A currently workspace-authorized HullQ Account whose exact current matching ACTIVE OrganizationMembership contains `PUBLISHER` can create, list, reopen, read and update private incomplete listing drafts owned by one explicitly selected professional Organization, without creating marketplace truth.
 
 ## Product execution checks
 
@@ -19,13 +19,13 @@ Deliver exactly one professional capability:
 One capability only: private Organization-owned professional listing draft workspace.
 
 **VISIBLE-RESULT CHECK:** PASS  
-The Project Owner can authenticate as a publishing-capable Organization member, create a partial draft, leave/reopen it, update it with version protection, observe a stale-save conflict, and verify that another Organization cannot access it and no NativeListing/PhysicalBoat/MarketEpisode/public Search state was created.
+The Project Owner can authenticate as a current Organization `PUBLISHER`, create a partial draft, leave/reopen it, update it with version protection, observe a stale-save conflict, and verify that another Organization cannot access it and no NativeListing/PhysicalBoat/MarketEpisode/public Search state was created.
 
 **PRODUCT EXECUTION PLAN ALIGNMENT:** PASS  
 SLICE-0060 gave brokers factual inventory visibility but no safe self-service creation path. 0061 introduces the smallest private pre-market write boundary required before any promotion/publish/media workflow.
 
 **REPOSITORY RECONCILIATION CHECK:** PASS  
-Current Broker Workspace authorization/MFA, professional publishing eligibility, NativeListing immutable creation envelope, owner-direct draft identity/persistence/CSRF/concurrency pattern, shared Seller Platform direction, mandatory broker register, owner-direct mixed-supply direction and trigger gates were inspected.
+Current Broker Workspace authorization/MFA, membership-role semantics, the publication-specific professional publishing-eligibility contract, NativeListing immutable creation envelope, owner-direct draft identity/persistence/CSRF/concurrency pattern, shared Seller Platform direction, mandatory broker register, owner-direct mixed-supply direction and trigger gates were inspected.
 
 **TRIGGER GATES CHECK:** PASS  
 Production Readiness remains `NOT_TRIGGERED`; Broker Workspace Launch Gate remains `NOT_READY`; workflow reassessment remains `PASS`; 0061 adds no Search criterion, external production data, pilot, paid plan or launch.
@@ -36,11 +36,11 @@ Production Readiness remains `NOT_TRIGGERED`; Broker Workspace Launch Gate remai
 
 **Production implementation checked:** `src/hullq/domain/publishing_eligibility.py`; `src/hullq/domain/owner_direct_draft.py`; `src/hullq/application/owner_direct_draft.py`; `src/hullq/persistence/owner_direct_draft.py`; `src/hullq/application/listing_intake.py`; `src/hullq/persistence/native_listing.py`; `src/hullq/application/broker_inventory_read.py`; `src/hullq/api/app.py`; relevant Astro broker/owner-direct surfaces, tests, migrations and retained proofs.
 
-**Already implemented / not re-decided:** authentication/account mapping; Organization/Membership/role authorization; MFA; publishing-eligibility evaluator; owner-direct private draft identity/concurrency/CSRF; immutable professional NativeListing creation envelope; lifecycle/offer/freshness/public-read truth; professional inventory read surface.
+**Already implemented / not re-decided:** authentication/account mapping; Organization/Membership/role authorization; MFA; publication-specific publishing-eligibility evaluator; owner-direct private draft identity/concurrency/CSRF; immutable professional NativeListing creation envelope; lifecycle/offer/freshness/public-read truth; professional inventory read surface.
 
 **Exact remaining gap:** the professional Organization workspace cannot safely start and persist incomplete listing work before NativeListing creation.
 
-**Accepted-but-unimplemented obligations:** REQ-BROKER-003/004 require resumable low-friction professional listing creation/editing. 0061 implements only the private server-persisted draft foundation, not publication/media/offline-recovery.
+**Accepted-but-unimplemented obligations:** REQ-BROKER-003/004 require resumable low-friction professional listing creation/editing. 0061 implements only the private server-persisted draft foundation with a current `PUBLISHER` authoring-role gate, not public NativeListing publishing eligibility, publication/media/offline-recovery.
 
 **Material classifications:** `DECIDED_AND_IMPLEMENTED` auth/authorization + marketplace truth + owner-direct draft pattern; `DECIDED_NOT_YET_IMPLEMENTED` Organization-owned professional private draft workspace; `EXPLICITLY_DEFERRED` promotion/publish/media/offline recovery/leads/analytics and other listed capabilities; `GENUINELY_OPEN` future promotion transaction, future single-table vs channel-specific Seller draft storage, later clone/relist and local recovery/sync design; `CONFLICT_OR_REGRESSION` none found.
 
@@ -94,7 +94,8 @@ The owner-direct draft implementation proves a safe private pre-market pattern, 
 - Organization-owned private professional draft persistence;
 - creator Account audit field;
 - current Broker Workspace authorization reuse;
-- current professional publishing-eligibility reuse;
+- current ACTIVE matching membership + `PUBLISHER` role gate for private draft authoring;
+- preservation of the separate public NativeListing publishing-eligibility gate for later promotion/publication;
 - existing MFA/non-enumeration behavior;
 - create/list/read/update draft APIs;
 - empty/partial drafts;
@@ -134,11 +135,11 @@ The owner-direct draft implementation proves a safe private pre-market pattern, 
 
 ## Required behavior
 
-### A. Current authorization and publishing eligibility
+### A. Current authorization and draft-authoring role
 
 Every draft request must reuse current signed session + current OrganizationMembership truth and current Broker Workspace MFA/non-enumeration behavior.
 
-After workspace access succeeds, use the accepted professional publishing-eligibility decision. Do not invent a second write-role policy.
+After workspace access succeeds, require `PUBLISHER` in the exact current matching ACTIVE membership for draft-authoring actions. Do not require `OrganizationPublishingEligibility == ELIGIBLE` merely to retain private pre-market draft work. The accepted `evaluate_native_listing_publishing_eligibility()` remains publication-specific and must be re-applied only by a later capability that promotes/creates public marketplace truth.
 
 ### B. Organization ownership
 
@@ -199,10 +200,11 @@ Draft operations create/mutate no PhysicalBoat, MarketEpisode, NativeListing, of
 ## Acceptance criteria
 
 - [ ] Unauthenticated draft access is blocked.
-- [ ] Current authorized publishing-capable member can create a draft.
+- [ ] Current workspace-authorized ACTIVE member with `PUBLISHER` can create a draft.
 - [ ] Missing/inactive membership fails closed.
-- [ ] Membership without `PUBLISHER` fails through the existing eligibility boundary.
-- [ ] Publishing-ineligible/unverified Organization fails closed.
+- [ ] Membership without `PUBLISHER` cannot author professional drafts.
+- [ ] `UNVERIFIED` or `INELIGIBLE` Organization publishing state does not erase private draft-authoring capability.
+- [ ] No 0061 path weakens or bypasses the accepted public NativeListing publishing-eligibility gate for later promotion/publication.
 - [ ] Privileged membership without MFA remains blocked.
 - [ ] Revocation/role change affects the next request.
 - [ ] Other-Organization draft is never observable or mutable.
@@ -270,7 +272,7 @@ Stop and report instead of inventing a solution if:
 
 - implementation would reuse `OwnerDirectListingDraftId` as the professional identity;
 - implementation would use NativeListing as incomplete draft storage;
-- authorization cannot reuse current membership/MFA + accepted publishing eligibility;
+- authorization cannot reuse current membership/MFA and exact-current `PUBLISHER` role semantics;
 - a new role vocabulary is proposed;
 - owner-direct ownership or API semantics would change;
 - draft updates would not be optimistic-concurrency protected;
