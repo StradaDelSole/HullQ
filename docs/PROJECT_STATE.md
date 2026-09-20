@@ -3,9 +3,9 @@
 <!-- PROJECT_STATE_ACCEPTED_SLICE: 0059 -->
 <!-- PROJECT_STATE_QUEUE_SLICE: 0060 -->
 
-**Updated:** 2026-09-19  
+**Updated:** 2026-09-20  
 **Latest owner-accepted / DONE slice:** SLICE-0059  
-**Current queue:** SLICE-0060 — **UNSELECTED pending fresh post-SLICE-0059 repository/product reassessment**; no SLICE-0060 capability, readiness package or implementation start is authorized yet.  
+**Current queue:** SLICE-0060 — **Authenticated Professional Inventory Overview**; post-SLICE-0059 repository/product reassessment and readiness are prepared on the existing Account/Organization/Membership plus NativeListing current-truth boundary. Implementation remains unauthorized until independent exact-head readiness review/CI and readiness merge to `main`.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -213,7 +213,7 @@ The SLICE-0053 same-host session-topology invariant remains in force for browser
 
 Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; broker inventory workflow, branding/media and resilient drafts; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-SLICE-0059 is owner-accepted and merged. No SLICE-0060 capability has been selected or allocated. Fresh post-SLICE-0059 repository/product reassessment is required before any SLICE-0060 readiness decision.
+SLICE-0059 is owner-accepted and merged. Post-SLICE-0059 repository/product reconciliation selects SLICE-0060 Authenticated Professional Inventory Overview as the next bounded capability. No implementation is authorized until its readiness package is independently accepted and merged.
 
 ## Next capability selection
 
@@ -223,13 +223,17 @@ Next queue number:
 SLICE-0060
 ```
 
-**Capability:** UNSELECTED.
+**Selected capability:** Authenticated Professional Inventory Overview.
 
-Queue number alone does not select or authorize a capability.
+Selection record: `docs/POST_SLICE_0059_REASSESSMENT_2026-09-20.md`.
 
-Before any SLICE-0060 readiness preparation or implementation start, perform fresh post-SLICE-0059 repository/product reassessment and Decision / Implementation Reconciliation against canonical `origin/main`, including relevant product, broker, owner-direct, Search, shortlist/Compare/decision-tool, governance, architecture and production implementation state.
+Readiness artifact: `docs/slices/SLICE-0060-authenticated-professional-inventory-overview.md`.
 
-No SLICE-0060 readiness package exists or is authorized by the SLICE-0059 closure. Do not run `START_SLICE.bat` for SLICE-0060 until a separately reviewed readiness package is READY ON MAIN.
+Normative bounded contract: `specs/PROFESSIONAL_INVENTORY_OVERVIEW_CONTRACT.v0.1.md`.
+
+The capability lets an authenticated Account inspect the current NativeListing inventory belonging to one explicitly authorized professional Organization, including lifecycle, current offer/freshness facts and current public-link availability, without introducing listing mutation, new marketplace truth or new persistence.
+
+Implementation remains unauthorized until the readiness package passes independent exact-head review/CI and is merged to canonical `main`; only then may the Project Owner run `START_SLICE.bat`.
 
 ## Development workflow
 
@@ -244,6 +248,6 @@ No SLICE-0060 readiness package exists or is authorized by the SLICE-0059 closur
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; after SLICE-0059 closure, SLICE-0060 remains unselected until fresh post-SLICE-0059 reassessment/readiness work is separately reviewed and merged.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0060 Authenticated Professional Inventory Overview is selected/readied but may not start until independent readiness review/CI and readiness merge are complete.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
