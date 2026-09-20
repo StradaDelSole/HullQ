@@ -23,6 +23,7 @@ from __future__ import annotations
 import base64
 import binascii
 import json
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
@@ -157,24 +158,69 @@ class InventoryReadResult:
 # ---------------------------------------------------------------------------
 
 
+#: Every cursor this module mints is built purely from `_cursor_b64url_encode`,
+#: which never emits '=' padding or any character outside the base64url
+#: alphabet -- so a genuine cursor always matches this exactly.
+_CURSOR_SEGMENT_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
+def _cursor_b64url_encode(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+
+def _cursor_b64url_decode(text: str) -> bytes:
+    """Strictly decode one unpadded base64url cursor segment.
+
+    Mirrors `hullq.security.preview_token._b64url_decode` /
+    `hullq.security.session_token._b64url_decode`. Two distinct non-
+    canonical-input problems must both be rejected, not just one:
+
+    1. `base64.b64decode`/`urlsafe_b64decode` with the default
+       `validate=False` silently *discards* any character outside the
+       base64 alphabet before decoding rather than rejecting it -- so
+       without this, a server-issued cursor with illegal characters
+       appended (e.g. `"<valid_cursor>!!"`) can decode to the identical
+       bytes as the original cursor and be wrongly accepted. Contract §9
+       requires invalid/malformed cursors to fail as a bounded client
+       error, never be silently normalized away. Rejecting non-alphabet
+       characters via `_CURSOR_SEGMENT_RE` first, then decoding with
+       `validate=True` too, closes that.
+    2. Even with only alphabet-valid characters, a base64 group whose byte
+       count isn't a multiple of 3 has a final character encoding some
+       "don't-care" trailing bits that carry no information, so several
+       distinct alphabet-valid strings could decode to the identical
+       bytes. Re-encoding the decoded bytes and requiring an exact match
+       against *text* rejects any such non-canonical alias -- only the one
+       canonical encoding of a given byte string is ever accepted.
+    """
+    if not text or not _CURSOR_SEGMENT_RE.fullmatch(text):
+        raise InvalidInventoryCursorError("cursor is not strict, canonical, unpadded base64url")
+    padded = text + ("=" * ((-len(text)) % 4))
+    try:
+        decoded = base64.b64decode(padded.encode("ascii"), altchars=b"-_", validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise InvalidInventoryCursorError("malformed cursor encoding") from exc
+    if _cursor_b64url_encode(decoded) != text:
+        raise InvalidInventoryCursorError(
+            "cursor is not the canonical base64url encoding of its bytes"
+        )
+    return decoded
+
+
 def _encode_cursor(key: InventorySortKey) -> str:
     payload = {
         "created_at": key.created_at.isoformat(),
         "native_listing_id": key.native_listing_id.value,
     }
     raw = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
-    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
+    return _cursor_b64url_encode(raw)
 
 
 def _decode_cursor(cursor: str) -> InventorySortKey:
     if not isinstance(cursor, str) or not cursor:
         raise InvalidInventoryCursorError("cursor must be a non-empty string")
 
-    padded = cursor + "=" * (-len(cursor) % 4)
-    try:
-        raw = base64.urlsafe_b64decode(padded.encode("ascii"))
-    except (binascii.Error, ValueError) as exc:
-        raise InvalidInventoryCursorError("malformed cursor encoding") from exc
+    raw = _cursor_b64url_decode(cursor)
 
     try:
         payload = json.loads(raw.decode("utf-8"))

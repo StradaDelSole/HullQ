@@ -44,6 +44,24 @@ def test_malformed_cursor_fails_closed(raw: str) -> None:
         _decode_cursor(raw)
 
 
+def test_valid_cursor_with_appended_illegal_characters_is_rejected() -> None:
+    """Regression: independent review 2026-09-20 (exact-head fe9df4b) found
+    that a permissive base64url decoder (`base64.urlsafe_b64decode` with its
+    default `validate=False`) silently discards characters outside the
+    base64 alphabet rather than rejecting them -- so a genuine server-issued
+    cursor with `!!` appended could decode to the identical bytes as the
+    original and be wrongly accepted. Contract §9 requires this to fail
+    closed as a bounded client error, never be silently normalized away."""
+    key = InventorySortKey(
+        created_at=datetime(2026, 3, 1, 12, 30, 0, tzinfo=UTC),
+        native_listing_id=NativeListingId("NL-CURSOR-2"),
+    )
+    valid_cursor = _encode_cursor(key)
+    mutated_cursor = f"{valid_cursor}!!"
+    with pytest.raises(InvalidInventoryCursorError):
+        _decode_cursor(mutated_cursor)
+
+
 def test_cursor_with_naive_datetime_fails_closed() -> None:
     import base64
     import json

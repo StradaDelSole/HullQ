@@ -108,9 +108,11 @@ WEB_ENTRYPOINT = WEB_DIR / "dist" / "server" / "entry.mjs"
 _ORG_A_ID = "ORG-0060-A"
 _ORG_B_ID = "ORG-0060-B"
 _ORG_EMPTY_ID = "ORG-0060-EMPTY"
+_ORG_XSS_ID = "ORG-0060-XSS"
 _NEVER_SEEDED_ORG_ID = "ORG-0060-NEVER-CREATED"
 _SUBJECT = "inv-0060-subject"
 _OTHER_SUBJECT = "inv-0060-other-subject"
+_MALICIOUS_BROKER_REFERENCE = "<script>alert('xss')</script>"
 
 
 def _base_db_url() -> str:
@@ -402,9 +404,11 @@ def main() -> int:
             org_a = _org(_ORG_A_ID)
             org_b = _org(_ORG_B_ID)
             org_empty = _org(_ORG_EMPTY_ID)
+            org_xss = _org(_ORG_XSS_ID)
             seed_marketplace_organization(conn, org_a)
             seed_marketplace_organization(conn, org_b)
             seed_marketplace_organization(conn, org_empty)
+            seed_marketplace_organization(conn, org_xss)
 
             account = AccountId(account_id)
             membership_a = _membership("OM-0060-A", account, org_a, role=MembershipRole.PUBLISHER)
@@ -414,9 +418,29 @@ def main() -> int:
             membership_b_other = _membership(
                 "OM-0060-B-OTHER", other_account_id, org_b, role=MembershipRole.PUBLISHER
             )
+            membership_xss = _membership(
+                "OM-0060-XSS", account, org_xss, role=MembershipRole.PUBLISHER
+            )
             seed_organization_membership(conn, membership_a)
             seed_organization_membership(conn, membership_empty)
             seed_organization_membership(conn, membership_b_other)
+            seed_organization_membership(conn, membership_xss)
+            conn.commit()
+
+            # ORG_XSS: one DRAFT listing whose broker_listing_reference
+            # carries HTML/script-like text -- the built Astro SSR surface
+            # must render it safely escaped, never as raw/executable markup
+            # (contract §15: "safe rendering of broker reference/current
+            # factual text").
+            xss_result = create_native_listing(
+                conn,
+                account_id=account,
+                candidate_organization=org_xss,
+                membership=membership_xss,
+                listing=NativeListing(id=NativeListingId("NL-0060-XSS")),
+                broker_listing_reference=_MALICIOUS_BROKER_REFERENCE,
+            )
+            assert xss_result.status.value in ("created", "already_exists"), xss_result
             conn.commit()
 
             # ORG_A: DRAFT, ACTIVE (complete + fresh + publicly readable),
@@ -719,6 +743,52 @@ def main() -> int:
         print(
             f"16. built Astro SSR inventory page renders factual state, "
             f"private/no-store/noindex -> {'OK' if step16_ok else 'FAIL'}\n"
+        )
+
+        # 17. safe rendering of an HTML/script-like broker_listing_reference:
+        # the built Astro SSR surface must render it escaped, never as raw/
+        # executable markup, while the listing remains otherwise factually
+        # represented (contract §15).
+        xss_status, _, xss_body = session.get(
+            f"{web_base}/broker/organizations/{_ORG_XSS_ID}/inventory"
+        )
+        xss_page_text = xss_body.decode("utf-8")
+        step17_ok = (
+            xss_status == 200
+            and "NL-0060-XSS" in xss_page_text
+            and _MALICIOUS_BROKER_REFERENCE not in xss_page_text
+            and "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;" in xss_page_text
+        )
+        ok &= step17_ok
+        print(
+            f"17. HTML/script-like broker_listing_reference is rendered safely "
+            f"escaped, never as raw markup -> {'OK' if step17_ok else 'FAIL'}\n"
+        )
+
+        # 18. service/infrastructure failure is presented distinctly from an
+        # authorized empty inventory (contract §12/§15): stop FastAPI while
+        # the built Astro server keeps running, then request the inventory
+        # route again.
+        api_proc.terminate()
+        try:
+            api_proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            api_proc.kill()
+            api_proc.wait(timeout=10)
+        service_down_status, _, service_down_body = session.get(
+            f"{web_base}/broker/organizations/{_ORG_EMPTY_ID}/inventory"
+        )
+        service_down_text = service_down_body.decode("utf-8")
+        step18_ok = (
+            service_down_status == 503
+            and "Inventory temporarily unavailable" in service_down_text
+            and "no listings yet" not in service_down_text
+        )
+        ok &= step18_ok
+        print(
+            f"18. FastAPI unavailable renders a distinct service-failure state "
+            f"(503), never the ordinary empty-inventory state -> "
+            f"{'OK' if step18_ok else 'FAIL'}\n"
         )
 
         # Ordinary logs must never contain the client/session secret.

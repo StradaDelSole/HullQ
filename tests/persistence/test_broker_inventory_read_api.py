@@ -566,6 +566,54 @@ class TestInventoryPagination:
         )
         assert response.status_code == 400
 
+    def test_valid_cursor_with_appended_illegal_characters_is_rejected_by_the_route(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        """Regression: independent review 2026-09-20 (exact-head fe9df4b)
+        found a permissive base64url decode path that could silently accept
+        a genuine server-issued cursor with illegal characters appended
+        (e.g. `<valid_cursor>!!`). The route must reject it as a bounded
+        400, not treat it as the identical original cursor."""
+        org_id = "ORG-INV-CURSOR-MUTATE"
+        account_id = "ACC-INV-CURSOR-MUTATE"
+        _seed_org_and_membership(
+            api_url, org_id=org_id, account_id=account_id, membership_id="OM-INV-CURSOR-MUTATE"
+        )
+        org = _org_domain(org_id)
+        membership = _membership_domain("OM-INV-CURSOR-MUTATE", account_id, org_id)
+        account = AccountId(account_id)
+        conn = psycopg.connect(api_url)
+        try:
+            for listing_id in ("NL-INV-CURMUT-1", "NL-INV-CURMUT-2"):
+                result = create_native_listing(
+                    conn,
+                    account_id=account,
+                    candidate_organization=org,
+                    membership=membership,
+                    listing=NativeListing(id=NativeListingId(listing_id)),
+                )
+                assert result.status.value in ("created", "already_exists")
+            conn.commit()
+        finally:
+            conn.close()
+
+        _log_in(client, account_id)
+        first = client.get(f"/api/broker/organizations/{org_id}/inventory?page_size=1")
+        assert first.status_code == 200
+        valid_cursor = first.json()["next_cursor"]
+
+        mutated = client.get(
+            f"/api/broker/organizations/{org_id}/inventory?page_size=1&cursor={valid_cursor}!!"
+        )
+        assert mutated.status_code == 400
+
+        # The unmutated cursor still works, proving the 400 above is caused
+        # by the appended characters, not some unrelated failure.
+        unmutated = client.get(
+            f"/api/broker/organizations/{org_id}/inventory?page_size=1&cursor={valid_cursor}"
+        )
+        assert unmutated.status_code == 200
+
     def test_keyset_continuation_across_pages_has_no_duplicate_or_cross_organization_row(
         self, client: TestClient, api_url: str
     ) -> None:
