@@ -52,6 +52,7 @@ Production Readiness remains `NOT_TRIGGERED`; Broker Workspace Launch Gate remai
 **Paid broker plan:** NOT_STARTED  
 **Adds technical native Search criterion:** NO  
 **Technical Search criterion ordinal:** NOT_APPLICABLE  
+**Second-criterion bridge comparison:** NOT_APPLICABLE  
 **Third-copy abstraction guard:** NOT_APPLICABLE  
 **Workflow reassessment status:** PASS
 
