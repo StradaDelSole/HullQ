@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0059 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0060 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0060 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0061 -->
 
 **Updated:** 2026-09-20  
-**Latest owner-accepted / DONE slice:** SLICE-0059  
-**Current queue:** SLICE-0060 — **Authenticated Professional Inventory Overview**; post-SLICE-0059 repository/product reassessment and readiness are prepared on the existing Account/Organization/Membership plus NativeListing current-truth boundary. Implementation remains unauthorized until independent exact-head readiness review/CI and readiness merge to `main`.  
+**Latest owner-accepted / DONE slice:** SLICE-0060  
+**Current queue:** SLICE-0061 — **UNSELECTED pending fresh post-SLICE-0060 repository/product reassessment**; no SLICE-0061 capability, readiness package or implementation start is authorized yet.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -38,6 +38,8 @@ Direct technical Search remains the primary low-friction buyer entry point. The 
 ## Accepted provider surfaces
 
 Professional provider direction remains the best-in-class Broker Workspace. SLICE-0053 provides its accepted authentication/account/Organization/Membership/role/MFA access boundary. Auth0 remains authentication-only; HullQ PostgreSQL/domain state owns authorization truth.
+
+SLICE-0060 now adds the first accepted professional inventory read surface: an authenticated Account with current authorized Organization access can inspect only that Organization's current NativeListings with factual lifecycle, current offer, freshness and actual public-link state. The surface is read-only, bounded/keyset-paginated, private/no-store/noindex, and reuses existing FastAPI/domain/persistence truth rather than creating a second inventory model.
 
 SLICE-0054 now adds the first accepted owner-direct provider surface:
 
@@ -123,6 +125,7 @@ SLICE-0040 marketplace identity/truth separation
 → SLICE-0057 buyer-authored one-change Requirement Sensitivity
 → SLICE-0058 anonymous browser-local Shortlist
 → SLICE-0059 anonymous factual whole-Shortlist Compare
+→ SLICE-0060 authenticated professional Organization inventory overview
 ```
 
 Latest closures:
@@ -136,6 +139,7 @@ docs/slices/SLICE-0056-acceptance-closure.md
 docs/slices/SLICE-0057-acceptance-closure.md
 docs/slices/SLICE-0058-acceptance-closure.md
 docs/slices/SLICE-0059-acceptance-closure.md
+docs/slices/SLICE-0060-acceptance-closure.md
 ```
 
 ## Accepted technical Search result
@@ -151,7 +155,7 @@ Accepted public `keel_configuration` values are exactly `FIN`, `FIN_WITH_BULB`, 
 
 The two criteria may be evaluated alone or together as deterministic hard MUST/AND requirements. SLICE-0055 preserves typed criterion/configuration evidence for confirmed match, confirmed non-match and insufficient-data application outcomes while keeping BoatDesign/configuration truth separate from concrete PhysicalBoat/listing truth.
 
-The accepted technical native Search criteria count remains `2`. SLICE-0057 adds no criterion: it re-evaluates one buyer-selected replacement value for an already active accepted criterion through the same Search truth, in one coherent comparison snapshot, and exposes only factual set-difference counts plus the backend-owned canonical alternative Search path. SLICE-0058 likewise adds no Search criterion: it records explicit buyer interest locally by stable `NativeListingId` and re-resolves current public listing truth when viewed. SLICE-0059 adds no Search criterion: it uses that existing explicit Shortlist as the whole Compare set and re-resolves current public listing/PhysicalBoat claim truth into a factual side-by-side matrix without score, winner, recommendation or hidden weighting. Any future criterion #3+ readiness is subject to the accepted third-copy abstraction guard in `docs/governance/POST_0051_TRIGGER_GATES.md`.
+The accepted technical native Search criteria count remains `2`. SLICE-0057 adds no criterion: it re-evaluates one buyer-selected replacement value for an already active accepted criterion through the same Search truth, in one coherent comparison snapshot, and exposes only factual set-difference counts plus the backend-owned canonical alternative Search path. SLICE-0058 likewise adds no Search criterion: it records explicit buyer interest locally by stable `NativeListingId` and re-resolves current public listing truth when viewed. SLICE-0059 adds no Search criterion: it uses that existing explicit Shortlist as the whole Compare set and re-resolves current public listing/PhysicalBoat claim truth into a factual side-by-side matrix without score, winner, recommendation or hidden weighting. SLICE-0060 also adds no Search criterion: it is a private professional Organization inventory projection over accepted NativeListing truth. Any future criterion #3+ readiness is subject to the accepted third-copy abstraction guard in `docs/governance/POST_0051_TRIGGER_GATES.md`.
 
 ## Post-SLICE-0051 trigger gates
 
@@ -174,7 +178,7 @@ BROKER_SELF_SERVICE_PILOT_STATUS: NOT_STARTED
 PAID_BROKER_PLAN_STATUS: NOT_STARTED
 ```
 
-SLICE-0059 used internal/synthetic retained proof and introduced no real external marketplace production data, production pilot or public production launch. The Production Readiness gate therefore remains untriggered after acceptance. The mandatory post-0056 workflow reassessment remains `PASS`; SLICE-0059 acceptance does not alter that gate. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA/production-readiness rules remain mandatory.
+SLICE-0060 used internal/synthetic retained proof and introduced no real external marketplace production data, broker self-service pilot, production pilot or public production launch. The Production Readiness gate therefore remains untriggered after acceptance. The mandatory post-0056 workflow reassessment remains `PASS`; SLICE-0060 acceptance does not alter that gate. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA/production-readiness rules remain mandatory.
 
 ## Broker Mandatory Capability Register
 
@@ -197,7 +201,7 @@ REQ_BROKER_029_STATUS: PENDING
 REQ_BROKER_030_STATUS: IMPLEMENTED
 ```
 
-SLICE-0059 changes none of these statuses and waives no professional-product obligation. Anonymous factual Compare is buyer decision-support over explicitly shortlisted current listings only and does not itself implement broker Search-exclusion intelligence, engagement reporting or demand insight.
+SLICE-0060 changes none of these statuses and waives no professional-product obligation. It adds foundational Organization inventory visibility only; REQ-BROKER-023 branding and REQ-BROKER-024 connectivity-resilient draft recovery remain PENDING, and the Broker Workspace Launch Gate remains NOT_READY.
 
 ## Architecture and production direction
 
@@ -211,29 +215,25 @@ The SLICE-0053 same-host session-topology invariant remains in force for browser
 
 ## What remains unbuilt
 
-Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; broker inventory workflow, branding/media and resilient drafts; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
+Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; broker inventory create/edit workflow, branding/media and resilient drafts; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-SLICE-0059 is owner-accepted and merged. Post-SLICE-0059 repository/product reconciliation selects SLICE-0060 Authenticated Professional Inventory Overview as the next bounded capability. No implementation is authorized until its readiness package is independently accepted and merged.
+SLICE-0060 is owner-accepted and merged. No SLICE-0061 capability has been selected or allocated. Fresh post-SLICE-0060 repository/product reassessment is required before any SLICE-0061 readiness decision.
 
 ## Next capability selection
 
 Next queue number:
 
 ```text
-SLICE-0060
+SLICE-0061
 ```
 
-**Selected capability:** Authenticated Professional Inventory Overview.
+**Capability:** UNSELECTED.
 
-Selection record: `docs/POST_SLICE_0059_REASSESSMENT_2026-09-20.md`.
+Queue number alone does not select or authorize a capability.
 
-Readiness artifact: `docs/slices/SLICE-0060-authenticated-professional-inventory-overview.md`.
+Before any SLICE-0061 readiness preparation or implementation start, perform fresh post-SLICE-0060 repository/product reassessment and Decision / Implementation Reconciliation against canonical `origin/main`, including relevant product, broker, owner-direct, Search, buyer-decision-tool, governance, architecture and production implementation state.
 
-Normative bounded contract: `specs/PROFESSIONAL_INVENTORY_OVERVIEW_CONTRACT.v0.1.md`.
-
-The capability lets an authenticated Account inspect the current NativeListing inventory belonging to one explicitly authorized professional Organization, including lifecycle, current offer/freshness facts and current public-link availability, without introducing listing mutation, new marketplace truth or new persistence.
-
-Implementation remains unauthorized until the readiness package passes independent exact-head review/CI and is merged to canonical `main`; only then may the Project Owner run `START_SLICE.bat`.
+No SLICE-0061 readiness package exists or is authorized by the SLICE-0060 closure. Do not run `START_SLICE.bat` for SLICE-0061 until a separately reviewed readiness package is READY ON MAIN.
 
 ## Development workflow
 
@@ -248,6 +248,6 @@ Implementation remains unauthorized until the readiness package passes independe
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0060 Authenticated Professional Inventory Overview is selected/readied but may not start until independent readiness review/CI and readiness merge are complete.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; after SLICE-0060 closure, SLICE-0061 remains unselected until fresh post-SLICE-0060 reassessment/readiness work is separately reviewed and merged.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
