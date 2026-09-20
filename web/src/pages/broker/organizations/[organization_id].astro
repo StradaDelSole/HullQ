@@ -81,6 +81,11 @@ const stepUpUrl = `${loginUrl}&acr_values=${encodeURIComponent(AUTH0_MFA_STEP_UP
             <p>Professional category: {result.data.professional_category}</p>
             <p>Publishing eligibility: {result.data.publishing_eligibility}</p>
             <p>Roles: {result.data.roles.join(", ")}</p>
+            <p>
+              <a href={`/broker/organizations/${result.data.organization_id}/inventory`}>
+                View inventory
+              </a>
+            </p>
           </>
         )
       }

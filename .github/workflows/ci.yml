@@ -186,6 +186,11 @@ jobs:
           HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
         run: uv run python scripts/inspect_anonymous_factual_shortlist_compare.py
 
+      - name: SLICE-0060 authenticated professional inventory overview real HTTP vertical proof
+        env:
+          HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
+        run: uv run python scripts/inspect_professional_inventory_overview.py
+
       - name: Run benchmark runner against PostgreSQL 18
         env:
           HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test

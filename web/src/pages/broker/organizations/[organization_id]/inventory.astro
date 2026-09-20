@@ -1,0 +1,176 @@
+---
+// SLICE-0060: the first professional Organization inventory overview
+// surface (contract §10/§11/§12). Read-only: this page cannot create, edit,
+// publish, withdraw or reconfirm any listing.
+//
+// unauthenticated             -> login path
+// unknown/unauthorized org    -> ordinary not-found (non-enumerating,
+//                                identical to the existing Organization
+//                                workspace landing's own boundary)
+// privileged membership,
+//   no validated MFA          -> blocked/step-up prompt
+// malformed cursor            -> bounded 400-equivalent recovery state
+// service failure             -> distinct "try again" state, never rendered
+//                                as an empty inventory
+// authorized                  -> factual current DRAFT/ACTIVE/WITHDRAWN
+//                                inventory, current offer/freshness/
+//                                public-link facts, bounded pagination
+//
+// Every fact here comes from FastAPI via `fetchOrganizationInventory`; this
+// page never queries PostgreSQL directly and never infers lifecycle,
+// ownership, offer, freshness or public-link eligibility on its own.
+export const prerender = false;
+
+import { fetchOrganizationInventory } from "../../../../lib/brokerApi";
+import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../../lib/authConstants";
+
+const organizationId = Astro.params.organization_id;
+const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
+const cookieHeader = Astro.request.headers.get("cookie");
+const cursor = Astro.url.searchParams.get("cursor") ?? undefined;
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+// This page renders one signed-in Account's own authorized Organization
+// inventory: never reusable by a browser/shared cache across Accounts or
+// after logout (same boundary already accepted for the Organization
+// workspace landing).
+Astro.response.headers.set("Cache-Control", "private, no-store");
+
+const result = organizationId
+  ? await fetchOrganizationInventory(apiBaseUrl, organizationId, cookieHeader, { cursor })
+  : ({ kind: "not_found" } as const);
+
+if (result.kind === "not_found") {
+  Astro.response.status = 404;
+} else if (result.kind === "mfa_required") {
+  Astro.response.status = 403;
+} else if (result.kind === "invalid_cursor") {
+  Astro.response.status = 400;
+} else if (result.kind === "service_error") {
+  Astro.response.status = 503;
+}
+
+const nextPath = `/broker/organizations/${organizationId ?? ""}/inventory`;
+const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(nextPath)}`;
+const stepUpUrl = `${loginUrl}&acr_values=${encodeURIComponent(AUTH0_MFA_STEP_UP_ACR_VALUE)}`;
+
+function offerText(offer: { kind: string; amount: string | null; currency: string | null }): string {
+  if (offer.kind === "AMOUNT") {
+    return `${offer.amount} ${offer.currency}`;
+  }
+  if (offer.kind === "POA") {
+    return "Price on application";
+  }
+  return "No current offer";
+}
+
+function freshnessText(status: string, lastConfirmedAt: string | null): string {
+  if (lastConfirmedAt === null) {
+    return status;
+  }
+  return `${status} (last confirmed ${lastConfirmedAt})`;
+}
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>HullQ Broker Workspace — Inventory</title>
+  </head>
+  <body>
+    <main>
+      {
+        result.kind === "unauthenticated" ? (
+          <>
+            <h1>Broker Workspace</h1>
+            <p>
+              Please <a href={loginUrl}>log in</a> to access this Organization's inventory.
+            </p>
+          </>
+        ) : result.kind === "not_found" ? (
+          <>
+            <h1>Not found</h1>
+            <p>This Organization inventory is not available.</p>
+          </>
+        ) : result.kind === "mfa_required" ? (
+          <>
+            <h1>Additional verification required</h1>
+            <p>This Organization membership requires multi-factor authentication.</p>
+            <a href={stepUpUrl}>Verify and continue</a>
+          </>
+        ) : result.kind === "invalid_cursor" ? (
+          <>
+            <h1>Invalid inventory link</h1>
+            <p>
+              This inventory continuation link isn't valid. Return to{" "}
+              <a href={`/broker/organizations/${organizationId}/inventory`}>the first page</a>.
+            </p>
+          </>
+        ) : result.kind === "service_error" ? (
+          <>
+            <h1>Inventory temporarily unavailable</h1>
+            <p>Something went wrong loading this Organization's inventory. Please try again.</p>
+          </>
+        ) : (
+          <>
+            <h1>Organization inventory</h1>
+            <p>
+              <a href={`/broker/organizations/${organizationId}`}>Back to workspace</a>
+            </p>
+            {result.data.items.length === 0 ? (
+              <p>This Organization has no listings yet.</p>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Listing</th>
+                    <th>Broker reference</th>
+                    <th>Lifecycle</th>
+                    <th>Current offer</th>
+                    <th>Freshness</th>
+                    <th>Created</th>
+                    <th>Public link</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.data.items.map((item) => (
+                    <tr>
+                      <td>{item.native_listing_id}</td>
+                      <td>{item.broker_listing_reference ?? "—"}</td>
+                      <td>{item.lifecycle_state}</td>
+                      <td>{offerText(item.offer)}</td>
+                      <td>{freshnessText(item.freshness_status, item.last_confirmed_at)}</td>
+                      <td>{item.created_at}</td>
+                      <td>
+                        {item.is_publicly_listed ? (
+                          <a href={`/listings/${encodeURIComponent(item.native_listing_id)}`}>
+                            View public listing
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {result.data.next_cursor ? (
+              <p>
+                <a
+                  href={`/broker/organizations/${organizationId}/inventory?cursor=${encodeURIComponent(
+                    result.data.next_cursor,
+                  )}`}
+                >
+                  Next page
+                </a>
+              </p>
+            ) : null}
+          </>
+        )
+      }
+    </main>
+  </body>
+</html>

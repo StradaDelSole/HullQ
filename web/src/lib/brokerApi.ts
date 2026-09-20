@@ -99,3 +99,88 @@ export async function fetchOrganizationContext(
   const data = (await response.json()) as OrganizationContext;
   return { kind: "ok", data };
 }
+
+// SLICE-0060: the authenticated, Organization-scoped, read-only NativeListing
+// inventory overview. Every fact rendered from this response is exactly what
+// FastAPI decided (contract §11) -- this module never infers lifecycle,
+// offer, freshness or public-link eligibility on its own.
+
+export interface InventoryOffer {
+  kind: "AMOUNT" | "POA" | "NO_CURRENT_OFFER";
+  amount: string | null;
+  currency: string | null;
+}
+
+export interface InventoryItem {
+  native_listing_id: string;
+  lifecycle_state: "DRAFT" | "ACTIVE" | "WITHDRAWN";
+  broker_listing_reference: string | null;
+  created_at: string;
+  offer: InventoryOffer;
+  freshness_status: "CONFIRMED" | "DUE_FOR_CONFIRMATION" | "STALE" | "UNKNOWN";
+  last_confirmed_at: string | null;
+  is_publicly_listed: boolean;
+}
+
+export interface InventoryPage {
+  items: InventoryItem[];
+  next_cursor?: string;
+}
+
+export type OrganizationInventoryResult =
+  | { kind: "unauthenticated" }
+  | { kind: "not_found" }
+  | { kind: "mfa_required" }
+  | { kind: "invalid_cursor" }
+  | { kind: "service_error" }
+  | { kind: "ok"; data: InventoryPage };
+
+/**
+ * Fetch one page of one explicit Organization's NativeListing inventory.
+ * `service_error` (any unexpected non-2xx status, or a network failure)
+ * stays distinct from `ok` with an empty `items` array -- contract §12:
+ * service failure must never be presented as "no listings".
+ */
+export async function fetchOrganizationInventory(
+  apiBaseUrl: string,
+  organizationId: string,
+  cookieHeader: string | null,
+  options?: { cursor?: string; pageSize?: number },
+): Promise<OrganizationInventoryResult> {
+  const base = apiBaseUrl.replace(/\/+$/, "");
+  const params = new URLSearchParams();
+  if (options?.cursor) {
+    params.set("cursor", options.cursor);
+  }
+  if (options?.pageSize) {
+    params.set("page_size", String(options.pageSize));
+  }
+  const query = params.toString();
+  const url =
+    `${base}/api/broker/organizations/${encodeURIComponent(organizationId)}/inventory` +
+    (query ? `?${query}` : "");
+
+  let response: Response;
+  try {
+    response = await fetch(url, { headers: cookieHeaders(cookieHeader), redirect: "manual" });
+  } catch {
+    return { kind: "service_error" };
+  }
+  if (response.status === 401) {
+    return { kind: "unauthenticated" };
+  }
+  if (response.status === 404) {
+    return { kind: "not_found" };
+  }
+  if (response.status === 403) {
+    return { kind: "mfa_required" };
+  }
+  if (response.status === 400) {
+    return { kind: "invalid_cursor" };
+  }
+  if (!response.ok) {
+    return { kind: "service_error" };
+  }
+  const data = (await response.json()) as InventoryPage;
+  return { kind: "ok", data };
+}

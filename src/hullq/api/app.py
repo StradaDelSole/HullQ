@@ -66,6 +66,10 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 
 from hullq.application.broker_callback import CallbackOutcome, complete_login_callback
+from hullq.application.broker_inventory_read import (
+    InventoryReadOutcome,
+    get_organization_inventory_page,
+)
 from hullq.application.broker_login import build_login_redirect
 from hullq.application.broker_workspace_read import (
     OrganizationWorkspaceOutcome,
@@ -898,6 +902,48 @@ def create_app(
             return JSONResponse({"error": "mfa_required"}, status_code=403)
         assert result.context is not None
         return JSONResponse(result.context.to_public_dict())
+
+    @app.get("/api/broker/organizations/{organization_id}/inventory")
+    def broker_organization_inventory(organization_id: str, request: Request) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+
+        raw_page_size = request.query_params.get("page_size")
+        if raw_page_size is not None:
+            try:
+                page_size: int | None = int(raw_page_size)
+            except ValueError:
+                return JSONResponse({"error": "invalid_page_size"}, status_code=400)
+        else:
+            page_size = None
+        cursor = request.query_params.get("cursor")
+
+        conn = open_connection(resolved_database_url)
+        try:
+            result = get_organization_inventory_page(
+                conn,
+                session,
+                MarketplaceOrganizationId(organization_id),
+                page_size=page_size,
+                cursor=cursor,
+                as_of=_current_as_of(),
+            )
+        finally:
+            conn.close()
+
+        if result.outcome is InventoryReadOutcome.NOT_FOUND_OR_DENIED:
+            # Contract §2/§9: unknown Organization and unauthorized
+            # Organization membership must be indistinguishable.
+            raise HTTPException(status_code=404, detail="organization not found")
+        if result.outcome is InventoryReadOutcome.MFA_REQUIRED:
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if result.outcome is InventoryReadOutcome.INVALID_PAGE_SIZE:
+            return JSONResponse({"error": "invalid_page_size"}, status_code=400)
+        if result.outcome is InventoryReadOutcome.INVALID_CURSOR:
+            return JSONResponse({"error": "invalid_cursor"}, status_code=400)
+        assert result.page is not None
+        return JSONResponse(result.page.to_public_dict())
 
     @app.get("/api/owner-direct/drafts")
     def list_owner_direct_drafts_route(request: Request) -> JSONResponse:
