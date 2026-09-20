@@ -34,3 +34,6 @@ dist/
 .idea/
 .DS_Store
 Thumbs.db
+# Local one-click manual browser test harness (developer-only)
+LOCAL_TEST_HULLQ.bat
+LOCAL_TEST_HULLQ.py
