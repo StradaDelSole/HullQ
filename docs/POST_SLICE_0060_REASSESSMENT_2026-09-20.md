@@ -55,7 +55,7 @@ Already decided and implemented; do not reopen:
 - current membership truth is re-read on every Organization workspace request;
 - unknown/unauthorized Organization access remains externally non-enumerating;
 - privileged broker roles retain the accepted MFA requirement;
-- professional publication authority requires the accepted publishing-eligibility decision, including active matching membership, `PUBLISHER` role and eligible/verified Organization;
+- professional **public NativeListing publication** authority requires the accepted publishing-eligibility decision, including active matching membership, `PUBLISHER` role and eligible Organization; that evaluator is explicitly publication-specific and is not a private-draft authorization primitive;
 - `OwnerDirectListingDraftId != NativeListingId != PhysicalBoatId != MarketEpisodeId`;
 - owner-direct drafts are private pre-market state and do not create marketplace truth;
 - NativeListing creation stores an immutable publishing Organization / creator Account / optional MarketEpisode link / broker reference envelope;
@@ -82,7 +82,7 @@ Accepted professional requirements already require:
 
 The selected 0061 subset is:
 
-> for one explicitly selected professional Organization, allow a currently authorized publishing-capable Account to create, list, reopen, read and update private incomplete professional listing drafts with optimistic concurrency, while creating no PhysicalBoat, MarketEpisode, NativeListing, offer revision, lifecycle transition, freshness state or public Search state.
+> for one explicitly selected professional Organization, allow a currently workspace-authorized Account whose current matching ACTIVE membership contains `PUBLISHER` to create, list, reopen, read and update private incomplete professional listing drafts with optimistic concurrency, while creating no PhysicalBoat, MarketEpisode, NativeListing, offer revision, lifecycle transition, freshness state or public Search state.
 
 ### EXPLICITLY_DEFERRED
 
@@ -113,7 +113,7 @@ Remain outside SLICE-0061:
 
 Remain open after 0061:
 
-- the exact later promotion transaction from professional draft into durable marketplace identities;
+- the exact later promotion transaction from professional draft into durable marketplace identities, which must re-apply the accepted public NativeListing publishing-eligibility decision;
 - whether future Owner-Direct and Professional drafts converge onto one physical table or remain channel-specific aggregates over shared field primitives;
 - later safe edit/clone/relist semantics after a NativeListing already exists;
 - exact browser-local recovery/synchronization design for REQ-BROKER-024;
@@ -203,7 +203,7 @@ created_by_account_id
 
 for audit, but creator Account is not the ongoing ownership boundary.
 
-Current authorized publishing-capable members of the same Organization may access that Organization's drafts. A client-supplied Organization or Account identity never substitutes for the signed session + current membership authorization.
+Current workspace-authorized members whose exact current matching ACTIVE membership contains `PUBLISHER` may author that Organization's drafts. A client-supplied Organization or Account identity never substitutes for the signed session + current membership authorization.
 
 ### 4.3 Authorization
 
@@ -212,8 +212,11 @@ All list/read/create/update requests:
 1. validate current HullQ session;
 2. read current Organization/Membership state;
 3. apply existing Broker Workspace non-enumeration/MFA behavior;
-4. require current professional publishing eligibility through the accepted publishing-eligibility decision;
-5. only then read or mutate that Organization's professional drafts.
+4. require `PUBLISHER` in that exact current matching ACTIVE membership for draft-authoring actions;
+5. do **not** require `OrganizationPublishingEligibility == ELIGIBLE` merely to author private pre-market drafts;
+6. only then read or mutate that Organization's professional drafts.
+
+The accepted `evaluate_native_listing_publishing_eligibility()` remains authoritative later when a capability attempts to create/publish marketplace truth. Its normative contract answers whether an Account may publish a public `NativeListing`; 0061 must not broaden that publication-specific evaluator into a generic private-draft permission gate. `UNVERIFIED` or `INELIGIBLE` publishing state therefore blocks later marketplace promotion/publication as already accepted, but does not by itself erase private draft-authoring work.
 
 0061 creates no new role vocabulary.
 
@@ -311,7 +314,7 @@ The architecture supports the accepted “do not enter information twice” / pr
 
 ### Success evidence
 
-Retained proof must show an authorized publishing-capable member can create/reopen/update a partial draft; another Organization cannot access it; revoked authorization fails on the next request; version conflicts do not overwrite; and draft actions create no marketplace truth rows.
+Retained proof must show a workspace-authorized current `PUBLISHER` member can create/reopen/update a partial draft; another Organization cannot access it; revoked membership/role authorization fails on the next request; an `UNVERIFIED` Organization can still retain private draft work while remaining unable to publish under the existing publication contract; version conflicts do not overwrite; and draft actions create no marketplace truth rows.
 
 ### Quality
 
