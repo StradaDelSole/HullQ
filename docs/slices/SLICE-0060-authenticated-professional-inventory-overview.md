@@ -40,7 +40,7 @@ Production Readiness remains `NOT_TRIGGERED`; Broker Workspace Launch Gate remai
 
 **Exact remaining gap:** an authorized professional Organization workspace cannot currently list or inspect its own NativeListing inventory.
 
-**Accepted-but-unimplemented obligation:** the Broker Workspace is a core product surface and must ultimately support practical inventory operations. 0060 implements only the factual Organization inventory read subset.
+**Accepted-but-unimplemented obligations:** the Broker Workspace is a core product surface and must ultimately support practical inventory operations. 0060 implements only the factual Organization inventory read subset; create/edit/publish/media/resilient-draft/lead/outcome capabilities remain separately unimplemented.
 
 **Material classifications:** `DECIDED_AND_IMPLEMENTED` auth/authorization + listing truth foundation; `DECIDED_NOT_YET_IMPLEMENTED` Organization inventory overview; `EXPLICITLY_DEFERRED` all writes/drafts/media/leads/analytics and buyer continuity; `GENUINELY_OPEN` future professional progressive-draft/shared Seller Platform architecture; `CONFLICT_OR_REGRESSION` none found.
 
@@ -93,7 +93,8 @@ A write/create slice is not selected because the existing NativeListing creation
 - factual current offer/POA/absent state;
 - factual freshness/last-confirmed or bounded absent state;
 - current public-link availability through accepted public read;
-- deterministic ordering;
+- deterministic bounded keyset pagination;
+- Alembic-managed Organization/sort-key supporting index;
 - private Organization inventory Astro surface;
 - clear navigation from existing Organization workspace;
 - empty, unauthorized, MFA-required and service-error states kept distinct;
@@ -133,9 +134,11 @@ Reuse the existing Broker Workspace access decision for the exact requested Orga
 
 Return only NativeListings whose persisted `publishing_organization_id` equals the exact authorized Organization.
 
-### C. Deterministic current inventory
+### C. Deterministic bounded current inventory
 
 Order by `created_at DESC`, then `native_listing_id ASC`.
+
+Use keyset pagination with default page size 50 and hard maximum 100. Continuation uses a server-issued opaque cursor; malformed cursors fail boundedly. Do not load unbounded Organization inventory and do not require a total count.
 
 ### D. Factual lifecycle
 
@@ -161,14 +164,16 @@ Authorized empty Organization is not unauthorized and not service failure.
 
 Inventory surface remains noindex and private/no-store.
 
-### J. No writes/new persistence
+### J. No writes/new domain persistence
 
 Opening or using inventory overview cannot create or mutate NativeListing, lifecycle, offer, freshness, membership or any new inventory/cache row.
+
+One Alembic supporting index on the Organization filter + deterministic sort key is expected because the current NativeListing schema has no such index. The index must not change domain truth.
 
 ## Deliverables
 
 1. FastAPI/application Organization inventory read projection;
-2. persistence read support if required, without schema migration;
+2. persistence read support plus the bounded supporting Alembic index required by the contract;
 3. broker API client extension;
 4. protected Organization inventory page;
 5. Organization workspace navigation into inventory;
@@ -187,6 +192,10 @@ Opening or using inventory overview cannot create or mutate NativeListing, lifec
 - [ ] Other-Organization NativeListings never appear.
 - [ ] Authorized zero-listing Organization renders ordinary empty inventory.
 - [ ] Multiple items use deterministic `created_at DESC, native_listing_id ASC` order.
+- [ ] Inventory reads are bounded with default page size 50 and maximum 100.
+- [ ] Keyset continuation is deterministic and does not duplicate or leak cross-Organization rows.
+- [ ] Malformed cursors fail boundedly rather than weakening filtering.
+- [ ] The supporting Organization/sort-key index exists through Alembic and changes no domain truth.
 - [ ] DRAFT, ACTIVE and WITHDRAWN remain exact and distinct.
 - [ ] WITHDRAWN is never labeled SOLD.
 - [ ] Current AMOUNT offer preserves amount and original currency.
@@ -211,7 +220,8 @@ Opening or using inventory overview cannot create or mutate NativeListing, lifec
 Expected, not mandatory if an equivalent smaller implementation is proved:
 
 - new `src/hullq/application/broker_inventory_read.py` or equivalent;
-- bounded Organization-scoped list/read query in existing persistence or a new read-only persistence module;
+- bounded Organization-scoped keyset list/read query in existing persistence or a new read-only persistence module;
+- one Alembic migration adding the supporting Organization/sort-key index;
 - `src/hullq/api/app.py`;
 - `web/src/lib/brokerApi.ts`;
 - `web/src/pages/broker/organizations/[organization_id]/inventory.astro`;
@@ -220,7 +230,7 @@ Expected, not mandatory if an equivalent smaller implementation is proved:
 - retained proof script;
 - `.github/workflows/ci.yml` only if needed to wire the retained proof.
 
-No Alembic migration is expected.
+One Alembic migration is expected for the supporting read-path index only. No new table, column, domain identity or application persistence is authorized.
 
 No React island is expected. Server-rendered Astro should be sufficient.
 
@@ -249,7 +259,7 @@ Stop and report instead of inventing a solution if:
 - Organization ownership cannot be derived from persisted publishing Organization;
 - current lifecycle/offer/freshness truth would need to be reimplemented in Astro;
 - public-link eligibility would be inferred instead of reusing current public read;
-- a schema migration/new inventory cache is proposed as necessary;
+- a schema migration beyond the single supporting read-path index, or any new inventory cache/table/column, is proposed as necessary;
 - cross-Organization inventory would become observable;
 - owner-direct draft/publication boundaries would be broadened;
 - a production-data/pilot/paid-plan/launch trigger changes;
