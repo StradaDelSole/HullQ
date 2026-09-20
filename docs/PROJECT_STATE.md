@@ -233,7 +233,7 @@ Selection record: `docs/POST_SLICE_0060_REASSESSMENT_2026-09-20.md`.
 
 Readiness artifact: `docs/slices/SLICE-0061-authenticated-professional-listing-draft-workspace.md`.
 
-Normative bounded contract: `specs/PROFESSIONAL_LISTING_DRAFT_WORKSPACE_CONTRACT.v0.1.md`.
+Normative bounded contract: `specs/PROFESSIONAL_LISTING_WORKSPACE_CONTRACT.v0.1.md`.
 
 The capability lets a currently authorized publishing-capable Account create, list, reopen, read and update private incomplete professional listing drafts owned by one explicit Organization, with optimistic concurrency and no creation of PhysicalBoat/MarketEpisode/NativeListing/public Search truth.
 
