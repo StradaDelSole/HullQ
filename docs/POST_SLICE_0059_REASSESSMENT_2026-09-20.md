@@ -247,7 +247,7 @@ PAID_BROKER_PLAN_STATUS: NOT_STARTED
 SLICE-0060:
 
 - adds no technical Search criterion;
-- creates no new marketplace persistence;
+- creates no new domain/application marketplace persistence; one supporting read-path index migration is allowed/expected;
 - introduces no real external production data;
 - starts no external broker self-service pilot;
 - changes no public launch or paid-plan state.
@@ -258,7 +258,7 @@ SLICE-0060:
 
 Highest current leverage-to-scope ratio.
 
-It turns the accepted Broker Workspace access shell into the first real inventory surface using only already-accepted authorization and listing truth. It introduces no write semantics, no migration and no new identity.
+It turns the accepted Broker Workspace access shell into the first real inventory surface using already-accepted authorization and listing truth. It introduces no write semantics or new identity. A bounded keyset read plus a supporting Organization/sort-key index avoids an unbounded table scan without changing domain truth.
 
 ### B. Professional listing create/edit workspace
 
