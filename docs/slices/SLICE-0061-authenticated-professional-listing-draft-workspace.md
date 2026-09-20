@@ -74,7 +74,7 @@ The owner-direct draft implementation proves a safe private pre-market pattern, 
 
 ## Controlling artifacts
 
-- Normative contract: `specs/PROFESSIONAL_LISTING_DRAFT_WORKSPACE_CONTRACT.v0.1.md`
+- Normative contract: `specs/PROFESSIONAL_LISTING_WORKSPACE_CONTRACT.v0.1.md`
 - Broker access: `specs/BROKER_WORKSPACE_ACCESS_CONTRACT.v0.1.md`
 - Broker requirements: `specs/BROKER_WORKSPACE_REQUIREMENTS.v0.1.md`
 - Broker product direction: `docs/BROKER_WORKSPACE_PRODUCT_DIRECTION_2026-09-13.md`
