@@ -396,6 +396,6 @@ PAID_BROKER_PLAN_STATUS: NOT_STARTED
 
 **Selected execution obligation:** `SLICE-0061 — Authenticated Professional Listing Draft Workspace`.
 
-Readiness may proceed on `specs/PROFESSIONAL_LISTING_DRAFT_WORKSPACE_CONTRACT.v0.1.md`.
+Readiness may proceed on `specs/PROFESSIONAL_LISTING_WORKSPACE_CONTRACT.v0.1.md`.
 
 Implementation may not start until the readiness package is independently exact-head reviewed, all required remote gates are green and the readiness PR is merged to canonical `main`.
