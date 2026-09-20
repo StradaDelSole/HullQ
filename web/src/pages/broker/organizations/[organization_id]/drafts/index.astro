@@ -37,6 +37,12 @@ const organizationId = Astro.params.organization_id ?? "";
 const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
 const cookieHeader = Astro.request.headers.get("cookie");
 const originHeader = Astro.request.headers.get("origin");
+// Contract §9: bounded pagination on the browser collection surface. This
+// opaque cursor is never decoded/reinterpreted here -- it is read from the
+// browser's own query string and forwarded unchanged to FastAPI (via
+// `fetchProfessionalDrafts`), exactly mirroring the accepted SLICE-0060
+// `inventory.astro` cursor-forwarding discipline.
+const cursor = Astro.url.searchParams.get("cursor") ?? undefined;
 
 Astro.response.headers.set("X-Robots-Tag", "noindex");
 // This page renders one signed-in Account's own authorized Organization
@@ -70,7 +76,7 @@ if (Astro.request.method === "POST" && organizationId) {
 }
 
 const result = organizationId
-  ? await fetchProfessionalDrafts(apiBaseUrl, organizationId, cookieHeader)
+  ? await fetchProfessionalDrafts(apiBaseUrl, organizationId, cookieHeader, { cursor })
   : ({ kind: "not_found" } as const);
 
 if (result.kind === "not_found") {
@@ -167,6 +173,17 @@ const stepUpUrl = `${loginUrl}&acr_values=${encodeURIComponent(AUTH0_MFA_STEP_UP
                 ))}
               </ul>
             )}
+            {result.data.next_cursor ? (
+              <p>
+                <a
+                  href={`/broker/organizations/${organizationId}/drafts?cursor=${encodeURIComponent(
+                    result.data.next_cursor,
+                  )}`}
+                >
+                  Next page
+                </a>
+              </p>
+            ) : null}
             <form method="POST">
               <button type="submit">Start a draft</button>
             </form>

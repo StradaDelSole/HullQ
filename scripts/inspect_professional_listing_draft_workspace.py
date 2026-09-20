@@ -31,6 +31,19 @@ Per `specs/PROFESSIONAL_LISTING_WORKSPACE_CONTRACT.v0.1.md` §14, demonstrates:
     12. existing professional inventory retained proof still passes
     13. finishes with the required PASS marker
 
+Independent exact-head review (2026-09-20, HEAD 0dcaadd) found that contract
+§9's bounded pagination requirement was implemented end-to-end in FastAPI/
+persistence but never actually reachable through the required
+`/broker/organizations/{organization_id}/drafts` browser surface itself: the
+page never read a `cursor` from its own query string and never rendered a
+`next_cursor` continuation link, so drafts past the first default page (50)
+were unreachable through the browser. This amendment adds one additional
+proof item (16b, a distinct Organization ORG_C) demonstrating that the built
+Astro collection page itself -- not merely the API/persistence layer -- can
+traverse two bounded pages via cursor with no duplicate rows and no cross-
+Organization leakage, plus that a malformed cursor still resolves to the
+existing bounded browser invalid-cursor state.
+
 Items 11 and 12 ("existing ... retained proof still passes") are verified
 separately by also running `scripts/inspect_owner_direct_draft.py` and
 `scripts/inspect_professional_inventory_overview.py` -- this script does not
@@ -56,6 +69,7 @@ import http.client
 import http.cookiejar
 import json
 import os
+import re
 import secrets
 import shutil
 import socket
@@ -66,6 +80,7 @@ import time
 import urllib.error
 import urllib.request
 import uuid
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urlencode, urlsplit, urlunsplit
@@ -87,6 +102,7 @@ _SUBJECT_B = "professional-draft-0061-subject-b"
 _SESSION_COOKIE_NAME = "hullq_session"
 _ORG_A_ID = "ORG-0061-A"
 _ORG_B_ID = "ORG-0061-B"
+_ORG_C_ID = "ORG-0061-C"
 _CSRF_HEADER_VALUE = "professional-listing-draft-v1"
 
 #: Mirrors `scripts/inspect_owner_direct_draft.py`'s identical rationale:
@@ -744,6 +760,119 @@ def main() -> int:
         print(
             f"16. draft page and API responses are private/no-store/noindex -> "
             f"{'OK' if (page_noindex_ok and api_noindex_ok) else 'FAIL'}\n"
+        )
+
+        # 16b (2026-09-20 amendment, contract §9): the built Astro
+        # collection surface itself -- not merely the API/persistence
+        # layer -- must be able to traverse bounded pages via cursor. A
+        # dedicated Organization (ORG_C) with 51 drafts (one more than the
+        # 50-row default page size) is seeded directly through the
+        # persistence layer for speed; every subsequent read below goes
+        # through the real built Astro page.
+        from hullq.domain.listing_draft_payload import EMPTY_LISTING_DRAFT_PAYLOAD
+        from hullq.persistence.professional_listing_draft import (
+            create_professional_listing_draft as _seed_professional_draft,
+        )
+
+        conn = psycopg.connect(url)
+        try:
+            org_c = MarketplaceOrganization(
+                id=MarketplaceOrganizationId(_ORG_C_ID),
+                professional_category=ProfessionalCategory.BROKER,
+                publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+            )
+            seed_marketplace_organization(conn, org_c)
+            seed_organization_membership(
+                conn,
+                OrganizationMembership(
+                    id=OrganizationMembershipId("OM-0061-C"),
+                    account_id=AccountId(account_a_id),
+                    organization_id=org_c.id,
+                    roles=frozenset({MembershipRole.PUBLISHER}),
+                    state=MembershipState.ACTIVE,
+                ),
+            )
+            conn.commit()
+
+            seeded_ids: list[str] = []
+            base_updated_at = datetime(2026, 1, 1, tzinfo=UTC)
+            for i in range(51):
+                seeded_record = _seed_professional_draft(
+                    conn,
+                    owner_organization_id=org_c.id,
+                    created_by_account_id=AccountId(account_a_id),
+                    broker_listing_reference=None,
+                    payload=EMPTY_LISTING_DRAFT_PAYLOAD,
+                )
+                conn.commit()
+                seeded_ids.append(seeded_record.draft_id.value)
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "UPDATE professional_listing_drafts SET updated_at = %s "
+                        "WHERE professional_listing_draft_id = %s",
+                        (base_updated_at + timedelta(minutes=i), seeded_record.draft_id.value),
+                    )
+                conn.commit()
+        finally:
+            conn.close()
+
+        drafts_path_c = f"/broker/organizations/{_ORG_C_ID}/drafts"
+        draft_id_pattern = re.compile(rf"{re.escape(drafts_path_c)}/([0-9a-fA-F-]{{36}})")
+        next_link_pattern = re.compile(rf'href="{re.escape(drafts_path_c)}\?cursor=([^"]+)"')
+
+        page1_status, _, page1_body = session_a.get(f"{web_base}{drafts_path_c}")
+        page1_text = page1_body.decode("utf-8")
+        page1_ids = draft_id_pattern.findall(page1_text)
+        page1_next_match = next_link_pattern.search(page1_text)
+        page1_ok = page1_status == 200 and len(page1_ids) == 50 and page1_next_match is not None
+
+        # The rendered "Next page" cursor must be exactly the same opaque
+        # value FastAPI returned -- proving Astro forwards it unmodified
+        # (contract: never decoded/reinterpreted in Astro).
+        api_status, _, api_body = session_a.get(
+            f"{api_base}/api/broker/organizations/{_ORG_C_ID}/drafts"
+        )
+        api_next_cursor = _json(api_body).get("next_cursor")
+        rendered_cursor = page1_next_match.group(1) if page1_next_match else None
+        cursor_unmodified_ok = (
+            api_status == 200 and rendered_cursor is not None and rendered_cursor == api_next_cursor
+        )
+
+        page2_status, _, page2_body = session_a.get(
+            f"{web_base}{drafts_path_c}?cursor={rendered_cursor}"
+        )
+        page2_text = page2_body.decode("utf-8")
+        page2_ids = draft_id_pattern.findall(page2_text)
+        page2_no_further_next_ok = next_link_pattern.search(page2_text) is None
+        page2_ok = page2_status == 200 and len(page2_ids) == 1 and page2_no_further_next_ok
+
+        all_page_ids = page1_ids + page2_ids
+        no_duplicates_ok = len(all_page_ids) == len(set(all_page_ids))
+        covers_all_seeded_ok = set(all_page_ids) == set(seeded_ids)
+        no_cross_org_leak_ok = org_b_draft_id not in all_page_ids
+
+        malformed_status, _, malformed_body = session_a.get(
+            f"{web_base}{drafts_path_c}?cursor=not-a-real-cursor!!"
+        )
+        malformed_cursor_ok = (
+            malformed_status == 400 and "Invalid draft list link" in malformed_body.decode("utf-8")
+        )
+
+        pagination_ok = (
+            page1_ok
+            and cursor_unmodified_ok
+            and page2_ok
+            and no_duplicates_ok
+            and covers_all_seeded_ok
+            and no_cross_org_leak_ok
+            and malformed_cursor_ok
+        )
+        ok &= pagination_ok
+        print(
+            f"16b. built Astro collection surface itself traverses two bounded pages via an "
+            f"unmodified cursor (50 + 1 drafts, no duplicates, no cross-Organization leakage), "
+            f"and a malformed cursor still resolves to the bounded browser invalid-cursor state "
+            f"-> {'OK' if pagination_ok else 'FAIL'}\n"
         )
 
         # 7. membership/role revocation changes the very next authorization
