@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-20  
 **Latest owner-accepted / DONE slice:** SLICE-0060  
-**Current queue:** SLICE-0061 — **Authenticated Professional Listing Draft Workspace**; post-SLICE-0060 repository/product reassessment and readiness are prepared on the existing Broker Workspace authorization, publishing-eligibility and private-draft boundaries. Implementation remains unauthorized until independent exact-head readiness review/CI and readiness merge to `main`.  
+**Current queue:** SLICE-0061 — **Authenticated Professional Listing Draft Workspace**; post-SLICE-0060 repository/product reassessment and readiness are prepared on the existing Broker Workspace authorization/MFA, current membership-role, publication-eligibility and private-draft boundaries. Implementation remains unauthorized until independent exact-head readiness review/CI and readiness merge to `main`.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -235,7 +235,7 @@ Readiness artifact: `docs/slices/SLICE-0061-authenticated-professional-listing-d
 
 Normative bounded contract: `specs/PROFESSIONAL_LISTING_WORKSPACE_CONTRACT.v0.1.md`.
 
-The capability lets a currently authorized publishing-capable Account create, list, reopen, read and update private incomplete professional listing drafts owned by one explicit Organization, with optimistic concurrency and no creation of PhysicalBoat/MarketEpisode/NativeListing/public Search truth.
+The capability lets a currently workspace-authorized Account whose exact current ACTIVE OrganizationMembership contains `PUBLISHER` create, list, reopen, read and update private incomplete professional listing drafts owned by one explicit Organization, with optimistic concurrency and no creation of PhysicalBoat/MarketEpisode/NativeListing/public Search truth. Public NativeListing publishing eligibility remains a separate later promotion/publication gate.
 
 Implementation remains unauthorized until the readiness package passes independent exact-head review/CI and is merged to canonical `main`; only then may the Project Owner run `START_SLICE.bat`.
 
