@@ -29,7 +29,7 @@ jobs:
           persist-credentials: false
 
       - name: Install uv and Python
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           version: "0.12.5"
           enable-cache: true
@@ -114,7 +114,7 @@ jobs:
           persist-credentials: false
 
       - name: Install uv and Python
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           version: "0.12.5"
           enable-cache: true
@@ -220,7 +220,7 @@ jobs:
           "
 
       - name: Upload benchmark outputs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: benchmark-outputs
@@ -259,7 +259,7 @@ jobs:
           "
 
       - name: Upload bootstrap outputs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: bootstrap-outputs
@@ -303,7 +303,7 @@ jobs:
           "
 
       - name: Upload SLICE-0018 expansion outputs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: sl0018-expansion-outputs
@@ -337,7 +337,7 @@ jobs:
           uv run python scripts/bootstrap/wikidata_sl0021_alt_discovery_runner.py --verify
 
       - name: Upload SLICE-0021 alternative-discovery outputs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: sl0021-alt-discovery-outputs
@@ -396,7 +396,7 @@ jobs:
           "
 
       - name: Upload SLICE-0022 admission-pilot outputs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: sl0022-alt-route-admission-outputs
@@ -539,7 +539,7 @@ jobs:
           persist-credentials: false
 
       - name: Install uv and Python
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           version: "0.12.5"
           enable-cache: true
