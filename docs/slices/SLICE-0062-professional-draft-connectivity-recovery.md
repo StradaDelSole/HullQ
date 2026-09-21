@@ -73,7 +73,7 @@ Server persistence alone does not satisfy REQ-BROKER-024 because the loss occurs
 
 ## Controlling artifacts
 
-- Normative contract: `specs/PROFESSIONAL_LISTING_DRAFT_RECOVERY_CONTRACT.v0.1.md`
+- Normative contract: `specs/PROFESSIONAL_LISTING_RECOVERY_CONTRACT.v0.1.md`
 - Professional draft contract: `specs/PROFESSIONAL_LISTING_WORKSPACE_CONTRACT.v0.1.md`
 - Broker requirements: `specs/BROKER_WORKSPACE_REQUIREMENTS.v0.1.md`
 - Broker product direction: `docs/BROKER_WORKSPACE_PRODUCT_DIRECTION_2026-09-13.md`
