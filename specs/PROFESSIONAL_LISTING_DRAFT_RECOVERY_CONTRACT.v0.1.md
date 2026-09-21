@@ -1,8 +1,10 @@
 # HullQ Professional Listing Draft Recovery Contract v0.1
 
-**Status:** ACCEPTED FOR SLICE-0062 READINESS  
-**Owning capability:** SLICE-0062 — Professional Draft Connectivity Recovery  
-**Depends on:** `specs/PROFESSIONAL_LISTING_WORKSPACE_CONTRACT.v0.1.md`; accepted Broker Workspace auth/MFA/current-membership boundary  
+**Status:** NORMATIVE WHEN MERGED  
+**Owning slice:** SLICE-0062 — Professional Draft Connectivity Recovery  
+**Controlling product direction:** `docs/BROKER_WORKSPACE_PRODUCT_DIRECTION_2026-09-13.md`  
+**Broker requirements:** `specs/BROKER_WORKSPACE_REQUIREMENTS.v0.1.md`  
+**Draft foundation:** `specs/PROFESSIONAL_LISTING_WORKSPACE_CONTRACT.v0.1.md`  
 **Normative language:** BCP 14 semantics apply to uppercase MUST/SHOULD/MAY.
 
 ## 1. Purpose
