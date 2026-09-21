@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-21  
 **Latest owner-accepted / DONE slice:** SLICE-0062  
-**Current queue:** SLICE-0063 — **UNSELECTED**; SLICE-0062 is owner-accepted and merged. A fresh post-SLICE-0062 repository/product reassessment and Decision / Implementation Reconciliation are required before any SLICE-0063 capability selection/readiness. No SLICE-0063 implementation or `START_SLICE.bat` action is authorized.  
+**Current queue:** SLICE-0063 — **Publishing Organization Public Identity**; post-SLICE-0062 repository/product reassessment and readiness are prepared on the accepted MarketplaceOrganization, Broker Workspace and public NativeListing boundaries. Implementation remains unauthorized until independent exact-head readiness review, required remote gates and readiness merge to `main`.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -236,11 +236,17 @@ Next queue number:
 SLICE-0063
 ```
 
-**Selected capability:** UNSELECTED.
+**Selected capability:** Publishing Organization Public Identity.
 
-SLICE-0063 requires a fresh post-SLICE-0062 repository/product reassessment plus the normal Decision / Implementation Reconciliation before any capability selection or readiness work is treated as canonical. The queue number alone does not authorize a capability, implementation branch or `START_SLICE.bat` action.
+Selection record: `docs/POST_SLICE_0062_REASSESSMENT_2026-09-21.md`.
 
-No SLICE-0063 implementation is authorized by SLICE-0062 acceptance closure.
+Readiness artifact: `docs/slices/SLICE-0063-publishing-organization-public-identity.md`.
+
+Normative bounded contract: `specs/PUBLISHING_ORGANIZATION_PUBLIC_IDENTITY_CONTRACT.v0.1.md`.
+
+The capability attaches one bounded human-readable public display name to the existing authoritative MarketplaceOrganization row and surfaces it consistently in authorized Broker Workspace context and every public NativeListing, independent of optional VAT/tax claims. It creates no second Organization identity and no logo/media/profile-admin subsystem.
+
+Implementation remains unauthorized until the readiness package passes independent exact-head review, required remote gates and is merged to canonical `main`; only then may the Project Owner run `START_SLICE.bat`.
 
 ## Development workflow
 
@@ -255,6 +261,6 @@ No SLICE-0063 implementation is authorized by SLICE-0062 acceptance closure.
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; after SLICE-0062 acceptance, SLICE-0063 remains unselected until fresh reassessment/readiness.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0063 Publishing Organization Public Identity is selected/readied but may not start until independent readiness review/remote gates/readiness merge are complete.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
