@@ -50,6 +50,27 @@ separately by also running `scripts/inspect_owner_direct_draft.py` and
 embed or duplicate either proof (mirrors `inspect_owner_direct_draft.py`'s
 identical treatment of item 13 in its own contract).
 
+SLICE-0062 amendment (`specs/PROFESSIONAL_LISTING_RECOVERY_CONTRACT.v0.1.md`
+§15) adds two further proof items, inserted right after 16b and before the
+membership-revocation step (17) so Account A's ORG_A access is still valid:
+
+    16c. the built protected edit page renders the SLICE-0062 browser-local
+         recovery wiring's data carrier (`#draft-recovery-banner` and
+         `#draft-form`) with the exact current Account/Organization/draft/
+         version scope the client script reads to compute its restore
+         decision
+    16d. a fresh successful save advances the rendered server-version data
+         attribute and marks `data-save-outcome="saved"`, the signal the
+         client-side script uses to clear a now-stale local recovery entry
+
+Contract §15 explicitly allows the client storage/capture/restore-decision
+portion of the recovery proof to be a deterministic unit harness rather than
+a real browser; that harness is
+`web/src/lib/__tests__/professionalDraftRecovery.test.ts`. This script only
+proves the page wiring itself and that 0061's existing behavior (items 4-18
+above) is unregressed by SLICE-0062's addition. No graphical/headless
+browser engine is used anywhere in this script.
+
 This proof runs the deterministic local cookie path
 (`HULLQ_SESSION_COOKIE_SECURE=false`) exactly like
 `scripts/inspect_broker_workspace_access.py`; see that script's module
@@ -873,6 +894,63 @@ def main() -> int:
             f"unmodified cursor (50 + 1 drafts, no duplicates, no cross-Organization leakage), "
             f"and a malformed cursor still resolves to the bounded browser invalid-cursor state "
             f"-> {'OK' if pagination_ok else 'FAIL'}\n"
+        )
+
+        # SLICE-0062 (recovery contract §15): demonstrate that the actual
+        # built/protected edit page -- not merely a design document -- wires
+        # the bounded browser-local recovery buffer with the correct
+        # Account/Organization/draft/version scoping, and that this addition
+        # does not regress any existing 0061 authorization/CSRF/tenant-
+        # isolation/version/non-promotion behavior (already re-exercised by
+        # items 4-16b above on this same exact HEAD). Runs before the
+        # membership-revocation step below so Account A's ORG_A access is
+        # still valid. No graphical/headless browser engine is used anywhere
+        # in this script: the recovery module's own capture/restore/storage
+        # decision logic (envelope scoping, 24h expiry, malformed/future-
+        # version fail-closed handling, same-version auto-restore vs.
+        # newer-server-version conflict, save-outcome retention/clearing) is
+        # proved separately by the deterministic unit harness in
+        # `web/src/lib/__tests__/professionalDraftRecovery.test.ts`
+        # (contract §15's closing paragraph explicitly permits this split).
+        status, _, body = session_a.get(f"{web_base}{draft_path}")
+        page_text = body.decode("utf-8")
+        recovery_wiring_ok = (
+            status == 200
+            and 'id="draft-recovery-banner"' in page_text
+            and f'data-account-id="{account_a_id}"' in page_text
+            and f'data-organization-id="{_ORG_A_ID}"' in page_text
+            and f'data-draft-id="{draft_id}"' in page_text
+            and 'data-server-version="3"' in page_text
+            and 'data-save-outcome="none"' in page_text
+            and 'id="draft-form"' in page_text
+        )
+        ok &= recovery_wiring_ok
+        print(
+            f"16c. built protected edit page wires the SLICE-0062 recovery buffer with the exact "
+            f"current Account/Organization/draft/version scope and a save-outcome marker for the "
+            f"client script's clear-on-save decision -> {'OK' if recovery_wiring_ok else 'FAIL'}\n"
+        )
+
+        # A fresh successful save must be reflected in a new server_version
+        # and a "saved" outcome marker, so the client-side wiring clears any
+        # stale local recovery envelope rather than showing a false conflict
+        # (contract §H).
+        status, _, body = session_a.post_form(
+            f"{web_base}{draft_path}",
+            {"expected_version": "3", "physical_boat.boat_name": "Sea Breeze IV"},
+            origin=web_base,
+        )
+        page_text = body.decode("utf-8")
+        save_outcome_wiring_ok = (
+            status == 200
+            and 'data-save-outcome="saved"' in page_text
+            and 'data-server-version="4"' in page_text
+        )
+        ok &= save_outcome_wiring_ok
+        print(
+            f"16d. a successful save advances the rendered server-version data attribute and marks "
+            f'data-save-outcome="saved" for the client recovery script to clear the stale local '
+            f"copy -> {'OK' if save_outcome_wiring_ok else 'FAIL'}\n"
         )
 
         # 7. membership/role revocation changes the very next authorization

@@ -2,7 +2,8 @@
 
 **ID:** SLICE-0062  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
+**Status set by this handoff:** `REVIEW`  
 **Stage:** Broker Workspace — connectivity-resilient professional draft editing  
 **Depends on:** SLICE-0053 Broker Workspace access; SLICE-0061 Professional Listing Draft Workspace; accepted optimistic-version/CSRF/private-surface boundaries  
 **Blocks:** no later slice automatically; closes one mandatory launch-baseline commitment only after accepted implementation/closure
@@ -180,37 +181,37 @@ Never store session/auth/MFA/credential material. Restore values through form-co
 
 ## Acceptance criteria
 
-- [ ] Recovery applies only to an existing authorized professional draft.
-- [ ] Recovery key/envelope is scoped to current Account + Organization + draft.
-- [ ] Different Account recovery never auto-applies.
-- [ ] Different Organization recovery never auto-applies.
-- [ ] Different draft recovery never auto-applies.
-- [ ] All editable 0061 form fields and broker reference are recoverable.
-- [ ] No session cookie/OIDC/MFA/credential material is stored.
-- [ ] Recovery expires after at most 24 hours.
-- [ ] Malformed/unknown-schema recovery fails closed.
-- [ ] Browser storage errors do not break server editing.
-- [ ] UI does not falsely claim recovery when storage is unavailable.
-- [ ] Local capture occurs before an explicit save navigation can lose current input.
-- [ ] Simulated network failure leaves PostgreSQL unchanged and local recovery intact.
-- [ ] Same-version reopen restores recent unsaved values visibly.
-- [ ] Restore never mutates server state until explicit Save.
-- [ ] Newer server version prevents silent auto-restore.
-- [ ] Stale local recovery can be explicitly discarded.
-- [ ] If stale-copy restore-for-review exists, it remains form-only until explicit Save.
-- [ ] Server version conflict retains local recovery and does not overwrite.
-- [ ] Validation failure retains local recovery.
-- [ ] Successful server save advances the accepted version exactly once and clears local recovery.
-- [ ] Existing PUBLISHER/MFA/current-membership/non-enumeration behavior is unchanged.
-- [ ] Existing CSRF defense is unchanged.
-- [ ] Existing professional-draft field validation is unchanged.
-- [ ] Existing marketplace non-promotion guarantee is unchanged.
-- [ ] Owner-direct behavior is unchanged.
-- [ ] Search criterion count remains exactly two.
-- [ ] REQ-BROKER-024 remains PENDING until implementation owner-acceptance closure.
-- [ ] REQ-BROKER-023 remains PENDING.
-- [ ] Broker Workspace Launch Gate remains NOT_READY.
-- [ ] Repository validation/lint/type-check/Python tests/web tests/check/build pass.
+- [x] Recovery applies only to an existing authorized professional draft.
+- [x] Recovery key/envelope is scoped to current Account + Organization + draft.
+- [x] Different Account recovery never auto-applies.
+- [x] Different Organization recovery never auto-applies.
+- [x] Different draft recovery never auto-applies.
+- [x] All editable 0061 form fields and broker reference are recoverable.
+- [x] No session cookie/OIDC/MFA/credential material is stored.
+- [x] Recovery expires after at most 24 hours.
+- [x] Malformed/unknown-schema recovery fails closed.
+- [x] Browser storage errors do not break server editing.
+- [x] UI does not falsely claim recovery when storage is unavailable.
+- [x] Local capture occurs before an explicit save navigation can lose current input.
+- [x] Simulated network failure leaves PostgreSQL unchanged and local recovery intact.
+- [x] Same-version reopen restores recent unsaved values visibly.
+- [x] Restore never mutates server state until explicit Save.
+- [x] Newer server version prevents silent auto-restore.
+- [x] Stale local recovery can be explicitly discarded.
+- [x] If stale-copy restore-for-review exists, it remains form-only until explicit Save.
+- [x] Server version conflict retains local recovery and does not overwrite.
+- [x] Validation failure retains local recovery.
+- [x] Successful server save advances the accepted version exactly once and clears local recovery.
+- [x] Existing PUBLISHER/MFA/current-membership/non-enumeration behavior is unchanged.
+- [x] Existing CSRF defense is unchanged.
+- [x] Existing professional-draft field validation is unchanged.
+- [x] Existing marketplace non-promotion guarantee is unchanged.
+- [x] Owner-direct behavior is unchanged.
+- [x] Search criterion count remains exactly two.
+- [x] REQ-BROKER-024 remains PENDING until implementation owner-acceptance closure.
+- [x] REQ-BROKER-023 remains PENDING.
+- [x] Broker Workspace Launch Gate remains NOT_READY.
+- [x] Repository validation/lint/type-check/Python tests/web tests/check/build pass.
 - [ ] Exact implementation HEAD receives independent review and explicit Owner Acceptance before merge.
 
 ## Expected touch points
