@@ -42,6 +42,18 @@ MarketplaceOrganization persistence/domain, broker workspace context, NativeList
 
 **CONFLICT_OR_REGRESSION:** none. The generic `ORGANIZATION_SCHEMA.v0.1.json` is not silently collapsed into MarketplaceOrganization because no accepted durable mapping exists.
 
+**Accepted records checked:** `docs/PROJECT_STATE.md`; `docs/POST_SLICE_0062_REASSESSMENT_2026-09-21.md`; `docs/BROKER_WORKSPACE_PRODUCT_DIRECTION_2026-09-13.md`; `specs/BROKER_WORKSPACE_REQUIREMENTS.v0.1.md`; `docs/governance/BROKER_WORKSPACE_MANDATORY_CAPABILITY_REGISTER.md`; `docs/governance/BROKER_WORKSPACE_LAUNCH_GATE.md`; `docs/slices/SLICE-0062-acceptance-closure.md`; `specs/NATIVE_LISTING_PUBLIC_SURFACE_SEO_CONTRACT.v0.1.md`; `specs/ORGANIZATION_SCHEMA.v0.1.json`; `docs/governance/POST_0051_TRIGGER_GATES.md`; `docs/governance/PRODUCTION_READINESS_GATE.md`.
+
+**Production implementation checked:** `src/hullq/domain/publishing_eligibility.py`; `src/hullq/persistence/broker_identity.py`; `src/hullq/application/broker_workspace_read.py`; `src/hullq/application/public_listing_read.py`; `src/hullq/api/app.py`; `web/src/lib/brokerApi.ts`; `web/src/lib/publicListingApi.ts`; `web/src/pages/broker/index.astro`; `web/src/pages/broker/organizations/[organization_id].astro`; `web/src/pages/listings/[native_listing_id].astro`; broker/public-listing persistence/API/web tests and retained proofs.
+
+**Already implemented / not re-decided:** exact MarketplaceOrganizationId publishing identity; actor-directory Organization/membership persistence; current membership/MFA authorization; NativeListing publisher ownership; public read lifecycle/freshness gates; FastAPI-only public read boundary; 0049 canonical/noindex route semantics; Search criterion count exactly two.
+
+**Exact remaining gap:** public publisher presentation currently exposes only an opaque Organization ID, and Astro renders that ID only inside optional VAT/tax markup, so an otherwise valid public listing may show no publisher identity at all.
+
+**Accepted-but-unimplemented obligations:** REQ-BROKER-023 requires explicit publisher identity and preservation of legitimate broker branding. 0063 implements only bounded current textual Organization identity/branding presentation; media/logo asset handling remains deferred.
+
+**Material classifications:** `DECIDED_AND_IMPLEMENTED` current MarketplaceOrganization identity/auth/public-listing boundaries; `DECIDED_NOT_YET_IMPLEMENTED` REQ-BROKER-023 current publisher display identity; `EXPLICITLY_DEFERRED` media/logo/profile-admin/promotion/leads/analytics; `GENUINELY_OPEN` future legal-name/profile/media asset model and public broker profile URL; `CONFLICT_OR_REGRESSION` none found.
+
 ## Trigger gates
 
 **Production readiness gate:** NOT_TRIGGERED  
