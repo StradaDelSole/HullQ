@@ -13,7 +13,7 @@
 
 <!-- REQ_BROKER_022_STATUS: PENDING -->
 <!-- REQ_BROKER_023_STATUS: PENDING -->
-<!-- REQ_BROKER_024_STATUS: PENDING -->
+<!-- REQ_BROKER_024_STATUS: IMPLEMENTED -->
 <!-- REQ_BROKER_025_STATUS: PENDING -->
 <!-- REQ_BROKER_026_STATUS: PENDING -->
 <!-- REQ_BROKER_027_STATUS: PENDING -->
@@ -51,7 +51,7 @@ IMPLEMENTED
 | REQ-BROKER-006 | explicit sale/outcome recording | mandatory before paid broker activation / broad public launch | PENDING |
 | REQ-BROKER-022 | inventory portability / no lock-in export | mandatory before paid broker activation / broad public launch | PENDING |
 | REQ-BROKER-023 | broker identity / branding preservation | launch/pilot baseline commitment | PENDING |
-| REQ-BROKER-024 | connectivity-resilient draft/recovery behavior | launch/pilot baseline commitment | PENDING |
+| REQ-BROKER-024 | connectivity-resilient draft/recovery behavior | launch/pilot baseline commitment | IMPLEMENTED by SLICE-0062 |
 | REQ-BROKER-025 | Search exclusion explainability: why a listing was not found | search-volume-dependent mandatory capability | PENDING |
 | REQ-BROKER-026 | pre-publication Search-fit diagnostics | mandatory before paid broker activation / broad public launch | PENDING |
 | REQ-BROKER-027 | structured CSV/bulk onboarding/import | scale-triggered mandatory capability | PENDING |
@@ -167,6 +167,40 @@ The Broker Workspace Launch Gate and this register answer different questions:
 - `BROKER_WORKSPACE_PRODUCT_COMPLETION_STATUS = COMPLETE` means the launch baseline, explicit sales/outcome workflow and every later requirement in this register have actually been implemented and accepted.
 
 Therefore the first broker pilot or public launch may occur before every volume-dependent capability is available, but HullQ must not describe the accepted broker-product workstream as complete while any registered commitment remains `PENDING` or `DUE` or the sale/outcome workflow remains unimplemented.
+
+## Implemented evidence — REQ-BROKER-024
+
+SLICE-0062 is the accepted implementation evidence for REQ-BROKER-024.
+
+Accepted evidence:
+
+- implementation slice: `docs/slices/SLICE-0062-professional-draft-connectivity-recovery.md`;
+- normative contract: `specs/PROFESSIONAL_LISTING_RECOVERY_CONTRACT.v0.1.md`;
+- accepted exact implementation HEAD: `5f7d73e0392136ce260f4e7423a22e51d67a53ff`;
+- implementation PR: #234;
+- implementation merge commit: `0a48c1d24f0ef98be0793273438ab22cb48f46b4`;
+- focused web test coverage for scope isolation, malformed/expired envelopes, exact form-string recovery including cleared fields, storage-unavailable/write-probe behavior, stale-server handling, dirty/pagehide capture behavior and simulated connectivity loss;
+- retained real PostgreSQL 18 + FastAPI + built Astro proof through `scripts/inspect_professional_listing_draft_workspace.py`, including recovery wiring, scope data, successful-save marker and no session-cookie leakage;
+- independent exact-head ACCEPT review after two targeted amendments;
+- exact-head CI run #845 / `35614771938`: SUCCESS;
+- exact-head Manufacturer artifact reproducibility run #567 / `35614771811`: SUCCESS;
+- explicit Project Owner acceptance recorded 2026-09-21.
+
+Accepted v0.1 behavior is deliberately bounded:
+
+```text
+authorized existing ProfessionalListingDraft
++ current server version
++ current browser form edits
+→ short-lived Account/Organization/Draft-scoped local recovery
+→ connectivity interruption does not silently destroy recent input
+→ stale/newer-server recovery never silently overwrites server truth
+→ explicit Save remains the only server mutation
+```
+
+Browser-local recovery remains convenience state only; FastAPI/PostgreSQL authorization, validation, persistence and optimistic concurrency remain authoritative.
+
+REQ-BROKER-023 remains `PENDING`, therefore the Broker Workspace Launch Gate remains `NOT_READY`.
 
 ## Evidence to mark IMPLEMENTED
 

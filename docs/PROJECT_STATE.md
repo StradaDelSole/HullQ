@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0061 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0062 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0062 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0063 -->
 
 **Updated:** 2026-09-21  
-**Latest owner-accepted / DONE slice:** SLICE-0061  
-**Current queue:** SLICE-0062 — **Professional Draft Connectivity Recovery**; post-SLICE-0061 repository/product reassessment and readiness are prepared on the accepted professional draft, optimistic-version, current authorization/MFA and private-browser boundaries. Implementation remains unauthorized until independent exact-head readiness review, required remote gates and readiness merge to `main`.  
+**Latest owner-accepted / DONE slice:** SLICE-0062  
+**Current queue:** SLICE-0063 — **UNSELECTED**; SLICE-0062 is owner-accepted and merged. A fresh post-SLICE-0062 repository/product reassessment and Decision / Implementation Reconciliation are required before any SLICE-0063 capability selection/readiness. No SLICE-0063 implementation or `START_SLICE.bat` action is authorized.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -42,6 +42,8 @@ Professional provider direction remains the best-in-class Broker Workspace. SLIC
 SLICE-0060 adds the first accepted professional inventory read surface: an authenticated Account with current authorized Organization access can inspect only that Organization's current NativeListings with factual lifecycle, current offer, freshness and actual public-link state. The surface is read-only, bounded/keyset-paginated, private/no-store/noindex, and reuses existing FastAPI/domain/persistence truth rather than creating a second inventory model.
 
 SLICE-0061 adds the first accepted professional incomplete-listing authoring surface: an authenticated Account with the exact current ACTIVE matching OrganizationMembership containing `PUBLISHER` may create, list, reopen, read and update private `ProfessionalListingDraft` state owned by that Organization. Draft authoring reuses existing MFA/current-membership authorization, uses optimistic versioning and bounded keyset pagination, remains private/no-store/noindex, and intentionally does not require public `OrganizationPublishingEligibility`. No draft action creates or mutates PhysicalBoat, MarketEpisode, NativeListing, offer/lifecycle/freshness/public/Search truth.
+
+SLICE-0062 adds accepted connectivity-resilient recovery to that existing professional draft edit surface. Recent unsaved browser form input is held only in a short-lived Account/Organization/ProfessionalListingDraft/version-scoped local recovery envelope; exact bounded form strings, including intentional cleared values, are preserved. Same-version recovery may restore visibly, but stale recovery never auto-applies over newer server state. Browser storage failures degrade to a visible unavailable state without breaking ordinary server-backed drafting, untouched page navigation does not manufacture recovery state, and explicit Save remains the only durable mutation. The recovery layer is not authorization, server draft truth or marketplace truth.
 
 SLICE-0054 now adds the first accepted owner-direct provider surface:
 
@@ -130,6 +132,7 @@ SLICE-0040 marketplace identity/truth separation
 → SLICE-0059 anonymous factual whole-Shortlist Compare
 → SLICE-0060 authenticated professional Organization inventory overview
 → SLICE-0061 authenticated professional Organization listing draft workspace
+→ SLICE-0062 professional draft connectivity recovery
 ```
 
 Latest closures:
@@ -145,6 +148,7 @@ docs/slices/SLICE-0058-acceptance-closure.md
 docs/slices/SLICE-0059-acceptance-closure.md
 docs/slices/SLICE-0060-acceptance-closure.md
 docs/slices/SLICE-0061-acceptance-closure.md
+docs/slices/SLICE-0062-acceptance-closure.md
 ```
 
 ## Accepted technical Search result
@@ -220,29 +224,23 @@ The SLICE-0053 same-host session-topology invariant remains in force for browser
 
 ## What remains unbuilt
 
-Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; professional draft-to-marketplace promotion/publication, branding/media and connectivity-resilient draft recovery; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
+Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; professional draft-to-marketplace promotion/publication and branding/media; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-SLICE-0061 is owner-accepted and merged. It adds Organization-owned private professional listing drafts while preserving the separate public NativeListing publishing-eligibility and marketplace-truth boundaries.
+SLICE-0062 is owner-accepted and merged. It adds bounded connectivity-resilient browser-local recovery to the accepted Organization-owned professional draft workspace while preserving FastAPI/PostgreSQL authority, optimistic concurrency and the separate marketplace/publication boundary. REQ-BROKER-024 is implemented; REQ-BROKER-023 branding remains pending, so the Broker Workspace Launch Gate remains NOT_READY.
 
 ## Next capability selection
 
 Next queue number:
 
 ```text
-SLICE-0062
+SLICE-0063
 ```
 
-**Selected capability:** Professional Draft Connectivity Recovery.
+**Selected capability:** UNSELECTED.
 
-Selection record: `docs/POST_SLICE_0061_REASSESSMENT_2026-09-21.md`.
+SLICE-0063 requires a fresh post-SLICE-0062 repository/product reassessment plus the normal Decision / Implementation Reconciliation before any capability selection or readiness work is treated as canonical. The queue number alone does not authorize a capability, implementation branch or `START_SLICE.bat` action.
 
-Readiness artifact: `docs/slices/SLICE-0062-professional-draft-connectivity-recovery.md`.
-
-Normative bounded contract: `specs/PROFESSIONAL_LISTING_RECOVERY_CONTRACT.v0.1.md`.
-
-The capability protects recent unsaved browser input for an existing authorized professional draft through a short-lived Account/Organization/Draft/version-scoped local recovery envelope. PostgreSQL/FastAPI remain the only authoritative draft truth; stale local recovery can never silently overwrite a newer server version.
-
-Implementation remains unauthorized until the readiness package passes independent exact-head review, required remote gates and is merged to canonical `main`; only then may the Project Owner run `START_SLICE.bat`.
+No SLICE-0063 implementation is authorized by SLICE-0062 acceptance closure.
 
 ## Development workflow
 
@@ -257,6 +255,6 @@ Implementation remains unauthorized until the readiness package passes independe
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0062 Professional Draft Connectivity Recovery is selected/readied but may not start until independent readiness review/remote gates/readiness merge are complete.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; after SLICE-0062 acceptance, SLICE-0063 remains unselected until fresh reassessment/readiness.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
