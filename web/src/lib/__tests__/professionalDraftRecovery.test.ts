@@ -12,9 +12,11 @@ import {
   RECOVERY_MAX_AGE_MS,
   RECOVERY_SCHEMA_V1,
   applyFormValues,
+  browserRecoveryStorage,
   buildRecoveryEnvelope,
   captureFormValues,
   clearRecoveryEnvelope,
+  computeRecoveryUiState,
   decideRestore,
   loadRecoveryEnvelope,
   parseRecoveryEnvelope,
@@ -223,19 +225,240 @@ test("clearRecoveryEnvelope: a storage remove exception never throws", () => {
   assert.doesNotThrow(() => clearRecoveryEnvelope(new ThrowingStorage(false, false, true), SCOPE_A));
 });
 
+// --- browserRecoveryStorage (independent review finding 2026-09-21 #3) ---
+//
+// The bug: a caller that wrote `window.localStorage` as a bare argument
+// expression evaluates the `localStorage` property getter itself -- which
+// can throw a SecurityError in some disabled-storage/private-mode browsers
+// -- *before* ever entering this module, outside every try/catch below.
+// `browserRecoveryStorage()` must defer that property access into each
+// method body so the existing get/set/remove try/catch boundaries in
+// `loadRecoveryEnvelope`/`saveRecoveryEnvelope`/`clearRecoveryEnvelope`
+// still catch it.
+//
+// No `window` global exists in this Node test process, so a minimal fake is
+// installed/restored around each test rather than depending on jsdom.
+
+function withFakeWindow<T>(windowValue: unknown, run: () => T): T {
+  const previousHadWindow = Object.prototype.hasOwnProperty.call(globalThis, "window");
+  const previousWindow = (globalThis as { window?: unknown }).window;
+  (globalThis as { window?: unknown }).window = windowValue;
+  try {
+    return run();
+  } finally {
+    if (previousHadWindow) {
+      (globalThis as { window?: unknown }).window = previousWindow;
+    } else {
+      delete (globalThis as { window?: unknown }).window;
+    }
+  }
+}
+
+test("browserRecoveryStorage: merely constructing it never touches window.localStorage (the property getter is never evaluated)", () => {
+  let accessed = false;
+  withFakeWindow(
+    {
+      get localStorage(): never {
+        accessed = true;
+        throw new Error("SecurityError: storage disabled");
+      },
+    },
+    () => {
+      assert.doesNotThrow(() => browserRecoveryStorage());
+      assert.equal(accessed, false);
+    },
+  );
+});
+
+test("browserRecoveryStorage: a getItem() against a throwing localStorage getter is caught by loadRecoveryEnvelope as storage_unavailable, never escapes uncaught", () => {
+  withFakeWindow(
+    {
+      get localStorage(): never {
+        throw new Error("SecurityError: storage disabled");
+      },
+    },
+    () => {
+      const storage = browserRecoveryStorage();
+      assert.throws(() => storage.getItem("x"));
+      const result = loadRecoveryEnvelope(storage, SCOPE_A, NOW);
+      assert.equal(result.kind, "storage_unavailable");
+    },
+  );
+});
+
+test("browserRecoveryStorage: a setItem() against a throwing localStorage getter is caught by saveRecoveryEnvelope, returns false rather than throwing", () => {
+  withFakeWindow(
+    {
+      get localStorage(): never {
+        throw new Error("SecurityError: storage disabled");
+      },
+    },
+    () => {
+      const storage = browserRecoveryStorage();
+      const envelope = buildRecoveryEnvelope(SCOPE_A, 1, {}, NOW);
+      assert.doesNotThrow(() => {
+        const wrote = saveRecoveryEnvelope(storage, envelope);
+        assert.equal(wrote, false);
+      });
+    },
+  );
+});
+
+test("browserRecoveryStorage: a removeItem() against a throwing localStorage getter is caught by clearRecoveryEnvelope, never throws", () => {
+  withFakeWindow(
+    {
+      get localStorage(): never {
+        throw new Error("SecurityError: storage disabled");
+      },
+    },
+    () => {
+      const storage = browserRecoveryStorage();
+      assert.doesNotThrow(() => clearRecoveryEnvelope(storage, SCOPE_A));
+    },
+  );
+});
+
+test("browserRecoveryStorage: when window.localStorage works normally, get/set/remove pass straight through end to end", () => {
+  const backing = new Map<string, string>();
+  withFakeWindow(
+    {
+      localStorage: {
+        getItem: (key: string) => (backing.has(key) ? backing.get(key)! : null),
+        setItem: (key: string, value: string) => {
+          backing.set(key, value);
+        },
+        removeItem: (key: string) => {
+          backing.delete(key);
+        },
+      },
+    },
+    () => {
+      const storage = browserRecoveryStorage();
+      const envelope = buildRecoveryEnvelope(SCOPE_A, 2, { broker_listing_reference: "REF-1" }, NOW);
+      assert.equal(saveRecoveryEnvelope(storage, envelope), true);
+      assert.deepEqual(loadRecoveryEnvelope(storage, SCOPE_A, NOW), { kind: "found", envelope });
+      clearRecoveryEnvelope(storage, SCOPE_A);
+      assert.equal(loadRecoveryEnvelope(storage, SCOPE_A, NOW).kind, "none");
+    },
+  );
+});
+
 // --- Capture (contract §14 "Capture") ---
 
-test("captureFormValues: snapshots all bounded editable values, trims, drops empty", () => {
+test("captureFormValues: snapshots every bounded editable value verbatim, including whitespace, unaltered by the recovery layer", () => {
   const values = captureFormValues((name) => {
     if (name === "broker_listing_reference") return "  REF-1  ";
-    if (name === "physical_boat.boat_name") return "";
+    if (name === "physical_boat.boat_name") return "Sea Breeze";
     if (name === "physical_boat.build_year") return "2005";
     return undefined;
   });
   assert.deepEqual(values, {
-    broker_listing_reference: "REF-1",
+    broker_listing_reference: "  REF-1  ",
+    "physical_boat.boat_name": "Sea Breeze",
     "physical_boat.build_year": "2005",
   });
+});
+
+// --- Finding 1 (independent review 2026-09-21): clearing a previously
+// populated field to "" must be captured and restored as "", never dropped
+// back to "no opinion" -- a cleared field is itself the meaningful edit.
+
+test("captureFormValues: a field cleared to the empty string is captured, not dropped", () => {
+  const values = captureFormValues((name) => (name === "physical_boat.boat_name" ? "" : undefined));
+  assert.deepEqual(values, { "physical_boat.boat_name": "" });
+});
+
+test("captureFormValues: multiple cleared fields all survive capture", () => {
+  const values = captureFormValues((name) => {
+    if (name === "physical_boat.boat_name") return "";
+    if (name === "physical_boat.marketed_brand_claim") return "";
+    if (name === "broker_listing_reference") return "REF-KEPT";
+    return undefined;
+  });
+  assert.deepEqual(values, {
+    "physical_boat.boat_name": "",
+    "physical_boat.marketed_brand_claim": "",
+    broker_listing_reference: "REF-KEPT",
+  });
+});
+
+test("a server-populated field cleared to '' round-trips through build -> save -> load -> apply as ''", () => {
+  const storage = new FakeStorage();
+  // Server version N has boat_name = "Anna"; the broker clears it.
+  const clearedValues = captureFormValues((name) => (name === "physical_boat.boat_name" ? "" : undefined));
+  const envelope = buildRecoveryEnvelope(SCOPE_A, 5, clearedValues, NOW);
+  saveRecoveryEnvelope(storage, envelope);
+
+  const loaded = loadRecoveryEnvelope(storage, SCOPE_A, NOW);
+  assert.equal(loaded.kind, "found");
+  assert.equal(loaded.kind === "found" ? loaded.envelope.form_values["physical_boat.boat_name"] : undefined, "");
+
+  const restored: Record<string, string> = {};
+  applyFormValues((name, value) => {
+    restored[name] = value;
+  }, loaded.kind === "found" ? loaded.envelope.form_values : {});
+  // Applying recovery must actually overwrite the server-rendered "Anna"
+  // with the recovered empty string, not leave it untouched.
+  assert.deepEqual(restored, { "physical_boat.boat_name": "" });
+});
+
+test("multiple cleared fields survive a full round trip together", () => {
+  const storage = new FakeStorage();
+  const values = captureFormValues((name) => {
+    if (name === "physical_boat.boat_name") return "";
+    if (name === "listing_offer.location_region") return "";
+    if (name === "physical_boat.build_year") return "2010";
+    return undefined;
+  });
+  saveRecoveryEnvelope(storage, buildRecoveryEnvelope(SCOPE_A, 3, values, NOW));
+
+  const loaded = loadRecoveryEnvelope(storage, SCOPE_A, NOW);
+  assert.equal(loaded.kind, "found");
+  assert.deepEqual(loaded.kind === "found" ? loaded.envelope.form_values : null, {
+    "physical_boat.boat_name": "",
+    "listing_offer.location_region": "",
+    "physical_boat.build_year": "2010",
+  });
+});
+
+test("whitespace/form-string input is preserved exactly by the recovery buffer, not trimmed or otherwise altered", () => {
+  const values = captureFormValues((name) =>
+    name === "physical_boat.boat_name" ? "  Sea  Breeze  " : undefined,
+  );
+  assert.deepEqual(values, { "physical_boat.boat_name": "  Sea  Breeze  " });
+
+  const storage = new FakeStorage();
+  saveRecoveryEnvelope(storage, buildRecoveryEnvelope(SCOPE_A, 1, values, NOW));
+  const loaded = loadRecoveryEnvelope(storage, SCOPE_A, NOW);
+  assert.equal(
+    loaded.kind === "found" ? loaded.envelope.form_values["physical_boat.boat_name"] : undefined,
+    "  Sea  Breeze  ",
+  );
+});
+
+test("parseRecoveryEnvelope: an empty-string field value in stored JSON is kept, not dropped", () => {
+  const envelope = parseRecoveryEnvelope(
+    envelopeJson({ form_values: { "physical_boat.boat_name": "" } }),
+    SCOPE_A,
+    NOW,
+  );
+  assert.deepEqual(envelope?.form_values, { "physical_boat.boat_name": "" });
+});
+
+test("parseRecoveryEnvelope: unknown keys and non-string values in form_values remain rejected/dropped even though empty strings are now kept", () => {
+  const envelope = parseRecoveryEnvelope(
+    envelopeJson({
+      form_values: {
+        "physical_boat.boat_name": "",
+        session_token: "sekrit",
+        "physical_boat.build_year": 2005,
+        not_a_real_field: "value",
+      },
+    }),
+    SCOPE_A,
+    NOW,
+  );
+  assert.deepEqual(envelope?.form_values, { "physical_boat.boat_name": "" });
 });
 
 test("captureFormValues: latest values replace an older local snapshot", () => {
@@ -296,6 +519,53 @@ test("decideRestore: local base version greater than server -> future_version_in
 test("decideRestore: storage unavailable propagates through", () => {
   const decision = decideRestore({ kind: "storage_unavailable" }, 2);
   assert.equal(decision.kind, "storage_unavailable");
+});
+
+// --- UI state (contract §12; independent review finding 2026-09-21 #2) ---
+//
+// computeRecoveryUiState is the pure mapping the DOM wiring uses to choose
+// what to show. Every one of contract §12's minimum distinguishable states
+// -- normal/active, unsaved changes recovered, newer-server-version
+// conflict, and unavailable -- must be reachable and distinct.
+
+test("computeRecoveryUiState: storage_unavailable -> unavailable", () => {
+  const state = computeRecoveryUiState({ kind: "storage_unavailable" });
+  assert.deepEqual(state, { kind: "unavailable" });
+});
+
+test("computeRecoveryUiState: no_recovery -> active (recovery usable, nothing recovered yet)", () => {
+  const state = computeRecoveryUiState({ kind: "no_recovery" });
+  assert.deepEqual(state, { kind: "active" });
+});
+
+test("computeRecoveryUiState: same_version -> recovered, carrying the envelope to apply", () => {
+  const envelope = buildRecoveryEnvelope(SCOPE_A, 2, { broker_listing_reference: "REF-1" }, NOW);
+  const state = computeRecoveryUiState({ kind: "same_version", envelope });
+  assert.deepEqual(state, { kind: "recovered", envelope });
+});
+
+test("computeRecoveryUiState: server_advanced -> conflict, carrying the stale envelope for review", () => {
+  const envelope = buildRecoveryEnvelope(SCOPE_A, 2, { broker_listing_reference: "REF-1" }, NOW);
+  const state = computeRecoveryUiState({ kind: "server_advanced", envelope });
+  assert.deepEqual(state, { kind: "conflict", envelope });
+});
+
+test("computeRecoveryUiState: future_version_invalid -> active (corrupt entry cleared by the caller, recovery remains usable)", () => {
+  const envelope = buildRecoveryEnvelope(SCOPE_A, 5, {}, NOW);
+  const state = computeRecoveryUiState({ kind: "future_version_invalid", envelope });
+  assert.deepEqual(state, { kind: "active" });
+});
+
+test("computeRecoveryUiState: all five distinguishable states (unavailable/active/recovered/conflict, with recovered != conflict) are pairwise distinct", () => {
+  const envelope = buildRecoveryEnvelope(SCOPE_A, 2, {}, NOW);
+  const kinds = [
+    computeRecoveryUiState({ kind: "storage_unavailable" }).kind,
+    computeRecoveryUiState({ kind: "no_recovery" }).kind,
+    computeRecoveryUiState({ kind: "same_version", envelope }).kind,
+    computeRecoveryUiState({ kind: "server_advanced", envelope }).kind,
+  ];
+  assert.deepEqual(kinds, ["unavailable", "active", "recovered", "conflict"]);
+  assert.equal(new Set(kinds).size, 4);
 });
 
 // --- Save outcomes (contract §14 "Save outcomes") ---

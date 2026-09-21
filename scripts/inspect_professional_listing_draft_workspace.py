@@ -51,7 +51,7 @@ embed or duplicate either proof (mirrors `inspect_owner_direct_draft.py`'s
 identical treatment of item 13 in its own contract).
 
 SLICE-0062 amendment (`specs/PROFESSIONAL_LISTING_RECOVERY_CONTRACT.v0.1.md`
-§15) adds two further proof items, inserted right after 16b and before the
+§15) adds proof items, inserted right after 16b and before the
 membership-revocation step (17) so Account A's ORG_A access is still valid:
 
     16c. the built protected edit page renders the SLICE-0062 browser-local
@@ -59,6 +59,11 @@ membership-revocation step (17) so Account A's ORG_A access is still valid:
          `#draft-form`) with the exact current Account/Organization/draft/
          version scope the client script reads to compute its restore
          decision
+    16c2. (independent review 2026-09-21 amendment) the real session cookie
+         value never appears anywhere in that same response body, and no
+         client-only recovery-state prose (active/recovered/conflict -- all
+         computed by JS this script never executes) is pre-rendered
+         server-side
     16d. a fresh successful save advances the rendered server-version data
          attribute and marks `data-save-outcome="saved"`, the signal the
          client-side script uses to clear a now-stale local recovery entry
@@ -929,6 +934,31 @@ def main() -> int:
             f"16c. built protected edit page wires the SLICE-0062 recovery buffer with the exact "
             f"current Account/Organization/draft/version scope and a save-outcome marker for the "
             f"client script's clear-on-save decision -> {'OK' if recovery_wiring_ok else 'FAIL'}\n"
+        )
+
+        # Independent review finding 2026-09-21 #2/#3: the recovery banner's
+        # visible active/recovered/conflict states are computed by client
+        # JS only (no headless browser executes it here) -- the server-
+        # rendered container itself must therefore carry no pre-rendered
+        # recovery-state prose that could mislead before the script runs,
+        # and the data it does carry (Account/Organization/draft/version)
+        # must never include the real session cookie value that
+        # authorized this very request.
+        session_cookie_value = next(
+            (cookie.value for cookie in session_a.jar if cookie.name == _SESSION_COOKIE_NAME), None
+        )
+        recovery_banner_leak_free_ok = (
+            session_cookie_value is not None
+            and session_cookie_value not in page_text
+            and "Local recovery is active" not in page_text
+            and "recovered into this form" not in page_text
+            and "local unsaved copy was captured" not in page_text
+        )
+        ok &= recovery_banner_leak_free_ok
+        print(
+            f"16c2. the real session cookie value never appears in the recovery banner's rendered "
+            f"markup, and no client-only recovery-state prose (active/recovered/conflict) is "
+            f"pre-rendered server-side -> {'OK' if recovery_banner_leak_free_ok else 'FAIL'}\n"
         )
 
         # A fresh successful save must be reflected in a new server_version

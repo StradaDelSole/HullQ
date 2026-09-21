@@ -330,7 +330,13 @@ const accountId = brokerContextResult?.kind === "ok" ? brokerContextResult.data.
               // `initProfessionalDraftRecovery` decide same-version-restore
               // vs. newer-server-version conflict against the current
               // rendered version.
+              //
+              // Storage is obtained through `browserRecoveryStorage()`, never
+              // as a bare `window.localStorage` argument expression -- the
+              // latter can throw before this script's own logic ever runs
+              // (independent review finding 2026-09-21 #3).
               import {
+                browserRecoveryStorage,
                 clearRecoveryEnvelope,
                 initProfessionalDraftRecovery,
               } from "../../../../../lib/professionalDraftRecovery";
@@ -345,12 +351,29 @@ const accountId = brokerContextResult?.kind === "ok" ? brokerContextResult.data.
                 const serverVersion = Number.parseInt(bannerEl.dataset.serverVersion ?? "", 10);
                 const saveOutcome = bannerEl.dataset.saveOutcome ?? "none";
 
-                if (accountId && organizationId && draftId && Number.isFinite(serverVersion)) {
-                  const scope = { accountId, organizationId, draftId };
-                  if (saveOutcome === "saved") {
-                    clearRecoveryEnvelope(window.localStorage, scope);
-                  }
-                  initProfessionalDraftRecovery(formEl, bannerEl, scope, serverVersion, window.localStorage);
+                // `scope` is null when the current AccountId could not be
+                // established (e.g. the private Broker Context lookup
+                // failed) -- `initProfessionalDraftRecovery` then renders
+                // the required "recovery unavailable" state itself and
+                // never wires capture, rather than this script silently
+                // doing nothing (independent review finding 2026-09-21 #3).
+                const scope =
+                  accountId && organizationId && draftId
+                    ? { accountId, organizationId, draftId }
+                    : null;
+
+                if (scope && saveOutcome === "saved") {
+                  clearRecoveryEnvelope(browserRecoveryStorage(), scope);
+                }
+
+                if (Number.isFinite(serverVersion)) {
+                  initProfessionalDraftRecovery(
+                    formEl,
+                    bannerEl,
+                    scope,
+                    serverVersion,
+                    browserRecoveryStorage(),
+                  );
                 }
               }
             </script>

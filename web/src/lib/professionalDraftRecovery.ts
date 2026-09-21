@@ -21,11 +21,24 @@
 // (matching `window.localStorage`'s shape) rather than a hard-coded global
 // reference, so the pure envelope/storage logic below stays unit-testable
 // with a plain in-memory fake -- no DOM/jsdom required (mirrors
-// `shortlistStore.ts`'s identical rationale). The DOM-wiring function at the
-// bottom of this file is the only part that touches `document`/`window`
-// directly; it is exercised by the retained real PostgreSQL/FastAPI/built-
-// Astro proof rather than by a unit test, mirroring `shortlistButtons.ts`'s
-// identical split between pure storage logic and thin DOM wiring.
+// `shortlistStore.ts`'s identical rationale). `browserRecoveryStorage()` is
+// the one blessed way browser wiring should obtain that interface: it never
+// touches `window.localStorage` itself at call time, only inside each
+// method, so a `SecurityError` thrown by the `localStorage` property getter
+// itself -- not just by `getItem`/`setItem`/`removeItem` -- still lands
+// inside this module's existing try/catch rather than escaping uncaught
+// before the module is ever entered (independent review finding
+// 2026-09-21 #3).
+//
+// `computeRecoveryUiState()` is the pure mapping from a restore decision to
+// the visible recovery state contract §12 requires (normal/active,
+// recovered, conflict, unavailable) and stays unit-testable the same way.
+// The DOM-wiring function at the bottom of this file (`renderRecoveryBanner`
+// / `initProfessionalDraftRecovery`) is the only part that touches
+// `document`/`window` directly; it is exercised by the retained real
+// PostgreSQL/FastAPI/built-Astro proof rather than by a unit test, mirroring
+// `shortlistButtons.ts`'s identical split between pure logic and thin DOM
+// wiring.
 
 export const RECOVERY_SCHEMA_V1 = "professional-listing-draft-recovery-v1";
 
@@ -86,14 +99,20 @@ function isPositiveInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value > 0;
 }
 
-/** Drops any key outside the bounded vocabulary and any non-string value -- contract §5/§11. */
+/**
+ * Drops any key outside the bounded vocabulary and any non-string value
+ * (contract §5/§11). An empty string is a valid, meaningful captured value
+ * (independent review finding 2026-09-21 #1: clearing a previously
+ * populated field is itself the edit being recovered) and is kept, not
+ * dropped.
+ */
 function sanitizeFormValues(value: unknown): RecoveryFormValues | null {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
   const result: RecoveryFormValues = {};
   for (const name of RECOVERY_FIELD_NAMES) {
     const candidate = record[name];
-    if (typeof candidate === "string" && candidate.length > 0) {
+    if (typeof candidate === "string") {
       result[name] = candidate;
     }
   }
@@ -172,6 +191,35 @@ export interface RecoveryStorageLike {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
   removeItem(key: string): void;
+}
+
+/**
+ * Lazily wraps `window.localStorage` for browser wiring callers. Merely
+ * *calling* this factory never touches `window.localStorage` itself -- each
+ * returned method only evaluates the `localStorage` property when actually
+ * invoked. That matters because the `localStorage` property getter itself
+ * (not just `getItem`/`setItem`/`removeItem`) can throw a `SecurityError` in
+ * some disabled-storage/private-mode browsers; a caller that instead wrote
+ * `window.localStorage` as a bare argument expression would throw before
+ * ever entering this module, outside every try/catch below (independent
+ * review finding 2026-09-21 #3). Routed through here, that same exception
+ * surfaces only inside `loadRecoveryEnvelope`/`saveRecoveryEnvelope`/
+ * `clearRecoveryEnvelope`'s existing try/catch around `storage.getItem(...)`
+ * /`setItem(...)`/`removeItem(...)`, which already treat it as an ordinary
+ * storage failure (contract §6/§I) -- no separate try/catch is needed here.
+ */
+export function browserRecoveryStorage(): RecoveryStorageLike {
+  return {
+    getItem(key: string): string | null {
+      return window.localStorage.getItem(key);
+    },
+    setItem(key: string, value: string): void {
+      window.localStorage.setItem(key, value);
+    },
+    removeItem(key: string): void {
+      window.localStorage.removeItem(key);
+    },
+  };
 }
 
 export type RecoveryLoadResult =
@@ -258,8 +306,51 @@ export function decideRestore(load: RecoveryLoadResult, serverVersion: number): 
 }
 
 /**
+ * The minimum set of visible recovery states contract §12 requires the edit
+ * page to distinguish. `active` covers both "no envelope yet, but recovery
+ * is usable" and "the stale/corrupt envelope for this scope was just
+ * cleared" -- in both cases local recovery capability itself remains
+ * available for subsequent edits (independent review finding 2026-09-21
+ * #2), which is a distinct, required state from `recovered`/`conflict`/
+ * `unavailable`.
+ */
+export type RecoveryUiState =
+  | { kind: "unavailable" }
+  | { kind: "active" }
+  | { kind: "recovered"; envelope: RecoveryEnvelopeV1 }
+  | { kind: "conflict"; envelope: RecoveryEnvelopeV1 };
+
+/**
+ * Pure mapping from a restore decision to the visible UI state (contract
+ * §12). Kept separate from `initProfessionalDraftRecovery`'s DOM rendering
+ * so the state selection itself stays unit-testable without a DOM.
+ */
+export function computeRecoveryUiState(decision: RestoreDecision): RecoveryUiState {
+  switch (decision.kind) {
+    case "storage_unavailable":
+      return { kind: "unavailable" };
+    case "no_recovery":
+      return { kind: "active" };
+    case "same_version":
+      return { kind: "recovered", envelope: decision.envelope };
+    case "server_advanced":
+      return { kind: "conflict", envelope: decision.envelope };
+    case "future_version_invalid":
+      // Corrupt for v0.1 (contract §8.4): never surfaced as recovered; the
+      // caller clears the stale entry, after which recovery is simply
+      // active again for this scope.
+      return { kind: "active" };
+  }
+}
+
+/**
  * Pure field-value capture: *read* is called once per bounded field name and
- * only non-empty trimmed string results are kept. Takes a plain reader
+ * every string result is kept verbatim, including an empty string --
+ * independent review finding 2026-09-21 #1: a broker clearing a previously
+ * populated field (e.g. `boat_name`) is a meaningful edit that must survive
+ * recovery exactly as typed, not be silently dropped back to "no opinion".
+ * The recovery layer never trims/normalizes; server validation/normalization
+ * remains authoritative on real Save (contract §5). Takes a plain reader
  * function rather than a form element so this stays unit-testable without a
  * DOM (the DOM-backed reader lives in `initProfessionalDraftRecovery` below).
  */
@@ -270,9 +361,7 @@ export function captureFormValues(
   for (const name of RECOVERY_FIELD_NAMES) {
     const raw = read(name);
     if (typeof raw !== "string") continue;
-    const trimmed = raw.trim();
-    if (trimmed.length === 0) continue;
-    values[name] = trimmed;
+    values[name] = raw;
   }
   return values;
 }
@@ -295,6 +384,7 @@ export function applyFormValues(
 }
 
 export interface ProfessionalDraftRecoveryText {
+  activeNotice: string;
   recoveredNotice: string;
   conflictNotice: string;
   restoreForReviewLabel: string;
@@ -303,6 +393,8 @@ export interface ProfessionalDraftRecoveryText {
 }
 
 export const defaultProfessionalDraftRecoveryTextEn: ProfessionalDraftRecoveryText = {
+  activeNotice:
+    "Local recovery is active for this draft. Recent unsaved changes stay recoverable in this browser after a connectivity interruption.",
   recoveredNotice: "Unsaved local changes were recovered into this form. Nothing is saved until you press Save.",
   conflictNotice:
     "This draft changed on the server since your local unsaved copy was captured. Your local copy was not applied automatically.",
@@ -321,11 +413,36 @@ function isRecoveryFormElement(element: Element | RadioNodeList | null): element
   );
 }
 
+/** Replaces *bannerContainer*'s content with one message and zero or more action buttons (contract §12). */
+function renderRecoveryBanner(
+  bannerContainer: HTMLElement,
+  message: string,
+  actions: Array<{ label: string; onClick: () => void }> = [],
+): void {
+  while (bannerContainer.firstChild) bannerContainer.removeChild(bannerContainer.firstChild);
+  const paragraph = document.createElement("p");
+  paragraph.textContent = message;
+  bannerContainer.appendChild(paragraph);
+  for (const action of actions) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = action.label;
+    button.addEventListener("click", action.onClick);
+    bannerContainer.appendChild(button);
+  }
+}
+
 /**
  * Wires the bounded recovery buffer onto one already-rendered, authorized
  * professional draft edit *form*. Only meant to be called once per page
  * render, after the server-authoritative form has been rendered
  * (contract §7: "once an authorized edit page has rendered").
+ *
+ * *scope* is `null` when the current AccountId could not be established
+ * (e.g. the private Broker Context lookup failed) -- recovery has no safe
+ * scope to key itself on in that case, so this renders the required
+ * unavailable state and never wires capture (independent review finding
+ * 2026-09-21 #3), while leaving ordinary server-backed editing untouched.
  *
  * *bannerContainer* is used both to render the current recovery state
  * (contract §12) and, before this call, may already carry a
@@ -337,12 +454,22 @@ function isRecoveryFormElement(element: Element | RadioNodeList | null): element
 export function initProfessionalDraftRecovery(
   form: HTMLFormElement,
   bannerContainer: HTMLElement,
-  scope: RecoveryScope,
+  scope: RecoveryScope | null,
   serverVersion: number,
   storage: RecoveryStorageLike,
   text: ProfessionalDraftRecoveryText = defaultProfessionalDraftRecoveryTextEn,
   now: () => Date = () => new Date(),
 ): void {
+  if (scope === null) {
+    renderRecoveryBanner(bannerContainer, text.unavailableNotice);
+    return;
+  }
+  // TypeScript does not carry the null-narrowing above into the nested
+  // function declarations below (it cannot prove a closed-over parameter is
+  // never reassigned before they run) -- bind the narrowed value once so
+  // every inner function sees `RecoveryScope`, not `RecoveryScope | null`.
+  const resolvedScope: RecoveryScope = scope;
+
   function readField(name: RecoveryFieldName): string | null {
     const element = form.elements.namedItem(name);
     return isRecoveryFormElement(element) ? element.value : null;
@@ -355,24 +482,21 @@ export function initProfessionalDraftRecovery(
     }
   }
 
-  function persistCapture(): void {
-    const values = captureFormValues(readField);
-    const envelope = buildRecoveryEnvelope(scope, serverVersion, values, now());
-    saveRecoveryEnvelope(storage, envelope);
-  }
+  // Independent review finding 2026-09-21 #3: once a write actually fails
+  // (quota/private-mode/security exception surfacing only at `setItem`
+  // time, after an earlier `getItem` succeeded), stop claiming recovery is
+  // active and stop attempting further writes for this page instance
+  // rather than silently retrying forever.
+  let recoveryUsable = true;
 
-  function renderBanner(message: string, actions: Array<{ label: string; onClick: () => void }> = []): void {
-    while (bannerContainer.firstChild) bannerContainer.removeChild(bannerContainer.firstChild);
-    if (message.length === 0 && actions.length === 0) return;
-    const paragraph = document.createElement("p");
-    paragraph.textContent = message;
-    bannerContainer.appendChild(paragraph);
-    for (const action of actions) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = action.label;
-      button.addEventListener("click", action.onClick);
-      bannerContainer.appendChild(button);
+  function persistCapture(): void {
+    if (!recoveryUsable) return;
+    const values = captureFormValues(readField);
+    const envelope = buildRecoveryEnvelope(resolvedScope, serverVersion, values, now());
+    const wrote = saveRecoveryEnvelope(storage, envelope);
+    if (!wrote) {
+      recoveryUsable = false;
+      renderRecoveryBanner(bannerContainer, text.unavailableNotice);
     }
   }
 
@@ -399,37 +523,45 @@ export function initProfessionalDraftRecovery(
     }
   }
 
-  const decision = decideRestore(loadRecoveryEnvelope(storage, scope, now()), serverVersion);
+  const decision = decideRestore(loadRecoveryEnvelope(storage, resolvedScope, now()), serverVersion);
 
-  if (decision.kind === "storage_unavailable") {
-    renderBanner(text.unavailableNotice);
-    return;
-  }
-
-  if (decision.kind === "same_version") {
-    applyFormValues(writeField, decision.envelope.form_values);
-    renderBanner(text.recoveredNotice);
-  } else if (decision.kind === "server_advanced") {
-    renderBanner(text.conflictNotice, [
-      {
-        label: text.restoreForReviewLabel,
-        onClick: () => {
-          applyFormValues(writeField, decision.envelope.form_values);
-          renderBanner(text.recoveredNotice);
-        },
-      },
-      {
-        label: text.discardLabel,
-        onClick: () => {
-          clearRecoveryEnvelope(storage, scope);
-          renderBanner("");
-        },
-      },
-    ]);
-  } else if (decision.kind === "future_version_invalid") {
+  if (decision.kind === "future_version_invalid") {
     // Corrupt for v0.1 (contract §8.4): never auto-restore, and remove it
     // so it does not keep resurfacing.
-    clearRecoveryEnvelope(storage, scope);
+    clearRecoveryEnvelope(storage, resolvedScope);
+  }
+
+  const uiState = computeRecoveryUiState(decision);
+
+  switch (uiState.kind) {
+    case "unavailable":
+      renderRecoveryBanner(bannerContainer, text.unavailableNotice);
+      return; // storage is not usable -- do not wire capture at all.
+    case "active":
+      renderRecoveryBanner(bannerContainer, text.activeNotice);
+      break;
+    case "recovered":
+      applyFormValues(writeField, uiState.envelope.form_values);
+      renderRecoveryBanner(bannerContainer, text.recoveredNotice);
+      break;
+    case "conflict":
+      renderRecoveryBanner(bannerContainer, text.conflictNotice, [
+        {
+          label: text.restoreForReviewLabel,
+          onClick: () => {
+            applyFormValues(writeField, uiState.envelope.form_values);
+            renderRecoveryBanner(bannerContainer, text.recoveredNotice);
+          },
+        },
+        {
+          label: text.discardLabel,
+          onClick: () => {
+            clearRecoveryEnvelope(storage, resolvedScope);
+            renderRecoveryBanner(bannerContainer, text.activeNotice);
+          },
+        },
+      ]);
+      break;
   }
 
   wireCapture();
