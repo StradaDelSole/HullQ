@@ -50,6 +50,12 @@ export interface PublicListingData {
   known_history_narrative: ClaimField | null;
   vat_tax_status_claim: ClaimField | null;
   publishing_organization_id: string;
+  /**
+   * SLICE-0063: the publishing Organization's current bounded display
+   * name, always present -- independent of VAT/tax or other optional
+   * claim presence. Plain text only, never trusted HTML.
+   */
+  publishing_organization_display_name: string;
   offer_recorded_at: string;
   hullq_vat_verification_status: string;
   /**

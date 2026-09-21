@@ -93,9 +93,9 @@ def _seed_organization(conn: Any, organization_id: MarketplaceOrganizationId) ->
     with conn.cursor() as cur:
         cur.execute(
             "INSERT INTO marketplace_organizations "
-            "(organization_id, professional_category, publishing_eligibility) "
-            "VALUES (%s, %s, %s)",
-            [organization_id.value, "BROKER", "ELIGIBLE"],
+            "(organization_id, professional_category, publishing_eligibility, public_display_name) "
+            "VALUES (%s, %s, %s, %s)",
+            [organization_id.value, "BROKER", "ELIGIBLE", organization_id.value],
         )
     conn.commit()
 

@@ -12,6 +12,9 @@ export interface OrganizationContext {
   organization_id: string;
   professional_category: string;
   publishing_eligibility: string;
+  // SLICE-0063: bounded current presentation metadata only -- authorization
+  // stays keyed exclusively by organization_id.
+  public_display_name: string;
   roles: string[];
   mfa_required: boolean;
   mfa_satisfied: boolean;

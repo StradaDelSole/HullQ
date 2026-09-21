@@ -37,6 +37,7 @@ from hullq.persistence.broker_identity import (
     get_or_create_account_for_identity,
     seed_marketplace_organization,
     seed_organization_membership,
+    update_marketplace_organization_display_name,
     update_membership_state,
 )
 
@@ -396,3 +397,114 @@ class TestOrganizationMembershipDirectory:
         assert {
             m.organization_id.value for m in fetch_active_memberships_for_account(conn, account_b)
         } == {"ORG-1"}
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0063: public_display_name persistence
+# ---------------------------------------------------------------------------
+
+
+class TestPublicDisplayNamePersistence:
+    def test_seed_without_explicit_name_backfills_to_organization_id(self, conn: Any) -> None:
+        """Contract §3.1's accepted compatibility backfill applies to any
+        Organization seeded without an explicit display name, not only to
+        rows that predate this column."""
+        seed_marketplace_organization(conn, _org("ORG-NO-NAME"))
+        conn.commit()
+        fetched = fetch_marketplace_organization(conn, MarketplaceOrganizationId("ORG-NO-NAME"))
+        assert fetched is not None
+        assert fetched.public_display_name == "ORG-NO-NAME"
+        assert fetched.resolved_public_display_name == "ORG-NO-NAME"
+
+    def test_explicit_display_name_persists_and_re_reads_exactly(self, conn: Any) -> None:
+        seed_marketplace_organization(
+            conn,
+            MarketplaceOrganization(
+                id=MarketplaceOrganizationId("ORG-NAMED"),
+                professional_category=ProfessionalCategory.DEALER,
+                publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+                public_display_name="Ocean Yachts Brokerage, Inc.",
+            ),
+        )
+        conn.commit()
+        fetched = fetch_marketplace_organization(conn, MarketplaceOrganizationId("ORG-NAMED"))
+        assert fetched is not None
+        assert fetched.public_display_name == "Ocean Yachts Brokerage, Inc."
+
+    def test_update_display_name_changes_only_that_column(self, conn: Any) -> None:
+        seed_marketplace_organization(
+            conn,
+            MarketplaceOrganization(
+                id=MarketplaceOrganizationId("ORG-UPDATE"),
+                professional_category=ProfessionalCategory.BROKER,
+                publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+                public_display_name="Original Name",
+            ),
+        )
+        conn.commit()
+
+        update_marketplace_organization_display_name(
+            conn, MarketplaceOrganizationId("ORG-UPDATE"), "Renamed Brokerage LLC"
+        )
+        conn.commit()
+
+        fetched = fetch_marketplace_organization(conn, MarketplaceOrganizationId("ORG-UPDATE"))
+        assert fetched is not None
+        assert fetched.public_display_name == "Renamed Brokerage LLC"
+        assert fetched.professional_category is ProfessionalCategory.BROKER
+        assert fetched.publishing_eligibility is OrganizationPublishingEligibility.ELIGIBLE
+
+    def test_update_rejects_empty_display_name(self, conn: Any) -> None:
+        seed_marketplace_organization(conn, _org("ORG-REJECT"))
+        conn.commit()
+        with pytest.raises(ValueError, match="empty"):
+            update_marketplace_organization_display_name(
+                conn, MarketplaceOrganizationId("ORG-REJECT"), "   "
+            )
+
+    def test_genuinely_pre_migration_row_is_backfilled_on_upgrade(self, db_url: str) -> None:
+        """A row written while the schema is still pinned at the
+        pre-SLICE-0063 head (`a05c7e9b1f34`, no `public_display_name`
+        column at all) must receive the deterministic local
+        `public_display_name = organization_id` backfill -- and nothing
+        else about it -- purely from running the real migration to head,
+        with no network/external lookup."""
+        from alembic import command
+        from hullq.persistence.alembic_baseline import alembic_config
+
+        schema_name = f"hullq_s0063backfill_{uuid.uuid4().hex[:16]}"
+        _create_schema(db_url, schema_name)
+        try:
+            url = _with_search_path(db_url, schema_name)
+            baseline = prepare_alembic_baseline(url)
+            assert baseline.accepted, baseline.reason
+            command.upgrade(alembic_config(url), "a05c7e9b1f34")  # pre-0063 head
+
+            pre_conn = psycopg.connect(url)
+            try:
+                with pre_conn.cursor() as cur:
+                    cur.execute(
+                        "INSERT INTO marketplace_organizations "
+                        "(organization_id, professional_category, publishing_eligibility) "
+                        "VALUES (%s, %s, %s)",
+                        ["ORG-PRE-EXISTING", "BROKER", "ELIGIBLE"],
+                    )
+                pre_conn.commit()
+            finally:
+                pre_conn.close()
+
+            alembic_upgrade_head(url)
+
+            post_conn = psycopg.connect(url)
+            try:
+                fetched = fetch_marketplace_organization(
+                    post_conn, MarketplaceOrganizationId("ORG-PRE-EXISTING")
+                )
+                assert fetched is not None
+                assert fetched.public_display_name == "ORG-PRE-EXISTING"
+                assert fetched.professional_category is ProfessionalCategory.BROKER
+                assert fetched.publishing_eligibility is OrganizationPublishingEligibility.ELIGIBLE
+            finally:
+                post_conn.close()
+        finally:
+            _drop_schema(db_url, schema_name)

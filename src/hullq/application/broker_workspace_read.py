@@ -39,11 +39,18 @@ __all__ = [
 
 @dataclass(frozen=True)
 class OrganizationContextView:
-    """One authorized Organization workspace context (contract §9/§11)."""
+    """One authorized Organization workspace context (contract §9/§11).
+
+    `public_display_name` (SLICE-0063 contract §9) is current bounded
+    presentation metadata only -- `organization_id` remains the exclusive
+    authorization selector; a client's `public_display_name` is never
+    accepted back as one.
+    """
 
     organization_id: str
     professional_category: str
     publishing_eligibility: str
+    public_display_name: str
     roles: tuple[str, ...]
     mfa_required: bool
     mfa_satisfied: bool
@@ -53,6 +60,7 @@ class OrganizationContextView:
             "organization_id": self.organization_id,
             "professional_category": self.professional_category,
             "publishing_eligibility": self.publishing_eligibility,
+            "public_display_name": self.public_display_name,
             "roles": list(self.roles),
             "mfa_required": self.mfa_required,
             "mfa_satisfied": self.mfa_satisfied,
@@ -92,6 +100,7 @@ def get_broker_context_read_model(conn: Any, session: SessionClaims) -> BrokerCo
                 organization_id=org.id.value,
                 professional_category=org.professional_category.value,
                 publishing_eligibility=org.publishing_eligibility.value,
+                public_display_name=org.resolved_public_display_name,
                 roles=tuple(sorted(role.value for role in membership.roles)),
                 mfa_required=privileged,
                 mfa_satisfied=session.identity.mfa_satisfied,
@@ -156,6 +165,7 @@ def get_organization_workspace_result(
         organization_id=org.id.value,
         professional_category=org.professional_category.value,
         publishing_eligibility=org.publishing_eligibility.value,
+        public_display_name=org.resolved_public_display_name,
         roles=tuple(sorted(role.value for role in membership.roles)),
         mfa_required=privileged,
         mfa_satisfied=session.identity.mfa_satisfied,

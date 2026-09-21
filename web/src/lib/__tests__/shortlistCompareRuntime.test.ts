@@ -42,6 +42,7 @@ function baseListing(overrides: Partial<PublicListingData> = {}): PublicListingD
     known_history_narrative: null,
     vat_tax_status_claim: null,
     publishing_organization_id: "ORG-1",
+    publishing_organization_display_name: "ORG-1",
     offer_recorded_at: "2026-01-01T00:00:00Z",
     hullq_vat_verification_status: "UNVERIFIED",
     physical_boat_claims: null,

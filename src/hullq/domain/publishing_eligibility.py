@@ -17,6 +17,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
+from hullq.domain.organization_display_name import normalize_public_display_name
+
 __all__ = [
     "AccountId",
     "MarketplaceOrganization",
@@ -144,11 +146,18 @@ class MarketplaceOrganization:
 
     The professional category does not imply eligibility; eligibility is a
     separate adjudicated state.
+
+    `public_display_name` (SLICE-0063) is bounded human-readable current
+    presentation metadata -- never the Organization's identity, never
+    implying legal/KYB verification (contract §2). `None` means no explicit
+    name has been recorded; `resolved_public_display_name` is the accepted
+    compatibility fallback to use for presentation in that case.
     """
 
     id: MarketplaceOrganizationId
     professional_category: ProfessionalCategory
     publishing_eligibility: OrganizationPublishingEligibility
+    public_display_name: str | None = None
 
     def __post_init__(self) -> None:
         _require_kind(self.id, MarketplaceOrganizationId, "MarketplaceOrganization.id")
@@ -162,6 +171,14 @@ class MarketplaceOrganization:
             OrganizationPublishingEligibility,
             "MarketplaceOrganization.publishing_eligibility",
         )
+        if self.public_display_name is not None:
+            normalize_public_display_name(self.public_display_name)
+
+    @property
+    def resolved_public_display_name(self) -> str:
+        """Current display label: explicit `public_display_name`, or the
+        Organization ID compatibility fallback (contract §3.1/§7)."""
+        return self.public_display_name if self.public_display_name is not None else self.id.value
 
 
 @dataclass(frozen=True)
