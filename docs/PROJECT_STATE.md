@@ -238,7 +238,7 @@ Selection record: `docs/POST_SLICE_0061_REASSESSMENT_2026-09-21.md`.
 
 Readiness artifact: `docs/slices/SLICE-0062-professional-draft-connectivity-recovery.md`.
 
-Normative bounded contract: `specs/PROFESSIONAL_LISTING_DRAFT_RECOVERY_CONTRACT.v0.1.md`.
+Normative bounded contract: `specs/PROFESSIONAL_LISTING_RECOVERY_CONTRACT.v0.1.md`.
 
 The capability protects recent unsaved browser input for an existing authorized professional draft through a short-lived Account/Organization/Draft/version-scoped local recovery envelope. PostgreSQL/FastAPI remain the only authoritative draft truth; stale local recovery can never silently overwrite a newer server version.
 
