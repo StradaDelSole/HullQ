@@ -39,6 +39,20 @@
 // PostgreSQL/FastAPI/built-Astro proof rather than by a unit test, mirroring
 // `shortlistButtons.ts`'s identical split between pure logic and thin DOM
 // wiring.
+//
+// `canWriteRecoveryStorage()` closes independent review finding
+// 2026-09-22 #A: a successful `getItem()` never by itself proves recovery
+// is usable, because browser storage can allow reads while rejecting
+// writes (quota/privacy/security). The "active" UI state is only ever
+// shown after this bounded, non-destructive write probe actually succeeds.
+//
+// `markRecoveryCaptureDirty()`/`takeRecoveryCaptureFlush()` close
+// independent review finding 2026-09-22 #B: `pagehide` (and submit) must
+// flush only genuine pending unsaved input, never manufacture a recovery
+// envelope for a form nobody touched -- these two pure functions are the
+// exact dirty-tracking primitives the DOM wiring's debounce/submit/
+// pagehide handlers are composed from, and are unit-tested both directly
+// and via a small DOM-free simulation of that composition.
 
 export const RECOVERY_SCHEMA_V1 = "professional-listing-draft-recovery-v1";
 
@@ -283,6 +297,36 @@ export function clearRecoveryEnvelope(storage: RecoveryStorageLike, scope: Recov
   }
 }
 
+/**
+ * Bounded, non-destructive probe of whether *storage* can actually persist
+ * data for *scope*, not just read it -- browser storage can allow reads
+ * while rejecting writes (quota/privacy/security restrictions), and
+ * contract §6/§I forbids claiming recovery is active on the strength of a
+ * successful read alone (independent review finding 2026-09-22 #A). Uses a
+ * dedicated per-scope probe key -- distinct from `recoveryStorageKey`, so
+ * an existing valid recovery envelope for this scope is never read,
+ * overwritten or removed by the probe -- writes a small throwaway marker,
+ * then best-effort removes it. Cleanup failure does not change the
+ * verdict: the write itself is what is being tested, and a stray leftover
+ * probe key never carries auth/session/MFA material and never breaks
+ * drafting.
+ */
+export function canWriteRecoveryStorage(storage: RecoveryStorageLike, scope: RecoveryScope): boolean {
+  const key = `${recoveryStorageKey(scope)}.write-probe`;
+  try {
+    storage.setItem(key, "1");
+  } catch {
+    return false;
+  }
+  try {
+    storage.removeItem(key);
+  } catch {
+    // Best-effort cleanup only -- never flips a successful write probe to
+    // failure, and never breaks drafting.
+  }
+  return true;
+}
+
 export type RestoreDecision =
   | { kind: "storage_unavailable" }
   | { kind: "no_recovery" }
@@ -381,6 +425,35 @@ export function applyFormValues(
     if (value === undefined) continue;
     write(name, value);
   }
+}
+
+/**
+ * Pure dirty-tracking state the DOM wiring's debounce/submit/pagehide
+ * handlers are built from (independent review finding 2026-09-22 #B):
+ * `pagehide` must flush only genuine pending unsaved input, never
+ * manufacture a recovery envelope (or a fresh `captured_at`) for a form
+ * nobody touched since the last successful flush.
+ */
+export interface RecoveryCaptureDirtyState {
+  dirty: boolean;
+}
+
+export function markRecoveryCaptureDirty(state: RecoveryCaptureDirtyState): void {
+  state.dirty = true;
+}
+
+/**
+ * Reports whether there was pending dirty state to flush, clearing it as a
+ * side effect. A caller must actually persist a capture only when this
+ * returns `true` -- calling it when nothing is dirty (an untouched form,
+ * or a form already flushed since its last edit) must be a no-op, so
+ * `pagehide`/reload on an unedited page never creates a synthetic local
+ * recovery entry.
+ */
+export function takeRecoveryCaptureFlush(state: RecoveryCaptureDirtyState): boolean {
+  if (!state.dirty) return false;
+  state.dirty = false;
+  return true;
 }
 
 export interface ProfessionalDraftRecoveryText {
@@ -501,25 +574,40 @@ export function initProfessionalDraftRecovery(
   }
 
   function wireCapture(): void {
+    // Independent review finding 2026-09-22 #B: `pagehide` (and submit)
+    // must flush only genuine pending input. `dirtyState` is set by every
+    // `input`/`change` and cleared by whichever flush actually runs first
+    // (the debounce timer, submit, or pagehide) -- so merely opening and
+    // leaving/reloading an untouched form, or a pagehide after an edit was
+    // already flushed by the debounce timer, never (re)persists a capture.
+    const dirtyState: RecoveryCaptureDirtyState = { dirty: false };
     let debounceHandle: ReturnType<typeof setTimeout> | undefined;
-    const scheduleCapture = (): void => {
-      if (debounceHandle !== undefined) clearTimeout(debounceHandle);
-      debounceHandle = setTimeout(persistCapture, 400);
+
+    const flushCapture = (): void => {
+      if (debounceHandle !== undefined) {
+        clearTimeout(debounceHandle);
+        debounceHandle = undefined;
+      }
+      if (!takeRecoveryCaptureFlush(dirtyState)) return;
+      persistCapture();
     };
+
+    const scheduleCapture = (): void => {
+      markRecoveryCaptureDirty(dirtyState);
+      if (debounceHandle !== undefined) clearTimeout(debounceHandle);
+      debounceHandle = setTimeout(flushCapture, 400);
+    };
+
     form.addEventListener("input", scheduleCapture);
     form.addEventListener("change", scheduleCapture);
     // Contract §7: explicit submit must ensure the latest form state has
     // been captured before navigation -- flush synchronously rather than
-    // relying on the debounce timer.
-    form.addEventListener("submit", () => {
-      if (debounceHandle !== undefined) clearTimeout(debounceHandle);
-      persistCapture();
-    });
+    // relying on the debounce timer (a no-op if nothing is dirty).
+    form.addEventListener("submit", flushCapture);
     if (typeof window !== "undefined") {
-      window.addEventListener("pagehide", () => {
-        if (debounceHandle !== undefined) clearTimeout(debounceHandle);
-        persistCapture();
-      });
+      // Contract §7: page-hide/unload SHOULD flush pending recovery --
+      // "pending" is the operative word; see dirtyState above.
+      window.addEventListener("pagehide", flushCapture);
     }
   }
 
@@ -538,6 +626,16 @@ export function initProfessionalDraftRecovery(
       renderRecoveryBanner(bannerContainer, text.unavailableNotice);
       return; // storage is not usable -- do not wire capture at all.
     case "active":
+      // Independent review finding 2026-09-22 #A: a successful read alone
+      // does not prove recovery is usable -- browser storage can allow
+      // reads while rejecting writes (quota/privacy/security). Never claim
+      // "active" until a bounded, non-destructive write probe actually
+      // succeeds; if it does not, this is exactly the "recovery cannot be
+      // maintained" case contract §6 requires to render as unavailable.
+      if (!canWriteRecoveryStorage(storage, resolvedScope)) {
+        renderRecoveryBanner(bannerContainer, text.unavailableNotice);
+        return; // no write capability -- do not wire capture at all.
+      }
       renderRecoveryBanner(bannerContainer, text.activeNotice);
       break;
     case "recovered":

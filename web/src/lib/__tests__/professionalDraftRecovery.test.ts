@@ -14,15 +14,19 @@ import {
   applyFormValues,
   browserRecoveryStorage,
   buildRecoveryEnvelope,
+  canWriteRecoveryStorage,
   captureFormValues,
   clearRecoveryEnvelope,
   computeRecoveryUiState,
   decideRestore,
   loadRecoveryEnvelope,
+  markRecoveryCaptureDirty,
   parseRecoveryEnvelope,
   recoveryStorageKey,
   saveRecoveryEnvelope,
+  takeRecoveryCaptureFlush,
   type RecoveryEnvelopeV1,
+  type RecoveryFormValues,
   type RecoveryScope,
   type RecoveryStorageLike,
 } from "../professionalDraftRecovery.ts";
@@ -341,6 +345,96 @@ test("browserRecoveryStorage: when window.localStorage works normally, get/set/r
       assert.equal(loadRecoveryEnvelope(storage, SCOPE_A, NOW).kind, "none");
     },
   );
+});
+
+// --- canWriteRecoveryStorage (independent review finding 2026-09-22 #A) ---
+//
+// A successful getItem() never by itself proves recovery is usable --
+// browser storage can allow reads while rejecting writes (quota/privacy/
+// security). The "active" UI state must only ever be shown after this
+// bounded, non-destructive write probe actually succeeds.
+
+test("canWriteRecoveryStorage: getItem-style reads succeed but setItem fails => write capability is false, never active", () => {
+  const storage: RecoveryStorageLike = {
+    getItem: () => null,
+    setItem: () => {
+      throw new Error("quota exceeded");
+    },
+    removeItem: () => {},
+  };
+  assert.equal(canWriteRecoveryStorage(storage, SCOPE_A), false);
+});
+
+test("canWriteRecoveryStorage: read and write both succeed => write capability is true, active is permitted", () => {
+  const storage = new FakeStorage();
+  assert.equal(canWriteRecoveryStorage(storage, SCOPE_A), true);
+});
+
+test("canWriteRecoveryStorage: a throwing window.localStorage property getter (via browserRecoveryStorage) reports no write capability, never throws", () => {
+  withFakeWindow(
+    {
+      get localStorage(): never {
+        throw new Error("SecurityError: storage disabled");
+      },
+    },
+    () => {
+      const storage = browserRecoveryStorage();
+      assert.doesNotThrow(() => {
+        assert.equal(canWriteRecoveryStorage(storage, SCOPE_A), false);
+      });
+    },
+  );
+});
+
+test("canWriteRecoveryStorage: the probe never reads, overwrites or removes an existing valid recovery envelope for the same scope", () => {
+  const storage = new FakeStorage();
+  const envelope = buildRecoveryEnvelope(SCOPE_A, 2, { broker_listing_reference: "REF-1" }, NOW);
+  saveRecoveryEnvelope(storage, envelope);
+
+  assert.equal(canWriteRecoveryStorage(storage, SCOPE_A), true);
+
+  assert.deepEqual(loadRecoveryEnvelope(storage, SCOPE_A, NOW), { kind: "found", envelope });
+});
+
+test("canWriteRecoveryStorage: uses a dedicated probe key, distinct from the scope's real envelope key", () => {
+  const writtenKeys: string[] = [];
+  const storage: RecoveryStorageLike = {
+    getItem: () => null,
+    setItem: (key: string) => {
+      writtenKeys.push(key);
+    },
+    removeItem: () => {},
+  };
+  canWriteRecoveryStorage(storage, SCOPE_A);
+  assert.deepEqual(writtenKeys, [`${recoveryStorageKey(SCOPE_A)}.write-probe`]);
+  assert.notEqual(writtenKeys[0], recoveryStorageKey(SCOPE_A));
+});
+
+test("canWriteRecoveryStorage: a probe cleanup (removeItem) failure does not flip a successful write to failure, and never throws", () => {
+  const storage: RecoveryStorageLike = {
+    getItem: () => null,
+    setItem: () => {},
+    removeItem: () => {
+      throw new Error("remove disabled");
+    },
+  };
+  assert.doesNotThrow(() => {
+    assert.equal(canWriteRecoveryStorage(storage, SCOPE_A), true);
+  });
+});
+
+test("canWriteRecoveryStorage: the probe never writes any auth/session/MFA-shaped content -- only a fixed short marker value", () => {
+  const written: Array<{ key: string; value: string }> = [];
+  const storage: RecoveryStorageLike = {
+    getItem: () => null,
+    setItem: (key: string, value: string) => {
+      written.push({ key, value });
+    },
+    removeItem: () => {},
+  };
+  canWriteRecoveryStorage(storage, SCOPE_A);
+  assert.equal(written.length, 1);
+  assert.equal(written[0]?.value, "1");
 });
 
 // --- Capture (contract §14 "Capture") ---
@@ -731,4 +825,148 @@ test("representative connectivity-loss proof: capture at N -> simulated save fai
   // Confirms the stale envelope is still present (available for explicit
   // review) rather than having been silently discarded or auto-applied.
   assert.equal(loadRecoveryEnvelope(storage, scope, NOW).kind, "found");
+});
+
+// --- Finding B (independent review 2026-09-22): pagehide must only flush
+// genuine pending unsaved input, never manufacture a recovery envelope for
+// an untouched form.
+
+test("takeRecoveryCaptureFlush: an untouched (never-dirtied) state has nothing to flush", () => {
+  const state = { dirty: false };
+  assert.equal(takeRecoveryCaptureFlush(state), false);
+});
+
+test("markRecoveryCaptureDirty + takeRecoveryCaptureFlush: a dirtied state has pending work, and taking it clears dirty", () => {
+  const state = { dirty: false };
+  markRecoveryCaptureDirty(state);
+  assert.equal(takeRecoveryCaptureFlush(state), true);
+  assert.equal(state.dirty, false);
+});
+
+test("takeRecoveryCaptureFlush: taking twice without a new edit in between reports nothing pending the second time", () => {
+  const state = { dirty: false };
+  markRecoveryCaptureDirty(state);
+  assert.equal(takeRecoveryCaptureFlush(state), true);
+  assert.equal(takeRecoveryCaptureFlush(state), false);
+});
+
+test("markRecoveryCaptureDirty: repeated edits before a flush still report exactly one pending flush", () => {
+  const state = { dirty: false };
+  markRecoveryCaptureDirty(state);
+  markRecoveryCaptureDirty(state);
+  markRecoveryCaptureDirty(state);
+  assert.equal(takeRecoveryCaptureFlush(state), true);
+  assert.equal(takeRecoveryCaptureFlush(state), false);
+});
+
+// The following harness composes the exact same exported primitives
+// (`markRecoveryCaptureDirty`/`takeRecoveryCaptureFlush`, `captureFormValues`,
+// `buildRecoveryEnvelope`, `saveRecoveryEnvelope`) the same way
+// `initProfessionalDraftRecovery`'s `wireCapture()` composes them for its
+// debounce timer / submit / pagehide handlers -- without a DOM. This proves
+// the actual algorithm the DOM wiring is built from, mirroring this file's
+// existing "representative connectivity-loss proof" discipline above.
+
+interface SimulatedRecoveryWiring {
+  simulateInput(values: RecoveryFormValues): void;
+  simulateDebounceFire(): void;
+  simulatePagehide(): void;
+  readonly captureCallCount: number;
+}
+
+function simulateProfessionalDraftRecoveryWiring(
+  storage: RecoveryStorageLike,
+  scope: RecoveryScope,
+  serverVersion: number,
+  now: Date,
+): SimulatedRecoveryWiring {
+  const dirtyState = { dirty: false };
+  let latestValues: RecoveryFormValues = {};
+  let captureCallCount = 0;
+
+  function persistCapture(): void {
+    captureCallCount += 1;
+    const envelope = buildRecoveryEnvelope(scope, serverVersion, latestValues, now);
+    saveRecoveryEnvelope(storage, envelope);
+  }
+
+  function flush(): void {
+    if (!takeRecoveryCaptureFlush(dirtyState)) return;
+    persistCapture();
+  }
+
+  return {
+    simulateInput(values: RecoveryFormValues): void {
+      latestValues = values;
+      markRecoveryCaptureDirty(dirtyState);
+    },
+    simulateDebounceFire: flush,
+    simulatePagehide: flush,
+    get captureCallCount(): number {
+      return captureCallCount;
+    },
+  };
+}
+
+test("pagehide simulation: an untouched form + pagehide never creates a recovery entry", () => {
+  const storage = new FakeStorage();
+  const wiring = simulateProfessionalDraftRecoveryWiring(storage, SCOPE_A, 2, NOW);
+
+  wiring.simulatePagehide();
+
+  assert.equal(wiring.captureCallCount, 0);
+  assert.equal(loadRecoveryEnvelope(storage, SCOPE_A, NOW).kind, "none");
+});
+
+test("pagehide simulation: input immediately followed by pagehide, before the debounce fires, persists the latest values", () => {
+  const storage = new FakeStorage();
+  const wiring = simulateProfessionalDraftRecoveryWiring(storage, SCOPE_A, 2, NOW);
+
+  wiring.simulateInput({ broker_listing_reference: "REF-LATEST" });
+  wiring.simulatePagehide(); // no simulateDebounceFire() -- pagehide beats the timer
+
+  assert.equal(wiring.captureCallCount, 1);
+  const loaded = loadRecoveryEnvelope(storage, SCOPE_A, NOW);
+  assert.equal(
+    loaded.kind === "found" ? loaded.envelope.form_values.broker_listing_reference : null,
+    "REF-LATEST",
+  );
+});
+
+test("pagehide simulation: an edit already flushed by the debounce timer, then pagehide with no newer edit, does not persist a second (synthetic) capture", () => {
+  const storage = new FakeStorage();
+  const wiring = simulateProfessionalDraftRecoveryWiring(storage, SCOPE_A, 2, NOW);
+
+  wiring.simulateInput({ broker_listing_reference: "REF-1" });
+  wiring.simulateDebounceFire();
+  assert.equal(wiring.captureCallCount, 1);
+
+  wiring.simulatePagehide(); // no edit since the debounce flush
+
+  assert.equal(wiring.captureCallCount, 1); // unchanged
+});
+
+test("pagehide simulation: a normal reload after no edit never produces a recovered-unsaved state on the next load", () => {
+  const storage = new FakeStorage();
+  const wiring = simulateProfessionalDraftRecoveryWiring(storage, SCOPE_A, 2, NOW);
+
+  wiring.simulatePagehide(); // simulates leaving/reloading an untouched page
+
+  const decision = decideRestore(loadRecoveryEnvelope(storage, SCOPE_A, NOW), 2);
+  assert.equal(decision.kind, "no_recovery");
+});
+
+test("pagehide simulation: a genuine locally recovered edit still round-trips exactly as before", () => {
+  const storage = new FakeStorage();
+  const wiring = simulateProfessionalDraftRecoveryWiring(storage, SCOPE_A, 2, NOW);
+
+  wiring.simulateInput({ "physical_boat.boat_name": "Sea Breeze" });
+  wiring.simulateDebounceFire();
+
+  const decision = decideRestore(loadRecoveryEnvelope(storage, SCOPE_A, NOW), 2);
+  assert.equal(decision.kind, "same_version");
+  assert.equal(
+    decision.kind === "same_version" ? decision.envelope.form_values["physical_boat.boat_name"] : null,
+    "Sea Breeze",
+  );
 });
