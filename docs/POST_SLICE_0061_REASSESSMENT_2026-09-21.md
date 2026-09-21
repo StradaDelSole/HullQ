@@ -388,6 +388,6 @@ PAID_BROKER_PLAN_STATUS: NOT_STARTED
 
 **Selected execution obligation:** `SLICE-0062 — Professional Draft Connectivity Recovery`.
 
-Readiness proceeds on `specs/PROFESSIONAL_LISTING_DRAFT_RECOVERY_CONTRACT.v0.1.md`.
+Readiness proceeds on `specs/PROFESSIONAL_LISTING_RECOVERY_CONTRACT.v0.1.md`.
 
 Implementation may not start until the readiness package is independently exact-head reviewed, required remote gates are green and the readiness PR is merged to canonical `main`.
