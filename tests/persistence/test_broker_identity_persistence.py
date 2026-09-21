@@ -431,6 +431,88 @@ class TestPublicDisplayNamePersistence:
         assert fetched is not None
         assert fetched.public_display_name == "Ocean Yachts Brokerage, Inc."
 
+    def test_boundary_whitespace_normalizes_identically_on_initial_seed(self, conn: Any) -> None:
+        """Regression guard: `seed_marketplace_organization` must persist
+        the same normalized value that `update_marketplace_organization_
+        display_name` would -- both paths go through the identical
+        normalization, so boundary whitespace behavior is not observably
+        different between initial seed/upsert and a later update."""
+        seed_marketplace_organization(
+            conn,
+            MarketplaceOrganization(
+                id=MarketplaceOrganizationId("ORG-SEED-WHITESPACE"),
+                professional_category=ProfessionalCategory.BROKER,
+                publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+                public_display_name="  Ocean Yachts Brokerage  ",
+            ),
+        )
+        conn.commit()
+        fetched = fetch_marketplace_organization(
+            conn, MarketplaceOrganizationId("ORG-SEED-WHITESPACE")
+        )
+        assert fetched is not None
+        assert fetched.public_display_name == "Ocean Yachts Brokerage"
+
+    def test_boundary_whitespace_plus_200_characters_persists_exactly_200(self, conn: Any) -> None:
+        """`"  " + 200 valid characters + "  "` must persist exactly 200
+        characters through the accepted seed path, never the longer raw
+        (pre-trim) input."""
+        name_200 = "A" * 200
+        seed_marketplace_organization(
+            conn,
+            MarketplaceOrganization(
+                id=MarketplaceOrganizationId("ORG-SEED-200"),
+                professional_category=ProfessionalCategory.BROKER,
+                publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+                public_display_name="  " + name_200 + "  ",
+            ),
+        )
+        conn.commit()
+        fetched = fetch_marketplace_organization(conn, MarketplaceOrganizationId("ORG-SEED-200"))
+        assert fetched is not None
+        assert fetched.public_display_name == name_200
+        assert len(fetched.public_display_name) == 200
+
+    def test_201_post_normalization_characters_rejected_before_any_write(self, conn: Any) -> None:
+        """201 characters that survive trimming must be rejected before
+        the seed path ever reaches the database -- no row is written."""
+        name_201 = "A" * 201
+        with pytest.raises(ValueError, match="200"):
+            MarketplaceOrganization(
+                id=MarketplaceOrganizationId("ORG-SEED-201"),
+                professional_category=ProfessionalCategory.BROKER,
+                publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+                public_display_name="  " + name_201 + "  ",
+            )
+        assert (
+            fetch_marketplace_organization(conn, MarketplaceOrganizationId("ORG-SEED-201")) is None
+        )
+
+    def test_punctuation_and_corporate_suffix_unchanged_through_seed_and_update(
+        self, conn: Any
+    ) -> None:
+        seed_marketplace_organization(
+            conn,
+            MarketplaceOrganization(
+                id=MarketplaceOrganizationId("ORG-SUFFIX"),
+                professional_category=ProfessionalCategory.BROKER,
+                publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+                public_display_name="  Voile & Fils S.A.R.L.  ",
+            ),
+        )
+        conn.commit()
+        fetched = fetch_marketplace_organization(conn, MarketplaceOrganizationId("ORG-SUFFIX"))
+        assert fetched is not None
+        assert fetched.public_display_name == "Voile & Fils S.A.R.L."
+
+        update_marketplace_organization_display_name(
+            conn, MarketplaceOrganizationId("ORG-SUFFIX"), "  A. B.  Yacht Sales, Inc.  "
+        )
+        conn.commit()
+        fetched = fetch_marketplace_organization(conn, MarketplaceOrganizationId("ORG-SUFFIX"))
+        assert fetched is not None
+        assert fetched.public_display_name == "A. B.  Yacht Sales, Inc."
+
     def test_update_display_name_changes_only_that_column(self, conn: Any) -> None:
         seed_marketplace_organization(
             conn,
@@ -460,6 +542,29 @@ class TestPublicDisplayNamePersistence:
         with pytest.raises(ValueError, match="empty"):
             update_marketplace_organization_display_name(
                 conn, MarketplaceOrganizationId("ORG-REJECT"), "   "
+            )
+
+    def test_c1_control_character_rejected_before_any_write(self, conn: Any) -> None:
+        """A Unicode C1 control character (not covered by the ASCII
+        C0/DEL-only check) must be rejected before the seed path ever
+        reaches the database -- no row is written."""
+        with pytest.raises(ValueError, match="control"):
+            MarketplaceOrganization(
+                id=MarketplaceOrganizationId("ORG-SEED-C1"),
+                professional_category=ProfessionalCategory.BROKER,
+                publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+                public_display_name="Ocean\x85Yachts",
+            )
+        assert (
+            fetch_marketplace_organization(conn, MarketplaceOrganizationId("ORG-SEED-C1")) is None
+        )
+
+    def test_update_rejects_c1_control_character(self, conn: Any) -> None:
+        seed_marketplace_organization(conn, _org("ORG-REJECT-C1"))
+        conn.commit()
+        with pytest.raises(ValueError, match="control"):
+            update_marketplace_organization_display_name(
+                conn, MarketplaceOrganizationId("ORG-REJECT-C1"), "Ocean\x9fYachts"
             )
 
     def test_genuinely_pre_migration_row_is_backfilled_on_upgrade(self, db_url: str) -> None:

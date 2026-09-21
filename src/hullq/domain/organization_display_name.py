@@ -10,6 +10,8 @@ branding aesthetics (contract §10).
 
 from __future__ import annotations
 
+import unicodedata
+
 __all__ = ["MAX_PUBLIC_DISPLAY_NAME_LENGTH", "normalize_public_display_name"]
 
 #: Bounded per contract §3/§4. Generous enough for real-world corporate
@@ -40,7 +42,15 @@ def normalize_public_display_name(raw: str) -> str:
             f"{MAX_PUBLIC_DISPLAY_NAME_LENGTH} characters, got {len(trimmed)}"
         )
     for char in trimmed:
-        if ord(char) < 0x20 or ord(char) == 0x7F:
+        # Unicode category "Cc" ("Control") covers exactly the ASCII C0
+        # controls (< 0x20), DEL (0x7F), and the Unicode C1 controls
+        # (0x80-0x9F, e.g. U+0085 NEL, U+009F APC) -- contract §4's "control
+        # character input that cannot be safely presented". This is
+        # deliberately narrower than "any non-printable-ish category": it
+        # does not reject Cf/Cs/Co/Cn code points, so ordinary Unicode
+        # letters/marks used in legitimate international Organization names
+        # remain accepted.
+        if unicodedata.category(char) == "Cc":
             raise ValueError("public display name must not contain control characters")
 
     return trimmed

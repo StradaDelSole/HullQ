@@ -40,6 +40,25 @@ class TestAcceptedInput:
         name = "A" * MAX_PUBLIC_DISPLAY_NAME_LENGTH
         assert normalize_public_display_name(name) == name
 
+    def test_boundary_whitespace_plus_max_length_normalizes_to_exact_bound(self) -> None:
+        """200 valid characters padded with boundary whitespace must
+        normalize to exactly 200 characters, not the longer raw input --
+        the normalized value (not the pre-trim string) is what gets
+        validated against the bound and is what callers must persist."""
+        name = "A" * MAX_PUBLIC_DISPLAY_NAME_LENGTH
+        result = normalize_public_display_name("  " + name + "  ")
+        assert result == name
+        assert len(result) == MAX_PUBLIC_DISPLAY_NAME_LENGTH
+
+    def test_accented_non_ascii_letters_remain_accepted(self) -> None:
+        """Regression guard distinguishing the Unicode-"Cc"-category check
+        from a blunt non-ASCII rejection: accented/non-ASCII letters used in
+        legitimate international Organization names must remain accepted
+        even though Unicode C1 controls occupy neighboring code-point
+        ranges."""
+        assert normalize_public_display_name("Société Générale Yachts") == "Société Générale Yachts"
+        assert normalize_public_display_name("Åland Båtmäklare") == "Åland Båtmäklare"
+
 
 class TestRejectedInput:
     def test_non_str_raises_type_error(self) -> None:
@@ -58,7 +77,28 @@ class TestRejectedInput:
         with pytest.raises(ValueError, match="200"):
             normalize_public_display_name("A" * (MAX_PUBLIC_DISPLAY_NAME_LENGTH + 1))
 
-    @pytest.mark.parametrize("control_char", ["\n", "\t", "\x00", "\x1f", "\x7f"])
+    def test_201_post_normalization_characters_rejected_even_with_boundary_whitespace(
+        self,
+    ) -> None:
+        """201 characters that survive trimming must still be rejected --
+        boundary whitespace padding must never be usable to smuggle an
+        over-bound name past the length check."""
+        name = "A" * (MAX_PUBLIC_DISPLAY_NAME_LENGTH + 1)
+        with pytest.raises(ValueError, match="200"):
+            normalize_public_display_name("  " + name + "  ")
+
+    @pytest.mark.parametrize(
+        "control_char",
+        [
+            "\n",
+            "\t",
+            "\x00",
+            "\x1f",
+            "\x7f",
+            "\x85",  # Unicode C1 control: NEL (NEXT LINE)
+            "\x9f",  # Unicode C1 control: APC (APPLICATION PROGRAM COMMAND)
+        ],
+    )
     def test_control_characters_rejected(self, control_char: str) -> None:
         with pytest.raises(ValueError, match="control"):
             normalize_public_display_name(f"Ocean{control_char}Yachts")

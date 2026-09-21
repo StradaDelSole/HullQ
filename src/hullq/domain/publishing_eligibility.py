@@ -172,7 +172,14 @@ class MarketplaceOrganization:
             "MarketplaceOrganization.publishing_eligibility",
         )
         if self.public_display_name is not None:
-            normalize_public_display_name(self.public_display_name)
+            # Store the normalized value back, not the raw pre-normalization
+            # string: every downstream reader (`resolved_public_display_name`,
+            # persistence writes) must see the identical bounded value that
+            # was actually validated, never a longer/differently-trimmed
+            # original (frozen dataclass -- `object.__setattr__` is the
+            # accepted escape hatch for `__post_init__` normalization).
+            normalized = normalize_public_display_name(self.public_display_name)
+            object.__setattr__(self, "public_display_name", normalized)
 
     @property
     def resolved_public_display_name(self) -> str:

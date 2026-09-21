@@ -172,11 +172,14 @@ def seed_marketplace_organization(conn: Any, organization: MarketplaceOrganizati
     Internal seeding helper only -- SLICE-0053 has no self-service
     Organization-creation API. The caller owns transaction commit.
 
-    SLICE-0063: `organization.public_display_name` is written verbatim when
-    explicit; when `None`, the persisted column falls back to the
-    Organization ID (contract §3.1's accepted compatibility backfill), so
-    the durable column is never null even for an internal/test-seeded
-    Organization that never specified a display name.
+    SLICE-0063: `organization.resolved_public_display_name` is already the
+    normalized/bounded value (normalization happens once, in
+    `MarketplaceOrganization.__post_init__`, so every reader sees the
+    identical value that was actually validated); when the caller supplied
+    no explicit name, it falls back to the Organization ID (contract
+    §3.1's accepted compatibility backfill), so the durable column is
+    never null even for an internal/test-seeded Organization that never
+    specified a display name.
     """
     if not isinstance(organization, MarketplaceOrganization):
         raise TypeError(
