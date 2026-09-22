@@ -86,7 +86,7 @@ captured_at
 form_values
 ```
 
-`form_values` MUST be limited to the editable 0061 professional-draft form vocabulary:
+`form_values` MUST be limited to the currently accepted professional-draft form vocabulary: the original 0061 fields plus the later SLICE-0064 professional-only offer-input extension.
 
 - `broker_listing_reference`;
 - `physical_boat.marketed_brand_claim`;
@@ -97,9 +97,10 @@ form_values
 - `listing_offer.asking_price_amount`;
 - `listing_offer.currency`;
 - `listing_offer.location_country`;
-- `listing_offer.location_region`.
+- `listing_offer.location_region`;
+- `listing_offer.broker_description` (SLICE-0064 professional-only offer input).
 
-Browser storage is allowed to preserve form-string representation before server normalization/validation because it is only a recovery buffer. On real Save, the existing Astro/FastAPI path remains authoritative.
+The SLICE-0064 description field is professional-only and does not amend OwnerDirectListingDraft. Browser storage is allowed to preserve form-string representation before server normalization/validation because it is only a recovery buffer. On real Save, the existing Astro/FastAPI path remains authoritative.
 
 The envelope MUST NOT contain session cookies, OIDC/Auth0 tokens, MFA material, credential material, database secrets or unrelated workspace data.
 
