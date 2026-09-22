@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0062 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0063 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0063 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0064 -->
 
-**Updated:** 2026-09-21  
-**Latest owner-accepted / DONE slice:** SLICE-0062  
-**Current queue:** SLICE-0063 — **Publishing Organization Public Identity**; post-SLICE-0062 repository/product reassessment and readiness are prepared on the accepted MarketplaceOrganization, Broker Workspace and public NativeListing boundaries. Implementation remains unauthorized until independent exact-head readiness review, required remote gates and readiness merge to `main`.  
+**Updated:** 2026-09-22  
+**Latest owner-accepted / DONE slice:** SLICE-0063  
+**Current queue:** SLICE-0064 — **UNSELECTED**; SLICE-0063 is owner-accepted and merged. A fresh post-SLICE-0063 repository/product reassessment and Decision / Implementation Reconciliation are required before any SLICE-0064 capability selection/readiness. No SLICE-0064 implementation or `START_SLICE.bat` action is authorized.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -44,6 +44,8 @@ SLICE-0060 adds the first accepted professional inventory read surface: an authe
 SLICE-0061 adds the first accepted professional incomplete-listing authoring surface: an authenticated Account with the exact current ACTIVE matching OrganizationMembership containing `PUBLISHER` may create, list, reopen, read and update private `ProfessionalListingDraft` state owned by that Organization. Draft authoring reuses existing MFA/current-membership authorization, uses optimistic versioning and bounded keyset pagination, remains private/no-store/noindex, and intentionally does not require public `OrganizationPublishingEligibility`. No draft action creates or mutates PhysicalBoat, MarketEpisode, NativeListing, offer/lifecycle/freshness/public/Search truth.
 
 SLICE-0062 adds accepted connectivity-resilient recovery to that existing professional draft edit surface. Recent unsaved browser form input is held only in a short-lived Account/Organization/ProfessionalListingDraft/version-scoped local recovery envelope; exact bounded form strings, including intentional cleared values, are preserved. Same-version recovery may restore visibly, but stale recovery never auto-applies over newer server state. Browser storage failures degrade to a visible unavailable state without breaking ordinary server-backed drafting, untouched page navigation does not manufacture recovery state, and explicit Save remains the only durable mutation. The recovery layer is not authorization, server draft truth or marketplace truth.
+
+SLICE-0063 adds accepted human-readable public identity for the existing MarketplaceOrganization publishing principal. A bounded `public_display_name` is persisted on the same authoritative Organization row, shown in authorized Broker Workspace context and on every readable public NativeListing independently of optional VAT/tax claims. Existing rows receive deterministic exact-ID display fallback, legacy unresolved publisher IDs remain readable, display-name changes are presentation-only and do not mutate NativeListing/listing/Search truth, and Astro renders the value as escaped plain text. `MarketplaceOrganizationId` remains the authorization/identity key; SLICE-0063 adds no second Organization identity, logo/media system or public broker profile.
 
 SLICE-0054 now adds the first accepted owner-direct provider surface:
 
@@ -224,29 +226,23 @@ The SLICE-0053 same-host session-topology invariant remains in force for browser
 
 ## What remains unbuilt
 
-Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; professional draft-to-marketplace promotion/publication and branding/media; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
+Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; professional draft-to-marketplace promotion/publication and media; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-SLICE-0062 is owner-accepted and merged. It adds bounded connectivity-resilient browser-local recovery to the accepted Organization-owned professional draft workspace while preserving FastAPI/PostgreSQL authority, optimistic concurrency and the separate marketplace/publication boundary. REQ-BROKER-024 is implemented; REQ-BROKER-023 branding remains pending, so the Broker Workspace Launch Gate remains NOT_READY.
+SLICE-0063 is owner-accepted and merged. It adds bounded human-readable public identity to the existing authoritative MarketplaceOrganization publishing principal and surfaces that identity consistently in Broker Workspace and public NativeListing presentation. REQ-BROKER-023 and REQ-BROKER-024 are both implemented. This satisfies the two addendum launch/pilot-baseline commitment statuses but does not by itself make the Broker Workspace Launch Gate PASS; the remaining launch-gate capability/evidence checklist stays controlling.
 
 ## Next capability selection
 
 Next queue number:
 
 ```text
-SLICE-0063
+SLICE-0064
 ```
 
-**Selected capability:** Publishing Organization Public Identity.
+**Selected capability:** UNSELECTED.
 
-Selection record: `docs/POST_SLICE_0062_REASSESSMENT_2026-09-21.md`.
+SLICE-0064 requires a fresh post-SLICE-0063 repository/product reassessment plus the normal Decision / Implementation Reconciliation before any capability selection or readiness work is treated as canonical. The queue number alone does not authorize a capability, implementation branch or `START_SLICE.bat` action.
 
-Readiness artifact: `docs/slices/SLICE-0063-publishing-organization-public-identity.md`.
-
-Normative bounded contract: `specs/PUBLISHING_ORGANIZATION_PUBLIC_IDENTITY_CONTRACT.v0.1.md`.
-
-The capability attaches one bounded human-readable public display name to the existing authoritative MarketplaceOrganization row and surfaces it consistently in authorized Broker Workspace context and every public NativeListing, independent of optional VAT/tax claims. It creates no second Organization identity and no logo/media/profile-admin subsystem.
-
-Implementation remains unauthorized until the readiness package passes independent exact-head review, required remote gates and is merged to canonical `main`; only then may the Project Owner run `START_SLICE.bat`.
+No SLICE-0064 implementation is authorized by SLICE-0063 acceptance closure.
 
 ## Development workflow
 
@@ -261,6 +257,6 @@ Implementation remains unauthorized until the readiness package passes independe
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0063 Publishing Organization Public Identity is selected/readied but may not start until independent readiness review/remote gates/readiness merge are complete.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; after SLICE-0063 acceptance, SLICE-0064 remains unselected until fresh reassessment/readiness.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
