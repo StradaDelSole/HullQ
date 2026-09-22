@@ -244,7 +244,7 @@ Selection record: `docs/POST_SLICE_0063_REASSESSMENT_2026-09-22.md`.
 
 Readiness artifact: `docs/slices/SLICE-0064-professional-draft-publication-readiness.md`.
 
-Normative bounded contract: `specs/PROFESSIONAL_DRAFT_PUBLICATION_READINESS_CONTRACT.v0.1.md`.
+Normative bounded contract: `specs/PROFESSIONAL_PUBLICATION_READINESS_CONTRACT.v0.1.md`.
 
 The capability adds the missing professional `listing_offer.broker_description`, extends the bounded PhysicalBoat broker-claim model to the already-accepted `physical_boat.boat_name`, and produces one deterministic server-side READY/BLOCKED mapping of the current professional draft into candidate marketplace input values. It creates no marketplace identities/truth and exposes no Publish action.
 
