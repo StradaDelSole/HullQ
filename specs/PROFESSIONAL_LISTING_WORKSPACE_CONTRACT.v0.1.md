@@ -127,6 +127,30 @@ It must either:
 
 The existing owner-direct public API, persistence behavior and tests must remain unchanged from the caller's perspective.
 
+### 4.2 Professional publication-input extension — SLICE-0064
+
+SLICE-0064 does **not** change the nine shared owner-direct/professional common keys in §4.
+
+The ProfessionalListingDraft boundary additionally MAY carry the exact professional pre-market offer-input key:
+
+```text
+listing_offer.broker_description
+```
+
+This field:
+
+- is accepted only by the professional draft boundary;
+- is not added to OwnerDirectListingDraft;
+- is LISTING_OFFER candidate input, not professional metadata and not accepted marketplace truth merely because it is saved in a draft;
+- remains optional while the professional draft is incomplete;
+- when present, is a trimmed non-empty plain-text string;
+- MUST NOT be synthesized/defaulted when absent;
+- may later be consumed only by an explicitly selected promotion capability that re-applies the then-current marketplace/publication rules.
+
+The professional create/read/update wire key remains exactly `listing_offer.broker_description`.
+
+This extension preserves §4.1: the original nine common validators remain one channel-neutral implementation primitive. The professional-only description validation MUST NOT widen or change the owner-direct parser.
+
 ## 5. Professional-only draft metadata
 
 A professional draft MAY carry:
@@ -145,6 +169,8 @@ v0.1 semantics:
 - no cross-Organization lookup/ownership inference may be based on it.
 
 No other professional-only metadata is authorized by v0.1.
+
+The SLICE-0064 `listing_offer.broker_description` extension in §4.2 is professional-only **offer input**, not metadata, and therefore does not weaken this metadata rule.
 
 ## 6. Persistence boundary
 
