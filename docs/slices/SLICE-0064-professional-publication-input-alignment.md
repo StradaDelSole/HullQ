@@ -166,6 +166,9 @@ Professional draft save remains private pre-market state and creates zero market
 - [ ] Existing claim revision table/model is extended rather than duplicated.
 - [ ] Existing history/head/predecessor/hash/idempotency/concurrency semantics remain unchanged.
 - [ ] Existing rows/revisions migrate without data loss.
+- [ ] Exact retry of a pre-0064 claim revision after migration remains idempotent/ALREADY_EXISTS when boat name is omitted.
+- [ ] New boat-name assertion content participates in revision conflict/idempotency fingerprinting.
+- [ ] Extending assertion-kind vocabulary for ABSENT does not make ABSENT valid for any pre-existing field whose allowed-kind set forbids it.
 - [ ] Organization claim isolation remains unchanged.
 - [ ] Omitted boat name remains distinct from explicit ABSENT/UNKNOWN.
 - [ ] No Search criterion/ranking behavior changes.
