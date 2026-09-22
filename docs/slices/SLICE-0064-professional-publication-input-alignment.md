@@ -29,6 +29,8 @@ Launch Gate §2 requires low-friction create/publish inventory. The accepted pos
 **REPOSITORY RECONCILIATION CHECK:** PASS  
 Professional/owner-direct contracts, professional recovery contract, draft domain/persistence/API/web, NativeListingOffer required fields, MARKETPLACE_FIELD_REGISTRY, PhysicalBoat claim domain/persistence/migration/read projection, Launch Gate and broker requirements were inspected.
 
+## Decision / implementation reconciliation
+
 **Accepted records checked:** `docs/PROJECT_STATE.md`; `docs/slices/SLICE-0063-acceptance-closure.md`; `docs/POST_SLICE_0061_REASSESSMENT_2026-09-21.md`; `docs/POST_SLICE_0062_REASSESSMENT_2026-09-21.md`; `docs/BROKER_WORKSPACE_PRODUCT_DIRECTION_2026-09-13.md`; `specs/BROKER_WORKSPACE_REQUIREMENTS.v0.1.md`; `docs/governance/BROKER_WORKSPACE_LAUNCH_GATE.md`; `docs/governance/BROKER_WORKSPACE_MANDATORY_CAPABILITY_REGISTER.md`; `specs/OWNER_DIRECT_LISTING_WORKSPACE_CONTRACT.v0.1.md`; `specs/PROFESSIONAL_LISTING_WORKSPACE_CONTRACT.v0.1.md`; `specs/PROFESSIONAL_LISTING_RECOVERY_CONTRACT.v0.1.md`; `specs/MARKETPLACE_FIELD_REGISTRY.v0.1.json`; `specs/MARKETPLACE_FACT_CONTRACT.v0.1.md`.
 
 **Production implementation checked:** `src/hullq/domain/listing_draft_payload.py`; professional/owner-direct draft domain/application/persistence; `src/hullq/domain/native_listing_offer.py`; `src/hullq/domain/physical_boat_claims.py`; `src/hullq/persistence/physical_boat_claims.py`; professional recovery module; FastAPI routes; relevant Astro forms; claim/public-read serializers; migrations/tests/retained proofs.
