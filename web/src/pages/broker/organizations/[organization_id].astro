@@ -77,6 +77,7 @@ const stepUpUrl = `${loginUrl}&acr_values=${encodeURIComponent(AUTH0_MFA_STEP_UP
         ) : (
           <>
             <h1>Organization workspace</h1>
+            <p>Display name: {result.data.public_display_name}</p>
             <p>Organization ID: {result.data.organization_id}</p>
             <p>Professional category: {result.data.professional_category}</p>
             <p>Publishing eligibility: {result.data.publishing_eligibility}</p>

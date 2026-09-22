@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from hullq.domain.broker_access import Provider
+from hullq.domain.organization_display_name import normalize_public_display_name
 from hullq.domain.publishing_eligibility import (
     AccountId,
     MarketplaceOrganization,
@@ -41,6 +42,7 @@ __all__ = [
     "get_or_create_account_for_identity",
     "seed_marketplace_organization",
     "seed_organization_membership",
+    "update_marketplace_organization_display_name",
     "update_membership_state",
 ]
 
@@ -115,16 +117,22 @@ def get_or_create_account_for_identity(
 # ---------------------------------------------------------------------------
 
 _UPSERT_ORGANIZATION = """
-INSERT INTO marketplace_organizations (organization_id, professional_category, publishing_eligibility)
-VALUES (%s, %s, %s)
+INSERT INTO marketplace_organizations
+    (organization_id, professional_category, publishing_eligibility, public_display_name)
+VALUES (%s, %s, %s, %s)
 ON CONFLICT (organization_id) DO UPDATE
     SET professional_category = EXCLUDED.professional_category,
-        publishing_eligibility = EXCLUDED.publishing_eligibility
+        publishing_eligibility = EXCLUDED.publishing_eligibility,
+        public_display_name = EXCLUDED.public_display_name
 """
 
 _SELECT_ORGANIZATION = (
-    "SELECT organization_id, professional_category, publishing_eligibility "
+    "SELECT organization_id, professional_category, publishing_eligibility, public_display_name "
     "FROM marketplace_organizations WHERE organization_id = %s"
+)
+
+_UPDATE_ORGANIZATION_DISPLAY_NAME = (
+    "UPDATE marketplace_organizations SET public_display_name = %s WHERE organization_id = %s"
 )
 
 _UPSERT_MEMBERSHIP = """
@@ -163,6 +171,15 @@ def seed_marketplace_organization(conn: Any, organization: MarketplaceOrganizati
 
     Internal seeding helper only -- SLICE-0053 has no self-service
     Organization-creation API. The caller owns transaction commit.
+
+    SLICE-0063: `organization.resolved_public_display_name` is already the
+    normalized/bounded value (normalization happens once, in
+    `MarketplaceOrganization.__post_init__`, so every reader sees the
+    identical value that was actually validated); when the caller supplied
+    no explicit name, it falls back to the Organization ID (contract
+    §3.1's accepted compatibility backfill), so the durable column is
+    never null even for an internal/test-seeded Organization that never
+    specified a display name.
     """
     if not isinstance(organization, MarketplaceOrganization):
         raise TypeError(
@@ -175,6 +192,7 @@ def seed_marketplace_organization(conn: Any, organization: MarketplaceOrganizati
                 organization.id.value,
                 organization.professional_category.value,
                 organization.publishing_eligibility.value,
+                organization.resolved_public_display_name,
             ],
         )
 
@@ -192,12 +210,36 @@ def fetch_marketplace_organization(
         row = cur.fetchone()
     if row is None:
         return None
-    org_id_value, professional_category_value, publishing_eligibility_value = row
+    org_id_value, professional_category_value, publishing_eligibility_value, display_name_value = (
+        row
+    )
     return MarketplaceOrganization(
         id=MarketplaceOrganizationId(org_id_value),
         professional_category=ProfessionalCategory(professional_category_value),
         publishing_eligibility=OrganizationPublishingEligibility(publishing_eligibility_value),
+        public_display_name=display_name_value,
     )
+
+
+def update_marketplace_organization_display_name(
+    conn: Any, organization_id: MarketplaceOrganizationId, display_name: str
+) -> None:
+    """Change only the current presentation `public_display_name`.
+
+    Contract §2/Required Behavior §G: this touches exactly one column on
+    the existing `marketplace_organizations` row -- it never creates a
+    second Organization identity and has no reachable path to any
+    NativeListing identity/content/lifecycle/offer table. The caller owns
+    transaction commit.
+    """
+    if not isinstance(organization_id, MarketplaceOrganizationId):
+        raise TypeError(
+            "organization_id must be a MarketplaceOrganizationId, "
+            f"got {type(organization_id).__name__}"
+        )
+    normalized = normalize_public_display_name(display_name)
+    with conn.cursor() as cur:
+        cur.execute(_UPDATE_ORGANIZATION_DISPLAY_NAME, [normalized, organization_id.value])
 
 
 def seed_organization_membership(conn: Any, membership: OrganizationMembership) -> None:

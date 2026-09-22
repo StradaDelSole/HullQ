@@ -3,6 +3,12 @@
 // SLICE-0050 adds the "THIS BOAT" section: the publishing Organization's
 // own bounded seven-field broker-declared PhysicalBoat claim snapshot,
 // visually separate from the design-agnostic offer narrative below it.
+// SLICE-0063: "Listed by {publishing_organization_display_name}" renders
+// unconditionally for every successfully rendered listing -- independent
+// of VAT/tax or PhysicalBoat claim presence (contract §8). Previously the
+// only publisher-identity text lived inside the VAT-conditional block
+// below, so a listing with no VAT claim showed no publisher identity at
+// all; that gap is exactly what this slice closes.
 //
 // PUBLIC != INDEXABLE. This page renders whenever FastAPI's public route
 // resolves the exact NativeListingId to lifecycle == ACTIVE with a complete
@@ -98,6 +104,10 @@ const canonicalUrl = nativeListingId
             {freshnessDisclosureText(data.freshness_status, data.last_confirmed_at)}
           </p>
 
+          <p aria-label="publishing organization">
+            Listed by {data.publishing_organization_display_name}
+          </p>
+
           {
             nativeListingId !== undefined && (
               <p>
@@ -143,7 +153,7 @@ const canonicalUrl = nativeListingId
             {data.vat_tax_status_claim !== null && (
               <div>
                 <p>VAT/tax status: broker-declared {unknownableClaimText(data.vat_tax_status_claim)}</p>
-                <p>Publishing organization: {data.publishing_organization_id}</p>
+                <p>Publishing organization ID: {data.publishing_organization_id}</p>
                 <p>{offerRecordedText(data.offer_recorded_at)}</p>
                 <p>HullQ legal verification: none</p>
               </div>

@@ -355,11 +355,34 @@ class TestNoOutOfBandInference:
             "membership",
         ]
 
-    def test_organization_has_no_email_or_name_field(self) -> None:
+    def test_organization_has_no_email_field(self) -> None:
         import dataclasses
 
         field_names = {f.name for f in dataclasses.fields(MarketplaceOrganization)}
-        assert field_names == {"id", "professional_category", "publishing_eligibility"}
+        assert "email" not in field_names
+
+    def test_public_display_name_is_never_consulted_by_eligibility(self) -> None:
+        """SLICE-0063 adds `public_display_name` as bounded presentation
+        metadata (contract §2: never identity, never eligibility input).
+        Two Organizations that differ only in display name must reach the
+        identical eligibility decision -- confirming the evaluator above
+        (which takes no `public_display_name` parameter at all) cannot be
+        made to branch on it through the Organization object either."""
+        membership = _membership()
+        org_with_name = _org()
+        org_with_different_name = MarketplaceOrganization(
+            id=org_with_name.id,
+            professional_category=org_with_name.professional_category,
+            publishing_eligibility=org_with_name.publishing_eligibility,
+            public_display_name="A Completely Different Display Name",
+        )
+        decision_a = evaluate_native_listing_publishing_eligibility(
+            DEFAULT_ACCOUNT_ID, org_with_name, membership
+        )
+        decision_b = evaluate_native_listing_publishing_eligibility(
+            DEFAULT_ACCOUNT_ID, org_with_different_name, membership
+        )
+        assert decision_a == decision_b
 
 
 # ---------------------------------------------------------------------------
@@ -409,3 +432,128 @@ class TestOwnerScriptDeterministicOffline:
         assert "PRIVATE/CONSUMER FSBO PUBLISHING: DENIED" in first.stdout
         assert "LEAST-PRIVILEGE PUBLISHER ROLE: PASS" in first.stdout
         assert "CROSS-ORGANIZATION ISOLATION: PASS" in first.stdout
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0063: public_display_name / resolved_public_display_name
+# ---------------------------------------------------------------------------
+
+
+class TestPublicDisplayName:
+    def test_default_is_none(self) -> None:
+        org = _org()
+        assert org.public_display_name is None
+
+    def test_resolved_falls_back_to_organization_id_when_none(self) -> None:
+        org = _org(org_id="ORG-A")
+        assert org.resolved_public_display_name == "ORG-A"
+
+    def test_explicit_display_name_is_stored_and_resolved(self) -> None:
+        org = MarketplaceOrganization(
+            id=MarketplaceOrganizationId("ORG-A"),
+            professional_category=ProfessionalCategory.BROKER,
+            publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+            public_display_name="Ocean Yachts Brokerage",
+        )
+        assert org.public_display_name == "Ocean Yachts Brokerage"
+        assert org.resolved_public_display_name == "Ocean Yachts Brokerage"
+
+    def test_empty_display_name_rejected_at_construction(self) -> None:
+        with pytest.raises(ValueError, match="empty"):
+            MarketplaceOrganization(
+                id=MarketplaceOrganizationId("ORG-A"),
+                professional_category=ProfessionalCategory.BROKER,
+                publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+                public_display_name="   ",
+            )
+
+    def test_control_character_display_name_rejected_at_construction(self) -> None:
+        with pytest.raises(ValueError, match="control"):
+            MarketplaceOrganization(
+                id=MarketplaceOrganizationId("ORG-A"),
+                professional_category=ProfessionalCategory.BROKER,
+                publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+                public_display_name="Ocean\x00Yachts",
+            )
+
+    def test_display_name_is_not_identity(self) -> None:
+        """Two Organizations with the identical display name remain
+        distinct principals -- display name is presentation metadata only
+        (contract §2), never a second identity."""
+        org_a = MarketplaceOrganization(
+            id=MarketplaceOrganizationId("ORG-A"),
+            professional_category=ProfessionalCategory.BROKER,
+            publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+            public_display_name="Ocean Yachts",
+        )
+        org_b = MarketplaceOrganization(
+            id=MarketplaceOrganizationId("ORG-B"),
+            professional_category=ProfessionalCategory.BROKER,
+            publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+            public_display_name="Ocean Yachts",
+        )
+        assert org_a != org_b
+        assert org_a.id != org_b.id
+
+    def test_boundary_whitespace_is_normalized_at_construction(self) -> None:
+        """Regression guard: `__post_init__` must store the *normalized*
+        value returned by `normalize_public_display_name`, not the raw
+        pre-normalization string it validated -- every reader
+        (`public_display_name`, `resolved_public_display_name`) must see
+        the identical bounded value."""
+        org = MarketplaceOrganization(
+            id=MarketplaceOrganizationId("ORG-A"),
+            professional_category=ProfessionalCategory.BROKER,
+            publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+            public_display_name="  Ocean Yachts  ",
+        )
+        assert org.public_display_name == "Ocean Yachts"
+        assert org.resolved_public_display_name == "Ocean Yachts"
+
+    def test_boundary_whitespace_padded_max_length_name_normalizes_to_exact_bound(
+        self,
+    ) -> None:
+        """A raw display name of boundary whitespace + exactly 200 valid
+        characters must construct successfully and store exactly 200
+        characters -- never the longer raw (pre-trim) string."""
+        name_200 = "A" * 200
+        org = MarketplaceOrganization(
+            id=MarketplaceOrganizationId("ORG-A"),
+            professional_category=ProfessionalCategory.BROKER,
+            publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+            public_display_name="  " + name_200 + "  ",
+        )
+        assert org.public_display_name == name_200
+        assert len(org.public_display_name) == 200
+
+    def test_201_post_normalization_characters_rejected_at_construction(self) -> None:
+        """The same 201-character-after-trim case rejected by
+        `normalize_public_display_name` directly must also be rejected at
+        `MarketplaceOrganization` construction -- boundary whitespace
+        padding must never smuggle an over-bound name past validation."""
+        name_201 = "A" * 201
+        with pytest.raises(ValueError, match="200"):
+            MarketplaceOrganization(
+                id=MarketplaceOrganizationId("ORG-A"),
+                professional_category=ProfessionalCategory.BROKER,
+                publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+                public_display_name="  " + name_201 + "  ",
+            )
+
+    def test_c1_control_character_display_name_rejected_at_construction(self) -> None:
+        with pytest.raises(ValueError, match="control"):
+            MarketplaceOrganization(
+                id=MarketplaceOrganizationId("ORG-A"),
+                professional_category=ProfessionalCategory.BROKER,
+                publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+                public_display_name="Ocean\x85Yachts",
+            )
+
+    def test_punctuation_and_corporate_suffix_unchanged_after_normalization(self) -> None:
+        org = MarketplaceOrganization(
+            id=MarketplaceOrganizationId("ORG-A"),
+            professional_category=ProfessionalCategory.BROKER,
+            publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+            public_display_name="  Voile & Fils S.A.R.L.  ",
+        )
+        assert org.public_display_name == "Voile & Fils S.A.R.L."

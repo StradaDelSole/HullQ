@@ -275,6 +275,7 @@ class TestBrokerWorkspaceAccessVertical:
                     id=MarketplaceOrganizationId(_ORG_A),
                     professional_category=ProfessionalCategory.BROKER,
                     publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+                    public_display_name="Ocean Yachts Brokerage",
                 ),
             )
             seed_organization_membership(
@@ -293,6 +294,9 @@ class TestBrokerWorkspaceAccessVertical:
 
         context = client.get("/api/broker/context").json()
         assert {o["organization_id"] for o in context["organizations"]} == {_ORG_A}
+        assert {o["public_display_name"] for o in context["organizations"]} == {
+            "Ocean Yachts Brokerage"
+        }
 
         blocked = client.get(f"/api/broker/organizations/{_ORG_A}")
         assert blocked.status_code == 403
@@ -309,6 +313,7 @@ class TestBrokerWorkspaceAccessVertical:
         assert authorized.status_code == 200
         payload = authorized.json()
         assert payload["organization_id"] == _ORG_A
+        assert payload["public_display_name"] == "Ocean Yachts Brokerage"
         assert payload["mfa_satisfied"] is True
         assert payload["roles"] == ["PUBLISHER"]
 

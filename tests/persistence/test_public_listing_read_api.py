@@ -40,6 +40,10 @@ from hullq.domain.publishing_eligibility import (
     ProfessionalCategory,
 )
 from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
+from hullq.persistence.broker_identity import (
+    seed_marketplace_organization,
+    update_marketplace_organization_display_name,
+)
 from hullq.persistence.market_episode import create_market_episode
 from hullq.persistence.native_listing import create_native_listing
 from hullq.persistence.native_listing_lifecycle import (
@@ -224,6 +228,10 @@ def test_active_listing_returns_expected_public_projection(
     assert body["location_country"] == "FR"
     assert body["broker_description"] == "A well-maintained cruising sloop."
     assert body["publishing_organization_id"] == "ORG-NL-PUB-A"
+    # SLICE-0063 contract §7: no actor-directory row was ever seeded for
+    # this Organization -- the accepted legacy compatibility fallback is
+    # the exact Organization ID, and the listing stays publicly readable.
+    assert body["publishing_organization_display_name"] == "ORG-NL-PUB-A"
     assert body["hullq_vat_verification_status"] == "NONE"
     assert "offer_recorded_at" in body
     assert "preview_expires_at" not in body
@@ -373,3 +381,75 @@ def test_incomplete_active_chain_is_not_reachable_because_publish_itself_fails_c
 
     response = client.get("/api/listings/NL-NOOFFER")
     assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0063: publishing_organization_display_name
+# ---------------------------------------------------------------------------
+
+
+def test_display_name_is_present_when_vat_claim_is_absent(
+    api_conn: Any, client: TestClient
+) -> None:
+    """Contract §8: the offer built by `_make_active_listing` never sets
+    `vat_tax_status_claim`, yet the display name must still be present --
+    publisher identity must not depend on VAT/tax claim presence."""
+    _account, org, _membership = _make_active_listing(
+        api_conn,
+        listing_id="NL-PUB-DISPLAY",
+        physical_boat_id="PB-PUB-DISPLAY",
+        market_episode_id="ME-PUB-DISPLAY",
+        offer_revision_id="REV-PUB-DISPLAY",
+    )
+    seed_marketplace_organization(
+        api_conn,
+        MarketplaceOrganization(
+            id=org.id,
+            professional_category=org.professional_category,
+            publishing_eligibility=org.publishing_eligibility,
+            public_display_name="Ocean Yachts Brokerage",
+        ),
+    )
+    api_conn.commit()
+
+    body = client.get("/api/listings/NL-PUB-DISPLAY").json()
+    assert body["vat_tax_status_claim"] is None
+    assert body["publishing_organization_id"] == org.id.value
+    assert body["publishing_organization_display_name"] == "Ocean Yachts Brokerage"
+
+
+def test_display_name_update_is_reflected_without_listing_mutation(
+    api_conn: Any, client: TestClient
+) -> None:
+    _account, org, _membership = _make_active_listing(
+        api_conn,
+        listing_id="NL-PUB-RENAME",
+        physical_boat_id="PB-PUB-RENAME",
+        market_episode_id="ME-PUB-RENAME",
+        offer_revision_id="REV-PUB-RENAME",
+    )
+    seed_marketplace_organization(
+        api_conn,
+        MarketplaceOrganization(
+            id=org.id,
+            professional_category=org.professional_category,
+            publishing_eligibility=org.publishing_eligibility,
+            public_display_name="Original Brokerage Name",
+        ),
+    )
+    api_conn.commit()
+
+    before = client.get("/api/listings/NL-PUB-RENAME").json()
+    assert before["publishing_organization_display_name"] == "Original Brokerage Name"
+
+    update_marketplace_organization_display_name(api_conn, org.id, "Renamed Brokerage LLC")
+    api_conn.commit()
+
+    after = client.get("/api/listings/NL-PUB-RENAME").json()
+    assert after["publishing_organization_display_name"] == "Renamed Brokerage LLC"
+
+    # Same NativeListing identity/content/offer -- only presentation changed.
+    assert after["publishing_organization_id"] == before["publishing_organization_id"]
+    assert after["offer_recorded_at"] == before["offer_recorded_at"]
+    assert after["asking_price_amount"] == before["asking_price_amount"]
+    assert after["broker_description"] == before["broker_description"]

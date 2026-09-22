@@ -51,7 +51,7 @@ const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent("/broke
               {result.data.organizations.map((org) => (
                 <li>
                   <a href={`/broker/organizations/${encodeURIComponent(org.organization_id)}`}>
-                    {org.organization_id} &mdash; {org.professional_category}
+                    {org.public_display_name} ({org.organization_id}) &mdash; {org.professional_category}
                   </a>
                 </li>
               ))}

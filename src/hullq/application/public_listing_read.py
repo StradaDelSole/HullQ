@@ -72,6 +72,7 @@ from hullq.domain.physical_boat_claims import (
     RudderConfigurationClaim,
 )
 from hullq.domain.publishing_eligibility import MarketplaceOrganizationId
+from hullq.persistence.broker_identity import fetch_marketplace_organization
 from hullq.persistence.native_listing_lifecycle import fetch_lifecycle_state
 from hullq.persistence.physical_boat_claims import fetch_current_physical_boat_claim
 
@@ -96,6 +97,7 @@ class PublicListingReadModel:
 
     offer: NativeListingOfferSnapshot
     publishing_organization_id: MarketplaceOrganizationId
+    publishing_organization_display_name: str
     offer_recorded_at: datetime
     freshness_status: FreshnessStatus
     last_confirmed_at: datetime | None
@@ -110,7 +112,13 @@ class PublicListingReadModel:
         `asking_price_amount` is a decimal string, never a binary float, and
         each optional claim field distinguishes omission (`None`) from an
         explicit UNKNOWN/NOT_APPLICABLE/NO_KNOWN_HISTORY_DECLARED/
-        VALUE_ASSERTION assertion. `physical_boat_claims` is `None` when the
+        VALUE_ASSERTION assertion. `publishing_organization_display_name`
+        (SLICE-0063) is always present -- the current actor-directory
+        `public_display_name` when the publishing Organization resolves, or
+        the exact `publishing_organization_id` as the accepted legacy
+        compatibility fallback when it does not (contract §6/§7); it is
+        presentation metadata only, never a second identity.
+        `physical_boat_claims` is `None` when the
         publishing Organization has not yet recorded any SLICE-0050 claim
         for this PhysicalBoat (SLICE-0050 §10: claim absence never fails the
         listing's own public readability), and otherwise carries only the
@@ -134,6 +142,7 @@ class PublicListingReadModel:
             "known_history_narrative": _claim_dict(offer.known_history_narrative),
             "vat_tax_status_claim": _vat_claim_dict(offer.vat_tax_status_claim),
             "publishing_organization_id": self.publishing_organization_id.value,
+            "publishing_organization_display_name": self.publishing_organization_display_name,
             "offer_recorded_at": self.offer_recorded_at.isoformat(),
             "hullq_vat_verification_status": "NONE",
             "physical_boat_claims": _physical_boat_claims_dict(self.physical_boat_claims),
@@ -245,9 +254,23 @@ def get_public_listing_read_model(
         conn, resolved.physical_boat_id, resolved.publishing_organization_id
     )
 
+    # SLICE-0063 contract §6/§7: the publishing Organization's own current
+    # bounded display name, or the exact Organization ID as the accepted
+    # legacy compatibility fallback when the actor-directory row does not
+    # (yet, or ever) exist. Never a listing-readability failure either way.
+    publishing_organization = fetch_marketplace_organization(
+        conn, resolved.publishing_organization_id
+    )
+    display_name = (
+        publishing_organization.resolved_public_display_name
+        if publishing_organization is not None
+        else resolved.publishing_organization_id.value
+    )
+
     return PublicListingReadModel(
         offer=resolved.offer,
         publishing_organization_id=resolved.publishing_organization_id,
+        publishing_organization_display_name=display_name,
         offer_recorded_at=resolved.offer_recorded_at,
         freshness_status=freshness.status,
         last_confirmed_at=freshness.last_confirmed_at,
