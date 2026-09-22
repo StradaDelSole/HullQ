@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-22  
 **Latest owner-accepted / DONE slice:** SLICE-0063  
-**Current queue:** SLICE-0064 — **Professional Publication Input Alignment**; post-SLICE-0063 repository/product reassessment and readiness are prepared on the accepted shared seller-draft, NativeListingOffer and PhysicalBoat-claim boundaries. Implementation remains unauthorized until independent exact-head readiness review, required remote gates and readiness merge to `main`.  
+**Current queue:** SLICE-0064 — **Professional Publication Input Alignment**; post-SLICE-0063 repository/product reassessment and readiness are prepared on the accepted professional-draft, NativeListingOffer and PhysicalBoat-claim boundaries. Implementation remains unauthorized until independent exact-head readiness review, required remote gates and readiness merge to `main`.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
