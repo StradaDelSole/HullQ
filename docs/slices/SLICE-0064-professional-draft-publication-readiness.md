@@ -60,7 +60,7 @@ Current draft vocabulary, PhysicalBoat claims, NativeListing offers, publishing 
 ## Controlling artifacts
 
 - `docs/POST_SLICE_0063_REASSESSMENT_2026-09-22.md`
-- `specs/PROFESSIONAL_DRAFT_PUBLICATION_READINESS_CONTRACT.v0.1.md`
+- `specs/PROFESSIONAL_PUBLICATION_READINESS_CONTRACT.v0.1.md`
 - `specs/PROFESSIONAL_LISTING_WORKSPACE_CONTRACT.v0.1.md`
 - `specs/MARKETPLACE_FIELD_REGISTRY.v0.1.json`
 - `specs/MARKETPLACE_FACT_CONTRACT.v0.1.md`
