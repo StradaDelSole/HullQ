@@ -45,6 +45,14 @@ Current draft vocabulary, PhysicalBoat claims, NativeListing offers, publishing 
 
 **CONFLICT_OR_REGRESSION:** none. Explicit gap: current draft has `physical_boat.boat_name` that current PhysicalBoat claim snapshot excludes, while current NativeListingOfferSnapshot requires `broker_description` that current professional draft lacks.
 
+**Already implemented / not re-decided:** ProfessionalListingDraft identity/ownership/current authorization/recovery; MarketplaceOrganization/publishing eligibility; PhysicalBoat/MarketEpisode/NativeListing identity separation; seven-field PhysicalBoat claim revision/current-head semantics; NativeListing offer revision semantics; lifecycle/public-read boundaries; technical Search criterion count exactly two.
+
+**Exact remaining gap:** the current professional draft contains accepted `physical_boat.boat_name` that the current bounded PhysicalBoat claim snapshot cannot represent, while the accepted `NativeListingOfferSnapshot` requires `broker_description` that the current ProfessionalListingDraft cannot store; therefore current draft state cannot yet be mapped losslessly into accepted marketplace target inputs.
+
+**Accepted-but-unimplemented obligations:** lossless professional draft publication mapping and later actual draft-to-marketplace promotion; publish/withdraw/reconfirm broker controls; media; durable leads/CRM/attribution; analytics/outcomes; export/import; Search-fit and other later registered broker obligations.
+
+**Material classifications:** `DECIDED_AND_IMPLEMENTED` current draft/auth/recovery and marketplace identity/claim/offer boundaries; `DECIDED_NOT_YET_IMPLEMENTED` lossless publication mapping and actual promotion; `EXPLICITLY_DEFERRED` marketplace mutation/media/leads/Search; `GENUINELY_OPEN` future atomic promotion transaction/ID allocation/draft provenance; `CONFLICT_OR_REGRESSION` none found.
+
 ## Trigger gates
 
 **Production readiness gate:** NOT_TRIGGERED  
