@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-22  
 **Latest owner-accepted / DONE slice:** SLICE-0063  
-**Current queue:** SLICE-0064 — **UNSELECTED**; SLICE-0063 is owner-accepted and merged. A fresh post-SLICE-0063 repository/product reassessment and Decision / Implementation Reconciliation are required before any SLICE-0064 capability selection/readiness. No SLICE-0064 implementation or `START_SLICE.bat` action is authorized.  
+**Current queue:** SLICE-0064 — **Professional Publication Input Alignment**; post-SLICE-0063 repository/product reassessment and readiness are prepared on the accepted shared seller-draft, NativeListingOffer and PhysicalBoat-claim boundaries. Implementation remains unauthorized until independent exact-head readiness review, required remote gates and readiness merge to `main`.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -238,11 +238,17 @@ Next queue number:
 SLICE-0064
 ```
 
-**Selected capability:** UNSELECTED.
+**Selected capability:** Professional Publication Input Alignment.
 
-SLICE-0064 requires a fresh post-SLICE-0063 repository/product reassessment plus the normal Decision / Implementation Reconciliation before any capability selection or readiness work is treated as canonical. The queue number alone does not authorize a capability, implementation branch or `START_SLICE.bat` action.
+Selection record: `docs/POST_SLICE_0063_REASSESSMENT_2026-09-22.md`.
 
-No SLICE-0064 implementation is authorized by SLICE-0063 acceptance closure.
+Readiness artifact: `docs/slices/SLICE-0064-professional-publication-input-alignment.md`.
+
+Normative bounded contract: `specs/PROFESSIONAL_PUBLICATION_INPUT_ALIGNMENT_CONTRACT.v0.1.md`.
+
+The capability closes the two repository-proven promotion mapping gaps without promoting anything: the shared draft vocabulary gains required `listing_offer.broker_description`, and the existing PhysicalBoat claim revision model gains a truthful `physical_boat.boat_name` destination. No PhysicalBoat/MarketEpisode/NativeListing/offer/publication truth is created from a draft in 0064.
+
+Implementation remains unauthorized until the readiness package passes independent exact-head review, required remote gates and is merged to canonical `main`; only then may the Project Owner run `START_SLICE.bat`.
 
 ## Development workflow
 
@@ -257,6 +263,6 @@ No SLICE-0064 implementation is authorized by SLICE-0063 acceptance closure.
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; after SLICE-0063 acceptance, SLICE-0064 remains unselected until fresh reassessment/readiness.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0064 Professional Publication Input Alignment is selected/readied but may not start until independent readiness review/remote gates/readiness merge are complete.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
