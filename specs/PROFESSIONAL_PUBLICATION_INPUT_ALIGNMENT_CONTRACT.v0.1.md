@@ -2,96 +2,94 @@
 
 **Status:** NORMATIVE WHEN MERGED  
 **Owning slice:** SLICE-0064 — Professional Publication Input Alignment  
-**Depends on:** SLICE-0050 PhysicalBoat claims; SLICE-0054 shared seller draft payload; SLICE-0061 professional drafts; SLICE-0062 draft recovery  
+**Depends on:** SLICE-0050 PhysicalBoat claims; SLICE-0061 ProfessionalListingDraft; SLICE-0062 professional recovery  
 **Normative language:** BCP 14 semantics apply to uppercase MUST/SHOULD/MAY.
 
 ## 1. Purpose
 
 This contract closes the two repository-proven data-shape gaps that currently prevent a later professional draft promotion from being specified losslessly:
 
-1. `listing_offer.broker_description` is required by a real NativeListing offer but cannot currently be stored in the shared draft payload;
-2. `physical_boat.boat_name` is already accepted in the shared draft payload but has no current PhysicalBoat claim persistence destination.
+1. `listing_offer.broker_description` is required by a real NativeListing offer but cannot currently be stored in ProfessionalListingDraft;
+2. `physical_boat.boat_name` is already accepted in ProfessionalListingDraft's common payload but has no current PhysicalBoat claim persistence destination.
 
 This contract does not implement promotion or publication.
 
 ## 2. Hard boundary
 
 ```text
-draft alignment != marketplace promotion
-draft alignment != NativeListing creation
-draft alignment != publication
+publication-input alignment != marketplace promotion
+publication-input alignment != NativeListing creation
+publication-input alignment != publication
 ```
 
-No SLICE-0064 API/UI action may create or mutate:
+No SLICE-0064 draft API/UI action may create or mutate marketplace truth from a draft.
 
-- PhysicalBoat from a draft;
-- MarketEpisode from a draft;
-- NativeListing from a draft;
-- NativeListingOfferRevision from a draft;
-- PhysicalBoatClaimRevision from a draft automatically;
-- publication/freshness lifecycle;
-- Search eligibility/results.
+## 3. Shared seller vocabulary remains unchanged
 
-The new claim writer capability may be tested directly against explicit claim input, exactly like existing claim-writer tests.
+The nine common owner-direct/professional draft keys remain exactly the current shared set.
 
-## 3. Shared draft vocabulary
+SLICE-0064 MUST NOT add `listing_offer.broker_description` to OwnerDirectListingDraft.
 
-The accepted shared seller draft payload key set expands from nine to ten common keys by adding:
+The accepted Owner-Direct v0.1 rule that broker-specific narrative fields are not repurposed for private sellers remains in force.
+
+## 4. Professional-only offer input
+
+ProfessionalListingDraft gains one additional bounded pre-market offer input:
 
 ```text
 listing_offer.broker_description
 ```
 
-The field is common LISTING_OFFER input, not professional-only metadata.
+This field is distinct from:
 
-Professional `broker_listing_reference` remains separate and professional-only.
+- the nine shared common draft keys;
+- professional-only metadata `broker_listing_reference`;
+- accepted marketplace truth.
 
-### 3.1 Draft description validation
+It is professional-only because the existing owner-direct contract explicitly does not reuse broker-specific narrative fields.
 
-When present, `listing_offer.broker_description` MUST:
+### 4.1 Validation
+
+When durably present, broker_description MUST:
 
 - be a string;
-- be trimmed at the durable draft write boundary;
+- be trimmed at the professional-draft write boundary;
 - remain non-empty after trimming;
-- be treated as plain untrusted text;
-- preserve internal punctuation/capitalization/newlines except where an existing shared draft text rule explicitly says otherwise.
+- be treated as untrusted plain text.
 
-Omission remains valid because drafts may be incomplete.
+Omission remains valid for an incomplete draft.
 
-No synthetic/default description may be created.
+No synthetic/default/derived description may be created.
 
-### 3.2 Shared-channel behavior
+### 4.2 Persistence and API
 
-Both current draft channels MUST round-trip the same common key with the same parser/serializer semantics:
+Professional create/read/update MUST round-trip the field.
 
-- OwnerDirectListingDraft;
-- ProfessionalListingDraft.
+The wire key MUST remain exactly:
 
-Adding this field MUST NOT weaken either channel's ownership/authorization/concurrency rules.
+```text
+listing_offer.broker_description
+```
 
-## 4. Professional draft UI and recovery
+Implementation may use a dedicated nullable column or equivalent professional-only bounded persistence representation.
 
-The existing professional edit surface MUST allow the broker to edit `listing_offer.broker_description`.
+Owner-direct persistence/API MUST remain unchanged.
 
-The existing browser-local recovery layer MUST treat its current unsaved form string exactly like the other bounded editable fields:
+## 5. Professional draft UI and recovery
 
-- exact unsaved string capture, including temporary empty string and whitespace while editing;
-- same Account + Organization + ProfessionalListingDraft + server-version scope;
-- same 24h expiry;
-- same same-version restore;
-- same stale-server conflict behavior;
-- same storage-unavailable behavior;
-- successful durable save clears matching recovery.
+The existing professional edit surface MUST allow editing broker_description.
 
-Server validation remains authoritative on explicit Save.
+The existing 0062 browser-local recovery layer MUST include its unsaved form string under exactly the same:
 
-## 5. Owner-direct non-regression
+- Account + Organization + ProfessionalListingDraft scope;
+- server base-version semantics;
+- 24h maximum age;
+- same-version restore;
+- stale-server conflict behavior;
+- storage availability/write failure behavior;
+- successful-save clearing behavior.
 
-Because the common draft payload is shared, OwnerDirectListingDraft persistence/API MUST accept and round-trip the same description field.
-
-If the existing owner-direct browser edit form exposes all common fields, it MUST expose the description there too. If its UI intentionally remains a narrower accepted subset, the API/persistence still MUST NOT reject or drop the shared common field.
-
-No owner-direct promotion/publication is introduced.
+Recovery may temporarily preserve empty/whitespace form strings before server validation, exactly like other editable controls.
 
 ## 6. PhysicalBoat boat-name claim semantics
 
@@ -101,9 +99,7 @@ Extend the accepted PhysicalBoat claim domain/persistence with:
 physical_boat.boat_name
 ```
 
-according to `specs/MARKETPLACE_FIELD_REGISTRY.v0.1.json`.
-
-Allowed assertion kinds:
+Allowed assertion kinds, matching the field registry:
 
 ```text
 VALUE_ASSERTION
@@ -116,14 +112,13 @@ UNKNOWN
 For VALUE_ASSERTION:
 
 - value MUST be a string;
-- value MUST be non-empty/non-whitespace-only;
-- persisted/read value MUST preserve the accepted text exactly unless an existing PhysicalBoat claim normalization rule applies.
+- value MUST be non-empty/non-whitespace-only.
 
 For ABSENT or UNKNOWN:
 
 - value MUST be null/None.
 
-An omitted boat-name claim in a snapshot remains mechanically distinct from an explicit ABSENT or UNKNOWN claim.
+An omitted boat-name claim remains mechanically distinct from explicit ABSENT or UNKNOWN.
 
 ### 6.2 Truth scope
 
@@ -136,126 +131,119 @@ Boat name is:
 - never BoatDesign/reference truth;
 - never a Search criterion.
 
-A BoatDesign name/model MUST NOT auto-fill the concrete boat name.
+A BoatDesign model/name MUST NOT auto-fill the concrete boat name.
 
 ## 7. PhysicalBoat claim revision persistence
 
 The existing immutable claim-revision model MUST remain one model.
 
-Do not create a parallel boat-name claim table.
+Do not create a parallel boat-name table.
 
-The current revision/head system MUST extend to carry optional:
-
-```text
-boat_name_assertion_kind
-boat_name_value
-```
-
-or a mechanically equivalent representation.
+The current revision/head system MUST extend to carry optional boat-name assertion kind/value or a mechanically equivalent representation.
 
 Required preservation:
 
 - immutable revisions;
 - explicit current head per PhysicalBoat + claiming Organization;
-- existing optimistic expected-head behavior;
-- content hash/idempotency/conflict detection;
+- expected-current-head concurrency;
+- content-hash/idempotency/conflict detection;
 - predecessor link integrity;
 - Organization isolation;
 - existing seven claim fields unchanged.
 
-Migration MUST preserve every existing claim revision/head.
+Migration MUST preserve all existing claim revisions and heads.
 
-## 8. Draft-to-claim mapping rule for later promotion
+## 8. Later draft-to-claim mapping rule
 
-0064 does not execute promotion, but it fixes the later mapping contract:
+0064 does not execute promotion.
+
+It establishes only:
 
 ```text
-draft boat_name string present
-→ later promotion may create BoatNameClaim(VALUE_ASSERTION, exact draft value)
+professional draft boat_name string present
+→ later promotion may create BoatNameClaim(VALUE_ASSERTION, exact accepted draft value)
 
-draft boat_name absent
+professional draft boat_name absent
 → later promotion MUST NOT infer ABSENT or UNKNOWN
 ```
 
-Explicit ABSENT/UNKNOWN capture remains a later UI/preflight decision.
+Explicit ABSENT/UNKNOWN capture remains a later publication/preflight decision.
 
-## 9. Offer mapping rule for later promotion
+## 9. Later offer mapping rule
 
-0064 does not execute promotion, but establishes:
+0064 does not execute promotion.
+
+It establishes:
 
 ```text
-draft listing_offer.broker_description present
+professional draft broker_description present
 → later promotion may supply NativeListingOfferSnapshot.broker_description
 
-draft listing_offer.broker_description absent
+professional draft broker_description absent
 → later promotion MUST fail preflight/incomplete rather than invent a description
 ```
-
-Exact later promotion completeness/error UX remains outside this slice.
 
 ## 10. Public/read projection
 
 PhysicalBoat claim readback objects MUST preserve boat-name assertion kind/value.
 
-Any existing API serializer representing the full current PhysicalBoat claim snapshot SHOULD include the boat-name field consistently.
+Any current API serializer representing the complete accepted current PhysicalBoat claim snapshot SHOULD include boat-name state consistently.
 
-No new Search filter, ranking input, canonical URL component or SEO/indexation behavior is authorized.
+No Search filter/ranking, canonical URL or indexation change is authorized.
 
 ## 11. Security and text handling
 
-Both description and boat-name values are untrusted text.
+Description and boat-name values are untrusted text.
 
 They MUST NOT:
 
 - be treated as HTML;
 - alter authorization;
-- contain or expose session/OIDC/MFA secrets;
-- become database identifiers;
+- contain/expose session/OIDC/MFA secrets;
+- become database identity;
 - become Search query syntax.
-
-Existing Astro auto-escaping/raw-HTML prohibitions remain controlling.
 
 ## 12. Tests
 
 At minimum cover:
 
-### Shared draft
+### Professional draft
 
-- common parser accepts broker_description;
-- trims boundary whitespace for durable value;
+- broker_description accepted under exact wire key;
+- trims boundary whitespace;
 - rejects non-string/blank;
-- serializer round-trips;
-- unknown-key fail-closed behavior remains;
-- professional draft create/read/update round-trips description;
-- owner-direct draft create/read/update round-trips description;
-- optimistic version conflict remains unchanged.
+- create/read/update round-trip;
+- stale version remains zero-mutation conflict;
+- unknown keys still fail closed;
+- broker_listing_reference semantics unchanged;
+- owner-direct rejects/ignores no new field exactly as before and its retained proof remains green.
 
 ### Recovery
 
-- description participates in bounded capture/restore;
-- unsaved empty/whitespace form state can survive recovery without changing server validation;
-- storage failure/stale-version behavior remains unchanged.
+- broker_description participates in capture/restore;
+- temporary unsaved empty/whitespace state can be recovered before authoritative Save validation;
+- stale-version/storage-failure behavior remains unchanged.
 
 ### Boat-name claims
 
 - VALUE_ASSERTION round-trip;
 - ABSENT round-trip;
 - UNKNOWN round-trip;
-- invalid assertion/value pair rejected;
+- invalid assertion/value combinations rejected;
 - omitted remains distinct from ABSENT/UNKNOWN;
-- same revision-id/same envelope stays idempotent;
-- conflicting same revision ID fails as before;
+- same revision-id/same envelope idempotency remains;
+- conflicting same revision ID remains conflict;
 - expected-head concurrency remains;
 - Organization isolation remains;
 - migration preserves old revisions with boat-name fields absent.
 
 ### Non-regression
 
-- current seven PhysicalBoat claim fields unchanged;
+- existing seven PhysicalBoat claim fields unchanged;
 - NativeListingOffer semantics unchanged;
-- no draft operation creates marketplace identities/truth;
-- no Search behavior changes;
-- owner-direct and professional authorization boundaries unchanged.
+- no professional draft operation creates marketplace identities/truth;
+- owner-direct behavior unchanged;
+- Search behavior unchanged.
 
 ## 13. Retained proof
 
@@ -264,18 +252,16 @@ Required retained real PostgreSQL 18 + FastAPI + built Astro proof MUST demonstr
 1. create/update/reopen a professional draft containing broker_description;
 2. broker edit page visibly renders/reuses the value;
 3. local recovery wiring includes the new field without auth leakage;
-4. owner-direct API/persistence round-trips the shared field without publication;
+4. owner-direct retained proof remains unchanged/green;
 5. write/read a PhysicalBoat claim revision with boat-name VALUE_ASSERTION;
 6. write/read explicit ABSENT and UNKNOWN cases;
 7. prove Organization-isolated current heads remain independent;
-8. prove no PhysicalBoat/MarketEpisode/NativeListing/offer/publication state is created from either draft workflow merely by adding/saving the field;
-9. run retained owner-direct/professional draft and PhysicalBoat-claim non-regression proofs as applicable.
+8. prove professional draft saves create no PhysicalBoat/MarketEpisode/NativeListing/offer/claim/publication state;
+9. run retained professional draft and PhysicalBoat-claim non-regression proofs.
 
 ## 14. Governance effect
 
 SLICE-0064 changes no mandatory-register status and no trigger gate.
-
-It creates repository-backed prerequisites for later lossless professional promotion.
 
 ```text
 REQ_BROKER_023_STATUS = IMPLEMENTED
@@ -290,6 +276,7 @@ TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT = 2
 - automatic claim/offer writes from draft;
 - generated marketplace IDs;
 - publication/withdraw/reconfirm;
+- owner-direct narrative vocabulary changes;
 - required-response UNKNOWN/ABSENT collection UX beyond this field alignment;
 - media;
 - leads/CRM;
@@ -302,9 +289,9 @@ TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT = 2
 ## 16. Acceptance summary
 
 ```text
-shared draft gains required broker_description
+professional draft gains required broker_description input
 + current PhysicalBoat claim writer gains boat_name destination
-→ named promotion data-shape mismatch is closed
-→ later promotion can be specified without dropping these accepted inputs
+→ named professional promotion data-shape mismatch is closed
+→ OwnerDirectListingDraft remains unchanged
 → no marketplace promotion occurs in 0064
 ```
