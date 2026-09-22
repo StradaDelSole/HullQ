@@ -285,6 +285,6 @@ PUBLIC_PRODUCTION_LAUNCH_STATUS: NOT_STARTED
 
 **Selected execution obligation:** `SLICE-0064 — Professional Draft Publication Readiness`.
 
-Readiness proceeds on `specs/PROFESSIONAL_DRAFT_PUBLICATION_READINESS_CONTRACT.v0.1.md`.
+Readiness proceeds on `specs/PROFESSIONAL_PUBLICATION_READINESS_CONTRACT.v0.1.md`.
 
 Implementation may not begin until the readiness package is independently exact-head reviewed, required remote gates are green and the readiness PR is merged to canonical `main`.
