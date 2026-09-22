@@ -12,7 +12,7 @@
 <!-- POST_PILOT_REAL_BROKER_VALIDATION_STATUS: NOT_STARTED -->
 
 <!-- REQ_BROKER_022_STATUS: PENDING -->
-<!-- REQ_BROKER_023_STATUS: PENDING -->
+<!-- REQ_BROKER_023_STATUS: IMPLEMENTED -->
 <!-- REQ_BROKER_024_STATUS: IMPLEMENTED -->
 <!-- REQ_BROKER_025_STATUS: PENDING -->
 <!-- REQ_BROKER_026_STATUS: PENDING -->
@@ -50,7 +50,7 @@ IMPLEMENTED
 |---|---|---|---|
 | REQ-BROKER-006 | explicit sale/outcome recording | mandatory before paid broker activation / broad public launch | PENDING |
 | REQ-BROKER-022 | inventory portability / no lock-in export | mandatory before paid broker activation / broad public launch | PENDING |
-| REQ-BROKER-023 | broker identity / branding preservation | launch/pilot baseline commitment | PENDING |
+| REQ-BROKER-023 | broker identity / branding preservation | launch/pilot baseline commitment | IMPLEMENTED by SLICE-0063 |
 | REQ-BROKER-024 | connectivity-resilient draft/recovery behavior | launch/pilot baseline commitment | IMPLEMENTED by SLICE-0062 |
 | REQ-BROKER-025 | Search exclusion explainability: why a listing was not found | search-volume-dependent mandatory capability | PENDING |
 | REQ-BROKER-026 | pre-publication Search-fit diagnostics | mandatory before paid broker activation / broad public launch | PENDING |
@@ -201,6 +201,44 @@ authorized existing ProfessionalListingDraft
 Browser-local recovery remains convenience state only; FastAPI/PostgreSQL authorization, validation, persistence and optimistic concurrency remain authoritative.
 
 REQ-BROKER-023 remains `PENDING`, therefore the Broker Workspace Launch Gate remains `NOT_READY`.
+
+## Implemented evidence — REQ-BROKER-023
+
+SLICE-0063 is the accepted implementation evidence for REQ-BROKER-023.
+
+Accepted evidence:
+
+- implementation slice: `docs/slices/SLICE-0063-publishing-organization-public-identity.md`;
+- normative contract: `specs/PUBLISHING_ORGANIZATION_PUBLIC_IDENTITY_CONTRACT.v0.1.md`;
+- accepted exact implementation HEAD: `32077952b3b921c95b506615e1c1a947fbec7ef9`;
+- implementation PR: #238;
+- implementation merge commit: `7f009564fd8acdbd1e4da1545deb1bde49632fff`;
+- Alembic migration `1a6de411f835_publishing_organization_public_display_name.py` adds one bounded non-null `public_display_name` to the existing `marketplace_organizations` row and deterministically backfills existing rows to exact `organization_id`;
+- focused unit/persistence/API/web coverage proves bounded normalization, exact punctuation/corporate-suffix preservation, empty/over-limit/control-character rejection, broker-context projection, VAT-independent public publisher identity, legacy exact-ID fallback and non-regression of authorization/listing/Search semantics;
+- retained real PostgreSQL 18 + local OIDC/JWKS + FastAPI + built Astro proof: `scripts/inspect_publishing_organization_public_identity.py`;
+- retained proof verifies current publisher display identity on Broker Workspace and public listing surfaces, safe escaped rendering, display-name-only rename without NativeListing mutation, legacy unresolved Organization fallback, and unchanged DRAFT/WITHDRAWN/unknown public behavior;
+- independent exact-head review initially requested two bounded validation amendments and then returned ACCEPT on the amended head;
+- exact-head CI run #855 / `35691401135`: SUCCESS;
+- exact-head Manufacturer artifact reproducibility run #577 / `35691401134`: SUCCESS;
+- explicit Project Owner acceptance recorded 2026-09-22.
+
+Accepted v0.1 behavior is deliberately bounded:
+
+```text
+existing MarketplaceOrganizationId
++ bounded current public_display_name
+→ clear current publisher identity in Broker Workspace
+→ clear current publisher identity on every readable public NativeListing
+→ no dependency on optional VAT/tax claims
+→ no second Organization identity
+→ no listing/lifecycle/Search/auth mutation
+```
+
+`public_display_name` is presentation metadata only: it is not legal/KYB verification, not a Brand/Marque identity and never an authorization selector.
+
+SLICE-0063 does not implement logo/media upload, a public broker profile or Organization self-service administration. Future media handling remains bound by the accepted rule that compliant broker logos/watermarks are not removed solely because they are broker branding; security, privacy, rights and accepted media-normalization rules remain controlling.
+
+REQ-BROKER-023 and REQ-BROKER-024 are now both `IMPLEMENTED`. This satisfies the two addendum launch/pilot-baseline commitment statuses, but it does **not** by itself make the Broker Workspace Launch Gate `PASS`; the remaining launch-gate capability/evidence checklist remains controlling.
 
 ## Evidence to mark IMPLEMENTED
 
