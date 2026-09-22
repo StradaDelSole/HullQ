@@ -120,6 +120,8 @@ For ABSENT or UNKNOWN:
 
 An omitted boat-name claim remains mechanically distinct from explicit ABSENT or UNKNOWN.
 
+The implementation MAY extend the existing shared `AssertionKind` vocabulary with `ABSENT` rather than create an incompatible parallel assertion-kind concept. If it does, every pre-existing per-field allowed-kind set MUST remain authoritative: adding the enum token MUST NOT make `ABSENT` valid for any existing LISTING_OFFER or PhysicalBoat field whose registry semantics do not allow it.
+
 ### 6.2 Truth scope
 
 Boat name is:
@@ -152,6 +154,26 @@ Required preservation:
 - existing seven claim fields unchanged.
 
 Migration MUST preserve all existing claim revisions and heads.
+
+### 7.1 Pre-0064 idempotency compatibility
+
+Existing `content_hash` values are durable idempotency evidence. Adding an optional boat-name field MUST NOT make an exact retry of a pre-0064 revision appear to be different content merely because the newer runtime snapshot has `boat_name = None`.
+
+After migration:
+
+```text
+pre-0064 stored revision
++ exact same revision ID
++ exact same predecessor
++ exact same original seven-field content
++ boat_name omitted
+→ ALREADY_EXISTS / exact-retry outcome
+→ never CONFLICT solely because the schema gained boat_name
+```
+
+Implementation may preserve the old fingerprint envelope for omitted boat name or use another mechanically proven compatible strategy, but MUST NOT silently invalidate historical retry semantics.
+
+A revision that actually asserts a boat-name value/ABSENT/UNKNOWN MUST participate in the immutable content fingerprint so a same revision ID with different boat-name content conflicts normally.
 
 ## 8. Later draft-to-claim mapping rule
 
@@ -235,7 +257,9 @@ At minimum cover:
 - conflicting same revision ID remains conflict;
 - expected-head concurrency remains;
 - Organization isolation remains;
-- migration preserves old revisions with boat-name fields absent.
+- migration preserves old revisions with boat-name fields absent;
+- exact retry of a pre-0064 revision after migration still returns the existing idempotent/already-exists outcome;
+- a new revision's boat-name assertion participates in conflict/idempotency fingerprinting.
 
 ### Non-regression
 
