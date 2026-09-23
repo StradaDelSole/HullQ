@@ -55,8 +55,6 @@ When durably present, broker_description MUST:
 - be a string;
 - be trimmed at the professional-draft write boundary;
 - remain non-empty after trimming;
-- contain at most 10,000 Unicode code points;
-- reject Unicode control characters in category `Cc`;
 - be treated as untrusted plain text.
 
 Omission remains valid for an incomplete draft.
@@ -235,7 +233,7 @@ At minimum cover:
 
 - broker_description accepted under exact wire key;
 - trims boundary whitespace;
-- rejects non-string/blank/control-character/over-limit content;
+- rejects non-string/blank content;
 - create/read/update round-trip;
 - stale version remains zero-mutation conflict;
 - unknown keys still fail closed;
