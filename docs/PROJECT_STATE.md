@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-23  
 **Latest owner-accepted / DONE slice:** SLICE-0064  
-**Current queue:** SLICE-0065 — **UNSELECTED**. A fresh post-SLICE-0064 repository/product reassessment and Decision / Implementation Reconciliation are required before selecting or readying any capability.  
+**Current queue:** SLICE-0065 — **Professional Publication Input Alignment** selected by the post-SLICE-0064 reassessment. Readiness is prepared but implementation remains unauthorized until independent exact-head readiness review, required remote gates and readiness merge to canonical `main`.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -244,11 +244,17 @@ Next queue number:
 SLICE-0065
 ```
 
-**Selected capability:** UNSELECTED.
+**Selected capability:** Professional Publication Input Alignment.
 
-SLICE-0064 is owner-accepted and merged. Before any SLICE-0065 capability selection, readiness work or material product/domain/data/architecture decision, perform a fresh post-SLICE-0064 repository/product reassessment and Decision / Implementation Reconciliation against canonical `origin/main`.
+Selection record: `docs/POST_SLICE_0064_REASSESSMENT_2026-09-23.md`.
 
-The queue number does not authorize `START_SLICE.bat`, implementation or a capability choice.
+Readiness artifact: `docs/slices/SLICE-0065-professional-publication-input-alignment.md`.
+
+Normative bounded contract: `specs/PROFESSIONAL_PUBLICATION_INPUT_ALIGNMENT_CONTRACT.v0.1.md`.
+
+The capability closes the two current repository-proven data-shape blockers to later professional draft promotion: professional-only `listing_offer.broker_description` input and a `physical_boat.boat_name` destination in the existing PhysicalBoat claim revision model. It performs no promotion, marketplace-ID creation, publication, Search change, import, lead, media or buyer-alert implementation.
+
+Implementation remains unauthorized until the readiness package passes independent exact-head review, required remote gates and is merged to canonical `main`; only then may the Project Owner run `START_SLICE.bat`.
 
 ## Development workflow
 
@@ -263,6 +269,6 @@ The queue number does not authorize `START_SLICE.bat`, implementation or a capab
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0064 is owner-accepted and merged, and a fresh post-SLICE-0064 reassessment is required before selecting SLICE-0065.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; post-SLICE-0064 reassessment selects SLICE-0065 Professional Publication Input Alignment, but implementation remains unauthorized until readiness review/gates/merge complete.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
