@@ -10,8 +10,10 @@ UNKNOWN/NOT_APPLICABLE/NO_KNOWN_HISTORY_DECLARED, conservative known-history
 wording, VAT/tax claim qualification -- without inventing a second read path.
 
 SLICE-0050 extends this same projection with the publishing Organization's
-own current bounded seven-field PhysicalBoat claim snapshot (`THIS BOAT`),
-resolved via `hullq.persistence.physical_boat_claims.fetch_current_physical_boat_claim`
+own current bounded PhysicalBoat claim snapshot (`THIS BOAT`) -- the seven
+originally accepted SLICE-0050 fields plus the optional SLICE-0065
+`boat_name` field -- resolved via
+`hullq.persistence.physical_boat_claims.fetch_current_physical_boat_claim`
 against the exact `(physical_boat_id, publishing_organization_id)` pair --
 never a different Organization's claim for the same PhysicalBoat, and never
 a BoatDesign baseline value standing in for an omitted/UNKNOWN claim
@@ -89,8 +91,10 @@ class PublicListingReadModel:
     baseline-as-yacht-fact -- only the accepted nine-field `LISTING_OFFER`
     public projection plus the minimal VAT/tax attribution metadata already
     accepted for the SLICE-0048 preview projection, plus (SLICE-0050) the
-    publishing Organization's own current bounded seven-field PhysicalBoat
-    claim snapshot, when one exists. Unlike the preview projection, this
+    publishing Organization's own current bounded PhysicalBoat claim
+    snapshot -- the seven originally accepted SLICE-0050 fields plus the
+    optional SLICE-0065 `boat_name` field -- when one exists. Unlike the
+    preview projection, this
     carries no `preview_expires_at`: public visibility here is determined
     solely by the accepted ACTIVE predicate, never by a finite bearer
     capability.
@@ -123,7 +127,8 @@ class PublicListingReadModel:
         publishing Organization has not yet recorded any SLICE-0050 claim
         for this PhysicalBoat (SLICE-0050 §10: claim absence never fails the
         listing's own public readability), and otherwise carries only the
-        seven bounded fields -- no revision id, recording Account or
+        seven originally accepted bounded fields plus the optional
+        SLICE-0065 `boat_name` field -- no revision id, recording Account or
         BoatDesign baseline value. `freshness_status` is always one of
         `CONFIRMED`/`DUE_FOR_CONFIRMATION` here (contract §7.1: STALE/UNKNOWN
         never reach this dict -- `get_public_listing_read_model` resolves to

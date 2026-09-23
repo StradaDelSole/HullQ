@@ -286,10 +286,11 @@ class BoatNameClaim:
 class PhysicalBoatClaimSnapshot:
     """One complete, internally-consistent PhysicalBoat claim snapshot.
 
-    Bounded to exactly the seven accepted SLICE-0050 `PHYSICAL_BOAT` fields
-    -- no builder, boat name, HIN/CIN, beam, displacement, hull material,
-    rig, engine, cabin/berth/head or history/refit/survey field. Numeric
-    values use `decimal.Decimal`, never a binary-floating-point type.
+    Bounded to the seven originally accepted SLICE-0050 `PHYSICAL_BOAT`
+    fields plus the optional SLICE-0065 `boat_name` field -- no builder,
+    HIN/CIN, beam, displacement, hull material, rig, engine, cabin/berth/
+    head or history/refit/survey field. Numeric values use
+    `decimal.Decimal`, never a binary-floating-point type.
     """
 
     marketed_brand_claim: str
