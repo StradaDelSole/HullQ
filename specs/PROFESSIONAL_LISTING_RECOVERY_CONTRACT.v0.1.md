@@ -86,9 +86,10 @@ captured_at
 form_values
 ```
 
-`form_values` MUST be limited to the editable 0061 professional-draft form vocabulary:
+`form_values` MUST be limited to the editable professional-draft form vocabulary accepted by SLICE-0061 plus the SLICE-0065 professional-only offer-input extension:
 
 - `broker_listing_reference`;
+- `listing_offer.broker_description`;
 - `physical_boat.marketed_brand_claim`;
 - `physical_boat.model_designation_claim`;
 - `physical_boat.build_year`;
@@ -271,7 +272,7 @@ The UI MUST NOT claim that locally recovered input is saved to HullQ until a rea
 
 - ProfessionalListingDraft ownership;
 - PUBLISHER/MFA/current-membership authorization;
-- draft payload validation rules;
+- draft payload validation rules, except for later explicitly accepted normative extensions such as the SLICE-0065 professional-only `listing_offer.broker_description` input;
 - draft optimistic version semantics;
 - CSRF mechanism;
 - public NativeListing publishing eligibility;
@@ -305,7 +306,7 @@ At minimum cover:
 
 ### Capture
 
-- field change snapshots all bounded editable values;
+- field change snapshots all bounded editable values, including `listing_offer.broker_description` after SLICE-0065;
 - latest values replace older local snapshot;
 - explicit submit flushes latest state before navigation;
 - no auth/session material is present.
