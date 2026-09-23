@@ -187,3 +187,218 @@ export async function fetchOrganizationInventory(
   const data = (await response.json()) as InventoryPage;
   return { kind: "ok", data };
 }
+
+// SLICE-0064: the authenticated, Organization-scoped NativeListing lifecycle
+// mutation boundary (publish/withdraw/reconfirm an already-existing
+// NativeListing). Every result here is exactly what FastAPI decided -- this
+// module never infers lifecycle/freshness outcome on its own.
+//
+// This module is also the SLICE-0064 contract §7 CSRF proxy: it is Astro's
+// own server calling FastAPI server-to-server, never the browser calling
+// FastAPI directly. `originHeader` must be the *browser's own* `Origin`
+// header value as Astro received it on the incoming page request -- this
+// module forwards it unmodified rather than substituting a trusted value
+// (mirrors `professionalDraftApi.ts`'s identical rationale, and
+// `hullq.api.app._require_inventory_lifecycle_csrf`). The fixed
+// `X-HullQ-Requested-With` header is added here, by Astro's server, never by
+// browser JavaScript.
+
+const LIFECYCLE_CSRF_HEADER_NAME = "X-HullQ-Requested-With";
+const LIFECYCLE_CSRF_HEADER_VALUE = "professional-inventory-lifecycle-v1";
+
+function lifecycleCsrfHeaders(originHeader: string | null): Record<string, string> {
+  return {
+    ...(originHeader ? { Origin: originHeader } : {}),
+    [LIFECYCLE_CSRF_HEADER_NAME]: LIFECYCLE_CSRF_HEADER_VALUE,
+  };
+}
+
+function inventoryActionPath(
+  organizationId: string,
+  nativeListingId: string,
+  action: "publish" | "withdraw" | "reconfirm",
+): string {
+  return (
+    `/api/broker/organizations/${encodeURIComponent(organizationId)}` +
+    `/inventory/${encodeURIComponent(nativeListingId)}/${action}`
+  );
+}
+
+/** Shared org-level authorization outcomes carried by every lifecycle result below. */
+type InventoryActionAuthFailure =
+  | { kind: "unauthenticated" }
+  | { kind: "not_found" }
+  | { kind: "mfa_required" };
+
+function inventoryActionAuthFailureFromStatus(
+  status: number,
+): { kind: "unauthenticated" } | { kind: "not_found" } | null {
+  if (status === 401) return { kind: "unauthenticated" };
+  if (status === 404) return { kind: "not_found" };
+  return null;
+}
+
+/**
+ * Classify a 403 response from one of the three lifecycle mutation routes.
+ * FastAPI's `_inventory_lifecycle_response`/`_inventory_reconfirm_response`
+ * (`hullq.api.app`) return exactly two distinguishable 403 body shapes for
+ * this boundary -- `{"error":"mfa_required"}` and
+ * `{"error":"publishing_denied","reason":...}` -- plus the CSRF-rejection
+ * path (`hullq.api.app._require_inventory_lifecycle_csrf`), which this
+ * module's own request construction always satisfies (fixed Origin/header),
+ * so a 403 that fails to parse as either known shape here is a genuine
+ * unexpected condition, not a domain publishing denial (contract §14:
+ * "service failure" must stay a distinct outcome, never silently folded
+ * into "publishing denied").
+ */
+async function classifyInventoryAction403(
+  response: Response,
+): Promise<{ kind: "mfa_required" } | { kind: "denied"; reason: string } | { kind: "service_error" }> {
+  let body: { error?: string; reason?: string } = {};
+  try {
+    body = (await response.json()) as { error?: string; reason?: string };
+  } catch {
+    return { kind: "service_error" };
+  }
+  if (body.error === "mfa_required") {
+    return { kind: "mfa_required" };
+  }
+  if (body.error === "publishing_denied") {
+    return { kind: "denied", reason: body.reason ?? "unknown" };
+  }
+  return { kind: "service_error" };
+}
+
+export type PublishListingResult =
+  | InventoryActionAuthFailure
+  | { kind: "denied"; reason: string }
+  | { kind: "incomplete_listing" }
+  | { kind: "state_conflict" }
+  | { kind: "service_error" }
+  | { kind: "ok"; transitionId: string };
+
+/**
+ * Publish one existing, complete, own DRAFT NativeListing to ACTIVE.
+ * `not_found` covers both a genuinely unknown Organization/NativeListing and
+ * one the current Account is not authorized for -- FastAPI already
+ * collapses each layer, so this client never distinguishes them either.
+ */
+export async function publishOrganizationListing(
+  apiBaseUrl: string,
+  organizationId: string,
+  nativeListingId: string,
+  cookieHeader: string | null,
+  originHeader: string | null,
+): Promise<PublishListingResult> {
+  const base = apiBaseUrl.replace(/\/+$/, "");
+  let response: Response;
+  try {
+    response = await fetch(`${base}${inventoryActionPath(organizationId, nativeListingId, "publish")}`, {
+      method: "POST",
+      headers: { ...cookieHeaders(cookieHeader), ...lifecycleCsrfHeaders(originHeader) },
+      redirect: "manual",
+    });
+  } catch {
+    return { kind: "service_error" };
+  }
+  const authFailure = inventoryActionAuthFailureFromStatus(response.status);
+  if (authFailure) return authFailure;
+  if (response.status === 403) return await classifyInventoryAction403(response);
+  if (response.status === 422) return { kind: "incomplete_listing" };
+  if (response.status === 409) return { kind: "state_conflict" };
+  if (!response.ok) return { kind: "service_error" };
+  const data = (await response.json()) as { transition_id: string };
+  return { kind: "ok", transitionId: data.transition_id };
+}
+
+export type WithdrawListingResult =
+  | InventoryActionAuthFailure
+  | { kind: "denied"; reason: string }
+  | { kind: "state_conflict" }
+  | { kind: "service_error" }
+  | { kind: "ok"; transitionId: string };
+
+/** Withdraw one existing own ACTIVE NativeListing to WITHDRAWN. */
+export async function withdrawOrganizationListing(
+  apiBaseUrl: string,
+  organizationId: string,
+  nativeListingId: string,
+  cookieHeader: string | null,
+  originHeader: string | null,
+): Promise<WithdrawListingResult> {
+  const base = apiBaseUrl.replace(/\/+$/, "");
+  let response: Response;
+  try {
+    response = await fetch(`${base}${inventoryActionPath(organizationId, nativeListingId, "withdraw")}`, {
+      method: "POST",
+      headers: { ...cookieHeaders(cookieHeader), ...lifecycleCsrfHeaders(originHeader) },
+      redirect: "manual",
+    });
+  } catch {
+    return { kind: "service_error" };
+  }
+  const authFailure = inventoryActionAuthFailureFromStatus(response.status);
+  if (authFailure) return authFailure;
+  if (response.status === 403) return await classifyInventoryAction403(response);
+  if (response.status === 409) return { kind: "state_conflict" };
+  if (!response.ok) return { kind: "service_error" };
+  const data = (await response.json()) as { transition_id: string };
+  return { kind: "ok", transitionId: data.transition_id };
+}
+
+export type ReconfirmListingResult =
+  | InventoryActionAuthFailure
+  | { kind: "denied"; reason: string }
+  | { kind: "invalid_operation_id" }
+  | { kind: "state_conflict" }
+  | { kind: "operation_id_conflict" }
+  | { kind: "service_error" }
+  | { kind: "ok"; occurredAt: string };
+
+/**
+ * Reconfirm one existing own ACTIVE NativeListing's freshness.
+ * `confirmationId` MUST be a stable, caller-generated canonical UUID string
+ * so a genuine browser retry (e.g. a double form submit) is idempotent
+ * rather than creating two events (contract §11).
+ */
+export async function reconfirmOrganizationListing(
+  apiBaseUrl: string,
+  organizationId: string,
+  nativeListingId: string,
+  confirmationId: string,
+  cookieHeader: string | null,
+  originHeader: string | null,
+): Promise<ReconfirmListingResult> {
+  const base = apiBaseUrl.replace(/\/+$/, "");
+  let response: Response;
+  try {
+    response = await fetch(
+      `${base}${inventoryActionPath(organizationId, nativeListingId, "reconfirm")}`,
+      {
+        method: "POST",
+        headers: {
+          ...cookieHeaders(cookieHeader),
+          ...lifecycleCsrfHeaders(originHeader),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ confirmation_id: confirmationId }),
+        redirect: "manual",
+      },
+    );
+  } catch {
+    return { kind: "service_error" };
+  }
+  const authFailure = inventoryActionAuthFailureFromStatus(response.status);
+  if (authFailure) return authFailure;
+  if (response.status === 403) return await classifyInventoryAction403(response);
+  if (response.status === 400) return { kind: "invalid_operation_id" };
+  if (response.status === 409) {
+    const body = (await response.json()) as { error?: string };
+    return body.error === "operation_id_conflict"
+      ? { kind: "operation_id_conflict" }
+      : { kind: "state_conflict" };
+  }
+  if (!response.ok) return { kind: "service_error" };
+  const data = (await response.json()) as { occurred_at: string };
+  return { kind: "ok", occurredAt: data.occurred_at };
+}
