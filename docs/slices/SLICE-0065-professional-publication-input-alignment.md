@@ -161,7 +161,6 @@ Professional draft save remains private pre-market state and creates zero market
 - [ ] OwnerDirectListingDraft vocabulary remains unchanged.
 - [ ] Professional draft accepts `listing_offer.broker_description` in addition to common payload + broker reference.
 - [ ] Durable description is trimmed/non-empty when present.
-- [ ] Description is bounded to 10,000 Unicode code points and rejects Unicode control characters.
 - [ ] No placeholder/default description is generated.
 - [ ] Professional create/read/update round-trips description.
 - [ ] Professional edit UI renders/edits it.
