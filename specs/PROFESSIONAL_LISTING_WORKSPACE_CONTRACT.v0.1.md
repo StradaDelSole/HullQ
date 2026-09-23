@@ -127,6 +127,20 @@ It must either:
 
 The existing owner-direct public API, persistence behavior and tests must remain unchanged from the caller's perspective.
 
+### 4.2 SLICE-0065 professional-only offer-input extension
+
+SLICE-0065 adds exactly one professional-only pre-market offer input outside the nine shared owner-direct/professional common keys:
+
+```text
+listing_offer.broker_description
+```
+
+This does **not** change `ACCEPTED_DRAFT_PAYLOAD_KEYS` or OwnerDirectListingDraft vocabulary.
+
+Professional create/read/update MUST accept and round-trip the field under the exact wire key above. Omission remains valid while the professional draft is incomplete. When present, it must be a trimmed non-empty plain-text string. No placeholder/default/derived broker description may be generated.
+
+The field remains private ProfessionalListingDraft state until a later explicit marketplace-promotion capability. Professional draft save MUST NOT create or mutate a NativeListing offer revision merely because broker_description is present.
+
 ## 5. Professional-only draft metadata
 
 A professional draft MAY carry:
@@ -337,6 +351,7 @@ At minimum cover:
 - empty create;
 - partial create;
 - all v0.1 common fields;
+- professional-only broker_description present/absent and round-tripped;
 - broker reference present/absent;
 - owner-direct common-field validation parity;
 - invalid/unknown field rejection;
