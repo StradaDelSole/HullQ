@@ -152,6 +152,67 @@ class TestCreateProfessionalListingDraft:
         assert fetched.payload == payload
         assert fetched.broker_listing_reference == "REF-001"
 
+    def test_create_and_update_round_trip_broker_description(self, conn: Any) -> None:
+        """SLICE-0065 Publication Input Alignment contract §4.2: professional
+        create/read/update round-trips `listing_offer.broker_description`."""
+        org_id = MarketplaceOrganizationId(str(uuid.uuid4()))
+        account_id = AccountId(str(uuid.uuid4()))
+        _seed_organization(conn, org_id)
+        _seed_account(conn, account_id)
+
+        record = create_professional_listing_draft(
+            conn,
+            owner_organization_id=org_id,
+            created_by_account_id=account_id,
+            broker_listing_reference=None,
+            broker_description="A lovely, well-maintained sloop.",
+            payload=EMPTY_LISTING_DRAFT_PAYLOAD,
+        )
+        conn.commit()
+        assert record.broker_description == "A lovely, well-maintained sloop."
+
+        fetched = fetch_professional_listing_draft(
+            conn, draft_id=record.draft_id, owner_organization_id=org_id
+        )
+        assert fetched is not None
+        assert fetched.broker_description == "A lovely, well-maintained sloop."
+
+        updated = update_professional_listing_draft(
+            conn,
+            draft_id=record.draft_id,
+            owner_organization_id=org_id,
+            broker_listing_reference=None,
+            broker_description="Recently repowered and repainted.",
+            payload=EMPTY_LISTING_DRAFT_PAYLOAD,
+            expected_version=1,
+        )
+        conn.commit()
+        assert updated.outcome is ProfessionalListingDraftUpdateOutcome.UPDATED
+        assert updated.record is not None
+        assert updated.record.broker_description == "Recently repowered and repainted."
+
+        refetched = fetch_professional_listing_draft(
+            conn, draft_id=record.draft_id, owner_organization_id=org_id
+        )
+        assert refetched is not None
+        assert refetched.broker_description == "Recently repowered and repainted."
+
+    def test_broker_description_defaults_to_none(self, conn: Any) -> None:
+        org_id = MarketplaceOrganizationId(str(uuid.uuid4()))
+        account_id = AccountId(str(uuid.uuid4()))
+        _seed_organization(conn, org_id)
+        _seed_account(conn, account_id)
+
+        record = create_professional_listing_draft(
+            conn,
+            owner_organization_id=org_id,
+            created_by_account_id=account_id,
+            broker_listing_reference=None,
+            payload=EMPTY_LISTING_DRAFT_PAYLOAD,
+        )
+        conn.commit()
+        assert record.broker_description is None
+
     def test_each_create_gets_a_distinct_draft_id(self, conn: Any) -> None:
         org_id = MarketplaceOrganizationId(str(uuid.uuid4()))
         account_id = AccountId(str(uuid.uuid4()))

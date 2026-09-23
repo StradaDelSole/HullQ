@@ -1,8 +1,9 @@
-"""Durable PhysicalBoat buyer-critical claim persistence — SLICE-0050.
+"""Durable PhysicalBoat buyer-critical claim persistence — SLICE-0050/0065.
 
 Given an already-persisted, authorized SLICE-0043/0046/0047 NativeListing ->
 MarketEpisode -> PhysicalBoat chain, durably create and revise the bounded
-seven-field `PhysicalBoat` claim snapshot
+seven-field `PhysicalBoat` claim snapshot plus the SLICE-0065 optional
+`boat_name` field
 (`hullq.domain.physical_boat_claims.PhysicalBoatClaimSnapshot`), preserving
 immutable revision history, exact broker-claim semantics and cross-
 Organization isolation -- mirroring
@@ -31,7 +32,10 @@ revision id that already exists resolves deterministically against the
 *complete* immutable envelope -- same PhysicalBoat, same claiming
 Organization, same recorded predecessor (`previous_claim_revision_id`, fixed
 at that revision's own insertion time -- not the pair's possibly-since-
-advanced current head) and identical seven-field content is `ALREADY_EXISTS`;
+advanced current head) and identical content (seven fields, plus `boat_name`
+when actually asserted -- SLICE-0065 §7.1 preserves the pre-0065 fingerprint
+envelope for an *omitted* `boat_name` so a pre-0065 revision's exact retry
+still resolves `ALREADY_EXISTS`) is `ALREADY_EXISTS`;
 any difference, including a different supplied predecessor for the same
 revision id, is `CONFLICT` (SLICE-0050 §7/§7.3). Neither ever silently
 overwrites or re-promotes a prior revision, and one Organization's claims
@@ -54,6 +58,7 @@ from typing import Any
 from hullq.domain.market_identity import NativeListingId, PhysicalBoatId
 from hullq.domain.physical_boat_claims import (
     AssertionKind,
+    BoatNameClaim,
     BuildYearClaim,
     DraftClaim,
     KeelConfiguration,
@@ -227,8 +232,9 @@ INSERT INTO physical_boat_claim_revisions (
     draft_assertion_kind, draft_value,
     keel_configuration_assertion_kind, keel_configuration_value,
     rudder_configuration_assertion_kind, rudder_configuration_value,
+    boat_name_assertion_kind, boat_name_value,
     previous_claim_revision_id, content_hash
-) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 ON CONFLICT (claim_revision_id) DO NOTHING
 """
 
@@ -249,6 +255,7 @@ _REVISION_COLUMNS = """
     r.draft_assertion_kind, r.draft_value,
     r.keel_configuration_assertion_kind, r.keel_configuration_value,
     r.rudder_configuration_assertion_kind, r.rudder_configuration_value,
+    r.boat_name_assertion_kind, r.boat_name_value,
     r.previous_claim_revision_id, r.recorded_at
 """
 
@@ -329,6 +336,7 @@ def _optional_claim_dict(
     | KeelConfigurationClaim
     | RudderConfigurationClaim
     | BuildYearClaim
+    | BoatNameClaim
     | None,
 ) -> dict[str, Any] | None:
     if claim is None:
@@ -349,7 +357,7 @@ def _claim_envelope_dict(
     recorded_by_account_id: str,
     claims: PhysicalBoatClaimSnapshot,
 ) -> dict[str, Any]:
-    return {
+    envelope: dict[str, Any] = {
         "physical_boat_id": physical_boat_id,
         "claiming_organization_id": claiming_organization_id,
         "recorded_by_account_id": recorded_by_account_id,
@@ -361,6 +369,21 @@ def _claim_envelope_dict(
         "keel_configuration": _optional_claim_dict(claims.keel_configuration),
         "rudder_configuration": _optional_claim_dict(claims.rudder_configuration),
     }
+    # SLICE-0065 contract §7.1: the "boat_name" key is only added to the
+    # envelope when a boat-name claim is actually present. Every pre-0065
+    # revision's stored content_hash was computed over an envelope that
+    # never had this key at all; if an omitted boat_name here instead added
+    # "boat_name": None unconditionally, an exact retry of a pre-0065
+    # revision (which always presents boat_name=None, since the migration
+    # cannot retroactively populate it) would recompute a DIFFERENT hash
+    # than the one already stored, turning a legitimate idempotent retry
+    # into a spurious CONFLICT. Omitting the key entirely for the omitted
+    # case reproduces the exact pre-0065 envelope byte-for-byte, while a
+    # revision that actually asserts a boat-name value/ABSENT/UNKNOWN still
+    # gets a distinct fingerprint (the key is present with real content).
+    if claims.boat_name is not None:
+        envelope["boat_name"] = _optional_claim_dict(claims.boat_name)
+    return envelope
 
 
 # ---------------------------------------------------------------------------
@@ -386,6 +409,8 @@ def _row_to_revision_record(row: tuple[Any, ...]) -> PhysicalBoatClaimRevisionRe
         keel_value,
         rudder_kind,
         rudder_value,
+        boat_name_kind,
+        boat_name_value,
         previous_revision_id,
         recorded_at,
     ) = row
@@ -414,6 +439,12 @@ def _row_to_revision_record(row: tuple[Any, ...]) -> PhysicalBoatClaimRevisionRe
             assertion_kind=AssertionKind(rudder_kind),
             value=RudderConfiguration(rudder_value) if rudder_value is not None else None,
         )
+    boat_name: BoatNameClaim | None = None
+    if boat_name_kind is not None:
+        boat_name = BoatNameClaim(
+            assertion_kind=AssertionKind(boat_name_kind),
+            value=boat_name_value,
+        )
 
     claims = PhysicalBoatClaimSnapshot(
         marketed_brand_claim=marketed_brand_claim,
@@ -426,6 +457,7 @@ def _row_to_revision_record(row: tuple[Any, ...]) -> PhysicalBoatClaimRevisionRe
         draft=draft,
         keel_configuration=keel_configuration,
         rudder_configuration=rudder_configuration,
+        boat_name=boat_name,
     )
 
     return PhysicalBoatClaimRevisionRecord(
@@ -449,6 +481,7 @@ def _optional_claim_columns(
     | DraftClaim
     | KeelConfigurationClaim
     | RudderConfigurationClaim
+    | BoatNameClaim
     | None,
 ) -> tuple[str | None, Any]:
     if claim is None:
@@ -631,6 +664,7 @@ def write_physical_boat_claim_revision(
         draft_kind, draft_value = _optional_claim_columns(claims.draft)
         keel_kind, keel_value = _optional_claim_columns(claims.keel_configuration)
         rudder_kind, rudder_value = _optional_claim_columns(claims.rudder_configuration)
+        boat_name_kind, boat_name_value = _optional_claim_columns(claims.boat_name)
 
         # ON CONFLICT DO NOTHING on claim_revision_id (a global PRIMARY KEY,
         # not scoped to (physical_boat_id, claiming_organization_id)) closes
@@ -656,6 +690,8 @@ def write_physical_boat_claim_revision(
                 keel_value,
                 rudder_kind,
                 rudder_value,
+                boat_name_kind,
+                boat_name_value,
                 actual_current_id,
                 content_hash,
             ),

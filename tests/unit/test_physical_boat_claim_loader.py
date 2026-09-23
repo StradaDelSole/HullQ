@@ -139,6 +139,34 @@ def test_build_year_value_assertion_with_null_value_is_rejected_by_domain_constr
         parse_physical_boat_claim_request(data)
 
 
+def test_boat_name_value_assertion_parses() -> None:
+    data = _example_data()
+    data["claims"]["boat_name"] = {"assertion_kind": "VALUE_ASSERTION", "value": "Sea Breeze"}
+    request = parse_physical_boat_claim_request(data)
+    assert request.claims.boat_name is not None
+    assert request.claims.boat_name.value == "Sea Breeze"
+
+
+def test_boat_name_absent_parses() -> None:
+    data = _example_data()
+    data["claims"]["boat_name"] = {"assertion_kind": "ABSENT"}
+    request = parse_physical_boat_claim_request(data)
+    assert request.claims.boat_name is not None
+    assert request.claims.boat_name.assertion_kind is AssertionKind.ABSENT
+
+
+def test_boat_name_omitted_stays_none() -> None:
+    request = parse_physical_boat_claim_request(_example_data())
+    assert request.claims.boat_name is None
+
+
+def test_boat_name_invalid_assertion_kind_is_rejected() -> None:
+    data = _example_data()
+    data["claims"]["boat_name"] = {"assertion_kind": "NOT_APPLICABLE"}
+    with pytest.raises(PhysicalBoatClaimRequestValidationError):
+        parse_physical_boat_claim_request(data)
+
+
 def test_missing_file_is_rejected() -> None:
     with pytest.raises(PhysicalBoatClaimRequestValidationError):
         load_physical_boat_claim_request("/does/not/exist.json")

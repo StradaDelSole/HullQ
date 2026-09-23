@@ -38,6 +38,7 @@ const _sampleDraft = {
   owner_organization_id: "ORG-1",
   version: 1,
   broker_listing_reference: null,
+  "listing_offer.broker_description": null,
   created_at: "2026-01-01T00:00:00+00:00",
   updated_at: "2026-01-01T00:00:00+00:00",
 };

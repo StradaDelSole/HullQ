@@ -346,6 +346,67 @@ class TestProfessionalDraftCrud:
         assert reopened.json()["broker_listing_reference"] == "REF-CRUD-2"
         assert reopened.json()["version"] == 2
 
+    def test_save_broker_description_and_reopen_exact_value(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        """SLICE-0065 Publication Input Alignment contract §4.2: professional
+        create/read/update round-trips `listing_offer.broker_description`
+        under its exact wire key."""
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-PD-DESC-1",
+            account_id="ACC-PD-DESC-1",
+            membership_id="OM-PD-DESC-1",
+        )
+        _log_in(client, "ACC-PD-DESC-1")
+        created = client.post(_drafts_path("ORG-PD-DESC-1"), json={}, headers=_csrf_headers())
+        assert created.json()["listing_offer.broker_description"] is None
+        draft_id = created.json()["draft_id"]
+
+        updated = client.put(
+            f"{_drafts_path('ORG-PD-DESC-1')}/{draft_id}",
+            json={
+                "expected_version": 1,
+                "listing_offer.broker_description": "  A lovely, well-maintained sloop.  ",
+            },
+            headers=_csrf_headers(),
+        )
+        assert updated.status_code == 200
+        assert (
+            updated.json()["listing_offer.broker_description"] == "A lovely, well-maintained sloop."
+        )
+
+        reopened = client.get(f"{_drafts_path('ORG-PD-DESC-1')}/{draft_id}")
+        assert reopened.status_code == 200
+        assert (
+            reopened.json()["listing_offer.broker_description"]
+            == "A lovely, well-maintained sloop."
+        )
+
+    def test_whitespace_only_broker_description_is_rejected_without_mutation(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-PD-DESC-2",
+            account_id="ACC-PD-DESC-2",
+            membership_id="OM-PD-DESC-2",
+        )
+        _log_in(client, "ACC-PD-DESC-2")
+        created = client.post(_drafts_path("ORG-PD-DESC-2"), json={}, headers=_csrf_headers())
+        draft_id = created.json()["draft_id"]
+
+        response = client.put(
+            f"{_drafts_path('ORG-PD-DESC-2')}/{draft_id}",
+            json={"expected_version": 1, "listing_offer.broker_description": "   "},
+            headers=_csrf_headers(),
+        )
+        assert response.status_code == 400
+
+        current = client.get(f"{_drafts_path('ORG-PD-DESC-2')}/{draft_id}")
+        assert current.json()["version"] == 1
+        assert current.json()["listing_offer.broker_description"] is None
+
     def test_stale_expected_version_returns_409_without_mutation(
         self, client: TestClient, api_url: str
     ) -> None:

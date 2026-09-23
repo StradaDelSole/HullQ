@@ -94,6 +94,7 @@ def professional_draft_record_to_public_dict(
         "owner_organization_id": record.owner_organization_id.value,
         "version": record.version,
         "broker_listing_reference": record.broker_listing_reference,
+        "listing_offer.broker_description": record.broker_description,
         "created_at": record.created_at.isoformat(),
         "updated_at": record.updated_at.isoformat(),
     }
@@ -381,6 +382,7 @@ def create_professional_draft_for_organization(
             owner_organization_id=organization_id,
             created_by_account_id=session.account_id,
             broker_listing_reference=request.broker_listing_reference,
+            broker_description=request.broker_description,
             payload=request.common,
         )
     return CreateProfessionalDraftResult(
@@ -520,6 +522,7 @@ def update_professional_draft_for_organization(
             draft_id=ProfessionalListingDraftId(draft_id_value),
             owner_organization_id=organization_id,
             broker_listing_reference=request.broker_listing_reference,
+            broker_description=request.broker_description,
             payload=request.common,
             expected_version=expected_version,
         )

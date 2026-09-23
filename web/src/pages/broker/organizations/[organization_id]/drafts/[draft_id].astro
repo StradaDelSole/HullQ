@@ -84,6 +84,9 @@ function payloadFromForm(formData: FormData): ProfessionalDraftPayloadInput {
   const region = readOptionalField(formData, "listing_offer.location_region");
   if (region !== undefined) payload["listing_offer.location_region"] = region;
 
+  const description = readOptionalField(formData, "listing_offer.broker_description");
+  if (description !== undefined) payload["listing_offer.broker_description"] = description;
+
   return payload;
 }
 
@@ -312,6 +315,14 @@ const accountId = brokerContextResult?.kind === "ok" ? brokerContextResult.data.
                     name="listing_offer.location_region"
                     value={draft?.["listing_offer.location_region"] ?? ""}
                   />
+                </label>
+              </p>
+              <p>
+                <label>
+                  Broker description
+                  <textarea name="listing_offer.broker_description">
+                    {draft?.["listing_offer.broker_description"] ?? ""}
+                  </textarea>
                 </label>
               </p>
               <button type="submit">Save</button>

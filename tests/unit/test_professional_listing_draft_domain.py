@@ -14,7 +14,10 @@ from decimal import Decimal
 import pytest
 
 from hullq.domain import owner_direct_draft, professional_listing_draft
-from hullq.domain.listing_draft_payload import InvalidListingDraftPayloadError
+from hullq.domain.listing_draft_payload import (
+    ACCEPTED_DRAFT_PAYLOAD_KEYS,
+    InvalidListingDraftPayloadError,
+)
 from hullq.domain.owner_direct_draft import OwnerDirectListingDraftId
 from hullq.domain.professional_listing_draft import (
     ProfessionalListingDraftId,
@@ -23,6 +26,13 @@ from hullq.domain.professional_listing_draft import (
 
 _owner_direct_parse = owner_direct_draft.parse_owner_direct_draft_payload
 _professional_common_parse = professional_listing_draft.parse_listing_draft_payload
+
+
+def test_shared_common_draft_key_count_remains_exactly_nine() -> None:
+    """SLICE-0065 acceptance: adding professional-only
+    `listing_offer.broker_description` must not change the shared
+    channel-neutral common draft key count."""
+    assert len(ACCEPTED_DRAFT_PAYLOAD_KEYS) == 9
 
 
 class TestProfessionalListingDraftId:
@@ -90,6 +100,47 @@ class TestParseProfessionalListingDraftRequestBrokerListingReference:
         metadata, not one of the nine channel-neutral common draft keys."""
         with pytest.raises(InvalidListingDraftPayloadError):
             _professional_common_parse({"broker_listing_reference": "REF-001"})
+
+
+class TestParseProfessionalListingDraftRequestBrokerDescription:
+    """SLICE-0065 Publication Input Alignment contract §4: the professional-
+    only `listing_offer.broker_description` offer input."""
+
+    def test_absent_is_none(self) -> None:
+        request = parse_professional_listing_draft_request({})
+        assert request.broker_description is None
+
+    def test_valid_trimmed_string_accepted(self) -> None:
+        request = parse_professional_listing_draft_request(
+            {"listing_offer.broker_description": "  A lovely, well-maintained sloop.  "}
+        )
+        assert request.broker_description == "A lovely, well-maintained sloop."
+
+    def test_whitespace_only_rejected(self) -> None:
+        with pytest.raises(InvalidListingDraftPayloadError):
+            parse_professional_listing_draft_request({"listing_offer.broker_description": "   "})
+
+    def test_non_string_rejected(self) -> None:
+        with pytest.raises(InvalidListingDraftPayloadError):
+            parse_professional_listing_draft_request({"listing_offer.broker_description": 123})
+
+    def test_never_part_of_the_nine_common_keys(self) -> None:
+        """Contract §3: broker_description is professional-only and must
+        never become an accepted OwnerDirectListingDraft/common key."""
+        with pytest.raises(InvalidListingDraftPayloadError):
+            _professional_common_parse({"listing_offer.broker_description": "text"})
+        with pytest.raises(InvalidListingDraftPayloadError):
+            _owner_direct_parse({"listing_offer.broker_description": "text"})
+
+    def test_distinct_from_broker_listing_reference(self) -> None:
+        request = parse_professional_listing_draft_request(
+            {
+                "broker_listing_reference": "REF-003",
+                "listing_offer.broker_description": "A lovely sloop.",
+            }
+        )
+        assert request.broker_listing_reference == "REF-003"
+        assert request.broker_description == "A lovely sloop."
 
 
 class TestParseProfessionalListingDraftRequestCommonFieldsUnchanged:

@@ -62,6 +62,7 @@ from hullq.domain.native_listing_offer import (
     VatTaxStatusClaim,
 )
 from hullq.domain.physical_boat_claims import (
+    BoatNameClaim,
     BuildYearClaim,
     DraftClaim,
     KeelConfiguration,
@@ -176,6 +177,7 @@ def _optional_boat_claim_dict(
     | DraftClaim
     | KeelConfigurationClaim
     | RudderConfigurationClaim
+    | BoatNameClaim
     | None,
 ) -> dict[str, Any] | None:
     if claim is None:
@@ -191,13 +193,15 @@ def _optional_boat_claim_dict(
 
 
 def _physical_boat_claims_dict(claims: PhysicalBoatClaimSnapshot | None) -> dict[str, Any] | None:
-    """Render the bounded seven-field PhysicalBoat claim projection, or `None`.
+    """Render the bounded seven-field PhysicalBoat claim projection plus the
+    SLICE-0065 optional `boat_name` field, or `None`.
 
     `None` at this top level means the publishing Organization has not
     recorded any SLICE-0050 claim for this PhysicalBoat at all -- distinct
-    from `loa_length`/`draft`/`keel_configuration`/`rudder_configuration`
-    each individually being `None` (that field was never supplied by the
-    broker) versus an explicit `{"assertion_kind": "UNKNOWN", ...}` object
+    from `loa_length`/`draft`/`keel_configuration`/`rudder_configuration`/
+    `boat_name` each individually being `None` (that field was never
+    supplied by the broker) versus an explicit `{"assertion_kind":
+    "UNKNOWN", ...}` (or, for `boat_name` only, `"ABSENT"`) object
     (the broker was asked and does not know).
     """
     if claims is None:
@@ -210,6 +214,7 @@ def _physical_boat_claims_dict(claims: PhysicalBoatClaimSnapshot | None) -> dict
         "draft": _optional_boat_claim_dict(claims.draft),
         "keel_configuration": _optional_boat_claim_dict(claims.keel_configuration),
         "rudder_configuration": _optional_boat_claim_dict(claims.rudder_configuration),
+        "boat_name": _optional_boat_claim_dict(claims.boat_name),
     }
 
 

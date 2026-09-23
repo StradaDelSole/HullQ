@@ -1,7 +1,7 @@
-"""PhysicalBoat buyer-critical claim value representation — SLICE-0050.
+"""PhysicalBoat buyer-critical claim value representation — SLICE-0050/0065.
 
-Typed runtime representation for exactly the seven `PHYSICAL_BOAT` registry
-fields accepted by SLICE-0050 §4/§5
+Typed runtime representation for the seven `PHYSICAL_BOAT` registry fields
+accepted by SLICE-0050 §4/§5, plus the SLICE-0065 optional `boat_name` field
 (`specs/MARKETPLACE_FIELD_REGISTRY.v0.1.json` /
 `specs/MARKETPLACE_FACT_CONTRACT.v0.1.md`):
 
@@ -12,6 +12,7 @@ fields accepted by SLICE-0050 §4/§5
     physical_boat.draft
     physical_boat.keel_configuration
     physical_boat.rudder_configuration
+    physical_boat.boat_name
 
 This module contains only pure, frozen value objects -- no persistence, ORM
 or network access. It does not represent any other `PHYSICAL_BOAT` field and
@@ -19,9 +20,11 @@ does not implement a generic 38-field marketplace-fact framework: each
 optional/conditional field gets its own small, statically-typed assertion
 wrapper covering exactly the assertion kinds the accepted registry allows for
 that field, so an omitted field (Python ``None``) remains mechanically
-distinct from an explicit ``UNKNOWN`` assertion, and an invalid assertion-
-kind/value pairing is rejected at construction time -- before any durable
-write is attempted.
+distinct from an explicit ``UNKNOWN``/``ABSENT`` assertion, and an invalid
+assertion-kind/value pairing is rejected at construction time -- before any
+durable write is attempted. `boat_name` is `DISPLAY_ONLY` and never a
+BoatDesign/Search fact (SLICE-0065 §6.2 of
+`specs/PROFESSIONAL_PUBLICATION_INPUT_ALIGNMENT_CONTRACT.v0.1.md`).
 
 These claims are always broker-declared statements about the *concrete*
 PhysicalBoat -- never a resolved BoatDesign/reference baseline value
@@ -38,6 +41,7 @@ from hullq.domain.native_listing_offer import AssertionKind
 
 __all__ = [
     "AssertionKind",
+    "BoatNameClaim",
     "BuildYearClaim",
     "DraftClaim",
     "KeelConfiguration",
@@ -143,6 +147,13 @@ _LOA_LENGTH_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind.UN
 _DRAFT_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind.UNKNOWN})
 _KEEL_CONFIGURATION_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind.UNKNOWN})
 _RUDDER_CONFIGURATION_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind.UNKNOWN})
+#: SLICE-0065: the only PhysicalBoat/LISTING_OFFER field that allows ABSENT
+#: (registry `physical_boat.boat_name`) -- every other field's own frozenset
+#: above is untouched, so adding ABSENT to the shared `AssertionKind`
+#: vocabulary cannot loosen their validation.
+_BOAT_NAME_ALLOWED = frozenset(
+    {AssertionKind.VALUE_ASSERTION, AssertionKind.ABSENT, AssertionKind.UNKNOWN}
+)
 
 
 def _require_positive_finite_meters(value: Decimal, field_label: str) -> None:
@@ -244,8 +255,30 @@ class RudderConfigurationClaim:
             _require_kind(self.value, RudderConfiguration, "RudderConfigurationClaim.value")
 
 
+@dataclass(frozen=True)
+class BoatNameClaim:
+    """`physical_boat.boat_name`: VALUE_ASSERTION(text), explicit ABSENT
+    (the concrete boat genuinely has no name) or explicit UNKNOWN --
+    SLICE-0065.
+
+    Omitting this whole wrapper (`PhysicalBoatClaimSnapshot.boat_name is
+    None`) stays mechanically distinct from an explicit `ABSENT`/`UNKNOWN`
+    assertion, exactly like every other optional claim field in this module.
+    """
+
+    assertion_kind: AssertionKind
+    value: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_claim(self.assertion_kind, self.value, _BOAT_NAME_ALLOWED, "BoatNameClaim")
+        if self.assertion_kind is AssertionKind.VALUE_ASSERTION:
+            assert self.value is not None
+            _require_non_blank(self.value, "BoatNameClaim.value")
+
+
 # ---------------------------------------------------------------------------
-# The bounded seven-field claim snapshot
+# The bounded seven-field claim snapshot, plus the optional SLICE-0065
+# boat-name field
 # ---------------------------------------------------------------------------
 
 
@@ -266,6 +299,7 @@ class PhysicalBoatClaimSnapshot:
     draft: DraftClaim | None = None
     keel_configuration: KeelConfigurationClaim | None = None
     rudder_configuration: RudderConfigurationClaim | None = None
+    boat_name: BoatNameClaim | None = None
 
     def __post_init__(self) -> None:
         _require_kind(
@@ -298,3 +332,5 @@ class PhysicalBoatClaimSnapshot:
                 RudderConfigurationClaim,
                 "PhysicalBoatClaimSnapshot.rudder_configuration",
             )
+        if self.boat_name is not None:
+            _require_kind(self.boat_name, BoatNameClaim, "PhysicalBoatClaimSnapshot.boat_name")

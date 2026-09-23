@@ -28,6 +28,7 @@ export interface ProfessionalListingDraft {
   owner_organization_id: string;
   version: number;
   broker_listing_reference: string | null;
+  "listing_offer.broker_description": string | null;
   created_at: string;
   updated_at: string;
   "physical_boat.marketed_brand_claim"?: string;

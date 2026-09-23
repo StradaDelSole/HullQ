@@ -16,6 +16,7 @@ import pytest
 
 from hullq.domain.physical_boat_claims import (
     AssertionKind,
+    BoatNameClaim,
     BuildYearClaim,
     DraftClaim,
     KeelConfiguration,
@@ -39,11 +40,11 @@ def _minimal_snapshot(**overrides: object) -> PhysicalBoatClaimSnapshot:
 
 
 # ---------------------------------------------------------------------------
-# Exactly seven fields
+# Exactly seven SLICE-0050 fields plus the SLICE-0065 optional boat_name field
 # ---------------------------------------------------------------------------
 
 
-def test_snapshot_has_exactly_seven_fields() -> None:
+def test_snapshot_has_exactly_the_seven_slice_0050_fields_plus_boat_name() -> None:
     field_names = {f.name for f in dataclasses.fields(PhysicalBoatClaimSnapshot)}
     assert field_names == {
         "marketed_brand_claim",
@@ -53,6 +54,7 @@ def test_snapshot_has_exactly_seven_fields() -> None:
         "draft",
         "keel_configuration",
         "rudder_configuration",
+        "boat_name",
     }
 
 
@@ -253,3 +255,82 @@ def test_claim_revision_id_rejects_empty_value() -> None:
 def test_claim_revision_id_not_interchangeable_with_plain_string() -> None:
     revision_id = PhysicalBoatClaimRevisionId("PBCREV-1")
     assert revision_id != "PBCREV-1"
+
+
+# ---------------------------------------------------------------------------
+# boat_name: omitted | VALUE_ASSERTION | ABSENT | UNKNOWN -- SLICE-0065
+# ---------------------------------------------------------------------------
+
+
+def test_boat_name_omitted_by_default() -> None:
+    assert _minimal_snapshot().boat_name is None
+
+
+def test_boat_name_value_assertion_round_trips() -> None:
+    snapshot = _minimal_snapshot(
+        boat_name=BoatNameClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value="Sea Breeze")
+    )
+    assert snapshot.boat_name.value == "Sea Breeze"
+
+
+def test_boat_name_explicit_absent_is_distinct_from_omitted() -> None:
+    snapshot_omitted = _minimal_snapshot()
+    snapshot_absent = _minimal_snapshot(
+        boat_name=BoatNameClaim(assertion_kind=AssertionKind.ABSENT)
+    )
+    assert snapshot_omitted.boat_name is None
+    assert snapshot_absent.boat_name is not None
+    assert snapshot_absent.boat_name.assertion_kind is AssertionKind.ABSENT
+    assert snapshot_absent.boat_name.value is None
+
+
+def test_boat_name_explicit_unknown_is_distinct_from_omitted_and_absent() -> None:
+    snapshot_unknown = _minimal_snapshot(
+        boat_name=BoatNameClaim(assertion_kind=AssertionKind.UNKNOWN)
+    )
+    assert snapshot_unknown.boat_name.assertion_kind is AssertionKind.UNKNOWN
+    assert snapshot_unknown.boat_name.value is None
+
+
+def test_boat_name_value_assertion_requires_a_value() -> None:
+    with pytest.raises(ValueError, match="value is required"):
+        BoatNameClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=None)
+
+
+def test_boat_name_value_assertion_rejects_blank_value() -> None:
+    with pytest.raises(ValueError, match="non-empty"):
+        BoatNameClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value="   ")
+
+
+def test_boat_name_absent_must_not_carry_a_value() -> None:
+    with pytest.raises(ValueError, match="must be None"):
+        BoatNameClaim(assertion_kind=AssertionKind.ABSENT, value="Sea Breeze")
+
+
+def test_boat_name_unknown_must_not_carry_a_value() -> None:
+    with pytest.raises(ValueError, match="must be None"):
+        BoatNameClaim(assertion_kind=AssertionKind.UNKNOWN, value="Sea Breeze")
+
+
+def test_boat_name_rejects_not_applicable() -> None:
+    """ABSENT is boat_name-specific; NOT_APPLICABLE is not one of its
+    allowed kinds even though it is a valid AssertionKind token overall."""
+    with pytest.raises(ValueError, match="assertion_kind"):
+        BoatNameClaim(assertion_kind=AssertionKind.NOT_APPLICABLE)
+
+
+def test_adding_absent_to_assertion_kind_does_not_loosen_other_fields() -> None:
+    """Publication Input Alignment contract §6.1: extending the shared
+    AssertionKind vocabulary with ABSENT must not make ABSENT valid for any
+    existing PhysicalBoat/LISTING_OFFER field whose own allowed-kind set
+    does not include it."""
+    with pytest.raises(ValueError, match="assertion_kind"):
+        BuildYearClaim(assertion_kind=AssertionKind.ABSENT)
+    with pytest.raises(ValueError, match="assertion_kind"):
+        LoaLengthClaim(assertion_kind=AssertionKind.ABSENT)
+    with pytest.raises(ValueError, match="assertion_kind"):
+        DraftClaim(assertion_kind=AssertionKind.ABSENT)
+    with pytest.raises(ValueError, match="assertion_kind"):
+        KeelConfigurationClaim(assertion_kind=AssertionKind.ABSENT)
+    with pytest.raises(ValueError, match="assertion_kind"):
+        RudderConfigurationClaim(assertion_kind=AssertionKind.ABSENT)

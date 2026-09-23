@@ -113,18 +113,23 @@ class VatTaxStatusValue(StrEnum):
 
 
 class AssertionKind(StrEnum):
-    """Assertion kinds used by the four optional/conditional offer fields.
+    """Assertion kinds shared across the bounded LISTING_OFFER/PhysicalBoat
+    fields that use this module's `_validate_claim` shape.
 
-    `PRESENT`/`ABSENT` are not used by any v0.1 `LISTING_OFFER` field and are
-    therefore intentionally not represented here (this module has no
-    generic assertion-kind list shared across the full 38-field registry;
-    that generic representation is explicitly out of scope for this slice).
+    `ABSENT` was added by SLICE-0065 for `physical_boat.boat_name` (a
+    concrete boat may genuinely carry no name). No v0.1 `LISTING_OFFER`
+    field's own allowed-kind set includes it -- adding this token does not
+    loosen any existing field's validation, since every field's own
+    `_*_ALLOWED` frozenset is unchanged and is what `_validate_claim` checks
+    against, never the full `AssertionKind` enum. `PRESENT` remains unused
+    by any accepted v0.1 field and is therefore still not represented here.
     """
 
     VALUE_ASSERTION = "VALUE_ASSERTION"
     UNKNOWN = "UNKNOWN"
     NOT_APPLICABLE = "NOT_APPLICABLE"
     NO_KNOWN_HISTORY_DECLARED = "NO_KNOWN_HISTORY_DECLARED"
+    ABSENT = "ABSENT"
 
 
 def _validate_claim(
