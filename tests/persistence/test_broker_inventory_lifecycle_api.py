@@ -339,6 +339,41 @@ def _publish_directly(api_url: str, *, listing_id: str, org_id: str, account_id:
         conn.close()
 
 
+def _withdraw_directly(api_url: str, *, listing_id: str, org_id: str, account_id: str) -> None:
+    """Fast-forward an ACTIVE listing straight to WITHDRAWN via the accepted
+    persistence primitive -- used only to set up preconditions for a
+    republish-attempt test; the withdraw route itself is exercised by
+    `TestWithdraw` above."""
+    from hullq.persistence.native_listing_lifecycle import withdraw_native_listing
+
+    conn = psycopg.connect(api_url)
+    try:
+        account = AccountId(account_id)
+        org = MarketplaceOrganization(
+            id=MarketplaceOrganizationId(org_id),
+            professional_category=ProfessionalCategory.BROKER,
+            publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+        )
+        membership = OrganizationMembership(
+            id=OrganizationMembershipId(f"OM-WITHDRAW-{listing_id}"),
+            account_id=account,
+            organization_id=org.id,
+            roles=frozenset({MembershipRole.PUBLISHER}),
+            state=MembershipState.ACTIVE,
+        )
+        result = withdraw_native_listing(
+            conn,
+            account_id=account,
+            candidate_organization=org,
+            membership=membership,
+            native_listing_id=NativeListingId(listing_id),
+        )
+        assert result.status.value == "transitioned", result
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def _lifecycle_state(api_url: str, listing_id: str) -> NativeListingLifecycleState | None:
     conn = psycopg.connect(api_url)
     try:
@@ -617,6 +652,40 @@ class TestPublish:
         assert response.status_code == 409
         assert response.json() == {"error": "state_conflict"}
         assert _transition_count(api_url, "NL-PUB-DBL") == 1
+
+    def test_publish_of_withdrawn_listing_is_state_conflict(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-PUB-REPUB",
+            account_id="ACC-PUB-REPUB",
+            membership_id="OM-PUB-REPUB",
+        )
+        _create_complete_draft_listing(
+            api_url,
+            listing_id="NL-PUB-REPUB",
+            org_id="ORG-PUB-REPUB",
+            account_id="ACC-PUB-REPUB",
+            membership_id="OM-PUB-REPUB",
+            physical_boat_id="PB-PUB-REPUB",
+            market_episode_id="ME-PUB-REPUB",
+            offer_revision_id="REV-PUB-REPUB",
+        )
+        _publish_directly(
+            api_url, listing_id="NL-PUB-REPUB", org_id="ORG-PUB-REPUB", account_id="ACC-PUB-REPUB"
+        )
+        _withdraw_directly(
+            api_url, listing_id="NL-PUB-REPUB", org_id="ORG-PUB-REPUB", account_id="ACC-PUB-REPUB"
+        )
+        _log_in(client, "ACC-PUB-REPUB")
+        response = client.post(
+            _publish_path("ORG-PUB-REPUB", "NL-PUB-REPUB"), headers=_csrf_headers()
+        )
+        assert response.status_code == 409
+        assert response.json() == {"error": "state_conflict"}
+        assert _lifecycle_state(api_url, "NL-PUB-REPUB") is NativeListingLifecycleState.WITHDRAWN
+        assert _transition_count(api_url, "NL-PUB-REPUB") == 2
 
     def test_publish_creates_no_offer_physical_boat_or_market_episode_rows(
         self, client: TestClient, api_url: str
