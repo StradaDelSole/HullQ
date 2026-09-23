@@ -117,6 +117,45 @@ test("publishOrganizationListing: 403 with denied body is surfaced with its reas
   );
 });
 
+test("publishOrganizationListing: 403 with mfa_required body is surfaced as mfa_required, not denied", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(403, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "mfa_required" }));
+    },
+    async (baseUrl) => {
+      const result = await publishOrganizationListing(baseUrl, "ORG-1", "NL-1", null, null);
+      assert.equal(result.kind, "mfa_required");
+    },
+  );
+});
+
+test("publishOrganizationListing: 403 with an unrecognized body (e.g. CSRF rejection) is surfaced as service_error, never denied", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(403, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ detail: "csrf validation failed" }));
+    },
+    async (baseUrl) => {
+      const result = await publishOrganizationListing(baseUrl, "ORG-1", "NL-1", null, null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("publishOrganizationListing: 403 with an unparseable body is surfaced as service_error, never denied", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(403, { "Content-Type": "text/plain" });
+      res.end("not json");
+    },
+    async (baseUrl) => {
+      const result = await publishOrganizationListing(baseUrl, "ORG-1", "NL-1", null, null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
 test("publishOrganizationListing: 422 is surfaced as incomplete_listing", async () => {
   await withServer(
     (_req, res) => {
@@ -210,6 +249,48 @@ test("withdrawOrganizationListing: sends the fixed CSRF header and forwards Orig
   );
 });
 
+test("withdrawOrganizationListing: 403 with denied body is surfaced with its reason", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(403, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "publishing_denied", reason: "ORGANIZATION_UNVERIFIED" }));
+    },
+    async (baseUrl) => {
+      const result = await withdrawOrganizationListing(baseUrl, "ORG-1", "NL-1", null, null);
+      assert.equal(result.kind, "denied");
+      if (result.kind === "denied") {
+        assert.equal(result.reason, "ORGANIZATION_UNVERIFIED");
+      }
+    },
+  );
+});
+
+test("withdrawOrganizationListing: 403 with mfa_required body is surfaced as mfa_required, not denied", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(403, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "mfa_required" }));
+    },
+    async (baseUrl) => {
+      const result = await withdrawOrganizationListing(baseUrl, "ORG-1", "NL-1", null, null);
+      assert.equal(result.kind, "mfa_required");
+    },
+  );
+});
+
+test("withdrawOrganizationListing: 403 with an unrecognized body (e.g. CSRF rejection) is surfaced as service_error, never denied", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(403, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ detail: "csrf validation failed" }));
+    },
+    async (baseUrl) => {
+      const result = await withdrawOrganizationListing(baseUrl, "ORG-1", "NL-1", null, null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
 test("withdrawOrganizationListing: 409 is surfaced as state_conflict", async () => {
   await withServer(
     (_req, res) => {
@@ -267,6 +348,69 @@ test("reconfirmOrganizationListing: sends the confirmation_id in the JSON body",
         null,
         null,
       );
+    },
+  );
+});
+
+test("reconfirmOrganizationListing: 403 with denied body is surfaced with its reason", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(403, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "publishing_denied", reason: "ORGANIZATION_INELIGIBLE" }));
+    },
+    async (baseUrl) => {
+      const result = await reconfirmOrganizationListing(
+        baseUrl,
+        "ORG-1",
+        "NL-1",
+        "11111111-1111-1111-1111-111111111111",
+        null,
+        null,
+      );
+      assert.equal(result.kind, "denied");
+      if (result.kind === "denied") {
+        assert.equal(result.reason, "ORGANIZATION_INELIGIBLE");
+      }
+    },
+  );
+});
+
+test("reconfirmOrganizationListing: 403 with mfa_required body is surfaced as mfa_required, not denied", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(403, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "mfa_required" }));
+    },
+    async (baseUrl) => {
+      const result = await reconfirmOrganizationListing(
+        baseUrl,
+        "ORG-1",
+        "NL-1",
+        "11111111-1111-1111-1111-111111111111",
+        null,
+        null,
+      );
+      assert.equal(result.kind, "mfa_required");
+    },
+  );
+});
+
+test("reconfirmOrganizationListing: 403 with an unrecognized body (e.g. CSRF rejection) is surfaced as service_error, never denied", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(403, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ detail: "csrf validation failed" }));
+    },
+    async (baseUrl) => {
+      const result = await reconfirmOrganizationListing(
+        baseUrl,
+        "ORG-1",
+        "NL-1",
+        "11111111-1111-1111-1111-111111111111",
+        null,
+        null,
+      );
+      assert.equal(result.kind, "service_error");
     },
   );
 });

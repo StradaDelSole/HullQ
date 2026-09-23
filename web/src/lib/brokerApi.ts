@@ -230,10 +230,43 @@ type InventoryActionAuthFailure =
   | { kind: "not_found" }
   | { kind: "mfa_required" };
 
-function inventoryActionAuthFailureFromStatus(status: number): InventoryActionAuthFailure | null {
+function inventoryActionAuthFailureFromStatus(
+  status: number,
+): { kind: "unauthenticated" } | { kind: "not_found" } | null {
   if (status === 401) return { kind: "unauthenticated" };
   if (status === 404) return { kind: "not_found" };
   return null;
+}
+
+/**
+ * Classify a 403 response from one of the three lifecycle mutation routes.
+ * FastAPI's `_inventory_lifecycle_response`/`_inventory_reconfirm_response`
+ * (`hullq.api.app`) return exactly two distinguishable 403 body shapes for
+ * this boundary -- `{"error":"mfa_required"}` and
+ * `{"error":"publishing_denied","reason":...}` -- plus the CSRF-rejection
+ * path (`hullq.api.app._require_inventory_lifecycle_csrf`), which this
+ * module's own request construction always satisfies (fixed Origin/header),
+ * so a 403 that fails to parse as either known shape here is a genuine
+ * unexpected condition, not a domain publishing denial (contract §14:
+ * "service failure" must stay a distinct outcome, never silently folded
+ * into "publishing denied").
+ */
+async function classifyInventoryAction403(
+  response: Response,
+): Promise<{ kind: "mfa_required" } | { kind: "denied"; reason: string } | { kind: "service_error" }> {
+  let body: { error?: string; reason?: string } = {};
+  try {
+    body = (await response.json()) as { error?: string; reason?: string };
+  } catch {
+    return { kind: "service_error" };
+  }
+  if (body.error === "mfa_required") {
+    return { kind: "mfa_required" };
+  }
+  if (body.error === "publishing_denied") {
+    return { kind: "denied", reason: body.reason ?? "unknown" };
+  }
+  return { kind: "service_error" };
 }
 
 export type PublishListingResult =
@@ -270,10 +303,7 @@ export async function publishOrganizationListing(
   }
   const authFailure = inventoryActionAuthFailureFromStatus(response.status);
   if (authFailure) return authFailure;
-  if (response.status === 403) {
-    const body = (await response.json()) as { reason?: string };
-    return { kind: "denied", reason: body.reason ?? "unknown" };
-  }
+  if (response.status === 403) return await classifyInventoryAction403(response);
   if (response.status === 422) return { kind: "incomplete_listing" };
   if (response.status === 409) return { kind: "state_conflict" };
   if (!response.ok) return { kind: "service_error" };
@@ -309,10 +339,7 @@ export async function withdrawOrganizationListing(
   }
   const authFailure = inventoryActionAuthFailureFromStatus(response.status);
   if (authFailure) return authFailure;
-  if (response.status === 403) {
-    const body = (await response.json()) as { reason?: string };
-    return { kind: "denied", reason: body.reason ?? "unknown" };
-  }
+  if (response.status === 403) return await classifyInventoryAction403(response);
   if (response.status === 409) return { kind: "state_conflict" };
   if (!response.ok) return { kind: "service_error" };
   const data = (await response.json()) as { transition_id: string };
@@ -363,10 +390,7 @@ export async function reconfirmOrganizationListing(
   }
   const authFailure = inventoryActionAuthFailureFromStatus(response.status);
   if (authFailure) return authFailure;
-  if (response.status === 403) {
-    const body = (await response.json()) as { reason?: string };
-    return { kind: "denied", reason: body.reason ?? "unknown" };
-  }
+  if (response.status === 403) return await classifyInventoryAction403(response);
   if (response.status === 400) return { kind: "invalid_operation_id" };
   if (response.status === 409) {
     const body = (await response.json()) as { error?: string };

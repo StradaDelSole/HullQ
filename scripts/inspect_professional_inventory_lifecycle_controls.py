@@ -705,19 +705,47 @@ def main() -> int:
             f"-> {'OK' if draft_view_ok else 'FAIL'}"
         )
 
-        # 4. an unauthorized/foreign listing publish attempt writes nothing.
+        # 4. an unauthorized/foreign listing publish attempt writes nothing,
+        # AND (independent review 2026-09-24 finding) the browser actually
+        # renders a distinct, bounded, non-enumerating listing-not-found
+        # outcome -- never the generic service-failure/"action_failed" text
+        # -- for both a foreign-Organization listing and a wholly unknown
+        # listing_id, with byte-identical banner text between the two so
+        # neither case is distinguishable from the other (contract §4/§14).
         conn = psycopg.connect(url)
         try:
             foreign_state_before = _lifecycle_state(conn, "NL-0064-FOREIGN")
             foreign_transitions_before = _transition_count(conn, "NL-0064-FOREIGN")
         finally:
             conn.close()
-        status, _, _ = session_a.post_form(
+        status, _, foreign_body = session_a.post_form(
             f"{web_base}{inventory_path_a}",
             {"native_listing_id": "NL-0064-FOREIGN", "action": "publish"},
             origin=web_base,
         )
-        foreign_publish_request_ok = status == 200  # bounded page render, never a crash
+        # Astro's JSX renderer HTML-entity-escapes the apostrophe in this
+        # banner text (`&#39;`), so the substring check below matches the
+        # real escaped markup rather than the raw source string.
+        _LISTING_NOT_FOUND_BANNER = "This listing isn&#39;t available here."
+        foreign_page_text = foreign_body.decode("utf-8")
+        foreign_banner_ok = (
+            status == 200
+            and _LISTING_NOT_FOUND_BANNER in foreign_page_text
+            and "Something went wrong" not in foreign_page_text
+        )
+
+        status, _, unknown_body = session_a.post_form(
+            f"{web_base}{inventory_path_a}",
+            {"native_listing_id": "NL-0064-NEVER-CREATED", "action": "publish"},
+            origin=web_base,
+        )
+        unknown_page_text = unknown_body.decode("utf-8")
+        unknown_banner_ok = (
+            status == 200
+            and _LISTING_NOT_FOUND_BANNER in unknown_page_text
+            and "Something went wrong" not in unknown_page_text
+        )
+
         conn = psycopg.connect(url)
         try:
             foreign_unchanged_ok = (
@@ -726,10 +754,12 @@ def main() -> int:
             )
         finally:
             conn.close()
-        ok &= foreign_publish_request_ok and foreign_unchanged_ok
+        ok &= foreign_banner_ok and unknown_banner_ok and foreign_unchanged_ok
         print(
-            f"7. foreign-Organization listing publish attempt writes nothing -> "
-            f"{'OK' if (foreign_publish_request_ok and foreign_unchanged_ok) else 'FAIL'}"
+            f"7. foreign-Organization and unknown-listing_id publish attempts both write "
+            f"nothing and both render the identical bounded, non-enumerating "
+            f"listing-not-found banner (never the generic service-failure text) -> "
+            f"{'OK' if (foreign_banner_ok and unknown_banner_ok and foreign_unchanged_ok) else 'FAIL'}"
         )
 
         # 3. real browser Publish of NL-MAIN -> ACTIVE, then public

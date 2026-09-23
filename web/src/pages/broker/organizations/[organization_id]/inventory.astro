@@ -61,6 +61,9 @@ type ActionOutcome =
   | "published"
   | "withdrawn"
   | "reconfirmed"
+  | "unauthenticated"
+  | "listing_not_found"
+  | "mfa_required"
   | "denied"
   | "incomplete_listing"
   | "state_conflict"
@@ -95,7 +98,10 @@ if (Astro.request.method === "POST" && organizationId) {
         deniedReason = result.reason;
       } else if (result.kind === "incomplete_listing") actionOutcome = "incomplete_listing";
       else if (result.kind === "state_conflict") actionOutcome = "state_conflict";
-      else actionOutcome = "action_failed";
+      else if (result.kind === "not_found") actionOutcome = "listing_not_found";
+      else if (result.kind === "mfa_required") actionOutcome = "mfa_required";
+      else if (result.kind === "unauthenticated") actionOutcome = "unauthenticated";
+      else actionOutcome = "action_failed"; // service_error only
     } else if (action === "withdraw") {
       const result = await withdrawOrganizationListing(
         apiBaseUrl,
@@ -109,7 +115,10 @@ if (Astro.request.method === "POST" && organizationId) {
         actionOutcome = "denied";
         deniedReason = result.reason;
       } else if (result.kind === "state_conflict") actionOutcome = "state_conflict";
-      else actionOutcome = "action_failed";
+      else if (result.kind === "not_found") actionOutcome = "listing_not_found";
+      else if (result.kind === "mfa_required") actionOutcome = "mfa_required";
+      else if (result.kind === "unauthenticated") actionOutcome = "unauthenticated";
+      else actionOutcome = "action_failed"; // service_error only
     } else {
       const confirmationId = formData.get("confirmation_id");
       if (typeof confirmationId === "string" && confirmationId) {
@@ -128,7 +137,10 @@ if (Astro.request.method === "POST" && organizationId) {
         } else if (result.kind === "invalid_operation_id") actionOutcome = "invalid_operation_id";
         else if (result.kind === "state_conflict") actionOutcome = "state_conflict";
         else if (result.kind === "operation_id_conflict") actionOutcome = "operation_id_conflict";
-        else actionOutcome = "action_failed";
+        else if (result.kind === "not_found") actionOutcome = "listing_not_found";
+        else if (result.kind === "mfa_required") actionOutcome = "mfa_required";
+        else if (result.kind === "unauthenticated") actionOutcome = "unauthenticated";
+        else actionOutcome = "action_failed"; // service_error only
       } else {
         actionOutcome = "invalid_operation_id";
       }
@@ -179,6 +191,12 @@ const actionOutcomeText: Record<ActionOutcome, string | null> = {
   published: "Published.",
   withdrawn: "Withdrawn.",
   reconfirmed: "Reconfirmed.",
+  unauthenticated: "Please log in to do this.",
+  // Contract §4: a foreign-Organization listing and an unknown listing_id
+  // must be indistinguishable -- this text never reveals which case
+  // occurred, only that the action could not find that listing here.
+  listing_not_found: "This listing isn't available here.",
+  mfa_required: "Additional verification is required before you can do this.",
   denied: `Not allowed${deniedReason ? ` (${deniedReason})` : ""}.`,
   incomplete_listing: "This listing is not complete enough to publish yet.",
   state_conflict: "This listing's state has already changed -- please review its current status below.",
