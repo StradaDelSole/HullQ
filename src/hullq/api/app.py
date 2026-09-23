@@ -66,6 +66,13 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 
 from hullq.application.broker_callback import CallbackOutcome, complete_login_callback
+from hullq.application.broker_inventory_lifecycle import (
+    InventoryLifecycleOutcome,
+    ReconfirmInventoryOutcome,
+    publish_organization_listing,
+    reconfirm_organization_listing,
+    withdraw_organization_listing,
+)
 from hullq.application.broker_inventory_read import (
     InventoryReadOutcome,
     get_organization_inventory_page,
@@ -217,6 +224,13 @@ _WEB_ORIGIN_ENV = "HULLQ_WEB_ORIGIN"
 #: the two channels' state-changing requests can never be replayed against
 #: each other.
 _PROFESSIONAL_DRAFT_CSRF_HEADER_VALUE = "professional-listing-draft-v1"
+
+#: SLICE-0064 contract §7: the identical fixed-header + exact-Origin CSRF
+#: discipline as the other two broker-write channels, with its own distinct
+#: header value (the exact value contract §7 suggests) so a valid draft/
+#: owner-direct CSRF header can never be replayed to publish/withdraw/
+#: reconfirm an existing NativeListing.
+_INVENTORY_LIFECYCLE_CSRF_HEADER_VALUE = "professional-inventory-lifecycle-v1"
 
 #: SLICE-0052: server-side-only freshness clock override, resolved once at
 #: app-creation time. Never read from an HTTP request. Unset in every
@@ -556,6 +570,22 @@ def create_app(
             actual is None
             or actual != accepted
             or requested_with != _PROFESSIONAL_DRAFT_CSRF_HEADER_VALUE
+        ):
+            raise HTTPException(status_code=403, detail="csrf validation failed")
+
+    def _require_inventory_lifecycle_csrf(request: Request) -> None:
+        # SLICE-0064 contract §7: identical exact-Origin-match + fixed
+        # non-simple header discipline as the other two broker-write
+        # channels, with its own distinct header value (see
+        # `_INVENTORY_LIFECYCLE_CSRF_HEADER_VALUE`).
+        origin_header = request.headers.get("origin")
+        requested_with = request.headers.get(_OWNER_DIRECT_CSRF_HEADER_NAME)
+        accepted = _normalized_origin(_resolve_web_origin())
+        actual = _normalized_origin(origin_header) if origin_header else None
+        if (
+            actual is None
+            or actual != accepted
+            or requested_with != _INVENTORY_LIFECYCLE_CSRF_HEADER_VALUE
         ):
             raise HTTPException(status_code=403, detail="csrf validation failed")
 
@@ -976,6 +1006,112 @@ def create_app(
             return JSONResponse({"error": "invalid_cursor"}, status_code=400)
         assert result.page is not None
         return JSONResponse(result.page.to_public_dict())
+
+    def _inventory_lifecycle_response(result: Any) -> JSONResponse:
+        # Shared publish/withdraw response mapping (contract §12/§14): every
+        # outcome maps to a mechanically distinct status/body -- never a bare
+        # boolean, and never a false-success shape for a denied/failed
+        # attempt.
+        outcome = result.outcome
+        if outcome is InventoryLifecycleOutcome.ORG_NOT_FOUND_OR_DENIED:
+            # Contract §4: unknown Organization and unauthorized Organization
+            # membership must be indistinguishable.
+            raise HTTPException(status_code=404, detail="organization not found")
+        if outcome is InventoryLifecycleOutcome.MFA_REQUIRED:
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if outcome is InventoryLifecycleOutcome.DENIED:
+            assert result.denial_reason is not None
+            return JSONResponse(
+                {"error": "publishing_denied", "reason": result.denial_reason.value},
+                status_code=403,
+            )
+        if outcome is InventoryLifecycleOutcome.LISTING_NOT_FOUND:
+            # Contract §4: foreign-Organization listing and unknown listing_id
+            # must be indistinguishable once the Organization boundary itself
+            # has succeeded.
+            raise HTTPException(status_code=404, detail="listing not found")
+        if outcome is InventoryLifecycleOutcome.INCOMPLETE_LISTING:
+            return JSONResponse({"error": "incomplete_listing"}, status_code=422)
+        if outcome is InventoryLifecycleOutcome.STATE_CONFLICT:
+            return JSONResponse({"error": "state_conflict"}, status_code=409)
+        assert outcome in (InventoryLifecycleOutcome.PUBLISHED, InventoryLifecycleOutcome.WITHDRAWN)
+        return JSONResponse(result.to_public_dict(), status_code=200)
+
+    def _inventory_reconfirm_response(result: Any) -> JSONResponse:
+        outcome = result.outcome
+        if outcome is ReconfirmInventoryOutcome.ORG_NOT_FOUND_OR_DENIED:
+            raise HTTPException(status_code=404, detail="organization not found")
+        if outcome is ReconfirmInventoryOutcome.MFA_REQUIRED:
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if outcome is ReconfirmInventoryOutcome.DENIED:
+            assert result.denial_reason is not None
+            return JSONResponse(
+                {"error": "publishing_denied", "reason": result.denial_reason.value},
+                status_code=403,
+            )
+        if outcome is ReconfirmInventoryOutcome.LISTING_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="listing not found")
+        if outcome is ReconfirmInventoryOutcome.INVALID_OPERATION_ID:
+            return JSONResponse({"error": "invalid_operation_id"}, status_code=400)
+        if outcome is ReconfirmInventoryOutcome.STATE_CONFLICT:
+            return JSONResponse({"error": "state_conflict"}, status_code=409)
+        if outcome is ReconfirmInventoryOutcome.OPERATION_ID_CONFLICT:
+            return JSONResponse({"error": "operation_id_conflict"}, status_code=409)
+        assert outcome is ReconfirmInventoryOutcome.RECONFIRMED
+        return JSONResponse(result.to_public_dict(), status_code=200)
+
+    @app.post("/api/broker/organizations/{organization_id}/inventory/{native_listing_id}/publish")
+    def publish_inventory_listing_route(
+        organization_id: str, native_listing_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_inventory_lifecycle_csrf(request)
+        conn = open_connection(resolved_database_url)
+        try:
+            result = publish_organization_listing(conn, session, organization_id, native_listing_id)
+        finally:
+            conn.close()
+        return _inventory_lifecycle_response(result)
+
+    @app.post("/api/broker/organizations/{organization_id}/inventory/{native_listing_id}/withdraw")
+    def withdraw_inventory_listing_route(
+        organization_id: str, native_listing_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_inventory_lifecycle_csrf(request)
+        conn = open_connection(resolved_database_url)
+        try:
+            result = withdraw_organization_listing(
+                conn, session, organization_id, native_listing_id
+            )
+        finally:
+            conn.close()
+        return _inventory_lifecycle_response(result)
+
+    @app.post("/api/broker/organizations/{organization_id}/inventory/{native_listing_id}/reconfirm")
+    async def reconfirm_inventory_listing_route(
+        organization_id: str, native_listing_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_inventory_lifecycle_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        raw_confirmation_id = (
+            raw_body.get("confirmation_id") if isinstance(raw_body, dict) else None
+        )
+        conn = open_connection(resolved_database_url)
+        try:
+            result = reconfirm_organization_listing(
+                conn, session, organization_id, native_listing_id, raw_confirmation_id
+            )
+        finally:
+            conn.close()
+        return _inventory_reconfirm_response(result)
 
     def _professional_draft_authorization_error(
         outcome: Any,

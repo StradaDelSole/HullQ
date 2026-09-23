@@ -1,7 +1,10 @@
 ---
-// SLICE-0060: the first professional Organization inventory overview
-// surface (contract §10/§11/§12). Read-only: this page cannot create, edit,
-// publish, withdraw or reconfirm any listing.
+// SLICE-0060/SLICE-0064: the private Organization inventory overview surface
+// (contract §10/§11/§12), now also the required v0.1 action surface for
+// publish/withdraw/reconfirm on an already-existing NativeListing
+// (PROFESSIONAL_INVENTORY_LIFECYCLE_CONTROLS_CONTRACT.v0.1 §13). This page
+// still creates no NativeListing, promotes no draft and edits no offer --
+// only the three accepted lifecycle/freshness operations below.
 //
 // unauthenticated             -> login path
 // unknown/unauthorized org    -> ordinary not-found (non-enumerating,
@@ -14,19 +17,36 @@
 //                                as an empty inventory
 // authorized                  -> factual current DRAFT/ACTIVE/WITHDRAWN
 //                                inventory, current offer/freshness/
-//                                public-link facts, bounded pagination
+//                                public-link facts, bounded pagination,
+//                                state-appropriate Publish/Withdraw/
+//                                Reconfirm controls
 //
 // Every fact here comes from FastAPI via `fetchOrganizationInventory`; this
 // page never queries PostgreSQL directly and never infers lifecycle,
 // ownership, offer, freshness or public-link eligibility on its own.
+//
+// The POST handler below is the SLICE-0064 contract §7 CSRF proxy for
+// publish/withdraw/reconfirm: the browser's own same-origin form submission
+// is the only thing that ever calls FastAPI's state-changing inventory
+// endpoints (see `brokerApi.ts`'s module docstring for why that boundary
+// forwards the browser's real Origin rather than substituting a trusted
+// one). After every action this page re-reads the authoritative inventory
+// page from FastAPI (contract §I): the rendered result is always exactly
+// what was just durably read back, never a client-invented success.
 export const prerender = false;
 
-import { fetchOrganizationInventory } from "../../../../lib/brokerApi";
+import {
+  fetchOrganizationInventory,
+  publishOrganizationListing,
+  withdrawOrganizationListing,
+  reconfirmOrganizationListing,
+} from "../../../../lib/brokerApi";
 import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../../lib/authConstants";
 
 const organizationId = Astro.params.organization_id;
 const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
 const cookieHeader = Astro.request.headers.get("cookie");
+const originHeader = Astro.request.headers.get("origin");
 const cursor = Astro.url.searchParams.get("cursor") ?? undefined;
 
 Astro.response.headers.set("X-Robots-Tag", "noindex");
@@ -35,6 +55,89 @@ Astro.response.headers.set("X-Robots-Tag", "noindex");
 // after logout (same boundary already accepted for the Organization
 // workspace landing).
 Astro.response.headers.set("Cache-Control", "private, no-store");
+
+type ActionOutcome =
+  | "none"
+  | "published"
+  | "withdrawn"
+  | "reconfirmed"
+  | "denied"
+  | "incomplete_listing"
+  | "state_conflict"
+  | "invalid_operation_id"
+  | "operation_id_conflict"
+  | "action_failed";
+
+let actionOutcome: ActionOutcome = "none";
+let deniedReason = "";
+
+if (Astro.request.method === "POST" && organizationId) {
+  const formData = await Astro.request.formData();
+  const action = formData.get("action");
+  const nativeListingId = formData.get("native_listing_id");
+
+  if (
+    typeof nativeListingId === "string" &&
+    nativeListingId &&
+    (action === "publish" || action === "withdraw" || action === "reconfirm")
+  ) {
+    if (action === "publish") {
+      const result = await publishOrganizationListing(
+        apiBaseUrl,
+        organizationId,
+        nativeListingId,
+        cookieHeader,
+        originHeader,
+      );
+      if (result.kind === "ok") actionOutcome = "published";
+      else if (result.kind === "denied") {
+        actionOutcome = "denied";
+        deniedReason = result.reason;
+      } else if (result.kind === "incomplete_listing") actionOutcome = "incomplete_listing";
+      else if (result.kind === "state_conflict") actionOutcome = "state_conflict";
+      else actionOutcome = "action_failed";
+    } else if (action === "withdraw") {
+      const result = await withdrawOrganizationListing(
+        apiBaseUrl,
+        organizationId,
+        nativeListingId,
+        cookieHeader,
+        originHeader,
+      );
+      if (result.kind === "ok") actionOutcome = "withdrawn";
+      else if (result.kind === "denied") {
+        actionOutcome = "denied";
+        deniedReason = result.reason;
+      } else if (result.kind === "state_conflict") actionOutcome = "state_conflict";
+      else actionOutcome = "action_failed";
+    } else {
+      const confirmationId = formData.get("confirmation_id");
+      if (typeof confirmationId === "string" && confirmationId) {
+        const result = await reconfirmOrganizationListing(
+          apiBaseUrl,
+          organizationId,
+          nativeListingId,
+          confirmationId,
+          cookieHeader,
+          originHeader,
+        );
+        if (result.kind === "ok") actionOutcome = "reconfirmed";
+        else if (result.kind === "denied") {
+          actionOutcome = "denied";
+          deniedReason = result.reason;
+        } else if (result.kind === "invalid_operation_id") actionOutcome = "invalid_operation_id";
+        else if (result.kind === "state_conflict") actionOutcome = "state_conflict";
+        else if (result.kind === "operation_id_conflict") actionOutcome = "operation_id_conflict";
+        else actionOutcome = "action_failed";
+      } else {
+        actionOutcome = "invalid_operation_id";
+      }
+    }
+  }
+  // Every outcome falls through to the ordinary GET rendering below, which
+  // always re-reads the authoritative current state (contract §I) rather
+  // than trusting what was just submitted.
+}
 
 const result = organizationId
   ? await fetchOrganizationInventory(apiBaseUrl, organizationId, cookieHeader, { cursor })
@@ -70,6 +173,19 @@ function freshnessText(status: string, lastConfirmedAt: string | null): string {
   }
   return `${status} (last confirmed ${lastConfirmedAt})`;
 }
+
+const actionOutcomeText: Record<ActionOutcome, string | null> = {
+  none: null,
+  published: "Published.",
+  withdrawn: "Withdrawn.",
+  reconfirmed: "Reconfirmed.",
+  denied: `Not allowed${deniedReason ? ` (${deniedReason})` : ""}.`,
+  incomplete_listing: "This listing is not complete enough to publish yet.",
+  state_conflict: "This listing's state has already changed -- please review its current status below.",
+  invalid_operation_id: "That reconfirm request wasn't valid. Please try again.",
+  operation_id_conflict: "That reconfirm request could not be applied. Please try again.",
+  action_failed: "Something went wrong. Please try again.",
+};
 ---
 
 <html lang="en">
@@ -119,6 +235,7 @@ function freshnessText(status: string, lastConfirmedAt: string | null): string {
             <p>
               <a href={`/broker/organizations/${organizationId}`}>Back to workspace</a>
             </p>
+            {actionOutcomeText[actionOutcome] && <p>{actionOutcomeText[actionOutcome]}</p>}
             {result.data.items.length === 0 ? (
               <p>This Organization has no listings yet.</p>
             ) : (
@@ -132,6 +249,7 @@ function freshnessText(status: string, lastConfirmedAt: string | null): string {
                     <th>Freshness</th>
                     <th>Created</th>
                     <th>Public link</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -151,6 +269,31 @@ function freshnessText(status: string, lastConfirmedAt: string | null): string {
                         ) : (
                           "—"
                         )}
+                      </td>
+                      <td>
+                        {item.lifecycle_state === "DRAFT" && (
+                          <form method="POST">
+                            <input type="hidden" name="native_listing_id" value={item.native_listing_id} />
+                            <input type="hidden" name="action" value="publish" />
+                            <button type="submit">Publish</button>
+                          </form>
+                        )}
+                        {item.lifecycle_state === "ACTIVE" && (
+                          <>
+                            <form method="POST">
+                              <input type="hidden" name="native_listing_id" value={item.native_listing_id} />
+                              <input type="hidden" name="action" value="withdraw" />
+                              <button type="submit">Withdraw</button>
+                            </form>
+                            <form method="POST">
+                              <input type="hidden" name="native_listing_id" value={item.native_listing_id} />
+                              <input type="hidden" name="action" value="reconfirm" />
+                              <input type="hidden" name="confirmation_id" value={crypto.randomUUID()} />
+                              <button type="submit">Reconfirm</button>
+                            </form>
+                          </>
+                        )}
+                        {item.lifecycle_state === "WITHDRAWN" && "—"}
                       </td>
                     </tr>
                   ))}
