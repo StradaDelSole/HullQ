@@ -64,6 +64,7 @@ class ProfessionalListingDraftRecord:
     owner_organization_id: MarketplaceOrganizationId
     created_by_account_id: AccountId
     broker_listing_reference: str | None
+    broker_description: str | None
     payload: ListingDraftPayload
     version: int
     created_at: datetime
@@ -110,21 +111,21 @@ class ProfessionalListingDraftUpdateResult:
 _INSERT_DRAFT = """
 INSERT INTO professional_listing_drafts
     (professional_listing_draft_id, owner_organization_id, created_by_account_id,
-     broker_listing_reference, payload, version)
-VALUES (%s, %s, %s, %s, %s::jsonb, 1)
+     broker_listing_reference, broker_description, payload, version)
+VALUES (%s, %s, %s, %s, %s, %s::jsonb, 1)
 RETURNING created_at, updated_at
 """
 
 _SELECT_DRAFT_FOR_ORG = """
 SELECT professional_listing_draft_id, owner_organization_id, created_by_account_id,
-       broker_listing_reference, payload, version, created_at, updated_at
+       broker_listing_reference, broker_description, payload, version, created_at, updated_at
 FROM professional_listing_drafts
 WHERE professional_listing_draft_id = %s AND owner_organization_id = %s
 """
 
 _SELECT_FIRST_PAGE = """
 SELECT professional_listing_draft_id, owner_organization_id, created_by_account_id,
-       broker_listing_reference, payload, version, created_at, updated_at
+       broker_listing_reference, broker_description, payload, version, created_at, updated_at
 FROM professional_listing_drafts
 WHERE owner_organization_id = %s
 ORDER BY updated_at DESC, professional_listing_draft_id ASC
@@ -138,7 +139,7 @@ LIMIT %s
 # greater professional_listing_draft_id.
 _SELECT_NEXT_PAGE = """
 SELECT professional_listing_draft_id, owner_organization_id, created_by_account_id,
-       broker_listing_reference, payload, version, created_at, updated_at
+       broker_listing_reference, broker_description, payload, version, created_at, updated_at
 FROM professional_listing_drafts
 WHERE owner_organization_id = %s
   AND (updated_at < %s OR (updated_at = %s AND professional_listing_draft_id > %s))
@@ -148,7 +149,8 @@ LIMIT %s
 
 _UPDATE_DRAFT_IF_CURRENT_VERSION = """
 UPDATE professional_listing_drafts
-SET broker_listing_reference = %s, payload = %s::jsonb, version = version + 1, updated_at = NOW()
+SET broker_listing_reference = %s, broker_description = %s, payload = %s::jsonb,
+    version = version + 1, updated_at = NOW()
 WHERE professional_listing_draft_id = %s AND owner_organization_id = %s AND version = %s
 RETURNING created_by_account_id, payload, version, created_at, updated_at
 """
@@ -165,6 +167,7 @@ def _row_to_record(row: tuple[Any, ...]) -> ProfessionalListingDraftRecord:
         owner_organization_id_value,
         created_by_account_id_value,
         broker_listing_reference,
+        broker_description,
         payload_dict,
         version,
         created_at,
@@ -175,6 +178,7 @@ def _row_to_record(row: tuple[Any, ...]) -> ProfessionalListingDraftRecord:
         owner_organization_id=MarketplaceOrganizationId(owner_organization_id_value),
         created_by_account_id=AccountId(created_by_account_id_value),
         broker_listing_reference=broker_listing_reference,
+        broker_description=broker_description,
         payload=parse_listing_draft_payload(payload_dict),
         version=version,
         created_at=created_at,
@@ -188,12 +192,16 @@ def create_professional_listing_draft(
     owner_organization_id: MarketplaceOrganizationId,
     created_by_account_id: AccountId,
     broker_listing_reference: str | None,
+    broker_description: str | None = None,
     payload: ListingDraftPayload,
 ) -> ProfessionalListingDraftRecord:
     """Durably create one new draft owned by *owner_organization_id*, version 1.
 
     *payload* may be `EMPTY_LISTING_DRAFT_PAYLOAD` (an empty newly-created
-    draft is valid). The caller owns transaction commit.
+    draft is valid). *broker_description* is the SLICE-0065 professional-only
+    `listing_offer.broker_description` input, stored outside *payload*
+    exactly like *broker_listing_reference*. The caller owns transaction
+    commit.
     """
     import uuid
 
@@ -211,6 +219,10 @@ def create_professional_listing_draft(
             "broker_listing_reference must be a str or None, "
             f"got {type(broker_listing_reference).__name__}"
         )
+    if broker_description is not None and not isinstance(broker_description, str):
+        raise TypeError(
+            f"broker_description must be a str or None, got {type(broker_description).__name__}"
+        )
     if not isinstance(payload, ListingDraftPayload):
         raise TypeError(f"payload must be a ListingDraftPayload, got {type(payload).__name__}")
 
@@ -223,6 +235,7 @@ def create_professional_listing_draft(
                 owner_organization_id.value,
                 created_by_account_id.value,
                 broker_listing_reference,
+                broker_description,
                 json.dumps(payload.to_wire_dict()),
             ],
         )
@@ -234,6 +247,7 @@ def create_professional_listing_draft(
         owner_organization_id=owner_organization_id,
         created_by_account_id=created_by_account_id,
         broker_listing_reference=broker_listing_reference,
+        broker_description=broker_description,
         payload=payload,
         version=1,
         created_at=created_at,
@@ -316,12 +330,13 @@ def update_professional_listing_draft(
     draft_id: ProfessionalListingDraftId,
     owner_organization_id: MarketplaceOrganizationId,
     broker_listing_reference: str | None,
+    broker_description: str | None = None,
     payload: ListingDraftPayload,
     expected_version: int,
 ) -> ProfessionalListingDraftUpdateResult:
-    """Atomically advance *draft_id* to *payload*/*broker_listing_reference*
-    iff its current version equals *expected_version* and it is owned by
-    *owner_organization_id*.
+    """Atomically advance *draft_id* to *payload*/*broker_listing_reference*/
+    *broker_description* iff its current version equals *expected_version*
+    and it is owned by *owner_organization_id*.
 
     A stale *expected_version* -> `VERSION_CONFLICT`, zero mutation
     (contract §7). A foreign or unknown *draft_id* -> `NOT_FOUND`, zero
@@ -342,6 +357,10 @@ def update_professional_listing_draft(
             "broker_listing_reference must be a str or None, "
             f"got {type(broker_listing_reference).__name__}"
         )
+    if broker_description is not None and not isinstance(broker_description, str):
+        raise TypeError(
+            f"broker_description must be a str or None, got {type(broker_description).__name__}"
+        )
     if not isinstance(payload, ListingDraftPayload):
         raise TypeError(f"payload must be a ListingDraftPayload, got {type(payload).__name__}")
     if not isinstance(expected_version, int) or isinstance(expected_version, bool):
@@ -354,6 +373,7 @@ def update_professional_listing_draft(
             _UPDATE_DRAFT_IF_CURRENT_VERSION,
             [
                 broker_listing_reference,
+                broker_description,
                 json.dumps(payload.to_wire_dict()),
                 draft_id.value,
                 owner_organization_id.value,
@@ -368,6 +388,7 @@ def update_professional_listing_draft(
                 owner_organization_id=owner_organization_id,
                 created_by_account_id=AccountId(created_by_account_id_value),
                 broker_listing_reference=broker_listing_reference,
+                broker_description=broker_description,
                 payload=payload,
                 version=new_version,
                 created_at=created_at,

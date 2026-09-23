@@ -28,6 +28,7 @@ from hullq.domain.market_identity import (
 )
 from hullq.domain.physical_boat_claims import (
     AssertionKind,
+    BoatNameClaim,
     BuildYearClaim,
     DraftClaim,
     KeelConfiguration,
@@ -51,6 +52,7 @@ from hullq.domain.publishing_eligibility import (
     PublishingEligibilityReason,
 )
 from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
+from hullq.persistence.fingerprint import fingerprint_dict
 from hullq.persistence.market_episode import create_market_episode
 from hullq.persistence.native_listing import create_native_listing
 from hullq.persistence.physical_boat import create_physical_boat
@@ -1325,6 +1327,293 @@ def test_concurrent_corrections_from_the_same_predecessor_resolve_to_exactly_one
         assert current.revision_id != PhysicalBoatClaimRevisionId("PBCREV-RACE2-000")
     finally:
         verify.close()
+
+
+# ---------------------------------------------------------------------------
+# boat_name: VALUE_ASSERTION | ABSENT | UNKNOWN -- SLICE-0065
+# ---------------------------------------------------------------------------
+
+
+def test_boat_name_value_assertion_write_and_readback(claim_conn: Any) -> None:
+    account = _account("ACC-BN1")
+    org = _org("ORG-BN1")
+    membership = _membership("OM-BN1", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _create_chain(
+        claim_conn,
+        native_listing_id="NL-BN1",
+        physical_boat_id="PB-BN1",
+        market_episode_id="ME-BN1",
+        account=account,
+        org=org,
+        membership=membership,
+    )
+
+    write_physical_boat_claim_revision(
+        claim_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-BN1"),
+        revision_id=PhysicalBoatClaimRevisionId("PBCREV-BN1-001"),
+        expected_current_revision_id=None,
+        claims=_snapshot(
+            boat_name=BoatNameClaim(
+                assertion_kind=AssertionKind.VALUE_ASSERTION, value="Sea Breeze"
+            )
+        ),
+    )
+
+    current = fetch_current_physical_boat_claim(claim_conn, PhysicalBoatId("PB-BN1"), org.id)
+    assert current is not None
+    assert current.claims.boat_name is not None
+    assert current.claims.boat_name.assertion_kind is AssertionKind.VALUE_ASSERTION
+    assert current.claims.boat_name.value == "Sea Breeze"
+
+
+def test_boat_name_absent_write_and_readback(claim_conn: Any) -> None:
+    account = _account("ACC-BN2")
+    org = _org("ORG-BN2")
+    membership = _membership("OM-BN2", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _create_chain(
+        claim_conn,
+        native_listing_id="NL-BN2",
+        physical_boat_id="PB-BN2",
+        market_episode_id="ME-BN2",
+        account=account,
+        org=org,
+        membership=membership,
+    )
+
+    write_physical_boat_claim_revision(
+        claim_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-BN2"),
+        revision_id=PhysicalBoatClaimRevisionId("PBCREV-BN2-001"),
+        expected_current_revision_id=None,
+        claims=_snapshot(boat_name=BoatNameClaim(assertion_kind=AssertionKind.ABSENT)),
+    )
+
+    current = fetch_current_physical_boat_claim(claim_conn, PhysicalBoatId("PB-BN2"), org.id)
+    assert current is not None
+    assert current.claims.boat_name is not None
+    assert current.claims.boat_name.assertion_kind is AssertionKind.ABSENT
+    assert current.claims.boat_name.value is None
+
+
+def test_boat_name_unknown_write_and_readback(claim_conn: Any) -> None:
+    account = _account("ACC-BN3")
+    org = _org("ORG-BN3")
+    membership = _membership("OM-BN3", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _create_chain(
+        claim_conn,
+        native_listing_id="NL-BN3",
+        physical_boat_id="PB-BN3",
+        market_episode_id="ME-BN3",
+        account=account,
+        org=org,
+        membership=membership,
+    )
+
+    write_physical_boat_claim_revision(
+        claim_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-BN3"),
+        revision_id=PhysicalBoatClaimRevisionId("PBCREV-BN3-001"),
+        expected_current_revision_id=None,
+        claims=_snapshot(boat_name=BoatNameClaim(assertion_kind=AssertionKind.UNKNOWN)),
+    )
+
+    current = fetch_current_physical_boat_claim(claim_conn, PhysicalBoatId("PB-BN3"), org.id)
+    assert current is not None
+    assert current.claims.boat_name is not None
+    assert current.claims.boat_name.assertion_kind is AssertionKind.UNKNOWN
+    assert current.claims.boat_name.value is None
+
+
+def test_boat_name_omitted_stays_distinct_from_absent_and_unknown(claim_conn: Any) -> None:
+    account = _account("ACC-BN4")
+    org = _org("ORG-BN4")
+    membership = _membership("OM-BN4", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _create_chain(
+        claim_conn,
+        native_listing_id="NL-BN4",
+        physical_boat_id="PB-BN4",
+        market_episode_id="ME-BN4",
+        account=account,
+        org=org,
+        membership=membership,
+    )
+
+    write_physical_boat_claim_revision(
+        claim_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-BN4"),
+        revision_id=PhysicalBoatClaimRevisionId("PBCREV-BN4-001"),
+        expected_current_revision_id=None,
+        claims=_snapshot(),  # boat_name deliberately omitted
+    )
+
+    current = fetch_current_physical_boat_claim(claim_conn, PhysicalBoatId("PB-BN4"), org.id)
+    assert current is not None
+    assert current.claims.boat_name is None
+
+
+def test_boat_name_content_participates_in_conflict_fingerprint(claim_conn: Any) -> None:
+    account = _account("ACC-BN5")
+    org = _org("ORG-BN5")
+    membership = _membership("OM-BN5", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _create_chain(
+        claim_conn,
+        native_listing_id="NL-BN5",
+        physical_boat_id="PB-BN5",
+        market_episode_id="ME-BN5",
+        account=account,
+        org=org,
+        membership=membership,
+    )
+
+    first = write_physical_boat_claim_revision(
+        claim_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-BN5"),
+        revision_id=PhysicalBoatClaimRevisionId("PBCREV-BN5-001"),
+        expected_current_revision_id=None,
+        claims=_snapshot(
+            boat_name=BoatNameClaim(
+                assertion_kind=AssertionKind.VALUE_ASSERTION, value="Sea Breeze"
+            )
+        ),
+    )
+    assert first.status is PhysicalBoatClaimWriteStatus.CREATED
+
+    # Same revision id, same predecessor, identical seven-field content, but
+    # a DIFFERENT boat_name -- must CONFLICT, never ALREADY_EXISTS: boat_name
+    # participates in the immutable content fingerprint when actually
+    # asserted (contract §7.1 last paragraph).
+    conflicting = write_physical_boat_claim_revision(
+        claim_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-BN5"),
+        revision_id=PhysicalBoatClaimRevisionId("PBCREV-BN5-001"),
+        expected_current_revision_id=None,
+        claims=_snapshot(
+            boat_name=BoatNameClaim(
+                assertion_kind=AssertionKind.VALUE_ASSERTION, value="Different Name"
+            )
+        ),
+    )
+    assert conflicting.status is PhysicalBoatClaimWriteStatus.CONFLICT
+
+    genuine_retry = write_physical_boat_claim_revision(
+        claim_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-BN5"),
+        revision_id=PhysicalBoatClaimRevisionId("PBCREV-BN5-001"),
+        expected_current_revision_id=None,
+        claims=_snapshot(
+            boat_name=BoatNameClaim(
+                assertion_kind=AssertionKind.VALUE_ASSERTION, value="Sea Breeze"
+            )
+        ),
+    )
+    assert genuine_retry.status is PhysicalBoatClaimWriteStatus.ALREADY_EXISTS
+
+
+def test_pre_0065_revision_exact_retry_remains_idempotent_after_migration(claim_conn: Any) -> None:
+    """Publication Input Alignment contract §7.1: a revision inserted with
+    the exact pre-0065 seven-field-only fingerprint envelope (no "boat_name"
+    key at all -- simulating a row already durable before this slice's
+    migration) must still resolve ALREADY_EXISTS on an exact retry whose
+    claims also omit boat_name, never CONFLICT merely because the runtime
+    now understands optional boat-name state."""
+    account = _account("ACC-BN6")
+    org = _org("ORG-BN6")
+    membership = _membership("OM-BN6", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _create_chain(
+        claim_conn,
+        native_listing_id="NL-BN6",
+        physical_boat_id="PB-BN6",
+        market_episode_id="ME-BN6",
+        account=account,
+        org=org,
+        membership=membership,
+    )
+
+    # The exact pre-0065 envelope shape: no "boat_name" key present at all
+    # (mirrors hullq.persistence.physical_boat_claims._claim_envelope_dict's
+    # omitted-boat_name branch, reproduced independently here rather than
+    # importing the private helper, so this test proves the wire contract
+    # rather than merely re-checking the implementation against itself).
+    pre_0065_envelope = {
+        "physical_boat_id": "PB-BN6",
+        "claiming_organization_id": org.id.value,
+        "recorded_by_account_id": account.value,
+        "marketed_brand_claim": "Beneteau",
+        "model_designation_claim": "Oceanis 30.1",
+        "build_year": {"assertion_kind": "VALUE_ASSERTION", "value": 2021},
+        "loa_length": None,
+        "draft": None,
+        "keel_configuration": None,
+        "rudder_configuration": None,
+    }
+    pre_0065_hash = fingerprint_dict(pre_0065_envelope)
+
+    with claim_conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO physical_boat_claim_revisions ("
+            "claim_revision_id, physical_boat_id, claiming_organization_id, "
+            "recorded_by_account_id, marketed_brand_claim, model_designation_claim, "
+            "build_year_assertion_kind, build_year_value, previous_claim_revision_id, "
+            "content_hash"
+            ") VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            (
+                "PBCREV-BN6-001",
+                "PB-BN6",
+                org.id.value,
+                account.value,
+                "Beneteau",
+                "Oceanis 30.1",
+                "VALUE_ASSERTION",
+                2021,
+                None,
+                pre_0065_hash,
+            ),
+        )
+        cur.execute(
+            "INSERT INTO physical_boat_claim_heads "
+            "(physical_boat_id, claiming_organization_id, current_claim_revision_id) "
+            "VALUES (%s, %s, %s)",
+            ("PB-BN6", org.id.value, "PBCREV-BN6-001"),
+        )
+    claim_conn.commit()
+
+    retry = write_physical_boat_claim_revision(
+        claim_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-BN6"),
+        revision_id=PhysicalBoatClaimRevisionId("PBCREV-BN6-001"),
+        expected_current_revision_id=None,
+        claims=_snapshot(),  # boat_name omitted, exactly like the pre-0065 row
+    )
+    assert retry.status is PhysicalBoatClaimWriteStatus.ALREADY_EXISTS
+    assert retry.current_revision_id == PhysicalBoatClaimRevisionId("PBCREV-BN6-001")
+
+    history = list_physical_boat_claim_revisions(claim_conn, PhysicalBoatId("PB-BN6"), org.id)
+    assert len(history) == 1  # no duplicate/forged row from the retry
 
 
 # ---------------------------------------------------------------------------

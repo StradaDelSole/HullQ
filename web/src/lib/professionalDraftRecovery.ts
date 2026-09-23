@@ -71,6 +71,7 @@ export const RECOVERY_FIELD_NAMES = [
   "listing_offer.currency",
   "listing_offer.location_country",
   "listing_offer.location_region",
+  "listing_offer.broker_description",
 ] as const;
 
 export type RecoveryFieldName = (typeof RECOVERY_FIELD_NAMES)[number];

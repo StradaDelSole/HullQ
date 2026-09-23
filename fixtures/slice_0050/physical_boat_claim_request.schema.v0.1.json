@@ -70,7 +70,8 @@
         "loa_length": { "$ref": "#/$defs/decimalUnknownable" },
         "draft": { "$ref": "#/$defs/decimalUnknownable" },
         "keel_configuration": { "$ref": "#/$defs/keelConfigurationUnknownable" },
-        "rudder_configuration": { "$ref": "#/$defs/rudderConfigurationUnknownable" }
+        "rudder_configuration": { "$ref": "#/$defs/rudderConfigurationUnknownable" },
+        "boat_name": { "$ref": "#/$defs/boatNameUnknownable" }
       }
     }
   },
@@ -116,6 +117,15 @@
           "type": ["string", "null"],
           "enum": ["SPADE", "SKEG_HUNG", "TRANSOM_HUNG", "TWIN", "OTHER", null]
         }
+      }
+    },
+    "boatNameUnknownable": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["assertion_kind"],
+      "properties": {
+        "assertion_kind": { "type": "string", "enum": ["VALUE_ASSERTION", "ABSENT", "UNKNOWN"] },
+        "value": { "type": ["string", "null"], "minLength": 1 }
       }
     }
   }

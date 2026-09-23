@@ -1,12 +1,17 @@
-"""Professional listing draft — pure decision core — SLICE-0061.
+"""Professional listing draft — pure decision core — SLICE-0061/0065.
 
-Implements `specs/PROFESSIONAL_LISTING_WORKSPACE_CONTRACT.v0.1.md` §2/§4/§5:
-the `ProfessionalListingDraftId` identity kind, and the professional-only
-`broker_listing_reference` field, layered on top of the channel-neutral nine
-common draft-input keys shared with owner-direct
-(`hullq.domain.listing_draft_payload`, contract §4.1). This module is pure
-and persistence-neutral -- no database, no FastAPI, no Account/Organization/
-session lookup.
+Implements `specs/PROFESSIONAL_LISTING_WORKSPACE_CONTRACT.v0.1.md` §2/§4/§5
+and `specs/PROFESSIONAL_PUBLICATION_INPUT_ALIGNMENT_CONTRACT.v0.1.md` §4: the
+`ProfessionalListingDraftId` identity kind, the professional-only
+`broker_listing_reference` metadata field, and the professional-only offer
+input `listing_offer.broker_description`, layered on top of the
+channel-neutral nine common draft-input keys shared with owner-direct
+(`hullq.domain.listing_draft_payload`, contract §4.1). `broker_description`
+is deliberately never added to `ACCEPTED_DRAFT_PAYLOAD_KEYS`: it is
+professional-only, exactly like `broker_listing_reference`, and MUST NOT
+become an accepted `OwnerDirectListingDraft` key (SLICE-0065 contract §3).
+This module is pure and persistence-neutral -- no database, no FastAPI, no
+Account/Organization/session lookup.
 
 `ProfessionalListingDraftId` is deliberately unrelated to
 `OwnerDirectListingDraftId`/`NativeListingId`/`PhysicalBoatId`/
@@ -33,6 +38,7 @@ from hullq.domain.listing_draft_payload import (
 
 __all__ = [
     "ACCEPTED_DRAFT_PAYLOAD_KEYS",
+    "BROKER_DESCRIPTION_KEY",
     "BROKER_LISTING_REFERENCE_KEY",
     "EMPTY_LISTING_DRAFT_PAYLOAD",
     "AskingPriceMode",
@@ -69,28 +75,40 @@ class ProfessionalListingDraftId:
 #: NativeListing identity meaning.
 BROKER_LISTING_REFERENCE_KEY = "broker_listing_reference"
 
+#: SLICE-0065: the one professional-only bounded pre-market offer input,
+#: deliberately kept outside `ACCEPTED_DRAFT_PAYLOAD_KEYS` (Publication
+#: Input Alignment contract §3/§4): it is not one of the nine channel-neutral
+#: common draft-input keys, is distinct from `BROKER_LISTING_REFERENCE_KEY`,
+#: and MUST NOT be accepted by `OwnerDirectListingDraft`.
+BROKER_DESCRIPTION_KEY = "listing_offer.broker_description"
+
 
 @dataclass(frozen=True)
 class ProfessionalListingDraftRequest:
     """One parsed professional draft request: the shared common payload
-    plus the professional-only `broker_listing_reference` (contract §5).
+    plus the professional-only `broker_listing_reference` (contract §5) and
+    `listing_offer.broker_description` (Publication Input Alignment contract
+    §4).
     """
 
     common: ListingDraftPayload
     broker_listing_reference: str | None = None
+    broker_description: str | None = None
 
 
 def parse_professional_listing_draft_request(raw: Any) -> ProfessionalListingDraftRequest:
     """Validate *raw* against the bounded professional draft request shape.
 
     *raw* is the nine common draft-input keys (contract §4) plus the
-    optional professional-only `broker_listing_reference` (contract §5) in
-    one flat JSON object. `broker_listing_reference`, when present, must be
-    a trimmed non-empty string -- the identical rule already used by every
-    other "trimmed non-empty string" common field, reused via
-    `require_trimmed_nonempty_string` rather than a second inconsistent
-    copy. Unknown keys (including a malformed `broker_listing_reference`
-    key spelling) fail closed via the shared common-key parser.
+    optional professional-only `broker_listing_reference` (contract §5) and
+    `listing_offer.broker_description` (Publication Input Alignment contract
+    §4) in one flat JSON object. Both professional-only fields, when
+    present, must be a trimmed non-empty string -- the identical rule
+    already used by every other "trimmed non-empty string" common field,
+    reused via `require_trimmed_nonempty_string` rather than a second
+    inconsistent copy. Unknown keys (including a malformed
+    `broker_listing_reference`/`listing_offer.broker_description` key
+    spelling) fail closed via the shared common-key parser.
     """
     if not isinstance(raw, dict):
         raise InvalidListingDraftPayloadError(
@@ -105,7 +123,16 @@ def parse_professional_listing_draft_request(raw: Any) -> ProfessionalListingDra
             raw_reference, BROKER_LISTING_REFERENCE_KEY
         )
 
+    broker_description: str | None = None
+    if BROKER_DESCRIPTION_KEY in body:
+        raw_description = body.pop(BROKER_DESCRIPTION_KEY)
+        broker_description = require_trimmed_nonempty_string(
+            raw_description, BROKER_DESCRIPTION_KEY
+        )
+
     common = parse_listing_draft_payload(body)
     return ProfessionalListingDraftRequest(
-        common=common, broker_listing_reference=broker_listing_reference
+        common=common,
+        broker_listing_reference=broker_listing_reference,
+        broker_description=broker_description,
     )

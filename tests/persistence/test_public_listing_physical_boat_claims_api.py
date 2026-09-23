@@ -33,6 +33,7 @@ from hullq.domain.market_identity import (
 from hullq.domain.native_listing_offer import AskingPriceMode, NativeListingOfferSnapshot
 from hullq.domain.physical_boat_claims import (
     AssertionKind,
+    BoatNameClaim,
     BuildYearClaim,
     DraftClaim,
     KeelConfiguration,
@@ -288,6 +289,62 @@ def test_active_listing_with_claims_returns_the_bounded_seven_field_projection(
     assert claims["rudder_configuration"] is None
 
 
+def test_boat_name_assertion_state_is_preserved_in_public_projection(
+    api_conn: Any, client: TestClient
+) -> None:
+    """SLICE-0065 Publication Input Alignment contract §10: the public
+    projection safely preserves boat_name assertion state."""
+    account, org, membership = _make_active_listing(
+        api_conn,
+        listing_id="NL-PBC-BN",
+        physical_boat_id="PB-PBC-BN",
+        market_episode_id="ME-PBC-BN",
+        offer_revision_id="REV-PBC-BN",
+    )
+    write_physical_boat_claim_revision(
+        api_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-PBC-BN"),
+        revision_id=PhysicalBoatClaimRevisionId("PBCREV-PBC-BN-001"),
+        expected_current_revision_id=None,
+        claims=_claim_snapshot(
+            boat_name=BoatNameClaim(
+                assertion_kind=AssertionKind.VALUE_ASSERTION, value="Sea Breeze"
+            )
+        ),
+    )
+
+    claims = client.get("/api/listings/NL-PBC-BN").json()["physical_boat_claims"]
+    assert claims["boat_name"] == {"assertion_kind": "VALUE_ASSERTION", "value": "Sea Breeze"}
+
+
+def test_boat_name_absent_is_distinguishable_from_omitted_in_public_projection(
+    api_conn: Any, client: TestClient
+) -> None:
+    account, org, membership = _make_active_listing(
+        api_conn,
+        listing_id="NL-PBC-BN2",
+        physical_boat_id="PB-PBC-BN2",
+        market_episode_id="ME-PBC-BN2",
+        offer_revision_id="REV-PBC-BN2",
+    )
+    write_physical_boat_claim_revision(
+        api_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-PBC-BN2"),
+        revision_id=PhysicalBoatClaimRevisionId("PBCREV-PBC-BN2-001"),
+        expected_current_revision_id=None,
+        claims=_claim_snapshot(boat_name=BoatNameClaim(assertion_kind=AssertionKind.ABSENT)),
+    )
+
+    claims = client.get("/api/listings/NL-PBC-BN2").json()["physical_boat_claims"]
+    assert claims["boat_name"] == {"assertion_kind": "ABSENT", "value": None}
+
+
 def test_no_boat_design_fallback_when_physical_boat_has_a_linked_boat_design(
     api_conn: Any, client: TestClient
 ) -> None:
@@ -319,6 +376,7 @@ def test_no_boat_design_fallback_when_physical_boat_has_a_linked_boat_design(
     assert claims["draft"] is None
     assert claims["keel_configuration"] is None
     assert claims["rudder_configuration"] is None
+    assert claims["boat_name"] is None
 
 
 def test_correction_is_visible_and_old_revision_is_not_selected_as_current(

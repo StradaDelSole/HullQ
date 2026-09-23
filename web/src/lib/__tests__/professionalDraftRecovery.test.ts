@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  RECOVERY_FIELD_NAMES,
   RECOVERY_MAX_AGE_MS,
   RECOVERY_SCHEMA_V1,
   applyFormValues,
@@ -438,6 +439,23 @@ test("canWriteRecoveryStorage: the probe never writes any auth/session/MFA-shape
 });
 
 // --- Capture (contract §14 "Capture") ---
+
+test("RECOVERY_FIELD_NAMES: includes the SLICE-0065 listing_offer.broker_description field", () => {
+  assert.ok(RECOVERY_FIELD_NAMES.includes("listing_offer.broker_description"));
+});
+
+test("captureFormValues + applyFormValues: listing_offer.broker_description round-trips like every other bounded field", () => {
+  const values = captureFormValues((name) =>
+    name === "listing_offer.broker_description" ? "A lovely, well-maintained sloop." : undefined,
+  );
+  assert.equal(values["listing_offer.broker_description"], "A lovely, well-maintained sloop.");
+
+  const written: Record<string, string> = {};
+  applyFormValues((name, value) => {
+    written[name] = value;
+  }, values);
+  assert.equal(written["listing_offer.broker_description"], "A lovely, well-maintained sloop.");
+});
 
 test("captureFormValues: snapshots every bounded editable value verbatim, including whitespace, unaltered by the recovery layer", () => {
   const values = captureFormValues((name) => {

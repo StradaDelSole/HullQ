@@ -26,6 +26,7 @@ import jsonschema
 from hullq.domain.market_identity import NativeListingId
 from hullq.domain.physical_boat_claims import (
     AssertionKind,
+    BoatNameClaim,
     BuildYearClaim,
     DraftClaim,
     KeelConfiguration,
@@ -134,6 +135,14 @@ def _rudder_configuration_claim(data: dict[str, Any] | None) -> RudderConfigurat
     )
 
 
+def _boat_name_claim(data: dict[str, Any] | None) -> BoatNameClaim | None:
+    if data is None:
+        return None
+    return BoatNameClaim(
+        assertion_kind=AssertionKind(data["assertion_kind"]), value=data.get("value")
+    )
+
+
 def _claim_snapshot(data: dict[str, Any]) -> PhysicalBoatClaimSnapshot:
     build_year_data = data["build_year"]
     return PhysicalBoatClaimSnapshot(
@@ -147,6 +156,7 @@ def _claim_snapshot(data: dict[str, Any]) -> PhysicalBoatClaimSnapshot:
         draft=_draft_claim(data.get("draft")),
         keel_configuration=_keel_configuration_claim(data.get("keel_configuration")),
         rudder_configuration=_rudder_configuration_claim(data.get("rudder_configuration")),
+        boat_name=_boat_name_claim(data.get("boat_name")),
     )
 
 

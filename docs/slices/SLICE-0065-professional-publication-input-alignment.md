@@ -2,7 +2,8 @@
 
 **ID:** SLICE-0065  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
+**Status set by this handoff:** `REVIEW`  
 **Stage:** Broker Workspace — publication-input alignment before promotion  
 **Depends on:** SLICE-0050 PhysicalBoat claims; SLICE-0061 professional drafts; SLICE-0062 recovery; SLICE-0064 professional inventory lifecycle controls  
 **Blocks:** later professional draft promotion specification/implementation only; no later slice is automatically authorized
