@@ -418,6 +418,8 @@ Different Organizations may each reference the same resolved MarketEpisode.
 
 The same Organization may not hold two NativeListings for the same resolved MarketEpisode.
 
+Because the invariant applies only when `market_episode_id IS NOT NULL`, multiple unresolved NativeListings with NULL MarketEpisode links remain permitted; NULL must never be coerced to a shared sentinel merely to enforce uniqueness.
+
 A migration introducing this invariant MUST validate existing data and fail closed if historical rows violate it; it MUST NOT silently delete, relink or merge rows.
 
 The low-level NativeListing creation boundary must classify this unique violation as a deterministic Organization+MarketEpisode conflict rather than leaking an unhandled database exception.
