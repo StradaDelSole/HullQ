@@ -20,13 +20,15 @@ For SLICE-0051 and later, the repository-reconciliation check is additionally ma
 For SLICE-0052 and later, the trigger-gates check is additionally mandatory before a primary slice may become `READY`.
 
 **ONE-CAPABILITY CHECK:** PASS | FAIL  
-Does this slice deliver exactly one user-visible capability OR answer exactly one business-critical hypothesis?
+Does this slice deliver exactly one coherent user-visible capability OR answer exactly one business-critical hypothesis?
+
+For work governed by the 2026-09-26 broker-launch execution amendment, one coherent capability may span persistence/domain/API/frontend/tests when those layers are inseparable parts of the same outcome and introduce no second independent product/domain policy. Do not interpret this check as a requirement for one-field/one-endpoint micro-slices.
 
 **VISIBLE-RESULT CHECK:** PASS | FAIL  
 Can the Project Owner personally execute, observe or inspect the result at the end of this slice?
 
 **PRODUCT EXECUTION PLAN ALIGNMENT:** PASS | FAIL  
-Does the slice comply with the currently controlling product/architecture governance and explicit gates? For work after SLICE-0039, apply the precedence defined in `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_RECONCILIATION_2026-09-02.md`, including `docs/ARCHITECTURE_REBASELINE_2026-09-02.md` plus later explicit owner-accepted product directions. From the 2026-09-14 marketplace pivot onward, `docs/OWNER_DIRECT_LISTING_PRODUCT_DIRECTION_2026-09-14.md` and `specs/OWNER_DIRECT_LISTING_REQUIREMENTS.v0.1.md` supersede the older broker-only/private-FSBO-out-of-scope current direction where relevant. Historical policy records remain history, not current authority where superseded.
+Does the slice comply with the currently controlling product/architecture governance and explicit gates? For work after SLICE-0039, apply the precedence defined in `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_RECONCILIATION_2026-09-02.md`, including `docs/ARCHITECTURE_REBASELINE_2026-09-02.md` plus later explicit owner-accepted product directions. From the 2026-09-14 marketplace pivot onward, `docs/OWNER_DIRECT_LISTING_PRODUCT_DIRECTION_2026-09-14.md` and `specs/OWNER_DIRECT_LISTING_REQUIREMENTS.v0.1.md` supersede the older broker-only/private-FSBO-out-of-scope current direction where relevant. From the 2026-09-26 execution recalibration onward, professional marketplace readiness must also apply `docs/BROKER_LAUNCH_EXECUTION_FOCUS_2026-09-26.md` where relevant. Historical policy records remain history, not current authority where superseded.
 
 **REPOSITORY RECONCILIATION CHECK:** PASS | FAIL  
 Required for SLICE-0051 and later. Before this slice was proposed, were the relevant accepted CAL/decision/ADR/spec/governance/slice records and the relevant existing production code/tests/migrations checked so this slice does not re-open or duplicate behavior that HullQ has already decided and implemented? See `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md`. For SLICE-0054 and later, work touching listing/supply, seller identity/verification, representation conflict, referral, marketplace monetization or Search MUST include the owner-direct product direction/requirements in this reconciliation.
@@ -92,6 +94,7 @@ Explain the problem this slice closes and why it belongs at this point in the ex
 - Post-0051 trigger gates: `docs/governance/POST_0051_TRIGGER_GATES.md`
 - Production readiness gate: `docs/governance/PRODUCTION_READINESS_GATE.md`
 - Product execution plan: `docs/PRODUCT_EXECUTION_PLAN.md`
+- Broker launch execution focus where relevant: `docs/BROKER_LAUNCH_EXECUTION_FOCUS_2026-09-26.md`
 - Post-SLICE-0039 architecture: `docs/ARCHITECTURE_REBASELINE_2026-09-02.md`
 - Post-SLICE-0039 execution reconciliation / precedence: `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_RECONCILIATION_2026-09-02.md`
 - Current owner-direct/private-seller direction where relevant: `docs/OWNER_DIRECT_LISTING_PRODUCT_DIRECTION_2026-09-14.md`

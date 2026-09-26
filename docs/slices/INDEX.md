@@ -1,200 +1,83 @@
 # HullQ Slice Index
 
-**Status:** ACTIVE execution board  
-**Updated:** 2026-08-27 — SLICE-0027 accepted / `DONE` (owner acceptance 2026-08-26 on PR #78; qualifier-semantics correction + offline replay); SLICE-0028 full-boundary Wikidata Tier-1 evidence rollout (1,770 canonical BoatModels) handed off `REVIEW`
+**Status:** ACTIVE navigation board  
+**Updated:** 2026-09-26  
+**Canonical current-state authority:** `docs/PROJECT_STATE.md`
 
-This file is the **compact operational queue**, not the historical evidence archive. Detailed implementation/review history belongs in each slice contract, acceptance-closure document, retained research package and Git history. Agents should read this file only when queue/status context is actually needed.
+This file is deliberately a **compact navigation index**, not a second historical status authority.
 
-| Slice | Type | Status | Objective | Depends on |
-|---|---|---|---|---|
-| SLICE-0001 | BOOTSTRAP | DONE | Repository bootstrap, locked toolchain and cross-platform CI | OQ-010 / ADR-0009 |
-| SLICE-0002 | DESIGN_RESEARCH | DONE | Independent sailboat-design source research and seed evidence | SLICE-0001 |
-| SLICE-0003 | IMPLEMENTATION | DONE | Canonical JSON-Schema contract runtime | SLICE-0002 |
-| SLICE-0004 | IMPLEMENTATION | DONE | Measurement observation + deterministic normalization | SLICE-0003 |
-| SLICE-0005 | IMPLEMENTATION | DONE | Brand/Organization + BoatModel/BoatDesign identity contracts and search labels | SLICE-0004 / ADR-0011 |
-| SLICE-0006 | IMPLEMENTATION | DONE | FieldEvidence/FieldResolution provenance boundary | SLICE-0005 / ADR-0006 |
-| SLICE-0007 | IMPLEMENTATION | DONE | ResearchJob + source-rights/use gate + extraction telemetry | SLICE-0006 / ADR-0005 |
-| SLICE-0008 | IMPLEMENTATION | DONE | First rights-gated real adapter: Wikidata CC0 | SLICE-0007 |
-| SLICE-0009 | IMPLEMENTATION | DONE | Appendage/configuration normalization | SLICE-0008 |
-| SLICE-0010 | IMPLEMENTATION | DONE | `hullq-derived-1.0.0` derived metrics | SLICE-0009 / ADR-0008 |
-| SLICE-0011 | DESIGN_RESEARCH | DONE | Controlled 50-design real-web stress benchmark | SLICE-0010 |
-| SLICE-0012 | IMPLEMENTATION | DONE | Pre-canonical observations, claim/applicability semantics, promotion and ResearchEvidenceBundle | SLICE-0011 |
-| SLICE-0013 | IMPLEMENTATION | DONE | PostgreSQL 18 research persistence + deterministic importer | SLICE-0012 |
-| SLICE-0014 | DESIGN_RESEARCH | DONE | Retained 50-design benchmark through real PostgreSQL persistence | SLICE-0013 |
-| SLICE-0015 | IMPLEMENTATION | DONE | Negative-path hardening + fixed Stage-2 G3 decision | SLICE-0014 |
-| SLICE-0016 | IMPLEMENTATION | DONE | Canonical identity PostgreSQL persistence + Tier-0 admission boundary | SLICE-0015 / G3 PASS |
-| SLICE-0017 | IMPLEMENTATION | DONE | Controlled Wikidata Tier-0 1,000-candidate identity bootstrap | SLICE-0016 |
-| SLICE-0018 | IMPLEMENTATION | DONE | Baseline-preserving Wikidata expansion to first <=2,500 discovery window | SLICE-0017 |
-| SLICE-0019 | DESIGN_RESEARCH | DONE | Global active+historical series-sailboat manufacturer/yard universe + source-yield study | SLICE-0018 |
-| SLICE-0020 | DESIGN_RESEARCH | DONE | Manufacturer archive source-clearance + bounded identity-yield pilot | SLICE-0019 |
-| SLICE-0021 | DESIGN_RESEARCH | DONE | Alternative Wikidata sailboat-class discovery-semantics pilot | SLICE-0020 |
-| SLICE-0022 | IMPLEMENTATION | DONE | Offline admission-safety pilot over exact 57 retained alternative-route candidates | SLICE-0021 |
-| SLICE-0023 | DESIGN_RESEARCH | DONE | Bounded English-Wikipedia category identity-lead discovery pilot | SLICE-0022 |
-| SLICE-0024 | DESIGN_RESEARCH | DONE | Deterministic 30-QID independent identity-verification/source-cost pilot over accepted SLICE-0023 leads | SLICE-0023 accepted / DONE |
-| SLICE-0025 | VALIDATION | DONE | Stage-3.2 breadth-sufficiency / Stage-3.3 parallel-entry governance decision over accepted SLICE-0018/0020/0021/0022/0023/0024 evidence | SLICE-0024 accepted / DONE |
-| SLICE-0026 | IMPLEMENTATION | DONE | Bounded Wikidata Tier-1 (LOA/LWL/beam/draft/displacement) enrichment evidence pilot over exactly 100 already-canonical BoatModels | SLICE-0025 accepted / DONE |
-| SLICE-0027 | IMPLEMENTATION | DONE | Wikidata qualifier-property semantics correction (evidence-backed P518/P3831 alternate carriers) + offline replay over the exact retained SLICE-0026 100-BoatModel sample | SLICE-0026 accepted / DONE |
-| SLICE-0028 | IMPLEMENTATION | REVIEW | Full-boundary Wikidata Tier-1 (LOA/LWL/beam/draft/displacement) evidence rollout over all 1,770 accepted canonical BoatModels | SLICE-0027 accepted / DONE |
+The previous version had drifted to SLICE-0028 while the canonical project had already advanced through SLICE-0065. To prevent that class of contradiction from recurring:
 
-## Current execution rule
+- current accepted/queue state is read from `docs/PROJECT_STATE.md`;
+- final historical acceptance state is read from each slice's acceptance closure / later explicit Owner acceptance record;
+- detailed slice history stays in the individual slice documents and Git history;
+- this index tracks only the current execution boundary and key navigation ranges.
 
-**SLICE-0001 through SLICE-0027 are accepted / `DONE`. SLICE-0028 is handed off `REVIEW`; it is not yet independently reviewed or project-owner accepted, so it is not `DONE`. No SLICE-0029 or later slice is authorized.**
-
-For an already completed slice, its `*-acceptance-closure.md` is the final acceptance-state record where that record has not been superseded by a later recorded Project Owner acceptance comment (as for SLICE-0027 below). A primary slice contract may still show its historical implementation handoff state (`REVIEW`); the acceptance closure/later acceptance record plus this operational queue control the final operational `DONE` state.
-
-## Latest accepted result — SLICE-0024
-
-SLICE-0024 is a bounded `DESIGN_RESEARCH` verification-source pilot over exactly 30 deterministic candidates drawn from the accepted SLICE-0023 150-QID quality sample. It did **not** research all 409 Wikimedia leads.
-
-The project owner explicitly accepted SLICE-0024's **corrected blocked finding** as `DONE`: its primary contract retains historical status `BLOCKED` (two candidates, `Q119855214`/`Q30681833`, truly exceeded the fixed per-candidate search-query ceiling during original execution and an independent-review round corrected an omitted-action/overstated-evidence finding), but the bounded research slice is complete and its negative/blocked outcome is the accepted final result.
-
-Accepted result:
+## Current execution boundary
 
 ```text
-threshold set (24 prior plausible+ambiguous candidates):
-  independently supported in_scope_identity   11  (>=12 required -- NOT MET)
-  of those, strong_source                     10  (>=8 required)
-  median combined actions (supported in-scope) 2.0  (<=4 required)
-recommendation  LOW_INDEPENDENT_VERIFICATION_YIELD
+Latest owner-accepted slice: SLICE-0065
+Current queue:               SLICE-0066
+Current capability:          Required-Response / Assertion Input Alignment
 ```
 
-This is research-only: it does not authorize a full 409-lead verification campaign, canonical admission, production Wikipedia/Wikimedia use or Stage-3.3 enrichment. Canonical BoatModels remain exactly **1,770** and the historical crosswalk exactly **1,772**.
+Current slice:
 
-Acceptance evidence:
+- `docs/slices/SLICE-0066-required-response-assertion-input-alignment.md`
+- read that primary slice for its live handoff status;
+- read `docs/PROJECT_STATE.md` for the canonical accepted/queue boundary;
+- no later slice is authorized automatically.
 
-- implementation PR #67; final reviewed head `50d20588aa8f6feaffe83212f4e2b3dad2cb27c2`;
-- exact-head workflow-dispatch CI `32896517734` / manufacturer reproducibility `32896520470`: SUCCESS;
-- PR CI `32899092183` / manufacturer reproducibility `32899092226`: SUCCESS;
-- independent-review verdict: **ACCEPT of corrected BLOCKED result**;
-- implementation merge `eba0a77d4241514d53ae341439a2109db0f418a3`;
-- owner acceptance **2026-08-25**;
-- closure: `docs/slices/SLICE-0024-acceptance-closure.md`.
+## Historical execution ranges
 
-Retained package: `research/bootstrap/wikimedia/sl0024-independent-verification/`.
+| Range | Operational meaning |
+|---|---|
+| SLICE-0001–0038 | accepted foundational research/architecture/data/product work except where an individual slice record states otherwise |
+| SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
+| SLICE-0040–0065 | later accepted marketplace/Search/buyer/broker work; final state is authoritative in each acceptance closure and `PROJECT_STATE.md` |
+| SLICE-0066 | current queue slice; live status is authoritative in its primary slice document |
 
-## SLICE-0025 — breadth/enrichment entry decision, `REVIEW`
+Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
-SLICE-0025 is a bounded `VALIDATION` slice: using only already-accepted SLICE-0018/0020/0021/0022/0023/0024 evidence (no new external research, no canonical mutation), it reproduces the fixed accepted evidence boundary from retained artifacts and mechanically applies a precommitted decision rule.
+## Current product execution focus
 
-Reproduced boundary (zero drift):
+Current execution priority after the already-selected SLICE-0066 is governed by:
+
+- `docs/BROKER_LAUNCH_EXECUTION_FOCUS_2026-09-26.md`
+- `docs/PROFESSIONAL_MARKETPLACE_WORKFLOW_DECISIONS_2026-09-26.md`
+- `docs/governance/BROKER_WORKSPACE_LAUNCH_GATE.md`
+- `docs/governance/BROKER_WORKSPACE_MANDATORY_CAPABILITY_REGISTER.md`
+- `docs/PRODUCT_EXECUTION_PLAN.md`
+
+The priority is to turn the accepted foundation into a coherent professional loop:
 
 ```text
-accepted canonical BoatModels                              1,770
-historical QID -> HullQ-ID mappings                        1,772
-SLICE-0018 direct-discovery unique QIDs / requested limit   1,829 / 2,500
-SLICE-0020 ADAPTER_READY archive sources                        0
-SLICE-0021 alternative-route candidate union                   57
-SLICE-0022 AUTO_ADMIT / REVIEW_REQUIRED / NOT_ADMITTED       0 / 31 / 26
-SLICE-0023 incremental Wikimedia QID leads                    409
-SLICE-0024 threshold-set independently-supported / required   11 / 12
-SLICE-0024 final recommendation      LOW_INDEPENDENT_VERIFICATION_YIELD
+broker creates
+→ adds media
+→ publishes
+→ buyer contacts
+→ broker handles lead
+→ broker edits/maintains inventory
+→ explicit outcome / scale capabilities as required by gates
 ```
 
-None of the four known Stage-3.2 breadth mechanisms (larger SLICE-0018 direct-discovery limit, SLICE-0020 manufacturer/archive bulk bootstrap, SLICE-0021/0022 alternative Wikidata route, SLICE-0023/0024 full Wikimedia-lead campaign) qualifies as an unexecuted, already-cleared, materially-different, >=100-yield route. All accepted parallel-readiness conditions are met, so the mechanically derived decision is:
+No future slice number or exact scope is preassigned by this index.
 
-```text
-BEGIN_BOUNDED_STAGE_3_3_IN_PARALLEL
-```
-
-This does **not** declare Stage 3.2 complete, does not declare G4 passed, and does not itself authorize any enrichment, admission, query-engine, API, frontend or other implementation work. Stage 3.2 breadth work remains explicitly open. It permits only a later, separately readied slice to pilot a bounded Stage-3.3 Tier-1/basic enrichment subset.
-
-Retained package: `research/stage3/sl0025-breadth-enrichment-entry/` (`decision_input.json`, `decision_result.json`, `REPORT.md`, `ARTIFACT-DIGESTS.json` plus their JSON schemas), reproducible offline via `scripts/bootstrap/sl0025_breadth_enrichment_entry_decision_runner.py --verify`.
-
-Primary contract: `docs/slices/SLICE-0025-stage-3-2-breadth-sufficiency-stage-3-3-parallel-entry-decision.md`.
-
-SLICE-0025 is accepted / `DONE` (see `docs/slices/SLICE-0025-acceptance-closure.md`).
-
-## Accepted — SLICE-0026
-
-SLICE-0026 was a bounded Stage-3.3 evidence-path pilot (not a canonical technical-resolution rollout) over exactly 100 already-canonical BoatModels selected deterministically from the accepted 1,770/1,772 identity boundary. It fetched only those known QIDs via the existing rights-gated Wikidata `wbgetentities` adapter (no discovery query) and measured per-field coverage for LOA/LWL/beam/draft/displacement only. It created/mutated no canonical BoatModel/BoatDesign row and minted no BoatDesign ID.
-
-Retained package: `research/stage3/sl0026-wikidata-tier1-enrichment/` (`selection.json`, `evidence_manifest.json`, `REPORT.md`, `ARTIFACT-DIGESTS.json`, `REPLAY-RESULT.json`/`REPLAY-REPORT.md` plus JSON schemas), reproducible offline via `scripts/bootstrap/wikidata_sl0026_tier1_enrichment_pilot_runner.py --verify`.
-
-Primary contract: `docs/slices/SLICE-0026-bounded-wikidata-tier1-enrichment-evidence-pilot.md`. Closure: `docs/slices/SLICE-0026-acceptance-closure.md` (owner acceptance 2026-08-26).
-
-## Accepted — SLICE-0027
-
-SLICE-0027 corrects the bounded Wikidata adapter qualifier-property semantics exposed by SLICE-0026, using only the already-retained SLICE-0026 raw entity claims as evidence (no live Wikidata acquisition). It amends `hullq.sources.wikidata` to additionally recognize evidence-backed alternate qualifier-property carriers for already-accepted concept QIDs (`P518` for LOA/LWL/draft, `P3831` for displacement) on top of the existing accepted `P642` path, then replays the exact retained 100 entities offline to measure the before/after coverage delta and persists the resulting research evidence through the existing PostgreSQL importer. It creates/mutates no canonical BoatModel/BoatDesign row and does not modify the SLICE-0026 retained package.
-
-Retained package: `research/stage3/sl0027-wikidata-qualifier-semantics/` (`qualifier_shape_analysis.json`, `coverage_before_after.json`, `REPORT.md`, `ARTIFACT-DIGESTS.json`, `REPLAY-RESULT.json`/`REPLAY-REPORT.md` plus JSON schemas), reproducible offline via `scripts/bootstrap/wikidata_sl0027_qualifier_semantics_correction_runner.py --verify`.
-
-Primary contract: `docs/slices/SLICE-0027-wikidata-qualifier-semantics-correction-offline-replay.md`. Independent-review-time closure snapshot: `docs/slices/SLICE-0027-acceptance-closure.md` (recorded `OWNER_ACCEPTANCE_PENDING` at the time it was written).
-
-SLICE-0027 is accepted / `DONE`. Project Owner acceptance was recorded 2026-08-26 on PR #78, issue comment [5430886497](https://github.com/StradaDelSole/HullQ/pull/78#issuecomment-5430886497): accepted implementation head `8c8eaa901f2842fceb228ffb80c78aa46b7e1afb`, implementation merge `546e8babf5ee3a64e00113e017053b1537873810`, closure merge `7c02638cd9889bedf441f709716ad4eadf4e5e79`. That comment postdates and supersedes the closure document's own `OWNER_ACCEPTANCE_PENDING` text for operational-state purposes.
-
-## Latest handoff — SLICE-0028 (`REVIEW`, not yet accepted)
-
-SLICE-0028 scales the SLICE-0027-corrected Wikidata Tier-1 evidence path from the retained 100-BoatModel pilot to the entire accepted 1,770-canonical-BoatModel / 1,772-historical-mapping identity boundary. It reproduces that boundary from the retained SLICE-0017/0018 manifests and makes explicit that the 1,772-entry historical registry equals the 1,770-entry canonical AUTO_ADMIT linkage plus exactly 2 non-canonical REVIEW_REQUIRED reserved-ID entries (`Q109650429`, `Q2461915`) excluded from acquisition. It derives a full-boundary QID -> canonical-BoatModel linkage from the 1,770-entry canonical set (structurally multi-QID-safe; the real boundary is bijective, 0 BoatModels with more than one accepted QID), fetches all 1,770 distinct request QIDs via the existing rights-gated `wbgetentities` adapter (no discovery query, acquisition completeness independently verified before any coverage was computed), and measures per-field coverage for LOA/LWL/beam/draft/displacement at both source-QID and canonical-BoatModel level (strongest-available-evidence precedence; 42 (BoatModel, field) disagreement cases flagged, mostly a single QID carrying both a normalized statement and an unsupported/malformed statement on the same shared property). It also computes the explicitly non-canonical `basic_searchable_evidence_precursor` diagnostic (607/1,770 = 34.29%). It creates/mutates no canonical BoatModel/BoatDesign row, creates no FieldResolution, and does not modify the SLICE-0026/0027 retained packages.
-
-Retained package: `research/stage3/sl0028-wikidata-tier1-full-boundary/` (`linkage.json`, `evidence_manifest.json`, `coverage.json`, `disagreement_diagnostics.json`, `basic_searchable_evidence_precursor.json`, `REPORT.md`, `ARTIFACT-DIGESTS.json`, `REPLAY-RESULT.json`/`REPLAY-REPORT.md` plus JSON schemas), reproducible offline via `scripts/bootstrap/wikidata_sl0028_full_boundary_evidence_runner.py --verify`.
-
-Primary contract: `docs/slices/SLICE-0028-full-boundary-wikidata-tier1-evidence-rollout.md`.
-
-This entry records the implementation agent's own measurement and does not itself constitute independent review or project-owner acceptance. SLICE-0028 is `REVIEW`, not `DONE`. `basic_searchable_evidence_precursor` is explicitly non-canonical and is not CAL-01 D2 launch-readiness coverage. No SLICE-0029 or later slice is created/started.
-
-## Latest accepted boundary — SLICE-0023
-
-SLICE-0023 tested exactly three English-Wikipedia main-namespace category roots as a **research-lead surface only**:
-
-```text
-Category:Keelboats
-Category:Catamarans
-Category:Trimarans
-```
-
-Accepted result:
-
-```text
-unique pages                         1,131
-incremental QID leads                  409
-quality sample                         150
-  plausible_model_or_class_lead        102  (68.00%)
-  obvious_out_of_scope                  19  (12.67%)
-  ambiguous                             29  (19.33%)
-recommendation  FOLLOWUP_VERIFICATION_CANDIDATE
-```
-
-Immutable accepted boundaries remain:
-
-```text
-direct-discovery candidate QIDs      1,829
-canonical BoatModels                 1,770
-historical QID -> HullQ-ID mappings  1,772
-SLICE-0021 alternative-route union      57
-```
-
-The accepted recommendation is research-only. SLICE-0023 does **not** authorize production Wikipedia/Wikimedia discovery, canonical admission of the 409 leads, Stage-3.3 enrichment, query-engine/API/frontend work or any later slice except where separately readied.
-
-Acceptance evidence:
-
-- implementation PR #61;
-- final reviewed head `92dc0320e995542226199509fc7236f29a75a254`;
-- exact-head CI run `32867281346`: SUCCESS;
-- manufacturer reproducibility run `32867282317`: SUCCESS;
-- implementation merge `ac2868d978f33f42ccc7e9cc2b1885bfa86b23bb`;
-- independent-review verdict: **ACCEPT**;
-- project-owner acceptance: **2026-08-25**;
-- closure: `docs/slices/SLICE-0023-acceptance-closure.md`.
-
-## Earlier accepted Stage-3 identity milestones
-
-- **SLICE-0017:** first controlled Wikidata Tier-0 identity bootstrap.
-- **SLICE-0018:** direct discovery reached **1,829 QIDs**, yielding **1,770** accepted canonical BoatModels and **1,772** historical crosswalk mappings.
-- **SLICE-0019:** manufacturer/yard universe + source-yield research.
-- **SLICE-0020:** fixed archive sample produced **0 ADAPTER_READY / 9 review-required / 1 blocked** sources.
-- **SLICE-0021:** alternative Wikidata routes yielded **57** additional discovery signals (R1 +53 / R2 +0 / R3 +4).
-- **SLICE-0022:** those 57 candidates produced **0 AUTO_ADMIT / 31 REVIEW_REQUIRED / 26 NOT_ADMITTED**; canonical BoatModels remained 1,770.
-- **SLICE-0023:** bounded Wikimedia categories yielded **409** incremental QID research leads and passed the precommitted follow-up-candidate threshold.
-- **SLICE-0024:** deterministic 30-candidate independent verification pilot over the 409 leads found only **11/24** threshold candidates independently supported (below the required 12); accepted corrected recommendation `LOW_INDEPENDENT_VERIFICATION_YIELD`.
-
-Detailed reasoning, amendments, CI IDs and retained evidence stay in each slice's closure and research package rather than being duplicated here.
-
-## Operational references
+## Navigation
 
 - Current project state: `docs/PROJECT_STATE.md`
-- Execution plan: `docs/EXECUTION_PLAN.md`
+- Current execution focus: `docs/BROKER_LAUNCH_EXECUTION_FOCUS_2026-09-26.md`
+- Product execution policy: `docs/PRODUCT_EXECUTION_PLAN.md`
+- Professional marketplace decisions: `docs/PROFESSIONAL_MARKETPLACE_WORKFLOW_DECISIONS_2026-09-26.md`
 - AI slice workflow: `docs/engineering/AI_SLICE_WORKFLOW.md`
-- AI token-efficiency standard: `docs/engineering/AI_TOKEN_EFFICIENCY.md`
 - Slice template: `docs/slices/SLICE_TEMPLATE.md`
+- Broker launch gate: `docs/governance/BROKER_WORKSPACE_LAUNCH_GATE.md`
+- Mandatory broker capability register: `docs/governance/BROKER_WORKSPACE_MANDATORY_CAPABILITY_REGISTER.md`
+
+## Maintenance rule
+
+When a slice acceptance closure advances `PROJECT_STATE_ACCEPTED_SLICE` or a reassessment selects a new queue capability, update only this compact boundary section if needed. Do not mirror transient READY/REVIEW/BLOCKED handoff state here.
+
+Do **not** rebuild a duplicated full historical ledger here. The old detailed ledger model is what allowed this file to become dozens of slices stale.
 
 No later slice starts automatically.
