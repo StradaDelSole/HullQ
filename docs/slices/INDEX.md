@@ -18,16 +18,14 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ```text
 Latest owner-accepted slice: SLICE-0065
 Current queue:               SLICE-0066
-Current queue status:        READY
 Current capability:          Required-Response / Assertion Input Alignment
-Canonical main at readiness: f7e250831990ed5a7113c6ea8aa6138904f592f9
 ```
 
 Current slice:
 
 - `docs/slices/SLICE-0066-required-response-assertion-input-alignment.md`
-- status: `READY`
-- implementation may begin only through the normal `START_SLICE.bat` workflow;
+- read that primary slice for its live handoff status;
+- read `docs/PROJECT_STATE.md` for the canonical accepted/queue boundary;
 - no later slice is authorized automatically.
 
 ## Historical execution ranges
@@ -37,7 +35,7 @@ Current slice:
 | SLICE-0001–0038 | accepted foundational research/architecture/data/product work except where an individual slice record states otherwise |
 | SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
 | SLICE-0040–0065 | later accepted marketplace/Search/buyer/broker work; final state is authoritative in each acceptance closure and `PROJECT_STATE.md` |
-| SLICE-0066 | current `READY` implementation slice |
+| SLICE-0066 | current queue slice; live status is authoritative in its primary slice document |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
@@ -78,7 +76,7 @@ No future slice number or exact scope is preassigned by this index.
 
 ## Maintenance rule
 
-When a slice acceptance closure advances `PROJECT_STATE_ACCEPTED_SLICE` or a reassessment selects a new queue capability, update only this compact boundary section if needed.
+When a slice acceptance closure advances `PROJECT_STATE_ACCEPTED_SLICE` or a reassessment selects a new queue capability, update only this compact boundary section if needed. Do not mirror transient READY/REVIEW/BLOCKED handoff state here.
 
 Do **not** rebuild a duplicated full historical ledger here. The old detailed ledger model is what allowed this file to become dozens of slices stale.
 
