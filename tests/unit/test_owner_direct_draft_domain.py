@@ -13,6 +13,8 @@ import pytest
 from hullq.domain.owner_direct_draft import (
     EMPTY_OWNER_DIRECT_DRAFT_PAYLOAD,
     AskingPriceMode,
+    BuildYearAssertionKind,
+    BuildYearResponse,
     InvalidOwnerDirectDraftPayloadError,
     OwnerDirectListingDraftId,
     parse_owner_direct_draft_payload,
@@ -93,9 +95,13 @@ class TestParseOwnerDirectDraftPayloadStringFields:
 
 
 class TestParseOwnerDirectDraftPayloadBuildYear:
-    def test_valid_int_accepted(self) -> None:
+    """SLICE-0066: `physical_boat.build_year` accepts the legacy bare
+    integer (compatibility) and the canonical structured VALUE_ASSERTION/
+    UNKNOWN object, and preserves omission != UNKNOWN != VALUE_ASSERTION."""
+
+    def test_legacy_int_accepted_and_normalizes_to_value_assertion(self) -> None:
         payload = parse_owner_direct_draft_payload({"physical_boat.build_year": 1998})
-        assert payload.build_year == 1998
+        assert payload.build_year == BuildYearResponse(BuildYearAssertionKind.VALUE_ASSERTION, 1998)
 
     def test_bool_rejected(self) -> None:
         with pytest.raises(InvalidOwnerDirectDraftPayloadError):
@@ -108,6 +114,88 @@ class TestParseOwnerDirectDraftPayloadBuildYear:
     def test_float_rejected(self) -> None:
         with pytest.raises(InvalidOwnerDirectDraftPayloadError):
             parse_owner_direct_draft_payload({"physical_boat.build_year": 1998.0})
+
+    def test_null_rejected(self) -> None:
+        """Contract §3.2/§4: JSON null is not omission and fails closed."""
+        with pytest.raises(InvalidOwnerDirectDraftPayloadError):
+            parse_owner_direct_draft_payload({"physical_boat.build_year": None})
+
+    def test_omitted_key_is_none_not_unknown(self) -> None:
+        payload = parse_owner_direct_draft_payload({})
+        assert payload.build_year is None
+
+    def test_structured_value_assertion_accepted(self) -> None:
+        payload = parse_owner_direct_draft_payload(
+            {"physical_boat.build_year": {"assertion_kind": "VALUE_ASSERTION", "value": 1987}}
+        )
+        assert payload.build_year == BuildYearResponse(BuildYearAssertionKind.VALUE_ASSERTION, 1987)
+
+    def test_structured_unknown_accepted(self) -> None:
+        payload = parse_owner_direct_draft_payload(
+            {"physical_boat.build_year": {"assertion_kind": "UNKNOWN"}}
+        )
+        assert payload.build_year == BuildYearResponse(BuildYearAssertionKind.UNKNOWN)
+
+    def test_omitted_unknown_and_value_assertion_are_mechanically_distinct(self) -> None:
+        omitted = parse_owner_direct_draft_payload({}).build_year
+        unknown = parse_owner_direct_draft_payload(
+            {"physical_boat.build_year": {"assertion_kind": "UNKNOWN"}}
+        ).build_year
+        known = parse_owner_direct_draft_payload({"physical_boat.build_year": 1987}).build_year
+        assert omitted is None
+        assert unknown != known
+        assert omitted != unknown
+        assert omitted != known
+
+    def test_unknown_with_value_rejected(self) -> None:
+        with pytest.raises(InvalidOwnerDirectDraftPayloadError):
+            parse_owner_direct_draft_payload(
+                {"physical_boat.build_year": {"assertion_kind": "UNKNOWN", "value": 1987}}
+            )
+
+    def test_unknown_with_null_value_rejected(self) -> None:
+        with pytest.raises(InvalidOwnerDirectDraftPayloadError):
+            parse_owner_direct_draft_payload(
+                {"physical_boat.build_year": {"assertion_kind": "UNKNOWN", "value": None}}
+            )
+
+    def test_value_assertion_missing_value_rejected(self) -> None:
+        with pytest.raises(InvalidOwnerDirectDraftPayloadError):
+            parse_owner_direct_draft_payload(
+                {"physical_boat.build_year": {"assertion_kind": "VALUE_ASSERTION"}}
+            )
+
+    def test_value_assertion_bool_value_rejected(self) -> None:
+        with pytest.raises(InvalidOwnerDirectDraftPayloadError):
+            parse_owner_direct_draft_payload(
+                {"physical_boat.build_year": {"assertion_kind": "VALUE_ASSERTION", "value": True}}
+            )
+
+    def test_invalid_assertion_kind_rejected(self) -> None:
+        with pytest.raises(InvalidOwnerDirectDraftPayloadError):
+            parse_owner_direct_draft_payload(
+                {"physical_boat.build_year": {"assertion_kind": "ABSENT"}}
+            )
+
+    def test_missing_assertion_kind_rejected(self) -> None:
+        with pytest.raises(InvalidOwnerDirectDraftPayloadError):
+            parse_owner_direct_draft_payload({"physical_boat.build_year": {"value": 1987}})
+
+    def test_extra_member_rejected(self) -> None:
+        with pytest.raises(InvalidOwnerDirectDraftPayloadError):
+            parse_owner_direct_draft_payload(
+                {
+                    "physical_boat.build_year": {
+                        "assertion_kind": "VALUE_ASSERTION",
+                        "value": 1987,
+                        "extra": "nope",
+                    }
+                }
+            )
+
+    def test_empty_object_rejected(self) -> None:
+        with pytest.raises(InvalidOwnerDirectDraftPayloadError):
+            parse_owner_direct_draft_payload({"physical_boat.build_year": {}})
 
 
 class TestParseOwnerDirectDraftPayloadAskingPriceMode:
@@ -183,6 +271,9 @@ class TestOwnerDirectDraftPayloadToWireDict:
         assert EMPTY_OWNER_DIRECT_DRAFT_PAYLOAD.to_wire_dict() == {}
 
     def test_roundtrip_preserves_values(self) -> None:
+        """Contract §5/§7: a legacy bare-integer build year remains accepted
+        as ingress, but the canonical API/readback serialization is always
+        the structured VALUE_ASSERTION object, never the legacy bare integer."""
         raw = {
             "physical_boat.marketed_brand_claim": "Beneteau",
             "physical_boat.model_designation_claim": "Oceanis 40",
@@ -195,7 +286,15 @@ class TestOwnerDirectDraftPayloadToWireDict:
             "listing_offer.location_region": "Brittany",
         }
         payload = parse_owner_direct_draft_payload(raw)
-        assert payload.to_wire_dict() == raw
+        expected = dict(raw)
+        expected["physical_boat.build_year"] = {"assertion_kind": "VALUE_ASSERTION", "value": 2005}
+        assert payload.to_wire_dict() == expected
+
+    def test_roundtrip_preserves_unknown_build_year(self) -> None:
+        payload = parse_owner_direct_draft_payload(
+            {"physical_boat.build_year": {"assertion_kind": "UNKNOWN"}}
+        )
+        assert payload.to_wire_dict() == {"physical_boat.build_year": {"assertion_kind": "UNKNOWN"}}
 
     def test_amount_serialized_as_string_not_float(self) -> None:
         payload = parse_owner_direct_draft_payload(
