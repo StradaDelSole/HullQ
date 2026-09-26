@@ -197,7 +197,7 @@ Blank input does not mean UNKNOWN. Selecting UNKNOWN sends no year value.
 
 ### H. Professional recovery
 
-Recovery preserves the three build-year form states under all existing same-version/stale/expiry/storage-failure rules. It remains client recovery only and never server truth.
+Recovery preserves the three build-year form states under all existing same-version/stale/expiry/storage-failure rules using the bounded recovery-only string control `physical_boat.build_year.assertion_kind` plus the existing year-value field. The control accepts only `""`, `VALUE_ASSERTION` or `UNKNOWN`, is not a tenth draft API key and never becomes server/marketplace truth.
 
 ### I. No promotion
 
