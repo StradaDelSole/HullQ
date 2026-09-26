@@ -181,6 +181,10 @@ Recovery MUST preserve enough form state to distinguish:
 - explicit UNKNOWN;
 - concrete entered year.
 
+The bounded recovery-only control key is `physical_boat.build_year.assertion_kind`, carrying exactly `""`, `VALUE_ASSERTION` or `UNKNOWN`; the existing `physical_boat.build_year` recovery field carries the year input string.
+
+This recovery-only control key is not part of `ACCEPTED_DRAFT_PAYLOAD_KEYS` and is never sent as draft/marketplace truth itself.
+
 Same-version/stale/expiry/isolation rules from `PROFESSIONAL_LISTING_RECOVERY_CONTRACT.v0.1.md` remain unchanged.
 
 Recovery MUST NOT infer UNKNOWN from an empty recovered year string.
