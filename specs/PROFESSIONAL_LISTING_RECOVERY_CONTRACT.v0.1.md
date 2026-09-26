@@ -100,7 +100,9 @@ form_values
 - `listing_offer.location_country`;
 - `listing_offer.location_region`.
 
-Browser storage is allowed to preserve form-string representation before server normalization/validation because it is only a recovery buffer. On real Save, the existing Astro/FastAPI path remains authoritative.
+Browser storage is allowed to preserve form-string/control representation before server normalization/validation because it is only a recovery buffer. On real Save, the existing Astro/FastAPI path remains authoritative.
+
+SLICE-0066 requires recovery to preserve the build-year response state sufficiently to distinguish unanswered, explicit UNKNOWN and a concrete year. The envelope may use bounded recovery-only form/control fields for that purpose; they are not additional draft API keys or marketplace truth. A blank recovered year MUST NOT be interpreted as UNKNOWN.
 
 The envelope MUST NOT contain session cookies, OIDC/Auth0 tokens, MFA material, credential material, database secrets or unrelated workspace data.
 
