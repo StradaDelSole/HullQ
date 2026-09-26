@@ -310,11 +310,13 @@ Professional draft editor:
 - [ ] PostgreSQL enforces promotion-state validity/nullability pairing, FK integrity for promoted_native_listing_id, and uniqueness of a non-null promoted NativeListing provenance link.
 - [ ] Exact retry at the frozen promoted version returns same NativeListingId with zero additional writes.
 - [ ] PROMOTED retry with a mismatched expected version returns VERSION_CONFLICT and reveals no alternate-version result.
+- [ ] Exact-version ALREADY_PROMOTED retry still returns immutable provenance after later publishing-eligibility loss, provided current workspace/MFA/PUBLISHER authorization still permits access; it performs zero marketplace writes.
 - [ ] Concurrent exact promotion attempts create exactly one marketplace chain.
 - [ ] Representative injected failures roll back PhysicalBoat, MarketEpisode, NativeListing, claim/head, offer/head and draft-state writes together.
 - [ ] D09 resolved `(organization, episode)` uniqueness is database-enforced.
 - [ ] Same Organization + same resolved episode with another NativeListing is deterministic conflict.
 - [ ] Different Organization + same resolved episode remains allowed.
+- [ ] Multiple unresolved NativeListings with NULL market_episode_id remain allowed.
 - [ ] broker_listing_reference is not used as identity/dedup key.
 - [ ] Existing standalone persistence writer commit/idempotency behavior remains regression-tested.
 - [ ] foreign/unknown draft remains non-enumerating.
