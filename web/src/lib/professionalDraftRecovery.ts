@@ -119,19 +119,48 @@ function isPositiveInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value > 0;
 }
 
+/** SLICE-0066 contract §5/§9: the exact bounded vocabulary for the
+ * recovery-only build-year control state -- nothing else is ever valid. */
+const BUILD_YEAR_ASSERTION_KIND_FIELD: RecoveryFieldName =
+  "physical_boat.build_year.assertion_kind";
+const VALID_BUILD_YEAR_ASSERTION_KIND_VALUES: ReadonlySet<string> = new Set([
+  "",
+  "VALUE_ASSERTION",
+  "UNKNOWN",
+]);
+
 /**
  * Drops any key outside the bounded vocabulary and any non-string value
  * (contract §5/§11). An empty string is a valid, meaningful captured value
  * (independent review finding 2026-09-21 #1: clearing a previously
  * populated field is itself the edit being recovered) and is kept, not
  * dropped.
+ *
+ * `physical_boat.build_year.assertion_kind` gets one additional check
+ * (independent exact-head review, PR #252): its accepted values are the
+ * fixed three-member vocabulary above, not an arbitrary string. When the
+ * field is *present* with any other value -- a tampered/corrupt LocalStorage
+ * envelope, e.g. `"ABSENT"` -- the whole envelope is treated as malformed
+ * (returns `null`, exactly like an unknown recovery_schema or an expired
+ * entry) rather than silently dropping just this one field back to
+ * "no opinion captured". A genuinely *absent* key (an envelope captured
+ * before this control existed) is not present at all and is simply skipped,
+ * same as every other bounded field.
  */
 function sanitizeFormValues(value: unknown): RecoveryFormValues | null {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
   const result: RecoveryFormValues = {};
   for (const name of RECOVERY_FIELD_NAMES) {
+    if (!(name in record)) continue;
     const candidate = record[name];
+    if (name === BUILD_YEAR_ASSERTION_KIND_FIELD) {
+      if (typeof candidate !== "string" || !VALID_BUILD_YEAR_ASSERTION_KIND_VALUES.has(candidate)) {
+        return null;
+      }
+      result[name] = candidate;
+      continue;
+    }
     if (typeof candidate === "string") {
       result[name] = candidate;
     }

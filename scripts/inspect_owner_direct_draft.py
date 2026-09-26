@@ -598,6 +598,66 @@ def main() -> int:
             f"all round-trip through real PostgreSQL -> {'OK' if build_year_states_ok else 'FAIL'}\n"
         )
 
+        # 9c. SLICE-0066 Finding B (independent exact-head review, PR #252):
+        # an invalid build-year submission -- a blank/malformed "known year"
+        # or a tampered mode value -- fails closed with zero mutation,
+        # rather than silently becoming omission or a leniently-truncated
+        # guess. The draft is at version 4 here (created at 1, then UNKNOWN,
+        # VALUE_ASSERTION(1987) and back-to-unanswered above each advanced it
+        # by one); none of the three invalid attempts below may move it off 4.
+        status, headers, body = session.post_form(
+            f"{web_base}{by_draft_path}",
+            {
+                "expected_version": "4",
+                "physical_boat.build_year.assertion_kind": "VALUE_ASSERTION",
+                "physical_boat.build_year": "",
+            },
+            origin=web_base,
+        )
+        page_text = body.decode("utf-8")
+        blank_year_invalid_ok = status == 200 and "could not be saved" in page_text
+
+        status, headers, body = session.post_form(
+            f"{web_base}{by_draft_path}",
+            {
+                "expected_version": "4",
+                "physical_boat.build_year.assertion_kind": "VALUE_ASSERTION",
+                "physical_boat.build_year": "1987junk",
+            },
+            origin=web_base,
+        )
+        page_text = body.decode("utf-8")
+        malformed_year_invalid_ok = status == 200 and "could not be saved" in page_text
+
+        status, headers, body = session.post_form(
+            f"{web_base}{by_draft_path}",
+            {"expected_version": "4", "physical_boat.build_year.assertion_kind": "ABSENT"},
+            origin=web_base,
+        )
+        page_text = body.decode("utf-8")
+        invalid_mode_invalid_ok = status == 200 and "could not be saved" in page_text
+
+        status, _, body = session.get(f"{api_base}/api/owner-direct/drafts/{by_draft_id}")
+        after_invalid_attempts_record = _json(body)
+        zero_mutation_ok = (
+            after_invalid_attempts_record["version"] == 4
+            and "physical_boat.build_year" not in after_invalid_attempts_record
+        )
+
+        build_year_invalid_fail_closed_ok = (
+            blank_year_invalid_ok
+            and malformed_year_invalid_ok
+            and invalid_mode_invalid_ok
+            and zero_mutation_ok
+        )
+        ok &= build_year_invalid_fail_closed_ok
+        print(
+            "9c. SLICE-0066 Finding B: blank year, garbage-suffixed year ('1987junk') and an "
+            "invalid build-year mode ('ABSENT') all fail closed with zero mutation "
+            f"(still v4, build_year still unanswered) -> "
+            f"{'OK' if build_year_invalid_fail_closed_ok else 'FAIL'}\n"
+        )
+
         # 6. Account A updates with the current version; version increments.
         status, headers, body = session.post_form(
             f"{web_base}{draft_path}",

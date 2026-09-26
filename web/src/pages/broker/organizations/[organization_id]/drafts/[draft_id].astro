@@ -22,6 +22,7 @@ import {
   fetchProfessionalDraft,
   updateProfessionalDraft,
 } from "../../../../../lib/professionalDraftApi";
+import { parseBuildYearFormControl } from "../../../../../lib/buildYearFormControl";
 import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../../../lib/authConstants";
 import { fetchBrokerContext } from "../../../../../lib/brokerApi";
 
@@ -43,7 +44,13 @@ function readOptionalField(formData: FormData, key: FormFieldKey): string | unde
   return trimmed === "" ? undefined : trimmed;
 }
 
-function payloadFromForm(formData: FormData): ProfessionalDraftPayloadInput {
+/**
+ * `null` means the submitted form is invalid and must be treated exactly
+ * like a FastAPI-rejected payload (contract §9/§7: fail closed, zero
+ * mutation) -- the caller must never fall back to calling the update API
+ * with a partially-built payload in that case.
+ */
+function payloadFromForm(formData: FormData): ProfessionalDraftPayloadInput | null {
   const payload: ProfessionalDraftPayloadInput = {};
 
   const reference = readOptionalField(formData, "broker_listing_reference");
@@ -55,25 +62,29 @@ function payloadFromForm(formData: FormData): ProfessionalDraftPayloadInput {
   const model = readOptionalField(formData, "physical_boat.model_designation_claim");
   if (model !== undefined) payload["physical_boat.model_designation_claim"] = model;
 
-  // SLICE-0066: `physical_boat.build_year.assertion_kind` is a plain
-  // control-selection field, not one of the nine accepted draft-payload
-  // keys -- it only decides which of "not answered" / "known year" /
-  // "unknown" the year input below is submitted as. A blank year input
-  // never means UNKNOWN, and choosing UNKNOWN never sends a year value
-  // (contract §8). The same control name is also the bounded professional
-  // recovery-only key `physical_boat.build_year.assertion_kind`
+  // SLICE-0066 (independent exact-head review, PR #252, Finding B):
+  // `physical_boat.build_year.assertion_kind` is a plain control-selection
+  // field, not one of the nine accepted draft-payload keys -- it only
+  // decides which of "not answered" / "known year" / "unknown" the year
+  // input below is submitted as. The shared strict parser fails the whole
+  // save closed (`kind: "invalid"`) rather than silently collapsing a
+  // malformed/tampered mode or a blank/non-integer "known year" submission
+  // into omission or a leniently-truncated guess. The same control name is
+  // also the bounded professional recovery-only key
+  // `physical_boat.build_year.assertion_kind`
   // (`PROFESSIONAL_LISTING_RECOVERY_CONTRACT.v0.1.md` §5).
-  const buildYearMode = formData.get("physical_boat.build_year.assertion_kind");
-  if (buildYearMode === "UNKNOWN") {
+  const buildYear = parseBuildYearFormControl(
+    formData.get("physical_boat.build_year.assertion_kind"),
+    formData.get("physical_boat.build_year"),
+  );
+  if (buildYear.kind === "invalid") return null;
+  if (buildYear.kind === "unknown") {
     payload["physical_boat.build_year"] = { assertion_kind: "UNKNOWN" };
-  } else if (buildYearMode === "VALUE_ASSERTION") {
-    const buildYearRaw = readOptionalField(formData, "physical_boat.build_year");
-    if (buildYearRaw !== undefined) {
-      const parsed = Number.parseInt(buildYearRaw, 10);
-      if (Number.isFinite(parsed)) {
-        payload["physical_boat.build_year"] = { assertion_kind: "VALUE_ASSERTION", value: parsed };
-      }
-    }
+  } else if (buildYear.kind === "value_assertion") {
+    payload["physical_boat.build_year"] = {
+      assertion_kind: "VALUE_ASSERTION",
+      value: buildYear.value,
+    };
   }
 
   const boatName = readOptionalField(formData, "physical_boat.boat_name");
@@ -115,20 +126,28 @@ if (Astro.request.method === "POST" && organizationId && draftId) {
     typeof expectedVersionRaw === "string" ? Number.parseInt(expectedVersionRaw, 10) : NaN;
   if (Number.isFinite(expectedVersion)) {
     const payload = payloadFromForm(formData);
-    const updateResult = await updateProfessionalDraft(
-      apiBaseUrl,
-      organizationId,
-      draftId,
-      cookieHeader,
-      originHeader,
-      expectedVersion,
-      payload,
-    );
-    if (updateResult.kind === "ok") saveOutcome = "saved";
-    else if (updateResult.kind === "conflict") saveOutcome = "conflict";
-    else if (updateResult.kind === "invalid") saveOutcome = "invalid";
-    // Every other update outcome falls through to the read below, which
-    // independently resolves to the identical state.
+    if (payload === null) {
+      // Fail closed before ever calling FastAPI (Finding B): zero mutation
+      // is structural here, not merely the result of the backend's own
+      // validation -- an invalid build-year control/year submission never
+      // reaches the network.
+      saveOutcome = "invalid";
+    } else {
+      const updateResult = await updateProfessionalDraft(
+        apiBaseUrl,
+        organizationId,
+        draftId,
+        cookieHeader,
+        originHeader,
+        expectedVersion,
+        payload,
+      );
+      if (updateResult.kind === "ok") saveOutcome = "saved";
+      else if (updateResult.kind === "conflict") saveOutcome = "conflict";
+      else if (updateResult.kind === "invalid") saveOutcome = "invalid";
+      // Every other update outcome falls through to the read below, which
+      // independently resolves to the identical state.
+    }
   }
 }
 

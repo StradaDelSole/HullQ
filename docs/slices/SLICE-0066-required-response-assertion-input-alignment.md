@@ -3,6 +3,7 @@
 **ID:** SLICE-0066  
 **Type:** IMPLEMENTATION  
 **Status:** REVIEW  
+**Status set by this handoff:** `REVIEW`  
 **Stage:** Shared seller draft truth-input alignment before professional promotion  
 **Depends on:** SLICE-0054 owner-direct drafts; SLICE-0061 professional drafts; SLICE-0062 professional recovery; SLICE-0065 publication-input alignment  
 **Blocks:** later professional draft promotion readiness/materialization; no later slice is automatically authorized

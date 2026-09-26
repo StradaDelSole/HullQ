@@ -448,6 +448,88 @@ test("RECOVERY_FIELD_NAMES: includes the SLICE-0066 physical_boat.build_year.ass
   assert.ok(RECOVERY_FIELD_NAMES.includes("physical_boat.build_year.assertion_kind"));
 });
 
+// --- SLICE-0066 Finding A (independent exact-head review, PR #252):
+// `physical_boat.build_year.assertion_kind` must be validated against its
+// exact three-member vocabulary while parsing a stored envelope, not merely
+// accepted as an arbitrary string like every other bounded field. ---
+
+test('parseRecoveryEnvelope: a stored physical_boat.build_year.assertion_kind of "" survives', () => {
+  const envelope = parseRecoveryEnvelope(
+    envelopeJson({ form_values: { "physical_boat.build_year.assertion_kind": "" } }),
+    SCOPE_A,
+    NOW,
+  );
+  assert.deepEqual(envelope?.form_values, { "physical_boat.build_year.assertion_kind": "" });
+});
+
+test("parseRecoveryEnvelope: a stored physical_boat.build_year.assertion_kind of VALUE_ASSERTION survives, alongside the year", () => {
+  const envelope = parseRecoveryEnvelope(
+    envelopeJson({
+      form_values: {
+        "physical_boat.build_year.assertion_kind": "VALUE_ASSERTION",
+        "physical_boat.build_year": "1987",
+      },
+    }),
+    SCOPE_A,
+    NOW,
+  );
+  assert.deepEqual(envelope?.form_values, {
+    "physical_boat.build_year.assertion_kind": "VALUE_ASSERTION",
+    "physical_boat.build_year": "1987",
+  });
+});
+
+test("parseRecoveryEnvelope: a stored physical_boat.build_year.assertion_kind of UNKNOWN survives", () => {
+  const envelope = parseRecoveryEnvelope(
+    envelopeJson({ form_values: { "physical_boat.build_year.assertion_kind": "UNKNOWN" } }),
+    SCOPE_A,
+    NOW,
+  );
+  assert.deepEqual(envelope?.form_values, { "physical_boat.build_year.assertion_kind": "UNKNOWN" });
+});
+
+test("parseRecoveryEnvelope: an out-of-vocabulary physical_boat.build_year.assertion_kind (e.g. ABSENT) fails the whole envelope closed, not just that field", () => {
+  const envelope = parseRecoveryEnvelope(
+    envelopeJson({
+      form_values: {
+        "physical_boat.build_year.assertion_kind": "ABSENT",
+        broker_listing_reference: "REF-SHOULD-NOT-SURVIVE",
+      },
+    }),
+    SCOPE_A,
+    NOW,
+  );
+  // The whole envelope is malformed -- not "ABSENT dropped, REF-1 kept".
+  assert.equal(envelope, null);
+});
+
+test("parseRecoveryEnvelope: a case-mismatched physical_boat.build_year.assertion_kind fails closed", () => {
+  const envelope = parseRecoveryEnvelope(
+    envelopeJson({ form_values: { "physical_boat.build_year.assertion_kind": "unknown" } }),
+    SCOPE_A,
+    NOW,
+  );
+  assert.equal(envelope, null);
+});
+
+test("parseRecoveryEnvelope: a non-string physical_boat.build_year.assertion_kind fails closed", () => {
+  const envelope = parseRecoveryEnvelope(
+    envelopeJson({ form_values: { "physical_boat.build_year.assertion_kind": 1 } }),
+    SCOPE_A,
+    NOW,
+  );
+  assert.equal(envelope, null);
+});
+
+test("parseRecoveryEnvelope: physical_boat.build_year.assertion_kind genuinely absent from a stored envelope (pre-SLICE-0066 capture) is simply skipped, not fail-closed", () => {
+  const envelope = parseRecoveryEnvelope(
+    envelopeJson({ form_values: { broker_listing_reference: "REF-1" } }),
+    SCOPE_A,
+    NOW,
+  );
+  assert.deepEqual(envelope?.form_values, { broker_listing_reference: "REF-1" });
+});
+
 test("captureFormValues + applyFormValues: physical_boat.build_year.assertion_kind round-trips like every other bounded field", () => {
   const values = captureFormValues((name) => {
     if (name === "physical_boat.build_year.assertion_kind") return "UNKNOWN";
