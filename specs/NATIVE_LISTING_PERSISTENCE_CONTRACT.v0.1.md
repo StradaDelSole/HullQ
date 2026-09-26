@@ -238,3 +238,32 @@ This contract explicitly excludes, and no implementation under it may add:
 - leads/`ContactRequest`, `BrokerageRequest`/referral, Saved Search/
   monitoring/alerts, pricing/entitlements, transaction/escrow/closing;
 - Auth0/AuthIdentity/MFA/session/step-up authentication implementation.
+
+## 10. SLICE-0067 resolved-episode uniqueness amendment
+
+Accepted professional marketplace decision D09 adds a database-level invariant for a **resolved** NativeListing:
+
+```text
+market_episode_id IS NOT NULL
+→ at most one NativeListing per
+   (publishing_organization_id, market_episode_id)
+```
+
+Different publishing Organizations MAY each own their own NativeListing for the same resolved MarketEpisode.
+
+This supersedes any older interpretation that one MarketEpisode globally permits only one NativeListing.
+
+The invariant MUST be race-safe at PostgreSQL level, using a unique constraint/index equivalent to:
+
+```text
+UNIQUE (publishing_organization_id, market_episode_id)
+WHERE market_episode_id IS NOT NULL
+```
+
+An existing-data violation during migration MUST fail closed. The migration MUST NOT delete, merge, null or relink historical rows to make the constraint pass.
+
+The low-level NativeListing creation boundary gains a mechanically distinct Organization+MarketEpisode conflict outcome for a different NativeListing attempting to use an already-occupied resolved pair. That conflict is not authorization denial and MUST leave the existing row unchanged.
+
+The original standalone `create_native_listing()` top-level commit guarantee remains unchanged. SLICE-0067 may factor/reuse internal transaction-scoped insertion logic so the promotion transaction can compose NativeListing creation atomically with PhysicalBoat, MarketEpisode, claim, offer and draft-state writes without sequential independent commits.
+
+This amendment does not make broker_listing_reference a deduplication key and does not authorize MarketEpisode inference.
