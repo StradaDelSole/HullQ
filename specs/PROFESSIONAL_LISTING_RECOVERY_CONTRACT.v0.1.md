@@ -413,3 +413,34 @@ authorized existing ProfessionalListingDraft
 → current server version controls safe restore behavior
 → explicit Save remains the only server mutation
 ```
+
+## 19. SLICE-0067 promoted-draft recovery amendment
+
+SLICE-0067 adds durable `EDITABLE | PROMOTED` state to ProfessionalListingDraft under `specs/PROFESSIONAL_LISTING_PROMOTION_CONTRACT.v0.1.md`.
+
+The existing same-version recovery rule is amended as follows:
+
+```text
+server promotion_state = EDITABLE
++ recovery envelope version == server draft version
+→ normal same-version recovery rules may apply
+
+server promotion_state = PROMOTED
+→ recovery MUST NOT restore/apply
+  regardless of version equality
+```
+
+This explicit promotion-state guard is required because successful promotion intentionally freezes the promoted draft's content version rather than incrementing it. A pre-promotion recovery envelope can therefore remain numerically same-version after the draft becomes immutable.
+
+On a PROMOTED draft read/browser load:
+
+- do not restore recovery form values;
+- do not expose recovered values as if they were editable server truth;
+- best-effort remove the recovery envelope scoped to that draft;
+- storage-removal failure remains non-fatal but MUST NOT cause recovery to apply;
+- render immutable promotion provenance/result according to the promotion contract.
+
+Successful promotion also best-effort clears the exact draft recovery envelope immediately.
+
+This amendment changes no Account/Organization/draft/version namespace rules for EDITABLE drafts and adds no generalized offline synchronization model.
+
