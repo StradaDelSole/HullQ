@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-26  
 **Latest owner-accepted / DONE slice:** SLICE-0065  
-**Current queue:** SLICE-0066 — **Required-Response / Assertion Input Alignment** selected by the post-SLICE-0065 reassessment. Implementation is authorized only after the READY package is independently exact-head reviewed, required remote gates pass and this readiness change is merged to canonical `main`.  
+**Current queue:** SLICE-0066 — **Required-Response / Assertion Input Alignment**, `READY` and implementation-authorized. The readiness package received independent exact-head ACCEPT, CI #890 / Manufacturer Repro #612 passed, and PR #250 merged to canonical `main`; implementation begins only through the normal `START_SLICE.bat` workflow.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
