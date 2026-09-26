@@ -240,6 +240,32 @@ Important future work includes owner-direct marketplace admission/publication an
 
 SLICE-0065 is owner-accepted and merged. Professional drafts now retain professional-only broker description without inventing marketplace truth, and the existing PhysicalBoat claim model has a truthful optional boat-name destination while preserving historic retry compatibility. The post-0065 reassessment selects SLICE-0066 to close the remaining `physical_boat.build_year` required-response gap: current drafts still support only integer-or-omitted while marketplace truth supports VALUE_ASSERTION or explicit UNKNOWN. REQ-BROKER-023 and REQ-BROKER-024 remain implemented. The Broker Workspace Launch Gate remains NOT_READY because 0066 is not yet implemented and draft-to-marketplace promotion/creation, offer editing, media and the other launch-gate sections remain outstanding.
 
+## Broker launch execution focus
+
+The 2026-09-26 execution recalibration is recorded in:
+
+```text
+docs/BROKER_LAUNCH_EXECUTION_FOCUS_2026-09-26.md
+```
+
+It does not reopen SLICE-0066 or waive existing launch gates. It changes prioritization and slice-sizing discipline after the current capability:
+
+```text
+strict truth / auth / provenance stay fixed
++
+micro-slicing is no longer a goal
++
+vertical broker-launch progress becomes the default where risk permits
+```
+
+Post-0066 reassessment should strongly prefer the shortest safe path through professional promotion, media, canonical publication readiness/publish integration, durable buyer contact/leads, broker lead handling and inventory editing before unrelated product expansion, unless a higher-leverage blocker or triggered mandatory capability requires interruption.
+
+The existing public NativeListing read path is already implemented; near-term work is to let normal broker-created inventory reach that path truthfully rather than to invent a second public-listing architecture.
+
+Structured bulk/source import remains strategically important and should move forward early once the normal draft→marketplace path is stable, but it must use staging/mapping and normal HullQ workflows rather than become a second truth pipeline. REQ-BROKER-027 remains mandatory before scaled broker onboarding.
+
+Large retained research artifacts are acknowledged as repository-hygiene debt, not a launch blocker. They remain in-repo for now because they support deterministic evidence replay/auditability; any later externalization must preserve immutable hashes, provenance and reproducibility.
+
 ## Next capability selection
 
 Next queue number:
