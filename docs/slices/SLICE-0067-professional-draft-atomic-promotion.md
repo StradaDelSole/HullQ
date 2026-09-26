@@ -95,6 +95,7 @@ Media cannot follow the accepted D13 architecture until a real NativeListing exi
 - canonical pure PromotionReadiness evaluator and bounded machine reason codes;
 - professional draft durable `EDITABLE | PROMOTED` state;
 - immutable `promoted_native_listing_id` / `promoted_at` provenance;
+- explicit promoted-draft update rejection and promoted-state recovery guard;
 - existing rows migrated to EDITABLE;
 - ordinary draft list/update behavior adjusted so promoted drafts leave active editing flow;
 - exact-version promotion request and retry result;
@@ -154,7 +155,8 @@ POA + currency is NOT_READY; do not silently discard currency.
 
 - pre-existing/new drafts are EDITABLE;
 - active draft list returns only EDITABLE;
-- update is permitted only for EDITABLE;
+- update is permitted only for EDITABLE; a concurrent/later update against PROMOTED returns a distinct PROMOTED_IMMUTABLE-equivalent conflict with zero mutation;
+- browser-local recovery is never applied to PROMOTED, even at the same frozen version, and is best-effort removed;
 - promotion locks the exact draft row and requires exact positive expected version;
 - successful promotion freezes content/version and marks PROMOTED;
 - version does not increment on promotion;
@@ -225,7 +227,8 @@ Other offer claims remain omitted.
 ### H. Retry/concurrency
 
 - stale expected version -> VERSION_CONFLICT, zero mutation;
-- exact retry after PROMOTED -> ALREADY_PROMOTED + same NativeListingId;
+- exact retry after PROMOTED with the frozen exact version -> ALREADY_PROMOTED + same NativeListingId;
+- PROMOTED + mismatched expected version -> VERSION_CONFLICT, zero mutation;
 - concurrent exact promotions serialize on draft and create exactly one marketplace chain;
 - exact retry creates no new IDs/revisions/heads.
 
@@ -254,7 +257,9 @@ Foreign/unknown draft remains non-enumerating.
 
 Denied/ineligible promotion writes zero marketplace state and leaves draft EDITABLE.
 
-### K. Browser result
+### K. Browser write security and result
+
+Promotion reuses the accepted professional same-origin CSRF boundary: trusted exact Origin plus the accepted non-simple professional draft request header. Missing/foreign Origin or missing/wrong header fails before mutation.
 
 Professional draft editor:
 
@@ -286,7 +291,8 @@ Professional draft editor:
 - [ ] Existing professional drafts migrate to EDITABLE.
 - [ ] New drafts start EDITABLE.
 - [ ] Active draft list excludes PROMOTED.
-- [ ] Ordinary update rejects PROMOTED with zero mutation.
+- [ ] Ordinary update rejects PROMOTED with a distinct immutable/promoted conflict outcome and zero mutation.
+- [ ] Same-version stale recovery does not restore/apply to a PROMOTED draft and is best-effort cleared.
 - [ ] Promotion request accepts only expected_version, never marketplace IDs.
 - [ ] Exact current EDITABLE version + READY + authorized/eligible can promote.
 - [ ] Stale expected version returns conflict and writes zero rows.
@@ -301,7 +307,8 @@ Professional draft editor:
 - [ ] Source draft becomes PROMOTED only in the same successful transaction.
 - [ ] Promotion leaves draft content version unchanged/frozen.
 - [ ] PROMOTED stores immutable NativeListing result link and promoted_at.
-- [ ] Exact retry returns same NativeListingId with zero additional writes.
+- [ ] Exact retry at the frozen promoted version returns same NativeListingId with zero additional writes.
+- [ ] PROMOTED retry with a mismatched expected version returns VERSION_CONFLICT and reveals no alternate-version result.
 - [ ] Concurrent exact promotion attempts create exactly one marketplace chain.
 - [ ] Representative injected failures roll back PhysicalBoat, MarketEpisode, NativeListing, claim/head, offer/head and draft-state writes together.
 - [ ] D09 resolved `(organization, episode)` uniqueness is database-enforced.
@@ -311,6 +318,7 @@ Professional draft editor:
 - [ ] Existing standalone persistence writer commit/idempotency behavior remains regression-tested.
 - [ ] foreign/unknown draft remains non-enumerating.
 - [ ] MFA/publishing denial leaves draft EDITABLE and writes zero marketplace state.
+- [ ] Promotion browser POST enforces the accepted professional Origin + non-simple-header CSRF boundary.
 - [ ] Browser shows readiness/action and promoted immutable result safely.
 - [ ] Successful browser promotion surfaces the new DRAFT listing in Organization inventory.
 - [ ] DRAFT promoted listing is not public/current on the public listing surface.
