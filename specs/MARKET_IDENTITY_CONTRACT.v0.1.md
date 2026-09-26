@@ -112,8 +112,7 @@ market appearance.
 - A relationship field typed for one identity kind MUST reject a value of
   any other identity kind at construction time (fail closed), not only at
   static type-check time.
-- One `MarketEpisode` MAY be referenced by one `NativeListing` and multiple
-  `ExternalMarketObservation`s without collapsing their separate identities.
+- One `MarketEpisode` MAY be referenced by NativeListings from multiple distinct publishing Organizations and by multiple `ExternalMarketObservation`s without collapsing their separate identities. Accepted D09 constrains NativeListings per publishing Organization: for a resolved MarketEpisode, one Organization may have at most one NativeListing for that episode, while another Organization may have its own separate NativeListing.
 - A `PhysicalBoat` referencing a `BoatDesignRef` MUST NOT cause BoatDesign
   technical facts to be treated as physical-vessel or listing truth. No
   automatic projection of BoatDesign or Configuration facts into
