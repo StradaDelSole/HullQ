@@ -18,14 +18,16 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ```text
 Latest owner-accepted slice: SLICE-0066
 Current queue:               SLICE-0067
-Current capability:          UNSELECTED
+Current capability:          Professional Draft → Atomic Marketplace Promotion
 ```
 
-Current queue:
+Current slice:
 
-- SLICE-0067 is UNSELECTED;
-- read `docs/PROJECT_STATE.md` for the canonical accepted/queue boundary;
-- no SLICE-0067 readiness or implementation is authorized until fresh post-0066 reassessment selects a capability.
+- `docs/slices/SLICE-0067-professional-draft-atomic-promotion.md`;
+- capability selected by `docs/POST_SLICE_0066_REASSESSMENT_2026-09-27.md`;
+- read the primary slice for live handoff status and `docs/PROJECT_STATE.md` for the canonical accepted/queue boundary;
+- implementation is not authorized until readiness review/gates/merge complete;
+- no later slice is authorized automatically.
 
 ## Historical execution ranges
 
@@ -34,7 +36,7 @@ Current queue:
 | SLICE-0001–0038 | accepted foundational research/architecture/data/product work except where an individual slice record states otherwise |
 | SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
 | SLICE-0040–0066 | later accepted marketplace/Search/buyer/broker work; final state is authoritative in each acceptance closure and `PROJECT_STATE.md` |
-| SLICE-0067 | current queue number only; capability UNSELECTED until fresh reassessment |
+| SLICE-0067 | current selected queue capability; live status is authoritative in its primary slice document |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
