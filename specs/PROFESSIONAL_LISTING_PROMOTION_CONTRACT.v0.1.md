@@ -176,6 +176,8 @@ Required invariants:
 - EDITABLE => promoted_native_listing_id is NULL and promoted_at is NULL;
 - PROMOTED => promoted_native_listing_id is non-NULL and promoted_at is non-NULL;
 - one promoted NativeListingId may be linked from at most one ProfessionalListingDraft;
+- `promoted_native_listing_id`, when non-null, MUST be a real FK to `native_listings.native_listing_id`;
+- PostgreSQL MUST enforce the EDITABLE/PROMOTED nullability pairing with CHECK constraints/equivalent and MUST enforce non-null `promoted_native_listing_id` uniqueness;
 - the provenance link is immutable;
 - the draft content/version that was promoted is immutable forever;
 - promotion MUST NOT increment the content `version`; that frozen version number is the exact promoted draft version;
@@ -193,11 +195,13 @@ Canonical mutation route:
 POST /api/broker/organizations/{organization_id}/drafts/{draft_id}/promote
 ```
 
-Request body contains only:
+Request body contains exactly one key:
 
 ```json
 {"expected_version": 7}
 ```
+
+`expected_version` MUST be a positive JSON integer and MUST reject booleans. Missing/extra keys, null, strings, floats/decimals and non-positive integers are malformed requests and fail with zero mutation.
 
 No marketplace IDs or resolution hints are accepted from the client.
 
@@ -457,7 +461,7 @@ Promotion is a state-changing cookie-authenticated browser action and MUST reuse
 The browser/FastAPI route MUST require:
 
 - exact normalized trusted HullQ `Origin`;
-- the accepted non-simple fixed professional draft request header;
+- header `X-HullQ-Requested-With: professional-listing-draft-v1`, reusing the accepted professional draft CSRF boundary exactly;
 - no permissive credentialed CORS.
 
 Missing/foreign Origin or missing/wrong fixed header fails closed before promotion mutation.
