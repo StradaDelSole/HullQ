@@ -34,7 +34,7 @@ Canonical post-0065 state, both draft contracts, shared parser/serializer, profe
 
 ## Decision / implementation reconciliation
 
-**Accepted records checked:** `docs/PROJECT_STATE.md`; `docs/slices/SLICE-0065-acceptance-closure.md`; `docs/POST_SLICE_0065_REASSESSMENT_2026-09-26.md`; `docs/PROFESSIONAL_MARKETPLACE_WORKFLOW_DECISIONS_2026-09-26.md`; `specs/LISTING_DRAFT_ASSERTION_RESPONSE_CONTRACT.v0.1.md`; `specs/OWNER_DIRECT_LISTING_WORKSPACE_CONTRACT.v0.1.md`; `specs/PROFESSIONAL_LISTING_WORKSPACE_CONTRACT.v0.1.md`; `specs/PROFESSIONAL_LISTING_RECOVERY_CONTRACT.v0.1.md`; `specs/MARKETPLACE_FIELD_REGISTRY.v0.1.json`; `docs/BROKER_WORKSPACE_PRODUCT_DIRECTION_2026-09-13.md`; `specs/BROKER_WORKSPACE_REQUIREMENTS.v0.1.md`; Broker Workspace/production/post-0051 gate records.
+**Accepted records checked:** `docs/PROJECT_STATE.md`; `docs/slices/SLICE-0065-acceptance-closure.md`; `docs/POST_SLICE_0065_REASSESSMENT_2026-09-26.md`; `docs/PROFESSIONAL_MARKETPLACE_WORKFLOW_DECISIONS_2026-09-26.md`; `specs/LISTING_ASSERTION_RESPONSE_CONTRACT.v0.1.md`; `specs/OWNER_DIRECT_LISTING_WORKSPACE_CONTRACT.v0.1.md`; `specs/PROFESSIONAL_LISTING_WORKSPACE_CONTRACT.v0.1.md`; `specs/PROFESSIONAL_LISTING_RECOVERY_CONTRACT.v0.1.md`; `specs/MARKETPLACE_FIELD_REGISTRY.v0.1.json`; `docs/BROKER_WORKSPACE_PRODUCT_DIRECTION_2026-09-13.md`; `specs/BROKER_WORKSPACE_REQUIREMENTS.v0.1.md`; Broker Workspace/production/post-0051 gate records.
 
 **Production implementation checked:** `src/hullq/domain/listing_draft_payload.py`; owner-direct/professional draft domain/application/persistence/API code; both Astro draft editors; professional recovery implementation; `src/hullq/domain/physical_boat_claims.py` BuildYearClaim; relevant owner-direct/professional draft domain/persistence/API/web/recovery tests and migrations.
 
@@ -79,7 +79,7 @@ Treating omitted draft input as UNKNOWN would invent a response. Requiring a yea
 ## Controlling artifacts
 
 - Requirement IDs: `REQ-BROKER-002`, `REQ-BROKER-003`, `REQ-BROKER-004`
-- Specifications: `specs/LISTING_DRAFT_ASSERTION_RESPONSE_CONTRACT.v0.1.md`; `specs/OWNER_DIRECT_LISTING_WORKSPACE_CONTRACT.v0.1.md`; `specs/PROFESSIONAL_LISTING_WORKSPACE_CONTRACT.v0.1.md`; `specs/PROFESSIONAL_LISTING_RECOVERY_CONTRACT.v0.1.md`; `specs/MARKETPLACE_FIELD_REGISTRY.v0.1.json`
+- Specifications: `specs/LISTING_ASSERTION_RESPONSE_CONTRACT.v0.1.md`; `specs/OWNER_DIRECT_LISTING_WORKSPACE_CONTRACT.v0.1.md`; `specs/PROFESSIONAL_LISTING_WORKSPACE_CONTRACT.v0.1.md`; `specs/PROFESSIONAL_LISTING_RECOVERY_CONTRACT.v0.1.md`; `specs/MARKETPLACE_FIELD_REGISTRY.v0.1.json`
 - Accepted owner decisions: `docs/PROFESSIONAL_MARKETPLACE_WORKFLOW_DECISIONS_2026-09-26.md` D16/D17
 - Reassessment: `docs/POST_SLICE_0065_REASSESSMENT_2026-09-26.md`
 - Broker direction / Launch Gate / mandatory register
