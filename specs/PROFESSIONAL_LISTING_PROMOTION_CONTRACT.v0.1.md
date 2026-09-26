@@ -105,7 +105,7 @@ The draft parser already rejects POA + amount. PromotionReadiness MUST additiona
 
 ### 3.3 Machine reason codes
 
-The evaluator MUST return a deterministic ordered set/list of machine-readable reasons from the bounded vocabulary:
+The evaluator MUST return a deterministic ordered tuple/list of machine-readable reasons in exactly the canonical order below whenever each condition applies:
 
 ```text
 MISSING_MARKETED_BRAND
@@ -118,6 +118,12 @@ MISSING_ASKING_PRICE_AMOUNT
 MISSING_CURRENCY
 CURRENCY_NOT_ALLOWED_FOR_POA
 ```
+
+Conditional price reasons are evaluated only when a mode is present:
+
+- mode omitted -> `MISSING_ASKING_PRICE_MODE`; do not additionally invent AMOUNT/POA conditional reasons;
+- mode AMOUNT -> add `MISSING_ASKING_PRICE_AMOUNT` and/or `MISSING_CURRENCY` when missing;
+- mode POA -> amount is already rejected by the shared draft parser; a present currency adds `CURRENCY_NOT_ALLOWED_FOR_POA`.
 
 A ready result has zero reasons.
 
@@ -136,11 +142,15 @@ Required current state:
 5. current membership contains `PUBLISHER`;
 6. accepted `evaluate_native_listing_publishing_eligibility()` returns ALLOWED for the exact Account/Organization/Membership used by the promotion.
 
-Private draft authoring remains less restrictive: an ineligible/unverified Organization may still retain drafts, but cannot promote them.
+Private draft authoring remains less restrictive: an ineligible/unverified Organization may still retain drafts, but cannot perform a **new** EDITABLE -> PROMOTED materialization.
 
 Foreign-Organization and unknown draft IDs remain non-enumerating and produce the same not-found-equivalent result after the Organization boundary succeeds.
 
-The promotion transaction MUST revalidate current promotion authorization/eligibility before durable marketplace writes.
+For every request, current session/Organization/MFA/current ACTIVE PUBLISHER membership authorization is required before draft/result disclosure.
+
+For an EDITABLE draft that may create marketplace state, the promotion transaction MUST revalidate current publishing eligibility before durable marketplace writes.
+
+For an already-PROMOTED own draft, an exact-version retry is a read/idempotency result, not a second marketplace creation attempt: after current workspace/MFA/PUBLISHER authorization succeeds, it returns `ALREADY_PROMOTED` without requiring the Organization still to pass current publishing eligibility and without performing any marketplace write. Later ineligibility affects future publication/current-public behavior, not historical promotion provenance.
 
 ## 5. Draft promotion state and provenance
 
@@ -263,6 +273,8 @@ zero additional rows
 ```
 
 No new IDs are generated and no marketplace write is retried.
+
+If the draft is already PROMOTED but the supplied expected version does **not** equal the frozen promoted version, return `VERSION_CONFLICT` with zero mutation; do not reveal a result for a version the caller did not name.
 
 ### 7.4 Concurrent attempts
 
@@ -432,9 +444,27 @@ On PROMOTED success:
 For a directly reopened PROMOTED draft:
 
 - show immutable promoted provenance/result;
-- do not show editable Save/Promote controls.
+- do not show editable Save/Promote controls;
+- do not apply browser-local recovery, even if a pre-promotion recovery envelope carries the same frozen draft version;
+- best-effort remove/clear any recovery envelope for that promoted draft so stale private form input cannot reappear over immutable provenance.
 
-## 13. Publication / public visibility
+Because promotion intentionally does not increment the draft content version, promotion state MUST be an explicit recovery applicability guard; version equality alone is insufficient after SLICE-0067.
+
+## 13. Browser write security
+
+Promotion is a state-changing cookie-authenticated browser action and MUST reuse the accepted professional draft same-origin CSRF boundary.
+
+The browser/FastAPI route MUST require:
+
+- exact normalized trusted HullQ `Origin`;
+- the accepted non-simple fixed professional draft request header;
+- no permissive credentialed CORS.
+
+Missing/foreign Origin or missing/wrong fixed header fails closed before promotion mutation.
+
+If Astro proxies the promotion request it must preserve the browser Origin under the same accepted rule; it must not replace an untrusted Origin with a trusted one.
+
+## 14. Publication / public visibility
 
 Promotion creates no publication transition and no freshness confirmation.
 
@@ -449,7 +479,7 @@ The accepted public listing surface must not expose the new DRAFT listing as pub
 
 Media and D22 PublicationReadiness remain later capabilities.
 
-## 14. Non-goals
+## 15. Non-goals
 
 SLICE-0067 does not:
 
@@ -469,7 +499,7 @@ SLICE-0067 does not:
 - add Search criteria or change Search ranking/eligibility;
 - touch owner-direct publication.
 
-## 15. Compatibility invariants
+## 16. Compatibility invariants
 
 After implementation:
 
