@@ -475,6 +475,8 @@ Rules:
 - promotion does not increment the draft content version;
 - PROMOTED content/provenance is immutable;
 - direct read may expose PROMOTED provenance and resulting NativeListingId;
+- an update/write attempt against PROMOTED returns a mechanically distinct `PROMOTED_IMMUTABLE`-equivalent conflict outcome with zero mutation rather than being misclassified as NOT_FOUND or ordinary stale VERSION_CONFLICT;
+- browser-local recovery MUST NOT apply to PROMOTED even when a pre-promotion envelope carries the same frozen content version; promotion state is an additional recovery-applicability guard and stale recovery is best-effort removed;
 - a PROMOTED draft is never silently reactivated or edited;
 - OwnerDirectListingDraft behavior is unchanged.
 
