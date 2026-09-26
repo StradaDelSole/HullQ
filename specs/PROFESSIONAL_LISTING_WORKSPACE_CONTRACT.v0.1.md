@@ -450,3 +450,40 @@ current signed Account
 → private partial save/resume/update with optimistic versioning
 → no marketplace promotion
 ```
+
+## 17. SLICE-0067 promotion-state amendment
+
+SLICE-0067 adds an explicit promotion state/provenance layer to the accepted professional draft aggregate under the controlling `specs/PROFESSIONAL_LISTING_PROMOTION_CONTRACT.v0.1.md`.
+
+This supersedes §11's statement that no promotion endpoint exists, but only for the new explicit promotion action. Ordinary create/read/list/update remain private draft operations and MUST still create/mutate zero marketplace state.
+
+Durable professional draft state is extended conceptually with:
+
+```text
+promotion_state = EDITABLE | PROMOTED
+promoted_native_listing_id nullable
+promoted_at nullable
+```
+
+Rules:
+
+- all pre-0067 rows become EDITABLE;
+- create always starts EDITABLE;
+- list returns active EDITABLE drafts only;
+- update mutates EDITABLE drafts only;
+- a successful exact-version promotion changes EDITABLE -> PROMOTED exactly once;
+- promotion does not increment the draft content version;
+- PROMOTED content/provenance is immutable;
+- direct read may expose PROMOTED provenance and resulting NativeListingId;
+- a PROMOTED draft is never silently reactivated or edited;
+- OwnerDirectListingDraft behavior is unchanged.
+
+Canonical promotion route is owned by the promotion contract:
+
+```text
+POST /api/broker/organizations/{organization_id}/drafts/{draft_id}/promote
+```
+
+Private draft-authoring authorization from §3 remains valid for ordinary draft work. Promotion additionally re-applies accepted public NativeListing publishing eligibility and the promotion contract's atomicity/idempotency rules.
+
+The Broker Workspace Launch Gate remains NOT_READY after SLICE-0067 because media, publication readiness, leads and other required sections remain outstanding.
