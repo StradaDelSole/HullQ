@@ -3,9 +3,9 @@
 <!-- PROJECT_STATE_ACCEPTED_SLICE: 0065 -->
 <!-- PROJECT_STATE_QUEUE_SLICE: 0066 -->
 
-**Updated:** 2026-09-24  
+**Updated:** 2026-09-26  
 **Latest owner-accepted / DONE slice:** SLICE-0065  
-**Current queue:** SLICE-0066 — **UNSELECTED**. A fresh post-SLICE-0065 repository/product reassessment and Decision / Implementation Reconciliation are required before any capability selection, readiness work or implementation authorization.  
+**Current queue:** SLICE-0066 — **Required-Response / Assertion Input Alignment** selected by the post-SLICE-0065 reassessment. Implementation is authorized only after the READY package is independently exact-head reviewed, required remote gates pass and this readiness change is merged to canonical `main`.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -238,7 +238,7 @@ The SLICE-0053 same-host session-topology invariant remains in force for browser
 
 Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; professional draft-to-marketplace promotion/publication and media; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-SLICE-0065 is owner-accepted and merged. Professional drafts now retain professional-only broker description without inventing marketplace truth, and the existing PhysicalBoat claim model has a truthful optional boat-name destination while preserving historic retry compatibility. REQ-BROKER-023 and REQ-BROKER-024 remain implemented. The Broker Workspace Launch Gate remains NOT_READY because draft-to-marketplace promotion/creation, required-response alignment, offer editing, media and the other launch-gate sections remain outstanding.
+SLICE-0065 is owner-accepted and merged. Professional drafts now retain professional-only broker description without inventing marketplace truth, and the existing PhysicalBoat claim model has a truthful optional boat-name destination while preserving historic retry compatibility. The post-0065 reassessment selects SLICE-0066 to close the remaining `physical_boat.build_year` required-response gap: current drafts still support only integer-or-omitted while marketplace truth supports VALUE_ASSERTION or explicit UNKNOWN. REQ-BROKER-023 and REQ-BROKER-024 remain implemented. The Broker Workspace Launch Gate remains NOT_READY because 0066 is not yet implemented and draft-to-marketplace promotion/creation, offer editing, media and the other launch-gate sections remain outstanding.
 
 ## Next capability selection
 
@@ -248,11 +248,33 @@ Next queue number:
 SLICE-0066
 ```
 
-**Selected capability:** UNSELECTED.
+**Selected capability:** Required-Response / Assertion Input Alignment.
 
-SLICE-0065 is owner-accepted and merged. Before any SLICE-0066 selection, readiness package, `START_SLICE.bat` authorization or new material product/domain/data/architecture decision, perform a fresh post-SLICE-0065 repository/product reassessment against canonical `origin/main`, including Decision / Implementation Reconciliation and the post-0051 trigger gates.
+Controlling reassessment:
 
-The accepted 0065 capability removes the two known data-shape blockers for later lossless professional promotion, but it does not itself authorize promotion. The reassessment must determine the smallest safe next capability and record the estimated remaining slice distance to the first externally visible broker-created listing.
+```text
+docs/POST_SLICE_0065_REASSESSMENT_2026-09-26.md
+```
+
+Owner-accepted cross-slice direction is durably recorded in:
+
+```text
+docs/PROFESSIONAL_MARKETPLACE_WORKFLOW_DECISIONS_2026-09-26.md
+```
+
+SLICE-0066 is deliberately bounded to the existing shared `physical_boat.build_year` key:
+
+```text
+OMITTED
+!= UNKNOWN
+!= VALUE_ASSERTION(year)
+```
+
+Legacy integer draft values remain compatible; canonical future serialization is structured. The common draft key count remains exactly nine and no promotion occurs.
+
+The readiness contract is `docs/slices/SLICE-0066-required-response-assertion-input-alignment.md`. `START_SLICE.bat` may be used only after the readiness package is independently exact-head reviewed, required remote gates pass and the readiness changes are merged to canonical `main`.
+
+Directional distance to the first broker-created publicly visible listing is still approximately four bounded slices including 0066, but no later slice number or capability is authorized in advance.
 
 ## Development workflow
 
@@ -267,6 +289,6 @@ The accepted 0065 capability removes the two known data-shape blockers for later
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; after accepted SLICE-0065, SLICE-0066 is deliberately UNSELECTED until a fresh post-0065 reassessment selects the next bounded capability.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; the fresh post-SLICE-0065 reassessment selects bounded SLICE-0066 Required-Response / Assertion Input Alignment, with implementation still gated by readiness review/gates/merge.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
