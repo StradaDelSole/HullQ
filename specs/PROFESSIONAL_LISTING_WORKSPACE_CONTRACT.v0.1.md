@@ -106,7 +106,7 @@ Every field remains optional; an empty draft is valid.
 The exact value semantics remain aligned with the accepted owner-direct contract:
 
 - trimmed non-empty strings where applicable;
-- build year integer shape as already accepted;
+- build-year semantics from `LISTING_ASSERTION_RESPONSE_CONTRACT.v0.1.md`: canonical VALUE_ASSERTION(integer) or explicit UNKNOWN under the existing key, with omission distinct and legacy bare integers retained for compatibility;
 - asking-price mode exactly `AMOUNT` or `POA`;
 - positive finite decimal-string amount, never binary-float truth;
 - amount absent when POA;
@@ -125,7 +125,19 @@ It must either:
 - extract/reuse a channel-neutral common draft payload parser/serializer used by both owner-direct and professional draft boundaries; or
 - reuse an already-existing channel-neutral primitive that mechanically proves identical semantics.
 
-The existing owner-direct public API, persistence behavior and tests must remain unchanged from the caller's perspective.
+The owner-direct and professional public boundaries must remain mechanically aligned through the shared primitive. SLICE-0066 intentionally changes the caller-visible canonical build-year value representation for both channels while preserving legacy bare-integer request/read compatibility as specified in `LISTING_ASSERTION_RESPONSE_CONTRACT.v0.1.md`; all other common-field behavior remains unchanged.
+
+### 4.1.1 SLICE-0066 shared build-year assertion response
+
+Under the unchanged key `physical_boat.build_year`, both channels distinguish:
+
+```text
+OMITTED
+UNKNOWN
+VALUE_ASSERTION(integer)
+```
+
+Canonical serialization is the structured assertion-response object. The legacy integer form remains accepted as compatibility input and normalizes to VALUE_ASSERTION. No other common field is generalized into an assertion object by this slice.
 
 ### 4.2 SLICE-0065 professional-only offer-input extension
 
