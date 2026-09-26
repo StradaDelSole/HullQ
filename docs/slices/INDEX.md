@@ -1,7 +1,7 @@
 # HullQ Slice Index
 
 **Status:** ACTIVE navigation board  
-**Updated:** 2026-09-26  
+**Updated:** 2026-09-27  
 **Canonical current-state authority:** `docs/PROJECT_STATE.md`
 
 This file is deliberately a **compact navigation index**, not a second historical status authority.
@@ -16,17 +16,16 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ## Current execution boundary
 
 ```text
-Latest owner-accepted slice: SLICE-0065
-Current queue:               SLICE-0066
-Current capability:          Required-Response / Assertion Input Alignment
+Latest owner-accepted slice: SLICE-0066
+Current queue:               SLICE-0067
+Current capability:          UNSELECTED
 ```
 
-Current slice:
+Current queue:
 
-- `docs/slices/SLICE-0066-required-response-assertion-input-alignment.md`
-- read that primary slice for its live handoff status;
+- SLICE-0067 is UNSELECTED;
 - read `docs/PROJECT_STATE.md` for the canonical accepted/queue boundary;
-- no later slice is authorized automatically.
+- no SLICE-0067 readiness or implementation is authorized until fresh post-0066 reassessment selects a capability.
 
 ## Historical execution ranges
 
@@ -34,14 +33,14 @@ Current slice:
 |---|---|
 | SLICE-0001–0038 | accepted foundational research/architecture/data/product work except where an individual slice record states otherwise |
 | SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
-| SLICE-0040–0065 | later accepted marketplace/Search/buyer/broker work; final state is authoritative in each acceptance closure and `PROJECT_STATE.md` |
-| SLICE-0066 | current queue slice; live status is authoritative in its primary slice document |
+| SLICE-0040–0066 | later accepted marketplace/Search/buyer/broker work; final state is authoritative in each acceptance closure and `PROJECT_STATE.md` |
+| SLICE-0067 | current queue number only; capability UNSELECTED until fresh reassessment |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
 ## Current product execution focus
 
-Current execution priority after the already-selected SLICE-0066 is governed by:
+Current execution priority after accepted SLICE-0066 is governed by:
 
 - `docs/BROKER_LAUNCH_EXECUTION_FOCUS_2026-09-26.md`
 - `docs/PROFESSIONAL_MARKETPLACE_WORKFLOW_DECISIONS_2026-09-26.md`
