@@ -45,10 +45,23 @@ function payloadFromForm(formData: FormData): OwnerDirectDraftPayloadInput {
   const model = readOptionalField(formData, "physical_boat.model_designation_claim");
   if (model !== undefined) payload["physical_boat.model_designation_claim"] = model;
 
-  const buildYearRaw = readOptionalField(formData, "physical_boat.build_year");
-  if (buildYearRaw !== undefined) {
-    const parsed = Number.parseInt(buildYearRaw, 10);
-    if (Number.isFinite(parsed)) payload["physical_boat.build_year"] = parsed;
+  // SLICE-0066: `physical_boat.build_year.assertion_kind` is a plain
+  // control-selection field, not one of the nine accepted draft-payload
+  // keys -- it only decides which of "not answered" / "known year" /
+  // "unknown" the year input below is submitted as. A blank year input
+  // never means UNKNOWN, and choosing UNKNOWN never sends a year value
+  // (contract §8).
+  const buildYearMode = formData.get("physical_boat.build_year.assertion_kind");
+  if (buildYearMode === "UNKNOWN") {
+    payload["physical_boat.build_year"] = { assertion_kind: "UNKNOWN" };
+  } else if (buildYearMode === "VALUE_ASSERTION") {
+    const buildYearRaw = readOptionalField(formData, "physical_boat.build_year");
+    if (buildYearRaw !== undefined) {
+      const parsed = Number.parseInt(buildYearRaw, 10);
+      if (Number.isFinite(parsed)) {
+        payload["physical_boat.build_year"] = { assertion_kind: "VALUE_ASSERTION", value: parsed };
+      }
+    }
   }
 
   const boatName = readOptionalField(formData, "physical_boat.boat_name");
@@ -115,6 +128,19 @@ if (readResult.kind === "not_found") {
 
 const draft: OwnerDirectDraft | null = readResult.kind === "ok" ? readResult.data : null;
 const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(`/sell/direct/${draftId}`)}`;
+
+// SLICE-0066: the three mechanically distinct build-year response states
+// (contract §G) -- "not answered" is the true absence of the key, never
+// inferred from a blank/zero year.
+const buildYearResponse = draft?.["physical_boat.build_year"];
+const buildYearMode =
+  buildYearResponse?.assertion_kind === "UNKNOWN"
+    ? "UNKNOWN"
+    : buildYearResponse?.assertion_kind === "VALUE_ASSERTION"
+      ? "VALUE_ASSERTION"
+      : "";
+const buildYearValue =
+  buildYearResponse?.assertion_kind === "VALUE_ASSERTION" ? buildYearResponse.value : "";
 ---
 
 <html lang="en">
@@ -176,11 +202,21 @@ const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(`/sell/
               <p>
                 <label>
                   Build year
-                  <input
-                    type="number"
-                    name="physical_boat.build_year"
-                    value={draft?.["physical_boat.build_year"] ?? ""}
-                  />
+                  <select name="physical_boat.build_year.assertion_kind">
+                    <option value="" selected={buildYearMode === ""}>
+                      -- not answered --
+                    </option>
+                    <option value="VALUE_ASSERTION" selected={buildYearMode === "VALUE_ASSERTION"}>
+                      Known year
+                    </option>
+                    <option value="UNKNOWN" selected={buildYearMode === "UNKNOWN"}>
+                      Unknown
+                    </option>
+                  </select>
+                </label>
+                <label>
+                  Year
+                  <input type="number" name="physical_boat.build_year" value={buildYearValue} />
                 </label>
               </p>
               <p>

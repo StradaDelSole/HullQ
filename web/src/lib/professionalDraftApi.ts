@@ -23,6 +23,16 @@
 const CSRF_HEADER_NAME = "X-HullQ-Requested-With";
 const CSRF_HEADER_VALUE = "professional-listing-draft-v1";
 
+// SLICE-0066: `physical_boat.build_year`'s canonical structured
+// required-response shape (`specs/LISTING_ASSERTION_RESPONSE_CONTRACT.v0.1.md`
+// §3) -- omission is represented by the key's absence, never by a value of
+// this type, so unanswered/UNKNOWN/VALUE_ASSERTION stay three distinct
+// states. FastAPI also still accepts a legacy bare integer as ingress
+// compatibility, but this client only ever sends/reads the canonical form.
+export type BuildYearResponse =
+  | { assertion_kind: "VALUE_ASSERTION"; value: number }
+  | { assertion_kind: "UNKNOWN" };
+
 export interface ProfessionalListingDraft {
   draft_id: string;
   owner_organization_id: string;
@@ -33,7 +43,7 @@ export interface ProfessionalListingDraft {
   updated_at: string;
   "physical_boat.marketed_brand_claim"?: string;
   "physical_boat.model_designation_claim"?: string;
-  "physical_boat.build_year"?: number;
+  "physical_boat.build_year"?: BuildYearResponse;
   "physical_boat.boat_name"?: string;
   "listing_offer.asking_price_mode"?: "AMOUNT" | "POA";
   "listing_offer.asking_price_amount"?: string;

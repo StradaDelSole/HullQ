@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0066  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** Shared seller draft truth-input alignment before professional promotion  
 **Depends on:** SLICE-0054 owner-direct drafts; SLICE-0061 professional drafts; SLICE-0062 professional recovery; SLICE-0065 publication-input alignment  
 **Blocks:** later professional draft promotion readiness/materialization; no later slice is automatically authorized
@@ -216,27 +216,27 @@ Saving or reading any build-year response in either draft channel creates zero P
 
 ## Acceptance criteria
 
-- [ ] Shared common key count remains exactly 9.
-- [ ] Both channels use one common build-year parser/serializer.
-- [ ] Omitted build_year remains omitted and serializes with no key.
-- [ ] Structured VALUE_ASSERTION(year) is accepted and canonicalized.
-- [ ] Structured UNKNOWN is accepted and canonicalized.
-- [ ] OMITTED != UNKNOWN != VALUE_ASSERTION is mechanically tested.
-- [ ] Legacy bare integer requests remain accepted as VALUE_ASSERTION compatibility input.
-- [ ] Legacy bare integer persisted JSONB rows remain readable without bulk migration.
-- [ ] Canonical API/readback for a legacy integer is the structured VALUE_ASSERTION form.
-- [ ] Successful new/update persistence writes canonical structured build-year JSON.
-- [ ] bool, null, invalid assertion kind, missing/extra members and UNKNOWN-with-value fail closed.
-- [ ] Owner-direct create/read/update/browser behavior supports known/unknown/unanswered year.
-- [ ] Professional create/read/update/browser behavior supports known/unknown/unanswered year.
-- [ ] Professional local recovery preserves known/unknown/unanswered state and stale isolation.
-- [ ] Existing broker_description, boat_name, asking-price and all other shared-key semantics remain unchanged.
-- [ ] No database schema migration is introduced unless implementation discovers a repository-proven necessity and stops for review.
-- [ ] Draft save/read creates zero marketplace truth/state.
-- [ ] Search criteria remain exactly two.
-- [ ] Broker Workspace Launch Gate remains NOT_READY.
-- [ ] repository validation, Python formatting/lint/type/tests, web check/test/build pass.
-- [ ] relevant PostgreSQL/FastAPI/Astro retained proof passes.
+- [x] Shared common key count remains exactly 9.
+- [x] Both channels use one common build-year parser/serializer.
+- [x] Omitted build_year remains omitted and serializes with no key.
+- [x] Structured VALUE_ASSERTION(year) is accepted and canonicalized.
+- [x] Structured UNKNOWN is accepted and canonicalized.
+- [x] OMITTED != UNKNOWN != VALUE_ASSERTION is mechanically tested.
+- [x] Legacy bare integer requests remain accepted as VALUE_ASSERTION compatibility input.
+- [x] Legacy bare integer persisted JSONB rows remain readable without bulk migration.
+- [x] Canonical API/readback for a legacy integer is the structured VALUE_ASSERTION form.
+- [x] Successful new/update persistence writes canonical structured build-year JSON.
+- [x] bool, null, invalid assertion kind, missing/extra members and UNKNOWN-with-value fail closed.
+- [x] Owner-direct create/read/update/browser behavior supports known/unknown/unanswered year.
+- [x] Professional create/read/update/browser behavior supports known/unknown/unanswered year.
+- [x] Professional local recovery preserves known/unknown/unanswered state and stale isolation.
+- [x] Existing broker_description, boat_name, asking-price and all other shared-key semantics remain unchanged.
+- [x] No database schema migration is introduced unless implementation discovers a repository-proven necessity and stops for review.
+- [x] Draft save/read creates zero marketplace truth/state.
+- [x] Search criteria remain exactly two.
+- [x] Broker Workspace Launch Gate remains NOT_READY.
+- [x] repository validation, Python formatting/lint/type/tests, web check/test/build pass.
+- [x] relevant PostgreSQL/FastAPI/Astro retained proof passes.
 - [ ] exact implementation HEAD receives independent review and required remote CI.
 - [ ] explicit Project Owner acceptance occurs before implementation merge.
 

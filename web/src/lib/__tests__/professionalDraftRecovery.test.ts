@@ -444,6 +444,48 @@ test("RECOVERY_FIELD_NAMES: includes the SLICE-0065 listing_offer.broker_descrip
   assert.ok(RECOVERY_FIELD_NAMES.includes("listing_offer.broker_description"));
 });
 
+test("RECOVERY_FIELD_NAMES: includes the SLICE-0066 physical_boat.build_year.assertion_kind recovery-only control", () => {
+  assert.ok(RECOVERY_FIELD_NAMES.includes("physical_boat.build_year.assertion_kind"));
+});
+
+test("captureFormValues + applyFormValues: physical_boat.build_year.assertion_kind round-trips like every other bounded field", () => {
+  const values = captureFormValues((name) => {
+    if (name === "physical_boat.build_year.assertion_kind") return "UNKNOWN";
+    return undefined;
+  });
+  assert.equal(values["physical_boat.build_year.assertion_kind"], "UNKNOWN");
+
+  const written: Record<string, string> = {};
+  applyFormValues((name, value) => {
+    written[name] = value;
+  }, values);
+  assert.equal(written["physical_boat.build_year.assertion_kind"], "UNKNOWN");
+});
+
+test("captureFormValues: preserves the three build-year response states (not answered/known/unknown) together", () => {
+  const notAnswered = captureFormValues((name) => {
+    if (name === "physical_boat.build_year.assertion_kind") return "";
+    return undefined;
+  });
+  assert.deepEqual(notAnswered, { "physical_boat.build_year.assertion_kind": "" });
+
+  const known = captureFormValues((name) => {
+    if (name === "physical_boat.build_year.assertion_kind") return "VALUE_ASSERTION";
+    if (name === "physical_boat.build_year") return "1987";
+    return undefined;
+  });
+  assert.deepEqual(known, {
+    "physical_boat.build_year.assertion_kind": "VALUE_ASSERTION",
+    "physical_boat.build_year": "1987",
+  });
+
+  const unknown = captureFormValues((name) => {
+    if (name === "physical_boat.build_year.assertion_kind") return "UNKNOWN";
+    return undefined;
+  });
+  assert.deepEqual(unknown, { "physical_boat.build_year.assertion_kind": "UNKNOWN" });
+});
+
 test("captureFormValues + applyFormValues: listing_offer.broker_description round-trips like every other bounded field", () => {
   const values = captureFormValues((name) =>
     name === "listing_offer.broker_description" ? "A lovely, well-maintained sloop." : undefined,

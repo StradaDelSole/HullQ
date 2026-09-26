@@ -35,6 +35,8 @@ __all__ = [
     "ACCEPTED_DRAFT_PAYLOAD_KEYS",
     "EMPTY_LISTING_DRAFT_PAYLOAD",
     "AskingPriceMode",
+    "BuildYearAssertionKind",
+    "BuildYearResponse",
     "InvalidListingDraftPayloadError",
     "ListingDraftPayload",
     "parse_listing_draft_payload",
@@ -47,11 +49,58 @@ class AskingPriceMode(StrEnum):
     POA = "POA"
 
 
+class BuildYearAssertionKind(StrEnum):
+    """SLICE-0066: `physical_boat.build_year`'s draft-layer required-response
+    kinds (`specs/LISTING_ASSERTION_RESPONSE_CONTRACT.v0.1.md` §3). Deliberately
+    a small, field-local vocabulary rather than a reuse of the marketplace
+    `hullq.domain.native_listing_offer.AssertionKind` -- the draft layer must
+    stay independent of marketplace claim types (contract §6/§10: draft save
+    creates zero PhysicalBoat/claim state)."""
+
+    VALUE_ASSERTION = "VALUE_ASSERTION"
+    UNKNOWN = "UNKNOWN"
+
+
 class InvalidListingDraftPayloadError(ValueError):
     """Raised for an unknown key, an invalid value shape or a violated
     conditional rule. Callers must fail the whole request closed (400) with
     zero mutation -- never partially accept a payload.
     """
+
+
+@dataclass(frozen=True)
+class BuildYearResponse:
+    """SLICE-0066: `physical_boat.build_year`'s canonical draft-layer
+    required-response value (`LISTING_ASSERTION_RESPONSE_CONTRACT.v0.1.md`
+    §3/§4). A `ListingDraftPayload.build_year` of `None` remains omission
+    (contract §3.1) -- this type only ever exists for an explicit answer, so
+    omitted/UNKNOWN/VALUE_ASSERTION stay three mechanically distinct states.
+    """
+
+    assertion_kind: BuildYearAssertionKind
+    value: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.assertion_kind is BuildYearAssertionKind.VALUE_ASSERTION:
+            # bool is a subclass of int in Python; excluded explicitly, same
+            # rule as the pre-0066 legacy bare-integer check below.
+            if isinstance(self.value, bool) or not isinstance(self.value, int):
+                raise InvalidListingDraftPayloadError(
+                    "physical_boat.build_year.value must be an integer when "
+                    f"assertion_kind is VALUE_ASSERTION, got {type(self.value).__name__}"
+                )
+        elif self.value is not None:
+            raise InvalidListingDraftPayloadError(
+                "physical_boat.build_year must not include a value when "
+                f"assertion_kind is {self.assertion_kind.value}"
+            )
+
+    def to_wire_value(self) -> dict[str, Any]:
+        """Canonical structured wire form (contract §5): always the object
+        shape, even for a value ingested via the legacy bare-integer form."""
+        if self.assertion_kind is BuildYearAssertionKind.VALUE_ASSERTION:
+            return {"assertion_kind": self.assertion_kind.value, "value": self.value}
+        return {"assertion_kind": self.assertion_kind.value}
 
 
 #: The finite accepted draft-input key set. Any other key fails closed;
@@ -84,7 +133,7 @@ class ListingDraftPayload:
 
     marketed_brand_claim: str | None = None
     model_designation_claim: str | None = None
-    build_year: int | None = None
+    build_year: BuildYearResponse | None = None
     boat_name: str | None = None
     asking_price_mode: AskingPriceMode | None = None
     asking_price_amount: Decimal | None = None
@@ -100,7 +149,7 @@ class ListingDraftPayload:
         if self.model_designation_claim is not None:
             result["physical_boat.model_designation_claim"] = self.model_designation_claim
         if self.build_year is not None:
-            result["physical_boat.build_year"] = self.build_year
+            result["physical_boat.build_year"] = self.build_year.to_wire_value()
         if self.boat_name is not None:
             result["physical_boat.boat_name"] = self.boat_name
         if self.asking_price_mode is not None:
@@ -138,13 +187,57 @@ def require_trimmed_nonempty_string(value: Any, field_label: str) -> str:
     return trimmed
 
 
-def _parse_build_year(value: Any) -> int:
-    # bool is an int subclass in Python; explicitly excluded.
+_BUILD_YEAR_OBJECT_MEMBERS = frozenset({"assertion_kind", "value"})
+
+
+def _parse_build_year_object(raw: dict[str, Any]) -> BuildYearResponse:
+    """Strict canonical structured shape (contract §4): unknown members,
+    a missing/invalid `assertion_kind`, a missing `value` under
+    VALUE_ASSERTION and a present `value` (including explicit `null`) under
+    UNKNOWN all fail closed."""
+    extra = set(raw) - _BUILD_YEAR_OBJECT_MEMBERS
+    if extra:
+        raise InvalidListingDraftPayloadError(
+            f"physical_boat.build_year has unknown member(s): {sorted(extra)}"
+        )
+    if "assertion_kind" not in raw:
+        raise InvalidListingDraftPayloadError("physical_boat.build_year.assertion_kind is required")
+    raw_kind = raw["assertion_kind"]
+    if not isinstance(raw_kind, str) or raw_kind not in {k.value for k in BuildYearAssertionKind}:
+        raise InvalidListingDraftPayloadError(
+            "physical_boat.build_year.assertion_kind must be exactly 'VALUE_ASSERTION' or 'UNKNOWN'"
+        )
+    kind = BuildYearAssertionKind(raw_kind)
+    if kind is BuildYearAssertionKind.VALUE_ASSERTION:
+        if "value" not in raw:
+            raise InvalidListingDraftPayloadError(
+                "physical_boat.build_year.value is required when assertion_kind is VALUE_ASSERTION"
+            )
+        return BuildYearResponse(kind, raw["value"])
+    # UNKNOWN forbids `value`, including an explicit `"value": null` (contract §4).
+    if "value" in raw:
+        raise InvalidListingDraftPayloadError(
+            "physical_boat.build_year must not include a value when assertion_kind is UNKNOWN"
+        )
+    return BuildYearResponse(kind)
+
+
+def _parse_build_year(value: Any) -> BuildYearResponse:
+    """Accepts either the canonical structured object or the legacy bare
+    integer (contract §5), normalizing the legacy form to VALUE_ASSERTION.
+    `bool`/`float`/`str`/`None` (including JSON null) all fail closed --
+    omission is represented only by the wire key's absence, never by a
+    present `null` value."""
+    if isinstance(value, dict):
+        return _parse_build_year_object(value)
+    # bool is an int subclass in Python; explicitly excluded, same as the
+    # canonical VALUE_ASSERTION.value rule.
     if isinstance(value, bool) or not isinstance(value, int):
         raise InvalidListingDraftPayloadError(
-            f"physical_boat.build_year must be an integer, got {type(value).__name__}"
+            "physical_boat.build_year must be an integer or a structured "
+            f"assertion-response object, got {type(value).__name__}"
         )
-    return value
+    return BuildYearResponse(BuildYearAssertionKind.VALUE_ASSERTION, value)
 
 
 def _parse_asking_price_mode(value: Any) -> AskingPriceMode:

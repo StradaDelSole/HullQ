@@ -496,6 +496,7 @@ def main() -> int:
             {
                 "expected_version": "1",
                 "physical_boat.boat_name": "Sea Breeze",
+                "physical_boat.build_year.assertion_kind": "VALUE_ASSERTION",
                 "physical_boat.build_year": "2005",
                 "listing_offer.asking_price_mode": "AMOUNT",
                 "listing_offer.asking_price_amount": "129000.50",
@@ -528,6 +529,8 @@ def main() -> int:
             and api_record["version"] == 2
             and api_record["physical_boat.boat_name"] == "Sea Breeze"
             and api_record["listing_offer.asking_price_amount"] == "129000.50"
+            and api_record["physical_boat.build_year"]
+            == {"assertion_kind": "VALUE_ASSERTION", "value": 2005}
         )
         ok &= api_durable_ok
 
@@ -538,6 +541,61 @@ def main() -> int:
         print(
             f"9. reload/reopen (Astro + direct FastAPI read + list) returns exact durable "
             f"PostgreSQL-saved values/version -> {'OK' if (reload_ok and api_durable_ok and list_ok) else 'FAIL'}\n"
+        )
+
+        # 5b. SLICE-0066: a second, independent draft proves the three
+        # mechanically distinct build-year response states -- unanswered,
+        # explicit UNKNOWN, concrete VALUE_ASSERTION(year), back to
+        # unanswered -- all round-trip through real PostgreSQL via the real
+        # /sell/direct browser surface (contract §G/§I).
+        status, headers, _ = session.post_form(f"{web_base}/sell/direct", {}, origin=web_base)
+        by_draft_path = headers.get("Location", "")
+        by_draft_id = by_draft_path.rsplit("/", 1)[-1]
+
+        status, _, body = session.get(f"{api_base}/api/owner-direct/drafts/{by_draft_id}")
+        by_omitted_ok = status == 200 and "physical_boat.build_year" not in _json(body)
+
+        status, headers, body = session.post_form(
+            f"{web_base}{by_draft_path}",
+            {"expected_version": "1", "physical_boat.build_year.assertion_kind": "UNKNOWN"},
+            origin=web_base,
+        )
+        status, _, body = session.get(f"{api_base}/api/owner-direct/drafts/{by_draft_id}")
+        by_unknown_record = _json(body)
+        by_unknown_ok = status == 200 and by_unknown_record.get("physical_boat.build_year") == {
+            "assertion_kind": "UNKNOWN"
+        }
+
+        status, headers, body = session.post_form(
+            f"{web_base}{by_draft_path}",
+            {
+                "expected_version": "2",
+                "physical_boat.build_year.assertion_kind": "VALUE_ASSERTION",
+                "physical_boat.build_year": "1987",
+            },
+            origin=web_base,
+        )
+        status, _, body = session.get(f"{api_base}/api/owner-direct/drafts/{by_draft_id}")
+        by_known_record = _json(body)
+        by_known_ok = status == 200 and by_known_record.get("physical_boat.build_year") == {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": 1987,
+        }
+
+        status, headers, body = session.post_form(
+            f"{web_base}{by_draft_path}",
+            {"expected_version": "3"},
+            origin=web_base,
+        )
+        status, _, body = session.get(f"{api_base}/api/owner-direct/drafts/{by_draft_id}")
+        by_reomitted_record = _json(body)
+        by_reomitted_ok = status == 200 and "physical_boat.build_year" not in by_reomitted_record
+
+        build_year_states_ok = by_omitted_ok and by_unknown_ok and by_known_ok and by_reomitted_ok
+        ok &= build_year_states_ok
+        print(
+            "9b. SLICE-0066 build-year response: unanswered != UNKNOWN != VALUE_ASSERTION, "
+            f"all round-trip through real PostgreSQL -> {'OK' if build_year_states_ok else 'FAIL'}\n"
         )
 
         # 6. Account A updates with the current version; version increments.
@@ -644,7 +702,9 @@ def main() -> int:
 
         status, _, body = session.get(f"{api_base}/api/owner-direct/drafts")
         draft_count_after_csrf_attempts = len(_json(body)["drafts"])
-        no_mutation_from_csrf_failure_ok = draft_count_after_csrf_attempts == 1
+        # 2, not 1: the primary draft plus the SLICE-0066 build-year-states
+        # draft created earlier at step 9b -- both real, authorized creates.
+        no_mutation_from_csrf_failure_ok = draft_count_after_csrf_attempts == 2
         ok &= csrf_ok and no_mutation_from_csrf_failure_ok
         print(
             f"14. missing-CSRF-header and cross-origin mutation both fail closed (403), "

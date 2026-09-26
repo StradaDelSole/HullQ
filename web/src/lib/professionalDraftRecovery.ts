@@ -65,6 +65,11 @@ export const RECOVERY_FIELD_NAMES = [
   "physical_boat.marketed_brand_claim",
   "physical_boat.model_designation_claim",
   "physical_boat.build_year",
+  // SLICE-0066: the bounded recovery-only build-year control state --
+  // exactly "", "VALUE_ASSERTION" or "UNKNOWN" -- carried alongside the
+  // existing `physical_boat.build_year` year-input string above. Not a
+  // draft API key and never sent as marketplace/draft truth (contract §9).
+  "physical_boat.build_year.assertion_kind",
   "physical_boat.boat_name",
   "listing_offer.asking_price_mode",
   "listing_offer.asking_price_amount",

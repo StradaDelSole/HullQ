@@ -163,6 +163,13 @@ class TestParseProfessionalListingDraftRequestCommonFieldsUnchanged:
         assert request.common.asking_price_amount == Decimal("129000.50")
         expected_common = dict(raw)
         expected_common.pop("broker_listing_reference")
+        # SLICE-0066: canonical readback is always the structured
+        # VALUE_ASSERTION object, even though the legacy bare integer above
+        # remains accepted as ingress.
+        expected_common["physical_boat.build_year"] = {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": 2005,
+        }
         assert request.common.to_wire_dict() == expected_common
 
     def test_poa_with_amount_still_rejected(self) -> None:
