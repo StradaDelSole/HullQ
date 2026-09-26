@@ -147,7 +147,7 @@ When present, values must satisfy these bounded shapes:
 
 - `physical_boat.marketed_brand_claim`: trimmed non-empty string;
 - `physical_boat.model_designation_claim`: trimmed non-empty string;
-- `physical_boat.build_year`: integer value, not boolean; no guessed year is generated;
+- `physical_boat.build_year`: SLICE-0066 shared assertion-response semantics from `LISTING_DRAFT_ASSERTION_RESPONSE_CONTRACT.v0.1.md`; canonical form is `VALUE_ASSERTION(integer)` or explicit `UNKNOWN`, while omission remains unanswered and the historical bare integer form remains accepted only for compatibility;
 - `physical_boat.boat_name`: trimmed non-empty string;
 - `listing_offer.asking_price_mode`: exactly `AMOUNT` or `POA`;
 - `listing_offer.asking_price_amount`: positive finite decimal represented without binary-float truth semantics;
@@ -165,6 +165,20 @@ asking_price_mode = POA
 For an incomplete draft with `asking_price_mode = AMOUNT`, amount and currency MAY still be absent until later editing/admission. HullQ must show that the draft is incomplete rather than inventing those values.
 
 No broker-specific narrative field (`broker_summary`, `broker_description`) is renamed or reused for a private seller in this slice.
+
+### 6.3 SLICE-0066 build-year required-response alignment
+
+SLICE-0066 does not change the nine-key vocabulary. It changes only the value representation of the existing `physical_boat.build_year` key under the controlling `specs/LISTING_DRAFT_ASSERTION_RESPONSE_CONTRACT.v0.1.md`.
+
+The draft must preserve three distinct states:
+
+```text
+key omitted
+!= {"assertion_kind":"UNKNOWN"}
+!= {"assertion_kind":"VALUE_ASSERTION","value":1987}
+```
+
+The historical bare integer form remains accepted/readable and normalizes to VALUE_ASSERTION. Canonical serialization uses the structured object. Blank/missing input MUST NOT be converted to UNKNOWN.
 
 ## 7. Optimistic concurrency
 
