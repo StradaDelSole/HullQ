@@ -259,7 +259,7 @@ Denied/ineligible promotion writes zero marketplace state and leaves draft EDITA
 
 ### K. Browser write security and result
 
-Promotion reuses the accepted professional same-origin CSRF boundary: trusted exact Origin plus the accepted non-simple professional draft request header. Missing/foreign Origin or missing/wrong header fails before mutation.
+Promotion reuses the accepted professional same-origin CSRF boundary: trusted exact Origin plus `X-HullQ-Requested-With: professional-listing-draft-v1`. Missing/foreign Origin or missing/wrong header fails before mutation.
 
 Professional draft editor:
 
@@ -293,7 +293,7 @@ Professional draft editor:
 - [ ] Active draft list excludes PROMOTED.
 - [ ] Ordinary update rejects PROMOTED with a distinct immutable/promoted conflict outcome and zero mutation.
 - [ ] Same-version stale recovery does not restore/apply to a PROMOTED draft and is best-effort cleared.
-- [ ] Promotion request accepts only expected_version, never marketplace IDs.
+- [ ] Promotion request accepts exactly one positive-integer `expected_version` key; booleans/null/strings/floats/non-positive values/extra keys fail with zero mutation, and marketplace IDs are never accepted.
 - [ ] Exact current EDITABLE version + READY + authorized/eligible can promote.
 - [ ] Stale expected version returns conflict and writes zero rows.
 - [ ] Promotion mints server-owned fresh PhysicalBoat/MarketEpisode/NativeListing/revision identities.
@@ -307,6 +307,7 @@ Professional draft editor:
 - [ ] Source draft becomes PROMOTED only in the same successful transaction.
 - [ ] Promotion leaves draft content version unchanged/frozen.
 - [ ] PROMOTED stores immutable NativeListing result link and promoted_at.
+- [ ] PostgreSQL enforces promotion-state validity/nullability pairing, FK integrity for promoted_native_listing_id, and uniqueness of a non-null promoted NativeListing provenance link.
 - [ ] Exact retry at the frozen promoted version returns same NativeListingId with zero additional writes.
 - [ ] PROMOTED retry with a mismatched expected version returns VERSION_CONFLICT and reveals no alternate-version result.
 - [ ] Concurrent exact promotion attempts create exactly one marketplace chain.
