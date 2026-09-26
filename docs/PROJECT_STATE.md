@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-27  
 **Latest owner-accepted / DONE slice:** SLICE-0066  
-**Current queue:** SLICE-0067 — **UNSELECTED**. A fresh post-SLICE-0066 repository/product reassessment and Decision / Implementation Reconciliation are required before any capability selection, readiness work or implementation authorization.  
+**Current queue:** SLICE-0067 — **Professional Draft → Atomic Marketplace Promotion** selected by the fresh post-SLICE-0066 reassessment. Implementation is authorized only after this READY package receives independent exact-head review, required remote gates pass, and the readiness changes are merged to canonical `main`.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -278,20 +278,41 @@ Next queue number:
 SLICE-0067
 ```
 
-**Selected capability:** UNSELECTED.
+**Selected capability:** Professional Draft → Atomic Marketplace Promotion.
 
-SLICE-0066 is owner-accepted and merged. Before any SLICE-0067 selection, readiness package, `START_SLICE.bat` authorization or new material product/domain/data/architecture decision, perform a fresh post-SLICE-0066 repository/product reassessment against canonical `origin/main`, including Decision / Implementation Reconciliation, the 2026-09-26 professional marketplace workflow decisions, the broker-launch execution focus and the post-0051 trigger gates.
-
-The broker-launch execution focus strongly suggests evaluating the shortest safe vertical capability toward:
+Controlling reassessment:
 
 ```text
-ProfessionalListingDraft
-→ PROMOTION_READY
-→ atomic marketplace materialization
-→ NativeListing DRAFT
+docs/POST_SLICE_0066_REASSESSMENT_2026-09-27.md
 ```
 
-but no SLICE-0067 capability is preselected by this closure.
+Readiness contract:
+
+```text
+docs/slices/SLICE-0067-professional-draft-atomic-promotion.md
+```
+
+Primary normative promotion contract:
+
+```text
+specs/PROFESSIONAL_LISTING_PROMOTION_CONTRACT.v0.1.md
+```
+
+The selected capability implements the already-decided fresh-identity branch only:
+
+```text
+promotion-ready ProfessionalListingDraft
+→ server-minted PhysicalBoat
+→ server-minted MarketEpisode
+→ server-minted NativeListing DRAFT
+→ initial Organization PhysicalBoat claim
+→ initial NativeListing offer
+→ source draft PROMOTED
+```
+
+All writes must commit as one transaction. Existing-PhysicalBoat/episode reconciliation, media and publication remain explicitly deferred.
+
+The readiness package must receive independent exact-head ACCEPT, required remote gates and merge to canonical `main` before `START_SLICE.bat` is authorized. No later slice is selected.
 
 ## Development workflow
 
@@ -306,6 +327,6 @@ but no SLICE-0067 capability is preselected by this closure.
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; accepted SLICE-0066 closes the selected required-response alignment and SLICE-0067 is deliberately UNSELECTED pending fresh post-0066 reassessment.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; the fresh post-SLICE-0066 reassessment selects SLICE-0067 Professional Draft → Atomic Marketplace Promotion, with implementation still gated by readiness review/gates/merge.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
