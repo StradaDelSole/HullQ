@@ -147,7 +147,7 @@ When present, values must satisfy these bounded shapes:
 
 - `physical_boat.marketed_brand_claim`: trimmed non-empty string;
 - `physical_boat.model_designation_claim`: trimmed non-empty string;
-- `physical_boat.build_year`: SLICE-0066 shared assertion-response semantics from `LISTING_DRAFT_ASSERTION_RESPONSE_CONTRACT.v0.1.md`; canonical form is `VALUE_ASSERTION(integer)` or explicit `UNKNOWN`, while omission remains unanswered and the historical bare integer form remains accepted only for compatibility;
+- `physical_boat.build_year`: SLICE-0066 shared assertion-response semantics from `LISTING_ASSERTION_RESPONSE_CONTRACT.v0.1.md`; canonical form is `VALUE_ASSERTION(integer)` or explicit `UNKNOWN`, while omission remains unanswered and the historical bare integer form remains accepted only for compatibility;
 - `physical_boat.boat_name`: trimmed non-empty string;
 - `listing_offer.asking_price_mode`: exactly `AMOUNT` or `POA`;
 - `listing_offer.asking_price_amount`: positive finite decimal represented without binary-float truth semantics;
@@ -168,7 +168,7 @@ No broker-specific narrative field (`broker_summary`, `broker_description`) is r
 
 ### 6.3 SLICE-0066 build-year required-response alignment
 
-SLICE-0066 does not change the nine-key vocabulary. It changes only the value representation of the existing `physical_boat.build_year` key under the controlling `specs/LISTING_DRAFT_ASSERTION_RESPONSE_CONTRACT.v0.1.md`.
+SLICE-0066 does not change the nine-key vocabulary. It changes only the value representation of the existing `physical_boat.build_year` key under the controlling `specs/LISTING_ASSERTION_RESPONSE_CONTRACT.v0.1.md`.
 
 The draft must preserve three distinct states:
 
