@@ -7,6 +7,8 @@
 
 > **Current marketplace amendment (2026-09-14):** The early-plan language below predates the accepted native-marketplace implementation and the owner-direct pivot. HullQ is now a native **broker-first mixed-supply** marketplace. `docs/PRODUCT_EXECUTION_PLAN_OWNER_DIRECT_RECONCILIATION_2026-09-14.md`, `docs/OWNER_DIRECT_LISTING_PRODUCT_DIRECTION_2026-09-14.md` and `specs/OWNER_DIRECT_LISTING_REQUIREMENTS.v0.1.md` supersede any statement below that treats a native marketplace as merely possible later, limits private owners to referral-only supply, or treats independent owner-direct listings as out of scope. The execution discipline, truth principles and validation logic in this file remain controlling where non-conflicting.
 
+> **Broker-launch execution amendment (2026-09-26):** After the accepted foundation through SLICE-0065 and READY SLICE-0066, execution priority shifts toward the shortest coherent professional `Broker → Listing → Buyer Lead → Broker Operation` loop. `docs/BROKER_LAUNCH_EXECUTION_FOCUS_2026-09-26.md` controls that prioritization. The ONE-CAPABILITY rule remains, but one capability means one coherent user-visible/business-critical outcome rather than one field, endpoint or technical layer. Risk-based slice sizing below explicitly permits larger vertical slices when accepted semantics already decide the material behavior and implementation is mainly composition. Strict truth, authorization, provenance, review and launch-gate requirements are unchanged.
+
 ## 1. Purpose
 
 HullQ is no longer executed as a broad architecture-first or database-completeness program. From SLICE-0039 onward, work is prioritized by the largest unresolved product/business risk and must produce either one user-visible capability or one business-critical hypothesis result.
@@ -241,17 +243,64 @@ If `NO`, split or reduce the slice before starting.
 
 If `NO`, presume the slice is infrastructure-first and require an explicit blocker rationale before proceeding.
 
+### RISK-BASED SLICE SIZING
+
+The ONE-CAPABILITY rule is a product-boundary rule, not a micro-slicing rule.
+
+A single slice MAY span persistence, domain/application logic, API, frontend and tests when all of those layers are mechanically necessary to deliver one coherent capability and no second independent product/domain policy is being introduced.
+
+Keep a slice deliberately narrow when it introduces a material independent risk, including:
+
+- identity allocation/resolution or deduplication authority;
+- truth/provenance semantics;
+- authorization, tenant isolation or MFA/step-up policy;
+- money/payment;
+- destructive or difficult-to-reverse migration;
+- cross-Organization ownership/rights;
+- concurrency/idempotency authority;
+- media rights/privacy/security;
+- lifecycle/outcome semantics;
+- a new Search eligibility/classification rule.
+
+Permit a larger vertical slice when:
+
+1. accepted decisions/specifications already settle the material semantics;
+2. remaining work is mainly composition across layers;
+3. the result is one end-to-end user-visible capability;
+4. rollback/review is still tractable;
+5. focused and full-system validation can prove the boundary.
+
+If implementation discovers a new material policy decision or ambiguity, stop and split/reassess rather than hiding it inside a larger slice.
+
 Additional rules:
 
 - at most one new external dependency per ordinary product slice;
 - do not create generic frameworks without a current consumer;
-- do not combine API + persistence + auth + frontend + SEO merely because they belong to one future feature;
-- a major amendment is a signal to reassess whether the slice was oversized;
+- do not combine unrelated API + persistence + auth + frontend + SEO work merely because the pieces belong to the same future roadmap area; combining layers is permitted only when they are inseparable parts of the one selected vertical capability;
+- a major amendment is a signal to reassess whether the slice was oversized or contained an undiscovered policy boundary;
 - future-proofing is not a reason to widen a slice;
 - strict truth/provenance/fail-closed behavior is not relaxed for speed;
-- process/governance work that does not directly remove a real blocker should not interrupt the visible product sequence.
+- process/governance work that does not directly remove a real blocker, correct a real contradiction or satisfy a triggered gate should not interrupt the visible product sequence.
 
-After the 2026-09-14 pivot, any slice touching listing/supply, seller identity/verification, representation conflict, referral, marketplace monetization or Search must reconcile against the owner-direct product direction/spec and the mixed-supply execution reconciliation.
+### BROKER-LAUNCH PRIORITY
+
+From the accepted SLICE-0066 boundary onward, post-slice reassessment should strongly prefer work that advances:
+
+```text
+broker creates
+→ adds media
+→ publishes
+→ buyer contacts
+→ broker handles lead
+→ broker edits/maintains inventory
+→ explicit outcome / scale capabilities as required
+```
+
+A capability outside this sequence may still take priority when it removes a real truth/security/legal blocker, satisfies a triggered mandatory commitment, or has demonstrably higher business leverage. Otherwise the reassessment must state why it should interrupt the launch path.
+
+Structured import remains strategically important but must feed the normal draft/marketplace workflow rather than become a second truth pipeline. It should move forward aggressively once the coherent create/publish/operate path exists and must be implemented before scaled broker onboarding under REQ-BROKER-027.
+
+After the 2026-09-14 pivot, any slice touching listing/supply, seller identity/verification, representation conflict, referral, marketplace monetization or Search must reconcile against the owner-direct product direction/spec and the mixed-supply execution reconciliation. After the 2026-09-26 execution amendment, relevant reassessment/readiness must also reconcile against `docs/BROKER_LAUNCH_EXECUTION_FOCUS_2026-09-26.md`.
 
 ## 4. Strategic freeze / explicit pivots
 
