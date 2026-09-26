@@ -93,6 +93,7 @@ form_values
 - `physical_boat.marketed_brand_claim`;
 - `physical_boat.model_designation_claim`;
 - `physical_boat.build_year`;
+- `physical_boat.build_year.assertion_kind` — SLICE-0066 recovery-only control state, not a draft API key;
 - `physical_boat.boat_name`;
 - `listing_offer.asking_price_mode`;
 - `listing_offer.asking_price_amount`;
@@ -102,7 +103,17 @@ form_values
 
 Browser storage is allowed to preserve form-string/control representation before server normalization/validation because it is only a recovery buffer. On real Save, the existing Astro/FastAPI path remains authoritative.
 
-SLICE-0066 requires recovery to preserve the build-year response state sufficiently to distinguish unanswered, explicit UNKNOWN and a concrete year. The envelope may use bounded recovery-only form/control fields for that purpose; they are not additional draft API keys or marketplace truth. A blank recovered year MUST NOT be interpreted as UNKNOWN.
+SLICE-0066 requires recovery to preserve the build-year response state sufficiently to distinguish unanswered, explicit UNKNOWN and a concrete year.
+
+The exact recovery-only control key is:
+
+```text
+physical_boat.build_year.assertion_kind
+```
+
+Accepted captured string values are exactly the empty string, `VALUE_ASSERTION` or `UNKNOWN`. The existing `physical_boat.build_year` recovery field continues to preserve the year input string itself.
+
+This recovery-only key is not a tenth draft API key and is never sent as marketplace truth. A blank recovered year MUST NOT be interpreted as UNKNOWN.
 
 The envelope MUST NOT contain session cookies, OIDC/Auth0 tokens, MFA material, credential material, database secrets or unrelated workspace data.
 
