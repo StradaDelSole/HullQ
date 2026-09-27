@@ -289,6 +289,13 @@ const actionOutcomeText: Record<ActionOutcome, string | null> = {
                         )}
                       </td>
                       <td>
+                        <p>
+                          <a
+                            href={`/broker/organizations/${organizationId}/inventory/${encodeURIComponent(item.native_listing_id)}/media`}
+                          >
+                            Manage media
+                          </a>
+                        </p>
                         {item.lifecycle_state === "DRAFT" && (
                           <form method="POST">
                             <input type="hidden" name="native_listing_id" value={item.native_listing_id} />

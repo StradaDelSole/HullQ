@@ -1,0 +1,479 @@
+---
+// SLICE-0068: the Broker Workspace mixed-media gallery editor
+// (MARKETPLACE_MEDIA_GALLERY_CONTRACT.v0.1 §13). Supports multi-file image
+// upload with per-item success/failure state, gallery ordering, explicit
+// cover selection, removal, same-Organization reuse, YouTube add/remove and
+// asset retirement -- all through plain progressive `<form>` submissions,
+// matching every other page in this package (no client-side JavaScript).
+//
+// Every mutation here re-reads the authoritative gallery/library state from
+// FastAPI afterward (contract §13: "never invents success") -- nothing
+// rendered below is ever a client-invented/optimistic result.
+export const prerender = false;
+
+import {
+  addListingYoutube,
+  fetchListingGallery,
+  fetchMediaLibrary,
+  removeListingPlacement,
+  reorderListingGallery,
+  retireMediaAsset,
+  reuseListingMedia,
+  setListingCover,
+  uploadListingImage,
+  type MediaAssetView,
+  type MediaPlacementView,
+} from "../../../../../../lib/mediaGalleryApi";
+import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../../../../lib/authConstants";
+
+const organizationId = Astro.params.organization_id;
+const nativeListingId = Astro.params.native_listing_id;
+const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
+const cookieHeader = Astro.request.headers.get("cookie");
+const originHeader = Astro.request.headers.get("origin");
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+Astro.response.headers.set("Cache-Control", "private, no-store");
+
+type UploadItemOutcome = { filename: string; outcome: string };
+
+let actionMessage = "";
+let uploadResults: UploadItemOutcome[] = [];
+
+if (Astro.request.method === "POST" && organizationId && nativeListingId) {
+  const formData = await Astro.request.formData();
+  const action = formData.get("action");
+
+  if (action === "upload") {
+    const rightsConfirmed = formData.get("rights_confirmed") === "on";
+    const files = formData.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
+    if (files.length === 0) {
+      actionMessage = "Choose at least one image file to upload.";
+    } else {
+      for (const file of files) {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const contentType = file.type || "application/octet-stream";
+        const result = await uploadListingImage(
+          apiBaseUrl,
+          organizationId,
+          nativeListingId,
+          bytes,
+          contentType,
+          rightsConfirmed,
+          cookieHeader,
+          originHeader,
+        );
+        if (result.kind === "ok") {
+          uploadResults.push({ filename: file.name, outcome: "Uploaded" });
+        } else if (result.kind === "rejected") {
+          uploadResults.push({ filename: file.name, outcome: `Rejected: ${result.reason}` });
+        } else if (result.kind === "payload_too_large") {
+          uploadResults.push({ filename: file.name, outcome: "Too large" });
+        } else {
+          uploadResults.push({ filename: file.name, outcome: "Failed" });
+        }
+      }
+      actionMessage = `Uploaded ${uploadResults.filter((r) => r.outcome === "Uploaded").length} of ${files.length} file(s).`;
+    }
+  } else if (action === "reuse") {
+    const mediaAssetId = formData.get("media_asset_id");
+    if (typeof mediaAssetId === "string" && mediaAssetId) {
+      const result = await reuseListingMedia(
+        apiBaseUrl,
+        organizationId,
+        nativeListingId,
+        mediaAssetId,
+        cookieHeader,
+        originHeader,
+      );
+      actionMessage =
+        result.kind === "ok"
+          ? "Reused existing image."
+          : result.kind === "asset_not_found"
+            ? "That image isn't available to reuse."
+            : "Could not reuse that image.";
+    }
+  } else if (action === "youtube_add") {
+    const url = formData.get("youtube_url");
+    if (typeof url === "string" && url) {
+      const result = await addListingYoutube(
+        apiBaseUrl,
+        organizationId,
+        nativeListingId,
+        url,
+        cookieHeader,
+        originHeader,
+      );
+      actionMessage =
+        result.kind === "ok"
+          ? "YouTube video added."
+          : result.kind === "invalid_url"
+            ? "That YouTube link isn't supported."
+            : "Could not add that YouTube video.";
+    }
+  } else if (action === "reorder") {
+    const expectedVersionRaw = formData.get("expected_version");
+    const expectedVersion =
+      typeof expectedVersionRaw === "string" ? Number.parseInt(expectedVersionRaw, 10) : NaN;
+    const entries: { id: string; position: number }[] = [];
+    for (const [key, value] of formData.entries()) {
+      if (key.startsWith("position_") && typeof value === "string") {
+        entries.push({ id: key.slice("position_".length), position: Number.parseInt(value, 10) || 0 });
+      }
+    }
+    entries.sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
+    if (!Number.isNaN(expectedVersion) && entries.length > 0) {
+      const result = await reorderListingGallery(
+        apiBaseUrl,
+        organizationId,
+        nativeListingId,
+        expectedVersion,
+        entries.map((e) => e.id),
+        cookieHeader,
+        originHeader,
+      );
+      actionMessage =
+        result.kind === "ok"
+          ? "Order saved."
+          : result.kind === "version_conflict"
+            ? "The gallery changed since you loaded this page -- review the current order below."
+            : "Could not save that order.";
+    }
+  } else if (action === "set_cover" || action === "clear_cover") {
+    const expectedVersionRaw = formData.get("expected_version");
+    const expectedVersion =
+      typeof expectedVersionRaw === "string" ? Number.parseInt(expectedVersionRaw, 10) : NaN;
+    const placementId =
+      action === "set_cover" ? (formData.get("media_placement_id") as string | null) : null;
+    if (!Number.isNaN(expectedVersion)) {
+      const result = await setListingCover(
+        apiBaseUrl,
+        organizationId,
+        nativeListingId,
+        expectedVersion,
+        placementId,
+        cookieHeader,
+        originHeader,
+      );
+      actionMessage =
+        result.kind === "ok"
+          ? action === "set_cover"
+            ? "Cover updated."
+            : "Cover cleared."
+          : result.kind === "invalid_cover"
+            ? "That image can't be used as the cover yet (it needs rights confirmed)."
+            : result.kind === "version_conflict"
+              ? "The gallery changed since you loaded this page -- please try again."
+              : "Could not update the cover.";
+    }
+  } else if (action === "remove") {
+    const placementId = formData.get("media_placement_id");
+    const expectedVersionRaw = formData.get("expected_version");
+    const expectedVersion =
+      typeof expectedVersionRaw === "string" ? Number.parseInt(expectedVersionRaw, 10) : NaN;
+    if (typeof placementId === "string" && placementId && !Number.isNaN(expectedVersion)) {
+      const result = await removeListingPlacement(
+        apiBaseUrl,
+        organizationId,
+        nativeListingId,
+        placementId,
+        expectedVersion,
+        cookieHeader,
+        originHeader,
+      );
+      actionMessage =
+        result.kind === "ok"
+          ? "Removed from gallery."
+          : result.kind === "version_conflict"
+            ? "The gallery changed since you loaded this page -- please try again."
+            : "Could not remove that item.";
+    }
+  } else if (action === "retire") {
+    const mediaAssetId = formData.get("media_asset_id");
+    if (typeof mediaAssetId === "string" && mediaAssetId) {
+      const result = await retireMediaAsset(
+        apiBaseUrl,
+        organizationId,
+        mediaAssetId,
+        cookieHeader,
+        originHeader,
+      );
+      actionMessage =
+        result.kind === "ok"
+          ? "Image retired from your library."
+          : result.kind === "already_retired"
+            ? "That image was already retired."
+            : "Could not retire that image.";
+    }
+  }
+}
+
+const galleryResult =
+  organizationId && nativeListingId
+    ? await fetchListingGallery(apiBaseUrl, organizationId, nativeListingId, cookieHeader)
+    : ({ kind: "not_found" } as const);
+
+const libraryResult =
+  organizationId && galleryResult.kind === "ok"
+    ? await fetchMediaLibrary(apiBaseUrl, organizationId, cookieHeader)
+    : ({ kind: "ok", assets: [] as MediaAssetView[] } as const);
+
+const nextPath = `/broker/organizations/${organizationId ?? ""}/inventory/${nativeListingId ?? ""}/media`;
+const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(nextPath)}`;
+const stepUpUrl = `${loginUrl}&acr_values=${encodeURIComponent(AUTH0_MFA_STEP_UP_ACR_VALUE)}`;
+
+if (galleryResult.kind === "not_found") {
+  Astro.response.status = 404;
+} else if (galleryResult.kind === "mfa_required" || galleryResult.kind === "role_required") {
+  Astro.response.status = 403;
+} else if (galleryResult.kind === "service_error") {
+  Astro.response.status = 503;
+}
+
+const libraryAssets: MediaAssetView[] = libraryResult.kind === "ok" ? libraryResult.assets : [];
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>HullQ Broker Workspace — Media Gallery</title>
+  </head>
+  <body>
+    <main>
+      {
+        galleryResult.kind === "unauthenticated" ? (
+          <>
+            <h1>Broker Workspace</h1>
+            <p>
+              Please <a href={loginUrl}>log in</a> to manage this listing's media.
+            </p>
+          </>
+        ) : galleryResult.kind === "not_found" ? (
+          <>
+            <h1>Not found</h1>
+            <p>This listing's media gallery is not available.</p>
+          </>
+        ) : galleryResult.kind === "mfa_required" ? (
+          <>
+            <h1>Additional verification required</h1>
+            <p>This Organization membership requires multi-factor authentication.</p>
+            <a href={stepUpUrl}>Verify and continue</a>
+          </>
+        ) : galleryResult.kind === "role_required" ? (
+          <>
+            <h1>Publisher role required</h1>
+            <p>Your current membership does not include the PUBLISHER role.</p>
+          </>
+        ) : galleryResult.kind === "service_error" ? (
+          <>
+            <h1>Media gallery temporarily unavailable</h1>
+            <p>Something went wrong loading this listing's media. Please try again.</p>
+          </>
+        ) : (
+          <>
+            <h1>Listing media gallery</h1>
+            <p>
+              <a href={`/broker/organizations/${organizationId}/inventory`}>Back to inventory</a>
+            </p>
+            {actionMessage && <p>{actionMessage}</p>}
+            {uploadResults.length > 0 && (
+              <ul>
+                {uploadResults.map((r) => (
+                  <li>
+                    {r.filename}: {r.outcome}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <h2>Current gallery (version {galleryResult.data.gallery_version})</h2>
+            {galleryResult.data.placements.length === 0 ? (
+              <p>No media yet -- upload an image or add a YouTube video below.</p>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Preview</th>
+                    <th>Kind</th>
+                    <th>Position</th>
+                    <th>Cover</th>
+                    <th>Rights</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {galleryResult.data.placements.map((placement: MediaPlacementView) => (
+                    <tr>
+                      <td>
+                        {placement.kind === "IMAGE" && placement.media_asset ? (
+                          <img
+                            src={`/broker/organizations/${organizationId}/media/${placement.media_asset.media_asset_id}`}
+                            alt=""
+                            width="120"
+                          />
+                        ) : (
+                          <span>YouTube: {placement.youtube_video_id}</span>
+                        )}
+                      </td>
+                      <td>{placement.kind}</td>
+                      <td>
+                        <form method="POST" style="display:inline">
+                          <input type="hidden" name="action" value="reorder" />
+                          <input
+                            type="hidden"
+                            name="expected_version"
+                            value={galleryResult.data.gallery_version}
+                          />
+                          {galleryResult.data.placements.map((other: MediaPlacementView) => (
+                            <input
+                              type="hidden"
+                              name={`position_${other.media_placement_id}`}
+                              value={
+                                other.media_placement_id === placement.media_placement_id
+                                  ? undefined
+                                  : other.position
+                              }
+                            />
+                          ))}
+                          <input
+                            type="number"
+                            name={`position_${placement.media_placement_id}`}
+                            value={placement.position}
+                            min="0"
+                          />
+                          <button type="submit">Save order</button>
+                        </form>
+                      </td>
+                      <td>
+                        {galleryResult.data.cover_placement_id === placement.media_placement_id ? (
+                          <form method="POST">
+                            <input type="hidden" name="action" value="clear_cover" />
+                            <input
+                              type="hidden"
+                              name="expected_version"
+                              value={galleryResult.data.gallery_version}
+                            />
+                            <button type="submit">Currently cover -- clear</button>
+                          </form>
+                        ) : placement.kind === "IMAGE" &&
+                          placement.media_asset?.is_public_usable ? (
+                          <form method="POST">
+                            <input type="hidden" name="action" value="set_cover" />
+                            <input
+                              type="hidden"
+                              name="media_placement_id"
+                              value={placement.media_placement_id}
+                            />
+                            <input
+                              type="hidden"
+                              name="expected_version"
+                              value={galleryResult.data.gallery_version}
+                            />
+                            <button type="submit">Make cover</button>
+                          </form>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td>{placement.media_asset ? placement.media_asset.rights_state : "—"}</td>
+                      <td>
+                        <form method="POST">
+                          <input type="hidden" name="action" value="remove" />
+                          <input
+                            type="hidden"
+                            name="media_placement_id"
+                            value={placement.media_placement_id}
+                          />
+                          <input
+                            type="hidden"
+                            name="expected_version"
+                            value={galleryResult.data.gallery_version}
+                          />
+                          <button type="submit">Remove</button>
+                        </form>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            <h2>Add images</h2>
+            <form method="POST" enctype="multipart/form-data">
+              <input type="hidden" name="action" value="upload" />
+              <input type="file" name="images" accept="image/jpeg,image/png,image/webp" multiple />
+              <label>
+                <input type="checkbox" name="rights_confirmed" /> I have the right to use these images
+              </label>
+              <button type="submit">Upload</button>
+            </form>
+
+            <h2>Reuse an image from your Organization's library</h2>
+            {libraryAssets.length === 0 ? (
+              <p>No reusable images yet.</p>
+            ) : (
+              <form method="POST">
+                <input type="hidden" name="action" value="reuse" />
+                <select name="media_asset_id">
+                  {libraryAssets.map((asset) => (
+                    <option value={asset.media_asset_id}>
+                      {asset.media_asset_id} ({asset.width}×{asset.height}, {asset.rights_state})
+                    </option>
+                  ))}
+                </select>
+                <button type="submit">Reuse on this listing</button>
+              </form>
+            )}
+
+            <h2>Add a YouTube video</h2>
+            <form method="POST">
+              <input type="hidden" name="action" value="youtube_add" />
+              <input type="url" name="youtube_url" placeholder="https://www.youtube.com/watch?v=..." />
+              <button type="submit">Add video</button>
+            </form>
+
+            <h2>Your Organization's media library</h2>
+            {libraryAssets.length === 0 ? (
+              <p>No uploaded images yet.</p>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Preview</th>
+                    <th>Rights</th>
+                    <th>Public-usable</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {libraryAssets.map((asset) => (
+                    <tr>
+                      <td>
+                        <img
+                          src={`/broker/organizations/${organizationId}/media/${asset.media_asset_id}`}
+                          alt=""
+                          width="80"
+                        />
+                      </td>
+                      <td>{asset.rights_state}</td>
+                      <td>{asset.is_public_usable ? "Yes" : "No"}</td>
+                      <td>
+                        <form method="POST">
+                          <input type="hidden" name="action" value="retire" />
+                          <input type="hidden" name="media_asset_id" value={asset.media_asset_id} />
+                          <button type="submit">Retire from library</button>
+                        </form>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </>
+        )
+      }
+    </main>
+  </body>
+</html>
