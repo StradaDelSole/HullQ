@@ -23,7 +23,48 @@ Organization-owned NativeListing
 
 This is the accepted execution-focus step B after SLICE-0067 promotion. It materially advances the Broker Creates → Adds Media → Publishes loop while keeping canonical PublicationReadiness/publish integration separate.
 
-## Reconciliation
+## Product execution checks
+
+**ONE-CAPABILITY CHECK:** PASS  
+One coherent outcome only: an authorized broker manages Organization-controlled mixed-media gallery state for an existing NativeListing. Persistence, storage, API and UI work are inseparable layers of that single capability.
+
+**VISIBLE-RESULT CHECK:** PASS  
+The Project Owner can open an Organization-owned marketplace listing, add multiple JPEG/PNG/WebP images, observe per-item processing/error state, order them, choose one explicit valid image cover, reuse eligible same-Organization media, add/remove a normalized YouTube reference, and re-read the authoritative gallery state.
+
+**PRODUCT EXECUTION PLAN ALIGNMENT:** PASS  
+This is execution-focus step B immediately after accepted SLICE-0067 promotion. It advances BROKER CREATES → BROKER ADDS MEDIA while leaving canonical PublicationReadiness/publish integration as the next distinct launch-path capability.
+
+**REPOSITORY RECONCILIATION CHECK:** PASS  
+Canonical origin/main after accepted SLICE-0067, D13–D15/D24/D29, broker-launch focus, Broker Workspace launch gate/register, current NativeListing/auth/lifecycle/public-read implementation, current migration/persistence patterns and existing tests were checked. No marketplace media/storage implementation already exists.
+
+**TRIGGER GATES CHECK:** PASS  
+SLICE-0068 adds no technical native Search criterion, starts no external production broker data/pilot/paid/public launch, and does not trigger Production Readiness.
+
+## Decision / implementation reconciliation
+
+**Accepted records checked:** `docs/PROJECT_STATE.md`; SLICE-0067 acceptance closure; `docs/PROFESSIONAL_MARKETPLACE_WORKFLOW_DECISIONS_2026-09-26.md` D13–D15/D24/D29–D31; `docs/BROKER_LAUNCH_EXECUTION_FOCUS_2026-09-26.md`; Broker Workspace requirements/launch gate/mandatory capability register; post-0051 trigger gates; production-readiness gate; marketplace identity/public-read/lifecycle contracts.
+
+**Production implementation checked:** current FastAPI app and broker Organization/MFA/PUBLISHER authorization boundary; professional promotion application/persistence; NativeListing persistence/lifecycle/inventory/public-read paths; Astro broker inventory workspace; current PostgreSQL/Alembic patterns; current web/API/persistence tests. No MediaAsset/MediaPlacement or marketplace object-storage implementation exists on origin/main.
+
+**Already implemented / not re-decided:** NativeListing/PhysicalBoat/MarketEpisode identity; Organization ownership and publisher authorization; MFA; broker write-CSRF pattern; lifecycle-DRAFT promotion result; public NativeListing read surface; stateless application-host direction; two accepted technical Search criteria.
+
+**Exact remaining gap:** an Organization-owned NativeListing has no durable media model, rights/processing state, object-storage boundary, gallery ordering/cover, same-Organization reuse, YouTube placement or broker-facing media workflow.
+
+**Accepted-but-unimplemented obligations:** D13 MediaAsset/MediaPlacement; D14 uploader/provenance/rights and same-Organization reuse; D15 approved public-usable image + explicit image cover state; D24 retirement/purge-compatible lifecycle; D30 R2/S3-compatible storage and JPEG/PNG/WebP v0.1; D31 IMAGE+YOUTUBE mixed-media gallery with future direct VIDEO and virtual Broker-CI compatibility. D22 PublicationReadiness remains later.
+
+**Material classifications:** `DECIDED_AND_IMPLEMENTED` identity/auth/lifecycle/public-read foundations; `DECIDED_NOT_YET_IMPLEMENTED` media persistence/storage/rights/processing/gallery/reuse/YouTube; `EXPLICITLY_DEFERRED` canonical PublicationReadiness/publish integration, direct VIDEO upload, HEIC/HEIF, full Broker-CI administration, full D24 purge worker, cross-Organization grants, owner-direct media; `GENUINELY_OPEN` bounded implementation constants/adapter details only; `CONFLICT_OR_REGRESSION` none found.
+
+## Trigger gates
+
+**Production readiness gate:** NOT_TRIGGERED  
+**Adds technical native Search criterion:** NO  
+**Technical Search criterion ordinal:** NOT_APPLICABLE  
+**Second-criterion bridge comparison:** NOT_APPLICABLE  
+**Third-copy abstraction guard:** NOT_APPLICABLE  
+**Workflow reassessment status:** PASS
+
+Broker Workspace Launch Gate remains `NOT_READY`. External broker self-service pilot, paid broker plan and public production launch remain not started.
+
 
 ### DECIDED_AND_IMPLEMENTED
 
