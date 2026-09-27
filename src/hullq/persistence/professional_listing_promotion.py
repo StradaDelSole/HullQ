@@ -95,6 +95,17 @@ __all__ = [
     "promote_professional_listing_draft",
 ]
 
+#: The exact SLICE-0067 D09 database uniqueness boundary (the migration's
+#: partial unique index name, `107a989812e7_professional_draft_promotion`).
+#: `DUPLICATE_EPISODE` is valid *only* for a `UniqueViolation` naming this
+#: exact index/constraint -- independent exact-head review Finding C: any
+#: other `UniqueViolation` escaping the promotion transaction (e.g. an
+#: astronomically unlikely collision on a freshly-minted claim/offer
+#: revision id, or on the draft's own promoted-NativeListingId uniqueness)
+#: is a genuine internal invariant failure, never a business "this episode
+#: is already listed" outcome, and must not be mislabeled as one.
+_D09_ORG_EPISODE_UNIQUE_CONSTRAINT_NAME = "ux_native_listings_org_episode"
+
 
 class ProfessionalListingPromotionTransactionOwnershipError(RuntimeError):
     """promote_professional_listing_draft cannot safely own a top-level
@@ -343,7 +354,8 @@ def promote_professional_listing_draft(
             # conn.transaction():` must still roll back every write from this
             # attempt (contract §8) -- see the except UniqueViolation clause
             # below, which only runs once this whole block has already
-            # unwound.
+            # unwound, and which classifies by exact constraint/index name
+            # rather than assuming every UniqueViolation reaching it is D09.
             listing_result = insert_native_listing_row(
                 cur,
                 account_id=account_id,
@@ -388,7 +400,20 @@ def promote_professional_listing_draft(
                 status=ProfessionalListingPromotionStatus.PROMOTED,
                 native_listing_id=native_listing_id,
             )
-    except UniqueViolation:
-        return ProfessionalListingPromotionResult(
-            status=ProfessionalListingPromotionStatus.DUPLICATE_EPISODE
-        )
+    except UniqueViolation as exc:
+        # Independent exact-head review Finding C: classify by the exact
+        # PostgreSQL constraint/index diagnostic, never by "any
+        # UniqueViolation reached here". The surrounding `with
+        # conn.transaction():` has already rolled back every write from
+        # this attempt by the time this except clause runs (contract §8),
+        # for either branch below.
+        if exc.diag.constraint_name == _D09_ORG_EPISODE_UNIQUE_CONSTRAINT_NAME:
+            return ProfessionalListingPromotionResult(
+                status=ProfessionalListingPromotionStatus.DUPLICATE_EPISODE
+            )
+        # A UniqueViolation on any other constraint is a genuine internal
+        # invariant failure (e.g. an astronomically unlikely fresh-UUID
+        # collision on a claim/offer revision id or on the draft's own
+        # promoted-NativeListingId uniqueness) -- never converted to a
+        # business "duplicate episode" outcome.
+        raise

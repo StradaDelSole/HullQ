@@ -671,3 +671,157 @@ class TestDuplicateEpisodeMapping:
             state, version = cur.fetchone()
             assert state == "EDITABLE"
             assert version == 1
+
+
+class TestUniqueViolationClassification:
+    """Independent exact-head review Finding C: `DUPLICATE_EPISODE` is valid
+    only for a `UniqueViolation` naming the exact D09 database boundary
+    (`ux_native_listings_org_episode`) -- any other `UniqueViolation`
+    escaping the promotion transaction must re-raise as a genuine internal
+    invariant failure, never be relabeled as a business duplicate-episode
+    outcome. `test_d09_collision_maps_to_duplicate_episode_with_zero_mutation`
+    above already proves the real D09 index fires this classification end to
+    end; these tests isolate the classification predicate itself via a
+    synthetic `UniqueViolation` carrying an explicit `constraint_name`."""
+
+    def test_synthetic_d09_constraint_name_maps_to_duplicate_episode(
+        self, conn: Any, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from psycopg.errors import UniqueViolation
+        from psycopg.pq import DiagnosticField
+
+        import hullq.persistence.professional_listing_promotion as promotion_module
+
+        account = AccountId("ACC-PROMO-12")
+        org_id = MarketplaceOrganizationId("ORG-PROMO-12")
+        _seed_account(conn, account)
+        _seed_organization(conn, org_id)
+        org = _org(org_id.value, eligibility=OrganizationPublishingEligibility.ELIGIBLE)
+        membership = _membership("OM-PROMO-12", account, org, frozenset({MembershipRole.PUBLISHER}))
+        draft_id = _create_ready_draft(conn, org_id, account)
+        before = _row_counts(conn)
+
+        def _raise_d09(*_args: Any, **_kwargs: Any) -> Any:
+            raise UniqueViolation(
+                'duplicate key value violates unique constraint "ux_native_listings_org_episode"',
+                info={DiagnosticField.CONSTRAINT_NAME: b"ux_native_listings_org_episode"},
+            )
+
+        monkeypatch.setattr(promotion_module, "insert_native_listing_row", _raise_d09)
+
+        result = promote_professional_listing_draft(
+            conn,
+            account_id=account,
+            candidate_organization=org,
+            membership=membership,
+            draft_id=draft_id,
+            owner_organization_id=org_id,
+            expected_version=1,
+        )
+
+        assert result.status is ProfessionalListingPromotionStatus.DUPLICATE_EPISODE
+        assert _row_counts(conn) == before
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT promotion_state, version FROM professional_listing_drafts "
+                "WHERE professional_listing_draft_id = %s",
+                [draft_id.value],
+            )
+            state, version = cur.fetchone()
+            assert state == "EDITABLE"
+            assert version == 1
+
+    def test_unrelated_constraint_name_is_never_duplicate_episode_and_reraises(
+        self, conn: Any, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A `UniqueViolation` naming a different constraint (here, a stand-
+        in for e.g. an astronomically unlikely fresh-UUID collision on a
+        claim/offer revision id) must propagate uncaught -- a genuine
+        internal invariant failure -- never resolve to `DUPLICATE_EPISODE`.
+        The whole transaction must still have rolled back completely by the
+        time it propagates."""
+        from psycopg.errors import UniqueViolation
+        from psycopg.pq import DiagnosticField
+
+        import hullq.persistence.professional_listing_promotion as promotion_module
+
+        account = AccountId("ACC-PROMO-13")
+        org_id = MarketplaceOrganizationId("ORG-PROMO-13")
+        _seed_account(conn, account)
+        _seed_organization(conn, org_id)
+        org = _org(org_id.value, eligibility=OrganizationPublishingEligibility.ELIGIBLE)
+        membership = _membership("OM-PROMO-13", account, org, frozenset({MembershipRole.PUBLISHER}))
+        draft_id = _create_ready_draft(conn, org_id, account)
+        before = _row_counts(conn)
+
+        def _raise_unrelated(*_args: Any, **_kwargs: Any) -> Any:
+            raise UniqueViolation(
+                "duplicate key value violates unique constraint "
+                '"physical_boat_claim_revisions_pkey"',
+                info={DiagnosticField.CONSTRAINT_NAME: b"physical_boat_claim_revisions_pkey"},
+            )
+
+        monkeypatch.setattr(
+            promotion_module, "write_physical_boat_claim_revision_row", _raise_unrelated
+        )
+
+        with pytest.raises(UniqueViolation):
+            promote_professional_listing_draft(
+                conn,
+                account_id=account,
+                candidate_organization=org,
+                membership=membership,
+                draft_id=draft_id,
+                owner_organization_id=org_id,
+                expected_version=1,
+            )
+
+        assert _row_counts(conn) == before
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT promotion_state, version FROM professional_listing_drafts "
+                "WHERE professional_listing_draft_id = %s",
+                [draft_id.value],
+            )
+            state, version = cur.fetchone()
+            assert state == "EDITABLE"
+            assert version == 1
+
+    def test_constraint_name_none_is_never_duplicate_episode_and_reraises(
+        self, conn: Any, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A `UniqueViolation` with no populated constraint-name diagnostic
+        at all must also fail closed to a re-raise, never a false-positive
+        `DUPLICATE_EPISODE`."""
+        from psycopg.errors import UniqueViolation
+
+        import hullq.persistence.professional_listing_promotion as promotion_module
+
+        account = AccountId("ACC-PROMO-14")
+        org_id = MarketplaceOrganizationId("ORG-PROMO-14")
+        _seed_account(conn, account)
+        _seed_organization(conn, org_id)
+        org = _org(org_id.value, eligibility=OrganizationPublishingEligibility.ELIGIBLE)
+        membership = _membership("OM-PROMO-14", account, org, frozenset({MembershipRole.PUBLISHER}))
+        draft_id = _create_ready_draft(conn, org_id, account)
+        before = _row_counts(conn)
+
+        def _raise_bare(*_args: Any, **_kwargs: Any) -> Any:
+            raise UniqueViolation("duplicate key value violates unique constraint")
+
+        monkeypatch.setattr(
+            promotion_module, "mark_professional_listing_draft_promoted", _raise_bare
+        )
+
+        with pytest.raises(UniqueViolation):
+            promote_professional_listing_draft(
+                conn,
+                account_id=account,
+                candidate_organization=org,
+                membership=membership,
+                draft_id=draft_id,
+                owner_organization_id=org_id,
+                expected_version=1,
+            )
+
+        assert _row_counts(conn) == before
