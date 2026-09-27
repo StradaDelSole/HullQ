@@ -244,9 +244,9 @@ The SLICE-0053 same-host session-topology invariant remains in force for browser
 
 ## What remains unbuilt
 
-Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; professional draft-to-marketplace promotion/publication and media; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
+Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; professional marketplace publication and media; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-SLICE-0066 is owner-accepted and merged. The shared owner-direct/professional draft layer can now represent build year as unanswered, explicit UNKNOWN or concrete VALUE_ASSERTION without inventing truth; legacy integers remain compatible and browser/recovery boundaries are strict/fail-closed. REQ-BROKER-023 and REQ-BROKER-024 remain implemented. The Broker Workspace Launch Gate remains NOT_READY because draft-to-marketplace promotion/creation, media, lead handling, editing and the other launch-gate sections remain outstanding.
+SLICE-0067 is owner-accepted and merged. The professional path can now atomically promote a promotion-ready Organization-owned draft into a fresh PhysicalBoat/MarketEpisode/NativeListing DRAFT chain with initial claim/offer truth and immutable source provenance. REQ-BROKER-023 and REQ-BROKER-024 remain implemented. The Broker Workspace Launch Gate remains NOT_READY because media, integrated publication readiness/publish flow, lead handling, editing and the other launch-gate sections remain outstanding.
 
 ## Broker launch execution focus
 
@@ -256,7 +256,7 @@ The 2026-09-26 execution recalibration is recorded in:
 docs/BROKER_LAUNCH_EXECUTION_FOCUS_2026-09-26.md
 ```
 
-It does not reopen SLICE-0066 or waive existing launch gates. It changes prioritization and slice-sizing discipline after the current capability:
+It does not reopen accepted SLICE-0067 or waive existing launch gates. It changes prioritization and slice-sizing discipline after the current capability:
 
 ```text
 strict truth / auth / provenance stay fixed
@@ -266,7 +266,7 @@ micro-slicing is no longer a goal
 vertical broker-launch progress becomes the default where risk permits
 ```
 
-Post-0066 reassessment should strongly prefer the shortest safe path through professional promotion, media, canonical publication readiness/publish integration, durable buyer contact/leads, broker lead handling and inventory editing before unrelated product expansion, unless a higher-leverage blocker or triggered mandatory capability requires interruption.
+Post-0067 reassessment should strongly prefer the shortest safe path through media, canonical publication readiness/publish integration, durable buyer contact/leads, broker lead handling and inventory editing before unrelated product expansion, unless a higher-leverage blocker or triggered mandatory capability requires interruption.
 
 The existing public NativeListing read path is already implemented; near-term work is to let normal broker-created inventory reach that path truthfully rather than to invent a second public-listing architecture.
 
