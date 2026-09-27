@@ -1543,6 +1543,13 @@ def create_app(
         rights_confirmed = (
             request.headers.get("x-hullq-rights-confirmed", "").strip().lower() == "true"
         )
+        # Independent review Finding B: an optional bounded D14 broker note,
+        # kept clearly separate from the structured source classification.
+        # Absent header -> None, never an empty-string placeholder.
+        raw_source_reference_header = request.headers.get("x-hullq-source-reference")
+        raw_source_reference = (
+            raw_source_reference_header if raw_source_reference_header is not None else None
+        )
 
         conn = open_connection(resolved_database_url)
         try:
@@ -1554,6 +1561,7 @@ def create_app(
                 raw_bytes=raw_bytes,
                 rights_confirmed=rights_confirmed,
                 object_storage=_resolve_object_storage(),
+                raw_source_reference=raw_source_reference,
             )
         finally:
             conn.close()
@@ -1563,6 +1571,8 @@ def create_app(
             return auth_error
         if result.outcome is UploadImageOutcome.LISTING_NOT_FOUND:
             raise HTTPException(status_code=404, detail="listing not found")
+        if result.outcome is UploadImageOutcome.INVALID_SOURCE_REFERENCE:
+            return JSONResponse({"error": "invalid_source_reference"}, status_code=400)
         if result.outcome is UploadImageOutcome.REJECTED:
             return JSONResponse(
                 {"outcome": "REJECTED", "reason": result.rejection_reason}, status_code=422
@@ -1721,6 +1731,8 @@ def create_app(
             return JSONResponse({"error": "version_conflict"}, status_code=409)
         if result.outcome is SetCoverRequestOutcome.INVALID_COVER:
             return JSONResponse({"error": "invalid_cover"}, status_code=409)
+        if result.outcome is SetCoverRequestOutcome.ACTIVE_LISTING_CONFLICT:
+            return JSONResponse({"error": "active_listing_conflict"}, status_code=409)
         assert result.outcome in (SetCoverRequestOutcome.SET, SetCoverRequestOutcome.CLEARED)
         return JSONResponse(
             {"outcome": result.outcome.value, "gallery_version": result.gallery_version}
@@ -1758,6 +1770,8 @@ def create_app(
             return JSONResponse({"error": "placement_not_found"}, status_code=404)
         if result.outcome is RemovePlacementRequestOutcome.VERSION_CONFLICT:
             return JSONResponse({"error": "version_conflict"}, status_code=409)
+        if result.outcome is RemovePlacementRequestOutcome.ACTIVE_LISTING_CONFLICT:
+            return JSONResponse({"error": "active_listing_conflict"}, status_code=409)
         assert result.outcome is RemovePlacementRequestOutcome.REMOVED
         return JSONResponse({"outcome": "REMOVED", "gallery_version": result.gallery_version})
 
@@ -1783,6 +1797,8 @@ def create_app(
             return JSONResponse({"error": "asset_not_found"}, status_code=404)
         if result.outcome is RetireAssetRequestOutcome.ALREADY_RETIRED:
             return JSONResponse({"error": "already_retired"}, status_code=409)
+        if result.outcome is RetireAssetRequestOutcome.ACTIVE_LISTING_CONFLICT:
+            return JSONResponse({"error": "active_listing_conflict"}, status_code=409)
         assert result.outcome is RetireAssetRequestOutcome.RETIRED
         return JSONResponse({"outcome": "RETIRED"})
 

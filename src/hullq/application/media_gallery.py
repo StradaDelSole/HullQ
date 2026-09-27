@@ -43,7 +43,13 @@ from hullq.application.broker_workspace_read import (
     get_organization_workspace_result,
 )
 from hullq.domain.market_identity import NativeListingId
-from hullq.domain.media_gallery import MediaAssetId, MediaPlacementId, parse_youtube_reference
+from hullq.domain.media_gallery import (
+    MAX_SOURCE_REFERENCE_LENGTH,
+    MediaAssetId,
+    MediaPlacementId,
+    MediaSourceKind,
+    parse_youtube_reference,
+)
 from hullq.domain.publishing_eligibility import MarketplaceOrganizationId
 from hullq.media.image_processing import ProcessedImage, RejectedImage, process_uploaded_image
 from hullq.persistence.media_gallery import (
@@ -112,7 +118,35 @@ __all__ = [
 #: complete request body of exactly one image; the multi-file requirement
 #: (contract §13) is satisfied at the Broker Workspace layer issuing one
 #: call per file, never by parsing a multipart body here.
-_OBJECT_KEY_PREFIX = "media"
+#:
+#: Independent review Finding A: the original/quarantine object and the
+#: public derivative object always live under distinct key prefixes, so an
+#: opaque key alone reveals which role it plays -- neither route ever
+#: serves an `_ORIGINAL_KEY_PREFIX` key.
+_ORIGINAL_KEY_PREFIX = "media/original"
+_DERIVATIVE_KEY_PREFIX = "media/derivative"
+
+#: Independent review Finding B: v0.1's only source/provenance classification.
+_UPLOAD_SOURCE_KIND = MediaSourceKind.BROKER_UPLOAD
+
+
+def _validate_source_reference(raw: Any) -> str | None:
+    """Bound the optional D14 broker-supplied note (independent review
+    Finding B) -- `None`/absent stays `None`; anything present must be a
+    non-empty string within `MAX_SOURCE_REFERENCE_LENGTH` or the whole
+    upload is rejected before any storage/database write."""
+    if raw is None:
+        return None
+    if not isinstance(raw, str):
+        raise _InvalidSourceReferenceError()
+    stripped = raw.strip()
+    if not stripped or len(stripped) > MAX_SOURCE_REFERENCE_LENGTH:
+        raise _InvalidSourceReferenceError()
+    return stripped
+
+
+class _InvalidSourceReferenceError(ValueError):
+    """*source_reference* failed the bounded-length/shape check."""
 
 
 # ---------------------------------------------------------------------------
@@ -160,6 +194,8 @@ def _verify_listing_ownership(
 def media_asset_to_public_dict(asset: MediaAssetRecord) -> dict[str, Any]:
     return {
         "media_asset_id": asset.media_asset_id.value,
+        "source_kind": asset.source_kind.value,
+        "source_reference": asset.source_reference,
         "processing_state": asset.processing_state.value,
         "rights_state": asset.rights_state.value,
         "rejection_reason": asset.rejection_reason,
@@ -338,10 +374,12 @@ def get_asset_bytes_for_organization(
     asset = fetch_media_asset(conn, MediaAssetId(media_asset_id_value))
     if asset is None or asset.owner_organization_id != organization_id:
         return GetAssetBytesResult(outcome=GetAssetBytesOutcome.ASSET_NOT_FOUND)
-    if asset.object_key is None:
+    if asset.derivative_object_key is None:
         return GetAssetBytesResult(outcome=GetAssetBytesOutcome.NOT_STORED)
 
-    data = object_storage.get_object(asset.object_key)
+    # Only ever the public derivative -- the private/quarantine original
+    # (independent review Finding A) is never served by any route.
+    data = object_storage.get_object(asset.derivative_object_key)
     assert asset.mime_type is not None
     return GetAssetBytesResult(
         outcome=GetAssetBytesOutcome.OK, data=data, mime_type=asset.mime_type
@@ -358,6 +396,7 @@ class UploadImageOutcome(StrEnum):
     MFA_REQUIRED = "MFA_REQUIRED"
     PUBLISHER_ROLE_REQUIRED = "PUBLISHER_ROLE_REQUIRED"
     LISTING_NOT_FOUND = "LISTING_NOT_FOUND"
+    INVALID_SOURCE_REFERENCE = "INVALID_SOURCE_REFERENCE"
     REJECTED = "REJECTED"
     CREATED = "CREATED"
 
@@ -401,12 +440,25 @@ def upload_image_for_organization(
     raw_bytes: bytes,
     rights_confirmed: bool,
     object_storage: ObjectStorage,
+    raw_source_reference: Any = None,
 ) -> UploadImageResult:
     """Validate, safely re-encode, store and durably place one uploaded
-    IMAGE (contract §6/§8/§11). A rejected image writes an audit-only
-    REJECTED MediaAsset row and creates no placement; a successful image is
-    stored in *object_storage* before any database row claims it exists
-    (contract §16)."""
+    IMAGE (contract §6/§8/§11).
+
+    Independent review Finding A: *raw_bytes* is durably stored, verbatim,
+    at a fresh private/quarantine `original_object_key` *before* processing
+    ever decides accept/reject (contract §6: quarantine storage is the first
+    ingestion step) -- a REJECTED outcome still leaves that original
+    durably quarantined, never promoted to a derivative. Only on successful
+    processing is a second, independently-purgeable public derivative
+    stored under its own `derivative_object_key`. A storage failure at
+    either step leaves zero database trace to roll back (contract §16).
+
+    Independent review Finding B: *raw_source_reference* is the optional
+    bounded D14 broker note, validated before any processing/storage is
+    attempted; an out-of-bounds value fails the whole upload closed as
+    `INVALID_SOURCE_REFERENCE`.
+    """
     organization_id = MarketplaceOrganizationId(organization_id_value)
     auth = _authorize_media_actor(conn, session, organization_id)
     if auth is _MediaActorAuthorizationOutcome.NOT_FOUND_OR_DENIED:
@@ -420,11 +472,23 @@ def upload_image_for_organization(
     if not _verify_listing_ownership(conn, native_listing_id, organization_id):
         return UploadImageResult(outcome=UploadImageOutcome.LISTING_NOT_FOUND)
 
-    processed = process_uploaded_image(raw_bytes)
+    try:
+        source_reference = _validate_source_reference(raw_source_reference)
+    except _InvalidSourceReferenceError:
+        return UploadImageResult(outcome=UploadImageOutcome.INVALID_SOURCE_REFERENCE)
 
     # Ends the authorization/ownership reads' implicit transaction so the
     # write(s) below commit independently (see module docstring).
     conn.commit()
+
+    # Contract §6: quarantine storage is the very first ingestion step,
+    # before any accept/reject decision -- durable regardless of outcome.
+    original_object_key = f"{_ORIGINAL_KEY_PREFIX}/{uuid.uuid4().hex}"
+    object_storage.put_object(
+        original_object_key, raw_bytes, content_type="application/octet-stream"
+    )
+
+    processed = process_uploaded_image(raw_bytes)
 
     if isinstance(processed, RejectedImage):
         with conn.transaction():
@@ -433,6 +497,9 @@ def upload_image_for_organization(
                 owner_organization_id=organization_id,
                 uploaded_by_account_id=session.account_id,
                 rights_declared=rights_confirmed,
+                source_kind=_UPLOAD_SOURCE_KIND,
+                source_reference=source_reference,
+                original_object_key=original_object_key,
                 rejection_reason=processed.reason.value,
             )
         return UploadImageResult(
@@ -440,11 +507,13 @@ def upload_image_for_organization(
         )
 
     assert isinstance(processed, ProcessedImage)
-    object_key = f"{_OBJECT_KEY_PREFIX}/{uuid.uuid4().hex}.jpg"
+    derivative_object_key = f"{_DERIVATIVE_KEY_PREFIX}/{uuid.uuid4().hex}.jpg"
     # Contract §16: bytes are durable in object storage *before* any database
     # row claims this asset exists -- a storage failure here leaves zero
     # database trace to roll back.
-    object_storage.put_object(object_key, processed.data, content_type=processed.mime_type)
+    object_storage.put_object(
+        derivative_object_key, processed.data, content_type=processed.mime_type
+    )
 
     with conn.transaction():
         asset = insert_approved_media_asset(
@@ -452,7 +521,10 @@ def upload_image_for_organization(
             owner_organization_id=organization_id,
             uploaded_by_account_id=session.account_id,
             rights_declared=rights_confirmed,
-            object_key=object_key,
+            source_kind=_UPLOAD_SOURCE_KIND,
+            source_reference=source_reference,
+            original_object_key=original_object_key,
+            derivative_object_key=derivative_object_key,
             content_hash=processed.content_hash,
             mime_type=processed.mime_type,
             width=processed.width,
@@ -725,6 +797,9 @@ class SetCoverRequestOutcome(StrEnum):
     LISTING_NOT_FOUND = "LISTING_NOT_FOUND"
     VERSION_CONFLICT = "VERSION_CONFLICT"
     INVALID_COVER = "INVALID_COVER"
+    #: Independent review Finding C: this ACTIVE listing currently has an
+    #: explicit cover and this call would clear it to nothing.
+    ACTIVE_LISTING_CONFLICT = "ACTIVE_LISTING_CONFLICT"
     SET = "SET"
     CLEARED = "CLEARED"
 
@@ -792,6 +867,8 @@ def set_cover_for_organization(
         return SetCoverRequestResult(outcome=SetCoverRequestOutcome.VERSION_CONFLICT)
     if result.outcome is SetCoverOutcome.INVALID_COVER:
         return SetCoverRequestResult(outcome=SetCoverRequestOutcome.INVALID_COVER)
+    if result.outcome is SetCoverOutcome.ACTIVE_LISTING_CONFLICT:
+        return SetCoverRequestResult(outcome=SetCoverRequestOutcome.ACTIVE_LISTING_CONFLICT)
     assert result.gallery_version is not None
     mapped_outcome = (
         SetCoverRequestOutcome.SET
@@ -814,6 +891,9 @@ class RemovePlacementRequestOutcome(StrEnum):
     LISTING_NOT_FOUND = "LISTING_NOT_FOUND"
     PLACEMENT_NOT_FOUND = "PLACEMENT_NOT_FOUND"
     VERSION_CONFLICT = "VERSION_CONFLICT"
+    #: Independent review Finding C: this placement is the ACTIVE listing's
+    #: current cover, or its last remaining valid public IMAGE.
+    ACTIVE_LISTING_CONFLICT = "ACTIVE_LISTING_CONFLICT"
     REMOVED = "REMOVED"
 
 
@@ -874,6 +954,10 @@ def remove_placement_for_organization(
         return RemovePlacementRequestResult(
             outcome=RemovePlacementRequestOutcome.PLACEMENT_NOT_FOUND
         )
+    if result.outcome is RemovePlacementOutcome.ACTIVE_LISTING_CONFLICT:
+        return RemovePlacementRequestResult(
+            outcome=RemovePlacementRequestOutcome.ACTIVE_LISTING_CONFLICT
+        )
     assert result.outcome is RemovePlacementOutcome.REMOVED
     assert result.gallery_version is not None
     return RemovePlacementRequestResult(
@@ -892,6 +976,10 @@ class RetireAssetRequestOutcome(StrEnum):
     PUBLISHER_ROLE_REQUIRED = "PUBLISHER_ROLE_REQUIRED"
     ASSET_NOT_FOUND = "ASSET_NOT_FOUND"
     ALREADY_RETIRED = "ALREADY_RETIRED"
+    #: Independent review Finding C: retiring this asset would leave at
+    #: least one ACTIVE listing without its required last valid public
+    #: image and/or its explicit valid cover.
+    ACTIVE_LISTING_CONFLICT = "ACTIVE_LISTING_CONFLICT"
     RETIRED = "RETIRED"
 
 
@@ -923,5 +1011,7 @@ def retire_asset_for_organization(
         return RetireAssetRequestResult(outcome=RetireAssetRequestOutcome.ASSET_NOT_FOUND)
     if result is RetireAssetOutcome.ALREADY_RETIRED:
         return RetireAssetRequestResult(outcome=RetireAssetRequestOutcome.ALREADY_RETIRED)
+    if result is RetireAssetOutcome.ACTIVE_LISTING_CONFLICT:
+        return RetireAssetRequestResult(outcome=RetireAssetRequestOutcome.ACTIVE_LISTING_CONFLICT)
     assert result is RetireAssetOutcome.RETIRED
     return RetireAssetRequestResult(outcome=RetireAssetRequestOutcome.RETIRED)

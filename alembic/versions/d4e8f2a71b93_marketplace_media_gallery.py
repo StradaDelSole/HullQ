@@ -42,13 +42,43 @@ follow the existing plain-TEXT-plus-CHECK-constraint convention used
 throughout this schema (e.g. `professional_listing_drafts.promotion_state`)
 rather than a native Postgres ENUM type. The `ck_media_assets_state_shape`
 constraint mechanically ties every nullable derivative-metadata column
-(`object_key`, `content_hash`, `mime_type`, `width`, `height`, `byte_size`)
-to `processing_state = 'APPROVED'` and `rejection_reason` to `'REJECTED'`
-alone -- contract §7's "no intermediate/failure state can be mistaken for
-APPROVED" is therefore enforced by PostgreSQL itself, not only by
-application code. `ck_media_placements_kind_shape` gives the equivalent
+(`derivative_object_key`, `content_hash`, `mime_type`, `width`, `height`,
+`byte_size`) to `processing_state = 'APPROVED'` and `rejection_reason` to
+`'REJECTED'` alone -- contract §7's "no intermediate/failure state can be
+mistaken for APPROVED" is therefore enforced by PostgreSQL itself, not only
+by application code. `ck_media_placements_kind_shape` gives the equivalent
 guarantee for `media_asset_id` XOR `youtube_video_id`/`youtube_source_url`
 (contract §4).
+
+Independent review amendment (Finding A): `original_object_key` and
+`derivative_object_key` are two distinct, independently-purgeable object-
+storage keys, not one key doing double duty. `original_object_key` is
+`NOT NULL` on every row -- both APPROVED and REJECTED -- because contract
+§6 frames "begins non-public in private/quarantined object storage" as the
+very first step of ingestion, before an accept/reject decision exists; a
+row is only ever durably inserted at all after that private original is
+already durably stored (contract §16: a storage failure at that point
+leaves zero database trace to roll back). `derivative_object_key` remains
+nullable, tied to `processing_state = 'APPROVED'` exactly like the other
+derivative-metadata columns: a REJECTED asset's original stays quarantined
+forever and is never promoted to a public derivative. Neither this
+migration nor any route ever serves `original_object_key`'s bytes -- only
+`hullq.persistence.media_gallery`/`hullq.application.media_gallery`
+reference the column at all, and only for future D24 independent-lifecycle
+bookkeeping.
+
+Independent review amendment (Finding B): `source_kind` +
+`source_reference` are the accepted D14 bounded provenance model.
+`source_kind` is a finite CHECK-constrained classification (`'BROKER_UPLOAD'`
+is the only v0.1 value: an authorized publisher uploaded this directly
+through HullQ) -- not a broad rights-management system. `source_reference`
+is an optional bounded broker-supplied free-text note (length-bounded at
+the application layer, `hullq.domain.media_gallery.MAX_SOURCE_REFERENCE_
+LENGTH`), kept a clearly separate column from `source_kind` so a note can
+never be mistaken for the authoritative structured classification. Both
+live on `media_assets`, never `media_placements`, so they survive contract
+§9 same-Organization reuse onto another listing exactly like
+`uploaded_by_account_id`/`rights_state` already do.
 
 `uq_media_placements_listing_position` is `DEFERRABLE INITIALLY DEFERRED`:
 a reorder mutation writes every affected placement's new `position` inside
@@ -101,10 +131,13 @@ def upgrade() -> None:
             sa.ForeignKey("accounts.account_id", name="fk_media_assets_uploaded_by_account_id"),
             nullable=False,
         ),
+        sa.Column("source_kind", sa.Text(), nullable=False),
+        sa.Column("source_reference", sa.Text(), nullable=True),
         sa.Column("processing_state", sa.Text(), nullable=False),
         sa.Column("rejection_reason", sa.Text(), nullable=True),
         sa.Column("rights_state", sa.Text(), nullable=False),
-        sa.Column("object_key", sa.Text(), nullable=True),
+        sa.Column("original_object_key", sa.Text(), nullable=False),
+        sa.Column("derivative_object_key", sa.Text(), nullable=True),
         sa.Column("content_hash", sa.Text(), nullable=True),
         sa.Column("mime_type", sa.Text(), nullable=True),
         sa.Column("width", sa.Integer(), nullable=True),
@@ -124,6 +157,9 @@ def upgrade() -> None:
             server_default=sa.text("NOW()"),
         ),
         sa.CheckConstraint(
+            "source_kind IN ('BROKER_UPLOAD')", name="ck_media_assets_source_kind_valid"
+        ),
+        sa.CheckConstraint(
             "processing_state IN ('APPROVED', 'REJECTED')",
             name="ck_media_assets_processing_state_valid",
         ),
@@ -131,14 +167,14 @@ def upgrade() -> None:
             "rights_state IN ('UNKNOWN', 'DECLARED')", name="ck_media_assets_rights_state_valid"
         ),
         sa.CheckConstraint(
-            "(processing_state = 'APPROVED' AND object_key IS NOT NULL "
+            "(processing_state = 'APPROVED' AND derivative_object_key IS NOT NULL "
             " AND content_hash IS NOT NULL AND mime_type IS NOT NULL "
             " AND width IS NOT NULL AND height IS NOT NULL AND byte_size IS NOT NULL "
             " AND rejection_reason IS NULL)"
             " OR "
-            "(processing_state = 'REJECTED' AND object_key IS NULL AND content_hash IS NULL "
-            " AND mime_type IS NULL AND width IS NULL AND height IS NULL AND byte_size IS NULL "
-            " AND rejection_reason IS NOT NULL)",
+            "(processing_state = 'REJECTED' AND derivative_object_key IS NULL "
+            " AND content_hash IS NULL AND mime_type IS NULL AND width IS NULL "
+            " AND height IS NULL AND byte_size IS NULL AND rejection_reason IS NOT NULL)",
             name="ck_media_assets_state_shape",
         ),
     )

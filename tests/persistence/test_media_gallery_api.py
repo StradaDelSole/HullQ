@@ -18,6 +18,7 @@ import os
 import uuid
 from collections.abc import Generator
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 from urllib.parse import quote, urlsplit, urlunsplit
 
@@ -35,7 +36,8 @@ from hullq.domain.market_identity import (
     PhysicalBoat,
     PhysicalBoatId,
 )
-from hullq.domain.media_gallery import MAX_IMAGE_UPLOAD_BYTES
+from hullq.domain.media_gallery import MAX_IMAGE_UPLOAD_BYTES, MAX_SOURCE_REFERENCE_LENGTH
+from hullq.domain.native_listing_offer import AskingPriceMode, NativeListingOfferSnapshot
 from hullq.domain.publishing_eligibility import (
     AccountId,
     MarketplaceOrganization,
@@ -54,6 +56,11 @@ from hullq.persistence.broker_identity import (
 )
 from hullq.persistence.market_episode import create_market_episode
 from hullq.persistence.native_listing import create_native_listing
+from hullq.persistence.native_listing_lifecycle import publish_native_listing
+from hullq.persistence.native_listing_offer import (
+    NativeListingOfferRevisionId,
+    write_native_listing_offer_revision,
+)
 from hullq.persistence.physical_boat import create_physical_boat
 from hullq.security.session_token import mint_session_token
 from hullq.storage.object_storage import InMemoryObjectStorage
@@ -234,6 +241,54 @@ def _create_listing(
         conn.close()
 
 
+def _publish_listing(api_url: str, *, listing_id: str, org_id: str, account_id: str) -> None:
+    """Give an already-created listing a current offer and transition it
+    DRAFT -> ACTIVE, for Finding C's ACTIVE-lifecycle HTTP proof."""
+    conn = psycopg.connect(api_url)
+    try:
+        account = AccountId(account_id)
+        org = MarketplaceOrganization(
+            id=MarketplaceOrganizationId(org_id),
+            professional_category=ProfessionalCategory.BROKER,
+            publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+        )
+        membership = OrganizationMembership(
+            id=OrganizationMembershipId(f"OM-PUBLISH-{listing_id}"),
+            account_id=account,
+            organization_id=org.id,
+            roles=frozenset({MembershipRole.PUBLISHER}),
+            state=MembershipState.ACTIVE,
+        )
+        write_native_listing_offer_revision(
+            conn,
+            account_id=account,
+            candidate_organization=org,
+            membership=membership,
+            native_listing_id=NativeListingId(listing_id),
+            revision_id=NativeListingOfferRevisionId(f"REV-{listing_id}"),
+            expected_current_revision_id=None,
+            offer=NativeListingOfferSnapshot(
+                asking_price_mode=AskingPriceMode.AMOUNT,
+                location_country="FR",
+                broker_description="A well-maintained cruising sloop.",
+                asking_price_amount=Decimal("125000.00"),
+                currency="EUR",
+            ),
+        )
+        conn.commit()
+        result = publish_native_listing(
+            conn,
+            account_id=account,
+            candidate_organization=org,
+            membership=membership,
+            native_listing_id=NativeListingId(listing_id),
+        )
+        assert result.status.value == "transitioned", result
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def _csrf_headers() -> dict[str, str]:
     return {"Origin": _WEB_ORIGIN, "X-HullQ-Requested-With": _CSRF_HEADER_VALUE}
 
@@ -246,9 +301,13 @@ def _jpeg_bytes(
     return buf.getvalue()
 
 
-def _upload_headers(*, rights_confirmed: bool = True) -> dict[str, str]:
+def _upload_headers(
+    *, rights_confirmed: bool = True, source_reference: str | None = None
+) -> dict[str, str]:
     headers = _csrf_headers()
     headers["X-HullQ-Rights-Confirmed"] = "true" if rights_confirmed else "false"
+    if source_reference is not None:
+        headers["X-HullQ-Source-Reference"] = source_reference
     return headers
 
 
@@ -299,11 +358,14 @@ def _upload_one(
     *,
     rights_confirmed: bool = True,
     body: bytes | None = None,
+    source_reference: str | None = None,
 ) -> Any:
     return client.post(
         _images_path(org_id, listing_id),
         content=body if body is not None else _jpeg_bytes(),
-        headers=_upload_headers(rights_confirmed=rights_confirmed),
+        headers=_upload_headers(
+            rights_confirmed=rights_confirmed, source_reference=source_reference
+        ),
     )
 
 
@@ -1056,3 +1118,320 @@ class TestAssetBytesPreview:
         _log_in(client, account_b)
         response = client.get(_asset_bytes_path(org_b, asset_id))
         assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Independent review Finding A: original/quarantine vs. derivative separation
+# ---------------------------------------------------------------------------
+
+
+class TestOriginalDerivativeSeparation:
+    def test_approved_upload_stores_two_distinct_keys_in_object_storage(
+        self, client: TestClient, api_url: str, object_storage: InMemoryObjectStorage
+    ) -> None:
+        org_id, account_id, membership_id = "ORG-OD1", "ACC-OD1", "OM-OD1"
+        _seed_org_and_membership(
+            api_url, org_id=org_id, account_id=account_id, membership_id=membership_id
+        )
+        _create_listing(
+            api_url,
+            listing_id="NL-OD1",
+            org_id=org_id,
+            account_id=account_id,
+            membership_id=membership_id,
+            physical_boat_id="PB-OD1",
+            market_episode_id="ME-OD1",
+        )
+        _log_in(client, account_id)
+        raw_bytes = _jpeg_bytes()
+        response = _upload_one(client, org_id, "NL-OD1", body=raw_bytes)
+        assert response.status_code == 201
+
+        gallery = client.get(_gallery_path(org_id, "NL-OD1")).json()
+        asset_id = gallery["placements"][0]["media_asset"]["media_asset_id"]
+
+        # The derivative served through the private broker preview route is
+        # the safely-re-encoded JPEG -- never byte-identical to the raw
+        # upload (contract §6.6: always re-encoded).
+        preview = client.get(_asset_bytes_path(org_id, asset_id))
+        assert preview.status_code == 200
+        derivative_bytes = preview.content
+        assert derivative_bytes != raw_bytes
+
+        # The private/quarantine original is durably stored too, under a
+        # distinct key never exposed by any route -- verified directly
+        # against the injected fake store (contract: "no direct public
+        # route for originals is introduced").
+        original_keys = list(object_storage.keys_with_prefix("media/original/"))
+        derivative_keys = list(object_storage.keys_with_prefix("media/derivative/"))
+        assert len(original_keys) == 1
+        assert len(derivative_keys) == 1
+        assert original_keys[0] != derivative_keys[0]
+        assert object_storage.get_object(original_keys[0]) == raw_bytes
+        assert object_storage.get_object(derivative_keys[0]) == derivative_bytes
+
+    def test_rejected_upload_still_quarantines_the_original(
+        self, client: TestClient, api_url: str, object_storage: InMemoryObjectStorage
+    ) -> None:
+        org_id, account_id, membership_id = "ORG-OD2", "ACC-OD2", "OM-OD2"
+        _seed_org_and_membership(
+            api_url, org_id=org_id, account_id=account_id, membership_id=membership_id
+        )
+        _create_listing(
+            api_url,
+            listing_id="NL-OD2",
+            org_id=org_id,
+            account_id=account_id,
+            membership_id=membership_id,
+            physical_boat_id="PB-OD2",
+            market_episode_id="ME-OD2",
+        )
+        _log_in(client, account_id)
+        garbage = b"not an image at all, just plain bytes"
+        response = _upload_one(client, org_id, "NL-OD2", body=garbage)
+        assert response.status_code == 422
+
+        # Contract §6: quarantine storage is the first ingestion step,
+        # before any accept/reject decision -- a rejected upload's original
+        # is still durably stored, and no derivative was ever created.
+        original_keys = list(object_storage.keys_with_prefix("media/original/"))
+        derivative_keys = list(object_storage.keys_with_prefix("media/derivative/"))
+        assert len(original_keys) == 1
+        assert derivative_keys == []
+        assert object_storage.get_object(original_keys[0]) == garbage
+
+    def test_broker_preview_route_never_serves_an_original_key(
+        self, client: TestClient, api_url: str, object_storage: InMemoryObjectStorage
+    ) -> None:
+        """Defense in depth: even if an attacker somehow learned an
+        `original_object_key` value, the broker preview route only ever
+        looks up assets by `media_asset_id` and always resolves the
+        derivative -- there is no route parameterized by a raw object key
+        at all."""
+        org_id, account_id, membership_id = "ORG-OD3", "ACC-OD3", "OM-OD3"
+        _seed_org_and_membership(
+            api_url, org_id=org_id, account_id=account_id, membership_id=membership_id
+        )
+        _create_listing(
+            api_url,
+            listing_id="NL-OD3",
+            org_id=org_id,
+            account_id=account_id,
+            membership_id=membership_id,
+            physical_boat_id="PB-OD3",
+            market_episode_id="ME-OD3",
+        )
+        _log_in(client, account_id)
+        _upload_one(client, org_id, "NL-OD3")
+        original_keys = list(object_storage.keys_with_prefix("media/original/"))
+        assert len(original_keys) == 1
+        # There is no route that accepts an object key directly -- attempting
+        # to use one as if it were a media_asset_id is simply not found.
+        response = client.get(_asset_bytes_path(org_id, original_keys[0]))
+        assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Independent review Finding B: D14 provenance at the HTTP boundary
+# ---------------------------------------------------------------------------
+
+
+class TestSourceReferenceHttp:
+    def test_upload_with_source_reference_is_persisted_and_readable(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        org_id, account_id, membership_id = "ORG-SR1", "ACC-SR1", "OM-SR1"
+        _seed_org_and_membership(
+            api_url, org_id=org_id, account_id=account_id, membership_id=membership_id
+        )
+        _create_listing(
+            api_url,
+            listing_id="NL-SR1",
+            org_id=org_id,
+            account_id=account_id,
+            membership_id=membership_id,
+            physical_boat_id="PB-SR1",
+            market_episode_id="ME-SR1",
+        )
+        _log_in(client, account_id)
+        response = _upload_one(
+            client, org_id, "NL-SR1", source_reference="Photographed by ACME Yacht Photography"
+        )
+        assert response.status_code == 201
+        gallery = client.get(_gallery_path(org_id, "NL-SR1")).json()
+        asset = gallery["placements"][0]["media_asset"]
+        assert asset["source_kind"] == "BROKER_UPLOAD"
+        assert asset["source_reference"] == "Photographed by ACME Yacht Photography"
+
+    def test_upload_without_source_reference_leaves_it_null(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        org_id, account_id, membership_id = "ORG-SR2", "ACC-SR2", "OM-SR2"
+        _seed_org_and_membership(
+            api_url, org_id=org_id, account_id=account_id, membership_id=membership_id
+        )
+        _create_listing(
+            api_url,
+            listing_id="NL-SR2",
+            org_id=org_id,
+            account_id=account_id,
+            membership_id=membership_id,
+            physical_boat_id="PB-SR2",
+            market_episode_id="ME-SR2",
+        )
+        _log_in(client, account_id)
+        response = _upload_one(client, org_id, "NL-SR2")
+        assert response.status_code == 201
+        gallery = client.get(_gallery_path(org_id, "NL-SR2")).json()
+        asset = gallery["placements"][0]["media_asset"]
+        assert asset["source_kind"] == "BROKER_UPLOAD"
+        assert asset["source_reference"] is None
+
+    def test_oversized_source_reference_is_rejected_and_writes_nothing(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        org_id, account_id, membership_id = "ORG-SR3", "ACC-SR3", "OM-SR3"
+        _seed_org_and_membership(
+            api_url, org_id=org_id, account_id=account_id, membership_id=membership_id
+        )
+        _create_listing(
+            api_url,
+            listing_id="NL-SR3",
+            org_id=org_id,
+            account_id=account_id,
+            membership_id=membership_id,
+            physical_boat_id="PB-SR3",
+            market_episode_id="ME-SR3",
+        )
+        _log_in(client, account_id)
+        too_long = "x" * (MAX_SOURCE_REFERENCE_LENGTH + 1)
+        response = _upload_one(client, org_id, "NL-SR3", source_reference=too_long)
+        assert response.status_code == 400
+        assert response.json() == {"error": "invalid_source_reference"}
+        gallery = client.get(_gallery_path(org_id, "NL-SR3")).json()
+        assert gallery["placements"] == []
+
+
+# ---------------------------------------------------------------------------
+# Independent review Finding C: ACTIVE listing last-valid-image/cover
+# protection at the HTTP boundary
+# ---------------------------------------------------------------------------
+
+
+class TestActiveListingProtectionHttp:
+    def _active_listing_with_one_cover_image(
+        self, client: TestClient, api_url: str, suffix: str
+    ) -> tuple[str, str, str]:
+        org_id, account_id, membership_id = (
+            f"ORG-ALH{suffix}",
+            f"ACC-ALH{suffix}",
+            f"OM-ALH{suffix}",
+        )
+        listing_id = f"NL-ALH{suffix}"
+        _seed_org_and_membership(
+            api_url, org_id=org_id, account_id=account_id, membership_id=membership_id
+        )
+        _create_listing(
+            api_url,
+            listing_id=listing_id,
+            org_id=org_id,
+            account_id=account_id,
+            membership_id=membership_id,
+            physical_boat_id=f"PB-ALH{suffix}",
+            market_episode_id=f"ME-ALH{suffix}",
+        )
+        _log_in(client, account_id)
+        upload = _upload_one(client, org_id, listing_id)
+        placement_id = upload.json()["media_placement_id"]
+        cover_response = client.post(
+            _cover_path(org_id, listing_id),
+            json={"expected_version": 1, "media_placement_id": placement_id},
+            headers=_csrf_headers(),
+        )
+        assert cover_response.status_code == 200
+        _publish_listing(api_url, listing_id=listing_id, org_id=org_id, account_id=account_id)
+        return org_id, listing_id, placement_id
+
+    def test_remove_last_valid_image_on_active_listing_is_conflict(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        org_id, listing_id, placement_id = self._active_listing_with_one_cover_image(
+            client, api_url, "1"
+        )
+        response = client.post(
+            _remove_path(org_id, listing_id, placement_id),
+            json={"expected_version": 2},
+            headers=_csrf_headers(),
+        )
+        assert response.status_code == 409
+        assert response.json() == {"error": "active_listing_conflict"}
+        gallery = client.get(_gallery_path(org_id, listing_id)).json()
+        assert len(gallery["placements"]) == 1
+
+    def test_clear_cover_on_active_listing_is_conflict(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        org_id, listing_id, placement_id = self._active_listing_with_one_cover_image(
+            client, api_url, "2"
+        )
+        response = client.post(
+            _cover_path(org_id, listing_id),
+            json={"expected_version": 2, "media_placement_id": None},
+            headers=_csrf_headers(),
+        )
+        assert response.status_code == 409
+        assert response.json() == {"error": "active_listing_conflict"}
+        gallery = client.get(_gallery_path(org_id, listing_id)).json()
+        assert gallery["cover_placement_id"] == placement_id
+
+    def test_retire_last_valid_image_asset_on_active_listing_is_conflict(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        org_id, listing_id, _placement_id = self._active_listing_with_one_cover_image(
+            client, api_url, "3"
+        )
+        gallery = client.get(_gallery_path(org_id, listing_id)).json()
+        asset_id = gallery["placements"][0]["media_asset"]["media_asset_id"]
+        response = client.post(_retire_path(org_id, asset_id), headers=_csrf_headers())
+        assert response.status_code == 409
+        assert response.json() == {"error": "active_listing_conflict"}
+
+    def test_safe_removal_with_two_valid_images_remains_allowed(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        org_id, account_id, membership_id = "ORG-ALH4", "ACC-ALH4", "OM-ALH4"
+        listing_id = "NL-ALH4"
+        _seed_org_and_membership(
+            api_url, org_id=org_id, account_id=account_id, membership_id=membership_id
+        )
+        _create_listing(
+            api_url,
+            listing_id=listing_id,
+            org_id=org_id,
+            account_id=account_id,
+            membership_id=membership_id,
+            physical_boat_id="PB-ALH4",
+            market_episode_id="ME-ALH4",
+        )
+        _log_in(client, account_id)
+        first_upload = _upload_one(client, org_id, listing_id)
+        second_upload = _upload_one(client, org_id, listing_id)
+        first_placement_id = first_upload.json()["media_placement_id"]
+        second_placement_id = second_upload.json()["media_placement_id"]
+        client.post(
+            _cover_path(org_id, listing_id),
+            json={"expected_version": 2, "media_placement_id": first_placement_id},
+            headers=_csrf_headers(),
+        )
+        _publish_listing(api_url, listing_id=listing_id, org_id=org_id, account_id=account_id)
+
+        response = client.post(
+            _remove_path(org_id, listing_id, second_placement_id),
+            json={"expected_version": 3},
+            headers=_csrf_headers(),
+        )
+        assert response.status_code == 200
+        assert response.json()["outcome"] == "REMOVED"
+        gallery = client.get(_gallery_path(org_id, listing_id)).json()
+        assert len(gallery["placements"]) == 1
+        assert gallery["cover_placement_id"] == first_placement_id

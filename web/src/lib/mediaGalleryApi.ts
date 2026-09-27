@@ -45,6 +45,8 @@ function galleryPath(organizationId: string, nativeListingId: string): string {
 
 export interface MediaAssetView {
   media_asset_id: string;
+  source_kind: "BROKER_UPLOAD";
+  source_reference: string | null;
   processing_state: "APPROVED" | "REJECTED";
   rights_state: "UNKNOWN" | "DECLARED";
   rejection_reason: string | null;
@@ -225,6 +227,7 @@ export type UploadImageResult =
   | AuthFailure
   | { kind: "listing_not_found" }
   | { kind: "payload_too_large" }
+  | { kind: "invalid_source_reference" }
   | { kind: "rejected"; reason: string }
   | { kind: "service_error" }
   | { kind: "ok"; mediaAssetId: string; mediaPlacementId: string; galleryVersion: number };
@@ -238,6 +241,7 @@ export async function uploadListingImage(
   rightsConfirmed: boolean,
   cookieHeader: string | null,
   originHeader: string | null,
+  sourceReference?: string,
 ): Promise<UploadImageResult> {
   let response: Response;
   try {
@@ -248,6 +252,7 @@ export async function uploadListingImage(
         ...csrfHeaders(originHeader),
         "Content-Type": contentType,
         "X-HullQ-Rights-Confirmed": rightsConfirmed ? "true" : "false",
+        ...(sourceReference ? { "X-HullQ-Source-Reference": sourceReference } : {}),
       },
       body: Buffer.from(imageBytes),
       redirect: "manual",
@@ -259,6 +264,7 @@ export async function uploadListingImage(
   if (authFailure) return authFailure;
   if (response.status === 404) return { kind: "listing_not_found" };
   if (response.status === 413) return { kind: "payload_too_large" };
+  if (response.status === 400) return { kind: "invalid_source_reference" };
   if (response.status === 422) {
     const body = (await response.json()) as { reason?: string };
     return { kind: "rejected", reason: body.reason ?? "unknown" };
@@ -431,6 +437,7 @@ export type SetCoverResult =
   | { kind: "listing_not_found" }
   | { kind: "version_conflict" }
   | { kind: "invalid_cover" }
+  | { kind: "active_listing_conflict" }
   | { kind: "service_error" }
   | { kind: "ok"; outcome: "SET" | "CLEARED"; galleryVersion: number };
 
@@ -466,7 +473,9 @@ export async function setListingCover(
     const body = (await response.json().catch(() => ({}) as Record<string, unknown>)) as {
       error?: string;
     };
-    return body.error === "invalid_cover" ? { kind: "invalid_cover" } : { kind: "version_conflict" };
+    if (body.error === "invalid_cover") return { kind: "invalid_cover" };
+    if (body.error === "active_listing_conflict") return { kind: "active_listing_conflict" };
+    return { kind: "version_conflict" };
   }
   if (!response.ok) return { kind: "service_error" };
   const body = (await response.json()) as { outcome: "SET" | "CLEARED"; gallery_version: number };
@@ -483,6 +492,7 @@ export type RemovePlacementResult =
   | { kind: "listing_not_found" }
   | { kind: "placement_not_found" }
   | { kind: "version_conflict" }
+  | { kind: "active_listing_conflict" }
   | { kind: "service_error" }
   | { kind: "ok"; galleryVersion: number };
 
@@ -525,7 +535,14 @@ export async function removeListingPlacement(
       ? { kind: "placement_not_found" }
       : { kind: "listing_not_found" };
   }
-  if (response.status === 409) return { kind: "version_conflict" };
+  if (response.status === 409) {
+    const body = (await response.json().catch(() => ({}) as Record<string, unknown>)) as {
+      error?: string;
+    };
+    return body.error === "active_listing_conflict"
+      ? { kind: "active_listing_conflict" }
+      : { kind: "version_conflict" };
+  }
   if (!response.ok) return { kind: "service_error" };
   const body = (await response.json()) as { gallery_version: number };
   return { kind: "ok", galleryVersion: body.gallery_version };
@@ -539,6 +556,7 @@ export type RetireAssetResult =
   | AuthFailure
   | { kind: "asset_not_found" }
   | { kind: "already_retired" }
+  | { kind: "active_listing_conflict" }
   | { kind: "service_error" }
   | { kind: "ok" };
 
@@ -566,7 +584,14 @@ export async function retireMediaAsset(
   const authFailure = await authFailureFromResponse(response);
   if (authFailure) return authFailure;
   if (response.status === 404) return { kind: "asset_not_found" };
-  if (response.status === 409) return { kind: "already_retired" };
+  if (response.status === 409) {
+    const body = (await response.json().catch(() => ({}) as Record<string, unknown>)) as {
+      error?: string;
+    };
+    return body.error === "active_listing_conflict"
+      ? { kind: "active_listing_conflict" }
+      : { kind: "already_retired" };
+  }
   if (!response.ok) return { kind: "service_error" };
   return { kind: "ok" };
 }

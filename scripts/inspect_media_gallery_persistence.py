@@ -18,6 +18,7 @@ from hullq.domain.market_identity import (
     PhysicalBoat,
     PhysicalBoatId,
 )
+from hullq.domain.media_gallery import MediaSourceKind
 from hullq.domain.publishing_eligibility import (
     AccountId,
     MarketplaceOrganization,
@@ -153,7 +154,10 @@ def main() -> None:
                     owner_organization_id=org_a.id,
                     uploaded_by_account_id=account,
                     rights_declared=True,
-                    object_key="media/test-1.jpg",
+                    source_kind=MediaSourceKind.BROKER_UPLOAD,
+                    source_reference=None,
+                    original_object_key="media/original/test.orig",
+                    derivative_object_key="media/test-1.jpg",
                     content_hash="hash1",
                     mime_type="image/jpeg",
                     width=100,

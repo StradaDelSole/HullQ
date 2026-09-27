@@ -353,3 +353,123 @@ test("retireMediaAsset: 200 is surfaced as ok", async () => {
     },
   );
 });
+
+// ---------------------------------------------------------------------------
+// Independent review Finding B: optional bounded source_reference header
+// ---------------------------------------------------------------------------
+
+test("uploadListingImage: sends the source-reference header only when provided", async () => {
+  await withServer(
+    (req, res) => {
+      assert.equal(req.headers["x-hullq-source-reference"], "Photographed by ACME");
+      res.writeHead(201, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({ media_asset_id: "MA-1", media_placement_id: "MP-1", gallery_version: 1 }),
+      );
+    },
+    async (baseUrl) => {
+      const result = await uploadListingImage(
+        baseUrl,
+        "ORG-1",
+        "NL-1",
+        new Uint8Array([1]),
+        "image/jpeg",
+        true,
+        null,
+        null,
+        "Photographed by ACME",
+      );
+      assert.equal(result.kind, "ok");
+    },
+  );
+});
+
+test("uploadListingImage: omits the source-reference header when absent", async () => {
+  await withServer(
+    (req, res) => {
+      assert.equal(req.headers["x-hullq-source-reference"], undefined);
+      res.writeHead(201, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({ media_asset_id: "MA-1", media_placement_id: "MP-1", gallery_version: 1 }),
+      );
+    },
+    async (baseUrl) => {
+      await uploadListingImage(
+        baseUrl,
+        "ORG-1",
+        "NL-1",
+        new Uint8Array([1]),
+        "image/jpeg",
+        true,
+        null,
+        null,
+      );
+    },
+  );
+});
+
+test("uploadListingImage: 400 is surfaced as invalid_source_reference", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "invalid_source_reference" }));
+    },
+    async (baseUrl) => {
+      const result = await uploadListingImage(
+        baseUrl,
+        "ORG-1",
+        "NL-1",
+        new Uint8Array([1]),
+        "image/jpeg",
+        true,
+        null,
+        null,
+        "x".repeat(400),
+      );
+      assert.equal(result.kind, "invalid_source_reference");
+    },
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Independent review Finding C: ACTIVE listing conflict outcomes
+// ---------------------------------------------------------------------------
+
+test("setListingCover: 409 active_listing_conflict body is distinguished from invalid_cover/version_conflict", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(409, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "active_listing_conflict" }));
+    },
+    async (baseUrl) => {
+      const result = await setListingCover(baseUrl, "ORG-1", "NL-1", 1, null, null, null);
+      assert.equal(result.kind, "active_listing_conflict");
+    },
+  );
+});
+
+test("removeListingPlacement: 409 active_listing_conflict body is distinguished from version_conflict", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(409, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "active_listing_conflict" }));
+    },
+    async (baseUrl) => {
+      const result = await removeListingPlacement(baseUrl, "ORG-1", "NL-1", "MP-1", 1, null, null);
+      assert.equal(result.kind, "active_listing_conflict");
+    },
+  );
+});
+
+test("retireMediaAsset: 409 active_listing_conflict body is distinguished from already_retired", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(409, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "active_listing_conflict" }));
+    },
+    async (baseUrl) => {
+      const result = await retireMediaAsset(baseUrl, "ORG-1", "MA-1", null, null);
+      assert.equal(result.kind, "active_listing_conflict");
+    },
+  );
+});

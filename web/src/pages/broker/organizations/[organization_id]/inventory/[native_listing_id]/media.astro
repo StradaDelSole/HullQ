@@ -46,6 +46,11 @@ if (Astro.request.method === "POST" && organizationId && nativeListingId) {
 
   if (action === "upload") {
     const rightsConfirmed = formData.get("rights_confirmed") === "on";
+    const sourceReferenceRaw = formData.get("source_reference");
+    const sourceReference =
+      typeof sourceReferenceRaw === "string" && sourceReferenceRaw.trim()
+        ? sourceReferenceRaw.trim()
+        : undefined;
     const files = formData.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
     if (files.length === 0) {
       actionMessage = "Choose at least one image file to upload.";
@@ -62,6 +67,7 @@ if (Astro.request.method === "POST" && organizationId && nativeListingId) {
           rightsConfirmed,
           cookieHeader,
           originHeader,
+          sourceReference,
         );
         if (result.kind === "ok") {
           uploadResults.push({ filename: file.name, outcome: "Uploaded" });
@@ -69,6 +75,8 @@ if (Astro.request.method === "POST" && organizationId && nativeListingId) {
           uploadResults.push({ filename: file.name, outcome: `Rejected: ${result.reason}` });
         } else if (result.kind === "payload_too_large") {
           uploadResults.push({ filename: file.name, outcome: "Too large" });
+        } else if (result.kind === "invalid_source_reference") {
+          uploadResults.push({ filename: file.name, outcome: "Source note is too long" });
         } else {
           uploadResults.push({ filename: file.name, outcome: "Failed" });
         }
@@ -164,7 +172,9 @@ if (Astro.request.method === "POST" && organizationId && nativeListingId) {
             ? "That image can't be used as the cover yet (it needs rights confirmed)."
             : result.kind === "version_conflict"
               ? "The gallery changed since you loaded this page -- please try again."
-              : "Could not update the cover.";
+              : result.kind === "active_listing_conflict"
+                ? "This listing is live and must always show a cover image -- choose a replacement cover instead of clearing it."
+                : "Could not update the cover.";
     }
   } else if (action === "remove") {
     const placementId = formData.get("media_placement_id");
@@ -186,7 +196,9 @@ if (Astro.request.method === "POST" && organizationId && nativeListingId) {
           ? "Removed from gallery."
           : result.kind === "version_conflict"
             ? "The gallery changed since you loaded this page -- please try again."
-            : "Could not remove that item.";
+            : result.kind === "active_listing_conflict"
+              ? "This listing is live and needs at least one valid cover image -- add a replacement image before removing this one."
+              : "Could not remove that item.";
     }
   } else if (action === "retire") {
     const mediaAssetId = formData.get("media_asset_id");
@@ -203,7 +215,9 @@ if (Astro.request.method === "POST" && organizationId && nativeListingId) {
           ? "Image retired from your library."
           : result.kind === "already_retired"
             ? "That image was already retired."
-            : "Could not retire that image.";
+            : result.kind === "active_listing_conflict"
+              ? "This image is the last valid cover image on a live listing and can't be retired yet -- add a replacement image first."
+              : "Could not retire that image.";
     }
   }
 }
@@ -406,6 +420,10 @@ const libraryAssets: MediaAssetView[] = libraryResult.kind === "ok" ? libraryRes
               <input type="file" name="images" accept="image/jpeg,image/png,image/webp" multiple />
               <label>
                 <input type="checkbox" name="rights_confirmed" /> I have the right to use these images
+              </label>
+              <label>
+                Source note (optional):
+                <input type="text" name="source_reference" maxlength="300" placeholder="e.g. photographer/vendor reference" />
               </label>
               <button type="submit">Upload</button>
             </form>

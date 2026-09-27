@@ -14,12 +14,31 @@ Contract §7/§0.1 processing model: this implementation processes an uploaded
 IMAGE synchronously within one request (`hullq.media.image_processing`
 + `hullq.persistence.media_gallery`), so a `MediaAsset` row is only ever
 durably created already in a terminal state -- `APPROVED` (successfully
-decoded/validated/re-encoded and stored) or `REJECTED` (validation failed,
-nothing stored). There is no separate durably-observable `QUARANTINED`/
-`PROCESSING` row: contract §7 requires only that "no intermediate/failure
-state can be mistaken for APPROVED", which this two-terminal-state model
-satisfies trivially -- a request either completes with a real, already-stored,
-approved derivative, or nothing is ever persisted/exposed as usable.
+decoded/validated/re-encoded, with both an original/quarantine object and a
+public derivative object durably stored) or `REJECTED` (validation failed;
+the original/quarantine object is still durably stored -- contract §6 frames
+quarantine storage as the first ingestion step, before any accept/reject
+decision -- but no derivative is ever created). There is no separate
+durably-observable `QUARANTINED`/`PROCESSING` row: contract §7 requires only
+that "no intermediate/failure state can be mistaken for APPROVED", which
+this two-terminal-state model satisfies trivially -- a request either
+completes with a real, already-stored, approved derivative, or the original
+sits in permanent quarantine and no derivative is ever persisted/exposed as
+usable.
+
+Independent review amendment (Finding A): the original/quarantine object and
+the public derivative object are always two distinct, independently
+identifiable/purgeable object-storage keys (`hullq.persistence.
+media_gallery.MediaAssetRecord.original_object_key` /
+`.derivative_object_key`) -- never one key serving both roles. Only the
+derivative is ever served by any route; the original is written once at
+upload time and read again only by a future D24 purge worker.
+
+Independent review amendment (Finding B): every `MediaAsset` also records a
+bounded D14 source/provenance classification (`MediaSourceKind`) plus an
+optional bounded free-text `source_reference` note, both living on the
+asset (not the placement) so they survive contract §9 same-Organization
+reuse exactly like `rights_state` already does.
 """
 
 from __future__ import annotations
@@ -34,12 +53,14 @@ __all__ = [
     "MAX_IMAGE_OUTPUT_DIMENSION_PX",
     "MAX_IMAGE_UPLOAD_BYTES",
     "MAX_IMAGE_UPLOAD_PIXELS",
+    "MAX_SOURCE_REFERENCE_LENGTH",
     "OUTPUT_IMAGE_MIME_TYPE",
     "MediaAssetId",
     "MediaPlacementId",
     "MediaPlacementKind",
     "MediaProcessingState",
     "MediaRightsState",
+    "MediaSourceKind",
     "YouTubeVideoId",
     "parse_youtube_reference",
 ]
@@ -114,6 +135,24 @@ class MediaRightsState(StrEnum):
 
     UNKNOWN = "UNKNOWN"
     DECLARED = "DECLARED"
+
+
+class MediaSourceKind(StrEnum):
+    """Bounded D14 source/provenance classification (independent review
+    Finding B) -- a finite structured vocabulary, not a broad rights-
+    management system. `BROKER_UPLOAD` is the only v0.1 value: an authorized
+    publisher uploaded this image directly through HullQ. Reused-onto-
+    another-listing (contract §9) never changes this: provenance describes
+    how the asset entered HullQ, not how it is later placed."""
+
+    BROKER_UPLOAD = "BROKER_UPLOAD"
+
+
+#: Independent review Finding B: an optional bounded broker-supplied note/
+#: reference, kept clearly separate from the authoritative `MediaSourceKind`
+#: classification above and bounded against abuse (a free-text field with no
+#: length bound would let an upload smuggle arbitrarily large text).
+MAX_SOURCE_REFERENCE_LENGTH = 300
 
 
 #: Contract §4 v0.1 accepted IMAGE source formats. HEIC/HEIF/SVG/arbitrary

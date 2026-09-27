@@ -91,6 +91,13 @@ class InMemoryObjectStorage:
         with self._lock:
             return key in self._objects
 
+    def keys_with_prefix(self, prefix: str) -> tuple[str, ...]:
+        """Test-only convenience: every currently-stored key starting with
+        *prefix* (e.g. distinguishing original/quarantine keys from
+        derivative keys by their key-prefix convention)."""
+        with self._lock:
+            return tuple(key for key in self._objects if key.startswith(prefix))
+
 
 class ObjectStorageConfigError(RuntimeError):
     """R2 object-storage configuration is missing or invalid.
