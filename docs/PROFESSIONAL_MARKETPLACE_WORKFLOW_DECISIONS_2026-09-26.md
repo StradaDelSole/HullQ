@@ -347,6 +347,26 @@ Where a broker-controlled mutation would knowingly violate a hard ACTIVE public 
 
 The private broker workspace must expose structured suppression/block reasons.
 
+## D30 — Marketplace media storage and provider boundary
+
+Marketplace media bytes use object storage, not PostgreSQL and not local application-host disk. Cloudflare R2 Standard is the initial primary marketplace-media object store. HullQ integrates it through an S3-compatible storage boundary so Cloudflare is deployment configuration rather than domain identity and a later provider change does not rewrite MediaAsset/MediaPlacement truth.
+
+PostgreSQL remains authoritative for MediaAsset/MediaPlacement identity, Organization control, uploader/provenance, declared rights, processing/public-usability state, hashes/dimensions/content type and opaque object references. Browser-supplied filenames/content types are not trusted as validation evidence.
+
+Original image uploads enter private/quarantined storage and are never public merely because upload completed. Public delivery uses approved processed derivatives after successful server-side image validation/decoding, metadata/EXIF removal and safe re-encoding. The accepted D24 independent-backup requirement remains controlling; a complete timed primary+backup purge worker is not required in the first gallery capability, but its data model and object-key lifecycle must not prevent D24.
+
+Initial image upload formats are JPEG, PNG and WebP. HEIC/HEIF is explicitly deferred from media v0.1.
+
+## D31 — Mixed-media gallery and broker-CI presentation
+
+The listing gallery is a mixed-media presentation surface rather than an image-only model.
+
+Initial gallery media supports processed uploaded IMAGE placements plus structured YOUTUBE external-video references. Broker-supplied arbitrary embed HTML is never stored/rendered; YouTube input is normalized to a bounded structured video identity/reference. Direct broker VIDEO uploads are an explicitly anticipated later capability and the media model must not make them require a second gallery architecture, but upload/transcode/streaming/poster-frame semantics are not part of the initial gallery capability.
+
+D15 remains unchanged: PUBLICATION_READY requires at least one approved rights-valid public-usable IMAGE and an explicit IMAGE cover. YouTube or future uploaded video never substitutes for that minimum image/cover requirement.
+
+A future Broker-CI gallery slide is accepted presentation direction. It is virtual/dynamically composed from the publishing Organization's public CI/profile state, is not a MediaAsset or MediaPlacement, cannot count as media/publication readiness or cover, and must not mutate yacht/listing media truth. Its insertion position should be deterministically variable from stable listing identity rather than runtime-random on every page load, so a listing's gallery order does not jump between reloads. Full broker logo/color/CI management is not required by the initial gallery capability.
+
 ## Reassessment rule
 
 These decisions are binding product/domain direction until explicitly superseded by a later Owner-accepted repository decision.
