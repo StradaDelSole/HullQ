@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0066 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0067 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0067 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0068 -->
 
 **Updated:** 2026-09-27  
-**Latest owner-accepted / DONE slice:** SLICE-0066  
-**Current queue:** SLICE-0067 — **Professional Draft → Atomic Marketplace Promotion** selected by the fresh post-SLICE-0066 reassessment. Implementation is authorized only after this READY package receives independent exact-head review, required remote gates pass, and the readiness changes are merged to canonical `main`.  
+**Latest owner-accepted / DONE slice:** SLICE-0067  
+**Current queue:** SLICE-0068 — **UNSELECTED**. A fresh post-SLICE-0067 reassessment must complete before any capability selection, readiness package or implementation authorization.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -52,6 +52,8 @@ SLICE-0064 adds the accepted broker-facing lifecycle/freshness controls for alre
 SLICE-0065 closes two publication-input shape gaps without creating marketplace truth. ProfessionalListingDraft now stores professional-only `listing_offer.broker_description` outside the shared nine-key owner-direct/professional common payload, including durable reopen and bounded local recovery, while OwnerDirectListingDraft remains unchanged. The existing PhysicalBoat claim revision/head model now carries optional `physical_boat.boat_name` with VALUE_ASSERTION / ABSENT / UNKNOWN semantics and omission kept distinct; historic pre-0065 exact retries remain idempotent when boat_name is omitted. Boat name remains PhysicalBoat DISPLAY_ONLY truth, not BoatDesign/Search truth. No draft promotion, NativeListing creation/publication, offer editing, media, leads, outcomes, analytics, import/export or Search change occurs.
 
 SLICE-0066 closes the remaining shared draft required-response gap for `physical_boat.build_year`. Owner-direct and professional drafts now preserve OMITTED, explicit UNKNOWN and VALUE_ASSERTION(year) as mechanically distinct states under the same existing nine-key common payload. Historical bare-integer input remains compatible and canonical serialization/readback is structured. Both browser editors use one strict build-year form parser; invalid Known-year/mode submissions fail with visible invalid-save state and zero mutation. Professional local recovery preserves the bounded assertion-kind control and rejects malformed assertion-kind values fail-closed. No schema migration, promotion, marketplace fact creation, publication or Search change occurs.
+
+SLICE-0067 adds the accepted fresh-identity professional promotion path. An authorized, promotion-ready Organization-owned ProfessionalListingDraft can atomically mint a fresh PhysicalBoat, MarketEpisode and lifecycle-DRAFT NativeListing, write the initial Organization PhysicalBoat claim and NativeListing offer, and freeze the source draft as PROMOTED with immutable NativeListing provenance in one PostgreSQL transaction. Exact-version retry is idempotent, D09 Organization+resolved-episode uniqueness is database-enforced, and browser recovery is deterministically cleared only after successful promotion. The resulting listing remains DRAFT/not public; existing-boat reconciliation, media and publication remain deferred.
 
 SLICE-0054 now adds the first accepted owner-direct provider surface:
 
@@ -145,6 +147,7 @@ SLICE-0040 marketplace identity/truth separation
 → SLICE-0064 professional inventory lifecycle controls
 → SLICE-0065 professional publication input alignment
 → SLICE-0066 required-response / assertion input alignment
+→ SLICE-0067 professional draft → atomic marketplace promotion
 ```
 
 Latest closures:
@@ -165,6 +168,7 @@ docs/slices/SLICE-0063-acceptance-closure.md
 docs/slices/SLICE-0064-acceptance-closure.md
 docs/slices/SLICE-0065-acceptance-closure.md
 docs/slices/SLICE-0066-acceptance-closure.md
+docs/slices/SLICE-0067-acceptance-closure.md
 ```
 
 ## Accepted technical Search result
@@ -180,7 +184,7 @@ Accepted public `keel_configuration` values are exactly `FIN`, `FIN_WITH_BULB`, 
 
 The two criteria may be evaluated alone or together as deterministic hard MUST/AND requirements. SLICE-0055 preserves typed criterion/configuration evidence for confirmed match, confirmed non-match and insufficient-data application outcomes while keeping BoatDesign/configuration truth separate from concrete PhysicalBoat/listing truth.
 
-The accepted technical native Search criteria count remains `2`. SLICE-0057 adds no criterion: it re-evaluates one buyer-selected replacement value for an already active accepted criterion through the same Search truth, in one coherent comparison snapshot, and exposes only factual set-difference counts plus the backend-owned canonical alternative Search path. SLICE-0058 likewise adds no Search criterion: it records explicit buyer interest locally by stable `NativeListingId` and re-resolves current public listing truth when viewed. SLICE-0059 adds no Search criterion: it uses that existing explicit Shortlist as the whole Compare set and re-resolves current public listing/PhysicalBoat claim truth into a factual side-by-side matrix without score, winner, recommendation or hidden weighting. SLICE-0060 adds no Search criterion: it is a private professional Organization inventory projection over accepted NativeListing truth. SLICE-0061 likewise adds no Search criterion: it is private Organization-owned pre-market draft authoring state and has no Search/public promotion path. SLICE-0062 adds no Search criterion: it is bounded browser-local professional draft recovery. SLICE-0063 adds no Search criterion: it adds publisher display identity only. SLICE-0064 adds no Search criterion: it exposes already-accepted lifecycle/freshness operations for existing inventory without changing Search truth. SLICE-0065 also adds no Search criterion: it aligns professional draft description input and optional PhysicalBoat boat-name claim destination only. SLICE-0066 likewise adds no Search criterion: it aligns only shared draft build-year assertion-response semantics and browser/recovery handling. Any future criterion #3+ readiness is subject to the accepted third-copy abstraction guard in `docs/governance/POST_0051_TRIGGER_GATES.md`.
+The accepted technical native Search criteria count remains `2`. SLICE-0057 adds no criterion: it re-evaluates one buyer-selected replacement value for an already active accepted criterion through the same Search truth, in one coherent comparison snapshot, and exposes only factual set-difference counts plus the backend-owned canonical alternative Search path. SLICE-0058 likewise adds no Search criterion: it records explicit buyer interest locally by stable `NativeListingId` and re-resolves current public listing truth when viewed. SLICE-0059 adds no Search criterion: it uses that existing explicit Shortlist as the whole Compare set and re-resolves current public listing/PhysicalBoat claim truth into a factual side-by-side matrix without score, winner, recommendation or hidden weighting. SLICE-0060 adds no Search criterion: it is a private professional Organization inventory projection over accepted NativeListing truth. SLICE-0061 likewise adds no Search criterion: it is private Organization-owned pre-market draft authoring state and has no Search/public promotion path. SLICE-0062 adds no Search criterion: it is bounded browser-local professional draft recovery. SLICE-0063 adds no Search criterion: it adds publisher display identity only. SLICE-0064 adds no Search criterion: it exposes already-accepted lifecycle/freshness operations for existing inventory without changing Search truth. SLICE-0065 also adds no Search criterion: it aligns professional draft description input and optional PhysicalBoat boat-name claim destination only. SLICE-0066 likewise adds no Search criterion: it aligns only shared draft build-year assertion-response semantics and browser/recovery handling. SLICE-0067 adds no Search criterion: it atomically promotes professional draft truth into a fresh lifecycle-DRAFT marketplace chain without changing Search semantics. Any future criterion #3+ readiness is subject to the accepted third-copy abstraction guard in `docs/governance/POST_0051_TRIGGER_GATES.md`.
 
 ## Post-SLICE-0051 trigger gates
 
@@ -203,7 +207,7 @@ BROKER_SELF_SERVICE_PILOT_STATUS: NOT_STARTED
 PAID_BROKER_PLAN_STATUS: NOT_STARTED
 ```
 
-SLICE-0066 uses retained local/synthetic proof and introduces no real external marketplace production data, broker self-service pilot, production pilot or public production launch. The Production Readiness gate therefore remains untriggered after acceptance. The mandatory post-0056 workflow reassessment remains `PASS`; SLICE-0066 acceptance does not alter that gate. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA/production-readiness rules remain mandatory.
+SLICE-0067 uses retained local/synthetic proof and introduces no real external marketplace production data, broker self-service pilot, production pilot or public production launch. The Production Readiness gate therefore remains untriggered after acceptance. The mandatory post-0056 workflow reassessment remains `PASS`; SLICE-0067 acceptance does not alter that gate. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA/production-readiness rules remain mandatory.
 
 ## Broker Mandatory Capability Register
 
@@ -240,9 +244,9 @@ The SLICE-0053 same-host session-topology invariant remains in force for browser
 
 ## What remains unbuilt
 
-Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; professional draft-to-marketplace promotion/publication and media; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
+Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; professional marketplace publication and media; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-SLICE-0066 is owner-accepted and merged. The shared owner-direct/professional draft layer can now represent build year as unanswered, explicit UNKNOWN or concrete VALUE_ASSERTION without inventing truth; legacy integers remain compatible and browser/recovery boundaries are strict/fail-closed. REQ-BROKER-023 and REQ-BROKER-024 remain implemented. The Broker Workspace Launch Gate remains NOT_READY because draft-to-marketplace promotion/creation, media, lead handling, editing and the other launch-gate sections remain outstanding.
+SLICE-0067 is owner-accepted and merged. The professional path can now atomically promote a promotion-ready Organization-owned draft into a fresh PhysicalBoat/MarketEpisode/NativeListing DRAFT chain with initial claim/offer truth and immutable source provenance. REQ-BROKER-023 and REQ-BROKER-024 remain implemented. The Broker Workspace Launch Gate remains NOT_READY because media, integrated publication readiness/publish flow, lead handling, editing and the other launch-gate sections remain outstanding.
 
 ## Broker launch execution focus
 
@@ -252,7 +256,7 @@ The 2026-09-26 execution recalibration is recorded in:
 docs/BROKER_LAUNCH_EXECUTION_FOCUS_2026-09-26.md
 ```
 
-It does not reopen SLICE-0066 or waive existing launch gates. It changes prioritization and slice-sizing discipline after the current capability:
+It does not reopen accepted SLICE-0067 or waive existing launch gates. It changes prioritization and slice-sizing discipline after the current capability:
 
 ```text
 strict truth / auth / provenance stay fixed
@@ -262,7 +266,7 @@ micro-slicing is no longer a goal
 vertical broker-launch progress becomes the default where risk permits
 ```
 
-Post-0066 reassessment should strongly prefer the shortest safe path through professional promotion, media, canonical publication readiness/publish integration, durable buyer contact/leads, broker lead handling and inventory editing before unrelated product expansion, unless a higher-leverage blocker or triggered mandatory capability requires interruption.
+Post-0067 reassessment should strongly prefer the shortest safe path through media, canonical publication readiness/publish integration, durable buyer contact/leads, broker lead handling and inventory editing before unrelated product expansion, unless a higher-leverage blocker or triggered mandatory capability requires interruption.
 
 The existing public NativeListing read path is already implemented; near-term work is to let normal broker-created inventory reach that path truthfully rather than to invent a second public-listing architecture.
 
@@ -275,44 +279,16 @@ Large retained research artifacts are acknowledged as repository-hygiene debt, n
 Next queue number:
 
 ```text
-SLICE-0067
+SLICE-0068
 ```
 
-**Selected capability:** Professional Draft → Atomic Marketplace Promotion.
+**Capability:** UNSELECTED.
 
-Controlling reassessment:
+SLICE-0067 is owner-accepted and merged. A fresh post-SLICE-0067 reassessment must reconcile the accepted decisions, current `main` implementation, broker-launch execution focus, trigger gates and remaining launch blockers before SLICE-0068 capability selection.
 
-```text
-docs/POST_SLICE_0066_REASSESSMENT_2026-09-27.md
-```
+The accepted near-term direction after atomic promotion includes media/gallery, canonical PublicationReadiness/publish integration, durable buyer contact/leads, broker lead handling and inventory editing, but this directional sequence does not preselect SLICE-0068.
 
-Readiness contract:
-
-```text
-docs/slices/SLICE-0067-professional-draft-atomic-promotion.md
-```
-
-Primary normative promotion contract:
-
-```text
-specs/PROFESSIONAL_LISTING_PROMOTION_CONTRACT.v0.1.md
-```
-
-The selected capability implements the already-decided fresh-identity branch only:
-
-```text
-promotion-ready ProfessionalListingDraft
-→ server-minted PhysicalBoat
-→ server-minted MarketEpisode
-→ server-minted NativeListing DRAFT
-→ initial Organization PhysicalBoat claim
-→ initial NativeListing offer
-→ source draft PROMOTED
-```
-
-All writes must commit as one transaction. Existing-PhysicalBoat/episode reconciliation, media and publication remain explicitly deferred.
-
-The readiness package must receive independent exact-head ACCEPT, required remote gates and merge to canonical `main` before `START_SLICE.bat` is authorized. No later slice is selected.
+No SLICE-0068 readiness package, `START_SLICE.bat` authorization or implementation work exists at this closure point.
 
 ## Development workflow
 
@@ -327,6 +303,6 @@ The readiness package must receive independent exact-head ACCEPT, required remot
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; the fresh post-SLICE-0066 reassessment selects SLICE-0067 Professional Draft → Atomic Marketplace Promotion, with implementation still gated by readiness review/gates/merge.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0067 Professional Draft → Atomic Marketplace Promotion is owner-accepted and merged; SLICE-0068 remains UNSELECTED pending a fresh post-0067 reassessment.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
