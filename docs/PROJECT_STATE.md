@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0067 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0068 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0068 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0069 -->
 
 **Updated:** 2026-09-27  
-**Latest owner-accepted / DONE slice:** SLICE-0067  
-**Current queue:** SLICE-0068 — **Broker Marketplace Mixed-Media Gallery — READY**. Post-SLICE-0067 reassessment selected the minimum viable media/gallery capability; implementation remains unauthorized until readiness exact-head review, remote gates and readiness merge complete.  
+**Latest owner-accepted / DONE slice:** SLICE-0068  
+**Current queue:** SLICE-0069 — **UNSELECTED**. SLICE-0068 Broker Marketplace Mixed-Media Gallery is owner-accepted and merged; a fresh post-SLICE-0068 reassessment must complete before SLICE-0069 capability selection, readiness or implementation authorization.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -53,7 +53,9 @@ SLICE-0065 closes two publication-input shape gaps without creating marketplace 
 
 SLICE-0066 closes the remaining shared draft required-response gap for `physical_boat.build_year`. Owner-direct and professional drafts now preserve OMITTED, explicit UNKNOWN and VALUE_ASSERTION(year) as mechanically distinct states under the same existing nine-key common payload. Historical bare-integer input remains compatible and canonical serialization/readback is structured. Both browser editors use one strict build-year form parser; invalid Known-year/mode submissions fail with visible invalid-save state and zero mutation. Professional local recovery preserves the bounded assertion-kind control and rejects malformed assertion-kind values fail-closed. No schema migration, promotion, marketplace fact creation, publication or Search change occurs.
 
-SLICE-0067 adds the accepted fresh-identity professional promotion path. An authorized, promotion-ready Organization-owned ProfessionalListingDraft can atomically mint a fresh PhysicalBoat, MarketEpisode and lifecycle-DRAFT NativeListing, write the initial Organization PhysicalBoat claim and NativeListing offer, and freeze the source draft as PROMOTED with immutable NativeListing provenance in one PostgreSQL transaction. Exact-version retry is idempotent, D09 Organization+resolved-episode uniqueness is database-enforced, and browser recovery is deterministically cleared only after successful promotion. The resulting listing remains DRAFT/not public; existing-boat reconciliation, media and publication remain deferred.
+SLICE-0067 adds the accepted fresh-identity professional promotion path. An authorized, promotion-ready Organization-owned ProfessionalListingDraft can atomically mint a fresh PhysicalBoat, MarketEpisode and lifecycle-DRAFT NativeListing, write the initial Organization PhysicalBoat claim and NativeListing offer, and freeze the source draft as PROMOTED with immutable NativeListing provenance in one PostgreSQL transaction. Exact-version retry is idempotent, D09 Organization+resolved-episode uniqueness is database-enforced, and browser recovery is deterministically cleared only after successful promotion. The resulting listing remains DRAFT/not public; existing-boat reconciliation and publication remain deferred.
+
+SLICE-0068 adds the accepted Organization-controlled mixed-media gallery for existing NativeListings: private original/quarantine image storage, safely processed derivatives, provenance/rights state, durable MediaAsset/MediaPlacement ordering and explicit cover, same-Organization reuse, structured YouTube references, bounded streaming broker uploads, ACTIVE-listing media protection and race-safe retirement/reuse/cover locking. Cloudflare R2 Standard is the initial primary media store behind HullQ's S3-compatible boundary. Canonical PublicationReadiness/publish integration remains separate.
 
 SLICE-0054 now adds the first accepted owner-direct provider surface:
 
@@ -279,14 +281,14 @@ Large retained research artifacts are acknowledged as repository-hygiene debt, n
 Next queue number:
 
 ```text
-SLICE-0068
+SLICE-0069
 ```
 
-**Capability:** Broker Marketplace Mixed-Media Gallery.
+**Capability:** UNSELECTED.
 
-Post-SLICE-0067 reassessment selected minimum viable broker marketplace media/gallery as the next launch-path capability. SLICE-0068 is governed by `specs/MARKETPLACE_MEDIA_GALLERY_CONTRACT.v0.1.md` and `docs/slices/SLICE-0068-broker-marketplace-mixed-media-gallery.md`. Accepted D30/D31 additionally fix Cloudflare R2 Standard as initial primary media object storage behind an S3-compatible HullQ boundary, JPEG/PNG/WebP as image v0.1, structured YouTube gallery references, future direct uploaded-video compatibility, and a future virtual deterministic Broker-CI presentation slide that is not media truth.
+SLICE-0068 Broker Marketplace Mixed-Media Gallery is owner-accepted and merged. A fresh post-SLICE-0068 reassessment must reconcile current `main`, accepted D22/D29 publication semantics, the broker-launch execution focus, trigger gates and remaining launch blockers before SLICE-0069 capability selection.
 
-SLICE-0068 is READY for implementation handoff, but  `START_SLICE.bat` and implementation are blocked until independent exact-head readiness review, required remote gates and readiness merge complete. Canonical PublicationReadiness/publish integration remains the next launch-path capability after media unless reassessment finds a higher-priority blocker.
+The accepted near-term direction identifies canonical PublicationReadiness + publish integration as the next launch-path target, followed by durable buyer contact/leads, broker lead handling and inventory editing, but this closure does not preselect SLICE-0069. No `START_SLICE.bat` authorization or implementation work exists for 0069 at this closure point.
 
 ## Development workflow
 
@@ -301,6 +303,6 @@ SLICE-0068 is READY for implementation handoff, but  `START_SLICE.bat` and imple
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0067 Professional Draft → Atomic Marketplace Promotion is owner-accepted and merged; SLICE-0068 is selected as Broker Marketplace Mixed-Media Gallery and is READY pending successful remote gates and readiness merge.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0068 Broker Marketplace Mixed-Media Gallery is owner-accepted and merged; SLICE-0069 remains UNSELECTED pending fresh post-0068 reassessment.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
