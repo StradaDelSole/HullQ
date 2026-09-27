@@ -122,6 +122,7 @@ let saveOutcome: SaveOutcome = "none";
 
 type PromoteOutcome =
   | "none"
+  | "promoted"
   | "not_ready"
   | "conflict"
   | "denied"
@@ -149,16 +150,23 @@ if (Astro.request.method === "POST" && organizationId && draftId) {
         expectedVersion,
       );
       if (promoteResult.kind === "ok") {
-        // Contract §12: on success, direct the user to the Organization
-        // inventory surface identifying the resulting (still non-public
-        // DRAFT) NativeListing -- covers both a fresh PROMOTED and an
-        // exact-retry ALREADY_PROMOTED alike.
-        return Astro.redirect(
-          `/broker/organizations/${encodeURIComponent(organizationId)}/inventory`,
-          303,
-        );
-      }
-      if (promoteResult.kind === "not_ready") {
+        // Independent exact-head review Finding B: do NOT redirect away
+        // immediately. The browser-local recovery envelope lives in
+        // `localStorage`, which this server-rendered redirect cannot touch
+        // -- only the client-side recovery script wired to the *rendered
+        // promoted page* below can clear it (contract §12: "clear any
+        // recovery envelope for that exact draft/version" is required on
+        // success, not merely "eventually, if the user happens to reopen
+        // this draft later"). Falling through to the ordinary re-read below
+        // re-fetches the now-PROMOTED draft and renders the existing
+        // immutable-provenance branch, whose recovery script deterministically
+        // clears the envelope on this exact response -- covers both a fresh
+        // PROMOTED and an exact-retry ALREADY_PROMOTED alike. The immutable
+        // branch already links to (rather than force-navigates to) the
+        // Organization inventory surface, identifies the resulting
+        // NativeListingId, and states lifecycle DRAFT / not public.
+        promoteOutcome = "promoted";
+      } else if (promoteResult.kind === "not_ready") {
         promoteOutcome = "not_ready";
         promoteNotReadyReasons = promoteResult.reasons;
       } else if (promoteResult.kind === "version_conflict") {
@@ -299,6 +307,7 @@ const accountId = brokerContextResult?.kind === "ok" ? brokerContextResult.data.
             {saveOutcome === "invalid" && (
               <p>Some values could not be saved. Please check the fields below.</p>
             )}
+            {promoteOutcome === "promoted" && <p>Promotion succeeded.</p>}
             {promoteOutcome === "not_ready" && (
               <p>
                 This draft is not ready to promote yet: {promoteNotReadyReasons.join(", ")}.
@@ -525,6 +534,7 @@ const accountId = brokerContextResult?.kind === "ok" ? brokerContextResult.data.
               // latter can throw before this script's own logic ever runs
               // (independent review finding 2026-09-21 #3).
               import {
+                applyPromotedRecoveryClear,
                 browserRecoveryStorage,
                 clearRecoveryEnvelope,
                 initProfessionalDraftRecovery,
@@ -555,13 +565,15 @@ const accountId = brokerContextResult?.kind === "ok" ? brokerContextResult.data.
                   clearRecoveryEnvelope(browserRecoveryStorage(), scope);
                 }
 
-                // SLICE-0067 contract §12: a PROMOTED draft renders no
-                // editable form at all -- best-effort clear directly rather
-                // than calling initProfessionalDraftRecovery() (which
-                // requires a real form element to wire capture onto).
-                if (isPromoted) {
-                  if (scope) clearRecoveryEnvelope(browserRecoveryStorage(), scope);
-                } else {
+                // SLICE-0067 contract §12 / independent exact-head review
+                // Finding B: a PROMOTED draft renders no editable form at
+                // all -- `applyPromotedRecoveryClear` deterministically
+                // clears the exact recovery envelope on THIS render
+                // whenever it reflects PROMOTED (a fresh promotion or an
+                // exact-retry ALREADY_PROMOTED alike), rather than the
+                // clear being deferred until a later reopen of this draft.
+                applyPromotedRecoveryClear(browserRecoveryStorage(), scope, isPromoted);
+                if (!isPromoted) {
                   const formEl = document.getElementById("draft-form");
                   if (formEl instanceof HTMLFormElement && Number.isFinite(serverVersion)) {
                     initProfessionalDraftRecovery(

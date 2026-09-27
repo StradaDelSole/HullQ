@@ -9,13 +9,28 @@ translating a signed `SessionClaims`, an explicit Organization selection and
 a raw JSON-decoded request body into one deterministic outcome FastAPI can
 render.
 
-This module never pre-decides publishing eligibility itself (mirrors
-`hullq.application.broker_inventory_lifecycle`'s identical rationale): it
-re-fetches the current `MarketplaceOrganization`/`OrganizationMembership`
-domain records after the workspace/MFA gate succeeds, then lets the real
-accepted SLICE-0041 evaluator -- invoked once, inside the persistence
-transaction -- be the sole authority over PUBLISHER-role/Organization-
-eligibility denial.
+Contract §4 requires, for *every* promotion request -- including a read-only
+exact-version retry of an already-PROMOTED draft -- that the current
+Organization/MFA/ACTIVE-membership boundary AND current `PUBLISHER`
+membership all hold before any draft/result disclosure. This module
+therefore gates current `PUBLISHER` membership itself, at the same actor-
+authorization layer as the professional draft-authoring gate
+(`hullq.application.professional_listing_draft._authorize_draft_actor`) --
+before the target draft is ever locked/read, so a non-PUBLISHER current
+member cannot distinguish an unknown draft id from a known EDITABLE/PROMOTED
+one, cannot see `NativeListingId` provenance, and causes zero mutation.
+
+This module still never pre-decides *publishing eligibility* itself (mirrors
+`hullq.application.broker_inventory_lifecycle`'s identical rationale): once
+current PUBLISHER membership is confirmed, it re-fetches the current
+`MarketplaceOrganization`/`OrganizationMembership` domain records and lets
+the real accepted SLICE-0041 evaluator -- invoked once, inside the
+persistence transaction, only for a new EDITABLE -> PROMOTED materialization
+-- be the sole authority over Organization-eligibility denial. Contract §4's
+last paragraph is preserved exactly: an already-PROMOTED exact-version retry
+never re-requires current Organization publishing eligibility, only current
+workspace/MFA/PUBLISHER authorization (checked here, uniformly, before the
+persistence call either way).
 """
 
 from __future__ import annotations
@@ -56,6 +71,7 @@ __all__ = [
 class _PromotionActorAuthorizationOutcome(StrEnum):
     NOT_FOUND_OR_DENIED = "NOT_FOUND_OR_DENIED"
     MFA_REQUIRED = "MFA_REQUIRED"
+    PUBLISHER_ROLE_REQUIRED = "PUBLISHER_ROLE_REQUIRED"
     AUTHORIZED = "AUTHORIZED"
 
 
@@ -68,11 +84,22 @@ class _AuthorizedActor:
 def _authorize_promotion_actor(
     conn: Any, session: SessionClaims, organization_id: MarketplaceOrganizationId
 ) -> tuple[_PromotionActorAuthorizationOutcome, _AuthorizedActor | None]:
+    """Contract §4 items 1-5: authenticated session, current Organization
+    access, MFA where required, exact current ACTIVE membership and current
+    `PUBLISHER` membership -- required uniformly for *every* promotion
+    request, including a read-only exact-version retry of an already-
+    PROMOTED draft, and resolved entirely before the target draft is ever
+    locked/read (mirrors `hullq.application.professional_listing_draft
+    ._authorize_draft_actor`'s identical PUBLISHER-role gate).
+    """
     workspace_result = get_organization_workspace_result(conn, session, organization_id)
     if workspace_result.outcome is OrganizationWorkspaceOutcome.NOT_FOUND_OR_DENIED:
         return _PromotionActorAuthorizationOutcome.NOT_FOUND_OR_DENIED, None
     if workspace_result.outcome is OrganizationWorkspaceOutcome.MFA_REQUIRED:
         return _PromotionActorAuthorizationOutcome.MFA_REQUIRED, None
+    assert workspace_result.context is not None
+    if "PUBLISHER" not in workspace_result.context.roles:
+        return _PromotionActorAuthorizationOutcome.PUBLISHER_ROLE_REQUIRED, None
 
     organization = fetch_marketplace_organization(conn, organization_id)
     if organization is None:
@@ -193,6 +220,18 @@ def promote_professional_draft_for_organization(
         )
     if auth_outcome is _PromotionActorAuthorizationOutcome.MFA_REQUIRED:
         return PromoteProfessionalDraftResult(outcome=PromoteProfessionalDraftOutcome.MFA_REQUIRED)
+    if auth_outcome is _PromotionActorAuthorizationOutcome.PUBLISHER_ROLE_REQUIRED:
+        # Contract §4: missing current PUBLISHER membership is resolved
+        # before the target draft is ever touched -- reuses the existing
+        # DENIED outcome + the real SLICE-0041 PUBLISHER_ROLE_REQUIRED
+        # reason (never a new external outcome), so the response is
+        # identical to any other publishing-denied 403 regardless of
+        # whether draft_id_value names an unknown, EDITABLE or PROMOTED
+        # draft, and regardless of expected_version.
+        return PromoteProfessionalDraftResult(
+            outcome=PromoteProfessionalDraftOutcome.DENIED,
+            denial_reason=PublishingEligibilityReason.PUBLISHER_ROLE_REQUIRED,
+        )
     assert actor is not None
 
     expected_version = _parse_expected_version(raw_body)

@@ -13,6 +13,7 @@ import {
   RECOVERY_MAX_AGE_MS,
   RECOVERY_SCHEMA_V1,
   applyFormValues,
+  applyPromotedRecoveryClear,
   browserRecoveryStorage,
   buildRecoveryEnvelope,
   canWriteRecoveryStorage,
@@ -228,6 +229,63 @@ test("saveRecoveryEnvelope: a storage write exception returns false, does not th
 
 test("clearRecoveryEnvelope: a storage remove exception never throws", () => {
   assert.doesNotThrow(() => clearRecoveryEnvelope(new ThrowingStorage(false, false, true), SCOPE_A));
+});
+
+// --- applyPromotedRecoveryClear (SLICE-0067 promotion review Finding B) ---
+//
+// The exact success-state/clear decision a PROMOTED render must apply,
+// pure and DOM-free (only *storage* is touched). The draft edit page's
+// inline DOM-wiring call site is not exercised here -- see that function's
+// docstring for why the retained real PostgreSQL/FastAPI/built-Astro proof
+// cannot execute it either (no real browser JS engine in that harness).
+
+test("applyPromotedRecoveryClear: isPromoted=true with a valid scope clears an existing envelope", () => {
+  const storage = new FakeStorage();
+  const envelope = buildRecoveryEnvelope(SCOPE_A, 1, { "physical_boat.boat_name": "Sea Breeze" }, NOW);
+  saveRecoveryEnvelope(storage, envelope);
+  assert.equal(storage.has(recoveryStorageKey(SCOPE_A)), true);
+
+  applyPromotedRecoveryClear(storage, SCOPE_A, true);
+
+  assert.equal(storage.has(recoveryStorageKey(SCOPE_A)), false);
+});
+
+test("applyPromotedRecoveryClear: isPromoted=true with no existing envelope is a harmless no-op", () => {
+  const storage = new FakeStorage();
+  assert.doesNotThrow(() => applyPromotedRecoveryClear(storage, SCOPE_A, true));
+  assert.equal(storage.has(recoveryStorageKey(SCOPE_A)), false);
+});
+
+test("applyPromotedRecoveryClear: isPromoted=true with a null scope never touches storage", () => {
+  const storage = new FakeStorage();
+  const envelope = buildRecoveryEnvelope(SCOPE_A, 1, {}, NOW);
+  saveRecoveryEnvelope(storage, envelope);
+
+  applyPromotedRecoveryClear(storage, null, true);
+
+  // Nothing was ever written under a null-scope key, and the real SCOPE_A
+  // envelope (an unrelated scope from this call's point of view) is
+  // untouched -- a null scope must never fall back to clearing something
+  // else.
+  assert.equal(storage.has(recoveryStorageKey(SCOPE_A)), true);
+});
+
+test("applyPromotedRecoveryClear: isPromoted=false never clears, even with a valid scope and existing envelope", () => {
+  const storage = new FakeStorage();
+  const envelope = buildRecoveryEnvelope(SCOPE_A, 1, { "physical_boat.boat_name": "Sea Breeze" }, NOW);
+  saveRecoveryEnvelope(storage, envelope);
+
+  applyPromotedRecoveryClear(storage, SCOPE_A, false);
+
+  assert.equal(storage.has(recoveryStorageKey(SCOPE_A)), true);
+  const reloaded = loadRecoveryEnvelope(storage, SCOPE_A, NOW);
+  assert.equal(reloaded.kind, "found");
+});
+
+test("applyPromotedRecoveryClear: never throws even against a throwing storage", () => {
+  assert.doesNotThrow(() =>
+    applyPromotedRecoveryClear(new ThrowingStorage(false, false, true), SCOPE_A, true),
+  );
 });
 
 // --- browserRecoveryStorage (independent review finding 2026-09-21 #3) ---

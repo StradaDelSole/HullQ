@@ -194,6 +194,53 @@ def _create_ready_draft(client: TestClient, org_id: str) -> str:
     return str(created.json()["draft_id"])
 
 
+_MARKETPLACE_TABLES = (
+    "physical_boats",
+    "market_episodes",
+    "native_listings",
+    "native_listing_offer_revisions",
+    "native_listing_offer_heads",
+    "physical_boat_claim_revisions",
+    "physical_boat_claim_heads",
+)
+
+
+def _marketplace_row_counts(api_url: str) -> dict[str, int]:
+    conn = psycopg.connect(api_url)
+    try:
+        counts: dict[str, int] = {}
+        with conn.cursor() as cur:
+            for table in _MARKETPLACE_TABLES:
+                cur.execute(f"SELECT COUNT(*) FROM {table}")
+                row = cur.fetchone()
+                assert row is not None
+                counts[table] = row[0]
+        return counts
+    finally:
+        conn.close()
+
+
+def _draft_state_direct(api_url: str, draft_id: str) -> tuple[str, int]:
+    """Reads promotion_state/version directly from PostgreSQL -- used only
+    where the test scenario itself has just removed the API's own PUBLISHER
+    authorization, so the ordinary authorized GET route cannot be used to
+    verify zero mutation without reintroducing the very role this test is
+    proving is now denied."""
+    conn = psycopg.connect(api_url)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT promotion_state, version FROM professional_listing_drafts "
+                "WHERE professional_listing_draft_id = %s",
+                [draft_id],
+            )
+            row = cur.fetchone()
+            assert row is not None
+            return row[0], row[1]
+    finally:
+        conn.close()
+
+
 class TestPromotionAuthorizationBoundary:
     def test_unauthenticated_is_401(self, client: TestClient) -> None:
         response = client.post(
@@ -248,6 +295,196 @@ class TestPromotionAuthorizationBoundary:
             headers=_csrf_headers(),
         )
         assert response.status_code == 404
+
+
+class TestPromotionRequiresCurrentPublisherRole:
+    """Independent exact-head review Finding A: contract §4 requires current
+    `PUBLISHER` membership before *every* promotion request may disclose
+    draft/result state -- including a read-only exact-version retry of an
+    already-PROMOTED draft -- not merely for a new EDITABLE -> PROMOTED
+    materialization."""
+
+    def _denied_publisher_role_required(self, response: Any) -> None:
+        assert response.status_code == 403
+        assert response.json() == {
+            "error": "publishing_denied",
+            "reason": "PUBLISHER_ROLE_REQUIRED",
+        }
+
+    def test_non_publisher_member_against_known_editable_draft_is_denied(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-PROMO-API-NOPUB-1",
+            account_id="ACC-PROMO-API-NOPUB-1",
+            membership_id="OM-PROMO-API-NOPUB-1",
+        )
+        _log_in(client, "ACC-PROMO-API-NOPUB-1")
+        draft_id = _create_ready_draft(client, "ORG-PROMO-API-NOPUB-1")
+
+        # Downgrade the exact same membership to no longer include PUBLISHER.
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-PROMO-API-NOPUB-1",
+            account_id="ACC-PROMO-API-NOPUB-1",
+            membership_id="OM-PROMO-API-NOPUB-1",
+            roles=frozenset({MembershipRole.MEMBER}),
+        )
+        before = _marketplace_row_counts(api_url)
+
+        response = client.post(
+            _promote_path("ORG-PROMO-API-NOPUB-1", draft_id),
+            json={"expected_version": 1},
+            headers=_csrf_headers(),
+        )
+        self._denied_publisher_role_required(response)
+        assert _marketplace_row_counts(api_url) == before
+        state, version = _draft_state_direct(api_url, draft_id)
+        assert state == "EDITABLE"
+        assert version == 1
+
+    def test_non_publisher_member_against_unknown_draft_is_identically_denied(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        """Non-enumeration: an unknown draft id must return the exact same
+        403 shape as a known EDITABLE/PROMOTED one once PUBLISHER is
+        missing -- the caller must never be able to use this boundary as a
+        draft-existence oracle."""
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-PROMO-API-NOPUB-2",
+            account_id="ACC-PROMO-API-NOPUB-2",
+            membership_id="OM-PROMO-API-NOPUB-2",
+            roles=frozenset({MembershipRole.MEMBER}),
+        )
+        _log_in(client, "ACC-PROMO-API-NOPUB-2")
+
+        response = client.post(
+            _promote_path("ORG-PROMO-API-NOPUB-2", str(uuid.uuid4())),
+            json={"expected_version": 1},
+            headers=_csrf_headers(),
+        )
+        self._denied_publisher_role_required(response)
+
+    def test_publisher_role_revoked_after_promotion_blocks_exact_retry_disclosure(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-PROMO-API-NOPUB-3",
+            account_id="ACC-PROMO-API-NOPUB-3",
+            membership_id="OM-PROMO-API-NOPUB-3",
+        )
+        _log_in(client, "ACC-PROMO-API-NOPUB-3")
+        draft_id = _create_ready_draft(client, "ORG-PROMO-API-NOPUB-3")
+
+        promoted = client.post(
+            _promote_path("ORG-PROMO-API-NOPUB-3", draft_id),
+            json={"expected_version": 1},
+            headers=_csrf_headers(),
+        )
+        assert promoted.status_code == 201
+        native_listing_id = promoted.json()["native_listing_id"]
+
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-PROMO-API-NOPUB-3",
+            account_id="ACC-PROMO-API-NOPUB-3",
+            membership_id="OM-PROMO-API-NOPUB-3",
+            roles=frozenset({MembershipRole.MEMBER}),
+        )
+        before = _marketplace_row_counts(api_url)
+
+        retry = client.post(
+            _promote_path("ORG-PROMO-API-NOPUB-3", draft_id),
+            json={"expected_version": 1},
+            headers=_csrf_headers(),
+        )
+        self._denied_publisher_role_required(retry)
+        assert "native_listing_id" not in retry.json()
+        assert native_listing_id not in retry.text
+        assert _marketplace_row_counts(api_url) == before
+
+    def test_authorized_publisher_exact_retry_still_returns_already_promoted(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        """Confirms the fix does not regress the accepted historical-
+        idempotency behavior for a still-authorized current PUBLISHER."""
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-PROMO-API-PUB-OK",
+            account_id="ACC-PROMO-API-PUB-OK",
+            membership_id="OM-PROMO-API-PUB-OK",
+        )
+        _log_in(client, "ACC-PROMO-API-PUB-OK")
+        draft_id = _create_ready_draft(client, "ORG-PROMO-API-PUB-OK")
+
+        first = client.post(
+            _promote_path("ORG-PROMO-API-PUB-OK", draft_id),
+            json={"expected_version": 1},
+            headers=_csrf_headers(),
+        )
+        assert first.status_code == 201
+        native_listing_id = first.json()["native_listing_id"]
+        before = _marketplace_row_counts(api_url)
+
+        retry = client.post(
+            _promote_path("ORG-PROMO-API-PUB-OK", draft_id),
+            json={"expected_version": 1},
+            headers=_csrf_headers(),
+        )
+        assert retry.status_code == 200
+        assert retry.json()["outcome"] == "ALREADY_PROMOTED"
+        assert retry.json()["native_listing_id"] == native_listing_id
+        assert _marketplace_row_counts(api_url) == before
+
+    def test_authorized_publisher_exact_retry_survives_organization_becoming_ineligible(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        """Contract §4 last paragraph: an already-PROMOTED exact-version
+        retry never re-requires current Organization publishing
+        eligibility -- only current workspace/MFA/PUBLISHER authorization,
+        which this scenario still satisfies."""
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-PROMO-API-ELIG",
+            account_id="ACC-PROMO-API-ELIG",
+            membership_id="OM-PROMO-API-ELIG",
+        )
+        _log_in(client, "ACC-PROMO-API-ELIG")
+        draft_id = _create_ready_draft(client, "ORG-PROMO-API-ELIG")
+
+        first = client.post(
+            _promote_path("ORG-PROMO-API-ELIG", draft_id),
+            json={"expected_version": 1},
+            headers=_csrf_headers(),
+        )
+        assert first.status_code == 201
+        native_listing_id = first.json()["native_listing_id"]
+
+        conn = psycopg.connect(api_url)
+        try:
+            seed_marketplace_organization(
+                conn,
+                MarketplaceOrganization(
+                    id=MarketplaceOrganizationId("ORG-PROMO-API-ELIG"),
+                    professional_category=ProfessionalCategory.BROKER,
+                    publishing_eligibility=OrganizationPublishingEligibility.UNVERIFIED,
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        retry = client.post(
+            _promote_path("ORG-PROMO-API-ELIG", draft_id),
+            json={"expected_version": 1},
+            headers=_csrf_headers(),
+        )
+        assert retry.status_code == 200
+        assert retry.json()["outcome"] == "ALREADY_PROMOTED"
+        assert retry.json()["native_listing_id"] == native_listing_id
 
 
 class TestPromotionRequestValidation:

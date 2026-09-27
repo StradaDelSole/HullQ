@@ -11,24 +11,31 @@ Per `specs/PROFESSIONAL_LISTING_PROMOTION_CONTRACT.v0.1.md`, demonstrates:
     1. create + fill a professional draft to PromotionReadiness via the
        built Astro edit page, showing the server-owned readiness reasons
        shrink to zero as the required fields are supplied
-    2. promote via the Astro "Create listing" action -> real FastAPI
-       promotion transaction -> redirect to the Organization inventory,
-       which shows the resulting listing as lifecycle DRAFT (not public)
-    3. exact retry (same expected_version) is ALREADY_PROMOTED with the
-       identical NativeListingId and zero additional durable rows
-    4. reopening the promoted draft shows immutable provenance and no
+    2. independent exact-head review Finding B: a failed promotion attempt
+       (stale expected_version) never claims/clears promoted browser-local
+       recovery state and leaves the draft EDITABLE, unmutated
+    3. promote via the Astro "Create listing" action -> real FastAPI
+       promotion transaction -> the SAME response re-renders the immutable
+       PROMOTED state (no redirect, so the recovery-clear script runs
+       deterministically on this exact response, contract §12), showing
+       the resulting NativeListingId, DRAFT/not-public wording and a link
+       (not a forced navigation) to the Organization inventory
+    4. exact retry (same expected_version) re-renders the identical
+       immutable state (ALREADY_PROMOTED) with the same NativeListingId and
+       zero additional durable rows
+    5. reopening the promoted draft shows immutable provenance and no
        editable Save/Promote controls; a direct FastAPI PUT against it is
        rejected as promoted_immutable with zero mutation
-    5. the promoted NativeListing is not reachable through the public
+    6. the promoted NativeListing is not reachable through the public
        listing read route (DRAFT is never public)
-    6. D09: a second NativeListing for the same Organization + resolved
+    7. D09: a second NativeListing for the same Organization + resolved
        MarketEpisode is rejected at the low-level persistence boundary;
        a different Organization may still use the same MarketEpisode
-    7. representative failure-injection rollback: an injected failure deep
+    8. representative failure-injection rollback: an injected failure deep
        in the promotion transaction leaves zero PhysicalBoat/MarketEpisode/
        NativeListing/claim/offer rows and the draft still EDITABLE at its
        original version
-    8. exact finish marker
+    9. exact finish marker
 
 Requires ``HULLQ_TEST_DATABASE_URL`` and a pre-built Astro web package
 (``cd web && npm ci && npm run build``).
@@ -43,6 +50,7 @@ import http.client
 import http.cookiejar
 import json
 import os
+import re
 import secrets
 import shutil
 import socket
@@ -472,17 +480,57 @@ def main() -> int:
         ok &= save_ok
         print(f"8. ORG_A fills the draft to PromotionReadiness -> {'OK' if save_ok else 'FAIL'}\n")
 
+        # 8b. Independent exact-head review Finding B item 5: a failed
+        # promotion attempt (here, a stale expected_version) must NOT clear
+        # browser-local recovery -- the rendered response must not carry
+        # the promoted recovery-clear marker, and the draft must remain
+        # EDITABLE, unmutated.
+        status, headers, body = session_a.post_form(
+            f"{web_base}{draft_path}",
+            {"intent": "promote", "expected_version": "999"},
+            origin=web_base,
+        )
+        failed_page_text = body.decode("utf-8")
+        step8b_ok = (
+            status == 200
+            and "Please reload before promoting" in failed_page_text
+            and 'data-promoted="1"' not in failed_page_text
+        )
+        status, _, body = session_a.get(f"{api_drafts_path_a}/{draft_id}")
+        step8b_state_ok = _json(body)["promotion_state"] == "EDITABLE"
+        ok &= step8b_ok and step8b_state_ok
+        print(
+            f"8b. a failed promotion attempt (stale expected_version) never clears/claims "
+            f"promoted recovery state, draft remains EDITABLE -> "
+            f"{'OK' if (step8b_ok and step8b_state_ok) else 'FAIL'}\n"
+        )
+
         before_marketplace_counts = _table_counts(url)
 
-        # 2. promote via the Astro "Create listing" action.
+        # 2. promote via the Astro "Create listing" action. Independent
+        # exact-head review Finding B: successful promotion no longer
+        # redirects away -- it re-renders THIS same response as the
+        # immutable PROMOTED state (so the client-side recovery-clear
+        # script deterministically runs on this exact response, contract
+        # §12), and only links to (never force-navigates to) the
+        # Organization inventory surface.
         status, headers, body = session_a.post_form(
             f"{web_base}{draft_path}",
             {"intent": "promote", "expected_version": "2"},
             origin=web_base,
         )
-        promote_redirect_ok = status == 303 and headers.get("Location", "").endswith(
-            f"/broker/organizations/{_ORG_A_ID}/inventory"
+        page_text = body.decode("utf-8")
+        promote_rendered_ok = (
+            status == 200
+            and "Promotion succeeded." in page_text
+            and "Promoted." in page_text
+            and "DRAFT" in page_text
+            and "not public" in page_text
+            and f'href="/broker/organizations/{_ORG_A_ID}/inventory"' in page_text
+            and 'data-promoted="1"' in page_text
         )
+        match = re.search(r"<code>([^<]+)</code>", page_text)
+        native_listing_id = match.group(1) if match else None
         after_promote_counts = _table_counts(url)
         promote_wrote_rows_ok = all(
             after_promote_counts[table] == before_marketplace_counts[table] + 1
@@ -496,25 +544,28 @@ def main() -> int:
                 "physical_boat_claim_heads",
             )
         )
-        ok &= promote_redirect_ok and promote_wrote_rows_ok
+        ok &= promote_rendered_ok and promote_wrote_rows_ok
         print(
-            f"9. promotion redirects to the Organization inventory surface and creates exactly "
-            f"one PhysicalBoat/MarketEpisode/NativeListing/claim/offer head each -> "
-            f"{'OK' if (promote_redirect_ok and promote_wrote_rows_ok) else 'FAIL'}"
+            f"9. successful promotion re-renders the immutable PROMOTED state in the same "
+            f"response (no redirect), showing the resulting NativeListingId, DRAFT/not-public "
+            f"wording, an inventory link and the recovery banner's promoted marker (so the "
+            f"browser-local recovery envelope is cleared deterministically), and creates "
+            f"exactly one PhysicalBoat/MarketEpisode/NativeListing/claim/offer head each -> "
+            f"{'OK' if (promote_rendered_ok and promote_wrote_rows_ok) else 'FAIL'} "
+            f"(native_listing_id={native_listing_id})"
         )
 
         status, _, body = session_a.get(f"{api_drafts_path_a}/{draft_id}")
         promoted_record = _json(body)
-        native_listing_id = promoted_record.get("promoted_native_listing_id")
         step9b_ok = (
             promoted_record["promotion_state"] == "PROMOTED"
-            and native_listing_id
+            and promoted_record.get("promoted_native_listing_id") == native_listing_id
             and promoted_record["version"] == 2
         )
         ok &= step9b_ok
         print(
-            f"10. promoted draft shows immutable provenance, frozen version -> "
-            f"{'OK' if step9b_ok else 'FAIL'} (native_listing_id={native_listing_id})\n"
+            f"10. direct FastAPI reopen of the draft shows identical immutable provenance, "
+            f"frozen version -> {'OK' if step9b_ok else 'FAIL'}\n"
         )
 
         status, _, body = session_a.get(
@@ -536,19 +587,30 @@ def main() -> int:
         ok &= step11_ok
         print(f"12. the DRAFT listing is not public/current -> {'OK' if step11_ok else 'FAIL'}\n")
 
-        # 3. exact retry is ALREADY_PROMOTED, zero additional rows.
+        # 3. exact retry (ALREADY_PROMOTED) also re-renders the identical
+        # immutable state in the same response -- zero additional rows, and
+        # the recovery-clear marker is present again (idempotent, not
+        # merely a one-time effect of the original promotion).
         after_first_promotion_counts = _table_counts(url)
         status, headers, body = session_a.post_form(
             f"{web_base}{draft_path}",
             {"intent": "promote", "expected_version": "2"},
             origin=web_base,
         )
-        retry_ok = status == 303 and headers.get("Location", "").endswith("/inventory")
+        retry_page_text = body.decode("utf-8")
+        retry_match = re.search(r"<code>([^<]+)</code>", retry_page_text)
+        retry_native_listing_id = retry_match.group(1) if retry_match else None
+        retry_ok = (
+            status == 200
+            and retry_native_listing_id == native_listing_id
+            and 'data-promoted="1"' in retry_page_text
+        )
         after_retry_counts = _table_counts(url)
         step12_ok = retry_ok and after_retry_counts == after_first_promotion_counts
         ok &= step12_ok
         print(
-            f"13. exact retry (same expected_version) is idempotent, zero additional durable "
+            f"13. exact retry (same expected_version) re-renders the identical immutable state "
+            f"(same NativeListingId, recovery-clear marker present), zero additional durable "
             f"rows -> {'OK' if step12_ok else 'FAIL'}\n"
         )
 
