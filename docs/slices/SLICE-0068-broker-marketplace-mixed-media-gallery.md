@@ -1,7 +1,7 @@
 # SLICE-0068 — Broker Marketplace Mixed-Media Gallery
 
 **Type:** IMPLEMENTATION
-**Status:** READINESS
+**Status:** READY
 **Stage:** Broker launch path — media/gallery
 **Depends on:** SLICE-0067 owner-accepted / DONE
 **Normative contract:** `specs/MARKETPLACE_MEDIA_GALLERY_CONTRACT.v0.1.md`
