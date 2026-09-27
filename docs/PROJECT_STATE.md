@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-27  
 **Latest owner-accepted / DONE slice:** SLICE-0068  
-**Current queue:** SLICE-0069 — **UNSELECTED**. SLICE-0068 Broker Marketplace Mixed-Media Gallery is owner-accepted and merged; a fresh post-SLICE-0068 reassessment must complete before SLICE-0069 capability selection, readiness or implementation authorization.  
+**Current queue:** SLICE-0069 — **Canonical PublicationReadiness + Publish Integration — READY**. Post-SLICE-0068 reassessment selected the canonical publication/current-public integration capability; implementation remains unauthorized until readiness exact-head review, remote gates and readiness merge complete.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -284,11 +284,11 @@ Next queue number:
 SLICE-0069
 ```
 
-**Capability:** UNSELECTED.
+**Capability:** Canonical PublicationReadiness + Publish Integration.
 
-SLICE-0068 Broker Marketplace Mixed-Media Gallery is owner-accepted and merged. A fresh post-SLICE-0068 reassessment must reconcile current `main`, accepted D22/D29 publication semantics, the broker-launch execution focus, trigger gates and remaining launch blockers before SLICE-0069 capability selection.
+SLICE-0068 Broker Marketplace Mixed-Media Gallery is owner-accepted and merged. Post-SLICE-0068 reassessment selected SLICE-0069 Canonical PublicationReadiness + Publish Integration as the next launch-path capability. It is governed by `specs/MARKETPLACE_PUBLICATION_READINESS_CONTRACT.v0.1.md` and `docs/slices/SLICE-0069-canonical-publication-readiness-publish-integration.md`.
 
-The accepted near-term direction identifies canonical PublicationReadiness + publish integration as the next launch-path target, followed by durable buyer contact/leads, broker lead handling and inventory editing, but this closure does not preselect SLICE-0069. No `START_SLICE.bat` authorization or implementation work exists for 0069 at this closure point.
+SLICE-0069 reconciles the legacy SLICE-0049 publication-completeness and SLICE-0052 ACTIVE+freshness public/current-market subsets into accepted D22/D29 canonical authorities, integrates the already-accepted SLICE-0068 media truth into publication/public gallery, and keeps D20/D21 episode-correction authority explicitly deferred. `START_SLICE.bat` and implementation remain blocked until independent exact-head readiness review, remote gates and readiness merge complete.
 
 ## Development workflow
 
@@ -303,6 +303,6 @@ The accepted near-term direction identifies canonical PublicationReadiness + pub
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0068 Broker Marketplace Mixed-Media Gallery is owner-accepted and merged; SLICE-0069 remains UNSELECTED pending fresh post-0068 reassessment.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0068 Broker Marketplace Mixed-Media Gallery is owner-accepted and merged; SLICE-0069 is selected as Canonical PublicationReadiness + Publish Integration and remains READY pending successful remote gates and readiness merge.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
