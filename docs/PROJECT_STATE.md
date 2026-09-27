@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-27  
 **Latest owner-accepted / DONE slice:** SLICE-0067  
-**Current queue:** SLICE-0068 — **Broker Marketplace Mixed-Media Gallery — READINESS**. Post-SLICE-0067 reassessment selected the minimum viable media/gallery capability; implementation remains unauthorized until readiness exact-head review, remote gates and readiness merge complete.  
+**Current queue:** SLICE-0068 — **Broker Marketplace Mixed-Media Gallery — READY**. Post-SLICE-0067 reassessment selected the minimum viable media/gallery capability; implementation remains unauthorized until readiness exact-head review, remote gates and readiness merge complete.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -286,7 +286,7 @@ SLICE-0068
 
 Post-SLICE-0067 reassessment selected minimum viable broker marketplace media/gallery as the next launch-path capability. SLICE-0068 is governed by `specs/MARKETPLACE_MEDIA_GALLERY_CONTRACT.v0.1.md` and `docs/slices/SLICE-0068-broker-marketplace-mixed-media-gallery.md`. Accepted D30/D31 additionally fix Cloudflare R2 Standard as initial primary media object storage behind an S3-compatible HullQ boundary, JPEG/PNG/WebP as image v0.1, structured YouTube gallery references, future direct uploaded-video compatibility, and a future virtual deterministic Broker-CI presentation slide that is not media truth.
 
-SLICE-0068 remains READINESS only. `START_SLICE.bat` and implementation are blocked until independent exact-head readiness review, required remote gates and readiness merge complete. Canonical PublicationReadiness/publish integration remains the next launch-path capability after media unless reassessment finds a higher-priority blocker.
+SLICE-0068 is READY for implementation handoff, but  `START_SLICE.bat` and implementation are blocked until independent exact-head readiness review, required remote gates and readiness merge complete. Canonical PublicationReadiness/publish integration remains the next launch-path capability after media unless reassessment finds a higher-priority blocker.
 
 ## Development workflow
 
@@ -301,6 +301,6 @@ SLICE-0068 remains READINESS only. `START_SLICE.bat` and implementation are bloc
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0067 Professional Draft → Atomic Marketplace Promotion is owner-accepted and merged; SLICE-0068 is selected as Broker Marketplace Mixed-Media Gallery and remains in READINESS pending exact-head review, remote gates and readiness merge.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0067 Professional Draft → Atomic Marketplace Promotion is owner-accepted and merged; SLICE-0068 is selected as Broker Marketplace Mixed-Media Gallery and is READY pending successful remote gates and readiness merge.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
