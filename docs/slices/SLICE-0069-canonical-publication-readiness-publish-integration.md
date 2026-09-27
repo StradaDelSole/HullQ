@@ -42,6 +42,19 @@ SLICE-0069 adds no technical Search criterion, starts no external production dat
 
 ## Decision / implementation reconciliation
 
+**Accepted records checked:** `docs/PROJECT_STATE.md`; SLICE-0068 acceptance closure; `docs/PROFESSIONAL_MARKETPLACE_WORKFLOW_DECISIONS_2026-09-26.md` D15/D22/D29; `docs/BROKER_LAUNCH_EXECUTION_FOCUS_2026-09-26.md`; `docs/governance/BROKER_WORKSPACE_LAUNCH_GATE.md`; `docs/governance/POST_0051_TRIGGER_GATES.md`; `specs/MARKETPLACE_MEDIA_GALLERY_CONTRACT.v0.1.md`; accepted lifecycle/freshness/public-read/Search contracts.
+
+**Production implementation checked:** current FastAPI app; `hullq.application.broker_inventory_lifecycle`; `hullq.persistence.native_listing_lifecycle`; NativeListing/MarketEpisode/PhysicalBoat persistence; current offer head and PhysicalBoat claim head persistence; SLICE-0068 media gallery persistence/application/storage; `hullq.application.public_listing_read`; Astro public listing page; pure and mixed native Search application paths; current PostgreSQL/Alembic and web/API/persistence test patterns.
+
+**Already implemented / not re-decided:** professional Organization/Membership/MFA/PUBLISHER boundary; Organization publishing eligibility; DRAFT/ACTIVE/WITHDRAWN lifecycle; freshness/reconfirmation; immutable pre-D20 MarketEpisode creation link; current offer/PhysicalBoat claim heads; MediaAsset/MediaPlacement truth; public listing read surface; two accepted technical Search criteria.
+
+**Exact remaining gap:** current publish still uses the SLICE-0049 minimal completeness shortcut rather than D22 canonical PublicationReadiness, while public listing/Search current-market admission still relies primarily on ACTIVE + freshness and does not consume D29 publisher/content/media current-public truth or the accepted public gallery.
+
+**Accepted-but-unimplemented obligations:** D22 canonical PublicationReadiness with preflight plus authoritative publish-time re-evaluation; D29 canonical CurrentPublicEligibility and structured suppression reasons; public gallery/derivative delivery from accepted 0068 media truth; both Search paths reusing canonical current-public admission without changing technical Search semantics.
+
+**Material classifications:** `DECIDED_AND_IMPLEMENTED` auth/lifecycle/freshness/offer/claim/media/public-read/Search foundations; `DECIDED_NOT_YET_IMPLEMENTED` D22/D29 and public gallery/current-public integration; `EXPLICITLY_DEFERRED` D20/D21 correction authority, republish, owner-direct publication, direct VIDEO, purge worker, leads/editing/outcomes/import/payments; `GENUINELY_OPEN` bounded implementation factoring/reason-code/lock-recheck details only; `CONFLICT_OR_REGRESSION` none found, with legacy SLICE-0049/0052 predicates classified as accepted earlier subsets to be reconciled here rather than regressions.
+
+
 ### DECIDED_AND_IMPLEMENTED
 
 - professional Broker Workspace Organization/Membership/MFA boundary;
