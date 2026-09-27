@@ -1,9 +1,16 @@
 // SLICE-0068: the only module allowed to talk to FastAPI's broker
-// marketplace mixed-media gallery boundary. Astro never queries PostgreSQL
-// or object storage directly and never reimplements processing/rights/
-// ordering/cover semantics -- every result here is exactly what FastAPI
-// decided, forwarded verbatim (mirrors `brokerApi.ts`'s identical
-// discipline).
+// marketplace mixed-media gallery boundary via its normal JSON-body call
+// shape. Astro never queries PostgreSQL or object storage directly and
+// never reimplements processing/rights/ordering/cover semantics -- every
+// result here is exactly what FastAPI decided, forwarded verbatim (mirrors
+// `brokerApi.ts`'s identical discipline).
+//
+// Independent review Finding D: the one exception is image upload, which
+// streams the request body straight through rather than materializing it as
+// a `Uint8Array`/`JSON.stringify`-shaped call (see
+// `media/upload.ts`'s own docstring for the full rationale). That route
+// still reuses this module's exported CSRF constants and
+// `MAX_IMAGE_UPLOAD_BYTES` so the two files cannot silently drift apart.
 //
 // The incoming request's `Cookie` header is forwarded unmodified so the
 // HullQ session cookie reaches FastAPI on this server-to-server call, and
@@ -14,8 +21,21 @@
 // `brokerApi.ts`'s identical rationale for the other three broker-write
 // channels).
 
-const CSRF_HEADER_NAME = "X-HullQ-Requested-With";
-const CSRF_HEADER_VALUE = "marketplace-media-gallery-v1";
+export const MEDIA_GALLERY_CSRF_HEADER_NAME = "X-HullQ-Requested-With";
+export const MEDIA_GALLERY_CSRF_HEADER_VALUE = "marketplace-media-gallery-v1";
+const CSRF_HEADER_NAME = MEDIA_GALLERY_CSRF_HEADER_NAME;
+const CSRF_HEADER_VALUE = MEDIA_GALLERY_CSRF_HEADER_VALUE;
+
+// Mirrors `hullq.domain.media_gallery.MAX_IMAGE_UPLOAD_BYTES` -- must stay in
+// sync with that Python constant by hand; there is no shared build-time
+// source of truth between the two languages.
+export const MAX_IMAGE_UPLOAD_BYTES = 15_000_000;
+
+// A finite per-request batch boundary (independent review Finding D: "impose
+// a finite file-count/batch boundary") for the client-side multi-file
+// upload script in `media.astro` -- an arbitrary-length file list is never
+// accepted, even though each file is still uploaded one at a time.
+export const MAX_FILES_PER_UPLOAD_BATCH = 20;
 
 function cookieHeaders(cookieHeader: string | null): Record<string, string> {
   return cookieHeader ? { Cookie: cookieHeader } : {};
@@ -218,70 +238,15 @@ export async function fetchMediaAssetBytes(
 }
 
 // ---------------------------------------------------------------------------
-// Upload (contract §6/§11) -- one call per file; the browser-visible
-// "multi-file" behavior is one page action that issues several of these
-// (see the gallery workspace page), never a multipart body parsed here.
+// Upload (contract §6/§11) is deliberately NOT implemented in this module.
+// Independent review Finding D: streaming the request body through requires
+// passing a raw `ReadableStream` as `fetch`'s `body`, which cannot be
+// expressed through this module's `Uint8Array`/`JSON.stringify` call shape
+// without re-buffering it first -- exactly the resource-abuse gap Finding D
+// exists to close. See `media/upload.ts` for the dedicated streaming proxy
+// route, which still reuses this module's exported CSRF constants and
+// `MAX_IMAGE_UPLOAD_BYTES`.
 // ---------------------------------------------------------------------------
-
-export type UploadImageResult =
-  | AuthFailure
-  | { kind: "listing_not_found" }
-  | { kind: "payload_too_large" }
-  | { kind: "invalid_source_reference" }
-  | { kind: "rejected"; reason: string }
-  | { kind: "service_error" }
-  | { kind: "ok"; mediaAssetId: string; mediaPlacementId: string; galleryVersion: number };
-
-export async function uploadListingImage(
-  apiBaseUrl: string,
-  organizationId: string,
-  nativeListingId: string,
-  imageBytes: Uint8Array,
-  contentType: string,
-  rightsConfirmed: boolean,
-  cookieHeader: string | null,
-  originHeader: string | null,
-  sourceReference?: string,
-): Promise<UploadImageResult> {
-  let response: Response;
-  try {
-    response = await fetch(`${trimBase(apiBaseUrl)}${galleryPath(organizationId, nativeListingId)}/images`, {
-      method: "POST",
-      headers: {
-        ...cookieHeaders(cookieHeader),
-        ...csrfHeaders(originHeader),
-        "Content-Type": contentType,
-        "X-HullQ-Rights-Confirmed": rightsConfirmed ? "true" : "false",
-        ...(sourceReference ? { "X-HullQ-Source-Reference": sourceReference } : {}),
-      },
-      body: Buffer.from(imageBytes),
-      redirect: "manual",
-    });
-  } catch {
-    return { kind: "service_error" };
-  }
-  const authFailure = await authFailureFromResponse(response);
-  if (authFailure) return authFailure;
-  if (response.status === 404) return { kind: "listing_not_found" };
-  if (response.status === 413) return { kind: "payload_too_large" };
-  if (response.status === 400) return { kind: "invalid_source_reference" };
-  if (response.status === 422) {
-    const body = (await response.json()) as { reason?: string };
-    return { kind: "rejected", reason: body.reason ?? "unknown" };
-  }
-  if (!response.ok) return { kind: "service_error" };
-  const body = (await response.json()) as {
-    media_asset_id: string;
-    media_placement_id: string;
-    gallery_version: number;
-  };
-  return {
-    kind: "ok",
-    mediaAssetId: body.media_asset_id,
-    mediaPlacementId: body.media_placement_id,
-    galleryVersion: body.gallery_version,
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Same-Organization reuse (contract §9)

@@ -18,7 +18,6 @@ import {
   retireMediaAsset,
   reuseListingMedia,
   setListingCover,
-  uploadListingImage,
 } from "../mediaGalleryApi.ts";
 
 async function withServer(
@@ -125,83 +124,6 @@ test("fetchMediaLibrary: org-scoped assets are returned", async () => {
       if (result.kind === "ok") {
         assert.equal(result.assets.length, 1);
       }
-    },
-  );
-});
-
-test("uploadListingImage: sends the fixed CSRF header, forwards Origin and rights header", async () => {
-  await withServer(
-    (req, res) => {
-      assert.equal(req.headers["x-hullq-requested-with"], "marketplace-media-gallery-v1");
-      assert.equal(req.headers.origin, "https://web.example");
-      assert.equal(req.headers["x-hullq-rights-confirmed"], "true");
-      res.writeHead(201, { "Content-Type": "application/json" });
-      res.end(
-        JSON.stringify({ media_asset_id: "MA-1", media_placement_id: "MP-1", gallery_version: 1 }),
-      );
-    },
-    async (baseUrl) => {
-      const result = await uploadListingImage(
-        baseUrl,
-        "ORG-1",
-        "NL-1",
-        new Uint8Array([1, 2, 3]),
-        "image/jpeg",
-        true,
-        null,
-        "https://web.example",
-      );
-      assert.equal(result.kind, "ok");
-      if (result.kind === "ok") {
-        assert.equal(result.mediaAssetId, "MA-1");
-      }
-    },
-  );
-});
-
-test("uploadListingImage: 422 rejection is surfaced with its reason", async () => {
-  await withServer(
-    (_req, res) => {
-      res.writeHead(422, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ outcome: "REJECTED", reason: "TOO_LARGE_PIXELS" }));
-    },
-    async (baseUrl) => {
-      const result = await uploadListingImage(
-        baseUrl,
-        "ORG-1",
-        "NL-1",
-        new Uint8Array([1]),
-        "image/jpeg",
-        true,
-        null,
-        null,
-      );
-      assert.equal(result.kind, "rejected");
-      if (result.kind === "rejected") {
-        assert.equal(result.reason, "TOO_LARGE_PIXELS");
-      }
-    },
-  );
-});
-
-test("uploadListingImage: 413 is surfaced as payload_too_large", async () => {
-  await withServer(
-    (_req, res) => {
-      res.writeHead(413);
-      res.end();
-    },
-    async (baseUrl) => {
-      const result = await uploadListingImage(
-        baseUrl,
-        "ORG-1",
-        "NL-1",
-        new Uint8Array([1]),
-        "image/jpeg",
-        true,
-        null,
-        null,
-      );
-      assert.equal(result.kind, "payload_too_large");
     },
   );
 });
@@ -350,83 +272,6 @@ test("retireMediaAsset: 200 is surfaced as ok", async () => {
     async (baseUrl) => {
       const result = await retireMediaAsset(baseUrl, "ORG-1", "MA-1", null, null);
       assert.equal(result.kind, "ok");
-    },
-  );
-});
-
-// ---------------------------------------------------------------------------
-// Independent review Finding B: optional bounded source_reference header
-// ---------------------------------------------------------------------------
-
-test("uploadListingImage: sends the source-reference header only when provided", async () => {
-  await withServer(
-    (req, res) => {
-      assert.equal(req.headers["x-hullq-source-reference"], "Photographed by ACME");
-      res.writeHead(201, { "Content-Type": "application/json" });
-      res.end(
-        JSON.stringify({ media_asset_id: "MA-1", media_placement_id: "MP-1", gallery_version: 1 }),
-      );
-    },
-    async (baseUrl) => {
-      const result = await uploadListingImage(
-        baseUrl,
-        "ORG-1",
-        "NL-1",
-        new Uint8Array([1]),
-        "image/jpeg",
-        true,
-        null,
-        null,
-        "Photographed by ACME",
-      );
-      assert.equal(result.kind, "ok");
-    },
-  );
-});
-
-test("uploadListingImage: omits the source-reference header when absent", async () => {
-  await withServer(
-    (req, res) => {
-      assert.equal(req.headers["x-hullq-source-reference"], undefined);
-      res.writeHead(201, { "Content-Type": "application/json" });
-      res.end(
-        JSON.stringify({ media_asset_id: "MA-1", media_placement_id: "MP-1", gallery_version: 1 }),
-      );
-    },
-    async (baseUrl) => {
-      await uploadListingImage(
-        baseUrl,
-        "ORG-1",
-        "NL-1",
-        new Uint8Array([1]),
-        "image/jpeg",
-        true,
-        null,
-        null,
-      );
-    },
-  );
-});
-
-test("uploadListingImage: 400 is surfaced as invalid_source_reference", async () => {
-  await withServer(
-    (_req, res) => {
-      res.writeHead(400, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "invalid_source_reference" }));
-    },
-    async (baseUrl) => {
-      const result = await uploadListingImage(
-        baseUrl,
-        "ORG-1",
-        "NL-1",
-        new Uint8Array([1]),
-        "image/jpeg",
-        true,
-        null,
-        null,
-        "x".repeat(400),
-      );
-      assert.equal(result.kind, "invalid_source_reference");
     },
   );
 });

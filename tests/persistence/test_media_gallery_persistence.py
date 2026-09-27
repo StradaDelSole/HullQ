@@ -7,6 +7,8 @@ ordering/cover invariants, concurrency, Organization isolation, retirement).
 
 from __future__ import annotations
 
+import threading
+import time
 import uuid
 from collections.abc import Generator
 from decimal import Decimal
@@ -1419,3 +1421,413 @@ class TestActiveListingProtection:
         assert result.outcome is RemovePlacementOutcome.VERSION_CONFLICT
         state = fetch_gallery_state(conn, listing_id)
         assert len(state.placements) == 1
+
+
+class TestConcurrentAssetLocking:
+    """Independent review Finding E: real PostgreSQL races proving the
+    module's required global lock order (MediaAsset before NativeListing
+    before native_listing_media_state) actually serializes concurrent
+    retirement against concurrent reuse/`set_cover`, rather than allowing
+    either side to act on a stale pre-retirement snapshot.
+
+    Each test opens two independent `psycopg` connections (two real
+    PostgreSQL sessions) and uses `threading.Event`/`time.sleep` to force a
+    specific lock-acquisition interleaving deterministically, then asserts
+    on the actual committed database state afterwards -- not on which
+    Python call happened to return first.
+    """
+
+    def _seeded_asset_and_listing(
+        self, api_url: str, suffix: str
+    ) -> tuple[Any, NativeListingId, MarketplaceOrganization, AccountId]:
+        conn = psycopg.connect(api_url)
+        try:
+            account = _seed_account(conn, f"ACC-CC{suffix}")
+            org = _seed_org(conn, f"ORG-CC{suffix}")
+            listing_id = _seed_listing(
+                conn,
+                listing_id=f"NL-CC{suffix}",
+                org=org,
+                account_id=account,
+                physical_boat_id=f"PB-CC{suffix}",
+                market_episode_id=f"ME-CC{suffix}",
+            )
+            with conn.transaction():
+                asset = insert_approved_media_asset(
+                    conn,
+                    owner_organization_id=org.id,
+                    uploaded_by_account_id=account,
+                    rights_declared=True,
+                    source_kind=MediaSourceKind.BROKER_UPLOAD,
+                    source_reference=None,
+                    original_object_key=f"media/original/cc{suffix}.orig",
+                    derivative_object_key=f"media/cc{suffix}.jpg",
+                    content_hash=f"hcc{suffix}",
+                    mime_type="image/jpeg",
+                    width=10,
+                    height=10,
+                    byte_size=100,
+                )
+            return asset, listing_id, org, account
+        finally:
+            conn.close()
+
+    def test_retire_wins_race_rejects_concurrent_reuse(self, api_url: str) -> None:
+        asset, listing_id, org, account = self._seeded_asset_and_listing(api_url, "R1")
+        results: dict[str, Any] = {}
+        ready = threading.Event()
+        proceed = threading.Event()
+
+        def _retire() -> None:
+            c = psycopg.connect(api_url)
+            try:
+                with c.transaction():
+                    results["retire"] = retire_media_asset(
+                        c, media_asset_id=asset.media_asset_id, owner_organization_id=org.id
+                    )
+                    ready.set()
+                    proceed.wait(timeout=5)
+            finally:
+                c.close()
+
+        def _reuse() -> None:
+            c = psycopg.connect(api_url)
+            try:
+                with c.transaction():
+                    results["reuse"] = create_reused_image_placement(
+                        c,
+                        native_listing_id=listing_id,
+                        owner_organization_id=org.id,
+                        requesting_account_id=account,
+                        media_asset_id=asset.media_asset_id,
+                    )
+            finally:
+                c.close()
+
+        thread_retire = threading.Thread(target=_retire)
+        thread_retire.start()
+        assert ready.wait(timeout=5), "retire thread never reached its held lock"
+        thread_reuse = threading.Thread(target=_reuse)
+        thread_reuse.start()
+        time.sleep(0.3)  # let the reuse thread block on the same MediaAsset FOR UPDATE lock
+        proceed.set()
+        thread_retire.join(timeout=5)
+        thread_reuse.join(timeout=5)
+        assert not thread_retire.is_alive(), "retire thread hung -- possible deadlock"
+        assert not thread_reuse.is_alive(), "reuse thread hung -- possible deadlock"
+
+        assert results["retire"] is RetireAssetOutcome.RETIRED
+        assert results["reuse"].outcome is PlacementCreationOutcome.ASSET_NOT_FOUND_OR_DENIED
+
+        conn2 = psycopg.connect(api_url)
+        try:
+            with conn2.cursor() as cur:
+                cur.execute(
+                    "SELECT count(*) FROM media_placements "
+                    "WHERE media_asset_id = %s AND native_listing_id = %s",
+                    [asset.media_asset_id.value, listing_id.value],
+                )
+                row = cur.fetchone()
+                assert row is not None
+                assert row[0] == 0, "a retired asset must never gain a new placement"
+        finally:
+            conn2.close()
+
+    def test_reuse_wins_race_then_retirement_still_applies_cleanly(self, api_url: str) -> None:
+        asset, listing_id, org, account = self._seeded_asset_and_listing(api_url, "R2")
+        results: dict[str, Any] = {}
+        ready = threading.Event()
+        proceed = threading.Event()
+
+        def _reuse() -> None:
+            c = psycopg.connect(api_url)
+            try:
+                with c.transaction():
+                    results["reuse"] = create_reused_image_placement(
+                        c,
+                        native_listing_id=listing_id,
+                        owner_organization_id=org.id,
+                        requesting_account_id=account,
+                        media_asset_id=asset.media_asset_id,
+                    )
+                    ready.set()
+                    proceed.wait(timeout=5)
+            finally:
+                c.close()
+
+        def _retire() -> None:
+            c = psycopg.connect(api_url)
+            try:
+                with c.transaction():
+                    results["retire"] = retire_media_asset(
+                        c, media_asset_id=asset.media_asset_id, owner_organization_id=org.id
+                    )
+            finally:
+                c.close()
+
+        thread_reuse = threading.Thread(target=_reuse)
+        thread_reuse.start()
+        assert ready.wait(timeout=5), "reuse thread never reached its held lock"
+        thread_retire = threading.Thread(target=_retire)
+        thread_retire.start()
+        time.sleep(0.3)  # let the retire thread block on the same MediaAsset FOR UPDATE lock
+        proceed.set()
+        thread_reuse.join(timeout=5)
+        thread_retire.join(timeout=5)
+        assert not thread_reuse.is_alive(), "reuse thread hung -- possible deadlock"
+        assert not thread_retire.is_alive(), "retire thread hung -- possible deadlock"
+
+        assert results["reuse"].outcome is PlacementCreationOutcome.CREATED
+        assert results["retire"] is RetireAssetOutcome.RETIRED
+
+        conn2 = psycopg.connect(api_url)
+        try:
+            with conn2.cursor() as cur:
+                cur.execute(
+                    "SELECT count(*) FROM media_placements WHERE media_placement_id = %s",
+                    [results["reuse"].media_placement_id.value],
+                )
+                row = cur.fetchone()
+                assert row is not None
+                assert row[0] == 1, (
+                    "a placement legitimately created before retirement must not be "
+                    "retroactively deleted by a later retirement"
+                )
+            fetched = fetch_media_asset(conn2, asset.media_asset_id)
+            assert fetched is not None
+            assert fetched.retired_at is not None
+        finally:
+            conn2.close()
+
+    def test_retire_wins_race_rejects_concurrent_set_cover(self, api_url: str) -> None:
+        asset, listing_id, org, _account = self._seeded_asset_and_listing(api_url, "R3")
+        conn = psycopg.connect(api_url)
+        try:
+            with conn.transaction():
+                placement_result = create_uploaded_image_placement(
+                    conn,
+                    native_listing_id=listing_id,
+                    owner_organization_id=org.id,
+                    media_asset=asset,
+                )
+            assert placement_result.media_placement_id is not None
+        finally:
+            conn.close()
+        placement_id = placement_result.media_placement_id
+
+        results: dict[str, Any] = {}
+        ready = threading.Event()
+        proceed = threading.Event()
+
+        def _retire() -> None:
+            c = psycopg.connect(api_url)
+            try:
+                with c.transaction():
+                    results["retire"] = retire_media_asset(
+                        c, media_asset_id=asset.media_asset_id, owner_organization_id=org.id
+                    )
+                    ready.set()
+                    proceed.wait(timeout=5)
+            finally:
+                c.close()
+
+        def _set_cover() -> None:
+            c = psycopg.connect(api_url)
+            try:
+                with c.transaction():
+                    results["set_cover"] = set_cover(
+                        c,
+                        native_listing_id=listing_id,
+                        owner_organization_id=org.id,
+                        media_placement_id=placement_id,
+                        expected_version=1,
+                    )
+            finally:
+                c.close()
+
+        thread_retire = threading.Thread(target=_retire)
+        thread_retire.start()
+        assert ready.wait(timeout=5), "retire thread never reached its held lock"
+        thread_set_cover = threading.Thread(target=_set_cover)
+        thread_set_cover.start()
+        time.sleep(0.3)  # let set_cover block on the same MediaAsset FOR UPDATE lock
+        proceed.set()
+        thread_retire.join(timeout=5)
+        thread_set_cover.join(timeout=5)
+        assert not thread_retire.is_alive(), "retire thread hung -- possible deadlock"
+        assert not thread_set_cover.is_alive(), "set_cover thread hung -- possible deadlock"
+
+        assert results["retire"] is RetireAssetOutcome.RETIRED
+        assert results["set_cover"].outcome is SetCoverOutcome.INVALID_COVER
+
+        state = fetch_gallery_state(psycopg.connect(api_url), listing_id)
+        assert state.cover_placement_id is None, (
+            "a cover must never end up pointing to a retired asset's placement"
+        )
+
+    def test_set_cover_wins_race_then_retirement_clears_the_cover(self, api_url: str) -> None:
+        asset, listing_id, org, _account = self._seeded_asset_and_listing(api_url, "R4")
+        conn = psycopg.connect(api_url)
+        try:
+            with conn.transaction():
+                placement_result = create_uploaded_image_placement(
+                    conn,
+                    native_listing_id=listing_id,
+                    owner_organization_id=org.id,
+                    media_asset=asset,
+                )
+            assert placement_result.media_placement_id is not None
+        finally:
+            conn.close()
+        placement_id = placement_result.media_placement_id
+
+        results: dict[str, Any] = {}
+        ready = threading.Event()
+        proceed = threading.Event()
+
+        def _set_cover() -> None:
+            c = psycopg.connect(api_url)
+            try:
+                with c.transaction():
+                    results["set_cover"] = set_cover(
+                        c,
+                        native_listing_id=listing_id,
+                        owner_organization_id=org.id,
+                        media_placement_id=placement_id,
+                        expected_version=1,
+                    )
+                    ready.set()
+                    proceed.wait(timeout=5)
+            finally:
+                c.close()
+
+        def _retire() -> None:
+            c = psycopg.connect(api_url)
+            try:
+                with c.transaction():
+                    results["retire"] = retire_media_asset(
+                        c, media_asset_id=asset.media_asset_id, owner_organization_id=org.id
+                    )
+            finally:
+                c.close()
+
+        thread_set_cover = threading.Thread(target=_set_cover)
+        thread_set_cover.start()
+        assert ready.wait(timeout=5), "set_cover thread never reached its held lock"
+        thread_retire = threading.Thread(target=_retire)
+        thread_retire.start()
+        time.sleep(0.3)  # let retire block on the same MediaAsset FOR UPDATE lock
+        proceed.set()
+        thread_set_cover.join(timeout=5)
+        thread_retire.join(timeout=5)
+        assert not thread_set_cover.is_alive(), "set_cover thread hung -- possible deadlock"
+        assert not thread_retire.is_alive(), "retire thread hung -- possible deadlock"
+
+        assert results["set_cover"].outcome is SetCoverOutcome.SET
+        assert results["retire"] is RetireAssetOutcome.RETIRED
+
+        conn2 = psycopg.connect(api_url)
+        try:
+            state = fetch_gallery_state(conn2, listing_id)
+            assert state.cover_placement_id is None, (
+                "retirement must clean up a cover that was legitimately set to this "
+                "asset's placement just before retirement serialized"
+            )
+        finally:
+            conn2.close()
+
+    def test_concurrent_retirement_of_different_assets_sharing_listings_does_not_deadlock(
+        self, api_url: str
+    ) -> None:
+        """Two different assets, each placed on the same two ACTIVE
+        listings, retired concurrently: `retire_media_asset`'s deterministic
+        ascending-`NativeListingId` lock order means both transactions always
+        attempt to lock the same listing first, so one always waits behind
+        the other rather than deadlocking."""
+        conn = psycopg.connect(api_url)
+        try:
+            account = _seed_account(conn, "ACC-CCDL")
+            org = _seed_org(conn, "ORG-CCDL")
+            listing_a = _seed_listing(
+                conn,
+                listing_id="NL-CCDLA",
+                org=org,
+                account_id=account,
+                physical_boat_id="PB-CCDLA",
+                market_episode_id="ME-CCDLA",
+            )
+            listing_b = _seed_listing(
+                conn,
+                listing_id="NL-CCDLB",
+                org=org,
+                account_id=account,
+                physical_boat_id="PB-CCDLB",
+                market_episode_id="ME-CCDLB",
+            )
+            asset_ids: list[MediaAssetId] = []
+            # An "anchor" asset placed on both listings but never retired --
+            # this guarantees each listing always keeps >=1 valid image
+            # regardless of which of the two concurrently-retired assets
+            # (below) finishes first, isolating this test to proving
+            # deadlock-freedom rather than accidentally re-exercising
+            # Finding C's last-valid-image rejection.
+            with conn.transaction():
+                for asset_suffix in ("ANCHOR", "1", "2"):
+                    asset = insert_approved_media_asset(
+                        conn,
+                        owner_organization_id=org.id,
+                        uploaded_by_account_id=account,
+                        rights_declared=True,
+                        source_kind=MediaSourceKind.BROKER_UPLOAD,
+                        source_reference=None,
+                        original_object_key=f"media/original/ccdl{asset_suffix}.orig",
+                        derivative_object_key=f"media/ccdl{asset_suffix}.jpg",
+                        content_hash=f"hccdl{asset_suffix}",
+                        mime_type="image/jpeg",
+                        width=10,
+                        height=10,
+                        byte_size=100,
+                    )
+                    if asset_suffix != "ANCHOR":
+                        asset_ids.append(asset.media_asset_id)
+                    for listing_id in (listing_a, listing_b):
+                        placement_result = create_uploaded_image_placement(
+                            conn,
+                            native_listing_id=listing_id,
+                            owner_organization_id=org.id,
+                            media_asset=asset,
+                        )
+                        assert placement_result.outcome is PlacementCreationOutcome.CREATED
+            _publish_listing(conn, listing_id=listing_a, org=org, account_id=account)
+            conn.commit()
+            _publish_listing(conn, listing_id=listing_b, org=org, account_id=account)
+        finally:
+            conn.close()
+
+        results: dict[str, Any] = {}
+
+        def _retire(asset_id: MediaAssetId, key: str) -> None:
+            c = psycopg.connect(api_url)
+            try:
+                with c.transaction():
+                    results[key] = retire_media_asset(
+                        c, media_asset_id=asset_id, owner_organization_id=org.id
+                    )
+            finally:
+                c.close()
+
+        thread_1 = threading.Thread(target=_retire, args=(asset_ids[0], "first"))
+        thread_2 = threading.Thread(target=_retire, args=(asset_ids[1], "second"))
+        thread_1.start()
+        thread_2.start()
+        thread_1.join(timeout=5)
+        thread_2.join(timeout=5)
+        assert not thread_1.is_alive(), "first retirement hung -- possible deadlock"
+        assert not thread_2.is_alive(), "second retirement hung -- possible deadlock"
+
+        # The anchor asset's placements keep both listings valid regardless
+        # of ordering, so both concurrent retirements succeed cleanly with no
+        # conflict and, critically, without ever deadlocking against each
+        # other.
+        assert results["first"] is RetireAssetOutcome.RETIRED
+        assert results["second"] is RetireAssetOutcome.RETIRED

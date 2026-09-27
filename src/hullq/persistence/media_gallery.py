@@ -48,6 +48,37 @@ avoid cross-transaction deadlock) before mutating anything, and rejects the
 whole retirement if *any* affected `ACTIVE` listing would lose its last
 valid image or its current cover -- never a partial retirement and never a
 silent auto-cleared cover on an `ACTIVE` listing.
+
+Independent review amendment (Finding E) -- required global lock order:
+every mutation whose outcome depends on (or changes) one specific
+MediaAsset's `processing_state`/`rights_state`/`retired_at` acquires row
+locks in exactly this order, never the reverse, so no two such mutations
+can ever deadlock against each other:
+
+    1. the MediaAsset row(s) involved (`media_assets`, `SELECT ... FOR
+       UPDATE`) -- if more than one listing is involved (retirement), the
+       asset is still locked first, once;
+    2. the NativeListing row(s) involved (`native_listings`, via
+       `_lock_listing_lifecycle`) -- ordered by `NativeListingId` when more
+       than one is involved;
+    3. the gallery head row (`native_listing_media_state`, via
+       `_lock_media_state_row_with_cover`).
+
+`retire_media_asset` locks its one MediaAsset row first, then walks its
+affected listings in that same order. `create_reused_image_placement` locks
+only the MediaAsset row (it never touches a `native_listings` row at all,
+since an append-only reuse cannot threaten Finding C's invariant). `set_cover`
+locks its candidate MediaAsset row (when setting to a specific placement)
+*before* locking its target `native_listings` row, deliberately breaking with
+the otherwise natural "check the listing you were asked about first" order,
+specifically to preserve step 1-before-step-2 above. `remove_placement` and
+`set_cover`'s clear-branch never lock a MediaAsset row at all, and rely
+instead on the fact that any concurrent `retire_media_asset` affecting the
+same listing must also lock that exact `native_listings` row before it can
+touch that listing's cover/placements -- so the shared listing-row lock
+alone is already sufficient serialization for those two operations, and
+adding a redundant asset lock there would only risk violating the order
+above for no additional safety.
 """
 
 from __future__ import annotations
@@ -703,6 +734,20 @@ def create_reused_image_placement(
     never the same gate as public-usability/cover eligibility, which
     `hullq.persistence.media_gallery._valid_image_placement_ids`/`set_cover`
     enforce separately.
+
+    Independent review Finding E: the eligibility read below locks the
+    target `media_assets` row (`FOR UPDATE`) -- the exact same lock
+    `retire_media_asset` takes as its own first statement -- so a concurrent
+    retirement and a concurrent reuse of the identical asset always
+    serialize: whichever transaction's lock-acquiring statement commits
+    first is authoritative, and the other always re-reads the fresh
+    post-commit state rather than a stale pre-retirement snapshot. Reuse
+    never locks a `native_listings` row at all (append-only; it cannot
+    threaten Finding C's ACTIVE-listing invariant), so this is the *only*
+    lock reuse acquires -- see this module's docstring for the required
+    global lock order (`media_assets` before `native_listings` before
+    `native_listing_media_state`) that every asset-eligibility-dependent
+    mutation must follow to stay deadlock-safe.
     """
     with conn.cursor() as cur:
         if not _verify_listing_owned_by(cur, native_listing_id, owner_organization_id):
@@ -710,7 +755,7 @@ def create_reused_image_placement(
 
         cur.execute(
             "SELECT owner_organization_id, processing_state, retired_at FROM media_assets "
-            "WHERE media_asset_id = %s",
+            "WHERE media_asset_id = %s FOR UPDATE",
             [media_asset_id.value],
         )
         row = cur.fetchone()
@@ -983,8 +1028,44 @@ def set_cover(
     `ACTIVE_LISTING_CONFLICT`, writing nothing -- there is no "atomic
     replacement" parameter on this call. Clearing an already-null cover is
     always a harmless no-op regardless of lifecycle state.
+
+    Independent review Finding E: when *media_placement_id* is not `None`,
+    the candidate placement's MediaAsset row is resolved and locked (`FOR
+    UPDATE`) *before* the target listing is locked -- this module's required
+    global lock order (MediaAsset before NativeListing) -- so a concurrent
+    `retire_media_asset` of that exact asset always serializes against this
+    call rather than racing it. The outcome priority a caller observes is
+    unchanged by this reordering: `LISTING_NOT_FOUND`, then
+    `VERSION_CONFLICT`, then `INVALID_COVER`/`ACTIVE_LISTING_CONFLICT` --
+    only the physical order lock acquisition happens in changes, not which
+    error a caller sees first.
     """
     with conn.cursor() as cur:
+        if not _verify_listing_owned_by(cur, native_listing_id, owner_organization_id):
+            return SetCoverResult(outcome=SetCoverOutcome.LISTING_NOT_FOUND)
+
+        # Resolve and lock the candidate asset *before* the listing lock
+        # below (Finding E's required global order) -- but do not yet act on
+        # what it says; the version check must still take priority over
+        # INVALID_COVER, exactly as before this amendment.
+        candidate_asset_state: tuple[str, str, Any] | None = None
+        placement_exists_as_image = False
+        if media_placement_id is not None:
+            cur.execute(
+                "SELECT media_asset_id FROM media_placements "
+                "WHERE media_placement_id = %s AND native_listing_id = %s AND kind = 'IMAGE'",
+                [media_placement_id.value, native_listing_id.value],
+            )
+            placement_row = cur.fetchone()
+            if placement_row is not None:
+                placement_exists_as_image = True
+                cur.execute(
+                    "SELECT processing_state, rights_state, retired_at FROM media_assets "
+                    "WHERE media_asset_id = %s FOR UPDATE",
+                    [placement_row[0]],
+                )
+                candidate_asset_state = cur.fetchone()
+
         lifecycle_state = _lock_listing_lifecycle(cur, native_listing_id, owner_organization_id)
         if lifecycle_state is None:
             return SetCoverResult(outcome=SetCoverOutcome.LISTING_NOT_FOUND)
@@ -1011,17 +1092,9 @@ def set_cover(
             assert row is not None
             return SetCoverResult(outcome=SetCoverOutcome.CLEARED, gallery_version=int(row[0]))
 
-        cur.execute(
-            "SELECT ma.processing_state, ma.rights_state, ma.retired_at "
-            "FROM media_placements mp "
-            "JOIN media_assets ma ON ma.media_asset_id = mp.media_asset_id "
-            "WHERE mp.media_placement_id = %s AND mp.native_listing_id = %s AND mp.kind = 'IMAGE'",
-            [media_placement_id.value, native_listing_id.value],
-        )
-        candidate = cur.fetchone()
-        if candidate is None:
+        if not placement_exists_as_image or candidate_asset_state is None:
             return SetCoverResult(outcome=SetCoverOutcome.INVALID_COVER)
-        processing_state, rights_state, retired_at = candidate
+        processing_state, rights_state, retired_at = candidate_asset_state
         eligible = (
             processing_state == MediaProcessingState.APPROVED.value
             and rights_state == MediaRightsState.DECLARED.value
