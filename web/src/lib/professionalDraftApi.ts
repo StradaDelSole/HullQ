@@ -33,6 +33,29 @@ export type BuildYearResponse =
   | { assertion_kind: "VALUE_ASSERTION"; value: number }
   | { assertion_kind: "UNKNOWN" };
 
+// SLICE-0067: the bounded server-owned promotion readiness reason
+// vocabulary (`specs/PROFESSIONAL_LISTING_PROMOTION_CONTRACT.v0.1.md` §3.3).
+// Display only -- never re-derived client-side; the authoritative
+// evaluation always happens server-side, both for this display value and
+// for the real mutation-time re-evaluation.
+export type PromotionReadinessReason =
+  | "MISSING_MARKETED_BRAND"
+  | "MISSING_MODEL_DESIGNATION"
+  | "MISSING_BUILD_YEAR_RESPONSE"
+  | "MISSING_ASKING_PRICE_MODE"
+  | "MISSING_LOCATION_COUNTRY"
+  | "MISSING_BROKER_DESCRIPTION"
+  | "MISSING_ASKING_PRICE_AMOUNT"
+  | "MISSING_CURRENCY"
+  | "CURRENCY_NOT_ALLOWED_FOR_POA";
+
+export interface PromotionReadiness {
+  ready: boolean;
+  reasons: PromotionReadinessReason[];
+}
+
+export type ProfessionalDraftPromotionState = "EDITABLE" | "PROMOTED";
+
 export interface ProfessionalListingDraft {
   draft_id: string;
   owner_organization_id: string;
@@ -41,6 +64,10 @@ export interface ProfessionalListingDraft {
   "listing_offer.broker_description": string | null;
   created_at: string;
   updated_at: string;
+  promotion_state: ProfessionalDraftPromotionState;
+  promotion_readiness: PromotionReadiness;
+  promoted_native_listing_id?: string;
+  promoted_at?: string;
   "physical_boat.marketed_brand_claim"?: string;
   "physical_boat.model_designation_claim"?: string;
   "physical_boat.build_year"?: BuildYearResponse;
@@ -55,7 +82,15 @@ export interface ProfessionalListingDraft {
 export type ProfessionalDraftPayloadInput = Partial<
   Omit<
     ProfessionalListingDraft,
-    "draft_id" | "owner_organization_id" | "version" | "created_at" | "updated_at"
+    | "draft_id"
+    | "owner_organization_id"
+    | "version"
+    | "created_at"
+    | "updated_at"
+    | "promotion_state"
+    | "promotion_readiness"
+    | "promoted_native_listing_id"
+    | "promoted_at"
   >
 >;
 
@@ -224,6 +259,7 @@ export async function createProfessionalDraft(
 export type ProfessionalDraftUpdateResult =
   | OrgAuthFailure
   | { kind: "conflict" }
+  | { kind: "promoted_immutable" }
   | { kind: "invalid" }
   | { kind: "ok"; data: ProfessionalListingDraft };
 
@@ -231,7 +267,9 @@ export type ProfessionalDraftUpdateResult =
  * Save the full bounded draft payload iff `expectedVersion` still matches
  * the currently persisted version (contract §7). A stale version returns
  * `conflict` -- the caller must never silently retry with a newer expected
- * version behind the user's back.
+ * version behind the user's back. SLICE-0067: a PROMOTED draft returns the
+ * distinct `promoted_immutable` outcome instead, since that draft can never
+ * become editable again no matter what expected_version is supplied.
  */
 export async function updateProfessionalDraft(
   apiBaseUrl: string,
@@ -264,8 +302,103 @@ export async function updateProfessionalDraft(
   if (response.status === 403) return await classify403(response);
   const authFailure = orgAuthFailureFromStatus(response.status);
   if (authFailure) return authFailure;
-  if (response.status === 409) return { kind: "conflict" };
+  if (response.status === 409) {
+    let body: { error?: string } = {};
+    try {
+      body = (await response.json()) as { error?: string };
+    } catch {
+      // fall through to the generic conflict classification below
+    }
+    if (body.error === "promoted_immutable") return { kind: "promoted_immutable" };
+    return { kind: "conflict" };
+  }
   if (!response.ok) return { kind: "invalid" };
   const data = (await response.json()) as ProfessionalListingDraft;
   return { kind: "ok", data };
+}
+
+// ---------------------------------------------------------------------------
+// SLICE-0067: promote
+// ---------------------------------------------------------------------------
+
+export type ProfessionalDraftPromoteResult =
+  | OrgAuthFailure
+  | { kind: "invalid_request" }
+  | { kind: "draft_not_found" }
+  | { kind: "denied"; reason: string }
+  | { kind: "not_ready"; reasons: PromotionReadinessReason[] }
+  | { kind: "version_conflict" }
+  | { kind: "duplicate_episode" }
+  | { kind: "service_error" }
+  | { kind: "ok"; outcome: "PROMOTED" | "ALREADY_PROMOTED"; nativeListingId: string };
+
+/**
+ * Promote one exact, content-ready draft version into a real marketplace
+ * NativeListing (contract §6). Sends exactly the current draft version --
+ * never a marketplace identity/resolution hint (contract §2). `originHeader`
+ * and `cookieHeader` must be exactly what Astro received on the incoming
+ * browser request (see module docstring) -- this reuses the identical
+ * accepted professional draft CSRF boundary, not a new header value.
+ */
+export async function promoteProfessionalDraft(
+  apiBaseUrl: string,
+  organizationId: string,
+  draftId: string,
+  cookieHeader: string | null,
+  originHeader: string | null,
+  expectedVersion: number,
+): Promise<ProfessionalDraftPromoteResult> {
+  const base = apiBaseUrl.replace(/\/+$/, "");
+  let response: Response;
+  try {
+    response = await fetch(
+      `${base}${draftsPath(organizationId)}/${encodeURIComponent(draftId)}/promote`,
+      {
+        method: "POST",
+        headers: {
+          ...cookieHeaders(cookieHeader),
+          ...csrfHeaders(originHeader),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ expected_version: expectedVersion }),
+        redirect: "manual",
+      },
+    );
+  } catch {
+    return { kind: "unauthenticated" };
+  }
+
+  if (response.status === 401) return { kind: "unauthenticated" };
+  if (response.status === 404) return { kind: "draft_not_found" };
+  if (response.status === 400) return { kind: "invalid_request" };
+  if (response.status === 403) {
+    let body: { error?: string; reason?: string } = {};
+    try {
+      body = (await response.json()) as { error?: string; reason?: string };
+    } catch {
+      // fall through to the generic service_error classification below
+    }
+    if (body.error === "mfa_required") return { kind: "mfa_required" };
+    if (body.error === "publishing_denied") return { kind: "denied", reason: body.reason ?? "" };
+    return { kind: "service_error" };
+  }
+  if (response.status === 409) {
+    let body: { error?: string; reasons?: PromotionReadinessReason[] } = {};
+    try {
+      body = (await response.json()) as { error?: string; reasons?: PromotionReadinessReason[] };
+    } catch {
+      // fall through to the generic service_error classification below
+    }
+    if (body.error === "not_ready") return { kind: "not_ready", reasons: body.reasons ?? [] };
+    if (body.error === "version_conflict") return { kind: "version_conflict" };
+    if (body.error === "duplicate_episode") return { kind: "duplicate_episode" };
+    return { kind: "service_error" };
+  }
+  if (!response.ok) return { kind: "service_error" };
+
+  const data = (await response.json()) as {
+    outcome: "PROMOTED" | "ALREADY_PROMOTED";
+    native_listing_id: string;
+  };
+  return { kind: "ok", outcome: data.outcome, nativeListingId: data.native_listing_id };
 }

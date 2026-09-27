@@ -13,6 +13,7 @@ import {
   createProfessionalDraft,
   fetchProfessionalDraft,
   fetchProfessionalDrafts,
+  promoteProfessionalDraft,
   updateProfessionalDraft,
 } from "../professionalDraftApi.ts";
 
@@ -356,6 +357,180 @@ test("updateProfessionalDraft: 400 is surfaced as invalid", async () => {
         {},
       );
       assert.equal(result.kind, "invalid");
+    },
+  );
+});
+
+test("updateProfessionalDraft: 409 with promoted_immutable body is surfaced distinctly", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(409, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "promoted_immutable" }));
+    },
+    async (baseUrl) => {
+      const result = await updateProfessionalDraft(
+        baseUrl,
+        "ORG-1",
+        "DRAFT-1",
+        null,
+        null,
+        1,
+        {},
+      );
+      assert.equal(result.kind, "promoted_immutable");
+    },
+  );
+});
+
+// ---------------------------------------------------------------------------
+// SLICE-0067: promoteProfessionalDraft
+// ---------------------------------------------------------------------------
+
+test("promoteProfessionalDraft: 201 PROMOTED is surfaced as ok", async () => {
+  await withServer(
+    (req, res) => {
+      assert.equal(req.method, "POST");
+      assert.equal(req.url, "/api/broker/organizations/ORG-1/drafts/DRAFT-1/promote");
+      assert.equal(req.headers["x-hullq-requested-with"], "professional-listing-draft-v1");
+      res.writeHead(201, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ outcome: "PROMOTED", native_listing_id: "NL-1" }));
+    },
+    async (baseUrl) => {
+      const result = await promoteProfessionalDraft(
+        baseUrl,
+        "ORG-1",
+        "DRAFT-1",
+        null,
+        "https://web.example",
+        1,
+      );
+      assert.equal(result.kind, "ok");
+      if (result.kind === "ok") {
+        assert.equal(result.outcome, "PROMOTED");
+        assert.equal(result.nativeListingId, "NL-1");
+      }
+    },
+  );
+});
+
+test("promoteProfessionalDraft: 200 ALREADY_PROMOTED is surfaced as ok", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ outcome: "ALREADY_PROMOTED", native_listing_id: "NL-1" }));
+    },
+    async (baseUrl) => {
+      const result = await promoteProfessionalDraft(baseUrl, "ORG-1", "DRAFT-1", null, null, 1);
+      assert.equal(result.kind, "ok");
+      if (result.kind === "ok") assert.equal(result.outcome, "ALREADY_PROMOTED");
+    },
+  );
+});
+
+test("promoteProfessionalDraft: 401 is surfaced as unauthenticated", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(401);
+      res.end();
+    },
+    async (baseUrl) => {
+      const result = await promoteProfessionalDraft(baseUrl, "ORG-1", "DRAFT-1", null, null, 1);
+      assert.equal(result.kind, "unauthenticated");
+    },
+  );
+});
+
+test("promoteProfessionalDraft: 404 is surfaced as draft_not_found", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(404);
+      res.end();
+    },
+    async (baseUrl) => {
+      const result = await promoteProfessionalDraft(baseUrl, "ORG-1", "DRAFT-1", null, null, 1);
+      assert.equal(result.kind, "draft_not_found");
+    },
+  );
+});
+
+test("promoteProfessionalDraft: 400 is surfaced as invalid_request", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(400);
+      res.end();
+    },
+    async (baseUrl) => {
+      const result = await promoteProfessionalDraft(baseUrl, "ORG-1", "DRAFT-1", null, null, 1);
+      assert.equal(result.kind, "invalid_request");
+    },
+  );
+});
+
+test("promoteProfessionalDraft: 403 mfa_required body is surfaced distinctly", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(403, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "mfa_required" }));
+    },
+    async (baseUrl) => {
+      const result = await promoteProfessionalDraft(baseUrl, "ORG-1", "DRAFT-1", null, null, 1);
+      assert.equal(result.kind, "mfa_required");
+    },
+  );
+});
+
+test("promoteProfessionalDraft: 403 publishing_denied body carries the reason", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(403, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "publishing_denied", reason: "ORGANIZATION_UNVERIFIED" }));
+    },
+    async (baseUrl) => {
+      const result = await promoteProfessionalDraft(baseUrl, "ORG-1", "DRAFT-1", null, null, 1);
+      assert.equal(result.kind, "denied");
+      if (result.kind === "denied") assert.equal(result.reason, "ORGANIZATION_UNVERIFIED");
+    },
+  );
+});
+
+test("promoteProfessionalDraft: 409 not_ready body carries the reasons", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(409, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "not_ready", reasons: ["MISSING_MARKETED_BRAND"] }));
+    },
+    async (baseUrl) => {
+      const result = await promoteProfessionalDraft(baseUrl, "ORG-1", "DRAFT-1", null, null, 1);
+      assert.equal(result.kind, "not_ready");
+      if (result.kind === "not_ready") {
+        assert.deepEqual(result.reasons, ["MISSING_MARKETED_BRAND"]);
+      }
+    },
+  );
+});
+
+test("promoteProfessionalDraft: 409 version_conflict is surfaced distinctly", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(409, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "version_conflict" }));
+    },
+    async (baseUrl) => {
+      const result = await promoteProfessionalDraft(baseUrl, "ORG-1", "DRAFT-1", null, null, 1);
+      assert.equal(result.kind, "version_conflict");
+    },
+  );
+});
+
+test("promoteProfessionalDraft: 409 duplicate_episode is surfaced distinctly", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(409, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "duplicate_episode" }));
+    },
+    async (baseUrl) => {
+      const result = await promoteProfessionalDraft(baseUrl, "ORG-1", "DRAFT-1", null, null, 1);
+      assert.equal(result.kind, "duplicate_episode");
     },
   );
 });

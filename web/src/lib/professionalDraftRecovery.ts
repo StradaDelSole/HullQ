@@ -567,9 +567,21 @@ export function initProfessionalDraftRecovery(
   storage: RecoveryStorageLike,
   text: ProfessionalDraftRecoveryText = defaultProfessionalDraftRecoveryTextEn,
   now: () => Date = () => new Date(),
+  isPromoted = false,
 ): void {
   if (scope === null) {
     renderRecoveryBanner(bannerContainer, text.unavailableNotice);
+    return;
+  }
+  // SLICE-0067 contract §12: recovery is never applied to a PROMOTED draft,
+  // even at the exact same frozen `base_version` a pre-promotion envelope
+  // might carry -- promotion intentionally never increments the draft
+  // content version, so version equality alone is no longer a safe
+  // recovery-applicability guard once this slice ships. Best-effort clear
+  // any stale envelope so it cannot resurface over the immutable promoted
+  // result, then render nothing further and never wire capture.
+  if (isPromoted) {
+    clearRecoveryEnvelope(storage, scope);
     return;
   }
   // TypeScript does not carry the null-narrowing above into the nested

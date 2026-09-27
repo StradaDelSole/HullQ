@@ -872,3 +872,87 @@ def test_concurrent_conflicting_creation_fails_closed(listing_url: str) -> None:
         assert _row_count(verify, "NL-RACE-002") == 1
     finally:
         verify.close()
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0067 D09: resolved (publishing_organization_id, market_episode_id)
+# uniqueness
+# ---------------------------------------------------------------------------
+
+
+def test_same_organization_second_listing_for_same_episode_is_rejected(listing_conn: Any) -> None:
+    account = _account("ACC-D09-A")
+    org = _org("ORG-D09-A")
+    membership = _membership("OM-D09-A", account, org, frozenset({MembershipRole.PUBLISHER}))
+    _seed_market_episode(listing_conn, "ME-D09-1", "PB-D09-1")
+
+    first = create_native_listing(
+        listing_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        listing=_listing("NL-D09-A1", market_episode_id="ME-D09-1"),
+    )
+    assert first.status is NativeListingCreationStatus.CREATED
+
+    second = create_native_listing(
+        listing_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        listing=_listing("NL-D09-A2", market_episode_id="ME-D09-1"),
+    )
+    assert second.status is NativeListingCreationStatus.ORGANIZATION_EPISODE_CONFLICT
+    assert _row_count(listing_conn, "NL-D09-A2") == 0
+
+
+def test_different_organization_same_episode_remains_allowed(listing_conn: Any) -> None:
+    account_a = _account("ACC-D09-B1")
+    org_a = _org("ORG-D09-B1")
+    membership_a = _membership("OM-D09-B1", account_a, org_a, frozenset({MembershipRole.PUBLISHER}))
+    account_b = _account("ACC-D09-B2")
+    org_b = _org("ORG-D09-B2")
+    membership_b = _membership("OM-D09-B2", account_b, org_b, frozenset({MembershipRole.PUBLISHER}))
+    _seed_market_episode(listing_conn, "ME-D09-2", "PB-D09-2")
+
+    first = create_native_listing(
+        listing_conn,
+        account_id=account_a,
+        candidate_organization=org_a,
+        membership=membership_a,
+        listing=_listing("NL-D09-B1", market_episode_id="ME-D09-2"),
+    )
+    second = create_native_listing(
+        listing_conn,
+        account_id=account_b,
+        candidate_organization=org_b,
+        membership=membership_b,
+        listing=_listing("NL-D09-B2", market_episode_id="ME-D09-2"),
+    )
+    assert first.status is NativeListingCreationStatus.CREATED
+    assert second.status is NativeListingCreationStatus.CREATED
+    assert _row_count(listing_conn, "NL-D09-B1") == 1
+    assert _row_count(listing_conn, "NL-D09-B2") == 1
+
+
+def test_multiple_unresolved_listings_with_null_episode_remain_allowed(listing_conn: Any) -> None:
+    account = _account("ACC-D09-C")
+    org = _org("ORG-D09-C")
+    membership = _membership("OM-D09-C", account, org, frozenset({MembershipRole.PUBLISHER}))
+
+    first = create_native_listing(
+        listing_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        listing=_listing("NL-D09-C1"),
+    )
+    second = create_native_listing(
+        listing_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        listing=_listing("NL-D09-C2"),
+    )
+    assert first.status is NativeListingCreationStatus.CREATED
+    assert second.status is NativeListingCreationStatus.CREATED

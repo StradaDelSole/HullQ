@@ -35,6 +35,7 @@ __all__ = [
     "PhysicalBoatTransactionOwnershipError",
     "create_physical_boat",
     "fetch_physical_boat",
+    "insert_physical_boat_row",
 ]
 
 
@@ -102,6 +103,41 @@ _SELECT_PHYSICAL_BOAT = (
 # ---------------------------------------------------------------------------
 
 
+def insert_physical_boat_row(
+    cur: Any, *, physical_boat: PhysicalBoat
+) -> PhysicalBoatCreationResult:
+    """The transaction-scoped INSERT/classify body of `create_physical_boat`,
+    factored out so SLICE-0067 promotion can compose it inside its own
+    already-open top-level transaction (contract §9) instead of calling the
+    standalone, independently-committing `create_physical_boat` below.
+
+    Takes an already-open *cur* and neither opens nor commits any
+    transaction; a `ForeignKeyViolation` (an unknown requested
+    `boat_design_ref`) is allowed to propagate uncaught so whichever caller
+    owns the surrounding transaction decides how to roll it back -- exactly
+    mirroring `create_physical_boat`'s own try/except being *outside* its
+    `with conn.transaction():` block below.
+    """
+    if not isinstance(physical_boat, PhysicalBoat):
+        raise TypeError(f"physical_boat must be a PhysicalBoat, got {type(physical_boat).__name__}")
+
+    requested_design_ref = (
+        physical_boat.boat_design_ref.value if physical_boat.boat_design_ref is not None else None
+    )
+    cur.execute(_INSERT_PHYSICAL_BOAT, (physical_boat.id.value, requested_design_ref))
+    if cur.rowcount > 0:
+        return PhysicalBoatCreationResult(status=PhysicalBoatCreationStatus.CREATED)
+
+    # PhysicalBoatId already occupied: classify purely from the durable
+    # stored row, never from the requested value alone.
+    cur.execute(_SELECT_BOAT_DESIGN_REF, [physical_boat.id.value])
+    row = cur.fetchone()
+    stored_design_ref = row[0]
+    if stored_design_ref == requested_design_ref:
+        return PhysicalBoatCreationResult(status=PhysicalBoatCreationStatus.ALREADY_EXISTS)
+    return PhysicalBoatCreationResult(status=PhysicalBoatCreationStatus.CONFLICT)
+
+
 def create_physical_boat(conn: Any, *, physical_boat: PhysicalBoat) -> PhysicalBoatCreationResult:
     """Durably create *physical_boat* iff its PhysicalBoatId is unoccupied.
 
@@ -139,29 +175,13 @@ def create_physical_boat(conn: Any, *, physical_boat: PhysicalBoat) -> PhysicalB
             "opened connection."
         )
 
-    requested_design_ref = (
-        physical_boat.boat_design_ref.value if physical_boat.boat_design_ref is not None else None
-    )
-
     from psycopg.errors import ForeignKeyViolation  # deferred: no module-level psycopg dependency
 
     try:
         with conn.transaction(), conn.cursor() as cur:
-            cur.execute(_INSERT_PHYSICAL_BOAT, (physical_boat.id.value, requested_design_ref))
-            if cur.rowcount > 0:
-                return PhysicalBoatCreationResult(status=PhysicalBoatCreationStatus.CREATED)
-
-            # PhysicalBoatId already occupied: classify purely from the
-            # durable stored row, never from the requested value alone.
-            cur.execute(_SELECT_BOAT_DESIGN_REF, [physical_boat.id.value])
-            row = cur.fetchone()
-            stored_design_ref = row[0]
+            return insert_physical_boat_row(cur, physical_boat=physical_boat)
     except ForeignKeyViolation:
         return PhysicalBoatCreationResult(status=PhysicalBoatCreationStatus.DESIGN_NOT_FOUND)
-
-    if stored_design_ref == requested_design_ref:
-        return PhysicalBoatCreationResult(status=PhysicalBoatCreationStatus.ALREADY_EXISTS)
-    return PhysicalBoatCreationResult(status=PhysicalBoatCreationStatus.CONFLICT)
 
 
 # ---------------------------------------------------------------------------

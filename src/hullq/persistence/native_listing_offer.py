@@ -70,6 +70,7 @@ __all__ = [
     "fetch_native_listing_offer_revision",
     "list_native_listing_offer_revisions",
     "write_native_listing_offer_revision",
+    "write_native_listing_offer_revision_row",
 ]
 
 
@@ -428,6 +429,163 @@ def _vat_columns(claim: VatTaxStatusClaim | None) -> tuple[str | None, str | Non
 # ---------------------------------------------------------------------------
 
 
+def write_native_listing_offer_revision_row(
+    cur: Any,
+    *,
+    account_id: AccountId,
+    candidate_organization: MarketplaceOrganization,
+    native_listing_id: NativeListingId,
+    revision_id: NativeListingOfferRevisionId,
+    expected_current_revision_id: NativeListingOfferRevisionId | None,
+    offer: NativeListingOfferSnapshot,
+) -> NativeListingOfferWriteResult:
+    """The transaction-scoped lock/check/INSERT body of
+    `write_native_listing_offer_revision`, factored out so SLICE-0067
+    promotion can compose it inside its own already-open top-level
+    transaction (contract §9) instead of calling the standalone,
+    independently-committing `write_native_listing_offer_revision` below.
+
+    Does not evaluate publishing eligibility itself (the caller already did,
+    once, before opening its own transaction) and takes an already-open
+    *cur* rather than *conn*.
+    """
+    if not isinstance(native_listing_id, NativeListingId):
+        raise TypeError(
+            f"native_listing_id must be a NativeListingId, got {type(native_listing_id).__name__}"
+        )
+    if not isinstance(revision_id, NativeListingOfferRevisionId):
+        raise TypeError(
+            f"revision_id must be a NativeListingOfferRevisionId, got {type(revision_id).__name__}"
+        )
+    if expected_current_revision_id is not None and not isinstance(
+        expected_current_revision_id, NativeListingOfferRevisionId
+    ):
+        raise TypeError(
+            "expected_current_revision_id must be a NativeListingOfferRevisionId or None, got "
+            f"{type(expected_current_revision_id).__name__}"
+        )
+    if not isinstance(offer, NativeListingOfferSnapshot):
+        raise TypeError(f"offer must be a NativeListingOfferSnapshot, got {type(offer).__name__}")
+
+    content_hash = fingerprint_dict(
+        _offer_envelope_dict(native_listing_id.value, account_id.value, offer)
+    )
+
+    # Locks the (already-existing) native_listings row for the duration
+    # of the caller's transaction, serializing all concurrent offer writes
+    # for this NativeListingId. Without this, two concurrent first-time
+    # writers could each observe "no head row yet" and both proceed to
+    # INSERT a distinct first revision -- a lost-update race, since
+    # native_listing_offer_heads has no row to lock via FOR UPDATE
+    # before it exists.
+    cur.execute(_SELECT_LISTING_ORG_FOR_UPDATE, [native_listing_id.value])
+    listing_row = cur.fetchone()
+    if listing_row is None:
+        return NativeListingOfferWriteResult(
+            status=NativeListingOfferWriteStatus.NATIVE_LISTING_NOT_FOUND
+        )
+
+    listing_organization_id = listing_row[0]
+    if listing_organization_id != candidate_organization.id.value:
+        return NativeListingOfferWriteResult(
+            status=NativeListingOfferWriteStatus.CROSS_ORGANIZATION_DENIED
+        )
+
+    cur.execute(_SELECT_HEAD, [native_listing_id.value])
+    head_row = cur.fetchone()
+    actual_current_id: str | None = head_row[0] if head_row is not None else None
+
+    def _current_wrapped() -> NativeListingOfferRevisionId | None:
+        return (
+            NativeListingOfferRevisionId(actual_current_id)
+            if actual_current_id is not None
+            else None
+        )
+
+    cur.execute(_SELECT_REVISION_BY_ID, [revision_id.value])
+    existing = cur.fetchone()
+    if existing is not None:
+        existing_listing_id, existing_hash = existing
+        if existing_listing_id == native_listing_id.value and existing_hash == content_hash:
+            return NativeListingOfferWriteResult(
+                status=NativeListingOfferWriteStatus.ALREADY_EXISTS,
+                current_revision_id=_current_wrapped(),
+            )
+        return NativeListingOfferWriteResult(
+            status=NativeListingOfferWriteStatus.CONFLICT,
+            current_revision_id=_current_wrapped(),
+        )
+
+    expected_value = (
+        expected_current_revision_id.value if expected_current_revision_id is not None else None
+    )
+    if expected_value != actual_current_id:
+        return NativeListingOfferWriteResult(
+            status=NativeListingOfferWriteStatus.CONFLICT,
+            current_revision_id=_current_wrapped(),
+        )
+
+    location_region_kind, location_region_value = _claim_columns(offer.location_region)
+    broker_summary_kind, broker_summary_value = _claim_columns(offer.broker_summary)
+    known_history_kind, known_history_value = _claim_columns(offer.known_history_narrative)
+    vat_kind, vat_value = _vat_columns(offer.vat_tax_status_claim)
+
+    # ON CONFLICT DO NOTHING on offer_revision_id (a global PRIMARY KEY,
+    # not scoped to native_listing_id) closes the race window against a
+    # *different* NativeListing concurrently claiming this exact
+    # revision id between the pre-check SELECT above and this INSERT --
+    # the FOR UPDATE lock on native_listings only serializes writers for
+    # *this* NativeListingId, so a same-listing collision is already
+    # impossible, but a cross-listing one is not, without this guard.
+    # previous_offer_revision_id is exactly the current head validated
+    # above (None for a first revision), fixed permanently at insertion
+    # time -- never recomputed from timestamps/row order.
+    cur.execute(
+        _INSERT_REVISION,
+        (
+            revision_id.value,
+            native_listing_id.value,
+            candidate_organization.id.value,
+            account_id.value,
+            offer.asking_price_mode.value,
+            offer.asking_price_amount,
+            offer.currency,
+            offer.location_country,
+            location_region_kind,
+            location_region_value,
+            broker_summary_kind,
+            broker_summary_value,
+            offer.broker_description,
+            known_history_kind,
+            known_history_value,
+            vat_kind,
+            vat_value,
+            actual_current_id,
+            content_hash,
+        ),
+    )
+    if cur.rowcount == 0:
+        # Lost the race: a different NativeListing committed this exact
+        # offer_revision_id after our pre-check but before our INSERT.
+        # This can never be a match for *our* NativeListing (same-listing
+        # writes are fully serialized by the row lock above), so it is
+        # always a CONFLICT, never ALREADY_EXISTS -- and our own head is
+        # untouched.
+        return NativeListingOfferWriteResult(
+            status=NativeListingOfferWriteStatus.CONFLICT,
+            current_revision_id=_current_wrapped(),
+        )
+
+    cur.execute(_UPSERT_HEAD, (native_listing_id.value, revision_id.value))
+
+    status = (
+        NativeListingOfferWriteStatus.CREATED
+        if actual_current_id is None
+        else NativeListingOfferWriteStatus.REVISED
+    )
+    return NativeListingOfferWriteResult(status=status, current_revision_id=revision_id)
+
+
 def write_native_listing_offer_revision(
     conn: Any,
     *,
@@ -482,124 +640,16 @@ def write_native_listing_offer_revision(
             "Call conn.commit()/conn.rollback() first, or pass a freshly opened connection."
         )
 
-    content_hash = fingerprint_dict(
-        _offer_envelope_dict(native_listing_id.value, account_id.value, offer)
-    )
-
     with conn.transaction(), conn.cursor() as cur:
-        # Locks the (already-existing) native_listings row for the duration
-        # of this transaction, serializing all concurrent offer writes for
-        # this NativeListingId. Without this, two concurrent first-time
-        # writers could each observe "no head row yet" and both proceed to
-        # INSERT a distinct first revision -- a lost-update race, since
-        # native_listing_offer_heads has no row to lock via FOR UPDATE
-        # before it exists.
-        cur.execute(_SELECT_LISTING_ORG_FOR_UPDATE, [native_listing_id.value])
-        listing_row = cur.fetchone()
-        if listing_row is None:
-            return NativeListingOfferWriteResult(
-                status=NativeListingOfferWriteStatus.NATIVE_LISTING_NOT_FOUND
-            )
-
-        listing_organization_id = listing_row[0]
-        if listing_organization_id != candidate_organization.id.value:
-            return NativeListingOfferWriteResult(
-                status=NativeListingOfferWriteStatus.CROSS_ORGANIZATION_DENIED
-            )
-
-        cur.execute(_SELECT_HEAD, [native_listing_id.value])
-        head_row = cur.fetchone()
-        actual_current_id: str | None = head_row[0] if head_row is not None else None
-
-        def _current_wrapped() -> NativeListingOfferRevisionId | None:
-            return (
-                NativeListingOfferRevisionId(actual_current_id)
-                if actual_current_id is not None
-                else None
-            )
-
-        cur.execute(_SELECT_REVISION_BY_ID, [revision_id.value])
-        existing = cur.fetchone()
-        if existing is not None:
-            existing_listing_id, existing_hash = existing
-            if existing_listing_id == native_listing_id.value and existing_hash == content_hash:
-                return NativeListingOfferWriteResult(
-                    status=NativeListingOfferWriteStatus.ALREADY_EXISTS,
-                    current_revision_id=_current_wrapped(),
-                )
-            return NativeListingOfferWriteResult(
-                status=NativeListingOfferWriteStatus.CONFLICT,
-                current_revision_id=_current_wrapped(),
-            )
-
-        expected_value = (
-            expected_current_revision_id.value if expected_current_revision_id is not None else None
+        return write_native_listing_offer_revision_row(
+            cur,
+            account_id=account_id,
+            candidate_organization=candidate_organization,
+            native_listing_id=native_listing_id,
+            revision_id=revision_id,
+            expected_current_revision_id=expected_current_revision_id,
+            offer=offer,
         )
-        if expected_value != actual_current_id:
-            return NativeListingOfferWriteResult(
-                status=NativeListingOfferWriteStatus.CONFLICT,
-                current_revision_id=_current_wrapped(),
-            )
-
-        location_region_kind, location_region_value = _claim_columns(offer.location_region)
-        broker_summary_kind, broker_summary_value = _claim_columns(offer.broker_summary)
-        known_history_kind, known_history_value = _claim_columns(offer.known_history_narrative)
-        vat_kind, vat_value = _vat_columns(offer.vat_tax_status_claim)
-
-        # ON CONFLICT DO NOTHING on offer_revision_id (a global PRIMARY KEY,
-        # not scoped to native_listing_id) closes the race window against a
-        # *different* NativeListing concurrently claiming this exact
-        # revision id between the pre-check SELECT above and this INSERT --
-        # the FOR UPDATE lock on native_listings only serializes writers for
-        # *this* NativeListingId, so a same-listing collision is already
-        # impossible, but a cross-listing one is not, without this guard.
-        # previous_offer_revision_id is exactly the current head validated
-        # above (None for a first revision), fixed permanently at insertion
-        # time -- never recomputed from timestamps/row order.
-        cur.execute(
-            _INSERT_REVISION,
-            (
-                revision_id.value,
-                native_listing_id.value,
-                candidate_organization.id.value,
-                account_id.value,
-                offer.asking_price_mode.value,
-                offer.asking_price_amount,
-                offer.currency,
-                offer.location_country,
-                location_region_kind,
-                location_region_value,
-                broker_summary_kind,
-                broker_summary_value,
-                offer.broker_description,
-                known_history_kind,
-                known_history_value,
-                vat_kind,
-                vat_value,
-                actual_current_id,
-                content_hash,
-            ),
-        )
-        if cur.rowcount == 0:
-            # Lost the race: a different NativeListing committed this exact
-            # offer_revision_id after our pre-check but before our INSERT.
-            # This can never be a match for *our* NativeListing (same-listing
-            # writes are fully serialized by the row lock above), so it is
-            # always a CONFLICT, never ALREADY_EXISTS -- and our own head is
-            # untouched.
-            return NativeListingOfferWriteResult(
-                status=NativeListingOfferWriteStatus.CONFLICT,
-                current_revision_id=_current_wrapped(),
-            )
-
-        cur.execute(_UPSERT_HEAD, (native_listing_id.value, revision_id.value))
-
-        status = (
-            NativeListingOfferWriteStatus.CREATED
-            if actual_current_id is None
-            else NativeListingOfferWriteStatus.REVISED
-        )
-        return NativeListingOfferWriteResult(status=status, current_revision_id=revision_id)
 
 
 # ---------------------------------------------------------------------------

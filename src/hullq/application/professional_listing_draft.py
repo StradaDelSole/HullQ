@@ -45,9 +45,11 @@ from hullq.application.broker_workspace_read import (
 )
 from hullq.domain.listing_draft_payload import InvalidListingDraftPayloadError
 from hullq.domain.professional_listing_draft import (
+    ProfessionalDraftPromotionState,
     ProfessionalListingDraftId,
     parse_professional_listing_draft_request,
 )
+from hullq.domain.promotion_readiness import evaluate_promotion_readiness
 from hullq.domain.publishing_eligibility import MarketplaceOrganizationId
 from hullq.persistence.professional_listing_draft import (
     ProfessionalListingDraftRecord,
@@ -88,7 +90,15 @@ MAX_PAGE_SIZE = 100
 def professional_draft_record_to_public_dict(
     record: ProfessionalListingDraftRecord,
 ) -> dict[str, Any]:
-    """The one wire shape used by list/create/read/update responses alike."""
+    """The one wire shape used by list/create/read/update responses alike.
+
+    SLICE-0067: `promotion_readiness` is the exact same server-owned
+    `PromotionReadiness` evaluator the authoritative promotion transaction
+    re-evaluates at mutation time (contract §3.3) -- this is display only and
+    never replaces that re-evaluation. `promoted_native_listing_id`/
+    `promoted_at` are included only once the draft is actually PROMOTED.
+    """
+    readiness = evaluate_promotion_readiness(record.payload, record.broker_description)
     body: dict[str, Any] = {
         "draft_id": record.draft_id.value,
         "owner_organization_id": record.owner_organization_id.value,
@@ -97,7 +107,17 @@ def professional_draft_record_to_public_dict(
         "listing_offer.broker_description": record.broker_description,
         "created_at": record.created_at.isoformat(),
         "updated_at": record.updated_at.isoformat(),
+        "promotion_state": record.promotion_state.value,
+        "promotion_readiness": {
+            "ready": readiness.is_ready,
+            "reasons": [reason.value for reason in readiness.reasons],
+        },
     }
+    if record.promotion_state is ProfessionalDraftPromotionState.PROMOTED:
+        assert record.promoted_native_listing_id is not None
+        assert record.promoted_at is not None
+        body["promoted_native_listing_id"] = record.promoted_native_listing_id.value
+        body["promoted_at"] = record.promoted_at.isoformat()
     body.update(record.payload.to_wire_dict())
     return body
 
@@ -453,6 +473,7 @@ class UpdateProfessionalDraftOutcome(StrEnum):
     INVALID_PAYLOAD = "INVALID_PAYLOAD"
     DRAFT_NOT_FOUND = "DRAFT_NOT_FOUND"
     VERSION_CONFLICT = "VERSION_CONFLICT"
+    PROMOTED_IMMUTABLE = "PROMOTED_IMMUTABLE"
     UPDATED = "UPDATED"
 
 
@@ -535,5 +556,9 @@ def update_professional_draft_for_organization(
     if result.outcome is ProfessionalListingDraftUpdateOutcome.VERSION_CONFLICT:
         return UpdateProfessionalDraftResult(
             outcome=UpdateProfessionalDraftOutcome.VERSION_CONFLICT
+        )
+    if result.outcome is ProfessionalListingDraftUpdateOutcome.PROMOTED_IMMUTABLE:
+        return UpdateProfessionalDraftResult(
+            outcome=UpdateProfessionalDraftOutcome.PROMOTED_IMMUTABLE
         )
     return UpdateProfessionalDraftResult(outcome=UpdateProfessionalDraftOutcome.DRAFT_NOT_FOUND)

@@ -49,6 +49,7 @@ __all__ = [
     "NativeListingTransactionOwnershipError",
     "create_native_listing",
     "fetch_native_listing",
+    "insert_native_listing_row",
 ]
 
 
@@ -99,6 +100,14 @@ class NativeListingCreationStatus(StrEnum):
     DENIED = "denied"
     CONFLICT = "conflict"
     MARKET_EPISODE_NOT_FOUND = "market_episode_not_found"
+    #: SLICE-0067 D09: this exact Organization already holds a different
+    #: NativeListing resolved to the identical MarketEpisode
+    #: (`ux_native_listings_org_episode`). Distinct from CONFLICT (a reused
+    #: NativeListingId with a different envelope) and from
+    #: MARKET_EPISODE_NOT_FOUND (an unknown MarketEpisodeId) -- the
+    #: MarketEpisode here exists and is real, it is simply already resolved
+    #: by this same Organization under a different NativeListingId.
+    ORGANIZATION_EPISODE_CONFLICT = "organization_episode_conflict"
 
 
 @dataclass(frozen=True)
@@ -153,6 +162,59 @@ def _fingerprint_envelope(
     )
 
 
+def insert_native_listing_row(
+    cur: Any,
+    *,
+    account_id: AccountId,
+    candidate_organization: MarketplaceOrganization,
+    listing: NativeListing,
+    broker_listing_reference: str | None = None,
+) -> NativeListingCreationResult:
+    """The transaction-scoped INSERT/classify body of `create_native_listing`,
+    factored out so SLICE-0067 promotion can compose it inside its own
+    already-open top-level transaction (contract §9) instead of calling the
+    standalone, independently-committing `create_native_listing` below.
+
+    Does not evaluate publishing eligibility itself (the caller already did,
+    once, before opening its own transaction) and takes an already-open
+    *cur* rather than *conn*. A `ForeignKeyViolation` (an unknown non-null
+    MarketEpisodeId) or a `UniqueViolation` on `ux_native_listings_org_episode`
+    (SLICE-0067 D09) is allowed to propagate uncaught so whichever caller
+    owns the surrounding transaction decides how to roll it back -- exactly
+    mirroring `create_native_listing`'s own try/except being *outside* its
+    `with conn.transaction():` block below.
+    """
+    if not isinstance(listing, NativeListing):
+        raise TypeError(f"listing must be a NativeListing, got {type(listing).__name__}")
+    _validate_broker_listing_reference(broker_listing_reference)
+
+    market_episode_id = listing.market_episode_id.value if listing.market_episode_id else None
+    content_hash = _fingerprint_envelope(
+        candidate_organization.id.value,
+        account_id.value,
+        market_episode_id,
+        broker_listing_reference,
+    )
+    cur.execute(
+        _INSERT_NATIVE_LISTING,
+        (
+            listing.id.value,
+            candidate_organization.id.value,
+            account_id.value,
+            market_episode_id,
+            broker_listing_reference,
+            content_hash,
+        ),
+    )
+    if cur.rowcount > 0:
+        return NativeListingCreationResult(status=NativeListingCreationStatus.CREATED)
+    cur.execute(_SELECT_NATIVE_LISTING_HASH, [listing.id.value])
+    existing = cur.fetchone()
+    if existing is not None and existing[0] == content_hash:
+        return NativeListingCreationResult(status=NativeListingCreationStatus.ALREADY_EXISTS)
+    return NativeListingCreationResult(status=NativeListingCreationStatus.CONFLICT)
+
+
 def create_native_listing(
     conn: Any,
     *,
@@ -186,6 +248,13 @@ def create_native_listing(
     reaches the existing-envelope CONFLICT path above instead, never this
     outcome.
 
+    SLICE-0067 D09: a genuinely new NativeListingId whose Organization+
+    MarketEpisode pair is already resolved by a *different* NativeListingId
+    of this same Organization fails closed as ORGANIZATION_EPISODE_CONFLICT
+    and writes zero rows (`ux_native_listings_org_episode`, only enforced
+    when `market_episode_id IS NOT NULL`). A different Organization may
+    still freely resolve the identical MarketEpisode.
+
     Raises NativeListingTransactionOwnershipError, before any write is
     attempted, if *conn* already has an open transaction: proceeding would
     risk returning CREATED for a row that is not actually durably committed.
@@ -214,41 +283,25 @@ def create_native_listing(
             "opened connection."
         )
 
-    market_episode_id = listing.market_episode_id.value if listing.market_episode_id else None
-    content_hash = _fingerprint_envelope(
-        candidate_organization.id.value,
-        account_id.value,
-        market_episode_id,
-        broker_listing_reference,
-    )
-
-    from psycopg.errors import ForeignKeyViolation  # deferred: no module-level psycopg dependency
+    from psycopg.errors import ForeignKeyViolation, UniqueViolation  # deferred: no module-level dep
 
     try:
         with conn.transaction(), conn.cursor() as cur:
-            cur.execute(
-                _INSERT_NATIVE_LISTING,
-                (
-                    listing.id.value,
-                    candidate_organization.id.value,
-                    account_id.value,
-                    market_episode_id,
-                    broker_listing_reference,
-                    content_hash,
-                ),
+            return insert_native_listing_row(
+                cur,
+                account_id=account_id,
+                candidate_organization=candidate_organization,
+                listing=listing,
+                broker_listing_reference=broker_listing_reference,
             )
-            if cur.rowcount > 0:
-                return NativeListingCreationResult(status=NativeListingCreationStatus.CREATED)
-            cur.execute(_SELECT_NATIVE_LISTING_HASH, [listing.id.value])
-            existing = cur.fetchone()
     except ForeignKeyViolation:
         return NativeListingCreationResult(
             status=NativeListingCreationStatus.MARKET_EPISODE_NOT_FOUND
         )
-
-    if existing is not None and existing[0] == content_hash:
-        return NativeListingCreationResult(status=NativeListingCreationStatus.ALREADY_EXISTS)
-    return NativeListingCreationResult(status=NativeListingCreationStatus.CONFLICT)
+    except UniqueViolation:
+        return NativeListingCreationResult(
+            status=NativeListingCreationStatus.ORGANIZATION_EPISODE_CONFLICT
+        )
 
 
 def fetch_native_listing(

@@ -24,6 +24,7 @@ interchangeable.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any
 
 from hullq.domain.listing_draft_payload import (
@@ -48,11 +49,23 @@ __all__ = [
     "BuildYearResponse",
     "InvalidListingDraftPayloadError",
     "ListingDraftPayload",
+    "ProfessionalDraftPromotionState",
     "ProfessionalListingDraftId",
     "ProfessionalListingDraftRequest",
     "parse_listing_draft_payload",
     "parse_professional_listing_draft_request",
 ]
+
+
+class ProfessionalDraftPromotionState(StrEnum):
+    """SLICE-0067 durable promotion state (contract §5).
+
+    `EDITABLE` is the only state ordinary Save applies to. `PROMOTED` is
+    permanent -- there is no reactivation path back to EDITABLE.
+    """
+
+    EDITABLE = "EDITABLE"
+    PROMOTED = "PROMOTED"
 
 
 @dataclass(frozen=True)
