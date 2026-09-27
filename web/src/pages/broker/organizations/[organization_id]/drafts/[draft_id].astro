@@ -20,6 +20,7 @@ import {
   type ProfessionalDraftPayloadInput,
   type ProfessionalListingDraft,
   fetchProfessionalDraft,
+  promoteProfessionalDraft,
   updateProfessionalDraft,
 } from "../../../../../lib/professionalDraftApi";
 import { parseBuildYearFormControl } from "../../../../../lib/buildYearFormControl";
@@ -116,15 +117,72 @@ function payloadFromForm(formData: FormData): ProfessionalDraftPayloadInput | nu
   return payload;
 }
 
-type SaveOutcome = "none" | "saved" | "conflict" | "invalid";
+type SaveOutcome = "none" | "saved" | "conflict" | "promoted_immutable" | "invalid";
 let saveOutcome: SaveOutcome = "none";
+
+type PromoteOutcome =
+  | "none"
+  | "promoted"
+  | "not_ready"
+  | "conflict"
+  | "denied"
+  | "duplicate_episode"
+  | "invalid";
+let promoteOutcome: PromoteOutcome = "none";
+let promoteDeniedReason = "";
+let promoteNotReadyReasons: string[] = [];
 
 if (Astro.request.method === "POST" && organizationId && draftId) {
   const formData = await Astro.request.formData();
+  const intent = formData.get("intent");
   const expectedVersionRaw = formData.get("expected_version");
   const expectedVersion =
     typeof expectedVersionRaw === "string" ? Number.parseInt(expectedVersionRaw, 10) : NaN;
-  if (Number.isFinite(expectedVersion)) {
+
+  if (intent === "promote") {
+    if (Number.isFinite(expectedVersion)) {
+      const promoteResult = await promoteProfessionalDraft(
+        apiBaseUrl,
+        organizationId,
+        draftId,
+        cookieHeader,
+        originHeader,
+        expectedVersion,
+      );
+      if (promoteResult.kind === "ok") {
+        // Independent exact-head review Finding B: do NOT redirect away
+        // immediately. The browser-local recovery envelope lives in
+        // `localStorage`, which this server-rendered redirect cannot touch
+        // -- only the client-side recovery script wired to the *rendered
+        // promoted page* below can clear it (contract §12: "clear any
+        // recovery envelope for that exact draft/version" is required on
+        // success, not merely "eventually, if the user happens to reopen
+        // this draft later"). Falling through to the ordinary re-read below
+        // re-fetches the now-PROMOTED draft and renders the existing
+        // immutable-provenance branch, whose recovery script deterministically
+        // clears the envelope on this exact response -- covers both a fresh
+        // PROMOTED and an exact-retry ALREADY_PROMOTED alike. The immutable
+        // branch already links to (rather than force-navigates to) the
+        // Organization inventory surface, identifies the resulting
+        // NativeListingId, and states lifecycle DRAFT / not public.
+        promoteOutcome = "promoted";
+      } else if (promoteResult.kind === "not_ready") {
+        promoteOutcome = "not_ready";
+        promoteNotReadyReasons = promoteResult.reasons;
+      } else if (promoteResult.kind === "version_conflict") {
+        promoteOutcome = "conflict";
+      } else if (promoteResult.kind === "denied") {
+        promoteOutcome = "denied";
+        promoteDeniedReason = promoteResult.reason;
+      } else if (promoteResult.kind === "duplicate_episode") {
+        promoteOutcome = "duplicate_episode";
+      } else {
+        promoteOutcome = "invalid";
+      }
+    } else {
+      promoteOutcome = "invalid";
+    }
+  } else if (Number.isFinite(expectedVersion)) {
     const payload = payloadFromForm(formData);
     if (payload === null) {
       // Fail closed before ever calling FastAPI (Finding B): zero mutation
@@ -144,6 +202,7 @@ if (Astro.request.method === "POST" && organizationId && draftId) {
       );
       if (updateResult.kind === "ok") saveOutcome = "saved";
       else if (updateResult.kind === "conflict") saveOutcome = "conflict";
+      else if (updateResult.kind === "promoted_immutable") saveOutcome = "promoted_immutable";
       else if (updateResult.kind === "invalid") saveOutcome = "invalid";
       // Every other update outcome falls through to the read below, which
       // independently resolves to the identical state.
@@ -169,6 +228,11 @@ if (readResult.kind === "not_found") {
 }
 
 const draft: ProfessionalListingDraft | null = readResult.kind === "ok" ? readResult.data : null;
+
+// SLICE-0067: PROMOTED is permanent and never editable again (contract §5) --
+// the edit form/Save/Promote controls are replaced by immutable provenance.
+const isPromoted = draft?.promotion_state === "PROMOTED";
+const promotionReadiness = draft?.promotion_readiness ?? { ready: false, reasons: [] };
 
 // SLICE-0066: the three mechanically distinct build-year response states
 // (contract §G) -- "not answered" is the true absence of the key, never
@@ -237,10 +301,60 @@ const accountId = brokerContextResult?.kind === "ok" ? brokerContextResult.data.
                 ). Your last edits were not saved -- please re-enter them below.
               </p>
             )}
+            {saveOutcome === "promoted_immutable" && (
+              <p>This draft was already promoted and can no longer be edited.</p>
+            )}
             {saveOutcome === "invalid" && (
               <p>Some values could not be saved. Please check the fields below.</p>
             )}
+            {promoteOutcome === "promoted" && <p>Promotion succeeded.</p>}
+            {promoteOutcome === "not_ready" && (
+              <p>
+                This draft is not ready to promote yet: {promoteNotReadyReasons.join(", ")}.
+              </p>
+            )}
+            {promoteOutcome === "conflict" && (
+              <p>
+                This draft changed elsewhere since you loaded it (current version {draft?.version}
+                ). Please reload before promoting.
+              </p>
+            )}
+            {promoteOutcome === "denied" && (
+              <p>Promotion was denied: {promoteDeniedReason}.</p>
+            )}
+            {promoteOutcome === "duplicate_episode" && (
+              <p>
+                This vessel appears to already be listed by your Organization. Promotion was not
+                completed.
+              </p>
+            )}
+            {promoteOutcome === "invalid" && <p>Promotion could not be completed.</p>}
             <p>Version: {draft?.version}</p>
+            {
+              isPromoted ? (
+                <>
+                  <p>
+                    <strong>Promoted.</strong> This draft is now immutable. It created listing{" "}
+                    <code>{draft?.promoted_native_listing_id}</code> at {draft?.promoted_at}, shown
+                    as lifecycle <strong>DRAFT</strong> (not public) in your Organization
+                    inventory.
+                  </p>
+                  <p>
+                    <a
+                      href={`/broker/organizations/${organizationId}/inventory`}
+                    >
+                      View Organization inventory
+                    </a>
+                  </p>
+                </>
+              ) : (
+                <p>
+                  {promotionReadiness.ready
+                    ? "This draft is ready to promote to your Organization inventory."
+                    : `Not ready to promote: ${promotionReadiness.reasons.join(", ")}.`}
+                </p>
+              )
+            }
             <div
               id="draft-recovery-banner"
               data-account-id={accountId}
@@ -248,9 +362,13 @@ const accountId = brokerContextResult?.kind === "ok" ? brokerContextResult.data.
               data-draft-id={draftId}
               data-server-version={draft?.version ?? ""}
               data-save-outcome={saveOutcome}
+              data-promoted={isPromoted ? "1" : ""}
             />
-            <form method="POST" id="draft-form">
-              <input type="hidden" name="expected_version" value={draft?.version} />
+            {
+              isPromoted ? null : (
+                <form method="POST" id="draft-form">
+                  <input type="hidden" name="intent" value="save" />
+                  <input type="hidden" name="expected_version" value={draft?.version} />
               <p>
                 <label>
                   Broker listing reference
@@ -383,8 +501,19 @@ const accountId = brokerContextResult?.kind === "ok" ? brokerContextResult.data.
                   </textarea>
                 </label>
               </p>
-              <button type="submit">Save</button>
-            </form>
+                  <button type="submit">Save</button>
+                </form>
+              )
+            }
+            {
+              !isPromoted && promotionReadiness.ready ? (
+                <form method="POST" id="promote-form">
+                  <input type="hidden" name="intent" value="promote" />
+                  <input type="hidden" name="expected_version" value={draft?.version} />
+                  <button type="submit">Create listing</button>
+                </form>
+              ) : null
+            }
             <p>
               <a href={`/broker/organizations/${organizationId}/drafts`}>Back to drafts</a>
             </p>
@@ -405,20 +534,21 @@ const accountId = brokerContextResult?.kind === "ok" ? brokerContextResult.data.
               // latter can throw before this script's own logic ever runs
               // (independent review finding 2026-09-21 #3).
               import {
+                applyPromotedRecoveryClear,
                 browserRecoveryStorage,
                 clearRecoveryEnvelope,
                 initProfessionalDraftRecovery,
               } from "../../../../../lib/professionalDraftRecovery";
 
               const bannerEl = document.getElementById("draft-recovery-banner");
-              const formEl = document.getElementById("draft-form");
 
-              if (bannerEl instanceof HTMLElement && formEl instanceof HTMLFormElement) {
+              if (bannerEl instanceof HTMLElement) {
                 const accountId = bannerEl.dataset.accountId ?? "";
                 const organizationId = bannerEl.dataset.organizationId ?? "";
                 const draftId = bannerEl.dataset.draftId ?? "";
                 const serverVersion = Number.parseInt(bannerEl.dataset.serverVersion ?? "", 10);
                 const saveOutcome = bannerEl.dataset.saveOutcome ?? "none";
+                const isPromoted = bannerEl.dataset.promoted === "1";
 
                 // `scope` is null when the current AccountId could not be
                 // established (e.g. the private Broker Context lookup
@@ -435,14 +565,25 @@ const accountId = brokerContextResult?.kind === "ok" ? brokerContextResult.data.
                   clearRecoveryEnvelope(browserRecoveryStorage(), scope);
                 }
 
-                if (Number.isFinite(serverVersion)) {
-                  initProfessionalDraftRecovery(
-                    formEl,
-                    bannerEl,
-                    scope,
-                    serverVersion,
-                    browserRecoveryStorage(),
-                  );
+                // SLICE-0067 contract §12 / independent exact-head review
+                // Finding B: a PROMOTED draft renders no editable form at
+                // all -- `applyPromotedRecoveryClear` deterministically
+                // clears the exact recovery envelope on THIS render
+                // whenever it reflects PROMOTED (a fresh promotion or an
+                // exact-retry ALREADY_PROMOTED alike), rather than the
+                // clear being deferred until a later reopen of this draft.
+                applyPromotedRecoveryClear(browserRecoveryStorage(), scope, isPromoted);
+                if (!isPromoted) {
+                  const formEl = document.getElementById("draft-form");
+                  if (formEl instanceof HTMLFormElement && Number.isFinite(serverVersion)) {
+                    initProfessionalDraftRecovery(
+                      formEl,
+                      bannerEl,
+                      scope,
+                      serverVersion,
+                      browserRecoveryStorage(),
+                    );
+                  }
                 }
               }
             </script>

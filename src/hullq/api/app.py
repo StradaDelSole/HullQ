@@ -107,6 +107,10 @@ from hullq.application.professional_listing_draft import (
     professional_draft_record_to_public_dict,
     update_professional_draft_for_organization,
 )
+from hullq.application.professional_listing_promotion import (
+    PromoteProfessionalDraftOutcome,
+    promote_professional_draft_for_organization,
+)
 from hullq.application.public_listing_read import get_public_listing_read_model
 from hullq.application.search_read import SearchOutcomeKind, evaluate_search_request
 from hullq.application.search_sensitivity import (
@@ -1238,8 +1242,64 @@ def create_app(
             raise HTTPException(status_code=404, detail="draft not found")
         if result.outcome is UpdateProfessionalDraftOutcome.VERSION_CONFLICT:
             return JSONResponse({"error": "version_conflict"}, status_code=409)
+        if result.outcome is UpdateProfessionalDraftOutcome.PROMOTED_IMMUTABLE:
+            return JSONResponse({"error": "promoted_immutable"}, status_code=409)
         assert result.record is not None
         return JSONResponse(professional_draft_record_to_public_dict(result.record))
+
+    def _promote_professional_draft_response(result: Any) -> JSONResponse:
+        # Contract §6 suggested HTTP mapping: every outcome maps to a
+        # mechanically distinct status/body -- never a bare boolean, and
+        # never a false-success shape for a denied/failed attempt.
+        outcome = result.outcome
+        if outcome is PromoteProfessionalDraftOutcome.ORG_NOT_FOUND_OR_DENIED:
+            raise HTTPException(status_code=404, detail="organization not found")
+        if outcome is PromoteProfessionalDraftOutcome.MFA_REQUIRED:
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if outcome is PromoteProfessionalDraftOutcome.INVALID_REQUEST:
+            return JSONResponse({"error": "invalid_request"}, status_code=400)
+        if outcome is PromoteProfessionalDraftOutcome.DRAFT_NOT_FOUND:
+            # Contract §3.3/§7: foreign and unknown draft_id are indistinguishable.
+            raise HTTPException(status_code=404, detail="draft not found")
+        if outcome is PromoteProfessionalDraftOutcome.DENIED:
+            assert result.denial_reason is not None
+            return JSONResponse(
+                {"error": "publishing_denied", "reason": result.denial_reason.value},
+                status_code=403,
+            )
+        if outcome is PromoteProfessionalDraftOutcome.NOT_READY:
+            return JSONResponse(
+                {"error": "not_ready", "reasons": [r.value for r in result.reasons]},
+                status_code=409,
+            )
+        if outcome is PromoteProfessionalDraftOutcome.VERSION_CONFLICT:
+            return JSONResponse({"error": "version_conflict"}, status_code=409)
+        if outcome is PromoteProfessionalDraftOutcome.DUPLICATE_EPISODE:
+            return JSONResponse({"error": "duplicate_episode"}, status_code=409)
+        if outcome is PromoteProfessionalDraftOutcome.ALREADY_PROMOTED:
+            return JSONResponse(result.to_public_dict(), status_code=200)
+        assert outcome is PromoteProfessionalDraftOutcome.PROMOTED
+        return JSONResponse(result.to_public_dict(), status_code=201)
+
+    @app.post("/api/broker/organizations/{organization_id}/drafts/{draft_id}/promote")
+    async def promote_professional_draft_route(
+        organization_id: str, draft_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        # Contract §13: reuses the exact accepted professional draft CSRF
+        # boundary, not a new header value.
+        _require_professional_draft_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        conn = open_connection(resolved_database_url)
+        try:
+            result = promote_professional_draft_for_organization(
+                conn, session, organization_id, draft_id, raw_body
+            )
+        finally:
+            conn.close()
+        return _promote_professional_draft_response(result)
 
     @app.get("/api/owner-direct/drafts")
     def list_owner_direct_drafts_route(request: Request) -> JSONResponse:

@@ -2,7 +2,8 @@
 
 **ID:** SLICE-0067  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
+**Status set by this handoff:** `REVIEW`  
 **Stage:** Broker launch-critical professional inventory creation  
 **Depends on:** accepted SLICE-0061–0066 professional draft/workspace/input alignment plus accepted SLICE-0043–0050 marketplace persistence primitives  
 **Blocks:** later media/gallery and canonical PublicationReadiness for normal broker-created inventory
@@ -285,52 +286,52 @@ Professional draft editor:
 
 ## Acceptance criteria
 
-- [ ] PromotionReadiness uses exactly one server-owned evaluator.
-- [ ] Required D07 fields and deterministic reason codes are tested.
-- [ ] POA + currency is NOT_READY and never silently normalized.
-- [ ] Existing professional drafts migrate to EDITABLE.
-- [ ] New drafts start EDITABLE.
-- [ ] Active draft list excludes PROMOTED.
-- [ ] Ordinary update rejects PROMOTED with a distinct immutable/promoted conflict outcome and zero mutation.
-- [ ] Same-version stale recovery does not restore/apply to a PROMOTED draft and is best-effort cleared.
-- [ ] Promotion request accepts exactly one positive-integer `expected_version` key; booleans/null/strings/floats/non-positive values/extra keys fail with zero mutation, and marketplace IDs are never accepted.
-- [ ] Exact current EDITABLE version + READY + authorized/eligible can promote.
-- [ ] Stale expected version returns conflict and writes zero rows.
-- [ ] Promotion mints server-owned fresh PhysicalBoat/MarketEpisode/NativeListing/revision identities.
-- [ ] PhysicalBoat has NULL BoatDesignRef.
-- [ ] MarketEpisode links exactly to new PhysicalBoat.
-- [ ] NativeListing links exactly to new MarketEpisode and selected Organization.
-- [ ] NativeListing lifecycle starts DRAFT.
-- [ ] No publication transition/freshness event is created.
-- [ ] Initial PhysicalBoat claim mapping is exact and no BoatDesign fact is copied.
-- [ ] Initial offer mapping is exact.
-- [ ] Source draft becomes PROMOTED only in the same successful transaction.
-- [ ] Promotion leaves draft content version unchanged/frozen.
-- [ ] PROMOTED stores immutable NativeListing result link and promoted_at.
-- [ ] PostgreSQL enforces promotion-state validity/nullability pairing, FK integrity for promoted_native_listing_id, and uniqueness of a non-null promoted NativeListing provenance link.
-- [ ] Exact retry at the frozen promoted version returns same NativeListingId with zero additional writes.
-- [ ] PROMOTED retry with a mismatched expected version returns VERSION_CONFLICT and reveals no alternate-version result.
-- [ ] Exact-version ALREADY_PROMOTED retry still returns immutable provenance after later publishing-eligibility loss, provided current workspace/MFA/PUBLISHER authorization still permits access; it performs zero marketplace writes.
-- [ ] Concurrent exact promotion attempts create exactly one marketplace chain.
-- [ ] Representative injected failures roll back PhysicalBoat, MarketEpisode, NativeListing, claim/head, offer/head and draft-state writes together.
-- [ ] D09 resolved `(organization, episode)` uniqueness is database-enforced.
-- [ ] Same Organization + same resolved episode with another NativeListing is deterministic conflict.
-- [ ] Different Organization + same resolved episode remains allowed.
-- [ ] Multiple unresolved NativeListings with NULL market_episode_id remain allowed.
-- [ ] broker_listing_reference is not used as identity/dedup key.
-- [ ] Existing standalone persistence writer commit/idempotency behavior remains regression-tested.
-- [ ] foreign/unknown draft remains non-enumerating.
-- [ ] MFA/publishing denial leaves draft EDITABLE and writes zero marketplace state.
-- [ ] Promotion browser POST enforces the accepted professional Origin + non-simple-header CSRF boundary.
-- [ ] Browser shows readiness/action and promoted immutable result safely.
-- [ ] Successful browser promotion surfaces the new DRAFT listing in Organization inventory.
-- [ ] DRAFT promoted listing is not public/current on the public listing surface.
-- [ ] owner-direct behavior remains unchanged.
-- [ ] technical native Search criterion count remains exactly 2.
-- [ ] Broker Workspace Launch Gate remains NOT_READY.
-- [ ] repository validation, ruff format/check, mypy, full pytest pass.
-- [ ] web npm ci/check/test/build pass.
-- [ ] retained real PostgreSQL/FastAPI/built-Astro promotion proof passes.
+- [x] PromotionReadiness uses exactly one server-owned evaluator.
+- [x] Required D07 fields and deterministic reason codes are tested.
+- [x] POA + currency is NOT_READY and never silently normalized.
+- [ ] Existing professional drafts migrate to EDITABLE. (server_default backfill is implemented; no dedicated test upgrades a schema with a pre-existing pre-migration row through 107a989812e7 to directly observe the backfill, so this is left unchecked pending that specific proof.)
+- [x] New drafts start EDITABLE.
+- [x] Active draft list excludes PROMOTED.
+- [x] Ordinary update rejects PROMOTED with a distinct immutable/promoted conflict outcome and zero mutation.
+- [x] Same-version stale recovery does not restore/apply to a PROMOTED draft and is best-effort cleared.
+- [x] Promotion request accepts exactly one positive-integer `expected_version` key; booleans/null/strings/floats/non-positive values/extra keys fail with zero mutation, and marketplace IDs are never accepted.
+- [x] Exact current EDITABLE version + READY + authorized/eligible can promote.
+- [x] Stale expected version returns conflict and writes zero rows.
+- [x] Promotion mints server-owned fresh PhysicalBoat/MarketEpisode/NativeListing/revision identities.
+- [x] PhysicalBoat has NULL BoatDesignRef.
+- [x] MarketEpisode links exactly to new PhysicalBoat.
+- [x] NativeListing links exactly to new MarketEpisode and selected Organization.
+- [x] NativeListing lifecycle starts DRAFT.
+- [x] No publication transition/freshness event is created.
+- [x] Initial PhysicalBoat claim mapping is exact and no BoatDesign fact is copied.
+- [x] Initial offer mapping is exact.
+- [x] Source draft becomes PROMOTED only in the same successful transaction.
+- [x] Promotion leaves draft content version unchanged/frozen.
+- [x] PROMOTED stores immutable NativeListing result link and promoted_at.
+- [ ] PostgreSQL enforces promotion-state validity/nullability pairing, FK integrity for promoted_native_listing_id, and uniqueness of a non-null promoted NativeListing provenance link. (constraints are implemented in the migration; no dedicated test directly attempts to violate the CHECK/FK/unique-index via raw SQL to observe PostgreSQL itself reject it, so this is left unchecked pending that specific proof.)
+- [x] Exact retry at the frozen promoted version returns same NativeListingId with zero additional writes.
+- [x] PROMOTED retry with a mismatched expected version returns VERSION_CONFLICT and reveals no alternate-version result.
+- [x] Exact-version ALREADY_PROMOTED retry still returns immutable provenance after later publishing-eligibility loss, provided current workspace/MFA/PUBLISHER authorization still permits access; it performs zero marketplace writes.
+- [ ] Concurrent exact promotion attempts create exactly one marketplace chain. (guaranteed by the `SELECT ... FOR UPDATE` draft-row lock design; no dedicated multi-threaded test drives two genuinely concurrent promotion attempts against the same draft the way `test_concurrent_conflicting_creation_fails_closed` does for `create_native_listing`, so this is left unchecked pending that specific proof.)
+- [x] Representative injected failures roll back PhysicalBoat, MarketEpisode, NativeListing, claim/head, offer/head and draft-state writes together.
+- [x] D09 resolved `(organization, episode)` uniqueness is database-enforced.
+- [x] Same Organization + same resolved episode with another NativeListing is deterministic conflict.
+- [x] Different Organization + same resolved episode remains allowed.
+- [x] Multiple unresolved NativeListings with NULL market_episode_id remain allowed.
+- [ ] broker_listing_reference is not used as identity/dedup key. (true by construction -- the D09 index and every uniqueness check omit this column entirely -- but no dedicated test exercises two listings sharing an identical broker_listing_reference to observe this directly, so this is left unchecked pending that specific proof.)
+- [x] Existing standalone persistence writer commit/idempotency behavior remains regression-tested.
+- [x] foreign/unknown draft remains non-enumerating.
+- [x] MFA/publishing denial leaves draft EDITABLE and writes zero marketplace state.
+- [x] Promotion browser POST enforces the accepted professional Origin + non-simple-header CSRF boundary.
+- [x] Browser shows readiness/action and promoted immutable result safely.
+- [x] Successful browser promotion surfaces the new DRAFT listing in Organization inventory.
+- [x] DRAFT promoted listing is not public/current on the public listing surface.
+- [x] owner-direct behavior remains unchanged.
+- [x] technical native Search criterion count remains exactly 2.
+- [x] Broker Workspace Launch Gate remains NOT_READY.
+- [x] repository validation, ruff format/check, mypy, full pytest pass.
+- [x] web npm ci/check/test/build pass.
+- [x] retained real PostgreSQL/FastAPI/built-Astro promotion proof passes.
 - [ ] exact implementation HEAD receives independent review and required remote CI.
 - [ ] explicit Project Owner acceptance occurs before implementation merge.
 

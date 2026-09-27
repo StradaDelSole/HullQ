@@ -333,6 +333,34 @@ export function clearRecoveryEnvelope(storage: RecoveryStorageLike, scope: Recov
 }
 
 /**
+ * SLICE-0067 promotion review Finding B's exact success-state/clear
+ * decision: once a page render reflects a PROMOTED draft (a fresh
+ * promotion or an exact-version ALREADY_PROMOTED retry alike), any
+ * existing recovery envelope for that exact scope MUST be cleared --
+ * deterministically, on this same render, never merely "eventually, if the
+ * user happens to reopen this draft later" (contract §12). A render that
+ * does *not* reflect PROMOTED (a failed promotion attempt, an ordinary
+ * unsaved edit, etc.) MUST NOT clear anything here -- it leaves whatever
+ * recovery envelope already existed exactly as captured.
+ *
+ * Pure and DOM-free (only *storage* is touched, via `clearRecoveryEnvelope`)
+ * so this decision is unit-testable without a browser. The draft edit
+ * page's inline script is the only DOM-wiring call site; the retained real
+ * PostgreSQL/FastAPI/built-Astro proof can only observe that script's
+ * *effect* on the rendered HTML (the PROMOTED branch/`data-promoted`
+ * attribute), not execute this function itself (that harness has no real
+ * browser JS engine).
+ */
+export function applyPromotedRecoveryClear(
+  storage: RecoveryStorageLike,
+  scope: RecoveryScope | null,
+  isPromoted: boolean,
+): void {
+  if (!isPromoted || scope === null) return;
+  clearRecoveryEnvelope(storage, scope);
+}
+
+/**
  * Bounded, non-destructive probe of whether *storage* can actually persist
  * data for *scope*, not just read it -- browser storage can allow reads
  * while rejecting writes (quota/privacy/security restrictions), and
@@ -567,9 +595,21 @@ export function initProfessionalDraftRecovery(
   storage: RecoveryStorageLike,
   text: ProfessionalDraftRecoveryText = defaultProfessionalDraftRecoveryTextEn,
   now: () => Date = () => new Date(),
+  isPromoted = false,
 ): void {
   if (scope === null) {
     renderRecoveryBanner(bannerContainer, text.unavailableNotice);
+    return;
+  }
+  // SLICE-0067 contract §12: recovery is never applied to a PROMOTED draft,
+  // even at the exact same frozen `base_version` a pre-promotion envelope
+  // might carry -- promotion intentionally never increments the draft
+  // content version, so version equality alone is no longer a safe
+  // recovery-applicability guard once this slice ships. Best-effort clear
+  // any stale envelope so it cannot resurface over the immutable promoted
+  // result, then render nothing further and never wire capture.
+  if (isPromoted) {
+    clearRecoveryEnvelope(storage, scope);
     return;
   }
   // TypeScript does not carry the null-narrowing above into the nested

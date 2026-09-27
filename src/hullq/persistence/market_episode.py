@@ -33,6 +33,7 @@ __all__ = [
     "MarketEpisodeTransactionOwnershipError",
     "create_market_episode",
     "fetch_market_episode",
+    "insert_market_episode_row",
 ]
 
 
@@ -103,6 +104,39 @@ _SELECT_MARKET_EPISODE = (
 # ---------------------------------------------------------------------------
 
 
+def insert_market_episode_row(
+    cur: Any, *, market_episode: MarketEpisode
+) -> MarketEpisodeCreationResult:
+    """The transaction-scoped INSERT/classify body of `create_market_episode`,
+    factored out so SLICE-0067 promotion can compose it inside its own
+    already-open top-level transaction (contract §9) instead of calling the
+    standalone, independently-committing `create_market_episode` below.
+
+    Takes an already-open *cur* and neither opens nor commits any
+    transaction; a `ForeignKeyViolation` (an unknown requested
+    PhysicalBoatId) is allowed to propagate uncaught so whichever caller owns
+    the surrounding transaction decides how to roll it back.
+    """
+    if not isinstance(market_episode, MarketEpisode):
+        raise TypeError(
+            f"market_episode must be a MarketEpisode, got {type(market_episode).__name__}"
+        )
+
+    requested_physical_boat_id = market_episode.physical_boat_id.value
+    cur.execute(_INSERT_MARKET_EPISODE, (market_episode.id.value, requested_physical_boat_id))
+    if cur.rowcount > 0:
+        return MarketEpisodeCreationResult(status=MarketEpisodeCreationStatus.CREATED)
+
+    # MarketEpisodeId already occupied: classify purely from the durable
+    # stored row, never from the requested value alone.
+    cur.execute(_SELECT_PHYSICAL_BOAT_ID, [market_episode.id.value])
+    row = cur.fetchone()
+    stored_physical_boat_id = row[0]
+    if stored_physical_boat_id == requested_physical_boat_id:
+        return MarketEpisodeCreationResult(status=MarketEpisodeCreationStatus.ALREADY_EXISTS)
+    return MarketEpisodeCreationResult(status=MarketEpisodeCreationStatus.CONFLICT)
+
+
 def create_market_episode(
     conn: Any, *, market_episode: MarketEpisode
 ) -> MarketEpisodeCreationResult:
@@ -143,32 +177,15 @@ def create_market_episode(
             "opened connection."
         )
 
-    requested_physical_boat_id = market_episode.physical_boat_id.value
-
     from psycopg.errors import ForeignKeyViolation  # deferred: no module-level psycopg dependency
 
     try:
         with conn.transaction(), conn.cursor() as cur:
-            cur.execute(
-                _INSERT_MARKET_EPISODE,
-                (market_episode.id.value, requested_physical_boat_id),
-            )
-            if cur.rowcount > 0:
-                return MarketEpisodeCreationResult(status=MarketEpisodeCreationStatus.CREATED)
-
-            # MarketEpisodeId already occupied: classify purely from the
-            # durable stored row, never from the requested value alone.
-            cur.execute(_SELECT_PHYSICAL_BOAT_ID, [market_episode.id.value])
-            row = cur.fetchone()
-            stored_physical_boat_id = row[0]
+            return insert_market_episode_row(cur, market_episode=market_episode)
     except ForeignKeyViolation:
         return MarketEpisodeCreationResult(
             status=MarketEpisodeCreationStatus.PHYSICAL_BOAT_NOT_FOUND
         )
-
-    if stored_physical_boat_id == requested_physical_boat_id:
-        return MarketEpisodeCreationResult(status=MarketEpisodeCreationStatus.ALREADY_EXISTS)
-    return MarketEpisodeCreationResult(status=MarketEpisodeCreationStatus.CONFLICT)
 
 
 # ---------------------------------------------------------------------------

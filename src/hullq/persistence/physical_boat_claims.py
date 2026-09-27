@@ -93,6 +93,7 @@ __all__ = [
     "list_current_physical_boat_claim_observations",
     "list_physical_boat_claim_revisions",
     "write_physical_boat_claim_revision",
+    "write_physical_boat_claim_revision_row",
 ]
 
 
@@ -497,6 +498,206 @@ def _optional_claim_columns(
 # ---------------------------------------------------------------------------
 
 
+def write_physical_boat_claim_revision_row(
+    cur: Any,
+    *,
+    account_id: AccountId,
+    candidate_organization: MarketplaceOrganization,
+    native_listing_id: NativeListingId,
+    revision_id: PhysicalBoatClaimRevisionId,
+    expected_current_revision_id: PhysicalBoatClaimRevisionId | None,
+    claims: PhysicalBoatClaimSnapshot,
+) -> PhysicalBoatClaimWriteResult:
+    """The transaction-scoped lock/resolve/INSERT body of
+    `write_physical_boat_claim_revision`, factored out so SLICE-0067
+    promotion can compose it inside its own already-open top-level
+    transaction (contract §9) instead of calling the standalone,
+    independently-committing `write_physical_boat_claim_revision` below.
+
+    Does not evaluate publishing eligibility itself (the caller already did,
+    once, before opening its own transaction) and takes an already-open
+    *cur* rather than *conn*.
+    """
+    if not isinstance(native_listing_id, NativeListingId):
+        raise TypeError(
+            f"native_listing_id must be a NativeListingId, got {type(native_listing_id).__name__}"
+        )
+    if not isinstance(revision_id, PhysicalBoatClaimRevisionId):
+        raise TypeError(
+            f"revision_id must be a PhysicalBoatClaimRevisionId, got {type(revision_id).__name__}"
+        )
+    if expected_current_revision_id is not None and not isinstance(
+        expected_current_revision_id, PhysicalBoatClaimRevisionId
+    ):
+        raise TypeError(
+            "expected_current_revision_id must be a PhysicalBoatClaimRevisionId or None, got "
+            f"{type(expected_current_revision_id).__name__}"
+        )
+    if not isinstance(claims, PhysicalBoatClaimSnapshot):
+        raise TypeError(f"claims must be a PhysicalBoatClaimSnapshot, got {type(claims).__name__}")
+
+    # Locks the (already-existing) native_listings row, mirroring
+    # write_native_listing_offer_revision's pattern.
+    cur.execute(_SELECT_LISTING_FOR_UPDATE, [native_listing_id.value])
+    listing_row = cur.fetchone()
+    if listing_row is None:
+        return PhysicalBoatClaimWriteResult(
+            status=PhysicalBoatClaimWriteStatus.NATIVE_LISTING_NOT_FOUND
+        )
+
+    listing_organization_id, market_episode_id_value = listing_row
+    if listing_organization_id != candidate_organization.id.value:
+        return PhysicalBoatClaimWriteResult(
+            status=PhysicalBoatClaimWriteStatus.CROSS_ORGANIZATION_DENIED
+        )
+
+    if market_episode_id_value is None:
+        return PhysicalBoatClaimWriteResult(status=PhysicalBoatClaimWriteStatus.CHAIN_INCOMPLETE)
+
+    cur.execute(_SELECT_MARKET_EPISODE_PHYSICAL_BOAT, [market_episode_id_value])
+    market_episode_row = cur.fetchone()
+    if market_episode_row is None:
+        return PhysicalBoatClaimWriteResult(status=PhysicalBoatClaimWriteStatus.CHAIN_INCOMPLETE)
+    physical_boat_id_value = market_episode_row[0]
+
+    # Locks the target physical_boats row for the duration of this
+    # transaction, serializing every concurrent claim write for this
+    # PhysicalBoatId (across every claiming Organization) -- mirrors the
+    # FOR UPDATE row-lock pattern already accepted for offer-revision
+    # and lifecycle-transition writes. Also doubles as the PhysicalBoat
+    # existence check required by the chain-completeness predicate.
+    cur.execute(_SELECT_AND_LOCK_PHYSICAL_BOAT, [physical_boat_id_value])
+    if cur.fetchone() is None:
+        return PhysicalBoatClaimWriteResult(status=PhysicalBoatClaimWriteStatus.CHAIN_INCOMPLETE)
+
+    content_hash = fingerprint_dict(
+        _claim_envelope_dict(
+            physical_boat_id_value,
+            candidate_organization.id.value,
+            account_id.value,
+            claims,
+        )
+    )
+
+    cur.execute(_SELECT_HEAD, [physical_boat_id_value, candidate_organization.id.value])
+    head_row = cur.fetchone()
+    actual_current_id: str | None = head_row[0] if head_row is not None else None
+
+    def _current_wrapped() -> PhysicalBoatClaimRevisionId | None:
+        return (
+            PhysicalBoatClaimRevisionId(actual_current_id)
+            if actual_current_id is not None
+            else None
+        )
+
+    expected_value = (
+        expected_current_revision_id.value if expected_current_revision_id is not None else None
+    )
+
+    cur.execute(_SELECT_REVISION_BY_ID, [revision_id.value])
+    existing = cur.fetchone()
+    if existing is not None:
+        (
+            existing_physical_boat_id,
+            existing_organization_id,
+            existing_previous_revision_id,
+            existing_hash,
+        ) = existing
+        # An exact retry must match on the full immutable envelope,
+        # which includes the predecessor/supersession identity this
+        # revision was recorded against (SLICE-0050 §7/§7.3) -- not
+        # content_hash alone. Comparing against the *stored*
+        # previous_claim_revision_id (fixed permanently at this
+        # revision's own insertion time), rather than against
+        # actual_current_id (the pair's *current* head, which may have
+        # since advanced past this revision), is what lets a genuine
+        # retry of an old, since-superseded revision still resolve
+        # ALREADY_EXISTS: only a retry supplying a *different*
+        # predecessor than what was originally recorded is a real
+        # conflict.
+        if (
+            existing_physical_boat_id == physical_boat_id_value
+            and existing_organization_id == candidate_organization.id.value
+            and existing_previous_revision_id == expected_value
+            and existing_hash == content_hash
+        ):
+            return PhysicalBoatClaimWriteResult(
+                status=PhysicalBoatClaimWriteStatus.ALREADY_EXISTS,
+                current_revision_id=_current_wrapped(),
+            )
+        return PhysicalBoatClaimWriteResult(
+            status=PhysicalBoatClaimWriteStatus.CONFLICT,
+            current_revision_id=_current_wrapped(),
+        )
+
+    if expected_value != actual_current_id:
+        return PhysicalBoatClaimWriteResult(
+            status=PhysicalBoatClaimWriteStatus.CONFLICT,
+            current_revision_id=_current_wrapped(),
+        )
+
+    build_year_kind, build_year_value = _optional_claim_columns(claims.build_year)
+    loa_length_kind, loa_length_value = _optional_claim_columns(claims.loa_length)
+    draft_kind, draft_value = _optional_claim_columns(claims.draft)
+    keel_kind, keel_value = _optional_claim_columns(claims.keel_configuration)
+    rudder_kind, rudder_value = _optional_claim_columns(claims.rudder_configuration)
+    boat_name_kind, boat_name_value = _optional_claim_columns(claims.boat_name)
+
+    # ON CONFLICT DO NOTHING on claim_revision_id (a global PRIMARY KEY,
+    # not scoped to (physical_boat_id, claiming_organization_id)) closes
+    # the race window against a *different* PhysicalBoat/Organization
+    # pair concurrently claiming this exact revision id -- mirrors
+    # write_native_listing_offer_revision's rationale.
+    cur.execute(
+        _INSERT_REVISION,
+        (
+            revision_id.value,
+            physical_boat_id_value,
+            candidate_organization.id.value,
+            account_id.value,
+            claims.marketed_brand_claim,
+            claims.model_designation_claim,
+            build_year_kind,
+            build_year_value,
+            loa_length_kind,
+            loa_length_value,
+            draft_kind,
+            draft_value,
+            keel_kind,
+            keel_value,
+            rudder_kind,
+            rudder_value,
+            boat_name_kind,
+            boat_name_value,
+            actual_current_id,
+            content_hash,
+        ),
+    )
+    if cur.rowcount == 0:
+        # Lost the race: a different (PhysicalBoat, Organization) pair
+        # committed this exact claim_revision_id after our pre-check but
+        # before our INSERT. Can never be a match for *our* pair (same-
+        # pair writes are fully serialized by the physical_boats row
+        # lock above), so it is always CONFLICT, never ALREADY_EXISTS --
+        # and our own head is untouched.
+        return PhysicalBoatClaimWriteResult(
+            status=PhysicalBoatClaimWriteStatus.CONFLICT,
+            current_revision_id=_current_wrapped(),
+        )
+
+    cur.execute(
+        _UPSERT_HEAD,
+        (physical_boat_id_value, candidate_organization.id.value, revision_id.value),
+    )
+
+    status = (
+        PhysicalBoatClaimWriteStatus.CREATED
+        if actual_current_id is None
+        else PhysicalBoatClaimWriteStatus.REVISED
+    )
+    return PhysicalBoatClaimWriteResult(status=status, current_revision_id=revision_id)
+
+
 def write_physical_boat_claim_revision(
     conn: Any,
     *,
@@ -553,172 +754,15 @@ def write_physical_boat_claim_revision(
         )
 
     with conn.transaction(), conn.cursor() as cur:
-        # Locks the (already-existing) native_listings row, mirroring
-        # write_native_listing_offer_revision's pattern.
-        cur.execute(_SELECT_LISTING_FOR_UPDATE, [native_listing_id.value])
-        listing_row = cur.fetchone()
-        if listing_row is None:
-            return PhysicalBoatClaimWriteResult(
-                status=PhysicalBoatClaimWriteStatus.NATIVE_LISTING_NOT_FOUND
-            )
-
-        listing_organization_id, market_episode_id_value = listing_row
-        if listing_organization_id != candidate_organization.id.value:
-            return PhysicalBoatClaimWriteResult(
-                status=PhysicalBoatClaimWriteStatus.CROSS_ORGANIZATION_DENIED
-            )
-
-        if market_episode_id_value is None:
-            return PhysicalBoatClaimWriteResult(
-                status=PhysicalBoatClaimWriteStatus.CHAIN_INCOMPLETE
-            )
-
-        cur.execute(_SELECT_MARKET_EPISODE_PHYSICAL_BOAT, [market_episode_id_value])
-        market_episode_row = cur.fetchone()
-        if market_episode_row is None:
-            return PhysicalBoatClaimWriteResult(
-                status=PhysicalBoatClaimWriteStatus.CHAIN_INCOMPLETE
-            )
-        physical_boat_id_value = market_episode_row[0]
-
-        # Locks the target physical_boats row for the duration of this
-        # transaction, serializing every concurrent claim write for this
-        # PhysicalBoatId (across every claiming Organization) -- mirrors the
-        # FOR UPDATE row-lock pattern already accepted for offer-revision
-        # and lifecycle-transition writes. Also doubles as the PhysicalBoat
-        # existence check required by the chain-completeness predicate.
-        cur.execute(_SELECT_AND_LOCK_PHYSICAL_BOAT, [physical_boat_id_value])
-        if cur.fetchone() is None:
-            return PhysicalBoatClaimWriteResult(
-                status=PhysicalBoatClaimWriteStatus.CHAIN_INCOMPLETE
-            )
-
-        content_hash = fingerprint_dict(
-            _claim_envelope_dict(
-                physical_boat_id_value,
-                candidate_organization.id.value,
-                account_id.value,
-                claims,
-            )
+        return write_physical_boat_claim_revision_row(
+            cur,
+            account_id=account_id,
+            candidate_organization=candidate_organization,
+            native_listing_id=native_listing_id,
+            revision_id=revision_id,
+            expected_current_revision_id=expected_current_revision_id,
+            claims=claims,
         )
-
-        cur.execute(_SELECT_HEAD, [physical_boat_id_value, candidate_organization.id.value])
-        head_row = cur.fetchone()
-        actual_current_id: str | None = head_row[0] if head_row is not None else None
-
-        def _current_wrapped() -> PhysicalBoatClaimRevisionId | None:
-            return (
-                PhysicalBoatClaimRevisionId(actual_current_id)
-                if actual_current_id is not None
-                else None
-            )
-
-        expected_value = (
-            expected_current_revision_id.value if expected_current_revision_id is not None else None
-        )
-
-        cur.execute(_SELECT_REVISION_BY_ID, [revision_id.value])
-        existing = cur.fetchone()
-        if existing is not None:
-            (
-                existing_physical_boat_id,
-                existing_organization_id,
-                existing_previous_revision_id,
-                existing_hash,
-            ) = existing
-            # An exact retry must match on the full immutable envelope,
-            # which includes the predecessor/supersession identity this
-            # revision was recorded against (SLICE-0050 §7/§7.3) -- not
-            # content_hash alone. Comparing against the *stored*
-            # previous_claim_revision_id (fixed permanently at this
-            # revision's own insertion time), rather than against
-            # actual_current_id (the pair's *current* head, which may have
-            # since advanced past this revision), is what lets a genuine
-            # retry of an old, since-superseded revision still resolve
-            # ALREADY_EXISTS: only a retry supplying a *different*
-            # predecessor than what was originally recorded is a real
-            # conflict.
-            if (
-                existing_physical_boat_id == physical_boat_id_value
-                and existing_organization_id == candidate_organization.id.value
-                and existing_previous_revision_id == expected_value
-                and existing_hash == content_hash
-            ):
-                return PhysicalBoatClaimWriteResult(
-                    status=PhysicalBoatClaimWriteStatus.ALREADY_EXISTS,
-                    current_revision_id=_current_wrapped(),
-                )
-            return PhysicalBoatClaimWriteResult(
-                status=PhysicalBoatClaimWriteStatus.CONFLICT,
-                current_revision_id=_current_wrapped(),
-            )
-
-        if expected_value != actual_current_id:
-            return PhysicalBoatClaimWriteResult(
-                status=PhysicalBoatClaimWriteStatus.CONFLICT,
-                current_revision_id=_current_wrapped(),
-            )
-
-        build_year_kind, build_year_value = _optional_claim_columns(claims.build_year)
-        loa_length_kind, loa_length_value = _optional_claim_columns(claims.loa_length)
-        draft_kind, draft_value = _optional_claim_columns(claims.draft)
-        keel_kind, keel_value = _optional_claim_columns(claims.keel_configuration)
-        rudder_kind, rudder_value = _optional_claim_columns(claims.rudder_configuration)
-        boat_name_kind, boat_name_value = _optional_claim_columns(claims.boat_name)
-
-        # ON CONFLICT DO NOTHING on claim_revision_id (a global PRIMARY KEY,
-        # not scoped to (physical_boat_id, claiming_organization_id)) closes
-        # the race window against a *different* PhysicalBoat/Organization
-        # pair concurrently claiming this exact revision id -- mirrors
-        # write_native_listing_offer_revision's rationale.
-        cur.execute(
-            _INSERT_REVISION,
-            (
-                revision_id.value,
-                physical_boat_id_value,
-                candidate_organization.id.value,
-                account_id.value,
-                claims.marketed_brand_claim,
-                claims.model_designation_claim,
-                build_year_kind,
-                build_year_value,
-                loa_length_kind,
-                loa_length_value,
-                draft_kind,
-                draft_value,
-                keel_kind,
-                keel_value,
-                rudder_kind,
-                rudder_value,
-                boat_name_kind,
-                boat_name_value,
-                actual_current_id,
-                content_hash,
-            ),
-        )
-        if cur.rowcount == 0:
-            # Lost the race: a different (PhysicalBoat, Organization) pair
-            # committed this exact claim_revision_id after our pre-check but
-            # before our INSERT. Can never be a match for *our* pair (same-
-            # pair writes are fully serialized by the physical_boats row
-            # lock above), so it is always CONFLICT, never ALREADY_EXISTS --
-            # and our own head is untouched.
-            return PhysicalBoatClaimWriteResult(
-                status=PhysicalBoatClaimWriteStatus.CONFLICT,
-                current_revision_id=_current_wrapped(),
-            )
-
-        cur.execute(
-            _UPSERT_HEAD,
-            (physical_boat_id_value, candidate_organization.id.value, revision_id.value),
-        )
-
-        status = (
-            PhysicalBoatClaimWriteStatus.CREATED
-            if actual_current_id is None
-            else PhysicalBoatClaimWriteStatus.REVISED
-        )
-        return PhysicalBoatClaimWriteResult(status=status, current_revision_id=revision_id)
 
 
 # ---------------------------------------------------------------------------
