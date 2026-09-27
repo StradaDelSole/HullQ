@@ -6,9 +6,11 @@ readme = "README.md"
 requires-python = ">=3.14,<3.15"
 dependencies = [
   "alembic>=1.13,<2",
+  "boto3>=1.43.103",
   "fastapi>=0.141.1",
   "httpx>=0.28,<1",
   "jsonschema>=4.26,<5",
+  "pillow>=12.3.0",
   "psycopg[binary]>=3.2,<4",
   "pyjwt[crypto]>=2.10,<3",
   "python-multipart>=0.0.20,<1",
@@ -64,6 +66,10 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = ["psycopg", "psycopg.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["boto3", "boto3.*", "botocore", "botocore.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

@@ -84,6 +84,29 @@ from hullq.application.broker_workspace_read import (
     get_organization_workspace_result,
 )
 from hullq.application.inventory_search import DraftMaxSearchOutcome
+from hullq.application.media_gallery import (
+    AddYoutubeOutcome,
+    GalleryReadOutcome,
+    GetAssetBytesOutcome,
+    RemovePlacementRequestOutcome,
+    ReorderGalleryOutcome,
+    RetireAssetRequestOutcome,
+    ReuseAssetOutcome,
+    SetCoverRequestOutcome,
+    UploadImageOutcome,
+    add_youtube_for_organization,
+    gallery_state_to_public_dict,
+    get_asset_bytes_for_organization,
+    get_gallery_state_for_organization,
+    list_media_library_for_organization,
+    media_asset_to_public_dict,
+    remove_placement_for_organization,
+    reorder_gallery_for_organization,
+    retire_asset_for_organization,
+    reuse_asset_for_organization,
+    set_cover_for_organization,
+    upload_image_for_organization,
+)
 from hullq.application.native_inventory_query import NativeInventorySearchOutcome
 from hullq.application.owner_direct_draft import (
     CreateOwnerDirectDraftOutcome,
@@ -118,6 +141,7 @@ from hullq.application.search_sensitivity import (
     evaluate_requirement_sensitivity,
 )
 from hullq.domain.market_identity import NativeListingId
+from hullq.domain.media_gallery import MAX_IMAGE_UPLOAD_BYTES
 from hullq.domain.publishing_eligibility import MarketplaceOrganizationId
 from hullq.persistence.connection import get_database_url, open_connection
 from hullq.search.configuration_engine import DesignQueryEvaluation
@@ -131,6 +155,11 @@ from hullq.security.session_token import (
     InvalidSessionTokenError,
     SessionClaims,
     verify_and_decode_session_token,
+)
+from hullq.storage.object_storage import (
+    ObjectStorage,
+    R2ObjectStorage,
+    get_r2_object_storage_config,
 )
 
 __all__ = ["SessionTopologyError", "create_app", "require_same_host_session_topology"]
@@ -235,6 +264,12 @@ _PROFESSIONAL_DRAFT_CSRF_HEADER_VALUE = "professional-listing-draft-v1"
 #: owner-direct CSRF header can never be replayed to publish/withdraw/
 #: reconfirm an existing NativeListing.
 _INVENTORY_LIFECYCLE_CSRF_HEADER_VALUE = "professional-inventory-lifecycle-v1"
+
+#: SLICE-0068 contract §3: the identical fixed-header + exact-Origin CSRF
+#: discipline as the other broker-write channels, with its own distinct
+#: header value so a valid draft/owner-direct/lifecycle CSRF header can
+#: never be replayed against the media gallery mutation routes.
+_MEDIA_GALLERY_CSRF_HEADER_VALUE = "marketplace-media-gallery-v1"
 
 #: SLICE-0052: server-side-only freshness clock override, resolved once at
 #: app-creation time. Never read from an HTTP request. Unset in every
@@ -434,6 +469,7 @@ def create_app(
     web_origin: str | None = None,
     auth_http_client: Any | None = None,
     auth_jwks_cache: Any | None = None,
+    object_storage: ObjectStorage | None = None,
 ) -> FastAPI:
     """Build the SLICE-0048 preview FastAPI application.
 
@@ -517,6 +553,19 @@ def create_app(
             raise RuntimeError(f"{_WEB_ORIGIN_ENV} is not set or empty")
         return raw
 
+    # SLICE-0068: the S3-compatible object-storage boundary is resolved
+    # lazily and cached on first use, exactly like the auth configuration
+    # above -- so every pre-existing route/test continues to work unchanged
+    # in an environment that has never configured R2 credentials at all.
+    # Only the media routes below ever call this resolver.
+    _cached_object_storage: ObjectStorage | None = object_storage
+
+    def _resolve_object_storage() -> ObjectStorage:
+        nonlocal _cached_object_storage
+        if _cached_object_storage is None:
+            _cached_object_storage = R2ObjectStorage.from_config(get_r2_object_storage_config())
+        return _cached_object_storage
+
     def _cookie_secure() -> bool:
         raw = os.environ.get(_SESSION_COOKIE_SECURE_ENV, "true").strip().lower()
         return raw not in {"false", "0", "no"}
@@ -590,6 +639,22 @@ def create_app(
             actual is None
             or actual != accepted
             or requested_with != _INVENTORY_LIFECYCLE_CSRF_HEADER_VALUE
+        ):
+            raise HTTPException(status_code=403, detail="csrf validation failed")
+
+    def _require_media_gallery_csrf(request: Request) -> None:
+        # SLICE-0068 contract §3: identical exact-Origin-match + fixed
+        # non-simple header discipline as the other broker-write channels,
+        # with its own distinct header value (see
+        # `_MEDIA_GALLERY_CSRF_HEADER_VALUE`).
+        origin_header = request.headers.get("origin")
+        requested_with = request.headers.get(_OWNER_DIRECT_CSRF_HEADER_NAME)
+        accepted = _normalized_origin(_resolve_web_origin())
+        actual = _normalized_origin(origin_header) if origin_header else None
+        if (
+            actual is None
+            or actual != accepted
+            or requested_with != _MEDIA_GALLERY_CSRF_HEADER_VALUE
         ):
             raise HTTPException(status_code=403, detail="csrf validation failed")
 
@@ -1366,5 +1431,375 @@ def create_app(
             return JSONResponse({"error": "version_conflict"}, status_code=409)
         assert result.record is not None
         return JSONResponse(record_to_public_dict(result.record))
+
+    # -----------------------------------------------------------------
+    # SLICE-0068: marketplace mixed-media gallery
+    # -----------------------------------------------------------------
+
+    def _media_actor_authorization_error(outcome: Any) -> JSONResponse | None:
+        # Shared 401-is-handled-by-caller status mapping for every media
+        # gallery route, mirroring `_professional_draft_authorization_error`.
+        if outcome.name == "NOT_FOUND_OR_DENIED":
+            raise HTTPException(status_code=404, detail="organization not found")
+        if outcome.name == "MFA_REQUIRED":
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if outcome.name == "PUBLISHER_ROLE_REQUIRED":
+            return JSONResponse({"error": "publisher_role_required"}, status_code=403)
+        return None
+
+    @app.get("/api/broker/organizations/{organization_id}/inventory/{native_listing_id}/media")
+    def get_listing_gallery_route(
+        organization_id: str, native_listing_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            result = get_gallery_state_for_organization(
+                conn, session, organization_id, native_listing_id
+            )
+        finally:
+            conn.close()
+        auth_error = _media_actor_authorization_error(result.outcome)
+        if auth_error is not None:
+            return auth_error
+        if result.outcome is GalleryReadOutcome.LISTING_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="listing not found")
+        assert result.gallery is not None
+        return JSONResponse(gallery_state_to_public_dict(result.gallery))
+
+    @app.get("/api/broker/organizations/{organization_id}/media/library")
+    def get_media_library_route(organization_id: str, request: Request) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            result = list_media_library_for_organization(conn, session, organization_id)
+        finally:
+            conn.close()
+        auth_error = _media_actor_authorization_error(result.outcome)
+        if auth_error is not None:
+            return auth_error
+        assert result.assets is not None
+        return JSONResponse({"assets": [media_asset_to_public_dict(a) for a in result.assets]})
+
+    @app.get("/api/broker/organizations/{organization_id}/media/assets/{media_asset_id}")
+    def get_media_asset_bytes_route(
+        organization_id: str, media_asset_id: str, request: Request
+    ) -> Response:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            result = get_asset_bytes_for_organization(
+                conn,
+                session,
+                organization_id,
+                media_asset_id,
+                object_storage=_resolve_object_storage(),
+            )
+        finally:
+            conn.close()
+        auth_error = _media_actor_authorization_error(result.outcome)
+        if auth_error is not None:
+            return auth_error
+        if result.outcome in (
+            GetAssetBytesOutcome.ASSET_NOT_FOUND,
+            GetAssetBytesOutcome.NOT_STORED,
+        ):
+            raise HTTPException(status_code=404, detail="asset not found")
+        assert result.data is not None
+        assert result.mime_type is not None
+        return Response(content=result.data, media_type=result.mime_type)
+
+    @app.post(
+        "/api/broker/organizations/{organization_id}/inventory/{native_listing_id}/media/images"
+    )
+    async def upload_listing_image_route(
+        organization_id: str, native_listing_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_media_gallery_csrf(request)
+
+        # Contract §6.1: bounded request size before any unbounded buffering
+        # -- checked from the `Content-Length` header before the body is
+        # ever read, not merely after the fact.
+        raw_content_length = request.headers.get("content-length")
+        if raw_content_length is None:
+            return JSONResponse({"error": "length_required"}, status_code=411)
+        try:
+            content_length = int(raw_content_length)
+        except ValueError:
+            return JSONResponse({"error": "invalid_content_length"}, status_code=400)
+        if content_length > MAX_IMAGE_UPLOAD_BYTES:
+            return JSONResponse({"error": "payload_too_large"}, status_code=413)
+
+        raw_bytes = await request.body()
+        rights_confirmed = (
+            request.headers.get("x-hullq-rights-confirmed", "").strip().lower() == "true"
+        )
+        # Independent review Finding B: an optional bounded D14 broker note,
+        # kept clearly separate from the structured source classification.
+        # Absent header -> None, never an empty-string placeholder.
+        raw_source_reference_header = request.headers.get("x-hullq-source-reference")
+        raw_source_reference = (
+            raw_source_reference_header if raw_source_reference_header is not None else None
+        )
+
+        conn = open_connection(resolved_database_url)
+        try:
+            result = upload_image_for_organization(
+                conn,
+                session,
+                organization_id,
+                native_listing_id,
+                raw_bytes=raw_bytes,
+                rights_confirmed=rights_confirmed,
+                object_storage=_resolve_object_storage(),
+                raw_source_reference=raw_source_reference,
+            )
+        finally:
+            conn.close()
+
+        auth_error = _media_actor_authorization_error(result.outcome)
+        if auth_error is not None:
+            return auth_error
+        if result.outcome is UploadImageOutcome.LISTING_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="listing not found")
+        if result.outcome is UploadImageOutcome.INVALID_SOURCE_REFERENCE:
+            return JSONResponse({"error": "invalid_source_reference"}, status_code=400)
+        if result.outcome is UploadImageOutcome.REJECTED:
+            return JSONResponse(
+                {"outcome": "REJECTED", "reason": result.rejection_reason}, status_code=422
+            )
+        assert result.outcome is UploadImageOutcome.CREATED
+        return JSONResponse(
+            {
+                "outcome": "CREATED",
+                "media_asset_id": result.media_asset_id,
+                "media_placement_id": result.media_placement_id,
+                "gallery_version": result.gallery_version,
+            },
+            status_code=201,
+        )
+
+    @app.post(
+        "/api/broker/organizations/{organization_id}/inventory/{native_listing_id}/media/reuse"
+    )
+    async def reuse_listing_media_route(
+        organization_id: str, native_listing_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_media_gallery_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        media_asset_id = raw_body.get("media_asset_id") if isinstance(raw_body, dict) else None
+        if not isinstance(media_asset_id, str) or not media_asset_id:
+            return JSONResponse({"error": "invalid_payload"}, status_code=400)
+
+        conn = open_connection(resolved_database_url)
+        try:
+            result = reuse_asset_for_organization(
+                conn, session, organization_id, native_listing_id, media_asset_id
+            )
+        finally:
+            conn.close()
+
+        auth_error = _media_actor_authorization_error(result.outcome)
+        if auth_error is not None:
+            return auth_error
+        if result.outcome is ReuseAssetOutcome.LISTING_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="listing not found")
+        if result.outcome is ReuseAssetOutcome.ASSET_NOT_FOUND_OR_DENIED:
+            return JSONResponse({"error": "asset_not_found"}, status_code=404)
+        assert result.outcome is ReuseAssetOutcome.CREATED
+        return JSONResponse(
+            {
+                "outcome": "CREATED",
+                "media_placement_id": result.media_placement_id,
+                "gallery_version": result.gallery_version,
+            },
+            status_code=201,
+        )
+
+    @app.post(
+        "/api/broker/organizations/{organization_id}/inventory/{native_listing_id}/media/youtube"
+    )
+    async def add_listing_youtube_route(
+        organization_id: str, native_listing_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_media_gallery_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        raw_url = raw_body.get("url") if isinstance(raw_body, dict) else None
+
+        conn = open_connection(resolved_database_url)
+        try:
+            result = add_youtube_for_organization(
+                conn, session, organization_id, native_listing_id, raw_url
+            )
+        finally:
+            conn.close()
+
+        auth_error = _media_actor_authorization_error(result.outcome)
+        if auth_error is not None:
+            return auth_error
+        if result.outcome is AddYoutubeOutcome.LISTING_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="listing not found")
+        if result.outcome is AddYoutubeOutcome.INVALID_URL:
+            return JSONResponse({"error": "invalid_youtube_url"}, status_code=400)
+        assert result.outcome is AddYoutubeOutcome.CREATED
+        return JSONResponse(
+            {
+                "outcome": "CREATED",
+                "media_placement_id": result.media_placement_id,
+                "gallery_version": result.gallery_version,
+            },
+            status_code=201,
+        )
+
+    @app.post(
+        "/api/broker/organizations/{organization_id}/inventory/{native_listing_id}/media/reorder"
+    )
+    async def reorder_listing_media_route(
+        organization_id: str, native_listing_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_media_gallery_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+
+        conn = open_connection(resolved_database_url)
+        try:
+            result = reorder_gallery_for_organization(
+                conn, session, organization_id, native_listing_id, raw_body
+            )
+        finally:
+            conn.close()
+
+        auth_error = _media_actor_authorization_error(result.outcome)
+        if auth_error is not None:
+            return auth_error
+        if result.outcome is ReorderGalleryOutcome.INVALID_PAYLOAD:
+            return JSONResponse({"error": "invalid_payload"}, status_code=400)
+        if result.outcome is ReorderGalleryOutcome.LISTING_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="listing not found")
+        if result.outcome is ReorderGalleryOutcome.VERSION_CONFLICT:
+            return JSONResponse({"error": "version_conflict"}, status_code=409)
+        if result.outcome is ReorderGalleryOutcome.INVALID_PLACEMENT_SET:
+            return JSONResponse({"error": "invalid_placement_set"}, status_code=409)
+        assert result.outcome is ReorderGalleryOutcome.REORDERED
+        return JSONResponse({"outcome": "REORDERED", "gallery_version": result.gallery_version})
+
+    @app.post(
+        "/api/broker/organizations/{organization_id}/inventory/{native_listing_id}/media/cover"
+    )
+    async def set_listing_cover_route(
+        organization_id: str, native_listing_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_media_gallery_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+
+        conn = open_connection(resolved_database_url)
+        try:
+            result = set_cover_for_organization(
+                conn, session, organization_id, native_listing_id, raw_body
+            )
+        finally:
+            conn.close()
+
+        auth_error = _media_actor_authorization_error(result.outcome)
+        if auth_error is not None:
+            return auth_error
+        if result.outcome is SetCoverRequestOutcome.INVALID_PAYLOAD:
+            return JSONResponse({"error": "invalid_payload"}, status_code=400)
+        if result.outcome is SetCoverRequestOutcome.LISTING_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="listing not found")
+        if result.outcome is SetCoverRequestOutcome.VERSION_CONFLICT:
+            return JSONResponse({"error": "version_conflict"}, status_code=409)
+        if result.outcome is SetCoverRequestOutcome.INVALID_COVER:
+            return JSONResponse({"error": "invalid_cover"}, status_code=409)
+        if result.outcome is SetCoverRequestOutcome.ACTIVE_LISTING_CONFLICT:
+            return JSONResponse({"error": "active_listing_conflict"}, status_code=409)
+        assert result.outcome in (SetCoverRequestOutcome.SET, SetCoverRequestOutcome.CLEARED)
+        return JSONResponse(
+            {"outcome": result.outcome.value, "gallery_version": result.gallery_version}
+        )
+
+    @app.post(
+        "/api/broker/organizations/{organization_id}/inventory/{native_listing_id}"
+        "/media/placements/{media_placement_id}/remove"
+    )
+    async def remove_listing_placement_route(
+        organization_id: str, native_listing_id: str, media_placement_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_media_gallery_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+
+        conn = open_connection(resolved_database_url)
+        try:
+            result = remove_placement_for_organization(
+                conn, session, organization_id, native_listing_id, media_placement_id, raw_body
+            )
+        finally:
+            conn.close()
+
+        auth_error = _media_actor_authorization_error(result.outcome)
+        if auth_error is not None:
+            return auth_error
+        if result.outcome is RemovePlacementRequestOutcome.INVALID_PAYLOAD:
+            return JSONResponse({"error": "invalid_payload"}, status_code=400)
+        if result.outcome is RemovePlacementRequestOutcome.LISTING_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="listing not found")
+        if result.outcome is RemovePlacementRequestOutcome.PLACEMENT_NOT_FOUND:
+            return JSONResponse({"error": "placement_not_found"}, status_code=404)
+        if result.outcome is RemovePlacementRequestOutcome.VERSION_CONFLICT:
+            return JSONResponse({"error": "version_conflict"}, status_code=409)
+        if result.outcome is RemovePlacementRequestOutcome.ACTIVE_LISTING_CONFLICT:
+            return JSONResponse({"error": "active_listing_conflict"}, status_code=409)
+        assert result.outcome is RemovePlacementRequestOutcome.REMOVED
+        return JSONResponse({"outcome": "REMOVED", "gallery_version": result.gallery_version})
+
+    @app.post("/api/broker/organizations/{organization_id}/media/assets/{media_asset_id}/retire")
+    def retire_media_asset_route(
+        organization_id: str, media_asset_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_media_gallery_csrf(request)
+
+        conn = open_connection(resolved_database_url)
+        try:
+            result = retire_asset_for_organization(conn, session, organization_id, media_asset_id)
+        finally:
+            conn.close()
+
+        auth_error = _media_actor_authorization_error(result.outcome)
+        if auth_error is not None:
+            return auth_error
+        if result.outcome is RetireAssetRequestOutcome.ASSET_NOT_FOUND:
+            return JSONResponse({"error": "asset_not_found"}, status_code=404)
+        if result.outcome is RetireAssetRequestOutcome.ALREADY_RETIRED:
+            return JSONResponse({"error": "already_retired"}, status_code=409)
+        if result.outcome is RetireAssetRequestOutcome.ACTIVE_LISTING_CONFLICT:
+            return JSONResponse({"error": "active_listing_conflict"}, status_code=409)
+        assert result.outcome is RetireAssetRequestOutcome.RETIRED
+        return JSONResponse({"outcome": "RETIRED"})
 
     return app
