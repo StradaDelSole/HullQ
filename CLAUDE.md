@@ -21,6 +21,8 @@ When only one section/symbol of a large file is needed, prefer targeted search/n
 
 Use the synchronized local checkout for ordinary repository reads. Do not repeatedly fetch local files through GitHub/API tooling when the local checkout already contains canonical synchronized content.
 
+Treat tool output as context cost: inspect changed-file lists/statistics before diffs, use path/symbol-scoped diffs, never print large successful logs merely for reassurance, and prefer bounded-output validation helpers where available.
+
 Operational token rules are in `docs/engineering/AI_TOKEN_EFFICIENCY.md`. `docs/engineering/IMPLEMENTATION_CONTEXT_INDEX.md` is a compact non-normative routing index for stable cross-cutting boundaries; use it instead of broad project-history loading when a reminder is sufficient.
 
 ## Authority
@@ -48,6 +50,7 @@ Slices are operational work contracts and do not override this order. Never turn
 - If required semantics are unresolved or controlling artifacts materially conflict, stop and report `BLOCKED` rather than inventing policy.
 - Do not automatically begin another slice after `REVIEW` or `BLOCKED`.
 - Prefer small coherent edits and focused tests while iterating; do not rerun broad suites after every small amendment. Run the full validation required by the slice on the final candidate handoff HEAD.
+- On a substantial slice, compact once at the implementation→final-validation phase boundary when context/tool output has become large. At ~100k reported active context, do not begin another broad cycle before compacting.
 
 The operational queue is `docs/slices/INDEX.md`; read it only when queue/status context is actually needed.
 
@@ -280,7 +283,8 @@ Native owner-direct supply is not an external marketplace adapter and must use H
 
 - One Claude session normally equals one slice.
 - Start each new slice in a fresh conversation; if reusing the Claude Code UI, `/clear` before the new START_SLICE prompt.
-- Use `/context` when context growth is unclear.
+- Use `/context` early enough to control growth; ~80k active context is a compaction-planning point and ~100k is a compact-before-next-broad-cycle point.
+- On a large vertical slice, strongly prefer `/compact` after main implementation and before final broad validation.
 - Use `/compact` during a long same-slice task before context becomes excessive; preserve controlling contract, decisions, changed files, validation state and unresolved blockers, not exploratory history/logs.
 - Do not carry previous slice reports/discussion into a new slice unless explicitly required.
 - After final handoff, stop; the next slice starts fresh.
