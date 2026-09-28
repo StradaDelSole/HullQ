@@ -1,5 +1,7 @@
 # Independent Research Workflow
 
+> **Context-loading note:** the research tree is cold context by default. Agents should use `research/CONTEXT_INDEX.md` to locate the smallest relevant report and must not preload large retained manifests/raw evidence. This workflow governs research semantics when research is actually in scope; it is not a requirement to read research artifacts for ordinary implementation slices.
+
 ## Pipeline
 
 ```text
