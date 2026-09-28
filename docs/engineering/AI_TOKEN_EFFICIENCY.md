@@ -42,6 +42,21 @@ Use `/clear` when switching to a different slice or materially different task.
 
 ## Agent reading policy
 
+### Default controlling-file budget
+
+For an ordinary implementation slice, begin with a small controlling set rather than broad context loading:
+
+1. `CLAUDE.md` (normally preloaded);
+2. the assigned primary slice document;
+3. its normative spec(s);
+4. `docs/engineering/IMPLEMENTATION_CONTEXT_INDEX.md` only when a stable cross-cutting boundary needs a compact reminder;
+5. the concrete production modules/tests required by the task.
+
+A typical start should need roughly 3–7 controlling documents/files before code work begins. This is a routing target, not permission to skip a file the slice explicitly requires.
+
+Broader documents are demand-loaded only when a concrete question, conflict, trigger, or stop condition requires them.
+
+
 The assigned slice is the primary execution entry point.
 
 Claude MUST read:
@@ -84,9 +99,34 @@ Use a cheaper/smaller model only for genuinely mechanical work where the risk of
 
 The primary optimization target is context size and unnecessary repeated reads, not indiscriminate model downgrading.
 
+## Validation cadence
+
+Use a two-level validation cadence unless the slice contract requires something stricter.
+
+### Iteration / intermediate amendment
+
+Prefer:
+
+- focused unit/persistence/web tests for changed behavior;
+- repository validator when governance/docs changed;
+- ruff/mypy/typecheck/build only when the changed surface warrants them;
+- retained proof directly owned by the changed invariant.
+
+Do **not** rerun the entire PostgreSQL/web/full-repository suite after every small amendment merely to reproduce the same evidence.
+
+### Final candidate handoff
+
+Before the final implementation handoff, run the complete validation required by the slice contract, including the broad regression suite and retained proofs it names.
+
+If an amendment materially touches identity, authorization, transactionality, migration state, Search semantics, or public eligibility, the reviewer may require broad validation earlier.
+
+This optimization removes redundant repeats; it does not lower the final acceptance bar.
+
 ## Completion-report discipline
 
 The required `SLICE_TEMPLATE.md` report remains mandatory, but it must be concise.
+
+The normal completion-report target is one screen/page. It may exceed that only when needed to explain a blocker, ambiguity, scope deviation, or unverified acceptance condition.
 
 The agent MUST report:
 
@@ -110,6 +150,22 @@ The agent SHOULD NOT include unless needed to explain a failure/blocker:
 - repository history recaps;
 - speculative next-slice plans.
 
+## Review discipline
+
+Independent implementation review is **delta-first by default**.
+
+Review order:
+
+1. readiness base / previous reviewed HEAD → exact candidate HEAD;
+2. changed-file list and diff;
+3. affected invariants using the review matrix in `IMPLEMENTATION_CONTEXT_INDEX.md`;
+4. unchanged surrounding implementation only where needed to validate the delta;
+5. broad repository/history only when a material conflict, regression, or missing accepted obligation is plausible.
+
+Do not re-read large unchanged files merely because they were important in the original readiness phase.
+
+A full-state reread remains appropriate when the candidate changes a foundational identity/auth/data/architecture boundary, when the base is uncertain, or when review evidence indicates drift.
+
 ## Review/amendment discipline
 
 When an independent review returns an amendment:
@@ -117,6 +173,9 @@ When an independent review returns an amendment:
 - continue in the same slice session if context remains modest;
 - otherwise `/compact` before applying the amendment;
 - preserve the exact reviewed HEAD, amendment requirements, affected files and required validation;
+- compare previous reviewed HEAD → new HEAD first;
+- inspect only the amendment delta plus directly affected invariants unless the delta crosses a new material boundary;
+- use focused validation during intermediate amendment rounds and require the contract's complete validation on the final candidate HEAD;
 - do not reload unrelated project background.
 
 After the slice reaches final handoff, stop. The next slice uses a fresh session.
