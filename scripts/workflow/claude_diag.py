@@ -72,6 +72,77 @@ def run_local_test_db(script: str, args: list[str]) -> int:
     return completed.returncode
 
 
+
+def _bounded_log_tail(path: Path, *, max_bytes: int) -> str:
+    """Return a bounded UTF-8 tail without loading/printing a full command log."""
+
+    size = path.stat().st_size
+    with path.open("rb") as handle:
+        handle.seek(max(0, size - max_bytes))
+        data = handle.read(max_bytes)
+    text = data.decode("utf-8", errors="replace")
+    if size > max_bytes:
+        first_newline = text.find("\n")
+        if first_newline >= 0:
+            text = text[first_newline + 1 :]
+        return f"... <{size - max_bytes} earlier log bytes omitted> ...\n{text}"
+    return text
+
+
+def run_local_test_db_compact(script: str, args: list[str]) -> int:
+    """Run a DB-backed repository script while keeping stdout out of AI context.
+
+    The complete combined stdout/stderr is retained in a temporary log. On
+    success only a short bounded tail is printed; on failure a larger bounded
+    tail is printed. Nothing about test execution/coverage is reduced.
+    """
+
+    candidate = (ROOT / script).resolve()
+    scripts_root = (ROOT / "scripts").resolve()
+
+    if (
+        scripts_root not in candidate.parents
+        or candidate.suffix != ".py"
+        or not candidate.is_file()
+    ):
+        print("Refusing to run a path outside repository scripts/*.py", file=sys.stderr)
+        return 2
+
+    env = os.environ.copy()
+    env["HULLQ_TEST_DATABASE_URL"] = _LOCAL_TEST_DB_URL
+
+    log_handle = tempfile.NamedTemporaryFile(
+        mode="wb",
+        prefix="hullq-claude-db-",
+        suffix=".log",
+        delete=False,
+    )
+    log_path = Path(log_handle.name)
+    try:
+        completed = subprocess.run(
+            [sys.executable, str(candidate), *args],
+            cwd=ROOT,
+            env=env,
+            stdout=log_handle,
+            stderr=subprocess.STDOUT,
+            check=False,
+        )
+    finally:
+        log_handle.close()
+
+    max_bytes = 8_000 if completed.returncode == 0 else 24_000
+    tail = _bounded_log_tail(log_path, max_bytes=max_bytes).strip()
+    status = "PASS" if completed.returncode == 0 else "FAIL"
+    print(
+        f"COMPACT_DB_RUN_{status} code={completed.returncode} "
+        f"full_log={log_path}"
+    )
+    if tail:
+        print("--- bounded log tail ---")
+        print(tail)
+        print("--- end bounded log tail ---")
+    return completed.returncode
+
 def run_local_api(host: str, port: int, seconds: float) -> int:
     """Start the HullQ API with fixed local-test env for a bounded smoke window."""
 
@@ -131,6 +202,10 @@ def build_parser() -> argparse.ArgumentParser:
     db_parser.add_argument("script")
     db_parser.add_argument("args", nargs=argparse.REMAINDER)
 
+    db_compact_parser = subparsers.add_parser("run-local-test-db-compact")
+    db_compact_parser.add_argument("script")
+    db_compact_parser.add_argument("args", nargs=argparse.REMAINDER)
+
     api_parser = subparsers.add_parser("run-local-api")
     api_parser.add_argument("--host", default="127.0.0.1")
     api_parser.add_argument("--port", type=int, default=18123)
@@ -150,6 +225,8 @@ def main() -> int:
         return latest_temp_dir(args.prefix)
     if args.command == "run-local-test-db":
         return run_local_test_db(args.script, args.args)
+    if args.command == "run-local-test-db-compact":
+        return run_local_test_db_compact(args.script, args.args)
     if args.command == "run-local-api":
         return run_local_api(args.host, args.port, args.seconds)
 
