@@ -72,7 +72,6 @@ def run_local_test_db(script: str, args: list[str]) -> int:
     return completed.returncode
 
 
-
 def _bounded_log_tail(path: Path, *, max_bytes: int) -> str:
     """Return a bounded UTF-8 tail without loading/printing a full command log."""
 
@@ -130,7 +129,7 @@ def run_local_test_db_compact(script: str, args: list[str]) -> int:
     finally:
         log_handle.close()
 
-    max_bytes = 8_000 if completed.returncode == 0 else 24_000
+    max_bytes = 4_000 if completed.returncode == 0 else 16_000
     tail = _bounded_log_tail(log_path, max_bytes=max_bytes).strip()
     status = "PASS" if completed.returncode == 0 else "FAIL"
     print(
@@ -142,6 +141,7 @@ def run_local_test_db_compact(script: str, args: list[str]) -> int:
         print(tail)
         print("--- end bounded log tail ---")
     return completed.returncode
+
 
 def run_local_api(host: str, port: int, seconds: float) -> int:
     """Start the HullQ API with fixed local-test env for a bounded smoke window."""
