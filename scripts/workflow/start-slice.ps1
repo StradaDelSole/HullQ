@@ -197,10 +197,13 @@ TOKEN DISCIPLINE:
 - Do not preload PROJECT_STATE, full requirements, roadmap, old closures/chats, unrelated history, or the research tree merely for orientation.
 - Treat `research/` as cold context. If research is actually needed, route through `research/CONTEXT_INDEX.md` and read the smallest relevant report first; never preload large generated manifests/raw evidence.
 - Prefer targeted Read/Grep/Glob and narrow file ranges over large unchanged files.
+- Treat tool output as context cost: changed-file list/stat first, then path/symbol-scoped diffs; never dump large successful test/build logs into context.
 - Use the synchronized local checkout; do not repeatedly fetch local files through GitHub/API.
 - Do not restate contracts or narrate routine exploration.
 - Use focused tests while iterating. Run the slice's complete required validation on the final candidate HEAD.
-- If same-slice context becomes large, /compact and retain only controlling contract/decisions, changed files, validation state, exact reviewed HEADs and unresolved blockers.
+- Prefer `uv run python scripts/workflow/claude_diag.py run-local-test-db-compact scripts/run_pytest_local.py ...` for PostgreSQL-backed pytest so full logs stay on disk and only a bounded tail enters context.
+- Context budget: around 80k reported active tokens = plan compaction; around 100k = compact before another broad read/debug/test cycle; 120k+ is exceptional.
+- On substantial slices, request one /compact checkpoint after main implementation and before final broad validation if context/tool output has grown materially. Preserve only controlling contract/decisions, changed files, validation state, exact reviewed HEADs and unresolved blockers.
 
 EXECUTION:
 - Follow CLAUDE.md and the assigned slice exactly; preserve its PASS reconciliation/trigger-gate evidence.

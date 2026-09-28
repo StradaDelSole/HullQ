@@ -22,7 +22,17 @@ Do not paste old completion reports, previous slice discussions, or project-wide
 
 ### During a slice
 
-Use `/context` when context growth is uncertain.
+Use `/context` early rather than after the session is already near its limit.
+
+For substantial implementation slices, use this phase policy:
+
+- after initial reconnaissance/planning: continue normally;
+- after the main implementation is materially complete and **before the final broad validation phase**, request one `/compact` checkpoint when the slice touched many files, involved debugging/rework, or accumulated substantial tool output;
+- if reported context is around **80k+ tokens**, compact at the next safe phase boundary;
+- if reported context is around **100k+ tokens**, do not begin another broad read/test/debug cycle before compacting;
+- treat **120k active context as an exception**, not a normal target.
+
+The point is to reduce repeated re-sending of old tool/file output before expensive final validation and amendment cycles.
 
 Use `/compact` when the session has become large but the same slice is still in progress. Preserve only:
 
@@ -85,7 +95,44 @@ The entire `research/` tree is demand-load only by default.
 
 ## Search/read discipline
 
+### Read-once / narrow-reread rule
+
+Once a large file has been read and remains unchanged in the same session, do not reopen it in full. Use Grep plus a bounded Read range for the exact symbol/section needed.
+
+Before any broad file read, ask whether a path/symbol search can identify the relevant range first.
+
 Prefer targeted search and narrow reads over whole-file reads when a file is large and only one symbol/section is needed.
+
+### Diff discipline
+
+Never dump a large whole-branch diff into context merely to inspect what changed.
+
+Use this order:
+
+1. `git diff --stat` / changed-file list;
+2. path-scoped diff for the file currently under review;
+3. hunk/symbol-level inspection where possible.
+
+Do not print generated lockfiles, large fixtures, manifests, or unchanged-context diff hunks unless a concrete finding requires them.
+
+### Tool-output discipline
+
+Tool output is context.
+
+- prefer quiet/summary modes when they preserve pass/fail evidence;
+- do not print full successful test logs;
+- do not paste successful build/install logs into the final report;
+- on failure, inspect the bounded failure summary first and expand only the relevant failing section;
+- avoid commands whose only purpose is to print data already available from a prior tool result;
+- keep exact full logs on disk when useful for diagnosis rather than keeping them in model context.
+
+For PostgreSQL-backed Python validation through `claude_diag.py`, prefer:
+
+```text
+uv run python scripts/workflow/claude_diag.py run-local-test-db-compact scripts/run_pytest_local.py ...
+```
+
+The compact mode executes the same test command and retains the complete combined log in a temporary file, but emits only a bounded tail to model context. If a failure needs deeper inspection, open only the relevant full-log region.
 
 Avoid repeatedly reopening unchanged files already understood in the current compact context.
 
@@ -195,7 +242,12 @@ After the slice reaches final handoff, stop. The next slice uses a fresh session
 
 There is no absolute hard context threshold because task complexity varies. Operationally:
 
-- avoid allowing sessions above roughly 150k context to become the normal state;
+- **target active context:** below roughly 80–100k for normal continuing work;
+- at ~80k+, plan compaction at the next safe phase boundary;
+- at ~100k+, compact before another broad implementation/debug/validation cycle;
+- ~120k+ should be exceptional and justified by work that cannot safely be compacted yet;
+- do not allow 150k+ to become normal;
+- always consider a compact checkpoint before final full-suite validation on a large vertical slice;
 - compact earlier when a slice contains repeated research, logs or large file reads;
 - prefer a fresh session at every slice boundary.
 
