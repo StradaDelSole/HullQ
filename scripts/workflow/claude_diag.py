@@ -132,10 +132,7 @@ def run_local_test_db_compact(script: str, args: list[str]) -> int:
     max_bytes = 4_000 if completed.returncode == 0 else 16_000
     tail = _bounded_log_tail(log_path, max_bytes=max_bytes).strip()
     status = "PASS" if completed.returncode == 0 else "FAIL"
-    print(
-        f"COMPACT_DB_RUN_{status} code={completed.returncode} "
-        f"full_log={log_path}"
-    )
+    print(f"COMPACT_DB_RUN_{status} code={completed.returncode} full_log={log_path}")
     if tail:
         print("--- bounded log tail ---")
         print(tail)
