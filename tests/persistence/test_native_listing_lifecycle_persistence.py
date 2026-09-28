@@ -25,11 +25,18 @@ from hullq.domain.market_identity import (
     PhysicalBoat,
     PhysicalBoatId,
 )
+from hullq.domain.media_gallery import MediaSourceKind
 from hullq.domain.native_listing_lifecycle import (
     NativeListingLifecycleState,
     PublicationTransitionId,
 )
 from hullq.domain.native_listing_offer import AskingPriceMode, NativeListingOfferSnapshot
+from hullq.domain.physical_boat_claims import (
+    AssertionKind,
+    BuildYearClaim,
+    PhysicalBoatClaimRevisionId,
+    PhysicalBoatClaimSnapshot,
+)
 from hullq.domain.publishing_eligibility import (
     AccountId,
     MarketplaceOrganization,
@@ -43,7 +50,13 @@ from hullq.domain.publishing_eligibility import (
     PublishingEligibilityReason,
 )
 from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
+from hullq.persistence.broker_identity import seed_marketplace_organization
 from hullq.persistence.market_episode import create_market_episode
+from hullq.persistence.media_gallery import (
+    create_uploaded_image_placement,
+    insert_approved_media_asset,
+    set_cover,
+)
 from hullq.persistence.native_listing import (
     NativeListingCreationStatus,
     create_native_listing,
@@ -62,6 +75,7 @@ from hullq.persistence.native_listing_offer import (
     write_native_listing_offer_revision,
 )
 from hullq.persistence.physical_boat import create_physical_boat
+from hullq.persistence.physical_boat_claims import write_physical_boat_claim_revision
 
 # ---------------------------------------------------------------------------
 # Disposable-schema fixture: genuinely-empty schema -> SLICE-0049 Alembic head
@@ -165,6 +179,75 @@ def _amount_offer() -> NativeListingOfferSnapshot:
     )
 
 
+def _ready_physical_boat_claim() -> PhysicalBoatClaimSnapshot:
+    """SLICE-0069 D22-ready PhysicalBoat claim: bounded brand/model plus a
+    valid build year -- the minimum required PhysicalBoat response set."""
+    return PhysicalBoatClaimSnapshot(
+        marketed_brand_claim="Beneteau",
+        model_designation_claim="Oceanis 30.1",
+        build_year=BuildYearClaim(AssertionKind.VALUE_ASSERTION, 2020),
+    )
+
+
+def _ensure_account_row(conn: Any, account: AccountId) -> None:
+    """`media_assets.uploaded_by_account_id` (unlike the SLICE-0043/45/50
+    tables this file otherwise exercises) carries a real FK to `accounts` --
+    insert the row this test's in-memory `AccountId` needs before attaching
+    media, mirroring `test_broker_inventory_lifecycle_api.py`'s identical
+    `_ensure_account` helper."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO accounts (account_id) VALUES (%s) ON CONFLICT DO NOTHING",
+            [account.value],
+        )
+
+
+def _attach_ready_cover_image(
+    conn: Any, *, listing_id: str, org: MarketplaceOrganization, account: AccountId
+) -> None:
+    """Attach one approved, rights-declared IMAGE placement and set it as the
+    explicit cover -- the SLICE-0069 D22 minimum required media state.
+
+    `media_assets` carries real FKs to `accounts`/`marketplace_organizations`
+    (unlike the SLICE-0043/45/50 tables this file otherwise exercises, which
+    persist Organization/Account identity as plain unconstrained text) --
+    both rows are idempotently seeded here first.
+    """
+    _ensure_account_row(conn, account)
+    seed_marketplace_organization(conn, org)
+    asset = insert_approved_media_asset(
+        conn,
+        owner_organization_id=org.id,
+        uploaded_by_account_id=account,
+        rights_declared=True,
+        source_kind=MediaSourceKind.BROKER_UPLOAD,
+        source_reference=None,
+        original_object_key=f"original/{listing_id}",
+        derivative_object_key=f"derivative/{listing_id}",
+        content_hash=f"hash-{listing_id}",
+        mime_type="image/jpeg",
+        width=800,
+        height=600,
+        byte_size=12345,
+    )
+    placement_result = create_uploaded_image_placement(
+        conn,
+        native_listing_id=NativeListingId(listing_id),
+        owner_organization_id=org.id,
+        media_asset=asset,
+    )
+    assert placement_result.media_placement_id is not None
+    assert placement_result.gallery_version is not None
+    cover_result = set_cover(
+        conn,
+        native_listing_id=NativeListingId(listing_id),
+        owner_organization_id=org.id,
+        media_placement_id=placement_result.media_placement_id,
+        expected_version=placement_result.gallery_version,
+    )
+    assert cover_result.outcome.value == "SET", cover_result
+
+
 def _create_complete_listing(
     conn: Any,
     *,
@@ -176,7 +259,8 @@ def _create_complete_listing(
     market_episode_id: str,
     offer_revision_id: str,
 ) -> None:
-    """Create/reuse a full durable chain satisfying the §7 completeness predicate."""
+    """Create/reuse a full durable chain satisfying the SLICE-0069 canonical
+    D22 PublicationReadiness rule set (episode/boat/offer/claim/media/cover)."""
     create_physical_boat(conn, physical_boat=PhysicalBoat(id=PhysicalBoatId(physical_boat_id)))
     create_market_episode(
         conn,
@@ -208,6 +292,18 @@ def _create_complete_listing(
         offer=_amount_offer(),
     )
     assert offer_result.status.value in ("created", "already_exists"), offer_result
+    claim_result = write_physical_boat_claim_revision(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId(listing_id),
+        revision_id=PhysicalBoatClaimRevisionId(f"CLAIM-{listing_id}"),
+        expected_current_revision_id=None,
+        claims=_ready_physical_boat_claim(),
+    )
+    assert claim_result.status.value in ("created", "already_exists"), claim_result
+    _attach_ready_cover_image(conn, listing_id=listing_id, org=org, account=account)
 
 
 def _create_incomplete_listing(

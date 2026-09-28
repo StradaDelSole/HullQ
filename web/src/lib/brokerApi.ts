@@ -114,6 +114,13 @@ export interface InventoryOffer {
   currency: string | null;
 }
 
+// SLICE-0069 contract §17: the exact canonical PublicationReadiness result
+// (DRAFT rows only) -- never a second, independently computed readiness rule.
+export interface InventoryPublicationReadiness {
+  status: "READY" | "BLOCKED";
+  blockers: string[];
+}
+
 export interface InventoryItem {
   native_listing_id: string;
   lifecycle_state: "DRAFT" | "ACTIVE" | "WITHDRAWN";
@@ -123,6 +130,13 @@ export interface InventoryItem {
   freshness_status: "CONFIRMED" | "DUE_FOR_CONFIRMATION" | "STALE" | "UNKNOWN";
   last_confirmed_at: string | null;
   is_publicly_listed: boolean;
+  // SLICE-0069 contract §17: populated for DRAFT rows only.
+  publication_readiness?: InventoryPublicationReadiness;
+  // SLICE-0069 contract §17: populated for ACTIVE rows only -- "ELIGIBLE" or
+  // "SUPPRESSED", separate from `lifecycle_state`/`is_publicly_listed`'s own
+  // existing meaning (kept unchanged for backward compatibility).
+  current_public_status?: "ELIGIBLE" | "SUPPRESSED";
+  suppression_reasons?: string[];
 }
 
 export interface InventoryPage {
@@ -272,7 +286,10 @@ async function classifyInventoryAction403(
 export type PublishListingResult =
   | InventoryActionAuthFailure
   | { kind: "denied"; reason: string }
-  | { kind: "incomplete_listing" }
+  // SLICE-0069: the legacy "incomplete_listing" kind is preserved unchanged,
+  // now always carrying the canonical structured PublicationReadiness
+  // blocker set alongside it.
+  | { kind: "incomplete_listing"; blockers: string[] }
   | { kind: "state_conflict" }
   | { kind: "service_error" }
   | { kind: "ok"; transitionId: string };
@@ -304,7 +321,10 @@ export async function publishOrganizationListing(
   const authFailure = inventoryActionAuthFailureFromStatus(response.status);
   if (authFailure) return authFailure;
   if (response.status === 403) return await classifyInventoryAction403(response);
-  if (response.status === 422) return { kind: "incomplete_listing" };
+  if (response.status === 422) {
+    const body = (await response.json()) as { blockers?: string[] };
+    return { kind: "incomplete_listing", blockers: body.blockers ?? [] };
+  }
   if (response.status === 409) return { kind: "state_conflict" };
   if (!response.ok) return { kind: "service_error" };
   const data = (await response.json()) as { transition_id: string };

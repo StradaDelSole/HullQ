@@ -73,6 +73,7 @@ type ActionOutcome =
 
 let actionOutcome: ActionOutcome = "none";
 let deniedReason = "";
+let incompleteBlockers: string[] = [];
 
 if (Astro.request.method === "POST" && organizationId) {
   const formData = await Astro.request.formData();
@@ -96,7 +97,10 @@ if (Astro.request.method === "POST" && organizationId) {
       else if (result.kind === "denied") {
         actionOutcome = "denied";
         deniedReason = result.reason;
-      } else if (result.kind === "incomplete_listing") actionOutcome = "incomplete_listing";
+      } else if (result.kind === "incomplete_listing") {
+        actionOutcome = "incomplete_listing";
+        incompleteBlockers = result.blockers;
+      }
       else if (result.kind === "state_conflict") actionOutcome = "state_conflict";
       else if (result.kind === "not_found") actionOutcome = "listing_not_found";
       else if (result.kind === "mfa_required") actionOutcome = "mfa_required";
@@ -198,7 +202,10 @@ const actionOutcomeText: Record<ActionOutcome, string | null> = {
   listing_not_found: "This listing isn't available here.",
   mfa_required: "Additional verification is required before you can do this.",
   denied: `Not allowed${deniedReason ? ` (${deniedReason})` : ""}.`,
-  incomplete_listing: "This listing is not complete enough to publish yet.",
+  incomplete_listing:
+    incompleteBlockers.length > 0
+      ? `This listing is not ready to publish yet: ${incompleteBlockers.join(", ")}.`
+      : "This listing is not complete enough to publish yet.",
   state_conflict: "This listing's state has already changed -- please review its current status below.",
   invalid_operation_id: "That reconfirm request wasn't valid. Please try again.",
   operation_id_conflict: "That reconfirm request could not be applied. Please try again.",
@@ -267,6 +274,7 @@ const actionOutcomeText: Record<ActionOutcome, string | null> = {
                     <th>Freshness</th>
                     <th>Created</th>
                     <th>Public link</th>
+                    <th>Readiness / status</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -284,6 +292,25 @@ const actionOutcomeText: Record<ActionOutcome, string | null> = {
                           <a href={`/listings/${encodeURIComponent(item.native_listing_id)}`}>
                             View public listing
                           </a>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td>
+                        {item.publication_readiness ? (
+                          item.publication_readiness.status === "READY" ? (
+                            <span>Ready to publish</span>
+                          ) : (
+                            <span>Blocked: {item.publication_readiness.blockers.join(", ")}</span>
+                          )
+                        ) : item.current_public_status ? (
+                          item.current_public_status === "ELIGIBLE" ? (
+                            <span>Live</span>
+                          ) : (
+                            <span>
+                              Suppressed: {(item.suppression_reasons ?? []).join(", ")}
+                            </span>
+                          )
                         ) : (
                           "—"
                         )}

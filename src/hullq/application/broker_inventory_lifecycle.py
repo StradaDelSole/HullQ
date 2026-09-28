@@ -52,16 +52,22 @@ from hullq.application.broker_workspace_read import (
 from hullq.domain.market_identity import NativeListingId
 from hullq.domain.native_listing_freshness import FreshnessConfirmationId
 from hullq.domain.native_listing_lifecycle import PublicationTransitionId
+from hullq.domain.publication_readiness import (
+    PublicationBlockerReason,
+    PublicationReadinessResult,
+)
 from hullq.domain.publishing_eligibility import (
     MarketplaceOrganization,
     MarketplaceOrganizationId,
     OrganizationMembership,
     PublishingEligibilityReason,
+    evaluate_native_listing_publishing_eligibility,
 )
 from hullq.persistence.broker_identity import (
     fetch_marketplace_organization,
     fetch_membership_for_account_and_organization,
 )
+from hullq.persistence.native_listing import fetch_native_listing
 from hullq.persistence.native_listing_freshness import (
     ReconfirmationResult,
     ReconfirmationStatus,
@@ -70,9 +76,11 @@ from hullq.persistence.native_listing_freshness import (
 from hullq.persistence.native_listing_lifecycle import (
     LifecycleTransitionResult,
     LifecycleTransitionStatus,
+    fetch_lifecycle_state,
     publish_native_listing,
     withdraw_native_listing,
 )
+from hullq.persistence.publication_readiness import resolve_publication_readiness
 from hullq.security.session_token import SessionClaims
 
 #: A literal parenthesized `except (A, B, C):` tuple is reformatted by the
@@ -84,8 +92,11 @@ _CONFIRMATION_ID_PARSE_ERRORS = (ValueError, AttributeError, TypeError)
 __all__ = [
     "InventoryLifecycleOutcome",
     "LifecycleActionResult",
+    "PublicationReadinessPreflightOutcome",
+    "PublicationReadinessPreflightResult",
     "ReconfirmInventoryOutcome",
     "ReconfirmResult",
+    "get_publication_readiness_for_organization_listing",
     "publish_organization_listing",
     "reconfirm_organization_listing",
     "withdraw_organization_listing",
@@ -159,12 +170,15 @@ class LifecycleActionResult:
 
     `DENIED` always carries the real SLICE-0041 denial reason. `PUBLISHED`/
     `WITHDRAWN` always carry the newly appended immutable `transition_id`.
-    No other outcome carries either field.
+    `INCOMPLETE_LISTING` (SLICE-0069) always carries the canonical
+    deterministic PublicationReadiness blocker-reason set. No other outcome
+    carries any of these three.
     """
 
     outcome: InventoryLifecycleOutcome
     denial_reason: PublishingEligibilityReason | None = None
     transition_id: PublicationTransitionId | None = None
+    blockers: frozenset[PublicationBlockerReason] | None = None
 
     def __post_init__(self) -> None:
         if self.outcome is InventoryLifecycleOutcome.DENIED:
@@ -183,12 +197,20 @@ class LifecycleActionResult:
         elif self.transition_id is not None:
             raise ValueError("Only a PUBLISHED/WITHDRAWN result may carry a transition_id")
 
+        if self.outcome is InventoryLifecycleOutcome.INCOMPLETE_LISTING:
+            if not self.blockers:
+                raise ValueError("An INCOMPLETE_LISTING result must carry at least one blocker")
+        elif self.blockers is not None:
+            raise ValueError("Only an INCOMPLETE_LISTING result may carry blockers")
+
     def to_public_dict(self) -> dict[str, Any]:
         body: dict[str, Any] = {"outcome": self.outcome.value}
         if self.denial_reason is not None:
             body["reason"] = self.denial_reason.value
         if self.transition_id is not None:
             body["transition_id"] = self.transition_id.value
+        if self.blockers is not None:
+            body["blockers"] = sorted(blocker.value for blocker in self.blockers)
         return body
 
 
@@ -206,7 +228,10 @@ def _map_transition_result(
     ):
         return LifecycleActionResult(outcome=InventoryLifecycleOutcome.LISTING_NOT_FOUND)
     if result.status is LifecycleTransitionStatus.INCOMPLETE_LISTING:
-        return LifecycleActionResult(outcome=InventoryLifecycleOutcome.INCOMPLETE_LISTING)
+        assert result.blockers is not None
+        return LifecycleActionResult(
+            outcome=InventoryLifecycleOutcome.INCOMPLETE_LISTING, blockers=result.blockers
+        )
     if result.status is LifecycleTransitionStatus.CURRENT_STATE_CONFLICT:
         return LifecycleActionResult(outcome=InventoryLifecycleOutcome.STATE_CONFLICT)
     assert result.status is LifecycleTransitionStatus.TRANSITIONED
@@ -406,3 +431,108 @@ def reconfirm_organization_listing(
         native_listing_id=NativeListingId(native_listing_id_value),
     )
     return _map_reconfirm_result(result)
+
+
+# ---------------------------------------------------------------------------
+# PublicationReadiness preflight (SLICE-0069 contract §9/§17/§21)
+# ---------------------------------------------------------------------------
+
+
+class PublicationReadinessPreflightOutcome(StrEnum):
+    """Mechanically distinct preflight-read outcomes."""
+
+    ORG_NOT_FOUND_OR_DENIED = "ORG_NOT_FOUND_OR_DENIED"
+    MFA_REQUIRED = "MFA_REQUIRED"
+    LISTING_NOT_FOUND = "LISTING_NOT_FOUND"
+    OK = "OK"
+
+
+@dataclass(frozen=True)
+class PublicationReadinessPreflightResult:
+    """Deterministic result of one advisory readiness-preflight read.
+
+    Only `OK` carries a `readiness`, and it is always the canonical
+    `hullq.domain.publication_readiness.PublicationReadinessResult` produced
+    by the identical evaluator the authoritative publish transition itself
+    uses -- this result is advisory only (contract §9: "A preflight READY
+    result is never a capability token"); the authoritative publish call
+    always re-evaluates inside its own transaction regardless of what this
+    read returned a moment earlier.
+    """
+
+    outcome: PublicationReadinessPreflightOutcome
+    readiness: PublicationReadinessResult | None = None
+
+    def __post_init__(self) -> None:
+        if self.outcome is PublicationReadinessPreflightOutcome.OK:
+            if self.readiness is None:
+                raise ValueError("An OK preflight result must carry readiness")
+        elif self.readiness is not None:
+            raise ValueError("Only an OK preflight result may carry readiness")
+
+    def to_public_dict(self) -> dict[str, Any]:
+        assert self.readiness is not None
+        return {
+            "status": self.readiness.status.value,
+            "lifecycle_state": self.readiness.lifecycle_state.value,
+            "blockers": sorted(blocker.value for blocker in self.readiness.blockers),
+        }
+
+
+def get_publication_readiness_for_organization_listing(
+    conn: Any,
+    session: SessionClaims,
+    organization_id_value: str,
+    native_listing_id_value: str,
+) -> PublicationReadinessPreflightResult:
+    """Advisory canonical PublicationReadiness read for one own NativeListing.
+
+    Reuses the exact same
+    `hullq.persistence.publication_readiness.resolve_publication_readiness`
+    evaluator `hullq.persistence.native_listing_lifecycle.publish_native_listing`
+    calls inside its own authoritative transaction (contract §9: "the same
+    result vocabulary and requirement rules") -- there is no second,
+    independently maintained readiness definition here. An unauthorized,
+    foreign or unknown NativeListing collapses to the identical
+    `LISTING_NOT_FOUND` outcome, mirroring `publish_organization_listing`.
+    """
+    organization_id = MarketplaceOrganizationId(organization_id_value)
+    auth_outcome, actor = _authorize_lifecycle_actor(conn, session, organization_id)
+    if auth_outcome is _LifecycleActorAuthorizationOutcome.NOT_FOUND_OR_DENIED:
+        return PublicationReadinessPreflightResult(
+            outcome=PublicationReadinessPreflightOutcome.ORG_NOT_FOUND_OR_DENIED
+        )
+    if auth_outcome is _LifecycleActorAuthorizationOutcome.MFA_REQUIRED:
+        return PublicationReadinessPreflightResult(
+            outcome=PublicationReadinessPreflightOutcome.MFA_REQUIRED
+        )
+    assert actor is not None
+
+    native_listing_id = NativeListingId(native_listing_id_value)
+    listing_record = fetch_native_listing(conn, native_listing_id)
+    if listing_record is None or listing_record.publishing_organization_id != organization_id:
+        return PublicationReadinessPreflightResult(
+            outcome=PublicationReadinessPreflightOutcome.LISTING_NOT_FOUND
+        )
+    lifecycle_state = fetch_lifecycle_state(conn, native_listing_id)
+    assert lifecycle_state is not None
+
+    eligibility_decision = evaluate_native_listing_publishing_eligibility(
+        session.account_id, actor.organization, actor.membership
+    )
+    market_episode_id_value = (
+        listing_record.listing.market_episode_id.value
+        if listing_record.listing.market_episode_id is not None
+        else None
+    )
+    readiness = resolve_publication_readiness(
+        conn,
+        native_listing_id=native_listing_id,
+        publishing_organization_id=organization_id,
+        publishing_eligibility=eligibility_decision,
+        lifecycle_state=lifecycle_state,
+        market_episode_id_value=market_episode_id_value,
+    )
+    return PublicationReadinessPreflightResult(
+        outcome=PublicationReadinessPreflightOutcome.OK, readiness=readiness
+    )

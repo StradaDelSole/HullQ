@@ -48,6 +48,8 @@ function baseListing(overrides: Partial<PublicListingData> = {}): PublicListingD
     physical_boat_claims: null,
     freshness_status: "CONFIRMED",
     last_confirmed_at: "2026-01-01T00:00:00Z",
+    gallery: [],
+    cover_media_placement_id: null,
     ...overrides,
   };
 }

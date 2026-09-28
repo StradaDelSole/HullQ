@@ -35,6 +35,7 @@ from hullq.domain.market_identity import (
     PhysicalBoat,
     PhysicalBoatId,
 )
+from hullq.domain.media_gallery import MediaSourceKind
 from hullq.domain.native_listing_freshness import FreshnessStatus
 from hullq.domain.native_listing_offer import AskingPriceMode, NativeListingOfferSnapshot
 from hullq.domain.physical_boat_claims import (
@@ -57,7 +58,13 @@ from hullq.domain.publishing_eligibility import (
     ProfessionalCategory,
 )
 from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
+from hullq.persistence.broker_identity import seed_marketplace_organization
 from hullq.persistence.market_episode import create_market_episode
+from hullq.persistence.media_gallery import (
+    create_uploaded_image_placement,
+    insert_approved_media_asset,
+    set_cover,
+)
 from hullq.persistence.native_listing import create_native_listing
 from hullq.persistence.native_listing_lifecycle import (
     list_publication_transitions,
@@ -188,6 +195,58 @@ def _membership(
     )
 
 
+def _attach_ready_cover_image(
+    conn: Any, *, listing_id: str, org: MarketplaceOrganization, account: AccountId
+) -> None:
+    """Attach one approved, rights-declared IMAGE placement and set it as the
+    explicit cover -- the SLICE-0069 D22 minimum required media state.
+    `media_assets` carries real FKs to `accounts`/`marketplace_organizations`
+    -- both rows are idempotently seeded here first.
+
+    Wrapped in one top-level transaction (the media_gallery persistence
+    functions this calls assume the caller already owns one) so *conn* is
+    IDLE again -- as `publish_native_listing` requires -- once this returns.
+    """
+    with conn.transaction():
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO accounts (account_id) VALUES (%s) ON CONFLICT DO NOTHING",
+                [account.value],
+            )
+        seed_marketplace_organization(conn, org)
+        asset = insert_approved_media_asset(
+            conn,
+            owner_organization_id=org.id,
+            uploaded_by_account_id=account,
+            rights_declared=True,
+            source_kind=MediaSourceKind.BROKER_UPLOAD,
+            source_reference=None,
+            original_object_key=f"original/{listing_id}",
+            derivative_object_key=f"derivative/{listing_id}",
+            content_hash=f"hash-{listing_id}",
+            mime_type="image/jpeg",
+            width=800,
+            height=600,
+            byte_size=12345,
+        )
+        placement_result = create_uploaded_image_placement(
+            conn,
+            native_listing_id=NativeListingId(listing_id),
+            owner_organization_id=org.id,
+            media_asset=asset,
+        )
+        assert placement_result.media_placement_id is not None
+        assert placement_result.gallery_version is not None
+        cover_result = set_cover(
+            conn,
+            native_listing_id=NativeListingId(listing_id),
+            owner_organization_id=org.id,
+            media_placement_id=placement_result.media_placement_id,
+            expected_version=placement_result.gallery_version,
+        )
+        assert cover_result.outcome.value == "SET", cover_result
+
+
 def _publish_confirmed_candidate(conn: Any, *, listing_id: str) -> None:
     account = AccountId(f"ACC-{listing_id}")
     org = _org(f"ORG-{listing_id}")
@@ -246,6 +305,7 @@ def _publish_confirmed_candidate(conn: Any, *, listing_id: str) -> None:
             draft=DraftClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("1.40")),
         ),
     )
+    _attach_ready_cover_image(conn, listing_id=listing_id, org=org, account=account)
     publish_result = publish_native_listing(
         conn,
         account_id=account,

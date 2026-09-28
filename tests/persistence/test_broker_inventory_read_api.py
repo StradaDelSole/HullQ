@@ -31,8 +31,15 @@ from hullq.domain.market_identity import (
     PhysicalBoat,
     PhysicalBoatId,
 )
+from hullq.domain.media_gallery import MediaSourceKind
 from hullq.domain.native_listing_freshness import FreshnessConfirmationId
 from hullq.domain.native_listing_offer import AskingPriceMode, NativeListingOfferSnapshot
+from hullq.domain.physical_boat_claims import (
+    AssertionKind,
+    BuildYearClaim,
+    PhysicalBoatClaimRevisionId,
+    PhysicalBoatClaimSnapshot,
+)
 from hullq.domain.publishing_eligibility import (
     AccountId,
     MarketplaceOrganization,
@@ -51,6 +58,11 @@ from hullq.persistence.broker_identity import (
     update_membership_state,
 )
 from hullq.persistence.market_episode import create_market_episode
+from hullq.persistence.media_gallery import (
+    create_uploaded_image_placement,
+    insert_approved_media_asset,
+    set_cover,
+)
 from hullq.persistence.native_listing import create_native_listing
 from hullq.persistence.native_listing_freshness import reconfirm_native_listing
 from hullq.persistence.native_listing_lifecycle import (
@@ -62,6 +74,7 @@ from hullq.persistence.native_listing_offer import (
     write_native_listing_offer_revision,
 )
 from hullq.persistence.physical_boat import create_physical_boat
+from hullq.persistence.physical_boat_claims import write_physical_boat_claim_revision
 from hullq.security.session_token import mint_session_token
 
 _SECRET = b"7" * 32
@@ -225,6 +238,58 @@ def _poa_offer() -> NativeListingOfferSnapshot:
     )
 
 
+def _attach_ready_cover_image(
+    conn: Any, *, listing_id: str, org: MarketplaceOrganization, account: AccountId
+) -> None:
+    """Attach one approved, rights-declared IMAGE placement and set it as the
+    explicit cover -- the SLICE-0069 D22 minimum required media state.
+    `media_assets` carries real FKs to `accounts`/`marketplace_organizations`
+    -- both rows are idempotently seeded here first.
+
+    Wrapped in one top-level transaction (the media_gallery persistence
+    functions this calls assume the caller already owns one) so *conn* is
+    IDLE again -- as `publish_native_listing` requires -- once this returns.
+    """
+    with conn.transaction():
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO accounts (account_id) VALUES (%s) ON CONFLICT DO NOTHING",
+                [account.value],
+            )
+        seed_marketplace_organization(conn, org)
+        asset = insert_approved_media_asset(
+            conn,
+            owner_organization_id=org.id,
+            uploaded_by_account_id=account,
+            rights_declared=True,
+            source_kind=MediaSourceKind.BROKER_UPLOAD,
+            source_reference=None,
+            original_object_key=f"original/{listing_id}",
+            derivative_object_key=f"derivative/{listing_id}",
+            content_hash=f"hash-{listing_id}",
+            mime_type="image/jpeg",
+            width=800,
+            height=600,
+            byte_size=12345,
+        )
+        placement_result = create_uploaded_image_placement(
+            conn,
+            native_listing_id=NativeListingId(listing_id),
+            owner_organization_id=org.id,
+            media_asset=asset,
+        )
+        assert placement_result.media_placement_id is not None
+        assert placement_result.gallery_version is not None
+        cover_result = set_cover(
+            conn,
+            native_listing_id=NativeListingId(listing_id),
+            owner_organization_id=org.id,
+            media_placement_id=placement_result.media_placement_id,
+            expected_version=placement_result.gallery_version,
+        )
+        assert cover_result.outcome.value == "SET", cover_result
+
+
 def _make_active_listing_with_public_read(
     conn: Any,
     *,
@@ -273,6 +338,24 @@ def _make_active_listing_with_public_read(
         offer=_amount_offer(),
     )
     assert offer_result.status.value in ("created", "already_exists"), offer_result
+    # SLICE-0069 D22: publish now also requires the publishing Organization's
+    # own current PhysicalBoat claim plus a public-usable IMAGE cover.
+    claim_result = write_physical_boat_claim_revision(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId(listing_id),
+        revision_id=PhysicalBoatClaimRevisionId(f"CLAIM-{listing_id}"),
+        expected_current_revision_id=None,
+        claims=PhysicalBoatClaimSnapshot(
+            marketed_brand_claim="Beneteau",
+            model_designation_claim="Oceanis 30.1",
+            build_year=BuildYearClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=2021),
+        ),
+    )
+    assert claim_result.status.value in ("created", "already_exists"), claim_result
+    _attach_ready_cover_image(conn, listing_id=listing_id, org=org, account=account)
     conn.commit()
 
     publish_result = publish_native_listing(
@@ -443,6 +526,26 @@ class TestInventoryTruth:
                 offer=_poa_offer(),
             )
             assert wd_offer.status.value in ("created", "already_exists")
+            wd_claim = write_physical_boat_claim_revision(
+                conn,
+                account_id=account,
+                candidate_organization=org,
+                membership=membership,
+                native_listing_id=NativeListingId("NL-INV-MIXED-WD"),
+                revision_id=PhysicalBoatClaimRevisionId("CLAIM-NL-INV-MIXED-WD"),
+                expected_current_revision_id=None,
+                claims=PhysicalBoatClaimSnapshot(
+                    marketed_brand_claim="Beneteau",
+                    model_designation_claim="Oceanis 30.1",
+                    build_year=BuildYearClaim(
+                        assertion_kind=AssertionKind.VALUE_ASSERTION, value=2021
+                    ),
+                ),
+            )
+            assert wd_claim.status.value in ("created", "already_exists")
+            _attach_ready_cover_image(
+                conn, listing_id="NL-INV-MIXED-WD", org=org, account=account
+            )
             conn.commit()
             publish_wd = publish_native_listing(
                 conn,

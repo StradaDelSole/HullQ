@@ -68,7 +68,9 @@ from fastapi.responses import JSONResponse, RedirectResponse, Response
 from hullq.application.broker_callback import CallbackOutcome, complete_login_callback
 from hullq.application.broker_inventory_lifecycle import (
     InventoryLifecycleOutcome,
+    PublicationReadinessPreflightOutcome,
     ReconfirmInventoryOutcome,
+    get_publication_readiness_for_organization_listing,
     publish_organization_listing,
     reconfirm_organization_listing,
     withdraw_organization_listing,
@@ -135,6 +137,10 @@ from hullq.application.professional_listing_promotion import (
     promote_professional_draft_for_organization,
 )
 from hullq.application.public_listing_read import get_public_listing_read_model
+from hullq.application.public_media_read import (
+    GetPublicMediaBytesOutcome,
+    get_public_listing_media_bytes,
+)
 from hullq.application.search_read import SearchOutcomeKind, evaluate_search_request
 from hullq.application.search_sensitivity import (
     SensitivityOutcomeKind,
@@ -738,6 +744,29 @@ def create_app(
             raise HTTPException(status_code=404, detail="listing not found")
         return JSONResponse(model.to_public_dict())
 
+    @app.get("/api/listings/{native_listing_id}/media/{media_placement_id}")
+    def get_public_listing_media(native_listing_id: str, media_placement_id: str) -> Response:
+        conn = open_connection(resolved_database_url)
+        try:
+            result = get_public_listing_media_bytes(
+                conn,
+                native_listing_id,
+                media_placement_id,
+                object_storage=_resolve_object_storage(),
+                as_of=_current_as_of(),
+            )
+        finally:
+            conn.close()
+        if result.outcome is GetPublicMediaBytesOutcome.NOT_FOUND:
+            # Contract §15/§21: unknown/foreign listing, unknown/foreign
+            # placement, a non-IMAGE placement, a non-public-usable asset and
+            # an object-storage retrieval failure all collapse to this
+            # identical bounded not-found response.
+            raise HTTPException(status_code=404, detail="media not found")
+        assert result.data is not None
+        assert result.mime_type is not None
+        return Response(content=result.data, media_type=result.mime_type)
+
     @app.get("/api/search/{locale}")
     def get_search(locale: str, request: Request) -> Response:
         # SLICE-0051 item C: bare-locale-routing 404 for an unsupported
@@ -1100,7 +1129,14 @@ def create_app(
             # has succeeded.
             raise HTTPException(status_code=404, detail="listing not found")
         if outcome is InventoryLifecycleOutcome.INCOMPLETE_LISTING:
-            return JSONResponse({"error": "incomplete_listing"}, status_code=422)
+            assert result.blockers is not None
+            return JSONResponse(
+                {
+                    "error": "incomplete_listing",
+                    "blockers": sorted(blocker.value for blocker in result.blockers),
+                },
+                status_code=422,
+            )
         if outcome is InventoryLifecycleOutcome.STATE_CONFLICT:
             return JSONResponse({"error": "state_conflict"}, status_code=409)
         assert outcome in (InventoryLifecycleOutcome.PUBLISHED, InventoryLifecycleOutcome.WITHDRAWN)
@@ -1128,6 +1164,32 @@ def create_app(
             return JSONResponse({"error": "operation_id_conflict"}, status_code=409)
         assert outcome is ReconfirmInventoryOutcome.RECONFIRMED
         return JSONResponse(result.to_public_dict(), status_code=200)
+
+    @app.get(
+        "/api/broker/organizations/{organization_id}/inventory/{native_listing_id}"
+        "/publication-readiness"
+    )
+    def get_inventory_publication_readiness_route(
+        organization_id: str, native_listing_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            result = get_publication_readiness_for_organization_listing(
+                conn, session, organization_id, native_listing_id
+            )
+        finally:
+            conn.close()
+        if result.outcome is PublicationReadinessPreflightOutcome.ORG_NOT_FOUND_OR_DENIED:
+            raise HTTPException(status_code=404, detail="organization not found")
+        if result.outcome is PublicationReadinessPreflightOutcome.MFA_REQUIRED:
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if result.outcome is PublicationReadinessPreflightOutcome.LISTING_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="listing not found")
+        assert result.readiness is not None
+        return JSONResponse(result.to_public_dict())
 
     @app.post("/api/broker/organizations/{organization_id}/inventory/{native_listing_id}/publish")
     def publish_inventory_listing_route(

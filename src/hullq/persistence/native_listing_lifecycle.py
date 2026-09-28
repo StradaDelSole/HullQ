@@ -33,13 +33,22 @@ or later-stale attempt re-reads the already-updated current state and fails
 closed as ``CURRENT_STATE_CONFLICT`` with zero mutation and zero audit
 rows.
 
-Publication completeness (SLICE-0049 §7) is checked only for
-``DRAFT -> ACTIVE``: the durable chain must already resolve NativeListing ->
-non-null MarketEpisode -> existing PhysicalBoat -> explicit current
-LISTING_OFFER head, using the same accepted persistence fetch functions
-already used by SLICE-0048's previewable-read predicate (deliberately not
-imported from the application layer, to avoid a persistence-module
-dependency on application code).
+SLICE-0069 replaces the legacy SLICE-0049 §7
+``_publication_completeness_satisfied`` shortcut for ``DRAFT -> ACTIVE``
+with the canonical D22 PublicationReadiness evaluator
+(``hullq.persistence.publication_readiness.resolve_publication_readiness`` /
+``hullq.domain.publication_readiness.evaluate_publication_readiness``),
+invoked here -- inside the same transaction, after the exact same
+``native_listings`` row lock this module already took -- as the one
+authoritative in-transaction re-evaluation
+(``specs/MARKETPLACE_PUBLICATION_READINESS_CONTRACT.v0.1.md`` §9). A stale
+advisory Broker Workspace preflight result is never a capability token: the
+readiness rules are re-run here against current committed truth, and the
+already-held row lock serializes every writer that could otherwise change
+that truth mid-evaluation (see that module's docstring for the full
+concurrency argument). ``INCOMPLETE_LISTING`` now always carries the
+canonical, deterministic blocker-reason set alongside the legacy status name
+(kept unchanged so existing callers/tests are unaffected).
 """
 
 from __future__ import annotations
@@ -50,10 +59,14 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from hullq.domain.market_identity import MarketEpisodeId, NativeListingId
+from hullq.domain.market_identity import NativeListingId
 from hullq.domain.native_listing_lifecycle import (
     NativeListingLifecycleState,
     PublicationTransitionId,
+)
+from hullq.domain.publication_readiness import (
+    PublicationBlockerReason,
+    PublicationReadinessStatus,
 )
 from hullq.domain.publishing_eligibility import (
     AccountId,
@@ -64,9 +77,7 @@ from hullq.domain.publishing_eligibility import (
     PublishingEligibilityStatus,
     evaluate_native_listing_publishing_eligibility,
 )
-from hullq.persistence.market_episode import fetch_market_episode
-from hullq.persistence.native_listing_offer import fetch_current_native_listing_offer
-from hullq.persistence.physical_boat import fetch_physical_boat
+from hullq.persistence.publication_readiness import resolve_publication_readiness
 
 __all__ = [
     "LifecycleTransitionResult",
@@ -110,13 +121,17 @@ class LifecycleTransitionResult:
     """Deterministic result of one publish/withdraw attempt.
 
     `DENIED` always carries the real SLICE-0041 denial reason. `TRANSITIONED`
-    always carries the newly appended immutable `transition_id`. No other
-    status carries either.
+    always carries the newly appended immutable `transition_id`.
+    `INCOMPLETE_LISTING` (SLICE-0069) always carries the canonical
+    deterministic `PublicationBlockerReason` set the authoritative
+    in-transaction PublicationReadiness re-evaluation produced. No other
+    status carries any of the three.
     """
 
     status: LifecycleTransitionStatus
     denial_reason: PublishingEligibilityReason | None = None
     transition_id: PublicationTransitionId | None = None
+    blockers: frozenset[PublicationBlockerReason] | None = None
 
     def __post_init__(self) -> None:
         if self.status is LifecycleTransitionStatus.DENIED:
@@ -130,6 +145,14 @@ class LifecycleTransitionResult:
                 raise ValueError("A TRANSITIONED lifecycle result must carry a transition_id")
         elif self.transition_id is not None:
             raise ValueError("Only a TRANSITIONED lifecycle result may carry a transition_id")
+
+        if self.status is LifecycleTransitionStatus.INCOMPLETE_LISTING:
+            if not self.blockers:
+                raise ValueError(
+                    "An INCOMPLETE_LISTING lifecycle result must carry at least one blocker"
+                )
+        elif self.blockers is not None:
+            raise ValueError("Only an INCOMPLETE_LISTING lifecycle result may carry blockers")
 
 
 @dataclass(frozen=True)
@@ -240,36 +263,6 @@ def list_publication_transitions(
 
 
 # ---------------------------------------------------------------------------
-# Publication completeness (SLICE-0049 §7)
-# ---------------------------------------------------------------------------
-
-
-def _publication_completeness_satisfied(
-    conn: Any, native_listing_id: NativeListingId, market_episode_id_value: str | None
-) -> bool:
-    """Apply the exact SLICE-0049 §7 fail-closed publication completeness predicate.
-
-    NativeListing existence and its owning MarketplaceOrganization identity
-    are already established by the caller before this is invoked; this
-    checks only the remaining chain: non-null MarketEpisode link ->
-    existing MarketEpisode -> existing PhysicalBoat -> explicit current
-    LISTING_OFFER head.
-    """
-    if market_episode_id_value is None:
-        return False
-    market_episode_record = fetch_market_episode(conn, MarketEpisodeId(market_episode_id_value))
-    if market_episode_record is None:
-        return False
-    physical_boat_record = fetch_physical_boat(
-        conn, market_episode_record.market_episode.physical_boat_id
-    )
-    if physical_boat_record is None:
-        return False
-    offer_record = fetch_current_native_listing_offer(conn, native_listing_id)
-    return offer_record is not None
-
-
-# ---------------------------------------------------------------------------
 # Transition
 # ---------------------------------------------------------------------------
 
@@ -331,10 +324,20 @@ def _apply_transition(
                 status=LifecycleTransitionStatus.CURRENT_STATE_CONFLICT
             )
 
-        if require_publication_completeness and not _publication_completeness_satisfied(
-            conn, native_listing_id, market_episode_id_value
-        ):
-            return LifecycleTransitionResult(status=LifecycleTransitionStatus.INCOMPLETE_LISTING)
+        if require_publication_completeness:
+            readiness = resolve_publication_readiness(
+                conn,
+                native_listing_id=native_listing_id,
+                publishing_organization_id=candidate_organization.id,
+                publishing_eligibility=decision,
+                lifecycle_state=current_state,
+                market_episode_id_value=market_episode_id_value,
+            )
+            if readiness.status is not PublicationReadinessStatus.READY:
+                return LifecycleTransitionResult(
+                    status=LifecycleTransitionStatus.INCOMPLETE_LISTING,
+                    blockers=readiness.blockers,
+                )
 
         cur.execute(_UPDATE_LIFECYCLE_STATE, (to_state.value, native_listing_id.value))
 
@@ -364,7 +367,7 @@ def publish_native_listing(
     native_listing_id: NativeListingId,
 ) -> LifecycleTransitionResult:
     """Apply `DRAFT -> ACTIVE` iff eligibility, ownership, current state and
-    publication completeness (SLICE-0049 §7) all hold.
+    canonical D22 PublicationReadiness (SLICE-0069) all hold.
 
     Raises NativeListingLifecycleTransactionOwnershipError, before any write
     is attempted, if *conn* already has an open transaction.

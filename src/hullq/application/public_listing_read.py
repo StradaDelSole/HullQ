@@ -28,17 +28,29 @@ presentation-boundary concern applied by the FastAPI route and Astro page,
 not by this read model.
 
 SLICE-0052 narrows current-market readability further (contract §7.1):
-`ACTIVE` alone no longer proves eligibility. This module additionally
-resolves freshness (`hullq.application.native_listing_freshness`) at the
-explicit *as_of* boundary supplied by the caller and collapses
-`ACTIVE + STALE`/`ACTIVE + UNKNOWN` to the identical `None` result used for
-DRAFT/WITHDRAWN/missing/incomplete -- never a distinguishable "stale current
-offer" projection. Lifecycle/history are never touched by this read.
+`ACTIVE` alone no longer proves eligibility. SLICE-0069 replaces that
+freshness-only narrowing with the canonical D29 CurrentPublicEligibility
+authority (`hullq.application.current_public_eligibility`), which
+`hullq.application.inventory_search`/`hullq.application.native_inventory_query`
+(both accepted Direct Search paths) now consume identically
+(`specs/MARKETPLACE_PUBLICATION_READINESS_CONTRACT.v0.1.md` §16) -- ACTIVE +
+STALE/UNKNOWN freshness, an ineligible publishing Organization, a lost
+episode/offer/claim/media requirement, or an invalid/missing cover all
+collapse to the identical `None` result used for DRAFT/WITHDRAWN/missing/
+incomplete -- never a distinguishable suppressed-offer projection. Lifecycle/
+history are never touched by this read.
 
 DRAFT, WITHDRAWN, missing and incomplete listings all collapse to the
 identical `None` result -- this module (and therefore the public FastAPI
 route built on it) is never a NativeListingId existence oracle, exactly like
 the SLICE-0048 preview surface.
+
+SLICE-0069 also extends the public projection with a bounded public
+mixed-media gallery (contract §14): only currently public-usable IMAGE
+placements and normalized YOUTUBE references, ordered by the same persisted
+`position` ordering `hullq.persistence.media_gallery.fetch_gallery_state`
+already returns -- never a private object key, uploader identity or
+provenance/source note.
 """
 
 from __future__ import annotations
@@ -48,14 +60,13 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from hullq.application.native_listing_freshness import (
-    is_current_market_eligible,
-    resolve_current_freshness,
-)
+from hullq.application.current_public_eligibility import resolve_current_public_eligibility
+from hullq.application.native_listing_freshness import resolve_current_freshness
 from hullq.application.preview_read import resolve_previewable_listing
+from hullq.domain.current_public_eligibility import CurrentPublicEligibilityStatus
 from hullq.domain.market_identity import NativeListingId
+from hullq.domain.media_gallery import MediaPlacementKind
 from hullq.domain.native_listing_freshness import FreshnessStatus
-from hullq.domain.native_listing_lifecycle import NativeListingLifecycleState
 from hullq.domain.native_listing_offer import (
     BrokerSummaryClaim,
     KnownHistoryNarrativeClaim,
@@ -76,10 +87,33 @@ from hullq.domain.physical_boat_claims import (
 )
 from hullq.domain.publishing_eligibility import MarketplaceOrganizationId
 from hullq.persistence.broker_identity import fetch_marketplace_organization
-from hullq.persistence.native_listing_lifecycle import fetch_lifecycle_state
+from hullq.persistence.media_gallery import fetch_gallery_state
 from hullq.persistence.physical_boat_claims import fetch_current_physical_boat_claim
 
-__all__ = ["PublicListingReadModel", "get_public_listing_read_model"]
+__all__ = ["PublicGalleryItem", "PublicListingReadModel", "get_public_listing_read_model"]
+
+
+@dataclass(frozen=True, slots=True)
+class PublicGalleryItem:
+    """One bounded public gallery entry (contract §14).
+
+    `media_placement_id` is the only identity exposed for an `IMAGE` entry --
+    exactly what a caller needs to construct the listing-scoped public
+    derivative URL (`GET /api/listings/{native_listing_id}/media/
+    {media_placement_id}`); no `MediaAssetId`/object key/uploader Account
+    ever appears here. `youtube_video_id` is set iff `kind` is `YOUTUBE` --
+    the normalized 11-character id only, never broker-supplied HTML.
+    """
+
+    kind: str
+    media_placement_id: str
+    youtube_video_id: str | None = None
+
+    def to_public_dict(self) -> dict[str, Any]:
+        body: dict[str, Any] = {"kind": self.kind, "media_placement_id": self.media_placement_id}
+        if self.youtube_video_id is not None:
+            body["youtube_video_id"] = self.youtube_video_id
+        return body
 
 
 @dataclass(frozen=True)
@@ -107,6 +141,8 @@ class PublicListingReadModel:
     freshness_status: FreshnessStatus
     last_confirmed_at: datetime | None
     physical_boat_claims: PhysicalBoatClaimSnapshot | None = None
+    gallery: tuple[PublicGalleryItem, ...] = ()
+    cover_media_placement_id: str | None = None
 
     def to_public_dict(self) -> dict[str, Any]:
         """Render the exact accepted public projection as a JSON-safe dict.
@@ -156,6 +192,8 @@ class PublicListingReadModel:
             "last_confirmed_at": (
                 self.last_confirmed_at.isoformat() if self.last_confirmed_at is not None else None
             ),
+            "gallery": [item.to_public_dict() for item in self.gallery],
+            "cover_media_placement_id": self.cover_media_placement_id,
         }
 
 
@@ -223,27 +261,61 @@ def _physical_boat_claims_dict(claims: PhysicalBoatClaimSnapshot | None) -> dict
     }
 
 
+def _build_public_gallery(
+    conn: Any, native_listing_id: NativeListingId
+) -> tuple[tuple[PublicGalleryItem, ...], str | None]:
+    """Project current gallery truth into the bounded public shape (contract §14).
+
+    Only currently public-usable `IMAGE` placements and `YOUTUBE` placements
+    are ever included -- a `REJECTED`/rights-`UNKNOWN`/retired asset's
+    placement is silently omitted, never exposed with a broken/private
+    reference. Ordering is the same persisted `position` ordering
+    `fetch_gallery_state` already returns; the virtual Broker-CI insertion
+    layer is intentionally not populated here (contract §14: no accepted
+    public CI source exists yet).
+    """
+    gallery = fetch_gallery_state(conn, native_listing_id)
+    items: list[PublicGalleryItem] = []
+    for placement in gallery.placements:
+        if placement.kind is MediaPlacementKind.IMAGE:
+            if placement.media_asset is not None and placement.media_asset.is_public_usable:
+                items.append(
+                    PublicGalleryItem(
+                        kind=MediaPlacementKind.IMAGE.value,
+                        media_placement_id=placement.media_placement_id.value,
+                    )
+                )
+        elif placement.kind is MediaPlacementKind.YOUTUBE:
+            assert placement.youtube_video_id is not None
+            items.append(
+                PublicGalleryItem(
+                    kind=MediaPlacementKind.YOUTUBE.value,
+                    media_placement_id=placement.media_placement_id.value,
+                    youtube_video_id=placement.youtube_video_id,
+                )
+            )
+    cover_media_placement_id = (
+        gallery.cover_placement_id.value if gallery.cover_placement_id is not None else None
+    )
+    return tuple(items), cover_media_placement_id
+
+
 def get_public_listing_read_model(
     conn: Any, native_listing_id: NativeListingId, *, as_of: datetime
 ) -> PublicListingReadModel | None:
     """Resolve *native_listing_id* to its public read model, or `None`.
 
-    Gates strictly on lifecycle == ACTIVE before resolving the durable
-    chain: a missing listing, a DRAFT listing and a WITHDRAWN listing all
-    resolve `fetch_lifecycle_state` to something other than ACTIVE (`None`
-    for missing) and short-circuit here identically, without needing to
-    reach the chain-resolution query at all. An ACTIVE listing whose chain
-    has since become incomplete (should not normally happen, since
-    publication requires completeness) still fails closed to `None` via
-    `resolve_previewable_listing`, never raises.
-
-    SLICE-0052 contract §7.1: current-market eligibility additionally
-    requires freshness CONFIRMED or DUE_FOR_CONFIRMATION at the explicit
-    *as_of* boundary. `ACTIVE + STALE` and `ACTIVE + UNKNOWN` collapse to
-    this identical `None` result -- never a distinguishable stale-offer
-    projection -- without mutating lifecycle/history.
+    SLICE-0069 contract §13: gates on the canonical
+    `hullq.application.current_public_eligibility.resolve_current_public_eligibility`
+    authority rather than lifecycle/freshness alone -- a missing listing,
+    DRAFT, WITHDRAWN and every ACTIVE-but-current-public-suppressed reason
+    (stale/unknown freshness, an ineligible publishing Organization, a lost
+    episode/offer/claim/media requirement or an invalid/missing cover) all
+    collapse to this identical `None` result, never a distinguishable
+    suppressed-offer projection, and none of it mutates lifecycle/history.
     """
-    if fetch_lifecycle_state(conn, native_listing_id) is not NativeListingLifecycleState.ACTIVE:
+    eligibility = resolve_current_public_eligibility(conn, native_listing_id, as_of=as_of)
+    if eligibility is None or eligibility.status is not CurrentPublicEligibilityStatus.ELIGIBLE:
         return None
 
     resolved = resolve_previewable_listing(conn, native_listing_id)
@@ -251,8 +323,6 @@ def get_public_listing_read_model(
         return None
 
     freshness = resolve_current_freshness(conn, native_listing_id, as_of=as_of)
-    if not is_current_market_eligible(freshness.status):
-        return None
 
     # SLICE-0050 §10/§12: the *publishing* Organization's own current claim
     # head only -- never a different Organization's claim for the same
@@ -277,6 +347,8 @@ def get_public_listing_read_model(
         else resolved.publishing_organization_id.value
     )
 
+    gallery, cover_media_placement_id = _build_public_gallery(conn, native_listing_id)
+
     return PublicListingReadModel(
         offer=resolved.offer,
         publishing_organization_id=resolved.publishing_organization_id,
@@ -285,4 +357,6 @@ def get_public_listing_read_model(
         freshness_status=freshness.status,
         last_confirmed_at=freshness.last_confirmed_at,
         physical_boat_claims=claim_record.claims if claim_record is not None else None,
+        gallery=gallery,
+        cover_media_placement_id=cover_media_placement_id,
     )

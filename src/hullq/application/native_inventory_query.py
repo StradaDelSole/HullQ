@@ -95,10 +95,9 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from hullq.application.native_listing_freshness import (
-    is_current_market_eligible,
-    resolve_current_freshness,
-)
+from hullq.application.current_public_eligibility import resolve_current_public_eligibility
+from hullq.application.native_listing_freshness import resolve_current_freshness
+from hullq.domain.current_public_eligibility import CurrentPublicEligibilityStatus
 from hullq.domain.market_identity import NativeListingId
 from hullq.domain.native_listing_freshness import FreshnessStatus
 from hullq.domain.physical_boat_claims import AssertionKind, KeelConfigurationClaim
@@ -493,10 +492,12 @@ def evaluate_native_inventory_requirements(
     `hullq.search.keel_design_bridge.SEARCH_KEEL_CONFIGURATION_VALUES`.
     Neither is re-parsed/re-validated for public syntax here.
 
-    SLICE-0052 contract §7.2 (reused unchanged): every ACTIVE design-linked
-    candidate is freshness-resolved at the explicit *as_of* boundary before
-    any technical classification. STALE/UNKNOWN candidates are excluded
-    outright -- never counted as insufficient data.
+    SLICE-0069 (supersedes the SLICE-0052 §7.2 freshness-only narrowing):
+    every ACTIVE design-linked candidate is resolved against the canonical
+    D29 CurrentPublicEligibility authority
+    (`hullq.application.current_public_eligibility`) at the explicit *as_of*
+    boundary before any technical classification. Current-public-ineligible
+    candidates are excluded outright -- never counted as insufficient data.
 
     Finding 1 (amendment): a candidate whose BoatDesign is *not* a design-
     level `CONFIRMED_MATCH` is no longer silently dropped from every result
@@ -571,9 +572,13 @@ def evaluate_native_inventory_requirements(
 
     current_candidates = []
     for candidate in all_candidates:
+        eligibility = resolve_current_public_eligibility(
+            conn, candidate.native_listing_id, as_of=as_of
+        )
+        if eligibility is None or eligibility.status is not CurrentPublicEligibilityStatus.ELIGIBLE:
+            continue
         freshness = resolve_current_freshness(conn, candidate.native_listing_id, as_of=as_of)
-        if is_current_market_eligible(freshness.status):
-            current_candidates.append((candidate, freshness))
+        current_candidates.append((candidate, freshness))
     if not current_candidates:
         return _empty()
 
