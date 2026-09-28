@@ -109,7 +109,7 @@ For an implementation slice, normally read in this order:
 5. This index only when a stable cross-cutting boundary needs a compact reminder.
 6. Broader governance/history only when the slice explicitly cites it or a real conflict/blocker requires it.
 
-Do not preload `PROJECT_STATE.md`, full requirements, roadmap, slice history, acceptance closures, or old chats merely for orientation.
+Do not preload `PROJECT_STATE.md`, full requirements, roadmap, slice history, acceptance closures, old chats, or the `research/` tree merely for orientation. Research is separately routed through `research/CONTEXT_INDEX.md` and is cold/demand-loaded by default.
 
 ## Review routing
 
