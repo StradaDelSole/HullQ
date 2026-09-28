@@ -219,6 +219,8 @@ Read the exact controlling identity/provenance/source-rights/metric specs when t
 
 ## Research behavior
 
+`research/` is **cold context by default**. Do not preload the research tree or large retained research artifacts for ordinary implementation/review/orientation. When research is materially required, route through `research/CONTEXT_INDEX.md`, start with the smallest relevant report/summary, and open raw/generated evidence only for the exact record or replay question needed.
+
 Use real source evidence rather than imagined source formats. Prefer authoritative/primary sources according to `research/RESEARCH_WORKFLOW.md` when the assigned research requires external verification.
 
 Appropriately licensed/open structured data may bootstrap common facts when provenance is explicit. Use `null`, `unknown`, `needs_review` or `conflict` when evidence is insufficient.

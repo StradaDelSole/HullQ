@@ -72,6 +72,17 @@ If the slice references a requirement ID, read the relevant section/range rather
 
 If a local synchronized checkout already contains a file, do not repeatedly fetch the same file through GitHub/API tooling.
 
+## Research cold-context policy
+
+The entire `research/` tree is demand-load only by default.
+
+- Do not enumerate/read research artifacts merely because they exist.
+- If research becomes necessary, read `research/CONTEXT_INDEX.md` first.
+- Start with the relevant human-readable report/summary.
+- Treat large JSON/manifests/raw observations as deep-cold generated evidence: query narrowly or replay mechanically; never preload them into context.
+- An implementation slice that does not touch research-derived semantics/source/provenance should normally read **zero** research files.
+- A slice naming one research artifact does not authorize loading neighboring research directories.
+
 ## Search/read discipline
 
 Prefer targeted search and narrow reads over whole-file reads when a file is large and only one symbol/section is needed.
