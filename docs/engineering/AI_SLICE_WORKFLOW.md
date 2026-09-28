@@ -173,7 +173,7 @@ HullQ uses one Claude session per slice by default.
 - Do **not** `/clear` casually mid-slice; it is primarily a slice/task-boundary command.
 - Do not ask Claude to reread full project history merely for reassurance. The controlling slice identifies the required dependencies and records the readiness reconciliation/trigger-gate state.
 
-Detailed rules: `docs/engineering/AI_TOKEN_EFFICIENCY.md`.
+Detailed rules: `docs/engineering/AI_TOKEN_EFFICIENCY.md`. Stable cross-cutting engineering boundaries are indexed compactly in `docs/engineering/IMPLEMENTATION_CONTEXT_INDEX.md`; it is a routing aid, not a normative substitute for the assigned slice/spec.
 
 ### Review and amendments
 
@@ -184,7 +184,9 @@ If an amendment is required:
 - continue in the same slice branch;
 - if the Claude context is already large, run `/compact` before pasting the amendment;
 - do not reload previous project background that is unrelated to the finding;
-- Claude applies only the requested amendment plus necessary tests/validation and reports a new exact HEAD.
+- compare the previous reviewed HEAD to the amended HEAD first;
+- Claude applies only the requested amendment plus necessary tests/validation and reports a new exact HEAD using the compact amendment report from `SLICE_TEMPLATE.md`;
+- use focused validation during intermediate amendment rounds; require the slice's complete validation on the final candidate HEAD unless the contract or risk boundary requires it earlier.
 
 Independent review must compare implementation not only with the immediate slice text but with the accepted semantics named by the reconciliation and trigger-gate records. A regression from previously accepted/implemented behavior is a review defect, not a new design choice.
 
@@ -207,6 +209,8 @@ For a bounded same-slice amendment, re-review is **delta-first**:
 5. require the final exact-head remote gates.
 
 Do not restart an unrelated whole-repository review unless the amendment broadens scope or touches a new material boundary.
+
+Primary implementation review is also delta-first by default: inspect readiness-base → candidate diff, map the changed surfaces to scope/auth/identity/persistence/concurrency/failure/privacy/API-UI/public-Search/governance invariants, and open unchanged surrounding files only where the delta depends on them. Broad repository rereads are reserved for uncertain bases, foundational boundary changes, or evidence of drift.
 
 ### Reviewer continuation to owner-acceptance boundary
 
