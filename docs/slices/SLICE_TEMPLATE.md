@@ -86,23 +86,15 @@ Explain the problem this slice closes and why it belongs at this point in the ex
 
 ## Controlling artifacts
 
-- Requirement IDs:
-- Specifications:
-- Accepted ADRs:
-- Governance / research protocols:
-- Decision/implementation reconciliation: `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md`
-- Post-0051 trigger gates: `docs/governance/POST_0051_TRIGGER_GATES.md`
-- Production readiness gate: `docs/governance/PRODUCTION_READINESS_GATE.md`
-- Product execution plan: `docs/PRODUCT_EXECUTION_PLAN.md`
-- Broker launch execution focus where relevant: `docs/BROKER_LAUNCH_EXECUTION_FOCUS_2026-09-26.md`
-- Post-SLICE-0039 architecture: `docs/ARCHITECTURE_REBASELINE_2026-09-02.md`
-- Post-SLICE-0039 execution reconciliation / precedence: `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_RECONCILIATION_2026-09-02.md`
-- Current owner-direct/private-seller direction where relevant: `docs/OWNER_DIRECT_LISTING_PRODUCT_DIRECTION_2026-09-14.md`
-- Current owner-direct/private-seller requirements where relevant: `specs/OWNER_DIRECT_LISTING_REQUIREMENTS.v0.1.md`
-- Historical private-seller policy where relevant to decision history only: `docs/PRIVATE_SELLER_POLICY_2026-09-02.md`
-- Native listing market decision: `docs/PRODUCT_EXECUTION_PLAN_NATIVE_LISTING_MARKET_DECISION_2026-09-01.md`
-- Pre-Gate-1 execution amendment: `docs/PRODUCT_EXECUTION_PLAN_AMENDMENT_2026-09-01.md`
-- Relevant open questions:
+List only artifacts that materially control this slice. Do not mechanically copy the project's full governance/history stack into every slice.
+
+- Normative spec(s):
+- Accepted decision/ADR/governance record(s) directly controlling this capability:
+- Requirement IDs, if any:
+- Relevant current implementation/tests/migrations already inspected:
+- Relevant open question(s), only if actually in scope:
+
+The readiness reconciliation and trigger-gate sections above remain mandatory where applicable; they are the compact evidence that broader governance was checked. Once READY, the implementation agent should not have to reread every historical artifact used during readiness unless this section explicitly names it or a real conflict/blocker arises.
 
 ## In scope
 
@@ -160,7 +152,7 @@ A successful agent completion therefore normally hands the slice off in `REVIEW`
 
 Use this structure exactly at the end of the assigned slice.
 
-**Token-efficiency rule:** the structure is mandatory, but the report SHOULD be concise. Summarize command/test/CI results rather than pasting logs. Do not repeat the full slice contract, acceptance criteria, repository history, code diff, or speculative next-slice plan unless needed to explain a failure, blocker, ambiguity, or scope deviation.
+**Token-efficiency rule:** the structure is mandatory, but the normal report SHOULD fit roughly one screen/page. Evidence belongs here; project history and contract restatement do not. Summarize command/test/CI results rather than pasting logs. Do not repeat the full slice contract, acceptance criteria, repository history, code diff, or speculative next-slice plan unless needed to explain a failure, blocker, ambiguity, or scope deviation.
 
 ### Slice
 
@@ -179,15 +171,14 @@ Use this structure exactly at the end of the assigned slice.
 
 ### Changes
 
-- Changed files:
-- Requirements implemented or researched:
-- Tests/fixtures added or updated:
+- Changed files: concise paths/groups only
+- Acceptance work completed: concise mapping to the slice's material requirements
+- Tests/fixtures added or updated: concise groups/counts
 
 ### Validation
 
 - Local validation: `PASS` | `FAIL` | `PARTIAL` | `NOT APPLICABLE`
-- Commands run:
-- Results:
+- Commands/results: one compact line/grouped summary; no logs
 
 ### External verification
 
@@ -210,3 +201,23 @@ Use this structure exactly at the end of the assigned slice.
 - No unverified acceptance criterion was marked as passed.
 - The next slice was not started automatically.
 - The agent has NOT marked this slice `DONE`.
+
+
+## Amendment completion report
+
+For a review amendment on an already-running slice, do **not** repeat the full primary completion report unless the reviewer explicitly requests it.
+
+Use this compact delta report:
+
+### Amendment
+
+- Previous reviewed HEAD:
+- Exact new HEAD:
+- Findings addressed:
+- Changed files:
+- Focused validation:
+- Final/full validation state: `PASS` | `PENDING FINAL CANDIDATE` | `NOT APPLICABLE`
+- Remote CI: `PASS` | `FAIL` | `NOT VERIFIED` | `NOT APPLICABLE`
+- Remaining unresolved point(s):
+
+The amendment report should describe only `previous reviewed HEAD → new HEAD`. Do not recap the entire slice, original readiness, or unaffected acceptance criteria.

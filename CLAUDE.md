@@ -21,7 +21,7 @@ When only one section/symbol of a large file is needed, prefer targeted search/n
 
 Use the synchronized local checkout for ordinary repository reads. Do not repeatedly fetch local files through GitHub/API tooling when the local checkout already contains canonical synchronized content.
 
-Operational token rules are in `docs/engineering/AI_TOKEN_EFFICIENCY.md`.
+Operational token rules are in `docs/engineering/AI_TOKEN_EFFICIENCY.md`. `docs/engineering/IMPLEMENTATION_CONTEXT_INDEX.md` is a compact non-normative routing index for stable cross-cutting boundaries; use it instead of broad project-history loading when a reminder is sufficient.
 
 ## Authority
 
@@ -47,7 +47,7 @@ Slices are operational work contracts and do not override this order. Never turn
 - `IMPLEMENTATION` implements only accepted semantics identified by its controlling artifacts.
 - If required semantics are unresolved or controlling artifacts materially conflict, stop and report `BLOCKED` rather than inventing policy.
 - Do not automatically begin another slice after `REVIEW` or `BLOCKED`.
-- Prefer small coherent edits and focused tests while iterating; run the full validation required by the slice at handoff.
+- Prefer small coherent edits and focused tests while iterating; do not rerun broad suites after every small amendment. Run the full validation required by the slice on the final candidate handoff HEAD.
 
 The operational queue is `docs/slices/INDEX.md`; read it only when queue/status context is actually needed.
 
@@ -105,7 +105,7 @@ Claude MUST NOT mark a slice `DONE`.
 
 Never treat local green tests as proof of remote CI. If an external gate cannot be observed, report `NOT VERIFIED`.
 
-At handoff, use the structure in `docs/slices/SLICE_TEMPLATE.md`. Keep it concise: summarize commands/results; do not paste full logs/diffs or repeat the entire slice contract unless needed to explain a failure/blocker. Include the exact final branch HEAD SHA.
+At handoff, use the structure in `docs/slices/SLICE_TEMPLATE.md`. Keep the normal report to roughly one screen/page: summarize evidence; do not paste logs/diffs, repeat the contract, or recap project history unless needed for a blocker/deviation. For review amendments, use the compact amendment delta report in the template rather than repeating the full primary report. Include the exact final branch HEAD SHA.
 
 ## Core product guardrail
 

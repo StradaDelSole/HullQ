@@ -184,44 +184,36 @@ $relativeSliceFile = "docs/slices/$($sliceFile.Name)"
 $prompt = @"
 Implement SLICE-$sliceNumber on branch `$branch`.
 
-TOKEN/CONTEXT DISCIPLINE:
-- This slice should run in a fresh Claude conversation.
-- Read CLAUDE.md, then read $relativeSliceFile FIRST.
-- Then read any binding `docs/slices/SLICE-$sliceNumber-*-addendum.md` files before implementation; these supplement the primary slice and may impose stricter fail-closed constraints.
-- Read only controlling artifacts explicitly named by the slice/addenda and implementation files needed for the concrete task.
-- Do NOT preload README, PROJECT_CONTEXT, PROJECT_STATE, full REQUIREMENTS, OPEN_QUESTIONS, slice INDEX, ROADMAP, or unrelated history merely for orientation.
-- Prefer targeted search/narrow reads over whole large files.
-- Use the synchronized local checkout; do not repeatedly fetch ordinary local files through GitHub/API tooling.
-- Do not restate the contract or narrate routine exploration.
-- If this same-slice session becomes very large, ask the operator to run /compact before continuing; preserve the slice contract, decisions, changed files, validation state and unresolved blockers, not exploratory history/logs.
+READ FIRST:
+1. CLAUDE.md (normally preloaded).
+2. $relativeSliceFile.
+3. Any binding `docs/slices/SLICE-$sliceNumber-*-addendum.md`.
+4. The slice-named normative spec(s).
+5. Only concrete implementation/tests needed for this task.
+
+TOKEN DISCIPLINE:
+- Follow `docs/engineering/AI_TOKEN_EFFICIENCY.md`.
+- Use `docs/engineering/IMPLEMENTATION_CONTEXT_INDEX.md` only as a compact routing/index aid when a cross-cutting boundary needs a reminder; it is non-normative.
+- Do not preload PROJECT_STATE, full requirements, roadmap, old closures/chats, or unrelated history merely for orientation.
+- Prefer targeted Read/Grep/Glob and narrow file ranges over large unchanged files.
+- Use the synchronized local checkout; do not repeatedly fetch local files through GitHub/API.
+- Do not restate contracts or narrate routine exploration.
+- Use focused tests while iterating. Run the slice's complete required validation on the final candidate HEAD.
+- If same-slice context becomes large, /compact and retain only controlling contract/decisions, changed files, validation state, exact reviewed HEADs and unresolved blockers.
 
 EXECUTION:
-- Follow CLAUDE.md and $relativeSliceFile exactly.
-- For SLICE-0039 and later, comply with docs/PRODUCT_EXECUTION_PLAN.md and preserve the slice's PASS product-execution checks.
-- For SLICE-0051 and later, preserve the accepted decision/implementation reconciliation recorded in the slice; do not re-open behavior that the slice identifies as already decided/implemented.
-- For SLICE-0052 and later, preserve the slice's PASS trigger-gates check and do not bypass a production-readiness, Search-abstraction, architecture-reconciliation, or workflow-reassessment trigger.
-- Work only on `$branch`; do not modify main or another branch.
-- Run shell commands directly from the current slice worktree. Do not prepend routine commands with `cd <worktree> &&`, PowerShell `cd <worktree>;`, or equivalent directory-changing wrappers; the operator has already opened Claude Code in the correct worktree.
-- Do not append synthetic exit-code wrappers such as `; echo "---EXIT $LASTEXITCODE---"` unless diagnosing an actual command failure. Use the tool's native result/exit status.
-- Prefer one standalone command per tool call so the shared `.claude/settings.json` permissions can match it cleanly and routine work does not trigger avoidable approvals.
-- For ad-hoc Python snippets, AST/syntax checks, and short repository inspection commands, use `uv run python ...` instead of direct `python`, `python3`, or `py` invocations so routine checks stay within the shared approved command path.
-- Do not bundle routine checks into shell loops or compound commands (`for ...; do ...; done`, `&&`, `;`). Use one standalone permitted command per tool call. For file comparisons, prefer separate `git diff --no-index <file-a> <file-b>` calls instead of direct `diff`/`cmp`.
-- For read-only repository inspection/search, use Claude Code `Read`, `Grep`, or `Glob` instead of Bash/PowerShell `grep`, `find`, loops, or text-processing pipelines whenever possible.
-- For web dependency installation, use standalone `npm ci --prefix web`; do not use `cd web && npm ci` or append output-redirection/pipeline wrappers such as `2>&1 | tail ...`.
-- HARD APPROVAL-AUTONOMY RULE: for routine diagnostics/inspection/validation setup, never use shell variables, command substitution, pipes, output redirection, compound separators (`;`, `&&`, `||`), subshells, or loops. Split the work into separate tool calls. Use Read/Grep/Glob for file inspection and one standalone approved command for process execution. If routine command spelling would trigger an approval prompt, rewrite it approval-free instead of asking the operator.
-- Never echo or print secret-bearing environment-variable values such as database URLs, tokens, passwords, or API keys. Check only SET/UNSET state or perform the probe directly without exposing credentials; prefer standalone `uv run python ...` diagnostics.
-- For recurring local diagnostics, use `uv run python scripts/workflow/claude_diag.py`: `env-status <NAME>`, `tcp-check <HOST> <PORT>`, `latest-temp-dir <PREFIX>`, `run-local-test-db <scripts/...py>`, or `run-local-api [--host ... --port ... --seconds ...]`. Never prefix a command with HullQ database/signing environment assignments; the helper injects fixed local-test values only into the child process.
+- Follow CLAUDE.md and the assigned slice exactly; preserve its PASS reconciliation/trigger-gate evidence.
+- Work only on `$branch`; never modify/merge main.
 - Do not broaden scope or start another slice.
-- Push this same branch to GitHub at completion.
-- Leave the slice in REVIEW or BLOCKED; never mark DONE and never merge to main.
+- Use the repository's approval-autonomous standalone-command discipline from CLAUDE.md; never print secrets.
+- Push this same branch at completion.
+- Leave the slice REVIEW or BLOCKED; never DONE.
 
-FINAL OPERATOR HANDOFF:
-- Your FINAL response MUST use the completion-report structure in docs/slices/SLICE_TEMPLATE.md.
-- Keep it concise but complete: summarize results; do not paste full logs, diffs, repeated acceptance text, or project-history recaps unless needed to explain a failure/blocker.
-- Include changed files, requirements/research addressed, tests/fixtures, local validation commands + summarized results, exact final branch HEAD SHA, remote/external verification state, unresolved findings/ambiguities/scope deviations, next action, and agent declaration.
-- Observe required remote CI on that exact final HEAD when the slice requires remote CI.
-- After observing final exact-head CI, do NOT commit merely to record the CI result unless the slice explicitly requires it.
-- After the final handoff, stop.
+FINAL HANDOFF:
+- Use the exact completion-report schema in `docs/slices/SLICE_TEMPLATE.md`.
+- Keep the normal report to about one screen/page: exact HEAD, changed files, acceptance work, tests/validation summary, external verification, deviations/blockers, next action, declaration.
+- Do not paste logs/diffs, repeat the contract, recap project history, or speculate about the next slice unless necessary to explain a blocker.
+- After handoff, stop.
 "@
 
 try {
