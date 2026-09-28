@@ -110,14 +110,13 @@ def run_local_test_db_compact(script: str, args: list[str]) -> int:
     env = os.environ.copy()
     env["HULLQ_TEST_DATABASE_URL"] = _LOCAL_TEST_DB_URL
 
-    log_handle = tempfile.NamedTemporaryFile(
+    with tempfile.NamedTemporaryFile(
         mode="wb",
         prefix="hullq-claude-db-",
         suffix=".log",
         delete=False,
-    )
-    log_path = Path(log_handle.name)
-    try:
+    ) as log_handle:
+        log_path = Path(log_handle.name)
         completed = subprocess.run(
             [sys.executable, str(candidate), *args],
             cwd=ROOT,
@@ -126,8 +125,6 @@ def run_local_test_db_compact(script: str, args: list[str]) -> int:
             stderr=subprocess.STDOUT,
             check=False,
         )
-    finally:
-        log_handle.close()
 
     max_bytes = 4_000 if completed.returncode == 0 else 16_000
     tail = _bounded_log_tail(log_path, max_bytes=max_bytes).strip()
