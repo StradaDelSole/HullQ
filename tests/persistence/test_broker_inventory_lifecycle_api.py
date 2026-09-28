@@ -810,6 +810,115 @@ class TestPublish:
 
 
 # ---------------------------------------------------------------------------
+# SLICE-0069 contract §9/§21: PublicationReadiness preflight
+# ---------------------------------------------------------------------------
+
+
+def _readiness_path(org_id: str, listing_id: str) -> str:
+    return f"/api/broker/organizations/{org_id}/inventory/{listing_id}/publication-readiness"
+
+
+class TestPublicationReadinessPreflight:
+    def test_unauthenticated_is_blocked(self, client: TestClient) -> None:
+        response = client.get(_readiness_path("ORG-RDY-UNAUTH", "NL-X"))
+        assert response.status_code == 401
+
+    def test_unknown_organization_is_not_found(self, client: TestClient) -> None:
+        _log_in(client, "ACC-RDY-NEVER-CREATED")
+        response = client.get(_readiness_path("ORG-RDY-NEVER-CREATED", "NL-X"))
+        assert response.status_code == 404
+
+    def test_complete_draft_reports_ready_with_no_blockers(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        _seed_org_and_membership(
+            api_url, org_id="ORG-RDY-OK", account_id="ACC-RDY-OK", membership_id="OM-RDY-OK"
+        )
+        _create_complete_draft_listing(
+            api_url,
+            listing_id="NL-RDY-OK",
+            org_id="ORG-RDY-OK",
+            account_id="ACC-RDY-OK",
+            membership_id="OM-RDY-OK",
+            physical_boat_id="PB-RDY-OK",
+            market_episode_id="ME-RDY-OK",
+            offer_revision_id="REV-RDY-OK",
+        )
+        _log_in(client, "ACC-RDY-OK")
+        response = client.get(_readiness_path("ORG-RDY-OK", "NL-RDY-OK"))
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "READY"
+        assert body["blockers"] == []
+        assert body["lifecycle_state"] == "DRAFT"
+        # A preflight READY result is never a capability token: publish still
+        # re-evaluates and independently succeeds afterward.
+        publish_response = client.post(
+            _publish_path("ORG-RDY-OK", "NL-RDY-OK"), headers=_csrf_headers()
+        )
+        assert publish_response.status_code == 200
+        assert publish_response.json()["outcome"] == "PUBLISHED"
+
+    def test_incomplete_draft_reports_blocked_with_the_same_blockers_publish_returns(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        _seed_org_and_membership(
+            api_url, org_id="ORG-RDY-INC", account_id="ACC-RDY-INC", membership_id="OM-RDY-INC"
+        )
+        _create_incomplete_draft_listing(
+            api_url,
+            listing_id="NL-RDY-INC",
+            org_id="ORG-RDY-INC",
+            account_id="ACC-RDY-INC",
+            membership_id="OM-RDY-INC",
+        )
+        _log_in(client, "ACC-RDY-INC")
+        readiness_response = client.get(_readiness_path("ORG-RDY-INC", "NL-RDY-INC"))
+        assert readiness_response.status_code == 200
+        readiness_body = readiness_response.json()
+        assert readiness_body["status"] == "BLOCKED"
+        assert readiness_body["blockers"]
+
+        # Contract §9: preflight and the authoritative publish transition use
+        # the identical blocker vocabulary/rules -- same evaluator, same
+        # current truth.
+        publish_response = client.post(
+            _publish_path("ORG-RDY-INC", "NL-RDY-INC"), headers=_csrf_headers()
+        )
+        assert publish_response.status_code == 422
+        assert sorted(publish_response.json()["blockers"]) == sorted(readiness_body["blockers"])
+
+    def test_foreign_listing_is_not_found(self, client: TestClient, api_url: str) -> None:
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-RDY-VICTIM",
+            account_id="ACC-RDY-VICTIM",
+            membership_id="OM-RDY-V",
+        )
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-RDY-ATTACKER",
+            account_id="ACC-RDY-ATTACKER",
+            membership_id="OM-RDY-A",
+        )
+        _create_complete_draft_listing(
+            api_url,
+            listing_id="NL-RDY-VICTIM",
+            org_id="ORG-RDY-VICTIM",
+            account_id="ACC-RDY-VICTIM",
+            membership_id="OM-RDY-V",
+            physical_boat_id="PB-RDY-VICTIM",
+            market_episode_id="ME-RDY-VICTIM",
+            offer_revision_id="REV-RDY-VICTIM",
+        )
+        _log_in(client, "ACC-RDY-ATTACKER")
+        foreign = client.get(_readiness_path("ORG-RDY-ATTACKER", "NL-RDY-VICTIM"))
+        unknown = client.get(_readiness_path("ORG-RDY-ATTACKER", "NL-NEVER-CREATED"))
+        assert foreign.status_code == unknown.status_code == 404
+        assert foreign.content == unknown.content
+
+
+# ---------------------------------------------------------------------------
 # Withdraw
 # ---------------------------------------------------------------------------
 
