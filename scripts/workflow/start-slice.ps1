@@ -194,7 +194,8 @@ READ FIRST:
 TOKEN DISCIPLINE:
 - Follow `docs/engineering/AI_TOKEN_EFFICIENCY.md`.
 - Use `docs/engineering/IMPLEMENTATION_CONTEXT_INDEX.md` only as a compact routing/index aid when a cross-cutting boundary needs a reminder; it is non-normative.
-- Do not preload PROJECT_STATE, full requirements, roadmap, old closures/chats, or unrelated history merely for orientation.
+- Do not preload PROJECT_STATE, full requirements, roadmap, old closures/chats, unrelated history, or the research tree merely for orientation.
+- Treat `research/` as cold context. If research is actually needed, route through `research/CONTEXT_INDEX.md` and read the smallest relevant report first; never preload large generated manifests/raw evidence.
 - Prefer targeted Read/Grep/Glob and narrow file ranges over large unchanged files.
 - Use the synchronized local checkout; do not repeatedly fetch local files through GitHub/API.
 - Do not restate contracts or narrate routine exploration.
