@@ -68,6 +68,7 @@ from typing import Any
 from urllib.parse import quote, urlsplit, urlunsplit
 
 import psycopg
+from _publication_readiness_fixture import attach_d22_minimum_cover_image
 
 from hullq.domain.market_identity import (
     MarketEpisode,
@@ -78,6 +79,12 @@ from hullq.domain.market_identity import (
     PhysicalBoatId,
 )
 from hullq.domain.native_listing_offer import AskingPriceMode, NativeListingOfferSnapshot
+from hullq.domain.physical_boat_claims import (
+    AssertionKind,
+    BuildYearClaim,
+    PhysicalBoatClaimRevisionId,
+    PhysicalBoatClaimSnapshot,
+)
 from hullq.domain.publishing_eligibility import (
     AccountId,
     MarketplaceOrganization,
@@ -107,6 +114,7 @@ from hullq.persistence.native_listing_offer import (
     write_native_listing_offer_revision,
 )
 from hullq.persistence.physical_boat import create_physical_boat
+from hullq.persistence.physical_boat_claims import write_physical_boat_claim_revision
 from hullq.security.oidc import AUTH0_MFA_STEP_UP_ACR_VALUE
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -285,6 +293,22 @@ def _create_and_publish_listing(
             currency="EUR",
         ),
     )
+    write_physical_boat_claim_revision(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId(listing_id),
+        revision_id=PhysicalBoatClaimRevisionId(f"CLAIM-{listing_id}"),
+        expected_current_revision_id=None,
+        claims=PhysicalBoatClaimSnapshot(
+            marketed_brand_claim="Beneteau",
+            model_designation_claim="Oceanis 30.1",
+            build_year=BuildYearClaim(AssertionKind.VALUE_ASSERTION, 2020),
+        ),
+    )
+    attach_d22_minimum_cover_image(conn, listing_id=listing_id, account=account, org=org)
+    conn.commit()  # release the implicit transaction before the top-level-owning publish
     result = publish_native_listing(
         conn,
         account_id=account,

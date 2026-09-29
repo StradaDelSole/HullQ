@@ -74,12 +74,14 @@ import time
 import urllib.error
 import urllib.request
 import uuid
+from collections.abc import Callable
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urlsplit, urlunsplit
 
 import psycopg
+from _publication_readiness_fixture import attach_d22_minimum_cover_image
 
 from hullq.domain.market_identity import (
     MarketEpisode,
@@ -499,6 +501,7 @@ def _create_and_publish(
     org: MarketplaceOrganization,
     membership: OrganizationMembership,
     asking_price: str,
+    before_publish: Callable[[], None] | None = None,
 ) -> None:
     create_physical_boat(conn, physical_boat=PhysicalBoat(id=PhysicalBoatId(physical_boat_id)))
     create_market_episode(
@@ -532,6 +535,10 @@ def _create_and_publish(
             currency="EUR",
         ),
     )
+    if before_publish is not None:
+        before_publish()
+    attach_d22_minimum_cover_image(conn, listing_id=listing_id, account=account, org=org)
+    conn.commit()  # release the implicit transaction before the top-level-owning publish
     publish_result = publish_native_listing(
         conn,
         account_id=account,
@@ -576,6 +583,35 @@ def _write_full_claims(
     )
     if result.status is not PhysicalBoatClaimWriteStatus.CREATED:
         raise RuntimeError(f"full-claims fixture write failed: {result.status}")
+
+
+def _write_minimum_claim(
+    conn: Any,
+    *,
+    listing_id: str,
+    account: AccountId,
+    org: MarketplaceOrganization,
+    membership: OrganizationMembership,
+) -> None:
+    """SLICE-0069 D22 minimum claim for a fixture listing that (unlike the
+    full/partial-claims fixtures above) isn't itself the subject of the
+    factual-claims comparison under test."""
+    result = write_physical_boat_claim_revision(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId(listing_id),
+        revision_id=PhysicalBoatClaimRevisionId(f"PBC-{listing_id}-MIN"),
+        expected_current_revision_id=None,
+        claims=PhysicalBoatClaimSnapshot(
+            marketed_brand_claim="Beneteau",
+            model_designation_claim="Oceanis 30.1",
+            build_year=BuildYearClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=2020),
+        ),
+    )
+    if result.status is not PhysicalBoatClaimWriteStatus.CREATED:
+        raise RuntimeError(f"minimum-claim fixture write failed for {listing_id}: {result.status}")
 
 
 def _write_partial_claims(
@@ -832,8 +868,10 @@ def main() -> int:
                 org=org,
                 membership=membership,
                 asking_price=_FULL_PRICE,
+                before_publish=lambda: _write_full_claims(
+                    conn, account=account, org=org, membership=membership
+                ),
             )
-            _write_full_claims(conn, account=account, org=org, membership=membership)
 
             _create_and_publish(
                 conn,
@@ -845,8 +883,10 @@ def main() -> int:
                 org=org,
                 membership=membership,
                 asking_price=_PARTIAL_PRICE,
+                before_publish=lambda: _write_partial_claims(
+                    conn, account=account, org=org, membership=membership
+                ),
             )
-            _write_partial_claims(conn, account=account, org=org, membership=membership)
 
             _create_and_publish(
                 conn,
@@ -858,6 +898,13 @@ def main() -> int:
                 org=org,
                 membership=membership,
                 asking_price="50000.00",
+                before_publish=lambda: _write_minimum_claim(
+                    conn,
+                    listing_id=_WITHDRAWN_ID,
+                    account=account,
+                    org=org,
+                    membership=membership,
+                ),
             )
             withdraw_result = withdraw_native_listing(
                 conn,

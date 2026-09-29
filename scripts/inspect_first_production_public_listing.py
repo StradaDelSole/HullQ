@@ -59,6 +59,7 @@ from typing import Any
 from urllib.parse import quote, urlsplit, urlunsplit
 
 import psycopg
+from _publication_readiness_fixture import attach_d22_minimum_cover_image
 
 from alembic import command
 from hullq.application.listing_intake import (
@@ -75,6 +76,12 @@ from hullq.domain.market_identity import (
     PhysicalBoatId,
 )
 from hullq.domain.native_listing_offer import AskingPriceMode, NativeListingOfferSnapshot
+from hullq.domain.physical_boat_claims import (
+    AssertionKind,
+    BuildYearClaim,
+    PhysicalBoatClaimRevisionId,
+    PhysicalBoatClaimSnapshot,
+)
 from hullq.domain.publishing_eligibility import (
     AccountId,
     MarketplaceOrganization,
@@ -109,6 +116,7 @@ from hullq.persistence.native_listing_offer import (
     write_native_listing_offer_revision,
 )
 from hullq.persistence.physical_boat import create_physical_boat
+from hullq.persistence.physical_boat_claims import write_physical_boat_claim_revision
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WEB_DIR = REPO_ROOT / "web"
@@ -254,6 +262,36 @@ def _create_complete_chain(
     return creation_result.status
 
 
+def _attach_d22_minimum(
+    conn: Any,
+    *,
+    listing_id: str,
+    account: AccountId,
+    org: MarketplaceOrganization,
+    membership: OrganizationMembership,
+) -> None:
+    """SLICE-0069: attach the canonical D22 minimum (a PhysicalBoat claim and
+    an approved, rights-declared cover image) a listing needs to actually
+    publish -- the legacy SLICE-0049 fixture above only produced an
+    episode/boat/offer chain, which is no longer sufficient."""
+    conn.commit()  # release any implicit read transaction the caller left open
+    write_physical_boat_claim_revision(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId(listing_id),
+        revision_id=PhysicalBoatClaimRevisionId(f"CLAIM-{listing_id}"),
+        expected_current_revision_id=None,
+        claims=PhysicalBoatClaimSnapshot(
+            marketed_brand_claim="Beneteau",
+            model_designation_claim="Oceanis 30.1",
+            build_year=BuildYearClaim(AssertionKind.VALUE_ASSERTION, 2020),
+        ),
+    )
+    attach_d22_minimum_cover_image(conn, listing_id=listing_id, account=account, org=org)
+
+
 def _b64url(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).decode("ascii")
 
@@ -386,6 +424,10 @@ def main() -> int:
             )
 
             # 4. complete accepted listing chain + current offer already created above.
+            _attach_d22_minimum(
+                conn, listing_id=_TARGET_LISTING_ID, account=account, org=org, membership=membership
+            )
+            conn.commit()
             print("4. complete listing chain + current offer created -> OK\n")
 
             # 5. publish attempt with a wrong-Organization principal changes nothing.

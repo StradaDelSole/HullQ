@@ -383,6 +383,8 @@ def main() -> int:
     ok = True
 
     try:
+        from _publication_readiness_fixture import attach_d22_minimum_cover_image
+
         from hullq.domain.market_identity import (
             MarketEpisode,
             MarketEpisodeId,
@@ -392,6 +394,12 @@ def main() -> int:
             PhysicalBoatId,
         )
         from hullq.domain.native_listing_offer import AskingPriceMode, NativeListingOfferSnapshot
+        from hullq.domain.physical_boat_claims import (
+            AssertionKind,
+            BuildYearClaim,
+            PhysicalBoatClaimRevisionId,
+            PhysicalBoatClaimSnapshot,
+        )
         from hullq.domain.publishing_eligibility import (
             AccountId,
             MarketplaceOrganization,
@@ -420,6 +428,7 @@ def main() -> int:
             write_native_listing_offer_revision,
         )
         from hullq.persistence.physical_boat import create_physical_boat
+        from hullq.persistence.physical_boat_claims import write_physical_boat_claim_revision
         from hullq.security.oidc import AUTH0_MFA_STEP_UP_ACR_VALUE
 
         url = _with_search_path(base_url, schema_name)
@@ -632,6 +641,32 @@ def main() -> int:
                     ),
                 )
 
+            def _attach_d22_minimum(
+                *, listing_id: str, org: Any, account_id: str, membership: Any
+            ) -> None:
+                """SLICE-0069: D22 requires a PhysicalBoat claim and an
+                approved, rights-declared cover image before publish now
+                succeeds -- the legacy SLICE-0043/45 `_complete_listing`
+                fixture above only produced an episode/boat/offer chain."""
+                write_physical_boat_claim_revision(
+                    conn,
+                    account_id=AccountId(account_id),
+                    candidate_organization=org,
+                    membership=membership,
+                    native_listing_id=NativeListingId(listing_id),
+                    revision_id=PhysicalBoatClaimRevisionId(f"CLAIM-{listing_id}"),
+                    expected_current_revision_id=None,
+                    claims=PhysicalBoatClaimSnapshot(
+                        marketed_brand_claim="Beneteau",
+                        model_designation_claim="Oceanis 30.1",
+                        build_year=BuildYearClaim(AssertionKind.VALUE_ASSERTION, 2020),
+                    ),
+                )
+                attach_d22_minimum_cover_image(
+                    conn, listing_id=listing_id, account=AccountId(account_id), org=org
+                )
+                conn.commit()  # release the implicit transaction before the next top-level-owning write
+
             # NL-MAIN: the representative listing driven through the real
             # browser (items 2/3/5/13).
             _complete_listing(
@@ -640,6 +675,12 @@ def main() -> int:
                 account_id=account_a_id,
                 membership=membership_a,
                 suffix="0064-MAIN",
+            )
+            _attach_d22_minimum(
+                listing_id="NL-0064-MAIN",
+                org=org_a,
+                account_id=account_a_id,
+                membership=membership_a,
             )
             # NL-FOREIGN: owned by ORG_B, already ACTIVE -- used to prove
             # Account A cannot mutate it under the ORG_A path (item 4).
@@ -650,6 +691,13 @@ def main() -> int:
                 membership=membership_b,
                 suffix="0064-FOREIGN",
             )
+            _attach_d22_minimum(
+                listing_id="NL-0064-FOREIGN",
+                org=org_b,
+                account_id=account_b_id,
+                membership=membership_b,
+            )
+            conn.commit()  # release the implicit transaction before the top-level-owning publish
             publish_result = publish_native_listing(
                 conn,
                 account_id=AccountId(account_b_id),
@@ -675,6 +723,12 @@ def main() -> int:
                 account_id=account_a_id,
                 membership=membership_a,
                 suffix="0064-STALE",
+            )
+            _attach_d22_minimum(
+                listing_id="NL-0064-STALE",
+                org=org_a,
+                account_id=account_a_id,
+                membership=membership_a,
             )
             conn.commit()
         finally:

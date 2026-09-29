@@ -543,9 +543,7 @@ class TestInventoryTruth:
                 ),
             )
             assert wd_claim.status.value in ("created", "already_exists")
-            _attach_ready_cover_image(
-                conn, listing_id="NL-INV-MIXED-WD", org=org, account=account
-            )
+            _attach_ready_cover_image(conn, listing_id="NL-INV-MIXED-WD", org=org, account=account)
             conn.commit()
             publish_wd = publish_native_listing(
                 conn,

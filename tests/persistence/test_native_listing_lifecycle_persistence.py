@@ -8,6 +8,7 @@ genuinely empty to the SLICE-0049 Alembic head, mirroring the SLICE-0043/
 from __future__ import annotations
 
 import threading
+import time
 import uuid
 from collections.abc import Generator
 from decimal import Decimal
@@ -25,7 +26,7 @@ from hullq.domain.market_identity import (
     PhysicalBoat,
     PhysicalBoatId,
 )
-from hullq.domain.media_gallery import MediaSourceKind
+from hullq.domain.media_gallery import MediaAssetId, MediaSourceKind
 from hullq.domain.native_listing_lifecycle import (
     NativeListingLifecycleState,
     PublicationTransitionId,
@@ -37,6 +38,7 @@ from hullq.domain.physical_boat_claims import (
     PhysicalBoatClaimRevisionId,
     PhysicalBoatClaimSnapshot,
 )
+from hullq.domain.publication_readiness import PublicationBlockerReason
 from hullq.domain.publishing_eligibility import (
     AccountId,
     MarketplaceOrganization,
@@ -53,8 +55,10 @@ from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_ale
 from hullq.persistence.broker_identity import seed_marketplace_organization
 from hullq.persistence.market_episode import create_market_episode
 from hullq.persistence.media_gallery import (
+    RetireAssetOutcome,
     create_uploaded_image_placement,
     insert_approved_media_asset,
+    retire_media_asset,
     set_cover,
 )
 from hullq.persistence.native_listing import (
@@ -72,10 +76,14 @@ from hullq.persistence.native_listing_lifecycle import (
 )
 from hullq.persistence.native_listing_offer import (
     NativeListingOfferRevisionId,
+    fetch_current_native_listing_offer,
     write_native_listing_offer_revision,
 )
 from hullq.persistence.physical_boat import create_physical_boat
-from hullq.persistence.physical_boat_claims import write_physical_boat_claim_revision
+from hullq.persistence.physical_boat_claims import (
+    fetch_current_physical_boat_claim,
+    write_physical_boat_claim_revision,
+)
 
 # ---------------------------------------------------------------------------
 # Disposable-schema fixture: genuinely-empty schema -> SLICE-0049 Alembic head
@@ -204,7 +212,7 @@ def _ensure_account_row(conn: Any, account: AccountId) -> None:
 
 def _attach_ready_cover_image(
     conn: Any, *, listing_id: str, org: MarketplaceOrganization, account: AccountId
-) -> None:
+) -> tuple[str, str]:
     """Attach one approved, rights-declared IMAGE placement and set it as the
     explicit cover -- the SLICE-0069 D22 minimum required media state.
 
@@ -246,6 +254,7 @@ def _attach_ready_cover_image(
         expected_version=placement_result.gallery_version,
     )
     assert cover_result.outcome.value == "SET", cover_result
+    return asset.media_asset_id.value, placement_result.media_placement_id.value
 
 
 def _create_complete_listing(
@@ -258,9 +267,12 @@ def _create_complete_listing(
     physical_boat_id: str,
     market_episode_id: str,
     offer_revision_id: str,
-) -> None:
+) -> tuple[str, str]:
     """Create/reuse a full durable chain satisfying the SLICE-0069 canonical
-    D22 PublicationReadiness rule set (episode/boat/offer/claim/media/cover)."""
+    D22 PublicationReadiness rule set (episode/boat/offer/claim/media/cover).
+
+    Returns the ``(media_asset_id, media_placement_id)`` of the attached
+    cover image, for tests that need to mutate it afterward."""
     create_physical_boat(conn, physical_boat=PhysicalBoat(id=PhysicalBoatId(physical_boat_id)))
     create_market_episode(
         conn,
@@ -303,7 +315,7 @@ def _create_complete_listing(
         claims=_ready_physical_boat_claim(),
     )
     assert claim_result.status.value in ("created", "already_exists"), claim_result
-    _attach_ready_cover_image(conn, listing_id=listing_id, org=org, account=account)
+    return _attach_ready_cover_image(conn, listing_id=listing_id, org=org, account=account)
 
 
 def _create_incomplete_listing(
@@ -1164,6 +1176,560 @@ def test_concurrent_publish_attempts_apply_exactly_once(lifecycle_url: str) -> N
         )
         transitions = list_publication_transitions(verify, NativeListingId("NL-CRACE"))
         assert len(transitions) == 1
+    finally:
+        verify.close()
+
+
+# ---------------------------------------------------------------------------
+# Independent review amendment (Finding A):
+# `MARKETPLACE_PUBLICATION_READINESS_CONTRACT.v0.1.md` SS18/22 required
+# concurrency proofs -- offer revision, PhysicalBoat claim revision and
+# readiness-relevant media mutation each racing a publish attempt, plus no
+# deadlock with the accepted 0068 media lock order.
+# ---------------------------------------------------------------------------
+
+
+def _hold_native_listing_row_lock(
+    url: str, listing_id: str, *, acquired: threading.Event, release: threading.Event
+) -> None:
+    """Open a real transaction and take the exact ``SELECT ... FOR UPDATE``
+    lock every readiness-relevant writer (offer revision, PhysicalBoat claim
+    revision, media cover/remove/retire -- see `hullq.persistence.
+    publication_readiness` module docstring) and `publish_native_listing`
+    itself all take on this same `native_listings` row. A deterministic
+    stand-in for "some readiness-relevant transaction is currently in
+    flight", used to prove a concurrent publish attempt genuinely blocks on
+    that row lock rather than reading through it -- without duplicating any
+    writer's own business logic."""
+    conn = psycopg.connect(url)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT native_listing_id FROM native_listings WHERE native_listing_id = %s FOR UPDATE",
+                [listing_id],
+            )
+        acquired.set()
+        release.wait(timeout=10)
+    finally:
+        conn.rollback()
+        conn.close()
+
+
+def _wait_until_backend_blocked_on_lock(
+    url: str, backend_pid: int, *, timeout: float = 10.0
+) -> None:
+    """Bounded condition-poll of PostgreSQL's own
+    `pg_stat_activity.wait_event_type` confirming *backend_pid* is genuinely
+    waiting to acquire a lock -- deterministic proof of blocking behavior,
+    not a fixed-timing guess about how long blocking takes."""
+    admin = psycopg.connect(url)
+    try:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            with admin.cursor() as cur:
+                cur.execute(
+                    "SELECT wait_event_type FROM pg_stat_activity WHERE pid = %s", [backend_pid]
+                )
+                row = cur.fetchone()
+            if row is not None and row[0] == "Lock":
+                return
+            time.sleep(0.02)
+    finally:
+        admin.close()
+    pytest.fail(f"backend {backend_pid} never entered a Lock wait state within {timeout}s")
+
+
+def test_publish_blocks_on_an_in_flight_readiness_relevant_transaction_and_resolves_after_release(
+    lifecycle_url: str,
+) -> None:
+    """SS18/22: publish must serialize on the same `native_listings` row
+    every offer-revision, PhysicalBoat-claim-revision and readiness-relevant
+    media mutation already locks -- it cannot read through an in-flight
+    change. This holds that exact row lock open on one connection, proves a
+    real `publish_native_listing` call on a second, independent connection
+    genuinely blocks (observed via PostgreSQL's own lock-wait state, not
+    timing), then releases the hold and proves publish resolves to exactly
+    one coherent TRANSITIONED result afterward."""
+    setup_conn = psycopg.connect(lifecycle_url)
+    try:
+        account = _account("ACC-LOCKPROOF")
+        org = _org("ORG-LOCKPROOF")
+        membership = _membership("OM-LOCKPROOF", account, org)
+        _create_complete_listing(
+            setup_conn,
+            listing_id="NL-LOCKPROOF",
+            account=account,
+            org=org,
+            membership=membership,
+            physical_boat_id="PB-LOCKPROOF",
+            market_episode_id="ME-LOCKPROOF",
+            offer_revision_id="REV-LOCKPROOF",
+        )
+        setup_conn.commit()
+    finally:
+        setup_conn.close()
+
+    acquired = threading.Event()
+    release = threading.Event()
+    holder = threading.Thread(
+        target=_hold_native_listing_row_lock,
+        args=(lifecycle_url, "NL-LOCKPROOF"),
+        kwargs={"acquired": acquired, "release": release},
+    )
+    holder.start()
+    assert acquired.wait(timeout=10), "lock holder never acquired the row lock"
+
+    publish_conn = psycopg.connect(lifecycle_url)
+    backend_pid = publish_conn.info.backend_pid
+    publish_results: list[Any] = []
+    publish_errors: list[BaseException] = []
+
+    def _publish() -> None:
+        try:
+            publish_results.append(
+                publish_native_listing(
+                    publish_conn,
+                    account_id=account,
+                    candidate_organization=org,
+                    membership=membership,
+                    native_listing_id=NativeListingId("NL-LOCKPROOF"),
+                )
+            )
+        except Exception as exc:  # pragma: no cover - surfaced via errors assertion
+            publish_errors.append(exc)
+
+    publisher = threading.Thread(target=_publish)
+    publisher.start()
+
+    _wait_until_backend_blocked_on_lock(lifecycle_url, backend_pid)
+    assert publish_results == [], "publish returned before the held lock was released"
+
+    release.set()
+    holder.join(timeout=10)
+    publisher.join(timeout=10)
+    assert not holder.is_alive(), "lock holder thread did not finish -- possible deadlock"
+    assert not publisher.is_alive(), "publisher thread did not finish -- possible deadlock"
+    publish_conn.close()
+
+    assert not publish_errors, f"publish thread errors: {publish_errors}"
+    assert len(publish_results) == 1
+    assert publish_results[0].status is LifecycleTransitionStatus.TRANSITIONED, publish_results[0]
+
+    verify = psycopg.connect(lifecycle_url)
+    try:
+        assert fetch_lifecycle_state(verify, NativeListingId("NL-LOCKPROOF")) is (
+            NativeListingLifecycleState.ACTIVE
+        )
+        assert len(list_publication_transitions(verify, NativeListingId("NL-LOCKPROOF"))) == 1
+    finally:
+        verify.close()
+
+
+def test_concurrent_offer_revision_and_publish_resolve_to_one_coherent_result(
+    lifecycle_url: str,
+) -> None:
+    """A concurrent *valid* offer-revision write and a publish attempt must
+    serialize on the shared `native_listings` row lock. The typed
+    `NativeListingOfferSnapshot` construction guarantee means an existing
+    revision is always D22-valid, so no ordering can turn READY into
+    BLOCKED here -- the property under test is that both operations complete
+    without error/deadlock, publish transitions exactly once, and the
+    durable offer head coherently reflects the new revision regardless of
+    which operation PostgreSQL happened to run first."""
+    setup_conn = psycopg.connect(lifecycle_url)
+    try:
+        account = _account("ACC-OFFERRACE")
+        org = _org("ORG-OFFERRACE")
+        membership = _membership("OM-OFFERRACE", account, org)
+        _create_complete_listing(
+            setup_conn,
+            listing_id="NL-OFFERRACE",
+            account=account,
+            org=org,
+            membership=membership,
+            physical_boat_id="PB-OFFERRACE",
+            market_episode_id="ME-OFFERRACE",
+            offer_revision_id="REV-OFFERRACE",
+        )
+        setup_conn.commit()
+    finally:
+        setup_conn.close()
+
+    barrier = threading.Barrier(2)
+    offer_results: list[Any] = []
+    publish_results: list[Any] = []
+    errors: list[BaseException] = []
+
+    def _write_offer() -> None:
+        try:
+            conn = psycopg.connect(lifecycle_url)
+            try:
+                barrier.wait(timeout=10)
+                offer_results.append(
+                    write_native_listing_offer_revision(
+                        conn,
+                        account_id=account,
+                        candidate_organization=org,
+                        membership=membership,
+                        native_listing_id=NativeListingId("NL-OFFERRACE"),
+                        revision_id=NativeListingOfferRevisionId("REV-OFFERRACE-2"),
+                        expected_current_revision_id=NativeListingOfferRevisionId("REV-OFFERRACE"),
+                        offer=_amount_offer(),
+                    )
+                )
+            finally:
+                conn.close()
+        except Exception as exc:  # pragma: no cover - surfaced via errors assertion
+            errors.append(exc)
+
+    def _publish() -> None:
+        try:
+            conn = psycopg.connect(lifecycle_url)
+            try:
+                barrier.wait(timeout=10)
+                publish_results.append(
+                    publish_native_listing(
+                        conn,
+                        account_id=account,
+                        candidate_organization=org,
+                        membership=membership,
+                        native_listing_id=NativeListingId("NL-OFFERRACE"),
+                    )
+                )
+            finally:
+                conn.close()
+        except Exception as exc:  # pragma: no cover - surfaced via errors assertion
+            errors.append(exc)
+
+    threads = [threading.Thread(target=_write_offer), threading.Thread(target=_publish)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=20)
+
+    assert not errors, f"Thread errors: {errors}"
+    assert not any(t.is_alive() for t in threads), "a thread did not finish -- possible deadlock"
+    assert len(offer_results) == 1
+    assert len(publish_results) == 1
+    assert offer_results[0].status.value == "revised", offer_results[0]
+    assert publish_results[0].status is LifecycleTransitionStatus.TRANSITIONED, publish_results[0]
+
+    verify = psycopg.connect(lifecycle_url)
+    try:
+        assert fetch_lifecycle_state(verify, NativeListingId("NL-OFFERRACE")) is (
+            NativeListingLifecycleState.ACTIVE
+        )
+        assert len(list_publication_transitions(verify, NativeListingId("NL-OFFERRACE"))) == 1
+        current_offer = fetch_current_native_listing_offer(verify, NativeListingId("NL-OFFERRACE"))
+        assert current_offer is not None
+        assert current_offer.revision_id.value == "REV-OFFERRACE-2"
+    finally:
+        verify.close()
+
+
+def test_concurrent_physical_boat_claim_revision_and_publish_resolve_to_one_coherent_result(
+    lifecycle_url: str,
+) -> None:
+    """The PhysicalBoat-claim analogue of the offer-revision race above: the
+    typed `PhysicalBoatClaimSnapshot` construction guarantee means an
+    existing revision is always D22-valid, so this proves atomic
+    serialization and a coherent final claim head, not a readiness flip."""
+    setup_conn = psycopg.connect(lifecycle_url)
+    try:
+        account = _account("ACC-CLAIMRACE")
+        org = _org("ORG-CLAIMRACE")
+        membership = _membership("OM-CLAIMRACE", account, org)
+        _create_complete_listing(
+            setup_conn,
+            listing_id="NL-CLAIMRACE",
+            account=account,
+            org=org,
+            membership=membership,
+            physical_boat_id="PB-CLAIMRACE",
+            market_episode_id="ME-CLAIMRACE",
+            offer_revision_id="REV-CLAIMRACE",
+        )
+        setup_conn.commit()
+    finally:
+        setup_conn.close()
+
+    barrier = threading.Barrier(2)
+    claim_results: list[Any] = []
+    publish_results: list[Any] = []
+    errors: list[BaseException] = []
+
+    def _write_claim() -> None:
+        try:
+            conn = psycopg.connect(lifecycle_url)
+            try:
+                barrier.wait(timeout=10)
+                claim_results.append(
+                    write_physical_boat_claim_revision(
+                        conn,
+                        account_id=account,
+                        candidate_organization=org,
+                        membership=membership,
+                        native_listing_id=NativeListingId("NL-CLAIMRACE"),
+                        revision_id=PhysicalBoatClaimRevisionId("CLAIM-NL-CLAIMRACE-2"),
+                        expected_current_revision_id=PhysicalBoatClaimRevisionId(
+                            "CLAIM-NL-CLAIMRACE"
+                        ),
+                        claims=_ready_physical_boat_claim(),
+                    )
+                )
+            finally:
+                conn.close()
+        except Exception as exc:  # pragma: no cover - surfaced via errors assertion
+            errors.append(exc)
+
+    def _publish() -> None:
+        try:
+            conn = psycopg.connect(lifecycle_url)
+            try:
+                barrier.wait(timeout=10)
+                publish_results.append(
+                    publish_native_listing(
+                        conn,
+                        account_id=account,
+                        candidate_organization=org,
+                        membership=membership,
+                        native_listing_id=NativeListingId("NL-CLAIMRACE"),
+                    )
+                )
+            finally:
+                conn.close()
+        except Exception as exc:  # pragma: no cover - surfaced via errors assertion
+            errors.append(exc)
+
+    threads = [threading.Thread(target=_write_claim), threading.Thread(target=_publish)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=20)
+
+    assert not errors, f"Thread errors: {errors}"
+    assert not any(t.is_alive() for t in threads), "a thread did not finish -- possible deadlock"
+    assert len(claim_results) == 1
+    assert len(publish_results) == 1
+    assert claim_results[0].status.value == "revised", claim_results[0]
+    assert publish_results[0].status is LifecycleTransitionStatus.TRANSITIONED, publish_results[0]
+
+    verify = psycopg.connect(lifecycle_url)
+    try:
+        assert fetch_lifecycle_state(verify, NativeListingId("NL-CLAIMRACE")) is (
+            NativeListingLifecycleState.ACTIVE
+        )
+        assert len(list_publication_transitions(verify, NativeListingId("NL-CLAIMRACE"))) == 1
+        current_claim = fetch_current_physical_boat_claim(
+            verify, PhysicalBoatId("PB-CLAIMRACE"), org.id
+        )
+        assert current_claim is not None
+        assert current_claim.revision_id.value == "CLAIM-NL-CLAIMRACE-2"
+    finally:
+        verify.close()
+
+
+def test_cover_image_retirement_before_publish_leaves_the_draft_blocked_on_authoritative_recheck(
+    lifecycle_conn: Any,
+) -> None:
+    """Independent review Finding A, writer-first ordering: retiring the
+    listing's only cover image before a publish attempt must leave publish
+    BLOCKED on its own authoritative in-transaction re-evaluation -- a stale
+    advisory preflight (or no preflight at all) is never a capability
+    token."""
+    account = _account("ACC-MEDIAFIRST")
+    org = _org("ORG-MEDIAFIRST")
+    membership = _membership("OM-MEDIAFIRST", account, org)
+    media_asset_id, _media_placement_id = _create_complete_listing(
+        lifecycle_conn,
+        listing_id="NL-MEDIAFIRST",
+        account=account,
+        org=org,
+        membership=membership,
+        physical_boat_id="PB-MEDIAFIRST",
+        market_episode_id="ME-MEDIAFIRST",
+        offer_revision_id="REV-MEDIAFIRST",
+    )
+    lifecycle_conn.commit()
+
+    with lifecycle_conn.transaction():
+        outcome = retire_media_asset(
+            lifecycle_conn,
+            media_asset_id=MediaAssetId(media_asset_id),
+            owner_organization_id=org.id,
+        )
+    assert outcome is RetireAssetOutcome.RETIRED, outcome
+
+    result = publish_native_listing(
+        lifecycle_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-MEDIAFIRST"),
+    )
+    assert result.status is LifecycleTransitionStatus.INCOMPLETE_LISTING, result
+    assert result.blockers == frozenset(
+        {PublicationBlockerReason.NO_PUBLIC_USABLE_IMAGE, PublicationBlockerReason.COVER_MISSING}
+    ), result.blockers
+
+    assert fetch_lifecycle_state(lifecycle_conn, NativeListingId("NL-MEDIAFIRST")) is (
+        NativeListingLifecycleState.DRAFT
+    )
+
+
+def test_publish_then_cover_image_retirement_is_rejected_by_the_active_media_invariant(
+    lifecycle_conn: Any,
+) -> None:
+    """Independent review Finding A, publish-first ordering: once a listing
+    is ACTIVE, retiring its only cover image must be rejected by the
+    existing SLICE-0068 ACTIVE-listing media invariant
+    (`RetireAssetOutcome.ACTIVE_LISTING_CONFLICT`) rather than silently
+    leaving a public listing without its required image/cover."""
+    account = _account("ACC-MEDIASECOND")
+    org = _org("ORG-MEDIASECOND")
+    membership = _membership("OM-MEDIASECOND", account, org)
+    media_asset_id, _media_placement_id = _create_complete_listing(
+        lifecycle_conn,
+        listing_id="NL-MEDIASECOND",
+        account=account,
+        org=org,
+        membership=membership,
+        physical_boat_id="PB-MEDIASECOND",
+        market_episode_id="ME-MEDIASECOND",
+        offer_revision_id="REV-MEDIASECOND",
+    )
+    lifecycle_conn.commit()
+
+    publish_result = publish_native_listing(
+        lifecycle_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-MEDIASECOND"),
+    )
+    assert publish_result.status is LifecycleTransitionStatus.TRANSITIONED, publish_result
+
+    with lifecycle_conn.transaction():
+        outcome = retire_media_asset(
+            lifecycle_conn,
+            media_asset_id=MediaAssetId(media_asset_id),
+            owner_organization_id=org.id,
+        )
+    assert outcome is RetireAssetOutcome.ACTIVE_LISTING_CONFLICT, outcome
+
+    assert fetch_lifecycle_state(lifecycle_conn, NativeListingId("NL-MEDIASECOND")) is (
+        NativeListingLifecycleState.ACTIVE
+    )
+
+
+def test_concurrent_cover_image_retirement_and_publish_resolve_to_one_coherent_outcome_without_deadlock(
+    lifecycle_url: str,
+) -> None:
+    """A concurrent retirement of the listing's only cover image and a
+    publish attempt must serialize on the shared `native_listings` row lock
+    (SS18: "no deadlock with accepted media lock order") and resolve to
+    exactly one of the two valid orderings: either the retirement commits
+    first and publish's own authoritative recheck then correctly reports
+    BLOCKED, or publish commits first and the ACTIVE-listing media invariant
+    then correctly rejects the retirement -- never a corrupted mix of both,
+    and never a deadlock."""
+    setup_conn = psycopg.connect(lifecycle_url)
+    try:
+        account = _account("ACC-MEDIARACE")
+        org = _org("ORG-MEDIARACE")
+        membership = _membership("OM-MEDIARACE", account, org)
+        media_asset_id, _media_placement_id = _create_complete_listing(
+            setup_conn,
+            listing_id="NL-MEDIARACE",
+            account=account,
+            org=org,
+            membership=membership,
+            physical_boat_id="PB-MEDIARACE",
+            market_episode_id="ME-MEDIARACE",
+            offer_revision_id="REV-MEDIARACE",
+        )
+        setup_conn.commit()
+    finally:
+        setup_conn.close()
+
+    barrier = threading.Barrier(2)
+    retire_results: list[Any] = []
+    publish_results: list[Any] = []
+    errors: list[BaseException] = []
+
+    def _retire() -> None:
+        try:
+            conn = psycopg.connect(lifecycle_url)
+            try:
+                barrier.wait(timeout=10)
+                with conn.transaction():
+                    outcome = retire_media_asset(
+                        conn,
+                        media_asset_id=MediaAssetId(media_asset_id),
+                        owner_organization_id=org.id,
+                    )
+                retire_results.append(outcome)
+            finally:
+                conn.close()
+        except Exception as exc:  # pragma: no cover - surfaced via errors assertion
+            errors.append(exc)
+
+    def _publish() -> None:
+        try:
+            conn = psycopg.connect(lifecycle_url)
+            try:
+                barrier.wait(timeout=10)
+                publish_results.append(
+                    publish_native_listing(
+                        conn,
+                        account_id=account,
+                        candidate_organization=org,
+                        membership=membership,
+                        native_listing_id=NativeListingId("NL-MEDIARACE"),
+                    )
+                )
+            finally:
+                conn.close()
+        except Exception as exc:  # pragma: no cover - surfaced via errors assertion
+            errors.append(exc)
+
+    threads = [threading.Thread(target=_retire), threading.Thread(target=_publish)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=20)
+
+    assert not errors, f"Thread errors: {errors}"
+    assert not any(t.is_alive() for t in threads), "a thread did not finish -- possible deadlock"
+    assert len(retire_results) == 1
+    assert len(publish_results) == 1
+
+    verify = psycopg.connect(lifecycle_url)
+    try:
+        final_state = fetch_lifecycle_state(verify, NativeListingId("NL-MEDIARACE"))
+        transitions = list_publication_transitions(verify, NativeListingId("NL-MEDIARACE"))
+        if retire_results[0] is RetireAssetOutcome.RETIRED:
+            # Retirement committed first: publish's own authoritative
+            # recheck must have caught the resulting media loss.
+            assert publish_results[0].status is LifecycleTransitionStatus.INCOMPLETE_LISTING, (
+                publish_results[0]
+            )
+            assert PublicationBlockerReason.NO_PUBLIC_USABLE_IMAGE in publish_results[0].blockers, (
+                publish_results[0].blockers
+            )
+            assert final_state is NativeListingLifecycleState.DRAFT
+            assert len(transitions) == 0
+        else:
+            # Publish committed first: the ACTIVE-listing media invariant
+            # must have rejected the retirement.
+            assert retire_results[0] is RetireAssetOutcome.ACTIVE_LISTING_CONFLICT, retire_results[
+                0
+            ]
+            assert publish_results[0].status is LifecycleTransitionStatus.TRANSITIONED, (
+                publish_results[0]
+            )
+            assert final_state is NativeListingLifecycleState.ACTIVE
+            assert len(transitions) == 1
     finally:
         verify.close()
 

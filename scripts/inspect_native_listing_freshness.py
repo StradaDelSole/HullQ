@@ -62,6 +62,7 @@ from typing import Any
 from urllib.parse import quote, urlsplit, urlunsplit
 
 import psycopg
+from _publication_readiness_fixture import attach_d22_minimum_cover_image
 
 from hullq.domain.market_identity import (
     BoatDesignRef,
@@ -537,6 +538,10 @@ def main() -> int:
                     ),
                 ),
             )
+            attach_d22_minimum_cover_image(
+                setup_conn, listing_id=_TARGET_LISTING_ID, account=account, org=org
+            )
+            setup_conn.commit()  # release the implicit transaction before the top-level-owning publish
             publish_result = publish_native_listing(
                 setup_conn,
                 account_id=account,

@@ -436,9 +436,7 @@ def _write_claim(
     draft: DraftClaim | None = None,
     keel_configuration: KeelConfigurationClaim | None = None,
 ) -> None:
-    expected_current_revision_id = _current_claim_revision_id(
-        conn, listing_id=listing_id, org=org
-    )
+    expected_current_revision_id = _current_claim_revision_id(conn, listing_id=listing_id, org=org)
     # _current_claim_revision_id's own reads leave *conn* mid-transaction
     # (psycopg autocommit=False); write_physical_boat_claim_revision requires
     # IDLE to safely own its own top-level transaction.
