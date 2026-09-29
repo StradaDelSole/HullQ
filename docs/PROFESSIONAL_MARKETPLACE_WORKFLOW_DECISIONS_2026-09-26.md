@@ -397,6 +397,55 @@ SLICE-0070 does not need to send email, deliver broker notifications or implemen
 Lead creation is distinct from the later Broker Lead operating surface. 0070 owns durable creation/attribution and buyer-visible submit outcome only; broker inbox/assignment/status/notes/follow-up remain a separate subsequent capability.
 
 
+
+## D33 — Broker Lead workspace is authoritative; email is notification only
+
+The Broker Workspace is the authoritative operating surface for durable marketplace Leads. Email is an auxiliary notification channel and must never become the only durable Lead record or the only supported broker workflow.
+
+The accepted future broker Lead operating surface must provide, at minimum:
+
+- a Lead inbox/queue in Broker Workspace;
+- visible new/unread indication/count;
+- Lead detail with buyer name, contact email and its verification state, buyer message, source context, target NativeListing, publishing Organization and received-at time;
+- assignment where an Organization has multiple eligible members;
+- bounded operational status/stage;
+- notes/timeline sufficient for follow-up history;
+- follow-up/response visibility.
+
+A full enterprise CRM is not required for the first launch baseline, but an email-only workflow is insufficient.
+
+For every newly created durable Lead, HullQ should additionally create a durable notification intent for the publishing Organization's configured Lead-notification recipient(s). The notification email:
+
+- is sent by HullQ rather than impersonating the buyer;
+- contains only the minimum useful Lead context;
+- clearly labels an UNVERIFIED buyer email as unverified;
+- links directly to the authoritative Lead detail in Broker Workspace;
+- must not expose private/internal authorization or persistence details.
+
+Lead persistence and email delivery are not one failure boundary. A successfully created Lead must survive email-provider outage or notification failure.
+
+Accepted delivery direction:
+
+```text
+Lead transaction
+→ durable Lead
+→ durable notification/outbox intent
+→ COMMIT
+
+after commit
+→ asynchronous/retryable email delivery
+→ delivery outcome recorded
+```
+
+A mail failure never rolls back or deletes the Lead. Notification delivery must be retryable/idempotent enough to avoid silently losing alerts or creating uncontrolled duplicate notifications.
+
+Email is notification/transport only. Lead status, assignment, notes, timeline and source-of-truth history remain in HullQ.
+
+The exact email provider, recipient configuration model, retry schedule and worker topology are implementation details for the owning future slice, subject to existing production/secrets/observability requirements.
+
+SLICE-0070 remains limited to durable buyer Lead creation. D33 is binding direction for the subsequent Broker Lead Operating Surface capability and must be considered in the first post-0070 reassessment. It does not preassign a slice number.
+
+
 ## Reassessment rule
 
 These decisions are binding product/domain direction until explicitly superseded by a later Owner-accepted repository decision.
