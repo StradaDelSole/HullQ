@@ -292,6 +292,8 @@ Post-SLICE-0069 reassessment selected SLICE-0070 as the next broker-launch capab
 
 Accepted D32 permits anonymous contact with required bounded name/email/message, derives target Organization from authoritative listing truth, records optional authenticated AccountId only as attribution, and keeps contact email explicitly UNVERIFIED in v0.1. Email verification is a registered mandatory follow-up: `BUYER_CONTACT_EMAIL_VERIFICATION_STATUS` must become `IMPLEMENTED` before real external production buyer-contact exposure or any verified/trusted-email representation. Broker Lead inbox/assignment/status/notes remain a separate later capability.
 
+Accepted D33 fixes the later broker Lead operating direction: Broker Workspace is the authoritative Lead system with inbox/queue, unread indication, Lead detail, assignment, operational status, notes/timeline and follow-up visibility. Email is auxiliary notification only, sent by HullQ with a direct dashboard link and explicit UNVERIFIED labeling where applicable. Lead creation and notification delivery use a durable outbox/retry boundary so mail-provider failure never loses or rolls back a Lead. Exact provider/worker configuration remains future implementation detail.
+
 ## Development workflow
 
 - `origin/main` is canonical shared truth;
