@@ -23,6 +23,12 @@ Astro/Node SSR), per `specs/MARKETPLACE_BUYER_LEAD_CREATION_CONTRACT.v0.1.md`
         form and the contact route's availability -- the bounded
         non-enumerating listing-not-available outcome, without creating a
         Lead
+    11. Finding A (independent review amendment, exact-head
+        0f7e4b7826c9867754dd2e97fff1ee19b56fc1f5): an exact retry of the
+        already-created Lead's own submission-operation identity still
+        resolves to that same Lead after the listing has since become
+        unavailable -- contract §4's idempotent-retry guarantee is
+        independent of current listing state
 
 Requires ``HULLQ_TEST_DATABASE_URL`` (a local PostgreSQL instance) and a
 pre-built Astro web package (``cd web && npm ci && npm run build``).
@@ -550,6 +556,45 @@ def main() -> int:
             step10b_ok = final_lead_count == 1
             ok &= step10b_ok
             print(f"    still exactly one durable Lead row -> {'OK' if step10b_ok else 'FAIL'}\n")
+        finally:
+            verify_conn.close()
+
+        # 11. Finding A: an exact retry of the ORIGINAL (already-created)
+        # operation must still resolve to the existing Lead even after the
+        # listing has since become unavailable -- contract §4's idempotent-
+        # retry guarantee is independent of current listing state.
+        retry_after_withdraw_status, retry_after_withdraw_body = _http_post_json(
+            contact_url,
+            {
+                "submission_operation_id": "OP-0070-E2E-1",
+                "name": "Jane Buyer",
+                "email": "jane@example.com",
+                "message": "Interested in this boat.",
+            },
+            origin=web_base,
+            csrf_header_value="marketplace-buyer-lead-v1",
+        )
+        step11_ok = (
+            retry_after_withdraw_status == 200
+            and retry_after_withdraw_body.get("status") == "ALREADY_EXISTS"
+            and retry_after_withdraw_body.get("lead_id") == lead_id_value
+        )
+        ok &= step11_ok
+        print(
+            "11. exact retry of the already-created Lead still resolves after "
+            f"withdrawal (Finding A) -> {'OK' if step11_ok else 'FAIL'}"
+        )
+
+        verify_conn = psycopg.connect(url)
+        try:
+            with verify_conn.cursor() as cur:
+                cur.execute(
+                    "SELECT COUNT(*) FROM buyer_leads WHERE native_listing_id = %s", [_LISTING_ID]
+                )
+                after_retry_lead_count = cur.fetchone()[0]
+            step11b_ok = after_retry_lead_count == 1
+            ok &= step11b_ok
+            print(f"    still exactly one durable Lead row -> {'OK' if step11b_ok else 'FAIL'}\n")
         finally:
             verify_conn.close()
 

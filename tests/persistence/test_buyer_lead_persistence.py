@@ -19,6 +19,8 @@ from urllib.parse import quote, urlsplit, urlunsplit
 import psycopg
 import pytest
 
+from hullq.application.current_public_eligibility import resolve_current_public_eligibility
+from hullq.application.native_listing_freshness import resolve_current_freshness
 from hullq.domain.buyer_lead import (
     ContactEmailVerificationState,
     SubmissionOperationId,
@@ -61,21 +63,27 @@ from hullq.persistence.buyer_lead import (
 from hullq.persistence.market_episode import create_market_episode
 from hullq.persistence.media_gallery import (
     create_uploaded_image_placement,
+    fetch_gallery_state,
     insert_approved_media_asset,
     set_cover,
 )
 from hullq.persistence.native_listing import create_native_listing
 from hullq.persistence.native_listing_lifecycle import (
     fetch_lifecycle_state,
+    list_publication_transitions,
     publish_native_listing,
     withdraw_native_listing,
 )
 from hullq.persistence.native_listing_offer import (
     NativeListingOfferRevisionId,
+    fetch_current_native_listing_offer,
     write_native_listing_offer_revision,
 )
 from hullq.persistence.physical_boat import create_physical_boat
-from hullq.persistence.physical_boat_claims import write_physical_boat_claim_revision
+from hullq.persistence.physical_boat_claims import (
+    fetch_current_physical_boat_claim,
+    write_physical_boat_claim_revision,
+)
 
 # ---------------------------------------------------------------------------
 # Disposable-schema fixture
@@ -432,6 +440,136 @@ def test_withdrawn_listing_is_listing_not_available_without_mutating_lifecycle(
     )
 
 
+def test_exact_retry_after_listing_withdrawn_still_resolves_existing_lead(
+    lead_url: str, lead_conn: Any
+) -> None:
+    """Finding A: contract §4's idempotent-retry guarantee holds even after
+    the target listing later becomes unavailable -- an already-created Lead
+    must remain retry-resolvable, never re-gated on current D29 eligibility."""
+    account, org, membership = _publish_listing(lead_conn, listing_id="NL-LEAD09")
+    lead_conn.commit()
+
+    kwargs: dict[str, Any] = {
+        "submission_operation_id": SubmissionOperationId("OP-LEAD09"),
+        "native_listing_id": NativeListingId("NL-LEAD09"),
+        "account_id": None,
+        "buyer_name": "Jane Buyer",
+        "buyer_email": "jane@example.com",
+        "buyer_message": "Interested in this boat.",
+        "as_of": _now(),
+    }
+    first = create_buyer_lead(lead_conn, **kwargs)
+    assert first.status is BuyerLeadCreationStatus.CREATED
+
+    withdraw_result = withdraw_native_listing(
+        lead_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-LEAD09"),
+    )
+    assert withdraw_result.status.value == "transitioned", withdraw_result
+    lead_conn.commit()
+
+    retry = create_buyer_lead(lead_conn, **kwargs)
+    assert retry.status is BuyerLeadCreationStatus.ALREADY_EXISTS
+    assert retry.lead_id == first.lead_id
+    assert retry.received_at == first.received_at
+
+    with lead_conn.cursor() as cur:
+        cur.execute(
+            "SELECT COUNT(*) FROM buyer_leads WHERE submission_operation_id = %s", ["OP-LEAD09"]
+        )
+        assert cur.fetchone()[0] == 1
+
+
+def test_same_operation_id_different_envelope_after_withdraw_still_conflicts(
+    lead_url: str, lead_conn: Any
+) -> None:
+    """Finding A: the same operation id with a materially different envelope
+    still resolves to CONFLICT after the listing is withdrawn -- the retry
+    path never touches D29/listing truth, so this is unaffected either way."""
+    account, org, membership = _publish_listing(lead_conn, listing_id="NL-LEAD10")
+    lead_conn.commit()
+
+    first = create_buyer_lead(
+        lead_conn,
+        submission_operation_id=SubmissionOperationId("OP-LEAD10"),
+        native_listing_id=NativeListingId("NL-LEAD10"),
+        account_id=None,
+        buyer_name="Jane Buyer",
+        buyer_email="jane@example.com",
+        buyer_message="Interested in this boat.",
+        as_of=_now(),
+    )
+    assert first.status is BuyerLeadCreationStatus.CREATED
+
+    withdraw_result = withdraw_native_listing(
+        lead_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-LEAD10"),
+    )
+    assert withdraw_result.status.value == "transitioned", withdraw_result
+    lead_conn.commit()
+
+    conflicting_retry = create_buyer_lead(
+        lead_conn,
+        submission_operation_id=SubmissionOperationId("OP-LEAD10"),
+        native_listing_id=NativeListingId("NL-LEAD10"),
+        account_id=None,
+        buyer_name="Jane Buyer",
+        buyer_email="jane@example.com",
+        buyer_message="A completely different message.",
+        as_of=_now(),
+    )
+    assert conflicting_retry.status is BuyerLeadCreationStatus.CONFLICT
+    assert conflicting_retry.lead_id is None
+
+    with lead_conn.cursor() as cur:
+        cur.execute(
+            "SELECT COUNT(*) FROM buyer_leads WHERE submission_operation_id = %s", ["OP-LEAD10"]
+        )
+        assert cur.fetchone()[0] == 1
+
+
+def test_new_operation_after_withdraw_is_still_listing_not_available(
+    lead_url: str, lead_conn: Any
+) -> None:
+    """Finding A: only the retry path for an *existing* operation id bypasses
+    the D29 recheck -- a genuinely new operation id targeting a
+    no-longer-public listing must still fail closed as LISTING_NOT_AVAILABLE."""
+    account, org, membership = _publish_listing(lead_conn, listing_id="NL-LEAD11")
+    lead_conn.commit()
+    withdraw_result = withdraw_native_listing(
+        lead_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-LEAD11"),
+    )
+    assert withdraw_result.status.value == "transitioned", withdraw_result
+    lead_conn.commit()
+
+    result = create_buyer_lead(
+        lead_conn,
+        submission_operation_id=SubmissionOperationId("OP-LEAD11-NEW"),
+        native_listing_id=NativeListingId("NL-LEAD11"),
+        account_id=None,
+        buyer_name="Jane Buyer",
+        buyer_email="jane@example.com",
+        buyer_message="Interested in this boat.",
+        as_of=_now(),
+    )
+    assert result.status is BuyerLeadCreationStatus.LISTING_NOT_AVAILABLE
+    assert result.lead_id is None
+
+    with lead_conn.cursor() as cur:
+        cur.execute("SELECT COUNT(*) FROM buyer_leads WHERE native_listing_id = %s", ["NL-LEAD11"])
+        assert cur.fetchone()[0] == 0
+
+
 def test_exact_retry_is_idempotent(lead_url: str, lead_conn: Any) -> None:
     _publish_listing(lead_conn, listing_id="NL-LEAD06")
     lead_conn.commit()
@@ -690,3 +828,115 @@ def test_concurrent_withdraw_and_lead_creation_never_creates_a_stale_lead(lead_u
             assert lead_row_count == 0
     finally:
         verify.close()
+
+
+# ---------------------------------------------------------------------------
+# Transaction-failure / non-mutation proof (contract §17 items 11-12)
+# ---------------------------------------------------------------------------
+
+
+def test_transaction_failure_after_entry_leaves_no_partial_lead(
+    lead_url: str, lead_conn: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Contract §17 item 11: a failure that occurs after real transaction
+    work has already happened (the row lock acquired, D29 eligibility
+    re-evaluated ELIGIBLE) must still leave zero partial `buyer_leads` rows.
+
+    Fault injection replaces `create_buyer_lead`'s own `_INSERT_LEAD` SQL
+    text with one referencing a non-existent column, so the INSERT step
+    itself raises a genuine PostgreSQL `UndefinedColumn` error -- production
+    transaction semantics (`with conn.transaction(), conn.cursor() as cur:`)
+    are exercised completely unmodified; only the test-scoped SQL text
+    differs, forcing a real, deterministic mid-transaction failure at the
+    exact point the row would otherwise have been created.
+    """
+    import hullq.persistence.buyer_lead as buyer_lead_module
+
+    _publish_listing(lead_conn, listing_id="NL-LEADFAIL01")
+    lead_conn.commit()
+
+    monkeypatch.setattr(
+        buyer_lead_module,
+        "_INSERT_LEAD",
+        "INSERT INTO buyer_leads (lead_id_column_does_not_exist) VALUES (%s)",
+    )
+
+    with pytest.raises(Exception):  # noqa: B017 -- genuine psycopg.errors.UndefinedColumn
+        create_buyer_lead(
+            lead_conn,
+            submission_operation_id=SubmissionOperationId("OP-LEADFAIL01"),
+            native_listing_id=NativeListingId("NL-LEADFAIL01"),
+            account_id=None,
+            buyer_name="Jane Buyer",
+            buyer_email="jane@example.com",
+            buyer_message="Interested in this boat.",
+            as_of=_now(),
+        )
+
+    # `conn.transaction()` rolls back and re-raises on exception, so
+    # *lead_conn* is already back to IDLE -- verify with a fresh connection
+    # anyway so this proof depends on nothing about *lead_conn*'s own state.
+    verify = psycopg.connect(lead_url)
+    try:
+        with verify.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM buyer_leads")
+            assert cur.fetchone()[0] == 0
+    finally:
+        verify.close()
+
+
+def test_lead_creation_does_not_mutate_listing_authoritative_truth(
+    lead_url: str, lead_conn: Any
+) -> None:
+    """Contract §17 item 12: Lead creation must not mutate
+    lifecycle/freshness/offer/claim/media/D29-eligibility truth.
+
+    Snapshots the relevant authoritative listing state -- via the exact same
+    accepted production read helpers every other surface uses, never a new
+    production API introduced only for this proof -- immediately before and
+    after a successful Lead creation, at one fixed *as_of* boundary so the
+    freshness/eligibility comparison cannot spuriously differ merely because
+    wall-clock time advanced between the two reads.
+    """
+    listing_id = "NL-LEADNOMUT01"
+    physical_boat_id = PhysicalBoatId(f"PB-{listing_id}")
+    _account, org, _membership = _publish_listing(lead_conn, listing_id=listing_id)
+    lead_conn.commit()
+
+    as_of = _now()
+
+    def _snapshot() -> dict[str, Any]:
+        return {
+            "lifecycle": fetch_lifecycle_state(lead_conn, NativeListingId(listing_id)),
+            "transitions": list_publication_transitions(lead_conn, NativeListingId(listing_id)),
+            "freshness": resolve_current_freshness(
+                lead_conn, NativeListingId(listing_id), as_of=as_of
+            ),
+            "offer": fetch_current_native_listing_offer(lead_conn, NativeListingId(listing_id)),
+            "claim": fetch_current_physical_boat_claim(lead_conn, physical_boat_id, org.id),
+            "gallery": fetch_gallery_state(lead_conn, NativeListingId(listing_id)),
+            "eligibility": resolve_current_public_eligibility(
+                lead_conn, NativeListingId(listing_id), as_of=as_of
+            ),
+        }
+
+    before = _snapshot()
+    lead_conn.commit()  # release the implicit read transaction before create_buyer_lead
+
+    result = create_buyer_lead(
+        lead_conn,
+        submission_operation_id=SubmissionOperationId("OP-LEADNOMUT01"),
+        native_listing_id=NativeListingId(listing_id),
+        account_id=None,
+        buyer_name="Jane Buyer",
+        buyer_email="jane@example.com",
+        buyer_message="Interested in this boat.",
+        as_of=as_of,
+    )
+    assert result.status is BuyerLeadCreationStatus.CREATED
+    lead_conn.commit()  # release the transaction create_buyer_lead itself committed
+
+    after = _snapshot()
+    lead_conn.commit()
+
+    assert before == after
