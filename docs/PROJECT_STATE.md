@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0068 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0069 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0069 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0070 -->
 
 **Updated:** 2026-09-27  
-**Latest owner-accepted / DONE slice:** SLICE-0068  
-**Current queue:** SLICE-0069 — **Canonical PublicationReadiness + Publish Integration — READY**. Post-SLICE-0068 reassessment selected the canonical publication/current-public integration capability; implementation remains unauthorized until readiness exact-head review, remote gates and readiness merge complete.  
+**Latest owner-accepted / DONE slice:** SLICE-0069  
+**Current queue:** SLICE-0070 — **UNSELECTED**. SLICE-0069 Canonical PublicationReadiness + Publish Integration is owner-accepted and merged; a fresh post-SLICE-0069 reassessment must complete before SLICE-0070 capability selection, readiness or implementation authorization.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -55,7 +55,9 @@ SLICE-0066 closes the remaining shared draft required-response gap for `physical
 
 SLICE-0067 adds the accepted fresh-identity professional promotion path. An authorized, promotion-ready Organization-owned ProfessionalListingDraft can atomically mint a fresh PhysicalBoat, MarketEpisode and lifecycle-DRAFT NativeListing, write the initial Organization PhysicalBoat claim and NativeListing offer, and freeze the source draft as PROMOTED with immutable NativeListing provenance in one PostgreSQL transaction. Exact-version retry is idempotent, D09 Organization+resolved-episode uniqueness is database-enforced, and browser recovery is deterministically cleared only after successful promotion. The resulting listing remains DRAFT/not public; existing-boat reconciliation and publication remain deferred.
 
-SLICE-0068 adds the accepted Organization-controlled mixed-media gallery for existing NativeListings: private original/quarantine image storage, safely processed derivatives, provenance/rights state, durable MediaAsset/MediaPlacement ordering and explicit cover, same-Organization reuse, structured YouTube references, bounded streaming broker uploads, ACTIVE-listing media protection and race-safe retirement/reuse/cover locking. Cloudflare R2 Standard is the initial primary media store behind HullQ's S3-compatible boundary. Canonical PublicationReadiness/publish integration remains separate.
+SLICE-0068 adds the accepted Organization-controlled mixed-media gallery for existing NativeListings: private original/quarantine image storage, safely processed derivatives, provenance/rights state, durable MediaAsset/MediaPlacement ordering and explicit cover, same-Organization reuse, structured YouTube references, bounded streaming broker uploads, ACTIVE-listing media protection and race-safe retirement/reuse/cover locking. Cloudflare R2 Standard is the initial primary media store behind HullQ's S3-compatible boundary.
+
+SLICE-0069 adds canonical D22 PublicationReadiness and D29 CurrentPublicEligibility. Broker Workspace preflight and authoritative publish-time re-evaluation now share one readiness authority; DRAFT→ACTIVE publication consumes current Organization eligibility, episode/PhysicalBoat chain, current offer, current PhysicalBoat claim and accepted media/cover truth. Buyer/public exact-listing and both accepted Direct Search paths reuse one current-public eligibility authority, so ACTIVE alone no longer implies current-market visibility. Suppression does not rewrite lifecycle. Public listings now expose the accepted bounded IMAGE/YOUTUBE gallery with listing-scoped processed-derivative delivery; private originals/object-storage identity remain hidden. Technical Search criteria remain exactly 2.
 
 SLICE-0054 now adds the first accepted owner-direct provider surface:
 
@@ -281,14 +283,14 @@ Large retained research artifacts are acknowledged as repository-hygiene debt, n
 Next queue number:
 
 ```text
-SLICE-0069
+SLICE-0070
 ```
 
-**Capability:** Canonical PublicationReadiness + Publish Integration.
+**Capability:** UNSELECTED.
 
-SLICE-0068 Broker Marketplace Mixed-Media Gallery is owner-accepted and merged. Post-SLICE-0068 reassessment selected SLICE-0069 Canonical PublicationReadiness + Publish Integration as the next launch-path capability. It is governed by `specs/MARKETPLACE_PUBLICATION_READINESS_CONTRACT.v0.1.md` and `docs/slices/SLICE-0069-canonical-publication-readiness-publish-integration.md`.
+SLICE-0069 Canonical PublicationReadiness + Publish Integration is owner-accepted and merged. A fresh post-SLICE-0069 reassessment must reconcile current `main`, accepted broker-launch direction, remaining launch blockers, trigger gates and existing Lead/contact foundations before SLICE-0070 capability selection.
 
-SLICE-0069 reconciles the legacy SLICE-0049 publication-completeness and SLICE-0052 ACTIVE+freshness public/current-market subsets into accepted D22/D29 canonical authorities, integrates the already-accepted SLICE-0068 media truth into publication/public gallery, and keeps D20/D21 episode-correction authority explicitly deferred. `START_SLICE.bat` and implementation remain blocked until independent exact-head readiness review, remote gates and readiness merge complete.
+The accepted near-term direction identifies durable buyer contact / Lead creation as the next launch-path target, followed by broker lead handling and post-promotion inventory editing, but this closure does not preselect SLICE-0070. No `START_SLICE.bat` authorization or implementation work exists for 0070 at this closure point.
 
 ## Development workflow
 
@@ -303,6 +305,6 @@ SLICE-0069 reconciles the legacy SLICE-0049 publication-completeness and SLICE-0
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0068 Broker Marketplace Mixed-Media Gallery is owner-accepted and merged; SLICE-0069 is selected as Canonical PublicationReadiness + Publish Integration and remains READY pending successful remote gates and readiness merge.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0069 Canonical PublicationReadiness + Publish Integration is owner-accepted and merged; SLICE-0070 remains UNSELECTED pending fresh post-0069 reassessment.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
