@@ -562,7 +562,7 @@ DISCOVERY PROVENANCE
 which HullQ surface/path led to the contacted listing
 ```
 
-Acquisition classification should support bounded categories sufficient to distinguish at least DIRECT, ORGANIC_SEARCH, PAID_SEARCH/PAID_CAMPAIGN, REFERRAL, SOCIAL where known, OTHER and UNKNOWN. Bounded campaign metadata such as validated UTM source/medium/campaign identifiers may be retained when actually present.
+Acquisition classification should support bounded categories sufficient to distinguish at least DIRECT, ORGANIC_SEARCH, PAID_SEARCH/PAID_CAMPAIGN, REFERRAL, SOCIAL where known, OTHER and UNKNOWN. Bounded campaign metadata such as validated UTM source, medium, campaign and optional term/content identifiers may be retained when actually present.
 
 Discovery classification should support bounded HullQ-owned origins such as DIRECT_LISTING, TECHNICAL_SEARCH, INTERNAL_BROWSE, SHORTLIST, COMPARE and other later explicit HullQ surfaces.
 
