@@ -55,9 +55,12 @@ from hullq.domain.buyer_lead import (
     SubmissionOperationId,
 )
 from hullq.domain.current_public_eligibility import CurrentPublicEligibilityStatus
+from hullq.domain.lead_provenance import DiscoverySurface, classify_acquisition_channel
 from hullq.domain.market_identity import NativeListingId
 from hullq.domain.publishing_eligibility import AccountId, MarketplaceOrganizationId
 from hullq.persistence.fingerprint import fingerprint_dict
+from hullq.persistence.lead_notification import insert_pending_notification_intent
+from hullq.persistence.lead_provenance import insert_lead_acquisition_provenance
 
 __all__ = [
     "BuyerLeadCreationResult",
@@ -209,6 +212,11 @@ def create_buyer_lead(
     buyer_email: str,
     buyer_message: str,
     as_of: datetime,
+    utm_source: str | None = None,
+    utm_medium: str | None = None,
+    utm_campaign: str | None = None,
+    utm_term: str | None = None,
+    utm_content: str | None = None,
 ) -> BuyerLeadCreationResult:
     """Resolve *submission_operation_id* first; only a genuinely new
     operation re-evaluates D29 CurrentPublicEligibility and may create a
@@ -341,6 +349,37 @@ def create_buyer_lead(
         )
         inserted = cur.fetchone()
         if inserted is not None:
+            # SLICE-0071 contract §10/mandatory invariant 10: the durable
+            # notification intent (and §8B's immutable acquisition/discovery
+            # provenance evidence) must commit atomically with Lead creation
+            # -- both inserts run on this same cursor, inside this same
+            # `with conn.transaction()` block, never in a separate
+            # transaction.
+            insert_pending_notification_intent(
+                cur,
+                lead_id=lead_id,
+                native_listing_id=native_listing_id,
+                publishing_organization_id=MarketplaceOrganizationId(
+                    publishing_organization_id_value
+                ),
+                buyer_name=buyer_name,
+                buyer_email=buyer_email,
+                contact_email_verification_state=ContactEmailVerificationState.UNVERIFIED,
+                buyer_message=buyer_message,
+            )
+            insert_lead_acquisition_provenance(
+                cur,
+                lead_id=lead_id,
+                acquisition_channel=classify_acquisition_channel(
+                    utm_source=utm_source, utm_medium=utm_medium, utm_campaign=utm_campaign
+                ),
+                utm_source=utm_source,
+                utm_medium=utm_medium,
+                utm_campaign=utm_campaign,
+                utm_term=utm_term,
+                utm_content=utm_content,
+                discovery_surface=DiscoverySurface.UNKNOWN,
+            )
             return BuyerLeadCreationResult(
                 status=BuyerLeadCreationStatus.CREATED, lead_id=lead_id, received_at=inserted[1]
             )

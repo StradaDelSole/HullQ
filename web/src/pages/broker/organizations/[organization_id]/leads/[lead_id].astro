@@ -1,0 +1,385 @@
+---
+// SLICE-0071: the private Lead detail + operational mutation surface
+// (contract §4/§6/§7/§8/§8A). Every mutation below is a same-origin form
+// POST that this page proxies to FastAPI (mirrors `inventory.astro`'s CSRF
+// proxy rationale): the browser never calls FastAPI directly. After every
+// action this page always re-reads the authoritative Lead detail from
+// FastAPI -- the rendered result is never a client-invented success.
+export const prerender = false;
+
+import {
+  fetchLeadDetail,
+  markLeadRead,
+  setLeadAssignment,
+  setLeadStatus,
+  closeLead,
+  setLeadFollowUp,
+  appendLeadNote,
+  appendLeadContactAttempt,
+} from "../../../../../lib/brokerLeadOpsApi";
+import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../../../lib/authConstants";
+
+const organizationId = Astro.params.organization_id;
+const leadId = Astro.params.lead_id;
+const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
+const cookieHeader = Astro.request.headers.get("cookie");
+const originHeader = Astro.request.headers.get("origin");
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+Astro.response.headers.set("Cache-Control", "private, no-store");
+
+type ActionOutcome =
+  | "none"
+  | "ok"
+  | "unauthenticated"
+  | "lead_not_found"
+  | "mfa_required"
+  | "invalid_input"
+  | "version_conflict"
+  | "assignee_not_active_member"
+  | "action_failed";
+
+let actionOutcome: ActionOutcome = "none";
+
+function mapOutcome(result: { kind: string }): ActionOutcome {
+  if (result.kind === "ok") return "ok";
+  if (
+    result.kind === "unauthenticated" ||
+    result.kind === "lead_not_found" ||
+    result.kind === "mfa_required" ||
+    result.kind === "invalid_input" ||
+    result.kind === "version_conflict" ||
+    result.kind === "assignee_not_active_member"
+  ) {
+    return result.kind;
+  }
+  return "action_failed";
+}
+
+if (Astro.request.method === "POST" && organizationId && leadId) {
+  const formData = await Astro.request.formData();
+  const action = formData.get("action");
+
+  if (action === "mark_read") {
+    actionOutcome = mapOutcome(
+      await markLeadRead(apiBaseUrl, organizationId, leadId, cookieHeader, originHeader),
+    );
+  } else if (action === "assign") {
+    const assignee = formData.get("assignee_account_id");
+    const expectedVersion = Number(formData.get("expected_version"));
+    actionOutcome = mapOutcome(
+      await setLeadAssignment(
+        apiBaseUrl,
+        organizationId,
+        leadId,
+        typeof assignee === "string" && assignee ? assignee : null,
+        expectedVersion,
+        cookieHeader,
+        originHeader,
+      ),
+    );
+  } else if (action === "unassign") {
+    const expectedVersion = Number(formData.get("expected_version"));
+    actionOutcome = mapOutcome(
+      await setLeadAssignment(apiBaseUrl, organizationId, leadId, null, expectedVersion, cookieHeader, originHeader),
+    );
+  } else if (action === "set_status") {
+    const status = formData.get("status");
+    const expectedVersion = Number(formData.get("expected_version"));
+    if (typeof status === "string" && status) {
+      actionOutcome = mapOutcome(
+        await setLeadStatus(apiBaseUrl, organizationId, leadId, status, expectedVersion, cookieHeader, originHeader),
+      );
+    } else {
+      actionOutcome = "invalid_input";
+    }
+  } else if (action === "close") {
+    const closeReason = formData.get("close_reason");
+    const expectedVersion = Number(formData.get("expected_version"));
+    if (typeof closeReason === "string" && closeReason) {
+      actionOutcome = mapOutcome(
+        await closeLead(apiBaseUrl, organizationId, leadId, closeReason, expectedVersion, cookieHeader, originHeader),
+      );
+    } else {
+      actionOutcome = "invalid_input";
+    }
+  } else if (action === "set_follow_up") {
+    const dueAt = formData.get("due_at");
+    const expectedVersion = Number(formData.get("expected_version"));
+    const dueAtIso = typeof dueAt === "string" && dueAt ? new Date(dueAt).toISOString() : null;
+    actionOutcome = mapOutcome(
+      await setLeadFollowUp(apiBaseUrl, organizationId, leadId, dueAtIso, expectedVersion, cookieHeader, originHeader),
+    );
+  } else if (action === "clear_follow_up") {
+    const expectedVersion = Number(formData.get("expected_version"));
+    actionOutcome = mapOutcome(
+      await setLeadFollowUp(apiBaseUrl, organizationId, leadId, null, expectedVersion, cookieHeader, originHeader),
+    );
+  } else if (action === "add_note") {
+    const text = formData.get("text");
+    if (typeof text === "string" && text.trim()) {
+      actionOutcome = mapOutcome(
+        await appendLeadNote(apiBaseUrl, organizationId, leadId, text, cookieHeader, originHeader),
+      );
+    } else {
+      actionOutcome = "invalid_input";
+    }
+  } else if (action === "add_contact_attempt") {
+    const channel = formData.get("channel");
+    const note = formData.get("note");
+    if (typeof channel === "string" && channel) {
+      actionOutcome = mapOutcome(
+        await appendLeadContactAttempt(
+          apiBaseUrl,
+          organizationId,
+          leadId,
+          channel,
+          typeof note === "string" && note.trim() ? note : null,
+          cookieHeader,
+          originHeader,
+        ),
+      );
+    } else {
+      actionOutcome = "invalid_input";
+    }
+  }
+}
+
+const result =
+  organizationId && leadId
+    ? await fetchLeadDetail(apiBaseUrl, organizationId, leadId, cookieHeader)
+    : ({ kind: "lead_not_found" } as const);
+
+if (result.kind === "lead_not_found") {
+  Astro.response.status = 404;
+} else if (result.kind === "mfa_required") {
+  Astro.response.status = 403;
+} else if (result.kind === "service_error") {
+  Astro.response.status = 503;
+}
+
+const nextPath = `/broker/organizations/${organizationId ?? ""}/leads/${leadId ?? ""}`;
+const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(nextPath)}`;
+const stepUpUrl = `${loginUrl}&acr_values=${encodeURIComponent(AUTH0_MFA_STEP_UP_ACR_VALUE)}`;
+
+const actionOutcomeText: Record<ActionOutcome, string | null> = {
+  none: null,
+  ok: "Done.",
+  unauthenticated: "Please log in to do this.",
+  lead_not_found: "This lead isn't available here.",
+  mfa_required: "Additional verification is required before you can do this.",
+  invalid_input: "That input wasn't valid.",
+  version_conflict: "This lead's state has already changed -- please review its current status below.",
+  assignee_not_active_member: "That Account is not a current active member of this Organization.",
+  action_failed: "Something went wrong. Please try again.",
+};
+
+const STATUS_OPTIONS = ["NEW", "IN_PROGRESS", "WAITING_FOR_BUYER"];
+const CLOSE_REASONS = ["NOT_INTERESTED", "UNREACHABLE", "BOAT_UNAVAILABLE", "DUPLICATE", "OTHER"];
+const CONTACT_CHANNELS = ["EMAIL", "PHONE", "MESSAGING", "OTHER"];
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>HullQ Broker Workspace — Lead</title>
+  </head>
+  <body>
+    <main>
+      {
+        result.kind === "unauthenticated" ? (
+          <>
+            <h1>Broker Workspace</h1>
+            <p>
+              Please <a href={loginUrl}>log in</a> to access this lead.
+            </p>
+          </>
+        ) : result.kind === "lead_not_found" ? (
+          <>
+            <h1>Not found</h1>
+            <p>This lead isn't available here.</p>
+          </>
+        ) : result.kind === "mfa_required" ? (
+          <>
+            <h1>Additional verification required</h1>
+            <p>This Organization membership requires multi-factor authentication.</p>
+            <a href={stepUpUrl}>Verify and continue</a>
+          </>
+        ) : result.kind === "service_error" ? (
+          <>
+            <h1>Lead temporarily unavailable</h1>
+            <p>Something went wrong loading this lead. Please try again.</p>
+          </>
+        ) : (
+          <>
+            <h1>Lead</h1>
+            <p>
+              <a href={`/broker/organizations/${organizationId}/leads`}>Back to inbox</a>
+            </p>
+            {actionOutcomeText[actionOutcome] && <p>{actionOutcomeText[actionOutcome]}</p>}
+
+            <section>
+              <h2>Buyer</h2>
+              <p>Name: {result.data.buyer_name}</p>
+              <p>
+                Email: {result.data.buyer_email} ({result.data.contact_email_verification_state})
+              </p>
+              <p>Message: {result.data.buyer_message}</p>
+              <p>Received: {result.data.received_at}</p>
+              <p>
+                Listing:{" "}
+                <a href={`/listings/${encodeURIComponent(result.data.native_listing_id)}`}>
+                  {result.data.native_listing_id}
+                </a>
+              </p>
+              <p>Source: {result.data.source_channel}</p>
+            </section>
+
+            <section>
+              <h2>Acquisition / discovery</h2>
+              <p>Acquisition channel: {result.data.acquisition_provenance?.acquisition_channel ?? "UNKNOWN"}</p>
+              <p>Discovery surface: {result.data.acquisition_provenance?.discovery_surface ?? "UNKNOWN"}</p>
+            </section>
+
+            <section>
+              <h2>Notification delivery</h2>
+              <p>Status: {result.data.notification_delivery?.status ?? "UNKNOWN"}</p>
+            </section>
+
+            <section>
+              <h2>Operational state</h2>
+              <p>Status: {result.data.operational_state.operational_status}</p>
+              <p>{result.data.operational_state.is_unread ? "Unread" : "Read"}</p>
+              <p>Assigned: {result.data.operational_state.assigned_account_id ?? "Unassigned"}</p>
+              <p>Follow-up due: {result.data.operational_state.follow_up_due_at ?? "None"}</p>
+              {result.data.operational_state.close_reason && (
+                <p>Close reason: {result.data.operational_state.close_reason}</p>
+              )}
+
+              {result.data.operational_state.is_unread && (
+                <form method="POST">
+                  <input type="hidden" name="action" value="mark_read" />
+                  <button type="submit">Mark read</button>
+                </form>
+              )}
+
+              <form method="POST">
+                <input type="hidden" name="action" value="assign" />
+                <input type="hidden" name="expected_version" value={result.data.operational_state.version} />
+                <label>
+                  Assign to Account ID:
+                  <input type="text" name="assignee_account_id" />
+                </label>
+                <button type="submit">Assign</button>
+              </form>
+              {result.data.operational_state.assigned_account_id && (
+                <form method="POST">
+                  <input type="hidden" name="action" value="unassign" />
+                  <input type="hidden" name="expected_version" value={result.data.operational_state.version} />
+                  <button type="submit">Unassign</button>
+                </form>
+              )}
+
+              {result.data.operational_state.operational_status !== "CLOSED" && (
+                <form method="POST">
+                  <input type="hidden" name="action" value="set_status" />
+                  <input type="hidden" name="expected_version" value={result.data.operational_state.version} />
+                  <label>
+                    Status:
+                    <select name="status">
+                      {STATUS_OPTIONS.map((option) => (
+                        <option value={option} selected={option === result.data.operational_state.operational_status}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button type="submit">Update status</button>
+                </form>
+              )}
+
+              {result.data.operational_state.operational_status !== "CLOSED" && (
+                <form method="POST">
+                  <input type="hidden" name="action" value="close" />
+                  <input type="hidden" name="expected_version" value={result.data.operational_state.version} />
+                  <label>
+                    Close reason:
+                    <select name="close_reason">
+                      {CLOSE_REASONS.map((reason) => (
+                        <option value={reason}>{reason}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <button type="submit">Close lead</button>
+                </form>
+              )}
+
+              <form method="POST">
+                <input type="hidden" name="action" value="set_follow_up" />
+                <input type="hidden" name="expected_version" value={result.data.operational_state.version} />
+                <label>
+                  Follow-up due:
+                  <input type="datetime-local" name="due_at" />
+                </label>
+                <button type="submit">Set follow-up</button>
+              </form>
+              {result.data.operational_state.follow_up_due_at && (
+                <form method="POST">
+                  <input type="hidden" name="action" value="clear_follow_up" />
+                  <input type="hidden" name="expected_version" value={result.data.operational_state.version} />
+                  <button type="submit">Clear follow-up</button>
+                </form>
+              )}
+            </section>
+
+            <section>
+              <h2>Add note</h2>
+              <form method="POST">
+                <input type="hidden" name="action" value="add_note" />
+                <textarea name="text" required></textarea>
+                <button type="submit">Add note</button>
+              </form>
+            </section>
+
+            <section>
+              <h2>Record contact attempt</h2>
+              <form method="POST">
+                <input type="hidden" name="action" value="add_contact_attempt" />
+                <label>
+                  Channel:
+                  <select name="channel">
+                    {CONTACT_CHANNELS.map((channel) => (
+                      <option value={channel}>{channel}</option>
+                    ))}
+                  </select>
+                </label>
+                <input type="text" name="note" placeholder="Optional note" />
+                <button type="submit">Record attempt</button>
+              </form>
+            </section>
+
+            <section>
+              <h2>Timeline</h2>
+              {result.data.timeline.length === 0 ? (
+                <p>No activity yet.</p>
+              ) : (
+                <ul>
+                  {result.data.timeline.map((event) => (
+                    <li>
+                      {event.occurred_at} — {event.event_type} by {event.actor_account_id}
+                      {event.note_text ? `: ${event.note_text}` : ""}
+                      {event.contact_channel ? ` (${event.contact_channel})` : ""}
+                      {event.close_reason ? ` (${event.close_reason})` : ""}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </>
+        )
+      }
+    </main>
+  </body>
+</html>

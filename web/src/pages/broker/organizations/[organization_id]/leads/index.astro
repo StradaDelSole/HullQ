@@ -1,0 +1,183 @@
+---
+// SLICE-0071: the private Organization-scoped Lead inbox (contract §3).
+// Broker Workspace is authoritative -- every fact here is exactly what
+// FastAPI decided; this page never infers tenancy/operational status on
+// its own.
+//
+// unauthenticated             -> login path
+// unknown/unauthorized org    -> ordinary not-found (non-enumerating)
+// privileged membership,
+//   no validated MFA          -> blocked/step-up prompt
+// authorized                  -> factual Lead inbox: buyer/listing
+//                                context, operational status, unread
+//                                state, bounded pagination, filters
+export const prerender = false;
+
+import { fetchOrganizationLeadInbox, fetchOrganizationLeadCounts } from "../../../../../lib/brokerLeadOpsApi";
+import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../../../lib/authConstants";
+
+const organizationId = Astro.params.organization_id;
+const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
+const cookieHeader = Astro.request.headers.get("cookie");
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+Astro.response.headers.set("Cache-Control", "private, no-store");
+
+const cursor = Astro.url.searchParams.get("cursor") ?? undefined;
+const statusFilter = Astro.url.searchParams.get("status") ?? undefined;
+const unreadOnly = Astro.url.searchParams.get("unread_only") === "true";
+const followUpDue = Astro.url.searchParams.get("follow_up_due") === "true";
+
+const result = organizationId
+  ? await fetchOrganizationLeadInbox(apiBaseUrl, organizationId, cookieHeader, {
+      cursor,
+      status: statusFilter,
+      unreadOnly,
+      followUpDue,
+    })
+  : ({ kind: "not_found" } as const);
+
+const countsResult = organizationId
+  ? await fetchOrganizationLeadCounts(apiBaseUrl, organizationId, cookieHeader)
+  : ({ kind: "not_found" } as const);
+
+if (result.kind === "not_found") {
+  Astro.response.status = 404;
+} else if (result.kind === "mfa_required") {
+  Astro.response.status = 403;
+} else if (result.kind === "invalid_cursor" || result.kind === "invalid_page_size" || result.kind === "invalid_input") {
+  Astro.response.status = 400;
+} else if (result.kind === "service_error") {
+  Astro.response.status = 503;
+}
+
+const nextPath = `/broker/organizations/${organizationId ?? ""}/leads`;
+const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(nextPath)}`;
+const stepUpUrl = `${loginUrl}&acr_values=${encodeURIComponent(AUTH0_MFA_STEP_UP_ACR_VALUE)}`;
+
+function filterLink(overrides: Record<string, string | undefined>): string {
+  const params = new URLSearchParams();
+  const current = { status: statusFilter, unread_only: unreadOnly ? "true" : undefined, follow_up_due: followUpDue ? "true" : undefined, ...overrides };
+  for (const [key, value] of Object.entries(current)) {
+    if (value) params.set(key, value);
+  }
+  const query = params.toString();
+  return `/broker/organizations/${organizationId}/leads${query ? `?${query}` : ""}`;
+}
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>HullQ Broker Workspace — Leads</title>
+  </head>
+  <body>
+    <main>
+      {
+        result.kind === "unauthenticated" ? (
+          <>
+            <h1>Broker Workspace</h1>
+            <p>
+              Please <a href={loginUrl}>log in</a> to access this Organization's leads.
+            </p>
+          </>
+        ) : result.kind === "not_found" ? (
+          <>
+            <h1>Not found</h1>
+            <p>This Organization's leads are not available.</p>
+          </>
+        ) : result.kind === "mfa_required" ? (
+          <>
+            <h1>Additional verification required</h1>
+            <p>This Organization membership requires multi-factor authentication.</p>
+            <a href={stepUpUrl}>Verify and continue</a>
+          </>
+        ) : result.kind === "invalid_cursor" ? (
+          <>
+            <h1>Invalid inbox link</h1>
+            <p>
+              This inbox continuation link isn't valid. Return to{" "}
+              <a href={`/broker/organizations/${organizationId}/leads`}>the first page</a>.
+            </p>
+          </>
+        ) : result.kind === "service_error" ? (
+          <>
+            <h1>Leads temporarily unavailable</h1>
+            <p>Something went wrong loading this Organization's leads. Please try again.</p>
+          </>
+        ) : result.kind !== "ok" ? (
+          <>
+            <h1>Invalid request</h1>
+            <p>This inbox request wasn't valid.</p>
+          </>
+        ) : (
+          <>
+            <h1>Leads</h1>
+            <p>
+              <a href={`/broker/organizations/${organizationId}`}>Back to workspace</a>
+            </p>
+            {countsResult.kind === "ok" && (
+              <ul>
+                <li>New / unread: {countsResult.data.new_unread}</li>
+                <li>Unassigned: {countsResult.data.unassigned}</li>
+                <li>Follow-up due: {countsResult.data.follow_up_due}</li>
+                <li>Follow-up overdue: {countsResult.data.follow_up_overdue}</li>
+              </ul>
+            )}
+            <p>
+              <a href={filterLink({ unread_only: unreadOnly ? undefined : "true" })}>
+                {unreadOnly ? "Show all" : "Show unread only"}
+              </a>
+              {" | "}
+              <a href={filterLink({ follow_up_due: followUpDue ? undefined : "true" })}>
+                {followUpDue ? "Show all" : "Show follow-up due/overdue"}
+              </a>
+            </p>
+            {result.data.items.length === 0 ? (
+              <p>No leads match the current filters.</p>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Received</th>
+                    <th>Buyer</th>
+                    <th>Listing</th>
+                    <th>Status</th>
+                    <th>Unread</th>
+                    <th>Assigned</th>
+                    <th>Follow-up</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.data.items.map((item) => (
+                    <tr>
+                      <td>{item.received_at}</td>
+                      <td>
+                        <a href={`/broker/organizations/${organizationId}/leads/${encodeURIComponent(item.lead_id)}`}>
+                          {item.buyer_name}
+                        </a>
+                        {" "}({item.buyer_email}, {item.contact_email_verification_state})
+                      </td>
+                      <td>{item.native_listing_id}</td>
+                      <td>{item.operational_state.operational_status}</td>
+                      <td>{item.operational_state.is_unread ? "Unread" : "Read"}</td>
+                      <td>{item.operational_state.assigned_account_id ?? "—"}</td>
+                      <td>{item.operational_state.follow_up_due_at ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {result.data.next_cursor ? (
+              <p>
+                <a href={filterLink({ cursor: result.data.next_cursor })}>Next page</a>
+              </p>
+            ) : null}
+          </>
+        )
+      }
+    </main>
+  </body>
+</html>
