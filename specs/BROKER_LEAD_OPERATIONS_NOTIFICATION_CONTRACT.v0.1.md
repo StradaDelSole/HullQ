@@ -42,7 +42,11 @@ Minimum projection:
 - operational status;
 - assigned AccountId/member if any;
 - unread/new state;
-- source channel.
+- source channel;
+- bounded acquisition provenance when known;
+- bounded HullQ discovery provenance when known;
+- follow-up due/overdue state;
+- last activity / last contact-attempt context.
 
 Use stable deterministic keyset pagination. No cross-Organization counts or existence leaks.
 
@@ -59,6 +63,10 @@ Minimum:
 - current operational status;
 - notes/timeline;
 - notification delivery summary;
+- acquisition/discovery provenance when known;
+- current follow-up due state;
+- structured contact-attempt history;
+- close reason when CLOSED;
 - public listing link only when currently public-readable, without mutating historical Lead attribution.
 
 An historical Lead remains readable to its authorized Organization after listing withdrawal/suppression.
@@ -120,6 +128,60 @@ Notes cannot edit buyer-supplied immutable Lead message or verification state.
 Timeline also records operational status/assignment/read mutations sufficiently to reconstruct broker handling history.
 
 No buyer-visible note surface is part of v0.1.
+
+
+## 8A. Follow-up, contact attempts and bounded close
+
+The launch-bounded Broker Lead workflow must support the ordinary daily handling loop, not merely inbox/read/status.
+
+### Follow-up
+
+A Lead may carry an optional current follow-up due date/time. Setting, changing and clearing follow-up is authorized Organization workflow state and must be durable, auditable and concurrency-safe.
+
+Inbox/work-queue projections must make due and overdue follow-ups visible and filterable. Follow-up does not itself change operational status.
+
+### Contact attempts
+
+An authorized broker may append a structured contact-attempt event with:
+
+- actor AccountId;
+- occurred-at;
+- bounded contact channel;
+- optional bounded note.
+
+The initial channel vocabulary must be bounded; EMAIL, PHONE, MESSAGING and OTHER are sufficient semantics.
+
+A contact attempt records broker action only. It does not prove buyer receipt, buyer response or buyer interest.
+
+Lead detail/inbox may expose derived last-activity and last-contact-attempt values from authoritative workflow events.
+
+### Close reason
+
+Transitioning a Lead to CLOSED requires a bounded operational close reason. Initial semantics must distinguish at least NOT_INTERESTED, UNREACHABLE, BOAT_UNAVAILABLE, DUPLICATE and OTHER or equivalent bounded labels.
+
+Close reason is Lead workflow metadata. It must never create/infer SaleOutcome, sold status, listing lifecycle mutation or canonical buyer-intent truth.
+
+
+## 8B. Lead acquisition and discovery provenance
+
+Authorized brokers must be able to see factual provenance for how a Lead reached HullQ and how it reached the contacted listing when that evidence exists.
+
+Keep two dimensions distinct:
+
+1. **Acquisition provenance** — how the visit/session entered HullQ.
+2. **Discovery provenance** — which HullQ surface/path led to the contacted NativeListing.
+
+Minimum bounded acquisition semantics should distinguish DIRECT, ORGANIC_SEARCH, PAID_SEARCH/PAID_CAMPAIGN, REFERRAL, SOCIAL where evidence exists, OTHER and UNKNOWN. Validated bounded campaign identifiers such as UTM source/medium/campaign and optional UTM term/content may be preserved when actually supplied.
+
+Minimum discovery semantics should distinguish DIRECT_LISTING, TECHNICAL_SEARCH, INTERNAL_BROWSE, SHORTLIST, COMPARE and UNKNOWN, with later HullQ surfaces extensible without replacing the model.
+
+Where technically available, preserve first-touch acquisition separately from lead-submission/latest-touch discovery context. Do not collapse them into one ambiguous source string.
+
+Attribution is evidence, never inference-by-guess. Absence is UNKNOWN. The implementation must not add fingerprinting, third-party tracking, raw-IP persistence, cross-device stitching, unbounded browsing-history collection or arbitrary full-referrer/query-string storage.
+
+The existing accepted immutable Lead envelope remains authoritative and unchanged. 0071 may persist a separate immutable Lead-linked acquisition/discovery provenance record or equivalent append-only creation-time evidence. Exact schema factoring is implementation-local. Exact retry of the same Lead submission must not create conflicting duplicate attribution records.
+
+Acquisition/discovery provenance must not change Lead eligibility, operational status, buyer email verification, Search/listing/public truth or any future Lead score.
 
 ## 9. Notification recipient configuration
 
@@ -189,6 +251,26 @@ Required behavior:
 
 Exact scheduling/backoff values are implementation-local.
 
+
+## 12A. Notification identity, telemetry and future CRM extensibility
+
+HullQ owns the semantic identities used for Lead notification and workflow history. The implementation must preserve stable correlation from:
+
+```text
+Lead
+→ durable notification intent
+→ delivery attempt(s)
+→ optional provider message identifier
+```
+
+Exact schema/type names remain implementation-local. Provider identifiers are transport metadata only.
+
+0071 does not need production-provider webhooks or open/click ingestion. However, its outbox/delivery and timeline foundations must not require replacement when later provider adapters add normalized delivery, delay, bounce, complaint or engagement events.
+
+Notification transport/engagement must remain distinct from Lead workflow and buyer intent. A delivered/opened/clicked notification cannot itself change Lead operational status, buyer email verification state, Lead quality or Search/listing truth. Authenticated Broker Workspace actions remain the authoritative broker-workflow evidence.
+
+The deterministic local/test adapter may expose only the delivery outcomes needed for 0071 acceptance. Production-provider activation, provider webhook ingestion, bounce/complaint processing, open/click telemetry, inbound email/reply relay and generalized CRM analytics remain later capabilities.
+
 ## 13. Privacy and email verification
 
 Buyer email remains exactly the SLICE-0070 contact value and verification state. 0071 must not transition `UNVERIFIED` to verified.
@@ -204,6 +286,9 @@ At minimum:
 - Organization Lead inbox read;
 - Organization Lead detail read;
 - authorized assignment/status/read/note mutations;
+- authorized follow-up set/change/clear mutation;
+- authorized structured contact-attempt append mutation;
+- bounded close-reason mutation when closing;
 - OWNER/ADMIN notification-recipient read/update;
 - internal delivery-worker operation that is not a public unauthenticated business endpoint.
 
@@ -245,7 +330,11 @@ Real PostgreSQL + FastAPI + built Astro proof must demonstrate:
 8. retryable delivery failure preserves Lead and later succeeds without duplicate committed delivery;
 9. no recipient produces visible Lead plus explicit no-recipient notification state;
 10. listing withdrawal does not remove historical Lead;
-11. listing/Search/public truth unchanged.
+11. acquisition/discovery provenance is shown when evidenced and UNKNOWN when absent, without fingerprinting/raw-IP persistence;
+12. follow-up due/overdue filtering and dashboard counts are correct;
+13. structured contact attempts append to timeline without implying buyer response;
+14. closing requires a bounded close reason and creates no SaleOutcome/listing lifecycle change;
+15. listing/Search/public truth unchanged.
 
 ## 18. Non-goals
 
@@ -258,5 +347,5 @@ Real PostgreSQL + FastAPI + built Astro proof must demonstrate:
 - buyer-facing broker replies/messages;
 - sale/outcome;
 - inventory editing;
-- analytics/reporting;
+- generalized analytics/reporting beyond the launch work-queue/dashboard factual counts;
 - Search changes.
