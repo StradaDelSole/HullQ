@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-27  
 **Latest owner-accepted / DONE slice:** SLICE-0070  
-**Current queue:** SLICE-0071 — **Broker Lead Operating Surface + Durable Email Notification — READY**. Post-SLICE-0070 reassessment selected the next broker-launch capability. Broker Workspace remains authoritative; email is auxiliary notification through durable outbox/retry semantics. Implementation remains unauthorized until independent readiness review, remote gates and readiness merge complete.  
+**Current queue:** SLICE-0071 — **Broker Lead Operating Surface + Durable Email Notification — READY ON MAIN**. Post-SLICE-0070 reassessment, exact-head readiness review, required remote gates, readiness merge and the owner-accepted CRM/notification-provenance readiness amendment are complete on `main`. Broker Workspace remains authoritative; email is auxiliary notification through durable outbox/retry semantics. Implementation may start only when the Project Owner runs `START_SLICE.bat`; that script-generated prompt is the sole initial Claude implementation prompt.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -283,14 +283,14 @@ Large retained research artifacts are acknowledged as repository-hygiene debt, n
 Next queue number:
 
 ```text
-SLICE-0070
+SLICE-0071
 ```
 
 **Capability:** Broker Lead Operating Surface + Durable Email Notification.
 
 Post-SLICE-0070 reassessment selected SLICE-0071 as the next broker-launch capability. It is governed by `specs/BROKER_LEAD_OPERATIONS_NOTIFICATION_CONTRACT.v0.1.md` and `docs/slices/SLICE-0071-broker-lead-operations-notification.md`.
 
-The slice delivers Organization-scoped Lead inbox/detail, unread/read state, assignment, bounded operational status, notes/timeline/follow-up visibility, one OWNER/ADMIN-controlled Organization notification email, durable outbox intent and provider-agnostic retryable HullQ email notification. Buyer email verification remains PENDING and external production email-provider activation remains outside 0071.
+The slice delivers Organization-scoped Lead inbox/detail, unread/read state, assignment, bounded operational status, notes/timeline, explicit follow-up due/overdue workflow, structured broker contact-attempt logging, bounded close reasons, factual work-queue counts/filters, Lead acquisition + HullQ discovery provenance with bounded UTM context when evidenced, one OWNER/ADMIN-controlled Organization notification email, durable outbox intent and provider-agnostic retryable HullQ email notification. Buyer email verification remains PENDING and external production email-provider activation remains outside 0071.
 
 ## Development workflow
 
@@ -305,6 +305,6 @@ The slice delivers Organization-scoped Lead inbox/detail, unread/read state, ass
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0070 is owner-accepted and merged; post-SLICE-0070 reassessment selected SLICE-0071 Broker Lead Operating Surface + Durable Email Notification and readiness is pending exact-head review/remote gates/merge.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0070 is owner-accepted and finished; SLICE-0071 Broker Lead Operating Surface + Durable Email Notification is READY ON MAIN after exact-head readiness review, required remote gates, readiness merge and the CRM/notification-provenance readiness amendment. The next actor is the Project Owner running `START_SLICE.bat`.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
