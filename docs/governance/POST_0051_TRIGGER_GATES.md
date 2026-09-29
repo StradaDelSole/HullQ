@@ -8,6 +8,7 @@
 <!-- TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 2 -->
 <!-- WORKFLOW_REASSESSMENT_DUE_AFTER_SLICE: 0056 -->
 <!-- WORKFLOW_REASSESSMENT_STATUS: PASS -->
+<!-- BUYER_CONTACT_EMAIL_VERIFICATION_STATUS: PENDING -->
 
 ## Purpose
 
@@ -136,6 +137,35 @@ organic ordering
 ```
 
 This applies across broker and private inventory. Payment for verification may produce/process evidence but may not buy a Search truth outcome.
+
+## Gate 3A — buyer-contact email verification follow-up
+
+**Current status: PENDING.**
+
+Accepted D32 permits anonymous buyer contact requests and SLICE-0070 may persist the submitted contact email as explicitly `UNVERIFIED`. This is a temporary product boundary, not permission to forget verification.
+
+Hard trigger:
+
+```text
+before the first real external production buyer-contact flow is exposed or relied upon
+OR before HullQ represents/uses a buyer contact email as verified/trusted,
+whichever comes first
+→ BUYER_CONTACT_EMAIL_VERIFICATION_STATUS MUST be IMPLEMENTED
+```
+
+Allowed states:
+
+```text
+PENDING
+DUE
+IMPLEMENTED
+```
+
+An authenticated HullQ Account does not by itself verify an arbitrary email entered into a contact form. Delivery success, broker response or later lead handling likewise do not constitute verification evidence.
+
+The implementing capability must provide explicit verification evidence/state transition and must preserve anonymous-contact usability unless a later Owner-accepted decision changes that product boundary.
+
+This trigger does not require SLICE-0070 to build email delivery/token infrastructure while HullQ remains internal/synthetic. It prevents public/real buyer-contact exposure from silently shipping with permanently unverified contact identity.
 
 ## Gate 4 — workflow-overhead reassessment
 
