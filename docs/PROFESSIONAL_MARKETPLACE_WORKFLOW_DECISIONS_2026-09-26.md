@@ -367,6 +367,36 @@ D15 remains unchanged: PUBLICATION_READY requires at least one approved rights-v
 
 A future Broker-CI gallery slide is accepted presentation direction. It is virtual/dynamically composed from the publishing Organization's public CI/profile state, is not a MediaAsset or MediaPlacement, cannot count as media/publication readiness or cover, and must not mutate yacht/listing media truth. Its insertion position should be deterministically variable from stable listing identity rather than runtime-random on every page load, so a listing's gallery order does not jump between reloads. Full broker logo/color/CI management is not required by the initial gallery capability.
 
+
+## D32 — Buyer contact / durable Lead creation and email-verification follow-up
+
+A buyer may submit a contact request from a currently public-eligible NativeListing without first creating or signing into a HullQ Account.
+
+The initial contact payload requires bounded buyer-supplied:
+
+- name;
+- contact email;
+- message.
+
+A successfully accepted request creates a durable first-class Lead attributed at creation to:
+
+- the exact NativeListing;
+- the listing's current publishing Organization;
+- the accepted source/channel context available at the submitting surface;
+- received-at time;
+- optional authenticated AccountId when a valid HullQ buyer session exists.
+
+Anonymous submission remains valid when AccountId is absent. Account presence is attribution only and must not silently alter listing/Search truth or make a lead more eligible.
+
+The contact email's verification state is explicit. Initial 0070 lead creation records the buyer-supplied email as **UNVERIFIED** unless a later accepted verification authority supplies actual verification evidence. A logged-in HullQ Account does not, by itself, prove that an arbitrary email typed into the contact form is verified.
+
+Email verification is a **DECIDED_NOT_YET_IMPLEMENTED mandatory follow-up**, not an optional idea. It must be implemented no later than the first real external production buyer-contact flow/public production exposure of this endpoint, and before HullQ displays or uses a contact email as verified/trusted. The later verification capability must use explicit evidence/state transition; it may not retroactively infer verification from login, delivery success or broker action.
+
+SLICE-0070 does not need to send email, deliver broker notifications or implement verification tokens. It must preserve a forward-compatible verification state and must not describe an unverified address as verified.
+
+Lead creation is distinct from the later Broker Lead operating surface. 0070 owns durable creation/attribution and buyer-visible submit outcome only; broker inbox/assignment/status/notes/follow-up remain a separate subsequent capability.
+
+
 ## Reassessment rule
 
 These decisions are binding product/domain direction until explicitly superseded by a later Owner-accepted repository decision.
