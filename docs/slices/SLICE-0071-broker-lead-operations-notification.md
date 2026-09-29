@@ -33,7 +33,7 @@ A broker can see, open and operate the Lead in Broker Workspace, and the notific
 This is step E immediately after accepted SLICE-0070 step D.
 
 **REPOSITORY RECONCILIATION CHECK:** PASS  
-Current `main`, D33/D34, Broker Workspace Launch Gate, mandatory register, existing Lead creation and Broker Workspace auth were reconciled. No competing Lead-operations or notification model exists.
+Current `main`, D33/D34/D35, Broker Workspace Launch Gate, mandatory register, existing Lead creation and Broker Workspace auth were reconciled. No competing Lead-operations or notification model exists.
 
 **TRIGGER GATES CHECK:** PASS  
 No Search criterion, external broker pilot, paid plan, public production launch or production email-provider activation is introduced.
@@ -44,7 +44,7 @@ No Search criterion, external broker pilot, paid plan, public production launch 
 **Production implementation checked:** current buyer Lead domain/persistence/application/FastAPI/Astro implementation; current Broker Workspace Organization authorization/membership/MFA and inventory web/API patterns; current PostgreSQL migration and private mutation patterns.  
 **Already implemented / not re-decided:** SLICE-0070 immutable durable Lead envelope/idempotency/D29 creation gate; current MarketplaceOrganization ownership; current OrganizationMembership roles/state; existing Broker Workspace session/MFA authorization; buyer email remains explicitly UNVERIFIED.  
 **Exact remaining gap:** durable Leads exist but the publishing Organization has no Lead inbox/detail/operational workflow, no explicit notification-recipient configuration, no durable outbox/delivery state and no HullQ email notification boundary.  
-**Accepted-but-unimplemented obligations:** D33 authoritative Broker Lead operations; D34 OWNER/ADMIN notification routing; durable notification/outbox + retryable delivery; buyer-contact email verification remains mandatory later and production-provider activation remains later Production Readiness work.  
+**Accepted-but-unimplemented obligations:** D33 authoritative Broker Lead operations; D34 OWNER/ADMIN notification routing; D35 provider-neutral notification/CRM signal ownership; durable notification/outbox + retryable delivery; buyer-contact email verification remains mandatory later and production-provider activation remains later Production Readiness work.  
 **Material classifications:** DECIDED_AND_IMPLEMENTED foundations; DECIDED_NOT_YET_IMPLEMENTED 0071 scope and mandatory later verification/provider work; EXPLICITLY_DEFERRED generalized CRM/multi-recipient/SMS/scoring/cross-Organization transfer; GENUINELY_OPEN implementation-local factoring; CONFLICT_OR_REGRESSION none.
 
 
@@ -125,6 +125,8 @@ None found.
 12. Buyer contact email remains UNVERIFIED unless a later verification capability changes it with evidence.
 13. External production email provider is not activated in this slice.
 14. Listing/Search/public truth remains untouched.
+15. Notification/provider identities and telemetry remain transport/workflow metadata; they never redefine Lead identity, buyer intent, Lead quality or Search/listing truth.
+16. The outbox/delivery and timeline foundations remain extensible for later provider telemetry and CRM events without implementing those later capabilities in 0071.
 
 ## Scope
 
