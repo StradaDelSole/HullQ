@@ -85,6 +85,10 @@ from hullq.application.broker_workspace_read import (
     get_broker_context_read_model,
     get_organization_workspace_result,
 )
+from hullq.application.buyer_lead_creation import (
+    CreateBuyerLeadOutcome,
+    create_buyer_lead_for_listing,
+)
 from hullq.application.inventory_search import DraftMaxSearchOutcome
 from hullq.application.media_gallery import (
     AddYoutubeOutcome,
@@ -276,6 +280,20 @@ _INVENTORY_LIFECYCLE_CSRF_HEADER_VALUE = "professional-inventory-lifecycle-v1"
 #: header value so a valid draft/owner-direct/lifecycle CSRF header can
 #: never be replayed against the media gallery mutation routes.
 _MEDIA_GALLERY_CSRF_HEADER_VALUE = "marketplace-media-gallery-v1"
+
+#: SLICE-0070 contract §9: the identical fixed-header + exact-Origin CSRF
+#: discipline as every other write channel above, with its own distinct
+#: header value so a valid draft/owner-direct/lifecycle/gallery CSRF header
+#: can never be replayed against the anonymous-capable buyer contact route.
+#: An anonymous buyer never authenticates, so this is the only defense this
+#: route has against a cross-site POST -- there is no session to also check.
+_BUYER_LEAD_CSRF_HEADER_VALUE = "marketplace-buyer-lead-v1"
+
+#: SLICE-0070 contract §9: bounded request size before any unbounded
+#: buffering, mirroring the media-upload Content-Length discipline --
+#: generous enough for name+email+message+submission-operation-id, far below
+#: any plausible legitimate contact payload.
+_MAX_BUYER_LEAD_BODY_BYTES = 20_000
 
 #: SLICE-0052: server-side-only freshness clock override, resolved once at
 #: app-creation time. Never read from an HTTP request. Unset in every
@@ -664,6 +682,20 @@ def create_app(
         ):
             raise HTTPException(status_code=403, detail="csrf validation failed")
 
+    def _require_buyer_lead_csrf(request: Request) -> None:
+        # SLICE-0070 contract §9: identical exact-Origin-match + fixed
+        # non-simple header discipline as every other write channel above,
+        # with its own distinct header value (see
+        # `_BUYER_LEAD_CSRF_HEADER_VALUE`). Deliberately independent of
+        # session state -- this route is anonymous-capable, so this check
+        # alone is the route's entire same-origin defense.
+        origin_header = request.headers.get("origin")
+        requested_with = request.headers.get(_OWNER_DIRECT_CSRF_HEADER_NAME)
+        accepted = _normalized_origin(_resolve_web_origin())
+        actual = _normalized_origin(origin_header) if origin_header else None
+        if actual is None or actual != accepted or requested_with != _BUYER_LEAD_CSRF_HEADER_VALUE:
+            raise HTTPException(status_code=403, detail="csrf validation failed")
+
     async def _read_json_body(request: Request, *, allow_empty: bool) -> Any:
         raw_body = await request.body()
         if not raw_body:
@@ -766,6 +798,70 @@ def create_app(
         assert result.data is not None
         assert result.mime_type is not None
         return Response(content=result.data, media_type=result.mime_type)
+
+    @app.post("/api/listings/{native_listing_id}/contact")
+    async def create_listing_contact_route(native_listing_id: str, request: Request) -> JSONResponse:
+        # Contract §3: a HullQ Account is never required to submit a contact
+        # request -- this route never returns 401. An optional valid session
+        # only adds AccountId attribution (contract §3/§13) below.
+        _require_buyer_lead_csrf(request)
+
+        # Contract §9: bounded request size before any unbounded buffering,
+        # checked from the Content-Length header before the body is ever
+        # read, mirroring the media-upload route's identical discipline.
+        raw_content_length = request.headers.get("content-length")
+        if raw_content_length is None:
+            return JSONResponse({"error": "length_required"}, status_code=411)
+        try:
+            content_length = int(raw_content_length)
+        except ValueError:
+            return JSONResponse({"error": "invalid_content_length"}, status_code=400)
+        if content_length > _MAX_BUYER_LEAD_BODY_BYTES:
+            return JSONResponse({"error": "payload_too_large"}, status_code=413)
+
+        raw_body = await _read_json_body(request, allow_empty=False)
+        if not isinstance(raw_body, dict):
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+
+        session = _require_session(request)
+        account_id = session.account_id if session is not None else None
+
+        conn = open_connection(resolved_database_url)
+        try:
+            result = create_buyer_lead_for_listing(
+                conn,
+                native_listing_id_value=native_listing_id,
+                account_id=account_id,
+                raw_submission_operation_id=raw_body.get("submission_operation_id"),
+                raw_name=raw_body.get("name"),
+                raw_email=raw_body.get("email"),
+                raw_message=raw_body.get("message"),
+                as_of=_current_as_of(),
+            )
+        finally:
+            conn.close()
+
+        if result.outcome is CreateBuyerLeadOutcome.INVALID_INPUT:
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        if result.outcome is CreateBuyerLeadOutcome.LISTING_NOT_AVAILABLE:
+            # Contract §5/§10: a missing, DRAFT, WITHDRAWN and
+            # ACTIVE-but-suppressed target are all indistinguishable here,
+            # exactly like the public listing GET route's own not-found.
+            return JSONResponse({"error": "listing_not_available"}, status_code=404)
+        if result.outcome is CreateBuyerLeadOutcome.SUBMISSION_CONFLICT:
+            return JSONResponse({"error": "submission_conflict"}, status_code=409)
+
+        assert result.lead_id is not None
+        assert result.received_at is not None
+        status_code = 201 if result.outcome is CreateBuyerLeadOutcome.CREATED else 200
+        return JSONResponse(
+            {
+                "status": result.outcome.value,
+                "lead_id": result.lead_id.value,
+                "received_at": result.received_at.isoformat(),
+            },
+            status_code=status_code,
+        )
 
     @app.get("/api/search/{locale}")
     def get_search(locale: str, request: Request) -> Response:
