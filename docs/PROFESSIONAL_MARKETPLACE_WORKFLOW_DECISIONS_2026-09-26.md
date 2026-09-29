@@ -508,6 +508,29 @@ The actual external email provider remains deployment configuration behind the a
 Email messages are HullQ-authored notifications, contain minimum useful Lead context, label buyer contact email verification state, and deep-link to the authenticated Broker Workspace Lead detail. They must not impersonate the buyer.
 
 
+
+## D35 — Provider-neutral notification telemetry and CRM signal ownership
+
+HullQ owns Lead, notification, delivery-attempt and CRM-event meaning. External email providers are transport infrastructure only and must not become domain authorities.
+
+The notification model must preserve stable HullQ-owned correlation from the durable Lead through notification intent and individual delivery attempts. A provider-assigned message identifier may be stored as transport metadata for correlation, but it must never become the Lead, notification or CRM identity.
+
+Provider-specific delivery signals must be translatable into HullQ-owned delivery semantics. The production provider should therefore be selected not only for outbound delivery but also for useful transactional telemetry such as delivery, delay, bounce, complaint and, where available and appropriate, open/click events.
+
+Transport telemetry and CRM meaning remain separate:
+
+- delivery/bounce/complaint describe notification transport;
+- notification open/click, where available, describe broker notification engagement only;
+- authenticated Lead-detail views and broker workflow mutations are stronger HullQ-owned broker-engagement signals;
+- none of these signals may be interpreted as buyer intent, Lead quality or a Lead score without a separately accepted capability;
+- email open tracking is optional/secondary evidence and must not become an authoritative response signal.
+
+The Lead timeline/event model must remain extensible for later broker-contact attempts, buyer responses, follow-up actions, viewings, offers and explicit outcomes without requiring a second Lead/CRM architecture. SLICE-0071 does not implement those later CRM stages.
+
+External provider webhook ingestion, provider-specific bounce/complaint handling, open/click ingestion, inbound email/reply relay and production provider activation are deferred until the corresponding production/provider capability. SLICE-0071 must only avoid data-model or port/interface choices that make those later capabilities require replacement of the durable notification/outbox or Lead timeline foundations.
+
+Production provider selection remains deployment/operations work. Postmark is the current preferred candidate for later evaluation because HullQ values transactional focus, delivery telemetry, webhook support and low operational overhead; this is a preference, not an implementation dependency. Final activation remains subject to Production Readiness review including deliverability, DPA/data-processing, retention/logging, domain authentication, webhook/security requirements, cost and observability.
+
 ## Reassessment rule
 
 These decisions are binding product/domain direction until explicitly superseded by a later Owner-accepted repository decision.
