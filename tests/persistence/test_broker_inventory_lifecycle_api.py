@@ -37,8 +37,15 @@ from hullq.domain.market_identity import (
     PhysicalBoat,
     PhysicalBoatId,
 )
+from hullq.domain.media_gallery import MediaSourceKind
 from hullq.domain.native_listing_lifecycle import NativeListingLifecycleState
 from hullq.domain.native_listing_offer import AskingPriceMode, NativeListingOfferSnapshot
+from hullq.domain.physical_boat_claims import (
+    AssertionKind,
+    BuildYearClaim,
+    PhysicalBoatClaimRevisionId,
+    PhysicalBoatClaimSnapshot,
+)
 from hullq.domain.publishing_eligibility import (
     AccountId,
     MarketplaceOrganization,
@@ -56,6 +63,11 @@ from hullq.persistence.broker_identity import (
     seed_organization_membership,
 )
 from hullq.persistence.market_episode import create_market_episode
+from hullq.persistence.media_gallery import (
+    create_uploaded_image_placement,
+    insert_approved_media_asset,
+    set_cover,
+)
 from hullq.persistence.native_listing import create_native_listing
 from hullq.persistence.native_listing_lifecycle import (
     fetch_lifecycle_state,
@@ -67,6 +79,7 @@ from hullq.persistence.native_listing_offer import (
     write_native_listing_offer_revision,
 )
 from hullq.persistence.physical_boat import create_physical_boat
+from hullq.persistence.physical_boat_claims import write_physical_boat_claim_revision
 from hullq.security.session_token import mint_session_token
 
 _SECRET = b"8" * 32
@@ -217,6 +230,52 @@ def _amount_offer() -> NativeListingOfferSnapshot:
     )
 
 
+def _ready_physical_boat_claim() -> PhysicalBoatClaimSnapshot:
+    """SLICE-0069 D22-ready PhysicalBoat claim: bounded brand/model plus a
+    valid build year -- the minimum required PhysicalBoat response set."""
+    return PhysicalBoatClaimSnapshot(
+        marketed_brand_claim="Beneteau",
+        model_designation_claim="Oceanis 30.1",
+        build_year=BuildYearClaim(AssertionKind.VALUE_ASSERTION, 2020),
+    )
+
+
+def _attach_ready_cover_image(conn: Any, *, listing_id: str, org_id: str, account_id: str) -> None:
+    """Attach one approved, rights-declared IMAGE placement and set it as the
+    explicit cover -- the SLICE-0069 D22 minimum required media state."""
+    asset = insert_approved_media_asset(
+        conn,
+        owner_organization_id=MarketplaceOrganizationId(org_id),
+        uploaded_by_account_id=AccountId(account_id),
+        rights_declared=True,
+        source_kind=MediaSourceKind.BROKER_UPLOAD,
+        source_reference=None,
+        original_object_key=f"original/{listing_id}",
+        derivative_object_key=f"derivative/{listing_id}",
+        content_hash=f"hash-{listing_id}",
+        mime_type="image/jpeg",
+        width=800,
+        height=600,
+        byte_size=12345,
+    )
+    placement_result = create_uploaded_image_placement(
+        conn,
+        native_listing_id=NativeListingId(listing_id),
+        owner_organization_id=MarketplaceOrganizationId(org_id),
+        media_asset=asset,
+    )
+    assert placement_result.media_placement_id is not None
+    assert placement_result.gallery_version is not None
+    cover_result = set_cover(
+        conn,
+        native_listing_id=NativeListingId(listing_id),
+        owner_organization_id=MarketplaceOrganizationId(org_id),
+        media_placement_id=placement_result.media_placement_id,
+        expected_version=placement_result.gallery_version,
+    )
+    assert cover_result.outcome.value == "SET", cover_result
+
+
 def _create_complete_draft_listing(
     api_url: str,
     *,
@@ -228,7 +287,8 @@ def _create_complete_draft_listing(
     market_episode_id: str,
     offer_revision_id: str,
 ) -> None:
-    """Own, complete DRAFT NativeListing satisfying the §7 completeness predicate."""
+    """Own, complete DRAFT NativeListing satisfying the SLICE-0069 canonical
+    D22 PublicationReadiness rule set (episode/boat/offer/claim/media/cover)."""
     conn = psycopg.connect(api_url)
     try:
         account = AccountId(account_id)
@@ -271,6 +331,17 @@ def _create_complete_draft_listing(
             expected_current_revision_id=None,
             offer=_amount_offer(),
         )
+        write_physical_boat_claim_revision(
+            conn,
+            account_id=account,
+            candidate_organization=org,
+            membership=membership,
+            native_listing_id=NativeListingId(listing_id),
+            revision_id=PhysicalBoatClaimRevisionId(f"CLAIM-{listing_id}"),
+            expected_current_revision_id=None,
+            claims=_ready_physical_boat_claim(),
+        )
+        _attach_ready_cover_image(conn, listing_id=listing_id, org_id=org_id, account_id=account_id)
         conn.commit()
     finally:
         conn.close()
@@ -624,7 +695,11 @@ class TestPublish:
         _log_in(client, "ACC-PUB-INC")
         response = client.post(_publish_path("ORG-PUB-INC", "NL-PUB-INC"), headers=_csrf_headers())
         assert response.status_code == 422
-        assert response.json() == {"error": "incomplete_listing"}
+        body = response.json()
+        # SLICE-0069: the legacy "incomplete_listing" error key is preserved
+        # unchanged, now alongside the canonical structured blocker set.
+        assert body["error"] == "incomplete_listing"
+        assert body["blockers"]
         assert _lifecycle_state(api_url, "NL-PUB-INC") is NativeListingLifecycleState.DRAFT
         assert _transition_count(api_url, "NL-PUB-INC") == 0
 
@@ -732,6 +807,115 @@ class TestPublish:
         )
         assert response.status_code == 200
         assert _counts() == before
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0069 contract §9/§21: PublicationReadiness preflight
+# ---------------------------------------------------------------------------
+
+
+def _readiness_path(org_id: str, listing_id: str) -> str:
+    return f"/api/broker/organizations/{org_id}/inventory/{listing_id}/publication-readiness"
+
+
+class TestPublicationReadinessPreflight:
+    def test_unauthenticated_is_blocked(self, client: TestClient) -> None:
+        response = client.get(_readiness_path("ORG-RDY-UNAUTH", "NL-X"))
+        assert response.status_code == 401
+
+    def test_unknown_organization_is_not_found(self, client: TestClient) -> None:
+        _log_in(client, "ACC-RDY-NEVER-CREATED")
+        response = client.get(_readiness_path("ORG-RDY-NEVER-CREATED", "NL-X"))
+        assert response.status_code == 404
+
+    def test_complete_draft_reports_ready_with_no_blockers(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        _seed_org_and_membership(
+            api_url, org_id="ORG-RDY-OK", account_id="ACC-RDY-OK", membership_id="OM-RDY-OK"
+        )
+        _create_complete_draft_listing(
+            api_url,
+            listing_id="NL-RDY-OK",
+            org_id="ORG-RDY-OK",
+            account_id="ACC-RDY-OK",
+            membership_id="OM-RDY-OK",
+            physical_boat_id="PB-RDY-OK",
+            market_episode_id="ME-RDY-OK",
+            offer_revision_id="REV-RDY-OK",
+        )
+        _log_in(client, "ACC-RDY-OK")
+        response = client.get(_readiness_path("ORG-RDY-OK", "NL-RDY-OK"))
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "READY"
+        assert body["blockers"] == []
+        assert body["lifecycle_state"] == "DRAFT"
+        # A preflight READY result is never a capability token: publish still
+        # re-evaluates and independently succeeds afterward.
+        publish_response = client.post(
+            _publish_path("ORG-RDY-OK", "NL-RDY-OK"), headers=_csrf_headers()
+        )
+        assert publish_response.status_code == 200
+        assert publish_response.json()["outcome"] == "PUBLISHED"
+
+    def test_incomplete_draft_reports_blocked_with_the_same_blockers_publish_returns(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        _seed_org_and_membership(
+            api_url, org_id="ORG-RDY-INC", account_id="ACC-RDY-INC", membership_id="OM-RDY-INC"
+        )
+        _create_incomplete_draft_listing(
+            api_url,
+            listing_id="NL-RDY-INC",
+            org_id="ORG-RDY-INC",
+            account_id="ACC-RDY-INC",
+            membership_id="OM-RDY-INC",
+        )
+        _log_in(client, "ACC-RDY-INC")
+        readiness_response = client.get(_readiness_path("ORG-RDY-INC", "NL-RDY-INC"))
+        assert readiness_response.status_code == 200
+        readiness_body = readiness_response.json()
+        assert readiness_body["status"] == "BLOCKED"
+        assert readiness_body["blockers"]
+
+        # Contract §9: preflight and the authoritative publish transition use
+        # the identical blocker vocabulary/rules -- same evaluator, same
+        # current truth.
+        publish_response = client.post(
+            _publish_path("ORG-RDY-INC", "NL-RDY-INC"), headers=_csrf_headers()
+        )
+        assert publish_response.status_code == 422
+        assert sorted(publish_response.json()["blockers"]) == sorted(readiness_body["blockers"])
+
+    def test_foreign_listing_is_not_found(self, client: TestClient, api_url: str) -> None:
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-RDY-VICTIM",
+            account_id="ACC-RDY-VICTIM",
+            membership_id="OM-RDY-V",
+        )
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-RDY-ATTACKER",
+            account_id="ACC-RDY-ATTACKER",
+            membership_id="OM-RDY-A",
+        )
+        _create_complete_draft_listing(
+            api_url,
+            listing_id="NL-RDY-VICTIM",
+            org_id="ORG-RDY-VICTIM",
+            account_id="ACC-RDY-VICTIM",
+            membership_id="OM-RDY-V",
+            physical_boat_id="PB-RDY-VICTIM",
+            market_episode_id="ME-RDY-VICTIM",
+            offer_revision_id="REV-RDY-VICTIM",
+        )
+        _log_in(client, "ACC-RDY-ATTACKER")
+        foreign = client.get(_readiness_path("ORG-RDY-ATTACKER", "NL-RDY-VICTIM"))
+        unknown = client.get(_readiness_path("ORG-RDY-ATTACKER", "NL-NEVER-CREATED"))
+        assert foreign.status_code == unknown.status_code == 404
+        assert foreign.content == unknown.content
 
 
 # ---------------------------------------------------------------------------

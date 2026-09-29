@@ -39,6 +39,21 @@ export interface PhysicalBoatClaims {
   rudder_configuration: OptionalBoatClaimField | null;
 }
 
+/**
+ * SLICE-0069 contract §14/§21: one bounded public gallery entry.
+ * `media_placement_id` is the only identity exposed for an `IMAGE` entry --
+ * exactly what is needed to build the listing-scoped public derivative URL
+ * (`GET /api/listings/{native_listing_id}/media/{media_placement_id}`); no
+ * MediaAssetId/object key/uploader identity ever appears here.
+ * `youtube_video_id` is present iff `kind` is `"YOUTUBE"` -- the normalized
+ * 11-character id only, never broker-supplied embed HTML.
+ */
+export interface PublicGalleryItem {
+  kind: "IMAGE" | "YOUTUBE";
+  media_placement_id: string;
+  youtube_video_id?: string;
+}
+
 export interface PublicListingData {
   asking_price_mode: "AMOUNT" | "POA";
   asking_price_amount: string | null;
@@ -72,6 +87,17 @@ export interface PublicListingData {
   freshness_status: "CONFIRMED" | "DUE_FOR_CONFIRMATION";
   /** ISO-8601 timestamp of the latest admissible confirmation evidence. */
   last_confirmed_at: string | null;
+  /**
+   * SLICE-0069 contract §14: the bounded public mixed-media gallery, ordered
+   * by the same persisted placement ordering the Broker Workspace gallery
+   * uses. Always an array (possibly empty) -- D22 requires at least one
+   * public-usable image to publish at all, so an empty array here would only
+   * ever reflect a later, already-suppressed state this route would not
+   * otherwise be serving.
+   */
+  gallery: PublicGalleryItem[];
+  /** The exact `media_placement_id` of the explicit cover image, if any. */
+  cover_media_placement_id: string | null;
 }
 
 /**
@@ -98,6 +124,46 @@ export async function fetchPublicListing(
     return null;
   }
   return (await response.json()) as PublicListingData;
+}
+
+export type PublicListingMediaBytesResult =
+  | { kind: "not_found" }
+  | { kind: "service_error" }
+  | { kind: "ok"; data: ArrayBuffer; contentType: string };
+
+/**
+ * SLICE-0069 contract §15/§21: fetch one listing-scoped public derivative
+ * image from FastAPI's public, non-enumerating, fail-closed media route.
+ * `not_found` covers every rejection reason that route can produce (unknown/
+ * foreign listing, unknown/foreign placement, a non-IMAGE placement, a
+ * non-public-usable asset, an object-storage retrieval failure) -- this
+ * client never distinguishes them either.
+ */
+export async function fetchPublicListingMediaBytes(
+  apiBaseUrl: string,
+  nativeListingId: string,
+  mediaPlacementId: string,
+): Promise<PublicListingMediaBytesResult> {
+  const base = apiBaseUrl.replace(/\/+$/, "");
+  const url =
+    `${base}/api/listings/${encodeURIComponent(nativeListingId)}` +
+    `/media/${encodeURIComponent(mediaPlacementId)}`;
+
+  let response: Response;
+  try {
+    response = await fetch(url, { redirect: "manual" });
+  } catch {
+    return { kind: "service_error" };
+  }
+  if (response.status === 404) {
+    return { kind: "not_found" };
+  }
+  if (!response.ok) {
+    return { kind: "service_error" };
+  }
+  const data = await response.arrayBuffer();
+  const contentType = response.headers.get("content-type") ?? "application/octet-stream";
+  return { kind: "ok", data, contentType };
 }
 
 /**

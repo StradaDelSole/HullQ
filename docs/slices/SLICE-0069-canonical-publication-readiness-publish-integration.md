@@ -1,8 +1,8 @@
 # SLICE-0069 — Canonical PublicationReadiness + Publish Integration
 
 **Type:** IMPLEMENTATION
-**Status:** READY
-**Status set by this handoff:** `READY`
+**Status:** REVIEW
+**Status set by this handoff:** `REVIEW`
 **Stage:** Broker launch path — publication/current-public integration
 **Depends on:** SLICE-0068 owner-accepted / DONE
 **Normative contract:** `specs/MARKETPLACE_PUBLICATION_READINESS_CONTRACT.v0.1.md`

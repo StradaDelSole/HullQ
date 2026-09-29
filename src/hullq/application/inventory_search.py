@@ -38,14 +38,15 @@ in any surface (slice Required Behavior §3: "concrete shallow draft without
 durable applicable design identity -> never confirmed through fuzzy
 inference").
 
-SLICE-0052 contract §7.2 narrows the candidate set further, before any
-technical `draft_max` classification: an ACTIVE listing whose freshness
-(`hullq.application.native_listing_freshness`) is STALE or UNKNOWN at the
-explicit *as_of* boundary is excluded outright. That exclusion is inventory
-freshness, never technical `draft_max` truth, so it is not counted as
-`INSUFFICIENT_DATA`. A `DUE_FOR_CONFIRMATION` listing may still be
-CONFIRMED_MATCH; every returned match carries its freshness status and
-effective `last_confirmed_at` so the web surface can disclose the due state.
+SLICE-0069 narrows the candidate set further, before any technical
+`draft_max` classification: an ACTIVE listing that is not canonically
+current-public eligible (`hullq.application.current_public_eligibility` --
+D29, superseding the SLICE-0052 §7.2 freshness-only narrowing) is excluded
+outright. That exclusion is current-public admission, never technical
+`draft_max` truth, so it is not counted as `INSUFFICIENT_DATA`. A
+`DUE_FOR_CONFIRMATION` listing may still be CONFIRMED_MATCH; every returned
+match carries its freshness status and effective `last_confirmed_at` so the
+web surface can disclose the due state.
 """
 
 from __future__ import annotations
@@ -55,10 +56,9 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from hullq.application.native_listing_freshness import (
-    is_current_market_eligible,
-    resolve_current_freshness,
-)
+from hullq.application.current_public_eligibility import resolve_current_public_eligibility
+from hullq.application.native_listing_freshness import resolve_current_freshness
+from hullq.domain.current_public_eligibility import CurrentPublicEligibilityStatus
 from hullq.domain.market_identity import NativeListingId
 from hullq.domain.native_listing_freshness import FreshnessStatus
 from hullq.domain.physical_boat_claims import AssertionKind
@@ -208,9 +208,13 @@ def evaluate_draft_max_requirement(
 
     current_candidates = []
     for candidate in all_candidates:
+        eligibility = resolve_current_public_eligibility(
+            conn, candidate.native_listing_id, as_of=as_of
+        )
+        if eligibility is None or eligibility.status is not CurrentPublicEligibilityStatus.ELIGIBLE:
+            continue
         freshness = resolve_current_freshness(conn, candidate.native_listing_id, as_of=as_of)
-        if is_current_market_eligible(freshness.status):
-            current_candidates.append((candidate, freshness))
+        current_candidates.append((candidate, freshness))
 
     if not current_candidates:
         return DraftMaxSearchOutcome(

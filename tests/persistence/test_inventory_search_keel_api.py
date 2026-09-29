@@ -29,6 +29,7 @@ from hullq.domain.market_identity import (
     PhysicalBoat,
     PhysicalBoatId,
 )
+from hullq.domain.media_gallery import MediaSourceKind
 from hullq.domain.native_listing_offer import AskingPriceMode, NativeListingOfferSnapshot
 from hullq.domain.physical_boat_claims import (
     AssertionKind,
@@ -52,7 +53,13 @@ from hullq.domain.publishing_eligibility import (
     ProfessionalCategory,
 )
 from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
+from hullq.persistence.broker_identity import seed_marketplace_organization
 from hullq.persistence.market_episode import create_market_episode
+from hullq.persistence.media_gallery import (
+    create_uploaded_image_placement,
+    insert_approved_media_asset,
+    set_cover,
+)
 from hullq.persistence.native_listing import create_native_listing
 from hullq.persistence.native_listing_lifecycle import publish_native_listing
 from hullq.persistence.native_listing_offer import (
@@ -177,6 +184,58 @@ def _membership(
     )
 
 
+def _attach_ready_cover_image(
+    conn: Any, *, listing_id: str, org: MarketplaceOrganization, account: AccountId
+) -> None:
+    """Attach one approved, rights-declared IMAGE placement and set it as the
+    explicit cover -- the SLICE-0069 D22 minimum required media state.
+    `media_assets` carries real FKs to `accounts`/`marketplace_organizations`
+    -- both rows are idempotently seeded here first.
+
+    Wrapped in one top-level transaction (the media_gallery persistence
+    functions this calls assume the caller already owns one) so *conn* is
+    IDLE again -- as `publish_native_listing` requires -- once this returns.
+    """
+    with conn.transaction():
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO accounts (account_id) VALUES (%s) ON CONFLICT DO NOTHING",
+                [account.value],
+            )
+        seed_marketplace_organization(conn, org)
+        asset = insert_approved_media_asset(
+            conn,
+            owner_organization_id=org.id,
+            uploaded_by_account_id=account,
+            rights_declared=True,
+            source_kind=MediaSourceKind.BROKER_UPLOAD,
+            source_reference=None,
+            original_object_key=f"original/{listing_id}",
+            derivative_object_key=f"derivative/{listing_id}",
+            content_hash=f"hash-{listing_id}",
+            mime_type="image/jpeg",
+            width=800,
+            height=600,
+            byte_size=12345,
+        )
+        placement_result = create_uploaded_image_placement(
+            conn,
+            native_listing_id=NativeListingId(listing_id),
+            owner_organization_id=org.id,
+            media_asset=asset,
+        )
+        assert placement_result.media_placement_id is not None
+        assert placement_result.gallery_version is not None
+        cover_result = set_cover(
+            conn,
+            native_listing_id=NativeListingId(listing_id),
+            owner_organization_id=org.id,
+            media_placement_id=placement_result.media_placement_id,
+            expected_version=placement_result.gallery_version,
+        )
+        assert cover_result.outcome.value == "SET", cover_result
+
+
 def _make_active_listing(
     conn: Any, *, listing_id: str, physical_boat_id: str, market_episode_id: str
 ) -> tuple[AccountId, MarketplaceOrganization, OrganizationMembership]:
@@ -221,6 +280,25 @@ def _make_active_listing(
             currency="EUR",
         ),
     )
+    # SLICE-0069 D22: publish now also requires the publishing Organization's
+    # own current PhysicalBoat claim plus a public-usable IMAGE cover. The
+    # `seeded` fixture's own subsequent `write_physical_boat_claim_revision`
+    # call *revises* this placeholder using its known revision id.
+    write_physical_boat_claim_revision(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId(listing_id),
+        revision_id=PhysicalBoatClaimRevisionId(f"PBCREV-PLACEHOLDER-{listing_id}"),
+        expected_current_revision_id=None,
+        claims=PhysicalBoatClaimSnapshot(
+            marketed_brand_claim="Beneteau",
+            model_designation_claim="Oceanis 30.1",
+            build_year=BuildYearClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=2021),
+        ),
+    )
+    _attach_ready_cover_image(conn, listing_id=listing_id, org=org, account=account)
     publish_result = publish_native_listing(
         conn,
         account_id=account,
@@ -268,7 +346,9 @@ def seeded(api_conn: Any) -> dict[str, Any]:
         membership=membership,
         native_listing_id=NativeListingId("NL-0055-KEEL-API"),
         revision_id=PhysicalBoatClaimRevisionId("PBCREV-0055-KEEL-API"),
-        expected_current_revision_id=None,
+        expected_current_revision_id=PhysicalBoatClaimRevisionId(
+            "PBCREV-PLACEHOLDER-NL-0055-KEEL-API"
+        ),
         claims=PhysicalBoatClaimSnapshot(
             marketed_brand_claim="Beneteau",
             model_designation_claim="Oceanis 30.1",

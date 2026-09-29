@@ -33,17 +33,29 @@ from hullq.application.broker_workspace_read import (
     OrganizationWorkspaceOutcome,
     get_organization_workspace_result,
 )
+from hullq.application.current_public_eligibility import resolve_current_public_eligibility
 from hullq.application.native_listing_freshness import resolve_current_freshness
 from hullq.application.public_listing_read import get_public_listing_read_model
 from hullq.domain.market_identity import NativeListingId
+from hullq.domain.native_listing_lifecycle import NativeListingLifecycleState
 from hullq.domain.native_listing_offer import AskingPriceMode
-from hullq.domain.publishing_eligibility import MarketplaceOrganizationId
+from hullq.domain.publishing_eligibility import (
+    MarketplaceOrganizationId,
+    PublishingEligibilityDecision,
+    evaluate_native_listing_publishing_eligibility,
+)
+from hullq.persistence.broker_identity import (
+    fetch_marketplace_organization,
+    fetch_membership_for_account_and_organization,
+)
+from hullq.persistence.native_listing import fetch_native_listing
 from hullq.persistence.native_listing_inventory import (
     InventoryListingRow,
     InventorySortKey,
     fetch_organization_inventory_page,
 )
 from hullq.persistence.native_listing_offer import fetch_current_native_listing_offer
+from hullq.persistence.publication_readiness import resolve_publication_readiness
 from hullq.security.session_token import SessionClaims
 
 __all__ = [
@@ -96,7 +108,16 @@ class InventoryOfferView:
 
 @dataclass(frozen=True)
 class InventoryItemView:
-    """One inventory row's factual, presentation-ready projection."""
+    """One inventory row's factual, presentation-ready projection.
+
+    SLICE-0069 contract §17: `publication_readiness` (DRAFT only) and
+    `current_public_status`/`suppression_reasons` (ACTIVE only) are the exact
+    canonical `hullq.domain.publication_readiness`/
+    `hullq.domain.current_public_eligibility` results -- never a second,
+    independently computed readiness/suppression rule. Exactly one of the two
+    families is populated per row, matching its own `lifecycle_state`; a
+    WITHDRAWN row carries neither.
+    """
 
     native_listing_id: str
     lifecycle_state: str
@@ -106,9 +127,12 @@ class InventoryItemView:
     freshness_status: str
     last_confirmed_at: str | None
     is_publicly_listed: bool
+    publication_readiness: dict[str, Any] | None = None
+    current_public_status: str | None = None
+    suppression_reasons: tuple[str, ...] | None = None
 
     def to_public_dict(self) -> dict[str, Any]:
-        return {
+        body: dict[str, Any] = {
             "native_listing_id": self.native_listing_id,
             "lifecycle_state": self.lifecycle_state,
             "broker_listing_reference": self.broker_listing_reference,
@@ -118,6 +142,13 @@ class InventoryItemView:
             "last_confirmed_at": self.last_confirmed_at,
             "is_publicly_listed": self.is_publicly_listed,
         }
+        if self.publication_readiness is not None:
+            body["publication_readiness"] = self.publication_readiness
+        if self.current_public_status is not None:
+            body["current_public_status"] = self.current_public_status
+        if self.suppression_reasons is not None:
+            body["suppression_reasons"] = list(self.suppression_reasons)
+        return body
 
 
 @dataclass(frozen=True)
@@ -267,12 +298,51 @@ def _resolve_offer_view(conn: Any, native_listing_id: NativeListingId) -> Invent
     )
 
 
-def _build_item_view(conn: Any, row: InventoryListingRow, *, as_of: datetime) -> InventoryItemView:
+def _build_item_view(
+    conn: Any,
+    row: InventoryListingRow,
+    *,
+    as_of: datetime,
+    organization_id: MarketplaceOrganizationId,
+    eligibility_decision: PublishingEligibilityDecision,
+) -> InventoryItemView:
     offer_view = _resolve_offer_view(conn, row.native_listing_id)
     freshness = resolve_current_freshness(conn, row.native_listing_id, as_of=as_of)
     is_publicly_listed = (
         get_public_listing_read_model(conn, row.native_listing_id, as_of=as_of) is not None
     )
+
+    publication_readiness: dict[str, Any] | None = None
+    current_public_status: str | None = None
+    suppression_reasons: tuple[str, ...] | None = None
+
+    if row.lifecycle_state is NativeListingLifecycleState.DRAFT:
+        listing_record = fetch_native_listing(conn, row.native_listing_id)
+        market_episode_id_value = (
+            listing_record.listing.market_episode_id.value
+            if listing_record is not None and listing_record.listing.market_episode_id is not None
+            else None
+        )
+        readiness = resolve_publication_readiness(
+            conn,
+            native_listing_id=row.native_listing_id,
+            publishing_organization_id=organization_id,
+            publishing_eligibility=eligibility_decision,
+            lifecycle_state=row.lifecycle_state,
+            market_episode_id_value=market_episode_id_value,
+        )
+        publication_readiness = {
+            "status": readiness.status.value,
+            "blockers": sorted(blocker.value for blocker in readiness.blockers),
+        }
+    elif row.lifecycle_state is NativeListingLifecycleState.ACTIVE:
+        eligibility = resolve_current_public_eligibility(conn, row.native_listing_id, as_of=as_of)
+        if eligibility is not None:
+            current_public_status = eligibility.status.value
+            suppression_reasons = tuple(
+                sorted(reason.value for reason in eligibility.suppression_reasons)
+            )
+
     return InventoryItemView(
         native_listing_id=row.native_listing_id.value,
         lifecycle_state=row.lifecycle_state.value,
@@ -286,6 +356,9 @@ def _build_item_view(conn: Any, row: InventoryListingRow, *, as_of: datetime) ->
             else None
         ),
         is_publicly_listed=is_publicly_listed,
+        publication_readiness=publication_readiness,
+        current_public_status=current_public_status,
+        suppression_reasons=suppression_reasons,
     )
 
 
@@ -338,7 +411,30 @@ def get_organization_inventory_page(
     has_more = len(rows) > resolved_page_size
     page_rows = rows[:resolved_page_size]
 
-    items = tuple(_build_item_view(conn, row, as_of=as_of) for row in page_rows)
+    # SLICE-0069 contract §17: resolved once per page, not once per row --
+    # the current authenticated Account's own publishing-eligibility decision
+    # is identical for every row in this same Organization. `organization`
+    # is asserted non-None: `workspace_result` above already proved this
+    # exact Organization currently exists.
+    organization = fetch_marketplace_organization(conn, organization_id)
+    assert organization is not None
+    membership = fetch_membership_for_account_and_organization(
+        conn, session.account_id, organization_id
+    )
+    eligibility_decision = evaluate_native_listing_publishing_eligibility(
+        session.account_id, organization, membership
+    )
+
+    items = tuple(
+        _build_item_view(
+            conn,
+            row,
+            as_of=as_of,
+            organization_id=organization_id,
+            eligibility_decision=eligibility_decision,
+        )
+        for row in page_rows
+    )
     next_cursor = (
         _encode_cursor(
             InventorySortKey(

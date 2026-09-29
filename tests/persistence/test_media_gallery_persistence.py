@@ -34,6 +34,12 @@ from hullq.domain.media_gallery import (
 )
 from hullq.domain.native_listing_lifecycle import NativeListingLifecycleState
 from hullq.domain.native_listing_offer import AskingPriceMode, NativeListingOfferSnapshot
+from hullq.domain.physical_boat_claims import (
+    AssertionKind,
+    BuildYearClaim,
+    PhysicalBoatClaimRevisionId,
+    PhysicalBoatClaimSnapshot,
+)
 from hullq.domain.publishing_eligibility import (
     AccountId,
     MarketplaceOrganization,
@@ -74,6 +80,7 @@ from hullq.persistence.native_listing_offer import (
     write_native_listing_offer_revision,
 )
 from hullq.persistence.physical_boat import create_physical_boat
+from hullq.persistence.physical_boat_claims import write_physical_boat_claim_revision
 
 
 def _with_search_path(base_url: str, schema_name: str) -> str:
@@ -217,6 +224,25 @@ def _publish_listing(
         revision_id=NativeListingOfferRevisionId(f"REV-{listing_id.value}"),
         expected_current_revision_id=None,
         offer=_amount_offer(),
+    )
+    # SLICE-0069 D22: publish now also requires the publishing Organization's
+    # own current PhysicalBoat claim (marketed brand/model/build year) -- the
+    # media/cover state this helper's every caller already attached before
+    # invoking it remains the only other new D22 requirement, already
+    # satisfied by construction.
+    write_physical_boat_claim_revision(
+        conn,
+        account_id=account_id,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=listing_id,
+        revision_id=PhysicalBoatClaimRevisionId(f"CLAIM-{listing_id.value}"),
+        expected_current_revision_id=None,
+        claims=PhysicalBoatClaimSnapshot(
+            marketed_brand_claim="Beneteau",
+            model_designation_claim="Oceanis 30.1",
+            build_year=BuildYearClaim(AssertionKind.VALUE_ASSERTION, 2020),
+        ),
     )
     conn.commit()
     result = publish_native_listing(
@@ -1765,12 +1791,15 @@ class TestConcurrentAssetLocking:
                 market_episode_id="ME-CCDLB",
             )
             asset_ids: list[MediaAssetId] = []
+            anchor_placement_ids: dict[NativeListingId, MediaPlacementId] = {}
+            latest_versions: dict[NativeListingId, int] = {}
             # An "anchor" asset placed on both listings but never retired --
             # this guarantees each listing always keeps >=1 valid image
             # regardless of which of the two concurrently-retired assets
             # (below) finishes first, isolating this test to proving
             # deadlock-freedom rather than accidentally re-exercising
-            # Finding C's last-valid-image rejection.
+            # Finding C's last-valid-image rejection. It also becomes each
+            # listing's explicit SLICE-0069 D22 cover, below.
             with conn.transaction():
                 for asset_suffix in ("ANCHOR", "1", "2"):
                     asset = insert_approved_media_asset(
@@ -1798,6 +1827,20 @@ class TestConcurrentAssetLocking:
                             media_asset=asset,
                         )
                         assert placement_result.outcome is PlacementCreationOutcome.CREATED
+                        assert placement_result.media_placement_id is not None
+                        assert placement_result.gallery_version is not None
+                        if asset_suffix == "ANCHOR":
+                            anchor_placement_ids[listing_id] = placement_result.media_placement_id
+                        latest_versions[listing_id] = placement_result.gallery_version
+                for listing_id in (listing_a, listing_b):
+                    cover_result = set_cover(
+                        conn,
+                        native_listing_id=listing_id,
+                        owner_organization_id=org.id,
+                        media_placement_id=anchor_placement_ids[listing_id],
+                        expected_version=latest_versions[listing_id],
+                    )
+                    assert cover_result.outcome is SetCoverOutcome.SET
             _publish_listing(conn, listing_id=listing_a, org=org, account_id=account)
             conn.commit()
             _publish_listing(conn, listing_id=listing_b, org=org, account_id=account)

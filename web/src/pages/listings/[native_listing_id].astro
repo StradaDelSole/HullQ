@@ -94,6 +94,30 @@ const canonicalUrl = nativeListingId
               </h1>
             )
           }
+
+          {
+            data.gallery.length > 0 && (
+              <section aria-label="Gallery">
+                {data.gallery.map((item) =>
+                  item.kind === "IMAGE" ? (
+                    <img
+                      src={`/listings/${nativeListingId}/media/${encodeURIComponent(item.media_placement_id)}`}
+                      alt=""
+                      data-cover={item.media_placement_id === data.cover_media_placement_id}
+                    />
+                  ) : (
+                    <iframe
+                      width="560"
+                      height="315"
+                      src={`https://www.youtube.com/embed/${encodeURIComponent(item.youtube_video_id ?? "")}`}
+                      title="YouTube video"
+                      allowfullscreen
+                    />
+                  ),
+                )}
+              </section>
+            )
+          }
           {
             data.physical_boat_claims !== null && (
               <p>Build year: {boatClaimText(data.physical_boat_claims.build_year)}</p>

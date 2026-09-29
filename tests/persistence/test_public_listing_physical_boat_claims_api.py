@@ -30,6 +30,7 @@ from hullq.domain.market_identity import (
     PhysicalBoat,
     PhysicalBoatId,
 )
+from hullq.domain.media_gallery import MediaSourceKind
 from hullq.domain.native_listing_offer import AskingPriceMode, NativeListingOfferSnapshot
 from hullq.domain.physical_boat_claims import (
     AssertionKind,
@@ -54,15 +55,24 @@ from hullq.domain.publishing_eligibility import (
     ProfessionalCategory,
 )
 from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
-from hullq.persistence.market_episode import create_market_episode
-from hullq.persistence.native_listing import create_native_listing
+from hullq.persistence.broker_identity import seed_marketplace_organization
+from hullq.persistence.market_episode import create_market_episode, fetch_market_episode
+from hullq.persistence.media_gallery import (
+    create_uploaded_image_placement,
+    insert_approved_media_asset,
+    set_cover,
+)
+from hullq.persistence.native_listing import create_native_listing, fetch_native_listing
 from hullq.persistence.native_listing_lifecycle import publish_native_listing
 from hullq.persistence.native_listing_offer import (
     NativeListingOfferRevisionId,
     write_native_listing_offer_revision,
 )
 from hullq.persistence.physical_boat import create_physical_boat
-from hullq.persistence.physical_boat_claims import write_physical_boat_claim_revision
+from hullq.persistence.physical_boat_claims import (
+    fetch_current_physical_boat_claim,
+    write_physical_boat_claim_revision,
+)
 
 # ---------------------------------------------------------------------------
 # Disposable-schema fixture
@@ -164,6 +174,77 @@ def _claim_snapshot(**overrides: object) -> PhysicalBoatClaimSnapshot:
     return PhysicalBoatClaimSnapshot(**kwargs)  # type: ignore[arg-type]
 
 
+def _attach_ready_cover_image(
+    conn: Any, *, listing_id: str, org: MarketplaceOrganization, account: AccountId
+) -> None:
+    """Attach one approved, rights-declared IMAGE placement and set it as the
+    explicit cover -- the SLICE-0069 D22 minimum required media state.
+    `media_assets` carries real FKs to `accounts`/`marketplace_organizations`
+    -- both rows are idempotently seeded here first.
+
+    Wrapped in one top-level transaction (the media_gallery persistence
+    functions this calls assume the caller already owns one) so *conn* is
+    IDLE again -- as `publish_native_listing` requires -- once this returns.
+    """
+    with conn.transaction():
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO accounts (account_id) VALUES (%s) ON CONFLICT DO NOTHING",
+                [account.value],
+            )
+        seed_marketplace_organization(conn, org)
+        asset = insert_approved_media_asset(
+            conn,
+            owner_organization_id=org.id,
+            uploaded_by_account_id=account,
+            rights_declared=True,
+            source_kind=MediaSourceKind.BROKER_UPLOAD,
+            source_reference=None,
+            original_object_key=f"original/{listing_id}",
+            derivative_object_key=f"derivative/{listing_id}",
+            content_hash=f"hash-{listing_id}",
+            mime_type="image/jpeg",
+            width=800,
+            height=600,
+            byte_size=12345,
+        )
+        placement_result = create_uploaded_image_placement(
+            conn,
+            native_listing_id=NativeListingId(listing_id),
+            owner_organization_id=org.id,
+            media_asset=asset,
+        )
+        assert placement_result.media_placement_id is not None
+        assert placement_result.gallery_version is not None
+        cover_result = set_cover(
+            conn,
+            native_listing_id=NativeListingId(listing_id),
+            owner_organization_id=org.id,
+            media_placement_id=placement_result.media_placement_id,
+            expected_version=placement_result.gallery_version,
+        )
+        assert cover_result.outcome.value == "SET", cover_result
+
+
+def _current_claim_revision_id(
+    conn: Any, *, listing_id: str, org: MarketplaceOrganization
+) -> PhysicalBoatClaimRevisionId | None:
+    """The exact current PhysicalBoat claim head for *org* on the PhysicalBoat
+    *listing_id* resolves to, or `None` if none exists yet -- used so a
+    test's own first `write_physical_boat_claim_revision` call always
+    supplies the real current `expected_current_revision_id`, whether or not
+    `_make_active_listing` already wrote a D22 placeholder claim for it."""
+    listing_record = fetch_native_listing(conn, NativeListingId(listing_id))
+    assert listing_record is not None
+    assert listing_record.listing.market_episode_id is not None
+    episode_record = fetch_market_episode(conn, listing_record.listing.market_episode_id)
+    assert episode_record is not None
+    claim_record = fetch_current_physical_boat_claim(
+        conn, episode_record.market_episode.physical_boat_id, org.id
+    )
+    return claim_record.revision_id if claim_record is not None else None
+
+
 def _make_active_listing(
     conn: Any,
     *,
@@ -214,6 +295,26 @@ def _make_active_listing(
             currency="EUR",
         ),
     )
+    # SLICE-0069 D22: publish now also requires the publishing Organization's
+    # own current PhysicalBoat claim plus a public-usable IMAGE cover. Every
+    # test's own subsequent `write_physical_boat_claim_revision` call
+    # resolves `expected_current_revision_id` via `_current_claim_revision_id`
+    # so it correctly *revises* this placeholder rather than conflicting.
+    write_physical_boat_claim_revision(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId(listing_id),
+        revision_id=PhysicalBoatClaimRevisionId(f"PBCREV-PLACEHOLDER-{listing_id}"),
+        expected_current_revision_id=None,
+        claims=PhysicalBoatClaimSnapshot(
+            marketed_brand_claim="Beneteau",
+            model_designation_claim="Oceanis 30.1",
+            build_year=BuildYearClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=2021),
+        ),
+    )
+    _attach_ready_cover_image(conn, listing_id=listing_id, org=org, account=account)
     publish_result = publish_native_listing(
         conn,
         account_id=account,
@@ -230,9 +331,15 @@ def _make_active_listing(
 # ---------------------------------------------------------------------------
 
 
-def test_active_listing_without_claims_remains_public_with_null_claims(
+def test_active_listing_with_only_the_d22_minimum_claim_has_null_optional_fields(
     api_conn: Any, client: TestClient
 ) -> None:
+    """SLICE-0069 D22 requires a current PhysicalBoat claim to publish at
+    all, so a currently-public listing can no longer have *no* claim
+    whatsoever (unlike pre-0069). `_make_active_listing` records only the
+    three D22-mandatory fields (brand/model/build year); every optional
+    SLICE-0050/0065 field must still render as an omitted `None`, never
+    fabricated from a BoatDesign baseline or any other source."""
     _make_active_listing(
         api_conn,
         listing_id="NL-PBC-A",
@@ -243,7 +350,16 @@ def test_active_listing_without_claims_remains_public_with_null_claims(
 
     response = client.get("/api/listings/NL-PBC-A")
     assert response.status_code == 200
-    assert response.json()["physical_boat_claims"] is None
+    claims = response.json()["physical_boat_claims"]
+    assert claims is not None
+    assert claims["marketed_brand_claim"] == "Beneteau"
+    assert claims["model_designation_claim"] == "Oceanis 30.1"
+    assert claims["build_year"] == {"assertion_kind": "VALUE_ASSERTION", "value": 2021}
+    assert claims["loa_length"] is None
+    assert claims["draft"] is None
+    assert claims["keel_configuration"] is None
+    assert claims["rudder_configuration"] is None
+    assert claims["boat_name"] is None
 
 
 def test_active_listing_with_claims_returns_the_bounded_seven_field_projection(
@@ -256,6 +372,8 @@ def test_active_listing_with_claims_returns_the_bounded_seven_field_projection(
         market_episode_id="ME-PBC-B",
         offer_revision_id="REV-PBC-B",
     )
+    expected_revision_id = _current_claim_revision_id(api_conn, listing_id="NL-PBC-B", org=org)
+    api_conn.commit()
     write_physical_boat_claim_revision(
         api_conn,
         account_id=account,
@@ -263,7 +381,7 @@ def test_active_listing_with_claims_returns_the_bounded_seven_field_projection(
         membership=_membership_obj,
         native_listing_id=NativeListingId("NL-PBC-B"),
         revision_id=PhysicalBoatClaimRevisionId("PBCREV-PBC-B-001"),
-        expected_current_revision_id=None,
+        expected_current_revision_id=expected_revision_id,
         claims=_claim_snapshot(
             loa_length=LoaLengthClaim(
                 assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("9.14")
@@ -301,6 +419,8 @@ def test_boat_name_assertion_state_is_preserved_in_public_projection(
         market_episode_id="ME-PBC-BN",
         offer_revision_id="REV-PBC-BN",
     )
+    expected_revision_id = _current_claim_revision_id(api_conn, listing_id="NL-PBC-BN", org=org)
+    api_conn.commit()
     write_physical_boat_claim_revision(
         api_conn,
         account_id=account,
@@ -308,7 +428,7 @@ def test_boat_name_assertion_state_is_preserved_in_public_projection(
         membership=membership,
         native_listing_id=NativeListingId("NL-PBC-BN"),
         revision_id=PhysicalBoatClaimRevisionId("PBCREV-PBC-BN-001"),
-        expected_current_revision_id=None,
+        expected_current_revision_id=expected_revision_id,
         claims=_claim_snapshot(
             boat_name=BoatNameClaim(
                 assertion_kind=AssertionKind.VALUE_ASSERTION, value="Sea Breeze"
@@ -330,6 +450,8 @@ def test_boat_name_absent_is_distinguishable_from_omitted_in_public_projection(
         market_episode_id="ME-PBC-BN2",
         offer_revision_id="REV-PBC-BN2",
     )
+    expected_revision_id = _current_claim_revision_id(api_conn, listing_id="NL-PBC-BN2", org=org)
+    api_conn.commit()
     write_physical_boat_claim_revision(
         api_conn,
         account_id=account,
@@ -337,7 +459,7 @@ def test_boat_name_absent_is_distinguishable_from_omitted_in_public_projection(
         membership=membership,
         native_listing_id=NativeListingId("NL-PBC-BN2"),
         revision_id=PhysicalBoatClaimRevisionId("PBCREV-PBC-BN2-001"),
-        expected_current_revision_id=None,
+        expected_current_revision_id=expected_revision_id,
         claims=_claim_snapshot(boat_name=BoatNameClaim(assertion_kind=AssertionKind.ABSENT)),
     )
 
@@ -360,6 +482,8 @@ def test_no_boat_design_fallback_when_physical_boat_has_a_linked_boat_design(
         market_episode_id="ME-PBC-C",
         offer_revision_id="REV-PBC-C",
     )
+    expected_revision_id = _current_claim_revision_id(api_conn, listing_id="NL-PBC-C", org=org)
+    api_conn.commit()
     write_physical_boat_claim_revision(
         api_conn,
         account_id=account,
@@ -367,7 +491,7 @@ def test_no_boat_design_fallback_when_physical_boat_has_a_linked_boat_design(
         membership=_membership_obj,
         native_listing_id=NativeListingId("NL-PBC-C"),
         revision_id=PhysicalBoatClaimRevisionId("PBCREV-PBC-C-001"),
-        expected_current_revision_id=None,
+        expected_current_revision_id=expected_revision_id,
         claims=_claim_snapshot(),  # loa_length/draft/keel/rudder all omitted
     )
 
@@ -389,6 +513,8 @@ def test_correction_is_visible_and_old_revision_is_not_selected_as_current(
         market_episode_id="ME-PBC-D",
         offer_revision_id="REV-PBC-D",
     )
+    expected_revision_id = _current_claim_revision_id(api_conn, listing_id="NL-PBC-D", org=org)
+    api_conn.commit()
     write_physical_boat_claim_revision(
         api_conn,
         account_id=account,
@@ -396,7 +522,7 @@ def test_correction_is_visible_and_old_revision_is_not_selected_as_current(
         membership=_membership_obj,
         native_listing_id=NativeListingId("NL-PBC-D"),
         revision_id=PhysicalBoatClaimRevisionId("PBCREV-PBC-D-001"),
-        expected_current_revision_id=None,
+        expected_current_revision_id=expected_revision_id,
         claims=_claim_snapshot(model_designation_claim="Oceanis 30.1"),
     )
     write_physical_boat_claim_revision(
@@ -426,6 +552,8 @@ def test_only_publishing_organizations_own_current_snapshot_is_returned(
         market_episode_id="ME-PBC-E",
         offer_revision_id="REV-PBC-E",
     )
+    expected_revision_id = _current_claim_revision_id(api_conn, listing_id="NL-PBC-E", org=org)
+    api_conn.commit()
     write_physical_boat_claim_revision(
         api_conn,
         account_id=account,
@@ -433,7 +561,7 @@ def test_only_publishing_organizations_own_current_snapshot_is_returned(
         membership=membership,
         native_listing_id=NativeListingId("NL-PBC-E"),
         revision_id=PhysicalBoatClaimRevisionId("PBCREV-PBC-E-001"),
-        expected_current_revision_id=None,
+        expected_current_revision_id=expected_revision_id,
         claims=_claim_snapshot(marketed_brand_claim="Beneteau"),
     )
 
@@ -481,6 +609,8 @@ def test_no_internal_claim_metadata_is_exposed(api_conn: Any, client: TestClient
         market_episode_id="ME-PBC-F",
         offer_revision_id="REV-PBC-F",
     )
+    expected_revision_id = _current_claim_revision_id(api_conn, listing_id="NL-PBC-F", org=org)
+    api_conn.commit()
     write_physical_boat_claim_revision(
         api_conn,
         account_id=account,
@@ -488,7 +618,7 @@ def test_no_internal_claim_metadata_is_exposed(api_conn: Any, client: TestClient
         membership=membership,
         native_listing_id=NativeListingId("NL-PBC-F"),
         revision_id=PhysicalBoatClaimRevisionId("PBCREV-PBC-F-001"),
-        expected_current_revision_id=None,
+        expected_current_revision_id=expected_revision_id,
         claims=_claim_snapshot(),
     )
 

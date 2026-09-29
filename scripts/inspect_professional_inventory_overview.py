@@ -57,6 +57,7 @@ from typing import Any
 from urllib.parse import quote, urlsplit, urlunsplit
 
 import psycopg
+from _publication_readiness_fixture import attach_d22_minimum_cover_image
 
 from hullq.domain.broker_access import Provider
 from hullq.domain.market_identity import (
@@ -69,6 +70,12 @@ from hullq.domain.market_identity import (
 )
 from hullq.domain.native_listing_freshness import FreshnessConfirmationId
 from hullq.domain.native_listing_offer import AskingPriceMode, NativeListingOfferSnapshot
+from hullq.domain.physical_boat_claims import (
+    AssertionKind,
+    BuildYearClaim,
+    PhysicalBoatClaimRevisionId,
+    PhysicalBoatClaimSnapshot,
+)
 from hullq.domain.publishing_eligibility import (
     AccountId,
     MarketplaceOrganization,
@@ -99,6 +106,7 @@ from hullq.persistence.native_listing_offer import (
     write_native_listing_offer_revision,
 )
 from hullq.persistence.physical_boat import create_physical_boat
+from hullq.persistence.physical_boat_claims import write_physical_boat_claim_revision
 from hullq.security.oidc import AUTH0_MFA_STEP_UP_ACR_VALUE
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -496,6 +504,24 @@ def main() -> int:
             )
             assert active_offer.status.value in ("created", "already_exists"), active_offer
             conn.commit()
+            write_physical_boat_claim_revision(
+                conn,
+                account_id=account,
+                candidate_organization=org_a,
+                membership=membership_a,
+                native_listing_id=NativeListingId("NL-0060-ACTIVE"),
+                revision_id=PhysicalBoatClaimRevisionId("CLAIM-0060-ACTIVE"),
+                expected_current_revision_id=None,
+                claims=PhysicalBoatClaimSnapshot(
+                    marketed_brand_claim="Beneteau",
+                    model_designation_claim="Oceanis 30.1",
+                    build_year=BuildYearClaim(AssertionKind.VALUE_ASSERTION, 2020),
+                ),
+            )
+            attach_d22_minimum_cover_image(
+                conn, listing_id="NL-0060-ACTIVE", account=account, org=org_a
+            )
+            conn.commit()  # release the implicit transaction before the top-level-owning publish
             active_publish = publish_native_listing(
                 conn,
                 account_id=account,
@@ -548,6 +574,24 @@ def main() -> int:
             )
             assert wd_offer.status.value in ("created", "already_exists"), wd_offer
             conn.commit()
+            write_physical_boat_claim_revision(
+                conn,
+                account_id=account,
+                candidate_organization=org_a,
+                membership=membership_a,
+                native_listing_id=NativeListingId("NL-0060-WD"),
+                revision_id=PhysicalBoatClaimRevisionId("CLAIM-0060-WD"),
+                expected_current_revision_id=None,
+                claims=PhysicalBoatClaimSnapshot(
+                    marketed_brand_claim="Beneteau",
+                    model_designation_claim="Oceanis 30.1",
+                    build_year=BuildYearClaim(AssertionKind.VALUE_ASSERTION, 2020),
+                ),
+            )
+            attach_d22_minimum_cover_image(
+                conn, listing_id="NL-0060-WD", account=account, org=org_a
+            )
+            conn.commit()  # release the implicit transaction before the top-level-owning publish
             wd_publish = publish_native_listing(
                 conn,
                 account_id=account,
