@@ -171,7 +171,7 @@ Keep two dimensions distinct:
 1. **Acquisition provenance** — how the visit/session entered HullQ.
 2. **Discovery provenance** — which HullQ surface/path led to the contacted NativeListing.
 
-Minimum bounded acquisition semantics should distinguish DIRECT, ORGANIC_SEARCH, PAID_SEARCH/PAID_CAMPAIGN, REFERRAL, SOCIAL where evidence exists, OTHER and UNKNOWN. Validated bounded campaign identifiers such as UTM source/medium/campaign may be preserved when actually supplied.
+Minimum bounded acquisition semantics should distinguish DIRECT, ORGANIC_SEARCH, PAID_SEARCH/PAID_CAMPAIGN, REFERRAL, SOCIAL where evidence exists, OTHER and UNKNOWN. Validated bounded campaign identifiers such as UTM source/medium/campaign and optional UTM term/content may be preserved when actually supplied.
 
 Minimum discovery semantics should distinguish DIRECT_LISTING, TECHNICAL_SEARCH, INTERNAL_BROWSE, SHORTLIST, COMPARE and UNKNOWN, with later HullQ surfaces extensible without replacing the model.
 
