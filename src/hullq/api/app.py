@@ -800,7 +800,9 @@ def create_app(
         return Response(content=result.data, media_type=result.mime_type)
 
     @app.post("/api/listings/{native_listing_id}/contact")
-    async def create_listing_contact_route(native_listing_id: str, request: Request) -> JSONResponse:
+    async def create_listing_contact_route(
+        native_listing_id: str, request: Request
+    ) -> JSONResponse:
         # Contract §3: a HullQ Account is never required to submit a contact
         # request -- this route never returns 401. An optional valid session
         # only adds AccountId attribution (contract §3/§13) below.

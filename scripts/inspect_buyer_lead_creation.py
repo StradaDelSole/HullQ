@@ -160,7 +160,7 @@ def _wait_for_http(url: str, *, timeout_seconds: float = 15.0) -> bool:
             return True
         except urllib.error.HTTPError:
             return True
-        except (urllib.error.URLError, ConnectionError, TimeoutError, OSError):
+        except urllib.error.URLError, ConnectionError, TimeoutError, OSError:
             time.sleep(0.2)
     return False
 
@@ -223,14 +223,19 @@ def _membership(
 
 
 def _publish_listing(
-    conn: Any, *, listing_id: str, account: AccountId, org: MarketplaceOrganization,
+    conn: Any,
+    *,
+    listing_id: str,
+    account: AccountId,
+    org: MarketplaceOrganization,
     membership: OrganizationMembership,
 ) -> None:
     create_physical_boat(conn, physical_boat=PhysicalBoat(id=PhysicalBoatId(f"PB-{listing_id}")))
     create_market_episode(
         conn,
         market_episode=MarketEpisode(
-            id=MarketEpisodeId(f"ME-{listing_id}"), physical_boat_id=PhysicalBoatId(f"PB-{listing_id}")
+            id=MarketEpisodeId(f"ME-{listing_id}"),
+            physical_boat_id=PhysicalBoatId(f"PB-{listing_id}"),
         ),
     )
     create_native_listing(
@@ -321,7 +326,9 @@ def main() -> int:
 
         conn = psycopg.connect(url)
         try:
-            _publish_listing(conn, listing_id=_LISTING_ID, account=account, org=org, membership=membership)
+            _publish_listing(
+                conn, listing_id=_LISTING_ID, account=account, org=org, membership=membership
+            )
             conn.commit()
         finally:
             conn.close()
@@ -390,7 +397,9 @@ def main() -> int:
         page_status, page_body = _http_get(f"{web_base}/listings/{_LISTING_ID}")
         step4_ok = page_status == 200 and b"data-buyer-contact-form" in page_body
         ok &= step4_ok
-        print(f"4. public listing page renders the bounded contact form -> {'OK' if step4_ok else 'FAIL'}")
+        print(
+            f"4. public listing page renders the bounded contact form -> {'OK' if step4_ok else 'FAIL'}"
+        )
 
         contact_url = f"{web_base}/listings/{_LISTING_ID}/contact"
 
@@ -467,7 +476,12 @@ def main() -> int:
         # 8. invalid input -> zero mutation.
         invalid_status, invalid_body = _http_post_json(
             contact_url,
-            {"submission_operation_id": "OP-0070-E2E-2", "name": "", "email": "jane@example.com", "message": "Hi"},
+            {
+                "submission_operation_id": "OP-0070-E2E-2",
+                "name": "",
+                "email": "jane@example.com",
+                "message": "Hi",
+            },
             origin=web_base,
             csrf_header_value="marketplace-buyer-lead-v1",
         )

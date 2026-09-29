@@ -94,7 +94,7 @@ def create_buyer_lead_for_listing(
     """
     try:
         native_listing_id = NativeListingId(native_listing_id_value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return CreateBuyerLeadResult(outcome=CreateBuyerLeadOutcome.LISTING_NOT_AVAILABLE)
 
     try:
@@ -104,7 +104,7 @@ def create_buyer_lead_for_listing(
         buyer_name = normalize_buyer_name(raw_name)
         buyer_email = normalize_buyer_email(raw_email)
         buyer_message = normalize_buyer_message(raw_message)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return CreateBuyerLeadResult(outcome=CreateBuyerLeadOutcome.INVALID_INPUT)
 
     result = create_buyer_lead(

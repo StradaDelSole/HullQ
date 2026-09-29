@@ -634,7 +634,9 @@ def test_same_operation_id_different_envelope_conflicts_without_duplicate(
             "SELECT COUNT(*) FROM buyer_leads WHERE submission_operation_id = %s", ["OP-LEAD07"]
         )
         assert cur.fetchone()[0] == 1
-        cur.execute("SELECT buyer_message FROM buyer_leads WHERE lead_id = %s", [first.lead_id.value])
+        cur.execute(
+            "SELECT buyer_message FROM buyer_leads WHERE lead_id = %s", [first.lead_id.value]
+        )
         assert cur.fetchone()[0] == "Interested in this boat."
 
 
