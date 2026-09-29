@@ -39,8 +39,12 @@ import { boatClaimText, boatClaimTextOrNotSupplied } from "../../lib/physicalBoa
 // locale-routing redesign is authorized here per contract §8) -- the
 // shortlist add/remove control on this page always uses the English copy.
 import { shortlistText } from "../../lib/shortlistText";
+// SLICE-0070: same English-only convention as the shortlist control above
+// -- see `../../lib/buyerContactFormText.ts`'s module docstring.
+import { buyerContactFormText } from "../../lib/buyerContactFormText";
 
 const st = shortlistText.en;
+const contactText = buyerContactFormText;
 
 const nativeListingId = Astro.params.native_listing_id;
 // `process.env`, not `import.meta.env`: the latter is statically replaced
@@ -184,6 +188,31 @@ const canonicalUrl = nativeListingId
             )}
           </section>
 
+          {
+            nativeListingId !== undefined && (
+              <section aria-label="Contact">
+                <h2>{contactText.heading}</h2>
+                <p>{contactText.disclaimer}</p>
+                <form data-buyer-contact-form data-native-listing-id={nativeListingId}>
+                  <label>
+                    {contactText.nameLabel}
+                    <input type="text" name="name" required maxlength="200" />
+                  </label>
+                  <label>
+                    {contactText.emailLabel}
+                    <input type="email" name="email" required maxlength="320" />
+                  </label>
+                  <label>
+                    {contactText.messageLabel}
+                    <textarea name="message" required maxlength="5000"></textarea>
+                  </label>
+                  <button type="submit">{contactText.submitLabel}</button>
+                </form>
+                <p data-buyer-contact-result role="status" aria-live="polite" />
+              </section>
+            )
+          }
+
           <script>
             // SLICE-0058: wires this page's single add/remove shortlist
             // button to the buyer's browser-local shortlist -- see
@@ -193,6 +222,16 @@ const canonicalUrl = nativeListingId
 
             const st = shortlistText.en;
             initShortlistButtons(document, { saveLabel: st.saveLabel, savedLabel: st.savedLabel });
+          </script>
+
+          <script>
+            // SLICE-0070: wires the bounded buyer contact form to the
+            // same-origin contact proxy -- see `../../lib/buyerLeadForm.ts`'s
+            // module docstring.
+            import { initBuyerContactForm } from "../../lib/buyerLeadForm";
+            import { buyerContactFormText } from "../../lib/buyerContactFormText";
+
+            initBuyerContactForm(document, buyerContactFormText);
           </script>
         </main>
       )

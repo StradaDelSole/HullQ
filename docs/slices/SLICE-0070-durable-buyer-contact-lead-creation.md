@@ -1,7 +1,8 @@
 # SLICE-0070 — Durable Buyer Contact / Lead Creation
 
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
+**Status set by this handoff:** `REVIEW`  
 **Stage:** Broker launch path — buyer contact / durable Lead creation  
 **Depends on:** SLICE-0069 owner-accepted / DONE  
 **Normative contract:** `specs/MARKETPLACE_BUYER_LEAD_CREATION_CONTRACT.v0.1.md`
