@@ -446,6 +446,68 @@ The exact email provider, recipient configuration model, retry schedule and work
 SLICE-0070 remains limited to durable buyer Lead creation. D33 is binding direction for the subsequent Broker Lead Operating Surface capability and must be considered in the first post-0070 reassessment. It does not preassign a slice number.
 
 
+
+## D34 — Broker Lead operations and notification recipient configuration
+
+The first Broker Lead operating implementation after SLICE-0070 must make HullQ, not email, the authoritative Lead system.
+
+The launch-bounded Broker Workspace Lead surface must provide:
+
+- Organization-scoped Lead inbox/queue;
+- new/unread indication;
+- Lead detail;
+- assignment to one current ACTIVE member of the same MarketplaceOrganization;
+- bounded operational status/stage;
+- append-only/bounded broker notes or timeline entries sufficient for follow-up history;
+- follow-up/response visibility.
+
+Lead access and mutation are server-authorized from current OrganizationMembership truth on every request. Cross-Organization Lead access remains non-enumerating.
+
+### Notification recipient
+
+HullQ must not infer broker notification delivery from Auth0 identity claims or buyer/contact email.
+
+The initial broker-email notification recipient is an explicit Organization-level configuration value owned by HullQ. It is distinct from:
+
+- buyer contact email;
+- Account login identity;
+- MarketplaceOrganization public display name;
+- VAT/tax claims.
+
+For the initial launch-bounded capability:
+
+- one primary Lead-notification email address per MarketplaceOrganization is sufficient;
+- only a current ACTIVE OrganizationMembership containing `OWNER` or `ADMIN` may change this configuration;
+- `PUBLISHER` alone may not change Organization-level notification routing;
+- the address is configuration/transport metadata, not Organization identity or verification evidence;
+- configuration changes affect future delivery attempts only and never rewrite historical Lead truth.
+
+Future multiple recipients/routing rules may extend this configuration without changing Lead identity.
+
+### Durable notification boundary
+
+A newly created durable Lead must create one durable notification/outbox intent in the same transaction as the Lead, or through an equivalently atomic database mechanism. A committed Lead must never exist without the durable notification intent required for its configured notification path.
+
+Delivery happens only after commit through a provider-agnostic email delivery boundary.
+
+Required states must mechanically distinguish at least:
+
+```text
+PENDING
+DELIVERED
+FAILED_RETRYABLE
+FAILED_TERMINAL
+```
+
+Retry is idempotent and bounded. Delivery failure never mutates/deletes the Lead and never blocks Broker Workspace visibility.
+
+If no Organization notification address is configured, Lead creation still succeeds and the Broker Workspace remains authoritative. The notification intent records a deterministic `NO_RECIPIENT_CONFIGURED`/equivalent non-delivery reason rather than silently discarding the notification requirement.
+
+The actual external email provider remains deployment configuration behind the accepted delivery boundary. SLICE-0071 may prove delivery using a deterministic local/test adapter; production-provider activation belongs to Production Readiness and secrets/observability configuration and must not be hard-coded into marketplace domain truth.
+
+Email messages are HullQ-authored notifications, contain minimum useful Lead context, label buyer contact email verification state, and deep-link to the authenticated Broker Workspace Lead detail. They must not impersonate the buyer.
+
+
 ## Reassessment rule
 
 These decisions are binding product/domain direction until explicitly superseded by a later Owner-accepted repository decision.
