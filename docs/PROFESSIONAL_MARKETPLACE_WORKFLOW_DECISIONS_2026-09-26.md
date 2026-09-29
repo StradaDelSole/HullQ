@@ -531,6 +531,51 @@ External provider webhook ingestion, provider-specific bounce/complaint handling
 
 Production provider selection remains deployment/operations work. Postmark is the current preferred candidate for later evaluation because HullQ values transactional focus, delivery telemetry, webhook support and low operational overhead; this is a preference, not an implementation dependency. Final activation remains subject to Production Readiness review including deliverability, DPA/data-processing, retention/logging, domain authentication, webhook/security requirements, cost and observability.
 
+
+## D36 — Launch-bounded Broker Lead mini-CRM and acquisition provenance
+
+The first Broker Lead operating surface must provide enough workflow value that a broker can manage a Lead from arrival through a bounded close without falling back to an external spreadsheet or email-only process.
+
+In addition to D33/D34, the launch-bounded Lead workflow includes:
+
+- work-queue filters for unread/new, operational status, assignee, follow-up due and follow-up overdue;
+- explicit follow-up due date/time, clearable and auditable;
+- structured contact-attempt logging with occurred-at, actor, bounded channel and optional bounded note;
+- current last-activity and last-contact-attempt visibility derived from authoritative Lead events;
+- closing a Lead requires a bounded operational close reason distinct from SaleOutcome;
+- dashboard/work-queue factual counts for new/unread, unassigned, follow-ups due and overdue;
+- all workflow changes remain durable/auditable in the Lead timeline.
+
+Initial contact-attempt channels may be a bounded set such as EMAIL, PHONE, MESSAGING and OTHER. Exact labels are implementation-local provided they remain bounded and do not imply successful buyer response merely because a broker recorded an attempt.
+
+Initial operational close reasons must be bounded and may include NOT_INTERESTED, UNREACHABLE, BOAT_UNAVAILABLE, DUPLICATE and OTHER. A Lead close reason is broker workflow metadata only. It never means the yacht was sold, never creates SaleOutcome, never changes listing lifecycle and never becomes canonical buyer intent.
+
+### Lead acquisition and discovery provenance
+
+HullQ should preserve useful first-party provenance explaining both how the visitor reached HullQ and how the visitor reached the contacted listing inside HullQ. These are separate concepts:
+
+```text
+ACQUISITION PROVENANCE
+how the visit/session entered HullQ
+
+DISCOVERY PROVENANCE
+which HullQ surface/path led to the contacted listing
+```
+
+Acquisition classification should support bounded categories sufficient to distinguish at least DIRECT, ORGANIC_SEARCH, PAID_SEARCH/PAID_CAMPAIGN, REFERRAL, SOCIAL where known, OTHER and UNKNOWN. Bounded campaign metadata such as validated UTM source/medium/campaign identifiers may be retained when actually present.
+
+Discovery classification should support bounded HullQ-owned origins such as DIRECT_LISTING, TECHNICAL_SEARCH, INTERNAL_BROWSE, SHORTLIST, COMPARE and other later explicit HullQ surfaces.
+
+Where available, first-touch acquisition and lead-submission/latest-touch discovery context should be preserved separately rather than collapsed into a single ambiguous source field.
+
+Attribution must be factual and provenance-bearing. Missing evidence is UNKNOWN, not guessed. HullQ must not infer a Google/ad/referral source from user profile or behavior without captured evidence.
+
+The browser/server implementation may use bounded first-party session/local context needed to carry attribution to Lead creation. It must not introduce fingerprinting, third-party behavioral trackers, raw-IP persistence, unbounded browsing-history capture or storage of arbitrary full referrer URLs/query strings merely for CRM attribution.
+
+Lead acquisition/discovery provenance is immutable historical context linked to the Lead and may be surfaced to the authorized publishing Organization. It must not affect Search ranking, Lead eligibility, Lead quality/scoring, buyer verification or listing/public truth.
+
+This provenance is intended to support later factual broker reporting such as Leads by acquisition channel, campaign and HullQ discovery surface. Generalized analytics/attribution modeling, cross-device identity stitching and advertising optimization remain later capabilities.
+
 ## Reassessment rule
 
 These decisions are binding product/domain direction until explicitly superseded by a later Owner-accepted repository decision.
