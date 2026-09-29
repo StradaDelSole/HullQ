@@ -189,6 +189,26 @@ Required behavior:
 
 Exact scheduling/backoff values are implementation-local.
 
+
+## 12A. Notification identity, telemetry and future CRM extensibility
+
+HullQ owns the semantic identities used for Lead notification and workflow history. The implementation must preserve stable correlation from:
+
+```text
+Lead
+→ durable notification intent
+→ delivery attempt(s)
+→ optional provider message identifier
+```
+
+Exact schema/type names remain implementation-local. Provider identifiers are transport metadata only.
+
+0071 does not need production-provider webhooks or open/click ingestion. However, its outbox/delivery and timeline foundations must not require replacement when later provider adapters add normalized delivery, delay, bounce, complaint or engagement events.
+
+Notification transport/engagement must remain distinct from Lead workflow and buyer intent. A delivered/opened/clicked notification cannot itself change Lead operational status, buyer email verification state, Lead quality or Search/listing truth. Authenticated Broker Workspace actions remain the authoritative broker-workflow evidence.
+
+The deterministic local/test adapter may expose only the delivery outcomes needed for 0071 acceptance. Production-provider activation, provider webhook ingestion, bounce/complaint processing, open/click telemetry, inbound email/reply relay and generalized CRM analytics remain later capabilities.
+
 ## 13. Privacy and email verification
 
 Buyer email remains exactly the SLICE-0070 contact value and verification state. 0071 must not transition `UNVERIFIED` to verified.
