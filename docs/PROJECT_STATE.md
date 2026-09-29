@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0069 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0070 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0070 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0071 -->
 
 **Updated:** 2026-09-27  
-**Latest owner-accepted / DONE slice:** SLICE-0069  
-**Current queue:** SLICE-0070 — **Durable Buyer Contact / Lead Creation — READY**. Post-SLICE-0069 reassessment selected the first durable buyer→broker contact capability. Anonymous submission is accepted; authenticated AccountId is optional attribution; contact email remains explicitly UNVERIFIED in v0.1. Implementation remains unauthorized until independent readiness review, remote gates and readiness merge complete.  
+**Latest owner-accepted / DONE slice:** SLICE-0070  
+**Current queue:** SLICE-0071 — **UNSELECTED**. SLICE-0070 Durable Buyer Contact / Lead Creation is owner-accepted and merged. A fresh post-SLICE-0070 reassessment must complete before SLICE-0071 capability selection, readiness or implementation authorization.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -286,13 +286,11 @@ Next queue number:
 SLICE-0070
 ```
 
-**Capability:** Durable Buyer Contact / Lead Creation.
+**Capability:** UNSELECTED.
 
-Post-SLICE-0069 reassessment selected SLICE-0070 as the next broker-launch capability. It is governed by `specs/MARKETPLACE_BUYER_LEAD_CREATION_CONTRACT.v0.1.md` and `docs/slices/SLICE-0070-durable-buyer-contact-lead-creation.md`.
+SLICE-0070 Durable Buyer Contact / Lead Creation is owner-accepted and merged. HullQ now has durable anonymous-capable Lead creation with authoritative D29 recheck, server-derived listing/Organization attribution, retry-safe submission identity and explicit `UNVERIFIED` contact-email state.
 
-Accepted D32 permits anonymous contact with required bounded name/email/message, derives target Organization from authoritative listing truth, records optional authenticated AccountId only as attribution, and keeps contact email explicitly UNVERIFIED in v0.1. Email verification is a registered mandatory follow-up: `BUYER_CONTACT_EMAIL_VERIFICATION_STATUS` must become `IMPLEMENTED` before real external production buyer-contact exposure or any verified/trusted-email representation. Broker Lead inbox/assignment/status/notes remain a separate later capability.
-
-Accepted D33 fixes the later broker Lead operating direction: Broker Workspace is the authoritative Lead system with inbox/queue, unread indication, Lead detail, assignment, operational status, notes/timeline and follow-up visibility. Email is auxiliary notification only, sent by HullQ with a direct dashboard link and explicit UNVERIFIED labeling where applicable. Lead creation and notification delivery use a durable outbox/retry boundary so mail-provider failure never loses or rolls back a Lead. Exact provider/worker configuration remains future implementation detail.
+Accepted D33 remains the next directional broker-launch step: Broker Workspace is the authoritative Lead operating system with inbox/queue, unread indication, Lead detail, assignment, operational status, notes/timeline and follow-up visibility; email is auxiliary HullQ notification with durable outbox/retry semantics. A fresh post-SLICE-0070 reassessment must verify current `main`, D33 implementation boundaries, email-verification trigger state and Broker Workspace Launch Gate before selecting SLICE-0071. This state does not preselect or authorize 0071.
 
 ## Development workflow
 
@@ -307,6 +305,6 @@ Accepted D33 fixes the later broker Lead operating direction: Broker Workspace i
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0069 is owner-accepted and merged; post-SLICE-0069 reassessment selected SLICE-0070 Durable Buyer Contact / Lead Creation and readiness is pending independent review/remote gates/merge.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0070 Durable Buyer Contact / Lead Creation is owner-accepted and merged; SLICE-0071 remains UNSELECTED pending fresh post-0070 reassessment.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
