@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-27  
 **Latest owner-accepted / DONE slice:** SLICE-0070  
-**Current queue:** SLICE-0071 — **UNSELECTED**. SLICE-0070 Durable Buyer Contact / Lead Creation is owner-accepted and merged. A fresh post-SLICE-0070 reassessment must complete before SLICE-0071 capability selection, readiness or implementation authorization.  
+**Current queue:** SLICE-0071 — **Broker Lead Operating Surface + Durable Email Notification — READY**. Post-SLICE-0070 reassessment selected the next broker-launch capability. Broker Workspace remains authoritative; email is auxiliary notification through durable outbox/retry semantics. Implementation remains unauthorized until independent readiness review, remote gates and readiness merge complete.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -286,11 +286,11 @@ Next queue number:
 SLICE-0070
 ```
 
-**Capability:** UNSELECTED.
+**Capability:** Broker Lead Operating Surface + Durable Email Notification.
 
-SLICE-0070 Durable Buyer Contact / Lead Creation is owner-accepted and merged. HullQ now has durable anonymous-capable Lead creation with authoritative D29 recheck, server-derived listing/Organization attribution, retry-safe submission identity and explicit `UNVERIFIED` contact-email state.
+Post-SLICE-0070 reassessment selected SLICE-0071 as the next broker-launch capability. It is governed by `specs/BROKER_LEAD_OPERATIONS_NOTIFICATION_CONTRACT.v0.1.md` and `docs/slices/SLICE-0071-broker-lead-operations-notification.md`.
 
-Accepted D33 remains the next directional broker-launch step: Broker Workspace is the authoritative Lead operating system with inbox/queue, unread indication, Lead detail, assignment, operational status, notes/timeline and follow-up visibility; email is auxiliary HullQ notification with durable outbox/retry semantics. A fresh post-SLICE-0070 reassessment must verify current `main`, D33 implementation boundaries, email-verification trigger state and Broker Workspace Launch Gate before selecting SLICE-0071. This state does not preselect or authorize 0071.
+The slice delivers Organization-scoped Lead inbox/detail, unread/read state, assignment, bounded operational status, notes/timeline/follow-up visibility, one OWNER/ADMIN-controlled Organization notification email, durable outbox intent and provider-agnostic retryable HullQ email notification. Buyer email verification remains PENDING and external production email-provider activation remains outside 0071.
 
 ## Development workflow
 
@@ -305,6 +305,6 @@ Accepted D33 remains the next directional broker-launch step: Broker Workspace i
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0070 Durable Buyer Contact / Lead Creation is owner-accepted and merged; SLICE-0071 remains UNSELECTED pending fresh post-0070 reassessment.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0070 is owner-accepted and merged; post-SLICE-0070 reassessment selected SLICE-0071 Broker Lead Operating Surface + Durable Email Notification and readiness is pending exact-head review/remote gates/merge.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
