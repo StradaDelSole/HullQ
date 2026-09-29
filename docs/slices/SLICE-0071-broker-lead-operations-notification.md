@@ -40,6 +40,14 @@ No Search criterion, external broker pilot, paid plan, public production launch 
 
 ## Decision / implementation reconciliation
 
+**Accepted records checked:** docs/PROJECT_STATE.md; docs/slices/SLICE-0070-acceptance-closure.md; docs/POST_SLICE_0070_REASSESSMENT_2026-09-29.md; docs/PROFESSIONAL_MARKETPLACE_WORKFLOW_DECISIONS_2026-09-26.md (D33/D34); docs/BROKER_LAUNCH_EXECUTION_FOCUS_2026-09-26.md; docs/governance/BROKER_WORKSPACE_LAUNCH_GATE.md; docs/governance/BROKER_WORKSPACE_MANDATORY_CAPABILITY_REGISTER.md; docs/governance/POST_0051_TRIGGER_GATES.md.  
+**Production implementation checked:** current buyer Lead domain/persistence/application/FastAPI/Astro implementation; current Broker Workspace Organization authorization/membership/MFA and inventory web/API patterns; current PostgreSQL migration and private mutation patterns.  
+**Already implemented / not re-decided:** SLICE-0070 immutable durable Lead envelope/idempotency/D29 creation gate; current MarketplaceOrganization ownership; current OrganizationMembership roles/state; existing Broker Workspace session/MFA authorization; buyer email remains explicitly UNVERIFIED.  
+**Exact remaining gap:** durable Leads exist but the publishing Organization has no Lead inbox/detail/operational workflow, no explicit notification-recipient configuration, no durable outbox/delivery state and no HullQ email notification boundary.  
+**Accepted-but-unimplemented obligations:** D33 authoritative Broker Lead operations; D34 OWNER/ADMIN notification routing; durable notification/outbox + retryable delivery; buyer-contact email verification remains mandatory later and production-provider activation remains later Production Readiness work.  
+**Material classifications:** DECIDED_AND_IMPLEMENTED foundations; DECIDED_NOT_YET_IMPLEMENTED 0071 scope and mandatory later verification/provider work; EXPLICITLY_DEFERRED generalized CRM/multi-recipient/SMS/scoring/cross-Organization transfer; GENUINELY_OPEN implementation-local factoring; CONFLICT_OR_REGRESSION none.
+
+
 ### DECIDED_AND_IMPLEMENTED
 
 - durable Lead creation and immutable buyer/listing/Organization/source attribution;
