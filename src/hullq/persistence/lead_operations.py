@@ -124,7 +124,9 @@ def fetch_lead_operational_state(conn: Any, lead_id: LeadId) -> LeadOperationalS
 
 
 def _row_to_operational_state(lead_id: LeadId, row: Any) -> LeadOperationalStateRecord:
-    status, is_unread, assigned_account_id_value, follow_up_due_at, close_reason_value, version = row
+    status, is_unread, assigned_account_id_value, follow_up_due_at, close_reason_value, version = (
+        row
+    )
     return LeadOperationalStateRecord(
         lead_id=lead_id,
         operational_status=LeadOperationalStatus(status),
@@ -133,7 +135,9 @@ def _row_to_operational_state(lead_id: LeadId, row: Any) -> LeadOperationalState
             AccountId(assigned_account_id_value) if assigned_account_id_value is not None else None
         ),
         follow_up_due_at=follow_up_due_at,
-        close_reason=LeadCloseReason(close_reason_value) if close_reason_value is not None else None,
+        close_reason=LeadCloseReason(close_reason_value)
+        if close_reason_value is not None
+        else None,
         version=version,
     )
 
@@ -173,10 +177,14 @@ def _insert_timeline_event(
 # observes rowcount > 0 and logs the MARKED_READ event.
 # ---------------------------------------------------------------------------
 
-_MARK_READ = "UPDATE lead_operational_state SET is_unread = FALSE WHERE lead_id = %s AND is_unread = TRUE"
+_MARK_READ = (
+    "UPDATE lead_operational_state SET is_unread = FALSE WHERE lead_id = %s AND is_unread = TRUE"
+)
 
 
-def mark_lead_read(conn: Any, lead_id: LeadId, *, actor_account_id: AccountId, as_of: datetime) -> None:
+def mark_lead_read(
+    conn: Any, lead_id: LeadId, *, actor_account_id: AccountId, as_of: datetime
+) -> None:
     """Idempotently transition *lead_id* to read.
 
     Safe to call repeatedly and safe under concurrent callers: only the

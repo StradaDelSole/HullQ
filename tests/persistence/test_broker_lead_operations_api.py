@@ -65,7 +65,10 @@ from hullq.persistence.media_gallery import (
     set_cover,
 )
 from hullq.persistence.native_listing import create_native_listing
-from hullq.persistence.native_listing_lifecycle import publish_native_listing, withdraw_native_listing
+from hullq.persistence.native_listing_lifecycle import (
+    publish_native_listing,
+    withdraw_native_listing,
+)
 from hullq.persistence.native_listing_offer import (
     NativeListingOfferRevisionId,
     write_native_listing_offer_revision,
@@ -140,7 +143,9 @@ def client(api_url: str, monkeypatch: pytest.MonkeyPatch) -> Generator[TestClien
 
 def _ensure_account(conn: Any, account_id: str) -> None:
     with conn.cursor() as cur:
-        cur.execute("INSERT INTO accounts (account_id) VALUES (%s) ON CONFLICT DO NOTHING", [account_id])
+        cur.execute(
+            "INSERT INTO accounts (account_id) VALUES (%s) ON CONFLICT DO NOTHING", [account_id]
+        )
     conn.commit()
 
 
@@ -217,11 +222,14 @@ def _publish_listing_and_create_lead(api_url: str, *, listing_id: str, org_id: s
         _ensure_account(conn, account.value)
         seed_marketplace_organization(conn, org)
         conn.commit()
-        create_physical_boat(conn, physical_boat=PhysicalBoat(id=PhysicalBoatId(f"PB-{listing_id}")))
+        create_physical_boat(
+            conn, physical_boat=PhysicalBoat(id=PhysicalBoatId(f"PB-{listing_id}"))
+        )
         create_market_episode(
             conn,
             market_episode=MarketEpisode(
-                id=MarketEpisodeId(f"ME-{listing_id}"), physical_boat_id=PhysicalBoatId(f"PB-{listing_id}")
+                id=MarketEpisodeId(f"ME-{listing_id}"),
+                physical_boat_id=PhysicalBoatId(f"PB-{listing_id}"),
             ),
         )
         create_native_listing(
@@ -230,7 +238,8 @@ def _publish_listing_and_create_lead(api_url: str, *, listing_id: str, org_id: s
             candidate_organization=org,
             membership=membership,
             listing=NativeListing(
-                id=NativeListingId(listing_id), market_episode_id=MarketEpisodeId(f"ME-{listing_id}")
+                id=NativeListingId(listing_id),
+                market_episode_id=MarketEpisodeId(f"ME-{listing_id}"),
             ),
         )
         write_native_listing_offer_revision(
@@ -377,7 +386,9 @@ def test_foreign_and_unknown_organization_share_identical_not_found_shape(
     assert unknown.json() == foreign.json()
 
 
-def test_lead_belonging_to_foreign_organization_is_not_found(client: TestClient, api_url: str) -> None:
+def test_lead_belonging_to_foreign_organization_is_not_found(
+    client: TestClient, api_url: str
+) -> None:
     lead_id = _publish_listing_and_create_lead(api_url, listing_id="LX1", org_id="ORG-X")
     _seed_membership(api_url, org_id="ORG-Y", account_id="ACC-2", membership_id="OM-2")
     _log_in(client, "ACC-2")
@@ -479,7 +490,15 @@ def test_full_lead_operations_happy_path(client: TestClient, api_url: str) -> No
     assert final_body["operational_state"]["assigned_account_id"] == "ACC-broker"
     assert final_body["operational_state"]["close_reason"] == "NOT_INTERESTED"
     event_types = [event["event_type"] for event in final_body["timeline"]]
-    for expected in ("MARKED_READ", "ASSIGNED", "STATUS_CHANGED", "NOTE", "CONTACT_ATTEMPT", "FOLLOW_UP_SET", "CLOSED"):
+    for expected in (
+        "MARKED_READ",
+        "ASSIGNED",
+        "STATUS_CHANGED",
+        "NOTE",
+        "CONTACT_ATTEMPT",
+        "FOLLOW_UP_SET",
+        "CLOSED",
+    ):
         assert expected in event_types
 
 
@@ -518,7 +537,9 @@ def test_csrf_is_required_for_mutations(client: TestClient, api_url: str) -> Non
     assert resp.status_code == 403
 
 
-def test_withdrawing_listing_keeps_historical_lead_readable(client: TestClient, api_url: str) -> None:
+def test_withdrawing_listing_keeps_historical_lead_readable(
+    client: TestClient, api_url: str
+) -> None:
     lead_id = _publish_listing_and_create_lead(api_url, listing_id="LH5", org_id="ORG-H5")
     _seed_membership(api_url, org_id="ORG-H5", account_id="ACC-broker5", membership_id="OM-H5")
     _log_in(client, "ACC-broker5")

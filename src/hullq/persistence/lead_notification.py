@@ -154,7 +154,12 @@ def set_organization_notification_email(
         cur.execute(_BOOTSTRAP_NOTIFICATION_CONFIG, [organization_id.value])
         cur.execute(
             _UPDATE_NOTIFICATION_CONFIG,
-            [notification_email, updated_by_account_id.value, organization_id.value, expected_version],
+            [
+                notification_email,
+                updated_by_account_id.value,
+                organization_id.value,
+                expected_version,
+            ],
         )
         updated_row = cur.fetchone()
         if updated_row is None:

@@ -217,6 +217,7 @@ def create_buyer_lead(
     utm_campaign: str | None = None,
     utm_term: str | None = None,
     utm_content: str | None = None,
+    discovery_surface: DiscoverySurface = DiscoverySurface.UNKNOWN,
 ) -> BuyerLeadCreationResult:
     """Resolve *submission_operation_id* first; only a genuinely new
     operation re-evaluates D29 CurrentPublicEligibility and may create a
@@ -378,7 +379,7 @@ def create_buyer_lead(
                 utm_campaign=utm_campaign,
                 utm_term=utm_term,
                 utm_content=utm_content,
-                discovery_surface=DiscoverySurface.UNKNOWN,
+                discovery_surface=discovery_surface,
             )
             return BuyerLeadCreationResult(
                 status=BuyerLeadCreationStatus.CREATED, lead_id=lead_id, received_at=inserted[1]

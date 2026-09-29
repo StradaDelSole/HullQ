@@ -57,7 +57,14 @@ function isValidPayload(value: unknown): value is { items: ShortlistItemResult[]
  * short-circuits without a network call -- an empty shortlist is not a
  * service failure.
  */
-export async function resolveShortlistListings(listingIds: string[]): Promise<ShortlistResolution> {
+export async function resolveShortlistListings(
+  listingIds: string[],
+  // SLICE-0071 contract §8B amendment: which HullQ surface is resolving
+  // these ids -- lets FastAPI mint a bound SHORTLIST/COMPARE discovery
+  // token per item; omitted entirely mints no token (stays UNKNOWN if the
+  // buyer later contacts a listing reached this way).
+  discoverySurfaceContext?: "SHORTLIST" | "COMPARE",
+): Promise<ShortlistResolution> {
   if (listingIds.length === 0) {
     return { kind: "loaded", items: [] };
   }
@@ -67,7 +74,10 @@ export async function resolveShortlistListings(listingIds: string[]): Promise<Sh
     response = await fetch("/api/shortlist/resolve", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ listing_ids: listingIds }),
+      body: JSON.stringify({
+        listing_ids: listingIds,
+        ...(discoverySurfaceContext ? { context: discoverySurfaceContext } : {}),
+      }),
     });
   } catch {
     return { kind: "service_error" };

@@ -34,7 +34,6 @@ from hullq.application.broker_workspace_read import (
 from hullq.domain.buyer_lead import LeadId
 from hullq.domain.lead_notification import normalize_notification_recipient_email
 from hullq.domain.lead_operations import (
-    MAX_LEAD_NOTE_LENGTH,
     LeadCloseReason,
     LeadContactAttemptChannel,
     LeadOperationalStatus,
@@ -183,7 +182,9 @@ def _timeline_event_to_dict(event: LeadTimelineEventRecord) -> dict[str, Any]:
         "actor_account_id": event.actor_account_id.value,
         "occurred_at": event.occurred_at.isoformat(),
         "note_text": event.note_text,
-        "contact_channel": event.contact_channel.value if event.contact_channel is not None else None,
+        "contact_channel": event.contact_channel.value
+        if event.contact_channel is not None
+        else None,
         "close_reason": event.close_reason.value if event.close_reason is not None else None,
     }
 
@@ -242,7 +243,9 @@ def get_lead_detail(
     if outcome is not LeadOperationOutcome.OK:
         return LeadDetailResult(outcome=outcome)
     assert lead is not None
-    return LeadDetailResult(outcome=LeadOperationOutcome.OK, lead=_lead_detail_to_dict(lead, conn=conn))
+    return LeadDetailResult(
+        outcome=LeadOperationOutcome.OK, lead=_lead_detail_to_dict(lead, conn=conn)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -270,7 +273,9 @@ def _cursor_b64url_decode(text: str) -> bytes:
     except (binascii.Error, ValueError) as exc:
         raise InvalidLeadInboxCursorError("malformed cursor encoding") from exc
     if _cursor_b64url_encode(decoded) != text:
-        raise InvalidLeadInboxCursorError("cursor is not the canonical base64url encoding of its bytes")
+        raise InvalidLeadInboxCursorError(
+            "cursor is not the canonical base64url encoding of its bytes"
+        )
     return decoded
 
 
@@ -338,8 +343,9 @@ def get_organization_lead_inbox_page(
     *,
     page_size: int | None,
     cursor: str | None,
-    filters: LeadInboxFilters = LeadInboxFilters(),
+    filters: LeadInboxFilters | None = None,
 ) -> LeadInboxPageResult:
+    filters = filters if filters is not None else LeadInboxFilters()
     workspace_result = get_organization_workspace_result(conn, session, organization_id)
     if workspace_result.outcome is OrganizationWorkspaceOutcome.NOT_FOUND_OR_DENIED:
         return LeadInboxPageResult(outcome=LeadOperationOutcome.ORG_NOT_FOUND_OR_DENIED)
@@ -370,7 +376,9 @@ def get_organization_lead_inbox_page(
     has_more = len(rows) > resolved_page_size
     page_rows = rows[:resolved_page_size]
     next_cursor = (
-        _encode_cursor(LeadInboxSortKey(received_at=page_rows[-1].received_at, lead_id=page_rows[-1].lead_id))
+        _encode_cursor(
+            LeadInboxSortKey(received_at=page_rows[-1].received_at, lead_id=page_rows[-1].lead_id)
+        )
         if has_more and page_rows
         else None
     )
@@ -399,7 +407,11 @@ class LeadOrganizationCountsView:
 
 
 def get_organization_lead_counts(
-    conn: Any, session: SessionClaims, organization_id: MarketplaceOrganizationId, *, as_of: datetime
+    conn: Any,
+    session: SessionClaims,
+    organization_id: MarketplaceOrganizationId,
+    *,
+    as_of: datetime,
 ) -> LeadOrganizationCountsView:
     workspace_result = get_organization_workspace_result(conn, session, organization_id)
     if workspace_result.outcome is OrganizationWorkspaceOutcome.NOT_FOUND_OR_DENIED:
@@ -416,7 +428,12 @@ def get_organization_lead_counts(
 
 
 def mark_read(
-    conn: Any, session: SessionClaims, organization_id: MarketplaceOrganizationId, lead_id: LeadId, *, as_of: datetime
+    conn: Any,
+    session: SessionClaims,
+    organization_id: MarketplaceOrganizationId,
+    lead_id: LeadId,
+    *,
+    as_of: datetime,
 ) -> LeadMutationOutcome:
     outcome, _lead = _authorize_lead(conn, session, organization_id, lead_id)
     if outcome is not LeadOperationOutcome.OK:
@@ -463,7 +480,9 @@ def set_assignment(
         as_of=as_of,
     )
     if not result.updated:
-        return LeadMutationOutcome(outcome=LeadOperationOutcome.VERSION_CONFLICT, state=result.current)
+        return LeadMutationOutcome(
+            outcome=LeadOperationOutcome.VERSION_CONFLICT, state=result.current
+        )
     return LeadMutationOutcome(outcome=LeadOperationOutcome.OK, state=result.current)
 
 
@@ -498,7 +517,9 @@ def set_status(
         as_of=as_of,
     )
     if not result.updated:
-        return LeadMutationOutcome(outcome=LeadOperationOutcome.VERSION_CONFLICT, state=result.current)
+        return LeadMutationOutcome(
+            outcome=LeadOperationOutcome.VERSION_CONFLICT, state=result.current
+        )
     return LeadMutationOutcome(outcome=LeadOperationOutcome.OK, state=result.current)
 
 
@@ -550,7 +571,9 @@ def set_follow_up(
         as_of=as_of,
     )
     if not result.updated:
-        return LeadMutationOutcome(outcome=LeadOperationOutcome.VERSION_CONFLICT, state=result.current)
+        return LeadMutationOutcome(
+            outcome=LeadOperationOutcome.VERSION_CONFLICT, state=result.current
+        )
     return LeadMutationOutcome(outcome=LeadOperationOutcome.OK, state=result.current)
 
 
@@ -568,10 +591,12 @@ def append_note(
         return LeadMutationOutcome(outcome=outcome)
     try:
         note_text = normalize_lead_note_text(raw_note_text)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return LeadMutationOutcome(outcome=LeadOperationOutcome.INVALID_INPUT)
     conn.commit()  # end the reads' implicit transaction -- see mark_read's comment above.
-    append_lead_note(conn, lead_id, actor_account_id=session.account_id, note_text=note_text, as_of=as_of)
+    append_lead_note(
+        conn, lead_id, actor_account_id=session.account_id, note_text=note_text, as_of=as_of
+    )
     return LeadMutationOutcome(outcome=LeadOperationOutcome.OK)
 
 
@@ -596,11 +621,16 @@ def append_contact_attempt(
     if raw_note_text is not None:
         try:
             note_text = normalize_lead_note_text(raw_note_text)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return LeadMutationOutcome(outcome=LeadOperationOutcome.INVALID_INPUT)
     conn.commit()  # end the reads' implicit transaction -- see mark_read's comment above.
     append_lead_contact_attempt(
-        conn, lead_id, actor_account_id=session.account_id, channel=channel, note_text=note_text, as_of=as_of
+        conn,
+        lead_id,
+        actor_account_id=session.account_id,
+        channel=channel,
+        note_text=note_text,
+        as_of=as_of,
     )
     return LeadMutationOutcome(outcome=LeadOperationOutcome.OK)
 
@@ -637,7 +667,9 @@ def get_organization_notification_config(
 ) -> NotificationConfigResultView:
     workspace_result = get_organization_workspace_result(conn, session, organization_id)
     if workspace_result.outcome is OrganizationWorkspaceOutcome.NOT_FOUND_OR_DENIED:
-        return NotificationConfigResultView(outcome=NotificationConfigOutcome.ORG_NOT_FOUND_OR_DENIED)
+        return NotificationConfigResultView(
+            outcome=NotificationConfigOutcome.ORG_NOT_FOUND_OR_DENIED
+        )
     if workspace_result.outcome is OrganizationWorkspaceOutcome.MFA_REQUIRED:
         return NotificationConfigResultView(outcome=NotificationConfigOutcome.MFA_REQUIRED)
     config = _fetch_notification_config(conn, organization_id)
@@ -661,11 +693,15 @@ def set_notification_config(
     """
     workspace_result = get_organization_workspace_result(conn, session, organization_id)
     if workspace_result.outcome is OrganizationWorkspaceOutcome.NOT_FOUND_OR_DENIED:
-        return NotificationConfigResultView(outcome=NotificationConfigOutcome.ORG_NOT_FOUND_OR_DENIED)
+        return NotificationConfigResultView(
+            outcome=NotificationConfigOutcome.ORG_NOT_FOUND_OR_DENIED
+        )
     if workspace_result.outcome is OrganizationWorkspaceOutcome.MFA_REQUIRED:
         return NotificationConfigResultView(outcome=NotificationConfigOutcome.MFA_REQUIRED)
 
-    membership = fetch_membership_for_account_and_organization(conn, session.account_id, organization_id)
+    membership = fetch_membership_for_account_and_organization(
+        conn, session.account_id, organization_id
+    )
     if membership is None or not (membership.roles & {MembershipRole.OWNER, MembershipRole.ADMIN}):
         return NotificationConfigResultView(outcome=NotificationConfigOutcome.ROLE_REQUIRED)
 
@@ -674,7 +710,7 @@ def set_notification_config(
     else:
         try:
             normalized_email = normalize_notification_recipient_email(raw_notification_email)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return NotificationConfigResultView(outcome=NotificationConfigOutcome.INVALID_INPUT)
 
     conn.commit()  # end the reads' implicit transaction -- see mark_read's comment above.

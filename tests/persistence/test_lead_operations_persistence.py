@@ -154,7 +154,9 @@ def _org(value: str) -> MarketplaceOrganization:
     )
 
 
-def _membership(org: MarketplaceOrganization, account: AccountId, membership_id: str) -> OrganizationMembership:
+def _membership(
+    org: MarketplaceOrganization, account: AccountId, membership_id: str
+) -> OrganizationMembership:
     return OrganizationMembership(
         id=OrganizationMembershipId(membership_id),
         account_id=account,
@@ -170,7 +172,8 @@ def _attach_ready_cover_image(
     with conn.transaction():
         with conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO accounts (account_id) VALUES (%s) ON CONFLICT DO NOTHING", [account.value]
+                "INSERT INTO accounts (account_id) VALUES (%s) ON CONFLICT DO NOTHING",
+                [account.value],
             )
         seed_marketplace_organization(conn, org)
         asset = insert_approved_media_asset(
@@ -217,7 +220,8 @@ def _publish_listing(
     create_market_episode(
         conn,
         market_episode=MarketEpisode(
-            id=MarketEpisodeId(f"ME-{listing_id}"), physical_boat_id=PhysicalBoatId(f"PB-{listing_id}")
+            id=MarketEpisodeId(f"ME-{listing_id}"),
+            physical_boat_id=PhysicalBoatId(f"PB-{listing_id}"),
         ),
     )
     create_native_listing(
@@ -292,7 +296,9 @@ def _create_lead_for_listing(conn: Any, *, listing_id: str, buyer_suffix: str) -
     return result.lead_id
 
 
-def _create_lead(conn: Any, *, listing_id: str, buyer_suffix: str) -> tuple[LeadId, MarketplaceOrganization]:
+def _create_lead(
+    conn: Any, *, listing_id: str, buyer_suffix: str
+) -> tuple[LeadId, MarketplaceOrganization]:
     _account, org, _membership = _publish_listing(conn, listing_id=listing_id)
     lead_id = _create_lead_for_listing(conn, listing_id=listing_id, buyer_suffix=buyer_suffix)
     return lead_id, org
@@ -346,7 +352,7 @@ def test_concurrent_mark_read_logs_exactly_one_event(lead_ops_url: str) -> None:
             barrier.wait()
             mark_lead_read(thread_conn, lead_id, actor_account_id=actor, as_of=_now())
             thread_conn.commit()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             errors.append(exc)
         finally:
             thread_conn.close()
@@ -553,11 +559,15 @@ def test_follow_up_set_change_clear(lead_ops_conn: Any) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_notes_and_contact_attempts_append_without_implying_buyer_response(lead_ops_conn: Any) -> None:
+def test_notes_and_contact_attempts_append_without_implying_buyer_response(
+    lead_ops_conn: Any,
+) -> None:
     lead_id, _org = _create_lead(lead_ops_conn, listing_id="L6", buyer_suffix="A")
     actor = AccountId("ACC-broker-6")
 
-    append_lead_note(lead_ops_conn, lead_id, actor_account_id=actor, note_text="Called once.", as_of=_now())
+    append_lead_note(
+        lead_ops_conn, lead_id, actor_account_id=actor, note_text="Called once.", as_of=_now()
+    )
     append_lead_contact_attempt(
         lead_ops_conn,
         lead_id,
@@ -652,8 +662,12 @@ def test_inbox_keyset_cursor_continues_deterministically(lead_ops_conn: Any) -> 
 
     first_page = fetch_organization_lead_inbox_page(lead_ops_conn, org.id, limit=1, after=None)
     assert len(first_page) == 1
-    after_key = LeadInboxSortKey(received_at=first_page[0].received_at, lead_id=first_page[0].lead_id)
-    second_page = fetch_organization_lead_inbox_page(lead_ops_conn, org.id, limit=1, after=after_key)
+    after_key = LeadInboxSortKey(
+        received_at=first_page[0].received_at, lead_id=first_page[0].lead_id
+    )
+    second_page = fetch_organization_lead_inbox_page(
+        lead_ops_conn, org.id, limit=1, after=after_key
+    )
     assert len(second_page) == 1
     assert {first_page[0].lead_id, second_page[0].lead_id} == {lead_1, lead_2}
 
@@ -661,6 +675,8 @@ def test_inbox_keyset_cursor_continues_deterministically(lead_ops_conn: Any) -> 
         lead_ops_conn,
         org.id,
         limit=1,
-        after=LeadInboxSortKey(received_at=second_page[0].received_at, lead_id=second_page[0].lead_id),
+        after=LeadInboxSortKey(
+            received_at=second_page[0].received_at, lead_id=second_page[0].lead_id
+        ),
     )
     assert third_page == []

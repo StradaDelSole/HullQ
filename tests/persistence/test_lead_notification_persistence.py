@@ -58,7 +58,7 @@ from hullq.domain.publishing_eligibility import (
 )
 from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
 from hullq.persistence.broker_identity import seed_marketplace_organization
-from hullq.persistence.buyer_lead import create_buyer_lead, fetch_buyer_lead
+from hullq.persistence.buyer_lead import create_buyer_lead
 from hullq.persistence.lead_notification import (
     fetch_notification_outbox_by_lead,
     fetch_organization_notification_config,
@@ -146,7 +146,9 @@ def _org(value: str) -> MarketplaceOrganization:
     )
 
 
-def _membership(org: MarketplaceOrganization, account: AccountId, membership_id: str) -> OrganizationMembership:
+def _membership(
+    org: MarketplaceOrganization, account: AccountId, membership_id: str
+) -> OrganizationMembership:
     return OrganizationMembership(
         id=OrganizationMembershipId(membership_id),
         account_id=account,
@@ -162,7 +164,8 @@ def _attach_ready_cover_image(
     with conn.transaction():
         with conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO accounts (account_id) VALUES (%s) ON CONFLICT DO NOTHING", [account.value]
+                "INSERT INTO accounts (account_id) VALUES (%s) ON CONFLICT DO NOTHING",
+                [account.value],
             )
         seed_marketplace_organization(conn, org)
         asset = insert_approved_media_asset(
@@ -207,7 +210,8 @@ def _publish_listing(conn: Any, *, listing_id: str) -> MarketplaceOrganization:
     create_market_episode(
         conn,
         market_episode=MarketEpisode(
-            id=MarketEpisodeId(f"ME-{listing_id}"), physical_boat_id=PhysicalBoatId(f"PB-{listing_id}")
+            id=MarketEpisodeId(f"ME-{listing_id}"),
+            physical_boat_id=PhysicalBoatId(f"PB-{listing_id}"),
         ),
     )
     create_native_listing(
@@ -294,14 +298,14 @@ def test_lead_creation_atomically_creates_exactly_one_notification_intent(notif_
 
 def test_exact_retry_never_creates_a_second_notification_intent(notif_conn: Any) -> None:
     _publish_listing(notif_conn, listing_id="N2")
-    kwargs = dict(
-        submission_operation_id=SubmissionOperationId("OP-N2-A"),
-        native_listing_id=NativeListingId("N2"),
-        account_id=None,
-        buyer_name="Jane Buyer",
-        buyer_email="jane@example.com",
-        buyer_message="Interested.",
-    )
+    kwargs = {
+        "submission_operation_id": SubmissionOperationId("OP-N2-A"),
+        "native_listing_id": NativeListingId("N2"),
+        "account_id": None,
+        "buyer_name": "Jane Buyer",
+        "buyer_email": "jane@example.com",
+        "buyer_message": "Interested.",
+    }
     first = create_buyer_lead(notif_conn, **kwargs, as_of=_now())
     notif_conn.commit()
     second = create_buyer_lead(notif_conn, **kwargs, as_of=_now())
@@ -312,7 +316,10 @@ def test_exact_retry_never_creates_a_second_notification_intent(notif_conn: Any)
     assert first.lead_id == second.lead_id
 
     with notif_conn.cursor() as cur:
-        cur.execute("SELECT COUNT(*) FROM lead_notification_outbox WHERE lead_id = %s", [first.lead_id.value])
+        cur.execute(
+            "SELECT COUNT(*) FROM lead_notification_outbox WHERE lead_id = %s",
+            [first.lead_id.value],
+        )
         (count,) = cur.fetchone()
     assert count == 1
 
@@ -374,7 +381,9 @@ def test_concurrent_duplicate_submission_creates_one_lead_and_one_intent(notif_u
 # ---------------------------------------------------------------------------
 
 
-def _create_lead_with_recipient(conn: Any, *, listing_id: str, recipient: str | None) -> MarketplaceOrganizationId:
+def _create_lead_with_recipient(
+    conn: Any, *, listing_id: str, recipient: str | None
+) -> MarketplaceOrganizationId:
     org = _publish_listing(conn, listing_id=listing_id)
     if recipient is not None:
         set_organization_notification_email(
@@ -437,7 +446,9 @@ def test_worker_records_no_recipient_configured_without_losing_lead(notif_conn: 
 def test_retryable_failure_does_not_affect_lead_and_later_succeeds(notif_conn: Any) -> None:
     _create_lead_with_recipient(notif_conn, listing_id="N6", recipient="broker@example.com")
     adapter = DeterministicLocalNotificationAdapter()
-    adapter.queue_outcome(DeliverySendResult(outcome=DeliverySendOutcome.RETRYABLE_ERROR, error_text="smtp timeout"))
+    adapter.queue_outcome(
+        DeliverySendResult(outcome=DeliverySendOutcome.RETRYABLE_ERROR, error_text="smtp timeout")
+    )
 
     failing_run = run_delivery_worker_once(
         notif_conn, adapter=adapter, worker_id="w1", as_of=_now(), web_base_url="http://web.test"

@@ -58,7 +58,35 @@ const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
 // here -- this is ordinary public content, just intentionally non-indexed.
 Astro.response.headers.set("X-Robots-Tag", "noindex");
 
-const data = nativeListingId ? await fetchPublicListing(apiBaseUrl, nativeListingId) : null;
+// SLICE-0071 contract §8B amendment (Finding A): resolve bounded, first-
+// party discovery evidence for this exact request before fetching the
+// listing, so FastAPI can independently verify/classify it in the same
+// call this page already makes. `ds` is an incoming opaque signed token
+// from a HullQ-internal link (search/shortlist/compare); absent that, the
+// `Referer` header is classified into a bounded NONE/EXTERNAL/INTERNAL
+// hint -- never stored/forwarded as a raw string, only this classification
+// (contract §8B: "no arbitrary full-referrer ... storage").
+const incomingDiscoveryToken = Astro.url.searchParams.get("ds") ?? undefined;
+let referrerHint: "NONE" | "EXTERNAL" | "INTERNAL" | undefined;
+if (!incomingDiscoveryToken) {
+  const referer = Astro.request.headers.get("referer");
+  if (!referer) {
+    referrerHint = "NONE";
+  } else {
+    try {
+      referrerHint = new URL(referer).origin === Astro.url.origin ? "INTERNAL" : "EXTERNAL";
+    } catch {
+      referrerHint = "EXTERNAL";
+    }
+  }
+}
+
+const data = nativeListingId
+  ? await fetchPublicListing(apiBaseUrl, nativeListingId, {
+      ds: incomingDiscoveryToken,
+      referrerHint,
+    })
+  : null;
 
 if (data === null) {
   Astro.response.status = 404;
@@ -193,7 +221,11 @@ const canonicalUrl = nativeListingId
               <section aria-label="Contact">
                 <h2>{contactText.heading}</h2>
                 <p>{contactText.disclaimer}</p>
-                <form data-buyer-contact-form data-native-listing-id={nativeListingId}>
+                <form
+                  data-buyer-contact-form
+                  data-native-listing-id={nativeListingId}
+                  data-discovery-token={data.discovery_token}
+                >
                   <label>
                     {contactText.nameLabel}
                     <input type="text" name="name" required maxlength="200" />

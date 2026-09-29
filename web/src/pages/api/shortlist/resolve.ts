@@ -58,6 +58,18 @@ function extractValidIds(body: unknown): string[] | null {
   return ids;
 }
 
+/**
+ * SLICE-0071 contract §8B amendment: which HullQ surface (plain shortlist
+ * page or compare page) is resolving this batch -- a bounded enum only;
+ * anything else is simply ignored (no discovery token is minted), never
+ * treated as an error.
+ */
+function extractDiscoverySurfaceContext(body: unknown): "SHORTLIST" | "COMPARE" | undefined {
+  if (typeof body !== "object" || body === null) return undefined;
+  const raw = (body as Record<string, unknown>).context;
+  return raw === "SHORTLIST" || raw === "COMPARE" ? raw : undefined;
+}
+
 export async function POST({ request }: APIContext): Promise<Response> {
   let body: unknown;
   try {
@@ -70,6 +82,7 @@ export async function POST({ request }: APIContext): Promise<Response> {
   if (ids === null) {
     return jsonResponse({ error: "invalid_request" }, 400);
   }
+  const discoverySurfaceContext = extractDiscoverySurfaceContext(body);
 
   // `process.env`, not `import.meta.env`: matches every other server-side
   // FastAPI-base-URL read in this package (only known at server start time).
@@ -77,7 +90,11 @@ export async function POST({ request }: APIContext): Promise<Response> {
 
   const items = await Promise.all(
     ids.map(async (nativeListingId) => {
-      const result = await fetchPublicListingForShortlist(apiBaseUrl, nativeListingId);
+      const result = await fetchPublicListingForShortlist(
+        apiBaseUrl,
+        nativeListingId,
+        discoverySurfaceContext,
+      );
       if (result.kind === "available") {
         return { native_listing_id: nativeListingId, state: "available" as const, data: result.data };
       }

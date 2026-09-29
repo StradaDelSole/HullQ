@@ -22,6 +22,16 @@ function priceLabel(item: ShortlistItemResult, t: ShortlistText): string {
   return item.data.asking_price_mode === "AMOUNT" ? askingPriceText(item.data) : t.priceOnApplicationLabel;
 }
 
+/**
+ * SLICE-0071 contract §8B amendment: append the bounded, opaque, FastAPI-
+ * minted discovery token to a listing href when present -- this module
+ * never decodes/interprets it, only carries it through as `?ds=`.
+ */
+function discoveryHref(nativeListingId: string, discoveryToken: string | undefined): string {
+  const base = `/listings/${encodeURIComponent(nativeListingId)}`;
+  return discoveryToken ? `${base}?ds=${encodeURIComponent(discoveryToken)}` : base;
+}
+
 function clearChildren(node: Element): void {
   while (node.firstChild) node.removeChild(node.firstChild);
 }
@@ -47,7 +57,7 @@ function renderList(
 
     if (item.state === "available") {
       const link = document.createElement("a");
-      link.href = `/listings/${encodeURIComponent(item.native_listing_id)}`;
+      link.href = discoveryHref(item.native_listing_id, item.data.discovery_token);
       link.textContent = `${t.viewListing}: ${item.native_listing_id}`;
       entry.appendChild(link);
 
@@ -104,7 +114,7 @@ export async function renderShortlistPage(root: HTMLElement | null): Promise<voi
     return;
   }
 
-  const resolution = await resolveShortlistListings(ids);
+  const resolution = await resolveShortlistListings(ids, "SHORTLIST");
   if (resolution.kind === "service_error") {
     renderMessage(root, t.serviceErrorMessage);
     return;

@@ -98,6 +98,31 @@ export interface PublicListingData {
   gallery: PublicGalleryItem[];
   /** The exact `media_placement_id` of the explicit cover image, if any. */
   cover_media_placement_id: string | null;
+  /**
+   * SLICE-0071 contract §8B amendment: an opaque, HMAC-signed, FastAPI-
+   * verified discovery-surface token bound to this exact listing --
+   * present whenever FastAPI could resolve genuine first-party discovery
+   * evidence (an incoming signed token from search/shortlist/compare, or a
+   * server-observed referrer fact), absent otherwise. This client never
+   * decodes or interprets its meaning; it only forwards it verbatim.
+   */
+  discovery_token?: string;
+}
+
+/**
+ * SLICE-0071 contract §8B amendment: the bounded, first-party discovery
+ * evidence the listing detail page passes when it fetches this exact
+ * listing -- either an incoming opaque signed token from a HullQ-internal
+ * link (`ds`), or, when no such token is present, a server-observed
+ * referrer classification (`referrerHint`) computed once by Astro's own
+ * frontmatter from the real `Referer` header (never the raw referrer
+ * string itself, only this bounded classification). FastAPI independently
+ * re-verifies/re-classifies; neither field is ever trusted as the final
+ * discovery surface by this client.
+ */
+export interface DiscoveryEvidence {
+  ds?: string;
+  referrerHint?: "NONE" | "EXTERNAL" | "INTERNAL";
 }
 
 /**
@@ -110,9 +135,14 @@ export interface PublicListingData {
 export async function fetchPublicListing(
   apiBaseUrl: string,
   nativeListingId: string,
+  discoveryEvidence?: DiscoveryEvidence,
 ): Promise<PublicListingData | null> {
   const base = apiBaseUrl.replace(/\/+$/, "");
-  const url = `${base}/api/listings/${encodeURIComponent(nativeListingId)}`;
+  const params = new URLSearchParams();
+  if (discoveryEvidence?.ds) params.set("ds", discoveryEvidence.ds);
+  if (discoveryEvidence?.referrerHint) params.set("referrer_hint", discoveryEvidence.referrerHint);
+  const query = params.toString();
+  const url = `${base}/api/listings/${encodeURIComponent(nativeListingId)}${query ? `?${query}` : ""}`;
 
   let response: Response;
   try {
@@ -186,9 +216,18 @@ export type ShortlistPublicListingResult =
 export async function fetchPublicListingForShortlist(
   apiBaseUrl: string,
   nativeListingId: string,
+  // SLICE-0071 contract §8B amendment: which HullQ surface is resolving
+  // this batch -- forwarded to FastAPI so it can mint a bound, tamper-safe
+  // SHORTLIST/COMPARE discovery token for this exact listing. Never
+  // affects listing truth itself, only what outbound token this response
+  // carries.
+  discoverySurfaceContext?: "SHORTLIST" | "COMPARE",
 ): Promise<ShortlistPublicListingResult> {
   const base = apiBaseUrl.replace(/\/+$/, "");
-  const url = `${base}/api/listings/${encodeURIComponent(nativeListingId)}`;
+  const query = discoverySurfaceContext
+    ? `?discovery_surface_context=${encodeURIComponent(discoverySurfaceContext)}`
+    : "";
+  const url = `${base}/api/listings/${encodeURIComponent(nativeListingId)}${query}`;
 
   let response: Response;
   try {

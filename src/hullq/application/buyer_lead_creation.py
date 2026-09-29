@@ -28,7 +28,7 @@ from hullq.domain.buyer_lead import (
     normalize_buyer_name,
     normalize_submission_operation_id,
 )
-from hullq.domain.lead_provenance import normalize_utm_value
+from hullq.domain.lead_provenance import DiscoverySurface, normalize_utm_value
 from hullq.domain.market_identity import NativeListingId
 from hullq.domain.publishing_eligibility import AccountId
 from hullq.persistence.buyer_lead import BuyerLeadCreationStatus, create_buyer_lead
@@ -86,6 +86,7 @@ def create_buyer_lead_for_listing(
     raw_utm_campaign: Any = None,
     raw_utm_term: Any = None,
     raw_utm_content: Any = None,
+    discovery_surface: DiscoverySurface = DiscoverySurface.UNKNOWN,
 ) -> CreateBuyerLeadResult:
     """Validate the bounded request shape, then delegate to
     `hullq.persistence.buyer_lead.create_buyer_lead`.
@@ -120,7 +121,7 @@ def create_buyer_lead_for_listing(
     def _optional_utm(raw: Any) -> str | None:
         try:
             return normalize_utm_value(raw)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
 
     result = create_buyer_lead(
@@ -137,6 +138,7 @@ def create_buyer_lead_for_listing(
         utm_campaign=_optional_utm(raw_utm_campaign),
         utm_term=_optional_utm(raw_utm_term),
         utm_content=_optional_utm(raw_utm_content),
+        discovery_surface=discovery_surface,
     )
 
     if result.status is BuyerLeadCreationStatus.LISTING_NOT_AVAILABLE:

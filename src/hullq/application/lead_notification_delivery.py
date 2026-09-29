@@ -17,7 +17,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import Protocol
+from typing import Any, Protocol
 
 from hullq.persistence.lead_notification import (
     DeliveryAttemptOutcome,
@@ -147,7 +147,7 @@ def _lead_detail_url(record: NotificationOutboxRecord, *, web_base_url: str) -> 
 
 
 def run_delivery_worker_once(
-    conn,
+    conn: Any,
     *,
     adapter: NotificationDeliveryPort,
     worker_id: str,
@@ -184,7 +184,9 @@ def run_delivery_worker_once(
             outcome=DeliveryAttemptOutcome.NO_RECIPIENT_CONFIGURED,
             as_of=as_of,
         )
-        return WorkerRunResult(outcome=WorkerRunOutcome.NO_RECIPIENT_CONFIGURED, outbox_id=item.outbox_id)
+        return WorkerRunResult(
+            outcome=WorkerRunOutcome.NO_RECIPIENT_CONFIGURED, outbox_id=item.outbox_id
+        )
 
     subject, body = render_lead_notification_message(
         item, lead_detail_url=_lead_detail_url(item, web_base_url=web_base_url)
@@ -201,9 +203,10 @@ def run_delivery_worker_once(
         )
         return WorkerRunResult(outcome=WorkerRunOutcome.DELIVERED, outbox_id=item.outbox_id)
 
-    if send_result.outcome is DeliverySendOutcome.RETRYABLE_ERROR and (
-        item.attempt_count + 1
-    ) < MAX_DELIVERY_ATTEMPTS:
+    if (
+        send_result.outcome is DeliverySendOutcome.RETRYABLE_ERROR
+        and (item.attempt_count + 1) < MAX_DELIVERY_ATTEMPTS
+    ):
         record_delivery_attempt(
             conn,
             item.outbox_id,

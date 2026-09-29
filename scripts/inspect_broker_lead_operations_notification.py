@@ -99,7 +99,10 @@ from hullq.domain.publishing_eligibility import (
     ProfessionalCategory,
 )
 from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
-from hullq.persistence.broker_identity import seed_marketplace_organization, seed_organization_membership
+from hullq.persistence.broker_identity import (
+    seed_marketplace_organization,
+    seed_organization_membership,
+)
 from hullq.persistence.buyer_lead import create_buyer_lead
 from hullq.persistence.connection import HULLQ_TEST_DATABASE_URL_ENV
 from hullq.persistence.lead_notification import fetch_organization_notification_config
@@ -111,7 +114,10 @@ from hullq.persistence.lead_operations import (
 from hullq.persistence.lead_provenance import fetch_lead_acquisition_provenance
 from hullq.persistence.market_episode import create_market_episode
 from hullq.persistence.native_listing import create_native_listing
-from hullq.persistence.native_listing_lifecycle import publish_native_listing, withdraw_native_listing
+from hullq.persistence.native_listing_lifecycle import (
+    publish_native_listing,
+    withdraw_native_listing,
+)
 from hullq.persistence.native_listing_offer import (
     NativeListingOfferRevisionId,
     write_native_listing_offer_revision,
@@ -175,7 +181,7 @@ def _wait_for_http(url: str, *, timeout_seconds: float = 15.0) -> bool:
             return True
         except urllib.error.HTTPError:
             return True
-        except (urllib.error.URLError, ConnectionError, TimeoutError, OSError):
+        except urllib.error.URLError, ConnectionError, TimeoutError, OSError:
             time.sleep(0.2)
     return False
 
@@ -190,7 +196,9 @@ def _http_get(url: str, *, cookie: str | None = None) -> tuple[int, bytes]:
         return exc.code, exc.read()
 
 
-def _http_post_form(url: str, fields: dict[str, str], *, cookie: str, origin: str) -> tuple[int, bytes]:
+def _http_post_form(
+    url: str, fields: dict[str, str], *, cookie: str, origin: str
+) -> tuple[int, bytes]:
     body = urllib.parse.urlencode(fields).encode("ascii")
     request = urllib.request.Request(
         url,
@@ -229,7 +237,9 @@ def _org(value: str) -> MarketplaceOrganization:
     )
 
 
-def _publish_listing(conn: Any, *, listing_id: str, account: AccountId, org: MarketplaceOrganization) -> None:
+def _publish_listing(
+    conn: Any, *, listing_id: str, account: AccountId, org: MarketplaceOrganization
+) -> None:
     membership = OrganizationMembership(
         id=OrganizationMembershipId(f"OM-owner-{listing_id}"),
         account_id=account,
@@ -241,7 +251,8 @@ def _publish_listing(conn: Any, *, listing_id: str, account: AccountId, org: Mar
     create_market_episode(
         conn,
         market_episode=MarketEpisode(
-            id=MarketEpisodeId(f"ME-{listing_id}"), physical_boat_id=PhysicalBoatId(f"PB-{listing_id}")
+            id=MarketEpisodeId(f"ME-{listing_id}"),
+            physical_boat_id=PhysicalBoatId(f"PB-{listing_id}"),
         ),
     )
     create_native_listing(
@@ -286,7 +297,10 @@ def _publish_listing(conn: Any, *, listing_id: str, account: AccountId, org: Mar
     attach_d22_minimum_cover_image(conn, listing_id=listing_id, account=account, org=org)
     conn.commit()
     result = publish_native_listing(
-        conn, account_id=account, candidate_organization=org, membership=membership,
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
         native_listing_id=NativeListingId(listing_id),
     )
     assert result.status.value == "transitioned", result
@@ -344,7 +358,11 @@ def main() -> int:
         conn = psycopg.connect(url)
         try:
             with conn.cursor() as cur:
-                for account_value in (owner_account.value, foreign_account.value, publisher_only_account.value):
+                for account_value in (
+                    owner_account.value,
+                    foreign_account.value,
+                    publisher_only_account.value,
+                ):
                     cur.execute(
                         "INSERT INTO accounts (account_id) VALUES (%s) ON CONFLICT DO NOTHING",
                         [account_value],
@@ -396,16 +414,35 @@ def main() -> int:
 
         api_env = dict(os.environ)
         api_env["HULLQ_DATABASE_URL"] = url
-        api_env["HULLQ_PREVIEW_SIGNING_SECRET"] = base64.urlsafe_b64encode(os.urandom(32)).decode("ascii")
-        api_env["HULLQ_SESSION_SIGNING_SECRET"] = base64.urlsafe_b64encode(_SESSION_SECRET).decode("ascii")
+        api_env["HULLQ_PREVIEW_SIGNING_SECRET"] = base64.urlsafe_b64encode(os.urandom(32)).decode(
+            "ascii"
+        )
+        api_env["HULLQ_SESSION_SIGNING_SECRET"] = base64.urlsafe_b64encode(_SESSION_SECRET).decode(
+            "ascii"
+        )
         api_env["HULLQ_SESSION_COOKIE_SECURE"] = "false"
         api_env["HULLQ_WEB_ORIGIN"] = web_base
 
         api_log = (log_dir / "api.log").open("wb")
         api_proc = subprocess.Popen(
-            [sys.executable, "-m", "uvicorn", "hullq.api.app:create_app", "--factory",
-             "--host", "127.0.0.1", "--port", str(api_port), "--no-access-log", "--log-level", "warning"],
-            cwd=REPO_ROOT, env=api_env, stdout=api_log, stderr=subprocess.STDOUT,
+            [
+                sys.executable,
+                "-m",
+                "uvicorn",
+                "hullq.api.app:create_app",
+                "--factory",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                str(api_port),
+                "--no-access-log",
+                "--log-level",
+                "warning",
+            ],
+            cwd=REPO_ROOT,
+            env=api_env,
+            stdout=api_log,
+            stderr=subprocess.STDOUT,
         )
         api_base = f"http://127.0.0.1:{api_port}"
         api_ready = _wait_for_http(f"{api_base}/api/broker/context")
@@ -418,8 +455,11 @@ def main() -> int:
         web_env["PORT"] = str(web_port)
         web_log = (log_dir / "web.log").open("wb")
         web_proc = subprocess.Popen(
-            ["node", "./dist/server/entry.mjs"], cwd=WEB_DIR, env=web_env,
-            stdout=web_log, stderr=subprocess.STDOUT,
+            ["node", "./dist/server/entry.mjs"],
+            cwd=WEB_DIR,
+            env=web_env,
+            stdout=web_log,
+            stderr=subprocess.STDOUT,
         )
         web_ready = _wait_for_http(f"{web_base}/broker/organizations/{org_a.id.value}/leads")
         ok &= web_ready
@@ -435,17 +475,22 @@ def main() -> int:
         inbox_status, inbox_body = _http_get(
             f"{web_base}/broker/organizations/{org_a.id.value}/leads", cookie=owner_cookie
         )
-        step1_ok = inbox_status == 200 and lead_id.encode() in inbox_body and b"Jane Buyer" in inbox_body
+        step1_ok = (
+            inbox_status == 200 and lead_id.encode() in inbox_body and b"Jane Buyer" in inbox_body
+        )
         ok &= step1_ok
         print(f"1. Lead appears in correct Organization inbox -> {'OK' if step1_ok else 'FAIL'}")
 
         # 2. foreign Organization cannot enumerate/read it.
         foreign_status, _ = _http_get(
-            f"{web_base}/broker/organizations/{org_a.id.value}/leads/{lead_id}", cookie=foreign_cookie
+            f"{web_base}/broker/organizations/{org_a.id.value}/leads/{lead_id}",
+            cookie=foreign_cookie,
         )
         step2_ok = foreign_status == 404
         ok &= step2_ok
-        print(f"2. foreign Organization membership cannot read the Lead -> {'OK' if step2_ok else 'FAIL'}")
+        print(
+            f"2. foreign Organization membership cannot read the Lead -> {'OK' if step2_ok else 'FAIL'}"
+        )
 
         # 3. broker opens detail with source/listing context.
         detail_status, detail_body = _http_get(
@@ -458,7 +503,9 @@ def main() -> int:
             and b"UNVERIFIED" in detail_body
         )
         ok &= step3_ok
-        print(f"3. broker opens detail with source/listing context -> {'OK' if step3_ok else 'FAIL'}")
+        print(
+            f"3. broker opens detail with source/listing context -> {'OK' if step3_ok else 'FAIL'}"
+        )
 
         # 4. assign/status/note/read/contact-attempt/follow-up workflow persists,
         #    all through real Astro form-POSTs (contract §4/§6/§7/§8/§8A).
@@ -476,38 +523,69 @@ def main() -> int:
         _http_post_form(detail_url, {"action": "mark_read"}, cookie=owner_cookie, origin=web_base)
         assign_status, _ = _http_post_form(
             detail_url,
-            {"action": "assign", "assignee_account_id": owner_account.value, "expected_version": "0"},
-            cookie=owner_cookie, origin=web_base,
+            {
+                "action": "assign",
+                "assignee_account_id": owner_account.value,
+                "expected_version": "0",
+            },
+            cookie=owner_cookie,
+            origin=web_base,
         )
         status_status, _ = _http_post_form(
             detail_url,
-            {"action": "set_status", "status": "IN_PROGRESS", "expected_version": str(_current_version())},
-            cookie=owner_cookie, origin=web_base,
+            {
+                "action": "set_status",
+                "status": "IN_PROGRESS",
+                "expected_version": str(_current_version()),
+            },
+            cookie=owner_cookie,
+            origin=web_base,
         )
         note_status, _ = _http_post_form(
-            detail_url, {"action": "add_note", "text": "Called the buyer, left a voicemail."},
-            cookie=owner_cookie, origin=web_base,
+            detail_url,
+            {"action": "add_note", "text": "Called the buyer, left a voicemail."},
+            cookie=owner_cookie,
+            origin=web_base,
         )
         contact_status, _ = _http_post_form(
-            detail_url, {"action": "add_contact_attempt", "channel": "PHONE", "note": "No answer."},
-            cookie=owner_cookie, origin=web_base,
+            detail_url,
+            {"action": "add_contact_attempt", "channel": "PHONE", "note": "No answer."},
+            cookie=owner_cookie,
+            origin=web_base,
         )
         follow_up_due = (datetime.now(UTC) + timedelta(days=1)).isoformat()
         follow_up_status, _ = _http_post_form(
             detail_url,
-            {"action": "set_follow_up", "due_at": follow_up_due, "expected_version": str(_current_version())},
-            cookie=owner_cookie, origin=web_base,
+            {
+                "action": "set_follow_up",
+                "due_at": follow_up_due,
+                "expected_version": str(_current_version()),
+            },
+            cookie=owner_cookie,
+            origin=web_base,
         )
         final_status, final_body = _http_get(detail_url, cookie=owner_cookie)
         step4_ok = (
-            all(s == 200 for s in (assign_status, status_status, note_status, contact_status, follow_up_status, final_status))
+            all(
+                s == 200
+                for s in (
+                    assign_status,
+                    status_status,
+                    note_status,
+                    contact_status,
+                    follow_up_status,
+                    final_status,
+                )
+            )
             and b"IN_PROGRESS" in final_body
             and b"Called the buyer" in final_body
             and b"CONTACT_ATTEMPT" in final_body
             and b"Read" in final_body
         )
         ok &= step4_ok
-        print(f"4. assign/status/note/read/contact-attempt/follow-up workflow persists -> {'OK' if step4_ok else 'FAIL'}")
+        print(
+            f"4. assign/status/note/read/contact-attempt/follow-up workflow persists -> {'OK' if step4_ok else 'FAIL'}"
+        )
 
         # 13. structured contact attempt never implies buyer response.
         conn3 = psycopg.connect(url)
@@ -518,17 +596,23 @@ def main() -> int:
         finally:
             conn3.close()
         ok &= step13_ok
-        print(f"13. contact attempt never implies buyer response/verification -> {'OK' if step13_ok else 'FAIL'}")
+        print(
+            f"13. contact attempt never implies buyer response/verification -> {'OK' if step13_ok else 'FAIL'}"
+        )
 
         # 5. OWNER/ADMIN configures notification recipient; PUBLISHER-only cannot.
         notif_url = f"{web_base}/broker/organizations/{org_a.id.value}/notifications"
         owner_set_status, owner_set_body = _http_post_form(
-            notif_url, {"notification_email": "broker@example.com", "expected_version": "0"},
-            cookie=owner_cookie, origin=web_base,
+            notif_url,
+            {"notification_email": "broker@example.com", "expected_version": "0"},
+            cookie=owner_cookie,
+            origin=web_base,
         )
         publisher_set_status, publisher_set_body = _http_post_form(
-            notif_url, {"notification_email": "sneaky@example.com", "expected_version": "0"},
-            cookie=publisher_only_cookie, origin=web_base,
+            notif_url,
+            {"notification_email": "sneaky@example.com", "expected_version": "0"},
+            cookie=publisher_only_cookie,
+            origin=web_base,
         )
         step5_ok = (
             owner_set_status == 200
@@ -537,7 +621,9 @@ def main() -> int:
             and b"Only an OWNER or ADMIN" in publisher_set_body
         )
         ok &= step5_ok
-        print(f"5. OWNER can configure recipient; PUBLISHER-only is denied -> {'OK' if step5_ok else 'FAIL'}")
+        print(
+            f"5. OWNER can configure recipient; PUBLISHER-only is denied -> {'OK' if step5_ok else 'FAIL'}"
+        )
 
         conn4 = psycopg.connect(url)
         try:
@@ -546,22 +632,32 @@ def main() -> int:
         finally:
             conn4.close()
         ok &= step5b_ok
-        print(f"5b. durable recipient config reflects only the OWNER's change -> {'OK' if step5b_ok else 'FAIL'}\n")
+        print(
+            f"5b. durable recipient config reflects only the OWNER's change -> {'OK' if step5b_ok else 'FAIL'}\n"
+        )
 
         # 6/7. one durable notification intent per Lead; adapter receives one
         # HullQ-authored notification with dashboard deep-link + UNVERIFIED.
         conn5 = psycopg.connect(url)
         try:
             with conn5.cursor() as cur:
-                cur.execute("SELECT COUNT(*) FROM lead_notification_outbox WHERE lead_id = %s", [lead_id])
+                cur.execute(
+                    "SELECT COUNT(*) FROM lead_notification_outbox WHERE lead_id = %s", [lead_id]
+                )
                 (outbox_count,) = cur.fetchone()
             step6_ok = outbox_count == 1
             ok &= step6_ok
-            print(f"6. exactly one durable notification intent for the Lead -> {'OK' if step6_ok else 'FAIL'}")
+            print(
+                f"6. exactly one durable notification intent for the Lead -> {'OK' if step6_ok else 'FAIL'}"
+            )
 
             adapter = DeterministicLocalNotificationAdapter()
             worker_result = run_delivery_worker_once(
-                conn5, adapter=adapter, worker_id="e2e-worker", as_of=datetime.now(UTC), web_base_url=web_base
+                conn5,
+                adapter=adapter,
+                worker_id="e2e-worker",
+                as_of=datetime.now(UTC),
+                web_base_url=web_base,
             )
             step7_ok = (
                 worker_result.outcome is WorkerRunOutcome.DELIVERED
@@ -571,7 +667,9 @@ def main() -> int:
                 and f"/leads/{lead_id}" in adapter.sent[0].body
             )
             ok &= step7_ok
-            print(f"7. adapter receives one notification with deep-link + UNVERIFIED -> {'OK' if step7_ok else 'FAIL'}\n")
+            print(
+                f"7. adapter receives one notification with deep-link + UNVERIFIED -> {'OK' if step7_ok else 'FAIL'}\n"
+            )
         finally:
             conn5.close()
 
@@ -580,9 +678,17 @@ def main() -> int:
         try:
             lead_id_2 = _create_lead(conn6, listing_id="NL-0071-A", op_suffix="2")
             adapter2 = DeterministicLocalNotificationAdapter()
-            adapter2.queue_outcome(DeliverySendResult(outcome=DeliverySendOutcome.RETRYABLE_ERROR, error_text="smtp timeout"))
+            adapter2.queue_outcome(
+                DeliverySendResult(
+                    outcome=DeliverySendOutcome.RETRYABLE_ERROR, error_text="smtp timeout"
+                )
+            )
             first_run = run_delivery_worker_once(
-                conn6, adapter=adapter2, worker_id="e2e-worker", as_of=datetime.now(UTC), web_base_url=web_base
+                conn6,
+                adapter=adapter2,
+                worker_id="e2e-worker",
+                as_of=datetime.now(UTC),
+                web_base_url=web_base,
             )
             lead_after_failure = fetch_lead_detail(conn6, LeadId(lead_id_2))
             later = datetime.now(UTC) + timedelta(seconds=1000)
@@ -598,7 +704,9 @@ def main() -> int:
         finally:
             conn6.close()
         ok &= step8_ok
-        print(f"8. retryable failure preserves Lead, later succeeds without duplicate delivery -> {'OK' if step8_ok else 'FAIL'}")
+        print(
+            f"8. retryable failure preserves Lead, later succeeds without duplicate delivery -> {'OK' if step8_ok else 'FAIL'}"
+        )
 
         # 9. no recipient produces visible Lead plus explicit no-recipient state.
         conn7 = psycopg.connect(url)
@@ -618,12 +726,17 @@ def main() -> int:
             conn7.commit()
             no_recipient_adapter = DeterministicLocalNotificationAdapter()
             no_recipient_run = run_delivery_worker_once(
-                conn7, adapter=no_recipient_adapter, worker_id="e2e-worker", as_of=datetime.now(UTC), web_base_url=web_base
+                conn7,
+                adapter=no_recipient_adapter,
+                worker_id="e2e-worker",
+                as_of=datetime.now(UTC),
+                web_base_url=web_base,
             )
         finally:
             conn7.close()
         no_recipient_page_status, no_recipient_page_body = _http_get(
-            f"{web_base}/broker/organizations/{org_c.id.value}/leads/{lead_id_3}", cookie=owner_cookie
+            f"{web_base}/broker/organizations/{org_c.id.value}/leads/{lead_id_3}",
+            cookie=owner_cookie,
         )
         step9_ok = (
             no_recipient_run.outcome is WorkerRunOutcome.NO_RECIPIENT_CONFIGURED
@@ -632,7 +745,9 @@ def main() -> int:
             and b"NO_RECIPIENT_CONFIGURED" in no_recipient_page_body
         )
         ok &= step9_ok
-        print(f"9. no-recipient Lead stays visible with explicit no-recipient state -> {'OK' if step9_ok else 'FAIL'}\n")
+        print(
+            f"9. no-recipient Lead stays visible with explicit no-recipient state -> {'OK' if step9_ok else 'FAIL'}\n"
+        )
 
         # 11. acquisition/discovery provenance is UNKNOWN when absent.
         conn8 = psycopg.connect(url)
@@ -646,19 +761,104 @@ def main() -> int:
         finally:
             conn8.close()
         ok &= step11_ok
-        print(f"11. acquisition/discovery provenance is UNKNOWN when absent -> {'OK' if step11_ok else 'FAIL'}")
+        print(
+            f"11. acquisition/discovery provenance is UNKNOWN when absent -> {'OK' if step11_ok else 'FAIL'}"
+        )
+
+        # 11b. Finding A amendment: at least one non-UNKNOWN acquisition case
+        # and one non-UNKNOWN discovery-surface case through the *real*
+        # buyer-facing flow -- the actual Astro contact proxy (never a
+        # direct persistence call), carrying bounded UTM evidence exactly as
+        # `buyerLeadForm.ts` would construct it, plus a genuine signed
+        # discovery token obtained from the real FastAPI public-listing
+        # route with `discovery_surface_context=SHORTLIST` -- exactly what
+        # `web/src/pages/api/shortlist/resolve.ts` does server-to-server.
+        conn11b = psycopg.connect(url)
+        try:
+            _publish_listing(conn11b, listing_id="NL-0071-D", account=owner_account, org=org_a)
+        finally:
+            conn11b.close()
+
+        shortlist_ctx_status, shortlist_ctx_body = _http_get(
+            f"{api_base}/api/listings/NL-0071-D?discovery_surface_context=SHORTLIST"
+        )
+        discovery_token = (
+            json.loads(shortlist_ctx_body).get("discovery_token")
+            if shortlist_ctx_status == 200
+            else None
+        )
+
+        contact_payload = json.dumps(
+            {
+                "submission_operation_id": "OP-0071-D-REAL-FLOW",
+                "name": "Jane Buyer",
+                "email": "jane@example.com",
+                "message": "Interested in this boat.",
+                "utm_source": "google",
+                "utm_medium": "cpc",
+                "utm_campaign": "summer-sale",
+                "discovery_token": discovery_token,
+            }
+        ).encode("utf-8")
+        contact_request = urllib.request.Request(
+            f"{web_base}/listings/NL-0071-D/contact",
+            data=contact_payload,
+            method="POST",
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(contact_payload)),
+                # A real browser's same-origin fetch() always carries this;
+                # Astro's contact proxy only forwards an Origin it actually
+                # received (never substitutes a trusted one), and FastAPI's
+                # CSRF boundary requires an exact match.
+                "Origin": web_base,
+            },
+        )
+        try:
+            with urllib.request.urlopen(contact_request, timeout=10) as response:
+                real_flow_status, real_flow_body = response.status, json.loads(response.read())
+        except urllib.error.HTTPError as exc:
+            real_flow_status, real_flow_body = exc.code, {}
+
+        conn11c = psycopg.connect(url)
+        try:
+            real_flow_provenance = (
+                fetch_lead_acquisition_provenance(conn11c, LeadId(real_flow_body["lead_id"]))
+                if "lead_id" in real_flow_body
+                else None
+            )
+        finally:
+            conn11c.close()
+        step11b_ok = (
+            discovery_token is not None
+            and real_flow_status in (200, 201)
+            and real_flow_provenance is not None
+            and real_flow_provenance.acquisition_channel.value == "PAID_SEARCH"
+            and real_flow_provenance.discovery_surface.value == "SHORTLIST"
+        )
+        ok &= step11b_ok
+        print(
+            "11b. real buyer-facing flow (Astro proxy) persists non-UNKNOWN "
+            f"PAID_SEARCH acquisition + SHORTLIST discovery -> {'OK' if step11b_ok else 'FAIL'}\n"
+        )
 
         # 12. follow-up due/overdue filtering and dashboard counts are correct.
         conn9 = psycopg.connect(url)
         try:
             now = datetime.now(UTC)
             not_yet_due_counts = fetch_organization_lead_counts(conn9, org_a.id, as_of=now)
-            not_yet_due_ok = not_yet_due_counts.follow_up_due == 0 and not_yet_due_counts.follow_up_overdue == 0
+            not_yet_due_ok = (
+                not_yet_due_counts.follow_up_due == 0 and not_yet_due_counts.follow_up_overdue == 0
+            )
             conn9.commit()  # end the read's implicit transaction before the write below.
 
             past_due_result = set_lead_follow_up_due_at(
-                conn9, LeadId(lead_id), due_at=now - timedelta(hours=1),
-                actor_account_id=owner_account, expected_version=_current_version(), as_of=now,
+                conn9,
+                LeadId(lead_id),
+                due_at=now - timedelta(hours=1),
+                actor_account_id=owner_account,
+                expected_version=_current_version(),
+                as_of=now,
             )
             assert past_due_result.updated, past_due_result
             overdue_counts = fetch_organization_lead_counts(conn9, org_a.id, as_of=now)
@@ -666,38 +866,60 @@ def main() -> int:
         finally:
             conn9.close()
         follow_up_inbox_status, follow_up_inbox_body = _http_get(
-            f"{web_base}/broker/organizations/{org_a.id.value}/leads?follow_up_due=true", cookie=owner_cookie
+            f"{web_base}/broker/organizations/{org_a.id.value}/leads?follow_up_due=true",
+            cookie=owner_cookie,
         )
         step12_ok = (
-            not_yet_due_ok and overdue_ok and follow_up_inbox_status == 200
+            not_yet_due_ok
+            and overdue_ok
+            and follow_up_inbox_status == 200
             and lead_id.encode() in follow_up_inbox_body
         )
         ok &= step12_ok
-        print(f"12. follow-up due/overdue filtering and dashboard counts are correct -> {'OK' if step12_ok else 'FAIL'}")
+        print(
+            f"12. follow-up due/overdue filtering and dashboard counts are correct -> {'OK' if step12_ok else 'FAIL'}"
+        )
 
         # 14. closing requires a bounded close reason; no lifecycle change.
-        close_no_reason_status, close_no_reason_body = _http_post_form(
-            detail_url, {"action": "close", "expected_version": str(_current_version())},
-            cookie=owner_cookie, origin=web_base,
+        version_before_rejected_close = _current_version()
+        close_no_reason_status, _close_no_reason_body = _http_post_form(
+            detail_url,
+            {"action": "close", "expected_version": str(version_before_rejected_close)},
+            cookie=owner_cookie,
+            origin=web_base,
+        )
+        # A rejected close (missing close_reason) must never advance the
+        # optimistic-concurrency version -- the mutation itself never ran.
+        step14_rejected_ok = (
+            close_no_reason_status == 200 and _current_version() == version_before_rejected_close
         )
         close_status, _ = _http_post_form(
             detail_url,
-            {"action": "close", "close_reason": "NOT_INTERESTED", "expected_version": str(_current_version())},
-            cookie=owner_cookie, origin=web_base,
+            {
+                "action": "close",
+                "close_reason": "NOT_INTERESTED",
+                "expected_version": str(_current_version()),
+            },
+            cookie=owner_cookie,
+            origin=web_base,
         )
         conn10 = psycopg.connect(url)
         try:
             record_after_close = fetch_lead_detail(conn10, LeadId(lead_id))
             assert record_after_close is not None
             step14_ok = (
-                close_status == 200
-                and record_after_close.operational_state.close_reason is LeadCloseReason.NOT_INTERESTED
+                step14_rejected_ok
+                and close_status == 200
+                and record_after_close.operational_state.close_reason
+                is LeadCloseReason.NOT_INTERESTED
                 and record_after_close.operational_state.operational_status.value == "CLOSED"
             )
         finally:
             conn10.close()
         ok &= step14_ok
-        print(f"14. closing requires a bounded close reason, no lifecycle change -> {'OK' if step14_ok else 'FAIL'}\n")
+        print(
+            f"14. closing requires a bounded close reason, no lifecycle change -> {'OK' if step14_ok else 'FAIL'}\n"
+        )
 
         # 10. listing withdrawal does not remove historical Lead.
         withdraw_conn = psycopg.connect(url)
@@ -710,8 +932,11 @@ def main() -> int:
                 state=MembershipState.ACTIVE,
             )
             withdraw_result = withdraw_native_listing(
-                withdraw_conn, account_id=owner_account, candidate_organization=org_a,
-                membership=membership_a, native_listing_id=NativeListingId("NL-0071-A"),
+                withdraw_conn,
+                account_id=owner_account,
+                candidate_organization=org_a,
+                membership=membership_a,
+                native_listing_id=NativeListingId("NL-0071-A"),
             )
             assert withdraw_result.status.value == "transitioned", withdraw_result
             withdraw_conn.commit()
@@ -725,13 +950,17 @@ def main() -> int:
             and b"Jane Buyer" in after_withdraw_body
         )
         ok &= step10_ok
-        print(f"10. listing withdrawal does not remove historical Lead -> {'OK' if step10_ok else 'FAIL'}")
+        print(
+            f"10. listing withdrawal does not remove historical Lead -> {'OK' if step10_ok else 'FAIL'}"
+        )
 
         # 15. Search/listing/public truth unchanged by any of the above.
         public_status, _ = _http_get(f"{web_base}/listings/NL-0071-A")
         step15_ok = public_status == 404  # withdrawn listing correctly no longer publicly visible
         ok &= step15_ok
-        print(f"15. public listing truth reflects only its own withdrawal, nothing Lead-driven -> {'OK' if step15_ok else 'FAIL'}")
+        print(
+            f"15. public listing truth reflects only its own withdrawal, nothing Lead-driven -> {'OK' if step15_ok else 'FAIL'}"
+        )
 
         print(f"\nBROKER LEAD OPERATIONS + NOTIFICATION RESULT -> {'PASS' if ok else 'FAIL'}")
         return 0 if ok else 1

@@ -90,10 +90,6 @@ from hullq.application.buyer_lead_creation import (
     create_buyer_lead_for_listing,
 )
 from hullq.application.inventory_search import DraftMaxSearchOutcome
-from hullq.application.lead_notification_delivery import (
-    DeterministicLocalNotificationAdapter,
-    run_delivery_worker_once,
-)
 from hullq.application.lead_operations import (
     LeadInboxFilters,
     LeadOperationOutcome,
@@ -173,6 +169,7 @@ from hullq.application.search_sensitivity import (
 )
 from hullq.domain.buyer_lead import LeadId
 from hullq.domain.lead_operations import LeadCloseReason, LeadOperationalStatus
+from hullq.domain.lead_provenance import DiscoverySurface
 from hullq.domain.market_identity import NativeListingId
 from hullq.domain.media_gallery import MAX_IMAGE_UPLOAD_BYTES
 from hullq.domain.publishing_eligibility import AccountId, MarketplaceOrganizationId
@@ -181,6 +178,10 @@ from hullq.search.configuration_engine import DesignQueryEvaluation
 from hullq.search.criteria import NumericLeafCriterion
 from hullq.search.draft_max_request import canonical_draft_max_str
 from hullq.search.query_mixed import MixedLeafCriterion
+from hullq.security.discovery_surface_signing import (
+    mint_discovery_surface_token,
+    verify_discovery_surface_token,
+)
 from hullq.security.oidc import AuthProviderConfig, get_auth_provider_config
 from hullq.security.preview_signing import get_preview_signing_secret
 from hullq.security.session_signing import get_session_signing_secret
@@ -805,8 +806,53 @@ def create_app(
             raise HTTPException(status_code=404, detail="listing preview not found")
         return JSONResponse(model.to_public_dict())
 
+    # SLICE-0071 contract §8B amendment (Finding A): the bounded, server-
+    # validatable discovery-surface mechanism this public route optionally
+    # participates in. `discovery_surface_context` is supplied only by
+    # HullQ's own server-to-server callers building a link toward this
+    # listing (the shortlist/compare resolution proxy) -- never by an
+    # end-user browser directly, since the value only ever affects what
+    # *outbound* token gets minted, not any listing truth. `ds`/
+    # `referrer_hint` are supplied only by the listing detail page itself,
+    # resolving what already happened before this exact request. Any other
+    # caller (including a bare browser hit with no params at all) gets no
+    # `discovery_token` field at all, which the buyer contact route already
+    # treats identically to UNKNOWN.
+    _DISCOVERY_CONTEXT_SURFACES = {
+        "SHORTLIST": DiscoverySurface.SHORTLIST,
+        "COMPARE": DiscoverySurface.COMPARE,
+    }
+    _REFERRER_HINT_SURFACES = {
+        "NONE": DiscoverySurface.DIRECT_LISTING,
+        "EXTERNAL": DiscoverySurface.DIRECT_LISTING,
+        "INTERNAL": DiscoverySurface.INTERNAL_BROWSE,
+    }
+
+    def _resolve_outbound_discovery_token(native_listing_id: str, request: Request) -> str | None:
+        raw_context = request.query_params.get("discovery_surface_context")
+        if raw_context is not None:
+            surface = _DISCOVERY_CONTEXT_SURFACES.get(raw_context)
+            if surface is None:
+                return None
+            return mint_discovery_surface_token(surface, native_listing_id, secret=resolved_secret)
+
+        raw_ds = request.query_params.get("ds")
+        resolved_surface = (
+            verify_discovery_surface_token(raw_ds, native_listing_id, secret=resolved_secret)
+            if raw_ds
+            else None
+        )
+        if resolved_surface is None:
+            raw_hint = request.query_params.get("referrer_hint")
+            resolved_surface = _REFERRER_HINT_SURFACES.get(raw_hint) if raw_hint else None
+        if resolved_surface is None:
+            return None
+        return mint_discovery_surface_token(
+            resolved_surface, native_listing_id, secret=resolved_secret
+        )
+
     @app.get("/api/listings/{native_listing_id}")
-    def get_public_listing(native_listing_id: str) -> JSONResponse:
+    def get_public_listing(native_listing_id: str, request: Request) -> JSONResponse:
         conn = open_connection(resolved_database_url)
         try:
             model = get_public_listing_read_model(
@@ -820,7 +866,11 @@ def create_app(
             # route must never be usable as a NativeListingId existence
             # oracle, and no preview token is required or accepted here.
             raise HTTPException(status_code=404, detail="listing not found")
-        return JSONResponse(model.to_public_dict())
+        body = model.to_public_dict()
+        discovery_token = _resolve_outbound_discovery_token(native_listing_id, request)
+        if discovery_token is not None:
+            body["discovery_token"] = discovery_token
+        return JSONResponse(body)
 
     @app.get("/api/listings/{native_listing_id}/media/{media_placement_id}")
     def get_public_listing_media(native_listing_id: str, media_placement_id: str) -> Response:
@@ -874,6 +924,21 @@ def create_app(
         session = _require_session(request)
         account_id = session.account_id if session is not None else None
 
+        # SLICE-0071 contract §8B amendment (Finding A): the browser only
+        # ever forwards an opaque HMAC-signed token it cannot construct or
+        # alter -- this is the one place that token is trusted at all, and
+        # only after independently re-verifying its signature/expiry/
+        # listing-binding. Any absent/malformed/tampered/expired/foreign-
+        # listing token resolves to UNKNOWN, never a guess, and never raises
+        # (contract invariant: attribution must never risk the Lead creation
+        # path itself).
+        resolved_discovery_surface = (
+            verify_discovery_surface_token(
+                raw_body.get("discovery_token"), native_listing_id, secret=resolved_secret
+            )
+            or DiscoverySurface.UNKNOWN
+        )
+
         conn = open_connection(resolved_database_url)
         try:
             result = create_buyer_lead_for_listing(
@@ -893,6 +958,7 @@ def create_app(
                 raw_utm_campaign=raw_body.get("utm_campaign"),
                 raw_utm_term=raw_body.get("utm_term"),
                 raw_utm_content=raw_body.get("utm_content"),
+                discovery_surface=resolved_discovery_surface,
             )
         finally:
             conn.close()
@@ -978,6 +1044,16 @@ def create_app(
                                 if match.last_confirmed_at is not None
                                 else None
                             ),
+                            # SLICE-0071 contract §8B amendment: bound to this
+                            # exact result's own NativeListingId -- a buyer
+                            # who clicks through and contacts the listing
+                            # carries genuine, tamper-safe TECHNICAL_SEARCH
+                            # discovery evidence.
+                            "discovery_token": mint_discovery_surface_token(
+                                DiscoverySurface.TECHNICAL_SEARCH,
+                                match.native_listing_id.value,
+                                secret=resolved_secret,
+                            ),
                         }
                         for match in search_outcome.confirmed_matches
                     ],
@@ -1014,6 +1090,11 @@ def create_app(
                             _serialize_criterion_evidence(evidence)
                             for evidence in match.concrete_criterion_evidence
                         ],
+                        "discovery_token": mint_discovery_surface_token(
+                            DiscoverySurface.TECHNICAL_SEARCH,
+                            match.native_listing_id.value,
+                            secret=resolved_secret,
+                        ),
                     }
                     for match in search_outcome.confirmed_matches
                 ],
@@ -1427,7 +1508,9 @@ def create_app(
             return error
         return JSONResponse(result.to_public_dict(), status_code=200)
 
-    def _notification_config_error_response(outcome: NotificationConfigOutcome) -> JSONResponse | None:
+    def _notification_config_error_response(
+        outcome: NotificationConfigOutcome,
+    ) -> JSONResponse | None:
         if outcome is NotificationConfigOutcome.ORG_NOT_FOUND_OR_DENIED:
             raise HTTPException(status_code=404, detail="organization not found")
         if outcome is NotificationConfigOutcome.MFA_REQUIRED:
@@ -1564,7 +1647,7 @@ def create_app(
             return JSONResponse({"error": "invalid_input"}, status_code=400)
         try:
             expected_version = int(raw_body["expected_version"])
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return JSONResponse({"error": "invalid_input"}, status_code=400)
         conn = open_connection(resolved_database_url)
         try:
@@ -1592,8 +1675,11 @@ def create_app(
         raw_body = await _read_json_body(request, allow_empty=False)
         if not isinstance(raw_body, dict) or "expected_version" not in raw_body:
             return JSONResponse({"error": "invalid_input"}, status_code=400)
+        raw_status = raw_body.get("status")
+        if not isinstance(raw_status, str):
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
         try:
-            new_status = LeadOperationalStatus(raw_body.get("status"))
+            new_status = LeadOperationalStatus(raw_status)
         except ValueError:
             return JSONResponse({"error": "invalid_input"}, status_code=400)
         if new_status is LeadOperationalStatus.CLOSED:
@@ -1602,7 +1688,7 @@ def create_app(
             return JSONResponse({"error": "invalid_input"}, status_code=400)
         try:
             expected_version = int(raw_body["expected_version"])
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return JSONResponse({"error": "invalid_input"}, status_code=400)
         conn = open_connection(resolved_database_url)
         try:
@@ -1621,7 +1707,9 @@ def create_app(
         return _lead_mutation_response(result)
 
     @app.post("/api/broker/organizations/{organization_id}/leads/{lead_id}/close")
-    async def close_lead_route(organization_id: str, lead_id: str, request: Request) -> JSONResponse:
+    async def close_lead_route(
+        organization_id: str, lead_id: str, request: Request
+    ) -> JSONResponse:
         session = _require_session(request)
         if session is None:
             raise HTTPException(status_code=401, detail="authentication required")
@@ -1629,13 +1717,16 @@ def create_app(
         raw_body = await _read_json_body(request, allow_empty=False)
         if not isinstance(raw_body, dict) or "expected_version" not in raw_body:
             return JSONResponse({"error": "invalid_input"}, status_code=400)
+        raw_close_reason = raw_body.get("close_reason")
+        if not isinstance(raw_close_reason, str):
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
         try:
-            close_reason = LeadCloseReason(raw_body.get("close_reason"))
+            close_reason = LeadCloseReason(raw_close_reason)
         except ValueError:
             return JSONResponse({"error": "invalid_input"}, status_code=400)
         try:
             expected_version = int(raw_body["expected_version"])
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return JSONResponse({"error": "invalid_input"}, status_code=400)
         conn = open_connection(resolved_database_url)
         try:
@@ -1678,7 +1769,7 @@ def create_app(
             return JSONResponse({"error": "invalid_input"}, status_code=400)
         try:
             expected_version = int(raw_body["expected_version"])
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return JSONResponse({"error": "invalid_input"}, status_code=400)
         conn = open_connection(resolved_database_url)
         try:
@@ -1773,7 +1864,7 @@ def create_app(
             return JSONResponse({"error": "invalid_input"}, status_code=400)
         try:
             expected_version = int(raw_body["expected_version"])
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return JSONResponse({"error": "invalid_input"}, status_code=400)
         conn = open_connection(resolved_database_url)
         try:

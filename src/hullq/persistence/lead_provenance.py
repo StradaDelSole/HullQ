@@ -17,7 +17,11 @@ from typing import Any
 from hullq.domain.buyer_lead import LeadId
 from hullq.domain.lead_provenance import AcquisitionChannel, DiscoverySurface
 
-__all__ = ["LeadProvenanceRecord", "fetch_lead_acquisition_provenance", "insert_lead_acquisition_provenance"]
+__all__ = [
+    "LeadProvenanceRecord",
+    "fetch_lead_acquisition_provenance",
+    "insert_lead_acquisition_provenance",
+]
 
 
 @dataclass(frozen=True)
