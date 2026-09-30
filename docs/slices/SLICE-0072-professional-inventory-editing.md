@@ -243,3 +243,33 @@ Initial implementation prompt must come only from `START_SLICE.bat` after readin
 - Retained proof: `scripts/inspect_professional_inventory_editing.py` run for real (PostgreSQL + FastAPI + built Astro) — `PROFESSIONAL INVENTORY EDITING RESULT -> PASS` (all 14 contract §16 items).
 - Remote CI: `NOT VERIFIED`
 - Remaining blocker(s): none.
+
+## Amendment 3 — docs-only sync (no code change)
+
+### Amendment
+
+- Previous reviewed HEAD: `b22e3c9a37b2216016d1c30b29fe7152648bec8c`
+- Exact new HEAD: `677a2066a6ea61cce9a4c456f302bbd58dfa68c2`
+- Findings addressed: none (no code/test change) — appended the completion report and both amendment reports above into this document, matching what was already reported in chat at each step.
+- Changed files: `docs/slices/SLICE-0072-professional-inventory-editing.md`.
+- Focused validation: `NOT APPLICABLE` (docs-only change).
+- Full validation: `NOT APPLICABLE` (no code touched; last full validation remains the one reported at `b22e3c9`).
+- Retained proof: `NOT APPLICABLE` (unchanged since `b22e3c9`).
+- Remote CI: `NOT VERIFIED`
+- Remaining blocker(s): none.
+
+## Amendment 4 — remote dependency-audit gate still failing (PR #278, new advisory)
+
+### Amendment
+
+- Previous reviewed HEAD: `677a2066a6ea61cce9a4c456f302bbd58dfa68c2`
+- Exact new HEAD: `5494981ee9ff99cc55d2474c9b5c6710fe05b5f2`
+- pip-audit finding: `pyjwt` 2.14.0 — CVE-2026-101918 (GHSA-42vr-xj54-vc7v), fixed in 2.15.0. `PyJWKClient`/`jwt.decode`'s unverified-signature payload parse (`PyJWT._decode_payload`) only catches `ValueError`; a deeply nested JSON payload makes `json.loads` raise `RecursionError` instead, escaping as an undocumented exception type rather than `DecodeError`/`PyJWTError`. Direct dependency (`pyproject.toml`: `pyjwt[crypto]>=2.10,<3`), used for OIDC/session-token handling.
+- Local re-verification: `uv sync --locked --all-groups` against the exact pushed `677a206` HEAD, then `uv run pip-audit` reproduced this exact finding locally (urllib3 confirmed clean at 2.8.0 — the prior fix held); `uv run pip-audit -f json` captured the exact CVE/GHSA IDs and fix version above.
+- Dependency remediation: `uv lock --upgrade-package pyjwt` → 2.14.0 → 2.15.1 (latest patch within the existing `<3` constraint; no `pyproject.toml` change needed), no other package changed; `uv lock --check` / `uv sync --locked --all-groups` clean; `uv run pip-audit` now reports no known vulnerabilities.
+- Changed files: `uv.lock`.
+- Focused validation: `ruff format --check .` / `ruff check .` / `mypy src` all clean; `pip-audit` clean; focused JWT/session-token tests (`test_broker_oidc_validation.py`, `test_session_token.py`) — 33 passed.
+- Full validation: `uv run python scripts/validate_repository.py` PASS; full backend `pytest` — 5856 passed, 3 skipped, 0 failed (40m44s).
+- Retained proof: not re-run this round (no application/domain/persistence/API/web code changed — lockfile-only dependency bump).
+- Remote CI: `NOT VERIFIED`
+- Remaining blocker(s): none.
