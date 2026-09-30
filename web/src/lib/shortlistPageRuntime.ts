@@ -114,7 +114,7 @@ export async function renderShortlistPage(root: HTMLElement | null): Promise<voi
     return;
   }
 
-  const resolution = await resolveShortlistListings(ids, "SHORTLIST");
+  const resolution = await resolveShortlistListings(ids);
   if (resolution.kind === "service_error") {
     renderMessage(root, t.serviceErrorMessage);
     return;

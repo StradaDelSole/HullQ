@@ -412,11 +412,16 @@ def main() -> int:
         web_port = _free_port()
         web_base = f"http://127.0.0.1:{web_port}"
 
+        # SLICE-0071 independent-review Finding B: FastAPI's search route
+        # (TECHNICAL_SEARCH) and Astro's own trusted shortlist/compare
+        # resolution routes (`web/src/lib/discoverySurfaceSigning.ts`) mint
+        # discovery-surface tokens under the *same* shared secret -- both
+        # processes must be given the identical value below.
+        shared_preview_signing_secret = base64.urlsafe_b64encode(os.urandom(32)).decode("ascii")
+
         api_env = dict(os.environ)
         api_env["HULLQ_DATABASE_URL"] = url
-        api_env["HULLQ_PREVIEW_SIGNING_SECRET"] = base64.urlsafe_b64encode(os.urandom(32)).decode(
-            "ascii"
-        )
+        api_env["HULLQ_PREVIEW_SIGNING_SECRET"] = shared_preview_signing_secret
         api_env["HULLQ_SESSION_SIGNING_SECRET"] = base64.urlsafe_b64encode(_SESSION_SECRET).decode(
             "ascii"
         )
@@ -453,6 +458,8 @@ def main() -> int:
         web_env["HULLQ_API_BASE_URL"] = api_base
         web_env["HOST"] = "127.0.0.1"
         web_env["PORT"] = str(web_port)
+        # Same secret FastAPI holds -- see the Finding B comment above.
+        web_env["HULLQ_PREVIEW_SIGNING_SECRET"] = shared_preview_signing_secret
         web_log = (log_dir / "web.log").open("wb")
         web_proc = subprocess.Popen(
             ["node", "./dist/server/entry.mjs"],
@@ -765,27 +772,57 @@ def main() -> int:
             f"11. acquisition/discovery provenance is UNKNOWN when absent -> {'OK' if step11_ok else 'FAIL'}"
         )
 
-        # 11b. Finding A amendment: at least one non-UNKNOWN acquisition case
-        # and one non-UNKNOWN discovery-surface case through the *real*
-        # buyer-facing flow -- the actual Astro contact proxy (never a
-        # direct persistence call), carrying bounded UTM evidence exactly as
-        # `buyerLeadForm.ts` would construct it, plus a genuine signed
-        # discovery token obtained from the real FastAPI public-listing
-        # route with `discovery_surface_context=SHORTLIST` -- exactly what
-        # `web/src/pages/api/shortlist/resolve.ts` does server-to-server.
+        # 11b. Finding A/B amendment: at least one non-UNKNOWN acquisition
+        # case and one non-UNKNOWN discovery-surface case through the
+        # *real* buyer-facing flow -- the actual Astro contact proxy (never
+        # a direct persistence call), carrying bounded UTM evidence exactly
+        # as `buyerLeadForm.ts` would construct it, plus a genuine signed
+        # discovery token obtained from Astro's own trusted
+        # `/api/shortlist/resolve` route (the exact same production path
+        # `web/src/lib/shortlistPageRuntime.ts` uses) -- never the removed,
+        # insecure `discovery_surface_context` query parameter on FastAPI's
+        # public listing route (Finding B).
         conn11b = psycopg.connect(url)
         try:
             _publish_listing(conn11b, listing_id="NL-0071-D", account=owner_account, org=org_a)
         finally:
             conn11b.close()
 
-        shortlist_ctx_status, shortlist_ctx_body = _http_get(
+        shortlist_resolve_payload = json.dumps({"listing_ids": ["NL-0071-D"]}).encode("utf-8")
+        shortlist_resolve_request = urllib.request.Request(
+            f"{web_base}/api/shortlist/resolve",
+            data=shortlist_resolve_payload,
+            method="POST",
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(shortlist_resolve_payload)),
+            },
+        )
+        try:
+            with urllib.request.urlopen(shortlist_resolve_request, timeout=10) as response:
+                shortlist_resolve_body = json.loads(response.read())
+        except urllib.error.HTTPError:
+            shortlist_resolve_body = {}
+        shortlist_items = shortlist_resolve_body.get("items", [])
+        discovery_token = (
+            shortlist_items[0].get("data", {}).get("discovery_token")
+            if shortlist_items and shortlist_items[0].get("state") == "available"
+            else None
+        )
+
+        # Finding B negative proof: the same listing, hit directly against
+        # FastAPI's public route with the now-removed parameter, must never
+        # yield an authoritative token.
+        direct_param_status, direct_param_body = _http_get(
             f"{api_base}/api/listings/NL-0071-D?discovery_surface_context=SHORTLIST"
         )
-        discovery_token = (
-            json.loads(shortlist_ctx_body).get("discovery_token")
-            if shortlist_ctx_status == 200
-            else None
+        step11a_ok = direct_param_status == 200 and "discovery_token" not in json.loads(
+            direct_param_body
+        )
+        ok &= step11a_ok
+        print(
+            "11a. public discovery_surface_context parameter no longer mints "
+            f"an authoritative token -> {'OK' if step11a_ok else 'FAIL'}"
         )
 
         contact_payload = json.dumps(

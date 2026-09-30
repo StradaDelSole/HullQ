@@ -20,7 +20,7 @@
 import { askingPriceText } from "./previewText.ts";
 import type { ClaimField } from "./previewApi.ts";
 import type { OptionalBoatClaimField, PublicListingData } from "./publicListingApi.ts";
-import { resolveShortlistListings, type ShortlistItemResult } from "./shortlistResolutionApi.ts";
+import { resolveCompareListings, type ShortlistItemResult } from "./shortlistResolutionApi.ts";
 import { loadShortlistIds } from "./shortlistStore.ts";
 import { shortlistCompareText, type ShortlistCompareText } from "./shortlistCompareText.ts";
 import { shortlistText, type SupportedLocale } from "./shortlistText.ts";
@@ -342,7 +342,7 @@ export async function renderShortlistComparePage(root: HTMLElement | null): Prom
     return;
   }
 
-  const resolution = await resolveShortlistListings(ids, "COMPARE");
+  const resolution = await resolveCompareListings(ids);
   if (resolution.kind === "service_error") {
     renderMessage(root, t.serviceErrorMessage);
     return;

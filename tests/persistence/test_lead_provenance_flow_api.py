@@ -1,15 +1,18 @@
-"""FastAPI integration tests for SLICE-0071 Finding A amendment — real
+"""FastAPI integration tests for SLICE-0071 Finding A/B amendments — real
 acquisition (UTM) and discovery-surface provenance wired through the actual
-buyer-facing contact flow.
+buyer-facing contact flow, with no public-parameter control over which
+discovery surface gets a signed token.
 
 Covers `specs/BROKER_LEAD_OPERATIONS_NOTIFICATION_CONTRACT.v0.1.md` §8B as
 amended: bounded UTM evidence carried through the real `/contact` route;
-signed, server-verified discovery-surface tokens minted by the real
-`/api/search/{locale}` and `/api/listings/{id}` routes (the exact endpoints
-`web/src/lib/searchApi.ts`, `web/src/lib/publicListingApi.ts` and
-`web/src/pages/api/shortlist/resolve.ts` call); and the independent-review
-invariant that no arbitrary client-supplied discovery value can ever become
-authoritative.
+signed, server-verified TECHNICAL_SEARCH discovery tokens minted by the
+real `/api/search/{locale}` route (genuine first-party server knowledge);
+proof that the public `/api/listings/{id}` route no longer accepts any
+discovery-minting parameter at all (Finding B -- SHORTLIST/COMPARE/
+DIRECT_LISTING/INTERNAL_BROWSE are now minted only by Astro's own trusted
+server-side code, `web/src/lib/discoverySurfaceSigning.ts`); and the
+independent-review invariant that no arbitrary client-supplied discovery
+value can ever become authoritative.
 """
 
 from __future__ import annotations
@@ -75,6 +78,7 @@ from hullq.persistence.native_listing_offer import (
 from hullq.persistence.physical_boat import create_physical_boat
 from hullq.persistence.physical_boat_claims import write_physical_boat_claim_revision
 from hullq.search.draft_max_design_bridge import DRAFT_MAX_FIELD_POINTER
+from hullq.security.discovery_surface_signing import mint_discovery_surface_token
 
 from ._field_resolution_support import admit_resolved_draft_max
 
@@ -480,59 +484,48 @@ def test_technical_search_token_is_bound_to_its_own_listing_only(
 
 
 # ---------------------------------------------------------------------------
-# Discovery surface: SHORTLIST / COMPARE via the public listing endpoint
+# Finding B: the public listing endpoint must never mint an authoritative
+# token merely because a caller supplied a query parameter -- neither
+# `discovery_surface_context` (the SHORTLIST/COMPARE vector) nor
+# `referrer_hint` (the DIRECT_LISTING/INTERNAL_BROWSE vector) has any effect
+# at all any more. SHORTLIST/COMPARE are now minted only by Astro's own
+# trusted, purpose-bound shortlist/compare resolution routes; DIRECT_LISTING/
+# INTERNAL_BROWSE are classified by the listing page itself from the real
+# `Referer` header it actually received. Neither trust decision is FastAPI's
+# to make from a public request parameter.
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("context", "expected"),
-    [("SHORTLIST", DiscoverySurface.SHORTLIST), ("COMPARE", DiscoverySurface.COMPARE)],
-)
-def test_shortlist_and_compare_discovery_paths_persist_correctly(
-    client: TestClient, api_url: str, context: str, expected: DiscoverySurface
+@pytest.mark.parametrize("context", ["SHORTLIST", "COMPARE"])
+def test_public_discovery_surface_context_parameter_has_no_effect(
+    client: TestClient, api_url: str, context: str
 ) -> None:
-    listing_id = f"NLP5{context[0]}"
+    listing_id = f"NLPB1{context[0]}"
     _publish_listing(api_url, listing_id=listing_id)
     listing_response = client.get(f"/api/listings/{listing_id}?discovery_surface_context={context}")
     assert listing_response.status_code == 200
-    discovery_token = listing_response.json()["discovery_token"]
+    assert "discovery_token" not in listing_response.json()
 
-    body = _submit_contact(
-        client, listing_id, op_suffix="A", extra={"discovery_token": discovery_token}
-    )
+    body = _submit_contact(client, listing_id, op_suffix="A")
     provenance = _fetch_provenance(api_url, body["lead_id"])
     assert provenance is not None
-    assert provenance.discovery_surface is expected
+    assert provenance.discovery_surface is DiscoverySurface.UNKNOWN
 
 
-# ---------------------------------------------------------------------------
-# Discovery surface: DIRECT_LISTING / INTERNAL_BROWSE via referrer_hint
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize(
-    ("hint", "expected"),
-    [
-        ("NONE", DiscoverySurface.DIRECT_LISTING),
-        ("EXTERNAL", DiscoverySurface.DIRECT_LISTING),
-        ("INTERNAL", DiscoverySurface.INTERNAL_BROWSE),
-    ],
-)
-def test_referrer_hint_resolves_direct_and_internal_browse(
-    client: TestClient, api_url: str, hint: str, expected: DiscoverySurface
+@pytest.mark.parametrize("hint", ["NONE", "EXTERNAL", "INTERNAL"])
+def test_public_referrer_hint_parameter_has_no_effect(
+    client: TestClient, api_url: str, hint: str
 ) -> None:
-    listing_id = f"NLP6{hint[0]}"
+    listing_id = f"NLPB2{hint[0]}"
     _publish_listing(api_url, listing_id=listing_id)
     listing_response = client.get(f"/api/listings/{listing_id}?referrer_hint={hint}")
     assert listing_response.status_code == 200
-    discovery_token = listing_response.json()["discovery_token"]
+    assert "discovery_token" not in listing_response.json()
 
-    body = _submit_contact(
-        client, listing_id, op_suffix="A", extra={"discovery_token": discovery_token}
-    )
+    body = _submit_contact(client, listing_id, op_suffix="A")
     provenance = _fetch_provenance(api_url, body["lead_id"])
     assert provenance is not None
-    assert provenance.discovery_surface is expected
+    assert provenance.discovery_surface is DiscoverySurface.UNKNOWN
 
 
 def test_no_evidence_at_all_yields_no_token_and_stays_unknown(
@@ -548,6 +541,41 @@ def test_no_evidence_at_all_yields_no_token_and_stays_unknown(
     provenance = _fetch_provenance(api_url, body["lead_id"])
     assert provenance is not None
     assert provenance.discovery_surface is DiscoverySurface.UNKNOWN
+
+
+# ---------------------------------------------------------------------------
+# Genuine trusted-server-minted flows still persist correctly. These mint
+# with `mint_discovery_surface_token` directly, using the identical shared
+# secret Astro's own trusted server-side code
+# (`web/src/lib/discoverySurfaceSigning.ts`) uses to mint SHORTLIST/COMPARE/
+# DIRECT_LISTING/INTERNAL_BROWSE tokens -- proving FastAPI's contact-route
+# verification accepts a genuinely-minted token regardless of which trusted
+# process minted it, independent of the (now-removed) public parameter path.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "surface",
+    [
+        DiscoverySurface.SHORTLIST,
+        DiscoverySurface.COMPARE,
+        DiscoverySurface.DIRECT_LISTING,
+        DiscoverySurface.INTERNAL_BROWSE,
+    ],
+)
+def test_genuine_trusted_server_minted_token_persists_its_surface(
+    client: TestClient, api_url: str, surface: DiscoverySurface
+) -> None:
+    listing_id = f"NLPB3{surface.value[:4]}"
+    _publish_listing(api_url, listing_id=listing_id)
+    trusted_token = mint_discovery_surface_token(surface, listing_id, secret=_PREVIEW_SECRET)
+
+    body = _submit_contact(
+        client, listing_id, op_suffix="A", extra={"discovery_token": trusted_token}
+    )
+    provenance = _fetch_provenance(api_url, body["lead_id"])
+    assert provenance is not None
+    assert provenance.discovery_surface is surface
 
 
 # ---------------------------------------------------------------------------
@@ -588,8 +616,9 @@ def test_exact_retry_creates_no_second_provenance_row(client: TestClient, api_ur
     )
     assert first["status"] == "CREATED"
 
-    shortlist_response = client.get("/api/listings/NLP8?discovery_surface_context=SHORTLIST")
-    different_token = shortlist_response.json()["discovery_token"]
+    different_token = mint_discovery_surface_token(
+        DiscoverySurface.SHORTLIST, "NLP8", secret=_PREVIEW_SECRET
+    )
     second = client.post(
         _contact_url("NLP8"),
         headers=_csrf_headers(),

@@ -51,33 +51,17 @@ function isValidPayload(value: unknown): value is { items: ShortlistItemResult[]
   return Array.isArray(items) && items.every(isValidItem);
 }
 
-/**
- * Resolve *listingIds* (buyer-authored order, already de-duplicated by the
- * caller's local store) to their current public projections. An empty input
- * short-circuits without a network call -- an empty shortlist is not a
- * service failure.
- */
-export async function resolveShortlistListings(
-  listingIds: string[],
-  // SLICE-0071 contract §8B amendment: which HullQ surface is resolving
-  // these ids -- lets FastAPI mint a bound SHORTLIST/COMPARE discovery
-  // token per item; omitted entirely mints no token (stays UNKNOWN if the
-  // buyer later contacts a listing reached this way).
-  discoverySurfaceContext?: "SHORTLIST" | "COMPARE",
-): Promise<ShortlistResolution> {
+async function resolveViaEndpoint(endpoint: string, listingIds: string[]): Promise<ShortlistResolution> {
   if (listingIds.length === 0) {
     return { kind: "loaded", items: [] };
   }
 
   let response: Response;
   try {
-    response = await fetch("/api/shortlist/resolve", {
+    response = await fetch(endpoint, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        listing_ids: listingIds,
-        ...(discoverySurfaceContext ? { context: discoverySurfaceContext } : {}),
-      }),
+      body: JSON.stringify({ listing_ids: listingIds }),
     });
   } catch {
     return { kind: "service_error" };
@@ -96,4 +80,29 @@ export async function resolveShortlistListings(
     return { kind: "service_error" };
   }
   return { kind: "loaded", items: payload.items };
+}
+
+/**
+ * Resolve *listingIds* (buyer-authored order, already de-duplicated by the
+ * caller's local store) to their current public projections, via the
+ * plain-shortlist-page proxy. An empty input short-circuits without a
+ * network call -- an empty shortlist is not a service failure.
+ *
+ * SLICE-0071 independent-review Finding B: each resolved item carries a
+ * SHORTLIST discovery token because *this specific proxy route*
+ * (`pages/api/shortlist/resolve.ts`) always mints one -- never because this
+ * function asked for one via a parameter. Use `resolveCompareListings`
+ * (a different, COMPARE-only route) for the compare page.
+ */
+export function resolveShortlistListings(listingIds: string[]): Promise<ShortlistResolution> {
+  return resolveViaEndpoint("/api/shortlist/resolve", listingIds);
+}
+
+/**
+ * Identical to `resolveShortlistListings`, but calls the COMPARE-only proxy
+ * route (`pages/api/shortlist/compare-resolve.ts`), which always mints
+ * COMPARE discovery tokens instead of SHORTLIST.
+ */
+export function resolveCompareListings(listingIds: string[]): Promise<ShortlistResolution> {
+  return resolveViaEndpoint("/api/shortlist/compare-resolve", listingIds);
 }

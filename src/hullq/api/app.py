@@ -806,53 +806,25 @@ def create_app(
             raise HTTPException(status_code=404, detail="listing preview not found")
         return JSONResponse(model.to_public_dict())
 
-    # SLICE-0071 contract §8B amendment (Finding A): the bounded, server-
-    # validatable discovery-surface mechanism this public route optionally
-    # participates in. `discovery_surface_context` is supplied only by
-    # HullQ's own server-to-server callers building a link toward this
-    # listing (the shortlist/compare resolution proxy) -- never by an
-    # end-user browser directly, since the value only ever affects what
-    # *outbound* token gets minted, not any listing truth. `ds`/
-    # `referrer_hint` are supplied only by the listing detail page itself,
-    # resolving what already happened before this exact request. Any other
-    # caller (including a bare browser hit with no params at all) gets no
-    # `discovery_token` field at all, which the buyer contact route already
-    # treats identically to UNKNOWN.
-    _DISCOVERY_CONTEXT_SURFACES = {
-        "SHORTLIST": DiscoverySurface.SHORTLIST,
-        "COMPARE": DiscoverySurface.COMPARE,
-    }
-    _REFERRER_HINT_SURFACES = {
-        "NONE": DiscoverySurface.DIRECT_LISTING,
-        "EXTERNAL": DiscoverySurface.DIRECT_LISTING,
-        "INTERNAL": DiscoverySurface.INTERNAL_BROWSE,
-    }
-
-    def _resolve_outbound_discovery_token(native_listing_id: str, request: Request) -> str | None:
-        raw_context = request.query_params.get("discovery_surface_context")
-        if raw_context is not None:
-            surface = _DISCOVERY_CONTEXT_SURFACES.get(raw_context)
-            if surface is None:
-                return None
-            return mint_discovery_surface_token(surface, native_listing_id, secret=resolved_secret)
-
-        raw_ds = request.query_params.get("ds")
-        resolved_surface = (
-            verify_discovery_surface_token(raw_ds, native_listing_id, secret=resolved_secret)
-            if raw_ds
-            else None
-        )
-        if resolved_surface is None:
-            raw_hint = request.query_params.get("referrer_hint")
-            resolved_surface = _REFERRER_HINT_SURFACES.get(raw_hint) if raw_hint else None
-        if resolved_surface is None:
-            return None
-        return mint_discovery_surface_token(
-            resolved_surface, native_listing_id, secret=resolved_secret
-        )
-
     @app.get("/api/listings/{native_listing_id}")
-    def get_public_listing(native_listing_id: str, request: Request) -> JSONResponse:
+    def get_public_listing(native_listing_id: str) -> JSONResponse:
+        # Independent-review Finding B: this route deliberately accepts NO
+        # discovery-surface-related query parameter of any kind. It
+        # previously accepted `discovery_surface_context`/`ds`/
+        # `referrer_hint`, letting any unauthenticated public caller choose
+        # which signed SHORTLIST/COMPARE/DIRECT_LISTING/INTERNAL_BROWSE
+        # token it received merely by supplying a parameter -- a public
+        # read endpoint can never be the authority that decides what
+        # discovery-surface token gets minted. SHORTLIST/COMPARE tokens are
+        # now minted only by Astro's own trusted shortlist/compare
+        # resolution routes (`web/src/pages/api/shortlist/resolve.ts`,
+        # `.../compare-resolve.ts`), whose own route identity -- never a
+        # request parameter -- determines the surface; DIRECT_LISTING/
+        # INTERNAL_BROWSE are classified by the listing detail page itself
+        # from the real `Referer` header it actually received
+        # (`web/src/lib/discoverySurfaceSigning.ts`). TECHNICAL_SEARCH
+        # remains minted below in `get_search`, the one case where FastAPI
+        # itself has genuine first-party knowledge of the surface.
         conn = open_connection(resolved_database_url)
         try:
             model = get_public_listing_read_model(
@@ -866,11 +838,7 @@ def create_app(
             # route must never be usable as a NativeListingId existence
             # oracle, and no preview token is required or accepted here.
             raise HTTPException(status_code=404, detail="listing not found")
-        body = model.to_public_dict()
-        discovery_token = _resolve_outbound_discovery_token(native_listing_id, request)
-        if discovery_token is not None:
-            body["discovery_token"] = discovery_token
-        return JSONResponse(body)
+        return JSONResponse(model.to_public_dict())
 
     @app.get("/api/listings/{native_listing_id}/media/{media_placement_id}")
     def get_public_listing_media(native_listing_id: str, media_placement_id: str) -> Response:

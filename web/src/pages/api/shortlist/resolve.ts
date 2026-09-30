@@ -14,61 +14,19 @@
 // (contract §10). It has no persistence side effect and creates no
 // buyer-interest profile (contract §11) -- the ids are used for this one
 // request and then forgotten.
+//
+// SLICE-0071 independent-review Finding B: this route's own identity is
+// what makes every item it returns carry a SHORTLIST discovery token
+// (`shortlistResolveServer.ts`) -- it is never a value the request body can
+// choose. The plain-shortlist-page-vs-compare-page distinction that a
+// removed `context` request field used to express is now expressed by
+// which of these two purpose-bound route files was called; see the sibling
+// `compare-resolve.ts` for the COMPARE counterpart.
 export const prerender = false;
 
 import type { APIContext } from "astro";
 
-import { fetchPublicListingForShortlist } from "../../../lib/publicListingApi";
-
-/** Mirrors `shortlistStore.ts`'s own technical safety caps (contract §3). */
-const MAX_IDS_PER_REQUEST = 200;
-const MAX_ID_LENGTH = 200;
-
-const RESPONSE_HEADERS = {
-  "content-type": "application/json",
-  "x-robots-tag": "noindex",
-  "cache-control": "private, no-store",
-};
-
-function jsonResponse(payload: unknown, status: number): Response {
-  return new Response(JSON.stringify(payload), { status, headers: RESPONSE_HEADERS });
-}
-
-/**
- * Validates the untrusted request body into a bounded, de-duplicated,
- * order-preserving list of candidate ids, or `null` if the shape is not
- * even well-formed (contract §13: "invalid/tampered ID collection -> bounded
- * invalid/recovery behavior, never server error from unchecked input").
- */
-function extractValidIds(body: unknown): string[] | null {
-  if (typeof body !== "object" || body === null || Array.isArray(body)) return null;
-  const raw = (body as Record<string, unknown>).listing_ids;
-  if (!Array.isArray(raw) || raw.length > MAX_IDS_PER_REQUEST) return null;
-
-  const seen = new Set<string>();
-  const ids: string[] = [];
-  for (const item of raw) {
-    if (typeof item !== "string" || item.length === 0 || item.length > MAX_ID_LENGTH) {
-      return null;
-    }
-    if (seen.has(item)) continue;
-    seen.add(item);
-    ids.push(item);
-  }
-  return ids;
-}
-
-/**
- * SLICE-0071 contract §8B amendment: which HullQ surface (plain shortlist
- * page or compare page) is resolving this batch -- a bounded enum only;
- * anything else is simply ignored (no discovery token is minted), never
- * treated as an error.
- */
-function extractDiscoverySurfaceContext(body: unknown): "SHORTLIST" | "COMPARE" | undefined {
-  if (typeof body !== "object" || body === null) return undefined;
-  const raw = (body as Record<string, unknown>).context;
-  return raw === "SHORTLIST" || raw === "COMPARE" ? raw : undefined;
-}
+import { extractValidIds, jsonResponse, resolveListingsForSurface } from "../../../lib/shortlistResolveServer";
 
 export async function POST({ request }: APIContext): Promise<Response> {
   let body: unknown;
@@ -82,28 +40,10 @@ export async function POST({ request }: APIContext): Promise<Response> {
   if (ids === null) {
     return jsonResponse({ error: "invalid_request" }, 400);
   }
-  const discoverySurfaceContext = extractDiscoverySurfaceContext(body);
 
   // `process.env`, not `import.meta.env`: matches every other server-side
   // FastAPI-base-URL read in this package (only known at server start time).
   const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
-
-  const items = await Promise.all(
-    ids.map(async (nativeListingId) => {
-      const result = await fetchPublicListingForShortlist(
-        apiBaseUrl,
-        nativeListingId,
-        discoverySurfaceContext,
-      );
-      if (result.kind === "available") {
-        return { native_listing_id: nativeListingId, state: "available" as const, data: result.data };
-      }
-      if (result.kind === "unavailable") {
-        return { native_listing_id: nativeListingId, state: "unavailable" as const };
-      }
-      return { native_listing_id: nativeListingId, state: "service_error" as const };
-    }),
-  );
-
+  const items = await resolveListingsForSurface(ids, "SHORTLIST", apiBaseUrl);
   return jsonResponse({ items }, 200);
 }

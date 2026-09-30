@@ -26,6 +26,7 @@
 export const prerender = false;
 
 import { fetchPublicListing } from "../../lib/publicListingApi";
+import { classifyReferrer, mintDiscoverySurfaceToken } from "../../lib/discoverySurfaceSigning";
 import {
   askingPriceText,
   brokerSummaryText,
@@ -58,39 +59,36 @@ const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
 // here -- this is ordinary public content, just intentionally non-indexed.
 Astro.response.headers.set("X-Robots-Tag", "noindex");
 
-// SLICE-0071 contract §8B amendment (Finding A): resolve bounded, first-
-// party discovery evidence for this exact request before fetching the
-// listing, so FastAPI can independently verify/classify it in the same
-// call this page already makes. `ds` is an incoming opaque signed token
-// from a HullQ-internal link (search/shortlist/compare); absent that, the
-// `Referer` header is classified into a bounded NONE/EXTERNAL/INTERNAL
-// hint -- never stored/forwarded as a raw string, only this classification
-// (contract §8B: "no arbitrary full-referrer ... storage").
-const incomingDiscoveryToken = Astro.url.searchParams.get("ds") ?? undefined;
-let referrerHint: "NONE" | "EXTERNAL" | "INTERNAL" | undefined;
-if (!incomingDiscoveryToken) {
-  const referer = Astro.request.headers.get("referer");
-  if (!referer) {
-    referrerHint = "NONE";
-  } else {
-    try {
-      referrerHint = new URL(referer).origin === Astro.url.origin ? "INTERNAL" : "EXTERNAL";
-    } catch {
-      referrerHint = "EXTERNAL";
-    }
-  }
-}
-
-const data = nativeListingId
-  ? await fetchPublicListing(apiBaseUrl, nativeListingId, {
-      ds: incomingDiscoveryToken,
-      referrerHint,
-    })
-  : null;
+const data = nativeListingId ? await fetchPublicListing(apiBaseUrl, nativeListingId) : null;
 
 if (data === null) {
   Astro.response.status = 404;
 }
+
+// SLICE-0071 contract §8B amendment (Finding A/B): this page itself is the
+// trusted server-side code that determines the buyer-facing contact form's
+// discovery-surface evidence -- FastAPI's public listing route no longer
+// accepts any discovery-related parameter (independent-review Finding B),
+// so this is resolved entirely here, never round-tripped through a public
+// query parameter FastAPI would have to trust.
+//
+// An incoming `?ds=` token was already minted by a trusted HullQ surface
+// (search/shortlist/compare) and is forwarded verbatim -- this page never
+// decodes it, only passes it through; FastAPI's contact route is the sole
+// verifier. Absent that, this page classifies the *real* incoming
+// `Referer` header it actually received (never a client-suppliable value)
+// into a bounded category and mints a fresh token for it itself.
+const incomingDiscoveryToken = data !== null ? Astro.url.searchParams.get("ds") : null;
+const discoveryToken =
+  incomingDiscoveryToken ??
+  (data !== null && nativeListingId
+    ? mintDiscoverySurfaceToken(
+        classifyReferrer(Astro.request.headers.get("referer"), Astro.url.origin) === "INTERNAL"
+          ? "INTERNAL_BROWSE"
+          : "DIRECT_LISTING",
+        nativeListingId,
+      )
+    : undefined);
 
 // REQ-SEO-004: the clean ID-based path is always the canonical URL, and
 // query parameters never participate in it -- `Astro.params` already
@@ -224,7 +222,7 @@ const canonicalUrl = nativeListingId
                 <form
                   data-buyer-contact-form
                   data-native-listing-id={nativeListingId}
-                  data-discovery-token={data.discovery_token}
+                  data-discovery-token={discoveryToken}
                 >
                   <label>
                     {contactText.nameLabel}
