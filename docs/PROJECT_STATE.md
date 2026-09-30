@@ -294,7 +294,7 @@ SLICE-0073
 
 **Capability:** Test / CI Throughput Optimization.
 
-Fresh post-SLICE-0072 reconciliation selected SLICE-0073 as an engineering-productivity slice before the next normal feature capability. It is governed by `docs/POST_SLICE_0072_TEST_CI_REASSESSMENT_2026-09-30.md`, `specs/TEST_CI_THROUGHPUT_OPTIMIZATION.v0.1.md`, and `docs/slices/SLICE-0073-test-ci-throughput-optimization.md`. Independent readiness review is complete; required remote gates and merge remain before implementation start.
+Fresh post-SLICE-0072 reconciliation selected SLICE-0073 as an engineering-productivity slice before the next normal feature capability. It is governed by `docs/POST_SLICE_0072_TEST_CI_REASSESSMENT_2026-09-30.md`, `specs/TEST_CI_THROUGHPUT_OPTIMIZATION.v0.1.md`, and `docs/slices/SLICE-0073-test-ci-throughput-optimization.md`. Readiness review, required remote gates and readiness merge are complete. The owner has additionally directed that local validation default to affected/focused checks while GitHub Actions on the exact pushed HEAD owns the authoritative complete final regression; routine local 38–45 minute full-suite reruns are no longer the default.
 
 ## Development workflow
 
@@ -309,6 +309,6 @@ Fresh post-SLICE-0072 reconciliation selected SLICE-0073 as an engineering-produ
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0072 is owner-accepted and merged; SLICE-0073 Test / CI Throughput Optimization is selected and in readiness review. The next actor after readiness merge is the Project Owner running `START_SLICE.bat`.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0072 is owner-accepted and merged; SLICE-0073 Test / CI Throughput Optimization is READY ON MAIN. Its implementation must also establish focused-local / authoritative-remote validation ownership so routine local full-suite duplication is eliminated. The next actor is the Project Owner running `START_SLICE.bat`.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
