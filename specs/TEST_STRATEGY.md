@@ -72,4 +72,4 @@ Normal CI MUST NOT depend on mutable live marketplace pages or live research sou
 
 Test completeness and test execution scheduling are separate concerns. HullQ may classify, shard and parallelize tests so long as normative coverage and the final accepted gate remain intact.
 
-A dedicated owner-accepted post-SLICE-0075 optimization is required by `docs/engineering/POST_0075_TEST_CI_THROUGHPUT_OPTIMIZATION.md`. Before/after timing evidence is required; speed improvements must not be obtained by silently dropping meaningful regression, security, persistence or retained-proof coverage.
+A dedicated owner-accepted earliest-possible optimization is required by `docs/engineering/POST_0075_TEST_CI_THROUGHPUT_OPTIMIZATION.md`. Before/after timing evidence is required; speed improvements must not be obtained by silently dropping meaningful regression, security, persistence or retained-proof coverage.
