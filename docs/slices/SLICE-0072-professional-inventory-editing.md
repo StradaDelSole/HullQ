@@ -162,3 +162,84 @@ Independent exact-head review must verify authorization/tenancy, revision concur
 Owner Acceptance remains mandatory before implementation merge.
 
 Initial implementation prompt must come only from `START_SLICE.bat` after readiness review, remote gates and readiness merge.
+
+## Completion report
+
+### Slice
+
+- Slice ID: `SLICE-0072`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+- Exact final branch HEAD SHA: `f599e745a90a62f57a183ecc747b26a9519e46dc`
+
+### Product execution checks
+
+- ONE-CAPABILITY CHECK: `PASS`
+- VISIBLE-RESULT CHECK: `PASS`
+- PRODUCT EXECUTION PLAN ALIGNMENT: `PASS`
+- REPOSITORY RECONCILIATION CHECK: `PASS`
+- TRIGGER GATES CHECK: `PASS`
+
+### Changes
+
+- Changed files: `src/hullq/domain/inventory_edit_request.py` (new — JSON request parsers), `src/hullq/persistence/inventory_editing.py` (new — atomic offer/claim revision write + narrowed ACTIVE-invariant re-check), `src/hullq/application/inventory_editing.py` (new — read model + auth orchestration), `src/hullq/api/app.py` (new CSRF header + 3 routes: GET `.../edit`, POST `.../offer`, POST `.../claim`), `web/src/lib/inventoryEditingApi.ts` (new), `web/src/pages/.../inventory/[native_listing_id]/edit.astro` (new editor page), `web/src/pages/.../inventory.astro` (added "Edit" link).
+- Acceptance work completed: existing offer/claim revisioned truth stores exposed as broker-editable via optimistic concurrency (`expected_current_revision_id`) + client-supplied idempotency (`revision_id`, mirroring SLICE-0064's `confirmation_id` pattern); cross-Organization access non-enumerating (404); ACTIVE listings get an in-transaction atomic hard-invariant re-check (deliberately D29-based, not D22 — D22 unconditionally blocks non-DRAFT listings via `LIFECYCLE_NOT_DRAFT` and would reject every ordinary ACTIVE edit) that rolls back the just-written revision on violation; media/Lead/lifecycle untouched by this slice.
+- Tests/fixtures added or updated: 16 PostgreSQL-backed API tests (`test_broker_inventory_editing_api.py`) covering tenancy, CSRF, stale/idempotent/collision concurrency, inactive-membership freshness, and the ACTIVE-invariant atomic-rollback path; 26 pure unit tests for the request parser; 9 Node `node:test` tests for the TypeScript API client.
+
+### Validation
+
+- Local validation: `PASS`
+- Commands/results: `ruff check` on all new/changed Python clean; full backend suite `uv run pytest` (via `claude_diag.py run-local-test-db-compact`) — 5854 passed, 3 skipped, 0 failed (39m36s), including the new 42 tests; web `npm run build`/`npm run check` clean; web `npm test` — 354 passed, 0 failed.
+
+### External verification
+
+- Remote CI: `NOT VERIFIED`
+- Other external gates: `NOT APPLICABLE`
+
+### Findings
+
+- Unresolved findings: none.
+- Spec/ADR ambiguities: contract §7 says "re-evaluate the accepted publication/current-public requirements" without naming D22 vs. D29 explicitly; D22 is unusable as-is for an ACTIVE-state re-check (it always blocks non-DRAFT via `LIFECYCLE_NOT_DRAFT`), so this implementation uses D29 narrowed to the offer/claim/chain/org-eligibility dimensions an edit's candidate heads can actually affect, deliberately excluding freshness/cover (out of scope per contract §6/§11) — documented in `inventory_editing.py`'s module docstring.
+- Scope deviations: none. The client-supplied `revision_id` field (mirroring SLICE-0064's `confirmation_id`) was added to the wire contract beyond the spec's literal text so genuine network-level retries resolve deterministically per contract §5 — this is an implementation-local wire-shape decision within the slice's "GENUINELY_OPEN" scope, not a policy change.
+
+### Follow-up
+
+- Recommended next action: independent exact-head review per the slice's acceptance criteria (authorization/tenancy, revision concurrency/idempotency, ACTIVE invariant safety, draft/media/Lead isolation, retained vertical proof), then Owner Acceptance.
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice was not started automatically.
+- The agent has NOT marked this slice `DONE`.
+
+## Amendment 1 — review findings A/B
+
+### Amendment
+
+- Previous reviewed HEAD: `f599e745a90a62f57a183ecc747b26a9519e46dc`
+- Exact new HEAD: `d851efb4b51f649744a864363fb3f34f47d76d59`
+- Findings addressed:
+  - **Finding A** (missing retained vertical proof): added `scripts/inspect_professional_inventory_editing.py`, a real PostgreSQL + FastAPI + built-Astro retained proof covering all 14 contract §16 items — real MFA-satisfied OIDC login, browser-driven price/claim saves with authoritative-head verification, public-truth propagation of both the new offer and the new claim, stale-mutation rejection for both offer and claim, cross-Organization non-enumeration, DRAFT/ACTIVE/WITHDRAWN mechanical separation under editing, atomic ACTIVE-invariant rollback (chain-broken ACTIVE listing), unchanged media/Lead state, and Search-criterion-count invariance (draft_max/keel_configuration only, third param → 400). Item 6 is demonstrated via the accepted public-listing-read claim projection rather than the Search candidate funnel, since a Search *confirmed-match* proof requires an unrelated BoatDesign/FieldResolution admission fixture (documented in the script).
+  - **Finding B** (missing true concurrent-write proof): added `tests/persistence/test_inventory_editing_concurrency.py` — two `threading.Barrier`-synchronized, independent-`psycopg`-connection races (one offer, one claim) driving the actual SLICE-0072 `edit_native_listing_offer`/`edit_physical_boat_claim` entry points from an identical `expected_current_revision_id`; each proves exactly one `REVISED` + one `CONFLICT`, matching final current head, and an immutable-history count of exactly 2 (no lost update, no duplicate head). Optimistic concurrency was not weakened and no artificial application-layer serialization was added.
+- Changed files: `scripts/inspect_professional_inventory_editing.py` (new), `tests/persistence/test_inventory_editing_concurrency.py` (new).
+- Focused validation: retained proof script run for real (PostgreSQL + FastAPI + built Astro) — `PROFESSIONAL INVENTORY EDITING RESULT -> PASS`; new concurrency tests — `2 passed`.
+- Final/full validation state: `PASS` — full backend suite `5856 passed, 3 skipped, 0 failed` (40m34s, includes the 2 new concurrency tests); web `npm run build`/`npm run check` clean; web `npm test` `354 passed, 0 failed`.
+- Remote CI: `NOT VERIFIED`
+- Remaining unresolved point(s): none.
+
+## Amendment 2 — remote CI gate failures (PR #278)
+
+### Amendment
+
+- Previous reviewed HEAD: `d851efb4b51f649744a864363fb3f34f47d76d59`
+- Exact new HEAD: `b22e3c9a37b2216016d1c30b29fe7152648bec8c`
+- Ruff-format gate fix: ran `uv run ruff format .` — 7 files reformatted (whitespace/line-wrapping only, no semantic change): the two amendment files plus 5 files from the prior commit (`src/hullq/{application,domain,persistence}/inventory_editing.py` split, `src/hullq/domain/inventory_edit_request.py`, and two test files) that had never been run through the repository-pinned formatter. Formatting surfaced a genuine `mypy` `no-any-return` defect in `_construct` (`hullq/domain/inventory_edit_request.py`) — fixed by giving it a PEP 695 generic parameter (`def _construct[T](ctor: Callable[[], T], label: str) -> T`) instead of returning `Any`; purely a type-annotation fix, no behavior change.
+- pip-audit finding: `urllib3` 2.7.0 — CVE-2026-97687, CVE-2026-97688, CVE-2026-97689 — fixed in 2.8.0. A transitive dependency (via `botocore`/`requests`, dev/tooling only), not a direct HullQ product dependency.
+- Dependency remediation: `uv lock --upgrade-package urllib3` → 2.7.0 → 2.8.0, no other package changed; `uv lock --check` and `uv sync --locked --all-groups` both clean; `uv run pip-audit` now reports no known vulnerabilities (the `hullq` self-package "not found on PyPI" skip is expected/unrelated).
+- Changed files: `scripts/inspect_professional_inventory_editing.py`, `src/hullq/application/inventory_editing.py`, `src/hullq/domain/inventory_edit_request.py`, `src/hullq/persistence/inventory_editing.py`, `tests/persistence/test_broker_inventory_editing_api.py`, `tests/persistence/test_inventory_editing_concurrency.py`, `tests/unit/test_inventory_edit_request_domain.py`, `uv.lock`.
+- Focused validation: `ruff format --check .` / `ruff check .` / `mypy src` all clean; `pip-audit` clean.
+- Full validation: `uv run python scripts/validate_repository.py` PASS; full backend `pytest` — 5856 passed, 3 skipped, 0 failed (44m49s); web `npm ci` / `npm run check` / `npm run build` clean; web `npm test` — 354 passed, 0 failed.
+- Retained proof: `scripts/inspect_professional_inventory_editing.py` run for real (PostgreSQL + FastAPI + built Astro) — `PROFESSIONAL INVENTORY EDITING RESULT -> PASS` (all 14 contract §16 items).
+- Remote CI: `NOT VERIFIED`
+- Remaining blocker(s): none.
