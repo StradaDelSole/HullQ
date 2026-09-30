@@ -1,6 +1,6 @@
 # SLICE-0073 — Test / CI Throughput Optimization
 
-**Type:** ENGINEERING / CI / TEST INFRASTRUCTURE  
+**Type:** ENGINEERING  
 **Status:** READY — INDEPENDENT READINESS REVIEW PASS  
 **Base:** post-SLICE-0072 canonical main  
 **Primary contract:** `specs/TEST_CI_THROUGHPUT_OPTIMIZATION.v0.1.md`
