@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-30  
 **Latest owner-accepted / DONE slice:** SLICE-0072  
-**Current queue:** SLICE-0073 — **Test / CI Throughput Optimization — READINESS IN REVIEW**. The owner-directed earliest-safe post-SLICE-0072 engineering optimization has been selected through fresh reconciliation. Implementation may start only after readiness review/gates/merge and Project Owner invocation of `START_SLICE.bat`.  
+**Current queue:** SLICE-0073 — **Test / CI Throughput Optimization — READY ON MAIN UPON THIS READINESS MERGE**. Fresh post-SLICE-0072 reconciliation and independent readiness review are complete on this exact head. Implementation may start only after required remote gates and readiness merge, through the Project Owner's `START_SLICE.bat`.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -294,7 +294,7 @@ SLICE-0073
 
 **Capability:** Test / CI Throughput Optimization.
 
-Fresh post-SLICE-0072 reconciliation selected SLICE-0073 as an engineering-productivity slice before the next normal feature capability. It is governed by `docs/POST_SLICE_0072_TEST_CI_REASSESSMENT_2026-09-30.md`, `specs/TEST_CI_THROUGHPUT_OPTIMIZATION.v0.1.md`, and `docs/slices/SLICE-0073-test-ci-throughput-optimization.md`. Readiness is currently under independent review.
+Fresh post-SLICE-0072 reconciliation selected SLICE-0073 as an engineering-productivity slice before the next normal feature capability. It is governed by `docs/POST_SLICE_0072_TEST_CI_REASSESSMENT_2026-09-30.md`, `specs/TEST_CI_THROUGHPUT_OPTIMIZATION.v0.1.md`, and `docs/slices/SLICE-0073-test-ci-throughput-optimization.md`. Independent readiness review is complete; required remote gates and merge remain before implementation start.
 
 ## Development workflow
 
