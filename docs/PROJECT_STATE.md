@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-27  
 **Latest owner-accepted / DONE slice:** SLICE-0071  
-**Current queue:** SLICE-0072 — **UNSELECTED pending post-SLICE-0071 reassessment**. SLICE-0071 is owner-accepted and merged. No SLICE-0072 capability is selected or implementation-authorized until fresh repository/product reconciliation, trigger-gate review, capability selection, readiness preparation, independent readiness review and readiness merge complete.  
+**Current queue:** SLICE-0072 — **Post-Promotion Inventory Editing & Maintenance — READINESS REVIEW PENDING**. Fresh post-SLICE-0071 reconciliation selected the next broker-launch capability. Implementation remains unauthorized until independent exact-head readiness review, required remote gates and readiness merge complete.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -290,9 +290,9 @@ Next queue number:
 SLICE-0072
 ```
 
-**Capability:** UNSELECTED pending post-SLICE-0071 reassessment.
+**Capability:** Post-Promotion Inventory Editing & Maintenance.
 
-SLICE-0071 is owner-accepted and merged. Fresh post-SLICE-0071 reconciliation must now inspect the Broker Workspace Launch Gate, Mandatory Capability Register, production/buyer-email verification triggers and current implementation before selecting SLICE-0072. This closure does not preselect inventory editing, analytics/reporting, email-provider activation, buyer-email verification, sale/outcome, bulk onboarding or any other candidate.
+Post-SLICE-0071 reassessment selected SLICE-0072 to expose the existing revisioned NativeListing offer and Organization PhysicalBoat claim truth as a safe Broker Workspace maintenance workflow for already-promoted inventory. It is governed by `specs/PROFESSIONAL_INVENTORY_EDITING_CONTRACT.v0.1.md` and `docs/slices/SLICE-0072-professional-inventory-editing.md`. Implementation is not authorized until readiness review/gates/merge complete.
 
 ## Development workflow
 
@@ -307,6 +307,6 @@ SLICE-0071 is owner-accepted and merged. Fresh post-SLICE-0071 reconciliation mu
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0071 is owner-accepted and merged; SLICE-0072 remains UNSELECTED. The next repository action after closure is fresh post-SLICE-0071 reassessment/readiness, not `START_SLICE.bat`.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0071 is owner-accepted and finished; post-SLICE-0071 reassessment selected SLICE-0072 Post-Promotion Inventory Editing & Maintenance. Readiness review/gates/merge are pending; `START_SLICE.bat` is not yet authorized.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
