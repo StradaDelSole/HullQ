@@ -3,7 +3,7 @@
 <!-- PROJECT_STATE_ACCEPTED_SLICE: 0071 -->
 <!-- PROJECT_STATE_QUEUE_SLICE: 0072 -->
 
-**Updated:** 2026-09-27  
+**Updated:** 2026-09-30  
 **Latest owner-accepted / DONE slice:** SLICE-0071  
 **Current queue:** SLICE-0072 — **Post-Promotion Inventory Editing & Maintenance — READY ON MAIN**. Fresh post-SLICE-0071 reconciliation, exact-head readiness review, required remote gates and readiness merge are complete on `main`. Implementation may start only when the Project Owner runs `START_SLICE.bat`; that script-generated prompt is the sole initial Claude implementation prompt.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
@@ -250,9 +250,19 @@ The SLICE-0053 same-host session-topology invariant remains in force for browser
 
 `docs/POST_0054_BUYER_SELLER_PRODUCT_RECONCILIATION_2026-09-17.md` records the accepted optional Buyer Requirements/Decision Tools direction and shared Seller Platform direction. Direct Search remains primary; Buyer Requirements remain optional; `UNKNOWN != NOT_SATISFIED`; no match scores/winners/hidden weights are authorized. SLICE-0058 implements the bounded anonymous/local form of one ordinary personal Shortlist, and SLICE-0059 adds a factual whole-Shortlist Compare over current public truth while preserving the invariant that shortlist membership is buyer interest rather than HullQ fit.
 
+## Help & Support direction
+
+The Project Owner accepted **Zammad Hosted Professional v2** as HullQ's external commodity helpdesk / support platform. The controlling decision is:
+
+```text
+docs/HULLQ_HELP_SUPPORT_ZAMMAD_DECISION_2026-09-30.md
+```
+
+Zammad is intended for branded customer support, tickets/conversations, agent workflow, Knowledge Base/Help Center, custom support fields/roles and ordinary SLA/routing. It is not HullQ domain authority. Marketplace truth, verification, scam/fraud adjudication, Trust & Safety cases, listing suppression/protective actions, representation conflicts and audit history remain HullQ-owned. Hosted is preferred over self-hosting to avoid operating an additional support-data infrastructure containing personal data. Integration, privacy/retention configuration, branding validation and Trust & Safety linkage remain not yet implemented and must be included in future overall-MVP reconciliation.
+
 ## What remains unbuilt
 
-Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; post-promotion inventory editing; production email-provider activation; buyer-contact email verification; sales/outcomes and broader broker analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
+Important future work includes the accepted Zammad Hosted Professional v2 Help & Support integration and HullQ-native Trust & Safety linkage; owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; post-promotion inventory editing; production email-provider activation; buyer-contact email verification; sales/outcomes and broader broker analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
 SLICE-0071 is owner-accepted and merged. The professional path now includes durable Organization-scoped Lead inbox/detail/work-queue handling, assignment/status/read/follow-up/contact-attempt/close workflow, notification-recipient configuration, durable provider-neutral outbox/retry delivery, and bounded acquisition/discovery provenance including UTM context when evidenced. REQ-BROKER-023 and REQ-BROKER-024 remain implemented. The Broker Workspace Launch Gate remains NOT_READY because post-promotion inventory editing, launch-level performance/source-to-outcome analytics, usability/competitive benchmark evidence and other remaining gate items are still outstanding.
 
