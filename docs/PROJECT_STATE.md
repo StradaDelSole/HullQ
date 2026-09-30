@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0072 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0073 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0073 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0074 -->
 
-**Updated:** 2026-09-30  
-**Latest owner-accepted / DONE slice:** SLICE-0072  
-**Current queue:** SLICE-0073 — **Test / CI Throughput Optimization — READY ON MAIN UPON THIS READINESS MERGE**. Fresh post-SLICE-0072 reconciliation and independent readiness review are complete on this exact head. Implementation may start only after required remote gates and readiness merge, through the Project Owner's `START_SLICE.bat`.  
+**Updated:** 2026-10-01  
+**Latest owner-accepted / DONE slice:** SLICE-0073  
+**Current queue:** SLICE-0074 — **UNSELECTED** pending fresh post-SLICE-0073 reconciliation.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -157,6 +157,7 @@ SLICE-0040 marketplace identity/truth separation
 → SLICE-0070 durable buyer contact / Lead creation
 → SLICE-0071 Broker Lead Operating Surface + Durable Email Notification
 → SLICE-0072 Professional Inventory Editing & Maintenance
+→ SLICE-0073 Test / CI Throughput Optimization
 ```
 
 Latest closures:
@@ -179,6 +180,7 @@ docs/slices/SLICE-0065-acceptance-closure.md
 docs/slices/SLICE-0066-acceptance-closure.md
 docs/slices/SLICE-0067-acceptance-closure.md
 docs/slices/SLICE-0072-acceptance-closure.md
+docs/slices/SLICE-0073-acceptance-closure.md
 ```
 
 ## Accepted technical Search result
@@ -256,7 +258,7 @@ The SLICE-0053 same-host session-topology invariant remains in force for browser
 
 Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; production email-provider activation; buyer-contact email verification; sales/outcomes and broader broker analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-SLICE-0072 is owner-accepted and merged. The professional path now additionally supports authoritative post-promotion editing of current NativeListing offer/price truth and current Organization PhysicalBoat claims through immutable revisions, exact optimistic concurrency, idempotent retry semantics, authoritative re-read, and atomic ACTIVE hard-invariant protection. Lifecycle, freshness, media, Lead and Search-criterion boundaries remain separate. REQ-BROKER-023 and REQ-BROKER-024 remain implemented. The Broker Workspace Launch Gate remains NOT_READY because sale/outcome handling, launch-level performance/source-to-outcome analytics, usability/competitive benchmark evidence and other remaining gate items are still outstanding.
+SLICE-0073 is owner-accepted and merged. HullQ validation now defaults to focused/affected local checks with the exact pushed GitHub HEAD owning the authoritative complete regression. Backend tests execute safely in parallel through xdist grouping, combined branch coverage remains enforced at 90%, historical research/bootstrap replay runs in a separate routed PostgreSQL job, and accepted remote critical-path evidence is 3m47s versus the former 7m21s–8m22s baseline. No marketplace/domain behavior changed. The Broker Workspace Launch Gate remains NOT_READY because sale/outcome handling, launch-level performance/source-to-outcome analytics, usability/competitive benchmark evidence and other remaining gate items are still outstanding.
 
 ## Broker launch execution focus
 
@@ -289,12 +291,12 @@ Large retained research artifacts are acknowledged as repository-hygiene debt, n
 Next queue number:
 
 ```text
-SLICE-0073
+SLICE-0074
 ```
 
-**Capability:** Test / CI Throughput Optimization.
+**Capability:** UNSELECTED pending fresh post-SLICE-0073 reconciliation.
 
-Fresh post-SLICE-0072 reconciliation selected SLICE-0073 as an engineering-productivity slice before the next normal feature capability. It is governed by `docs/POST_SLICE_0072_TEST_CI_REASSESSMENT_2026-09-30.md`, `specs/TEST_CI_THROUGHPUT_OPTIMIZATION.v0.1.md`, and `docs/slices/SLICE-0073-test-ci-throughput-optimization.md`. Readiness review, required remote gates and readiness merge are complete. The owner has additionally directed that local validation default to affected/focused checks while GitHub Actions on the exact pushed HEAD owns the authoritative complete final regression; routine local 38–45 minute full-suite reruns are no longer the default.
+Normal product capability selection resumes only after the accepted engineering-throughput slice is fully closed.
 
 ## Development workflow
 
@@ -309,6 +311,6 @@ Fresh post-SLICE-0072 reconciliation selected SLICE-0073 as an engineering-produ
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0072 is owner-accepted and merged; SLICE-0073 Test / CI Throughput Optimization is READY ON MAIN. Its implementation must also establish focused-local / authoritative-remote validation ownership so routine local full-suite duplication is eliminated. The next actor is the Project Owner running `START_SLICE.bat`.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0073 is owner-accepted and merged; SLICE-0074 remains unselected pending fresh post-SLICE-0073 reconciliation.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
