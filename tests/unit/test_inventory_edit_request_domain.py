@@ -159,6 +159,139 @@ class TestOfferEditRequest:
         with pytest.raises(InvalidInventoryEditRequestError):
             parse_native_listing_offer_edit_request(body)
 
+    def test_expected_current_revision_id_wrong_type_is_invalid(self) -> None:
+        body = dict(_BASE_OFFER, expected_current_revision_id=42)
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_native_listing_offer_edit_request(body)
+
+    def test_expected_current_revision_id_empty_string_is_invalid(self) -> None:
+        body = dict(_BASE_OFFER, expected_current_revision_id="")
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_native_listing_offer_edit_request(body)
+
+    def test_revision_id_empty_string_is_invalid(self) -> None:
+        body = dict(_BASE_OFFER, revision_id="")
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_native_listing_offer_edit_request(body)
+
+    def test_revision_id_wrong_type_is_invalid(self) -> None:
+        body = dict(_BASE_OFFER, revision_id=123)
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_native_listing_offer_edit_request(body)
+
+    def test_broker_description_non_string_is_invalid(self) -> None:
+        body = dict(_BASE_OFFER, **{"listing_offer.broker_description": 123})
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_native_listing_offer_edit_request(body)
+
+    def test_broker_description_whitespace_only_is_invalid(self) -> None:
+        body = dict(_BASE_OFFER, **{"listing_offer.broker_description": "   "})
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_native_listing_offer_edit_request(body)
+
+    def test_asking_price_mode_missing_is_invalid(self) -> None:
+        body = {k: v for k, v in _BASE_OFFER.items() if k != "listing_offer.asking_price_mode"}
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_native_listing_offer_edit_request(body)
+
+    def test_currency_invalid_format_is_invalid(self) -> None:
+        body = dict(_BASE_OFFER, **{"listing_offer.currency": "eur"})
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_native_listing_offer_edit_request(body)
+
+    def test_location_country_missing_is_invalid(self) -> None:
+        body = {k: v for k, v in _BASE_OFFER.items() if k != "listing_offer.location_country"}
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_native_listing_offer_edit_request(body)
+
+    def test_location_country_invalid_format_is_invalid(self) -> None:
+        body = dict(_BASE_OFFER, **{"listing_offer.location_country": "fra"})
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_native_listing_offer_edit_request(body)
+
+    def test_broker_description_missing_is_invalid(self) -> None:
+        body = {k: v for k, v in _BASE_OFFER.items() if k != "listing_offer.broker_description"}
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_native_listing_offer_edit_request(body)
+
+    def test_broker_summary_value_assertion_parses(self) -> None:
+        body = dict(
+            _BASE_OFFER,
+            **{
+                "listing_offer.broker_summary": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "Well maintained, single owner.",
+                }
+            },
+        )
+        parsed = parse_native_listing_offer_edit_request(body)
+        assert parsed.offer.broker_summary is not None
+        assert parsed.offer.broker_summary.value == "Well maintained, single owner."
+
+    def test_broker_summary_not_applicable_parses(self) -> None:
+        body = dict(
+            _BASE_OFFER, **{"listing_offer.broker_summary": {"assertion_kind": "NOT_APPLICABLE"}}
+        )
+        parsed = parse_native_listing_offer_edit_request(body)
+        assert parsed.offer.broker_summary is not None
+        assert parsed.offer.broker_summary.value is None
+
+    def test_known_history_narrative_value_assertion_parses(self) -> None:
+        body = dict(
+            _BASE_OFFER,
+            **{
+                "listing_offer.known_history_narrative": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "One prior owner, coastal use only.",
+                }
+            },
+        )
+        parsed = parse_native_listing_offer_edit_request(body)
+        assert parsed.offer.known_history_narrative is not None
+
+    def test_known_history_narrative_no_known_history_declared_parses(self) -> None:
+        body = dict(
+            _BASE_OFFER,
+            **{
+                "listing_offer.known_history_narrative": {
+                    "assertion_kind": "NO_KNOWN_HISTORY_DECLARED"
+                }
+            },
+        )
+        parsed = parse_native_listing_offer_edit_request(body)
+        assert parsed.offer.known_history_narrative is not None
+        assert parsed.offer.known_history_narrative.value is None
+
+    def test_vat_tax_status_claim_unknown_with_present_value_is_invalid(self) -> None:
+        body = dict(
+            _BASE_OFFER,
+            **{
+                "listing_offer.vat_tax_status_claim": {
+                    "assertion_kind": "UNKNOWN",
+                    "value": "VAT_PAID",
+                }
+            },
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_native_listing_offer_edit_request(body)
+
+    def test_assertion_object_not_a_dict_is_invalid(self) -> None:
+        body = dict(_BASE_OFFER, **{"listing_offer.location_region": "Brittany"})
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_native_listing_offer_edit_request(body)
+
+    def test_assertion_object_missing_assertion_kind_is_invalid(self) -> None:
+        body = dict(_BASE_OFFER, **{"listing_offer.location_region": {"value": "Brittany"}})
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_native_listing_offer_edit_request(body)
+
+    def test_assertion_kind_unrecognized_string_is_invalid(self) -> None:
+        body = dict(
+            _BASE_OFFER, **{"listing_offer.location_region": {"assertion_kind": "BOGUS_KIND"}}
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_native_listing_offer_edit_request(body)
+
 
 class TestClaimEditRequest:
     def test_minimal_valid_request_parses(self) -> None:
@@ -251,3 +384,92 @@ class TestClaimEditRequest:
     def test_not_a_json_object_is_invalid(self) -> None:
         with pytest.raises(InvalidInventoryEditRequestError):
             parse_physical_boat_claim_edit_request("not a dict")
+
+    def test_revision_id_empty_string_is_invalid(self) -> None:
+        body = dict(_BASE_CLAIM, revision_id="")
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_marketed_brand_claim_missing_is_invalid(self) -> None:
+        body = {k: v for k, v in _BASE_CLAIM.items() if k != "physical_boat.marketed_brand_claim"}
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_model_designation_claim_missing_is_invalid(self) -> None:
+        body = {
+            k: v for k, v in _BASE_CLAIM.items() if k != "physical_boat.model_designation_claim"
+        }
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_draft_value_assertion_parses_decimal_string(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{"physical_boat.draft": {"assertion_kind": "VALUE_ASSERTION", "value": "1.45"}},
+        )
+        parsed = parse_physical_boat_claim_edit_request(body)
+        assert parsed.claims.draft is not None
+        assert str(parsed.claims.draft.value) == "1.45"
+
+    def test_draft_unknown_with_present_value_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{"physical_boat.draft": {"assertion_kind": "UNKNOWN", "value": "1.45"}},
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_loa_length_unknown_with_present_value_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{"physical_boat.loa_length": {"assertion_kind": "UNKNOWN", "value": "9.14"}},
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_keel_configuration_unknown_with_present_value_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{"physical_boat.keel_configuration": {"assertion_kind": "UNKNOWN", "value": "FIN"}},
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_rudder_configuration_value_assertion_parses(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.rudder_configuration": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "SPADE",
+                }
+            },
+        )
+        parsed = parse_physical_boat_claim_edit_request(body)
+        assert parsed.claims.rudder_configuration is not None
+
+    def test_rudder_configuration_unrecognized_value_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.rudder_configuration": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "NOT_A_REAL_RUDDER",
+                }
+            },
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_rudder_configuration_unknown_with_present_value_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.rudder_configuration": {
+                    "assertion_kind": "UNKNOWN",
+                    "value": "SPADE",
+                }
+            },
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)

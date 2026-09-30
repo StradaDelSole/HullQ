@@ -78,6 +78,7 @@ from hullq.persistence.broker_identity import (
 )
 from hullq.persistence.inventory_editing import (
     ClaimEditStatus,
+    InventoryEditTransactionOwnershipError,
     OfferEditStatus,
     edit_native_listing_offer,
     edit_physical_boat_claim,
@@ -392,3 +393,67 @@ def test_concurrent_claim_edits_from_same_expected_revision(editing_url: str) ->
     assert len(history) == 2, history
     history_ids = {r.revision_id.value for r in history}
     assert history_ids == {"CLAIM-CONC-0072-INITIAL", winner.current_revision_id.value}
+
+
+# ---------------------------------------------------------------------------
+# Transaction ownership -- a REVISED result must always mean durable
+# ---------------------------------------------------------------------------
+
+
+def test_offer_edit_on_a_connection_with_an_open_transaction_fails_closed(
+    editing_url: str,
+) -> None:
+    """Mirrors `test_native_listing_offer_persistence.py`'s identical
+    `test_write_on_a_connection_with_an_open_implicit_transaction_fails_closed`:
+    a plain read leaves *conn* with an open implicit transaction (psycopg's
+    default `autocommit=False`); calling `edit_native_listing_offer` on that
+    same connection, without an intervening `commit()`/`rollback()`, must
+    raise before attempting any write rather than silently degrading to a
+    nested savepoint."""
+    account, org, membership = _seed_promoted_draft_listing(editing_url)
+
+    conn = psycopg.connect(editing_url)
+    try:
+        current = fetch_current_native_listing_offer(conn, NativeListingId(_LISTING_ID))
+        assert current is not None
+        with pytest.raises(InventoryEditTransactionOwnershipError):
+            edit_native_listing_offer(
+                conn,
+                account_id=account,
+                candidate_organization=org,
+                membership=membership,
+                native_listing_id=NativeListingId(_LISTING_ID),
+                revision_id=NativeListingOfferRevisionId("REV-CONC-0072-TXN"),
+                expected_current_revision_id=current.revision_id,
+                offer=_amount_offer(price="150000.00"),
+            )
+    finally:
+        conn.rollback()
+        conn.close()
+
+
+def test_claim_edit_on_a_connection_with_an_open_transaction_fails_closed(
+    editing_url: str,
+) -> None:
+    account, org, membership = _seed_promoted_draft_listing(editing_url)
+
+    conn = psycopg.connect(editing_url)
+    try:
+        current = fetch_current_physical_boat_claim(
+            conn, PhysicalBoatId(_PHYSICAL_BOAT_ID), MarketplaceOrganizationId(_ORG_ID)
+        )
+        assert current is not None
+        with pytest.raises(InventoryEditTransactionOwnershipError):
+            edit_physical_boat_claim(
+                conn,
+                account_id=account,
+                candidate_organization=org,
+                membership=membership,
+                native_listing_id=NativeListingId(_LISTING_ID),
+                revision_id=PhysicalBoatClaimRevisionId("CLAIM-CONC-0072-TXN"),
+                expected_current_revision_id=current.revision_id,
+                claims=_claim(build_year=2025),
+            )
+    finally:
+        conn.rollback()
+        conn.close()

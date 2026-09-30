@@ -448,6 +448,146 @@ class TestEditDetailRead:
         assert body["current_claim_revision_id"] == "CLAIM-READ-OK"
         assert body["claim"]["physical_boat.marketed_brand_claim"] == "Beneteau"
 
+    def test_mfa_required_read_is_blocked(self, client: TestClient, api_url: str) -> None:
+        _seed_org_and_membership(
+            api_url, org_id="ORG-READ-MFA", account_id="ACC-READ-MFA", membership_id="OM-READ-MFA"
+        )
+        _create_promoted_listing(
+            api_url,
+            listing_id="NL-READ-MFA",
+            org_id="ORG-READ-MFA",
+            account_id="ACC-READ-MFA",
+            membership_id="OM-READ-MFA",
+            physical_boat_id="PB-READ-MFA",
+            market_episode_id="ME-READ-MFA",
+            offer_revision_id="REV-READ-MFA",
+            claim_revision_id="CLAIM-READ-MFA",
+        )
+        _log_in(client, "ACC-READ-MFA", mfa=False)
+        response = client.get(_edit_path("ORG-READ-MFA", "NL-READ-MFA"))
+        assert response.status_code == 403
+        assert response.json() == {"error": "mfa_required"}
+
+    def test_ok_read_on_active_listing_carries_fully_populated_offer_and_claim(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        """Exercises every optional offer/claim wire field (contract §8) and
+        the ACTIVE-only current_public_status/suppression_reasons branch --
+        the DRAFT-only `test_ok_read_carries_current_offer_and_claim` above
+        never populates these."""
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-READ-FULL",
+            account_id="ACC-READ-FULL",
+            membership_id="OM-READ-FULL",
+        )
+        _create_promoted_listing(
+            api_url,
+            listing_id="NL-READ-FULL",
+            org_id="ORG-READ-FULL",
+            account_id="ACC-READ-FULL",
+            membership_id="OM-READ-FULL",
+            physical_boat_id="PB-READ-FULL",
+            market_episode_id="ME-READ-FULL",
+            offer_revision_id="REV-READ-FULL",
+            claim_revision_id="CLAIM-READ-FULL",
+            activate=True,
+        )
+        _log_in(client, "ACC-READ-FULL")
+
+        full_offer_body = _offer_body("REV-READ-FULL")
+        full_offer_body["listing_offer.location_region"] = {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "Brittany",
+        }
+        full_offer_body["listing_offer.broker_summary"] = {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "Well maintained, single owner.",
+        }
+        full_offer_body["listing_offer.known_history_narrative"] = {
+            "assertion_kind": "NO_KNOWN_HISTORY_DECLARED"
+        }
+        full_offer_body["listing_offer.vat_tax_status_claim"] = {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "VAT_PAID",
+        }
+        offer_response = client.post(
+            _offer_path("ORG-READ-FULL", "NL-READ-FULL"),
+            json=full_offer_body,
+            headers=_csrf_headers(),
+        )
+        assert offer_response.status_code == 200, offer_response.json()
+
+        full_claim_body = _claim_body("CLAIM-READ-FULL")
+        full_claim_body["physical_boat.loa_length"] = {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "9.14",
+        }
+        full_claim_body["physical_boat.draft"] = {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "1.45",
+        }
+        full_claim_body["physical_boat.keel_configuration"] = {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "FIN",
+        }
+        full_claim_body["physical_boat.rudder_configuration"] = {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "SPADE",
+        }
+        full_claim_body["physical_boat.boat_name"] = {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "Serenity",
+        }
+        claim_response = client.post(
+            _claim_path("ORG-READ-FULL", "NL-READ-FULL"),
+            json=full_claim_body,
+            headers=_csrf_headers(),
+        )
+        assert claim_response.status_code == 200, claim_response.json()
+
+        response = client.get(_edit_path("ORG-READ-FULL", "NL-READ-FULL"))
+        assert response.status_code == 200
+        body = response.json()
+        assert body["lifecycle_state"] == "ACTIVE"
+        assert body["current_public_status"] in ("ELIGIBLE", "SUPPRESSED")
+        assert body["suppression_reasons"] is not None
+        offer = body["offer"]
+        assert offer["listing_offer.location_region"] == {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "Brittany",
+        }
+        assert offer["listing_offer.broker_summary"]["value"] == "Well maintained, single owner."
+        assert offer["listing_offer.known_history_narrative"] == {
+            "assertion_kind": "NO_KNOWN_HISTORY_DECLARED",
+            "value": None,
+        }
+        assert offer["listing_offer.vat_tax_status_claim"] == {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "VAT_PAID",
+        }
+        claim = body["claim"]
+        assert claim["physical_boat.loa_length"] == {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "9.14",
+        }
+        assert claim["physical_boat.draft"] == {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "1.45",
+        }
+        assert claim["physical_boat.keel_configuration"] == {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "FIN",
+        }
+        assert claim["physical_boat.rudder_configuration"] == {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "SPADE",
+        }
+        assert claim["physical_boat.boat_name"] == {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "Serenity",
+        }
+
 
 # ---------------------------------------------------------------------------
 # Offer save
@@ -782,6 +922,87 @@ class TestOfferSave:
         assert _current_offer_revision_id(api_url, "NL-OFF-INVARIANT") == "REV-OFF-INVARIANT"
         assert _offer_revision_count(api_url, "NL-OFF-INVARIANT") == 1
 
+    def test_mfa_required_writes_nothing(self, client: TestClient, api_url: str) -> None:
+        _seed_org_and_membership(
+            api_url, org_id="ORG-OFF-MFA", account_id="ACC-OFF-MFA", membership_id="OM-OFF-MFA"
+        )
+        _create_promoted_listing(
+            api_url,
+            listing_id="NL-OFF-MFA",
+            org_id="ORG-OFF-MFA",
+            account_id="ACC-OFF-MFA",
+            membership_id="OM-OFF-MFA",
+            physical_boat_id="PB-OFF-MFA",
+            market_episode_id="ME-OFF-MFA",
+            offer_revision_id="REV-OFF-MFA",
+            claim_revision_id="CLAIM-OFF-MFA",
+        )
+        _log_in(client, "ACC-OFF-MFA", mfa=False)
+        response = client.post(
+            _offer_path("ORG-OFF-MFA", "NL-OFF-MFA"),
+            json=_offer_body("REV-OFF-MFA"),
+            headers=_csrf_headers(),
+        )
+        assert response.status_code == 403
+        assert response.json() == {"error": "mfa_required"}
+        assert _current_offer_revision_id(api_url, "NL-OFF-MFA") == "REV-OFF-MFA"
+
+    def test_missing_publisher_role_writes_nothing(self, client: TestClient, api_url: str) -> None:
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-OFF-NOPUB",
+            account_id="ACC-OFF-NOPUB",
+            membership_id="OM-OFF-NOPUB",
+            roles=frozenset({MembershipRole.MEMBER}),
+        )
+        _create_promoted_listing(
+            api_url,
+            listing_id="NL-OFF-NOPUB",
+            org_id="ORG-OFF-NOPUB",
+            account_id="ACC-OFF-NOPUB",
+            membership_id="OM-OFF-NOPUB",
+            physical_boat_id="PB-OFF-NOPUB",
+            market_episode_id="ME-OFF-NOPUB",
+            offer_revision_id="REV-OFF-NOPUB",
+            claim_revision_id="CLAIM-OFF-NOPUB",
+        )
+        _log_in(client, "ACC-OFF-NOPUB", mfa=False)  # MEMBER-only: not a PRIVILEGED_MFA_ROLE
+        response = client.post(
+            _offer_path("ORG-OFF-NOPUB", "NL-OFF-NOPUB"),
+            json=_offer_body("REV-OFF-NOPUB"),
+            headers=_csrf_headers(),
+        )
+        assert response.status_code == 403
+        assert response.json() == {
+            "error": "publishing_denied",
+            "reason": "PUBLISHER_ROLE_REQUIRED",
+        }
+        assert _current_offer_revision_id(api_url, "NL-OFF-NOPUB") == "REV-OFF-NOPUB"
+
+    def test_unknown_organization_is_not_found(self, client: TestClient) -> None:
+        _log_in(client, "ACC-OFF-UNKNOWN-ORG")
+        response = client.post(
+            _offer_path("ORG-OFF-NEVER-CREATED", "NL-X"),
+            json=_offer_body(None),
+            headers=_csrf_headers(),
+        )
+        assert response.status_code == 404
+
+    def test_unknown_listing_id_is_not_found(self, client: TestClient, api_url: str) -> None:
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-OFF-UNKNOWN-NL",
+            account_id="ACC-OFF-UNKNOWN-NL",
+            membership_id="OM-OFF-UNKNOWN-NL",
+        )
+        _log_in(client, "ACC-OFF-UNKNOWN-NL")
+        response = client.post(
+            _offer_path("ORG-OFF-UNKNOWN-NL", "NL-OFF-NEVER-CREATED"),
+            json=_offer_body(None),
+            headers=_csrf_headers(),
+        )
+        assert response.status_code == 404
+
 
 # ---------------------------------------------------------------------------
 # Claim save
@@ -933,3 +1154,252 @@ class TestClaimSave:
             _current_claim_revision_id(api_url, "PB-CLM-REUSE", "ORG-CLM-REUSE")
             == "CLAIM-CLM-REUSE-2"
         )
+
+    def test_mfa_required_writes_nothing(self, client: TestClient, api_url: str) -> None:
+        _seed_org_and_membership(
+            api_url, org_id="ORG-CLM-MFA", account_id="ACC-CLM-MFA", membership_id="OM-CLM-MFA"
+        )
+        _create_promoted_listing(
+            api_url,
+            listing_id="NL-CLM-MFA",
+            org_id="ORG-CLM-MFA",
+            account_id="ACC-CLM-MFA",
+            membership_id="OM-CLM-MFA",
+            physical_boat_id="PB-CLM-MFA",
+            market_episode_id="ME-CLM-MFA",
+            offer_revision_id="REV-CLM-MFA",
+            claim_revision_id="CLAIM-CLM-MFA",
+        )
+        _log_in(client, "ACC-CLM-MFA", mfa=False)
+        response = client.post(
+            _claim_path("ORG-CLM-MFA", "NL-CLM-MFA"),
+            json=_claim_body("CLAIM-CLM-MFA"),
+            headers=_csrf_headers(),
+        )
+        assert response.status_code == 403
+        assert response.json() == {"error": "mfa_required"}
+        assert _current_claim_revision_id(api_url, "PB-CLM-MFA", "ORG-CLM-MFA") == "CLAIM-CLM-MFA"
+
+    def test_missing_publisher_role_writes_nothing(self, client: TestClient, api_url: str) -> None:
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-CLM-NOPUB",
+            account_id="ACC-CLM-NOPUB",
+            membership_id="OM-CLM-NOPUB",
+            roles=frozenset({MembershipRole.MEMBER}),
+        )
+        _create_promoted_listing(
+            api_url,
+            listing_id="NL-CLM-NOPUB",
+            org_id="ORG-CLM-NOPUB",
+            account_id="ACC-CLM-NOPUB",
+            membership_id="OM-CLM-NOPUB",
+            physical_boat_id="PB-CLM-NOPUB",
+            market_episode_id="ME-CLM-NOPUB",
+            offer_revision_id="REV-CLM-NOPUB",
+            claim_revision_id="CLAIM-CLM-NOPUB",
+        )
+        _log_in(client, "ACC-CLM-NOPUB", mfa=False)  # MEMBER-only: not a PRIVILEGED_MFA_ROLE
+        response = client.post(
+            _claim_path("ORG-CLM-NOPUB", "NL-CLM-NOPUB"),
+            json=_claim_body("CLAIM-CLM-NOPUB"),
+            headers=_csrf_headers(),
+        )
+        assert response.status_code == 403
+        assert response.json() == {
+            "error": "publishing_denied",
+            "reason": "PUBLISHER_ROLE_REQUIRED",
+        }
+        assert (
+            _current_claim_revision_id(api_url, "PB-CLM-NOPUB", "ORG-CLM-NOPUB")
+            == "CLAIM-CLM-NOPUB"
+        )
+
+    def test_unknown_organization_is_not_found(self, client: TestClient) -> None:
+        _log_in(client, "ACC-CLM-UNKNOWN-ORG")
+        response = client.post(
+            _claim_path("ORG-CLM-NEVER-CREATED", "NL-X"),
+            json=_claim_body(None),
+            headers=_csrf_headers(),
+        )
+        assert response.status_code == 404
+
+    def test_unknown_listing_id_is_not_found(self, client: TestClient, api_url: str) -> None:
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-CLM-UNKNOWN-NL",
+            account_id="ACC-CLM-UNKNOWN-NL",
+            membership_id="OM-CLM-UNKNOWN-NL",
+        )
+        _log_in(client, "ACC-CLM-UNKNOWN-NL")
+        response = client.post(
+            _claim_path("ORG-CLM-UNKNOWN-NL", "NL-CLM-NEVER-CREATED"),
+            json=_claim_body(None),
+            headers=_csrf_headers(),
+        )
+        assert response.status_code == 404
+
+    def test_invalid_payload_writes_nothing(self, client: TestClient, api_url: str) -> None:
+        _seed_org_and_membership(
+            api_url, org_id="ORG-CLM-BAD", account_id="ACC-CLM-BAD", membership_id="OM-CLM-BAD"
+        )
+        _create_promoted_listing(
+            api_url,
+            listing_id="NL-CLM-BAD",
+            org_id="ORG-CLM-BAD",
+            account_id="ACC-CLM-BAD",
+            membership_id="OM-CLM-BAD",
+            physical_boat_id="PB-CLM-BAD",
+            market_episode_id="ME-CLM-BAD",
+            offer_revision_id="REV-CLM-BAD",
+            claim_revision_id="CLAIM-CLM-BAD",
+        )
+        _log_in(client, "ACC-CLM-BAD")
+        body = _claim_body("CLAIM-CLM-BAD")
+        del body["physical_boat.marketed_brand_claim"]
+        response = client.post(
+            _claim_path("ORG-CLM-BAD", "NL-CLM-BAD"), json=body, headers=_csrf_headers()
+        )
+        assert response.status_code == 400
+        assert response.json() == {"error": "invalid_payload"}
+        assert _current_claim_revision_id(api_url, "PB-CLM-BAD", "ORG-CLM-BAD") == "CLAIM-CLM-BAD"
+
+    def test_chain_incomplete_writes_nothing(self, client: TestClient, api_url: str) -> None:
+        """A claim edit against a NativeListing with no MarketEpisode link at
+        all fails closed as CHAIN_INCOMPLETE -- distinct from STALE_VERSION/
+        NOT_FOUND (contract: the claim authority is about the concrete
+        PhysicalBoat reached through the NativeListing -> MarketEpisode ->
+        PhysicalBoat chain)."""
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-CLM-CHAIN",
+            account_id="ACC-CLM-CHAIN",
+            membership_id="OM-CLM-CHAIN",
+        )
+        conn = psycopg.connect(api_url)
+        try:
+            account = AccountId("ACC-CLM-CHAIN")
+            org = MarketplaceOrganization(
+                id=MarketplaceOrganizationId("ORG-CLM-CHAIN"),
+                professional_category=ProfessionalCategory.BROKER,
+                publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+            )
+            membership = OrganizationMembership(
+                id=OrganizationMembershipId("OM-CLM-CHAIN"),
+                account_id=account,
+                organization_id=org.id,
+                roles=frozenset({MembershipRole.PUBLISHER}),
+                state=MembershipState.ACTIVE,
+            )
+            create_native_listing(
+                conn,
+                account_id=account,
+                candidate_organization=org,
+                membership=membership,
+                listing=NativeListing(id=NativeListingId("NL-CLM-CHAIN")),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        _log_in(client, "ACC-CLM-CHAIN")
+        response = client.post(
+            _claim_path("ORG-CLM-CHAIN", "NL-CLM-CHAIN"),
+            json=_claim_body(None),
+            headers=_csrf_headers(),
+        )
+        assert response.status_code == 409
+        assert response.json() == {"error": "chain_incomplete"}
+
+    def test_active_invariant_violation_leaves_prior_head_unchanged(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        """A claim edit's own write always resolves the chain FIRST (contract
+        §3: claim authority is about the concrete PhysicalBoat reached
+        through NativeListing -> MarketEpisode -> PhysicalBoat) -- unlike the
+        offer-edit proof, a *chain-incomplete* ACTIVE listing can never reach
+        the ACTIVE-invariant re-check for a claim edit at all (it fails
+        CHAIN_INCOMPLETE first, proven above). This listing instead has a
+        COMPLETE chain (claim write succeeds) but no current offer at all,
+        so the D29 re-check's OFFER_MISSING blocker fires after the claim
+        write, and the whole attempt -- including the just-written claim
+        revision -- rolls back atomically."""
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-CLM-INVARIANT",
+            account_id="ACC-CLM-INVARIANT",
+            membership_id="OM-CLM-INVARIANT",
+        )
+        conn = psycopg.connect(api_url)
+        try:
+            account = AccountId("ACC-CLM-INVARIANT")
+            org = MarketplaceOrganization(
+                id=MarketplaceOrganizationId("ORG-CLM-INVARIANT"),
+                professional_category=ProfessionalCategory.BROKER,
+                publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+            )
+            membership = OrganizationMembership(
+                id=OrganizationMembershipId("OM-CLM-INVARIANT"),
+                account_id=account,
+                organization_id=org.id,
+                roles=frozenset({MembershipRole.PUBLISHER}),
+                state=MembershipState.ACTIVE,
+            )
+            create_physical_boat(
+                conn, physical_boat=PhysicalBoat(id=PhysicalBoatId("PB-CLM-INVARIANT"))
+            )
+            create_market_episode(
+                conn,
+                market_episode=MarketEpisode(
+                    id=MarketEpisodeId("ME-CLM-INVARIANT"),
+                    physical_boat_id=PhysicalBoatId("PB-CLM-INVARIANT"),
+                ),
+            )
+            create_native_listing(
+                conn,
+                account_id=account,
+                candidate_organization=org,
+                membership=membership,
+                listing=NativeListing(
+                    id=NativeListingId("NL-CLM-INVARIANT"),
+                    market_episode_id=MarketEpisodeId("ME-CLM-INVARIANT"),
+                ),
+            )
+            claim_result = write_physical_boat_claim_revision(
+                conn,
+                account_id=account,
+                candidate_organization=org,
+                membership=membership,
+                native_listing_id=NativeListingId("NL-CLM-INVARIANT"),
+                revision_id=PhysicalBoatClaimRevisionId("CLAIM-CLM-INVARIANT"),
+                expected_current_revision_id=None,
+                claims=_ready_claim(),
+            )
+            assert claim_result.status.value == "created", claim_result
+            # Deliberately no offer written at all: forces D29's
+            # OFFER_MISSING blocker once this listing is ACTIVE.
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE native_listings SET lifecycle_state = 'ACTIVE' "
+                    "WHERE native_listing_id = %s",
+                    ["NL-CLM-INVARIANT"],
+                )
+            conn.commit()
+        finally:
+            conn.close()
+
+        _log_in(client, "ACC-CLM-INVARIANT")
+        response = client.post(
+            _claim_path("ORG-CLM-INVARIANT", "NL-CLM-INVARIANT"),
+            json=_claim_body("CLAIM-CLM-INVARIANT", build_year=2022),
+            headers=_csrf_headers(),
+        )
+        assert response.status_code == 422
+        body = response.json()
+        assert body["outcome"] == "ACTIVE_INVARIANT_VIOLATION"
+        assert "OFFER_MISSING" in body["blockers"]
+        assert (
+            _current_claim_revision_id(api_url, "PB-CLM-INVARIANT", "ORG-CLM-INVARIANT")
+            == "CLAIM-CLM-INVARIANT"
+        )
+        assert _claim_revision_count(api_url, "PB-CLM-INVARIANT", "ORG-CLM-INVARIANT") == 1
