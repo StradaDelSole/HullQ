@@ -1,0 +1,673 @@
+---
+// SLICE-0072: the Broker Workspace post-promotion inventory offer/
+// PhysicalBoat claim editor (PROFESSIONAL_INVENTORY_EDITING_CONTRACT.v0.1
+// §8). Plain progressive `<form method="POST">` submissions, matching every
+// other page in this package (no client-side JavaScript) -- mirrors
+// `inventory.astro`'s and `media.astro`'s identical discipline.
+//
+// Every save re-reads the authoritative current offer/claim/lifecycle state
+// from FastAPI afterward (contract §5: "the browser must re-read
+// authoritative current state") -- nothing rendered below is ever a
+// client-invented/optimistic result. This page creates no second listing
+// truth store, edits no draft and touches no media/lifecycle/Lead state --
+// it only exposes the already-accepted revisioned offer/claim write paths.
+export const prerender = false;
+
+import {
+  fetchInventoryEditDetail,
+  saveListingClaim,
+  saveListingOffer,
+} from "../../../../../../lib/inventoryEditingApi";
+import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../../../../lib/authConstants";
+
+const organizationId = Astro.params.organization_id;
+const nativeListingId = Astro.params.native_listing_id;
+const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
+const cookieHeader = Astro.request.headers.get("cookie");
+const originHeader = Astro.request.headers.get("origin");
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+Astro.response.headers.set("Cache-Control", "private, no-store");
+
+type SaveOutcome =
+  | "none"
+  | "saved"
+  | "unauthenticated"
+  | "not_found"
+  | "mfa_required"
+  | "denied"
+  | "invalid_payload"
+  | "stale_version"
+  | "active_invariant_violation"
+  | "chain_incomplete"
+  | "service_error";
+
+let offerOutcome: SaveOutcome = "none";
+let claimOutcome: SaveOutcome = "none";
+let deniedReason = "";
+let invariantBlockers: string[] = [];
+
+// ---------------------------------------------------------------------------
+// FormData -> the exact assertion-object wire shape
+// `hullq.domain.inventory_edit_request` accepts, without any client-side
+// script: each optional field gets a paired `${name}_kind` select (values:
+// "" to omit the key entirely, or one accepted AssertionKind) plus a
+// `${name}_value` input consulted only when `${name}_kind` is
+// VALUE_ASSERTION.
+// ---------------------------------------------------------------------------
+
+function assertionField(
+  formData: FormData,
+  name: string,
+  parseValue: (raw: string) => unknown = (raw) => raw,
+): { assertion_kind: string; value?: unknown } | undefined {
+  const kind = formData.get(`${name}_kind`);
+  if (typeof kind !== "string" || kind === "") return undefined;
+  if (kind === "VALUE_ASSERTION") {
+    const raw = formData.get(`${name}_value`);
+    return { assertion_kind: kind, value: parseValue(typeof raw === "string" ? raw : "") };
+  }
+  return { assertion_kind: kind };
+}
+
+if (Astro.request.method === "POST" && organizationId && nativeListingId) {
+  const formData = await Astro.request.formData();
+  const action = formData.get("action");
+
+  if (action === "save_offer") {
+    const body: Record<string, unknown> = {
+      revision_id: formData.get("revision_id"),
+      expected_current_revision_id: formData.get("expected_current_revision_id") || null,
+      "listing_offer.asking_price_mode": formData.get("asking_price_mode"),
+      "listing_offer.location_country": formData.get("location_country"),
+      "listing_offer.broker_description": formData.get("broker_description"),
+    };
+    if (formData.get("asking_price_mode") === "AMOUNT") {
+      body["listing_offer.asking_price_amount"] = formData.get("asking_price_amount");
+      body["listing_offer.currency"] = formData.get("currency");
+    }
+    const locationRegion = assertionField(formData, "location_region");
+    if (locationRegion) body["listing_offer.location_region"] = locationRegion;
+    const brokerSummary = assertionField(formData, "broker_summary");
+    if (brokerSummary) body["listing_offer.broker_summary"] = brokerSummary;
+    const knownHistory = assertionField(formData, "known_history_narrative");
+    if (knownHistory) body["listing_offer.known_history_narrative"] = knownHistory;
+    const vatTaxStatus = assertionField(formData, "vat_tax_status_claim");
+    if (vatTaxStatus) body["listing_offer.vat_tax_status_claim"] = vatTaxStatus;
+
+    const result = await saveListingOffer(
+      apiBaseUrl,
+      organizationId,
+      nativeListingId,
+      body,
+      cookieHeader,
+      originHeader,
+    );
+    if (result.kind === "ok") offerOutcome = "saved";
+    else if (result.kind === "denied") {
+      offerOutcome = "denied";
+      deniedReason = result.reason;
+    } else if (result.kind === "active_invariant_violation") {
+      offerOutcome = "active_invariant_violation";
+      invariantBlockers = result.blockers;
+    } else if (result.kind === "stale_version") offerOutcome = "stale_version";
+    else if (result.kind === "invalid_payload") offerOutcome = "invalid_payload";
+    else if (result.kind === "not_found") offerOutcome = "not_found";
+    else if (result.kind === "mfa_required") offerOutcome = "mfa_required";
+    else if (result.kind === "unauthenticated") offerOutcome = "unauthenticated";
+    else offerOutcome = "service_error";
+  } else if (action === "save_claim") {
+    const body: Record<string, unknown> = {
+      revision_id: formData.get("revision_id"),
+      expected_current_revision_id: formData.get("expected_current_revision_id") || null,
+      "physical_boat.marketed_brand_claim": formData.get("marketed_brand_claim"),
+      "physical_boat.model_designation_claim": formData.get("model_designation_claim"),
+    };
+    const buildYear = assertionField(formData, "build_year", (raw) => Number.parseInt(raw, 10));
+    if (buildYear) body["physical_boat.build_year"] = buildYear;
+    const loaLength = assertionField(formData, "loa_length");
+    if (loaLength) body["physical_boat.loa_length"] = loaLength;
+    const draft = assertionField(formData, "draft");
+    if (draft) body["physical_boat.draft"] = draft;
+    const keelConfiguration = assertionField(formData, "keel_configuration");
+    if (keelConfiguration) body["physical_boat.keel_configuration"] = keelConfiguration;
+    const rudderConfiguration = assertionField(formData, "rudder_configuration");
+    if (rudderConfiguration) body["physical_boat.rudder_configuration"] = rudderConfiguration;
+    const boatName = assertionField(formData, "boat_name");
+    if (boatName) body["physical_boat.boat_name"] = boatName;
+
+    const result = await saveListingClaim(
+      apiBaseUrl,
+      organizationId,
+      nativeListingId,
+      body,
+      cookieHeader,
+      originHeader,
+    );
+    if (result.kind === "ok") claimOutcome = "saved";
+    else if (result.kind === "denied") {
+      claimOutcome = "denied";
+      deniedReason = result.reason;
+    } else if (result.kind === "active_invariant_violation") {
+      claimOutcome = "active_invariant_violation";
+      invariantBlockers = result.blockers;
+    } else if (result.kind === "chain_incomplete") claimOutcome = "chain_incomplete";
+    else if (result.kind === "stale_version") claimOutcome = "stale_version";
+    else if (result.kind === "invalid_payload") claimOutcome = "invalid_payload";
+    else if (result.kind === "not_found") claimOutcome = "not_found";
+    else if (result.kind === "mfa_required") claimOutcome = "mfa_required";
+    else if (result.kind === "unauthenticated") claimOutcome = "unauthenticated";
+    else claimOutcome = "service_error";
+  }
+  // Every outcome falls through to the ordinary GET rendering below, which
+  // always re-reads the authoritative current state rather than trusting
+  // what was just submitted.
+}
+
+const result =
+  organizationId && nativeListingId
+    ? await fetchInventoryEditDetail(apiBaseUrl, organizationId, nativeListingId, cookieHeader)
+    : ({ kind: "not_found" } as const);
+
+if (result.kind === "not_found") {
+  Astro.response.status = 404;
+} else if (result.kind === "mfa_required") {
+  Astro.response.status = 403;
+} else if (result.kind === "service_error") {
+  Astro.response.status = 503;
+}
+
+const nextPath = `/broker/organizations/${organizationId ?? ""}/inventory/${nativeListingId ?? ""}/edit`;
+const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(nextPath)}`;
+const stepUpUrl = `${loginUrl}&acr_values=${encodeURIComponent(AUTH0_MFA_STEP_UP_ACR_VALUE)}`;
+
+const outcomeText: Record<SaveOutcome, string | null> = {
+  none: null,
+  saved: "Saved.",
+  unauthenticated: "Please log in to do this.",
+  not_found: "This listing isn't available here.",
+  mfa_required: "Additional verification is required before you can do this.",
+  denied: `Not allowed${deniedReason ? ` (${deniedReason})` : ""}.`,
+  invalid_payload: "That form couldn't be saved -- please review the values and try again.",
+  stale_version:
+    "This changed since you loaded the page -- the current values below have been refreshed; please re-apply your edit.",
+  active_invariant_violation:
+    invariantBlockers.length > 0
+      ? `This listing is live and this change would leave it in an invalid state: ${invariantBlockers.join(", ")}.`
+      : "This listing is live and this change would leave it in an invalid state.",
+  chain_incomplete: "This listing's underlying boat record isn't available for claim edits right now.",
+  service_error: "Something went wrong. Please try again.",
+};
+
+// Assertion-kind option vocabularies (mirrors
+// `hullq.domain.native_listing_offer`/`hullq.domain.physical_boat_claims`'s
+// own per-field allowed-kind sets).
+const UNKNOWN_ONLY = ["", "VALUE_ASSERTION", "UNKNOWN"];
+const NOT_APPLICABLE_ONLY = ["", "VALUE_ASSERTION", "NOT_APPLICABLE"];
+const KNOWN_HISTORY_KINDS = ["", "VALUE_ASSERTION", "NO_KNOWN_HISTORY_DECLARED", "UNKNOWN"];
+const BOAT_NAME_KINDS = ["", "VALUE_ASSERTION", "ABSENT", "UNKNOWN"];
+const KEEL_CONFIGURATIONS = [
+  "FIN",
+  "FIN_WITH_BULB",
+  "LONG_KEEL",
+  "WING",
+  "CENTERBOARD",
+  "LIFTING_KEEL",
+  "TWIN_KEEL",
+  "OTHER",
+];
+const RUDDER_CONFIGURATIONS = ["SPADE", "SKEG_HUNG", "TRANSOM_HUNG", "TWIN", "OTHER"];
+const VAT_TAX_STATUS_VALUES = ["VAT_PAID", "VAT_NOT_PAID", "VAT_MARGIN_SCHEME", "OTHER"];
+
+function currentWire(
+  data: Record<string, unknown> | null | undefined,
+  key: string,
+): { assertion_kind: string; value: unknown } | null {
+  const raw = data?.[key];
+  if (raw && typeof raw === "object" && "assertion_kind" in raw) {
+    return raw as { assertion_kind: string; value: unknown };
+  }
+  return null;
+}
+
+const offer = result.kind === "ok" ? result.data.offer : null;
+const claim = result.kind === "ok" ? result.data.claim : null;
+const offerRevisionId = result.kind === "ok" ? result.data.current_offer_revision_id : null;
+const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revision_id : null;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>HullQ Broker Workspace — Edit Listing</title>
+  </head>
+  <body>
+    <main>
+      {
+        result.kind === "unauthenticated" ? (
+          <>
+            <h1>Broker Workspace</h1>
+            <p>
+              Please <a href={loginUrl}>log in</a> to edit this listing.
+            </p>
+          </>
+        ) : result.kind === "not_found" ? (
+          <>
+            <h1>Not found</h1>
+            <p>This listing is not available here.</p>
+          </>
+        ) : result.kind === "mfa_required" ? (
+          <>
+            <h1>Additional verification required</h1>
+            <p>This Organization membership requires multi-factor authentication.</p>
+            <a href={stepUpUrl}>Verify and continue</a>
+          </>
+        ) : result.kind === "service_error" ? (
+          <>
+            <h1>Listing editor temporarily unavailable</h1>
+            <p>Something went wrong loading this listing. Please try again.</p>
+          </>
+        ) : (
+          <>
+            <h1>Edit listing</h1>
+            <p>
+              <a href={`/broker/organizations/${organizationId}/inventory`}>Back to inventory</a>
+              {" · "}
+              <a href={`/broker/organizations/${organizationId}/inventory/${nativeListingId}/media`}>
+                Manage media
+              </a>
+            </p>
+            <p>
+              Lifecycle: <strong>{result.data.lifecycle_state}</strong>
+              {result.data.current_public_status && (
+                <>
+                  {" "}
+                  — {result.data.current_public_status}
+                  {result.data.suppression_reasons && result.data.suppression_reasons.length > 0 && (
+                    <> ({result.data.suppression_reasons.join(", ")})</>
+                  )}
+                </>
+              )}
+              {result.data.publication_readiness && (
+                <>
+                  {" "}
+                  — {result.data.publication_readiness.status}
+                  {result.data.publication_readiness.blockers.length > 0 && (
+                    <> ({result.data.publication_readiness.blockers.join(", ")})</>
+                  )}
+                </>
+              )}
+            </p>
+
+            <h2>Offer</h2>
+            {outcomeText[offerOutcome] && <p>{outcomeText[offerOutcome]}</p>}
+            {offer ? (
+              <form method="POST">
+                <input type="hidden" name="action" value="save_offer" />
+                <input type="hidden" name="revision_id" value={crypto.randomUUID()} />
+                <input
+                  type="hidden"
+                  name="expected_current_revision_id"
+                  value={offerRevisionId ?? ""}
+                />
+                <p>
+                  <label>
+                    Price mode:
+                    <select name="asking_price_mode">
+                      <option
+                        value="AMOUNT"
+                        selected={offer["listing_offer.asking_price_mode"] === "AMOUNT"}
+                      >
+                        Amount
+                      </option>
+                      <option
+                        value="POA"
+                        selected={offer["listing_offer.asking_price_mode"] === "POA"}
+                      >
+                        Price on application
+                      </option>
+                    </select>
+                  </label>
+                </p>
+                <p>
+                  <label>
+                    Asking price amount:
+                    <input
+                      type="text"
+                      name="asking_price_amount"
+                      value={(offer["listing_offer.asking_price_amount"] as string) ?? ""}
+                      placeholder="e.g. 125000.00"
+                    />
+                  </label>
+                </p>
+                <p>
+                  <label>
+                    Currency (ISO 4217):
+                    <input
+                      type="text"
+                      name="currency"
+                      maxlength="3"
+                      value={(offer["listing_offer.currency"] as string) ?? ""}
+                      placeholder="EUR"
+                    />
+                  </label>
+                </p>
+                <p>
+                  <label>
+                    Location country (ISO 3166-1 alpha-2):
+                    <input
+                      type="text"
+                      name="location_country"
+                      maxlength="2"
+                      value={(offer["listing_offer.location_country"] as string) ?? ""}
+                      placeholder="FR"
+                    />
+                  </label>
+                </p>
+                <p>
+                  <label>
+                    Broker description:
+                    <textarea name="broker_description">
+                      {(offer["listing_offer.broker_description"] as string) ?? ""}
+                    </textarea>
+                  </label>
+                </p>
+
+                <fieldset>
+                  <legend>Location region</legend>
+                  <select name="location_region_kind">
+                    {UNKNOWN_ONLY.map((kind) => (
+                      <option
+                        value={kind}
+                        selected={
+                          (currentWire(offer, "listing_offer.location_region")?.assertion_kind ??
+                            "") === kind
+                        }
+                      >
+                        {kind === "" ? "(not specified)" : kind}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    name="location_region_value"
+                    value={
+                      (currentWire(offer, "listing_offer.location_region")?.value as string) ?? ""
+                    }
+                  />
+                </fieldset>
+
+                <fieldset>
+                  <legend>Broker summary</legend>
+                  <select name="broker_summary_kind">
+                    {NOT_APPLICABLE_ONLY.map((kind) => (
+                      <option
+                        value={kind}
+                        selected={
+                          (currentWire(offer, "listing_offer.broker_summary")?.assertion_kind ??
+                            "") === kind
+                        }
+                      >
+                        {kind === "" ? "(not specified)" : kind}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    name="broker_summary_value"
+                    value={
+                      (currentWire(offer, "listing_offer.broker_summary")?.value as string) ?? ""
+                    }
+                  />
+                </fieldset>
+
+                <fieldset>
+                  <legend>Known history narrative</legend>
+                  <select name="known_history_narrative_kind">
+                    {KNOWN_HISTORY_KINDS.map((kind) => (
+                      <option
+                        value={kind}
+                        selected={
+                          (currentWire(offer, "listing_offer.known_history_narrative")
+                            ?.assertion_kind ?? "") === kind
+                        }
+                      >
+                        {kind === "" ? "(not specified)" : kind}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    name="known_history_narrative_value"
+                    value={
+                      (currentWire(offer, "listing_offer.known_history_narrative")
+                        ?.value as string) ?? ""
+                    }
+                  />
+                </fieldset>
+
+                <fieldset>
+                  <legend>VAT/tax status claim</legend>
+                  <select name="vat_tax_status_claim_kind">
+                    {UNKNOWN_ONLY.map((kind) => (
+                      <option
+                        value={kind}
+                        selected={
+                          (currentWire(offer, "listing_offer.vat_tax_status_claim")
+                            ?.assertion_kind ?? "") === kind
+                        }
+                      >
+                        {kind === "" ? "(not specified)" : kind}
+                      </option>
+                    ))}
+                  </select>
+                  <select name="vat_tax_status_claim_value">
+                    {VAT_TAX_STATUS_VALUES.map((value) => (
+                      <option
+                        value={value}
+                        selected={
+                          currentWire(offer, "listing_offer.vat_tax_status_claim")?.value === value
+                        }
+                      >
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </fieldset>
+
+                <button type="submit">Save offer</button>
+              </form>
+            ) : (
+              <p>No current offer is available to edit for this listing yet.</p>
+            )}
+
+            <h2>PhysicalBoat claim</h2>
+            {outcomeText[claimOutcome] && <p>{outcomeText[claimOutcome]}</p>}
+            {claim ? (
+              <form method="POST">
+                <input type="hidden" name="action" value="save_claim" />
+                <input type="hidden" name="revision_id" value={crypto.randomUUID()} />
+                <input
+                  type="hidden"
+                  name="expected_current_revision_id"
+                  value={claimRevisionId ?? ""}
+                />
+                <p>
+                  <label>
+                    Marketed brand:
+                    <input
+                      type="text"
+                      name="marketed_brand_claim"
+                      value={(claim["physical_boat.marketed_brand_claim"] as string) ?? ""}
+                    />
+                  </label>
+                </p>
+                <p>
+                  <label>
+                    Model designation:
+                    <input
+                      type="text"
+                      name="model_designation_claim"
+                      value={(claim["physical_boat.model_designation_claim"] as string) ?? ""}
+                    />
+                  </label>
+                </p>
+
+                <fieldset>
+                  <legend>Build year (required)</legend>
+                  <select name="build_year_kind">
+                    {["VALUE_ASSERTION", "UNKNOWN"].map((kind) => (
+                      <option
+                        value={kind}
+                        selected={
+                          (currentWire(claim, "physical_boat.build_year")?.assertion_kind ??
+                            "VALUE_ASSERTION") === kind
+                        }
+                      >
+                        {kind}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    name="build_year_value"
+                    value={(currentWire(claim, "physical_boat.build_year")?.value as number) ?? ""}
+                  />
+                </fieldset>
+
+                <fieldset>
+                  <legend>LOA length (meters)</legend>
+                  <select name="loa_length_kind">
+                    {UNKNOWN_ONLY.map((kind) => (
+                      <option
+                        value={kind}
+                        selected={
+                          (currentWire(claim, "physical_boat.loa_length")?.assertion_kind ?? "") ===
+                          kind
+                        }
+                      >
+                        {kind === "" ? "(not specified)" : kind}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    name="loa_length_value"
+                    value={(currentWire(claim, "physical_boat.loa_length")?.value as string) ?? ""}
+                  />
+                </fieldset>
+
+                <fieldset>
+                  <legend>Draft (meters)</legend>
+                  <select name="draft_kind">
+                    {UNKNOWN_ONLY.map((kind) => (
+                      <option
+                        value={kind}
+                        selected={
+                          (currentWire(claim, "physical_boat.draft")?.assertion_kind ?? "") === kind
+                        }
+                      >
+                        {kind === "" ? "(not specified)" : kind}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    name="draft_value"
+                    value={(currentWire(claim, "physical_boat.draft")?.value as string) ?? ""}
+                  />
+                </fieldset>
+
+                <fieldset>
+                  <legend>Keel configuration</legend>
+                  <select name="keel_configuration_kind">
+                    {UNKNOWN_ONLY.map((kind) => (
+                      <option
+                        value={kind}
+                        selected={
+                          (currentWire(claim, "physical_boat.keel_configuration")
+                            ?.assertion_kind ?? "") === kind
+                        }
+                      >
+                        {kind === "" ? "(not specified)" : kind}
+                      </option>
+                    ))}
+                  </select>
+                  <select name="keel_configuration_value">
+                    {KEEL_CONFIGURATIONS.map((value) => (
+                      <option
+                        value={value}
+                        selected={
+                          currentWire(claim, "physical_boat.keel_configuration")?.value === value
+                        }
+                      >
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </fieldset>
+
+                <fieldset>
+                  <legend>Rudder configuration</legend>
+                  <select name="rudder_configuration_kind">
+                    {UNKNOWN_ONLY.map((kind) => (
+                      <option
+                        value={kind}
+                        selected={
+                          (currentWire(claim, "physical_boat.rudder_configuration")
+                            ?.assertion_kind ?? "") === kind
+                        }
+                      >
+                        {kind === "" ? "(not specified)" : kind}
+                      </option>
+                    ))}
+                  </select>
+                  <select name="rudder_configuration_value">
+                    {RUDDER_CONFIGURATIONS.map((value) => (
+                      <option
+                        value={value}
+                        selected={
+                          currentWire(claim, "physical_boat.rudder_configuration")?.value === value
+                        }
+                      >
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </fieldset>
+
+                <fieldset>
+                  <legend>Boat name</legend>
+                  <select name="boat_name_kind">
+                    {BOAT_NAME_KINDS.map((kind) => (
+                      <option
+                        value={kind}
+                        selected={
+                          (currentWire(claim, "physical_boat.boat_name")?.assertion_kind ?? "") ===
+                          kind
+                        }
+                      >
+                        {kind === "" ? "(not specified)" : kind}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    name="boat_name_value"
+                    value={(currentWire(claim, "physical_boat.boat_name")?.value as string) ?? ""}
+                  />
+                </fieldset>
+
+                <button type="submit">Save claim</button>
+              </form>
+            ) : (
+              <p>No PhysicalBoat claim is available to edit for this listing yet.</p>
+            )}
+          </>
+        )
+      }
+    </main>
+  </body>
+</html>

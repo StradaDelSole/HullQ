@@ -89,6 +89,14 @@ from hullq.application.buyer_lead_creation import (
     CreateBuyerLeadOutcome,
     create_buyer_lead_for_listing,
 )
+from hullq.application.inventory_editing import (
+    ClaimSaveOutcome,
+    InventoryDetailOutcome,
+    OfferSaveOutcome,
+    get_inventory_edit_detail,
+    save_organization_listing_claim,
+    save_organization_listing_offer,
+)
 from hullq.application.inventory_search import DraftMaxSearchOutcome
 from hullq.application.lead_operations import (
     LeadInboxFilters,
@@ -319,6 +327,13 @@ _BUYER_LEAD_CSRF_HEADER_VALUE = "marketplace-buyer-lead-v1"
 #: gallery/buyer-lead CSRF header can never be replayed against the Lead
 #: operations/notification-config mutation routes.
 _BROKER_LEAD_OPS_CSRF_HEADER_VALUE = "broker-lead-operations-v1"
+
+#: SLICE-0072 contract §14: the identical fixed-header + exact-Origin CSRF
+#: discipline as every other authenticated broker-write channel above, with
+#: its own distinct header value so a valid draft/owner-direct/lifecycle/
+#: gallery/buyer-lead/lead-ops CSRF header can never be replayed against the
+#: post-promotion offer/claim editor mutation routes.
+_INVENTORY_EDITING_CSRF_HEADER_VALUE = "professional-inventory-editing-v1"
 
 #: SLICE-0070 contract §9: bounded request size before any unbounded
 #: buffering, mirroring the media-upload Content-Length discipline --
@@ -740,6 +755,22 @@ def create_app(
             actual is None
             or actual != accepted
             or requested_with != _BROKER_LEAD_OPS_CSRF_HEADER_VALUE
+        ):
+            raise HTTPException(status_code=403, detail="csrf validation failed")
+
+    def _require_inventory_editing_csrf(request: Request) -> None:
+        # SLICE-0072 contract §14: identical exact-Origin-match + fixed
+        # non-simple header discipline as every other authenticated
+        # broker-write channel, with its own distinct header value (see
+        # `_INVENTORY_EDITING_CSRF_HEADER_VALUE`).
+        origin_header = request.headers.get("origin")
+        requested_with = request.headers.get(_OWNER_DIRECT_CSRF_HEADER_NAME)
+        accepted = _normalized_origin(_resolve_web_origin())
+        actual = _normalized_origin(origin_header) if origin_header else None
+        if (
+            actual is None
+            or actual != accepted
+            or requested_with != _INVENTORY_EDITING_CSRF_HEADER_VALUE
         ):
             raise HTTPException(status_code=403, detail="csrf validation failed")
 
@@ -1444,6 +1475,120 @@ def create_app(
         finally:
             conn.close()
         return _inventory_reconfirm_response(result)
+
+    # -----------------------------------------------------------------
+    # SLICE-0072: post-promotion inventory offer/claim editor
+    # -----------------------------------------------------------------
+
+    @app.get("/api/broker/organizations/{organization_id}/inventory/{native_listing_id}/edit")
+    def get_inventory_edit_detail_route(
+        organization_id: str, native_listing_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            result = get_inventory_edit_detail(
+                conn, session, organization_id, native_listing_id, as_of=_current_as_of()
+            )
+        finally:
+            conn.close()
+        if result.outcome is InventoryDetailOutcome.ORG_NOT_FOUND_OR_DENIED:
+            raise HTTPException(status_code=404, detail="organization not found")
+        if result.outcome is InventoryDetailOutcome.MFA_REQUIRED:
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if result.outcome is InventoryDetailOutcome.LISTING_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="listing not found")
+        assert result.view is not None
+        return JSONResponse(result.view.to_public_dict())
+
+    def _offer_save_response(result: Any) -> JSONResponse:
+        # Contract §8: every outcome maps to a mechanically distinct
+        # status/body -- never a bare boolean, and never a false-success
+        # shape for a denied/invalid/stale/blocked attempt.
+        outcome = result.outcome
+        if outcome is OfferSaveOutcome.ORG_NOT_FOUND_OR_DENIED:
+            raise HTTPException(status_code=404, detail="organization not found")
+        if outcome is OfferSaveOutcome.MFA_REQUIRED:
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if outcome is OfferSaveOutcome.DENIED:
+            assert result.denial_reason is not None
+            return JSONResponse(
+                {"error": "publishing_denied", "reason": result.denial_reason.value},
+                status_code=403,
+            )
+        if outcome is OfferSaveOutcome.LISTING_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="listing not found")
+        if outcome is OfferSaveOutcome.INVALID_PAYLOAD:
+            return JSONResponse({"error": "invalid_payload"}, status_code=400)
+        if outcome is OfferSaveOutcome.STALE_VERSION:
+            return JSONResponse(result.to_public_dict(), status_code=409)
+        if outcome is OfferSaveOutcome.ACTIVE_INVARIANT_VIOLATION:
+            return JSONResponse(result.to_public_dict(), status_code=422)
+        assert outcome is OfferSaveOutcome.SAVED
+        return JSONResponse(result.to_public_dict(), status_code=200)
+
+    def _claim_save_response(result: Any) -> JSONResponse:
+        outcome = result.outcome
+        if outcome is ClaimSaveOutcome.ORG_NOT_FOUND_OR_DENIED:
+            raise HTTPException(status_code=404, detail="organization not found")
+        if outcome is ClaimSaveOutcome.MFA_REQUIRED:
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if outcome is ClaimSaveOutcome.DENIED:
+            assert result.denial_reason is not None
+            return JSONResponse(
+                {"error": "publishing_denied", "reason": result.denial_reason.value},
+                status_code=403,
+            )
+        if outcome is ClaimSaveOutcome.LISTING_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="listing not found")
+        if outcome is ClaimSaveOutcome.CHAIN_INCOMPLETE:
+            return JSONResponse({"error": "chain_incomplete"}, status_code=409)
+        if outcome is ClaimSaveOutcome.INVALID_PAYLOAD:
+            return JSONResponse({"error": "invalid_payload"}, status_code=400)
+        if outcome is ClaimSaveOutcome.STALE_VERSION:
+            return JSONResponse(result.to_public_dict(), status_code=409)
+        if outcome is ClaimSaveOutcome.ACTIVE_INVARIANT_VIOLATION:
+            return JSONResponse(result.to_public_dict(), status_code=422)
+        assert outcome is ClaimSaveOutcome.SAVED
+        return JSONResponse(result.to_public_dict(), status_code=200)
+
+    @app.post("/api/broker/organizations/{organization_id}/inventory/{native_listing_id}/offer")
+    async def save_inventory_offer_route(
+        organization_id: str, native_listing_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_inventory_editing_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        conn = open_connection(resolved_database_url)
+        try:
+            result = save_organization_listing_offer(
+                conn, session, organization_id, native_listing_id, raw_body
+            )
+        finally:
+            conn.close()
+        return _offer_save_response(result)
+
+    @app.post("/api/broker/organizations/{organization_id}/inventory/{native_listing_id}/claim")
+    async def save_inventory_claim_route(
+        organization_id: str, native_listing_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_inventory_editing_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        conn = open_connection(resolved_database_url)
+        try:
+            result = save_organization_listing_claim(
+                conn, session, organization_id, native_listing_id, raw_body
+            )
+        finally:
+            conn.close()
+        return _claim_save_response(result)
 
     # -----------------------------------------------------------------
     # SLICE-0071: Broker Lead operations + notification-recipient config

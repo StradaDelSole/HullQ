@@ -318,6 +318,12 @@ const actionOutcomeText: Record<ActionOutcome, string | null> = {
                       <td>
                         <p>
                           <a
+                            href={`/broker/organizations/${organizationId}/inventory/${encodeURIComponent(item.native_listing_id)}/edit`}
+                          >
+                            Edit
+                          </a>
+                          {" · "}
+                          <a
                             href={`/broker/organizations/${organizationId}/inventory/${encodeURIComponent(item.native_listing_id)}/media`}
                           >
                             Manage media
