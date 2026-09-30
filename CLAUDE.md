@@ -49,7 +49,7 @@ Slices are operational work contracts and do not override this order. Never turn
 - `IMPLEMENTATION` implements only accepted semantics identified by its controlling artifacts.
 - If required semantics are unresolved or controlling artifacts materially conflict, stop and report `BLOCKED` rather than inventing policy.
 - Do not automatically begin another slice after `REVIEW` or `BLOCKED`.
-- Prefer small coherent edits and focused tests while iterating; do not rerun broad suites after every small amendment. Run the full validation required by the slice on the final candidate handoff HEAD.
+- Prefer small coherent edits and focused tests while iterating; do not rerun broad suites after every small amendment. By default, final-candidate local validation is affected-surface focused; the complete regression is authoritative on the exact pushed HEAD in GitHub Actions. Do not run the complete local backend suite merely because a candidate/amendment is ready for handoff. A local full-suite run requires a concrete exception: the task changes test/CI/coverage/migration/isolation machinery, a remote failure needs broad local reproduction, or the controlling slice explicitly requires a local-only proof.
 - On a substantial slice, compact once at the implementation→final-validation phase boundary when context/tool output has become large. At ~100k reported active context, do not begin another broad cycle before compacting.
 
 The operational queue is `docs/slices/INDEX.md`; read it only when queue/status context is actually needed.
