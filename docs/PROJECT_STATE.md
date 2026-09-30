@@ -260,6 +260,18 @@ docs/HULLQ_HELP_SUPPORT_ZAMMAD_DECISION_2026-09-30.md
 
 Zammad is intended for branded customer support, tickets/conversations, agent workflow, Knowledge Base/Help Center, custom support fields/roles and ordinary SLA/routing. It is not HullQ domain authority. Marketplace truth, verification, scam/fraud adjudication, Trust & Safety cases, listing suppression/protective actions, representation conflicts and audit history remain HullQ-owned. Hosted is preferred over self-hosting to avoid operating an additional support-data infrastructure containing personal data. Integration, privacy/retention configuration, branding validation and Trust & Safety linkage remain not yet implemented and must be included in future overall-MVP reconciliation.
 
+## Overall MVP completeness register
+
+The Project Owner accepted a cross-cutting overall-MVP completeness register:
+
+~~~text
+docs/governance/OVERALL_MVP_CAPABILITY_REGISTER.md
+~~~
+
+It covers Buyer continuity/alerts, Broker completion, Owner-Direct completion, Trust/Verification/Safety, Help & Support, Admin/Moderation/Operations, Account Lifecycle/Privacy/Legal, Communications/Notification Operations, Monetization/Billing, Internationalization/Accessibility/SEO, Production/Security/Reliability and Data Operations/Truth Maintenance.
+
+For every primary slice selected after SLICE-0072, post-slice reassessment/readiness must inspect this register so an accepted capability cannot disappear by omission. An overall-MVP-ready claim is blocked while an applicable register item remains PENDING, DUE, PARTIAL or NOT_STARTED unless an explicit owner-accepted launch-boundary decision marks it not applicable or supersedes it.
+
 ## What remains unbuilt
 
 Important future work includes the accepted Zammad Hosted Professional v2 Help & Support integration and HullQ-native Trust & Safety linkage; owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; post-promotion inventory editing; production email-provider activation; buyer-contact email verification; sales/outcomes and broader broker analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
