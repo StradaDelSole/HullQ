@@ -165,6 +165,9 @@ Summary evidence is retained in `docs/engineering/CI_THROUGHPUT_EVIDENCE.md` and
 completion report delivered at handoff. Local full-suite PostgreSQL-backed before/after timing could
 not be completed within the implementation session on the owner's local hardware (see that document,
 section 5); a bounded representative subset, the non-DB suite, coverage-combine mechanics and
-orchestration failure-propagation were all verified directly. Remote GitHub Actions timing is the
-authoritative acceptance evidence and is reported as observed or `NOT VERIFIED` in the completion
+orchestration failure-propagation were all verified directly. Remote GitHub Actions timing (the
+authoritative acceptance evidence) was directly observed on PR #282 — critical path 3m23s against the
+5min/4min targets and the 7m21s-8m22s baseline — and is detailed in section 8 of the evidence doc, so
+this metric is `VERIFIED`, not `NOT VERIFIED`, at handoff. Two defects were found and fixed only via
+that real run (see evidence doc section 7a); the final green HEAD is `a569b9f` and the completion
 report, never inferred from local numbers.

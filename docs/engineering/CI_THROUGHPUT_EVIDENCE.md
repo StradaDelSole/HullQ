@@ -167,7 +167,38 @@ assertion was weakened to make it pass.
 
 ## 8. Remote CI observation
 
-<!-- Filled from a real `gh run view` observation of this branch's/PR's actual GitHub Actions
-run after push. Per CLAUDE.md, local evidence is never substituted for this — if the remote run
-could not be observed at handoff time, this section says so explicitly (NOT VERIFIED) rather than
-inferring remote timing from local numbers. -->
+Observed directly via `gh pr checks` / `gh run view --json jobs` on PR #282
+(`https://github.com/StradaDelSole/HullQ/pull/282`), final green run
+`https://github.com/StradaDelSole/HullQ/actions/runs/36789457988` (HEAD `a569b9f`):
+
+| Job | Duration | Conclusion |
+| --- | --- | --- |
+| `db integration (PostgreSQL 18)` | **3m22s** | pass |
+| `quality (windows-latest)` | 1m47s | pass |
+| `historical research/bootstrap replay (PostgreSQL 18)` | 2m21s | pass |
+| `quality (ubuntu-latest)` | 1m2s | pass |
+| `web quality (Astro/Node)` | 36s | pass |
+| `dependency audit` | 11s | pass |
+
+**Critical path (workflow start → last required job complete): 3m23s** (23:08:02Z → 23:11:25Z),
+against the 7m21s–8m22s baseline — a **~2.2×–2.4× reduction**, comfortably inside both the ≤5min
+target and the ≤4min stretch target.
+
+Inside `db-integration`, the sharded `pytest -n auto --dist loadgroup --cov=hullq --cov-branch`
+step itself (the direct replacement for the old single-process `coverage run -m pytest`, whose
+equivalent baseline step alone was 4m35s–5m14s) completed in **117.95s** on GitHub's 4-vCPU
+Linux runner: **5908 passed, 3 skipped**, combined branch coverage **90.84%** (≥90% enforced by
+the following `coverage report` step, which read the pytest-cov-combined data from all 4
+xdist workers). The test count is 8 higher than the SLICE-0072 baseline's 5900 because this
+slice adds `tests/contract/test_historical_replay_scope.py`; the skip count (3) is unchanged.
+
+`historical-research-replay` correctly computed `relevant=true` and ran every replay step on
+this PR (it modifies `pyproject.toml`, `uv.lock`, and `tests/persistence/conftest.py`, all in
+its relevant-path allowlist) — a real end-to-end confirmation of the change-triggered routing
+logic, not just the fail-open/always-relevant-event paths exercised by the local unit tests in
+`tests/contract/test_historical_replay_scope.py`.
+
+Two defects were found and fixed only via this real run — see section 7a for the exact symptoms,
+root causes and fixes (a `python -m pytest` invocation fix, and an xdist serialization fix for a
+pre-existing "regenerate committed artifacts in place" test family). The final green run above is
+the fully-fixed state.
