@@ -67,3 +67,9 @@ Every corrected domain/data bug SHOULD gain a regression test linked to the rele
 ## Determinism
 
 Normal CI MUST NOT depend on mutable live marketplace pages or live research sources. Live checks are operational probes, not unit-test dependencies.
+
+## Execution efficiency
+
+Test completeness and test execution scheduling are separate concerns. HullQ may classify, shard and parallelize tests so long as normative coverage and the final accepted gate remain intact.
+
+A dedicated owner-accepted post-SLICE-0075 optimization is required by `docs/engineering/POST_0075_TEST_CI_THROUGHPUT_OPTIMIZATION.md`. Before/after timing evidence is required; speed improvements must not be obtained by silently dropping meaningful regression, security, persistence or retained-proof coverage.
