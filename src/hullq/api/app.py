@@ -90,6 +90,23 @@ from hullq.application.buyer_lead_creation import (
     create_buyer_lead_for_listing,
 )
 from hullq.application.inventory_search import DraftMaxSearchOutcome
+from hullq.application.lead_operations import (
+    LeadInboxFilters,
+    LeadOperationOutcome,
+    NotificationConfigOutcome,
+    append_contact_attempt,
+    append_note,
+    close_lead,
+    get_lead_detail,
+    get_organization_lead_counts,
+    get_organization_lead_inbox_page,
+    get_organization_notification_config,
+    mark_read,
+    set_assignment,
+    set_follow_up,
+    set_notification_config,
+    set_status,
+)
 from hullq.application.media_gallery import (
     AddYoutubeOutcome,
     GalleryReadOutcome,
@@ -150,14 +167,21 @@ from hullq.application.search_sensitivity import (
     SensitivityOutcomeKind,
     evaluate_requirement_sensitivity,
 )
+from hullq.domain.buyer_lead import LeadId
+from hullq.domain.lead_operations import LeadCloseReason, LeadOperationalStatus
+from hullq.domain.lead_provenance import DiscoverySurface
 from hullq.domain.market_identity import NativeListingId
 from hullq.domain.media_gallery import MAX_IMAGE_UPLOAD_BYTES
-from hullq.domain.publishing_eligibility import MarketplaceOrganizationId
+from hullq.domain.publishing_eligibility import AccountId, MarketplaceOrganizationId
 from hullq.persistence.connection import get_database_url, open_connection
 from hullq.search.configuration_engine import DesignQueryEvaluation
 from hullq.search.criteria import NumericLeafCriterion
 from hullq.search.draft_max_request import canonical_draft_max_str
 from hullq.search.query_mixed import MixedLeafCriterion
+from hullq.security.discovery_surface_signing import (
+    mint_discovery_surface_token,
+    verify_discovery_surface_token,
+)
 from hullq.security.oidc import AuthProviderConfig, get_auth_provider_config
 from hullq.security.preview_signing import get_preview_signing_secret
 from hullq.security.session_signing import get_session_signing_secret
@@ -288,6 +312,13 @@ _MEDIA_GALLERY_CSRF_HEADER_VALUE = "marketplace-media-gallery-v1"
 #: An anonymous buyer never authenticates, so this is the only defense this
 #: route has against a cross-site POST -- there is no session to also check.
 _BUYER_LEAD_CSRF_HEADER_VALUE = "marketplace-buyer-lead-v1"
+
+#: SLICE-0071 contract §14: the identical fixed-header + exact-Origin CSRF
+#: discipline as every other authenticated broker-write channel above, with
+#: its own distinct header value so a valid draft/owner-direct/lifecycle/
+#: gallery/buyer-lead CSRF header can never be replayed against the Lead
+#: operations/notification-config mutation routes.
+_BROKER_LEAD_OPS_CSRF_HEADER_VALUE = "broker-lead-operations-v1"
 
 #: SLICE-0070 contract §9: bounded request size before any unbounded
 #: buffering, mirroring the media-upload Content-Length discipline --
@@ -696,6 +727,22 @@ def create_app(
         if actual is None or actual != accepted or requested_with != _BUYER_LEAD_CSRF_HEADER_VALUE:
             raise HTTPException(status_code=403, detail="csrf validation failed")
 
+    def _require_broker_lead_ops_csrf(request: Request) -> None:
+        # SLICE-0071 contract §14: identical exact-Origin-match + fixed
+        # non-simple header discipline as every other authenticated
+        # broker-write channel, with its own distinct header value (see
+        # `_BROKER_LEAD_OPS_CSRF_HEADER_VALUE`).
+        origin_header = request.headers.get("origin")
+        requested_with = request.headers.get(_OWNER_DIRECT_CSRF_HEADER_NAME)
+        accepted = _normalized_origin(_resolve_web_origin())
+        actual = _normalized_origin(origin_header) if origin_header else None
+        if (
+            actual is None
+            or actual != accepted
+            or requested_with != _BROKER_LEAD_OPS_CSRF_HEADER_VALUE
+        ):
+            raise HTTPException(status_code=403, detail="csrf validation failed")
+
     async def _read_json_body(request: Request, *, allow_empty: bool) -> Any:
         raw_body = await request.body()
         if not raw_body:
@@ -761,6 +808,23 @@ def create_app(
 
     @app.get("/api/listings/{native_listing_id}")
     def get_public_listing(native_listing_id: str) -> JSONResponse:
+        # Independent-review Finding B: this route deliberately accepts NO
+        # discovery-surface-related query parameter of any kind. It
+        # previously accepted `discovery_surface_context`/`ds`/
+        # `referrer_hint`, letting any unauthenticated public caller choose
+        # which signed SHORTLIST/COMPARE/DIRECT_LISTING/INTERNAL_BROWSE
+        # token it received merely by supplying a parameter -- a public
+        # read endpoint can never be the authority that decides what
+        # discovery-surface token gets minted. SHORTLIST/COMPARE tokens are
+        # now minted only by Astro's own trusted shortlist/compare
+        # resolution routes (`web/src/pages/api/shortlist/resolve.ts`,
+        # `.../compare-resolve.ts`), whose own route identity -- never a
+        # request parameter -- determines the surface; DIRECT_LISTING/
+        # INTERNAL_BROWSE are classified by the listing detail page itself
+        # from the real `Referer` header it actually received
+        # (`web/src/lib/discoverySurfaceSigning.ts`). TECHNICAL_SEARCH
+        # remains minted below in `get_search`, the one case where FastAPI
+        # itself has genuine first-party knowledge of the surface.
         conn = open_connection(resolved_database_url)
         try:
             model = get_public_listing_read_model(
@@ -828,6 +892,21 @@ def create_app(
         session = _require_session(request)
         account_id = session.account_id if session is not None else None
 
+        # SLICE-0071 contract §8B amendment (Finding A): the browser only
+        # ever forwards an opaque HMAC-signed token it cannot construct or
+        # alter -- this is the one place that token is trusted at all, and
+        # only after independently re-verifying its signature/expiry/
+        # listing-binding. Any absent/malformed/tampered/expired/foreign-
+        # listing token resolves to UNKNOWN, never a guess, and never raises
+        # (contract invariant: attribution must never risk the Lead creation
+        # path itself).
+        resolved_discovery_surface = (
+            verify_discovery_surface_token(
+                raw_body.get("discovery_token"), native_listing_id, secret=resolved_secret
+            )
+            or DiscoverySurface.UNKNOWN
+        )
+
         conn = open_connection(resolved_database_url)
         try:
             result = create_buyer_lead_for_listing(
@@ -839,6 +918,15 @@ def create_app(
                 raw_email=raw_body.get("email"),
                 raw_message=raw_body.get("message"),
                 as_of=_current_as_of(),
+                # SLICE-0071 contract §8B: optional, bounded, evidence-only
+                # acquisition attribution -- absent/malformed values degrade
+                # to UNKNOWN and never fail Lead creation itself.
+                raw_utm_source=raw_body.get("utm_source"),
+                raw_utm_medium=raw_body.get("utm_medium"),
+                raw_utm_campaign=raw_body.get("utm_campaign"),
+                raw_utm_term=raw_body.get("utm_term"),
+                raw_utm_content=raw_body.get("utm_content"),
+                discovery_surface=resolved_discovery_surface,
             )
         finally:
             conn.close()
@@ -924,6 +1012,16 @@ def create_app(
                                 if match.last_confirmed_at is not None
                                 else None
                             ),
+                            # SLICE-0071 contract §8B amendment: bound to this
+                            # exact result's own NativeListingId -- a buyer
+                            # who clicks through and contacts the listing
+                            # carries genuine, tamper-safe TECHNICAL_SEARCH
+                            # discovery evidence.
+                            "discovery_token": mint_discovery_surface_token(
+                                DiscoverySurface.TECHNICAL_SEARCH,
+                                match.native_listing_id.value,
+                                secret=resolved_secret,
+                            ),
                         }
                         for match in search_outcome.confirmed_matches
                     ],
@@ -960,6 +1058,11 @@ def create_app(
                             _serialize_criterion_evidence(evidence)
                             for evidence in match.concrete_criterion_evidence
                         ],
+                        "discovery_token": mint_discovery_surface_token(
+                            DiscoverySurface.TECHNICAL_SEARCH,
+                            match.native_listing_id.value,
+                            secret=resolved_secret,
+                        ),
                     }
                     for match in search_outcome.confirmed_matches
                 ],
@@ -1341,6 +1444,411 @@ def create_app(
         finally:
             conn.close()
         return _inventory_reconfirm_response(result)
+
+    # -----------------------------------------------------------------
+    # SLICE-0071: Broker Lead operations + notification-recipient config
+    # -----------------------------------------------------------------
+
+    def _lead_operation_error_response(outcome: LeadOperationOutcome) -> JSONResponse | None:
+        # Contract §2: unknown Organization, unauthorized membership and a
+        # foreign-Organization Lead all collapse to non-enumerating 404s.
+        if outcome is LeadOperationOutcome.ORG_NOT_FOUND_OR_DENIED:
+            raise HTTPException(status_code=404, detail="organization not found")
+        if outcome is LeadOperationOutcome.MFA_REQUIRED:
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if outcome is LeadOperationOutcome.LEAD_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="lead not found")
+        if outcome is LeadOperationOutcome.INVALID_INPUT:
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        if outcome is LeadOperationOutcome.VERSION_CONFLICT:
+            return JSONResponse({"error": "version_conflict"}, status_code=409)
+        if outcome is LeadOperationOutcome.ASSIGNEE_NOT_ACTIVE_MEMBER:
+            return JSONResponse({"error": "assignee_not_active_member"}, status_code=422)
+        if outcome is LeadOperationOutcome.INVALID_PAGE_SIZE:
+            return JSONResponse({"error": "invalid_page_size"}, status_code=400)
+        if outcome is LeadOperationOutcome.INVALID_CURSOR:
+            return JSONResponse({"error": "invalid_cursor"}, status_code=400)
+        return None
+
+    def _lead_mutation_response(result: Any) -> JSONResponse:
+        error = _lead_operation_error_response(result.outcome)
+        if error is not None:
+            return error
+        return JSONResponse(result.to_public_dict(), status_code=200)
+
+    def _notification_config_error_response(
+        outcome: NotificationConfigOutcome,
+    ) -> JSONResponse | None:
+        if outcome is NotificationConfigOutcome.ORG_NOT_FOUND_OR_DENIED:
+            raise HTTPException(status_code=404, detail="organization not found")
+        if outcome is NotificationConfigOutcome.MFA_REQUIRED:
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if outcome is NotificationConfigOutcome.ROLE_REQUIRED:
+            return JSONResponse({"error": "role_required"}, status_code=403)
+        if outcome is NotificationConfigOutcome.INVALID_INPUT:
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        if outcome is NotificationConfigOutcome.VERSION_CONFLICT:
+            return JSONResponse({"error": "version_conflict"}, status_code=409)
+        return None
+
+    @app.get("/api/broker/organizations/{organization_id}/leads")
+    def get_organization_leads_route(organization_id: str, request: Request) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+
+        raw_page_size = request.query_params.get("page_size")
+        if raw_page_size is not None:
+            try:
+                page_size: int | None = int(raw_page_size)
+            except ValueError:
+                return JSONResponse({"error": "invalid_page_size"}, status_code=400)
+        else:
+            page_size = None
+        cursor = request.query_params.get("cursor")
+
+        raw_status = request.query_params.get("status")
+        try:
+            status_filter = LeadOperationalStatus(raw_status) if raw_status is not None else None
+        except ValueError:
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        raw_assignee = request.query_params.get("assignee_account_id")
+        assignee_filter = AccountId(raw_assignee) if raw_assignee else None
+        unread_only = request.query_params.get("unread_only") == "true"
+        follow_up_due_before = (
+            _current_as_of() if request.query_params.get("follow_up_due") == "true" else None
+        )
+
+        conn = open_connection(resolved_database_url)
+        try:
+            result = get_organization_lead_inbox_page(
+                conn,
+                session,
+                MarketplaceOrganizationId(organization_id),
+                page_size=page_size,
+                cursor=cursor,
+                filters=LeadInboxFilters(
+                    status=status_filter,
+                    assignee_account_id=assignee_filter,
+                    unread_only=unread_only,
+                    follow_up_due_before=follow_up_due_before,
+                ),
+            )
+        finally:
+            conn.close()
+
+        error = _lead_operation_error_response(result.outcome)
+        if error is not None:
+            return error
+        body: dict[str, Any] = {"items": list(result.items or ())}
+        if result.next_cursor is not None:
+            body["next_cursor"] = result.next_cursor
+        return JSONResponse(body)
+
+    @app.get("/api/broker/organizations/{organization_id}/leads/counts")
+    def get_organization_lead_counts_route(organization_id: str, request: Request) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            result = get_organization_lead_counts(
+                conn, session, MarketplaceOrganizationId(organization_id), as_of=_current_as_of()
+            )
+        finally:
+            conn.close()
+        error = _lead_operation_error_response(result.outcome)
+        if error is not None:
+            return error
+        return JSONResponse(result.to_public_dict())
+
+    @app.get("/api/broker/organizations/{organization_id}/leads/{lead_id}")
+    def get_lead_detail_route(organization_id: str, lead_id: str, request: Request) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            result = get_lead_detail(
+                conn, session, MarketplaceOrganizationId(organization_id), LeadId(lead_id)
+            )
+        finally:
+            conn.close()
+        error = _lead_operation_error_response(result.outcome)
+        if error is not None:
+            return error
+        assert result.lead is not None
+        return JSONResponse(result.lead)
+
+    @app.post("/api/broker/organizations/{organization_id}/leads/{lead_id}/read")
+    def mark_lead_read_route(organization_id: str, lead_id: str, request: Request) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_broker_lead_ops_csrf(request)
+        conn = open_connection(resolved_database_url)
+        try:
+            result = mark_read(
+                conn,
+                session,
+                MarketplaceOrganizationId(organization_id),
+                LeadId(lead_id),
+                as_of=_current_as_of(),
+            )
+        finally:
+            conn.close()
+        return _lead_mutation_response(result)
+
+    @app.post("/api/broker/organizations/{organization_id}/leads/{lead_id}/assignment")
+    async def set_lead_assignment_route(
+        organization_id: str, lead_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_broker_lead_ops_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        if not isinstance(raw_body, dict) or "expected_version" not in raw_body:
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        raw_assignee = raw_body.get("assignee_account_id")
+        if raw_assignee is not None and not isinstance(raw_assignee, str):
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        try:
+            expected_version = int(raw_body["expected_version"])
+        except TypeError, ValueError:
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        conn = open_connection(resolved_database_url)
+        try:
+            result = set_assignment(
+                conn,
+                session,
+                MarketplaceOrganizationId(organization_id),
+                LeadId(lead_id),
+                assignee_account_id=AccountId(raw_assignee) if raw_assignee else None,
+                expected_version=expected_version,
+                as_of=_current_as_of(),
+            )
+        finally:
+            conn.close()
+        return _lead_mutation_response(result)
+
+    @app.post("/api/broker/organizations/{organization_id}/leads/{lead_id}/status")
+    async def set_lead_status_route(
+        organization_id: str, lead_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_broker_lead_ops_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        if not isinstance(raw_body, dict) or "expected_version" not in raw_body:
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        raw_status = raw_body.get("status")
+        if not isinstance(raw_status, str):
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        try:
+            new_status = LeadOperationalStatus(raw_status)
+        except ValueError:
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        if new_status is LeadOperationalStatus.CLOSED:
+            # Contract §8A: closing always requires a bounded reason -- use
+            # the dedicated close route, never this general one.
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        try:
+            expected_version = int(raw_body["expected_version"])
+        except TypeError, ValueError:
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        conn = open_connection(resolved_database_url)
+        try:
+            result = set_status(
+                conn,
+                session,
+                MarketplaceOrganizationId(organization_id),
+                LeadId(lead_id),
+                new_status=new_status,
+                close_reason=None,
+                expected_version=expected_version,
+                as_of=_current_as_of(),
+            )
+        finally:
+            conn.close()
+        return _lead_mutation_response(result)
+
+    @app.post("/api/broker/organizations/{organization_id}/leads/{lead_id}/close")
+    async def close_lead_route(
+        organization_id: str, lead_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_broker_lead_ops_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        if not isinstance(raw_body, dict) or "expected_version" not in raw_body:
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        raw_close_reason = raw_body.get("close_reason")
+        if not isinstance(raw_close_reason, str):
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        try:
+            close_reason = LeadCloseReason(raw_close_reason)
+        except ValueError:
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        try:
+            expected_version = int(raw_body["expected_version"])
+        except TypeError, ValueError:
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        conn = open_connection(resolved_database_url)
+        try:
+            result = close_lead(
+                conn,
+                session,
+                MarketplaceOrganizationId(organization_id),
+                LeadId(lead_id),
+                close_reason=close_reason,
+                expected_version=expected_version,
+                as_of=_current_as_of(),
+            )
+        finally:
+            conn.close()
+        return _lead_mutation_response(result)
+
+    @app.post("/api/broker/organizations/{organization_id}/leads/{lead_id}/follow-up")
+    async def set_lead_follow_up_route(
+        organization_id: str, lead_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_broker_lead_ops_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        if not isinstance(raw_body, dict) or "expected_version" not in raw_body:
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        raw_due_at = raw_body.get("due_at")
+        due_at: datetime | None
+        if raw_due_at is None:
+            due_at = None
+        elif isinstance(raw_due_at, str):
+            try:
+                due_at = datetime.fromisoformat(raw_due_at)
+            except ValueError:
+                return JSONResponse({"error": "invalid_input"}, status_code=400)
+            if due_at.tzinfo is None or due_at.utcoffset() is None:
+                return JSONResponse({"error": "invalid_input"}, status_code=400)
+        else:
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        try:
+            expected_version = int(raw_body["expected_version"])
+        except TypeError, ValueError:
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        conn = open_connection(resolved_database_url)
+        try:
+            result = set_follow_up(
+                conn,
+                session,
+                MarketplaceOrganizationId(organization_id),
+                LeadId(lead_id),
+                due_at=due_at,
+                expected_version=expected_version,
+                as_of=_current_as_of(),
+            )
+        finally:
+            conn.close()
+        return _lead_mutation_response(result)
+
+    @app.post("/api/broker/organizations/{organization_id}/leads/{lead_id}/notes")
+    async def append_lead_note_route(
+        organization_id: str, lead_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_broker_lead_ops_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        raw_text = raw_body.get("text") if isinstance(raw_body, dict) else None
+        conn = open_connection(resolved_database_url)
+        try:
+            result = append_note(
+                conn,
+                session,
+                MarketplaceOrganizationId(organization_id),
+                LeadId(lead_id),
+                raw_note_text=raw_text,
+                as_of=_current_as_of(),
+            )
+        finally:
+            conn.close()
+        return _lead_mutation_response(result)
+
+    @app.post("/api/broker/organizations/{organization_id}/leads/{lead_id}/contact-attempts")
+    async def append_lead_contact_attempt_route(
+        organization_id: str, lead_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_broker_lead_ops_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        if not isinstance(raw_body, dict):
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        conn = open_connection(resolved_database_url)
+        try:
+            result = append_contact_attempt(
+                conn,
+                session,
+                MarketplaceOrganizationId(organization_id),
+                LeadId(lead_id),
+                raw_channel=raw_body.get("channel"),
+                raw_note_text=raw_body.get("note"),
+                as_of=_current_as_of(),
+            )
+        finally:
+            conn.close()
+        return _lead_mutation_response(result)
+
+    @app.get("/api/broker/organizations/{organization_id}/notification-config")
+    def get_notification_config_route(organization_id: str, request: Request) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            result = get_organization_notification_config(
+                conn, session, MarketplaceOrganizationId(organization_id)
+            )
+        finally:
+            conn.close()
+        error = _notification_config_error_response(result.outcome)
+        if error is not None:
+            return error
+        return JSONResponse(result.to_public_dict())
+
+    @app.put("/api/broker/organizations/{organization_id}/notification-config")
+    async def set_notification_config_route(organization_id: str, request: Request) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_broker_lead_ops_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        if not isinstance(raw_body, dict) or "expected_version" not in raw_body:
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        try:
+            expected_version = int(raw_body["expected_version"])
+        except TypeError, ValueError:
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        conn = open_connection(resolved_database_url)
+        try:
+            result = set_notification_config(
+                conn,
+                session,
+                MarketplaceOrganizationId(organization_id),
+                raw_notification_email=raw_body.get("notification_email"),
+                expected_version=expected_version,
+            )
+        finally:
+            conn.close()
+        error = _notification_config_error_response(result.outcome)
+        if error is not None:
+            return error
+        return JSONResponse(result.to_public_dict())
 
     def _professional_draft_authorization_error(
         outcome: Any,

@@ -64,6 +64,22 @@ if (data === null) {
   Astro.response.status = 404;
 }
 
+// SLICE-0071 contract §8B amendment (Finding A/B/C): an incoming `?ds=`
+// token, already minted by a trusted HullQ surface (search/shortlist/
+// compare), is forwarded verbatim into the contact form -- this page never
+// decodes it, only passes it through; FastAPI's contact route is the sole
+// verifier. This page deliberately does NOT classify the incoming
+// `Referer` header into a discovery surface: `Referer` is not an
+// authenticated first-party navigation capability (Finding C) -- any
+// direct HTTP client can send an arbitrary same-origin `Referer` with no
+// real browser navigation at all, so it must never alone cause minting of
+// an authoritative DIRECT_LISTING/INTERNAL_BROWSE token. Absent a genuine
+// incoming token, this page asserts no discovery evidence at all, and the
+// eventual contact submission resolves to UNKNOWN -- honest given the
+// evidence actually available, never a guess (see
+// `discoverySurfaceSigning.ts`'s module docstring for the full rationale).
+const discoveryToken = data !== null ? (Astro.url.searchParams.get("ds") ?? undefined) : undefined;
+
 // REQ-SEO-004: the clean ID-based path is always the canonical URL, and
 // query parameters never participate in it -- `Astro.params` already
 // carries only the path segment, never the query string, so no explicit
@@ -193,7 +209,11 @@ const canonicalUrl = nativeListingId
               <section aria-label="Contact">
                 <h2>{contactText.heading}</h2>
                 <p>{contactText.disclaimer}</p>
-                <form data-buyer-contact-form data-native-listing-id={nativeListingId}>
+                <form
+                  data-buyer-contact-form
+                  data-native-listing-id={nativeListingId}
+                  data-discovery-token={discoveryToken}
+                >
                   <label>
                     {contactText.nameLabel}
                     <input type="text" name="name" required maxlength="200" />

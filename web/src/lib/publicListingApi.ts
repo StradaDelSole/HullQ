@@ -98,6 +98,17 @@ export interface PublicListingData {
   gallery: PublicGalleryItem[];
   /** The exact `media_placement_id` of the explicit cover image, if any. */
   cover_media_placement_id: string | null;
+  /**
+   * SLICE-0071 contract §8B amendment: an opaque, HMAC-signed discovery-
+   * surface token bound to this exact listing, present only when a
+   * *trusted server-side caller* minted one for it (the shortlist/compare
+   * resolution routes -- see `shortlistResolveServer.ts`). The plain
+   * `GET /api/listings/{id}` route this function calls never mints or
+   * accepts any discovery-surface parameter itself (independent-review
+   * Finding B), so this field is absent here; it is added afterward, only
+   * by trusted code, in `fetchPublicListingForShortlist`'s caller.
+   */
+  discovery_token?: string;
 }
 
 /**

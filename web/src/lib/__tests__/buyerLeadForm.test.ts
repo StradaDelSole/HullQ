@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import {
   contactResultText,
+  extractBoundedUtmParams,
   parseContactResponse,
   shouldRotateSubmissionOperationId,
 } from "../buyerLeadForm.ts";
@@ -97,4 +98,40 @@ test("shouldRotateSubmissionOperationId: keeps the identity for a retry-safe fai
   assert.equal(shouldRotateSubmissionOperationId({ kind: "invalid_input" }), false);
   assert.equal(shouldRotateSubmissionOperationId({ kind: "listing_not_available" }), false);
   assert.equal(shouldRotateSubmissionOperationId({ kind: "service_error" }), false);
+});
+
+// SLICE-0071 contract §8B amendment (Finding A): only the five bounded,
+// named UTM parameters are ever extracted -- never the raw query string,
+// never an arbitrary/unbounded key.
+
+test("extractBoundedUtmParams: all five bounded fields are extracted when present", () => {
+  const result = extractBoundedUtmParams(
+    "?utm_source=google&utm_medium=cpc&utm_campaign=summer&utm_term=sailboat&utm_content=ad1",
+  );
+  assert.deepEqual(result, {
+    utm_source: "google",
+    utm_medium: "cpc",
+    utm_campaign: "summer",
+    utm_term: "sailboat",
+    utm_content: "ad1",
+  });
+});
+
+test("extractBoundedUtmParams: missing query string extracts nothing (stays UNKNOWN, never guessed)", () => {
+  assert.deepEqual(extractBoundedUtmParams(""), {});
+});
+
+test("extractBoundedUtmParams: only present bounded fields are extracted, absent ones are omitted", () => {
+  assert.deepEqual(extractBoundedUtmParams("?utm_source=newsletter"), { utm_source: "newsletter" });
+});
+
+test("extractBoundedUtmParams: an empty-string parameter value is treated as absent", () => {
+  assert.deepEqual(extractBoundedUtmParams("?utm_source=&utm_medium=email"), { utm_medium: "email" });
+});
+
+test("extractBoundedUtmParams: unrelated/arbitrary query parameters are never captured", () => {
+  assert.deepEqual(
+    extractBoundedUtmParams("?utm_source=google&session_id=abc123&ref=someoneelse&password=secret"),
+    { utm_source: "google" },
+  );
 });

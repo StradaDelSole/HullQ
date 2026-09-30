@@ -1,0 +1,140 @@
+---
+// SLICE-0071: Organization primary Lead-notification email administration
+// (contract §9). Mutable only by a current ACTIVE OWNER/ADMIN membership --
+// FastAPI is the sole authority on that role check; this page never infers
+// it and always re-reads the authoritative config after a change.
+export const prerender = false;
+
+import { fetchNotificationConfig, setNotificationConfig } from "../../../../lib/brokerLeadOpsApi";
+import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../../lib/authConstants";
+
+const organizationId = Astro.params.organization_id;
+const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
+const cookieHeader = Astro.request.headers.get("cookie");
+const originHeader = Astro.request.headers.get("origin");
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+Astro.response.headers.set("Cache-Control", "private, no-store");
+
+type ActionOutcome =
+  | "none"
+  | "ok"
+  | "unauthenticated"
+  | "not_found"
+  | "mfa_required"
+  | "role_required"
+  | "invalid_input"
+  | "version_conflict"
+  | "action_failed";
+
+let actionOutcome: ActionOutcome = "none";
+
+if (Astro.request.method === "POST" && organizationId) {
+  const formData = await Astro.request.formData();
+  const email = formData.get("notification_email");
+  const expectedVersion = Number(formData.get("expected_version"));
+  const result = await setNotificationConfig(
+    apiBaseUrl,
+    organizationId,
+    typeof email === "string" && email.trim() ? email.trim() : null,
+    expectedVersion,
+    cookieHeader,
+    originHeader,
+  );
+  if (
+    result.kind === "ok" ||
+    result.kind === "unauthenticated" ||
+    result.kind === "not_found" ||
+    result.kind === "mfa_required" ||
+    result.kind === "role_required" ||
+    result.kind === "invalid_input" ||
+    result.kind === "version_conflict"
+  ) {
+    actionOutcome = result.kind;
+  } else {
+    actionOutcome = "action_failed";
+  }
+}
+
+const result = organizationId
+  ? await fetchNotificationConfig(apiBaseUrl, organizationId, cookieHeader)
+  : ({ kind: "not_found" } as const);
+
+if (result.kind === "not_found") {
+  Astro.response.status = 404;
+} else if (result.kind === "mfa_required") {
+  Astro.response.status = 403;
+}
+
+const nextPath = `/broker/organizations/${organizationId ?? ""}/notifications`;
+const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(nextPath)}`;
+const stepUpUrl = `${loginUrl}&acr_values=${encodeURIComponent(AUTH0_MFA_STEP_UP_ACR_VALUE)}`;
+
+const actionOutcomeText: Record<ActionOutcome, string | null> = {
+  none: null,
+  ok: "Saved.",
+  unauthenticated: "Please log in to do this.",
+  not_found: "This Organization isn't available here.",
+  mfa_required: "Additional verification is required before you can do this.",
+  role_required: "Only an OWNER or ADMIN member may change this.",
+  invalid_input: "That email address wasn't valid.",
+  version_conflict: "This setting has already changed -- please review its current value below.",
+  action_failed: "Something went wrong. Please try again.",
+};
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>HullQ Broker Workspace — Lead notification settings</title>
+  </head>
+  <body>
+    <main>
+      {
+        result.kind === "unauthenticated" ? (
+          <>
+            <h1>Broker Workspace</h1>
+            <p>
+              Please <a href={loginUrl}>log in</a> to access this Organization's settings.
+            </p>
+          </>
+        ) : result.kind === "not_found" ? (
+          <>
+            <h1>Not found</h1>
+            <p>This Organization isn't available here.</p>
+          </>
+        ) : result.kind === "mfa_required" ? (
+          <>
+            <h1>Additional verification required</h1>
+            <p>This Organization membership requires multi-factor authentication.</p>
+            <a href={stepUpUrl}>Verify and continue</a>
+          </>
+        ) : result.kind !== "ok" ? (
+          <>
+            <h1>Settings temporarily unavailable</h1>
+            <p>Something went wrong loading this setting. Please try again.</p>
+          </>
+        ) : (
+          <>
+            <h1>Lead notification settings</h1>
+            <p>
+              <a href={`/broker/organizations/${organizationId}`}>Back to workspace</a>
+            </p>
+            {actionOutcomeText[actionOutcome] && <p>{actionOutcomeText[actionOutcome]}</p>}
+            <p>Current recipient: {result.data.notification_email ?? "None configured"}</p>
+            <form method="POST">
+              <input type="hidden" name="expected_version" value={result.data.version} />
+              <label>
+                Notification email (leave blank to clear):
+                <input type="email" name="notification_email" value={result.data.notification_email ?? ""} />
+              </label>
+              <button type="submit">Save</button>
+            </form>
+          </>
+        )
+      }
+    </main>
+  </body>
+</html>

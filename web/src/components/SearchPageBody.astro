@@ -180,7 +180,9 @@ const nativeInventoryMatches: NativeInventoryConfirmedMatch[] =
                 <ul>
                   {nativeInventoryMatches.map((match) => (
                     <li>
-                      <a href={`/listings/${match.native_listing_id}`}>
+                      <a
+                        href={`/listings/${match.native_listing_id}?ds=${encodeURIComponent(match.discovery_token)}`}
+                      >
                         {t.viewListing}: {match.native_listing_id}
                       </a>
                       {activeRequirement.draft_max !== undefined && (
@@ -215,7 +217,9 @@ const nativeInventoryMatches: NativeInventoryConfirmedMatch[] =
                 <ul>
                   {draftOnlyMatches.map((match) => (
                     <li>
-                      <a href={`/listings/${match.native_listing_id}`}>
+                      <a
+                        href={`/listings/${match.native_listing_id}?ds=${encodeURIComponent(match.discovery_token)}`}
+                      >
                         {t.viewListing}: {match.native_listing_id}
                       </a>{" "}
                       &mdash; {t.resolvedDraftText(match.resolved_draft_m)}

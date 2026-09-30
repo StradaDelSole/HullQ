@@ -6,6 +6,36 @@
 // §11: "The form must not imply the email is verified").
 import type { BuyerLeadContactOutcome } from "./buyerLeadApi.ts";
 
+// SLICE-0071 contract §8B amendment (Finding A): bounded, named UTM query
+// parameters only -- never the raw query string, never an arbitrary key.
+// Absence of a given parameter is simply omitted from the captured object
+// (contract §8B: "Absence is UNKNOWN"), never defaulted to an empty string.
+const UTM_PARAM_NAMES = [
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_term",
+  "utm_content",
+] as const;
+
+type UtmParamName = (typeof UTM_PARAM_NAMES)[number];
+
+/**
+ * Extract only the five bounded, named UTM query parameters from a raw
+ * `location.search` string. Pure and DOM-free -- independently unit-
+ * testable, and the only place this parsing happens so the rest of the
+ * form-wiring code never touches `location.search` directly.
+ */
+export function extractBoundedUtmParams(search: string): Partial<Record<UtmParamName, string>> {
+  const params = new URLSearchParams(search);
+  const result: Partial<Record<UtmParamName, string>> = {};
+  for (const name of UTM_PARAM_NAMES) {
+    const value = params.get(name);
+    if (value) result[name] = value;
+  }
+  return result;
+}
+
 export interface BuyerLeadFormText {
   submittingLabel: string;
   successLabel: string;
@@ -102,6 +132,20 @@ export function initBuyerContactForm(
 
   let submissionOperationId = crypto.randomUUID();
 
+  // Captured once at page-load time (contract §8B): the query string never
+  // changes without a full navigation, so there is no benefit to
+  // re-parsing it on every submit, and capturing it once keeps a later
+  // client-side mutation of `location.search` (e.g. a SPA-style history
+  // push) from ever being able to retroactively change what this
+  // submission reports.
+  const utmParams = extractBoundedUtmParams(window.location.search);
+  // Server-minted, HMAC-signed discovery-surface evidence (contract §8B
+  // amendment): the listing page embeds this as a data attribute on the
+  // same form element that already carries `data-native-listing-id`. This
+  // script never decodes or trusts its meaning -- it only forwards the
+  // opaque token verbatim for FastAPI to independently re-verify.
+  const discoveryToken = form.dataset.discoveryToken;
+
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const formData = new FormData(form);
@@ -110,6 +154,8 @@ export function initBuyerContactForm(
       name: String(formData.get("name") ?? ""),
       email: String(formData.get("email") ?? ""),
       message: String(formData.get("message") ?? ""),
+      ...utmParams,
+      ...(discoveryToken ? { discovery_token: discoveryToken } : {}),
     };
 
     if (submitButton) submitButton.disabled = true;

@@ -18,6 +18,21 @@ export interface BuyerLeadContactRequest {
   name: string;
   email: string;
   message: string;
+  // SLICE-0071 contract §8B: optional, bounded, evidence-only acquisition
+  // attribution -- present only when the buyer actually arrived with these
+  // query parameters. Never a raw referrer/full query string.
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_term?: string;
+  utm_content?: string;
+  // SLICE-0071 contract §8B amendment: an opaque, HMAC-signed, server-
+  // verified discovery-surface token minted by whichever HullQ surface (or
+  // the listing page itself) resolved it -- never a plain client-supplied
+  // discovery-surface string. FastAPI independently re-verifies this; an
+  // absent/invalid/expired/mismatched-listing token resolves to UNKNOWN,
+  // never a guess.
+  discovery_token?: string;
 }
 
 /**

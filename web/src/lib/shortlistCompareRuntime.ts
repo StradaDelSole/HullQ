@@ -20,7 +20,7 @@
 import { askingPriceText } from "./previewText.ts";
 import type { ClaimField } from "./previewApi.ts";
 import type { OptionalBoatClaimField, PublicListingData } from "./publicListingApi.ts";
-import { resolveShortlistListings, type ShortlistItemResult } from "./shortlistResolutionApi.ts";
+import { resolveCompareListings, type ShortlistItemResult } from "./shortlistResolutionApi.ts";
 import { loadShortlistIds } from "./shortlistStore.ts";
 import { shortlistCompareText, type ShortlistCompareText } from "./shortlistCompareText.ts";
 import { shortlistText, type SupportedLocale } from "./shortlistText.ts";
@@ -186,7 +186,12 @@ export function buildCompareColumn(
       nativeListingId: item.native_listing_id,
       state: "available",
       headingText: fields.identityHeading ?? t.identityFallbackLabel,
-      headingHref: `/listings/${encodeURIComponent(item.native_listing_id)}`,
+      // SLICE-0071 contract §8B amendment: carries the bounded, opaque,
+      // FastAPI-minted COMPARE discovery token through verbatim -- never
+      // decoded/interpreted here.
+      headingHref: item.data.discovery_token
+        ? `/listings/${encodeURIComponent(item.native_listing_id)}?ds=${encodeURIComponent(item.data.discovery_token)}`
+        : `/listings/${encodeURIComponent(item.native_listing_id)}`,
       fields,
     };
   }
@@ -337,7 +342,7 @@ export async function renderShortlistComparePage(root: HTMLElement | null): Prom
     return;
   }
 
-  const resolution = await resolveShortlistListings(ids);
+  const resolution = await resolveCompareListings(ids);
   if (resolution.kind === "service_error") {
     renderMessage(root, t.serviceErrorMessage);
     return;

@@ -52,6 +52,13 @@ export interface DraftOnlyConfirmedMatch {
   /** SLICE-0052: STALE/UNKNOWN matches never reach this response at all. */
   freshness_status: "CONFIRMED" | "DUE_FOR_CONFIRMATION";
   last_confirmed_at: string | null;
+  /**
+   * SLICE-0071 contract §8B amendment: opaque, HMAC-signed, FastAPI-minted
+   * TECHNICAL_SEARCH discovery token bound to this exact result's own
+   * `native_listing_id`. Never decoded/interpreted here -- only carried
+   * through into the listing link's `?ds=` query parameter.
+   */
+  discovery_token: string;
 }
 
 // Mirrors `src/hullq/api/app.py::_serialize_leaf_criterion` -- the exact
@@ -96,6 +103,8 @@ export interface NativeInventoryConfirmedMatch {
   freshness_status: "CONFIRMED" | "DUE_FOR_CONFIRMATION";
   last_confirmed_at: string | null;
   criterion_evidence: SearchCriterionEvidence[];
+  /** SLICE-0071 contract §8B amendment: see `DraftOnlyConfirmedMatch.discovery_token`. */
+  discovery_token: string;
 }
 
 export type SearchConfirmedMatch = DraftOnlyConfirmedMatch | NativeInventoryConfirmedMatch;
