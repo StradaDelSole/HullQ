@@ -1,7 +1,7 @@
 # SLICE-0073 — Test / CI Throughput Optimization
 
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** Engineering productivity / validation throughput  
 **Depends on:** SLICE-0072 owner-accepted / DONE  
 **Normative contract:** `specs/TEST_CI_THROUGHPUT_OPTIMIZATION.v0.1.md`
@@ -156,3 +156,15 @@ Stop for reassessment rather than weakening safety if:
 SLICE-0073 adds no HullQ marketplace capability. After closure, normal product capability selection resumes through fresh reconciliation.
 
 Initial implementation prompt must come only from `START_SLICE.bat` after readiness review, remote gates and readiness merge.
+
+## Implementation handoff
+
+**Status set by this handoff:** `REVIEW`
+
+Summary evidence is retained in `docs/engineering/CI_THROUGHPUT_EVIDENCE.md` and the conversational
+completion report delivered at handoff. Local full-suite PostgreSQL-backed before/after timing could
+not be completed within the implementation session on the owner's local hardware (see that document,
+section 5); a bounded representative subset, the non-DB suite, coverage-combine mechanics and
+orchestration failure-propagation were all verified directly. Remote GitHub Actions timing is the
+authoritative acceptance evidence and is reported as observed or `NOT VERIFIED` in the completion
+report, never inferred from local numbers.
