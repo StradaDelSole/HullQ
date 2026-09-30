@@ -117,8 +117,9 @@ At SLICE-0072 closure:
 5. remove unnecessary duplicate broad execution while retaining cross-platform confidence;
 6. separate independent CI work into parallel jobs;
 7. reconcile historical research/bootstrap replay out of the ordinary product critical path where a documented dependency boundary permits;
-8. provide a supported local/Claude final-validation route that benefits from the same safe partitioning;
-9. update CI/test engineering documentation to match the resulting system.
+8. make focused/affected local validation the default for implementation and amendments, with full exact-head regression authoritative in GitHub Actions;
+9. prohibit routine duplicate local full-suite reruns before a GitHub final-candidate run;
+10. provide a supported fast local/Claude validation route and update CI/test engineering documentation to match the resulting system.
 
 ## Mandatory constraints
 
@@ -134,7 +135,8 @@ At SLICE-0072 closure:
 ## Acceptance performance target
 
 - representative GitHub PR critical path <=5 minutes, stretch <=4 minutes;
-- materially faster local final validation, target >=2× improvement where local hardware/PostgreSQL permits;
+- ordinary local implementation/amendment validation completes through focused affected gates rather than routine 38–45 minute full-suite runs;
+- GitHub exact-head complete regression is authoritative for final candidate acceptance;
 - aggregate branch coverage remains >=90%;
 - all required test/proof/security categories remain reachable and enforced.
 
@@ -157,6 +159,29 @@ SLICE-0073 adds no HullQ marketplace capability. After closure, normal product c
 
 Initial implementation prompt must come only from `START_SLICE.bat` after readiness review, remote gates and readiness merge.
 
+## Validation ownership — owner directive
+
+Effective with SLICE-0073 and intended as the default for later slices:
+
+```text
+during implementation/amendment:
+  local focused affected validation
+
+final candidate:
+  push exact HEAD
+  GitHub Actions runs authoritative complete regression
+
+remote failure:
+  reproduce only the failing/affected surface locally
+  fix
+  focused local validation
+  push again
+```
+
+Claude MUST NOT run the complete local backend suite merely because an implementation or amendment is ready for handoff. A local full-suite run requires a concrete exception: the slice changes the test/CI system itself, remote failure reproduction requires it, or an explicit local-only acceptance proof demands it.
+
+This specifically prevents the historical pattern where two amendments can consume roughly 80–90 minutes of duplicated local full-suite execution before GitHub reruns the same regression.
+
 ## Implementation handoff
 
 **Status set by this handoff:** `REVIEW`
@@ -169,5 +194,9 @@ orchestration failure-propagation were all verified directly. Remote GitHub Acti
 authoritative acceptance evidence) was directly observed on PR #282 — critical path 3m23s against the
 5min/4min targets and the 7m21s-8m22s baseline — and is detailed in section 8 of the evidence doc, so
 this metric is `VERIFIED`, not `NOT VERIFIED`, at handoff. Two defects were found and fixed only via
-that real run (see evidence doc section 7a); the final green HEAD is `a569b9f` and the completion
-report, never inferred from local numbers.
+that real run (see evidence doc section 7a); the final green HEAD before this merge-forward amendment
+was `a569b9f`. This amendment merges the owner-directed focused-local/authoritative-remote validation
+policy (PR #283, `origin/main` `8388a7b`) into this branch per explicit instruction, preserving both
+the SLICE-0073 implementation/evidence and the newer policy above; see the amendment completion report
+delivered at this handoff for the resulting exact HEAD and remote verification, never inferred from
+local numbers.

@@ -200,10 +200,10 @@ TOKEN DISCIPLINE:
 - Treat tool output as context cost: changed-file list/stat first, then path/symbol-scoped diffs; never dump large successful test/build logs into context.
 - Use the synchronized local checkout; do not repeatedly fetch local files through GitHub/API.
 - Do not restate contracts or narrate routine exploration.
-- Use focused tests while iterating. Run the slice's complete required validation on the final candidate HEAD.
+- Use focused/affected tests while iterating and before handoff. Do NOT run the complete local backend suite merely because a candidate or amendment is ready. The authoritative complete regression runs in GitHub Actions on the exact pushed HEAD. Run a local full suite only when the slice changes test/CI/coverage/migration/isolation machinery, a remote failure requires broad local reproduction, or an explicit local-only proof requires it.
 - Prefer `uv run python scripts/workflow/claude_diag.py run-local-test-db-compact scripts/run_pytest_local.py ...` for PostgreSQL-backed pytest so full logs stay on disk and only a bounded tail enters context.
 - Context budget: around 80k reported active tokens = plan compaction; around 100k = compact before another broad read/debug/test cycle; 120k+ is exceptional.
-- On substantial slices, request one /compact checkpoint after main implementation and before final broad validation if context/tool output has grown materially. Preserve only controlling contract/decisions, changed files, validation state, exact reviewed HEADs and unresolved blockers.
+- On substantial slices, request one /compact checkpoint after main implementation and before final candidate handoff if context/tool output has grown materially. Preserve only controlling contract/decisions, changed files, validation state, exact reviewed HEADs and unresolved blockers.
 
 EXECUTION:
 - Follow CLAUDE.md and the assigned slice exactly; preserve its PASS reconciliation/trigger-gate evidence.

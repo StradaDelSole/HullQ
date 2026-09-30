@@ -174,11 +174,20 @@ Do **not** rerun the entire PostgreSQL/web/full-repository suite after every sma
 
 ### Final candidate handoff
 
-Before the final implementation handoff, run the complete validation required by the slice contract, including the broad regression suite and retained proofs it names.
+The default final-candidate ownership is split:
 
-If an amendment materially touches identity, authorization, transactionality, migration state, Search semantics, or public eligibility, the reviewer may require broad validation earlier.
+- **locally:** run focused/affected unit, persistence, web, static and slice-owned proof validation needed to establish that the candidate is sensible to push;
+- **remotely on the exact pushed HEAD:** GitHub Actions owns the complete regression, PostgreSQL integration, aggregate coverage, cross-platform, web, dependency/security and required retained-gate confirmation.
 
-This optimization removes redundant repeats; it does not lower the final acceptance bar.
+Do **not** run the complete local backend suite merely because a candidate or amendment is ready for handoff. The remote exact-head full regression is the authoritative broad final gate.
+
+A local complete regression is exceptional and requires a concrete reason: the task changes the test/CI/collection/coverage/migration/isolation machinery itself, a remote failure needs broad local reproduction, or an explicit local-only acceptance proof cannot be provided by CI.
+
+For amendments, the default is focused local validation → push → authoritative remote regression. Multiple amendments do not justify repeated 38–45 minute local full-suite runs.
+
+If an amendment materially touches identity, authorization, transactionality, migration state, Search semantics, or public eligibility, expand the focused local set appropriately; that still does not automatically require all ~5,900 tests locally.
+
+This changes execution ownership, not the final acceptance bar.
 
 ## Completion-report discipline
 
