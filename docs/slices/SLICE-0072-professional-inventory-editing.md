@@ -40,6 +40,13 @@ No production pilot/provider/payment activation and no Search criterion are intr
 
 ## Decision / implementation reconciliation
 
+**Accepted records checked:** docs/PROJECT_STATE.md; docs/slices/SLICE-0071-acceptance-closure.md; docs/POST_SLICE_0071_REASSESSMENT_2026-09-30.md; specs/BROKER_WORKSPACE_REQUIREMENTS.v0.1.md; docs/BROKER_WORKSPACE_PRODUCT_DIRECTION_2026-09-13.md; docs/governance/BROKER_WORKSPACE_LAUNCH_GATE.md; docs/governance/BROKER_WORKSPACE_MANDATORY_CAPABILITY_REGISTER.md; docs/governance/POST_0051_TRIGGER_GATES.md; current NativeListing offer / PhysicalBoat claim / lifecycle / publication-readiness contracts.  
+**Production implementation checked:** current revisioned NativeListing offer persistence; current revisioned Organization PhysicalBoat claim persistence; Broker Workspace inventory read/lifecycle/media surfaces; professional promotion application path; D22 PublicationReadiness / D29 CurrentPublicEligibility evaluators; current Search/public listing read paths.  
+**Already implemented / not re-decided:** marketplace identities; Organization ownership; Broker Workspace auth/current-membership/MFA; immutable revision history + explicit heads; publish/withdraw/reconfirm; media; promotion; current-public eligibility; Lead operations.  
+**Exact remaining gap:** existing promoted inventory can be viewed and lifecycle/media-managed but current offer/price and current Organization PhysicalBoat claims cannot be maintained through an authorized Broker Workspace editor.  
+**Accepted-but-unimplemented obligations:** REQ-BROKER-003/004 recurring edit workflow; Broker Workspace Launch Gate §2 edit price/status/details job; later usability/competitive benchmark evidence; buyer-contact email verification and production-provider work remain separate later obligations.  
+**Material classifications:** DECIDED_AND_IMPLEMENTED foundations; DECIDED_NOT_YET_IMPLEMENTED 0072 editing surface + later launch commitments; EXPLICITLY_DEFERRED sale/outcome/bulk/alerts/analytics/owner-direct; GENUINELY_OPEN implementation-local factoring; CONFLICT_OR_REGRESSION none.
+
 ### DECIDED_AND_IMPLEMENTED foundations
 
 - professional inventory ownership/auth/MFA;
