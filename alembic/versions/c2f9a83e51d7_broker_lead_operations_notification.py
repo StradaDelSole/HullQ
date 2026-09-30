@@ -236,8 +236,6 @@ def downgrade() -> None:
     )
     op.drop_table("lead_notification_outbox")
     op.drop_table("organization_lead_notification_config")
-    op.drop_index(
-        "ix_lead_timeline_events_lead_id_occurred_at", table_name="lead_timeline_events"
-    )
+    op.drop_index("ix_lead_timeline_events_lead_id_occurred_at", table_name="lead_timeline_events")
     op.drop_table("lead_timeline_events")
     op.drop_table("lead_operational_state")

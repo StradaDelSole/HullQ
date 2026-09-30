@@ -6,8 +6,8 @@
 // `DiscoverySurface` each route's own identity mints (independent-review
 // Finding B: the surface is never a request parameter, only which route
 // was called).
-import { mintDiscoverySurfaceToken, type DiscoverySurface } from "./discoverySurfaceSigning";
-import { fetchPublicListingForShortlist } from "./publicListingApi";
+import { mintDiscoverySurfaceToken, type DiscoverySurface } from "./discoverySurfaceSigning.ts";
+import { fetchPublicListingForShortlist } from "./publicListingApi.ts";
 
 /** Mirrors `shortlistStore.ts`'s own technical safety caps (contract §3). */
 export const MAX_IDS_PER_REQUEST = 200;
@@ -58,6 +58,13 @@ export type ResolvedShortlistItem =
  * `native_listing_id`) for every available item. *fixedSurface* is always
  * a literal the caller (one specific route file) hardcodes -- never a
  * value taken from the request.
+ *
+ * Finding D: `mintDiscoverySurfaceToken` fails closed to `undefined` when
+ * the shared signing secret is unavailable/malformed -- `JSON.stringify`
+ * drops an `undefined`-valued property entirely, so an available item's
+ * `data` simply carries no `discovery_token` field at all in that case
+ * (the eventual contact submission resolves to UNKNOWN). Shortlist/compare
+ * resolution itself never fails because discovery signing is unavailable.
  */
 export async function resolveListingsForSurface(
   ids: string[],

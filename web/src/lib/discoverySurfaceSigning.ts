@@ -1,19 +1,38 @@
-// SLICE-0071 Finding B amendment: trusted server-side discovery-surface
-// token minting. Server-only (Node runtime) -- this module reads a shared
-// secret via `process.env` and must NEVER be imported from a browser-side
-// `<script>` block; it is only ever used from Astro API routes
-// (`export const prerender = false` files under `pages/api/`) and Astro
-// page frontmatter, both of which execute exclusively in Node.
+// SLICE-0071 Finding B/C/D amendments: trusted server-side discovery-
+// surface token minting. Server-only (Node runtime) -- this module reads a
+// shared secret via `process.env` and must NEVER be imported from a
+// browser-side `<script>` block; it is only ever used from Astro API
+// routes (`export const prerender = false` files under `pages/api/`) and
+// Astro page frontmatter, both of which execute exclusively in Node.
 //
 // This exists because an unauthenticated public client must never be able
 // to choose which discovery surface gets a valid signed token merely by
-// supplying a query parameter (independent-review Finding B). The fix:
-// SHORTLIST/COMPARE/DIRECT_LISTING/INTERNAL_BROWSE tokens are minted only
-// by this trusted server-side code, whose own route/page identity (never a
-// caller-supplied parameter) determines *surface*. TECHNICAL_SEARCH tokens
-// remain minted by FastAPI's own search route (genuinely server-known
-// provenance there), and FastAPI's contact route remains the sole
-// authoritative *verifier* for every surface -- this module only mints.
+// supplying a query parameter (Finding B). SHORTLIST/COMPARE tokens are
+// minted only by trusted server-side code whose own route identity (never
+// a caller-supplied parameter) determines *surface*. TECHNICAL_SEARCH
+// tokens remain minted by FastAPI's own search route (genuinely
+// server-known provenance there), and FastAPI's contact route remains the
+// sole authoritative *verifier* for every surface -- this module only
+// mints.
+//
+// Finding C: an HTTP `Referer` header is not an authenticated first-party
+// navigation capability -- any direct HTTP client can send an arbitrary
+// same-origin `Referer` value with no browser involved at all. This module
+// therefore exposes no Referer-classification-to-token path of any kind:
+// DIRECT_LISTING/INTERNAL_BROWSE are only ever mintable by the same trusted
+// mechanism as SHORTLIST/COMPARE (a genuine internal HullQ surface calling
+// `mintDiscoverySurfaceToken` directly with a surface its own route
+// identity determines) -- there is deliberately no wiring for either
+// surface in this slice, so an ordinary direct listing visit persists
+// UNKNOWN rather than a guessed value. `UNKNOWN` is always the correct
+// answer when no genuinely trusted evidence exists.
+//
+// Finding D: discovery attribution is auxiliary CRM telemetry, never a
+// hard availability dependency for public listing rendering. Every mint
+// call therefore fails closed to `undefined` (never throws) when the
+// shared secret is absent or malformed -- a caller simply omits the
+// `discovery_token` field, and the eventual contact submission resolves to
+// UNKNOWN, exactly as if no discovery evidence had ever existed.
 //
 // Reuses `HULLQ_PREVIEW_SIGNING_SECRET` (already required, already
 // deployed to FastAPI) rather than introducing a new secret -- acceptable
@@ -38,28 +57,36 @@ export type DiscoverySurface =
   | "COMPARE"
   | "UNKNOWN";
 
-function loadSharedSigningSecret(): Buffer {
+/**
+ * Load the shared signing secret, or `null` for any absent/malformed
+ * configuration -- never throws (Finding D). Callers must treat `null` as
+ * "minting is unavailable right now", not as a fatal error.
+ */
+function loadSharedSigningSecret(): Buffer | null {
   const raw = process.env.HULLQ_PREVIEW_SIGNING_SECRET;
-  if (!raw || !raw.trim()) {
-    throw new Error(
-      "HULLQ_PREVIEW_SIGNING_SECRET is not set; required to mint discovery-surface tokens",
-    );
+  if (!raw || !raw.trim()) return null;
+  let secret: Buffer;
+  try {
+    secret = Buffer.from(raw.trim().replace(/=+$/, ""), "base64url");
+  } catch {
+    return null;
   }
-  const secret = Buffer.from(raw.trim().replace(/=+$/, ""), "base64url");
-  if (secret.length < 32) {
-    throw new Error(
-      "HULLQ_PREVIEW_SIGNING_SECRET decodes to fewer than 32 bytes; cannot mint discovery-surface tokens",
-    );
-  }
+  if (secret.length < 32) return null;
   return secret;
 }
 
 /**
- * Mint a signed, listing-bound discovery-surface token. Server-side only:
+ * Mint a signed, listing-bound discovery-surface token, or `undefined` if
+ * the shared secret is currently unavailable/malformed (Finding D: this
+ * never throws -- discovery attribution must never be able to break public
+ * listing rendering or shortlist/compare resolution). Server-side only:
  * called from trusted Astro route/page code whose own identity determines
  * *surface* -- a caller of *this function* must never forward an
- * unauthenticated client-supplied value as *surface* (Finding B). The
- * wire format must stay byte-for-byte compatible with
+ * unauthenticated client-supplied value as *surface* (Finding B), and must
+ * never derive *surface* from a spoofable signal such as a `Referer`
+ * header (Finding C).
+ *
+ * The wire format must stay byte-for-byte compatible with
  * `hullq.security.discovery_surface_signing.mint_discovery_surface_token`:
  * canonical JSON with keys in the exact alphabetical order that Python's
  * `json.dumps(claims, sort_keys=True, separators=(",", ":"))` produces
@@ -73,7 +100,9 @@ export function mintDiscoverySurfaceToken(
   nativeListingId: string,
   ttlSeconds: number = DEFAULT_TTL_SECONDS,
   now: number = Date.now(),
-): string {
+): string | undefined {
+  const secret = loadSharedSigningSecret();
+  if (secret === null) return undefined;
   const iat = Math.floor(now / 1000);
   const exp = iat + ttlSeconds;
   const payload = Buffer.from(
@@ -81,26 +110,6 @@ export function mintDiscoverySurfaceToken(
       `"surface":${JSON.stringify(surface)},"typ":${JSON.stringify(TOKEN_PURPOSE)},"v":${TOKEN_VERSION}}`,
     "utf-8",
   );
-  const signature = createHmac("sha256", loadSharedSigningSecret()).update(payload).digest();
+  const signature = createHmac("sha256", secret).update(payload).digest();
   return `${payload.toString("base64url")}.${signature.toString("base64url")}`;
-}
-
-/**
- * Classify the actual incoming `Referer` header into a bounded category
- * (contract §8B amendment): never persist/forward the raw referrer, only
- * this classification. *ownOrigin* must be this exact request's own origin
- * (e.g. `Astro.url.origin`, read by the caller from its own real request,
- * never a caller-supplied value) -- this function performs no I/O and
- * trusts nothing beyond its two arguments.
- */
-export function classifyReferrer(
-  referer: string | null | undefined,
-  ownOrigin: string,
-): "NONE" | "EXTERNAL" | "INTERNAL" {
-  if (!referer) return "NONE";
-  try {
-    return new URL(referer).origin === ownOrigin ? "INTERNAL" : "EXTERNAL";
-  } catch {
-    return "EXTERNAL";
-  }
 }

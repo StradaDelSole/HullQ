@@ -26,7 +26,6 @@
 export const prerender = false;
 
 import { fetchPublicListing } from "../../lib/publicListingApi";
-import { classifyReferrer, mintDiscoverySurfaceToken } from "../../lib/discoverySurfaceSigning";
 import {
   askingPriceText,
   brokerSummaryText,
@@ -65,30 +64,21 @@ if (data === null) {
   Astro.response.status = 404;
 }
 
-// SLICE-0071 contract §8B amendment (Finding A/B): this page itself is the
-// trusted server-side code that determines the buyer-facing contact form's
-// discovery-surface evidence -- FastAPI's public listing route no longer
-// accepts any discovery-related parameter (independent-review Finding B),
-// so this is resolved entirely here, never round-tripped through a public
-// query parameter FastAPI would have to trust.
-//
-// An incoming `?ds=` token was already minted by a trusted HullQ surface
-// (search/shortlist/compare) and is forwarded verbatim -- this page never
+// SLICE-0071 contract §8B amendment (Finding A/B/C): an incoming `?ds=`
+// token, already minted by a trusted HullQ surface (search/shortlist/
+// compare), is forwarded verbatim into the contact form -- this page never
 // decodes it, only passes it through; FastAPI's contact route is the sole
-// verifier. Absent that, this page classifies the *real* incoming
-// `Referer` header it actually received (never a client-suppliable value)
-// into a bounded category and mints a fresh token for it itself.
-const incomingDiscoveryToken = data !== null ? Astro.url.searchParams.get("ds") : null;
-const discoveryToken =
-  incomingDiscoveryToken ??
-  (data !== null && nativeListingId
-    ? mintDiscoverySurfaceToken(
-        classifyReferrer(Astro.request.headers.get("referer"), Astro.url.origin) === "INTERNAL"
-          ? "INTERNAL_BROWSE"
-          : "DIRECT_LISTING",
-        nativeListingId,
-      )
-    : undefined);
+// verifier. This page deliberately does NOT classify the incoming
+// `Referer` header into a discovery surface: `Referer` is not an
+// authenticated first-party navigation capability (Finding C) -- any
+// direct HTTP client can send an arbitrary same-origin `Referer` with no
+// real browser navigation at all, so it must never alone cause minting of
+// an authoritative DIRECT_LISTING/INTERNAL_BROWSE token. Absent a genuine
+// incoming token, this page asserts no discovery evidence at all, and the
+// eventual contact submission resolves to UNKNOWN -- honest given the
+// evidence actually available, never a guess (see
+// `discoverySurfaceSigning.ts`'s module docstring for the full rationale).
+const discoveryToken = data !== null ? (Astro.url.searchParams.get("ds") ?? undefined) : undefined;
 
 // REQ-SEO-004: the clean ID-based path is always the canonical URL, and
 // query parameters never participate in it -- `Astro.params` already

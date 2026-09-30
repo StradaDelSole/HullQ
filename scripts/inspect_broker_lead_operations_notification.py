@@ -72,6 +72,7 @@ from hullq.application.lead_notification_delivery import (
 from hullq.domain.broker_access import AuthenticatedIdentity, Provider
 from hullq.domain.buyer_lead import LeadId, SubmissionOperationId
 from hullq.domain.lead_operations import LeadCloseReason
+from hullq.domain.lead_provenance import DiscoverySurface
 from hullq.domain.market_identity import (
     MarketEpisode,
     MarketEpisodeId,
@@ -124,6 +125,7 @@ from hullq.persistence.native_listing_offer import (
 )
 from hullq.persistence.physical_boat import create_physical_boat
 from hullq.persistence.physical_boat_claims import write_physical_boat_claim_revision
+from hullq.security.discovery_surface_signing import mint_discovery_surface_token
 from hullq.security.session_token import mint_session_token
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -417,7 +419,10 @@ def main() -> int:
         # resolution routes (`web/src/lib/discoverySurfaceSigning.ts`) mint
         # discovery-surface tokens under the *same* shared secret -- both
         # processes must be given the identical value below.
-        shared_preview_signing_secret = base64.urlsafe_b64encode(os.urandom(32)).decode("ascii")
+        shared_signing_secret_bytes = os.urandom(32)
+        shared_preview_signing_secret = base64.urlsafe_b64encode(
+            shared_signing_secret_bytes
+        ).decode("ascii")
 
         api_env = dict(os.environ)
         api_env["HULLQ_DATABASE_URL"] = url
@@ -877,6 +882,148 @@ def main() -> int:
         print(
             "11b. real buyer-facing flow (Astro proxy) persists non-UNKNOWN "
             f"PAID_SEARCH acquisition + SHORTLIST discovery -> {'OK' if step11b_ok else 'FAIL'}\n"
+        )
+
+        # 11c. Finding C negative proof: a spoofed same-origin Referer header
+        # alone must never cause the listing page to mint/persist an
+        # authoritative INTERNAL_BROWSE (or any other) token -- any direct
+        # HTTP client can send an arbitrary Referer with no real browser
+        # navigation at all. No `?ds=` token is supplied on either request.
+        conn11c_fixture = psycopg.connect(url)
+        try:
+            _publish_listing(
+                conn11c_fixture, listing_id="NL-0071-E", account=owner_account, org=org_a
+            )
+        finally:
+            conn11c_fixture.close()
+
+        spoofed_referer = f"{web_base}/broker/organizations/{org_a.id.value}/leads"
+        spoofed_referer_request = urllib.request.Request(
+            f"{web_base}/listings/NL-0071-E", headers={"Referer": spoofed_referer}
+        )
+        try:
+            with urllib.request.urlopen(spoofed_referer_request, timeout=10) as response:
+                spoofed_status, spoofed_body = response.status, response.read()
+        except urllib.error.HTTPError as exc:
+            spoofed_status, spoofed_body = exc.code, exc.read()
+        step11c_page_ok = spoofed_status == 200 and b'data-discovery-token="' not in spoofed_body
+
+        no_token_contact_payload = json.dumps(
+            {
+                "submission_operation_id": "OP-0071-E-SPOOFED-REFERER",
+                "name": "Jane Buyer",
+                "email": "jane@example.com",
+                "message": "Interested in this boat.",
+            }
+        ).encode("utf-8")
+        no_token_contact_request = urllib.request.Request(
+            f"{web_base}/listings/NL-0071-E/contact",
+            data=no_token_contact_payload,
+            method="POST",
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(no_token_contact_payload)),
+                "Origin": web_base,
+                # The same spoofed Referer, this time on the actual contact
+                # submission -- FastAPI's contact route never reads Referer
+                # for discovery purposes at all, so this must have zero
+                # bearing on the persisted result.
+                "Referer": spoofed_referer,
+            },
+        )
+        try:
+            with urllib.request.urlopen(no_token_contact_request, timeout=10) as response:
+                no_token_status, no_token_body = response.status, json.loads(response.read())
+        except urllib.error.HTTPError as exc:
+            no_token_status, no_token_body = exc.code, {}
+        conn11c_check = psycopg.connect(url)
+        try:
+            no_token_provenance = (
+                fetch_lead_acquisition_provenance(conn11c_check, LeadId(no_token_body["lead_id"]))
+                if "lead_id" in no_token_body
+                else None
+            )
+        finally:
+            conn11c_check.close()
+        step11c_ok = (
+            step11c_page_ok
+            and no_token_status in (200, 201)
+            and no_token_provenance is not None
+            and no_token_provenance.discovery_surface.value == "UNKNOWN"
+        )
+        ok &= step11c_ok
+        print(
+            "11c. a spoofed same-origin Referer alone never mints/persists "
+            f"INTERNAL_BROWSE -- resolves UNKNOWN instead -> {'OK' if step11c_ok else 'FAIL'}"
+        )
+
+        # 11d. Finding C positive proof: a genuine trusted mint of
+        # INTERNAL_BROWSE (the same shared-secret mechanism every trusted
+        # HullQ surface uses to mint SHORTLIST/COMPARE/TECHNICAL_SEARCH
+        # tokens) does persist through the real contact flow. No concrete
+        # production page currently mints INTERNAL_BROWSE in this slice (a
+        # disclosed scope boundary -- see the amendment report); this proves
+        # the mechanism itself genuinely supports it for whichever trusted
+        # surface adopts it next, while step 11c proves an unauthenticated
+        # Referer can never forge the same outcome.
+        conn11d_fixture = psycopg.connect(url)
+        try:
+            _publish_listing(
+                conn11d_fixture, listing_id="NL-0071-F", account=owner_account, org=org_a
+            )
+        finally:
+            conn11d_fixture.close()
+
+        genuine_internal_browse_token = mint_discovery_surface_token(
+            DiscoverySurface.INTERNAL_BROWSE, "NL-0071-F", secret=shared_signing_secret_bytes
+        )
+        internal_browse_contact_payload = json.dumps(
+            {
+                "submission_operation_id": "OP-0071-F-INTERNAL-BROWSE",
+                "name": "Jane Buyer",
+                "email": "jane@example.com",
+                "message": "Interested in this boat.",
+                "discovery_token": genuine_internal_browse_token,
+            }
+        ).encode("utf-8")
+        internal_browse_contact_request = urllib.request.Request(
+            f"{web_base}/listings/NL-0071-F/contact",
+            data=internal_browse_contact_payload,
+            method="POST",
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(internal_browse_contact_payload)),
+                "Origin": web_base,
+            },
+        )
+        try:
+            with urllib.request.urlopen(internal_browse_contact_request, timeout=10) as response:
+                internal_browse_status, internal_browse_body = (
+                    response.status,
+                    json.loads(response.read()),
+                )
+        except urllib.error.HTTPError as exc:
+            internal_browse_status, internal_browse_body = exc.code, {}
+        conn11d_check = psycopg.connect(url)
+        try:
+            internal_browse_provenance = (
+                fetch_lead_acquisition_provenance(
+                    conn11d_check, LeadId(internal_browse_body["lead_id"])
+                )
+                if "lead_id" in internal_browse_body
+                else None
+            )
+        finally:
+            conn11d_check.close()
+        step11d_ok = (
+            internal_browse_status in (200, 201)
+            and internal_browse_provenance is not None
+            and internal_browse_provenance.discovery_surface.value == "INTERNAL_BROWSE"
+        )
+        ok &= step11d_ok
+        print(
+            "11d. a genuine trusted mint persists INTERNAL_BROWSE through the "
+            f"real contact flow -> {'OK' if step11d_ok else 'FAIL'}\n"
         )
 
         # 12. follow-up due/overdue filtering and dashboard counts are correct.
