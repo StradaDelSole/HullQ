@@ -29,7 +29,7 @@ The slice MUST preserve:
 5. locked dependency verification and `pip-audit`;
 6. deterministic retained vertical proofs required by accepted contracts;
 7. reproducibility checks;
-8. final-candidate broad confidence before merge;
+8. final-candidate broad confidence before merge, with the complete regression gate authoritative on the exact pushed HEAD in GitHub Actions;
 9. cross-platform Python validation on Ubuntu and Windows;
 10. normal CI independence from mutable live external sources.
 
@@ -101,14 +101,39 @@ or retain them every-PR if dependency evidence does not justify moving them.
 
 No historical replay may be removed from the verification system merely for speed.
 
-### 5.7 Local developer/Claude path
+### 5.7 Local developer/Claude path and remote final authority
 
-Provide a supported local command or orchestration path that allows:
+The default validation ownership is:
 
-- fast focused iteration;
-- safe final-candidate broad validation;
-- compact output suitable for Claude;
-- PostgreSQL isolation if local parallel shards are used.
+```text
+LOCAL / CLAUDE
+→ affected/focused tests
+→ relevant PostgreSQL tests
+→ lint/type/format/build as affected
+→ slice-owned retained proof where materially relevant
+
+EXACT PUSHED HEAD / GITHUB ACTIONS
+→ complete regression
+→ aggregate coverage
+→ PostgreSQL integration
+→ cross-platform verification
+→ web/security/dependency gates
+→ required retained proofs/replays
+```
+
+A complete local full-suite run is **not required by default** for an implementation handoff, final candidate, or amendment when the exact pushed HEAD will receive the authoritative complete GitHub regression gate.
+
+The implementation must update the workflow so Claude does not spend 38–45 minutes rerunning the complete backend suite locally merely to duplicate a materially faster authoritative GitHub run.
+
+A local complete regression may still be required when:
+
+- the slice directly changes CI/test orchestration, collection, coverage, migrations or PostgreSQL isolation and local proof is needed to validate the test system itself;
+- a remote failure must be reproduced locally to diagnose it;
+- a controlling slice explicitly requires a local environment-specific proof that GitHub cannot provide.
+
+Intermediate amendments MUST default to focused affected validation and then push for exact-head remote full validation. Two amendments must not imply two local 40-minute full-suite runs.
+
+Provide supported commands/tooling for fast focused iteration and compact output suitable for Claude. PostgreSQL isolation remains mandatory if local parallel shards are used.
 
 ## 6. Acceptance performance target
 
@@ -117,8 +142,9 @@ The slice is not accepted for a cosmetic improvement.
 Target:
 
 - reduce GitHub PR critical path from the measured 7m21s–8m22s baseline to **<= 5 minutes** on a representative clean run, with a stretch target of <=4 minutes;
-- materially reduce local full-validation wall-clock on the owner's environment, with a target of **at least 2× faster** than the observed 38–45 minute baseline where local PostgreSQL/hardware permits;
-- focused iteration remains minutes rather than tens of minutes.
+- eliminate routine local 38–45 minute complete-regression runs from ordinary slice/amendment handoff; focused local validation should remain minutes rather than tens of minutes;
+- when a local complete regression is exceptionally required, materially reduce its wall-clock where feasible;
+- GitHub exact-head complete regression remains authoritative before merge.
 
 If infrastructure variance prevents a numeric target on one run, median/repeated evidence may be used, but the implementation must still demonstrate a material improvement.
 
