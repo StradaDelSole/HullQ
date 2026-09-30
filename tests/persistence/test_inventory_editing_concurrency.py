@@ -245,7 +245,9 @@ def test_concurrent_offer_edits_from_same_expected_revision(editing_url: str) ->
 
     setup_conn = psycopg.connect(editing_url)
     try:
-        current_before = fetch_current_native_listing_offer(setup_conn, NativeListingId(_LISTING_ID))
+        current_before = fetch_current_native_listing_offer(
+            setup_conn, NativeListingId(_LISTING_ID)
+        )
     finally:
         setup_conn.close()
     assert current_before is not None

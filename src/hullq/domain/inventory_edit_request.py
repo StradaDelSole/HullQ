@@ -24,6 +24,7 @@ domain-level assertion-kind/value pairing -- raises
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
@@ -109,7 +110,9 @@ def _require_revision_id(raw_body: dict[str, Any]) -> str:
 
 def _require_trimmed_nonempty_string(value: Any, field_label: str) -> str:
     if not isinstance(value, str):
-        raise InvalidInventoryEditRequestError(f"{field_label} must be a string, got {type(value).__name__}")
+        raise InvalidInventoryEditRequestError(
+            f"{field_label} must be a string, got {type(value).__name__}"
+        )
     trimmed = value.strip()
     if not trimmed:
         raise InvalidInventoryEditRequestError(f"{field_label} must be non-empty when provided")
@@ -142,11 +145,13 @@ def _assertion_kind(raw_kind: str, label: str) -> AssertionKind:
 
 def _decimal_meters_value(raw_value: Any, label: str) -> Decimal:
     if not isinstance(raw_value, str) or not _DECIMAL_PATTERN.fullmatch(raw_value):
-        raise InvalidInventoryEditRequestError(f"{label}.value must be a plain positive decimal string")
+        raise InvalidInventoryEditRequestError(
+            f"{label}.value must be a plain positive decimal string"
+        )
     return Decimal(raw_value)
 
 
-def _construct(ctor: Any, label: str) -> Any:
+def _construct[T](ctor: Callable[[], T], label: str) -> T:
     try:
         return ctor()
     except (ValueError, TypeError) as exc:
@@ -246,7 +251,9 @@ def parse_native_listing_offer_edit_request(raw: Any) -> OfferEditRequest:
         )
     unknown = set(raw) - _OFFER_KEYS
     if unknown:
-        raise InvalidInventoryEditRequestError(f"unknown offer edit request key(s): {sorted(unknown)}")
+        raise InvalidInventoryEditRequestError(
+            f"unknown offer edit request key(s): {sorted(unknown)}"
+        )
 
     revision_id = NativeListingOfferRevisionId(_require_revision_id(raw))
     expected_raw = _require_expected_revision_id(raw)
@@ -327,7 +334,9 @@ def parse_native_listing_offer_edit_request(raw: Any) -> OfferEditRequest:
         "listing_offer",
     )
     return OfferEditRequest(
-        revision_id=revision_id, expected_current_revision_id=expected_current_revision_id, offer=offer
+        revision_id=revision_id,
+        expected_current_revision_id=expected_current_revision_id,
+        offer=offer,
     )
 
 
@@ -422,7 +431,9 @@ def _parse_rudder_configuration(raw: Any) -> RudderConfigurationClaim:
     kind = _assertion_kind(raw_kind, "physical_boat.rudder_configuration")
     value: RudderConfiguration | None = None
     if kind is AssertionKind.VALUE_ASSERTION:
-        if not isinstance(raw_value, str) or raw_value not in {k.value for k in RudderConfiguration}:
+        if not isinstance(raw_value, str) or raw_value not in {
+            k.value for k in RudderConfiguration
+        }:
             raise InvalidInventoryEditRequestError(
                 "physical_boat.rudder_configuration.value must be a recognized rudder configuration"
             )
@@ -465,7 +476,9 @@ def parse_physical_boat_claim_edit_request(raw: Any) -> ClaimEditRequest:
         )
     unknown = set(raw) - _CLAIM_KEYS
     if unknown:
-        raise InvalidInventoryEditRequestError(f"unknown claim edit request key(s): {sorted(unknown)}")
+        raise InvalidInventoryEditRequestError(
+            f"unknown claim edit request key(s): {sorted(unknown)}"
+        )
 
     revision_id = PhysicalBoatClaimRevisionId(_require_revision_id(raw))
     expected_raw = _require_expected_revision_id(raw)

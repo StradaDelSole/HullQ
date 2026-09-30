@@ -504,9 +504,7 @@ class TestOfferSave:
         assert response.json() == {"error": "invalid_payload"}
         assert _current_offer_revision_id(api_url, "NL-OFF-BAD") == "REV-OFF-BAD"
 
-    def test_successful_save_advances_current_head(
-        self, client: TestClient, api_url: str
-    ) -> None:
+    def test_successful_save_advances_current_head(self, client: TestClient, api_url: str) -> None:
         _seed_org_and_membership(
             api_url, org_id="ORG-OFF-OK", account_id="ACC-OFF-OK", membership_id="OM-OFF-OK"
         )
@@ -539,7 +537,10 @@ class TestOfferSave:
         self, client: TestClient, api_url: str
     ) -> None:
         _seed_org_and_membership(
-            api_url, org_id="ORG-OFF-STALE", account_id="ACC-OFF-STALE", membership_id="OM-OFF-STALE"
+            api_url,
+            org_id="ORG-OFF-STALE",
+            account_id="ACC-OFF-STALE",
+            membership_id="OM-OFF-STALE",
         )
         _create_promoted_listing(
             api_url,
@@ -569,7 +570,10 @@ class TestOfferSave:
         self, client: TestClient, api_url: str
     ) -> None:
         _seed_org_and_membership(
-            api_url, org_id="ORG-OFF-RETRY", account_id="ACC-OFF-RETRY", membership_id="OM-OFF-RETRY"
+            api_url,
+            org_id="ORG-OFF-RETRY",
+            account_id="ACC-OFF-RETRY",
+            membership_id="OM-OFF-RETRY",
         )
         _create_promoted_listing(
             api_url,
@@ -599,10 +603,16 @@ class TestOfferSave:
 
     def test_foreign_organization_cannot_edit(self, client: TestClient, api_url: str) -> None:
         _seed_org_and_membership(
-            api_url, org_id="ORG-OFF-FOR-A", account_id="ACC-OFF-FOR-A", membership_id="OM-OFF-FOR-A"
+            api_url,
+            org_id="ORG-OFF-FOR-A",
+            account_id="ACC-OFF-FOR-A",
+            membership_id="OM-OFF-FOR-A",
         )
         _seed_org_and_membership(
-            api_url, org_id="ORG-OFF-FOR-B", account_id="ACC-OFF-FOR-B", membership_id="OM-OFF-FOR-B"
+            api_url,
+            org_id="ORG-OFF-FOR-B",
+            account_id="ACC-OFF-FOR-B",
+            membership_id="OM-OFF-FOR-B",
         )
         _create_promoted_listing(
             api_url,
@@ -677,7 +687,10 @@ class TestOfferSave:
         ordinary edit of an already-complete ACTIVE listing -- the D22
         evaluator would incorrectly reject this via LIFECYCLE_NOT_DRAFT."""
         _seed_org_and_membership(
-            api_url, org_id="ORG-OFF-ACTIVE", account_id="ACC-OFF-ACTIVE", membership_id="OM-OFF-ACTIVE"
+            api_url,
+            org_id="ORG-OFF-ACTIVE",
+            account_id="ACC-OFF-ACTIVE",
+            membership_id="OM-OFF-ACTIVE",
         )
         _create_promoted_listing(
             api_url,
@@ -776,9 +789,7 @@ class TestOfferSave:
 
 
 class TestClaimSave:
-    def test_successful_save_advances_current_head(
-        self, client: TestClient, api_url: str
-    ) -> None:
+    def test_successful_save_advances_current_head(self, client: TestClient, api_url: str) -> None:
         _seed_org_and_membership(
             api_url, org_id="ORG-CLM-OK", account_id="ACC-CLM-OK", membership_id="OM-CLM-OK"
         )
@@ -811,7 +822,10 @@ class TestClaimSave:
         self, client: TestClient, api_url: str
     ) -> None:
         _seed_org_and_membership(
-            api_url, org_id="ORG-CLM-STALE", account_id="ACC-CLM-STALE", membership_id="OM-CLM-STALE"
+            api_url,
+            org_id="ORG-CLM-STALE",
+            account_id="ACC-CLM-STALE",
+            membership_id="OM-CLM-STALE",
         )
         _create_promoted_listing(
             api_url,
@@ -844,7 +858,10 @@ class TestClaimSave:
         self, client: TestClient, api_url: str
     ) -> None:
         _seed_org_and_membership(
-            api_url, org_id="ORG-CLM-REUSE", account_id="ACC-CLM-REUSE", membership_id="OM-CLM-REUSE"
+            api_url,
+            org_id="ORG-CLM-REUSE",
+            account_id="ACC-CLM-REUSE",
+            membership_id="OM-CLM-REUSE",
         )
         _create_promoted_listing(
             api_url,

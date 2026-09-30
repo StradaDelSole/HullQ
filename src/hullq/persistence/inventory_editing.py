@@ -284,7 +284,9 @@ class OfferEditResult:
                     "An ACTIVE_INVARIANT_VIOLATION offer edit result must carry at least one blocker"
                 )
         elif self.blockers is not None:
-            raise ValueError("Only an ACTIVE_INVARIANT_VIOLATION offer edit result may carry blockers")
+            raise ValueError(
+                "Only an ACTIVE_INVARIANT_VIOLATION offer edit result may carry blockers"
+            )
 
 
 def _map_offer_write_result(result: NativeListingOfferWriteResult) -> OfferEditResult:
@@ -444,7 +446,9 @@ class ClaimEditResult:
                     "An ACTIVE_INVARIANT_VIOLATION claim edit result must carry at least one blocker"
                 )
         elif self.blockers is not None:
-            raise ValueError("Only an ACTIVE_INVARIANT_VIOLATION claim edit result may carry blockers")
+            raise ValueError(
+                "Only an ACTIVE_INVARIANT_VIOLATION claim edit result may carry blockers"
+            )
 
 
 def _map_claim_write_result(result: PhysicalBoatClaimWriteResult) -> ClaimEditResult:

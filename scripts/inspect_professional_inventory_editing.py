@@ -673,7 +673,10 @@ def main() -> int:
                 keel=KeelConfiguration.FIN,
             )
             _publish(
-                listing_id="NL-0072-MAIN", org=org_a, account_id=account_a_id, membership=membership_a
+                listing_id="NL-0072-MAIN",
+                org=org_a,
+                account_id=account_a_id,
+                membership=membership_a,
             )
 
             # NL-FOREIGN: owned by ORG_B, ACTIVE -- proves Account A cannot
@@ -812,7 +815,9 @@ def main() -> int:
         # browser; the current offer/claim revision identities rendered
         # there are compared against the authoritative current heads read
         # directly from PostgreSQL.
-        status, headers, body = session_a.get(f"{web_base}{_edit_page_path(_ORG_A_ID, 'NL-0072-MAIN')}")
+        status, headers, body = session_a.get(
+            f"{web_base}{_edit_page_path(_ORG_A_ID, 'NL-0072-MAIN')}"
+        )
         page_text = body.decode("utf-8")
         offer_form = _form_block(page_text, "<h2>Offer</h2>")
         claim_form = _form_block(page_text, "<h2>PhysicalBoat claim</h2>")
@@ -821,7 +826,9 @@ def main() -> int:
 
         conn = psycopg.connect(url)
         try:
-            db_offer_before = fetch_current_native_listing_offer(conn, NativeListingId("NL-0072-MAIN"))
+            db_offer_before = fetch_current_native_listing_offer(
+                conn, NativeListingId("NL-0072-MAIN")
+            )
             db_claim_before = fetch_current_physical_boat_claim(
                 conn, PhysicalBoatId("PB-0072-MAIN"), MarketplaceOrganizationId(_ORG_A_ID)
             )
@@ -1050,7 +1057,8 @@ def main() -> int:
         stale_offer_ok = (
             stale_offer_status == 409
             and stale_offer_outcome.get("outcome") == "STALE_VERSION"
-            and offer_after_stale_attempt.revision_id.value == offer_after_price_edit.revision_id.value
+            and offer_after_stale_attempt.revision_id.value
+            == offer_after_price_edit.revision_id.value
             and offer_revision_count_after_stale_attempt == offer_revision_count_after_price_edit
         )
         ok &= stale_offer_ok
@@ -1132,7 +1140,9 @@ def main() -> int:
             conn.close()
         assert foreign_offer_unchanged is not None
         foreign_unchanged_ok = foreign_offer_unchanged.revision_id.value == "REV-NL-0072-FOREIGN"
-        foreign_ok = foreign_read_not_found_ok and foreign_write_not_found_ok and foreign_unchanged_ok
+        foreign_ok = (
+            foreign_read_not_found_ok and foreign_write_not_found_ok and foreign_unchanged_ok
+        )
         ok &= foreign_ok
         print(
             f"13. Account A's read and write attempts against ORG_B-owned NL-0072-FOREIGN under "
@@ -1288,7 +1298,9 @@ def main() -> int:
             for text in (api_log_text, web_log_text)
         )
         ok &= secrets_clean
-        print(f"    ordinary API/web logs contain no client/session secret -> {'OK' if secrets_clean else 'FAIL'}\n")
+        print(
+            f"    ordinary API/web logs contain no client/session secret -> {'OK' if secrets_clean else 'FAIL'}\n"
+        )
 
         print(f"PROFESSIONAL INVENTORY EDITING RESULT -> {'PASS' if ok else 'FAIL'}")
         return 0 if ok else 1

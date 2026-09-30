@@ -104,9 +104,7 @@ class TestOfferEditRequest:
         assert parsed.offer.location_region.value == "Brittany"
 
     def test_location_region_unknown_parses(self) -> None:
-        body = dict(
-            _BASE_OFFER, **{"listing_offer.location_region": {"assertion_kind": "UNKNOWN"}}
-        )
+        body = dict(_BASE_OFFER, **{"listing_offer.location_region": {"assertion_kind": "UNKNOWN"}})
         parsed = parse_native_listing_offer_edit_request(body)
         assert parsed.offer.location_region is not None
         assert parsed.offer.location_region.value is None

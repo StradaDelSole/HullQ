@@ -169,7 +169,9 @@ def _claim_wrapper_wire(claim: Any) -> dict[str, Any] | None:
         return None
     value = claim.value
     if hasattr(value, "value") and not isinstance(value, str):
-        value = value.value  # StrEnum member (KeelConfiguration/RudderConfiguration/VatTaxStatusValue)
+        value = (
+            value.value
+        )  # StrEnum member (KeelConfiguration/RudderConfiguration/VatTaxStatusValue)
     elif value is not None and not isinstance(value, (str, int)):
         value = str(value)  # Decimal -> plain string, never a binary float
     return {"assertion_kind": claim.assertion_kind.value, "value": value}
@@ -211,7 +213,9 @@ def _claims_to_wire_dict(claims: PhysicalBoatClaimSnapshot) -> dict[str, Any]:
     if claims.keel_configuration is not None:
         body["physical_boat.keel_configuration"] = _claim_wrapper_wire(claims.keel_configuration)
     if claims.rudder_configuration is not None:
-        body["physical_boat.rudder_configuration"] = _claim_wrapper_wire(claims.rudder_configuration)
+        body["physical_boat.rudder_configuration"] = _claim_wrapper_wire(
+            claims.rudder_configuration
+        )
     if claims.boat_name is not None:
         body["physical_boat.boat_name"] = _claim_wrapper_wire(claims.boat_name)
     return body
@@ -360,7 +364,9 @@ def get_inventory_edit_detail(
         lifecycle_state=lifecycle_state.value,
         freshness_status=freshness.status.value,
         last_confirmed_at=(
-            freshness.last_confirmed_at.isoformat() if freshness.last_confirmed_at is not None else None
+            freshness.last_confirmed_at.isoformat()
+            if freshness.last_confirmed_at is not None
+            else None
         ),
         current_offer_revision_id=(
             offer_record.revision_id.value if offer_record is not None else None
@@ -439,7 +445,10 @@ def _map_offer_edit_result(result: OfferEditResult) -> OfferSaveResult:
     if result.status is OfferEditStatus.DENIED:
         assert result.denial_reason is not None
         return OfferSaveResult(outcome=OfferSaveOutcome.DENIED, denial_reason=result.denial_reason)
-    if result.status in (OfferEditStatus.CROSS_ORGANIZATION_DENIED, OfferEditStatus.NATIVE_LISTING_NOT_FOUND):
+    if result.status in (
+        OfferEditStatus.CROSS_ORGANIZATION_DENIED,
+        OfferEditStatus.NATIVE_LISTING_NOT_FOUND,
+    ):
         return OfferSaveResult(outcome=OfferSaveOutcome.LISTING_NOT_FOUND)
     if result.status is OfferEditStatus.CONFLICT:
         return OfferSaveResult(
