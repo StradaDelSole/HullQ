@@ -130,6 +130,41 @@ Classification per `specs/TEST_CI_THROUGHPUT_OPTIMIZATION.v0.1.md` section 5.6:
   success when no step runs, full replay result otherwise), so it can never leave a required
   check permanently pending.
 
+## 7a. Real-CI-only findings and fixes (PR #282)
+
+Two defects surfaced only on the real GitHub Actions run, not in local validation, and were
+fixed on the same branch before acceptance:
+
+1. **`db-integration`'s coverage step used bare `uv run pytest` instead of
+   `uv run python -m pytest`.** Bare `pytest` does not add the repository root to `sys.path` the
+   way `python -m pytest` does, so every test module that imports the `scripts.*` package
+   (`test_claude_diag.py`, `test_historical_replay_scope.py`,
+   `test_repository_governance.py`, several `tests/unit` search-demo modules, etc.) failed
+   collection with `ModuleNotFoundError`. Local validation never hit this because
+   `scripts/workflow/timed_pytest.py` and `scripts/run_pytest_local.py` both insert the repo root
+   onto `sys.path` themselves. Fixed by invoking `python -m pytest` consistently in both
+   pytest-xdist CI steps.
+2. **A pre-existing "regenerate committed artifacts in place and diff" reproducibility-test
+   family raced under parallel execution.** Several `tests/unit/test_*` modules
+   (SLICE-0019 `research/manufacturers/`, SLICE-0020 `research/manufacturers/archive_clearance/`,
+   SLICE-0024 `research/bootstrap/wikimedia/sl0024-independent-verification/`, SLICE-0025
+   `research/stage3/sl0025-breadth-enrichment-entry/`) contain one test per package that calls a
+   generator/`run_assemble()`-style entry point which rewrites the real, git-committed retained
+   files in place (not `tmp_path`) to prove the regeneration is byte-stable, while sibling tests
+   in the same or a different file read those same files. Under single-process serial execution
+   (the pre-0073 topology) this was always safe because nothing ever ran concurrently; under
+   `pytest-xdist` a reader on one worker could observe the writer's file mid-rewrite on another
+   worker — observed directly as a digest recomputed to the SHA-256 of an empty file. Fixed by
+   adding `tests/unit/conftest.py`, which pins every test in all of these modules to one shared
+   `xdist_group` (`hullq-unit-shared-real-package-dirs`) so none of them can ever execute
+   concurrently with any other, while every other unit test remains fully parallel. Verified
+   clean across 6 repeated full non-DB-suite local runs after the fix (0 failures), versus a
+   single flake observed with a narrower per-directory grouping before consolidating to one
+   shared group.
+
+Both fixes are orchestration-only: no production `src/hullq` behavior changed, and no test
+assertion was weakened to make it pass.
+
 ## 8. Remote CI observation
 
 <!-- Filled from a real `gh run view` observation of this branch's/PR's actual GitHub Actions
