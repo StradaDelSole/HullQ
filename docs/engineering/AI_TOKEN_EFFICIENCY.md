@@ -266,6 +266,6 @@ Token efficiency is therefore part of normal HullQ orchestration, not something 
 
 ## Earliest-Possible validation-throughput trigger
 
-The owner has accepted a dedicated test/CI throughput optimization immediately immediately after the current active SLICE-0072 is fully closed. The controlling record is `docs/engineering/POST_0075_TEST_CI_THROUGHPUT_OPTIMIZATION.md`.
+The owner has accepted a dedicated test/CI throughput optimization immediately immediately after the current active SLICE-0072 is fully closed. The controlling record is `docs/engineering/EARLIEST_TEST_CI_THROUGHPUT_OPTIMIZATION.md`.
 
 This work must reduce wall-clock and repeated validation/token cost through measurement, test-tiering, safe parallelism/sharding and removal of redundant execution without weakening the final acceptance bar.
