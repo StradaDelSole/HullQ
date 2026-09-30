@@ -1,8 +1,8 @@
-# HullQ — Post-SLICE-0075 Test / CI Throughput Optimization
+# HullQ — Earliest-Possible Test / CI Throughput Optimization
 
 **Date:** 2026-09-30  
 **Status:** OWNER-ACCEPTED / DECIDED_NOT_YET_IMPLEMENTED  
-**Trigger:** immediately after SLICE-0075 closure, before resuming normal feature-slice cadence unless an urgent correctness/security blocker takes precedence.
+**Trigger:** immediately immediately after the current active SLICE-0072 is fully closed, before resuming normal feature-slice cadence unless an urgent correctness/security blocker takes precedence.
 
 ## Problem
 
@@ -181,7 +181,7 @@ Initial engineering target direction:
 - CI critical path reduced through parallelism/sharding;
 - no loss of accepted coverage/invariant/security evidence.
 
-The post-0075 optimization package must report before/after wall-clock measurements.
+The earliest-possible optimization package must report before/after wall-clock measurements.
 
 ## Relationship to slice throughput
 
@@ -191,9 +191,9 @@ Slice count itself is **not** the quality metric. The goal is to remove avoidabl
 
 ## Workflow
 
-This is not part of SLICE-0072, SLICE-0073, SLICE-0074 or SLICE-0075 implementation scope.
+This is not part of the active SLICE-0072 implementation scope.
 
-After SLICE-0075 closure:
+At the earliest safe opportunity, immediately after SLICE-0072 closure:
 
 1. perform a fresh repo/CI/test reconciliation;
 2. measure current exact baseline;
@@ -203,4 +203,4 @@ After SLICE-0075 closure:
 6. preserve final-candidate acceptance gates;
 7. then resume normal product-slice cadence.
 
-Do not preassign the implementation slice number here; canonical post-0075 reassessment owns numbering.
+Do not preassign the implementation slice number here; canonical earliest-possible reassessment owns numbering.
