@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0070 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0071 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0071 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0072 -->
 
 **Updated:** 2026-09-27  
-**Latest owner-accepted / DONE slice:** SLICE-0070  
-**Current queue:** SLICE-0071 — **Broker Lead Operating Surface + Durable Email Notification — READY ON MAIN**. Post-SLICE-0070 reassessment, exact-head readiness review, required remote gates, readiness merge and the owner-accepted CRM/notification-provenance readiness amendment are complete on `main`. Broker Workspace remains authoritative; email is auxiliary notification through durable outbox/retry semantics. Implementation may start only when the Project Owner runs `START_SLICE.bat`; that script-generated prompt is the sole initial Claude implementation prompt.  
+**Latest owner-accepted / DONE slice:** SLICE-0071  
+**Current queue:** SLICE-0072 — **UNSELECTED pending post-SLICE-0071 reassessment**. SLICE-0071 is owner-accepted and merged. No SLICE-0072 capability is selected or implementation-authorized until fresh repository/product reconciliation, trigger-gate review, capability selection, readiness preparation, independent readiness review and readiness merge complete.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -152,6 +152,10 @@ SLICE-0040 marketplace identity/truth separation
 → SLICE-0065 professional publication input alignment
 → SLICE-0066 required-response / assertion input alignment
 → SLICE-0067 professional draft → atomic marketplace promotion
+→ SLICE-0068 broker mixed-media gallery
+→ SLICE-0069 canonical publication readiness + current public eligibility
+→ SLICE-0070 durable buyer contact / Lead creation
+→ SLICE-0071 Broker Lead Operating Surface + Durable Email Notification
 ```
 
 Latest closures:
@@ -188,7 +192,7 @@ Accepted public `keel_configuration` values are exactly `FIN`, `FIN_WITH_BULB`, 
 
 The two criteria may be evaluated alone or together as deterministic hard MUST/AND requirements. SLICE-0055 preserves typed criterion/configuration evidence for confirmed match, confirmed non-match and insufficient-data application outcomes while keeping BoatDesign/configuration truth separate from concrete PhysicalBoat/listing truth.
 
-The accepted technical native Search criteria count remains `2`. SLICE-0057 adds no criterion: it re-evaluates one buyer-selected replacement value for an already active accepted criterion through the same Search truth, in one coherent comparison snapshot, and exposes only factual set-difference counts plus the backend-owned canonical alternative Search path. SLICE-0058 likewise adds no Search criterion: it records explicit buyer interest locally by stable `NativeListingId` and re-resolves current public listing truth when viewed. SLICE-0059 adds no Search criterion: it uses that existing explicit Shortlist as the whole Compare set and re-resolves current public listing/PhysicalBoat claim truth into a factual side-by-side matrix without score, winner, recommendation or hidden weighting. SLICE-0060 adds no Search criterion: it is a private professional Organization inventory projection over accepted NativeListing truth. SLICE-0061 likewise adds no Search criterion: it is private Organization-owned pre-market draft authoring state and has no Search/public promotion path. SLICE-0062 adds no Search criterion: it is bounded browser-local professional draft recovery. SLICE-0063 adds no Search criterion: it adds publisher display identity only. SLICE-0064 adds no Search criterion: it exposes already-accepted lifecycle/freshness operations for existing inventory without changing Search truth. SLICE-0065 also adds no Search criterion: it aligns professional draft description input and optional PhysicalBoat boat-name claim destination only. SLICE-0066 likewise adds no Search criterion: it aligns only shared draft build-year assertion-response semantics and browser/recovery handling. SLICE-0067 adds no Search criterion: it atomically promotes professional draft truth into a fresh lifecycle-DRAFT marketplace chain without changing Search semantics. Any future criterion #3+ readiness is subject to the accepted third-copy abstraction guard in `docs/governance/POST_0051_TRIGGER_GATES.md`.
+The accepted technical native Search criteria count remains `2`. SLICE-0071 adds no Search criterion: it adds private Organization-scoped Lead operations, durable notification/outbox delivery state and factual Lead acquisition/discovery provenance only. SLICE-0057 adds no criterion: it re-evaluates one buyer-selected replacement value for an already active accepted criterion through the same Search truth, in one coherent comparison snapshot, and exposes only factual set-difference counts plus the backend-owned canonical alternative Search path. SLICE-0058 likewise adds no Search criterion: it records explicit buyer interest locally by stable `NativeListingId` and re-resolves current public listing truth when viewed. SLICE-0059 adds no Search criterion: it uses that existing explicit Shortlist as the whole Compare set and re-resolves current public listing/PhysicalBoat claim truth into a factual side-by-side matrix without score, winner, recommendation or hidden weighting. SLICE-0060 adds no Search criterion: it is a private professional Organization inventory projection over accepted NativeListing truth. SLICE-0061 likewise adds no Search criterion: it is private Organization-owned pre-market draft authoring state and has no Search/public promotion path. SLICE-0062 adds no Search criterion: it is bounded browser-local professional draft recovery. SLICE-0063 adds no Search criterion: it adds publisher display identity only. SLICE-0064 adds no Search criterion: it exposes already-accepted lifecycle/freshness operations for existing inventory without changing Search truth. SLICE-0065 also adds no Search criterion: it aligns professional draft description input and optional PhysicalBoat boat-name claim destination only. SLICE-0066 likewise adds no Search criterion: it aligns only shared draft build-year assertion-response semantics and browser/recovery handling. SLICE-0067 adds no Search criterion: it atomically promotes professional draft truth into a fresh lifecycle-DRAFT marketplace chain without changing Search semantics. Any future criterion #3+ readiness is subject to the accepted third-copy abstraction guard in `docs/governance/POST_0051_TRIGGER_GATES.md`.
 
 ## Post-SLICE-0051 trigger gates
 
@@ -248,9 +252,9 @@ The SLICE-0053 same-host session-topology invariant remains in force for browser
 
 ## What remains unbuilt
 
-Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; professional marketplace publication and media; leads/CRM/outcomes/analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
+Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; post-promotion inventory editing; production email-provider activation; buyer-contact email verification; sales/outcomes and broader broker analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-SLICE-0067 is owner-accepted and merged. The professional path can now atomically promote a promotion-ready Organization-owned draft into a fresh PhysicalBoat/MarketEpisode/NativeListing DRAFT chain with initial claim/offer truth and immutable source provenance. REQ-BROKER-023 and REQ-BROKER-024 remain implemented. The Broker Workspace Launch Gate remains NOT_READY because media, integrated publication readiness/publish flow, lead handling, editing and the other launch-gate sections remain outstanding.
+SLICE-0071 is owner-accepted and merged. The professional path now includes durable Organization-scoped Lead inbox/detail/work-queue handling, assignment/status/read/follow-up/contact-attempt/close workflow, notification-recipient configuration, durable provider-neutral outbox/retry delivery, and bounded acquisition/discovery provenance including UTM context when evidenced. REQ-BROKER-023 and REQ-BROKER-024 remain implemented. The Broker Workspace Launch Gate remains NOT_READY because post-promotion inventory editing, launch-level performance/source-to-outcome analytics, usability/competitive benchmark evidence and other remaining gate items are still outstanding.
 
 ## Broker launch execution focus
 
@@ -283,14 +287,12 @@ Large retained research artifacts are acknowledged as repository-hygiene debt, n
 Next queue number:
 
 ```text
-SLICE-0071
+SLICE-0072
 ```
 
-**Capability:** Broker Lead Operating Surface + Durable Email Notification.
+**Capability:** UNSELECTED pending post-SLICE-0071 reassessment.
 
-Post-SLICE-0070 reassessment selected SLICE-0071 as the next broker-launch capability. It is governed by `specs/BROKER_LEAD_OPERATIONS_NOTIFICATION_CONTRACT.v0.1.md` and `docs/slices/SLICE-0071-broker-lead-operations-notification.md`.
-
-The slice delivers Organization-scoped Lead inbox/detail, unread/read state, assignment, bounded operational status, notes/timeline, explicit follow-up due/overdue workflow, structured broker contact-attempt logging, bounded close reasons, factual work-queue counts/filters, Lead acquisition + HullQ discovery provenance with bounded UTM context when evidenced, one OWNER/ADMIN-controlled Organization notification email, durable outbox intent and provider-agnostic retryable HullQ email notification. Buyer email verification remains PENDING and external production email-provider activation remains outside 0071.
+SLICE-0071 is owner-accepted and merged. Fresh post-SLICE-0071 reconciliation must now inspect the Broker Workspace Launch Gate, Mandatory Capability Register, production/buyer-email verification triggers and current implementation before selecting SLICE-0072. This closure does not preselect inventory editing, analytics/reporting, email-provider activation, buyer-email verification, sale/outcome, bulk onboarding or any other candidate.
 
 ## Development workflow
 
@@ -305,6 +307,6 @@ The slice delivers Organization-scoped Lead inbox/detail, unread/read state, ass
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0070 is owner-accepted and finished; SLICE-0071 Broker Lead Operating Surface + Durable Email Notification is READY ON MAIN after exact-head readiness review, required remote gates, readiness merge and the CRM/notification-provenance readiness amendment. The next actor is the Project Owner running `START_SLICE.bat`.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0071 is owner-accepted and merged; SLICE-0072 remains UNSELECTED. The next repository action after closure is fresh post-SLICE-0071 reassessment/readiness, not `START_SLICE.bat`.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
