@@ -294,9 +294,9 @@ SLICE-0072
 
 Post-SLICE-0071 reassessment selected SLICE-0072 to expose the existing revisioned NativeListing offer and Organization PhysicalBoat claim truth as a safe Broker Workspace maintenance workflow for already-promoted inventory. It is governed by `specs/PROFESSIONAL_INVENTORY_EDITING_CONTRACT.v0.1.md` and `docs/slices/SLICE-0072-professional-inventory-editing.md`. Readiness review/gates/merge are complete. Implementation may start only through the Project Owner's `START_SLICE.bat` invocation.
 
-## Post-SLICE-0075 engineering throughput commitment
+## Earliest-Possible engineering throughput commitment
 
-The Project Owner has accepted a mandatory test/CI throughput optimization immediately after SLICE-0075 closure. Controlling record:
+The Project Owner has accepted a mandatory test/CI throughput optimization immediately immediately after the current active SLICE-0072 is fully closed. Controlling record:
 
 ```text
 docs/engineering/POST_0075_TEST_CI_THROUGHPUT_OPTIMIZATION.md
