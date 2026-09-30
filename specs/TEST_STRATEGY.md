@@ -71,3 +71,20 @@ Normal CI MUST NOT depend on mutable live marketplace pages or live research sou
 ## Execution throughput
 
 SLICE-0073 is the owner-directed engineering optimization for test/CI wall-clock. Tests may be grouped, sharded and executed concurrently only when state isolation and aggregate coverage remain mechanically trustworthy. Performance improvement must come from execution topology and reduced redundant work, not weaker coverage or omitted regression/security evidence. See `specs/TEST_CI_THROUGHPUT_OPTIMIZATION.v0.1.md`.
+
+
+## Local vs remote final-validation authority
+
+For ordinary HullQ implementation and amendment work, local validation is intentionally **affected-surface focused**. The complete regression suite is authoritative on the exact pushed commit in GitHub Actions.
+
+Required default flow:
+
+```text
+local focused tests / relevant DB tests / affected static checks / relevant proof
+→ push exact candidate HEAD
+→ GitHub complete regression + coverage + platform/security/proof gates
+```
+
+A complete local regression is not a standing prerequisite for final handoff. It is reserved for changes to the test/CI/coverage/migration/isolation machinery, remote-failure reproduction, or explicit local-only acceptance requirements.
+
+This avoids duplicating a 38–45 minute local full-suite run before the same exact candidate receives materially faster complete validation in GitHub Actions. Final correctness confidence remains unchanged because merge still requires the authoritative remote gates.
