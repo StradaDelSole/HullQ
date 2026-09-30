@@ -273,3 +273,20 @@ Initial implementation prompt must come only from `START_SLICE.bat` after readin
 - Retained proof: not re-run this round (no application/domain/persistence/API/web code changed — lockfile-only dependency bump).
 - Remote CI: `NOT VERIFIED`
 - Remaining blocker(s): none.
+
+## Amendment 5 — remote `db integration` coverage gate (PR #278)
+
+### Amendment
+
+- Previous reviewed HEAD: `acdad5ffdbf1f09b6fd44cd46676c3dc34a0481c`
+- Exact new HEAD: `f663f20c04ab5b8be6b9f2e095b411bed26dc972`
+- Remote failure reproduced: yes — `uv run coverage run -m pytest` then `uv run coverage report` against the local PostgreSQL 18 test DB, matching CI's `db-integration` job exactly.
+- Coverage before: 89.99% (fail_under=90.00); concentrated in the three new SLICE-0072 modules (73.92%/72.98%/76.15%) — optional offer/claim assertion-field parsers, the ACTIVE-only read branch, MFA/DENIED/NOT_FOUND/CHAIN_INCOMPLETE outcomes, the claim-side ACTIVE_INVARIANT_VIOLATION path, and the transaction-ownership guard were never exercised.
+- Root cause: genuine missing behavioral test coverage in SLICE-0072's own new code, not an instrumentation/config issue.
+- Fix: added focused tests only (see Changed files) — no production code changed, no `fail_under` lowered, nothing excluded from coverage.
+- Changed files: `tests/unit/test_inventory_edit_request_domain.py`, `tests/persistence/test_broker_inventory_editing_api.py`, `tests/persistence/test_inventory_editing_concurrency.py`.
+- Focused tests: 88 tests across the three directly affected files — all pass.
+- Final full-suite result: 5900 passed, 3 skipped, 0 failed (37m51s).
+- Final coverage: 90.84% (threshold 90.00%).
+- Remote CI: `NOT VERIFIED`
+- Remaining blocker(s): none.
