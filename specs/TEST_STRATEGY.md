@@ -67,3 +67,7 @@ Every corrected domain/data bug SHOULD gain a regression test linked to the rele
 ## Determinism
 
 Normal CI MUST NOT depend on mutable live marketplace pages or live research sources. Live checks are operational probes, not unit-test dependencies.
+
+## Execution throughput
+
+SLICE-0073 is the owner-directed engineering optimization for test/CI wall-clock. Tests may be grouped, sharded and executed concurrently only when state isolation and aggregate coverage remain mechanically trustworthy. Performance improvement must come from execution topology and reduced redundant work, not weaker coverage or omitted regression/security evidence. See `specs/TEST_CI_THROUGHPUT_OPTIMIZATION.v0.1.md`.

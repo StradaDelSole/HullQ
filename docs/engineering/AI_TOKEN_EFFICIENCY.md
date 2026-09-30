@@ -263,3 +263,7 @@ The project master should explicitly direct the operator when to:
 - stop a session after handoff.
 
 Token efficiency is therefore part of normal HullQ orchestration, not something the operator must remember independently.
+
+## SLICE-0073 throughput optimization
+
+Post-SLICE-0072, the owner-directed earliest-safe optimization is selected as SLICE-0073. Its controlling contract is `specs/TEST_CI_THROUGHPUT_OPTIMIZATION.v0.1.md`. The implementation must reduce wall-clock and repeated validation/token cost through measured grouping, safe PostgreSQL isolation/parallelism and removal of redundant execution without weakening the final acceptance bar.

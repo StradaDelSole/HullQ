@@ -5,7 +5,7 @@
 
 **Updated:** 2026-09-30  
 **Latest owner-accepted / DONE slice:** SLICE-0072  
-**Current queue:** SLICE-0073 — **UNSELECTED** pending fresh post-SLICE-0072 reassessment. The Project Owner has separately directed that test/CI throughput optimization occur at the earliest safe opportunity after SLICE-0072 closure and before the next normal feature slice.  
+**Current queue:** SLICE-0073 — **Test / CI Throughput Optimization — READY ON MAIN UPON THIS READINESS MERGE**. Fresh post-SLICE-0072 reconciliation and independent readiness review are complete on this exact head. Implementation may start only after required remote gates and readiness merge, through the Project Owner's `START_SLICE.bat`.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -292,9 +292,9 @@ Next queue number:
 SLICE-0073
 ```
 
-**Capability:** UNSELECTED pending fresh post-SLICE-0072 reassessment.
+**Capability:** Test / CI Throughput Optimization.
 
-Before the next normal feature slice, the owner has directed an earliest-safe engineering throughput optimization focused on test/CI wall-clock reduction through measurement, tiering, safe parallelism/sharding and elimination of redundant validation while preserving final acceptance/security/provenance gates.
+Fresh post-SLICE-0072 reconciliation selected SLICE-0073 as an engineering-productivity slice before the next normal feature capability. It is governed by `docs/POST_SLICE_0072_TEST_CI_REASSESSMENT_2026-09-30.md`, `specs/TEST_CI_THROUGHPUT_OPTIMIZATION.v0.1.md`, and `docs/slices/SLICE-0073-test-ci-throughput-optimization.md`. Independent readiness review is complete; required remote gates and merge remain before implementation start.
 
 ## Development workflow
 
@@ -309,6 +309,6 @@ Before the next normal feature slice, the owner has directed an earliest-safe en
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0072 is owner-accepted and merged; SLICE-0073 remains unselected pending fresh post-SLICE-0072 reassessment. The owner-directed test/CI throughput optimization is the earliest-safe engineering priority before the next normal feature slice.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0072 is owner-accepted and merged; SLICE-0073 Test / CI Throughput Optimization is selected and in readiness review. The next actor after readiness merge is the Project Owner running `START_SLICE.bat`.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
