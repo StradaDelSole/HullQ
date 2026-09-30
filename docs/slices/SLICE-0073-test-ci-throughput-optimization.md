@@ -1,7 +1,7 @@
 # SLICE-0073 — Test / CI Throughput Optimization
 
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** Engineering productivity / validation throughput  
 **Depends on:** SLICE-0072 owner-accepted / DONE  
 **Normative contract:** `specs/TEST_CI_THROUGHPUT_OPTIMIZATION.v0.1.md`
@@ -159,7 +159,6 @@ SLICE-0073 adds no HullQ marketplace capability. After closure, normal product c
 
 Initial implementation prompt must come only from `START_SLICE.bat` after readiness review, remote gates and readiness merge.
 
-
 ## Validation ownership — owner directive
 
 Effective with SLICE-0073 and intended as the default for later slices:
@@ -182,3 +181,22 @@ remote failure:
 Claude MUST NOT run the complete local backend suite merely because an implementation or amendment is ready for handoff. A local full-suite run requires a concrete exception: the slice changes the test/CI system itself, remote failure reproduction requires it, or an explicit local-only acceptance proof demands it.
 
 This specifically prevents the historical pattern where two amendments can consume roughly 80–90 minutes of duplicated local full-suite execution before GitHub reruns the same regression.
+
+## Implementation handoff
+
+**Status set by this handoff:** `REVIEW`
+
+Summary evidence is retained in `docs/engineering/CI_THROUGHPUT_EVIDENCE.md` and the conversational
+completion report delivered at handoff. Local full-suite PostgreSQL-backed before/after timing could
+not be completed within the implementation session on the owner's local hardware (see that document,
+section 5); a bounded representative subset, the non-DB suite, coverage-combine mechanics and
+orchestration failure-propagation were all verified directly. Remote GitHub Actions timing (the
+authoritative acceptance evidence) was directly observed on PR #282 — critical path 3m23s against the
+5min/4min targets and the 7m21s-8m22s baseline — and is detailed in section 8 of the evidence doc, so
+this metric is `VERIFIED`, not `NOT VERIFIED`, at handoff. Two defects were found and fixed only via
+that real run (see evidence doc section 7a); the final green HEAD before this merge-forward amendment
+was `a569b9f`. This amendment merges the owner-directed focused-local/authoritative-remote validation
+policy (PR #283, `origin/main` `8388a7b`) into this branch per explicit instruction, preserving both
+the SLICE-0073 implementation/evidence and the newer policy above; see the amendment completion report
+delivered at this handoff for the resulting exact HEAD and remote verification, never inferred from
+local numbers.

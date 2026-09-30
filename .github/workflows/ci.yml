@@ -5,6 +5,13 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  schedule:
+    # Nightly historical-research-replay drift backstop — see the
+    # historical-research-replay job. Every other job only runs on
+    # push/pull_request/workflow_dispatch; this cron exists solely so that
+    # job's every-commit-optional replay still gets exercised periodically
+    # even across a run of PRs that never touch its trigger paths.
+    - cron: "17 3 * * *"
 
 permissions:
   contents: read
@@ -54,7 +61,7 @@ jobs:
         run: uv run mypy src
 
       - name: Test cross-platform suite
-        run: uv run python -m pytest
+        run: uv run python -m pytest -n auto --dist loadgroup
 
   web-quality:
     name: web quality (Astro/Node)
@@ -123,12 +130,20 @@ jobs:
       - name: Sync environment
         run: uv sync --locked --all-groups
 
-      - name: Run full suite with branch coverage against PostgreSQL 18
+      # SLICE-0073: parallel pytest-xdist shards, one PostgreSQL 18 service
+      # container, worker-isolated by the per-test/per-shared-module schema
+      # boundary documented in tests/persistence/conftest.py. pytest-cov
+      # combines every worker's branch-coverage data into one .coverage file
+      # automatically (including xdist subprocess workers) before the next
+      # step enforces the repository-wide 90% floor.
+      - name: Run full suite with branch coverage against PostgreSQL 18 (parallel shards)
         env:
           HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
-        run: uv run coverage run -m pytest
+        run: >
+          uv run python -m pytest -n auto --dist loadgroup
+          --cov=hullq --cov-branch --cov-report= --durations=20
 
-      - name: Enforce full-suite coverage
+      - name: Enforce full-suite combined coverage
         run: uv run coverage report
 
       - name: Install pinned Node
@@ -244,7 +259,60 @@ jobs:
             research/benchmark/persistence/BENCHMARK-REPORT.md
           if-no-files-found: warn
 
+  historical-research-replay:
+    name: historical research/bootstrap replay (PostgreSQL 18)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: hullq_test
+          POSTGRES_PASSWORD: hullq_test
+          POSTGRES_DB: hullq_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.12.5"
+          enable-cache: true
+          python-version: "3.14"
+
+      - name: Sync environment
+        run: uv sync --locked --all-groups
+
+      # SLICE-0073 spec section 5.6: the job itself always runs (so it can
+      # never become a permanently-pending required check per
+      # docs/engineering/CI_BASELINE.md), but every step below only pays the
+      # real replay cost when scripts/workflow/historical_replay_scope.py
+      # decides a path that can affect the retained replay outcome actually
+      # changed — or unconditionally on schedule/workflow_dispatch/push to
+      # main. See that module for the exact relevant-path boundary and the
+      # fail-open behavior when the changed-file set cannot be determined.
+      - name: Determine historical-replay relevance
+        id: changes
+        run: >
+          uv run python scripts/workflow/historical_replay_scope.py
+          --event "${{ github.event_name }}"
+          --base "${{ github.event.pull_request.base.sha || github.event.before || '' }}"
+          --head "${{ github.sha }}"
+          >> "$GITHUB_OUTPUT"
+
       - name: Validate SLICE-0017 bootstrap manifest against schema
+        if: steps.changes.outputs.relevant == 'true'
         run: >
           uv run python -c "
           import json, jsonschema, pathlib;
@@ -256,6 +324,7 @@ jobs:
           "
 
       - name: Replay SLICE-0017 Wikidata Tier-0 bootstrap manifest against PostgreSQL 18
+        if: steps.changes.outputs.relevant == 'true'
         env:
           HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
         run: >
@@ -265,6 +334,7 @@ jobs:
           --result research/bootstrap/wikidata/REPLAY-RESULT.json
 
       - name: Verify bootstrap replay cleared every zero-tolerance condition
+        if: steps.changes.outputs.relevant == 'true'
         run: >
           uv run python -c "
           import json, pathlib;
@@ -275,7 +345,7 @@ jobs:
 
       - name: Upload bootstrap outputs
         uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.changes.outputs.relevant == 'true'
         with:
           name: bootstrap-outputs
           path: |
@@ -286,6 +356,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Validate SLICE-0018 expansion manifest against schema
+        if: steps.changes.outputs.relevant == 'true'
         run: >
           uv run python -c "
           import json, jsonschema, pathlib;
@@ -298,6 +369,7 @@ jobs:
           "
 
       - name: Replay SLICE-0018 baseline-first/delta-second bootstrap manifest against PostgreSQL 18
+        if: steps.changes.outputs.relevant == 'true'
         env:
           HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
         run: >
@@ -309,6 +381,7 @@ jobs:
           --replay-report research/bootstrap/wikidata/sl0018-2500/REPLAY-REPORT.md
 
       - name: Verify SLICE-0018 replay cleared every zero-tolerance condition
+        if: steps.changes.outputs.relevant == 'true'
         run: >
           uv run python -c "
           import json, pathlib;
@@ -319,7 +392,7 @@ jobs:
 
       - name: Upload SLICE-0018 expansion outputs
         uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.changes.outputs.relevant == 'true'
         with:
           name: sl0018-expansion-outputs
           path: |
@@ -330,6 +403,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Validate SLICE-0021 alternative-discovery documents against schema
+        if: steps.changes.outputs.relevant == 'true'
         run: >
           uv run python -c "
           import json, jsonschema, pathlib;
@@ -348,12 +422,13 @@ jobs:
           "
 
       - name: Offline-verify SLICE-0021 retained documents reproduce deterministically (no network)
+        if: steps.changes.outputs.relevant == 'true'
         run: >
           uv run python scripts/bootstrap/wikidata_sl0021_alt_discovery_runner.py --verify
 
       - name: Upload SLICE-0021 alternative-discovery outputs
         uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.changes.outputs.relevant == 'true'
         with:
           name: sl0021-alt-discovery-outputs
           path: |
@@ -363,6 +438,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Validate SLICE-0022 retained admission manifest against schema
+        if: steps.changes.outputs.relevant == 'true'
         run: >
           uv run python -c "
           import json, jsonschema, pathlib;
@@ -377,6 +453,7 @@ jobs:
           "
 
       - name: Validate SLICE-0022 retained artifact digests against schema
+        if: steps.changes.outputs.relevant == 'true'
         run: >
           uv run python -c "
           import json, jsonschema, pathlib;
@@ -388,10 +465,12 @@ jobs:
           "
 
       - name: Offline-verify SLICE-0022 retained manifest reproduces deterministically (no network)
+        if: steps.changes.outputs.relevant == 'true'
         run: >
           uv run python scripts/bootstrap/wikidata_sl0022_alt_route_admission_runner.py --verify
 
       - name: Replay SLICE-0022 baseline-first (0017+0018) / delta-second manifest against PostgreSQL 18
+        if: steps.changes.outputs.relevant == 'true'
         env:
           HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
         run: >
@@ -402,6 +481,7 @@ jobs:
           --replay-report research/bootstrap/wikidata/sl0022-alt-route-admission/REPLAY-REPORT.md
 
       - name: Verify SLICE-0022 replay cleared every zero-tolerance condition
+        if: steps.changes.outputs.relevant == 'true'
         run: >
           uv run python -c "
           import json, pathlib;
@@ -412,7 +492,7 @@ jobs:
 
       - name: Upload SLICE-0022 admission-pilot outputs
         uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.changes.outputs.relevant == 'true'
         with:
           name: sl0022-alt-route-admission-outputs
           path: |
@@ -424,10 +504,12 @@ jobs:
           if-no-files-found: warn
 
       - name: Offline-verify SLICE-0026 retained 100-BoatModel Tier-1 enrichment pilot reproduces deterministically (no network)
+        if: steps.changes.outputs.relevant == 'true'
         run: >
           uv run python scripts/bootstrap/wikidata_sl0026_tier1_enrichment_pilot_runner.py --verify
 
       - name: Persist/replay SLICE-0026 retained 100-BoatModel pilot against PostgreSQL 18
+        if: steps.changes.outputs.relevant == 'true'
         env:
           HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
         run: >
@@ -435,6 +517,7 @@ jobs:
           --db-url postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
 
       - name: Verify SLICE-0026 persistence proof cleared every required condition
+        if: steps.changes.outputs.relevant == 'true'
         run: >
           uv run python -c "
           import json, pathlib;
@@ -452,10 +535,12 @@ jobs:
           "
 
       - name: Offline-verify SLICE-0027 retained qualifier-shape analysis and before/after coverage reproduce deterministically (no network)
+        if: steps.changes.outputs.relevant == 'true'
         run: >
           uv run python scripts/bootstrap/wikidata_sl0027_qualifier_semantics_correction_runner.py --verify
 
       - name: Persist/replay SLICE-0027 amended evidence for the retained 100-BoatModel sample against PostgreSQL 18
+        if: steps.changes.outputs.relevant == 'true'
         env:
           HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
         run: >
@@ -463,6 +548,7 @@ jobs:
           --db-url postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
 
       - name: Verify SLICE-0027 persistence proof cleared every required condition
+        if: steps.changes.outputs.relevant == 'true'
         run: >
           uv run python -c "
           import json, pathlib;
@@ -480,10 +566,12 @@ jobs:
           "
 
       - name: Offline-verify SLICE-0028 retained full-boundary linkage/evidence/coverage reproduce deterministically (no network)
+        if: steps.changes.outputs.relevant == 'true'
         run: >
           uv run python scripts/bootstrap/wikidata_sl0028_full_boundary_evidence_runner.py --verify
 
       - name: Persist/replay SLICE-0028 retained full-boundary evidence against PostgreSQL 18
+        if: steps.changes.outputs.relevant == 'true'
         env:
           HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
         run: >
@@ -491,6 +579,7 @@ jobs:
           --db-url postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
 
       - name: Verify SLICE-0028 persistence proof cleared every required condition
+        if: steps.changes.outputs.relevant == 'true'
         run: >
           uv run python -c "
           import json, pathlib;
@@ -508,10 +597,12 @@ jobs:
           "
 
       - name: Offline-verify SLICE-0030 retained mass-unit assessment and before/after coverage reproduce deterministically (no network)
+        if: steps.changes.outputs.relevant == 'true'
         run: >
           uv run python scripts/bootstrap/wikidata_sl0030_mass_unit_correction_runner.py --verify
 
       - name: Persist/replay SLICE-0030 corrected full-boundary evidence against PostgreSQL 18
+        if: steps.changes.outputs.relevant == 'true'
         env:
           HULLQ_TEST_DATABASE_URL: postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
         run: >
@@ -519,6 +610,7 @@ jobs:
           --db-url postgresql://hullq_test:hullq_test@localhost:5432/hullq_test
 
       - name: Verify SLICE-0030 persistence proof cleared every required condition
+        if: steps.changes.outputs.relevant == 'true'
         run: >
           uv run python -c "
           import json, pathlib;
@@ -536,10 +628,12 @@ jobs:
           "
 
       - name: Offline-verify SLICE-0031 retained corrected Tier-1 evidence profile and positive-control candidates reproduce deterministically (no network)
+        if: steps.changes.outputs.relevant == 'true'
         run: >
           uv run python scripts/bootstrap/wikidata_sl0031_corrected_tier1_evidence_profile_runner.py --verify
 
       - name: Offline-verify SLICE-0032 retained sequential positive-control pilot package reproduces deterministically (no network)
+        if: steps.changes.outputs.relevant == 'true'
         run: >
           uv run python scripts/bootstrap/wikidata_sl0032_sequential_positive_control_pilot_runner.py --verify
 
