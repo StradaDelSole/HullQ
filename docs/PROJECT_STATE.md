@@ -299,7 +299,7 @@ Post-SLICE-0071 reassessment selected SLICE-0072 to expose the existing revision
 The Project Owner has accepted a mandatory test/CI throughput optimization immediately immediately after the current active SLICE-0072 is fully closed. Controlling record:
 
 ```text
-docs/engineering/POST_0075_TEST_CI_THROUGHPUT_OPTIMIZATION.md
+docs/engineering/EARLIEST_TEST_CI_THROUGHPUT_OPTIMIZATION.md
 ```
 
 The purpose is to shorten focused feedback and final validation through measured test tiering, safe parallelism/sharding, CI decomposition and elimination of redundant execution while preserving accepted correctness/security/coverage/retained-proof gates. This is explicitly not permission to delete meaningful tests or weaken the final acceptance bar.
