@@ -1,7 +1,7 @@
 # SLICE-0072 — Post-Promotion Inventory Editing & Maintenance
 
 **Type:** IMPLEMENTATION  
-**Status:** READY CANDIDATE  
+**Status:** READY  
 **Stage:** Broker launch path — broker edits / maintains inventory  
 **Depends on:** SLICE-0071 owner-accepted / DONE  
 **Normative contract:** `specs/PROFESSIONAL_INVENTORY_EDITING_CONTRACT.v0.1.md`
