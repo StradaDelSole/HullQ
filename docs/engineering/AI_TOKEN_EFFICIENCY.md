@@ -263,3 +263,9 @@ The project master should explicitly direct the operator when to:
 - stop a session after handoff.
 
 Token efficiency is therefore part of normal HullQ orchestration, not something the operator must remember independently.
+
+## Post-SLICE-0075 validation-throughput trigger
+
+The owner has accepted a dedicated test/CI throughput optimization immediately after SLICE-0075 closure. The controlling record is `docs/engineering/POST_0075_TEST_CI_THROUGHPUT_OPTIMIZATION.md`.
+
+This work must reduce wall-clock and repeated validation/token cost through measurement, test-tiering, safe parallelism/sharding and removal of redundant execution without weakening the final acceptance bar.
