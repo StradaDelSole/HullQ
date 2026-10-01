@@ -3,7 +3,7 @@
 **Slice:** SLICE-0076 — Broker Workspace Launch Validation
 **Normative protocol:** `specs/BROKER_WORKSPACE_LAUNCH_VALIDATION_PROTOCOL.v0.1.md`
 **Governing gate:** `docs/governance/BROKER_WORKSPACE_LAUNCH_GATE.md` §§9–10
-**Candidate commit under test:** `b534be1` on `slice/0076-broker-workspace-launch-validation`
+**Candidate commit under test:** `ba0e601` on `slice/0076-broker-workspace-launch-validation`
 (amendment-corrected; see `docs/validation/BROKER_WORKSPACE_USABILITY_EVIDENCE_2026-10.md`'s
 amendment note)
 **Inputs:** `docs/validation/BROKER_WORKSPACE_USABILITY_EVIDENCE_2026-10.md`,

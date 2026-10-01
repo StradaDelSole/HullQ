@@ -2,7 +2,7 @@
 
 **Slice:** SLICE-0076 — Broker Workspace Launch Validation
 **Normative protocol:** `specs/BROKER_WORKSPACE_LAUNCH_VALIDATION_PROTOCOL.v0.1.md`
-**Candidate commit under test:** `b534be1` on `slice/0076-broker-workspace-launch-validation`
+**Candidate commit under test:** `ba0e601` on `slice/0076-broker-workspace-launch-validation`
 (built on the accepted SLICE-0075 product boundary, canonical base
 `253bbac52df20435e3a0d319c182d30a1fa3a2fa`)
 **Run date:** 2026-10-01
@@ -12,8 +12,11 @@ external broker (protocol §2/§9: pre-pilot evidence may use a representative p
 
 **Amendment note (2026-10-01):** this is the retained run against the exact-head review
 amendment that replaced Task 6's vacuous `assert ... or True` with a real deterministic
-assertion (independent review of reviewed HEAD `28288ef`, Finding C). All timings/ids below
-are from one single coherent run of the corrected harness; no numbers are mixed across runs.
+assertion (independent review of reviewed HEAD `28288ef`, Finding C). The timings/ids in §3
+below are from that single coherent run (harness commit `b534be1`); a subsequent cosmetic-only
+`ruff format` fix (commit `ba0e601`, required by CI) was re-run and produced identical
+outcomes/findings, confirmed by direct re-execution, so the per-task evidence below is not
+restated a second time for that purely cosmetic commit.
 
 ## 1. Harness
 
