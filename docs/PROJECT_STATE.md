@@ -270,6 +270,26 @@ The SLICE-0053 same-host session-topology invariant remains in force for browser
 
 `docs/POST_0054_BUYER_SELLER_PRODUCT_RECONCILIATION_2026-09-17.md` records the accepted optional Buyer Requirements/Decision Tools direction and shared Seller Platform direction. Direct Search remains primary; Buyer Requirements remain optional; `UNKNOWN != NOT_SATISFIED`; no match scores/winners/hidden weights are authorized. SLICE-0058 implements the bounded anonymous/local form of one ordinary personal Shortlist, and SLICE-0059 adds a factual whole-Shortlist Compare over current public truth while preserving the invariant that shortlist membership is buyer interest rather than HullQ fit.
 
+## Help & Support direction
+
+The Project Owner accepted **Zammad Hosted Professional v2** as HullQ's external commodity helpdesk / support platform. The controlling decision is:
+
+```text
+docs/HULLQ_HELP_SUPPORT_ZAMMAD_DECISION_2026-09-30.md
+```
+
+Zammad is intended for branded customer support, tickets/conversations, agent workflow and Help Center delivery. It is not HullQ marketplace, verification or Trust & Safety authority. Provisioning, privacy/retention configuration, branding validation, support integration and HullQ-native Trust & Safety linkage remain not yet implemented.
+
+## Overall MVP completeness register
+
+The Project Owner accepted the cross-cutting overall-MVP register:
+
+```text
+docs/governance/OVERALL_MVP_CAPABILITY_REGISTER.md
+```
+
+Every primary slice selected after SLICE-0072 must reconcile that register before readiness. Current broker-specific DUE items include the pre-pilot usability/competitive benchmark and the separately accepted Security Hardening & Adversarial Validation gate; neither is waived by the other.
+
 ## What remains unbuilt
 
 Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; production email-provider activation; buyer-contact email verification; periodic/broader broker analytics beyond the accepted factual SLICE-0075 snapshot; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
