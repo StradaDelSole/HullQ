@@ -160,6 +160,24 @@ function formatLatency(seconds: number | null): string {
               </tbody>
             </table>
 
+            <h3>Lead discovery source breakdown</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Discovery surface</th>
+                  <th>Leads</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(result.data.discovery_source_breakdown).map(([surface, count]) => (
+                  <tr>
+                    <td>{surface}</td>
+                    <td>{count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
             <h2>Per-listing breakdown</h2>
             {result.data.listings.length === 0 ? (
               <p>No observed views, Leads or recorded SOLD outcomes for this window.</p>

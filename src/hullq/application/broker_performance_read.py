@@ -65,7 +65,9 @@ _WINDOW_DAYS = {
 }
 
 
-def resolve_window_bounds(window: PerformanceWindow, *, as_of: datetime) -> tuple[datetime, datetime]:
+def resolve_window_bounds(
+    window: PerformanceWindow, *, as_of: datetime
+) -> tuple[datetime, datetime]:
     """Resolve *window* to an explicit, deterministic `[start, end)` pair
     anchored at *as_of* (contract §9: "All period boundaries must be
     explicit and deterministic"). `ALL_TIME`'s lower bound is a fixed epoch

@@ -74,9 +74,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(
-        "ix_nl_view_events_org_id_occurred_at", table_name="native_listing_view_events"
-    )
+    op.drop_index("ix_nl_view_events_org_id_occurred_at", table_name="native_listing_view_events")
     op.drop_index(
         "ix_nl_view_events_native_listing_id_occurred_at",
         table_name="native_listing_view_events",

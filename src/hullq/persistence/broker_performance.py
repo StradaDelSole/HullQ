@@ -28,7 +28,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from hullq.domain.lead_provenance import AcquisitionChannel
+from hullq.domain.lead_provenance import AcquisitionChannel, DiscoverySurface
 from hullq.domain.publishing_eligibility import MarketplaceOrganizationId
 from hullq.persistence.native_listing_view_event import fetch_organization_listing_view_counts
 
@@ -42,10 +42,14 @@ __all__ = [
 @dataclass(frozen=True)
 class ListingPerformanceFacts:
     """One listing's bounded factual snapshot within the requested window
-    (contract §6). `sold_outcome_recorded_at`/`sold_outcome_source_known`
-    reflect the listing's *current* SaleOutcome head regardless of window --
-    an explicit close-out is lifetime truth, not a windowed event -- while
-    every other field is scoped to `[window_start, window_end)`."""
+    (contract §6/§9). `sold_outcome_recorded_at`/`sold_outcome_source_known`
+    reflect the listing's *current* SaleOutcome head only when its own
+    `recorded_at` falls inside `[window_start, window_end)` -- amendment
+    (independent review, exact-head c30e4ab, Finding A): a SOLD outcome
+    recorded outside the selected period must never appear as if it were an
+    in-period event, and must never be the sole reason a listing with no
+    other in-window activity appears in a bounded (non-`ALL_TIME`) snapshot.
+    Every other field is scoped to `[window_start, window_end)`."""
 
     native_listing_id: str
     public_listing_views: int
@@ -75,7 +79,9 @@ class ListingPerformanceFacts:
 class OrganizationPerformanceFacts:
     """The bounded Organization-scoped summary over `[window_start,
     window_end)` (contract §6) plus the per-listing breakdown for every
-    listing with at least one observed view, Lead or current SaleOutcome.
+    listing with at least one observed view, Lead or in-window SaleOutcome
+    (amendment, Finding A: a lifetime-current SOLD outcome recorded outside
+    the selected window is never by itself a reason for a listing to appear).
 
     `median_first_contact_latency_seconds` is `None` exactly when
     `first_contact_latency_known_count == 0` -- a derived statistic, always
@@ -93,7 +99,11 @@ class OrganizationPerformanceFacts:
     sold_outcomes: int
     sold_outcomes_with_known_source: int
     sold_outcomes_with_unknown_source: int
+    #: contract §8B/§11: two independent evidence dimensions, reported
+    #: separately (amendment, Finding B) -- never collapsed into one source
+    #: field, and never one inferred from the other.
     acquisition_source_breakdown: dict[str, int]
+    discovery_source_breakdown: dict[str, int]
     first_contact_latency_known_count: int
     first_contact_latency_unknown_count: int
     median_first_contact_latency_seconds: float | None
@@ -111,6 +121,7 @@ class OrganizationPerformanceFacts:
             "sold_outcomes_with_known_source": self.sold_outcomes_with_known_source,
             "sold_outcomes_with_unknown_source": self.sold_outcomes_with_unknown_source,
             "acquisition_source_breakdown": dict(self.acquisition_source_breakdown),
+            "discovery_source_breakdown": dict(self.discovery_source_breakdown),
             "first_contact_latency_known_count": self.first_contact_latency_known_count,
             "first_contact_latency_unknown_count": self.first_contact_latency_unknown_count,
             "median_first_contact_latency_seconds": self.median_first_contact_latency_seconds,
@@ -122,7 +133,8 @@ _SELECT_ORG_LEADS_IN_WINDOW = """
 SELECT bl.lead_id, bl.native_listing_id, bl.received_at,
        COALESCE(los.operational_status, 'NEW') AS operational_status,
        fc.first_contact_attempt_at,
-       COALESCE(lap.acquisition_channel, 'UNKNOWN') AS acquisition_channel
+       COALESCE(lap.acquisition_channel, 'UNKNOWN') AS acquisition_channel,
+       COALESCE(lap.discovery_surface, 'UNKNOWN') AS discovery_surface
 FROM buyer_leads bl
 LEFT JOIN lead_operational_state los ON los.lead_id = bl.lead_id
 LEFT JOIN lead_acquisition_provenance lap ON lap.lead_id = bl.lead_id
@@ -153,6 +165,7 @@ class _LeadRow:
     operational_status: str
     first_contact_attempt_at: datetime | None
     acquisition_channel: str
+    discovery_surface: str
 
 
 @dataclass(frozen=True)
@@ -187,6 +200,7 @@ def _fetch_org_leads_in_window(
             operational_status=row[3],
             first_contact_attempt_at=row[4],
             acquisition_channel=row[5],
+            discovery_surface=row[6],
         )
         for row in rows
     ]
@@ -231,12 +245,23 @@ def fetch_organization_performance_facts(
         conn, organization_id, window_start=window_start, window_end=window_end
     )
 
+    # Amendment (independent review, exact-head c30e4ab, Finding A): the
+    # per-listing projection must use only the SOLD outcomes whose own
+    # `recorded_at` actually falls inside the selected window -- the
+    # identical population already used for the Organization summary's own
+    # `sold_outcomes`/`sold_outcomes_with_known_source`/
+    # `sold_outcomes_with_unknown_source` counts below. A current SOLD head
+    # recorded outside `[window_start, window_end)` must never appear as an
+    # in-window SOLD event, and must never be the sole reason a listing with
+    # no other in-window activity appears in a bounded snapshot.
+    windowed_sold = [row for row in sold_outcomes if window_start <= row.recorded_at < window_end]
+
     leads_by_listing: dict[str, list[_LeadRow]] = {}
     for lead in leads:
         leads_by_listing.setdefault(lead.native_listing_id, []).append(lead)
 
     sold_by_listing: dict[str, _SoldOutcomeRow] = {
-        row.native_listing_id: row for row in sold_outcomes
+        row.native_listing_id: row for row in windowed_sold
     }
 
     all_listing_ids = set(view_counts) | set(leads_by_listing) | set(sold_by_listing)
@@ -245,9 +270,7 @@ def fetch_organization_performance_facts(
     for native_listing_id in sorted(all_listing_ids):
         listing_leads = leads_by_listing.get(native_listing_id, [])
         latencies = [
-            latency
-            for lead in listing_leads
-            if (latency := _latency_seconds(lead)) is not None
+            latency for lead in listing_leads if (latency := _latency_seconds(lead)) is not None
         ]
         sold_row = sold_by_listing.get(native_listing_id)
         listings.append(
@@ -272,14 +295,17 @@ def fetch_organization_performance_facts(
             )
         )
 
-    all_latencies = [
-        latency for lead in leads if (latency := _latency_seconds(lead)) is not None
-    ]
-    source_breakdown = Counter(lead.acquisition_channel for lead in leads)
+    all_latencies = [latency for lead in leads if (latency := _latency_seconds(lead)) is not None]
+    acquisition_breakdown = Counter(lead.acquisition_channel for lead in leads)
     for channel in AcquisitionChannel:
-        source_breakdown.setdefault(channel.value, 0)
+        acquisition_breakdown.setdefault(channel.value, 0)
 
-    windowed_sold = [row for row in sold_outcomes if window_start <= row.recorded_at < window_end]
+    # Amendment (independent review, Finding B): a second, mechanically
+    # independent evidence dimension (contract §8B) -- never collapsed into
+    # `acquisition_breakdown` and never inferred from it.
+    discovery_breakdown = Counter(lead.discovery_surface for lead in leads)
+    for surface in DiscoverySurface:
+        discovery_breakdown.setdefault(surface.value, 0)
 
     return OrganizationPerformanceFacts(
         window_start=window_start,
@@ -295,7 +321,8 @@ def fetch_organization_performance_facts(
         sold_outcomes_with_unknown_source=sum(
             1 for row in windowed_sold if row.originating_lead_id is None
         ),
-        acquisition_source_breakdown=dict(source_breakdown),
+        acquisition_source_breakdown=dict(acquisition_breakdown),
+        discovery_source_breakdown=dict(discovery_breakdown),
         first_contact_latency_known_count=len(all_latencies),
         first_contact_latency_unknown_count=len(leads) - len(all_latencies),
         median_first_contact_latency_seconds=(

@@ -45,6 +45,7 @@ test("fetchOrganizationPerformance: 200 body is surfaced as ok", async () => {
           sold_outcomes_with_known_source: 0,
           sold_outcomes_with_unknown_source: 0,
           acquisition_source_breakdown: { UNKNOWN: 1 },
+          discovery_source_breakdown: { UNKNOWN: 1 },
           first_contact_latency_known_count: 0,
           first_contact_latency_unknown_count: 1,
           median_first_contact_latency_seconds: null,

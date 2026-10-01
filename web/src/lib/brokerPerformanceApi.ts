@@ -34,7 +34,11 @@ export interface OrganizationPerformanceSnapshot {
   sold_outcomes: number;
   sold_outcomes_with_known_source: number;
   sold_outcomes_with_unknown_source: number;
+  // Two mechanically independent evidence dimensions (contract §8B) --
+  // never collapsed into one source field, and never one inferred from the
+  // other.
   acquisition_source_breakdown: Record<string, number>;
+  discovery_source_breakdown: Record<string, number>;
   first_contact_latency_known_count: number;
   first_contact_latency_unknown_count: number;
   median_first_contact_latency_seconds: number | null;
