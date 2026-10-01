@@ -5,7 +5,7 @@
 
 **Updated:** 2026-10-01  
 **Latest owner-accepted / DONE slice:** SLICE-0074  
-**Current queue:** SLICE-0075 — **UNSELECTED** pending fresh post-SLICE-0074 reconciliation.  
+**Current queue:** SLICE-0075 — **Broker Performance & Funnel Snapshot — READINESS IN REVIEW**. Fresh post-SLICE-0074 reconciliation selected the remaining technical Broker Workspace Launch Gate §7 gap; implementation starts only after readiness review/gates/merge through `START_SLICE.bat`.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -228,7 +228,7 @@ SLICE-0067 uses retained local/synthetic proof and introduces no real external m
 ```text
 BROKER_WORKSPACE_MANDATORY_COMMITMENTS_STATUS: OPEN
 BROKER_WORKSPACE_PRODUCT_COMPLETION_STATUS: OPEN
-BROKER_SALE_OUTCOME_WORKFLOW_STATUS: PENDING
+BROKER_SALE_OUTCOME_WORKFLOW_STATUS: IMPLEMENTED
 SCALED_BROKER_ONBOARDING_STATUS: NOT_STARTED
 SUFFICIENT_SEARCH_VOLUME_FOR_BROKER_INSIGHTS_STATUS: NOT_REACHED
 POST_PILOT_REAL_BROKER_VALIDATION_STATUS: NOT_STARTED
@@ -296,9 +296,9 @@ Next queue number:
 SLICE-0075
 ```
 
-**Capability:** UNSELECTED pending fresh post-SLICE-0074 reconciliation.
+**Capability:** Broker Performance & Funnel Snapshot.
 
-SLICE-0074 closes the accepted Broker Launch Execution Focus loop through explicit broker sale/outcome close-out. The next capability must be selected only after fresh reconciliation against the Broker Workspace Launch Gate and Mandatory Capability Register.
+Fresh post-SLICE-0074 reconciliation selected the remaining technical Broker Workspace Launch Gate §7 gap: durable privacy-bounded public listing view facts combined with accepted Lead/contact-attempt/provenance/SaleOutcome truth into an Organization-scoped factual broker performance snapshot. Governed by `docs/POST_SLICE_0074_REASSESSMENT_2026-10-01.md`, `specs/BROKER_PERFORMANCE_FUNNEL_SNAPSHOT_CONTRACT.v0.1.md`, and `docs/slices/SLICE-0075-broker-performance-funnel-snapshot.md`.
 
 ## Development workflow
 
@@ -313,6 +313,6 @@ SLICE-0074 closes the accepted Broker Launch Execution Focus loop through explic
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0074 is owner-accepted and merged; SLICE-0075 remains unselected pending fresh post-SLICE-0074 reconciliation.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0074 is owner-accepted and finished; SLICE-0075 Broker Performance & Funnel Snapshot is selected and in readiness review.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
