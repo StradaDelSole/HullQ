@@ -99,24 +99,26 @@ export async function fetchSaleOutcome(
 
 /**
  * Classify a 403 response. FastAPI's `_close_as_sold_response`
- * (`hullq.api.app`) returns exactly two distinguishable 403 body shapes for
- * this boundary -- `{"error":"mfa_required"}` and
- * `{"error":"publishing_denied","reason":...}` -- plus the CSRF-rejection
- * path, which this module's own request construction always satisfies, so a
- * 403 that fails to parse as either known shape here is a genuine unexpected
- * condition, never silently folded into "publishing denied".
+ * (`hullq.api.app`) returns exactly one 403 body shape for this boundary --
+ * `{"error":"mfa_required"}` -- plus the CSRF-rejection path, which this
+ * module's own request construction always satisfies. Contract §8
+ * authorization failures (missing/inactive membership, Account/
+ * Organization mismatch, missing PUBLISHER role) are never a 403 here: they
+ * collapse into the identical non-enumerating 404 `not_found` already
+ * handled by the caller, never a reason-bearing "publishing denied" shape
+ * (independent review, amendment Finding A). A 403 that fails to parse as
+ * `mfa_required` here is therefore a genuine unexpected condition.
  */
 async function classifyCloseAsSold403(
   response: Response,
-): Promise<{ kind: "mfa_required" } | { kind: "denied"; reason: string } | { kind: "service_error" }> {
-  let body: { error?: string; reason?: string } = {};
+): Promise<{ kind: "mfa_required" } | { kind: "service_error" }> {
+  let body: { error?: string } = {};
   try {
-    body = (await response.json()) as { error?: string; reason?: string };
+    body = (await response.json()) as { error?: string };
   } catch {
     return { kind: "service_error" };
   }
   if (body.error === "mfa_required") return { kind: "mfa_required" };
-  if (body.error === "publishing_denied") return { kind: "denied", reason: body.reason ?? "unknown" };
   return { kind: "service_error" };
 }
 
@@ -133,7 +135,6 @@ export type CloseAsSoldResult =
   | { kind: "unauthenticated" }
   | { kind: "not_found" }
   | { kind: "mfa_required" }
-  | { kind: "denied"; reason: string }
   | { kind: "draft_not_eligible" }
   | { kind: "invalid_payload" }
   | { kind: "invalid_lead" }

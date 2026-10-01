@@ -57,7 +57,6 @@ type SaleOutcomeSaveOutcome =
   | "unauthenticated"
   | "not_found"
   | "mfa_required"
-  | "denied"
   | "draft_not_eligible"
   | "invalid_payload"
   | "invalid_lead"
@@ -65,7 +64,6 @@ type SaleOutcomeSaveOutcome =
   | "service_error";
 
 let saleOutcomeSaveOutcome: SaleOutcomeSaveOutcome = "none";
-let saleOutcomeDeniedReason = "";
 
 // ---------------------------------------------------------------------------
 // FormData -> the exact assertion-object wire shape
@@ -202,10 +200,7 @@ if (Astro.request.method === "POST" && organizationId && nativeListingId) {
       originHeader,
     );
     if (result.kind === "ok") saleOutcomeSaveOutcome = "closed";
-    else if (result.kind === "denied") {
-      saleOutcomeSaveOutcome = "denied";
-      saleOutcomeDeniedReason = result.reason;
-    } else if (result.kind === "draft_not_eligible") saleOutcomeSaveOutcome = "draft_not_eligible";
+    else if (result.kind === "draft_not_eligible") saleOutcomeSaveOutcome = "draft_not_eligible";
     else if (result.kind === "invalid_lead") saleOutcomeSaveOutcome = "invalid_lead";
     else if (result.kind === "stale_version") saleOutcomeSaveOutcome = "stale_version";
     else if (result.kind === "invalid_payload") saleOutcomeSaveOutcome = "invalid_payload";
@@ -270,7 +265,6 @@ const saleOutcomeOutcomeText: Record<SaleOutcomeSaveOutcome, string | null> = {
   unauthenticated: "Please log in to do this.",
   not_found: "This listing isn't available here.",
   mfa_required: "Additional verification is required before you can do this.",
-  denied: `Not allowed${saleOutcomeDeniedReason ? ` (${saleOutcomeDeniedReason})` : ""}.`,
   draft_not_eligible: "A DRAFT listing cannot be closed as sold -- publish it first, or withdraw it.",
   invalid_payload: "That form couldn't be saved -- please review the values and try again.",
   invalid_lead:

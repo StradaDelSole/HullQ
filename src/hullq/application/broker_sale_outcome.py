@@ -12,10 +12,21 @@ boundary (`hullq.application.broker_workspace_read.get_organization_workspace_re
 -- mirrors `hullq.application.broker_inventory_lifecycle`'s and
 `hullq.application.inventory_editing`'s identical actor-authorization
 pattern -- then re-fetches the current `MarketplaceOrganization`/
-`OrganizationMembership` domain records so the real accepted SLICE-0041
-publishing-eligibility evaluator, invoked again inside the persistence
-primitive, remains the sole authority over denial. This module never
-pre-decides eligibility itself.
+`OrganizationMembership` domain records so the contract §8 SaleOutcome
+mutation authorization (`hullq.persistence.native_listing_sale_outcome
+._evaluate_sale_outcome_mutation_authorization`), invoked again inside the
+persistence primitive, remains the sole authority over denial. This module
+never pre-decides authorization itself. That authorization is deliberately
+narrower than the SLICE-0041 publishing-eligibility evaluator used by the
+lifecycle/offer/claim boundaries: it never depends on
+`OrganizationPublishingEligibility`, since SaleOutcome is explicit
+historical/commercial close-out truth that a current PUBLISHER must still be
+able to record/correct for its own existing listing even after the
+Organization can no longer publish new/updated public inventory
+(independent review, amendment Finding A). A denied mutation therefore
+collapses into the identical non-enumerating `ORG_NOT_FOUND_OR_DENIED`
+outcome used for an unknown/unauthorized Organization -- there is no
+SaleOutcome-specific "publishing denied" response shape.
 
 `NATIVE_LISTING_NOT_FOUND`/`CROSS_ORGANIZATION_DENIED` collapse to the
 identical `LISTING_NOT_FOUND` outcome (mirrors every other broker-write
@@ -47,7 +58,6 @@ from hullq.domain.publishing_eligibility import (
     MarketplaceOrganization,
     MarketplaceOrganizationId,
     OrganizationMembership,
-    PublishingEligibilityReason,
 )
 from hullq.domain.sale_outcome import SaleOutcomeKind, SaleOutcomeRevisionId, SaleOutcomeSnapshot
 from hullq.persistence.broker_identity import (
@@ -367,11 +377,18 @@ def _parse_close_as_sold_request(raw: Any) -> _ParsedCloseAsSoldRequest:
 
 
 class CloseAsSoldOutcome(StrEnum):
-    """Mechanically distinct outcomes -- never a bare boolean."""
+    """Mechanically distinct outcomes -- never a bare boolean.
+
+    There is no `DENIED`/"publishing denied" member here: contract §8
+    authorization failures (missing/inactive membership, Account/
+    Organization mismatch, missing PUBLISHER role) all collapse into the
+    identical non-enumerating `ORG_NOT_FOUND_OR_DENIED` outcome already used
+    for an unknown/unauthorized Organization -- never a SaleOutcome-specific
+    reason-bearing denial shape (independent review, amendment Finding A).
+    """
 
     ORG_NOT_FOUND_OR_DENIED = "ORG_NOT_FOUND_OR_DENIED"
     MFA_REQUIRED = "MFA_REQUIRED"
-    DENIED = "DENIED"
     LISTING_NOT_FOUND = "LISTING_NOT_FOUND"
     DRAFT_NOT_ELIGIBLE = "DRAFT_NOT_ELIGIBLE"
     INVALID_PAYLOAD = "INVALID_PAYLOAD"
@@ -383,18 +400,11 @@ class CloseAsSoldOutcome(StrEnum):
 @dataclass(frozen=True)
 class CloseAsSoldResult:
     outcome: CloseAsSoldOutcome
-    denial_reason: PublishingEligibilityReason | None = None
     current_sale_outcome_revision_id: str | None = None
     lifecycle_state: str | None = None
     transitioned_to_withdrawn: bool = False
 
     def __post_init__(self) -> None:
-        if self.outcome is CloseAsSoldOutcome.DENIED:
-            if self.denial_reason is None:
-                raise ValueError("A DENIED result must carry an explicit denial reason")
-        elif self.denial_reason is not None:
-            raise ValueError("Only a DENIED result may carry a denial reason")
-
         carries_revision = self.outcome in (
             CloseAsSoldOutcome.CLOSED,
             CloseAsSoldOutcome.STALE_VERSION,
@@ -418,8 +428,6 @@ class CloseAsSoldResult:
 
     def to_public_dict(self) -> dict[str, Any]:
         body: dict[str, Any] = {"outcome": self.outcome.value}
-        if self.denial_reason is not None:
-            body["reason"] = self.denial_reason.value
         if self.current_sale_outcome_revision_id is not None:
             body["current_sale_outcome_revision_id"] = self.current_sale_outcome_revision_id
         if self.lifecycle_state is not None:
@@ -431,10 +439,12 @@ class CloseAsSoldResult:
 
 def _map_close_result(result: SaleOutcomeWriteResult) -> CloseAsSoldResult:
     if result.status is SaleOutcomeWriteStatus.DENIED:
-        assert result.denial_reason is not None
-        return CloseAsSoldResult(
-            outcome=CloseAsSoldOutcome.DENIED, denial_reason=result.denial_reason
-        )
+        # Contract §8: a missing/inactive membership, Account/Organization
+        # mismatch or missing PUBLISHER role all collapse into the identical
+        # non-enumerating outcome already used for an unknown/unauthorized
+        # Organization -- never a reason-bearing "publishing denied" shape
+        # (independent review, amendment Finding A).
+        return CloseAsSoldResult(outcome=CloseAsSoldOutcome.ORG_NOT_FOUND_OR_DENIED)
     if result.status in (
         SaleOutcomeWriteStatus.CROSS_ORGANIZATION_DENIED,
         SaleOutcomeWriteStatus.NATIVE_LISTING_NOT_FOUND,

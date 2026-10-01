@@ -1638,18 +1638,17 @@ def create_app(
     def _close_as_sold_response(result: Any) -> JSONResponse:
         # Contract §14: every outcome maps to a mechanically distinct
         # status/body -- never a false-success shape for a denied/invalid/
-        # stale/ineligible attempt.
+        # stale/ineligible attempt. Contract §8 authorization failures
+        # (missing/inactive membership, Account/Organization mismatch,
+        # missing PUBLISHER role) all collapse into the identical
+        # non-enumerating ORG_NOT_FOUND_OR_DENIED 404 below -- there is no
+        # SaleOutcome-specific "publishing denied" response shape
+        # (independent review, amendment Finding A).
         outcome = result.outcome
         if outcome is CloseAsSoldOutcome.ORG_NOT_FOUND_OR_DENIED:
             raise HTTPException(status_code=404, detail="organization not found")
         if outcome is CloseAsSoldOutcome.MFA_REQUIRED:
             return JSONResponse({"error": "mfa_required"}, status_code=403)
-        if outcome is CloseAsSoldOutcome.DENIED:
-            assert result.denial_reason is not None
-            return JSONResponse(
-                {"error": "publishing_denied", "reason": result.denial_reason.value},
-                status_code=403,
-            )
         if outcome is CloseAsSoldOutcome.LISTING_NOT_FOUND:
             raise HTTPException(status_code=404, detail="listing not found")
         if outcome is CloseAsSoldOutcome.DRAFT_NOT_ELIGIBLE:

@@ -24,10 +24,20 @@ Recording SOLD on an already-WITHDRAWN listing appends only the outcome
 revision; lifecycle is left untouched. Recording SOLD on a DRAFT listing is
 rejected (contract §9: "DRAFT SOLD recording is rejected in v0.1").
 
-The real accepted SLICE-0041 publishing-eligibility evaluator is always
-called; a caller-supplied authorization boolean is never accepted. The
-candidate Organization must also equal the target NativeListing's persisted
-`publishing_organization_id` -- eligibility inside one Organization never
+Authorization (contract §8) is `_evaluate_sale_outcome_mutation_authorization`
+below, called fresh on every write -- a caller-supplied authorization
+boolean is never accepted. It deliberately mirrors only the account/
+membership/role structure of the accepted SLICE-0041
+`evaluate_native_listing_publishing_eligibility` evaluator (membership
+presence, Account/Organization match, ACTIVE membership state, the
+PUBLISHER role) and never calls that evaluator itself: SaleOutcome is
+explicit historical/commercial close-out truth, separate from
+`OrganizationPublishingEligibility`, and a current PUBLISHER must still be
+able to record/correct a sale outcome for its own existing ACTIVE/WITHDRAWN
+listing even after the Organization can no longer publish new/updated public
+inventory (independent review, amendment Finding A). The candidate
+Organization must also equal the target NativeListing's persisted
+`publishing_organization_id` -- membership in one Organization never
 authorizes closing another Organization's listing.
 
 An optional `originating_lead_id` is validated, under the same lock, against
@@ -55,10 +65,12 @@ from hullq.domain.publishing_eligibility import (
     AccountId,
     MarketplaceOrganization,
     MarketplaceOrganizationId,
+    MembershipRole,
+    MembershipState,
     OrganizationMembership,
+    PublishingEligibilityDecision,
     PublishingEligibilityReason,
     PublishingEligibilityStatus,
-    evaluate_native_listing_publishing_eligibility,
 )
 from hullq.domain.sale_outcome import SaleOutcomeKind, SaleOutcomeRevisionId, SaleOutcomeSnapshot
 from hullq.persistence.buyer_lead import fetch_buyer_lead
@@ -353,6 +365,62 @@ def _row_to_revision_record(row: tuple[Any, ...]) -> SaleOutcomeRevisionRecord:
 
 
 # ---------------------------------------------------------------------------
+# Authorization (contract §8) -- deliberately narrower than SLICE-0041
+# ---------------------------------------------------------------------------
+
+
+def _evaluate_sale_outcome_mutation_authorization(
+    account_id: AccountId,
+    candidate_organization: MarketplaceOrganization,
+    membership: OrganizationMembership | None,
+) -> PublishingEligibilityDecision:
+    """Deterministically decide SaleOutcome mutation authorization (contract §8).
+
+    Checks exactly: membership presence, Account/Organization match, ACTIVE
+    membership state and the PUBLISHER role -- the identical structural
+    checks `hullq.domain.publishing_eligibility
+    .evaluate_native_listing_publishing_eligibility` performs, reusing its
+    `PublishingEligibilityReason` vocabulary for continuity. It never
+    evaluates `candidate_organization.publishing_eligibility`: contract §8
+    requires only "current authorized access to the publishing Organization
+    and the accepted broker role/MFA requirements", not that the
+    Organization remain currently eligible to publish new/updated public
+    inventory. Conflating the two incorrectly blocked a current PUBLISHER
+    from recording/correcting SOLD outcome truth for its own existing
+    listing solely because the Organization's publishing eligibility had
+    since lapsed (independent review, amendment Finding A) -- SaleOutcome is
+    explicit historical/commercial close-out truth, not a new/updated public
+    listing.
+    """
+    if membership is None:
+        return PublishingEligibilityDecision(
+            status=PublishingEligibilityStatus.DENIED,
+            reason=PublishingEligibilityReason.NO_MEMBERSHIP,
+        )
+    if membership.account_id != account_id:
+        return PublishingEligibilityDecision(
+            status=PublishingEligibilityStatus.DENIED,
+            reason=PublishingEligibilityReason.ACCOUNT_MISMATCH,
+        )
+    if membership.organization_id != candidate_organization.id:
+        return PublishingEligibilityDecision(
+            status=PublishingEligibilityStatus.DENIED,
+            reason=PublishingEligibilityReason.ORGANIZATION_MISMATCH,
+        )
+    if membership.state is not MembershipState.ACTIVE:
+        return PublishingEligibilityDecision(
+            status=PublishingEligibilityStatus.DENIED,
+            reason=PublishingEligibilityReason.MEMBERSHIP_INACTIVE,
+        )
+    if MembershipRole.PUBLISHER not in membership.roles:
+        return PublishingEligibilityDecision(
+            status=PublishingEligibilityStatus.DENIED,
+            reason=PublishingEligibilityReason.PUBLISHER_ROLE_REQUIRED,
+        )
+    return PublishingEligibilityDecision(status=PublishingEligibilityStatus.ALLOWED)
+
+
+# ---------------------------------------------------------------------------
 # Write
 # ---------------------------------------------------------------------------
 
@@ -368,10 +436,10 @@ def close_native_listing_as_sold(
     expected_current_revision_id: SaleOutcomeRevisionId | None,
     outcome: SaleOutcomeSnapshot,
 ) -> SaleOutcomeWriteResult:
-    """Evaluate real SLICE-0041 eligibility + listing-Organization match, then
-    durably record *outcome* as a new immutable SaleOutcome revision,
-    atomically transitioning ACTIVE -> WITHDRAWN when the listing is
-    currently ACTIVE (contract §9).
+    """Evaluate contract §8 SaleOutcome mutation authorization +
+    listing-Organization match, then durably record *outcome* as a new
+    immutable SaleOutcome revision, atomically transitioning
+    ACTIVE -> WITHDRAWN when the listing is currently ACTIVE (contract §9).
 
     Raises SaleOutcomeTransactionOwnershipError, before any write is
     attempted, if *conn* already has an open transaction.
@@ -394,7 +462,7 @@ def close_native_listing_as_sold(
     if not isinstance(outcome, SaleOutcomeSnapshot):
         raise TypeError(f"outcome must be a SaleOutcomeSnapshot, got {type(outcome).__name__}")
 
-    decision = evaluate_native_listing_publishing_eligibility(
+    decision = _evaluate_sale_outcome_mutation_authorization(
         account_id, candidate_organization, membership
     )
     if decision.status is PublishingEligibilityStatus.DENIED:

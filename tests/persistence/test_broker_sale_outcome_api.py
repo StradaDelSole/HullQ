@@ -553,6 +553,10 @@ class TestAuthorizationAndTenancy:
         assert _sale_outcome_revision_count(api_url, listing_id) == 0
 
     def test_missing_publisher_role_writes_nothing(self, client: TestClient, api_url: str) -> None:
+        # Amendment Finding A / amendment requirement 6C: an ACTIVE MEMBER
+        # without the PUBLISHER role must be denied -- collapsed into the
+        # identical non-enumerating 404 used for an unknown/unauthorized
+        # Organization, never a reason-bearing "publishing denied" 403.
         org_id, account_id, membership_id = "ORG-SO-NOPUB", "ACC-SO-NOPUB", "OM-SO-NOPUB"
         listing_id = "NL-SO-NOPUB"
         _seed_org_and_membership(
@@ -573,14 +577,122 @@ class TestAuthorizationAndTenancy:
             offer_revision_id="REV-SO-NOPUB",
         )
         _publish_directly(api_url, listing_id=listing_id, org_id=org_id, account_id=account_id)
+        # MEMBER is not a PRIVILEGED_MFA_ROLE, so workspace entry itself
+        # never requires MFA here -- the PUBLISHER-role denial happens one
+        # layer deeper, inside the SaleOutcome mutation authorization check.
         _log_in(client, account_id, mfa=False)
         response = _close_as_sold(client, org_id, listing_id, revision_id=str(uuid.uuid4()))
-        assert response.status_code == 403
-        assert response.json() == {
-            "error": "publishing_denied",
-            "reason": "PUBLISHER_ROLE_REQUIRED",
-        }
+        assert response.status_code == 404
+        assert _lifecycle_state(api_url, listing_id) is NativeListingLifecycleState.ACTIVE
         assert _sale_outcome_revision_count(api_url, listing_id) == 0
+
+    def test_inactive_membership_cannot_mutate(self, client: TestClient, api_url: str) -> None:
+        org_id, account_id, listing_id = _setup_active_listing(api_url, suffix="INACTIVE")
+        conn = psycopg.connect(api_url)
+        try:
+            seed_organization_membership(
+                conn,
+                OrganizationMembership(
+                    id=OrganizationMembershipId("OM-SO-INACTIVE"),
+                    account_id=AccountId(account_id),
+                    organization_id=MarketplaceOrganizationId(org_id),
+                    roles=frozenset({MembershipRole.PUBLISHER}),
+                    state=MembershipState.INACTIVE,
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        _log_in(client, account_id)
+        response = _close_as_sold(client, org_id, listing_id, revision_id=str(uuid.uuid4()))
+        assert response.status_code == 404
+        assert _lifecycle_state(api_url, listing_id) is NativeListingLifecycleState.ACTIVE
+        assert _sale_outcome_revision_count(api_url, listing_id) == 0
+
+    def test_publisher_can_record_sold_for_active_listing_despite_organization_ineligible(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        """Amendment requirement 6A: a current ACTIVE PUBLISHER + MFA must
+        still be able to record SOLD for its own existing ACTIVE listing
+        even after the Organization's OrganizationPublishingEligibility has
+        become INELIGIBLE -- SaleOutcome mutation never depends on it
+        (independent review, amendment Finding A)."""
+        org_id, account_id, listing_id = _setup_active_listing(api_url, suffix="INELIGIBLE")
+        conn = psycopg.connect(api_url)
+        try:
+            seed_marketplace_organization(
+                conn,
+                MarketplaceOrganization(
+                    id=MarketplaceOrganizationId(org_id),
+                    professional_category=ProfessionalCategory.BROKER,
+                    publishing_eligibility=OrganizationPublishingEligibility.INELIGIBLE,
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        _log_in(client, account_id)
+        response = _close_as_sold(client, org_id, listing_id, revision_id=str(uuid.uuid4()))
+        assert response.status_code == 200
+        body = response.json()
+        assert body["outcome"] == "CLOSED"
+        assert body["lifecycle_state"] == "WITHDRAWN"
+        assert body["transitioned_to_withdrawn"] is True
+        assert _lifecycle_state(api_url, listing_id) is NativeListingLifecycleState.WITHDRAWN
+        assert _sale_outcome_revision_count(api_url, listing_id) == 1
+
+        read = client.get(_sale_outcome_path(org_id, listing_id))
+        assert read.status_code == 200
+        assert read.json()["outcome_kind"] == "SOLD"
+
+    def test_publisher_can_correct_sold_for_withdrawn_listing_despite_organization_ineligible(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        """Amendment requirement 6B: same guarantee for an already-WITHDRAWN
+        own listing -- a correction may still be recorded and lifecycle
+        remains WITHDRAWN."""
+        org_id, account_id, listing_id = _setup_active_listing(api_url, suffix="INELIGIBLE-WD")
+        _log_in(client, account_id)
+        first = _close_as_sold(
+            client, org_id, listing_id, revision_id=str(uuid.uuid4()), achieved_amount=None
+        )
+        assert first.status_code == 200
+        first_revision_id = first.json()["current_sale_outcome_revision_id"]
+        assert _lifecycle_state(api_url, listing_id) is NativeListingLifecycleState.WITHDRAWN
+
+        conn = psycopg.connect(api_url)
+        try:
+            seed_marketplace_organization(
+                conn,
+                MarketplaceOrganization(
+                    id=MarketplaceOrganizationId(org_id),
+                    professional_category=ProfessionalCategory.BROKER,
+                    publishing_eligibility=OrganizationPublishingEligibility.INELIGIBLE,
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        second = _close_as_sold(
+            client,
+            org_id,
+            listing_id,
+            revision_id=str(uuid.uuid4()),
+            expected_current_revision_id=first_revision_id,
+            achieved_amount="97000.00",
+            achieved_currency="EUR",
+        )
+        assert second.status_code == 200
+        body = second.json()
+        assert body["outcome"] == "CLOSED"
+        assert body["lifecycle_state"] == "WITHDRAWN"
+        assert body["transitioned_to_withdrawn"] is False
+        assert _lifecycle_state(api_url, listing_id) is NativeListingLifecycleState.WITHDRAWN
+
+        read = client.get(_sale_outcome_path(org_id, listing_id))
+        assert read.json()["achieved_amount"] == "97000.00"
 
     def test_foreign_and_unknown_listing_share_identical_not_found_shape(
         self, client: TestClient, api_url: str
