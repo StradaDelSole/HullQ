@@ -46,6 +46,19 @@ SLICE-0076 delivered MVP-BROKER-013 evidence but found this launch blocker. MVP-
 **Accepted-but-unimplemented obligations:** discoverable Lead assignment remediation; focused Task-5 revalidation; later Broker Workspace Launch Gate reconsideration; MVP-PROD-012 Security Hardening remains separately DUE before pilot.  
 **Material classifications:** DECIDED_AND_IMPLEMENTED foundations above; DECIDED_NOT_YET_IMPLEMENTED assignment candidate projection/picker/revalidation; EXPLICITLY_DEFERRED membership admin/profile identity/free-text Lead search/media reorder/catalog-assisted drafting/external pilot/paid-public launch/Search changes; GENUINELY_OPEN implementation-local projection shape and non-deceptive label using existing truth; CONFLICT_OR_REGRESSION none.
 
+## Trigger gates
+
+**Production readiness gate:** NOT_TRIGGERED  
+**Adds technical native Search criterion:** NO  
+**Technical Search criterion ordinal:** NOT_APPLICABLE  
+**Second-criterion bridge comparison:** NOT_APPLICABLE  
+**Third-copy abstraction guard:** NOT_APPLICABLE  
+**Workflow reassessment status:** PASS  
+**Broker Workspace Launch Gate:** NOT_READY  
+**Broker self-service pilot:** NOT_STARTED  
+**Paid broker plan:** NOT_STARTED  
+**Security Hardening & Adversarial Validation gate:** DUE / NOT_STARTED
+
 ## Required implementation
 
 1. add a bounded persistence read for current ACTIVE memberships of one exact Organization;
