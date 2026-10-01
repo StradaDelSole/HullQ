@@ -5,7 +5,7 @@
 
 **Updated:** 2026-10-01  
 **Latest owner-accepted / DONE slice:** SLICE-0076  
-**Current queue:** SLICE-0077 — **Broker Lead Assignment Discoverability Remediation — READINESS IN REVIEW**. Fresh post-SLICE-0076 reconciliation selected the accepted blocking Launch Gate deficiency; implementation starts only after readiness review/gates/merge through `START_SLICE.bat`.  
+**Current queue:** SLICE-0077 — **Broker Lead Assignment Discoverability Remediation — READY ON MAIN**. Fresh post-SLICE-0076 reconciliation, independent readiness review and required remote gates are complete; implementation starts only through `START_SLICE.bat`.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -349,6 +349,6 @@ Fresh post-SLICE-0076 reconciliation selected the one accepted blocking Broker W
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0076 is owner-accepted and finished; SLICE-0077 Broker Lead Assignment Discoverability Remediation is selected and in readiness review.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0076 is owner-accepted and finished; SLICE-0077 Broker Lead Assignment Discoverability Remediation is READY ON MAIN and may start only when the Project Owner runs `START_SLICE.bat`.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
