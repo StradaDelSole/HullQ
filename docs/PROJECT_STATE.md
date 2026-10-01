@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0075 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0076 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0076 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0077 -->
 
 **Updated:** 2026-10-01  
-**Latest owner-accepted / DONE slice:** SLICE-0075  
-**Current queue:** SLICE-0076 — **Broker Workspace Launch Validation: Usability & Competitive Benchmark — READY ON MAIN**. Fresh post-SLICE-0075 reconciliation, independent readiness review and required remote gates are complete; validation starts only through `START_SLICE.bat`.  
+**Latest owner-accepted / DONE slice:** SLICE-0076  
+**Current queue:** SLICE-0077 — **UNSELECTED** pending fresh post-SLICE-0076 Decision/Implementation Reconciliation and workflow reassessment.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -160,6 +160,7 @@ SLICE-0040 marketplace identity/truth separation
 → SLICE-0073 Test / CI Throughput Optimization
 → SLICE-0074 Broker Sale / Outcome Close-out
 → SLICE-0075 Broker Performance & Funnel Snapshot
+→ SLICE-0076 Broker Workspace Launch Validation: Usability & Competitive Benchmark
 ```
 
 Latest closures:
@@ -185,6 +186,7 @@ docs/slices/SLICE-0072-acceptance-closure.md
 docs/slices/SLICE-0073-acceptance-closure.md
 docs/slices/SLICE-0074-acceptance-closure.md
 docs/slices/SLICE-0075-acceptance-closure.md
+docs/slices/SLICE-0076-acceptance-closure.md
 ```
 
 ## Accepted technical Search result
@@ -294,7 +296,7 @@ Every primary slice selected after SLICE-0072 must reconcile that register befor
 
 Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; production email-provider activation; buyer-contact email verification; periodic/broader broker analytics beyond the accepted factual SLICE-0075 snapshot; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-SLICE-0075 is owner-accepted and merged. HullQ now has durable privacy-bounded public-listing view telemetry and an Organization-scoped factual performance/funnel snapshot combining accepted Lead, CONTACT_ATTEMPT provenance and explicit SaleOutcome truth. The Broker Workspace Launch Gate remains NOT_READY because usability/competitive benchmark evidence and other remaining gate items are still outstanding; the separate mandatory pre-pilot Security Hardening & Adversarial Validation gate also remains controlling.
+SLICE-0076 is owner-accepted and merged. HullQ now has retained representative Broker Workspace usability evidence and a current competitive workflow benchmark. The accepted validation result is REMEDIATION_REQUIRED: Lead assignment is a blocking usability deficiency because the UI requires an opaque AccountId without a broker-visible member picker/discoverable assignee identity. The Broker Workspace Launch Gate therefore remains NOT_READY. The separate mandatory pre-pilot Security Hardening & Adversarial Validation gate also remains controlling.
 
 ## Broker launch execution focus
 
@@ -327,12 +329,12 @@ Large retained research artifacts are acknowledged as repository-hygiene debt, n
 Next queue number:
 
 ```text
-SLICE-0076
+SLICE-0077
 ```
 
-**Capability:** Broker Workspace Launch Validation: Usability & Competitive Benchmark.
+**Capability:** UNSELECTED.
 
-Fresh post-SLICE-0075 reconciliation selected the due Broker Workspace Launch Gate §§9–10 evidence capability. The separate Security Hardening & Adversarial Validation gate remains mandatory before any real external broker pilot and is not weakened or executed by this validation slice.
+Fresh post-SLICE-0076 Decision/Implementation Reconciliation and workflow reassessment must run before selecting or readying SLICE-0077. The accepted blocking Lead-assignment remediation must be explicitly considered, but this closure does not preassign SLICE-0077.
 
 ## Development workflow
 
@@ -347,6 +349,6 @@ Fresh post-SLICE-0075 reconciliation selected the due Broker Workspace Launch Ga
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0075 is owner-accepted and implementation-merged; SLICE-0076 Broker Workspace Launch Validation is READY ON MAIN; it may start only when the Project Owner runs `START_SLICE.bat`.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0076 is owner-accepted and implementation/validation-merged; SLICE-0077 remains unselected until fresh reassessment/readiness.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
