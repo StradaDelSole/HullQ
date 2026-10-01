@@ -200,6 +200,18 @@ The two criteria may be evaluated alone or together as deterministic hard MUST/A
 
 The accepted technical native Search criteria count remains `2`. SLICE-0071 adds no Search criterion: it adds private Organization-scoped Lead operations, durable notification/outbox delivery state and factual Lead acquisition/discovery provenance only. SLICE-0057 adds no criterion: it re-evaluates one buyer-selected replacement value for an already active accepted criterion through the same Search truth, in one coherent comparison snapshot, and exposes only factual set-difference counts plus the backend-owned canonical alternative Search path. SLICE-0058 likewise adds no Search criterion: it records explicit buyer interest locally by stable `NativeListingId` and re-resolves current public listing truth when viewed. SLICE-0059 adds no Search criterion: it uses that existing explicit Shortlist as the whole Compare set and re-resolves current public listing/PhysicalBoat claim truth into a factual side-by-side matrix without score, winner, recommendation or hidden weighting. SLICE-0060 adds no Search criterion: it is a private professional Organization inventory projection over accepted NativeListing truth. SLICE-0061 likewise adds no Search criterion: it is private Organization-owned pre-market draft authoring state and has no Search/public promotion path. SLICE-0062 adds no Search criterion: it is bounded browser-local professional draft recovery. SLICE-0063 adds no Search criterion: it adds publisher display identity only. SLICE-0064 adds no Search criterion: it exposes already-accepted lifecycle/freshness operations for existing inventory without changing Search truth. SLICE-0065 also adds no Search criterion: it aligns professional draft description input and optional PhysicalBoat boat-name claim destination only. SLICE-0066 likewise adds no Search criterion: it aligns only shared draft build-year assertion-response semantics and browser/recovery handling. SLICE-0067 adds no Search criterion: it atomically promotes professional draft truth into a fresh lifecycle-DRAFT marketplace chain without changing Search semantics. Any future criterion #3+ readiness is subject to the accepted third-copy abstraction guard in `docs/governance/POST_0051_TRIGGER_GATES.md`.
 
+## Security hardening direction
+
+A dedicated holistic security hardening and adversarial-validation pass is mandatory before the first real external broker self-service pilot.
+
+Canonical gate:
+
+```text
+docs/governance/SECURITY_HARDENING_GATE.md
+```
+
+It requires threat-model coverage, cross-tenant/auth/MFA/media/privacy/supply-chain/deployment adversarial testing, retained proof, independent exact-head review and explicit Project Owner acceptance. Open Critical or High findings block the pilot. Ordinary slice-level security tests do not replace this gate.
+
 ## Post-SLICE-0051 trigger gates
 
 Canonical records remain `docs/governance/POST_0051_TRIGGER_GATES.md`, `docs/governance/PRODUCTION_READINESS_GATE.md` and `docs/governance/BROKER_WORKSPACE_LAUNCH_GATE.md`.
