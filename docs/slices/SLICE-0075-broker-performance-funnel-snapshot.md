@@ -35,11 +35,22 @@ No external production pilot, paid plan or Search criterion is activated.
 
 ## Decision / implementation reconciliation
 
-**DECIDED_AND_IMPLEMENTED:** public listing eligibility; Lead received_at/source/provenance; contact-attempt timeline; explicit SaleOutcome; Organization auth/MFA; focused-local/remote-full validation.  
-**DECIDED_NOT_YET_IMPLEMENTED:** durable public view event; factual broker funnel projection; first-contact latency projection; source-to-outcome broker surface; later periodic reporting.  
-**EXPLICITLY_DEFERRED:** third-party analytics, fingerprinting, generalized event warehouse, periodic report delivery, Search-fit diagnostics, export/import, payments.  
-**GENUINELY_OPEN:** implementation-local schema names and bounded UI composition.  
-**CONFLICT_OR_REGRESSION:** stale embedded 0074 sale-outcome status in PROJECT_STATE must be synchronized during readiness.
+**Accepted records checked:** `docs/PROJECT_STATE.md`; `docs/governance/BROKER_WORKSPACE_LAUNCH_GATE.md`; `docs/governance/BROKER_WORKSPACE_MANDATORY_CAPABILITY_REGISTER.md`; `docs/BROKER_LAUNCH_EXECUTION_FOCUS_2026-09-26.md`; `specs/BROKER_WORKSPACE_REQUIREMENTS.v0.1.md`; SLICE-0070/0071/0074 contracts and acceptance closures.  
+**Production implementation checked:** current public-listing read/eligibility path; durable BuyerLead persistence/provenance; Lead timeline/contact-attempt persistence; Broker Workspace Organization authorization; SaleOutcome persistence/read model.  
+**Already implemented / not re-decided:** public listing eligibility; Lead received_at/source/acquisition/discovery provenance; append-only broker contact-attempt timeline; explicit SaleOutcome; Organization auth/MFA; focused-local / authoritative-remote validation.  
+**Exact remaining gap:** HullQ has no accepted durable public-listing view fact and no Organization-scoped factual broker projection combining views, Leads, first contact-attempt timing and explicit SOLD outcomes.  
+**Accepted-but-unimplemented obligations:** Broker Workspace Launch Gate §7 performance/source-to-outcome analytics; REQ-BROKER-011 response measurability; REQ-BROKER-012 source-to-outcome linkage surface; REQ-BROKER-013 factual-vs-derived analytics discipline; later REQ-BROKER-028 periodic reporting remains separate.  
+**Material classifications:** DECIDED_AND_IMPLEMENTED foundations above; DECIDED_NOT_YET_IMPLEMENTED public view telemetry + broker funnel snapshot; EXPLICITLY_DEFERRED third-party tracking/fingerprinting/generalized analytics/periodic delivery; GENUINELY_OPEN implementation-local schema/layout; CONFLICT_OR_REGRESSION stale embedded 0074 sale-outcome marker in PROJECT_STATE corrected by readiness.
+
+## Trigger gates
+
+**Production readiness gate:** NOT_TRIGGERED  
+**Adds technical native Search criterion:** NO  
+**Technical Search criterion ordinal:** NOT_APPLICABLE  
+**Second-criterion bridge comparison:** NOT_APPLICABLE  
+**Third-copy abstraction guard:** NOT_APPLICABLE  
+**Workflow reassessment status:** PASS  
+**Broker Workspace Launch Gate:** NOT_READY
 
 ## Required implementation
 
