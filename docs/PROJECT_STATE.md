@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0074 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0075 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0075 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0076 -->
 
 **Updated:** 2026-10-01  
-**Latest owner-accepted / DONE slice:** SLICE-0074  
-**Current queue:** SLICE-0075 — **Broker Performance & Funnel Snapshot — READY ON MAIN**. Fresh post-SLICE-0074 reconciliation, readiness review and required remote gates are complete; implementation starts only through `START_SLICE.bat`.  
+**Latest owner-accepted / DONE slice:** SLICE-0075  
+**Current queue:** SLICE-0076 — **UNSELECTED**. Fresh post-SLICE-0075 reassessment is required before any capability is selected or readied.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -159,6 +159,7 @@ SLICE-0040 marketplace identity/truth separation
 → SLICE-0072 Professional Inventory Editing & Maintenance
 → SLICE-0073 Test / CI Throughput Optimization
 → SLICE-0074 Broker Sale / Outcome Close-out
+→ SLICE-0075 Broker Performance & Funnel Snapshot
 ```
 
 Latest closures:
@@ -183,6 +184,7 @@ docs/slices/SLICE-0067-acceptance-closure.md
 docs/slices/SLICE-0072-acceptance-closure.md
 docs/slices/SLICE-0073-acceptance-closure.md
 docs/slices/SLICE-0074-acceptance-closure.md
+docs/slices/SLICE-0075-acceptance-closure.md
 ```
 
 ## Accepted technical Search result
@@ -233,7 +235,7 @@ BROKER_SELF_SERVICE_PILOT_STATUS: NOT_STARTED
 PAID_BROKER_PLAN_STATUS: NOT_STARTED
 ```
 
-SLICE-0067 uses retained local/synthetic proof and introduces no real external marketplace production data, broker self-service pilot, production pilot or public production launch. The Production Readiness gate therefore remains untriggered after acceptance. The mandatory post-0056 workflow reassessment remains `PASS`; SLICE-0067 acceptance does not alter that gate. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA/production-readiness rules remain mandatory.
+SLICE-0075 uses retained local/synthetic proof and introduces no real external marketplace production data, broker self-service pilot, production pilot or public production launch. The Production Readiness gate therefore remains untriggered after acceptance. The mandatory post-0056 workflow reassessment remains `PASS`; SLICE-0075 acceptance does not alter that gate. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA/production-readiness rules remain mandatory.
 
 ## Broker Mandatory Capability Register
 
@@ -270,9 +272,9 @@ The SLICE-0053 same-host session-topology invariant remains in force for browser
 
 ## What remains unbuilt
 
-Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; production email-provider activation; buyer-contact email verification; sales/outcomes and broader broker analytics; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
+Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; production email-provider activation; buyer-contact email verification; periodic/broader broker analytics beyond the accepted factual SLICE-0075 snapshot; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-SLICE-0073 is owner-accepted and merged. HullQ validation now defaults to focused/affected local checks with the exact pushed GitHub HEAD owning the authoritative complete regression. Backend tests execute safely in parallel through xdist grouping, combined branch coverage remains enforced at 90%, historical research/bootstrap replay runs in a separate routed PostgreSQL job, and accepted remote critical-path evidence is 3m47s versus the former 7m21s–8m22s baseline. No marketplace/domain behavior changed. The Broker Workspace Launch Gate remains NOT_READY because sale/outcome handling, launch-level performance/source-to-outcome analytics, usability/competitive benchmark evidence and other remaining gate items are still outstanding.
+SLICE-0075 is owner-accepted and merged. HullQ now has durable privacy-bounded public-listing view telemetry and an Organization-scoped factual performance/funnel snapshot combining accepted Lead, CONTACT_ATTEMPT provenance and explicit SaleOutcome truth. The Broker Workspace Launch Gate remains NOT_READY because usability/competitive benchmark evidence and other remaining gate items are still outstanding; the separate mandatory pre-pilot Security Hardening & Adversarial Validation gate also remains controlling.
 
 ## Broker launch execution focus
 
@@ -305,12 +307,12 @@ Large retained research artifacts are acknowledged as repository-hygiene debt, n
 Next queue number:
 
 ```text
-SLICE-0075
+SLICE-0076
 ```
 
-**Capability:** Broker Performance & Funnel Snapshot.
+**Capability:** UNSELECTED.
 
-Fresh post-SLICE-0074 reconciliation selected the remaining technical Broker Workspace Launch Gate §7 gap: durable privacy-bounded public listing view facts combined with accepted Lead/contact-attempt/provenance/SaleOutcome truth into an Organization-scoped factual broker performance snapshot. Governed by `docs/POST_SLICE_0074_REASSESSMENT_2026-10-01.md`, `specs/BROKER_PERFORMANCE_FUNNEL_SNAPSHOT_CONTRACT.v0.1.md`, and `docs/slices/SLICE-0075-broker-performance-funnel-snapshot.md`.
+Fresh post-SLICE-0075 Decision/Implementation Reconciliation and workflow reassessment must run before selecting or readying SLICE-0076. No capability is preassigned by this closure.
 
 ## Development workflow
 
@@ -325,6 +327,6 @@ Fresh post-SLICE-0074 reconciliation selected the remaining technical Broker Wor
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0074 is owner-accepted and finished; SLICE-0075 Broker Performance & Funnel Snapshot is READY ON MAIN.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0075 is owner-accepted and implementation-merged; SLICE-0076 remains unselected until fresh reassessment/readiness.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
