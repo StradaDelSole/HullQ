@@ -84,6 +84,7 @@ __all__ = [
     "LifecycleTransitionStatus",
     "NativeListingLifecycleTransactionOwnershipError",
     "PublicationTransitionRecord",
+    "apply_lifecycle_transition_row",
     "fetch_lifecycle_state",
     "list_publication_transitions",
     "publish_native_listing",
@@ -265,6 +266,49 @@ def list_publication_transitions(
 # ---------------------------------------------------------------------------
 # Transition
 # ---------------------------------------------------------------------------
+
+
+def apply_lifecycle_transition_row(
+    cur: Any,
+    *,
+    account_id: AccountId,
+    native_listing_id: NativeListingId,
+    publishing_organization_id: MarketplaceOrganizationId,
+    from_state: NativeListingLifecycleState,
+    to_state: NativeListingLifecycleState,
+) -> PublicationTransitionId:
+    """Append one immutable transition row and update current lifecycle_state.
+
+    Factored out of `_apply_transition` (mirrors
+    `hullq.persistence.native_listing_offer.write_native_listing_offer_revision_row`'s
+    identical row-primitive convention) so SLICE-0074 broker sale/outcome
+    close-out can compose it inside its own already-open top-level
+    transaction, atomically alongside its SaleOutcome revision write
+    (`specs/BROKER_SALE_OUTCOME_CONTRACT.v0.1.md` §9: "No commit-and-
+    compensate sequence is allowed").
+
+    Performs no eligibility, ownership, current-state or
+    PublicationReadiness re-check itself -- the caller must have already
+    locked the target `native_listings` row (e.g. via
+    `_SELECT_LISTING_FOR_UPDATE`) and confirmed *from_state*/ownership under
+    that same lock, exactly like `_apply_transition` does for the
+    standalone `publish_native_listing`/`withdraw_native_listing` entry
+    points below.
+    """
+    cur.execute(_UPDATE_LIFECYCLE_STATE, (to_state.value, native_listing_id.value))
+    transition_id = PublicationTransitionId(str(uuid.uuid4()))
+    cur.execute(
+        _INSERT_TRANSITION,
+        (
+            transition_id.value,
+            native_listing_id.value,
+            from_state.value,
+            to_state.value,
+            account_id.value,
+            publishing_organization_id.value,
+        ),
+    )
+    return transition_id
 
 
 def _apply_transition(
