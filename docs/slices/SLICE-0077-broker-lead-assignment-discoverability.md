@@ -39,11 +39,12 @@ SLICE-0076 delivered MVP-BROKER-013 evidence but found this launch blocker. MVP-
 
 ## Decision / implementation reconciliation
 
-**DECIDED_AND_IMPLEMENTED:** Organization auth/MFA, current membership truth, Lead assignment mutation with active-member validation, SLICE-0076 validation evidence.  
-**DECIDED_NOT_YET_IMPLEMENTED:** assignment-candidate read projection, picker UI, focused Task-5 revalidation, possible later Launch Gate PASS transition; Security Hardening remains separate.  
-**EXPLICITLY_DEFERRED:** membership admin/profile identity, free-text Lead search, media reorder, catalog-assisted drafting, external pilot, paid/public launch, Search changes.  
-**GENUINELY_OPEN:** implementation-local projection shape and non-deceptive label using existing truth.  
-**CONFLICT_OR_REGRESSION:** none.
+**Accepted records checked:** `docs/PROJECT_STATE.md`; `docs/slices/SLICE-0076-acceptance-closure.md`; `docs/validation/BROKER_WORKSPACE_USABILITY_EVIDENCE_2026-10.md`; `docs/validation/BROKER_WORKSPACE_LAUNCH_GATE_EVIDENCE_2026-10.md`; `docs/governance/BROKER_WORKSPACE_LAUNCH_GATE.md`; `docs/governance/BROKER_WORKSPACE_MANDATORY_CAPABILITY_REGISTER.md`; `docs/governance/OVERALL_MVP_CAPABILITY_REGISTER.md`; `docs/governance/SECURITY_HARDENING_GATE.md`; `specs/BROKER_LEAD_OPERATIONS_NOTIFICATION_CONTRACT.v0.1.md`.  
+**Production implementation checked:** `src/hullq/domain/broker_access.py`; `src/hullq/persistence/broker_identity.py`; `src/hullq/application/broker_workspace_read.py`; `src/hullq/application/lead_operations.py`; `src/hullq/persistence/lead_operations.py`; Lead detail Astro surface; broker Lead API/web tests; SLICE-0076 launch-readiness harness.  
+**Already implemented / not re-decided:** Organization auth/MFA and exact membership truth; non-enumerating Organization boundary; Lead operational state; existing assignment mutation with current ACTIVE same-Organization membership validation; SLICE-0076 validation evidence.  
+**Exact remaining gap:** no authorized read projection exposes current ACTIVE members of the requested Organization to the Lead detail browser surface, so assignment requires an undiscoverable opaque AccountId.  
+**Accepted-but-unimplemented obligations:** discoverable Lead assignment remediation; focused Task-5 revalidation; later Broker Workspace Launch Gate reconsideration; MVP-PROD-012 Security Hardening remains separately DUE before pilot.  
+**Material classifications:** DECIDED_AND_IMPLEMENTED foundations above; DECIDED_NOT_YET_IMPLEMENTED assignment candidate projection/picker/revalidation; EXPLICITLY_DEFERRED membership admin/profile identity/free-text Lead search/media reorder/catalog-assisted drafting/external pilot/paid-public launch/Search changes; GENUINELY_OPEN implementation-local projection shape and non-deceptive label using existing truth; CONFLICT_OR_REGRESSION none.
 
 ## Required implementation
 
