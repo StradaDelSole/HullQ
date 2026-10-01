@@ -1,6 +1,6 @@
 # SLICE-0077 — Broker Lead Assignment Discoverability Remediation
 
-**Type:** IMPLEMENTATION + FOCUSED VALIDATION  
+**Type:** IMPLEMENTATION  
 **Status:** READY  
 **Stage:** Broker Workspace Launch Gate remediation  
 **Depends on:** SLICE-0076 owner-accepted / DONE  
