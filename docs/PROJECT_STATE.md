@@ -5,7 +5,7 @@
 
 **Updated:** 2026-10-01  
 **Latest owner-accepted / DONE slice:** SLICE-0076  
-**Current queue:** SLICE-0077 — **UNSELECTED** pending fresh post-SLICE-0076 Decision/Implementation Reconciliation and workflow reassessment.  
+**Current queue:** SLICE-0077 — **Broker Lead Assignment Discoverability Remediation — READINESS IN REVIEW**. Fresh post-SLICE-0076 reconciliation selected the accepted blocking Launch Gate deficiency; implementation starts only after readiness review/gates/merge through `START_SLICE.bat`.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -332,9 +332,9 @@ Next queue number:
 SLICE-0077
 ```
 
-**Capability:** UNSELECTED.
+**Capability:** Broker Lead Assignment Discoverability Remediation.
 
-Fresh post-SLICE-0076 Decision/Implementation Reconciliation and workflow reassessment must run before selecting or readying SLICE-0077. The accepted blocking Lead-assignment remediation must be explicitly considered, but this closure does not preassign SLICE-0077.
+Fresh post-SLICE-0076 reconciliation selected the one accepted blocking Broker Workspace Launch Gate deficiency: discoverable same-Organization Lead assignment. The separate Security Hardening & Adversarial Validation gate remains mandatory before any real external broker pilot.
 
 ## Development workflow
 
@@ -349,6 +349,6 @@ Fresh post-SLICE-0076 Decision/Implementation Reconciliation and workflow reasse
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0076 is owner-accepted and implementation/validation-merged; SLICE-0077 remains unselected until fresh reassessment/readiness.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0076 is owner-accepted and finished; SLICE-0077 Broker Lead Assignment Discoverability Remediation is selected and in readiness review.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.

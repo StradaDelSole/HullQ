@@ -84,7 +84,7 @@ Existing broker governance remains controlling in docs/governance/BROKER_WORKSPA
 | MVP-BROKER-010 | pre-publication Search-fit diagnostics | before paid/broad public broker launch | PENDING |
 | MVP-BROKER-011 | structured bulk onboarding/import | before scaled broker onboarding | PENDING |
 | MVP-BROKER-012 | Search exclusion / aggregate demand insights | volume-triggered | PENDING |
-| MVP-BROKER-013 | usability evidence + competitive benchmark | before first external self-service pilot | DUE |
+| MVP-BROKER-013 | usability evidence + competitive benchmark | before first external self-service pilot | IMPLEMENTED by SLICE-0076 — evidence accepted; Launch Gate remains NOT_READY due to blocking Lead-assignment finding |
 
 ## C. Owner-Direct Marketplace
 
@@ -259,7 +259,7 @@ Nothing in this register supersedes existing accepted invariants, including:
 As of 2026-10-01:
 
 - the marketplace/truth/search/broker operational loop through factual performance reporting is materially implemented through SLICE-0075;
-- broker usability evidence + competitive benchmark is now DUE before the first external self-service pilot;
+- broker usability evidence + competitive benchmark is implemented by SLICE-0076; its accepted result is REMEDIATION_REQUIRED because Lead assignment remains a blocking Launch Gate deficiency;
 - the dedicated Security Hardening & Adversarial Validation gate is also DUE before that pilot, and may be scheduled after launch-readiness/usability/benchmark work;
 - the largest remaining overall-MVP workstreams include owner-direct completion, trust/verification/safety, buyer persistence/alerts, periodic reporting/export/Search-fit diagnostics, support/admin/privacy/legal/comms, monetization where included, and production/data operations;
 - these remaining workstreams are not permission to reopen already-decided architecture.
