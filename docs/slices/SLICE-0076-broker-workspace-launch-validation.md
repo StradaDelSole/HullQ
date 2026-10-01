@@ -136,10 +136,14 @@ SLICE-0075 closed the last identified technical Launch Gate §7 gap. Measuring/b
 - [x] Broker Workspace Launch Gate remains NOT_READY unless later independent review + Owner Acceptance changes it;
 - [x] Security Hardening Gate remains explicitly pending before any real broker pilot;
 - [x] focused validation and repository validation pass;
-- [x] exact pushed HEAD remote CI + reproducibility pass (verified: PR #297, exact head
-  `61d7354a08bdd1224c4cb9cd2f972ccdc13e9571`, all 8 GitHub Actions checks — db integration,
-  dependency audit, historical research/bootstrap replay, quality ubuntu/windows, reproduce
-  ubuntu/windows, web quality — observed PASS).
+- [x] exact pushed HEAD remote CI + reproducibility pass (verified: PR #297. All 8 GitHub
+  Actions checks — db integration, dependency audit, historical research/bootstrap replay,
+  quality ubuntu/windows, reproduce ubuntu/windows, web quality — observed PASS independently
+  on both exact head `61d7354a08bdd1224c4cb9cd2f972ccdc13e9571` and, after the doc-only
+  citation-update commit on top of it, exact head
+  `91e1e4d20675633663eeeec7b13d35b902da4103` — the actual final pushed HEAD at the time this
+  line was last written. Neither commit between those two heads touches code, tests or
+  retained evidence content).
 
 ## Expected touch points
 
