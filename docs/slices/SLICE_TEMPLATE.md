@@ -19,6 +19,8 @@ For SLICE-0051 and later, the repository-reconciliation check is additionally ma
 
 For SLICE-0052 and later, the trigger-gates check is additionally mandatory before a primary slice may become `READY`.
 
+For slices selected after SLICE-0072, the overall-MVP capability-register check is additionally mandatory before a primary slice may become `READY`.
+
 **ONE-CAPABILITY CHECK:** PASS | FAIL  
 Does this slice deliver exactly one coherent user-visible capability OR answer exactly one business-critical hypothesis?
 
@@ -35,6 +37,9 @@ Required for SLICE-0051 and later. Before this slice was proposed, were the rele
 
 **TRIGGER GATES CHECK:** PASS | FAIL  
 Required for SLICE-0052 and later. Were `docs/governance/POST_0051_TRIGGER_GATES.md` and `docs/governance/PRODUCTION_READINESS_GATE.md` checked and are all currently applicable architecture-reconciliation, production-readiness, technical-Search-abstraction and workflow-reassessment triggers satisfied? Owner-direct production data/pilots are not exempt from Production Readiness merely because older trigger wording was broker-specific.
+
+**OVERALL MVP CAPABILITY REGISTER CHECK:** PASS | FAIL | NOT_APPLICABLE  
+Required for every primary slice selected after SLICE-0072. Was `docs/governance/OVERALL_MVP_CAPABILITY_REGISTER.md` inspected, were newly DUE/open capabilities accounted for, and does the readiness state why this capability is selected ahead of any higher-risk or higher-leverage due gap? This check prevents support, trust/safety, privacy/legal, admin/operations, communications, accessibility, i18n, monetization and production/data-operations obligations from disappearing from the execution path.
 
 A required `FAIL` on any of these checks blocks readiness. Genuine prerequisite/blocker work must still be cut so the Project Owner can inspect its concrete result and the check can honestly be `PASS`.
 
@@ -137,6 +142,7 @@ Stop and report instead of inventing a solution when:
 - repository reconciliation shows the proposed behavior is already decided/implemented and the slice has no distinct remaining capability;
 - an accepted implementation obligation is missing and lacks a concrete owner/explicit deferral;
 - a post-0051 trigger gate is due but not satisfied;
+- a post-SLICE-0072 readiness ignores an applicable DUE/open obligation in `docs/governance/OVERALL_MVP_CAPABILITY_REGISTER.md` or silently drops it from the launch boundary;
 - the requested behavior would violate source-rights, provenance, identity, search/SEO, product-execution, owner-direct/private-seller or other accepted policy;
 - implementation requires scope outside this slice.
 
@@ -168,6 +174,7 @@ Use this structure exactly at the end of the assigned slice.
 - PRODUCT EXECUTION PLAN ALIGNMENT: `PASS` | `FAIL` | `NOT APPLICABLE`
 - REPOSITORY RECONCILIATION CHECK: `PASS` | `FAIL` | `NOT APPLICABLE`
 - TRIGGER GATES CHECK: `PASS` | `FAIL` | `NOT APPLICABLE`
+- OVERALL MVP CAPABILITY REGISTER CHECK: `PASS` | `FAIL` | `NOT APPLICABLE`
 
 ### Changes
 
