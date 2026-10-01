@@ -1,7 +1,8 @@
 # SLICE-0076 — Broker Workspace Launch Validation: Usability & Competitive Benchmark
 
 **Type:** VALIDATION  
-**Status:** READY  
+**Status:** REVIEW  
+**Status set by this handoff:** `REVIEW`  
 **Stage:** Broker Workspace Launch Gate §§9–10  
 **Depends on:** SLICE-0075 owner-accepted / DONE  
 **Normative protocol:** `specs/BROKER_WORKSPACE_LAUNCH_VALIDATION_PROTOCOL.v0.1.md`
@@ -113,21 +114,21 @@ SLICE-0075 closed the last identified technical Launch Gate §7 gap. Measuring/b
 
 ## Acceptance criteria
 
-- [ ] exact candidate commit is recorded in retained evidence;
-- [ ] all six Launch Gate §9 tasks have scenario/start-state/time/friction/error/recovery/assistance/outcome records;
-- [ ] validation distinguishes setup time from task time;
-- [ ] no timed task requires direct SQL/internal API/operator intervention;
-- [ ] Lead filtering/search sufficiency is explicitly evaluated, not assumed;
-- [ ] at least BoatWizard and YATCO BOSS are benchmarked from current official evidence;
-- [ ] inaccessible/member-only behavior is NOT_COMPARABLE rather than guessed;
-- [ ] each launch-critical benchmark dimension has evidence-backed classification;
-- [ ] every material DEFICIENT/BLOCKING finding has explicit remediation disposition;
-- [ ] no overall numeric competitor score/winner is fabricated;
-- [ ] consolidated evidence recommends exactly one launch disposition;
-- [ ] Broker Workspace Launch Gate remains NOT_READY unless later independent review + Owner Acceptance changes it;
-- [ ] Security Hardening Gate remains explicitly pending before any real broker pilot;
-- [ ] focused validation and repository validation pass;
-- [ ] exact pushed HEAD remote CI + reproducibility pass.
+- [x] exact candidate commit is recorded in retained evidence;
+- [x] all six Launch Gate §9 tasks have scenario/start-state/time/friction/error/recovery/assistance/outcome records;
+- [x] validation distinguishes setup time from task time;
+- [x] no timed task requires direct SQL/internal API/operator intervention;
+- [x] Lead filtering/search sufficiency is explicitly evaluated, not assumed;
+- [x] at least BoatWizard and YATCO BOSS are benchmarked from current official evidence;
+- [x] inaccessible/member-only behavior is NOT_COMPARABLE rather than guessed;
+- [x] each launch-critical benchmark dimension has evidence-backed classification;
+- [x] every material DEFICIENT/BLOCKING finding has explicit remediation disposition;
+- [x] no overall numeric competitor score/winner is fabricated;
+- [x] consolidated evidence recommends exactly one launch disposition;
+- [x] Broker Workspace Launch Gate remains NOT_READY unless later independent review + Owner Acceptance changes it;
+- [x] Security Hardening Gate remains explicitly pending before any real broker pilot;
+- [x] focused validation and repository validation pass;
+- [ ] exact pushed HEAD remote CI + reproducibility pass (NOT VERIFIED — pending push and observed GitHub Actions result).
 
 ## Expected touch points
 
