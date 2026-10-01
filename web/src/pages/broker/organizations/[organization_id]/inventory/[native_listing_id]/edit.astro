@@ -18,6 +18,10 @@ import {
   saveListingClaim,
   saveListingOffer,
 } from "../../../../../../lib/inventoryEditingApi";
+import {
+  closeListingAsSold,
+  fetchSaleOutcome,
+} from "../../../../../../lib/brokerSaleOutcomeApi";
 import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../../../../lib/authConstants";
 
 const organizationId = Astro.params.organization_id;
@@ -46,6 +50,22 @@ let offerOutcome: SaveOutcome = "none";
 let claimOutcome: SaveOutcome = "none";
 let deniedReason = "";
 let invariantBlockers: string[] = [];
+
+type SaleOutcomeSaveOutcome =
+  | "none"
+  | "closed"
+  | "unauthenticated"
+  | "not_found"
+  | "mfa_required"
+  | "denied"
+  | "draft_not_eligible"
+  | "invalid_payload"
+  | "invalid_lead"
+  | "stale_version"
+  | "service_error";
+
+let saleOutcomeSaveOutcome: SaleOutcomeSaveOutcome = "none";
+let saleOutcomeDeniedReason = "";
 
 // ---------------------------------------------------------------------------
 // FormData -> the exact assertion-object wire shape
@@ -158,6 +178,41 @@ if (Astro.request.method === "POST" && organizationId && nativeListingId) {
     else if (result.kind === "mfa_required") claimOutcome = "mfa_required";
     else if (result.kind === "unauthenticated") claimOutcome = "unauthenticated";
     else claimOutcome = "service_error";
+  } else if (action === "close_as_sold") {
+    const soldDate = formData.get("sold_date");
+    const achievedAmount = formData.get("achieved_amount");
+    const achievedCurrency = formData.get("achieved_currency");
+    const originatingLeadId = formData.get("originating_lead_id");
+    const result = await closeListingAsSold(
+      apiBaseUrl,
+      organizationId,
+      nativeListingId,
+      {
+        revisionId: String(formData.get("revision_id") ?? ""),
+        expectedCurrentSaleOutcomeRevisionId:
+          (formData.get("expected_current_sale_outcome_revision_id") as string) || null,
+        soldDate: typeof soldDate === "string" && soldDate ? soldDate : null,
+        achievedAmount: typeof achievedAmount === "string" && achievedAmount ? achievedAmount : null,
+        achievedCurrency:
+          typeof achievedCurrency === "string" && achievedCurrency ? achievedCurrency : null,
+        originatingLeadId:
+          typeof originatingLeadId === "string" && originatingLeadId ? originatingLeadId : null,
+      },
+      cookieHeader,
+      originHeader,
+    );
+    if (result.kind === "ok") saleOutcomeSaveOutcome = "closed";
+    else if (result.kind === "denied") {
+      saleOutcomeSaveOutcome = "denied";
+      saleOutcomeDeniedReason = result.reason;
+    } else if (result.kind === "draft_not_eligible") saleOutcomeSaveOutcome = "draft_not_eligible";
+    else if (result.kind === "invalid_lead") saleOutcomeSaveOutcome = "invalid_lead";
+    else if (result.kind === "stale_version") saleOutcomeSaveOutcome = "stale_version";
+    else if (result.kind === "invalid_payload") saleOutcomeSaveOutcome = "invalid_payload";
+    else if (result.kind === "not_found") saleOutcomeSaveOutcome = "not_found";
+    else if (result.kind === "mfa_required") saleOutcomeSaveOutcome = "mfa_required";
+    else if (result.kind === "unauthenticated") saleOutcomeSaveOutcome = "unauthenticated";
+    else saleOutcomeSaveOutcome = "service_error";
   }
   // Every outcome falls through to the ordinary GET rendering below, which
   // always re-reads the authoritative current state rather than trusting
@@ -176,6 +231,16 @@ if (result.kind === "not_found") {
 } else if (result.kind === "service_error") {
   Astro.response.status = 503;
 }
+
+// SLICE-0074: current SaleOutcome, read independently of the offer/claim
+// detail above -- a service failure here never downgrades the already-
+// successful offer/claim read into a 503 (this section simply shows "not
+// available" below).
+const saleOutcomeResult =
+  result.kind === "ok" && organizationId && nativeListingId
+    ? await fetchSaleOutcome(apiBaseUrl, organizationId, nativeListingId, cookieHeader)
+    : null;
+const saleOutcome = saleOutcomeResult?.kind === "ok" ? saleOutcomeResult.data : null;
 
 const nextPath = `/broker/organizations/${organizationId ?? ""}/inventory/${nativeListingId ?? ""}/edit`;
 const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(nextPath)}`;
@@ -196,6 +261,22 @@ const outcomeText: Record<SaveOutcome, string | null> = {
       ? `This listing is live and this change would leave it in an invalid state: ${invariantBlockers.join(", ")}.`
       : "This listing is live and this change would leave it in an invalid state.",
   chain_incomplete: "This listing's underlying boat record isn't available for claim edits right now.",
+  service_error: "Something went wrong. Please try again.",
+};
+
+const saleOutcomeOutcomeText: Record<SaleOutcomeSaveOutcome, string | null> = {
+  none: null,
+  closed: "Recorded.",
+  unauthenticated: "Please log in to do this.",
+  not_found: "This listing isn't available here.",
+  mfa_required: "Additional verification is required before you can do this.",
+  denied: `Not allowed${saleOutcomeDeniedReason ? ` (${saleOutcomeDeniedReason})` : ""}.`,
+  draft_not_eligible: "A DRAFT listing cannot be closed as sold -- publish it first, or withdraw it.",
+  invalid_payload: "That form couldn't be saved -- please review the values and try again.",
+  invalid_lead:
+    "That Lead reference isn't valid for this listing -- it must be an existing Lead for this same listing/Organization.",
+  stale_version:
+    "The sale outcome changed since you loaded the page -- the current values below have been refreshed; please re-apply your edit.",
   service_error: "Something went wrong. Please try again.",
 };
 
@@ -664,6 +745,93 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
               </form>
             ) : (
               <p>No PhysicalBoat claim is available to edit for this listing yet.</p>
+            )}
+
+            <h2>Sale / outcome</h2>
+            {saleOutcomeOutcomeText[saleOutcomeSaveOutcome] && (
+              <p>{saleOutcomeOutcomeText[saleOutcomeSaveOutcome]}</p>
+            )}
+            {result.data.lifecycle_state === "DRAFT" ? (
+              <p>A DRAFT listing cannot be closed as sold yet -- publish it first.</p>
+            ) : (
+              <>
+                {saleOutcome?.outcome_kind ? (
+                  <p>
+                    Current outcome: <strong>{saleOutcome.outcome_kind}</strong>
+                    {saleOutcome.sold_date && <> — sold {saleOutcome.sold_date}</>}
+                    {saleOutcome.achieved_amount && (
+                      <> — {saleOutcome.achieved_amount} {saleOutcome.achieved_currency}</>
+                    )}
+                    {saleOutcome.originating_lead_id && (
+                      <>
+                        {" "}
+                        — via{" "}
+                        <a
+                          href={`/broker/organizations/${organizationId}/leads/${encodeURIComponent(saleOutcome.originating_lead_id)}`}
+                        >
+                          Lead {saleOutcome.originating_lead_id}
+                        </a>
+                      </>
+                    )}
+                    {" "}(recorded {saleOutcome.recorded_at})
+                  </p>
+                ) : (
+                  <p>No sale outcome has been recorded for this listing yet.</p>
+                )}
+                <form method="POST">
+                  <input type="hidden" name="action" value="close_as_sold" />
+                  <input type="hidden" name="revision_id" value={crypto.randomUUID()} />
+                  <input
+                    type="hidden"
+                    name="expected_current_sale_outcome_revision_id"
+                    value={saleOutcome?.current_sale_outcome_revision_id ?? ""}
+                  />
+                  <p>
+                    <label>
+                      Sold date:
+                      <input type="date" name="sold_date" value={saleOutcome?.sold_date ?? ""} />
+                    </label>
+                  </p>
+                  <p>
+                    <label>
+                      Achieved price:
+                      <input
+                        type="text"
+                        name="achieved_amount"
+                        value={saleOutcome?.achieved_amount ?? ""}
+                        placeholder="e.g. 118500.00"
+                      />
+                    </label>
+                  </p>
+                  <p>
+                    <label>
+                      Currency (ISO 4217):
+                      <input
+                        type="text"
+                        name="achieved_currency"
+                        maxlength="3"
+                        value={saleOutcome?.achieved_currency ?? ""}
+                        placeholder="EUR"
+                      />
+                    </label>
+                  </p>
+                  <p>
+                    <label>
+                      Originating Lead id (optional):
+                      <input
+                        type="text"
+                        name="originating_lead_id"
+                        value={saleOutcome?.originating_lead_id ?? ""}
+                      />
+                    </label>
+                  </p>
+                  <button type="submit">
+                    {result.data.lifecycle_state === "ACTIVE"
+                      ? "Close as SOLD (withdraws this listing)"
+                      : "Record / correct SOLD outcome"}
+                  </button>
+                </form>
+              </>
             )}
           </>
         )

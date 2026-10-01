@@ -80,6 +80,12 @@ from hullq.application.broker_inventory_read import (
     get_organization_inventory_page,
 )
 from hullq.application.broker_login import build_login_redirect
+from hullq.application.broker_sale_outcome import (
+    CloseAsSoldOutcome,
+    SaleOutcomeReadOutcome,
+    close_organization_listing_as_sold,
+    get_sale_outcome_for_organization_listing,
+)
 from hullq.application.broker_workspace_read import (
     OrganizationWorkspaceOutcome,
     get_broker_context_read_model,
@@ -334,6 +340,13 @@ _BROKER_LEAD_OPS_CSRF_HEADER_VALUE = "broker-lead-operations-v1"
 #: gallery/buyer-lead/lead-ops CSRF header can never be replayed against the
 #: post-promotion offer/claim editor mutation routes.
 _INVENTORY_EDITING_CSRF_HEADER_VALUE = "professional-inventory-editing-v1"
+
+#: SLICE-0074 contract §8: the identical fixed-header + exact-Origin CSRF
+#: discipline as every other authenticated broker-write channel above, with
+#: its own distinct header value so a valid draft/owner-direct/lifecycle/
+#: gallery/buyer-lead/lead-ops/inventory-editing CSRF header can never be
+#: replayed against the broker sale/outcome close-out mutation route.
+_SALE_OUTCOME_CSRF_HEADER_VALUE = "broker-sale-outcome-v1"
 
 #: SLICE-0070 contract §9: bounded request size before any unbounded
 #: buffering, mirroring the media-upload Content-Length discipline --
@@ -771,6 +784,22 @@ def create_app(
             actual is None
             or actual != accepted
             or requested_with != _INVENTORY_EDITING_CSRF_HEADER_VALUE
+        ):
+            raise HTTPException(status_code=403, detail="csrf validation failed")
+
+    def _require_sale_outcome_csrf(request: Request) -> None:
+        # SLICE-0074 contract §8: identical exact-Origin-match + fixed
+        # non-simple header discipline as every other authenticated
+        # broker-write channel, with its own distinct header value (see
+        # `_SALE_OUTCOME_CSRF_HEADER_VALUE`).
+        origin_header = request.headers.get("origin")
+        requested_with = request.headers.get(_OWNER_DIRECT_CSRF_HEADER_NAME)
+        accepted = _normalized_origin(_resolve_web_origin())
+        actual = _normalized_origin(origin_header) if origin_header else None
+        if (
+            actual is None
+            or actual != accepted
+            or requested_with != _SALE_OUTCOME_CSRF_HEADER_VALUE
         ):
             raise HTTPException(status_code=403, detail="csrf validation failed")
 
@@ -1589,6 +1618,88 @@ def create_app(
         finally:
             conn.close()
         return _claim_save_response(result)
+
+    # -----------------------------------------------------------------
+    # SLICE-0074: broker sale / outcome close-out
+    # -----------------------------------------------------------------
+
+    def _sale_outcome_read_response(result: Any) -> JSONResponse:
+        outcome = result.outcome
+        if outcome is SaleOutcomeReadOutcome.ORG_NOT_FOUND_OR_DENIED:
+            raise HTTPException(status_code=404, detail="organization not found")
+        if outcome is SaleOutcomeReadOutcome.MFA_REQUIRED:
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if outcome is SaleOutcomeReadOutcome.LISTING_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="listing not found")
+        assert outcome is SaleOutcomeReadOutcome.OK
+        assert result.view is not None
+        return JSONResponse(result.view.to_public_dict())
+
+    def _close_as_sold_response(result: Any) -> JSONResponse:
+        # Contract §14: every outcome maps to a mechanically distinct
+        # status/body -- never a false-success shape for a denied/invalid/
+        # stale/ineligible attempt.
+        outcome = result.outcome
+        if outcome is CloseAsSoldOutcome.ORG_NOT_FOUND_OR_DENIED:
+            raise HTTPException(status_code=404, detail="organization not found")
+        if outcome is CloseAsSoldOutcome.MFA_REQUIRED:
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if outcome is CloseAsSoldOutcome.DENIED:
+            assert result.denial_reason is not None
+            return JSONResponse(
+                {"error": "publishing_denied", "reason": result.denial_reason.value},
+                status_code=403,
+            )
+        if outcome is CloseAsSoldOutcome.LISTING_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="listing not found")
+        if outcome is CloseAsSoldOutcome.DRAFT_NOT_ELIGIBLE:
+            return JSONResponse({"error": "draft_not_eligible"}, status_code=409)
+        if outcome is CloseAsSoldOutcome.INVALID_PAYLOAD:
+            return JSONResponse({"error": "invalid_payload"}, status_code=400)
+        if outcome is CloseAsSoldOutcome.INVALID_LEAD:
+            return JSONResponse({"error": "invalid_lead"}, status_code=422)
+        if outcome is CloseAsSoldOutcome.STALE_VERSION:
+            return JSONResponse(result.to_public_dict(), status_code=409)
+        assert outcome is CloseAsSoldOutcome.CLOSED
+        return JSONResponse(result.to_public_dict(), status_code=200)
+
+    @app.get(
+        "/api/broker/organizations/{organization_id}/inventory/{native_listing_id}/sale-outcome"
+    )
+    def get_sale_outcome_route(
+        organization_id: str, native_listing_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            result = get_sale_outcome_for_organization_listing(
+                conn, session, organization_id, native_listing_id
+            )
+        finally:
+            conn.close()
+        return _sale_outcome_read_response(result)
+
+    @app.post(
+        "/api/broker/organizations/{organization_id}/inventory/{native_listing_id}/sale-outcome"
+    )
+    async def close_as_sold_route(
+        organization_id: str, native_listing_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_sale_outcome_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        conn = open_connection(resolved_database_url)
+        try:
+            result = close_organization_listing_as_sold(
+                conn, session, organization_id, native_listing_id, raw_body
+            )
+        finally:
+            conn.close()
+        return _close_as_sold_response(result)
 
     # -----------------------------------------------------------------
     # SLICE-0071: Broker Lead operations + notification-recipient config

@@ -1,7 +1,8 @@
 # SLICE-0074 — Broker Sale / Outcome Close-out
 
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
+**Status set by this handoff:** `REVIEW`  
 **Stage:** Broker launch path — broker closes / records outcome  
 **Depends on:** SLICE-0073 owner-accepted / DONE  
 **Normative contract:** `specs/BROKER_SALE_OUTCOME_CONTRACT.v0.1.md`
