@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0073 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0074 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0074 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0075 -->
 
 **Updated:** 2026-10-01  
-**Latest owner-accepted / DONE slice:** SLICE-0073  
-**Current queue:** SLICE-0074 — **Broker Sale / Outcome Close-out — READY ON MAIN**. Fresh post-SLICE-0073 reconciliation, independent readiness review and required remote gates are complete; implementation starts only through `START_SLICE.bat`.  
+**Latest owner-accepted / DONE slice:** SLICE-0074  
+**Current queue:** SLICE-0075 — **UNSELECTED** pending fresh post-SLICE-0074 reconciliation.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -158,6 +158,7 @@ SLICE-0040 marketplace identity/truth separation
 → SLICE-0071 Broker Lead Operating Surface + Durable Email Notification
 → SLICE-0072 Professional Inventory Editing & Maintenance
 → SLICE-0073 Test / CI Throughput Optimization
+→ SLICE-0074 Broker Sale / Outcome Close-out
 ```
 
 Latest closures:
@@ -181,6 +182,7 @@ docs/slices/SLICE-0066-acceptance-closure.md
 docs/slices/SLICE-0067-acceptance-closure.md
 docs/slices/SLICE-0072-acceptance-closure.md
 docs/slices/SLICE-0073-acceptance-closure.md
+docs/slices/SLICE-0074-acceptance-closure.md
 ```
 
 ## Accepted technical Search result
@@ -291,12 +293,12 @@ Large retained research artifacts are acknowledged as repository-hygiene debt, n
 Next queue number:
 
 ```text
-SLICE-0074
+SLICE-0075
 ```
 
-**Capability:** Broker Sale / Outcome Close-out.
+**Capability:** UNSELECTED pending fresh post-SLICE-0074 reconciliation.
 
-Fresh post-SLICE-0073 reconciliation selected the explicit publisher-scoped SOLD/outcome workflow because it closes the final step of the accepted Broker Launch Execution Focus loop and implements already-accepted D25/D28 / REQ-BROKER-006 semantics. It is governed by `docs/POST_SLICE_0073_REASSESSMENT_2026-10-01.md`, `specs/BROKER_SALE_OUTCOME_CONTRACT.v0.1.md`, and `docs/slices/SLICE-0074-broker-sale-outcome-closeout.md`.
+SLICE-0074 closes the accepted Broker Launch Execution Focus loop through explicit broker sale/outcome close-out. The next capability must be selected only after fresh reconciliation against the Broker Workspace Launch Gate and Mandatory Capability Register.
 
 ## Development workflow
 
@@ -311,6 +313,6 @@ Fresh post-SLICE-0073 reconciliation selected the explicit publisher-scoped SOLD
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0073 is owner-accepted and finished; SLICE-0074 Broker Sale / Outcome Close-out is READY ON MAIN.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0074 is owner-accepted and merged; SLICE-0075 remains unselected pending fresh post-SLICE-0074 reconciliation.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.

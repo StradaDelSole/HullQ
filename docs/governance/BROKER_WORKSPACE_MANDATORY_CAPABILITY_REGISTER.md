@@ -6,7 +6,7 @@
 
 <!-- BROKER_WORKSPACE_MANDATORY_COMMITMENTS_STATUS: OPEN -->
 <!-- BROKER_WORKSPACE_PRODUCT_COMPLETION_STATUS: OPEN -->
-<!-- BROKER_SALE_OUTCOME_WORKFLOW_STATUS: PENDING -->
+<!-- BROKER_SALE_OUTCOME_WORKFLOW_STATUS: IMPLEMENTED -->
 <!-- SCALED_BROKER_ONBOARDING_STATUS: NOT_STARTED -->
 <!-- SUFFICIENT_SEARCH_VOLUME_FOR_BROKER_INSIGHTS_STATUS: NOT_REACHED -->
 <!-- POST_PILOT_REAL_BROKER_VALIDATION_STATUS: NOT_STARTED -->
@@ -48,7 +48,7 @@ IMPLEMENTED
 
 | Requirement | Capability | Timing class | Current status |
 |---|---|---|---|
-| REQ-BROKER-006 | explicit sale/outcome recording | mandatory before paid broker activation / broad public launch | PENDING |
+| REQ-BROKER-006 | explicit sale/outcome recording | mandatory before paid broker activation / broad public launch | IMPLEMENTED by SLICE-0074 |
 | REQ-BROKER-022 | inventory portability / no lock-in export | mandatory before paid broker activation / broad public launch | PENDING |
 | REQ-BROKER-023 | broker identity / branding preservation | launch/pilot baseline commitment | IMPLEMENTED by SLICE-0063 |
 | REQ-BROKER-024 | connectivity-resilient draft/recovery behavior | launch/pilot baseline commitment | IMPLEMENTED by SLICE-0062 |
@@ -251,3 +251,44 @@ A requirement status may become `IMPLEMENTED` only when the repository names:
 - independent review and explicit Project Owner acceptance.
 
 Changing a status marker without that evidence is a governance failure.
+
+
+## Implemented evidence — REQ-BROKER-006 / Sale Outcome
+
+SLICE-0074 is the accepted implementation evidence for explicit broker sale/outcome recording.
+
+Accepted evidence:
+
+- implementation slice: `docs/slices/SLICE-0074-broker-sale-outcome-closeout.md`;
+- normative contract: `specs/BROKER_SALE_OUTCOME_CONTRACT.v0.1.md`;
+- accepted exact implementation HEAD: `0984a7f792003f816fccdd8601b4e9bf0a543ffd`;
+- implementation PR: #287;
+- implementation merge commit: `1c4a586b83ff4a7016a325a556a6a4bb97d8352d`;
+- durable immutable SaleOutcome revision/current-head persistence;
+- explicit SOLD on ACTIVE atomically records outcome and transitions ACTIVE→WITHDRAWN;
+- SOLD/correction on already-WITHDRAWN preserves lifecycle;
+- optional sold date / achieved price / currency / originating Lead remain truthful and non-fabricated;
+- achieved sale price is never inferred from asking price;
+- same-Organization/same-listing Lead linkage is fail-closed;
+- foreign/unknown access remains non-enumerating;
+- current ACTIVE PUBLISHER membership and MFA control mutation authority;
+- SaleOutcome mutation remains independent from OrganizationPublishingEligibility;
+- cross-Organization listings for the same MarketEpisode are never auto-closed;
+- publisher SOLD report remains separate from any future canonical global MarketEpisode outcome;
+- exact-head CI and Manufacturer reproducibility passed;
+- independent exact-head review required one authorization amendment, then returned ACCEPT;
+- explicit Project Owner acceptance recorded 2026-10-01.
+
+Accepted v0.1 behavior:
+
+```text
+authorized Organization-owned ACTIVE/WITHDRAWN NativeListing
+→ explicit SOLD record/correction
+→ immutable SaleOutcome revision
+→ optional truthful sale facts
+→ ACTIVE atomically becomes WITHDRAWN
+→ no inference from ordinary WITHDRAWN state
+→ no cross-Organization/global outcome propagation
+```
+
+`BROKER_SALE_OUTCOME_WORKFLOW_STATUS` is now `IMPLEMENTED`.
