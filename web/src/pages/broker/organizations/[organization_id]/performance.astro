@@ -1,0 +1,232 @@
+---
+// SLICE-0075: the private Organization-scoped broker performance / funnel
+// snapshot surface (Broker Workspace Launch Gate §7). Broker Workspace is
+// authoritative -- every count/latency/source value here is exactly what
+// FastAPI decided; this page never re-derives or re-aggregates on its own,
+// and never fabricates a zero/ratio value FastAPI did not supply.
+//
+// unauthenticated             -> login path
+// unknown/unauthorized org    -> ordinary not-found (non-enumerating)
+// privileged membership,
+//   no validated MFA          -> blocked/step-up prompt
+// authorized                  -> bounded factual snapshot: views, Leads,
+//                                contacted/closed counts, first-contact
+//                                latency, source breakdown, SOLD linkage
+export const prerender = false;
+
+import { fetchOrganizationPerformance } from "../../../../lib/brokerPerformanceApi";
+import type { PerformanceWindow } from "../../../../lib/brokerPerformanceApi";
+import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../../lib/authConstants";
+
+const organizationId = Astro.params.organization_id;
+const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
+const cookieHeader = Astro.request.headers.get("cookie");
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+Astro.response.headers.set("Cache-Control", "private, no-store");
+
+const VALID_WINDOWS: PerformanceWindow[] = ["LAST_7_DAYS", "LAST_30_DAYS", "LAST_90_DAYS", "ALL_TIME"];
+const requestedWindow = Astro.url.searchParams.get("window");
+const window: PerformanceWindow | undefined = VALID_WINDOWS.includes(
+  requestedWindow as PerformanceWindow,
+)
+  ? (requestedWindow as PerformanceWindow)
+  : undefined;
+
+const result = organizationId
+  ? await fetchOrganizationPerformance(apiBaseUrl, organizationId, cookieHeader, window)
+  : ({ kind: "not_found" } as const);
+
+if (result.kind === "not_found") {
+  Astro.response.status = 404;
+} else if (result.kind === "mfa_required") {
+  Astro.response.status = 403;
+} else if (result.kind === "invalid_window") {
+  Astro.response.status = 400;
+} else if (result.kind === "service_error") {
+  Astro.response.status = 503;
+}
+
+const nextPath = `/broker/organizations/${organizationId ?? ""}/performance`;
+const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(nextPath)}`;
+const stepUpUrl = `${loginUrl}&acr_values=${encodeURIComponent(AUTH0_MFA_STEP_UP_ACR_VALUE)}`;
+
+function windowLink(w: PerformanceWindow): string {
+  return `/broker/organizations/${organizationId}/performance?window=${w}`;
+}
+
+const WINDOW_LABEL: Record<PerformanceWindow, string> = {
+  LAST_7_DAYS: "Last 7 days",
+  LAST_30_DAYS: "Last 30 days",
+  LAST_90_DAYS: "Last 90 days",
+  ALL_TIME: "All time",
+};
+
+function formatLatency(seconds: number | null): string {
+  if (seconds === null) return "Not observed";
+  const hours = seconds / 3600;
+  if (hours < 48) return `${hours.toFixed(1)} hours`;
+  return `${(hours / 24).toFixed(1)} days`;
+}
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>HullQ Broker Workspace — Performance</title>
+  </head>
+  <body>
+    <main>
+      {
+        result.kind === "unauthenticated" ? (
+          <>
+            <h1>Broker Workspace</h1>
+            <p>
+              Please <a href={loginUrl}>log in</a> to access this Organization's performance snapshot.
+            </p>
+          </>
+        ) : result.kind === "not_found" ? (
+          <>
+            <h1>Not found</h1>
+            <p>This Organization's performance snapshot is not available.</p>
+          </>
+        ) : result.kind === "mfa_required" ? (
+          <>
+            <h1>Additional verification required</h1>
+            <p>This Organization membership requires multi-factor authentication.</p>
+            <a href={stepUpUrl}>Verify and continue</a>
+          </>
+        ) : result.kind !== "ok" ? (
+          <>
+            <h1>Performance snapshot temporarily unavailable</h1>
+            <p>Something went wrong loading this snapshot. Please try again.</p>
+          </>
+        ) : (
+          <>
+            <h1>Performance &amp; funnel snapshot</h1>
+            <p>
+              <a href={`/broker/organizations/${organizationId}`}>Back to workspace</a>
+            </p>
+            <p>
+              Window: {WINDOW_LABEL[result.data.window]} ({result.data.window_start} to{" "}
+              {result.data.window_end})
+            </p>
+            <nav>
+              {VALID_WINDOWS.map((w) => (
+                <a href={windowLink(w)}>{WINDOW_LABEL[w]}</a>
+              ))}{" "}
+            </nav>
+
+            <h2>Organization summary</h2>
+            <ul>
+              <li>Public listing views observed: {result.data.public_listing_views}</li>
+              <li>Leads received: {result.data.leads_received}</li>
+              <li>
+                Leads with a recorded broker contact attempt: {result.data.leads_contacted} of{" "}
+                {result.data.leads_received}
+              </li>
+              <li>Leads closed: {result.data.leads_closed}</li>
+              <li>Explicit SOLD outcomes recorded in window: {result.data.sold_outcomes}</li>
+              <li>
+                SOLD outcomes with known Lead source: {result.data.sold_outcomes_with_known_source}
+                {" "}/ unknown source: {result.data.sold_outcomes_with_unknown_source}
+              </li>
+              <li>
+                Median first-contact latency: {formatLatency(result.data.median_first_contact_latency_seconds)}
+                {" "}(observed for {result.data.first_contact_latency_known_count} of{" "}
+                {result.data.first_contact_latency_known_count +
+                  result.data.first_contact_latency_unknown_count}{" "}
+                Leads; not observed for the remainder)
+              </li>
+            </ul>
+
+            <h3>Lead acquisition source breakdown</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Acquisition channel</th>
+                  <th>Leads</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(result.data.acquisition_source_breakdown).map(([channel, count]) => (
+                  <tr>
+                    <td>{channel}</td>
+                    <td>{count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <h3>Lead discovery source breakdown</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Discovery surface</th>
+                  <th>Leads</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(result.data.discovery_source_breakdown).map(([surface, count]) => (
+                  <tr>
+                    <td>{surface}</td>
+                    <td>{count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <h2>Per-listing breakdown</h2>
+            {result.data.listings.length === 0 ? (
+              <p>No observed views, Leads or recorded SOLD outcomes for this window.</p>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Listing</th>
+                    <th>Views</th>
+                    <th>Leads received</th>
+                    <th>Leads contacted</th>
+                    <th>Leads closed</th>
+                    <th>First-contact latency observed</th>
+                    <th>SOLD outcome</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.data.listings.map((listing) => (
+                    <tr>
+                      <td>
+                        <a href={`/listings/${listing.native_listing_id}`}>
+                          {listing.native_listing_id}
+                        </a>
+                      </td>
+                      <td>{listing.public_listing_views}</td>
+                      <td>{listing.leads_received}</td>
+                      <td>
+                        {listing.leads_contacted} of {listing.leads_received}
+                      </td>
+                      <td>{listing.leads_closed}</td>
+                      <td>
+                        {listing.first_contact_latency_known_count} known /{" "}
+                        {listing.first_contact_latency_unknown_count} not observed
+                      </td>
+                      <td>
+                        {listing.sold_outcome_recorded_at === null
+                          ? "Not recorded"
+                          : listing.sold_outcome_source_known
+                            ? `SOLD (recorded ${listing.sold_outcome_recorded_at}; source: known Lead)`
+                            : `SOLD (recorded ${listing.sold_outcome_recorded_at}; source: unknown)`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </>
+        )
+      }
+    </main>
+  </body>
+</html>

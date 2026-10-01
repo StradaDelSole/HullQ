@@ -58,6 +58,7 @@ from __future__ import annotations
 
 import json
 import os
+import uuid
 from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlsplit
@@ -80,6 +81,10 @@ from hullq.application.broker_inventory_read import (
     get_organization_inventory_page,
 )
 from hullq.application.broker_login import build_login_redirect
+from hullq.application.broker_performance_read import (
+    PerformanceReadOutcome,
+    get_organization_performance_snapshot,
+)
 from hullq.application.broker_sale_outcome import (
     CloseAsSoldOutcome,
     SaleOutcomeReadOutcome,
@@ -184,10 +189,12 @@ from hullq.application.search_sensitivity import (
 from hullq.domain.buyer_lead import LeadId
 from hullq.domain.lead_operations import LeadCloseReason, LeadOperationalStatus
 from hullq.domain.lead_provenance import DiscoverySurface
+from hullq.domain.listing_telemetry import ListingViewOperationId
 from hullq.domain.market_identity import NativeListingId
 from hullq.domain.media_gallery import MAX_IMAGE_UPLOAD_BYTES
 from hullq.domain.publishing_eligibility import AccountId, MarketplaceOrganizationId
 from hullq.persistence.connection import get_database_url, open_connection
+from hullq.persistence.native_listing_view_event import record_public_listing_view
 from hullq.search.configuration_engine import DesignQueryEvaluation
 from hullq.search.criteria import NumericLeafCriterion
 from hullq.search.draft_max_request import canonical_draft_max_str
@@ -898,6 +905,29 @@ def create_app(
             # route must never be usable as a NativeListingId existence
             # oracle, and no preview token is required or accepted here.
             raise HTTPException(status_code=404, detail="listing not found")
+
+        # SLICE-0075 contract §3: this is the one and only call site that may
+        # ever record a `PUBLIC_LISTING_VIEW` fact -- wired exclusively to
+        # this route's own success path, never into
+        # `get_public_listing_read_model` itself (which also serves the
+        # authenticated Broker Workspace inventory page's own `is_publicly_
+        # listed` check, and must never produce a telemetry side effect
+        # there). A fresh server-minted operation id means an ordinary
+        # client retry/reload is always counted as a new, genuinely distinct
+        # view -- idempotency here guards this one write against a literal
+        # duplicate call, not against repeat visits.
+        conn_write = open_connection(resolved_database_url)
+        try:
+            record_public_listing_view(
+                conn_write,
+                operation_id=ListingViewOperationId(str(uuid.uuid4())),
+                native_listing_id=NativeListingId(native_listing_id),
+                publishing_organization_id=model.publishing_organization_id,
+                occurred_at=_current_as_of(),
+            )
+        finally:
+            conn_write.close()
+
         return JSONResponse(model.to_public_dict())
 
     @app.get("/api/listings/{native_listing_id}/media/{media_placement_id}")
@@ -1699,6 +1729,38 @@ def create_app(
         finally:
             conn.close()
         return _close_as_sold_response(result)
+
+    # -----------------------------------------------------------------
+    # SLICE-0075: Broker performance / funnel snapshot
+    # -----------------------------------------------------------------
+
+    @app.get("/api/broker/organizations/{organization_id}/performance")
+    def get_organization_performance_route(organization_id: str, request: Request) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            result = get_organization_performance_snapshot(
+                conn,
+                session,
+                organization_id,
+                raw_window=request.query_params.get("window"),
+                as_of=_current_as_of(),
+            )
+        finally:
+            conn.close()
+
+        if result.outcome is PerformanceReadOutcome.ORG_NOT_FOUND_OR_DENIED:
+            # Contract §10: unknown Organization and unauthorized Organization
+            # membership must be indistinguishable.
+            raise HTTPException(status_code=404, detail="organization not found")
+        if result.outcome is PerformanceReadOutcome.MFA_REQUIRED:
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if result.outcome is PerformanceReadOutcome.INVALID_WINDOW:
+            return JSONResponse({"error": "invalid_window"}, status_code=400)
+        assert result.outcome is PerformanceReadOutcome.OK
+        return JSONResponse(result.to_public_dict())
 
     # -----------------------------------------------------------------
     # SLICE-0071: Broker Lead operations + notification-recipient config
