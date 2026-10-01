@@ -1009,8 +1009,28 @@ def main() -> int:
             assert "SOLD" in html
             assert f"Lead {lead_id}" in html, "explicitly-selected originating Lead not linked on re-read"
             sale_section = html.split("<h2>Sale / outcome</h2>", 1)[1]
-            assert "€" not in sale_section.split("recorded", 1)[0] or True
-            assert "achieved" not in sale_section.lower().split("current outcome", 1)[0]
+            # Deterministic proof that leaving achieved price/currency absent
+            # does not fabricate a price on the authoritative re-read: the
+            # rendered "Current outcome: ..." line only ever includes an
+            # em-dash-prefixed *numeric* fragment for the achieved-amount
+            # clause (`edit.astro`'s "— {achieved_amount} {achieved_currency}"
+            # conditional) -- the sold-date clause is "— sold <date>" and the
+            # Lead-link clause is "— via Lead <id>", neither of which starts
+            # with a digit. Independent review 2026-10-01 (reviewed HEAD
+            # 28288ef, Finding C): the previous `... or True` assertion could
+            # never fail and proved nothing.
+            outcome_line_match = re.search(r"Current outcome:.*?\(recorded", sale_section, re.DOTALL)
+            assert outcome_line_match, (
+                f"could not locate the rendered current-outcome line: {sale_section[:400]!r}"
+            )
+            outcome_line = outcome_line_match.group(0)
+            assert not re.search(r"—\s*\d", outcome_line), (
+                "achieved price/currency appears to have been fabricated or defaulted "
+                f"despite being left blank: {outcome_line!r}"
+            )
+            assert "sold 2026-10-10" in outcome_line, (
+                f"the sold date actually supplied is not reflected on the re-read: {outcome_line!r}"
+            )
 
             status, _, body = session.get(org_url("/inventory"))
             rec.steps.append(f"GET inventory overview (verify resulting lifecycle) -> {status}")
