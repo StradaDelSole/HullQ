@@ -1,0 +1,770 @@
+"""PostgreSQL + real HTTP tests for SLICE-0075 broker performance / funnel
+snapshot telemetry + read surface.
+
+Covers `specs/BROKER_PERFORMANCE_FUNNEL_SNAPSHOT_CONTRACT.v0.1.md` §12's
+required retained proof items: a public-readable listing read records one
+durable view event; retry of the same telemetry operation does not
+double-count; private/broker-authenticated reads never create a view fact;
+Organization A cannot read Organization B telemetry (including when both
+Organizations' listings share the same underlying MarketEpisode); exact
+view/Lead counts; first-CONTACT_ATTEMPT latency derivation and its explicit
+unknown state when no contact attempt exists; a CLOSED Lead is never counted
+as SOLD; an explicit SOLD outcome correctly reports known vs unknown Lead
+source; and the browser-facing route surfaces explicit unknown states
+without inventing zeros/conversions.
+"""
+
+from __future__ import annotations
+
+import os
+import uuid
+from collections.abc import Generator
+from datetime import UTC, datetime
+from decimal import Decimal
+from typing import Any
+from urllib.parse import quote, urlsplit, urlunsplit
+
+import psycopg
+import pytest
+from starlette.testclient import TestClient
+
+from hullq.domain.broker_access import AuthenticatedIdentity, Provider
+from hullq.domain.buyer_lead import LeadId, SubmissionOperationId
+from hullq.domain.lead_operations import (
+    LeadCloseReason,
+    LeadContactAttemptChannel,
+    LeadOperationalStatus,
+)
+from hullq.domain.listing_telemetry import ListingViewOperationId
+from hullq.domain.market_identity import (
+    MarketEpisode,
+    MarketEpisodeId,
+    NativeListing,
+    NativeListingId,
+    PhysicalBoat,
+    PhysicalBoatId,
+)
+from hullq.domain.media_gallery import MediaSourceKind
+from hullq.domain.native_listing_offer import AskingPriceMode, NativeListingOfferSnapshot
+from hullq.domain.physical_boat_claims import (
+    AssertionKind,
+    BuildYearClaim,
+    PhysicalBoatClaimRevisionId,
+    PhysicalBoatClaimSnapshot,
+)
+from hullq.domain.publishing_eligibility import (
+    AccountId,
+    MarketplaceOrganization,
+    MarketplaceOrganizationId,
+    MembershipRole,
+    MembershipState,
+    OrganizationMembership,
+    OrganizationMembershipId,
+    OrganizationPublishingEligibility,
+    ProfessionalCategory,
+)
+from hullq.domain.sale_outcome import SaleOutcomeKind, SaleOutcomeRevisionId, SaleOutcomeSnapshot
+from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
+from hullq.persistence.broker_identity import (
+    seed_marketplace_organization,
+    seed_organization_membership,
+)
+from hullq.persistence.buyer_lead import BuyerLeadCreationStatus, create_buyer_lead
+from hullq.persistence.lead_operations import (
+    append_lead_contact_attempt,
+    set_lead_operational_status,
+)
+from hullq.persistence.market_episode import create_market_episode
+from hullq.persistence.media_gallery import (
+    create_uploaded_image_placement,
+    insert_approved_media_asset,
+    set_cover,
+)
+from hullq.persistence.native_listing import create_native_listing
+from hullq.persistence.native_listing_lifecycle import publish_native_listing
+from hullq.persistence.native_listing_offer import (
+    NativeListingOfferRevisionId,
+    write_native_listing_offer_revision,
+)
+from hullq.persistence.native_listing_sale_outcome import close_native_listing_as_sold
+from hullq.persistence.native_listing_view_event import (
+    RecordListingViewStatus,
+    record_public_listing_view,
+)
+from hullq.persistence.physical_boat import create_physical_boat
+from hullq.persistence.physical_boat_claims import write_physical_boat_claim_revision
+from hullq.security.session_token import mint_session_token
+
+_SECRET = b"5" * 32
+_WEB_ORIGIN = "http://web.test"
+
+
+def _with_search_path(base_url: str, schema_name: str) -> str:
+    parts = urlsplit(base_url)
+    option = quote(f"-c search_path={schema_name}", safe="")
+    query = f"{parts.query}&options={option}" if parts.query else f"options={option}"
+    return urlunsplit(parts._replace(query=query))
+
+
+def _create_schema(base_url: str, schema_name: str) -> None:
+    conn = psycopg.connect(base_url, autocommit=True)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(f'DROP SCHEMA IF EXISTS "{schema_name}" CASCADE')
+            cur.execute(f'CREATE SCHEMA "{schema_name}"')
+    finally:
+        conn.close()
+
+
+def _drop_schema(base_url: str, schema_name: str) -> None:
+    conn = psycopg.connect(base_url, autocommit=True)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(f'DROP SCHEMA IF EXISTS "{schema_name}" CASCADE')
+    finally:
+        conn.close()
+
+
+@pytest.fixture()
+def api_url(db_url: str) -> Generator[str]:
+    schema_name = f"hullq_s0075api_{uuid.uuid4().hex[:16]}"
+    _create_schema(db_url, schema_name)
+    try:
+        url = _with_search_path(db_url, schema_name)
+        baseline = prepare_alembic_baseline(url)
+        assert baseline.accepted, baseline.reason
+        alembic_upgrade_head(url)
+        yield url
+    finally:
+        _drop_schema(db_url, schema_name)
+
+
+@pytest.fixture()
+def api_conn(api_url: str) -> Generator[Any]:
+    conn = psycopg.connect(api_url)
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+
+@pytest.fixture()
+def client(api_url: str, monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient]:
+    from hullq.api.app import create_app
+
+    monkeypatch.setenv("HULLQ_SESSION_COOKIE_SECURE", "false")
+    app = create_app(
+        database_url=api_url,
+        preview_signing_secret=os.urandom(32),
+        session_signing_secret=_SECRET,
+        web_origin=_WEB_ORIGIN,
+    )
+    test_client = TestClient(app, base_url="http://api.test", follow_redirects=False)
+    try:
+        yield test_client
+    finally:
+        test_client.close()
+
+
+def _ensure_account(conn: Any, account_id: str) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO accounts (account_id) VALUES (%s) ON CONFLICT DO NOTHING", [account_id]
+        )
+
+
+def _session_cookie(account_id: str) -> str:
+    identity = AuthenticatedIdentity(
+        provider=Provider.AUTH0,
+        issuer="https://issuer.test/",
+        subject=f"subject-{account_id}",
+        auth_time=datetime.now(UTC),
+        mfa_satisfied=True,
+    )
+    minted = mint_session_token(identity, AccountId(account_id), secret=_SECRET)
+    return minted.token
+
+
+def _log_in(client: TestClient, account_id: str) -> None:
+    client.cookies.set("hullq_session", _session_cookie(account_id), domain="api.test")
+
+
+def _seed_org_and_membership(api_url: str, *, org_id: str, account_id: str, membership_id: str) -> None:
+    conn = psycopg.connect(api_url)
+    try:
+        _ensure_account(conn, account_id)
+        seed_marketplace_organization(
+            conn,
+            MarketplaceOrganization(
+                id=MarketplaceOrganizationId(org_id),
+                professional_category=ProfessionalCategory.BROKER,
+                publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+            ),
+        )
+        seed_organization_membership(
+            conn,
+            OrganizationMembership(
+                id=OrganizationMembershipId(membership_id),
+                account_id=AccountId(account_id),
+                organization_id=MarketplaceOrganizationId(org_id),
+                roles=frozenset({MembershipRole.PUBLISHER}),
+                state=MembershipState.ACTIVE,
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _amount_offer() -> NativeListingOfferSnapshot:
+    return NativeListingOfferSnapshot(
+        asking_price_mode=AskingPriceMode.AMOUNT,
+        location_country="FR",
+        broker_description="A well-maintained cruising sloop.",
+        asking_price_amount=Decimal("125000.00"),
+        currency="EUR",
+    )
+
+
+def _ready_physical_boat_claim() -> PhysicalBoatClaimSnapshot:
+    return PhysicalBoatClaimSnapshot(
+        marketed_brand_claim="Beneteau",
+        model_designation_claim="Oceanis 30.1",
+        build_year=BuildYearClaim(AssertionKind.VALUE_ASSERTION, 2020),
+    )
+
+
+def _attach_ready_cover_image(conn: Any, *, listing_id: str, org_id: str, account_id: str) -> None:
+    asset = insert_approved_media_asset(
+        conn,
+        owner_organization_id=MarketplaceOrganizationId(org_id),
+        uploaded_by_account_id=AccountId(account_id),
+        rights_declared=True,
+        source_kind=MediaSourceKind.BROKER_UPLOAD,
+        source_reference=None,
+        original_object_key=f"original/{listing_id}",
+        derivative_object_key=f"derivative/{listing_id}",
+        content_hash=f"hash-{listing_id}",
+        mime_type="image/jpeg",
+        width=800,
+        height=600,
+        byte_size=12345,
+    )
+    placement_result = create_uploaded_image_placement(
+        conn,
+        native_listing_id=NativeListingId(listing_id),
+        owner_organization_id=MarketplaceOrganizationId(org_id),
+        media_asset=asset,
+    )
+    assert placement_result.media_placement_id is not None
+    cover_result = set_cover(
+        conn,
+        native_listing_id=NativeListingId(listing_id),
+        owner_organization_id=MarketplaceOrganizationId(org_id),
+        media_placement_id=placement_result.media_placement_id,
+        expected_version=placement_result.gallery_version,
+    )
+    assert cover_result.outcome.value == "SET", cover_result
+
+
+def _create_and_publish_listing(
+    api_url: str,
+    *,
+    listing_id: str,
+    org_id: str,
+    account_id: str,
+    membership_id: str,
+    physical_boat_id: str,
+    market_episode_id: str,
+) -> None:
+    conn = psycopg.connect(api_url)
+    try:
+        account = AccountId(account_id)
+        org = MarketplaceOrganization(
+            id=MarketplaceOrganizationId(org_id),
+            professional_category=ProfessionalCategory.BROKER,
+            publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+        )
+        membership = OrganizationMembership(
+            id=OrganizationMembershipId(membership_id),
+            account_id=account,
+            organization_id=org.id,
+            roles=frozenset({MembershipRole.PUBLISHER}),
+            state=MembershipState.ACTIVE,
+        )
+        create_physical_boat(conn, physical_boat=PhysicalBoat(id=PhysicalBoatId(physical_boat_id)))
+        create_market_episode(
+            conn,
+            market_episode=MarketEpisode(
+                id=MarketEpisodeId(market_episode_id), physical_boat_id=PhysicalBoatId(physical_boat_id)
+            ),
+        )
+        create_native_listing(
+            conn,
+            account_id=account,
+            candidate_organization=org,
+            membership=membership,
+            listing=NativeListing(
+                id=NativeListingId(listing_id), market_episode_id=MarketEpisodeId(market_episode_id)
+            ),
+        )
+        write_native_listing_offer_revision(
+            conn,
+            account_id=account,
+            candidate_organization=org,
+            membership=membership,
+            native_listing_id=NativeListingId(listing_id),
+            revision_id=NativeListingOfferRevisionId(f"OFFER-{listing_id}"),
+            expected_current_revision_id=None,
+            offer=_amount_offer(),
+        )
+        write_physical_boat_claim_revision(
+            conn,
+            account_id=account,
+            candidate_organization=org,
+            membership=membership,
+            native_listing_id=NativeListingId(listing_id),
+            revision_id=PhysicalBoatClaimRevisionId(f"CLAIM-{listing_id}"),
+            expected_current_revision_id=None,
+            claims=_ready_physical_boat_claim(),
+        )
+        _attach_ready_cover_image(conn, listing_id=listing_id, org_id=org_id, account_id=account_id)
+        conn.commit()
+        result = publish_native_listing(
+            conn,
+            account_id=account,
+            candidate_organization=org,
+            membership=membership,
+            native_listing_id=NativeListingId(listing_id),
+        )
+        assert result.status.value == "transitioned", result
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _create_lead(api_url: str, *, listing_id: str, submission_operation_id: str) -> str:
+    conn = psycopg.connect(api_url)
+    try:
+        result = create_buyer_lead(
+            conn,
+            submission_operation_id=SubmissionOperationId(submission_operation_id),
+            native_listing_id=NativeListingId(listing_id),
+            account_id=None,
+            buyer_name="Jordan Buyer",
+            buyer_email="jordan@example.com",
+            buyer_message="Interested in this boat.",
+            as_of=datetime.now(UTC),
+        )
+        assert result.status is BuyerLeadCreationStatus.CREATED, result
+        assert result.lead_id is not None
+        conn.commit()
+        return result.lead_id.value
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Direct persistence-level idempotency/conflict proof (items 1/2)
+# ---------------------------------------------------------------------------
+
+
+def test_record_public_listing_view_idempotent_retry_and_conflict(
+    api_url: str, api_conn: Any
+) -> None:
+    _seed_org_and_membership(api_url, org_id="ORG-IDEMP", account_id="ACC-IDEMP", membership_id="OM-IDEMP")
+    _create_and_publish_listing(
+        api_url,
+        listing_id="NL-IDEMP",
+        org_id="ORG-IDEMP",
+        account_id="ACC-IDEMP",
+        membership_id="OM-IDEMP",
+        physical_boat_id="PB-IDEMP",
+        market_episode_id="ME-IDEMP",
+    )
+    operation_id = ListingViewOperationId(str(uuid.uuid4()))
+    now = datetime.now(UTC)
+
+    first = record_public_listing_view(
+        api_conn,
+        operation_id=operation_id,
+        native_listing_id=NativeListingId("NL-IDEMP"),
+        publishing_organization_id=MarketplaceOrganizationId("ORG-IDEMP"),
+        occurred_at=now,
+    )
+    assert first.status is RecordListingViewStatus.RECORDED
+
+    retry = record_public_listing_view(
+        api_conn,
+        operation_id=operation_id,
+        native_listing_id=NativeListingId("NL-IDEMP"),
+        publishing_organization_id=MarketplaceOrganizationId("ORG-IDEMP"),
+        occurred_at=datetime.now(UTC),
+    )
+    assert retry.status is RecordListingViewStatus.ALREADY_RECORDED
+
+    conflicting = record_public_listing_view(
+        api_conn,
+        operation_id=operation_id,
+        native_listing_id=NativeListingId("NL-IDEMP"),
+        publishing_organization_id=MarketplaceOrganizationId("ORG-OTHER"),
+        occurred_at=datetime.now(UTC),
+    )
+    assert conflicting.status is RecordListingViewStatus.CONFLICT
+
+    with api_conn.cursor() as cur:
+        cur.execute("SELECT COUNT(*) FROM native_listing_view_events WHERE native_listing_id = %s", ["NL-IDEMP"])
+        assert cur.fetchone()[0] == 1
+
+
+# ---------------------------------------------------------------------------
+# Public route wiring: success-path-only counting (item 3)
+# ---------------------------------------------------------------------------
+
+
+def test_public_view_recorded_only_on_public_success_path(
+    api_url: str, api_conn: Any, client: TestClient
+) -> None:
+    _seed_org_and_membership(api_url, org_id="ORG-WIRE", account_id="ACC-WIRE", membership_id="OM-WIRE")
+    _create_and_publish_listing(
+        api_url,
+        listing_id="NL-WIRE",
+        org_id="ORG-WIRE",
+        account_id="ACC-WIRE",
+        membership_id="OM-WIRE",
+        physical_boat_id="PB-WIRE",
+        market_episode_id="ME-WIRE",
+    )
+
+    def _view_count() -> int:
+        with api_conn.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) FROM native_listing_view_events WHERE native_listing_id = %s",
+                ["NL-WIRE"],
+            )
+            return cur.fetchone()[0]
+
+    # An authenticated broker inventory read (which internally reuses
+    # get_public_listing_read_model for its own is_publicly_listed check)
+    # must never itself create a view fact.
+    _log_in(client, "ACC-WIRE")
+    inv_response = client.get("/api/broker/organizations/ORG-WIRE/inventory")
+    assert inv_response.status_code == 200
+    assert _view_count() == 0
+
+    # Three genuine public reads -> exactly three durable events.
+    for _ in range(3):
+        response = client.get("/api/listings/NL-WIRE")
+        assert response.status_code == 200
+    assert _view_count() == 3
+
+    # A second broker inventory read still does not add to the count.
+    inv_response_again = client.get("/api/broker/organizations/ORG-WIRE/inventory")
+    assert inv_response_again.status_code == 200
+    assert _view_count() == 3
+
+
+def test_draft_listing_public_read_records_no_view(api_url: str, api_conn: Any, client: TestClient) -> None:
+    conn = psycopg.connect(api_url)
+    try:
+        account = AccountId("ACC-DRAFT")
+        org = MarketplaceOrganization(
+            id=MarketplaceOrganizationId("ORG-DRAFT"),
+            professional_category=ProfessionalCategory.BROKER,
+            publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+        )
+        membership = OrganizationMembership(
+            id=OrganizationMembershipId("OM-DRAFT"),
+            account_id=account,
+            organization_id=org.id,
+            roles=frozenset({MembershipRole.PUBLISHER}),
+            state=MembershipState.ACTIVE,
+        )
+        create_physical_boat(conn, physical_boat=PhysicalBoat(id=PhysicalBoatId("PB-DRAFT")))
+        create_market_episode(
+            conn,
+            market_episode=MarketEpisode(
+                id=MarketEpisodeId("ME-DRAFT"), physical_boat_id=PhysicalBoatId("PB-DRAFT")
+            ),
+        )
+        create_native_listing(
+            conn,
+            account_id=account,
+            candidate_organization=org,
+            membership=membership,
+            listing=NativeListing(id=NativeListingId("NL-DRAFT"), market_episode_id=MarketEpisodeId("ME-DRAFT")),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    response = client.get("/api/listings/NL-DRAFT")
+    assert response.status_code == 404
+
+    with api_conn.cursor() as cur:
+        cur.execute(
+            "SELECT COUNT(*) FROM native_listing_view_events WHERE native_listing_id = %s", ["NL-DRAFT"]
+        )
+        assert cur.fetchone()[0] == 0
+
+
+# ---------------------------------------------------------------------------
+# Full funnel snapshot: counts, latency, source, SOLD linkage, isolation
+# ---------------------------------------------------------------------------
+
+
+def test_organization_performance_snapshot_full_funnel(
+    api_url: str, api_conn: Any, client: TestClient
+) -> None:
+    _seed_org_and_membership(api_url, org_id="ORG-FUNNEL", account_id="ACC-FUNNEL", membership_id="OM-FUNNEL")
+
+    # L1: two Leads -- one contacted (known latency) and closed, one never
+    # contacted (unknown latency). Three observed public views.
+    _create_and_publish_listing(
+        api_url,
+        listing_id="NL-FUNNEL-1",
+        org_id="ORG-FUNNEL",
+        account_id="ACC-FUNNEL",
+        membership_id="OM-FUNNEL",
+        physical_boat_id="PB-FUNNEL-1",
+        market_episode_id="ME-FUNNEL-1",
+    )
+    for _ in range(3):
+        assert client.get("/api/listings/NL-FUNNEL-1").status_code == 200
+
+    lead_contacted_id = _create_lead(api_url, listing_id="NL-FUNNEL-1", submission_operation_id="SUB-CONTACTED")
+    # A second Lead on the same listing with no recorded contact attempt --
+    # exercises the explicit unknown-latency state (not referenced by id).
+    _create_lead(api_url, listing_id="NL-FUNNEL-1", submission_operation_id="SUB-UNCONTACTED")
+
+    received_at_row = None
+    with api_conn.cursor() as cur:
+        cur.execute("SELECT received_at FROM buyer_leads WHERE lead_id = %s", [lead_contacted_id])
+        received_at_row = cur.fetchone()[0]
+
+    append_lead_contact_attempt(
+        api_conn,
+        LeadId(lead_contacted_id),
+        actor_account_id=AccountId("ACC-FUNNEL"),
+        channel=LeadContactAttemptChannel.EMAIL,
+        note_text="Called the buyer.",
+        as_of=received_at_row,
+    )
+    api_conn.commit()
+    set_lead_operational_status(
+        api_conn,
+        LeadId(lead_contacted_id),
+        new_status=LeadOperationalStatus.CLOSED,
+        close_reason=LeadCloseReason.NOT_INTERESTED,
+        actor_account_id=AccountId("ACC-FUNNEL"),
+        expected_version=0,
+        as_of=datetime.now(UTC),
+    )
+    api_conn.commit()
+
+    # L2: SOLD with a known originating Lead.
+    _create_and_publish_listing(
+        api_url,
+        listing_id="NL-FUNNEL-2",
+        org_id="ORG-FUNNEL",
+        account_id="ACC-FUNNEL",
+        membership_id="OM-FUNNEL",
+        physical_boat_id="PB-FUNNEL-2",
+        market_episode_id="ME-FUNNEL-2",
+    )
+    assert client.get("/api/listings/NL-FUNNEL-2").status_code == 200
+    lead_for_sale_id = _create_lead(api_url, listing_id="NL-FUNNEL-2", submission_operation_id="SUB-FOR-SALE")
+
+    conn = psycopg.connect(api_url)
+    try:
+        org = MarketplaceOrganization(
+            id=MarketplaceOrganizationId("ORG-FUNNEL"),
+            professional_category=ProfessionalCategory.BROKER,
+            publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+        )
+        membership = OrganizationMembership(
+            id=OrganizationMembershipId("OM-FUNNEL"),
+            account_id=AccountId("ACC-FUNNEL"),
+            organization_id=org.id,
+            roles=frozenset({MembershipRole.PUBLISHER}),
+            state=MembershipState.ACTIVE,
+        )
+        result = close_native_listing_as_sold(
+            conn,
+            account_id=AccountId("ACC-FUNNEL"),
+            candidate_organization=org,
+            membership=membership,
+            native_listing_id=NativeListingId("NL-FUNNEL-2"),
+            revision_id=SaleOutcomeRevisionId("SOREV-KNOWN"),
+            expected_current_revision_id=None,
+            outcome=SaleOutcomeSnapshot(
+                kind=SaleOutcomeKind.SOLD,
+                originating_lead_id=LeadId(lead_for_sale_id),
+            ),
+        )
+        assert result.status.value == "created", result
+        conn.commit()
+    finally:
+        conn.close()
+
+    # L3: SOLD with no originating Lead -> unknown source.
+    _create_and_publish_listing(
+        api_url,
+        listing_id="NL-FUNNEL-3",
+        org_id="ORG-FUNNEL",
+        account_id="ACC-FUNNEL",
+        membership_id="OM-FUNNEL",
+        physical_boat_id="PB-FUNNEL-3",
+        market_episode_id="ME-FUNNEL-3",
+    )
+    conn = psycopg.connect(api_url)
+    try:
+        org = MarketplaceOrganization(
+            id=MarketplaceOrganizationId("ORG-FUNNEL"),
+            professional_category=ProfessionalCategory.BROKER,
+            publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+        )
+        membership = OrganizationMembership(
+            id=OrganizationMembershipId("OM-FUNNEL"),
+            account_id=AccountId("ACC-FUNNEL"),
+            organization_id=org.id,
+            roles=frozenset({MembershipRole.PUBLISHER}),
+            state=MembershipState.ACTIVE,
+        )
+        result = close_native_listing_as_sold(
+            conn,
+            account_id=AccountId("ACC-FUNNEL"),
+            candidate_organization=org,
+            membership=membership,
+            native_listing_id=NativeListingId("NL-FUNNEL-3"),
+            revision_id=SaleOutcomeRevisionId("SOREV-UNKNOWN"),
+            expected_current_revision_id=None,
+            outcome=SaleOutcomeSnapshot(kind=SaleOutcomeKind.SOLD),
+        )
+        assert result.status.value == "created", result
+        conn.commit()
+    finally:
+        conn.close()
+
+    # A second Organization with its own listing/Lead/views -- must never
+    # leak into ORG-FUNNEL's snapshot.
+    _seed_org_and_membership(api_url, org_id="ORG-OTHER", account_id="ACC-OTHER", membership_id="OM-OTHER")
+    _create_and_publish_listing(
+        api_url,
+        listing_id="NL-OTHER-1",
+        org_id="ORG-OTHER",
+        account_id="ACC-OTHER",
+        membership_id="OM-OTHER",
+        physical_boat_id="PB-OTHER-1",
+        market_episode_id="ME-OTHER-1",
+    )
+    assert client.get("/api/listings/NL-OTHER-1").status_code == 200
+    _create_lead(api_url, listing_id="NL-OTHER-1", submission_operation_id="SUB-OTHER")
+
+    _log_in(client, "ACC-FUNNEL")
+    response = client.get("/api/broker/organizations/ORG-FUNNEL/performance?window=ALL_TIME")
+    assert response.status_code == 200
+    body = response.json()
+
+    assert body["public_listing_views"] == 4  # 3 (L1) + 1 (L2); L3 has zero views
+    assert body["leads_received"] == 3  # L1 x2 + L2 x1
+    assert body["leads_contacted"] == 1
+    assert body["leads_closed"] == 1
+    assert body["sold_outcomes"] == 2
+    assert body["sold_outcomes_with_known_source"] == 1
+    assert body["sold_outcomes_with_unknown_source"] == 1
+    assert body["first_contact_latency_known_count"] == 1
+    assert body["first_contact_latency_unknown_count"] == 2
+    assert body["median_first_contact_latency_seconds"] == 0.0
+
+    listings_by_id = {item["native_listing_id"]: item for item in body["listings"]}
+    assert "NL-OTHER-1" not in listings_by_id  # cross-Organization isolation
+
+    l1 = listings_by_id["NL-FUNNEL-1"]
+    assert l1["public_listing_views"] == 3
+    assert l1["leads_received"] == 2
+    assert l1["leads_contacted"] == 1
+    assert l1["leads_closed"] == 1
+    assert l1["first_contact_latency_known_count"] == 1
+    assert l1["first_contact_latency_unknown_count"] == 1
+    assert l1["sold_outcome_recorded_at"] is None  # never fabricated
+
+    l2 = listings_by_id["NL-FUNNEL-2"]
+    assert l2["sold_outcome_recorded_at"] is not None
+    assert l2["sold_outcome_source_known"] is True
+
+    l3 = listings_by_id["NL-FUNNEL-3"]
+    assert l3["public_listing_views"] == 0
+    assert l3["sold_outcome_recorded_at"] is not None
+    assert l3["sold_outcome_source_known"] is False
+
+    # Org B must never be able to read Org A's telemetry, including when
+    # both sides publish into the same underlying MarketEpisode.
+    _log_in(client, "ACC-OTHER")
+    denied = client.get("/api/broker/organizations/ORG-FUNNEL/performance")
+    assert denied.status_code == 404
+
+
+def test_cross_organization_same_market_episode_isolation(api_url: str, client: TestClient) -> None:
+    shared_episode_id = "ME-SHARED"
+    shared_boat_id = "PB-SHARED"
+
+    _seed_org_and_membership(api_url, org_id="ORG-SHARE-A", account_id="ACC-SHARE-A", membership_id="OM-SHARE-A")
+    _seed_org_and_membership(api_url, org_id="ORG-SHARE-B", account_id="ACC-SHARE-B", membership_id="OM-SHARE-B")
+
+    _create_and_publish_listing(
+        api_url,
+        listing_id="NL-SHARE-A",
+        org_id="ORG-SHARE-A",
+        account_id="ACC-SHARE-A",
+        membership_id="OM-SHARE-A",
+        physical_boat_id=shared_boat_id,
+        market_episode_id=shared_episode_id,
+    )
+    _create_and_publish_listing(
+        api_url,
+        listing_id="NL-SHARE-B",
+        org_id="ORG-SHARE-B",
+        account_id="ACC-SHARE-B",
+        membership_id="OM-SHARE-B",
+        physical_boat_id=shared_boat_id,
+        market_episode_id=shared_episode_id,
+    )
+    for _ in range(2):
+        assert client.get("/api/listings/NL-SHARE-A").status_code == 200
+    assert client.get("/api/listings/NL-SHARE-B").status_code == 200
+
+    _log_in(client, "ACC-SHARE-A")
+    response = client.get("/api/broker/organizations/ORG-SHARE-A/performance?window=ALL_TIME")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["public_listing_views"] == 2
+    listing_ids = {item["native_listing_id"] for item in body["listings"]}
+    assert listing_ids == {"NL-SHARE-A"}
+
+
+# ---------------------------------------------------------------------------
+# Route-level auth/validation outcomes
+# ---------------------------------------------------------------------------
+
+
+def test_performance_route_requires_authentication(client: TestClient) -> None:
+    response = client.get("/api/broker/organizations/ORG-X/performance")
+    assert response.status_code == 401
+
+
+def test_performance_route_unknown_organization_is_not_found(
+    api_url: str, client: TestClient
+) -> None:
+    _seed_org_and_membership(api_url, org_id="ORG-KNOWN", account_id="ACC-KNOWN", membership_id="OM-KNOWN")
+    _log_in(client, "ACC-KNOWN")
+    response = client.get("/api/broker/organizations/ORG-UNKNOWN/performance")
+    assert response.status_code == 404
+
+
+def test_performance_route_invalid_window_is_bounded_400(api_url: str, client: TestClient) -> None:
+    _seed_org_and_membership(api_url, org_id="ORG-WIN", account_id="ACC-WIN", membership_id="OM-WIN")
+    _log_in(client, "ACC-WIN")
+    response = client.get("/api/broker/organizations/ORG-WIN/performance?window=NEXT_CENTURY")
+    assert response.status_code == 400
+    assert response.json() == {"error": "invalid_window"}

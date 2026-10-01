@@ -1,7 +1,8 @@
 # SLICE-0075 — Broker Performance & Funnel Snapshot
 
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
+**Status set by this handoff:** `REVIEW`  
 **Stage:** Broker Launch Gate §7 — performance/source-to-outcome analytics  
 **Depends on:** SLICE-0074 owner-accepted / DONE  
 **Normative contract:** `specs/BROKER_PERFORMANCE_FUNNEL_SNAPSHOT_CONTRACT.v0.1.md`
