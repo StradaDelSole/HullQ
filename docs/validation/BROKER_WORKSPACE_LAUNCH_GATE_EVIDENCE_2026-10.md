@@ -3,7 +3,9 @@
 **Slice:** SLICE-0076 — Broker Workspace Launch Validation
 **Normative protocol:** `specs/BROKER_WORKSPACE_LAUNCH_VALIDATION_PROTOCOL.v0.1.md`
 **Governing gate:** `docs/governance/BROKER_WORKSPACE_LAUNCH_GATE.md` §§9–10
-**Candidate commit under test:** `3e306dd` on `slice/0076-broker-workspace-launch-validation`
+**Candidate commit under test:** `b534be1` on `slice/0076-broker-workspace-launch-validation`
+(amendment-corrected; see `docs/validation/BROKER_WORKSPACE_USABILITY_EVIDENCE_2026-10.md`'s
+amendment note)
 **Inputs:** `docs/validation/BROKER_WORKSPACE_USABILITY_EVIDENCE_2026-10.md`,
 `docs/validation/BROKER_WORKSPACE_COMPETITIVE_BENCHMARK_2026-10.md`
 
@@ -61,10 +63,10 @@ Full per-task evidence (scenario, exact interaction path, timing, friction, erro
 ## 3. Competitive disposition summary
 
 ```text
-listing creation/publish        : DEFICIENT vs BoatWizard; EQUIVALENT vs YATCO BOSS
+listing creation/publish        : NOT_COMPARABLE vs BoatWizard; EQUIVALENT vs YATCO BOSS
 inventory edit/state management : NOT_COMPARABLE vs both
 media management                 : DEFICIENT vs BoatWizard; NOT_COMPARABLE vs YATCO BOSS
-Lead source visibility           : DEFICIENT vs BoatWizard; EQUIVALENT vs YATCO BOSS
+Lead source visibility           : NOT_COMPARABLE vs BoatWizard; EQUIVALENT vs YATCO BOSS
 Lead handling/filtering          : DEFICIENT vs BoatWizard AND YATCO BOSS  (BLOCKING)
 sale/outcome close-out           : BETTER / EQUIVALENT vs YachtCloser; NOT_COMPARABLE vs others
 performance reporting            : NOT_COMPARABLE vs both
@@ -72,6 +74,14 @@ performance reporting            : NOT_COMPARABLE vs both
 
 Full evidence/sourcing: `docs/validation/BROKER_WORKSPACE_COMPETITIVE_BENCHMARK_2026-10.md`.
 No aggregate score or single winner was produced, per protocol §6.
+
+**Correction note (2026-10-01):** independent exact-head review of reviewed HEAD `28288ef`
+(Finding B) found `listing creation/publish` vs. BoatWizard and `Lead source visibility` vs.
+BoatWizard had been scored from adjacent competitor capabilities (syndication reach, AI
+listing assistance, cross-Lead relationship/intent views) rather than each dimension's own
+narrow mechanic. Both are corrected to `NOT_COMPARABLE` above; see the competitive benchmark
+document's own correction note for the full rationale. This does not change §4/§5 below: the
+Lead-handling finding is unaffected and remains the one genuinely blocking classification.
 
 ## 4. Material findings and remediation disposition
 

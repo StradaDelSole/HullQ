@@ -117,7 +117,15 @@ SLICE-0075 closed the last identified technical Launch Gate §7 gap. Measuring/b
 - [x] exact candidate commit is recorded in retained evidence;
 - [x] all six Launch Gate §9 tasks have scenario/start-state/time/friction/error/recovery/assistance/outcome records;
 - [x] validation distinguishes setup time from task time;
-- [x] no timed task requires direct SQL/internal API/operator intervention;
+- [ ] no timed task requires direct SQL/internal API/operator intervention (**NOT MET as a
+  product fact** — independent review 2026-10-01 correction, reviewed HEAD `28288ef`, Finding
+  A: the validation harness itself never used a SQL/internal-API/operator shortcut to force
+  any task to appear complete, but Task 5's Assign sub-step genuinely *cannot* be completed by
+  a representative broker without operator/API assistance to obtain/use a valid opaque
+  `AccountId` — this is exactly the retained `BLOCKING_DEFICIENCY` finding in
+  `docs/validation/BROKER_WORKSPACE_USABILITY_EVIDENCE_2026-10.md` Task 5, not a methodology
+  violation. The checkbox is left unmet, not weakened or reinterpreted, to truthfully reflect
+  that result);
 - [x] Lead filtering/search sufficiency is explicitly evaluated, not assumed;
 - [x] at least BoatWizard and YATCO BOSS are benchmarked from current official evidence;
 - [x] inaccessible/member-only behavior is NOT_COMPARABLE rather than guessed;

@@ -15,6 +15,16 @@ is classified `NOT_COMPARABLE`, never guessed.
 Classification vocabulary (protocol §6): `BETTER`, `EQUIVALENT`, `DEFICIENT`,
 `NOT_COMPARABLE`. No aggregate score or overall winner is produced.
 
+**Correction note (2026-10-01):** independent exact-head review of reviewed HEAD `28288ef`
+(Finding B) found the original `listing creation/publish workflow` vs. BoatWizard and `Lead
+source visibility` vs. BoatWizard classifications scored adjacent competitor capabilities
+(marketplace syndication, AI listing assistance, cross-Lead relationship/intent views) rather
+than the narrow dimension each heading actually asks about. Both are corrected to
+`NOT_COMPARABLE` below, with the real adjacent-capability observations retained as context,
+not as the basis for the dimension score. This correction does not change the overall
+disposition: it does not touch the Lead-handling finding, which is the one genuinely
+blocking classification.
+
 ## 1. Listing creation / publish workflow
 
 **HullQ:** free-text draft fields (brand, model, build year, price, location, description) →
@@ -41,12 +51,19 @@ Manager?](https://blog.yatco.com/what-is-fleet-manager/), accessed 2026-10-01).
 
 **Classification:**
 
-- vs. BoatWizard: **DEFICIENT.** BoatWizard's documented one-platform-to-multiple-marketplace
-  syndication (YachtWorld/Boat Trader/boats.com) and AI listing-quality assistance have no
-  HullQ equivalent; HullQ publishes only to its own native Search. This is expected at this
-  product stage (HullQ is a native-first marketplace, not a syndication hub) and is not one
-  of the four protocol-blocking dimensions, but it is a genuine, material functional gap
-  broader distribution-minded brokers will notice.
+- vs. BoatWizard: **NOT_COMPARABLE.** (Corrected 2026-10-01 — independent review of reviewed
+  HEAD `28288ef`, Finding B.) The accessible BoatWizard material describes *adjacent*
+  capabilities — cross-marketplace syndication reach (YachtWorld/Boat Trader/boats.com) and
+  AI listing-quality assistance — not the core single-listing creation/publish *workflow
+  mechanic* this dimension asks about (how many steps, what fields, what friction to take one
+  listing from nothing to live). No accessible official material describes BoatWizard's
+  actual field-entry/promote/publish steps in enough mechanical detail to compare against
+  HullQ's demonstrated 12-step draft→promote→media→publish path, so a dimension-specific
+  BETTER/EQUIVALENT/DEFICIENT call would not be evidence-backed. The syndication-reach and
+  AI-assistance gap is real and worth recording as a contextual observation — HullQ publishes
+  only to its own native Search and has no AI listing-quality assistant — but it is a
+  distribution/content-assistance capability, not evidence about this workflow-mechanic
+  dimension, and is not used to score it.
 - vs. YATCO BOSS: **EQUIVALENT.** Both are a plain structured-field data-entry workflow for
   core vessel/listing facts; neither vendor's publicly documented material shows a
   materially richer or poorer single-listing creation mechanic than the other.
@@ -125,14 +142,22 @@ accessed 2026-10-01).
 
 **Classification:**
 
-- vs. BoatWizard: **DEFICIENT.** BoatWizard's cross-listing "other listings this Contact has
-  inquired about" and "buyer intent" views have no HullQ equivalent; HullQ's Lead detail is
-  scoped to the single contacted listing only. HullQ's per-field explicit-UNKNOWN provenance
-  discipline is a genuine strength but does not offset this missing cross-listing/intent
-  context, which real brokers managing repeat inquirers would notice. Non-blocking on its own
-  (source *identification* for the single Lead itself — the protocol-blocking dimension —
-  works correctly and was demonstrated PASS in Task 4), but material and worth a bounded
-  remediation target.
+- vs. BoatWizard: **NOT_COMPARABLE.** (Corrected 2026-10-01 — independent review of reviewed
+  HEAD `28288ef`, Finding B.) This dimension asks whether a Lead's own source/channel is
+  visible — i.e., can the broker tell where *this* Lead came from. HullQ demonstrably answers
+  that (explicit `acquisition_channel`/`discovery_surface`, or explicit `UNKNOWN`, PASS in
+  Task 4). The accessible BoatWizard evidence ("click into a Contact to view other listings
+  they've inquired about," "view buyer intent details") describes *cross-Lead relationship
+  history and intent signals* — a richer CRM capability that belongs to Lead *handling*/
+  relationship tracking, not to whether one Lead's own source is visible — and the "search and
+  filter leads by Portal, Office, or Sales Rep" claim from the same update is source
+  *filtering*, already scored under Lead handling/filtering below (§5), not source
+  *visibility*. No accessible material states whether BoatWizard shows a comparably explicit
+  per-Lead source/channel value (vs. HullQ's explicit field, falling back to explicit
+  `UNKNOWN`), so a dimension-specific BETTER/EQUIVALENT/DEFICIENT call here would not be
+  evidence-backed; guessing would violate protocol §6. The cross-listing/buyer-intent
+  observation is retained as a genuine, real adjacent-capability gap worth noting for product
+  awareness, but it does not score this dimension.
 - vs. YATCO BOSS: **EQUIVALENT.** Both expose a per-Lead source/channel value and a durable
   interaction history; YATCO's company-custom source taxonomy vs. HullQ's fixed acquisition/
   discovery vocabulary are different designs without a clear quality delta from the
@@ -263,12 +288,15 @@ benchmark.
 ## 9. Summary of material classifications
 
 ```text
-listing creation/publish        : DEFICIENT vs BoatWizard (no syndication/AI optimizer);
+listing creation/publish        : NOT_COMPARABLE vs BoatWizard (adjacent syndication/AI
+                                   capabilities, not workflow-mechanic evidence);
                                    EQUIVALENT vs YATCO BOSS
 inventory edit/state management : NOT_COMPARABLE vs both (insufficient public detail)
 media management                 : DEFICIENT vs BoatWizard (no bulk/drag reorder);
                                    NOT_COMPARABLE vs YATCO BOSS
-Lead source visibility           : DEFICIENT vs BoatWizard (no cross-listing/intent view);
+Lead source visibility           : NOT_COMPARABLE vs BoatWizard (accessible evidence describes
+                                   cross-Lead relationship/intent, not per-Lead source
+                                   visibility; filtering claim scored under Lead handling);
                                    EQUIVALENT vs YATCO BOSS
 Lead handling/filtering          : DEFICIENT vs BoatWizard AND vs YATCO BOSS
                                    (BLOCKING — one of the four protocol-named dimensions)

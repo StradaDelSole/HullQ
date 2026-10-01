@@ -2,13 +2,18 @@
 
 **Slice:** SLICE-0076 — Broker Workspace Launch Validation
 **Normative protocol:** `specs/BROKER_WORKSPACE_LAUNCH_VALIDATION_PROTOCOL.v0.1.md`
-**Candidate commit under test:** `3e306dd` on `slice/0076-broker-workspace-launch-validation`
+**Candidate commit under test:** `b534be1` on `slice/0076-broker-workspace-launch-validation`
 (built on the accepted SLICE-0075 product boundary, canonical base
 `253bbac52df20435e3a0d319c182d30a1fa3a2fa`)
 **Run date:** 2026-10-01
 **Participant:** one representative-broker session (`broker-0076-subject`), a single-member
 test Organization (`ORG-0076-VALIDATION`), real JIT-provisioned HullQ Account — not a real
 external broker (protocol §2/§9: pre-pilot evidence may use a representative participant).
+
+**Amendment note (2026-10-01):** this is the retained run against the exact-head review
+amendment that replaced Task 6's vacuous `assert ... or True` with a real deterministic
+assertion (independent review of reviewed HEAD `28288ef`, Finding C). All timings/ids below
+are from one single coherent run of the corrected harness; no numbers are mixed across runs.
 
 ## 1. Harness
 
@@ -24,9 +29,11 @@ During every timed task the harness, acting as the participant, calls only the e
 browser-visible page URLs and `<form method="POST">` actions a signed-in browser would use
 (plus the one documented same-origin streaming upload proxy `media/upload.ts`, mirroring the
 page's own client-side upload script byte-for-byte). It never calls FastAPI directly, never
-touches SQL, and never uses an operator/admin shortcut during a timed task. Environment
-setup (real OIDC login, seeding the test Organization/PUBLISHER membership, MFA step-up) is
-untimed, per protocol §2.
+touches SQL, and never uses an operator/admin shortcut during a timed task — this is a
+methodology guarantee about how the *validation itself* is driven, independent of whether a
+given task's outcome later turns out to require such intervention in practice (see Task 5).
+Environment setup (real OIDC login, seeding the test Organization/PUBLISHER membership, MFA
+step-up) is untimed, per protocol §2.
 
 Reproduce:
 
@@ -36,10 +43,9 @@ uv run python scripts/workflow/claude_diag.py run-local-test-db-compact scripts/
 
 ## 2. Setup time vs. task time
 
-Untimed environment setup (real login, seed Organization/membership, MFA step-up): **1.00s**
-(final retained run). This is explicitly excluded from every task's measured duration below,
-per protocol §4 ("the evidence must distinguish product-task time from environment setup
-time").
+Untimed environment setup (real login, seed Organization/membership, MFA step-up): **0.71s**
+(retained run). This is explicitly excluded from every task's measured duration below, per
+protocol §4 ("the evidence must distinguish product-task time from environment setup time").
 
 ## 3. Per-task evidence
 
@@ -52,7 +58,7 @@ Disposition vocabulary per protocol §5: `PASS`, `PASS_WITH_FRICTION`, `BLOCKING
 year/price/location/description, starts and completes a new listing from the ordinary
 Organization workspace.
 
-**Duration:** 2.39s. **Material step count:** 12 browser-visible interactions (list drafts →
+**Duration:** 2.57s. **Material step count:** 12 browser-visible interactions (list drafts →
 start draft → fill/save required fields → promote → open media gallery → upload cover image
 → set cover → open inventory → publish).
 
@@ -71,6 +77,8 @@ POST .../inventory/<listing_id>/media (action=set_cover)          -> 200 "Cover 
 GET  .../inventory                                                 -> 200 "Ready to publish"
 POST .../inventory (action=publish)                                -> 200 "Published." (ACTIVE)
 ```
+
+Resulting `NativeListingId`: `e2a68ed0-b611-48f6-8a0b-6561d0c1f085` (this run).
 
 **Friction:** none material. The draft form is plain free-text fields (brand, model, build
 year, price, location, description) with no autocomplete/typeahead against any HullQ
@@ -109,7 +117,7 @@ assistance required:** no.
 **Scenario:** same broker adds two more photos in one workflow, reorders the gallery, changes
 the cover image, and deliberately submits an invalid YouTube link to observe recovery.
 
-**Duration:** 1.42s. **Material step count:** 6 interactions, including one deliberate
+**Duration:** 1.64s. **Material step count:** 6 interactions, including one deliberate
 invalid-input submission.
 
 ```text
@@ -140,13 +148,15 @@ observation, not a completion blocker.
 contact route (untimed setup, acting as the buyer, not the timed broker-participant); the
 broker then opens the Lead inbox to identify the contacted listing and its source.
 
-**Duration:** 0.38s. **Material step count:** 2 interactions.
+**Duration:** 0.29s. **Material step count:** 2 interactions.
 
 ```text
 GET .../leads        -> 200 (new Lead visible)
 GET .../leads/<id>    -> 200 (contacted listing id shown; "Acquisition channel: UNKNOWN";
                               "Discovery surface: UNKNOWN")
 ```
+
+Resulting Lead id: `679ad3ab-1ec2-425e-b0a5-388acabc0dc3` (this run).
 
 The buyer in this run arrived with no UTM/discovery token (an ordinary direct contact), so
 both acquisition channel and discovery surface resolved to the explicit `UNKNOWN` value — an
@@ -161,7 +171,7 @@ and immediately.
 **Scenario:** same broker marks the Lead read, assigns it, updates its status, sets a
 follow-up, adds a note, records a contact attempt, and re-finds it via the inbox filters.
 
-**Duration:** 1.67s (every sub-step below still completed in real HTTP time; the blocking
+**Duration:** 1.93s (every sub-step below still completed in real HTTP time; the blocking
 finding is a completability defect, not a performance one).
 
 ```text
@@ -189,6 +199,13 @@ condition protocol §5 defines as blocking. This is independently significant be
 handling** is one of the four dimensions whose material `DEFICIENT`/blocking result the
 protocol (§6) and the Launch Gate (§10) name as blocking PASS.
 
+**Note on methodology vs. outcome:** the harness's own prohibition on using SQL/internal-API/
+operator shortcuts during timed tasks (protocol §2) is a constraint on how the *validation* is
+driven; it is not a claim that every task is actually completable without such intervention —
+discovering that one genuinely is not is exactly the outcome protocol §5's
+`BLOCKING_DEFICIENCY` disposition exists to capture, and is recorded here as a finding about
+the product, not a defect in the validation itself.
+
 Every other sub-step of Task 5 (mark read, status, follow-up, note, contact attempt,
 re-finding via filter) completed cleanly through the visible UI with authoritative re-reads.
 
@@ -208,21 +225,30 @@ on its own, but material) friction finding.
 **Scenario:** same broker closes the Task-1 listing as SOLD, explicitly linking the Task-4/5
 Lead as the originating Lead, while leaving the achieved price unknown.
 
-**Duration:** 0.81s. **Material step count:** 3 interactions.
+**Duration:** 0.50s. **Material step count:** 3 interactions.
 
 ```text
 GET  .../inventory/<listing_id>/edit                                          -> 200
-POST .../inventory/<listing_id>/edit (action=close_as_sold, achieved_amount="",
-       originating_lead_id=<Task-4/5 Lead id>)                                -> 200 "Recorded."
-       re-read shows: "Current outcome: SOLD ... via Lead <id> (recorded ...)"
-       with no achieved-price text rendered (preserved as unknown, not forced to 0/blank-as-zero)
+POST .../inventory/<listing_id>/edit (action=close_as_sold, sold_date=2026-10-10,
+       achieved_amount="", achieved_currency="",
+       originating_lead_id=679ad3ab-1ec2-425e-b0a5-388acabc0dc3)              -> 200 "Recorded."
 GET  .../inventory                                                            -> 200 (WITHDRAWN)
 ```
 
-Both governance-required behaviors are directly demonstrated in one real run: the unknown
-achieved price is preserved rather than forced to a fabricated value, and the originating
-Lead is linked only because it was explicitly selected by the broker (never inferred). The
-resulting lifecycle transition (ACTIVE → WITHDRAWN on SOLD close-out) is visible on the
+**Deterministic unknown-price proof (independent review 2026-10-01, Finding C correction):**
+the re-read's rendered "Current outcome: ..." line is captured and checked with a real
+assertion, not the previous vacuous `assert ... or True`. The template (`edit.astro`) only
+ever renders an em-dash-prefixed *numeric* fragment for the achieved-amount clause (`—
+{amount} {currency}`); the sold-date clause renders as `— sold <date>` and the Lead-link
+clause as `— via Lead <id>`, neither beginning with a digit. The harness asserts (a) `"sold
+2026-10-10"` **is** present — proving the fact actually supplied is reflected — and (b) no
+`—` followed by a digit appears anywhere in that line — proving the achieved price/currency,
+deliberately left blank, was not fabricated, defaulted, or silently coerced to zero on the
+authoritative re-read. Both assertions passed in this run. The re-read also showed the
+explicitly-selected Lead linked (`via Lead 679ad3ab-...`), confirming linkage only happens on
+explicit broker selection, never inference.
+
+The resulting lifecycle transition (ACTIVE → WITHDRAWN on SOLD close-out) is visible on the
 authoritative inventory re-read.
 
 **Friction:** none material. **Operator assistance required:** no.
