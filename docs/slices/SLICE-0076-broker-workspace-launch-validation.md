@@ -1,7 +1,8 @@
 # SLICE-0076 — Broker Workspace Launch Validation: Usability & Competitive Benchmark
 
 **Type:** VALIDATION  
-**Status:** READY  
+**Status:** REVIEW  
+**Status set by this handoff:** `REVIEW`  
 **Stage:** Broker Workspace Launch Gate §§9–10  
 **Depends on:** SLICE-0075 owner-accepted / DONE  
 **Normative protocol:** `specs/BROKER_WORKSPACE_LAUNCH_VALIDATION_PROTOCOL.v0.1.md`
@@ -113,21 +114,36 @@ SLICE-0075 closed the last identified technical Launch Gate §7 gap. Measuring/b
 
 ## Acceptance criteria
 
-- [ ] exact candidate commit is recorded in retained evidence;
-- [ ] all six Launch Gate §9 tasks have scenario/start-state/time/friction/error/recovery/assistance/outcome records;
-- [ ] validation distinguishes setup time from task time;
-- [ ] no timed task requires direct SQL/internal API/operator intervention;
-- [ ] Lead filtering/search sufficiency is explicitly evaluated, not assumed;
-- [ ] at least BoatWizard and YATCO BOSS are benchmarked from current official evidence;
-- [ ] inaccessible/member-only behavior is NOT_COMPARABLE rather than guessed;
-- [ ] each launch-critical benchmark dimension has evidence-backed classification;
-- [ ] every material DEFICIENT/BLOCKING finding has explicit remediation disposition;
-- [ ] no overall numeric competitor score/winner is fabricated;
-- [ ] consolidated evidence recommends exactly one launch disposition;
-- [ ] Broker Workspace Launch Gate remains NOT_READY unless later independent review + Owner Acceptance changes it;
-- [ ] Security Hardening Gate remains explicitly pending before any real broker pilot;
-- [ ] focused validation and repository validation pass;
-- [ ] exact pushed HEAD remote CI + reproducibility pass.
+- [x] exact candidate commit is recorded in retained evidence;
+- [x] all six Launch Gate §9 tasks have scenario/start-state/time/friction/error/recovery/assistance/outcome records;
+- [x] validation distinguishes setup time from task time;
+- [ ] no timed task requires direct SQL/internal API/operator intervention (**NOT MET as a
+  product fact** — independent review 2026-10-01 correction, reviewed HEAD `28288ef`, Finding
+  A: the validation harness itself never used a SQL/internal-API/operator shortcut to force
+  any task to appear complete, but Task 5's Assign sub-step genuinely *cannot* be completed by
+  a representative broker without operator/API assistance to obtain/use a valid opaque
+  `AccountId` — this is exactly the retained `BLOCKING_DEFICIENCY` finding in
+  `docs/validation/BROKER_WORKSPACE_USABILITY_EVIDENCE_2026-10.md` Task 5, not a methodology
+  violation. The checkbox is left unmet, not weakened or reinterpreted, to truthfully reflect
+  that result);
+- [x] Lead filtering/search sufficiency is explicitly evaluated, not assumed;
+- [x] at least BoatWizard and YATCO BOSS are benchmarked from current official evidence;
+- [x] inaccessible/member-only behavior is NOT_COMPARABLE rather than guessed;
+- [x] each launch-critical benchmark dimension has evidence-backed classification;
+- [x] every material DEFICIENT/BLOCKING finding has explicit remediation disposition;
+- [x] no overall numeric competitor score/winner is fabricated;
+- [x] consolidated evidence recommends exactly one launch disposition;
+- [x] Broker Workspace Launch Gate remains NOT_READY unless later independent review + Owner Acceptance changes it;
+- [x] Security Hardening Gate remains explicitly pending before any real broker pilot;
+- [x] focused validation and repository validation pass;
+- [x] exact pushed HEAD remote CI + reproducibility pass (verified: PR #297. All 8 GitHub
+  Actions checks — db integration, dependency audit, historical research/bootstrap replay,
+  quality ubuntu/windows, reproduce ubuntu/windows, web quality — observed PASS independently
+  on both exact head `61d7354a08bdd1224c4cb9cd2f972ccdc13e9571` and, after the doc-only
+  citation-update commit on top of it, exact head
+  `91e1e4d20675633663eeeec7b13d35b902da4103` — the actual final pushed HEAD at the time this
+  line was last written. Neither commit between those two heads touches code, tests or
+  retained evidence content).
 
 ## Expected touch points
 
