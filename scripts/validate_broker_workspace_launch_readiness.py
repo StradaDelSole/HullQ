@@ -195,7 +195,12 @@ class BrowserSession:
         )
 
     def post_json(
-        self, url: str, payload: dict[str, Any], *, origin: str, extra_headers: dict[str, str] | None = None
+        self,
+        url: str,
+        payload: dict[str, Any],
+        *,
+        origin: str,
+        extra_headers: dict[str, str] | None = None,
     ) -> tuple[int, http.client.HTTPMessage, bytes]:
         headers = {"Content-Type": "application/json", "Origin": origin, **(extra_headers or {})}
         return self.request(
@@ -316,7 +321,9 @@ def main() -> int:
             )
         issuer_ready = _wait_for_http(f"{issuer_base}.well-known/jwks.json")
         ok &= issuer_ready
-        print(f"1. deterministic local OIDC/JWKS test issuer serving -> {'OK' if issuer_ready else 'FAIL'}")
+        print(
+            f"1. deterministic local OIDC/JWKS test issuer serving -> {'OK' if issuer_ready else 'FAIL'}"
+        )
 
         api_env = dict(os.environ)
         api_env["HULLQ_DATABASE_URL"] = url
@@ -353,7 +360,10 @@ def main() -> int:
             )
             api_proc = subprocess.Popen(
                 [sys.executable, "-c", api_code],
-                cwd=REPO_ROOT, env=api_env, stdout=api_log, stderr=subprocess.STDOUT,
+                cwd=REPO_ROOT,
+                env=api_env,
+                stdout=api_log,
+                stderr=subprocess.STDOUT,
             )
         api_ready = _wait_for_http(f"{api_base}/api/broker/context")
         ok &= api_ready
@@ -367,7 +377,10 @@ def main() -> int:
         with web_log_path.open("wb") as web_log:
             web_proc = subprocess.Popen(
                 ["node", "./dist/server/entry.mjs"],
-                cwd=WEB_DIR, env=web_env, stdout=web_log, stderr=subprocess.STDOUT,
+                cwd=WEB_DIR,
+                env=web_env,
+                stdout=web_log,
+                stderr=subprocess.STDOUT,
             )
         web_ready = _wait_for_http(f"{web_base}/broker")
         ok &= web_ready
@@ -451,7 +464,9 @@ def main() -> int:
 
             status, headers, _post_body = session.post_form(org_url("/drafts"), {}, origin=web_base)
             rec.steps.append(f"POST start a draft -> {status}")
-            assert status == 303, f"expected 303, got {status}: {_post_body.decode('utf-8', 'replace')[:800]!r}"
+            assert status == 303, (
+                f"expected 303, got {status}: {_post_body.decode('utf-8', 'replace')[:800]!r}"
+            )
             draft_path = urlsplit(headers["Location"]).path
             draft_url = f"{web_base}{draft_path}"
 
@@ -483,7 +498,9 @@ def main() -> int:
             rec.steps.append(f"POST save required fields -> {status}")
             html = body.decode("utf-8")
             assert "Saved." in html, "expected Saved. confirmation after save"
-            assert "ready to promote" in html, f"draft not reported ready to promote: {html[:400]!r}"
+            assert "ready to promote" in html, (
+                f"draft not reported ready to promote: {html[:400]!r}"
+            )
             version = int(re.search(r"Version:\s*(\d+)", html).group(1))
 
             status, _, body = session.post_form(
@@ -505,9 +522,7 @@ def main() -> int:
             html = body.decode("utf-8")
             assert "No media yet" in html
 
-            upload_url = (
-                f"{web_base}/broker/organizations/{_ORG_ID}/inventory/{native_listing_id}/media/upload"
-            )
+            upload_url = f"{web_base}/broker/organizations/{_ORG_ID}/inventory/{native_listing_id}/media/upload"
             status, _, body = session.post_bytes(
                 upload_url,
                 _jpeg_bytes((40, 90, 160)),
@@ -518,7 +533,9 @@ def main() -> int:
                     "X-HullQ-Source-Reference": "validation harness cover image",
                 },
             )
-            rec.steps.append(f"POST upload cover image (streamed, same contract as the browser's own upload script) -> {status}")
+            rec.steps.append(
+                f"POST upload cover image (streamed, same contract as the browser's own upload script) -> {status}"
+            )
             assert status == 201, f"expected 201 Uploaded, got {status}: {body!r}"
 
             status, _, body = session.get(media_url)
@@ -549,7 +566,9 @@ def main() -> int:
             status, _, body = session.get(inventory_url)
             rec.steps.append(f"GET inventory overview -> {status}")
             html = body.decode("utf-8")
-            assert "Ready to publish" in html, f"listing not reported ready to publish: {html[:800]!r}"
+            assert "Ready to publish" in html, (
+                f"listing not reported ready to publish: {html[:800]!r}"
+            )
 
             status, _, body = session.post_form(
                 inventory_url,
@@ -585,7 +604,9 @@ def main() -> int:
             status, _, body = session.get(edit_url)
             rec.steps.append(f"GET edit listing -> {status}")
             html = body.decode("utf-8")
-            offer_block = html.split("<h2>Offer</h2>", 1)[1].split("<h2>PhysicalBoat claim</h2>", 1)[0]
+            offer_block = html.split("<h2>Offer</h2>", 1)[1].split(
+                "<h2>PhysicalBoat claim</h2>", 1
+            )[0]
             offer_revision_id = re.search(
                 r'name="expected_current_revision_id"\s+value="([^"]*)"', offer_block
             ).group(1)
@@ -617,7 +638,9 @@ def main() -> int:
             assert "Saved." in html, f"offer save did not succeed: {html[:400]!r}"
             assert "87900.00" in html, "edited price not reflected on authoritative re-read"
 
-            claim_block = html.split("<h2>PhysicalBoat claim</h2>", 1)[1].split("<h2>Sale / outcome</h2>", 1)[0]
+            claim_block = html.split("<h2>PhysicalBoat claim</h2>", 1)[1].split(
+                "<h2>Sale / outcome</h2>", 1
+            )[0]
             claim_revision_id = re.search(
                 r'name="expected_current_revision_id"\s+value="([^"]*)"', claim_block
             ).group(1)
@@ -647,7 +670,9 @@ def main() -> int:
             rec.steps.append(f"POST save claim (edit PhysicalBoat fact) -> {status}")
             html = body.decode("utf-8")
             assert "Saved." in html, f"claim save did not succeed: {html[:400]!r}"
-            assert "Oceanis 30.1 (refit)" in html, "edited model designation not reflected on authoritative re-read"
+            assert "Oceanis 30.1 (refit)" in html, (
+                "edited model designation not reflected on authoritative re-read"
+            )
 
             status, _, body = session.get(inventory_url := org_url("/inventory"))
             rec.steps.append(f"GET inventory (locate Reconfirm action) -> {status}")
@@ -667,7 +692,9 @@ def main() -> int:
             rec.steps.append(f"POST reconfirm (freshness/lifecycle action) -> {status}")
             html = body.decode("utf-8")
             assert "Reconfirmed." in html, f"reconfirm did not succeed: {html[:400]!r}"
-            assert "last confirmed" in html, "freshness re-read did not show last-confirmed evidence"
+            assert "last confirmed" in html, (
+                "freshness re-read did not show last-confirmed evidence"
+            )
 
             rec.outcome = "PASS"
         except Exception as exc:
@@ -690,9 +717,7 @@ def main() -> int:
         t0 = time.monotonic()
         try:
             media_url = org_url(f"/inventory/{native_listing_id}/media")
-            upload_url = (
-                f"{web_base}/broker/organizations/{_ORG_ID}/inventory/{native_listing_id}/media/upload"
-            )
+            upload_url = f"{web_base}/broker/organizations/{_ORG_ID}/inventory/{native_listing_id}/media/upload"
             for idx, color in enumerate(((200, 60, 60), (60, 200, 90)), start=1):
                 status, _, body = session.post_bytes(
                     upload_url,
@@ -705,7 +730,9 @@ def main() -> int:
                     },
                 )
                 rec.steps.append(f"POST upload additional image {idx} -> {status}")
-                assert status == 201, f"expected 201 Uploaded for image {idx}, got {status}: {body!r}"
+                assert status == 201, (
+                    f"expected 201 Uploaded for image {idx}, got {status}: {body!r}"
+                )
 
             status, _, body = session.get(media_url)
             rec.steps.append(f"GET media gallery (3 images) -> {status}")
@@ -717,7 +744,9 @@ def main() -> int:
             )
             assert len(placement_ids) == 3, f"expected 3 placements, found {len(placement_ids)}"
             positions = {
-                pid: int(re.search(rf'name="position_{re.escape(pid)}" value="(\d+)"', html).group(1))
+                pid: int(
+                    re.search(rf'name="position_{re.escape(pid)}" value="(\d+)"', html).group(1)
+                )
                 for pid in placement_ids
             }
 
@@ -759,17 +788,23 @@ def main() -> int:
             assert "Cover updated." in html, f"cover change did not succeed: {html[:400]!r}"
 
             status, _, body = session.post_form(
-                media_url, {"action": "youtube_add", "youtube_url": "not-a-real-url"}, origin=web_base
+                media_url,
+                {"action": "youtube_add", "youtube_url": "not-a-real-url"},
+                origin=web_base,
             )
-            rec.steps.append(f"POST add invalid YouTube URL (deliberate invalid-input path) -> {status}")
+            rec.steps.append(
+                f"POST add invalid YouTube URL (deliberate invalid-input path) -> {status}"
+            )
             html = body.decode("utf-8")
             assert "That YouTube link isn" in html and "supported." in html, (
                 f"invalid YouTube URL did not produce a recoverable, understandable message: {html[:400]!r}"
             )
-            assert "<h2>Current gallery" in html, "gallery state must still render after the rejected input"
+            assert "<h2>Current gallery" in html, (
+                "gallery state must still render after the rejected input"
+            )
             rec.errors_recovery.append(
                 "Invalid YouTube URL was rejected with an explicit, specific message "
-                "(\"That YouTube link isn't supported.\") and the existing gallery/cover state "
+                '("That YouTube link isn\'t supported.") and the existing gallery/cover state '
                 "remained intact and visible -- a clear, recoverable error path."
             )
 
@@ -803,7 +838,9 @@ def main() -> int:
         )
         assert status == 201, f"expected 201 from buyer contact, got {status}: {body!r}"
         lead_id = _json(body)["lead_id"]
-        print(f"5. untimed setup: seeded one BuyerLead ({lead_id}) via the ordinary public contact route\n")
+        print(
+            f"5. untimed setup: seeded one BuyerLead ({lead_id}) via the ordinary public contact route\n"
+        )
 
         # ------------------------------------------------------------------
         # TASK 4 — Lead source identification
@@ -825,7 +862,9 @@ def main() -> int:
             status, _, body = session.get(lead_detail_url)
             rec.steps.append(f"GET Lead detail -> {status}")
             html = body.decode("utf-8")
-            assert native_listing_id in html, "contacted listing not identified on the Lead detail page"
+            assert native_listing_id in html, (
+                "contacted listing not identified on the Lead detail page"
+            )
             assert "Acquisition channel:" in html and "Discovery surface:" in html, (
                 "acquisition/discovery evidence not rendered"
             )
@@ -887,10 +926,14 @@ def main() -> int:
                 },
                 origin=web_base,
             )
-            rec.steps.append(f"POST assign using the only identifier a broker could plausibly know (their own email) -> {status}")
+            rec.steps.append(
+                f"POST assign using the only identifier a broker could plausibly know (their own email) -> {status}"
+            )
             html = body.decode("utf-8")
             assignment_failed = (
-                "not a current active member" in html or "wasn't valid" in html or "That input wasn't valid." in html
+                "not a current active member" in html
+                or "wasn't valid" in html
+                or "That input wasn't valid." in html
             )
             if assignment_failed:
                 rec.friction.append(
@@ -902,7 +945,9 @@ def main() -> int:
                 )
                 rec.operator_assistance_required = True
             else:
-                rec.steps.append("assignment unexpectedly succeeded with an email-shaped identifier")
+                rec.steps.append(
+                    "assignment unexpectedly succeeded with an email-shaped identifier"
+                )
 
             status, _, body = session.post_form(
                 lead_detail_url,
@@ -930,17 +975,24 @@ def main() -> int:
             rec.steps.append(f"POST set follow-up -> {status}")
             html = body.decode("utf-8")
             assert "Done." in html, f"follow-up set did not succeed: {html[:400]!r}"
-            assert "Follow-up due:" in html and "None" not in html.split("Follow-up due:", 1)[1][:40]
+            assert (
+                "Follow-up due:" in html and "None" not in html.split("Follow-up due:", 1)[1][:40]
+            )
             version = int(re.search(r'name="expected_version" value="(\d+)"', html).group(1))
 
             status, _, body = session.post_form(
                 lead_detail_url,
-                {"action": "add_note", "text": "Called once, left voicemail; buyer wants more photos."},
+                {
+                    "action": "add_note",
+                    "text": "Called once, left voicemail; buyer wants more photos.",
+                },
                 origin=web_base,
             )
             rec.steps.append(f"POST add note -> {status}")
             html = body.decode("utf-8")
-            assert "Done." in html and "left voicemail" in html, "note did not appear in the timeline"
+            assert "Done." in html and "left voicemail" in html, (
+                "note did not appear in the timeline"
+            )
 
             status, _, body = session.post_form(
                 lead_detail_url,
@@ -949,7 +1001,9 @@ def main() -> int:
             )
             rec.steps.append(f"POST record contact attempt -> {status}")
             html = body.decode("utf-8")
-            assert "Done." in html and "PHONE" in html, "contact attempt did not appear in the timeline"
+            assert "Done." in html and "PHONE" in html, (
+                "contact attempt did not appear in the timeline"
+            )
 
             status, _, body = session.get(org_url("/leads?follow_up_due=true"))
             rec.steps.append(f"GET inbox filtered to follow-up-due (re-find the Lead) -> {status}")
@@ -987,7 +1041,9 @@ def main() -> int:
             rec.steps.append(f"GET edit listing (locate sale/outcome section) -> {status}")
             html = body.decode("utf-8")
             sale_block = html.split("<h2>Sale / outcome</h2>", 1)[1]
-            m = re.search(r'name="expected_current_sale_outcome_revision_id"\s+value="([^"]*)"', sale_block)
+            m = re.search(
+                r'name="expected_current_sale_outcome_revision_id"\s+value="([^"]*)"', sale_block
+            )
             expected_sale_revision = m.group(1) if m else ""
 
             status, _, body = session.post_form(
@@ -1003,11 +1059,15 @@ def main() -> int:
                 },
                 origin=web_base,
             )
-            rec.steps.append(f"POST close as SOLD (price unknown, Lead explicitly linked) -> {status}")
+            rec.steps.append(
+                f"POST close as SOLD (price unknown, Lead explicitly linked) -> {status}"
+            )
             html = body.decode("utf-8")
             assert "Recorded." in html, f"close-as-sold did not succeed: {html[:400]!r}"
             assert "SOLD" in html
-            assert f"Lead {lead_id}" in html, "explicitly-selected originating Lead not linked on re-read"
+            assert f"Lead {lead_id}" in html, (
+                "explicitly-selected originating Lead not linked on re-read"
+            )
             sale_section = html.split("<h2>Sale / outcome</h2>", 1)[1]
             # Deterministic proof that leaving achieved price/currency absent
             # does not fabricate a price on the authoritative re-read: the
@@ -1019,7 +1079,9 @@ def main() -> int:
             # with a digit. Independent review 2026-10-01 (reviewed HEAD
             # 28288ef, Finding C): the previous `... or True` assertion could
             # never fail and proved nothing.
-            outcome_line_match = re.search(r"Current outcome:.*?\(recorded", sale_section, re.DOTALL)
+            outcome_line_match = re.search(
+                r"Current outcome:.*?\(recorded", sale_section, re.DOTALL
+            )
             assert outcome_line_match, (
                 f"could not locate the rendered current-outcome line: {sale_section[:400]!r}"
             )
@@ -1035,7 +1097,9 @@ def main() -> int:
             status, _, body = session.get(org_url("/inventory"))
             rec.steps.append(f"GET inventory overview (verify resulting lifecycle) -> {status}")
             html = body.decode("utf-8")
-            assert "WITHDRAWN" in html, "lifecycle did not reflect SOLD-driven withdrawal on authoritative re-read"
+            assert "WITHDRAWN" in html, (
+                "lifecycle did not reflect SOLD-driven withdrawal on authoritative re-read"
+            )
 
             rec.outcome = "PASS"
         except Exception as exc:
@@ -1061,7 +1125,9 @@ def main() -> int:
             html = body.decode("utf-8")
             assert "Performance &amp; funnel snapshot" in html or "Performance" in html
             assert "Leads received: 1" in html, f"leads_received not reflected: {html[:800]!r}"
-            assert "Explicit SOLD outcomes recorded in window: 1" in html, "SOLD outcome not reflected"
+            assert "Explicit SOLD outcomes recorded in window: 1" in html, (
+                "SOLD outcome not reflected"
+            )
             obs.outcome = "PASS"
         except Exception as exc:
             obs.outcome = "BLOCKING_DEFICIENCY"
