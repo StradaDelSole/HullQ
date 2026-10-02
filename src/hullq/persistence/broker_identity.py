@@ -35,6 +35,7 @@ from hullq.domain.publishing_eligibility import (
 )
 
 __all__ = [
+    "MAX_LEAD_ASSIGNMENT_CANDIDATES",
     "JitAccountMappingResult",
     "fetch_active_members_for_organization",
     "fetch_active_memberships_for_account",
@@ -166,11 +167,22 @@ FROM organization_memberships m
 WHERE m.account_id = %s AND m.state = 'ACTIVE'
 """
 
+#: SLICE-0077 contract §3: the Lead-assignment candidate projection must be
+#: a *bounded* list, not an unbounded Organization member directory. A
+#: broker office's current ACTIVE membership roster is realistically a
+#: handful to a few dozen people; 100 is a conservative ceiling well above
+#: that, chosen so no real office is ever truncated while still giving the
+#: read a hard, deterministic worst case. Not pagination: callers needing
+#: more than one bounded read have no accepted use case yet (contract §10
+#: excludes a staff directory), so no cursor/page token is introduced.
+MAX_LEAD_ASSIGNMENT_CANDIDATES = 100
+
 _SELECT_ACTIVE_MEMBERS_FOR_ORGANIZATION = """
 SELECT m.membership_id, m.account_id, m.state
 FROM organization_memberships m
 WHERE m.organization_id = %s AND m.state = 'ACTIVE'
 ORDER BY m.account_id
+LIMIT %s
 """
 
 
@@ -368,23 +380,29 @@ def fetch_active_memberships_for_account(
 
 
 def fetch_active_members_for_organization(
-    conn: Any, organization_id: MarketplaceOrganizationId
+    conn: Any,
+    organization_id: MarketplaceOrganizationId,
+    *,
+    limit: int = MAX_LEAD_ASSIGNMENT_CANDIDATES,
 ) -> list[OrganizationMembership]:
-    """Read every current ACTIVE membership of *organization_id*.
+    """Read up to *limit* current ACTIVE memberships of *organization_id*,
+    deterministically ordered by `account_id`.
 
     SLICE-0077 contract §3: the bounded, tenant-scoped, state-filtered read
-    backing the Lead-assignment candidate projection -- never a
-    cross-Organization member directory. Callers must still re-check
-    current membership state at mutation time; this read is
-    convenience/presentation state only.
+    backing the Lead-assignment candidate projection -- never an unbounded
+    cross-Organization member directory. *limit* is clamped to
+    `MAX_LEAD_ASSIGNMENT_CANDIDATES`; a caller omitting it gets that bound
+    directly. Callers must still re-check current membership state at
+    mutation time; this read is convenience/presentation state only.
     """
     if not isinstance(organization_id, MarketplaceOrganizationId):
         raise TypeError(
             "organization_id must be a MarketplaceOrganizationId, "
             f"got {type(organization_id).__name__}"
         )
+    bounded_limit = min(max(limit, 1), MAX_LEAD_ASSIGNMENT_CANDIDATES)
     with conn.cursor() as cur:
-        cur.execute(_SELECT_ACTIVE_MEMBERS_FOR_ORGANIZATION, [organization_id.value])
+        cur.execute(_SELECT_ACTIVE_MEMBERS_FOR_ORGANIZATION, [organization_id.value, bounded_limit])
         rows = cur.fetchall()
     memberships = []
     for membership_id_value, account_id_value, state_value in rows:

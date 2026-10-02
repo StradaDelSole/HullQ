@@ -299,6 +299,10 @@ def get_lead_assignment_candidates(
 ) -> LeadAssignmentCandidatesResult:
     """Bounded current-ACTIVE-member read backing the Lead assignment picker.
 
+    Returns at most `hullq.persistence.broker_identity.MAX_LEAD_ASSIGNMENT_CANDIDATES`
+    candidates, deterministically ordered by `account_id` (contract §3 --
+    never an unbounded member directory).
+
     Reuses the exact Broker Workspace Organization authorization/MFA
     boundary (contract §4): unauthorized/unknown Organization access
     collapses to the identical non-enumerating outcome used everywhere else

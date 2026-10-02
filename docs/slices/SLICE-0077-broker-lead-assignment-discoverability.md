@@ -133,6 +133,8 @@ Agent may recommend `REVIEW` or `BLOCKED`; must not mark DONE or start another s
 
 Initial implementation prompt comes only from `START_SLICE.bat` after readiness review/gates/merge.
 
+**Status set by this handoff:** `REVIEW`
+
 ## Completion report (2026-10-02)
 
 ### Slice
@@ -140,7 +142,11 @@ Initial implementation prompt comes only from `START_SLICE.bat` after readiness 
 - Slice ID: `SLICE-0077`
 - Recommended slice state: `REVIEW`
 - Scope completed: `YES`
-- Exact final branch HEAD SHA: `a437101999ea30ba7f61ad56269ed4f383d7ff10`
+- Implementation/evidence candidate HEAD under test (code, tests, and the retained evidence
+  doc were all validated at this exact commit): `a437101999ea30ba7f61ad56269ed4f383d7ff10`
+- Final pushed branch HEAD used for independent review (one later docs-only commit appends
+  this report into this file; no code/test/evidence content differs from the candidate HEAD
+  above): `8dea525cf1b50367c569973d2b4c866df365e965`
 
 ### Product execution checks
 

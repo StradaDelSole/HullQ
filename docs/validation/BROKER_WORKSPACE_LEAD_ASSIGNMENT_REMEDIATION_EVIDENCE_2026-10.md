@@ -16,9 +16,10 @@ to independent exact-head review and explicit Project Owner acceptance.
 ## 1. What changed
 
 1. `src/hullq/persistence/broker_identity.py`: added
-   `fetch_active_members_for_organization` — a bounded, tenant-scoped, state-filtered read
-   of current ACTIVE memberships for one exact Organization (not account-scoped, unlike the
-   pre-existing `fetch_active_memberships_for_account`).
+   `fetch_active_members_for_organization` — a bounded (hard `LIMIT`, see the Amendment note
+   at the end of this document), tenant-scoped, state-filtered read of current ACTIVE
+   memberships for one exact Organization (not account-scoped, unlike the pre-existing
+   `fetch_active_memberships_for_account`).
 2. `src/hullq/application/lead_operations.py`: added `get_lead_assignment_candidates`,
    reusing the exact same `get_organization_workspace_result` auth/MFA boundary every other
    Lead operation already uses. Each candidate carries `account_id`, current `roles`, and a
@@ -167,3 +168,30 @@ Owner acceptance, and a governance-document update. `MVP-PROD-012` Security Hard
 Adversarial Validation remains separately `DUE` and is unaffected by this remediation; it
 remains mandatory before any real external broker self-service pilot regardless of this gate's
 eventual status.
+
+## Amendment note (2026-10-02) — Finding A: the projection was tenant/state-filtered but not bounded
+
+Independent review of the first candidate head (`2c30664`) found that
+`fetch_active_members_for_organization` correctly filtered by exact Organization and
+`ACTIVE` state, but had no `LIMIT`/hard cap, so the contract §3 requirement to "expose a
+**bounded** list" was not actually satisfied — an Organization with an unusually large
+membership roster could receive an unbounded read.
+
+**Fix:** added `MAX_LEAD_ASSIGNMENT_CANDIDATES = 100` (a conservative ceiling for a
+broker-office assignee picker, chosen to comfortably exceed any realistic office roster while
+still giving the read a hard, deterministic worst case) and a `LIMIT %s` clause, ordered
+deterministically by `account_id`. The function keeps an optional `limit` keyword (clamped to
+the module constant, mirroring `hullq.persistence.lead_operations.fetch_lead_timeline`'s
+identical pattern) so tests can exercise truncation without seeding a hundred real rows; no
+pagination/cursor was introduced — contract §10 excludes a staff directory, and nothing in
+this remediation needs more than one bounded read.
+
+New focused tests (`tests/persistence/test_broker_identity_persistence.py`,
+`TestLeadAssignmentCandidateBound`): fewer-than-bound members all appear; more-than-bound
+members return exactly the bound in deterministic, repeatable `account_id` order; a `limit`
+override above the hard ceiling is clamped down, never bypassed; INACTIVE/foreign-Organization
+noise rows never consume the bound. Re-ran: focused persistence/API tests (51 passed, up from
+47), `ruff check .` / `ruff format --check .` / `mypy src` (clean), `scripts/validate_repository.py`
+(PASS), and the real-stack `validate_broker_workspace_launch_readiness.py` harness (all tasks
+PASS, `SLICE-0076 TASK_5 blocking deficiency -> CLOSED` unchanged). No mutation, auth/MFA,
+non-enumeration, version-conflict or historical-assignee-preservation behavior was touched.
