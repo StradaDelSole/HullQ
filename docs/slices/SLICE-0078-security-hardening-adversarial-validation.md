@@ -57,13 +57,16 @@ MVP-PROD-012 is DUE before the first external broker self-service pilot and is t
 
 ## Trigger gates
 
-**Production readiness gate:** independently controlled / no pilot activation here  
+**Production readiness gate:** NOT_TRIGGERED  
+**Adds technical native Search criterion:** NO  
+**Technical Search criterion ordinal:** NOT_APPLICABLE  
+**Second-criterion bridge comparison:** NOT_APPLICABLE  
+**Third-copy abstraction guard:** NOT_APPLICABLE  
+**Workflow reassessment status:** PASS  
 **Broker Workspace Launch Gate:** PASS  
 **Broker self-service pilot:** NOT_STARTED  
 **Paid broker plan:** NOT_STARTED  
-**Security Hardening & Adversarial Validation gate:** DUE / owning slice = 0078  
-**Adds technical native Search criterion:** NO  
-**Workflow reassessment status:** PASS
+**Security Hardening & Adversarial Validation gate:** DUE / owning slice = 0078
 
 ## Required work
 
