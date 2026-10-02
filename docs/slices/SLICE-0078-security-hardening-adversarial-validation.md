@@ -26,6 +26,26 @@ accepted broker/public attack surface
 → gate disposition
 ```
 
+## Product execution checks
+
+**ONE-CAPABILITY CHECK:** PASS  
+One coherent pre-pilot capability: holistic security hardening plus adversarial validation and bounded remediation of findings discovered by that validation.
+
+**VISIBLE-RESULT CHECK:** PASS  
+The output is a mechanically reviewable security-gate result with retained threat matrix, adversarial evidence, findings register and gate disposition; any discovered material vulnerabilities are fixed/retested rather than hidden in prose.
+
+**PRODUCT EXECUTION PLAN ALIGNMENT:** PASS  
+This slice owns the already-accepted mandatory pre-pilot Security Hardening & Adversarial Validation gate.
+
+**REPOSITORY RECONCILIATION CHECK:** PASS  
+The slice attacks the current accepted product boundary and must not reopen established domain/identity/auth semantics except where a security defect requires bounded remediation.
+
+**TRIGGER GATES CHECK:** PASS  
+No external broker pilot, paid activation or broad public launch is activated by this slice.
+
+**OVERALL MVP CAPABILITY REGISTER CHECK:** PASS  
+MVP-PROD-012 is DUE before the first external broker self-service pilot and is the highest-risk currently triggered capability.
+
 ## Decision / implementation reconciliation
 
 **Accepted records checked:** `docs/PROJECT_STATE.md`; `docs/slices/SLICE-0077-acceptance-closure.md`; `docs/governance/BROKER_WORKSPACE_LAUNCH_GATE.md`; `docs/governance/SECURITY_HARDENING_GATE.md`; `docs/governance/OVERALL_MVP_CAPABILITY_REGISTER.md`; `docs/governance/BROKER_WORKSPACE_MANDATORY_CAPABILITY_REGISTER.md`; retained SLICE-0076/0077 validation evidence.  
