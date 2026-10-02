@@ -9,6 +9,7 @@ export const prerender = false;
 
 import {
   fetchLeadDetail,
+  fetchLeadAssignmentCandidates,
   markLeadRead,
   setLeadAssignment,
   setLeadStatus,
@@ -150,6 +151,17 @@ const result =
     ? await fetchLeadDetail(apiBaseUrl, organizationId, leadId, cookieHeader)
     : ({ kind: "lead_not_found" } as const);
 
+// SLICE-0077: bounded current-ACTIVE-member read backing the Lead
+// assignment picker -- reuses the same Organization auth/MFA boundary the
+// Lead detail read above already passed, so this is only ever fetched once
+// that detail read is itself authorized.
+const candidatesResult =
+  result.kind === "ok" && organizationId
+    ? await fetchLeadAssignmentCandidates(apiBaseUrl, organizationId, cookieHeader)
+    : null;
+const assignmentCandidates =
+  candidatesResult && candidatesResult.kind === "ok" ? candidatesResult.data.candidates : [];
+
 if (result.kind === "lead_not_found") {
   Astro.response.status = 404;
 } else if (result.kind === "mfa_required") {
@@ -269,10 +281,23 @@ const CONTACT_CHANNELS = ["EMAIL", "PHONE", "MESSAGING", "OTHER"];
                 <input type="hidden" name="action" value="assign" />
                 <input type="hidden" name="expected_version" value={result.data.operational_state.version} />
                 <label>
-                  Assign to Account ID:
-                  <input type="text" name="assignee_account_id" />
+                  Assign to:
+                  {assignmentCandidates.length > 0 ? (
+                    <select name="assignee_account_id" required>
+                      <option value="" disabled selected>
+                        Select a current member…
+                      </option>
+                      {assignmentCandidates.map((candidate) => (
+                        <option value={candidate.account_id}>{candidate.label}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span>No current active Organization members are available to assign.</span>
+                  )}
                 </label>
-                <button type="submit">Assign</button>
+                <button type="submit" disabled={assignmentCandidates.length === 0}>
+                  Assign
+                </button>
               </form>
               {result.data.operational_state.assigned_account_id && (
                 <form method="POST">

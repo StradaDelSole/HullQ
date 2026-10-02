@@ -36,6 +36,7 @@ from hullq.domain.publishing_eligibility import (
 
 __all__ = [
     "JitAccountMappingResult",
+    "fetch_active_members_for_organization",
     "fetch_active_memberships_for_account",
     "fetch_marketplace_organization",
     "fetch_membership_for_account_and_organization",
@@ -163,6 +164,13 @@ _SELECT_ACTIVE_MEMBERSHIPS_FOR_ACCOUNT = """
 SELECT m.membership_id, m.organization_id, m.state
 FROM organization_memberships m
 WHERE m.account_id = %s AND m.state = 'ACTIVE'
+"""
+
+_SELECT_ACTIVE_MEMBERS_FOR_ORGANIZATION = """
+SELECT m.membership_id, m.account_id, m.state
+FROM organization_memberships m
+WHERE m.organization_id = %s AND m.state = 'ACTIVE'
+ORDER BY m.account_id
 """
 
 
@@ -352,6 +360,40 @@ def fetch_active_memberships_for_account(
                 id=OrganizationMembershipId(membership_id_value),
                 account_id=account_id,
                 organization_id=MarketplaceOrganizationId(organization_id_value),
+                roles=roles,
+                state=MembershipState(state_value),
+            )
+        )
+    return memberships
+
+
+def fetch_active_members_for_organization(
+    conn: Any, organization_id: MarketplaceOrganizationId
+) -> list[OrganizationMembership]:
+    """Read every current ACTIVE membership of *organization_id*.
+
+    SLICE-0077 contract §3: the bounded, tenant-scoped, state-filtered read
+    backing the Lead-assignment candidate projection -- never a
+    cross-Organization member directory. Callers must still re-check
+    current membership state at mutation time; this read is
+    convenience/presentation state only.
+    """
+    if not isinstance(organization_id, MarketplaceOrganizationId):
+        raise TypeError(
+            "organization_id must be a MarketplaceOrganizationId, "
+            f"got {type(organization_id).__name__}"
+        )
+    with conn.cursor() as cur:
+        cur.execute(_SELECT_ACTIVE_MEMBERS_FOR_ORGANIZATION, [organization_id.value])
+        rows = cur.fetchall()
+    memberships = []
+    for membership_id_value, account_id_value, state_value in rows:
+        roles = _load_roles(conn, membership_id_value)
+        memberships.append(
+            OrganizationMembership(
+                id=OrganizationMembershipId(membership_id_value),
+                account_id=AccountId(account_id_value),
+                organization_id=organization_id,
                 roles=roles,
                 state=MembershipState(state_value),
             )

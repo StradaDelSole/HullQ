@@ -116,6 +116,7 @@ from hullq.application.lead_operations import (
     append_contact_attempt,
     append_note,
     close_lead,
+    get_lead_assignment_candidates,
     get_lead_detail,
     get_organization_lead_counts,
     get_organization_lead_inbox_page,
@@ -1871,6 +1872,28 @@ def create_app(
         try:
             result = get_organization_lead_counts(
                 conn, session, MarketplaceOrganizationId(organization_id), as_of=_current_as_of()
+            )
+        finally:
+            conn.close()
+        error = _lead_operation_error_response(result.outcome)
+        if error is not None:
+            return error
+        return JSONResponse(result.to_public_dict())
+
+    @app.get("/api/broker/organizations/{organization_id}/leads/assignment-candidates")
+    def get_lead_assignment_candidates_route(
+        organization_id: str, request: Request
+    ) -> JSONResponse:
+        # SLICE-0077 contract §3/§4: bounded current-ACTIVE-member read for
+        # the Lead assignment picker, reusing the exact Organization
+        # auth/MFA boundary -- never a public/member-directory endpoint.
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            result = get_lead_assignment_candidates(
+                conn, session, MarketplaceOrganizationId(organization_id)
             )
         finally:
             conn.close()

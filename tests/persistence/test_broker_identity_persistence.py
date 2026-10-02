@@ -31,6 +31,7 @@ from hullq.domain.publishing_eligibility import (
 )
 from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
 from hullq.persistence.broker_identity import (
+    fetch_active_members_for_organization,
     fetch_active_memberships_for_account,
     fetch_marketplace_organization,
     fetch_membership_for_account_and_organization,
@@ -397,6 +398,95 @@ class TestOrganizationMembershipDirectory:
         assert {
             m.organization_id.value for m in fetch_active_memberships_for_account(conn, account_b)
         } == {"ORG-1"}
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0077: current-ACTIVE-member read for the Lead assignment candidate
+# projection (contract §3) -- organization-scoped, not account-scoped.
+# ---------------------------------------------------------------------------
+
+
+class TestActiveMembersForOrganization:
+    def test_only_active_same_organization_members_returned(self, conn: Any) -> None:
+        account_active = get_or_create_account_for_identity(
+            conn, provider=Provider.AUTH0, issuer="https://iss/", subject="sub-active"
+        ).account_id
+        account_inactive = get_or_create_account_for_identity(
+            conn, provider=Provider.AUTH0, issuer="https://iss/", subject="sub-inactive"
+        ).account_id
+        account_foreign = get_or_create_account_for_identity(
+            conn, provider=Provider.AUTH0, issuer="https://iss/", subject="sub-foreign"
+        ).account_id
+        seed_marketplace_organization(conn, _org("ORG-1"))
+        seed_marketplace_organization(conn, _org("ORG-2"))
+        seed_organization_membership(
+            conn,
+            OrganizationMembership(
+                id=OrganizationMembershipId("OM-active"),
+                account_id=account_active,
+                organization_id=MarketplaceOrganizationId("ORG-1"),
+                roles=frozenset({MembershipRole.PUBLISHER}),
+                state=MembershipState.ACTIVE,
+            ),
+        )
+        seed_organization_membership(
+            conn,
+            OrganizationMembership(
+                id=OrganizationMembershipId("OM-inactive"),
+                account_id=account_inactive,
+                organization_id=MarketplaceOrganizationId("ORG-1"),
+                roles=frozenset({MembershipRole.MEMBER}),
+                state=MembershipState.INACTIVE,
+            ),
+        )
+        seed_organization_membership(
+            conn,
+            OrganizationMembership(
+                id=OrganizationMembershipId("OM-foreign"),
+                account_id=account_foreign,
+                organization_id=MarketplaceOrganizationId("ORG-2"),
+                roles=frozenset({MembershipRole.OWNER}),
+                state=MembershipState.ACTIVE,
+            ),
+        )
+        conn.commit()
+
+        members = fetch_active_members_for_organization(conn, MarketplaceOrganizationId("ORG-1"))
+        assert {m.account_id for m in members} == {account_active}
+        assert members[0].roles == frozenset({MembershipRole.PUBLISHER})
+
+    def test_zero_active_members_is_empty_list_not_error(self, conn: Any) -> None:
+        seed_marketplace_organization(conn, _org("ORG-EMPTY"))
+        conn.commit()
+        assert (
+            fetch_active_members_for_organization(conn, MarketplaceOrganizationId("ORG-EMPTY"))
+            == []
+        )
+
+    def test_deactivation_removes_member_from_next_read(self, conn: Any) -> None:
+        account = get_or_create_account_for_identity(
+            conn, provider=Provider.AUTH0, issuer="https://iss/", subject="sub-1"
+        ).account_id
+        seed_marketplace_organization(conn, _org("ORG-1"))
+        seed_organization_membership(
+            conn,
+            OrganizationMembership(
+                id=OrganizationMembershipId("OM-1"),
+                account_id=account,
+                organization_id=MarketplaceOrganizationId("ORG-1"),
+                roles=frozenset({MembershipRole.MEMBER}),
+                state=MembershipState.ACTIVE,
+            ),
+        )
+        conn.commit()
+        assert (
+            len(fetch_active_members_for_organization(conn, MarketplaceOrganizationId("ORG-1")))
+            == 1
+        )
+
+        update_membership_state(conn, OrganizationMembershipId("OM-1"), MembershipState.INACTIVE)
+        conn.commit()
+        assert fetch_active_members_for_organization(conn, MarketplaceOrganizationId("ORG-1")) == []
 
 
 # ---------------------------------------------------------------------------

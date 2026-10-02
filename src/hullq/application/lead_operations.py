@@ -45,7 +45,10 @@ from hullq.domain.publishing_eligibility import (
     MembershipRole,
     MembershipState,
 )
-from hullq.persistence.broker_identity import fetch_membership_for_account_and_organization
+from hullq.persistence.broker_identity import (
+    fetch_active_members_for_organization,
+    fetch_membership_for_account_and_organization,
+)
 from hullq.persistence.lead_notification import (
     NotificationConfigRecord,
     fetch_notification_outbox_by_lead,
@@ -79,6 +82,8 @@ __all__ = [
     "DEFAULT_INBOX_PAGE_SIZE",
     "MAX_INBOX_PAGE_SIZE",
     "InvalidLeadInboxCursorError",
+    "LeadAssignmentCandidate",
+    "LeadAssignmentCandidatesResult",
     "LeadInboxFilters",
     "LeadMutationOutcome",
     "LeadMutationResultView",
@@ -89,6 +94,7 @@ __all__ = [
     "append_contact_attempt",
     "append_note",
     "close_lead",
+    "get_lead_assignment_candidates",
     "get_lead_detail",
     "get_organization_lead_counts",
     "get_organization_lead_inbox_page",
@@ -245,6 +251,81 @@ def get_lead_detail(
     assert lead is not None
     return LeadDetailResult(
         outcome=LeadOperationOutcome.OK, lead=_lead_detail_to_dict(lead, conn=conn)
+    )
+
+
+# ---------------------------------------------------------------------------
+# Assignment candidate projection (SLICE-0077 contract §3)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class LeadAssignmentCandidate:
+    """One current ACTIVE Organization member offered as a Lead assignee.
+
+    `label` is a deterministic, non-deceptive presentation string derived
+    only from existing HullQ truth (`account_id` + current roles) --
+    contract §3 forbids fabricating email/personal-name/provider-profile
+    identity here. The submitted assignment value is always the exact
+    `account_id`, never the label.
+    """
+
+    account_id: AccountId
+    roles: tuple[str, ...]
+    label: str
+
+    def to_public_dict(self) -> dict[str, Any]:
+        return {"account_id": self.account_id.value, "roles": list(self.roles), "label": self.label}
+
+
+def _candidate_label(roles: tuple[str, ...], account_id: AccountId) -> str:
+    return f"{account_id.value} ({', '.join(roles)})" if roles else account_id.value
+
+
+@dataclass(frozen=True)
+class LeadAssignmentCandidatesResult:
+    outcome: LeadOperationOutcome
+    candidates: tuple[LeadAssignmentCandidate, ...] | None = None
+
+    def to_public_dict(self) -> dict[str, Any]:
+        body: dict[str, Any] = {"status": self.outcome.value}
+        if self.candidates is not None:
+            body["candidates"] = [candidate.to_public_dict() for candidate in self.candidates]
+        return body
+
+
+def get_lead_assignment_candidates(
+    conn: Any, session: SessionClaims, organization_id: MarketplaceOrganizationId
+) -> LeadAssignmentCandidatesResult:
+    """Bounded current-ACTIVE-member read backing the Lead assignment picker.
+
+    Reuses the exact Broker Workspace Organization authorization/MFA
+    boundary (contract §4): unauthorized/unknown Organization access
+    collapses to the identical non-enumerating outcome used everywhere else
+    in this module. This projection is convenience/read state only --
+    `set_assignment` re-derives current membership fresh at mutation time
+    regardless of what this call returned, so a membership change between
+    this read and a later assignment attempt still fails closed there.
+    """
+    workspace_result = get_organization_workspace_result(conn, session, organization_id)
+    if workspace_result.outcome is OrganizationWorkspaceOutcome.NOT_FOUND_OR_DENIED:
+        return LeadAssignmentCandidatesResult(outcome=LeadOperationOutcome.ORG_NOT_FOUND_OR_DENIED)
+    if workspace_result.outcome is OrganizationWorkspaceOutcome.MFA_REQUIRED:
+        return LeadAssignmentCandidatesResult(outcome=LeadOperationOutcome.MFA_REQUIRED)
+
+    memberships = fetch_active_members_for_organization(conn, organization_id)
+    candidates = []
+    for membership in memberships:
+        roles = tuple(sorted(role.value for role in membership.roles))
+        candidates.append(
+            LeadAssignmentCandidate(
+                account_id=membership.account_id,
+                roles=roles,
+                label=_candidate_label(roles, membership.account_id),
+            )
+        )
+    return LeadAssignmentCandidatesResult(
+        outcome=LeadOperationOutcome.OK, candidates=tuple(candidates)
     )
 
 

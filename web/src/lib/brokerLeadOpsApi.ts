@@ -88,6 +88,15 @@ export interface LeadOrganizationCounts {
   follow_up_overdue: number;
 }
 
+// SLICE-0077: current-ACTIVE-member candidates for the Lead assignment
+// picker. `label` is presentation-only; the browser always submits
+// `account_id` as the assignment value.
+export interface LeadAssignmentCandidate {
+  account_id: string;
+  roles: string[];
+  label: string;
+}
+
 /** Shared org-level tenancy/auth outcomes carried by every read/mutation below. */
 type AuthFailure = { kind: "unauthenticated" } | { kind: "not_found" } | { kind: "mfa_required" };
 
@@ -174,6 +183,33 @@ export async function fetchOrganizationLeadCounts(
   if (authFailure) return authFailure;
   if (!response.ok) return { kind: "service_error" };
   const data = (await response.json()) as LeadOrganizationCounts;
+  return { kind: "ok", data };
+}
+
+export type LeadAssignmentCandidatesResult =
+  | AuthFailure
+  | { kind: "service_error" }
+  | { kind: "ok"; data: { candidates: LeadAssignmentCandidate[] } };
+
+export async function fetchLeadAssignmentCandidates(
+  apiBaseUrl: string,
+  organizationId: string,
+  cookieHeader: string | null,
+): Promise<LeadAssignmentCandidatesResult> {
+  const base = apiBaseUrl.replace(/\/+$/, "");
+  let response: Response;
+  try {
+    response = await fetch(
+      `${base}/api/broker/organizations/${encodeURIComponent(organizationId)}/leads/assignment-candidates`,
+      { headers: cookieHeaders(cookieHeader), redirect: "manual" },
+    );
+  } catch {
+    return { kind: "service_error" };
+  }
+  const authFailure = authFailureFromStatus(response.status);
+  if (authFailure) return authFailure;
+  if (!response.ok) return { kind: "service_error" };
+  const data = (await response.json()) as { candidates: LeadAssignmentCandidate[] };
   return { kind: "ok", data };
 }
 
