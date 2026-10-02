@@ -49,6 +49,7 @@ MVP-PROD-012 is DUE before the first external broker self-service pilot and is t
 ## Decision / implementation reconciliation
 
 **Accepted records checked:** `docs/PROJECT_STATE.md`; `docs/slices/SLICE-0077-acceptance-closure.md`; `docs/governance/BROKER_WORKSPACE_LAUNCH_GATE.md`; `docs/governance/SECURITY_HARDENING_GATE.md`; `docs/governance/OVERALL_MVP_CAPABILITY_REGISTER.md`; `docs/governance/BROKER_WORKSPACE_MANDATORY_CAPABILITY_REGISTER.md`; retained SLICE-0076/0077 validation evidence.  
+**Production implementation checked:** broker auth/session and Organization authorization paths; broker draft/promotion/inventory lifecycle/editing; media upload/storage/derivative delivery; public listing and buyer-contact/Lead creation; Lead inbox/detail/assignment/status/follow-up/timeline; SaleOutcome; performance snapshot; corresponding FastAPI/Astro/persistence tests and retained validation harnesses through SLICE-0077.  
 **Already implemented / not re-decided:** accepted auth, tenant, listing, media, Lead, SaleOutcome, performance and broker workflow semantics.  
 **Exact remaining gap:** no dedicated holistic adversarial proof yet exists for the coherent pre-pilot product boundary.  
 **Accepted-but-unimplemented obligation:** MVP-PROD-012 / mandatory pre-pilot Security Hardening gate.  
