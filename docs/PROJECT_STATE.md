@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0076 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0077 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0077 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0078 -->
 
 **Updated:** 2026-10-01  
-**Latest owner-accepted / DONE slice:** SLICE-0076  
-**Current queue:** SLICE-0077 — **Broker Lead Assignment Discoverability Remediation — READY ON MAIN**. Fresh post-SLICE-0076 reconciliation, independent readiness review and required remote gates are complete; implementation starts only through `START_SLICE.bat`.  
+**Latest owner-accepted / DONE slice:** SLICE-0077  
+**Current queue:** SLICE-0078 — **UNSELECTED** pending fresh post-SLICE-0077 Decision/Implementation Reconciliation and workflow reassessment.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -161,6 +161,7 @@ SLICE-0040 marketplace identity/truth separation
 → SLICE-0074 Broker Sale / Outcome Close-out
 → SLICE-0075 Broker Performance & Funnel Snapshot
 → SLICE-0076 Broker Workspace Launch Validation: Usability & Competitive Benchmark
+→ SLICE-0077 Broker Lead Assignment Discoverability Remediation
 ```
 
 Latest closures:
@@ -187,6 +188,7 @@ docs/slices/SLICE-0073-acceptance-closure.md
 docs/slices/SLICE-0074-acceptance-closure.md
 docs/slices/SLICE-0075-acceptance-closure.md
 docs/slices/SLICE-0076-acceptance-closure.md
+docs/slices/SLICE-0077-acceptance-closure.md
 ```
 
 ## Accepted technical Search result
@@ -296,7 +298,7 @@ Every primary slice selected after SLICE-0072 must reconcile that register befor
 
 Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; production email-provider activation; buyer-contact email verification; periodic/broader broker analytics beyond the accepted factual SLICE-0075 snapshot; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-SLICE-0076 is owner-accepted and merged. HullQ now has retained representative Broker Workspace usability evidence and a current competitive workflow benchmark. The accepted validation result is REMEDIATION_REQUIRED: Lead assignment is a blocking usability deficiency because the UI requires an opaque AccountId without a broker-visible member picker/discoverable assignee identity. The Broker Workspace Launch Gate therefore remains NOT_READY. The separate mandatory pre-pilot Security Hardening & Adversarial Validation gate also remains controlling.
+SLICE-0077 is owner-accepted and merged. The accepted SLICE-0076 Lead-assignment blocking deficiency is now CLOSED through a bounded same-Organization ACTIVE-member picker backed by the existing server-authoritative assignment mutation. Broker Workspace Launch Gate governance status requires separate reconsideration and is not automatically changed by slice acceptance. The separate mandatory pre-pilot Security Hardening & Adversarial Validation gate remains controlling.
 
 ## Broker launch execution focus
 
@@ -329,12 +331,12 @@ Large retained research artifacts are acknowledged as repository-hygiene debt, n
 Next queue number:
 
 ```text
-SLICE-0077
+SLICE-0078
 ```
 
-**Capability:** Broker Lead Assignment Discoverability Remediation.
+**Capability:** UNSELECTED.
 
-Fresh post-SLICE-0076 reconciliation selected the one accepted blocking Broker Workspace Launch Gate deficiency: discoverable same-Organization Lead assignment. The separate Security Hardening & Adversarial Validation gate remains mandatory before any real external broker pilot.
+Fresh post-SLICE-0077 Decision/Implementation Reconciliation and workflow reassessment must run before selecting or readying SLICE-0078. The Broker Workspace Launch Gate governance reconsideration and the separately DUE Security Hardening gate must be explicitly reconciled.
 
 ## Development workflow
 
@@ -349,6 +351,6 @@ Fresh post-SLICE-0076 reconciliation selected the one accepted blocking Broker W
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0076 is owner-accepted and finished; SLICE-0077 Broker Lead Assignment Discoverability Remediation is READY ON MAIN and may start only when the Project Owner runs `START_SLICE.bat`.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0077 is owner-accepted and implementation-merged; SLICE-0078 remains unselected until fresh reassessment/readiness.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
