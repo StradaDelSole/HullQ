@@ -1,7 +1,7 @@
 # SLICE-0077 — Broker Lead Assignment Discoverability Remediation
 
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** Broker Workspace Launch Gate remediation  
 **Depends on:** SLICE-0076 owner-accepted / DONE  
 **Normative contract:** `specs/BROKER_LEAD_ASSIGNMENT_DISCOVERABILITY_CONTRACT.v0.1.md`
@@ -92,21 +92,21 @@ The validation harness must fail if assignment again requires manual/opaque iden
 
 ## Acceptance criteria
 
-- [ ] active same-Organization members appear as assignment candidates;
-- [ ] inactive members do not appear;
-- [ ] foreign members do not appear;
-- [ ] unauthorized/unknown Organization access remains non-enumerating;
-- [ ] MFA boundary remains unchanged;
-- [ ] browser has no free-text opaque AccountId requirement for assignment;
-- [ ] candidate selection submits exact AccountId and assignment succeeds;
-- [ ] authoritative re-read renders the assigned AccountId;
-- [ ] membership deactivation between candidate read and mutation fails closed;
-- [ ] an existing inactive historical assignee is not silently rewritten;
-- [ ] focused Task 5 completes without operator/API/SQL assistance;
-- [ ] retained evidence explicitly closes or preserves the SLICE-0076 blocker;
-- [ ] no production application scope outside this remediation changes;
-- [ ] focused local validation + repository validation pass;
-- [ ] exact pushed HEAD remote CI + Manufacturer artifact reproducibility pass.
+- [x] active same-Organization members appear as assignment candidates;
+- [x] inactive members do not appear;
+- [x] foreign members do not appear;
+- [x] unauthorized/unknown Organization access remains non-enumerating;
+- [x] MFA boundary remains unchanged;
+- [x] browser has no free-text opaque AccountId requirement for assignment;
+- [x] candidate selection submits exact AccountId and assignment succeeds;
+- [x] authoritative re-read renders the assigned AccountId;
+- [x] membership deactivation between candidate read and mutation fails closed;
+- [x] an existing inactive historical assignee is not silently rewritten;
+- [x] focused Task 5 completes without operator/API/SQL assistance;
+- [x] retained evidence explicitly closes or preserves the SLICE-0076 blocker;
+- [x] no production application scope outside this remediation changes;
+- [x] focused local validation + repository validation pass;
+- [ ] exact pushed HEAD remote CI + Manufacturer artifact reproducibility pass (NOT VERIFIED locally; requires observing GitHub Actions on the exact pushed HEAD).
 
 ## Expected touch points
 
@@ -132,3 +132,60 @@ Stop and report instead of broadening scope if:
 Agent may recommend `REVIEW` or `BLOCKED`; must not mark DONE or start another slice.
 
 Initial implementation prompt comes only from `START_SLICE.bat` after readiness review/gates/merge.
+
+**Status set by this handoff:** `REVIEW`
+
+## Completion report (2026-10-02)
+
+### Slice
+
+- Slice ID: `SLICE-0077`
+- Recommended slice state: `REVIEW`
+- Scope completed: `YES`
+- Implementation/evidence candidate HEAD under test (code, tests, and the retained evidence
+  doc were all validated at this exact commit): `a437101999ea30ba7f61ad56269ed4f383d7ff10`
+- Final pushed branch HEAD used for independent review (one later docs-only commit appends
+  this report into this file; no code/test/evidence content differs from the candidate HEAD
+  above): `8dea525cf1b50367c569973d2b4c866df365e965`
+
+### Product execution checks
+
+- ONE-CAPABILITY CHECK: `PASS`
+- VISIBLE-RESULT CHECK: `PASS`
+- PRODUCT EXECUTION PLAN ALIGNMENT: `PASS`
+- REPOSITORY RECONCILIATION CHECK: `PASS`
+- TRIGGER GATES CHECK: `PASS`
+- OVERALL MVP CAPABILITY REGISTER CHECK: `PASS`
+
+### Changes
+
+- Changed files: `src/hullq/persistence/broker_identity.py` (new `fetch_active_members_for_organization`); `src/hullq/application/lead_operations.py` (new `get_lead_assignment_candidates`, `LeadAssignmentCandidate(s)Result`); `src/hullq/api/app.py` (new `GET /api/broker/organizations/{organization_id}/leads/assignment-candidates`); `web/src/lib/brokerLeadOpsApi.ts` (new `fetchLeadAssignmentCandidates`); Lead detail Astro page (free-text `assignee_account_id` input replaced by a `<select>` picker, empty-candidate state handled explicitly); `scripts/validate_broker_workspace_launch_readiness.py` (Task 5 rewritten to discover a candidate from the rendered picker, plus fail-closed/historical-assignee race proof; untimed setup seeds a second ACTIVE member, an INACTIVE member and a foreign-Organization member); `tests/persistence/test_broker_identity_persistence.py`; `tests/persistence/test_broker_lead_operations_api.py`; new `docs/validation/BROKER_WORKSPACE_LEAD_ASSIGNMENT_REMEDIATION_EVIDENCE_2026-10.md`.
+- Acceptance work completed: all 14 non-remote acceptance criteria above checked off, each backed by a focused test or the real-stack harness run (candidate tenancy/state/auth/MFA filtering; picker replaces free-text input; mutation/version-conflict/fail-closed/historical-preservation semantics unchanged; retained evidence states the SLICE-0076 blocker CLOSED).
+- Tests/fixtures added or updated: 3 new persistence tests (`TestActiveMembersForOrganization`: active-only filtering, zero-members empty list, deactivation removes from next read); 6 new API tests (unauthenticated candidate read, foreign/unknown-org non-enumeration, MFA boundary, inactive/foreign exclusion, mutation-time fail-closed race, historical-assignee-not-rewritten); existing SLICE-0053/0071 tests in the same files unaffected.
+
+### Validation
+
+- Local validation: `PASS`
+- Commands/results: `ruff check .` / `ruff format --check .` clean; `mypy src` clean; `scripts/validate_repository.py` PASS; focused pytest (`test_broker_identity_persistence.py` + `test_broker_lead_operations_api.py`, via `claude_diag.py run-local-test-db-compact`) 47 passed; web `astro check` 0 errors/warnings/hints across 108 files; real-stack `validate_broker_workspace_launch_readiness.py` (real PostgreSQL + local OIDC/JWKS + FastAPI + built Astro) — all of TASK_1–TASK_6 and OBSERVATION_7 PASS, explicit `SLICE-0076 TASK_5 blocking deficiency -> CLOSED`.
+
+### External verification
+
+- Remote CI: `NOT VERIFIED`
+- Other external gates: `NOT VERIFIED` — Broker Workspace Launch Gate reconsideration requires independent exact-head review and explicit Project Owner acceptance; not performed by this slice.
+
+### Findings
+
+- Unresolved findings: none.
+- Spec/ADR ambiguities: none.
+- Scope deviations: none — SLICE-0076's other (non-blocking) findings (media reorder, Lead free-text search, draft-form catalog reuse) were not touched.
+
+### Follow-up
+
+- Recommended next action: independent exact-head review of `a437101999ea30ba7f61ad56269ed4f383d7ff10`; if accepted, Project Owner reconsideration of `BROKER_WORKSPACE_LAUNCH_GATE_STATUS` via a governance-document update (out of scope for this slice). `MVP-PROD-012` Security Hardening & Adversarial Validation remains separately `DUE` before any external broker self-service pilot, regardless of this gate's eventual status.
+
+### Agent declaration
+
+- No work outside the assigned slice was started.
+- No unverified acceptance criterion was marked as passed.
+- The next slice was not started automatically.
+- The agent has NOT marked this slice `DONE`.

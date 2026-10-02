@@ -22,6 +22,13 @@ markdown evidence documents transcribe. See
 `docs/validation/BROKER_WORKSPACE_USABILITY_EVIDENCE_2026-10.md` for the
 disposition.
 
+SLICE-0077 extends TASK_5 with one deliberate direct-persistence mutation
+mid-task (deactivating a second member's Organization membership). That
+write represents a concurrent *external* actor (e.g. another admin), not the
+timed broker-participant completing their own task through a DB shortcut --
+the participant's own next action is still only ever a `web_base` form POST,
+and the proof is exactly that it then fails closed rather than succeeding.
+
 Requires ``HULLQ_TEST_DATABASE_URL`` and a pre-built Astro web package
 (``cd web && npm ci && npm run build``).
 
@@ -71,6 +78,7 @@ from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_ale
 from hullq.persistence.broker_identity import (
     seed_marketplace_organization,
     seed_organization_membership,
+    update_membership_state,
 )
 from hullq.security.oidc import AUTH0_MFA_STEP_UP_ACR_VALUE
 
@@ -80,6 +88,21 @@ WEB_ENTRYPOINT = WEB_DIR / "dist" / "server" / "entry.mjs"
 
 _ORG_ID = "ORG-0076-VALIDATION"
 _SUBJECT = "broker-0076-subject"
+#: SLICE-0077: a second current-ACTIVE member of the same Organization, used
+#: to prove the assignment candidate picker offers more than just the signed
+#: -in broker, and to exercise the "candidate deactivated between read and
+#: submit fails closed" / "historical inactive assignee not rewritten" proof.
+_SECOND_MEMBER_ACCOUNT_ID = "ACC-0077-SECOND-MEMBER"
+_SECOND_MEMBER_MEMBERSHIP_ID = "OM-0077-SECOND-MEMBER"
+#: An INACTIVE member of the same Organization -- must never be offered as a
+#: candidate.
+_INACTIVE_MEMBER_ACCOUNT_ID = "ACC-0077-INACTIVE-MEMBER"
+_INACTIVE_MEMBER_MEMBERSHIP_ID = "OM-0077-INACTIVE-MEMBER"
+#: An ACTIVE member of a different, foreign Organization -- must never be
+#: offered as a candidate here.
+_FOREIGN_ORG_ID = "ORG-0077-FOREIGN"
+_FOREIGN_MEMBER_ACCOUNT_ID = "ACC-0077-FOREIGN-MEMBER"
+_FOREIGN_MEMBER_MEMBERSHIP_ID = "OM-0077-FOREIGN-MEMBER"
 _BUYER_LEAD_CSRF_HEADER_NAME = "X-HullQ-Requested-With"
 _BUYER_LEAD_CSRF_HEADER_VALUE = "marketplace-buyer-lead-v1"
 
@@ -225,6 +248,32 @@ class BrowserSession:
 
 def _json(body: bytes) -> Any:
     return json.loads(body.decode("utf-8"))
+
+
+def _extract_assignee_candidate_values(html: str) -> list[str]:
+    """Extract the current assignment-picker `<option value="...">` values
+    from rendered Lead-detail HTML (SLICE-0077 contract §5/§7) -- the exact
+    set of AccountIds the signed-in broker could discover and select
+    through the visible `<select name="assignee_account_id">` control,
+    excluding the empty placeholder option."""
+    select_match = re.search(
+        r'<select name="assignee_account_id"[^>]*>(.*?)</select>', html, re.DOTALL
+    )
+    if select_match is None:
+        return []
+    return [
+        value for value in re.findall(r'<option value="([^"]*)"', select_match.group(1)) if value
+    ]
+
+
+def _ensure_account(conn: Any, account_id: str) -> None:
+    """Insert one bare Account row for a seeded membership that is never
+    logged in through the real OIDC flow (`organization_memberships.account_id`
+    is a hard FK to `accounts.account_id`)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO accounts (account_id) VALUES (%s) ON CONFLICT DO NOTHING", [account_id]
+        )
 
 
 def _jpeg_bytes(color: tuple[int, int, int], size: tuple[int, int] = (640, 480)) -> bytes:
@@ -420,6 +469,53 @@ def main() -> int:
                     account_id=AccountId(account_id),
                     organization_id=MarketplaceOrganizationId(_ORG_ID),
                     roles=frozenset({MembershipRole.PUBLISHER}),
+                    state=MembershipState.ACTIVE,
+                ),
+            )
+
+            # SLICE-0077: a second current-ACTIVE same-Organization member
+            # (candidate picker must offer more than just the signed-in
+            # broker), an INACTIVE same-Organization member, and an ACTIVE
+            # member of a *different* Organization -- Task 5 proves neither
+            # of the latter two is ever offered as an assignment candidate.
+            _ensure_account(conn, _SECOND_MEMBER_ACCOUNT_ID)
+            seed_organization_membership(
+                conn,
+                OrganizationMembership(
+                    id=OrganizationMembershipId(_SECOND_MEMBER_MEMBERSHIP_ID),
+                    account_id=AccountId(_SECOND_MEMBER_ACCOUNT_ID),
+                    organization_id=MarketplaceOrganizationId(_ORG_ID),
+                    roles=frozenset({MembershipRole.MEMBER}),
+                    state=MembershipState.ACTIVE,
+                ),
+            )
+            _ensure_account(conn, _INACTIVE_MEMBER_ACCOUNT_ID)
+            seed_organization_membership(
+                conn,
+                OrganizationMembership(
+                    id=OrganizationMembershipId(_INACTIVE_MEMBER_MEMBERSHIP_ID),
+                    account_id=AccountId(_INACTIVE_MEMBER_ACCOUNT_ID),
+                    organization_id=MarketplaceOrganizationId(_ORG_ID),
+                    roles=frozenset({MembershipRole.MEMBER}),
+                    state=MembershipState.INACTIVE,
+                ),
+            )
+            seed_marketplace_organization(
+                conn,
+                MarketplaceOrganization(
+                    id=MarketplaceOrganizationId(_FOREIGN_ORG_ID),
+                    professional_category=ProfessionalCategory.BROKER,
+                    publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+                ),
+            )
+            _ensure_account(conn, _FOREIGN_MEMBER_ACCOUNT_ID)
+            seed_organization_membership(
+                conn,
+                OrganizationMembership(
+                    id=OrganizationMembershipId(_FOREIGN_MEMBER_MEMBERSHIP_ID),
+                    account_id=AccountId(_FOREIGN_MEMBER_ACCOUNT_ID),
+                    organization_id=MarketplaceOrganizationId(_FOREIGN_ORG_ID),
+                    roles=frozenset({MembershipRole.MEMBER}),
                     state=MembershipState.ACTIVE,
                 ),
             )
@@ -891,7 +987,7 @@ def main() -> int:
         rec = TaskRecord(
             task_id="TASK_5",
             title="Lead handling",
-            scenario="Same broker marks the Lead read, tries to assign it, updates its status, sets a follow-up, adds a note, records a contact attempt, and re-finds it via the inbox filters.",
+            scenario="Same broker marks the Lead read, discovers a visible assignment candidate and assigns it, updates its status, sets a follow-up, adds a note, records a contact attempt, and re-finds it via the inbox filters.",
         )
         t0 = time.monotonic()
         try:
@@ -909,45 +1005,137 @@ def main() -> int:
                 assert "Done." in html and "Read" in html, "mark-read did not succeed"
                 version = int(re.search(r'name="expected_version" value="(\d+)"', html).group(1))
 
-            # The only Assign control on this page is a free-text "Account ID"
-            # field; no page anywhere in the Broker Workspace displays the
-            # signed-in broker's own AccountId (or any other member's), and
-            # there is no member picker/directory. A representative broker
-            # has no way to discover a valid value through any visible
-            # surface, so the only thing they could plausibly try is
-            # something they do know -- their own email -- confirming the
-            # control cannot be completed without an operator/API lookup.
+            # SLICE-0077: the Assign control is now a `<select>` populated
+            # from the real assignment-candidate projection -- discover a
+            # valid candidate from the rendered picker itself, never from
+            # prior knowledge of an opaque AccountId.
+            candidate_values = _extract_assignee_candidate_values(html)
+            rec.steps.append(
+                f"discovered {len(candidate_values)} assignment candidate(s) from the rendered picker"
+            )
+            assert candidate_values, "no assignment candidate rendered in the visible picker"
+            assert _INACTIVE_MEMBER_ACCOUNT_ID not in candidate_values, (
+                "an INACTIVE same-Organization member was offered as a candidate"
+            )
+            assert _FOREIGN_MEMBER_ACCOUNT_ID not in candidate_values, (
+                "a foreign-Organization member was offered as a candidate"
+            )
+            assert account_id in candidate_values, (
+                "the signed-in broker's own ACTIVE membership was not offered as a candidate"
+            )
+            assert _SECOND_MEMBER_ACCOUNT_ID in candidate_values, (
+                "a second current-ACTIVE same-Organization member was not offered as a candidate"
+            )
+
             status, _, body = session.post_form(
                 lead_detail_url,
                 {
                     "action": "assign",
-                    "assignee_account_id": "validation-broker@example.invalid",
+                    "assignee_account_id": account_id,
                     "expected_version": str(version),
                 },
                 origin=web_base,
             )
             rec.steps.append(
-                f"POST assign using the only identifier a broker could plausibly know (their own email) -> {status}"
+                f"POST assign using a candidate discovered from the visible picker -> {status}"
             )
             html = body.decode("utf-8")
-            assignment_failed = (
-                "not a current active member" in html
-                or "wasn't valid" in html
-                or "That input wasn't valid." in html
+            assert "Done." in html and f"Assigned: {account_id}" in html, (
+                f"discoverable-candidate assignment did not succeed: {html[:400]!r}"
             )
-            if assignment_failed:
-                rec.friction.append(
-                    "BLOCKING: 'Assign to Account ID' requires an opaque AccountId that is never "
-                    "displayed anywhere in the Broker Workspace (not on the workspace landing, not "
-                    "on the Lead page, nowhere) and there is no Organization member directory/picker. "
-                    "A representative broker cannot discover any valid value through the visible UI "
-                    "and so cannot complete Lead assignment without operator/API assistance."
+            version = int(re.search(r'name="expected_version" value="(\d+)"', html).group(1))
+
+            # Reassign to the second candidate, then simulate that member's
+            # Organization membership being deactivated by someone else
+            # between this read and a later (stale) resubmission -- contract
+            # §5/§7: the mutation must still fail closed, and the Lead's
+            # stored historical assignee must not be silently rewritten
+            # merely because the candidate list no longer offers it
+            # (contract §6).
+            status, _, body = session.post_form(
+                lead_detail_url,
+                {
+                    "action": "assign",
+                    "assignee_account_id": _SECOND_MEMBER_ACCOUNT_ID,
+                    "expected_version": str(version),
+                },
+                origin=web_base,
+            )
+            rec.steps.append(f"POST reassign to second active candidate -> {status}")
+            html = body.decode("utf-8")
+            assert "Done." in html and f"Assigned: {_SECOND_MEMBER_ACCOUNT_ID}" in html, (
+                f"reassignment to second candidate did not succeed: {html[:400]!r}"
+            )
+            version = int(re.search(r'name="expected_version" value="(\d+)"', html).group(1))
+
+            conn = psycopg.connect(url)
+            try:
+                update_membership_state(
+                    conn,
+                    OrganizationMembershipId(_SECOND_MEMBER_MEMBERSHIP_ID),
+                    MembershipState.INACTIVE,
                 )
-                rec.operator_assistance_required = True
-            else:
-                rec.steps.append(
-                    "assignment unexpectedly succeeded with an email-shaped identifier"
-                )
+                conn.commit()
+            finally:
+                conn.close()
+            rec.steps.append(
+                "simulated out-of-band deactivation of the currently-assigned second candidate's membership"
+            )
+
+            status, _, body = session.get(lead_detail_url)
+            rec.steps.append(f"GET Lead detail after deactivation -> {status}")
+            html = body.decode("utf-8")
+            assert f"Assigned: {_SECOND_MEMBER_ACCOUNT_ID}" in html, (
+                "historical assignee was silently rewritten/dropped after the member went inactive"
+            )
+            candidate_values_after = _extract_assignee_candidate_values(html)
+            assert _SECOND_MEMBER_ACCOUNT_ID not in candidate_values_after, (
+                "a now-inactive member is still offered as a new assignment candidate"
+            )
+            version = int(re.search(r'name="expected_version" value="(\d+)"', html).group(1))
+
+            status, _, body = session.post_form(
+                lead_detail_url,
+                {
+                    "action": "assign",
+                    "assignee_account_id": _SECOND_MEMBER_ACCOUNT_ID,
+                    "expected_version": str(version),
+                },
+                origin=web_base,
+            )
+            rec.steps.append(
+                f"POST stale resubmission targeting the now-inactive member -> {status}"
+            )
+            html = body.decode("utf-8")
+            assert "not a current active member" in html, (
+                f"stale reassignment to a deactivated member was not rejected: {html[:400]!r}"
+            )
+            assert f"Assigned: {_SECOND_MEMBER_ACCOUNT_ID}" in html, (
+                "rejected reassignment unexpectedly altered the stored historical assignee"
+            )
+            rec.steps.append(
+                "confirmed: mutation fails closed on a stale/deactivated candidate, and the stored "
+                "historical assignee is not silently rewritten"
+            )
+
+            # Restore a current-ACTIVE assignee before continuing the rest
+            # of the task (status/follow-up/note/contact-attempt/re-find
+            # below are independent of who the Lead is assigned to, but a
+            # clean known state keeps this proof unambiguous).
+            status, _, body = session.post_form(
+                lead_detail_url,
+                {
+                    "action": "assign",
+                    "assignee_account_id": account_id,
+                    "expected_version": str(version),
+                },
+                origin=web_base,
+            )
+            html = body.decode("utf-8")
+            assert "Done." in html and f"Assigned: {account_id}" in html, (
+                f"final reassignment to the signed-in broker did not succeed: {html[:400]!r}"
+            )
+            version = int(re.search(r'name="expected_version" value="(\d+)"', html).group(1))
 
             status, _, body = session.post_form(
                 lead_detail_url,
@@ -1016,7 +1204,7 @@ def main() -> int:
                 "realistic multi-Lead inbox volume."
             )
 
-            rec.outcome = "BLOCKING_DEFICIENCY" if assignment_failed else "PASS"
+            rec.outcome = "PASS"
         except Exception as exc:
             rec.outcome = "BLOCKING_DEFICIENCY"
             rec.errors_recovery.append(str(exc))
@@ -1137,7 +1325,13 @@ def main() -> int:
         if obs.errors_recovery:
             print("   ERROR:", obs.errors_recovery[-1])
 
-        overall_ok = all(r.outcome == "PASS" for r in records if r.task_id != "TASK_5")
+        # SLICE-0077 contract §7: explicitly state whether the accepted
+        # SLICE-0076 TASK_5 blocking deficiency (undiscoverable opaque
+        # AccountId assignment) is CLOSED or remains OPEN -- no more
+        # excluding TASK_5 from the overall result.
+        task_5_record = next(r for r in records if r.task_id == "TASK_5")
+        slice_0076_blocker_status = "CLOSED" if task_5_record.outcome == "PASS" else "OPEN"
+        overall_ok = all(r.outcome == "PASS" for r in records)
         print("=== EVIDENCE JSON BEGIN ===")
         print(
             json.dumps(
@@ -1147,6 +1341,7 @@ def main() -> int:
                     "native_listing_id": native_listing_id,
                     "lead_id": lead_id,
                     "setup_seconds": round(setup_seconds, 3),
+                    "slice_0076_task_5_blocker_status": slice_0076_blocker_status,
                     "tasks": [r.to_dict() for r in records],
                 },
                 indent=2,
@@ -1154,7 +1349,8 @@ def main() -> int:
         )
         print("=== EVIDENCE JSON END ===")
 
-        print(f"\nHARNESS RESULT -> {'PASS' if overall_ok else 'SEE TASK_5 FINDING'}")
+        print(f"\nSLICE-0076 TASK_5 blocking deficiency -> {slice_0076_blocker_status}")
+        print(f"HARNESS RESULT -> {'PASS' if overall_ok else 'SEE TASK FINDINGS'}")
         return 0
     finally:
         for proc in (issuer_proc, api_proc, web_proc):

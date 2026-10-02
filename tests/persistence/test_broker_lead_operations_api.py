@@ -415,6 +415,144 @@ def test_membership_revocation_is_observed_fresh(client: TestClient, api_url: st
 
 
 # ---------------------------------------------------------------------------
+# SLICE-0077: Lead assignment candidate projection (contract §3/§4)
+# ---------------------------------------------------------------------------
+
+
+def test_unauthenticated_candidates_read_is_rejected(client: TestClient, api_url: str) -> None:
+    _seed_membership(api_url, org_id="ORG-CAND", account_id="ACC-1", membership_id="OM-CAND-1")
+    resp = client.get("/api/broker/organizations/ORG-CAND/leads/assignment-candidates")
+    assert resp.status_code == 401
+
+
+def test_candidates_foreign_and_unknown_organization_share_identical_not_found_shape(
+    client: TestClient, api_url: str
+) -> None:
+    _seed_membership(api_url, org_id="ORG-CAND-A", account_id="ACC-1", membership_id="OM-CAND-A1")
+    _log_in(client, "ACC-1")
+    unknown = client.get("/api/broker/organizations/ORG-CAND-UNKNOWN/leads/assignment-candidates")
+    foreign = client.get("/api/broker/organizations/ORG-CAND-B/leads/assignment-candidates")
+    assert unknown.status_code == 404
+    assert foreign.status_code == 404
+    assert unknown.json() == foreign.json()
+
+
+def test_candidates_require_mfa_when_privileged_role(client: TestClient, api_url: str) -> None:
+    # Default seeded role is PUBLISHER, a privileged (MFA-requiring) role.
+    _seed_membership(
+        api_url, org_id="ORG-CAND-MFA", account_id="ACC-mfa", membership_id="OM-CAND-MFA"
+    )
+    _log_in(client, "ACC-mfa", mfa=False)
+    resp = client.get("/api/broker/organizations/ORG-CAND-MFA/leads/assignment-candidates")
+    assert resp.status_code == 403
+    assert resp.json()["error"] == "mfa_required"
+
+
+def test_candidates_exclude_inactive_and_foreign_members(client: TestClient, api_url: str) -> None:
+    _seed_membership(
+        api_url,
+        org_id="ORG-CAND-X",
+        account_id="ACC-active",
+        membership_id="OM-CAND-active",
+        roles=frozenset({MembershipRole.PUBLISHER, MembershipRole.ADMIN}),
+    )
+    _seed_membership(
+        api_url,
+        org_id="ORG-CAND-X",
+        account_id="ACC-inactive",
+        membership_id="OM-CAND-inactive",
+        state=MembershipState.INACTIVE,
+    )
+    _seed_membership(
+        api_url, org_id="ORG-CAND-Y", account_id="ACC-foreign", membership_id="OM-CAND-foreign"
+    )
+    _log_in(client, "ACC-active")
+
+    resp = client.get("/api/broker/organizations/ORG-CAND-X/leads/assignment-candidates")
+    assert resp.status_code == 200
+    body = resp.json()
+    account_ids = {candidate["account_id"] for candidate in body["candidates"]}
+    assert account_ids == {"ACC-active"}
+
+    candidate = body["candidates"][0]
+    assert set(candidate["roles"]) == {"ADMIN", "PUBLISHER"}
+    assert candidate["label"].startswith("ACC-active")
+
+
+def test_assignment_fails_closed_when_candidate_deactivated_before_mutation(
+    client: TestClient, api_url: str
+) -> None:
+    """Contract §3/§5: the candidate projection is convenience/read state
+    only -- a membership change between reading candidates and submitting
+    assignment must still be rejected by the existing mutation-time check,
+    never silently accepted because it was once a valid candidate."""
+    lead_id = _publish_listing_and_create_lead(api_url, listing_id="LCAND1", org_id="ORG-CAND-R")
+    _seed_membership(api_url, org_id="ORG-CAND-R", account_id="ACC-r1", membership_id="OM-CAND-R1")
+    _seed_membership(api_url, org_id="ORG-CAND-R", account_id="ACC-r2", membership_id="OM-CAND-R2")
+    _log_in(client, "ACC-r1")
+
+    candidates_resp = client.get("/api/broker/organizations/ORG-CAND-R/leads/assignment-candidates")
+    assert candidates_resp.status_code == 200
+    account_ids = {c["account_id"] for c in candidates_resp.json()["candidates"]}
+    assert account_ids == {"ACC-r1", "ACC-r2"}
+
+    conn = psycopg.connect(api_url)
+    try:
+        update_membership_state(
+            conn, OrganizationMembershipId("OM-CAND-R2"), MembershipState.INACTIVE
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    assign_resp = client.post(
+        f"/api/broker/organizations/ORG-CAND-R/leads/{lead_id}/assignment",
+        headers=_csrf_headers(),
+        json={"assignee_account_id": "ACC-r2", "expected_version": 0},
+    )
+    assert assign_resp.status_code == 422
+    assert assign_resp.json()["error"] == "assignee_not_active_member"
+
+
+def test_historical_inactive_assignee_is_not_rewritten_after_deactivation(
+    client: TestClient, api_url: str
+) -> None:
+    """Contract §6: a Lead already assigned to an AccountId that later
+    becomes INACTIVE must keep showing that historical assignment on
+    authoritative re-read, even though the candidate list no longer offers
+    that AccountId for a *new* assignment."""
+    lead_id = _publish_listing_and_create_lead(api_url, listing_id="LCAND2", org_id="ORG-CAND-H")
+    _seed_membership(api_url, org_id="ORG-CAND-H", account_id="ACC-h1", membership_id="OM-CAND-H1")
+    _seed_membership(api_url, org_id="ORG-CAND-H", account_id="ACC-h2", membership_id="OM-CAND-H2")
+    _log_in(client, "ACC-h1")
+
+    assign_resp = client.post(
+        f"/api/broker/organizations/ORG-CAND-H/leads/{lead_id}/assignment",
+        headers=_csrf_headers(),
+        json={"assignee_account_id": "ACC-h2", "expected_version": 0},
+    )
+    assert assign_resp.status_code == 200
+    assert assign_resp.json()["operational_state"]["assigned_account_id"] == "ACC-h2"
+
+    conn = psycopg.connect(api_url)
+    try:
+        update_membership_state(
+            conn, OrganizationMembershipId("OM-CAND-H2"), MembershipState.INACTIVE
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    detail_resp = client.get(f"/api/broker/organizations/ORG-CAND-H/leads/{lead_id}")
+    assert detail_resp.status_code == 200
+    assert detail_resp.json()["operational_state"]["assigned_account_id"] == "ACC-h2"
+
+    candidates_resp = client.get("/api/broker/organizations/ORG-CAND-H/leads/assignment-candidates")
+    account_ids = {c["account_id"] for c in candidates_resp.json()["candidates"]}
+    assert "ACC-h2" not in account_ids
+
+
+# ---------------------------------------------------------------------------
 # Full operational happy path (contract §5/§6/§7/§8/§8A)
 # ---------------------------------------------------------------------------
 

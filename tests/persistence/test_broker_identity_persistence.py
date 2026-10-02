@@ -31,6 +31,8 @@ from hullq.domain.publishing_eligibility import (
 )
 from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
 from hullq.persistence.broker_identity import (
+    MAX_LEAD_ASSIGNMENT_CANDIDATES,
+    fetch_active_members_for_organization,
     fetch_active_memberships_for_account,
     fetch_marketplace_organization,
     fetch_membership_for_account_and_organization,
@@ -397,6 +399,194 @@ class TestOrganizationMembershipDirectory:
         assert {
             m.organization_id.value for m in fetch_active_memberships_for_account(conn, account_b)
         } == {"ORG-1"}
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0077: current-ACTIVE-member read for the Lead assignment candidate
+# projection (contract §3) -- organization-scoped, not account-scoped.
+# ---------------------------------------------------------------------------
+
+
+class TestActiveMembersForOrganization:
+    def test_only_active_same_organization_members_returned(self, conn: Any) -> None:
+        account_active = get_or_create_account_for_identity(
+            conn, provider=Provider.AUTH0, issuer="https://iss/", subject="sub-active"
+        ).account_id
+        account_inactive = get_or_create_account_for_identity(
+            conn, provider=Provider.AUTH0, issuer="https://iss/", subject="sub-inactive"
+        ).account_id
+        account_foreign = get_or_create_account_for_identity(
+            conn, provider=Provider.AUTH0, issuer="https://iss/", subject="sub-foreign"
+        ).account_id
+        seed_marketplace_organization(conn, _org("ORG-1"))
+        seed_marketplace_organization(conn, _org("ORG-2"))
+        seed_organization_membership(
+            conn,
+            OrganizationMembership(
+                id=OrganizationMembershipId("OM-active"),
+                account_id=account_active,
+                organization_id=MarketplaceOrganizationId("ORG-1"),
+                roles=frozenset({MembershipRole.PUBLISHER}),
+                state=MembershipState.ACTIVE,
+            ),
+        )
+        seed_organization_membership(
+            conn,
+            OrganizationMembership(
+                id=OrganizationMembershipId("OM-inactive"),
+                account_id=account_inactive,
+                organization_id=MarketplaceOrganizationId("ORG-1"),
+                roles=frozenset({MembershipRole.MEMBER}),
+                state=MembershipState.INACTIVE,
+            ),
+        )
+        seed_organization_membership(
+            conn,
+            OrganizationMembership(
+                id=OrganizationMembershipId("OM-foreign"),
+                account_id=account_foreign,
+                organization_id=MarketplaceOrganizationId("ORG-2"),
+                roles=frozenset({MembershipRole.OWNER}),
+                state=MembershipState.ACTIVE,
+            ),
+        )
+        conn.commit()
+
+        members = fetch_active_members_for_organization(conn, MarketplaceOrganizationId("ORG-1"))
+        assert {m.account_id for m in members} == {account_active}
+        assert members[0].roles == frozenset({MembershipRole.PUBLISHER})
+
+    def test_zero_active_members_is_empty_list_not_error(self, conn: Any) -> None:
+        seed_marketplace_organization(conn, _org("ORG-EMPTY"))
+        conn.commit()
+        assert (
+            fetch_active_members_for_organization(conn, MarketplaceOrganizationId("ORG-EMPTY"))
+            == []
+        )
+
+    def test_deactivation_removes_member_from_next_read(self, conn: Any) -> None:
+        account = get_or_create_account_for_identity(
+            conn, provider=Provider.AUTH0, issuer="https://iss/", subject="sub-1"
+        ).account_id
+        seed_marketplace_organization(conn, _org("ORG-1"))
+        seed_organization_membership(
+            conn,
+            OrganizationMembership(
+                id=OrganizationMembershipId("OM-1"),
+                account_id=account,
+                organization_id=MarketplaceOrganizationId("ORG-1"),
+                roles=frozenset({MembershipRole.MEMBER}),
+                state=MembershipState.ACTIVE,
+            ),
+        )
+        conn.commit()
+        assert (
+            len(fetch_active_members_for_organization(conn, MarketplaceOrganizationId("ORG-1")))
+            == 1
+        )
+
+        update_membership_state(conn, OrganizationMembershipId("OM-1"), MembershipState.INACTIVE)
+        conn.commit()
+        assert fetch_active_members_for_organization(conn, MarketplaceOrganizationId("ORG-1")) == []
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0077 amendment (Finding A): the candidate projection must be a
+# *bounded* read, not merely tenant-scoped/state-filtered.
+# ---------------------------------------------------------------------------
+
+
+def _seed_active_member(conn: Any, *, org_id: str, suffix: str) -> AccountId:
+    account = get_or_create_account_for_identity(
+        conn, provider=Provider.AUTH0, issuer="https://iss/", subject=f"sub-{suffix}"
+    ).account_id
+    seed_organization_membership(
+        conn,
+        OrganizationMembership(
+            id=OrganizationMembershipId(f"OM-{suffix}"),
+            account_id=account,
+            organization_id=MarketplaceOrganizationId(org_id),
+            roles=frozenset({MembershipRole.MEMBER}),
+            state=MembershipState.ACTIVE,
+        ),
+    )
+    return account
+
+
+class TestLeadAssignmentCandidateBound:
+    def test_fewer_than_bound_members_all_appear(self, conn: Any) -> None:
+        seed_marketplace_organization(conn, _org("ORG-FEW"))
+        expected = {
+            _seed_active_member(conn, org_id="ORG-FEW", suffix=f"few-{i}") for i in range(3)
+        }
+        conn.commit()
+        members = fetch_active_members_for_organization(conn, MarketplaceOrganizationId("ORG-FEW"))
+        assert {m.account_id for m in members} == expected
+
+    def test_more_than_bound_returns_exactly_the_bound_in_deterministic_order(
+        self, conn: Any
+    ) -> None:
+        seed_marketplace_organization(conn, _org("ORG-MANY"))
+        all_accounts = [
+            _seed_active_member(conn, org_id="ORG-MANY", suffix=f"many-{i}") for i in range(5)
+        ]
+        conn.commit()
+
+        limited = fetch_active_members_for_organization(
+            conn, MarketplaceOrganizationId("ORG-MANY"), limit=3
+        )
+        assert len(limited) == 3
+
+        expected_order = sorted(a.value for a in all_accounts)[:3]
+        assert [m.account_id.value for m in limited] == expected_order
+
+        # Calling again must reproduce the identical ordered truncation --
+        # the bound is deterministic, not an arbitrary/unstable subset.
+        limited_again = fetch_active_members_for_organization(
+            conn, MarketplaceOrganizationId("ORG-MANY"), limit=3
+        )
+        assert [m.account_id.value for m in limited_again] == expected_order
+
+    def test_limit_override_is_itself_clamped_to_the_hard_bound(self, conn: Any) -> None:
+        seed_marketplace_organization(conn, _org("ORG-CLAMP"))
+        _seed_active_member(conn, org_id="ORG-CLAMP", suffix="clamp-1")
+        conn.commit()
+        # Requesting more than MAX_LEAD_ASSIGNMENT_CANDIDATES must not raise
+        # or bypass the hard ceiling -- it is clamped down, not up.
+        members = fetch_active_members_for_organization(
+            conn,
+            MarketplaceOrganizationId("ORG-CLAMP"),
+            limit=MAX_LEAD_ASSIGNMENT_CANDIDATES + 1000,
+        )
+        assert len(members) == 1
+
+    def test_inactive_and_foreign_members_never_consume_the_bound(self, conn: Any) -> None:
+        seed_marketplace_organization(conn, _org("ORG-NOISE"))
+        seed_marketplace_organization(conn, _org("ORG-NOISE-FOREIGN"))
+        active_accounts = {
+            _seed_active_member(conn, org_id="ORG-NOISE", suffix=f"noise-active-{i}")
+            for i in range(2)
+        }
+        inactive_account = get_or_create_account_for_identity(
+            conn, provider=Provider.AUTH0, issuer="https://iss/", subject="sub-noise-inactive"
+        ).account_id
+        seed_organization_membership(
+            conn,
+            OrganizationMembership(
+                id=OrganizationMembershipId("OM-noise-inactive"),
+                account_id=inactive_account,
+                organization_id=MarketplaceOrganizationId("ORG-NOISE"),
+                roles=frozenset({MembershipRole.MEMBER}),
+                state=MembershipState.INACTIVE,
+            ),
+        )
+        _seed_active_member(conn, org_id="ORG-NOISE-FOREIGN", suffix="noise-foreign")
+        conn.commit()
+
+        members = fetch_active_members_for_organization(
+            conn, MarketplaceOrganizationId("ORG-NOISE"), limit=2
+        )
+        assert {m.account_id for m in members} == active_accounts
 
 
 # ---------------------------------------------------------------------------
