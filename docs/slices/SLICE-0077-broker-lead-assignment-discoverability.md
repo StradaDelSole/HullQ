@@ -1,7 +1,7 @@
 # SLICE-0077 — Broker Lead Assignment Discoverability Remediation
 
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
 **Stage:** Broker Workspace Launch Gate remediation  
 **Depends on:** SLICE-0076 owner-accepted / DONE  
 **Normative contract:** `specs/BROKER_LEAD_ASSIGNMENT_DISCOVERABILITY_CONTRACT.v0.1.md`
@@ -92,21 +92,21 @@ The validation harness must fail if assignment again requires manual/opaque iden
 
 ## Acceptance criteria
 
-- [ ] active same-Organization members appear as assignment candidates;
-- [ ] inactive members do not appear;
-- [ ] foreign members do not appear;
-- [ ] unauthorized/unknown Organization access remains non-enumerating;
-- [ ] MFA boundary remains unchanged;
-- [ ] browser has no free-text opaque AccountId requirement for assignment;
-- [ ] candidate selection submits exact AccountId and assignment succeeds;
-- [ ] authoritative re-read renders the assigned AccountId;
-- [ ] membership deactivation between candidate read and mutation fails closed;
-- [ ] an existing inactive historical assignee is not silently rewritten;
-- [ ] focused Task 5 completes without operator/API/SQL assistance;
-- [ ] retained evidence explicitly closes or preserves the SLICE-0076 blocker;
-- [ ] no production application scope outside this remediation changes;
-- [ ] focused local validation + repository validation pass;
-- [ ] exact pushed HEAD remote CI + Manufacturer artifact reproducibility pass.
+- [x] active same-Organization members appear as assignment candidates;
+- [x] inactive members do not appear;
+- [x] foreign members do not appear;
+- [x] unauthorized/unknown Organization access remains non-enumerating;
+- [x] MFA boundary remains unchanged;
+- [x] browser has no free-text opaque AccountId requirement for assignment;
+- [x] candidate selection submits exact AccountId and assignment succeeds;
+- [x] authoritative re-read renders the assigned AccountId;
+- [x] membership deactivation between candidate read and mutation fails closed;
+- [x] an existing inactive historical assignee is not silently rewritten;
+- [x] focused Task 5 completes without operator/API/SQL assistance;
+- [x] retained evidence explicitly closes or preserves the SLICE-0076 blocker;
+- [x] no production application scope outside this remediation changes;
+- [x] focused local validation + repository validation pass;
+- [ ] exact pushed HEAD remote CI + Manufacturer artifact reproducibility pass (NOT VERIFIED locally; requires observing GitHub Actions on the exact pushed HEAD).
 
 ## Expected touch points
 
