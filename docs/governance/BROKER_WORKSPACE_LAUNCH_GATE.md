@@ -4,7 +4,7 @@
 **Accepted:** 2026-09-13  
 **Purpose:** hard product-quality gate preventing broker self-service, paid broker plans or public launch before the professional workspace is genuinely launch-ready
 
-<!-- BROKER_WORKSPACE_LAUNCH_GATE_STATUS: NOT_READY -->
+<!-- BROKER_WORKSPACE_LAUNCH_GATE_STATUS: PASS -->
 <!-- BROKER_SELF_SERVICE_PILOT_STATUS: NOT_STARTED -->
 <!-- PAID_BROKER_PLAN_STATUS: NOT_STARTED -->
 
@@ -275,3 +275,14 @@ Reassess this gate when a material broker-product boundary changes, including:
 - material authorization model change.
 
 Reassessment does not automatically reset PASS, but it must verify that the accepted evidence still matches the active production boundary.
+
+
+## PASS record — 2026-10-03
+
+The gate moved to PASS after owner-accepted SLICE-0076 usability/competitive evidence and owner-accepted SLICE-0077 remediation closed the only material launch-blocking deficiency identified by that evidence.
+
+Canonical retained record:
+
+`docs/validation/BROKER_WORKSPACE_LAUNCH_GATE_PASS_EVIDENCE_2026-10.md`
+
+This PASS does not activate the broker pilot. The independently controlling Security Hardening & Adversarial Validation gate remains mandatory before `BROKER_SELF_SERVICE_PILOT_STATUS = ACTIVE`.

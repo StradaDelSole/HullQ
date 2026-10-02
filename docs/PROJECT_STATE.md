@@ -5,7 +5,7 @@
 
 **Updated:** 2026-10-01  
 **Latest owner-accepted / DONE slice:** SLICE-0077  
-**Current queue:** SLICE-0078 — **UNSELECTED** pending fresh post-SLICE-0077 Decision/Implementation Reconciliation and workflow reassessment.  
+**Current queue:** SLICE-0078 — **Holistic Security Hardening & Adversarial Validation — READINESS IN REVIEW**. Broker Workspace Launch Gate product evidence now supports PASS; the mandatory pre-pilot Security Hardening gate is the selected next capability. Implementation starts only after readiness review/gates/merge through `START_SLICE.bat`.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -234,7 +234,7 @@ EXTERNAL_OWNER_DIRECT_PRODUCTION_DATA_STATUS: NOT_PRESENT
 PRODUCTION_PILOT_STATUS: NOT_STARTED
 PUBLIC_PRODUCTION_LAUNCH_STATUS: NOT_STARTED
 
-BROKER_WORKSPACE_LAUNCH_GATE_STATUS: NOT_READY
+BROKER_WORKSPACE_LAUNCH_GATE_STATUS: PASS
 BROKER_SELF_SERVICE_PILOT_STATUS: NOT_STARTED
 PAID_BROKER_PLAN_STATUS: NOT_STARTED
 ```
@@ -334,9 +334,9 @@ Next queue number:
 SLICE-0078
 ```
 
-**Capability:** UNSELECTED.
+**Capability:** Holistic Security Hardening & Adversarial Validation.
 
-Fresh post-SLICE-0077 Decision/Implementation Reconciliation and workflow reassessment must run before selecting or readying SLICE-0078. The Broker Workspace Launch Gate governance reconsideration and the separately DUE Security Hardening gate must be explicitly reconciled.
+Fresh post-SLICE-0077 reconciliation confirms the Broker Workspace Launch Gate product evidence supports PASS after SLICE-0077 closed the only accepted launch-blocking deficiency. SLICE-0078 owns the separately mandatory pre-pilot Security Hardening gate; no external pilot is authorized by this selection.
 
 ## Development workflow
 
@@ -351,6 +351,6 @@ Fresh post-SLICE-0077 Decision/Implementation Reconciliation and workflow reasse
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0077 is owner-accepted and implementation-merged; SLICE-0078 remains unselected until fresh reassessment/readiness.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0077 is owner-accepted and finished; SLICE-0078 Holistic Security Hardening & Adversarial Validation is selected and in readiness review.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
