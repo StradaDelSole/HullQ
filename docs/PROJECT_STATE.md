@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0077 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0078 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0078 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0079 -->
 
-**Updated:** 2026-10-01  
-**Latest owner-accepted / DONE slice:** SLICE-0077  
-**Current queue:** SLICE-0078 — **Holistic Security Hardening & Adversarial Validation — READY ON MAIN**. Post-SLICE-0077 reconciliation, Broker Workspace Launch Gate PASS evidence, independent readiness review and required remote gates are complete; execution starts only through `START_SLICE.bat`.  
+**Updated:** 2026-10-03  
+**Latest owner-accepted / DONE slice:** SLICE-0078  
+**Current queue:** SLICE-0079 — **UNSELECTED** pending fresh post-SLICE-0078 Decision/Implementation Reconciliation and workflow reassessment.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -162,6 +162,7 @@ SLICE-0040 marketplace identity/truth separation
 → SLICE-0075 Broker Performance & Funnel Snapshot
 → SLICE-0076 Broker Workspace Launch Validation: Usability & Competitive Benchmark
 → SLICE-0077 Broker Lead Assignment Discoverability Remediation
+→ SLICE-0078 Holistic Security Hardening & Adversarial Validation
 ```
 
 Latest closures:
@@ -189,6 +190,7 @@ docs/slices/SLICE-0074-acceptance-closure.md
 docs/slices/SLICE-0075-acceptance-closure.md
 docs/slices/SLICE-0076-acceptance-closure.md
 docs/slices/SLICE-0077-acceptance-closure.md
+docs/slices/SLICE-0078-acceptance-closure.md
 ```
 
 ## Accepted technical Search result
@@ -208,7 +210,7 @@ The accepted technical native Search criteria count remains `2`. SLICE-0071 adds
 
 ## Security hardening direction
 
-A dedicated holistic security hardening and adversarial-validation pass is mandatory before the first real external broker self-service pilot.
+The dedicated holistic security hardening and adversarial-validation pass required before the first real external broker self-service pilot is owner-accepted and complete through SLICE-0078.
 
 Canonical gate:
 
@@ -216,7 +218,7 @@ Canonical gate:
 docs/governance/SECURITY_HARDENING_GATE.md
 ```
 
-It requires threat-model coverage, cross-tenant/auth/MFA/media/privacy/supply-chain/deployment adversarial testing, retained proof, independent exact-head review and explicit Project Owner acceptance. Open Critical or High findings block the pilot. Ordinary slice-level security tests do not replace this gate.
+The accepted gate required threat-model coverage, cross-tenant/auth/MFA/media/privacy/supply-chain/deployment adversarial testing, retained proof, independent exact-head review and explicit Project Owner acceptance. SLICE-0078 satisfied that gate. SEC-0078-07 is retained as an explicit Owner-risk-accepted currently-unreachable upstream advisory with mandatory re-review triggers.
 
 ## Post-SLICE-0051 trigger gates
 
@@ -292,13 +294,13 @@ The Project Owner accepted the cross-cutting overall-MVP register:
 docs/governance/OVERALL_MVP_CAPABILITY_REGISTER.md
 ```
 
-Every primary slice selected after SLICE-0072 must reconcile that register before readiness. Current broker-specific DUE items include the pre-pilot usability/competitive benchmark and the separately accepted Security Hardening & Adversarial Validation gate; neither is waived by the other.
+Every primary slice selected after SLICE-0072 must reconcile that register before readiness. The pre-pilot usability/competitive benchmark and the dedicated Security Hardening & Adversarial Validation gate are now accepted as complete. Remaining Overall MVP obligations continue to be governed by their existing triggers and readiness rules.
 
 ## What remains unbuilt
 
 Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; production email-provider activation; buyer-contact email verification; periodic/broader broker analytics beyond the accepted factual SLICE-0075 snapshot; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-SLICE-0077 is owner-accepted and merged. The accepted SLICE-0076 Lead-assignment blocking deficiency is now CLOSED through a bounded same-Organization ACTIVE-member picker backed by the existing server-authoritative assignment mutation. Broker Workspace Launch Gate governance status requires separate reconsideration and is not automatically changed by slice acceptance. The separate mandatory pre-pilot Security Hardening & Adversarial Validation gate remains controlling.
+SLICE-0078 is owner-accepted and merged. The dedicated pre-pilot Security Hardening & Adversarial Validation gate is PASS after exact-head independent review, remediation of all reachable Critical/High findings, explicit Owner risk acceptance of SEC-0078-07, and successful CI/reproducibility. Broker Workspace Launch Gate is also PASS. No broker self-service pilot, paid plan, production pilot or public launch has started.
 
 ## Broker launch execution focus
 
@@ -331,12 +333,12 @@ Large retained research artifacts are acknowledged as repository-hygiene debt, n
 Next queue number:
 
 ```text
-SLICE-0078
+SLICE-0079
 ```
 
-**Capability:** Holistic Security Hardening & Adversarial Validation.
+**Capability:** UNSELECTED.
 
-Fresh post-SLICE-0077 reconciliation confirms the Broker Workspace Launch Gate product evidence supports PASS after SLICE-0077 closed the only accepted launch-blocking deficiency. SLICE-0078 owns the separately mandatory pre-pilot Security Hardening gate; no external pilot is authorized by this selection.
+Fresh post-SLICE-0078 Decision/Implementation Reconciliation and workflow reassessment must run before selecting or readying SLICE-0079. No external pilot, paid plan or public launch is authorized merely by SLICE-0078 acceptance.
 
 ## Development workflow
 
@@ -351,6 +353,6 @@ Fresh post-SLICE-0077 reconciliation confirms the Broker Workspace Launch Gate p
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0077 is owner-accepted and finished; SLICE-0078 Holistic Security Hardening & Adversarial Validation is READY ON MAIN and may start only when the Project Owner runs `START_SLICE.bat`.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0078 is owner-accepted and implementation-merged; SLICE-0079 remains unselected until fresh reassessment/readiness.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
