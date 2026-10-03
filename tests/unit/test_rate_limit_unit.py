@@ -82,9 +82,7 @@ class TestBoundedRetainedState:
         # Requirement 1: the bounded-state mechanism must not alter the
         # plain fixed-window semantics proven by TestAllow above.
         clock = _FakeClock()
-        limiter = FixedWindowRateLimiter(
-            limit=3, window_seconds=60.0, max_keys=100, clock=clock
-        )
+        limiter = FixedWindowRateLimiter(limit=3, window_seconds=60.0, max_keys=100, clock=clock)
         assert [limiter.allow("k") for _ in range(3)] == [True, True, True]
         assert limiter.allow("k") is False
         clock.advance(60.0)
@@ -96,9 +94,7 @@ class TestBoundedRetainedState:
         # shrink retained state back down once their window has lapsed,
         # not merely stay capped at max_keys forever.
         clock = _FakeClock()
-        limiter = FixedWindowRateLimiter(
-            limit=5, window_seconds=10.0, max_keys=1_000, clock=clock
-        )
+        limiter = FixedWindowRateLimiter(limit=5, window_seconds=10.0, max_keys=1_000, clock=clock)
         for i in range(200):
             limiter.allow(f"burst-{i}")
         assert len(limiter._windows) == 200
@@ -115,9 +111,7 @@ class TestBoundedRetainedState:
         # seen key *within the same window* (so nothing has expired yet to
         # reclaim), retained state must never exceed max_keys.
         clock = _FakeClock()
-        limiter = FixedWindowRateLimiter(
-            limit=5, window_seconds=60.0, max_keys=50, clock=clock
-        )
+        limiter = FixedWindowRateLimiter(limit=5, window_seconds=60.0, max_keys=50, clock=clock)
         for i in range(5_000):
             limiter.allow(f"attacker-key-{i}")
             assert len(limiter._windows) <= 50
@@ -131,9 +125,7 @@ class TestBoundedRetainedState:
         # eviction pressure must fall on the cold/never-reused flood keys,
         # never on the key that keeps actually being used.
         clock = _FakeClock()
-        limiter = FixedWindowRateLimiter(
-            limit=3, window_seconds=60.0, max_keys=10, clock=clock
-        )
+        limiter = FixedWindowRateLimiter(limit=3, window_seconds=60.0, max_keys=10, clock=clock)
         assert limiter.allow("legit") is True
 
         for i in range(500):
