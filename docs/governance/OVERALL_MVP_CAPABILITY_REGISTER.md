@@ -226,7 +226,7 @@ Controlling gate: docs/governance/PRODUCTION_READINESS_GATE.md.
 | MVP-PROD-009 | smoke checks / migration verification / release runbook | before production gate PASS | PENDING |
 | MVP-PROD-010 | incident communication/status path | before broad public production | PENDING |
 | MVP-PROD-011 | incident-response/post-incident operating procedure | overall production MVP | PENDING |
-| MVP-PROD-012 | holistic Security Hardening & Adversarial Validation gate | before first external broker self-service pilot | DUE — controlling gate: `docs/governance/SECURITY_HARDENING_GATE.md` |
+| MVP-PROD-012 | holistic Security Hardening & Adversarial Validation gate | before first external broker self-service pilot | IMPLEMENTED by SLICE-0078 — gate PASS; SEC-0078-07 Owner-risk-accepted with retained re-review triggers |
 
 ## L. Data Operations and Truth Maintenance
 
@@ -256,11 +256,11 @@ Nothing in this register supersedes existing accepted invariants, including:
 
 ## Current overall interpretation
 
-As of 2026-10-01:
+As of 2026-10-03:
 
 - the marketplace/truth/search/broker operational loop through factual performance reporting is materially implemented through SLICE-0075;
 - broker usability evidence + competitive benchmark is implemented by SLICE-0076; the resulting Lead-assignment blocker was closed by SLICE-0077 and the Broker Workspace Launch Gate now supports PASS;
-- the dedicated Security Hardening & Adversarial Validation gate is also DUE before that pilot, and may be scheduled after launch-readiness/usability/benchmark work;
+- the dedicated Security Hardening & Adversarial Validation gate is implemented and PASS through SLICE-0078;
 - the largest remaining overall-MVP workstreams include owner-direct completion, trust/verification/safety, buyer persistence/alerts, periodic reporting/export/Search-fit diagnostics, support/admin/privacy/legal/comms, monetization where included, and production/data operations;
 - these remaining workstreams are not permission to reopen already-decided architecture.
 
