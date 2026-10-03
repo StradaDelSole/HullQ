@@ -333,9 +333,35 @@ def test_active_listing_response_has_noindex_header_and_no_preview_confidentiali
     response = client.get("/api/listings/NL-PUB-B")
     assert response.headers["x-robots-tag"] == "noindex"
     # SLICE-0049 §12: the public route must not copy the preview route's
-    # bearer-capability confidentiality headers.
+    # bearer-capability confidentiality headers -- `Cache-Control` remains
+    # the distinguishing signal (preview: "private, no-store"; public:
+    # absent). `Referrer-Policy` is no longer distinguishing: SLICE-0078
+    # made it a universal baseline header on every route (defense-in-depth,
+    # unrelated to preview-token confidentiality), so it is now expected
+    # here too -- see `test_baseline_security_headers_present_on_public_
+    # listing_route` below.
     assert "cache-control" not in {k.lower() for k in response.headers}
-    assert "referrer-policy" not in {k.lower() for k in response.headers}
+    assert response.headers["referrer-policy"] == "no-referrer"
+
+
+def test_baseline_security_headers_present_on_public_listing_route(
+    api_conn: Any, client: TestClient
+) -> None:
+    """SLICE-0078: the universal baseline security headers reach this route
+    exactly like every other route, without disturbing its own
+    `X-Robots-Tag`/absent-`Cache-Control` policy above."""
+    _make_active_listing(
+        api_conn,
+        listing_id="NL-PUB-BASELINE",
+        physical_boat_id="PB-PUB-BASELINE",
+        market_episode_id="ME-PUB-BASELINE",
+        offer_revision_id="REV-PUB-BASELINE",
+    )
+
+    response = client.get("/api/listings/NL-PUB-BASELINE")
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert "permissions-policy" in response.headers
 
 
 def test_preview_route_still_carries_its_own_confidentiality_headers(client: TestClient) -> None:

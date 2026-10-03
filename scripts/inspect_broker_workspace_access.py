@@ -358,6 +358,11 @@ def main() -> int:
         api_env["HULLQ_AUTH_CLIENT_SECRET"] = client_secret
         api_env["HULLQ_AUTH_REDIRECT_URI"] = redirect_uri
         api_env["HULLQ_WEB_BASE_URL"] = web_base
+        # SLICE-0078: the exact-Origin CSRF discipline on `/api/auth/logout`
+        # (and every other mutating channel) resolves its accepted Origin
+        # from this env var, distinct from `HULLQ_WEB_BASE_URL` above (which
+        # only controls the OIDC redirect host check).
+        api_env["HULLQ_WEB_ORIGIN"] = web_base
         # Explicit local-only opt-out (independent review 2026-09-14,
         # exact-head 9777496): this proof runs entirely over plain HTTP, so
         # a real, standards-compliant `http.cookiejar` client legitimately
@@ -703,8 +708,20 @@ def main() -> int:
         )
 
         # 9 (contract). logout/session invalidation removes workspace access.
-        status, headers, _ = session.post(f"{api_base}/api/auth/logout")
-        logout_status_ok = status == 200
+        # SLICE-0078: logout now requires the same exact-Origin CSRF
+        # discipline as every other mutating channel, so a real browser
+        # goes through Astro's same-origin proxy (`web/src/pages/broker/
+        # logout.ts`), which sets FastAPI's fixed header itself -- posting
+        # straight to FastAPI here would 403 for the same reason a bare
+        # cross-site form POST must. `Origin` is set explicitly because
+        # this bare `urllib` client (unlike a real browser) never attaches
+        # one on its own.
+        status, headers, _ = session.request(
+            "POST", f"{web_base}/broker/logout", extra_headers={"Origin": web_base}
+        )
+        # Astro's proxy redirects to /broker (303) rather than FastAPI's
+        # own direct 200 JSON body -- `_NoRedirect` returns it unfollowed.
+        logout_status_ok = status == 303
         logout_cookie_cleared_wire = any(
             "hullq_session=;" in h or "Max-Age=0" in h for h in session.last_set_cookie_headers
         )
