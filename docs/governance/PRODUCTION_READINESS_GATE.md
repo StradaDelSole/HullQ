@@ -4,7 +4,7 @@
 **Accepted:** 2026-09-13; mixed-supply amendment 2026-09-14  
 **Purpose:** one canonical release/data-use gate for operational obligations that must be closed before real external marketplace production use
 
-<!-- PRODUCTION_READINESS_GATE_STATUS: NOT_TRIGGERED -->
+<!-- PRODUCTION_READINESS_GATE_STATUS: IN_PROGRESS -->
 <!-- EXTERNAL_BROKER_PRODUCTION_DATA_STATUS: NOT_PRESENT -->
 <!-- EXTERNAL_OWNER_DIRECT_PRODUCTION_DATA_STATUS: NOT_PRESENT -->
 <!-- PRODUCTION_PILOT_STATUS: NOT_STARTED -->
@@ -51,6 +51,20 @@ ACTIVE
 If either external production-data marker, the production pilot, or public launch is `ACTIVE`, the gate MUST be `PASS`.
 
 This record is intentionally separate from feature prioritization. It makes operational readiness a hard production-data/release condition without forcing premature infrastructure work during local/internal development with synthetic/disposable data.
+
+## Current execution
+
+SLICE-0079 — Production Readiness & External Broker Pilot Foundation owns the current implementation/evidence pass for this gate.
+
+```text
+PRODUCTION_READINESS_GATE_STATUS = IN_PROGRESS
+EXTERNAL_BROKER_PRODUCTION_DATA_STATUS = NOT_PRESENT
+EXTERNAL_OWNER_DIRECT_PRODUCTION_DATA_STATUS = NOT_PRESENT
+PRODUCTION_PILOT_STATUS = NOT_STARTED
+PUBLIC_PRODUCTION_LAUNCH_STATUS = NOT_STARTED
+```
+
+`IN_PROGRESS` records proactive readiness work only. It does not authorize real external production data, pilot activity or public launch. The status may become `PASS` only through verified SLICE-0079 gate evidence and the normal independent-review / Owner-acceptance workflow.
 
 ## Required PASS evidence
 
