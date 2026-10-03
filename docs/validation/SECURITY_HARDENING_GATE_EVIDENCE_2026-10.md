@@ -1,18 +1,54 @@
 # Security Hardening & Adversarial Validation Gate Evidence — 2026-10 (SLICE-0078)
 
-**Status:** PENDING — one item requires explicit Project-Owner risk acceptance before this gate may be marked PASS (see §3). Every other line of the acceptance threshold is now met, including exact-head CI and Manufacturer artifact reproducibility.
-**Canonical basis:** `8d89609ed9af0ab501e9e288fa2a340b99823212` on `slice/0078-security-hardening-adversarial-validation` (PR #305), superseding the prior (now-stale) `bceed86` reference — see the review-fix amendment findings listed immediately below.
-**Independent review (exact-head `d8d0fd8aa00d68006078bb5743c477f1948c4a8e`) found two defects, both addressed by this amendment:**
+**Status:** PENDING — one item requires explicit Project-Owner risk acceptance before this gate may be marked PASS (see §3).
+
+**On "canonical basis" / "exact head" in this document — read this before any other section.** This document distinguishes three different things that earlier revisions conflated, which is itself what the second terminology amendment below corrects:
+
+```text
+(1) IMPLEMENTATION/SECURITY-CODE CANDIDATE HEAD
+    The last commit that changed any product/security code or test behavior.
+    Currently: 8d89609ed9af0ab501e9e288fa2a340b99823212 (ruff-format fix on top
+    of the SEC-0078-09 rate-limiter bound). Its CI/reproducibility results are
+    retained below labeled explicitly as historical results FOR THAT CANDIDATE
+    HEAD, not as "the current PR HEAD" -- see §5/§6.
+
+(2) EVIDENCE/REPORT-ONLY PUBLICATION COMMITS
+    Every commit after (1) on this PR that only edits docs/validation/*.md --
+    recording an already-observed CI/review result, correcting terminology,
+    etc. These commits never change what is being secured, only how its
+    status is described.
+
+(3) THE ACTUAL FINAL PUSHED PR HEAD
+    Whatever commit PR #305 actually points to at the moment a reader checks
+    it. This document deliberately does NOT hardcode that SHA as "the
+    canonical basis" anywhere, because a commit that states its own SHA
+    inside its own content is an impossible self-referential moving target
+    (each attempt to record it accurately produces a new SHA that then needs
+    recording, forever). Instead: the exact final pushed PR HEAD, and its
+    actually-observed remote CI / Manufacturer-reproducibility result, are
+    reported in the slice/amendment completion report delivered alongside
+    each push -- that report is written and read AFTER the push, so it can
+    name the real final SHA without that naming being part of what it names.
+```
+
+**Independent review (exact-head `d8d0fd8aa00d68006078bb5743c477f1948c4a8e`) found two defects, both addressed by the prior amendment, plus a third terminology defect found by the subsequent review of that amendment's own evidence commit:**
 
 ```text
 Finding A: src/hullq/security/rate_limit.py retained unbounded attacker-controlled
-           in-memory state (see §3a, SEC-0078-09)
+           in-memory state (see §3a, SEC-0078-09) -- FIXED, code-level, not reopened
+           by this terminology-only amendment.
 Finding B: this document's exact-head evidence was stale (named bceed86, the
            second-to-last push, not the actual final reviewed HEAD d8d0fd8) and
            incorrectly marked Manufacturer artifact reproducibility NOT APPLICABLE
            when `reproduce (ubuntu-latest)`/`reproduce (windows-latest)` are a real,
            required, actually-run-and-passing part of this repository's exact-head
-           gate (see §5/§6, corrected below)
+           gate (see §5/§6, corrected) -- FIXED.
+Finding C (this amendment): after Finding B's fix, this document still named
+           8d89609 as if it were "the current/final PR HEAD," even though PR #305
+           had already gained further evidence-only commits on top by the time
+           that claim was reviewed. Corrected per the (1)/(2)/(3) distinction
+           above -- this document no longer asserts any single SHA is "the"
+           current PR HEAD.
 ```
 **Required outputs this document completes:**
 
@@ -61,18 +97,21 @@ production-security configuration review = PASS                      -> PASS (re
 required retained proof = PASS                                       -> PASS (this document set + test/harness code
                                                                           committed with the normal repository tests)
 repository validation = PASS                                         -> PASS, see §4
-exact-head CI = SUCCESS                                              -> PASS — see §5 for the new exact HEAD this
-                                                                          amendment produces
+exact-head CI = SUCCESS                                              -> PASS on the code candidate head (§5);
+                                                                          PASS on the actual final pushed PR HEAD is
+                                                                          confirmed in each push's completion report,
+                                                                          not restated here as a fixed SHA (see the
+                                                                          terminology note at the top of this document)
 Manufacturer artifact reproducibility = SUCCESS                      -> PASS — `reproduce (ubuntu-latest)` /
                                                                           `reproduce (windows-latest)` are a real,
                                                                           required job in this repository's CI and
                                                                           actually ran and passed (corrected from an
                                                                           earlier, inaccurate "NOT APPLICABLE" claim
-                                                                          in this same document — see the Finding B
-                                                                          note at the top of this document). See §6.
+                                                                          in this same document — see Finding B at
+                                                                          the top of this document). See §6.
 ```
 
-**Overall:** every finding that is a genuine product-code security defect has been fixed and retested, and exact-head CI is now green. The acceptance threshold is not yet fully met only because of SEC-0078-07, a transitive-dependency advisory with no available fix anywhere upstream, assessed as unreachable in HullQ's current code. This is reported honestly rather than resolved by invented policy.
+**Overall:** every finding that is a genuine product-code security defect has been fixed and retested, and remote CI/Manufacturer reproducibility were green at the code-candidate head that carries those fixes (§5/§6; the actual final pushed PR HEAD's result is confirmed per-push in the completion report, see the terminology note above). The acceptance threshold is not yet fully met only because of SEC-0078-07, a transitive-dependency advisory with no available fix anywhere upstream, assessed as unreachable in HullQ's current code. This is reported honestly rather than resolved by invented policy.
 
 ## 3. The one blocking item: SEC-0078-07
 
@@ -124,8 +163,10 @@ Full detail and exact commands: `SECURITY_ADVERSARIAL_EVIDENCE_2026-10.md`.
 
 ## 5. External verification — remote CI
 
+**Historical result, for the implementation/security-code candidate head only** (category (1) in the terminology note at the top of this document) — `8d89609ed9af0ab501e9e288fa2a340b99823212`, the last commit that changed any product/security code or test. This is retained as evidence that the actual code fix was verified, not as a claim about the current PR HEAD:
+
 ```text
-Remote CI (GitHub Actions, PR #305) = SUCCESS at exact HEAD 8d89609ed9af0ab501e9e288fa2a340b99823212
+Remote CI (GitHub Actions, PR #305) = SUCCESS at code-candidate HEAD 8d89609ed9af0ab501e9e288fa2a340b99823212 (historical)
 ```
 
 ```text
@@ -137,17 +178,25 @@ quality (windows-latest)                                pass
 web quality (Astro/Node)                               pass
 ```
 
-This amendment itself needed two follow-up pushes before reaching the above green state: `2e7bbab` (Finding A fix + Finding B doc corrections) failed `quality (ubuntu-latest)`/`quality (windows-latest)` on `ruff format --check .` against the new test file; `8d89609` applied `ruff format` and is the exact HEAD recorded here, re-verified locally first (`ruff format --check .`, `ruff check .`, `mypy src`, and the full non-DB cross-platform suite — 4669 passed) before push. Separately, prior to this amendment, the original candidate's first two pushes (`37e8778`, `1ef4f29`) each surfaced one real `db integration` failure — a full-suite job this slice's local validation deliberately does not re-run in full. All were genuine test/harness or formatting defects, not product-code defects, fixed and re-pushed. Per `CLAUDE.md`, this section reflects actually-observed GitHub Actions results at the exact HEAD this amendment produces, not local inference or a stale prior push's SHA.
+This candidate head needed one prior follow-up push to reach the above green state: `2e7bbab` (the SEC-0078-09 fix + Finding A/B doc corrections) failed `quality (ubuntu-latest)`/`quality (windows-latest)` on `ruff format --check .` against the new test file; `8d89609` applied `ruff format` and was re-verified locally first (`ruff format --check .`, `ruff check .`, `mypy src`, and the full non-DB cross-platform suite — 4669 passed) before push. Separately, earlier in this PR's history, the original candidate's first two pushes (`37e8778`, `1ef4f29`) each surfaced one real `db integration` failure — a full-suite job this slice's local validation deliberately does not re-run in full. All were genuine test/harness or formatting defects, not product-code defects, fixed and re-pushed.
+
+**The actual final pushed PR HEAD's remote CI result is not restated here with a hardcoded SHA** (see the terminology note at the top of this document for why) — it is reported, verified against the real PR state at push time, in the completion report delivered with the push that produces it.
 
 ## 6. External verification — Manufacturer artifact reproducibility
 
-**Correction (Finding B):** an earlier version of this document marked this line `NOT APPLICABLE`. That was inaccurate — `reproduce (ubuntu-latest)` and `reproduce (windows-latest)` are real, required jobs in this repository's CI (`.github/workflows/ci.yml`), they run on every push/PR exactly like every other job, and they genuinely passed at HEAD `d8d0fd8aa00d68006078bb5743c477f1948c4a8e` before this amendment. Recording them accurately now rather than omitting them as inapplicable:
+**Correction (Finding B):** an earlier version of this document marked this line `NOT APPLICABLE`. That was inaccurate — `reproduce (ubuntu-latest)` and `reproduce (windows-latest)` are real, required jobs in this repository's CI (`.github/workflows/ci.yml`), they run on every push/PR exactly like every other job.
+
+**Historical result, for the implementation/security-code candidate head only** (same category-(1) head as §5, `8d89609ed9af0ab501e9e288fa2a340b99823212`):
 
 ```text
-Manufacturer artifact reproducibility (GitHub Actions, PR #305) = SUCCESS at exact HEAD 8d89609ed9af0ab501e9e288fa2a340b99823212
+Manufacturer artifact reproducibility (GitHub Actions, PR #305) = SUCCESS at code-candidate HEAD 8d89609ed9af0ab501e9e288fa2a340b99823212 (historical)
 ```
 
 ```text
 reproduce (ubuntu-latest)     pass
 reproduce (windows-latest)    pass
 ```
+
+They also passed at the earlier `d8d0fd8aa00d68006078bb5743c477f1948c4a8e` review point referenced in Finding B.
+
+**The actual final pushed PR HEAD's Manufacturer-reproducibility result is not restated here with a hardcoded SHA**, for the same self-reference reason as §5 — it is reported in the completion report delivered with the push that produces it.
