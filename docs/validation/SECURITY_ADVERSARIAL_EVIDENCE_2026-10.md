@@ -64,6 +64,33 @@ The first push's `db integration` job (the full backend suite plus real-multi-pr
 
 Both fixes verified locally (`test_public_listing_read_api.py`: 12 passed; `inspect_broker_workspace_access.py`: full proof PASS, all 15 contract steps OK) and pushed as a follow-up commit. Full detail: `SECURITY_FINDINGS_REGISTER_2026-10.md` SEC-0078-08.
 
+## 2b. Review-fix amendment — bounded rate-limiter retained state (SEC-0078-09)
+
+Independent review of the merged candidate (exact-head `d8d0fd8`) found that `FixedWindowRateLimiter` retained one dict entry per distinct key forever, reclaimed only if that exact key happened to be observed again after expiry — an unauthenticated attacker able to generate many distinct `request.client.host` values (no botnet needed: IPv6 prefix rotation from one host) could grow retained state without bound against the contact/login limiters. Rewrote `src/hullq/security/rate_limit.py` to cap retained state at `max_keys` (default 10,000) via an LRU-ordered `OrderedDict`, reclaiming expired entries proactively and evicting only the coldest entry under cardinality pressure.
+
+```text
+uv run python -m pytest tests/unit/test_rate_limit_unit.py -q
+13 passed
+```
+
+(6 pre-existing + 1 new construction-validation + 5 new `TestBoundedRetainedState` tests: ordinary counting unchanged, expired-key reclaim, hard-cap under unique-key flood, active-key survives eviction pressure, category independence preserved.)
+
+```text
+uv run python scripts/workflow/claude_diag.py run-local-test-db-compact scripts/run_pytest_local.py \
+  tests/unit/test_rate_limit_unit.py \
+  tests/persistence/test_security_hardening_adversarial_api.py -q
+40 passed
+
+uv run python scripts/workflow/claude_diag.py run-local-test-db-compact scripts/run_pytest_local.py \
+  tests/persistence/test_security_hardening_adversarial_api.py::TestRateLimitingAdversarial -v
+4 passed (all 4 route-level rate-limiting adversarial tests re-verified against the new implementation)
+
+uv run python scripts/validate_repository.py
+repository governance validation: PASS
+```
+
+Full detail: `SECURITY_FINDINGS_REGISTER_2026-10.md` SEC-0078-09.
+
 ## 4. Live production-server header proof (`web/src/middleware.ts`)
 
 ```text
