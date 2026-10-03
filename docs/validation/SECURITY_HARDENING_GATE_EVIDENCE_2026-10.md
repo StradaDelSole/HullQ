@@ -1,7 +1,7 @@
 # Security Hardening & Adversarial Validation Gate Evidence — 2026-10 (SLICE-0078)
 
 **Status:** PENDING — one item requires explicit Project-Owner risk acceptance before this gate may be marked PASS (see §3). Every other line of the acceptance threshold is now met, including exact-head CI and Manufacturer artifact reproducibility.
-**Canonical basis:** exact new pushed HEAD recorded in §5/§6 below, superseding the prior (now-stale) `bceed86` reference — see the review-fix amendment findings listed immediately below.
+**Canonical basis:** `8d89609ed9af0ab501e9e288fa2a340b99823212` on `slice/0078-security-hardening-adversarial-validation` (PR #305), superseding the prior (now-stale) `bceed86` reference — see the review-fix amendment findings listed immediately below.
 **Independent review (exact-head `d8d0fd8aa00d68006078bb5743c477f1948c4a8e`) found two defects, both addressed by this amendment:**
 
 ```text
@@ -125,7 +125,7 @@ Full detail and exact commands: `SECURITY_ADVERSARIAL_EVIDENCE_2026-10.md`.
 ## 5. External verification — remote CI
 
 ```text
-Remote CI (GitHub Actions, PR #305) = SUCCESS at exact HEAD <RECORDED AFTER THIS AMENDMENT'S PUSH — see completion report>
+Remote CI (GitHub Actions, PR #305) = SUCCESS at exact HEAD 8d89609ed9af0ab501e9e288fa2a340b99823212
 ```
 
 ```text
@@ -137,14 +137,14 @@ quality (windows-latest)                                pass
 web quality (Astro/Node)                               pass
 ```
 
-Prior to this amendment, the first two pushes to this PR (`37e8778`, `1ef4f29`) each surfaced one real `db integration` failure — a full-suite job this slice's local validation deliberately does not re-run in full. Both were genuine test/harness defects exposed by the new product behavior, not product-code defects (SEC-0078-05 and SEC-0078-08), fixed and re-pushed. Per `CLAUDE.md`, this section reflects actually-observed GitHub Actions results at the exact HEAD this amendment produces, not local inference or a stale prior push's SHA.
+This amendment itself needed two follow-up pushes before reaching the above green state: `2e7bbab` (Finding A fix + Finding B doc corrections) failed `quality (ubuntu-latest)`/`quality (windows-latest)` on `ruff format --check .` against the new test file; `8d89609` applied `ruff format` and is the exact HEAD recorded here, re-verified locally first (`ruff format --check .`, `ruff check .`, `mypy src`, and the full non-DB cross-platform suite — 4669 passed) before push. Separately, prior to this amendment, the original candidate's first two pushes (`37e8778`, `1ef4f29`) each surfaced one real `db integration` failure — a full-suite job this slice's local validation deliberately does not re-run in full. All were genuine test/harness or formatting defects, not product-code defects, fixed and re-pushed. Per `CLAUDE.md`, this section reflects actually-observed GitHub Actions results at the exact HEAD this amendment produces, not local inference or a stale prior push's SHA.
 
 ## 6. External verification — Manufacturer artifact reproducibility
 
 **Correction (Finding B):** an earlier version of this document marked this line `NOT APPLICABLE`. That was inaccurate — `reproduce (ubuntu-latest)` and `reproduce (windows-latest)` are real, required jobs in this repository's CI (`.github/workflows/ci.yml`), they run on every push/PR exactly like every other job, and they genuinely passed at HEAD `d8d0fd8aa00d68006078bb5743c477f1948c4a8e` before this amendment. Recording them accurately now rather than omitting them as inapplicable:
 
 ```text
-Manufacturer artifact reproducibility (GitHub Actions, PR #305) = SUCCESS at exact HEAD <RECORDED AFTER THIS AMENDMENT'S PUSH>
+Manufacturer artifact reproducibility (GitHub Actions, PR #305) = SUCCESS at exact HEAD 8d89609ed9af0ab501e9e288fa2a340b99823212
 ```
 
 ```text
