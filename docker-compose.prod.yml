@@ -1,28 +1,46 @@
 # SLICE-0079 production Docker Compose —
 # docs/governance/PRODUCTION_READINESS_GATE.md §1.
 #
-# Deployed to the application VPS alongside scripts/ops/deploy.sh,
-# scripts/ops/rollback.sh and a VPS-local .env (never committed to the
-# repository -- see docs/operations/production.env.example for the
-# required variable names and
-# docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md for the full
-# procedure).
+# This exact file is deployed as part of one immutable release directory
+# (/opt/hullq/releases/<git-commit-sha>/, alongside the matching Caddyfile,
+# deploy.sh and rollback.sh from the SAME commit -- see
+# docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md §1/§2 for the full
+# release-directory contract). Never edit a deployed copy in place; a new
+# release is always a new commit's own release directory.
+#
+# `name:` below pins one stable Compose project name across every release
+# directory. Without it, Compose derives the project name from the
+# containing directory (which differs per release, since each release
+# lives in its own `releases/<sha>/` directory) and `docker compose up -d`
+# for a new release would start a SECOND, independent set of containers
+# instead of replacing the previous release's -- both trying to bind the
+# same host ports and failing. Pinning the name is what makes `up -d` from
+# a different release directory correctly recreate (not duplicate) `api`/
+# `web`/`caddy`.
 #
 # Both application images are pinned to the exact immutable tag in
-# $HULLQ_IMAGE_TAG (the git commit SHA .github/workflows/deploy.yml built
-# and pushed to GHCR) -- never `latest`
-# (docs/ARCHITECTURE_REBASELINE_2026-09-02.md §24: "Do not use `latest` as
-# production truth"). Neither application container mounts a local volume
-# for canonical data: PostgreSQL (DigitalOcean Managed PostgreSQL) and
-# object storage (Cloudflare R2) are both externalized, so this host
-# remains stateless/replaceable with respect to application data
-# (architecture rebaseline §23).
+# $HULLQ_IMAGE_TAG (derived by deploy.sh from its own release directory's
+# name -- always the exact git commit SHA that owns this compose file too,
+# so image and deployment configuration can never drift apart) -- never
+# `latest` (docs/ARCHITECTURE_REBASELINE_2026-09-02.md §24).
+#
+# Stable, non-versioned runtime state (secrets, TLS certificates) lives
+# outside every immutable release directory, at $HULLQ_SHARED_DIR
+# (default /opt/hullq/shared) -- never committed, never copied per-release.
+# Neither application container mounts a local volume for canonical data:
+# PostgreSQL (DigitalOcean Managed PostgreSQL) and object storage
+# (Cloudflare R2) are both externalized, so this host remains
+# stateless/replaceable with respect to application data (architecture
+# rebaseline §23).
+
+name: hullq-prod
 
 services:
   api:
     image: ghcr.io/stradadelsole/hullq-api:${HULLQ_IMAGE_TAG}
+    pull_policy: missing
     restart: unless-stopped
-    env_file: .env
+    env_file: ${HULLQ_SHARED_DIR:-/opt/hullq/shared}/.env
     ports:
       - "127.0.0.1:8000:8000"
     networks:
@@ -30,8 +48,9 @@ services:
 
   web:
     image: ghcr.io/stradadelsole/hullq-web:${HULLQ_IMAGE_TAG}
+    pull_policy: missing
     restart: unless-stopped
-    env_file: .env
+    env_file: ${HULLQ_SHARED_DIR:-/opt/hullq/shared}/.env
     ports:
       - "127.0.0.1:4321:4321"
     networks:
@@ -45,7 +64,7 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./certs:/etc/caddy/certs:ro
+      - ${HULLQ_SHARED_DIR:-/opt/hullq/shared}/certs:/etc/caddy/certs:ro
       - caddy_data:/data
       - caddy_config:/config
     networks:

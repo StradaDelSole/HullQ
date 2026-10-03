@@ -1,33 +1,37 @@
 #!/usr/bin/env bash
-# SLICE-0079 production rollback script — run on the application VPS.
+# SLICE-0079 production rollback script.
 #
-# Redeploys the last recorded known-good image tag (written by deploy.sh on
-# its own success). See docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md.
+# This exact file is copied to the STABLE path $HULLQ_ROOT/rollback.sh by
+# every successful run of deploy.sh (from that release's own release
+# directory) — so the operator always invokes the one fixed path below,
+# regardless of which release is currently live. The copy that still sits
+# inside releases/<sha>/rollback.sh is retained only for per-commit audit
+# (so you can inspect exactly what rollback logic existed at that commit);
+# it is never executed in place. See
+# docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md §1/§4.
+#
+# A rollback is simply re-running the previous release's OWN deploy.sh —
+# that script's own current/previous bookkeeping (see deploy.sh's header)
+# is what correctly swaps current/previous back, so this script contains
+# no state-writing logic of its own.
 set -euo pipefail
 
-DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STATE_FILE="$DEPLOY_DIR/.last-good-tag"
+HULLQ_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+STATE_DIR="$HULLQ_ROOT/state"
+PREVIOUS_FILE="$STATE_DIR/previous-release"
 
-if [ ! -s "$STATE_FILE" ]; then
-  echo "No recorded known-good tag in $STATE_FILE; cannot roll back automatically." >&2
+if [ ! -s "$PREVIOUS_FILE" ]; then
+  echo "No recorded previous release in $PREVIOUS_FILE; cannot roll back automatically." >&2
   exit 2
 fi
 
-TARGET_TAG="$(cat "$STATE_FILE")"
-echo "Rolling back to recorded known-good tag: $TARGET_TAG"
+PREVIOUS_SHA="$(cat "$PREVIOUS_FILE")"
+PREVIOUS_DEPLOY_SCRIPT="$HULLQ_ROOT/releases/$PREVIOUS_SHA/deploy.sh"
 
-export HULLQ_IMAGE_TAG="$TARGET_TAG"
-docker compose -f "$DEPLOY_DIR/docker-compose.prod.yml" pull
-docker compose -f "$DEPLOY_DIR/docker-compose.prod.yml" up -d
+if [ ! -x "$PREVIOUS_DEPLOY_SCRIPT" ]; then
+  echo "Previous release directory for $PREVIOUS_SHA is missing its deploy.sh ($PREVIOUS_DEPLOY_SCRIPT); cannot roll back." >&2
+  exit 2
+fi
 
-for _ in $(seq 1 30); do
-  if curl -fsS http://127.0.0.1:8000/healthz >/dev/null 2>&1 \
-     && curl -fsS http://127.0.0.1:8000/readyz >/dev/null 2>&1; then
-    echo "Rollback succeeded: $TARGET_TAG is live."
-    exit 0
-  fi
-  sleep 2
-done
-
-echo "Rollback health check failed after 60s. Manual operator intervention required." >&2
-exit 1
+echo "Rolling back to previous release: $PREVIOUS_SHA"
+exec "$PREVIOUS_DEPLOY_SCRIPT"
