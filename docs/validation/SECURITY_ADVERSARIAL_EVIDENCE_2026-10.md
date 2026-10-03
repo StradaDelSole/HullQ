@@ -55,6 +55,15 @@ tests 362, pass 362, fail 0
 
 `web/src/middleware.ts` (the new baseline security-header middleware) imports from the virtual module `astro:middleware`, which plain `node --test` cannot resolve without Astro's Vite plugin — no unit test was added for it; see §4 for its live proof instead.
 
+## 2a. Remote CI caught two more regressions local targeted runs missed
+
+The first push's `db integration` job (the full backend suite plus real-multi-process-HTTP vertical-proof scripts, which this slice's local validation deliberately does not re-run in full per `CLAUDE.md`'s affected-surface default) failed on two items neither the new adversarial suite nor the affected-surface regression list reached:
+
+1. `tests/persistence/test_public_listing_read_api.py::test_active_listing_response_has_noindex_header_and_no_preview_confidentiality` — asserted `Referrer-Policy` absent on the public listing route, now obsolete since SEC-0078-03 made it universal. Fixed: updated the assertion, added a dedicated baseline-headers test for this route.
+2. `scripts/inspect_broker_workspace_access.py` (step 15, a real FastAPI+Astro+OIDC-issuer multi-process HTTP vertical proof, not pytest) posted directly to `/api/auth/logout` with no CSRF header/Origin and no `HULLQ_WEB_ORIGIN` configured for its subprocess — same gap class as the SEC-0078-05 pytest fixture, in a script this slice's test-file regression sweep never touches. Fixed: added `HULLQ_WEB_ORIGIN` to the script's FastAPI subprocess env; changed the logout call to go through `{web_base}/broker/logout` (Astro's proxy) with an explicit `Origin` header, matching what the fixed `web/src/pages/broker/index.astro` form now actually does.
+
+Both fixes verified locally (`test_public_listing_read_api.py`: 12 passed; `inspect_broker_workspace_access.py`: full proof PASS, all 15 contract steps OK) and pushed as a follow-up commit. Full detail: `SECURITY_FINDINGS_REGISTER_2026-10.md` SEC-0078-08.
+
 ## 4. Live production-server header proof (`web/src/middleware.ts`)
 
 ```text
