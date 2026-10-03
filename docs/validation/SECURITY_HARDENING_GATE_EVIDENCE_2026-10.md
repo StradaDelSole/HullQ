@@ -1,7 +1,7 @@
 # Security Hardening & Adversarial Validation Gate Evidence — 2026-10 (SLICE-0078)
 
-**Status:** PENDING — one item requires explicit Project-Owner risk acceptance before this gate may be marked PASS (see §3).
-**Canonical basis:** uncommitted-at-time-of-writing working tree on `slice/0078-security-hardening-adversarial-validation`; exact HEAD SHA recorded in the slice completion report once committed.
+**Status:** PENDING — one item requires explicit Project-Owner risk acceptance before this gate may be marked PASS (see §3). Every other line of the acceptance threshold is now met, including exact-head CI.
+**Canonical basis:** `bceed86` on `slice/0078-security-hardening-adversarial-validation` (PR #305).
 **Required outputs this document completes:**
 
 ```text
@@ -47,13 +47,13 @@ production-security configuration review = PASS                      -> PASS (re
 required retained proof = PASS                                       -> PASS (this document set + test/harness code
                                                                           committed with the normal repository tests)
 repository validation = PASS                                         -> PASS, see §4
-exact-head CI = SUCCESS                                              -> NOT VERIFIED — not yet pushed/observed on
-                                                                          GitHub Actions (see §5)
+exact-head CI = SUCCESS                                              -> PASS — all 8 GitHub Actions checks green
+                                                                          at HEAD `bceed86` (see §5)
 Manufacturer artifact reproducibility = SUCCESS                      -> NOT APPLICABLE to this slice (no manufacturer
                                                                           artifact/scrape pipeline touched)
 ```
 
-**Overall:** every finding that is a genuine product-code security defect has been fixed and retested; the acceptance threshold is not yet fully met only because of SEC-0078-07, which is a transitive-dependency advisory with no available fix, assessed as unreachable in HullQ's current code, and because exact-head CI has not yet been observed. Both are reported honestly rather than resolved by invented policy.
+**Overall:** every finding that is a genuine product-code security defect has been fixed and retested, and exact-head CI is now green. The acceptance threshold is not yet fully met only because of SEC-0078-07, a transitive-dependency advisory with no available fix anywhere upstream, assessed as unreachable in HullQ's current code. This is reported honestly rather than resolved by invented policy.
 
 ## 3. The one blocking item: SEC-0078-07
 
@@ -78,7 +78,9 @@ No pilot/paid/public-launch gate is affected by which choice is made — all thr
 ```text
 tests/unit/test_rate_limit_unit.py .......................... 6 passed
 tests/persistence/test_security_hardening_adversarial_api.py . 28 passed  (34 total with the unit file)
-affected-surface regression (11 pre-existing test files) ..... 249 passed (0 failed after the SEC-0078-05 fix)
+affected-surface regression (12 pre-existing test files) ..... 261 passed (0 failed after the SEC-0078-05/08a fixes)
+scripts/inspect_broker_workspace_access.py (real multi-process
+  HTTP vertical proof, 15 contract steps) ...................... PASS (0 failed after the SEC-0078-08b fix)
 web: npm run check ............................................ 0 errors/warnings/hints
 web: node --test (36 files) ................................... 362 passed (359 pre-existing + 3 new)
 web: npm run build ............................................. clean
@@ -92,7 +94,18 @@ Full detail and exact commands: `SECURITY_ADVERSARIAL_EVIDENCE_2026-10.md`.
 ## 5. External verification
 
 ```text
-Remote CI (GitHub Actions, exact pushed HEAD) = NOT VERIFIED
+Remote CI (GitHub Actions, PR #305) = SUCCESS at exact HEAD bceed86
 ```
 
-The branch has not been pushed for this slice's changes at the time of writing. Per `CLAUDE.md`, local green tests are never treated as proof of remote CI; this status must be updated only after the exact HEAD is actually observed to pass on GitHub Actions.
+```text
+db integration (PostgreSQL 18)                        pass   5m0s
+dependency audit                                       pass   17s
+historical research/bootstrap replay (PostgreSQL 18)   pass   39s
+quality (ubuntu-latest)                                pass   36s
+quality (windows-latest)                                pass   1m21s
+reproduce (ubuntu-latest)                              pass   12s
+reproduce (windows-latest)                             pass   25s
+web quality (Astro/Node)                               pass   29s
+```
+
+The first two pushes to this PR (`37e8778`, `1ef4f29`) each surfaced one real `db integration` failure — a full-suite job this slice's local validation deliberately does not re-run in full. Both were genuine test/harness defects exposed by the new product behavior (not product-code defects; see SEC-0078-05 and SEC-0078-08 in the findings register), fixed and re-pushed. The third push (`bceed86`) is green on every job. Per `CLAUDE.md`, this status reflects actually-observed GitHub Actions results, not local inference.
