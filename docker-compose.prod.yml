@@ -1,0 +1,62 @@
+# SLICE-0079 production Docker Compose —
+# docs/governance/PRODUCTION_READINESS_GATE.md §1.
+#
+# Deployed to the application VPS alongside scripts/ops/deploy.sh,
+# scripts/ops/rollback.sh and a VPS-local .env (never committed to the
+# repository -- see docs/operations/production.env.example for the
+# required variable names and
+# docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md for the full
+# procedure).
+#
+# Both application images are pinned to the exact immutable tag in
+# $HULLQ_IMAGE_TAG (the git commit SHA .github/workflows/deploy.yml built
+# and pushed to GHCR) -- never `latest`
+# (docs/ARCHITECTURE_REBASELINE_2026-09-02.md §24: "Do not use `latest` as
+# production truth"). Neither application container mounts a local volume
+# for canonical data: PostgreSQL (DigitalOcean Managed PostgreSQL) and
+# object storage (Cloudflare R2) are both externalized, so this host
+# remains stateless/replaceable with respect to application data
+# (architecture rebaseline §23).
+
+services:
+  api:
+    image: ghcr.io/stradadelsole/hullq-api:${HULLQ_IMAGE_TAG}
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks:
+      - hullq
+
+  web:
+    image: ghcr.io/stradadelsole/hullq-web:${HULLQ_IMAGE_TAG}
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:4321:4321"
+    networks:
+      - hullq
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/etc/caddy/certs:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - hullq
+    depends_on:
+      - api
+      - web
+
+networks:
+  hullq: {}
+
+volumes:
+  caddy_data: {}
+  caddy_config: {}

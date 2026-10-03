@@ -58,6 +58,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -194,6 +195,7 @@ from hullq.domain.listing_telemetry import ListingViewOperationId
 from hullq.domain.market_identity import NativeListingId
 from hullq.domain.media_gallery import MAX_IMAGE_UPLOAD_BYTES
 from hullq.domain.publishing_eligibility import AccountId, MarketplaceOrganizationId
+from hullq.observability.logging_config import configure_logging, get_logger
 from hullq.persistence.connection import get_database_url, open_connection
 from hullq.persistence.native_listing_view_event import record_public_listing_view
 from hullq.search.configuration_engine import DesignQueryEvaluation
@@ -2877,5 +2879,85 @@ def create_app(
             return JSONResponse({"error": "active_listing_conflict"}, status_code=409)
         assert result.outcome is RetireAssetRequestOutcome.RETIRED
         return JSONResponse({"outcome": "RETIRED"})
+
+    # SLICE-0079 production-readiness gate §3: structured access logging,
+    # a global unhandled-exception capture path, and liveness/readiness
+    # health routes. `configure_logging()` is idempotent -- safe even if an
+    # embedding process (uvicorn, a test) already called it.
+    configure_logging()
+    _access_logger = get_logger("hullq.access")
+
+    @app.middleware("http")
+    async def _structured_access_logging(request: Request, call_next: Any) -> Any:
+        request_id = str(uuid.uuid4())
+        request.state.request_id = request_id
+        started_at = time.perf_counter()
+        response = await call_next(request)
+        duration_ms = round((time.perf_counter() - started_at) * 1000, 2)
+        response.headers["X-Request-Id"] = request_id
+        _access_logger.info(
+            "request_completed",
+            extra={
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": response.status_code,
+                "duration_ms": duration_ms,
+            },
+        )
+        return response
+
+    @app.exception_handler(Exception)
+    async def _handle_unexpected_exception(request: Request, exc: Exception) -> JSONResponse:
+        # Every unhandled exception is structured-logged with a correlation
+        # id and full traceback before the client ever sees a response --
+        # the gate's "no silent critical failure mode relied upon as
+        # acceptable monitoring" rule. The client only ever receives a
+        # generic message; no exception detail/traceback crosses the wire.
+        request_id = getattr(request.state, "request_id", None) or str(uuid.uuid4())
+        _access_logger.error(
+            "unhandled_exception",
+            exc_info=exc,
+            extra={"request_id": request_id, "method": request.method, "path": request.url.path},
+        )
+        return JSONResponse(
+            {"error": "internal_server_error", "request_id": request_id}, status_code=500
+        )
+
+    @app.get("/healthz")
+    def get_liveness() -> Response:
+        # Liveness never touches the database/object storage -- it answers
+        # "is this process able to serve HTTP at all", not "are this
+        # process's dependencies healthy" (that is /readyz below). A
+        # liveness check depending on an external service would make an
+        # unrelated dependency outage look like this process is unhealthy,
+        # defeating a deploy/orchestrator restart decision based on it.
+        response = JSONResponse({"status": "ok"})
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @app.get("/readyz")
+    def get_readiness() -> Response:
+        # Readiness additionally proves the one dependency every route on
+        # this app actually needs -- a live PostgreSQL connection. Object
+        # storage is deliberately not probed here: most routes never touch
+        # it, and probing it on every readiness check would make an
+        # unrelated media-storage outage block traffic this process can
+        # otherwise serve correctly.
+        try:
+            conn = open_connection(resolved_database_url)
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT 1")
+            finally:
+                conn.close()
+        except Exception as exc:
+            _access_logger.error("readiness_check_failed", exc_info=exc)
+            response = JSONResponse({"status": "error", "database": "unreachable"}, status_code=503)
+            response.headers["Cache-Control"] = "no-store"
+            return response
+        response = JSONResponse({"status": "ok", "database": "reachable"})
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     return app

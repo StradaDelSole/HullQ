@@ -215,15 +215,15 @@ Controlling gate: docs/governance/PRODUCTION_READINESS_GATE.md.
 
 | ID | Capability | Timing | Status |
 |---|---|---|---|
-| MVP-PROD-001 | immutable CI-built production deploy + rollback | before production gate PASS | PENDING/PARTIAL |
-| MVP-PROD-002 | production PostgreSQL target and controlled migrations | before production gate PASS | PENDING/PARTIAL |
-| MVP-PROD-003 | automatic failover/standby before real buyer exposure to external inventory | hard trigger | PENDING |
-| MVP-PROD-004 | independent encrypted backup + tested restore | before production gate PASS | PENDING |
-| MVP-PROD-005 | explicit RTO/RPO + recovery runbook | before production gate PASS | PENDING |
-| MVP-PROD-006 | structured logs/error tracking/health/alerting | before production gate PASS | PENDING |
-| MVP-PROD-007 | edge bot/abuse protection and endpoint rate controls | before pilot/public exposure | PENDING |
-| MVP-PROD-008 | secrets storage/rotation/recovery + least privilege | before production gate PASS | PENDING |
-| MVP-PROD-009 | smoke checks / migration verification / release runbook | before production gate PASS | PENDING |
+| MVP-PROD-001 | immutable CI-built production deploy + rollback | before production gate PASS | PARTIAL — mechanism implemented + locally proven by SLICE-0079; real GHCR push/VPS deploy not yet observed (`docs/validation/PRODUCTION_READINESS_EVIDENCE_2026-10.md` §1/§9) |
+| MVP-PROD-002 | production PostgreSQL target and controlled migrations | before production gate PASS | PARTIAL — migration CLI implemented + real-executed by SLICE-0079; no real DO Managed PostgreSQL instance provisioned yet (evidence §2/§8/§9) |
+| MVP-PROD-003 | automatic failover/standby before real buyer exposure to external inventory | hard trigger | PENDING — `POSTGRESQL_HA_STATUS = NOT_ACTIVE`, explicitly recorded by SLICE-0079 (evidence §2) |
+| MVP-PROD-004 | independent encrypted backup + tested restore | before production gate PASS | IMPLEMENTED by SLICE-0079 — real destroy-then-restore proof against disposable PostgreSQL (evidence §2) |
+| MVP-PROD-005 | explicit RTO/RPO + recovery runbook | before production gate PASS | IMPLEMENTED by SLICE-0079 (`docs/operations/PRODUCTION_BACKUP_RESTORE_RUNBOOK.md`) |
+| MVP-PROD-006 | structured logs/error tracking/health/alerting | before production gate PASS | IMPLEMENTED by SLICE-0079 — structured JSON logs, exception capture, health/readiness, alert-webhook mechanism, all real-proven (evidence §3) |
+| MVP-PROD-007 | edge bot/abuse protection and endpoint rate controls | before pilot/public exposure | PARTIAL — endpoint rate controls implemented by SLICE-0078; Cloudflare/Caddy edge config written by SLICE-0079 but not yet deployed (no VPS exists) (evidence §4) |
+| MVP-PROD-008 | secrets storage/rotation/recovery + least privilege | before production gate PASS | IMPLEMENTED by SLICE-0079 (evidence §5; `docs/operations/PRODUCTION_INCIDENT_OBSERVABILITY_RUNBOOK.md` §4) |
+| MVP-PROD-009 | smoke checks / migration verification / release runbook | before production gate PASS | IMPLEMENTED by SLICE-0079 — real CLI executions (evidence §8) |
 | MVP-PROD-010 | incident communication/status path | before broad public production | PENDING |
 | MVP-PROD-011 | incident-response/post-incident operating procedure | overall production MVP | PENDING |
 | MVP-PROD-012 | holistic Security Hardening & Adversarial Validation gate | before first external broker self-service pilot | IMPLEMENTED by SLICE-0078 — gate PASS; SEC-0078-07 Owner-risk-accepted with retained re-review triggers |
@@ -261,6 +261,7 @@ As of 2026-10-03:
 - the marketplace/truth/search/broker operational loop through factual performance reporting is materially implemented through SLICE-0075;
 - broker usability evidence + competitive benchmark is implemented by SLICE-0076; the resulting Lead-assignment blocker was closed by SLICE-0077 and the Broker Workspace Launch Gate now supports PASS;
 - the dedicated Security Hardening & Adversarial Validation gate is implemented and PASS through SLICE-0078;
+- SLICE-0079 implements and locally proves (against real, non-production resources) every mechanism the Production Readiness Gate requires — deploy/rollback, encrypted backup/restore, observability/alerting, migration/smoke verification, secrets/least-privilege design — but the gate remains `IN_PROGRESS` pending real GHCR/VPS/managed-PostgreSQL provisioning the Project Owner has not yet made (`docs/validation/PRODUCTION_READINESS_EVIDENCE_2026-10.md`);
 - the largest remaining overall-MVP workstreams include owner-direct completion, trust/verification/safety, buyer persistence/alerts, periodic reporting/export/Search-fit diagnostics, support/admin/privacy/legal/comms, monetization where included, and production/data operations;
 - these remaining workstreams are not permission to reopen already-decided architecture.
 

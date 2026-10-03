@@ -54,7 +54,7 @@ This record is intentionally separate from feature prioritization. It makes oper
 
 ## Current execution
 
-SLICE-0079 — Production Readiness & External Broker Pilot Foundation owns the current implementation/evidence pass for this gate.
+SLICE-0079 — Production Readiness & External Broker Pilot Foundation owns the current implementation/evidence pass for this gate. Full evidence: `docs/validation/PRODUCTION_READINESS_EVIDENCE_2026-10.md`.
 
 ```text
 PRODUCTION_READINESS_GATE_STATUS = IN_PROGRESS
@@ -65,6 +65,26 @@ PUBLIC_PRODUCTION_LAUNCH_STATUS = NOT_STARTED
 ```
 
 `IN_PROGRESS` records proactive readiness work only. It does not authorize real external production data, pilot activity or public launch. The status may become `PASS` only through verified SLICE-0079 gate evidence and the normal independent-review / Owner-acceptance workflow.
+
+SLICE-0079 implemented and locally proved (against real, non-production
+resources) every mechanism this gate requires: repository-owned immutable
+Docker images (`Dockerfile`, `web/Dockerfile`) with a real deploy→redeploy→
+rollback drill against the real Docker Engine; an independent encrypted
+R2-bound backup/restore mechanism with a real destroy-then-restore proof
+against a disposable PostgreSQL schema; structured JSON logging, a global
+unhandled-exception capture path, `/healthz`/`/readyz`, and an actionable
+operator-alert-webhook mechanism; a controlled migration CLI (real
+execution against a real incrementally-migrated database); and a smoke-
+check CLI (real execution against a real running instance). The gate
+remains `IN_PROGRESS` rather than `PASS` because three concrete gaps
+require the Project Owner's own production credentials/infrastructure
+decisions rather than anything SLICE-0079 could prove in its sandbox: no
+real GHCR push has yet been observed (the push-on-merge-to-`main` workflow
+has not fired), no real production VPS exists to deploy to, and no real
+DigitalOcean Managed PostgreSQL instance has been provisioned (so database
+HA is honestly `NOT_ACTIVE`, which the gate's own text permits for a
+strictly-internal phase). See evidence document §9 for the exact residual
+list.
 
 ## Required PASS evidence
 

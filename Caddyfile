@@ -1,0 +1,53 @@
+# SLICE-0079 production reverse-proxy configuration —
+# docs/engineering/APPLICATION_STACK_BASELINE.v0.1.md: "Caddy preferred
+# reverse-proxy baseline."
+#
+# One public hostname serves both the Astro web app and the FastAPI API by
+# path, deliberately: src/hullq/api/app.py's `require_same_host_session_
+# topology` hard-fails app creation if the browser-visible auth/callback
+# host and the Astro web host ever differ (SLICE-0053's host-only session
+# cookie cannot cross hostnames). Routing by path on one hostname makes
+# that invariant automatically true rather than something the edge config
+# could accidentally violate with a two-subdomain layout.
+#
+# TLS: Cloudflare is the public edge (ADR-0010/APPLICATION_STACK_BASELINE
+# §"Edge / public ingress") in Full (strict) mode, so Caddy terminates the
+# Cloudflare->origin leg with a long-lived Cloudflare Origin CA certificate
+# rather than an ACME HTTP-01 challenge, which would otherwise race
+# Cloudflare's own proxying of port 80/443. See
+# docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md for how to issue
+# that certificate and mount it at ./certs/ (bind-mounted read-only by
+# docker-compose.prod.yml).
+
+{
+	auto_https off
+}
+
+:80 {
+	redir https://{host}{uri} permanent
+}
+
+:443 {
+	tls /etc/caddy/certs/cf-origin.pem /etc/caddy/certs/cf-origin-key.pem
+
+	encode gzip
+
+	# FastAPI: the public API surface, plus the two local-only health
+	# routes used by scripts/ops/deploy.sh and scripts/ops/smoke_check.py.
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	handle /healthz {
+		reverse_proxy api:8000
+	}
+
+	handle /readyz {
+		reverse_proxy api:8000
+	}
+
+	# Everything else: the Astro web app.
+	handle {
+		reverse_proxy web:4321
+	}
+}
