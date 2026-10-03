@@ -1,6 +1,6 @@
 # Security Hardening & Adversarial Validation Gate Evidence — 2026-10 (SLICE-0078)
 
-**Status:** PENDING — one item requires explicit Project-Owner risk acceptance before this gate may be marked PASS (see §3).
+**Status:** **PASS.** The Project Owner has explicitly reviewed and accepted the one remaining residual-risk item (SEC-0078-07) — see §3 for the recorded decision and its retained re-review triggers. This PASS does not activate, and is independent of, any broker self-service pilot, paid broker plan or public launch (all remain `NOT_STARTED` — §1).
 
 **On "canonical basis" / "exact head" in this document — read this before any other section.** This document distinguishes three different things that earlier revisions conflated, which is itself what the second terminology amendment below corrects:
 
@@ -43,13 +43,15 @@ Finding B: this document's exact-head evidence was stale (named bceed86, the
            when `reproduce (ubuntu-latest)`/`reproduce (windows-latest)` are a real,
            required, actually-run-and-passing part of this repository's exact-head
            gate (see §5/§6, corrected) -- FIXED.
-Finding C (this amendment): after Finding B's fix, this document still named
+Finding C: after Finding B's fix, this document still named
            8d89609 as if it were "the current/final PR HEAD," even though PR #305
            had already gained further evidence-only commits on top by the time
            that claim was reviewed. Corrected per the (1)/(2)/(3) distinction
            above -- this document no longer asserts any single SHA is "the"
            current PR HEAD.
 ```
+
+**Owner decision (this amendment) — recorded, not a review finding:** independent review of PR #305 at exact reviewed HEAD `5a9c3216339bf67b2518454c87f8d8b80a09f3b1` returned `ACCEPT`. The Project Owner explicitly accepted SEC-0078-07's documented residual risk on that basis. See §3.
 **Required outputs this document completes:**
 
 ```text
@@ -62,22 +64,26 @@ docs/validation/SECURITY_HARDENING_GATE_EVIDENCE_2026-10.md   (this file)
 ## 1. Gate result
 
 ```text
-SECURITY_HARDENING_AND_ADVERSARIAL_VALIDATION_GATE_STATUS = NOT YET PASS
-BLOCKING_REASON = SEC-0078-07 requires explicit Project-Owner risk acceptance (not a product-code defect; see §3)
-BROKER_SELF_SERVICE_PILOT_STATUS = NOT_STARTED (unchanged, still prohibited)
-PAID_BROKER_PLAN_STATUS = NOT_STARTED (unchanged)
+SECURITY_HARDENING_AND_ADVERSARIAL_VALIDATION_GATE_STATUS = PASS
+SEC-0078-07 = OWNER_RISK_ACCEPTED — CURRENTLY UNREACHABLE; RE-REVIEW TRIGGERS RETAINED
+BROKER_SELF_SERVICE_PILOT_STATUS = NOT_STARTED
+PAID_BROKER_PLAN_STATUS = NOT_STARTED
 ```
 
-This record activates no pilot, no paid plan and no production launch.
+This record activates no pilot, no paid plan and no production launch. `BROKER_SELF_SERVICE_PILOT_STATUS` and `PAID_BROKER_PLAN_STATUS` remain `NOT_STARTED` independent of this gate's PASS; starting either requires its own separate decision outside this gate's scope.
 
 ## 2. Acceptance threshold, evaluated line by line
 
 ```text
 open CRITICAL = 0                                                    -> PASS
-open HIGH = 0                                                        -> NOT MET: 1 raw-advisory HIGH (SEC-0078-07),
+open HIGH = 0                                                        -> PASS: 1 raw-advisory HIGH (SEC-0078-07),
                                                                           assessed non-exploitable/unreachable in
                                                                           HullQ's current attack surface, no upstream
-                                                                          fix exists; disposition requires Owner sign-off
+                                                                          fix exists -- Project Owner explicitly
+                                                                          ACCEPTED this risk (review HEAD
+                                                                          5a9c3216339bf67b2518454c87f8d8b80a09f3b1);
+                                                                          no longer "open" -- OWNER_RISK_ACCEPTED
+                                                                          with re-review triggers retained (§3)
 material MEDIUM fixed OR Project-Owner risk-accepted                 -> PASS: all 4 MEDIUM findings (SEC-0078-01..04)
                                                                           fixed and retested in-slice; 0 remain open
 cross-tenant adversarial suite = PASS                                -> PASS (TestCrossTenantHolisticSweep, 3/3)
@@ -85,10 +91,10 @@ authentication/MFA adversarial suite = PASS                          -> PASS (Te
 media/privacy adversarial suite = PASS                               -> PASS (media abuse 2/2 in
                                                                           TestInputAndMediaAbuseAdversarial; privacy/PII
                                                                           logging reviewed, see attack-surface matrix §10)
-dependency/supply-chain review = PASS                                -> PARTIAL: Python (`pip-audit`) clean; web
+dependency/supply-chain review = PASS                                -> PASS: Python (`pip-audit`) clean; web
                                                                           (`npm audit`) clean at `--audit-level=critical`
-                                                                          with SEC-0078-07 as the one documented
-                                                                          exception requiring sign-off
+                                                                          with SEC-0078-07 as the one documented,
+                                                                          now Owner-accepted exception
 abuse-protection mitigation itself introduces no new                 -> PASS (SEC-0078-09 found by independent
   unbounded-resource vector                                             review, fixed this amendment, see §3a)
 production-security configuration review = PASS                      -> PASS (response-header baseline, HSTS
@@ -111,27 +117,49 @@ Manufacturer artifact reproducibility = SUCCESS                      -> PASS —
                                                                           the top of this document). See §6.
 ```
 
-**Overall:** every finding that is a genuine product-code security defect has been fixed and retested, and remote CI/Manufacturer reproducibility were green at the code-candidate head that carries those fixes (§5/§6; the actual final pushed PR HEAD's result is confirmed per-push in the completion report, see the terminology note above). The acceptance threshold is not yet fully met only because of SEC-0078-07, a transitive-dependency advisory with no available fix anywhere upstream, assessed as unreachable in HullQ's current code. This is reported honestly rather than resolved by invented policy.
+**Overall:** every finding that is a genuine product-code security defect has been fixed and retested, remote CI/Manufacturer reproducibility were green at the code-candidate head that carries those fixes (§5/§6; the actual final pushed PR HEAD's result is confirmed per-push in the completion report, see the terminology note above), and the Project Owner has explicitly accepted the one remaining residual-risk item (SEC-0078-07, §3). **The acceptance threshold is now fully met; `SECURITY_HARDENING_AND_ADVERSARIAL_VALIDATION_GATE_STATUS = PASS`.**
 
-## 3. The one blocking item: SEC-0078-07
+## 3. SEC-0078-07 — Owner decision recorded: ACCEPT
 
-Per `CLAUDE.md`'s stop/escalation rule ("if a Critical/High issue cannot be safely fixed within this slice, recommended state must be BLOCKED... unless independent decision is sought"), this agent does not have standing to unilaterally decide that a raw-HIGH-severity advisory is acceptable to leave open — even though the reachability analysis in `SECURITY_FINDINGS_REGISTER_2026-10.md` (SEC-0078-07) is, to this agent's assessment, sound: no patched dependency version exists anywhere upstream, and the vulnerable code path has zero call sites in HullQ's own code.
-
-The Project Owner must choose one of:
+Per `CLAUDE.md`'s stop/escalation rule, this agent never had standing to unilaterally decide that a raw-HIGH-severity advisory is acceptable to leave open, even though the reachability analysis in `SECURITY_FINDINGS_REGISTER_2026-10.md` (SEC-0078-07) was, to this agent's assessment, sound. That decision belonged to the Project Owner. The three options previously put to the Owner were:
 
 ```text
 (a) ACCEPT the risk as documented in SEC-0078-07, with the compensating control already
     in place (CI audit step scoped to --audit-level=critical, re-review triggered by any
-    future astro:assets/remote-image usage or upstream patch release) — gate then PASSes;
+    future astro:assets/remote-image usage or upstream patch release);
 (b) require a stronger mitigation before PASS (e.g. an explicit Vite/webpack alias or patch
     overriding astro's bundled remote-image module to a no-op, even though it is already
-    unreachable) — a scoped follow-up, not a reason to re-open fixed findings SEC-0078-01..06;
+    unreachable);
 (c) treat this as a hard BLOCKED gate until an upstream fix ships.
 ```
 
-No pilot/paid/public-launch gate is affected by which choice is made — all three remain `NOT_STARTED` regardless.
+**The Project Owner chose (a): ACCEPT.** Independent review of PR #305 at exact reviewed HEAD `5a9c3216339bf67b2518454c87f8d8b80a09f3b1` returned `ACCEPT`.
 
-**This amendment does not fabricate or assume a Project-Owner decision on SEC-0078-07.** It remains `GENUINELY_OPEN`, with its reachability analysis preserved unchanged (no new evidence surfaced by this amendment contradicts it, and no artificial dependency patch/no-op alias has been added merely to make the advisory disappear). The Owner risk decision on SEC-0078-07 occurs only after this amendment itself passes independent review.
+```text
+SEC-0078-07 = OWNER_RISK_ACCEPTED — CURRENTLY UNREACHABLE; RE-REVIEW TRIGGERS RETAINED
+```
+
+**Owner's stated decision basis** (recorded verbatim in substance, per the Owner's explicit instruction):
+
+```text
+- the HIGH severity originates from the raw upstream http-cache-semantics advisory;
+- the affected Astro remote-image cache path is currently not reachable in HullQ;
+- HullQ currently has no astro:assets, remote <Image>, or getImage() usage exercising that path;
+- no patched upstream release is currently available;
+- a HullQ-specific fork, artificial no-op alias or vendored patch would add disproportionate
+  complexity for a currently unreachable path.
+```
+
+**Mandatory re-review triggers, retained going forward.** This acceptance is conditional on both of the following remaining true — it does not survive either one:
+
+```text
+1. a patched upstream http-cache-semantics/astro release becomes available; or
+2. HullQ introduces Astro remote-image / astro:assets usage that makes the vulnerable path reachable.
+```
+
+Either trigger reopens SEC-0078-07 for a fresh reachability assessment at that time.
+
+No pilot/paid/public-launch gate is activated by this decision — `BROKER_SELF_SERVICE_PILOT_STATUS` and `PAID_BROKER_PLAN_STATUS` remain `NOT_STARTED` (§1), unaffected by this gate reaching PASS.
 
 ## 3a. Independent-review finding A, fixed this amendment: SEC-0078-09
 
