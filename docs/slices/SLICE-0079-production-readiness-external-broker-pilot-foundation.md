@@ -40,9 +40,9 @@ Production operations are now the highest-leverage hard boundary. Broker export,
 ## Decision / implementation reconciliation
 
 **Accepted records checked:** `docs/PROJECT_STATE.md`; `docs/POST_SLICE_0078_REASSESSMENT_2026-10-03.md`; `docs/governance/PRODUCTION_READINESS_GATE.md`; `docs/governance/POST_0051_TRIGGER_GATES.md`; `docs/governance/OVERALL_MVP_CAPABILITY_REGISTER.md`; `docs/ARCHITECTURE_REBASELINE_2026-09-02.md`; `docs/BROKER_LAUNCH_EXECUTION_FOCUS_2026-09-26.md`; SLICE-0078 acceptance/security evidence.  
-**Production implementation checked:** existing Docker/Compose/GHCR/CI deployment artifacts; PostgreSQL/Alembic configuration and migration validation; application health/config boundaries; Auth0/session production configuration; R2 object-storage boundary; current GitHub Actions CI/reproducibility workflows; SLICE-0078 security/rate-limit/header evidence and tests.  
+**Production implementation checked:** repository root/TREE and GitHub Actions workflows (no Dockerfile, production Compose or GHCR deploy workflow currently exists); PostgreSQL/Alembic configuration and migration validation; current FastAPI/Astro configuration boundaries; Auth0/session production configuration; R2 object-storage boundary; current CI/reproducibility workflows; SLICE-0078 security/rate-limit/header evidence and tests.  
 **Already implemented / not re-decided:** broker product workflow; Broker Workspace Launch Gate PASS; Security Hardening Gate PASS; accepted Astro/FastAPI/PostgreSQL/Auth0/GHCR/Compose/R2 architecture; server-side authorization; current domain/search/listing truth.  
-**Exact remaining gap:** repository-backed operational PASS evidence for controlled production deploy/rollback, recoverability, observability/alerting, edge abuse controls, secrets/privileged access and release/migration/smoke operations.  
+**Exact remaining gap:** the accepted production deployment direction is not yet implemented as production packaging/deploy artifacts (no Dockerfile, production Compose or GHCR deploy workflow exists on canonical main), and repository-backed PASS evidence is also missing for rollback, recoverability, observability/alerting, edge abuse controls, secrets/privileged access and release/migration/smoke operations.  
 **Accepted-but-unimplemented obligations:** Production Readiness Gate §§1–8; MVP-PROD-001..009 as applicable to the bounded first broker production boundary; buyer-contact email verification remains separately trigger-bound before real external buyer-contact; database HA remains mandatory before real external inventory is exposed to real external buyers.  
 **Material classifications:** DECIDED_AND_IMPLEMENTED broker/security/architecture baseline; DECIDED_NOT_YET_IMPLEMENTED production-readiness operational evidence; EXPLICITLY_DEFERRED actual pilot/paid/public launch and unrelated feature expansion; GENUINELY_OPEN provider choice where governance intentionally does not prescribe a vendor; CONFLICT_OR_REGRESSION stale MVP-PROD-012 DUE marker corrected by readiness publication.
 
@@ -78,7 +78,8 @@ Continuing feature expansion before this boundary would increase the amount of p
 
 ## In scope
 
-1. Controlled deploy/rollback evidence:
+1. Controlled deploy/rollback implementation and evidence:
+   - create the missing repository-owned production container/package/deploy artifacts required by the accepted architecture rather than assuming they already exist;
    - CI-verified immutable image path;
    - GHCR/versioned Compose or accepted equivalent;
    - documented/tested rollback to previous known-good version;
