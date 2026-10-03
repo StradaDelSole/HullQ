@@ -5,7 +5,7 @@
 
 **Updated:** 2026-10-03  
 **Latest owner-accepted / DONE slice:** SLICE-0078  
-**Current queue:** SLICE-0079 — **Production Readiness & External Broker Pilot Foundation — READINESS IN REVIEW**. Post-SLICE-0078 reconciliation selected the canonical Production Readiness Gate as the next hard operational boundary; no external pilot or production data is authorized by readiness.  
+**Current queue:** SLICE-0079 — **Production Readiness & External Broker Pilot Foundation — READY ON MAIN**. Post-SLICE-0078 reconciliation, independent readiness review and required remote gates are complete; implementation starts only through `START_SLICE.bat`. No external pilot or production data is authorized by readiness.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -353,6 +353,6 @@ Post-SLICE-0078 reconciliation selected SLICE-0079 to implement and prove the ca
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0078 is owner-accepted and finished; SLICE-0079 Production Readiness & External Broker Pilot Foundation readiness is in review and implementation may start only after readiness is independently accepted/merged and the Project Owner runs `START_SLICE.bat`.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0078 is owner-accepted and finished; SLICE-0079 Production Readiness & External Broker Pilot Foundation is READY ON MAIN and may start only when the Project Owner runs `START_SLICE.bat`.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
