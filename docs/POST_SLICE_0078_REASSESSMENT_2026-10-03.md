@@ -26,16 +26,11 @@ PUBLIC_PRODUCTION_LAUNCH_STATUS = NOT_STARTED
 
 - Broker Workspace launch-readiness product baseline through SLICE-0077;
 - holistic Security Hardening & Adversarial Validation gate through SLICE-0078;
-- immutable-image / GHCR / versioned-Compose deployment direction as accepted architecture;
-- DigitalOcean Managed PostgreSQL 18 FRA1 production database target;
-- Auth0 EU authentication-only boundary with HullQ-owned authorization truth;
-- Cloudflare/R2 direction already accepted for media and independent encrypted backup target;
-- application hosts remain stateless/replaceable;
 - current broker product loop from draft through publication, leads, inventory maintenance, SaleOutcome and factual performance snapshot.
 
 ### DECIDED_NOT_YET_IMPLEMENTED
 
-The canonical Production Readiness Gate still lacks repository-backed PASS evidence for the real production boundary, including:
+The canonical Production Readiness Gate still lacks implementation and repository-backed PASS evidence for the real production boundary. Accepted architecture decisions exist for DigitalOcean Managed PostgreSQL 18 FRA1, Auth0 EU authentication-only, GHCR/versioned Compose immutable deployment, stateless application hosts, and R2 as the independent backup direction, but canonical main currently has no Dockerfile, production Compose or GHCR deployment workflow. Remaining work includes:
 
 - controlled production deploy + rollback proof;
 - production PostgreSQL availability/recoverability evidence;
