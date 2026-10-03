@@ -206,7 +206,7 @@ Expected areas include:
 
 ```text
 .github/workflows/
-docker-compose*.yml / Dockerfile* / deployment configuration already present
+Dockerfile* / docker-compose*.yml / new production deployment configuration
 scripts/
 src/hullq/ operational/config/logging/health boundaries as necessary
 docs/operations/
