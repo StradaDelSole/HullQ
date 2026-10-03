@@ -5,7 +5,7 @@
 
 **Updated:** 2026-10-03  
 **Latest owner-accepted / DONE slice:** SLICE-0078  
-**Current queue:** SLICE-0079 — **UNSELECTED** pending fresh post-SLICE-0078 Decision/Implementation Reconciliation and workflow reassessment.  
+**Current queue:** SLICE-0079 — **Production Readiness & External Broker Pilot Foundation — READINESS IN REVIEW**. Post-SLICE-0078 reconciliation selected the canonical Production Readiness Gate as the next hard operational boundary; no external pilot or production data is authorized by readiness.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -230,7 +230,7 @@ TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 2
 WORKFLOW_REASSESSMENT_DUE_AFTER_SLICE: 0056
 WORKFLOW_REASSESSMENT_STATUS: PASS
 
-PRODUCTION_READINESS_GATE_STATUS: NOT_TRIGGERED
+PRODUCTION_READINESS_GATE_STATUS: IN_PROGRESS
 EXTERNAL_BROKER_PRODUCTION_DATA_STATUS: NOT_PRESENT
 EXTERNAL_OWNER_DIRECT_PRODUCTION_DATA_STATUS: NOT_PRESENT
 PRODUCTION_PILOT_STATUS: NOT_STARTED
@@ -336,9 +336,9 @@ Next queue number:
 SLICE-0079
 ```
 
-**Capability:** UNSELECTED.
+**Capability:** Production Readiness & External Broker Pilot Foundation.
 
-Fresh post-SLICE-0078 Decision/Implementation Reconciliation and workflow reassessment must run before selecting or readying SLICE-0079. No external pilot, paid plan or public launch is authorized merely by SLICE-0078 acceptance.
+Post-SLICE-0078 reconciliation selected SLICE-0079 to implement and prove the canonical Production Readiness Gate before any real external broker data/pilot. Readiness is in review; no external pilot, paid plan or public launch is authorized.
 
 ## Development workflow
 
@@ -353,6 +353,6 @@ Fresh post-SLICE-0078 Decision/Implementation Reconciliation and workflow reasse
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0078 is owner-accepted and implementation-merged; SLICE-0079 remains unselected until fresh reassessment/readiness.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0078 is owner-accepted and finished; SLICE-0079 Production Readiness & External Broker Pilot Foundation readiness is in review and implementation may start only after readiness is independently accepted/merged and the Project Owner runs `START_SLICE.bat`.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
