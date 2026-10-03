@@ -206,6 +206,7 @@ from hullq.security.discovery_surface_signing import (
 )
 from hullq.security.oidc import AuthProviderConfig, get_auth_provider_config
 from hullq.security.preview_signing import get_preview_signing_secret
+from hullq.security.rate_limit import FixedWindowRateLimiter
 from hullq.security.session_signing import get_session_signing_secret
 from hullq.security.session_token import (
     InvalidSessionTokenError,
@@ -355,6 +356,15 @@ _INVENTORY_EDITING_CSRF_HEADER_VALUE = "professional-inventory-editing-v1"
 #: gallery/buyer-lead/lead-ops/inventory-editing CSRF header can never be
 #: replayed against the broker sale/outcome close-out mutation route.
 _SALE_OUTCOME_CSRF_HEADER_VALUE = "broker-sale-outcome-v1"
+
+#: SLICE-0078: the identical fixed-header + exact-Origin CSRF discipline as
+#: every other write channel above, with its own distinct header value so a
+#: valid header from any other channel can never be replayed against logout.
+#: `SameSite=Lax` already withholds the session cookie from a cross-site POST
+#: in current browsers, so this closes the gap defense-in-depth rather than
+#: against a known-reachable exploit; consistency with every other mutating
+#: route is the point, not a newly discovered live bypass.
+_LOGOUT_CSRF_HEADER_VALUE = "broker-logout-v1"
 
 #: SLICE-0070 contract §9: bounded request size before any unbounded
 #: buffering, mirroring the media-upload Content-Length discipline --
@@ -547,6 +557,23 @@ _PUBLIC_LISTING_RESPONSE_HEADERS = {
     "X-Robots-Tag": "noindex",
 }
 
+# SLICE-0078: sent on every response from every route, regardless of
+# path-scoped overrides above. This API never serves HTML/executable
+# content -- only JSON and server-processed image bytes -- so a maximally
+# strict baseline costs nothing: no route needs an embeddable frame, an
+# inline script, or a third-party subresource. `Referrer-Policy` here is
+# the same `no-referrer` value every path-scoped dict above already uses
+# individually, so this does not change behavior for them -- it only
+# covers routes (e.g. the media-bytes/upload/lead-ops/draft/sale-outcome/
+# performance routes) that previously set no explicit headers at all.
+_BASELINE_SECURITY_RESPONSE_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+    "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "geolocation=(), camera=(), microphone=(), payment=(), usb=()",
+}
+
 
 def create_app(
     *,
@@ -679,6 +706,25 @@ def create_app(
         except InvalidSessionTokenError:
             return None
 
+    # SLICE-0078: bounded in-process abuse protection for the three route
+    # categories the security-hardening gate names as highest-risk without
+    # any existing bound -- anonymous buyer-contact spam/enumeration,
+    # authentication-flow abuse, and per-account upload/storage-cost abuse.
+    # One limiter instance per category per `create_app()` call so tests
+    # never leak state across app instances and one category's traffic can
+    # never consume another's budget (see `hullq.security.rate_limit`).
+    _login_rate_limiter = FixedWindowRateLimiter(limit=20, window_seconds=300.0)
+    _contact_rate_limiter = FixedWindowRateLimiter(limit=5, window_seconds=300.0)
+    _media_upload_rate_limiter = FixedWindowRateLimiter(limit=30, window_seconds=3600.0)
+
+    def _client_rate_limit_key(request: Request) -> str:
+        client = request.client
+        return client.host if client is not None else "unknown"
+
+    def _enforce_rate_limit(limiter: FixedWindowRateLimiter, key: str) -> None:
+        if not limiter.allow(key):
+            raise HTTPException(status_code=429, detail="rate limit exceeded")
+
     def _normalized_origin(raw: str) -> tuple[str, str, int] | None:
         parts = urlsplit(raw)
         if parts.scheme not in ("http", "https") or not parts.hostname:
@@ -795,6 +841,17 @@ def create_app(
         ):
             raise HTTPException(status_code=403, detail="csrf validation failed")
 
+    def _require_logout_csrf(request: Request) -> None:
+        # SLICE-0078: identical exact-Origin-match + fixed non-simple header
+        # discipline as every other mutating broker-write channel, with its
+        # own distinct header value (see `_LOGOUT_CSRF_HEADER_VALUE`).
+        origin_header = request.headers.get("origin")
+        requested_with = request.headers.get(_OWNER_DIRECT_CSRF_HEADER_NAME)
+        accepted = _normalized_origin(_resolve_web_origin())
+        actual = _normalized_origin(origin_header) if origin_header else None
+        if actual is None or actual != accepted or requested_with != _LOGOUT_CSRF_HEADER_VALUE:
+            raise HTTPException(status_code=403, detail="csrf validation failed")
+
     def _require_sale_outcome_csrf(request: Request) -> None:
         # SLICE-0074 contract §8: identical exact-Origin-match + fixed
         # non-simple header discipline as every other authenticated
@@ -836,6 +893,13 @@ def create_app(
         # bearer-capability confidentiality headers must never appear on the
         # public route, and vice versa.
         response = await call_next(request)
+        for key, value in _BASELINE_SECURITY_RESPONSE_HEADERS.items():
+            response.headers[key] = value
+        if _cookie_secure():
+            # Only asserted once this process is actually configured for
+            # TLS-terminated cookies (production); a local/CI HTTP-only
+            # dev server must never tell a browser to upgrade it.
+            response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
         path = request.url.path
         if path.startswith(_PREVIEW_PATH_PREFIX):
             for key, value in _PREVIEW_RESPONSE_HEADERS.items():
@@ -962,6 +1026,7 @@ def create_app(
         # request -- this route never returns 401. An optional valid session
         # only adds AccountId attribution (contract §3/§13) below.
         _require_buyer_lead_csrf(request)
+        _enforce_rate_limit(_contact_rate_limiter, _client_rate_limit_key(request))
 
         # Contract §9: bounded request size before any unbounded buffering,
         # checked from the Content-Length header before the body is ever
@@ -1227,6 +1292,7 @@ def create_app(
 
     @app.get("/api/auth/login")
     def broker_login(request: Request) -> Response:
+        _enforce_rate_limit(_login_rate_limiter, _client_rate_limit_key(request))
         auth_config = _resolve_auth_config()
         redirect_uri = _resolve_redirect_uri()
         require_same_host_session_topology(
@@ -1315,7 +1381,8 @@ def create_app(
         return response
 
     @app.post("/api/auth/logout")
-    def broker_logout() -> JSONResponse:
+    def broker_logout(request: Request) -> JSONResponse:
+        _require_logout_csrf(request)
         response = JSONResponse({"status": "logged_out"})
         response.delete_cookie(
             _session_cookie_name(), path="/", secure=_cookie_secure(), samesite="lax"
@@ -2533,6 +2600,7 @@ def create_app(
         if session is None:
             raise HTTPException(status_code=401, detail="authentication required")
         _require_media_gallery_csrf(request)
+        _enforce_rate_limit(_media_upload_rate_limiter, session.account_id.value)
 
         # Contract §6.1: bounded request size before any unbounded buffering
         # -- checked from the `Content-Length` header before the body is

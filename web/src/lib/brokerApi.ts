@@ -202,6 +202,36 @@ export async function fetchOrganizationInventory(
   return { kind: "ok", data };
 }
 
+// SLICE-0078: logout was previously a bare `<form>` POST straight from the
+// browser to FastAPI's own host -- a plain form can never set a custom
+// header, so it could never carry the CSRF discipline every other mutating
+// channel on this page requires. This proxy makes it consistent: Astro's
+// own server calls FastAPI server-to-server, sets the fixed CSRF header
+// itself, forwards the browser's own Cookie/Origin unmodified, and the
+// caller relays FastAPI's `Set-Cookie` (session-cookie deletion) back to the
+// browser unmodified.
+
+export const LOGOUT_CSRF_HEADER_NAME = "X-HullQ-Requested-With";
+export const LOGOUT_CSRF_HEADER_VALUE = "broker-logout-v1";
+
+export async function logoutFromBroker(
+  apiBaseUrl: string,
+  cookieHeader: string | null,
+  originHeader: string | null,
+): Promise<Response> {
+  const base = apiBaseUrl.replace(/\/+$/, "");
+  const headers: Record<string, string> = {
+    ...cookieHeaders(cookieHeader),
+    ...(originHeader ? { Origin: originHeader } : {}),
+    [LOGOUT_CSRF_HEADER_NAME]: LOGOUT_CSRF_HEADER_VALUE,
+  };
+  return fetch(`${base}/api/auth/logout`, {
+    method: "POST",
+    headers,
+    redirect: "manual",
+  });
+}
+
 // SLICE-0064: the authenticated, Organization-scoped NativeListing lifecycle
 // mutation boundary (publish/withdraw/reconfirm an already-existing
 // NativeListing). Every result here is exactly what FastAPI decided -- this

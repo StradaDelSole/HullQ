@@ -56,9 +56,13 @@ from hullq.testing.oidc_test_issuer import create_test_issuer_app
 
 _ISSUER_BASE = "http://issuer.test/"
 _API_BASE = "http://api.test"
+_WEB_ORIGIN = "http://web.test"
 _CLIENT_ID = "hullq-int-test-client"
 _ORG_A = "ORG-INT-A"
 _ORG_B = "ORG-INT-B"
+#: SLICE-0078: the fixed CSRF header `/api/auth/logout` now requires --
+#: mirrors `hullq.api.app._LOGOUT_CSRF_HEADER_VALUE`.
+_LOGOUT_CSRF_HEADERS = {"Origin": _WEB_ORIGIN, "X-HullQ-Requested-With": "broker-logout-v1"}
 
 
 def _with_search_path(base_url: str, schema_name: str) -> str:
@@ -119,8 +123,8 @@ class _BrowserClient:
     def get(self, url: str, params: dict[str, str] | None = None) -> httpx.Response:
         return self._for(url).get(url, params=params)
 
-    def post(self, url: str) -> httpx.Response:
-        return self._for(url).post(url)
+    def post(self, url: str, headers: dict[str, str] | None = None) -> httpx.Response:
+        return self._for(url).post(url, headers=headers)
 
     @property
     def cookies(self) -> httpx.Cookies:
@@ -166,6 +170,7 @@ def _build_client(
         session_signing_secret=session_signing_secret or os.urandom(32),
         auth_redirect_uri=redirect_uri,
         web_base_url=web_base_url,
+        web_origin=_WEB_ORIGIN,
         auth_http_client=issuer_client,
         auth_jwks_cache=jwks_cache,
     )
@@ -376,10 +381,23 @@ class TestBrokerWorkspaceAccessVertical:
         _login(client, login_hint="int-subject-logout")
         assert client.get("/api/broker/context").status_code == 200
 
-        logout_response = client.post("/api/auth/logout")
+        logout_response = client.post("/api/auth/logout", headers=_LOGOUT_CSRF_HEADERS)
         assert logout_response.status_code == 200
 
         assert client.get("/api/broker/context").status_code == 401
+
+    def test_logout_without_csrf_header_is_rejected_and_session_survives(
+        self, client: httpx.Client
+    ) -> None:
+        # SLICE-0078: a bare same-origin-less POST (e.g. a cross-site forged
+        # form submission) must never be able to force a logout.
+        _login(client, login_hint="int-subject-logout-csrf")
+        assert client.get("/api/broker/context").status_code == 200
+
+        logout_response = client.post("/api/auth/logout")
+        assert logout_response.status_code == 403
+
+        assert client.get("/api/broker/context").status_code == 200
 
     def test_tampered_session_cookie_rejected(self, client: httpx.Client) -> None:
         _login(client, login_hint="int-subject-tamper")

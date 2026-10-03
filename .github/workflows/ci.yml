@@ -84,6 +84,20 @@ jobs:
         working-directory: web
         run: npm ci
 
+      - name: Audit web dependencies (SLICE-0078)
+        working-directory: web
+        # `--audit-level=critical`, not `high`: the one currently open HIGH
+        # finding (GHSA-ch52-4w7c-c8xp, `http-cache-semantics` via `astro`'s
+        # remote-image cache policy) has no patched release at any version
+        # (upstream range is "<=4.2.0", the latest published version) and is
+        # unreachable in HullQ -- `web/src` has zero `astro:assets`/`<Image>`/
+        # `getImage()` usage with a remote source, the only call site. See
+        # `docs/validation/SECURITY_FINDINGS_REGISTER_2026-10.md` finding
+        # SEC-0078-07 (Project-Owner risk-acceptance pending). This step
+        # still fails the build on any Critical finding, or a new High in a
+        # package this reasoning does not cover.
+        run: npm audit --audit-level=critical
+
       - name: Astro/TypeScript check
         working-directory: web
         run: npm run check
