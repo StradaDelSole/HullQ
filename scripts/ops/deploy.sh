@@ -40,9 +40,10 @@ IMAGE_TAG="sha-$NEW_SHA"
 
 # Overridable only for the retained local proof
 # (scripts/ops/inspect_deploy_rollback_lifecycle.py); production always
-# uses the defaults (up to 60s).
+# uses the defaults (up to 60s on the real published port 8000).
 HEALTH_RETRIES="${HULLQ_DEPLOY_HEALTH_RETRIES:-30}"
 HEALTH_INTERVAL_SECONDS="${HULLQ_DEPLOY_HEALTH_INTERVAL_SECONDS:-2}"
+HEALTH_PORT="${HULLQ_DEPLOY_HEALTH_PORT:-8000}"
 
 CURRENT_SHA="$(cat "$CURRENT_FILE" 2>/dev/null || echo "")"
 
@@ -53,8 +54,8 @@ docker compose -f "$COMPOSE_FILE" up -d
 
 echo "Waiting for the API container to report healthy..."
 ATTEMPT=0
-until curl -fsS http://127.0.0.1:8000/healthz >/dev/null 2>&1 \
-      && curl -fsS http://127.0.0.1:8000/readyz >/dev/null 2>&1; do
+until curl -fsS "http://127.0.0.1:$HEALTH_PORT/healthz" >/dev/null 2>&1 \
+      && curl -fsS "http://127.0.0.1:$HEALTH_PORT/readyz" >/dev/null 2>&1; do
   ATTEMPT=$((ATTEMPT + 1))
   if [ "$ATTEMPT" -ge "$HEALTH_RETRIES" ]; then
     echo "Deploy health check failed for $NEW_SHA after $((HEALTH_RETRIES * HEALTH_INTERVAL_SECONDS))s." >&2

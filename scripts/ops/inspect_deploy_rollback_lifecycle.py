@@ -136,7 +136,16 @@ def main() -> int:
         f"HULLQ_PREVIEW_SIGNING_SECRET={_LOCAL_PREVIEW_SECRET}\n",
         encoding="utf-8",
     )
-    env_common = {"HULLQ_SHARED_DIR": _posix(shared_dir)}
+    # HULLQ_DEPLOY_HEALTH_PORT must match the host-side port the stand-in
+    # Compose file above actually publishes (HEALTH_PORT, deliberately not
+    # production's 8000, so this proof can never collide with or
+    # accidentally observe a real deploy running on the same machine).
+    # deploy.sh's health check otherwise defaults to checking port 8000,
+    # which would silently check the wrong (or no) service here.
+    env_common = {
+        "HULLQ_SHARED_DIR": _posix(shared_dir),
+        "HULLQ_DEPLOY_HEALTH_PORT": str(HEALTH_PORT),
+    }
     current_file = root / "state" / "current-release"
     previous_file = root / "state" / "previous-release"
 

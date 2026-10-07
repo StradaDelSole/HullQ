@@ -141,19 +141,37 @@ jobs:
           persist-credentials: false
 
       - name: Deploy over SSH
+        # Independent-review amendment (Finding A/B): deploy.sh takes NO
+        # arguments and derives both the image tag and the Compose/Caddy
+        # configuration it deploys entirely from its own release directory's
+        # name (scripts/ops/deploy.sh header,
+        # docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md §1/§2). So
+        # this step must first materialize this exact commit's own release
+        # directory on the VPS -- $DEPLOY_PATH/releases/<github.sha>/,
+        # containing this checkout's own docker-compose.prod.yml, Caddyfile,
+        # deploy.sh and rollback.sh -- and only then run that release's own
+        # deploy.sh. This is what makes it impossible for an older immutable
+        # image tag to ever be deployed against newer/mutated configuration.
         env:
           DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
           DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          IMAGE_TAG: sha-${{ github.sha }}
+          RELEASE_SHA: ${{ github.sha }}
         run: |
           install -d -m 700 ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$DEPLOY_SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          RELEASE_DIR="$DEPLOY_PATH/releases/$RELEASE_SHA"
           ssh -i ~/.ssh/deploy_key "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" \
-            "$DEPLOY_PATH/deploy.sh $IMAGE_TAG"
+            "mkdir -p '$RELEASE_DIR'"
+          scp -i ~/.ssh/deploy_key \
+            docker-compose.prod.yml Caddyfile scripts/ops/deploy.sh scripts/ops/rollback.sh \
+            "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST:$RELEASE_DIR/"
+          ssh -i ~/.ssh/deploy_key "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" \
+            "chmod +x '$RELEASE_DIR/deploy.sh' '$RELEASE_DIR/rollback.sh' && '$RELEASE_DIR/deploy.sh'"
 
       - name: Post-deploy smoke check
         env:
