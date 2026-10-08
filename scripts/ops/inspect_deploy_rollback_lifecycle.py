@@ -34,7 +34,14 @@ ephemeral Docker registry (see below), and the real Docker Engine, proving:
    release's image (forced via `docker rmi`) and a host that already had it
    cached both resolve that release to the exact same image content, proven
    by comparing the actually-running container's real local image ID
-   across both cases, not merely the reference string used.
+   across both cases, not merely the reference string used;
+10. (independent-review Finding M) a release whose VPS-local release
+    directory (including `image-refs.env`) is completely lost -- simulating
+    total loss/rebuild of the application host -- is reconstructed from the
+    DURABLE off-host registry record, not from a fresh local rebuild: even
+    when a rebuild attempt for that same commit would produce different
+    content (upstream base images are mutable), the reconstructed host
+    redeploys the ORIGINAL content, byte for byte.
 
 Independent-review amendment (Finding L): release identity is now bound to
 the real OCI manifest digest GHCR would assign in production
@@ -54,6 +61,20 @@ use -- from each release's own `image-refs.env`, written by
 missing` (matching the real file, not `never`) is used deliberately, so
 this proof can genuinely exercise a real pull-by-digest against the local
 throwaway registry -- never any real external network access.
+
+Independent-review amendment (Finding M): `image-refs.env` (Finding L)
+exists only on the application VPS, which the accepted architecture
+requires to be replaceable/rebuildable from scratch -- so it cannot be the
+SOLE source of truth for a release's image identity. `_resolve_or_build_and_push`
+mirrors `.github/workflows/deploy.yml`'s own durable-reuse guard: before
+building, it checks whether the target tag already resolves to a digest in
+the registry (the durable, off-host record -- GHCR in production, this
+throwaway registry here) and reuses that digest unconditionally rather than
+building, so a rebuild of an already-established commit (even one that
+would produce different bytes) can never silently redefine it. Step 10
+proves the actual failure case Finding M named: deleting a release's
+VPS-local directory entirely and reconstructing it on what is, in every way
+this proof can observe, a "fresh host."
 
 The per-release Compose file used here is deliberately a minimal
 single-service (api-only) stand-in for the real `docker-compose.prod.yml`
@@ -101,6 +122,7 @@ _LOCAL_PREVIEW_SECRET = "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
 SHA_A = "release-a"
 SHA_B = "release-b"
 SHA_C = "release-c-broken"
+SHA_HOSTLOSS = "release-hostloss"
 
 
 def _posix(path: Path) -> str:
@@ -197,16 +219,35 @@ def _stop_registry() -> None:
     _run(["docker", "rm", "-f", "-v", REGISTRY_CONTAINER], check=False)
 
 
-def _build_and_push(registry_base: str, release_label: str) -> str:
-    """Build a real, distinct image and push it for real, returning the
-    real OCI manifest digest (e.g. "sha256:...") GHCR would equally assign
-    in production. Each release gets its own `--label` so A and B are
-    genuinely different content with genuinely different digests --
-    independent-review Finding L requires proving release independence,
-    which one image retagged three ways cannot demonstrate.
+def _resolve_or_build_and_push(registry_base: str, tag: str, release_label: str) -> str:
+    """Mirror .github/workflows/deploy.yml's own Finding M guard for real:
+    check whether `tag` already resolves to a digest in the registry --
+    the durable, off-host record of what that tag means, which (in
+    production, GHCR; here, this throwaway registry) survives even total
+    loss of the application VPS -- and reuse it unconditionally rather
+    than building. Only when the tag has never been published does this
+    build fresh content (labelled `release_label`, so distinct calls with
+    distinct labels produce genuinely distinct digests) and push it,
+    returning the real OCI manifest digest (e.g. "sha256:...") GHCR would
+    equally assign in production.
+
+    A later call with the SAME `tag` but a DIFFERENT `release_label` must
+    still return the ORIGINAL digest -- that is exactly what proves a
+    rebuild (even one that would produce different bytes, e.g. because
+    upstream base images moved) can never silently redefine an
+    already-established identity.
     """
 
-    tag = f"{registry_base}/{IMAGE_NAME}:build-{release_label}"
+    ref = f"{registry_base}/{IMAGE_NAME}:{tag}"
+    inspect_result = _run(["docker", "buildx", "imagetools", "inspect", ref], check=False)
+    if inspect_result.returncode == 0:
+        match = re.search(r"^Digest:\s*(sha256:[0-9a-f]+)", inspect_result.stdout, re.MULTILINE)
+        if match is None:
+            raise RuntimeError(
+                f"could not parse digest from imagetools inspect output:\n{inspect_result.stdout}"
+            )
+        return f"{registry_base}/{IMAGE_NAME}@{match.group(1)}"
+
     _run(
         [
             "docker",
@@ -215,13 +256,13 @@ def _build_and_push(registry_base: str, release_label: str) -> str:
             "--label",
             f"hullq.proof.release={release_label}",
             "-t",
-            tag,
+            ref,
             "-f",
             _posix(REPO_ROOT / "Dockerfile"),
             _posix(REPO_ROOT),
         ]
     )
-    push_result = _run(["docker", "push", tag])
+    push_result = _run(["docker", "push", ref])
     match = re.search(r"digest:\s*(sha256:[0-9a-f]+)", push_result.stdout)
     if match is None:
         raise RuntimeError(f"could not parse digest from docker push output:\n{push_result.stdout}")
@@ -341,8 +382,8 @@ def main() -> int:
             "[proof] building two genuinely distinct images and pushing each for a real digest",
             file=sys.stderr,
         )
-        image_ref_a = _build_and_push(registry_base, "a")
-        image_ref_b = _build_and_push(registry_base, "b")
+        image_ref_a = _resolve_or_build_and_push(registry_base, "build-a", "a")
+        image_ref_b = _resolve_or_build_and_push(registry_base, "build-b", "b")
         if image_ref_a == image_ref_b:
             raise AssertionError(
                 "release A and release B must have genuinely distinct image digests"
@@ -497,6 +538,82 @@ def main() -> int:
                 f"{content_fresh} != {content_cached}"
             )
         results["9_fresh_and_cached_pull_identical_content"] = True
+
+        print(
+            "[proof] 10) a lost/rebuilt application host reconstructs a release from the "
+            "durable off-host registry record, never from a fresh local rebuild",
+            file=sys.stderr,
+        )
+        # independent-review Finding M: $RELEASE_DIR/image-refs.env (Finding
+        # L) exists only on the application VPS, which the accepted
+        # architecture requires to be replaceable. This step proves that a
+        # TOTAL loss of that VPS-local release directory does not cost
+        # commit X its established identity, because the durable record
+        # lives in the registry (GHCR in production; this throwaway
+        # registry here), never only on the host.
+        hostloss_tag = "sha-hostloss-commit"
+        digest_established = _resolve_or_build_and_push(registry_base, hostloss_tag, "hostloss-v1")
+        release_hostloss, _ = _materialize_release(
+            root, shared_dir, SHA_HOSTLOSS, digest_established
+        )
+        result = _bash(release_hostloss / "deploy.sh", extra_env=env_common)
+        if result.returncode != 0:
+            raise AssertionError(f"initial deploy of release-hostloss failed:\n{result.stdout}")
+        content_before_loss = _running_image_id()
+
+        # Simulate total loss of the application VPS's local release
+        # state for this commit: its release directory (including
+        # image-refs.env) is gone, exactly as it would be after a VPS
+        # rebuild from scratch.
+        _run(["docker", "compose", "-p", PROJECT_NAME, "down"], check=False)
+        shutil.rmtree(release_hostloss)
+        if release_hostloss.exists():
+            raise AssertionError(
+                "simulated host loss did not actually remove the release directory"
+            )
+
+        # Simulate a later rebuild of the SAME commit that -- because
+        # upstream base images are mutable -- would produce DIFFERENT
+        # content if it were ever actually built. The durable registry
+        # record for `hostloss_tag` must cause this to resolve to the
+        # ORIGINAL digest instead of building this "v2" content at all.
+        digest_after_rebuild_attempt = _resolve_or_build_and_push(
+            registry_base, hostloss_tag, "hostloss-v2-WOULD-BE-DIFFERENT"
+        )
+        if digest_after_rebuild_attempt != digest_established:
+            raise AssertionError(
+                "a rebuild attempt for an already-established commit must resolve to the "
+                "original durable digest, not a new one"
+            )
+
+        # Reconstruct a fresh host: the release directory does not exist
+        # locally (just deleted above), so this is a genuine first-time
+        # materialization on this "host" -- but it must use the RESOLVED
+        # durable digest, not re-trigger a build.
+        reconstructed_release, reconstructed_created = _materialize_release(
+            root, shared_dir, SHA_HOSTLOSS, digest_after_rebuild_attempt
+        )
+        if not reconstructed_created:
+            raise AssertionError("reconstruction after simulated host loss did not actually occur")
+        reconstructed_refs = (reconstructed_release / "image-refs.env").read_text(encoding="utf-8")
+        if digest_established not in reconstructed_refs:
+            raise AssertionError(
+                "reconstructed release-hostloss does not record the original durable digest"
+            )
+
+        # Prove redeployment (the rollback/redeploy path) on the
+        # reconstructed host actually runs the ORIGINAL content, not
+        # anything a "v2" rebuild could have produced.
+        result = _bash(reconstructed_release / "deploy.sh", extra_env=env_common)
+        if result.returncode != 0:
+            raise AssertionError(f"redeploy after host loss failed:\n{result.stdout}")
+        content_after_reconstruction = _running_image_id()
+        if content_after_reconstruction != content_before_loss:
+            raise AssertionError(
+                f"reconstructed host did not redeploy the original content: "
+                f"{content_after_reconstruction} != {content_before_loss}"
+            )
+        results["10_host_loss_reconstructs_from_durable_identity"] = True
     finally:
         print("[proof] cleaning up containers/images/registry/temp directory", file=sys.stderr)
         _run(["docker", "compose", "-p", PROJECT_NAME, "down", "--remove-orphans"], check=False)
@@ -504,9 +621,12 @@ def main() -> int:
         if registry_base is not None:
             _run(["docker", "rmi", f"{registry_base}/{IMAGE_NAME}:build-a"], check=False)
             _run(["docker", "rmi", f"{registry_base}/{IMAGE_NAME}:build-b"], check=False)
+            _run(
+                ["docker", "rmi", f"{registry_base}/{IMAGE_NAME}:sha-hostloss-commit"], check=False
+            )
         shutil.rmtree(root, ignore_errors=True)
 
-    all_passed = all(results.values()) and len(results) == 9
+    all_passed = all(results.values()) and len(results) == 10
     print(json.dumps({"results": results, "clear": all_passed}, indent=2))
     return 0 if all_passed else 1
 

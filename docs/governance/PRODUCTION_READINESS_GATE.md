@@ -73,8 +73,11 @@ release-directory deploy/rollback state machine
 (`scripts/ops/deploy.sh`/`rollback.sh`, `docker-compose.prod.yml`) proved by
 real execution of `scripts/ops/inspect_deploy_rollback_lifecycle.py`
 against the real Docker Engine on 2026-10-08, observed to exit 0 with all
-7 named invariants true (`PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md` §5 has the
-exact command/output); an independent encrypted R2-bound backup/restore
+10 named invariants true, including that a release whose VPS-local state
+is completely lost is reconstructed from a durable off-host GHCR record
+rather than a potentially-divergent rebuild (independent-review Finding M)
+(`PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md` §5 has the exact command/output);
+an independent encrypted R2-bound backup/restore
 mechanism with a real destroy-then-restore proof against a disposable
 PostgreSQL schema;
 structured JSON logging, a global unhandled-exception capture path,

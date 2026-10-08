@@ -15,8 +15,12 @@ application VPS ($DEPLOY_PATH, e.g. /opt/hullq)
   |     +-- docker-compose.prod.yml      — this release's own copy
   |     +-- Caddyfile                    — this release's own copy
   |     +-- deploy.sh, rollback.sh       — this release's own copy
-  |     +-- image-refs.env               — this release's own immutable image
-  |                                         identity (Finding L, §1 below)
+  |     +-- image-refs.env               — this release's own runtime COPY of
+  |                                         its immutable image identity
+  |                                         (Finding L); the durable SOURCE
+  |                                         of that identity is GHCR itself,
+  |                                         off-host (Finding M, §1 below) —
+  |                                         never this VPS-local file alone
   +-- shared/                            — stable, non-versioned runtime state
   |     +-- .env                         — never committed, never per-release
   |     +-- certs/cf-origin*.pem
@@ -60,11 +64,40 @@ pushed alongside the digest for operator convenience (`docker pull
 <repo>:sha-<commit>` for manual inspection), but nothing in the deploy/
 rollback path ever resolves it — only the recorded digest is ever deployed.
 `<tag>` is always `sha-<full git commit SHA>` — never `latest`
-(`docs/ARCHITECTURE_REBASELINE_2026-09-02.md` §24). Both images are
-stateless: neither writes canonical application data to a local volume.
-PostgreSQL (DigitalOcean Managed) and object storage (Cloudflare R2) are
-both externalized, so the VPS itself can be rebuilt from scratch using only
-this repository, the `.env` file and the two certificate files.
+(`docs/ARCHITECTURE_REBASELINE_2026-09-02.md` §24).
+
+**Independent-review Finding M — the durable off-host release manifest.**
+`image-refs.env` (Finding L) exists only on the application VPS. That alone
+conflicts with this host being replaceable: if the VPS is lost and rebuilt,
+a replacement VPS has no release directory for a previously-deployed
+commit, and re-dispatching the deploy workflow for that same commit could
+in principle rebuild it into *different* image bytes (the Dockerfiles'
+upstream base images are themselves mutable tags) under the same
+`sha-<commit>` tag — silently redefining what that commit means.
+
+**GHCR itself is the durable, off-host release manifest** — no new
+artifact type, service or platform was introduced. Before building either
+image, `.github/workflows/deploy.yml`'s `push_api_to_ghcr`/
+`push_web_to_ghcr` jobs check whether `ghcr.io/stradadelsole/hullq-<api|web>
+:sha-<commit>` already resolves to a digest (`docker buildx imagetools
+inspect`). If it does — this commit was ever successfully published
+before, by this run or any earlier one, regardless of what happened to the
+VPS in between — that existing digest is reused unconditionally and
+nothing is rebuilt. Only when the tag has never been published does the
+job build and push for the first time, which is what establishes the
+durable record. `deploy`'s VPS-local `image-refs.env` write (Finding L) is
+therefore always populated from this durable, already-resolved digest, not
+from whatever a fresh build on this run happened to produce.
+
+This is what actually justifies "the VPS can be rebuilt from scratch":
+Both images are stateless: neither writes canonical application data to a
+local volume. PostgreSQL (DigitalOcean Managed) and object storage
+(Cloudflare R2) are both externalized. And now, a replacement VPS
+re-materializing any previously-established commit's release directory
+reconstructs the exact original image identity from GHCR's durable record
+— never a fresh, potentially-divergent rebuild — using only this
+repository, the `.env` file, the two certificate files, and GHCR's own
+retained image history.
 
 ## 2. One-time VPS setup
 
@@ -86,13 +119,17 @@ be created manually — the first successful `deploy.sh` run creates them.
 
 ## 3. Normal deploy
 
-Deploy is automated by `.github/workflows/deploy.yml`'s `push_api_to_ghcr`/`push_web_to_ghcr` jobs (run on every push to `main`, each building and pushing its image tagged `sha-<commit>` for human-readable convenience, and each exposing the real OCI manifest `digest` GHCR assigned as a job output) — but only after that same workflow's `verify_ci_passed` job (independent-review Finding H) has confirmed, by directly querying GitHub's Checks API for that exact commit SHA, that the "CI" workflow's quality/db-integration/dependency-audit/historical-replay checks and the "Manufacturer artifact reproducibility" workflow's checks have all actually completed with `success` for it. A `main` commit whose required checks are failing (or still running) can never reach GHCR through this workflow. Rolling a pushed build out to the VPS is **manual** via the same workflow's `deploy` job (`workflow_dispatch` with `deploy: true`), gated behind the GitHub `production` Environment (configure required reviewers there before first use).
+Deploy is automated by `.github/workflows/deploy.yml`'s `push_api_to_ghcr`/`push_web_to_ghcr` jobs (run on every push to `main`) — but only after that same workflow's `verify_ci_passed` job (independent-review Finding H) has confirmed, by directly querying GitHub's Checks API for that exact commit SHA, that the "CI" workflow's quality/db-integration/dependency-audit/historical-replay checks and the "Manufacturer artifact reproducibility" workflow's checks have all actually completed with `success` for it. A `main` commit whose required checks are failing (or still running) can never reach GHCR through this workflow.
+
+Each push job first checks GHCR for an existing `sha-<commit>` tag for its own image (independent-review Finding M — GHCR is the durable off-host release manifest): if one already resolves to a digest, that digest is reused and nothing is rebuilt; otherwise the job builds and pushes for the first time, tagging the result `sha-<commit>` for human-readable convenience, and that push establishes the durable record. Either way, the job exposes the resolved `digest` (the real OCI manifest digest GHCR holds for that tag) as its output. Rolling a pushed build out to the VPS is **manual** via the same workflow's `deploy` job (`workflow_dispatch` with `deploy: true`), gated behind the GitHub `production` Environment (configure required reviewers there before first use).
 
 That `deploy` job does, over SSH, for the exact commit SHA it is deploying:
 
-1. checks whether `$DEPLOY_PATH/releases/<sha>/image-refs.env` already exists on the VPS. If it does (a rerun/retry/re-dispatch of this exact commit), that release is left completely untouched — its originally-recorded image digests are never replaced (independent-review Finding L);
-2. otherwise, materializes `$DEPLOY_PATH/releases/<sha>/` on the VPS for the first time, containing that commit's own `docker-compose.prod.yml`, `Caddyfile`, `deploy.sh`, `rollback.sh` **and** a freshly-written `image-refs.env` binding `HULLQ_API_IMAGE`/`HULLQ_WEB_IMAGE` to the exact `repository@sha256:<digest>` identities this run's `push_api_to_ghcr`/`push_web_to_ghcr` jobs just produced;
+1. checks whether `$DEPLOY_PATH/releases/<sha>/image-refs.env` already exists on the VPS. If it does (a rerun/retry/re-dispatch of this exact commit on a VPS that still has it), that release is left completely untouched — its originally-recorded image digests are never replaced (independent-review Finding L);
+2. otherwise, materializes `$DEPLOY_PATH/releases/<sha>/` on the VPS — whether for the first time ever, or because a replacement VPS has no release directory for this commit after the original was lost — containing that commit's own `docker-compose.prod.yml`, `Caddyfile`, `deploy.sh`, `rollback.sh` **and** a freshly-written `image-refs.env` binding `HULLQ_API_IMAGE`/`HULLQ_WEB_IMAGE` to the `repository@sha256:<digest>` identities `push_api_to_ghcr`/`push_web_to_ghcr` resolved for THIS commit — the durable GHCR-recorded digests (reused from a prior publish if one exists), never necessarily a fresh build's output (independent-review Finding M);
 3. runs that release's own `deploy.sh` — **no arguments**; everything it needs (the immutable image digests, the Compose/Caddy configuration) is derived from its own release directory.
+
+**VPS loss/rebuild recovery:** because step 2 above always sources its digests from GHCR's durable record rather than purely from this run's own build, a replacement VPS re-dispatched for a previously-deployed commit reconstructs that exact same release — not a potentially-divergent rebuild — with no extra operator action beyond the normal deploy sequence.
 
 `deploy.sh` reads `image-refs.env` (refusing to run if it is missing or incomplete — no mutable-tag fallback), runs `docker compose up -d` (pinned to those exact digests), polls `/healthz` and `/readyz` on `127.0.0.1:8000` for up to 60 seconds, and only on success advances the `state/` release pointers: the release that was current becomes `state/previous-release` (the rollback target) and the new release becomes `state/current-release` (independent review Finding C — state only advances after the deploy it describes has actually succeeded). It also refreshes the stable `$DEPLOY_PATH/rollback.sh` entrypoint from its own copy, so an operator always invokes the same fixed path regardless of which release is currently live.
 
@@ -126,7 +163,8 @@ Engine. It proves, end to end:
 6. the running container's image reference always matches the immutable digest identity recorded for its own release — image and deployment configuration can never drift apart (Finding B/L);
 7. all of the above against the real nested release-directory layout, not a flattened stand-in;
 8. (independent-review Finding L) a later attempt to "republish" an already-established release with a DIFFERENT image digest is refused — that release's `image-refs.env` is left untouched, so a rerun/retry/re-dispatch of the same commit can never silently make that commit mean different image content;
-9. (independent-review Finding L) a host with no locally-cached copy of a release's image (forced via `docker rmi`) and a host that already had it cached both resolve that release to the exact same image content.
+9. (independent-review Finding L) a host with no locally-cached copy of a release's image (forced via `docker rmi`) and a host that already had it cached both resolve that release to the exact same image content;
+10. (independent-review Finding M) a release whose VPS-local release directory (`image-refs.env` included) is deleted entirely — simulating total loss/rebuild of the application host — is reconstructed from the DURABLE off-host registry record, not from a fresh rebuild that (because upstream base images are mutable) could produce different content; the reconstructed host redeploys the ORIGINAL content exactly.
 
 Run:
 
@@ -137,15 +175,15 @@ uv run python scripts/ops/inspect_deploy_rollback_lifecycle.py
 Requires a working local Docker Engine and the local PostgreSQL 18 test
 database.
 
-**Execution status (independent-review Findings D and L, resolved
+**Execution status (independent-review Findings D, L and M, resolved
 2026-10-08):** Docker Desktop was started and the real Docker Engine
 (29.7.2) became reachable in this session. `uv run python
 scripts/ops/inspect_deploy_rollback_lifecycle.py` was then actually
 executed against it and the real local PostgreSQL 18 test database, and
 observed to complete clean — this transcript is the current, expanded
-9-invariant proof (Finding L added invariants 2/3/6/8/9's digest-identity
-assertions and the registry/two-distinct-builds setup on top of Finding
-D's original 7):
+10-invariant proof (Finding M added invariant 10's host-loss/
+reconstruction assertion on top of Finding L's 9, which themselves expanded
+Finding D's original 7):
 
 ```text
 $ uv run python scripts/ops/inspect_deploy_rollback_lifecycle.py
@@ -158,6 +196,7 @@ $ uv run python scripts/ops/inspect_deploy_rollback_lifecycle.py
 [proof] 5) corrupt the rollback target: expect a detected failure, no false success
 [proof] 8) attempt to republish release-a with release-b's digest: expect its image-refs.env to remain untouched
 [proof] 9) fresh pull (no local cache) vs cached pull resolve release-a to the same immutable content
+[proof] 10) a lost/rebuilt application host reconstructs a release from the durable off-host registry record, never from a fresh local rebuild
 [proof] cleaning up containers/images/registry/temp directory
 {
   "results": {
@@ -169,16 +208,30 @@ $ uv run python scripts/ops/inspect_deploy_rollback_lifecycle.py
     "6_digest_config_coupling": true,
     "7_real_nested_release_layout": true,
     "8_republish_cannot_change_identity": true,
-    "9_fresh_and_cached_pull_identical_content": true
+    "9_fresh_and_cached_pull_identical_content": true,
+    "10_host_loss_reconstructs_from_durable_identity": true
   },
   "clear": true
 }
 ```
 
-exit code 0. All 9 named invariants (§5 above) observed true on this exact
+exit code 0. All 10 named invariants (§5 above) observed true on this exact
 run, confirmed deterministic across two consecutive clean runs; the
 finally-block cleanup left no stray containers/images/registry behind each
 time (confirmed via `docker ps -a`/`docker images` immediately after).
+
+**Independent-review Finding M (resolved 2026-10-08):** added invariant 10,
+which builds a fresh commit's image for real, deletes its VPS-local
+release directory entirely (simulating total host loss), and proves that
+re-materializing it resolves the ORIGINAL durable digest from the registry
+rather than building new content — even when a simulated rebuild attempt
+for the same commit tag would have produced genuinely different content.
+`_resolve_or_build_and_push` (replacing the prior `_build_and_push`)
+mirrors `.github/workflows/deploy.yml`'s own check-before-build guard
+exactly: query the registry for an existing resolvable digest first,
+build only if none exists. No defect was found while building this
+expansion; it passed clean on the first real run and was re-run clean once
+more to confirm determinism.
 
 **Independent-review Finding L (resolved 2026-10-08):** the proof above now
 starts a throwaway local Docker registry and builds two genuinely distinct

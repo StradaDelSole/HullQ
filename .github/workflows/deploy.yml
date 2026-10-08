@@ -22,7 +22,14 @@ name: Deploy
 # themselves mutable tags) -- so each push job also exposes the real OCI
 # manifest `digest` GHCR assigned as a job output, and `deploy` binds that
 # exact digest into the release's own `image-refs.env`, never resolving
-# the tag at deploy/rollback time.
+# the tag at deploy/rollback time. Independent-review Finding M: that
+# `image-refs.env` binding exists only on the application VPS, which the
+# accepted architecture requires to be replaceable/rebuildable from
+# scratch -- so each push job first checks whether `sha-<commit>` already
+# has a resolvable digest in GHCR (durable, off-host, survives total VPS
+# loss) and reuses it unconditionally rather than rebuilding, so a lost
+# VPS can always be reconstructed to the SAME digests a commit originally
+# established, never silently rebuilt into different ones.
 #
 # `deploy` is manual-only (`workflow_dispatch` with `deploy: true`) AND
 # fail-closed to the canonical branch (`github.ref ==
@@ -187,7 +194,7 @@ jobs:
       contents: read
       packages: write
     outputs:
-      digest: ${{ steps.push.outputs.digest }}
+      digest: ${{ steps.resolve.outputs.digest }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -204,18 +211,45 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Independent-review amendment (Finding M): GHCR is this release's
+      # DURABLE off-host release manifest -- the `sha-<commit>` tag's
+      # resolved digest survives even a total loss/rebuild of the
+      # application VPS, unlike $DEPLOY_PATH/releases/<sha>/image-refs.env
+      # (Finding L), which exists only on that host. If this exact tag was
+      # ever successfully published before (by this run or any earlier
+      # one), its digest is the durable record of what commit X means --
+      # reuse it unconditionally rather than rebuilding, so a rebuild that
+      # would produce different bytes (mutable upstream base images) can
+      # never silently redefine an already-established commit.
+      - name: Check GHCR for this exact commit's durable image identity
+        id: existing
+        run: |
+          REF="ghcr.io/${{ github.repository_owner }}/hullq-api:sha-${{ github.sha }}"
+          if output="$(docker buildx imagetools inspect "$REF" 2>/dev/null)"; then
+            digest="$(echo "$output" | awk '/^Digest:/ {print $2}')"
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "digest=$digest" >> "$GITHUB_OUTPUT"
+            echo "GHCR already durably records $REF -> $digest; reusing it, not rebuilding."
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "No durable GHCR record yet for this commit; this run establishes it."
+          fi
+
       - name: Derive image metadata
+        if: steps.existing.outputs.found != 'true'
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ghcr.io/${{ github.repository_owner }}/hullq-api
           # Immutable exact-commit tag only -- deliberately no `latest`
-          # (ARCHITECTURE_REBASELINE_2026-09-02.md §24). This tag is a
-          # human-readable pointer only; `deploy` deploys by the `digest`
-          # output below, never by resolving this tag (Finding L).
+          # (ARCHITECTURE_REBASELINE_2026-09-02.md §24). This tag is also
+          # the durable off-host release-manifest key (Finding M); `deploy`
+          # deploys by the `digest` output below, never by re-resolving
+          # this tag at deploy/rollback time.
           tags: type=sha,format=long
 
-      - name: Build and push api image
+      - name: Build and push api image (only if not already durably published)
+        if: steps.existing.outputs.found != 'true'
         id: push
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -224,6 +258,15 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Resolve this release's durable digest
+        id: resolve
+        run: |
+          if [ "${{ steps.existing.outputs.found }}" = "true" ]; then
+            echo "digest=${{ steps.existing.outputs.digest }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "digest=${{ steps.push.outputs.digest }}" >> "$GITHUB_OUTPUT"
+          fi
 
   push_web_to_ghcr:
     name: push web image to GHCR
@@ -235,7 +278,7 @@ jobs:
       contents: read
       packages: write
     outputs:
-      digest: ${{ steps.push.outputs.digest }}
+      digest: ${{ steps.resolve.outputs.digest }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -252,14 +295,33 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # See push_api_to_ghcr's own "Check GHCR for this exact commit's
+      # durable image identity" step -- same Finding M rationale, applied
+      # to the web image's own GHCR repository/tag.
+      - name: Check GHCR for this exact commit's durable image identity
+        id: existing
+        run: |
+          REF="ghcr.io/${{ github.repository_owner }}/hullq-web:sha-${{ github.sha }}"
+          if output="$(docker buildx imagetools inspect "$REF" 2>/dev/null)"; then
+            digest="$(echo "$output" | awk '/^Digest:/ {print $2}')"
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "digest=$digest" >> "$GITHUB_OUTPUT"
+            echo "GHCR already durably records $REF -> $digest; reusing it, not rebuilding."
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "No durable GHCR record yet for this commit; this run establishes it."
+          fi
+
       - name: Derive image metadata
+        if: steps.existing.outputs.found != 'true'
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ghcr.io/${{ github.repository_owner }}/hullq-web
           tags: type=sha,format=long
 
-      - name: Build and push web image
+      - name: Build and push web image (only if not already durably published)
+        if: steps.existing.outputs.found != 'true'
         id: push
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -268,6 +330,15 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Resolve this release's durable digest
+        id: resolve
+        run: |
+          if [ "${{ steps.existing.outputs.found }}" = "true" ]; then
+            echo "digest=${{ steps.existing.outputs.digest }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "digest=${{ steps.push.outputs.digest }}" >> "$GITHUB_OUTPUT"
+          fi
 
   deploy:
     name: deploy to production VPS
