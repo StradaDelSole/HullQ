@@ -202,7 +202,10 @@ def main() -> int:
 
     try:
         print(f"[proof] temp /opt/hullq-equivalent root: {root}", file=sys.stderr)
-        print("[proof] building one real production image, tagged as all three releases", file=sys.stderr)
+        print(
+            "[proof] building one real production image, tagged as all three releases",
+            file=sys.stderr,
+        )
         # --load: when the active buildx builder uses the `docker-container`
         # driver (observed non-deterministically on this machine's Docker
         # Desktop), a build without --load completes "successfully" but
@@ -230,7 +233,10 @@ def main() -> int:
         release_b = _make_release(root, shared_dir, SHA_B)
         release_c = _make_release(root, shared_dir, SHA_C, sleep_forever=True)
 
-        print("[proof] 1) first deploy (release-a): expect no previous-release recorded", file=sys.stderr)
+        print(
+            "[proof] 1) first deploy (release-a): expect no previous-release recorded",
+            file=sys.stderr,
+        )
         result = _bash(release_a / "deploy.sh", extra_env=env_common)
         if result.returncode != 0:
             raise AssertionError(f"first deploy failed:\n{result.stdout}\n{result.stderr}")
@@ -264,12 +270,26 @@ def main() -> int:
             raise AssertionError("manual rollback did not actually redeploy release-a's image")
         results["3_manual_rollback_returns_to_a"] = True
 
-        print("[proof] 4) deploy deliberately-unhealthy release-c: expect auto-revert to release-a, exit 1", file=sys.stderr)
+        print(
+            "[proof] 4) deploy deliberately-unhealthy release-c: expect auto-revert to release-a, exit 1",
+            file=sys.stderr,
+        )
+        # release-c itself (no HTTP server at all -- `sleep 999`) will
+        # exhaust these retries and fail every time regardless of their
+        # size; what must NOT be too tight is the auto-revert redeploy of
+        # release-a that deploy.sh triggers on failure (same script,
+        # inherits these same env overrides) -- that is a real container
+        # recreate + uvicorn startup + /readyz DB check, which a very
+        # short budget (previously 3 retries * 1s = 3s) was observed to
+        # occasionally miss under load, turning an expected exit 1 into a
+        # spurious exit 3 (see independent-review Finding D amendment).
+        # 20s is still far shorter than production's 60s default while
+        # leaving real startup margin.
         result = _bash(
             release_c / "deploy.sh",
             extra_env={
                 **env_common,
-                "HULLQ_DEPLOY_HEALTH_RETRIES": "3",
+                "HULLQ_DEPLOY_HEALTH_RETRIES": "20",
                 "HULLQ_DEPLOY_HEALTH_INTERVAL_SECONDS": "1",
             },
         )
@@ -284,7 +304,10 @@ def main() -> int:
             raise AssertionError("auto-revert did not actually redeploy release-a's image")
         results["4_failed_deploy_auto_reverts"] = True
 
-        print("[proof] 5) corrupt the rollback target: expect a detected failure, no false success", file=sys.stderr)
+        print(
+            "[proof] 5) corrupt the rollback target: expect a detected failure, no false success",
+            file=sys.stderr,
+        )
         previous_file.write_text("does-not-exist", encoding="utf-8")
         before_current = current_file.read_text().strip()
         result = _bash(rollback_entry, extra_env=env_common)

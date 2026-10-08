@@ -142,9 +142,9 @@ exit code 0. All 7 named invariants (§5 above) observed true on this exact
 run; the finally-block cleanup left no stray containers/images behind
 (confirmed via `docker ps -a`/`docker images` immediately after).
 
-This first real execution also surfaced and fixed four genuine portability
-defects in the proof harness that static review alone had missed —
-exactly why Finding D treated static inspection as insufficient:
+This first real execution also surfaced and fixed five genuine defects in
+the proof harness that static review alone had missed — exactly why
+Finding D treated static inspection as insufficient:
 
 1. `_bash()` invoked a bare `bash` on `$PATH`; on this Windows sandbox that
    resolved to `C:\Windows\System32\bash.exe`, which forwards into the
@@ -170,11 +170,23 @@ exactly why Finding D treated static inspection as insufficient:
    driver rather than the classic driver) — invisible to `docker
    images`/`docker tag`/`docker run`, so the very next step failed with
    "No such image". Fixed by passing `--load` unconditionally.
+5. Step 4's deliberately-tight health-check budget (3 retries × 1s = 3s,
+   chosen only to make detecting release-c's unhealthiness fast) is
+   inherited by the auto-revert redeploy of release-a that a failed
+   deploy triggers — and a real container recreate + uvicorn startup +
+   `/readyz` DB check does not always fit in 3s under load, which one
+   repeat run surfaced as a spurious exit 3 ("auto-revert ALSO failed")
+   instead of the expected exit 1. This was nondeterminism in the test's
+   own timing margin, not in `deploy.sh`'s logic. Fixed by widening the
+   budget to 20 retries × 1s = 20s — still far short of production's 60s
+   default, but enough real margin for the revert's redeploy to
+   consistently succeed. Confirmed deterministic by rerunning clean twice
+   more after this fix.
 
-None of these four affected the actual deploy/rollback mechanism being
+None of these five affected the actual deploy/rollback mechanism being
 proven (`scripts/ops/deploy.sh`/`rollback.sh` themselves needed no further
-change beyond the health-port fix already recorded above) — all four were
-in the proof harness's own subprocess/Docker invocation code. **Residual**:
+change beyond the health-port fix already recorded above) — all five were
+in the proof harness's own subprocess/Docker/timing code. **Residual**:
 the first real GHCR push and the first real VPS deploy via
 `.github/workflows/deploy.yml` remain unobserved — this proof exercises the
 mechanism against a real Docker Engine and a disposable release layout,
