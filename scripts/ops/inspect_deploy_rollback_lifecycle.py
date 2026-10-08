@@ -23,9 +23,10 @@ Docker Engine, proving:
 
 Only one Docker image is built (all three "releases" tag the same content
 under different names): this proof is about release/state-machine
-correctness, not image-build distinctness, which the slice's original
-deploy/rollback drill already covered
-(`docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md` §5).
+correctness -- whether the right release's own image+configuration is the
+one actually running at each point, not whether distinct commits produce
+distinct image content (an ordinary property of `docker build`, not
+specific to this mechanism).
 
 The per-release Compose file used here is deliberately a minimal
 single-service (api-only) stand-in for the real
@@ -56,7 +57,14 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 IMAGE_NAME = "ghcr.io/stradadelsole/hullq-api"
 PROJECT_NAME = "hullq-prod-lifecycle-test"
 HEALTH_PORT = 18200
-_LOCAL_TEST_DB_URL = "postgresql://hullq_test:hullq_test@localhost:5432/hullq_test"
+# `host.docker.internal`, not `localhost`: this URL is read by the
+# APPLICATION CONTAINER (via env_file), not by this host script -- from
+# inside any container, `localhost` means the container's own loopback,
+# never the host running Docker Desktop. `_write_compose` below adds the
+# `host.docker.internal:host-gateway` extra_hosts mapping that makes this
+# name resolve on Linux too (Docker 20.10+), not just Docker
+# Desktop/Windows/Mac, where it already resolves without that mapping.
+_LOCAL_TEST_DB_URL = "postgresql://hullq_test:hullq_test@host.docker.internal:5432/hullq_test"
 _LOCAL_PREVIEW_SECRET = "MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA="
 
 SHA_A = "release-a"
@@ -68,8 +76,43 @@ def _posix(path: Path) -> str:
     return str(path).replace("\\", "/")
 
 
+def _resolve_bash() -> str:
+    """Resolve a real POSIX bash, not Windows' WSL bash.exe relay.
+
+    On Windows, a plain `bash` on PATH commonly resolves to
+    C:\\Windows\\System32\\bash.exe, which forwards into whatever WSL
+    distribution is currently default -- on a machine with Docker Desktop
+    installed that is typically the `docker-desktop` distro, a minimal
+    appliance VM with no general-purpose shell, not a real POSIX
+    environment (`execvpe(/bin/bash) failed` results). Git for Windows'
+    own bash.exe is this repository's documented shell for scripts/ops/*.sh
+    (CLAUDE.md), so prefer it explicitly when present; elsewhere (Linux CI
+    runners, a real VPS) fall back to normal PATH resolution.
+    """
+
+    for candidate in (
+        r"C:\Program Files\Git\bin\bash.exe",
+        r"C:\Program Files\Git\usr\bin\bash.exe",
+    ):
+        if Path(candidate).is_file():
+            return candidate
+    found = shutil.which("bash")
+    if found is None:
+        raise RuntimeError("no usable bash executable found")
+    return found
+
+
+_BASH = _resolve_bash()
+
+
 def _run(command: list[str], *, check: bool = True) -> subprocess.CompletedProcess[str]:
-    result = subprocess.run(command, capture_output=True, text=True, check=False)
+    # explicit utf-8/replace: Docker/curl subprocess output is not
+    # guaranteed to be valid in Windows' default locale codec (cp1252),
+    # and a decode crash here must never be mistaken for the proof itself
+    # failing.
+    result = subprocess.run(
+        command, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False
+    )
     if check and result.returncode != 0:
         raise RuntimeError(
             f"command failed ({result.returncode}): {' '.join(command)}\n"
@@ -82,7 +125,13 @@ def _bash(script: Path, *, extra_env: dict[str, str]) -> subprocess.CompletedPro
     full_env = os.environ.copy()
     full_env.update(extra_env)
     return subprocess.run(
-        ["bash", _posix(script)], capture_output=True, text=True, check=False, env=full_env
+        [_BASH, _posix(script)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+        env=full_env,
     )
 
 
@@ -96,6 +145,8 @@ def _write_compose(release_dir: Path, *, shared_dir: Path, sleep_forever: bool) 
         "    pull_policy: never\n"
         '    restart: "no"\n'
         f"    env_file: {_posix(shared_dir)}/.env\n"
+        "    extra_hosts:\n"
+        '      - "host.docker.internal:host-gateway"\n'
         "    ports:\n"
         f'      - "127.0.0.1:{HEALTH_PORT}:8000"{command_line}\n'
     )
@@ -152,7 +203,26 @@ def main() -> int:
     try:
         print(f"[proof] temp /opt/hullq-equivalent root: {root}", file=sys.stderr)
         print("[proof] building one real production image, tagged as all three releases", file=sys.stderr)
-        _run(["docker", "build", "-t", f"{IMAGE_NAME}:sha-{SHA_A}", "-f", _posix(REPO_ROOT / "Dockerfile"), _posix(REPO_ROOT)])
+        # --load: when the active buildx builder uses the `docker-container`
+        # driver (observed non-deterministically on this machine's Docker
+        # Desktop), a build without --load completes "successfully" but
+        # leaves the result only inside the buildkit builder's own cache --
+        # invisible to `docker images`/`docker tag`/`docker run`. --load
+        # forces the result into the local image store unconditionally,
+        # which is what every later step here (tag, compose up, inspect)
+        # requires.
+        _run(
+            [
+                "docker",
+                "build",
+                "--load",
+                "-t",
+                f"{IMAGE_NAME}:sha-{SHA_A}",
+                "-f",
+                _posix(REPO_ROOT / "Dockerfile"),
+                _posix(REPO_ROOT),
+            ]
+        )
         _run(["docker", "tag", f"{IMAGE_NAME}:sha-{SHA_A}", f"{IMAGE_NAME}:sha-{SHA_B}"])
         _run(["docker", "tag", f"{IMAGE_NAME}:sha-{SHA_A}", f"{IMAGE_NAME}:sha-{SHA_C}"])
 

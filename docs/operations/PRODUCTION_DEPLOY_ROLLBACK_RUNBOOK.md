@@ -54,6 +54,7 @@ repository, the `.env` file and the two certificate files.
    - an empty `releases/` directory — CI populates one subdirectory per deployed commit (§3); never hand-create or hand-edit a release directory
 3. `docker login ghcr.io` using a read-only GHCR personal access token (`read:packages` scope only — least privilege).
 4. Also set up a separate `uv`-managed checkout for `scripts/ops/*` (§1) — these run directly on the VPS, outside Docker, because they need `pg_dump`/`pg_restore` matching PostgreSQL 18 exactly (`apt-get install postgresql-client-18` from the PGDG apt repository).
+5. **GitHub repository setting (independent-review Finding G, defense in depth alongside `.github/workflows/deploy.yml`'s own `github.ref == 'refs/heads/main'` check):** in the repository's `production` GitHub Environment settings, set **Deployment branches and tags** to **Selected branches and tags** and add only `main`. This makes GitHub itself refuse to run the `deploy` job for any ref other than `main`, even if the workflow-level check were ever weakened or bypassed. Configure this once, before the `deploy` job is ever exercised for real.
 
 `state/` and the stable `$DEPLOY_PATH/rollback.sh` entrypoint do not need to
 be created manually — the first successful `deploy.sh` run creates them.
@@ -108,18 +109,76 @@ uv run python scripts/ops/inspect_deploy_rollback_lifecycle.py
 Requires a working local Docker Engine and the local PostgreSQL 18 test
 database.
 
-**Execution status for this amendment**: this sandbox's Docker Desktop
-backend is not running in this session (`docker context ls` shows only the
-`desktop-linux`/`default` npipe endpoints, and `docker version`/`docker info`
-fail with "cannot connect to the Docker API"; the `docker-desktop` WSL
-distribution exists but is `Stopped` and is not independently startable
-without the Docker Desktop application, which is not present on this
-machine). The script was written/reviewed but **could not be executed** in
-this session — this is a sandbox limitation, not a claim of a passing or
-failing run. **Residual**: the real-Docker execution of this proof, and the
-first real GHCR push/VPS deploy via `.github/workflows/deploy.yml`, remain
-unobserved and must be run (by a human operator or a session with Docker
-available) before this mechanism can be marked verified.
+**Execution status (independent-review Finding D, resolved 2026-10-08):**
+Docker Desktop was started and the real Docker Engine (29.7.2) became
+reachable in this session. `uv run python
+scripts/ops/inspect_deploy_rollback_lifecycle.py` was then actually
+executed against it and the real local PostgreSQL 18 test database, and
+observed to complete clean:
+
+```text
+$ uv run python scripts/ops/inspect_deploy_rollback_lifecycle.py
+[proof] 1) first deploy (release-a): expect no previous-release recorded
+[proof] 2) upgrade to release-b: expect previous-release=release-a
+[proof] 3) manual rollback via the stable rollback.sh entrypoint
+[proof] 4) deploy deliberately-unhealthy release-c: expect auto-revert to release-a, exit 1
+[proof] 5) corrupt the rollback target: expect a detected failure, no false success
+[proof] cleaning up containers/images/temp directory
+{
+  "results": {
+    "1_first_deploy_no_previous": true,
+    "2_upgrade_a_to_b": true,
+    "6_tag_config_coupling": true,
+    "3_manual_rollback_returns_to_a": true,
+    "4_failed_deploy_auto_reverts": true,
+    "5_failed_rollback_detected": true,
+    "7_real_nested_release_layout": true
+  },
+  "clear": true
+}
+```
+
+exit code 0. All 7 named invariants (§5 above) observed true on this exact
+run; the finally-block cleanup left no stray containers/images behind
+(confirmed via `docker ps -a`/`docker images` immediately after).
+
+This first real execution also surfaced and fixed four genuine portability
+defects in the proof harness that static review alone had missed —
+exactly why Finding D treated static inspection as insufficient:
+
+1. `_bash()` invoked a bare `bash` on `$PATH`; on this Windows sandbox that
+   resolved to `C:\Windows\System32\bash.exe`, which forwards into the
+   machine's *default* WSL distribution — here the Docker-Desktop-managed
+   `docker-desktop` appliance VM, which has no general-purpose shell
+   (`execvpe(/bin/bash) failed`). Fixed by resolving Git for Windows' own
+   `bash.exe` explicitly when present, falling back to normal `$PATH`
+   lookup elsewhere (Linux CI runners, a real VPS).
+2. Capturing subprocess output with `text=True` and no explicit encoding
+   hit a `UnicodeDecodeError` against a byte in Docker's build output that
+   is not valid in Windows' default `cp1252` locale codec. Fixed by
+   decoding as UTF-8 with `errors="replace"`.
+3. The stand-in `.env` pointed the APPLICATION CONTAINER's
+   `HULLQ_DATABASE_URL` at `localhost`, which inside any container means
+   the container's own loopback, never the host — so `/readyz` could
+   never succeed and every deploy timed out after 60s. Fixed by using
+   `host.docker.internal` (plus an explicit
+   `host.docker.internal:host-gateway` `extra_hosts` mapping, so this also
+   resolves on native Linux Docker, not just Docker Desktop).
+4. `docker build` without `--load` completed with exit 0 but left the
+   image only inside the active buildx builder's own cache (observed when
+   Docker Desktop's ambient builder was using the `docker-container`
+   driver rather than the classic driver) — invisible to `docker
+   images`/`docker tag`/`docker run`, so the very next step failed with
+   "No such image". Fixed by passing `--load` unconditionally.
+
+None of these four affected the actual deploy/rollback mechanism being
+proven (`scripts/ops/deploy.sh`/`rollback.sh` themselves needed no further
+change beyond the health-port fix already recorded above) — all four were
+in the proof harness's own subprocess/Docker invocation code. **Residual**:
+the first real GHCR push and the first real VPS deploy via
+`.github/workflows/deploy.yml` remain unobserved — this proof exercises the
+mechanism against a real Docker Engine and a disposable release layout,
+not the actual production VPS/GHCR path.
 
 ## 6. Failure modes
 

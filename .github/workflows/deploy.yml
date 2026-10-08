@@ -12,10 +12,16 @@ name: Deploy
 # untrusted fork must never be able to publish a package under this
 # repository's GHCR namespace using `secrets.GITHUB_TOKEN`.
 #
-# `deploy` is manual-only (`workflow_dispatch` with `deploy: true`), gated
-# behind the `production` GitHub Environment (configure required
-# reviewers/secrets there before first use --
-# docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md). It has not been
+# `deploy` is manual-only (`workflow_dispatch` with `deploy: true`) AND
+# fail-closed to the canonical branch (`github.ref ==
+# 'refs/heads/main'` -- independent-review Finding G): an unmerged/
+# unaccepted feature or slice branch can never reach the production VPS
+# through this workflow, no matter how it is dispatched. It is additionally
+# gated behind the `production` GitHub Environment (configure required
+# reviewers/secrets there before first use, AND restrict that Environment's
+# allowed deployment branches to `main` only --
+# docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md §2 -- defense in
+# depth alongside the workflow-level ref check above). It has not been
 # exercised against a real VPS by SLICE-0079 itself: that requires
 # production SSH/host secrets this slice does not have access to and must
 # not fabricate.
@@ -129,11 +135,26 @@ jobs:
 
   deploy:
     name: deploy to production VPS
-    if: github.event_name == 'workflow_dispatch' && inputs.deploy == true
+    # Independent-review amendment (Finding G): production deployment must
+    # fail closed on anything but the accepted canonical branch -- a
+    # workflow_dispatch run against an unmerged/unaccepted feature or slice
+    # branch must never be able to reach the VPS, regardless of the
+    # `deploy` input. `github.ref` is the ref actually being built/deployed
+    # in this run (not just the ref the workflow file was read from), so
+    # this is the real fail-closed gate, not a cosmetic one.
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy == true && github.ref == 'refs/heads/main'
     needs: push_to_ghcr
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: production
+    # Independent-review amendment (Finding G): a fixed, ref-independent
+    # concurrency group so at most one deploy job can ever be mutating the
+    # production VPS at a time -- distinct from the build/push jobs' own
+    # per-ref concurrency group above, which is fine to keep per-ref since
+    # those jobs never touch the VPS.
+    concurrency:
+      group: hullq-production-deploy
+      cancel-in-progress: false
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -15,8 +15,11 @@ must be compatible with the currently-applied schema.
 1. uv run python scripts/ops/run_production_migration.py   (this runbook, §2)
 2. uv run python scripts/ops/smoke_check.py --base-url <...>  (confirms the
    PRE-deploy application image is still healthy against the migrated schema)
-3. .github/workflows/deploy.yml's `deploy` job -> scripts/ops/deploy.sh <tag>
-   (docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md)
+3. .github/workflows/deploy.yml's `deploy` job materializes this exact
+   commit's own $DEPLOY_PATH/releases/<sha>/ directory on the VPS, then
+   runs that release's own scripts/ops/deploy.sh -- no arguments; the image
+   tag and Compose/Caddy configuration are both derived from that release
+   directory (docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md §1/§3)
 4. scripts/ops/smoke_check.py again                          (confirms the
    POST-deploy application image against the same migrated schema)
 ```
@@ -76,13 +79,12 @@ setups (each creates a disposable schema and calls exactly this path before
 running its own test) — hundreds of real executions against the real local
 PostgreSQL 18 test database, including by the two new test files this slice
 adds (`test_production_readiness_health_api.py`,
-`test_backup_restore_disposable_proof.py`). `scripts/ops/smoke_check.py` was
-exercised directly against a real containerized API instance during the
-deploy/rollback drill (`PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md` §5) via its
-underlying `run_smoke_checks` function's exact HTTP calls (`curl` was used
-interactively there; the Python CLI wraps the identical three checks).
-Both CLIs were also executed directly (not just their underlying library
-calls) for this slice:
+`test_backup_restore_disposable_proof.py`). Both CLIs were also executed
+directly (not just their underlying library calls) for this slice, against
+a real locally-running instance (transcript below) — this is proof of the
+migration/smoke-check CLIs themselves, independent of and not a substitute
+for the separate deploy/rollback mechanism proof in
+`PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md` §5:
 
 ```text
 $ uv run python scripts/ops/run_production_migration.py   (HULLQ_DATABASE_URL
