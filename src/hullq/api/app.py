@@ -2887,6 +2887,18 @@ def create_app(
     configure_logging()
     _access_logger = get_logger("hullq.access")
 
+    def _loggable_path(path: str) -> str:
+        # The preview token is the sole authorization for an otherwise
+        # private draft listing (SLICE-0048) -- exactly as sensitive as a
+        # password -- and it lives as the final segment of
+        # GET /api/_preview/listings/{preview_token}. Structured access
+        # logging must never defeat that invariant just because it logs
+        # paths that happen to embed secrets.
+        if path.startswith(_PREVIEW_PATH_PREFIX):
+            prefix = path.rsplit("/", 1)[0]
+            return f"{prefix}/<redacted>"
+        return path
+
     @app.middleware("http")
     async def _structured_access_logging(request: Request, call_next: Any) -> Any:
         request_id = str(uuid.uuid4())
@@ -2900,7 +2912,7 @@ def create_app(
             extra={
                 "request_id": request_id,
                 "method": request.method,
-                "path": request.url.path,
+                "path": _loggable_path(request.url.path),
                 "status_code": response.status_code,
                 "duration_ms": duration_ms,
             },
@@ -2918,7 +2930,11 @@ def create_app(
         _access_logger.error(
             "unhandled_exception",
             exc_info=exc,
-            extra={"request_id": request_id, "method": request.method, "path": request.url.path},
+            extra={
+                "request_id": request_id,
+                "method": request.method,
+                "path": _loggable_path(request.url.path),
+            },
         )
         return JSONResponse(
             {"error": "internal_server_error", "request_id": request_id}, status_code=500
