@@ -83,11 +83,25 @@ image, `.github/workflows/deploy.yml`'s `push_api_to_ghcr`/
 inspect`). If it does — this commit was ever successfully published
 before, by this run or any earlier one, regardless of what happened to the
 VPS in between — that existing digest is reused unconditionally and
-nothing is rebuilt. Only when the tag has never been published does the
-job build and push for the first time, which is what establishes the
-durable record. `deploy`'s VPS-local `image-refs.env` write (Finding L) is
-therefore always populated from this durable, already-resolved digest, not
-from whatever a fresh build on this run happened to produce.
+nothing is rebuilt. `deploy`'s VPS-local `image-refs.env` write (Finding L)
+is therefore always populated from this durable, already-resolved digest,
+not from whatever a fresh build on this run happened to produce.
+
+**Independent-review Finding N — the lookup itself must fail closed.** The
+check above distinguishes exactly three outcomes, not two: (1) the lookup
+confirms the tag already resolves to a digest → reuse it (after validating
+its `sha256:<64 hex>` shape); (2) buildx's own confirmed `"<ref>: not
+found"` response → this is the ONLY outcome allowed to proceed to a first
+publish and establish the durable record; (3) anything else — a transient
+registry/network outage, an authentication failure, a rate limit, an
+unexpected response — fails the job immediately: no build, no push, no
+change to any release identity. A generic non-zero exit code is never, by
+itself, treated as proof of absence; an earlier version of this check
+conflated "lookup failed" with "not published," which could have let a
+temporary outage for an ALREADY-established commit fall through to an
+unsafe rebuild. As an additional safeguard, after a first publish the
+workflow re-resolves the tag it just pushed and confirms the digest
+matches what the push itself reported before trusting it.
 
 This is what actually justifies "the VPS can be rebuilt from scratch":
 Both images are stateless: neither writes canonical application data to a
@@ -164,7 +178,8 @@ Engine. It proves, end to end:
 7. all of the above against the real nested release-directory layout, not a flattened stand-in;
 8. (independent-review Finding L) a later attempt to "republish" an already-established release with a DIFFERENT image digest is refused — that release's `image-refs.env` is left untouched, so a rerun/retry/re-dispatch of the same commit can never silently make that commit mean different image content;
 9. (independent-review Finding L) a host with no locally-cached copy of a release's image (forced via `docker rmi`) and a host that already had it cached both resolve that release to the exact same image content;
-10. (independent-review Finding M) a release whose VPS-local release directory (`image-refs.env` included) is deleted entirely — simulating total loss/rebuild of the application host — is reconstructed from the DURABLE off-host registry record, not from a fresh rebuild that (because upstream base images are mutable) could produce different content; the reconstructed host redeploys the ORIGINAL content exactly.
+10. (independent-review Finding M) a release whose VPS-local release directory (`image-refs.env` included) is deleted entirely — simulating total loss/rebuild of the application host — is reconstructed from the DURABLE off-host registry record, not from a fresh rebuild that (because upstream base images are mutable) could produce different content; the reconstructed host redeploys the ORIGINAL content exactly;
+11. (independent-review Finding N) a registry lookup failure that is NOT a confirmed absence (a real connection failure, from actually stopping the throwaway registry container) makes the resolver fail closed — raising rather than silently falling through to a rebuild — and the established digest is unchanged once the registry recovers.
 
 Run:
 
@@ -175,15 +190,15 @@ uv run python scripts/ops/inspect_deploy_rollback_lifecycle.py
 Requires a working local Docker Engine and the local PostgreSQL 18 test
 database.
 
-**Execution status (independent-review Findings D, L and M, resolved
+**Execution status (independent-review Findings D, L, M and N, resolved
 2026-10-08):** Docker Desktop was started and the real Docker Engine
 (29.7.2) became reachable in this session. `uv run python
 scripts/ops/inspect_deploy_rollback_lifecycle.py` was then actually
 executed against it and the real local PostgreSQL 18 test database, and
 observed to complete clean — this transcript is the current, expanded
-10-invariant proof (Finding M added invariant 10's host-loss/
-reconstruction assertion on top of Finding L's 9, which themselves expanded
-Finding D's original 7):
+11-invariant proof (Finding N added invariant 11's fail-closed-on-outage
+assertion on top of Finding M's 10, which themselves expanded Finding L's
+9 and Finding D's original 7):
 
 ```text
 $ uv run python scripts/ops/inspect_deploy_rollback_lifecycle.py
@@ -197,6 +212,7 @@ $ uv run python scripts/ops/inspect_deploy_rollback_lifecycle.py
 [proof] 8) attempt to republish release-a with release-b's digest: expect its image-refs.env to remain untouched
 [proof] 9) fresh pull (no local cache) vs cached pull resolve release-a to the same immutable content
 [proof] 10) a lost/rebuilt application host reconstructs a release from the durable off-host registry record, never from a fresh local rebuild
+[proof] 11) a registry lookup failure (not a confirmed absence) fails closed: no build/push side effect, established identity unchanged
 [proof] cleaning up containers/images/registry/temp directory
 {
   "results": {
@@ -209,16 +225,31 @@ $ uv run python scripts/ops/inspect_deploy_rollback_lifecycle.py
     "7_real_nested_release_layout": true,
     "8_republish_cannot_change_identity": true,
     "9_fresh_and_cached_pull_identical_content": true,
-    "10_host_loss_reconstructs_from_durable_identity": true
+    "10_host_loss_reconstructs_from_durable_identity": true,
+    "11_registry_failure_fails_closed_no_side_effect": true
   },
   "clear": true
 }
 ```
 
-exit code 0. All 10 named invariants (§5 above) observed true on this exact
+exit code 0. All 11 named invariants (§5 above) observed true on this exact
 run, confirmed deterministic across two consecutive clean runs; the
 finally-block cleanup left no stray containers/images/registry behind each
 time (confirmed via `docker ps -a`/`docker images` immediately after).
+
+**Independent-review Finding N (resolved 2026-10-08):** added invariant 11,
+which establishes a tag for real, actually stops the throwaway registry
+container (a genuine connection failure, not a simulated one), and proves
+`_resolve_or_build_and_push` raises rather than falling through to a
+rebuild — then restarts the registry and proves the established digest is
+unchanged. One real defect surfaced while building this: the first attempt
+compared the full `registry@digest` reference string before/after the
+outage, which legitimately differs because `docker start` reassigns this
+throwaway registry's dynamically-published host port (a test-harness
+artifact specific to this sandbox -- a real registry like GHCR has a fixed
+hostname) — even though the underlying digest, the thing that actually
+matters, was byte-for-byte identical both times. Fixed by comparing only
+the `@sha256:...` digest suffix. Re-run clean twice after the fix.
 
 **Independent-review Finding M (resolved 2026-10-08):** added invariant 10,
 which builds a fresh commit's image for real, deletes its VPS-local

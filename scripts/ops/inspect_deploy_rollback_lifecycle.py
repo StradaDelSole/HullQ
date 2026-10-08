@@ -41,7 +41,12 @@ ephemeral Docker registry (see below), and the real Docker Engine, proving:
     DURABLE off-host registry record, not from a fresh local rebuild: even
     when a rebuild attempt for that same commit would produce different
     content (upstream base images are mutable), the reconstructed host
-    redeploys the ORIGINAL content, byte for byte.
+    redeploys the ORIGINAL content, byte for byte;
+11. (independent-review Finding N) a registry lookup failure that is NOT a
+    confirmed absence (here, a real connection failure from stopping the
+    registry container) makes the resolver fail closed -- raising rather
+    than falling through to a rebuild -- and the established digest is
+    unchanged once the registry recovers.
 
 Independent-review amendment (Finding L): release identity is now bound to
 the real OCI manifest digest GHCR would assign in production
@@ -76,6 +81,24 @@ proves the actual failure case Finding M named: deleting a release's
 VPS-local directory entirely and reconstructing it on what is, in every way
 this proof can observe, a "fresh host."
 
+Independent-review amendment (Finding N): the Finding M version of this
+guard treated ANY non-zero `imagetools inspect` exit as "not published,"
+which is unsafe -- a transient registry/network outage, an auth failure,
+or a rate limit all exit non-zero too, and are NOT proof of absence.
+`_resolve_existing_digest` now distinguishes exactly three outcomes: a
+successful resolve (reuse, after validating the digest's `sha256:<64 hex>`
+shape); buildx's own confirmed `"<ref>: not found"` message (verified
+empirically against this real throwaway registry, not assumed -- this is
+the ONLY case allowed to proceed to a first publish); and everything else,
+which raises instead of returning "not found." `_resolve_or_build_and_push`
+also now re-resolves a tag it just pushed and confirms the digest matches
+what the push itself reported, before trusting it (the recommended
+defense-in-depth safeguard). Step 11 proves the actual failure case
+Finding N named: a real registry outage (the throwaway registry container
+is actually stopped, not simulated) must make the resolver raise rather
+than silently rebuild, and the established identity must survive the
+outage unchanged once the registry recovers.
+
 The per-release Compose file used here is deliberately a minimal
 single-service (api-only) stand-in for the real `docker-compose.prod.yml`
 -- same `env_file`/image/port-binding shape, but without Caddy/TLS, which
@@ -102,6 +125,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -209,6 +233,10 @@ def _start_registry() -> str:
             "registry:2",
         ]
     )
+    return _registry_host_port()
+
+
+def _registry_host_port() -> str:
     port_result = _run(["docker", "port", REGISTRY_CONTAINER, "5000/tcp"])
     lines = [line.strip() for line in port_result.stdout.splitlines() if line.strip()]
     host_port = lines[-1].rsplit(":", 1)[-1]
@@ -219,17 +247,55 @@ def _stop_registry() -> None:
     _run(["docker", "rm", "-f", "-v", REGISTRY_CONTAINER], check=False)
 
 
+_DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
+_NOT_FOUND_RE = re.compile(r": not found\s*$")
+
+
+def _resolve_existing_digest(ref: str) -> str | None:
+    """Query the registry for `ref`'s existing digest, distinguishing a
+    CONFIRMED absence (returns None) from every other failure (raises) --
+    independent-review Finding N: a generic non-zero exit from `imagetools
+    inspect` is NOT proof of absence. It can equally mean a transient
+    registry/network outage, an auth failure, or a rate limit -- and
+    treating any of those as "not published" (the pre-Finding-N version of
+    this logic, and of `.github/workflows/deploy.yml`'s matching step)
+    risked exactly the invariant Findings L/M exist to protect: a lookup
+    failure for an ALREADY-established commit falling through to a
+    rebuild that could silently redefine it. Only buildx's own confirmed
+    "<ref>: not found" message (verified empirically against a real
+    registry, not assumed -- see this amendment's own verification) is
+    treated as absence; every other failure raises instead.
+    """
+
+    result = _run(["docker", "buildx", "imagetools", "inspect", ref], check=False)
+    if result.returncode == 0:
+        match = re.search(r"^Digest:\s*(\S+)", result.stdout, re.MULTILINE)
+        digest = match.group(1) if match else ""
+        if not _DIGEST_RE.match(digest):
+            raise RuntimeError(f"resolved digest for {ref} has an unexpected shape: {digest!r}")
+        return digest
+    if _NOT_FOUND_RE.search(result.stderr.strip()):
+        return None
+    raise RuntimeError(
+        f"could not confirm whether {ref} exists (registry/network/auth failure, "
+        f"not a confirmed absence) -- failing closed rather than risking an unsafe "
+        f"rebuild:\n{result.stderr}"
+    )
+
+
 def _resolve_or_build_and_push(registry_base: str, tag: str, release_label: str) -> str:
-    """Mirror .github/workflows/deploy.yml's own Finding M guard for real:
-    check whether `tag` already resolves to a digest in the registry --
-    the durable, off-host record of what that tag means, which (in
-    production, GHCR; here, this throwaway registry) survives even total
-    loss of the application VPS -- and reuse it unconditionally rather
-    than building. Only when the tag has never been published does this
-    build fresh content (labelled `release_label`, so distinct calls with
+    """Mirror .github/workflows/deploy.yml's own Finding M/N guard for
+    real: check whether `tag` already resolves to a digest in the
+    registry -- the durable, off-host record of what that tag means,
+    which (in production, GHCR; here, this throwaway registry) survives
+    even total loss of the application VPS -- and reuse it
+    unconditionally rather than building. Only when the registry
+    explicitly confirms the tag has never been published does this build
+    fresh content (labelled `release_label`, so distinct calls with
     distinct labels produce genuinely distinct digests) and push it,
     returning the real OCI manifest digest (e.g. "sha256:...") GHCR would
-    equally assign in production.
+    equally assign in production. Any OTHER lookup failure propagates as
+    an exception -- it must never fall through to a build (Finding N).
 
     A later call with the SAME `tag` but a DIFFERENT `release_label` must
     still return the ORIGINAL digest -- that is exactly what proves a
@@ -239,14 +305,9 @@ def _resolve_or_build_and_push(registry_base: str, tag: str, release_label: str)
     """
 
     ref = f"{registry_base}/{IMAGE_NAME}:{tag}"
-    inspect_result = _run(["docker", "buildx", "imagetools", "inspect", ref], check=False)
-    if inspect_result.returncode == 0:
-        match = re.search(r"^Digest:\s*(sha256:[0-9a-f]+)", inspect_result.stdout, re.MULTILINE)
-        if match is None:
-            raise RuntimeError(
-                f"could not parse digest from imagetools inspect output:\n{inspect_result.stdout}"
-            )
-        return f"{registry_base}/{IMAGE_NAME}@{match.group(1)}"
+    existing_digest = _resolve_existing_digest(ref)
+    if existing_digest is not None:
+        return f"{registry_base}/{IMAGE_NAME}@{existing_digest}"
 
     _run(
         [
@@ -266,7 +327,21 @@ def _resolve_or_build_and_push(registry_base: str, tag: str, release_label: str)
     match = re.search(r"digest:\s*(sha256:[0-9a-f]+)", push_result.stdout)
     if match is None:
         raise RuntimeError(f"could not parse digest from docker push output:\n{push_result.stdout}")
-    return f"{registry_base}/{IMAGE_NAME}@{match.group(1)}"
+    pushed_digest = match.group(1)
+    if not _DIGEST_RE.match(pushed_digest):
+        raise RuntimeError(f"pushed digest for {ref} has an unexpected shape: {pushed_digest!r}")
+
+    # Independent-review Finding N recommended safeguard: re-resolve the
+    # tag we just pushed from the registry itself and confirm it matches
+    # what the push reported, rather than trusting that single report
+    # alone.
+    verify_digest = _resolve_existing_digest(ref)
+    if verify_digest != pushed_digest:
+        raise RuntimeError(
+            f"post-push verification mismatch for {ref}: push reported {pushed_digest}, "
+            f"registry now resolves {verify_digest}"
+        )
+    return f"{registry_base}/{IMAGE_NAME}@{pushed_digest}"
 
 
 def _write_compose(release_dir: Path, *, shared_dir: Path, sleep_forever: bool) -> None:
@@ -372,6 +447,8 @@ def main() -> int:
     current_file = root / "state" / "current-release"
     previous_file = root / "state" / "previous-release"
     registry_base: str | None = None
+    recovered_registry_base: str | None = None
+    fail_closed_tag: str | None = None
 
     try:
         print(f"[proof] temp /opt/hullq-equivalent root: {root}", file=sys.stderr)
@@ -614,6 +691,77 @@ def main() -> int:
                 f"{content_after_reconstruction} != {content_before_loss}"
             )
         results["10_host_loss_reconstructs_from_durable_identity"] = True
+
+        print(
+            "[proof] 11) a registry lookup failure (not a confirmed absence) fails closed: "
+            "no build/push side effect, established identity unchanged",
+            file=sys.stderr,
+        )
+        # independent-review Finding N: a non-zero `imagetools inspect` exit
+        # is NOT proof of absence -- it can equally mean a transient
+        # registry/network outage. Establish a tag, then stop the registry
+        # container entirely (a real connection failure, not a simulated
+        # one) and prove `_resolve_or_build_and_push` RAISES rather than
+        # falling through to a rebuild that would silently redefine this
+        # tag. Then bring the registry back and prove the established
+        # digest survived the outage unchanged.
+        fail_closed_tag = "sha-failclosed-test"
+        digest_before_outage = _resolve_or_build_and_push(
+            registry_base, fail_closed_tag, "failclosed-v1"
+        )
+
+        _run(["docker", "stop", REGISTRY_CONTAINER])
+        raised = False
+        try:
+            _resolve_or_build_and_push(
+                registry_base, fail_closed_tag, "failclosed-v2-WOULD-BE-DIFFERENT"
+            )
+        except RuntimeError:
+            raised = True
+        if not raised:
+            raise AssertionError(
+                "a registry outage must make the resolver raise, not silently fall "
+                "through to a rebuild"
+            )
+
+        # `docker start` on a dynamically-published (`-p 0:5000`) container
+        # reassigns the host port rather than reusing the old one -- so the
+        # registry must be re-discovered, not assumed to still be at
+        # `registry_base`. A short bounded retry absorbs the container's
+        # brief startup window.
+        _run(["docker", "start", REGISTRY_CONTAINER])
+        digest_after_recovery = None
+        last_error: Exception | None = None
+        for _attempt in range(10):
+            time.sleep(1)
+            try:
+                recovered_registry_base = _registry_host_port()
+                digest_after_recovery = _resolve_or_build_and_push(
+                    recovered_registry_base, fail_closed_tag, "failclosed-v3-irrelevant"
+                )
+                break
+            except RuntimeError as exc:
+                last_error = exc
+        else:
+            raise AssertionError(f"registry did not recover after restart: {last_error}")
+
+        # Compare only the `@sha256:...` digest suffix, not the full
+        # reference string: this throwaway registry's dynamically-assigned
+        # host port is reassigned by `docker start` (a test-harness
+        # artifact of this sandbox -- a real registry like GHCR has a
+        # fixed hostname), so `registry_base` legitimately differs
+        # before/after the outage even though the underlying image
+        # content/digest must not.
+        digest_suffix_before = digest_before_outage.rsplit("@", 1)[-1]
+        digest_suffix_after = (
+            digest_after_recovery.rsplit("@", 1)[-1] if digest_after_recovery else None
+        )
+        if digest_suffix_after != digest_suffix_before:
+            raise AssertionError(
+                "established digest must survive a transient registry outage unchanged: "
+                f"{digest_after_recovery} != {digest_before_outage}"
+            )
+        results["11_registry_failure_fails_closed_no_side_effect"] = True
     finally:
         print("[proof] cleaning up containers/images/registry/temp directory", file=sys.stderr)
         _run(["docker", "compose", "-p", PROJECT_NAME, "down", "--remove-orphans"], check=False)
@@ -624,9 +772,14 @@ def main() -> int:
             _run(
                 ["docker", "rmi", f"{registry_base}/{IMAGE_NAME}:sha-hostloss-commit"], check=False
             )
+        if recovered_registry_base is not None and fail_closed_tag is not None:
+            _run(
+                ["docker", "rmi", f"{recovered_registry_base}/{IMAGE_NAME}:{fail_closed_tag}"],
+                check=False,
+            )
         shutil.rmtree(root, ignore_errors=True)
 
-    all_passed = all(results.values()) and len(results) == 10
+    all_passed = all(results.values()) and len(results) == 11
     print(json.dumps({"results": results, "clear": all_passed}, indent=2))
     return 0 if all_passed else 1
 

@@ -221,18 +221,47 @@ jobs:
       # reuse it unconditionally rather than rebuilding, so a rebuild that
       # would produce different bytes (mutable upstream base images) can
       # never silently redefine an already-established commit.
+      #
+      # Independent-review amendment (Finding N): a non-zero exit from
+      # `imagetools inspect` is NOT proof the tag doesn't exist -- it can
+      # equally mean a transient registry/network outage, an auth failure,
+      # or a rate limit. Treating any failure as "not published" (the
+      # previous version of this step) risked exactly the Finding L/M
+      # invariant this mechanism exists to protect: a temporary lookup
+      # failure for an ALREADY-established commit could fall through to
+      # rebuilding and overwriting it. This step therefore distinguishes
+      # three outcomes explicitly: (1) inspect succeeds -> reuse that
+      # digest, after validating its shape; (2) inspect fails with
+      # buildx's own confirmed "<ref>: not found" message (verified
+      # empirically against a real registry, not assumed) -> this is the
+      # ONLY case allowed to proceed to a first publish; (3) any other
+      # failure (network/auth/rate-limit/unexpected response) -> fail this
+      # job immediately, build nothing, push nothing, touch no release
+      # identity.
       - name: Check GHCR for this exact commit's durable image identity
         id: existing
         run: |
           REF="ghcr.io/${{ github.repository_owner }}/hullq-api:sha-${{ github.sha }}"
-          if output="$(docker buildx imagetools inspect "$REF" 2>/dev/null)"; then
-            digest="$(echo "$output" | awk '/^Digest:/ {print $2}')"
+          set +e
+          output="$(docker buildx imagetools inspect "$REF" 2>&1)"
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then
+            digest="$(printf '%s\n' "$output" | awk '/^Digest:/ {print $2}')"
+            if ! printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+              echo "Resolved digest for $REF has an unexpected shape: '$digest'" >&2
+              exit 1
+            fi
             echo "found=true" >> "$GITHUB_OUTPUT"
             echo "digest=$digest" >> "$GITHUB_OUTPUT"
             echo "GHCR already durably records $REF -> $digest; reusing it, not rebuilding."
-          else
+          elif printf '%s' "$output" | grep -Eq ': not found$'; then
             echo "found=false" >> "$GITHUB_OUTPUT"
-            echo "No durable GHCR record yet for this commit; this run establishes it."
+            echo "Confirmed: $REF does not exist yet; this run may establish it."
+          else
+            echo "Could not confirm whether $REF exists -- a registry/network/auth failure is NOT a confirmed absence (independent-review Finding N). Failing closed rather than risking an unsafe rebuild of an already-established release:" >&2
+            printf '%s\n' "$output" >&2
+            exit 1
           fi
 
       - name: Derive image metadata
@@ -265,7 +294,23 @@ jobs:
           if [ "${{ steps.existing.outputs.found }}" = "true" ]; then
             echo "digest=${{ steps.existing.outputs.digest }}" >> "$GITHUB_OUTPUT"
           else
-            echo "digest=${{ steps.push.outputs.digest }}" >> "$GITHUB_OUTPUT"
+            digest="${{ steps.push.outputs.digest }}"
+            if ! printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+              echo "Freshly-pushed digest has an unexpected shape: '$digest'" >&2
+              exit 1
+            fi
+            # Independent-review Finding N recommended safeguard: re-resolve
+            # the tag we just pushed from the registry itself and confirm it
+            # matches what the push action reported, rather than trusting
+            # that single report alone.
+            REF="ghcr.io/${{ github.repository_owner }}/hullq-api:sha-${{ github.sha }}"
+            verify_output="$(docker buildx imagetools inspect "$REF" 2>&1)"
+            verify_digest="$(printf '%s\n' "$verify_output" | awk '/^Digest:/ {print $2}')"
+            if [ "$verify_digest" != "$digest" ]; then
+              echo "Post-push verification mismatch for $REF: push reported $digest, registry now resolves $verify_digest" >&2
+              exit 1
+            fi
+            echo "digest=$digest" >> "$GITHUB_OUTPUT"
           fi
 
   push_web_to_ghcr:
@@ -296,20 +341,32 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # See push_api_to_ghcr's own "Check GHCR for this exact commit's
-      # durable image identity" step -- same Finding M rationale, applied
+      # durable image identity" step -- same Finding M/N rationale, applied
       # to the web image's own GHCR repository/tag.
       - name: Check GHCR for this exact commit's durable image identity
         id: existing
         run: |
           REF="ghcr.io/${{ github.repository_owner }}/hullq-web:sha-${{ github.sha }}"
-          if output="$(docker buildx imagetools inspect "$REF" 2>/dev/null)"; then
-            digest="$(echo "$output" | awk '/^Digest:/ {print $2}')"
+          set +e
+          output="$(docker buildx imagetools inspect "$REF" 2>&1)"
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then
+            digest="$(printf '%s\n' "$output" | awk '/^Digest:/ {print $2}')"
+            if ! printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+              echo "Resolved digest for $REF has an unexpected shape: '$digest'" >&2
+              exit 1
+            fi
             echo "found=true" >> "$GITHUB_OUTPUT"
             echo "digest=$digest" >> "$GITHUB_OUTPUT"
             echo "GHCR already durably records $REF -> $digest; reusing it, not rebuilding."
-          else
+          elif printf '%s' "$output" | grep -Eq ': not found$'; then
             echo "found=false" >> "$GITHUB_OUTPUT"
-            echo "No durable GHCR record yet for this commit; this run establishes it."
+            echo "Confirmed: $REF does not exist yet; this run may establish it."
+          else
+            echo "Could not confirm whether $REF exists -- a registry/network/auth failure is NOT a confirmed absence (independent-review Finding N). Failing closed rather than risking an unsafe rebuild of an already-established release:" >&2
+            printf '%s\n' "$output" >&2
+            exit 1
           fi
 
       - name: Derive image metadata
@@ -337,7 +394,23 @@ jobs:
           if [ "${{ steps.existing.outputs.found }}" = "true" ]; then
             echo "digest=${{ steps.existing.outputs.digest }}" >> "$GITHUB_OUTPUT"
           else
-            echo "digest=${{ steps.push.outputs.digest }}" >> "$GITHUB_OUTPUT"
+            digest="${{ steps.push.outputs.digest }}"
+            if ! printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+              echo "Freshly-pushed digest has an unexpected shape: '$digest'" >&2
+              exit 1
+            fi
+            # Independent-review Finding N recommended safeguard: re-resolve
+            # the tag we just pushed from the registry itself and confirm it
+            # matches what the push action reported, rather than trusting
+            # that single report alone.
+            REF="ghcr.io/${{ github.repository_owner }}/hullq-web:sha-${{ github.sha }}"
+            verify_output="$(docker buildx imagetools inspect "$REF" 2>&1)"
+            verify_digest="$(printf '%s\n' "$verify_output" | awk '/^Digest:/ {print $2}')"
+            if [ "$verify_digest" != "$digest" ]; then
+              echo "Post-push verification mismatch for $REF: push reported $digest, registry now resolves $verify_digest" >&2
+              exit 1
+            fi
+            echo "digest=$digest" >> "$GITHUB_OUTPUT"
           fi
 
   deploy:
