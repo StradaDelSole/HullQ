@@ -5,12 +5,16 @@ name: Deploy
 # GHCR"). Mirrors ci.yml's trigger/pin/checkout conventions.
 #
 # `build` runs on every push/PR and never pushes anything -- it only proves
-# both Dockerfiles still build. `push_to_ghcr` additionally pushes each
-# image to GHCR, tagged with the exact immutable git commit SHA (never
-# `latest` -- docs/ARCHITECTURE_REBASELINE_2026-09-02.md §24), but only on
-# push to `main` or an explicit manual run: a pull_request from an
-# untrusted fork must never be able to publish a package under this
-# repository's GHCR namespace using `secrets.GITHUB_TOKEN`.
+# both Dockerfiles still build. `verify_ci_passed` (independent-review
+# Finding H) then fails closed unless the "CI" and "Manufacturer artifact
+# reproducibility" workflows' required checks have actually succeeded for
+# THIS EXACT commit SHA -- see that job's own comment. Only once both have
+# passed does `push_to_ghcr` push each image to GHCR, tagged with the
+# exact immutable git commit SHA (never `latest` --
+# docs/ARCHITECTURE_REBASELINE_2026-09-02.md §24), but only on push to
+# `main` or an explicit manual run: a pull_request from an untrusted fork
+# must never be able to publish a package under this repository's GHCR
+# namespace using `secrets.GITHUB_TOKEN`.
 #
 # `deploy` is manual-only (`workflow_dispatch` with `deploy: true`) AND
 # fail-closed to the canonical branch (`github.ref ==
@@ -78,10 +82,88 @@ jobs:
           push: false
           load: false
 
+  verify_ci_passed:
+    name: verify CI/security/reproducibility gate passed for this exact commit
+    # Independent-review amendment (Finding H): accepted architecture is
+    # GitHub Actions -> tests/security checks -> immutable versioned
+    # images -> GHCR -> controlled deployment. Before this amendment,
+    # push_to_ghcr/deploy depended only on THIS workflow's own harmless
+    # build-sanity job -- never on the "CI" workflow's
+    # quality/db-integration/dependency-audit/historical-replay checks or
+    # the "Manufacturer artifact reproducibility" workflow's checks, so a
+    # main commit whose normal checks were failing could still be built,
+    # pushed and manually deployed. This job queries GitHub's own Checks
+    # API directly for `github.sha` -- the EXACT commit this run is
+    # building/deploying, not branch-protection status or a differently
+    # -pinned/older SHA -- and fails closed unless every required check
+    # has actually completed with `success` for that exact SHA. Polling is
+    # required (rather than a one-shot check) because this workflow's own
+    # push-triggered run starts independently of, and often finishes
+    # before, the CI/reproducibility workflows' runs for the same push.
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      checks: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SHA: ${{ github.sha }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Wait for required checks to succeed on this exact commit
+        run: |
+          required=(
+            "quality (ubuntu-latest)"
+            "quality (windows-latest)"
+            "web quality (Astro/Node)"
+            "db integration (PostgreSQL 18)"
+            "historical research/bootstrap replay (PostgreSQL 18)"
+            "dependency audit"
+            "reproduce (ubuntu-latest)"
+            "reproduce (windows-latest)"
+          )
+          deadline=$(( $(date +%s) + 1200 ))
+          while true; do
+            runs_json="$(gh api "repos/$REPO/commits/$SHA/check-runs?per_page=100" -q '.check_runs')"
+            missing=()
+            pending=()
+            failed=()
+            for name in "${required[@]}"; do
+              entry="$(echo "$runs_json" | jq -c --arg n "$name" '[.[] | select(.name == $n)] | sort_by(.started_at) | last')"
+              if [ "$entry" = "null" ]; then
+                missing+=("$name")
+                continue
+              fi
+              status="$(echo "$entry" | jq -r '.status')"
+              conclusion="$(echo "$entry" | jq -r '.conclusion')"
+              if [ "$status" != "completed" ]; then
+                pending+=("$name")
+              elif [ "$conclusion" != "success" ]; then
+                failed+=("$name")
+              fi
+            done
+            if [ "${#failed[@]}" -gt 0 ]; then
+              echo "Required check(s) failed for commit $SHA: ${failed[*]}" >&2
+              exit 1
+            fi
+            if [ "${#missing[@]}" -eq 0 ] && [ "${#pending[@]}" -eq 0 ]; then
+              echo "All required checks succeeded for commit $SHA."
+              exit 0
+            fi
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "Timed out waiting for checks on commit $SHA. missing=${missing[*]:-none} pending=${pending[*]:-none}" >&2
+              exit 1
+            fi
+            echo "Waiting for checks on commit $SHA... missing=${missing[*]:-none} pending=${pending[*]:-none}"
+            sleep 30
+          done
+
   push_to_ghcr:
     name: push ${{ matrix.image }} image to GHCR
     if: github.event_name != 'pull_request'
-    needs: build
+    needs: [build, verify_ci_passed]
     strategy:
       fail-fast: false
       matrix:
@@ -173,30 +255,63 @@ jobs:
         # deploy.sh and rollback.sh -- and only then run that release's own
         # deploy.sh. This is what makes it impossible for an older immutable
         # image tag to ever be deployed against newer/mutated configuration.
+        # Independent-review amendment (Finding I): the production host's
+        # SSH identity must be verified against a value provisioned
+        # independently of this workflow run's own network path, not
+        # trusted-on-first-use from whatever key is presented right before
+        # it is used. DEPLOY_SSH_KNOWN_HOSTS holds the exact `known_hosts`
+        # line(s) for the production VPS, obtained ONCE out-of-band (e.g.
+        # from the VPS provider's console/control-panel host-key display,
+        # or an operator-run `ssh-keyscan` over a channel independently
+        # trusted at provisioning time -- never captured by this workflow
+        # itself) and stored as a `production` Environment secret
+        # (docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md §2 has the
+        # one-time provisioning/rotation procedure). `StrictHostKeyChecking
+        # =yes` is passed explicitly so a missing/mismatched entry fails
+        # the connection rather than silently falling back to any
+        # interactive-prompt default.
         env:
           DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
           DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           RELEASE_SHA: ${{ github.sha }}
         run: |
           install -d -m 700 ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$DEPLOY_SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
 
+          SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes"
+          SCP="scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes"
           RELEASE_DIR="$DEPLOY_PATH/releases/$RELEASE_SHA"
-          ssh -i ~/.ssh/deploy_key "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" \
+          $SSH "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" \
             "mkdir -p '$RELEASE_DIR'"
-          scp -i ~/.ssh/deploy_key \
+          $SCP \
             docker-compose.prod.yml Caddyfile scripts/ops/deploy.sh scripts/ops/rollback.sh \
             "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST:$RELEASE_DIR/"
-          ssh -i ~/.ssh/deploy_key "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" \
+          $SSH "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" \
             "chmod +x '$RELEASE_DIR/deploy.sh' '$RELEASE_DIR/rollback.sh' && '$RELEASE_DIR/deploy.sh'"
+
+      - name: Install uv and Python
+        # Independent-review amendment (Finding K): the smoke check must
+        # run with the same pinned `uv` version and locked dependency set
+        # as every other job in this repository, not an ad-hoc
+        # `pip install` of whatever `httpx` happens to be current on PyPI
+        # at deploy time -- production deploy must not depend on an
+        # unpinned supply-chain input.
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.12.5"
+          enable-cache: true
+          python-version: "3.14"
+
+      - name: Sync locked environment
+        run: uv sync --locked --no-dev
 
       - name: Post-deploy smoke check
         env:
           HULLQ_SMOKE_BASE_URL: ${{ vars.HULLQ_PRODUCTION_BASE_URL }}
-        run: |
-          pip install --quiet httpx
-          python scripts/ops/smoke_check.py --base-url "$HULLQ_SMOKE_BASE_URL"
+        run: uv run python scripts/ops/smoke_check.py --base-url "$HULLQ_SMOKE_BASE_URL"
