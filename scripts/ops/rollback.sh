@@ -13,7 +13,11 @@
 # A rollback is simply re-running the previous release's OWN deploy.sh —
 # that script's own current/previous bookkeeping (see deploy.sh's header)
 # is what correctly swaps current/previous back, so this script contains
-# no state-writing logic of its own.
+# no state-writing logic of its own. Because that release's own
+# `image-refs.env` was written once at its first publish and never
+# overwritten since (independent-review Finding L), re-running its
+# deploy.sh here restores its exact original immutable image digests, not
+# a freshly-resolved mutable tag.
 set -euo pipefail
 
 HULLQ_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

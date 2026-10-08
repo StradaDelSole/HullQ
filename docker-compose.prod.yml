@@ -18,11 +18,19 @@
 # a different release directory correctly recreate (not duplicate) `api`/
 # `web`/`caddy`.
 #
-# Both application images are pinned to the exact immutable tag in
-# $HULLQ_IMAGE_TAG (derived by deploy.sh from its own release directory's
-# name -- always the exact git commit SHA that owns this compose file too,
-# so image and deployment configuration can never drift apart) -- never
-# `latest` (docs/ARCHITECTURE_REBASELINE_2026-09-02.md §24).
+# Both application images are pinned to the exact immutable OCI digest in
+# $HULLQ_API_IMAGE / $HULLQ_WEB_IMAGE (independent-review Finding L: a
+# mutable `sha-<commit>` TAG is not itself a mechanically immutable image
+# identity -- the same tag could in principle be republished with
+# different bytes by a workflow rerun/retry, and the Dockerfiles' own
+# upstream base images are themselves mutable tags, so rebuilding the same
+# commit later is not guaranteed to reproduce the same content). deploy.sh
+# reads these two `repository@sha256:<digest>` references from its own
+# release directory's `image-refs.env` -- written ONCE, at that release's
+# first publish, and never overwritten by a later republish of the same
+# commit (docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md §1/§3) --
+# never a mutable tag, never `latest`
+# (docs/ARCHITECTURE_REBASELINE_2026-09-02.md §24).
 #
 # Stable, non-versioned runtime state (secrets, TLS certificates) lives
 # outside every immutable release directory, at $HULLQ_SHARED_DIR
@@ -37,7 +45,7 @@ name: hullq-prod
 
 services:
   api:
-    image: ghcr.io/stradadelsole/hullq-api:${HULLQ_IMAGE_TAG}
+    image: ${HULLQ_API_IMAGE}
     pull_policy: missing
     restart: unless-stopped
     env_file: ${HULLQ_SHARED_DIR:-/opt/hullq/shared}/.env
@@ -47,7 +55,7 @@ services:
       - hullq
 
   web:
-    image: ghcr.io/stradadelsole/hullq-web:${HULLQ_IMAGE_TAG}
+    image: ${HULLQ_WEB_IMAGE}
     pull_policy: missing
     restart: unless-stopped
     env_file: ${HULLQ_SHARED_DIR:-/opt/hullq/shared}/.env

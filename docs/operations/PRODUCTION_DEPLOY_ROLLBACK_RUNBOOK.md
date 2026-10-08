@@ -15,6 +15,8 @@ application VPS ($DEPLOY_PATH, e.g. /opt/hullq)
   |     +-- docker-compose.prod.yml      — this release's own copy
   |     +-- Caddyfile                    — this release's own copy
   |     +-- deploy.sh, rollback.sh       — this release's own copy
+  |     +-- image-refs.env               — this release's own immutable image
+  |                                         identity (Finding L, §1 below)
   +-- shared/                            — stable, non-versioned runtime state
   |     +-- .env                         — never committed, never per-release
   |     +-- certs/cf-origin*.pem
@@ -32,18 +34,37 @@ application VPS ($DEPLOY_PATH, e.g. /opt/hullq)
 ```
 
 Every release directory is self-contained and immutable: its own
-`docker-compose.prod.yml`/`Caddyfile`/`deploy.sh`/`rollback.sh`, all from the
-exact same commit. `deploy.sh` derives the image tag it deploys
-(`sha-<directory name>`) from its OWN release directory's name — never from
-an argument, the working directory, or a separately-mutable checkout — so an
-older immutable image can never be paired with newer or drifted
-configuration (independent review Finding B). `<tag>` is always
-`sha-<full git commit SHA>` — never `latest`
-(`docs/ARCHITECTURE_REBASELINE_2026-09-02.md` §24). Both images are stateless:
-neither writes canonical application data to a local volume. PostgreSQL
-(DigitalOcean Managed) and object storage (Cloudflare R2) are both
-externalized, so the VPS itself can be rebuilt from scratch using only this
-repository, the `.env` file and the two certificate files.
+`docker-compose.prod.yml`/`Caddyfile`/`deploy.sh`/`rollback.sh`/
+`image-refs.env`, all from the exact same commit. `deploy.sh` reads the
+images it deploys from its OWN release directory's `image-refs.env` — never
+from an argument, the working directory, or a separately-mutable checkout —
+so an older immutable image can never be paired with newer or drifted
+configuration (independent review Finding B).
+
+**Independent-review Finding L — immutable image identity.** A
+`sha-<commit>` TAG by itself is not a mechanically immutable image
+identity: the same tag could in principle be republished with different
+bytes by a workflow rerun/retry/re-dispatch, and the Dockerfiles' own
+upstream base images are themselves mutable tags, so rebuilding the same
+commit later is not guaranteed to reproduce the same content. Each release
+is therefore bound to the real OCI manifest **digest** GHCR assigned when
+that release's images were first pushed —
+`repository@sha256:<digest>` — recorded in that release's own
+`image-refs.env` (`HULLQ_API_IMAGE=`/`HULLQ_WEB_IMAGE=`, read by
+`docker-compose.prod.yml`) by `.github/workflows/deploy.yml`'s `deploy` job,
+**exactly once**: if a release directory already has an `image-refs.env`
+(e.g. because this exact commit's deploy is retried/re-dispatched), that
+file is never overwritten, even if a rebuild of the same commit produced a
+different digest this time. A human-readable `sha-<commit>` tag is still
+pushed alongside the digest for operator convenience (`docker pull
+<repo>:sha-<commit>` for manual inspection), but nothing in the deploy/
+rollback path ever resolves it — only the recorded digest is ever deployed.
+`<tag>` is always `sha-<full git commit SHA>` — never `latest`
+(`docs/ARCHITECTURE_REBASELINE_2026-09-02.md` §24). Both images are
+stateless: neither writes canonical application data to a local volume.
+PostgreSQL (DigitalOcean Managed) and object storage (Cloudflare R2) are
+both externalized, so the VPS itself can be rebuilt from scratch using only
+this repository, the `.env` file and the two certificate files.
 
 ## 2. One-time VPS setup
 
@@ -65,14 +86,15 @@ be created manually — the first successful `deploy.sh` run creates them.
 
 ## 3. Normal deploy
 
-Deploy is automated by `.github/workflows/deploy.yml`'s `push_to_ghcr` job (runs on every push to `main`, building and pushing both images tagged `sha-<commit>`) — but only after that same workflow's `verify_ci_passed` job (independent-review Finding H) has confirmed, by directly querying GitHub's Checks API for that exact commit SHA, that the "CI" workflow's quality/db-integration/dependency-audit/historical-replay checks and the "Manufacturer artifact reproducibility" workflow's checks have all actually completed with `success` for it. A `main` commit whose required checks are failing (or still running) can never reach GHCR through this workflow. Rolling a pushed build out to the VPS is **manual** via the same workflow's `deploy` job (`workflow_dispatch` with `deploy: true`), gated behind the GitHub `production` Environment (configure required reviewers there before first use).
+Deploy is automated by `.github/workflows/deploy.yml`'s `push_api_to_ghcr`/`push_web_to_ghcr` jobs (run on every push to `main`, each building and pushing its image tagged `sha-<commit>` for human-readable convenience, and each exposing the real OCI manifest `digest` GHCR assigned as a job output) — but only after that same workflow's `verify_ci_passed` job (independent-review Finding H) has confirmed, by directly querying GitHub's Checks API for that exact commit SHA, that the "CI" workflow's quality/db-integration/dependency-audit/historical-replay checks and the "Manufacturer artifact reproducibility" workflow's checks have all actually completed with `success` for it. A `main` commit whose required checks are failing (or still running) can never reach GHCR through this workflow. Rolling a pushed build out to the VPS is **manual** via the same workflow's `deploy` job (`workflow_dispatch` with `deploy: true`), gated behind the GitHub `production` Environment (configure required reviewers there before first use).
 
-That `deploy` job does two things over SSH, for the exact commit SHA it is deploying:
+That `deploy` job does, over SSH, for the exact commit SHA it is deploying:
 
-1. materializes `$DEPLOY_PATH/releases/<sha>/` on the VPS, containing that commit's own `docker-compose.prod.yml`, `Caddyfile`, `deploy.sh` and `rollback.sh`;
-2. runs that release's own `deploy.sh` — **no arguments**; everything it needs (the image tag, the Compose/Caddy configuration) is derived from its own release directory.
+1. checks whether `$DEPLOY_PATH/releases/<sha>/image-refs.env` already exists on the VPS. If it does (a rerun/retry/re-dispatch of this exact commit), that release is left completely untouched — its originally-recorded image digests are never replaced (independent-review Finding L);
+2. otherwise, materializes `$DEPLOY_PATH/releases/<sha>/` on the VPS for the first time, containing that commit's own `docker-compose.prod.yml`, `Caddyfile`, `deploy.sh`, `rollback.sh` **and** a freshly-written `image-refs.env` binding `HULLQ_API_IMAGE`/`HULLQ_WEB_IMAGE` to the exact `repository@sha256:<digest>` identities this run's `push_api_to_ghcr`/`push_web_to_ghcr` jobs just produced;
+3. runs that release's own `deploy.sh` — **no arguments**; everything it needs (the immutable image digests, the Compose/Caddy configuration) is derived from its own release directory.
 
-`deploy.sh` runs `docker compose up -d` (pinned to its own release's image tag), polls `/healthz` and `/readyz` on `127.0.0.1:8000` for up to 60 seconds, and only on success advances the `state/` release pointers: the release that was current becomes `state/previous-release` (the rollback target) and the new release becomes `state/current-release` (independent review Finding C — state only advances after the deploy it describes has actually succeeded). It also refreshes the stable `$DEPLOY_PATH/rollback.sh` entrypoint from its own copy, so an operator always invokes the same fixed path regardless of which release is currently live.
+`deploy.sh` reads `image-refs.env` (refusing to run if it is missing or incomplete — no mutable-tag fallback), runs `docker compose up -d` (pinned to those exact digests), polls `/healthz` and `/readyz` on `127.0.0.1:8000` for up to 60 seconds, and only on success advances the `state/` release pointers: the release that was current becomes `state/previous-release` (the rollback target) and the new release becomes `state/current-release` (independent review Finding C — state only advances after the deploy it describes has actually succeeded). It also refreshes the stable `$DEPLOY_PATH/rollback.sh` entrypoint from its own copy, so an operator always invokes the same fixed path regardless of which release is currently live.
 
 On health-check failure, `deploy.sh` **automatically** re-runs the previously-current release's own `deploy.sh` (an auto-revert, not a mutation of state) and then exits non-zero — a failed deploy never advances or corrupts `state/current-release`/`state/previous-release`.
 
@@ -82,7 +104,7 @@ On health-check failure, `deploy.sh` **automatically** re-runs the previously-cu
 /opt/hullq/rollback.sh
 ```
 
-This stable path always contains whichever release's `rollback.sh` was last refreshed by a successful `deploy.sh` (§3) — the operator never needs to know which release directory is current. It reads `state/previous-release` and re-runs **that exact release's own** `deploy.sh` (image + Compose/Caddy configuration together, never just a tag rewrite) — which, because it succeeds, naturally swaps `current`/`previous` back via the same state machine `deploy.sh` always uses. A second rollback therefore correctly toggles back to the release that was just replaced, rather than requiring unbounded rollback history.
+This stable path always contains whichever release's `rollback.sh` was last refreshed by a successful `deploy.sh` (§3) — the operator never needs to know which release directory is current. It reads `state/previous-release` and re-runs **that exact release's own** `deploy.sh`, which reads that release's own `image-refs.env` — the exact immutable digests recorded at that release's first publish, never re-resolved or re-derived (independent-review Finding L) — together with its own Compose/Caddy configuration. Because that succeeds, it naturally swaps `current`/`previous` back via the same state machine `deploy.sh` always uses. A second rollback therefore correctly toggles back to the release that was just replaced, rather than requiring unbounded rollback history.
 
 If `state/previous-release` is missing, or names a release directory that no longer has its own `deploy.sh`, `rollback.sh` exits non-zero and leaves `state/current-release` untouched — a failed rollback never silently claims success or corrupts the recorded known-good state.
 
@@ -96,13 +118,15 @@ doubles) against a temporary directory shaped exactly like the production
 layout in §1 (`releases/<sha>/`, `shared/`, `state/`) and the real Docker
 Engine. It proves, end to end:
 
-1. a first deploy with no previous release records no rollback target;
-2. an upgrade (A → B) leaves A as `state/previous-release` (the rollback target), not B;
-3. a manual rollback through the stable `rollback.sh` entrypoint genuinely redeploys A's own image+configuration (verified by inspecting the running container's actual image reference, not just the state file), and correctly swaps `current`/`previous` back;
+1. a first deploy with no previous release records no rollback target, and that release's recorded image identity is the exact digest actually pushed for it;
+2. an upgrade (A → B) leaves A as `state/previous-release` (the rollback target), not B — and A/B are genuinely distinct, independently-pushed image digests (independent-review Finding L), not one build retagged;
+3. a manual rollback through the stable `rollback.sh` entrypoint genuinely redeploys A's own EXACT ORIGINAL image digest+configuration (verified by inspecting the running container's actual image reference, not just the state file), and correctly swaps `current`/`previous` back;
 4. a deliberately-unhealthy deploy auto-reverts to the last good release and reports failure (exit 1), never success, and never advances `state/current-release`;
 5. a corrupted rollback target is detected and reported (non-zero exit) without corrupting `state/current-release`;
-6. the running container's image reference always matches the tag derived from its own release directory's name — image and deployment configuration can never drift apart (Finding B);
-7. all of the above against the real nested release-directory layout, not a flattened stand-in.
+6. the running container's image reference always matches the immutable digest identity recorded for its own release — image and deployment configuration can never drift apart (Finding B/L);
+7. all of the above against the real nested release-directory layout, not a flattened stand-in;
+8. (independent-review Finding L) a later attempt to "republish" an already-established release with a DIFFERENT image digest is refused — that release's `image-refs.env` is left untouched, so a rerun/retry/re-dispatch of the same commit can never silently make that commit mean different image content;
+9. (independent-review Finding L) a host with no locally-cached copy of a release's image (forced via `docker rmi`) and a host that already had it cached both resolve that release to the exact same image content.
 
 Run:
 
@@ -113,38 +137,61 @@ uv run python scripts/ops/inspect_deploy_rollback_lifecycle.py
 Requires a working local Docker Engine and the local PostgreSQL 18 test
 database.
 
-**Execution status (independent-review Finding D, resolved 2026-10-08):**
-Docker Desktop was started and the real Docker Engine (29.7.2) became
-reachable in this session. `uv run python
+**Execution status (independent-review Findings D and L, resolved
+2026-10-08):** Docker Desktop was started and the real Docker Engine
+(29.7.2) became reachable in this session. `uv run python
 scripts/ops/inspect_deploy_rollback_lifecycle.py` was then actually
 executed against it and the real local PostgreSQL 18 test database, and
-observed to complete clean:
+observed to complete clean — this transcript is the current, expanded
+9-invariant proof (Finding L added invariants 2/3/6/8/9's digest-identity
+assertions and the registry/two-distinct-builds setup on top of Finding
+D's original 7):
 
 ```text
 $ uv run python scripts/ops/inspect_deploy_rollback_lifecycle.py
-[proof] 1) first deploy (release-a): expect no previous-release recorded
-[proof] 2) upgrade to release-b: expect previous-release=release-a
+[proof] starting throwaway local Docker registry
+[proof] building two genuinely distinct images and pushing each for a real digest
+[proof] 1) first deploy (release-a): expect no previous-release recorded, exact pushed digest deployed
+[proof] 2) upgrade to release-b: expect previous-release=release-a, distinct independent digest deployed
 [proof] 3) manual rollback via the stable rollback.sh entrypoint
 [proof] 4) deploy deliberately-unhealthy release-c: expect auto-revert to release-a, exit 1
 [proof] 5) corrupt the rollback target: expect a detected failure, no false success
-[proof] cleaning up containers/images/temp directory
+[proof] 8) attempt to republish release-a with release-b's digest: expect its image-refs.env to remain untouched
+[proof] 9) fresh pull (no local cache) vs cached pull resolve release-a to the same immutable content
+[proof] cleaning up containers/images/registry/temp directory
 {
   "results": {
     "1_first_deploy_no_previous": true,
     "2_upgrade_a_to_b": true,
-    "6_tag_config_coupling": true,
     "3_manual_rollback_returns_to_a": true,
     "4_failed_deploy_auto_reverts": true,
     "5_failed_rollback_detected": true,
-    "7_real_nested_release_layout": true
+    "6_digest_config_coupling": true,
+    "7_real_nested_release_layout": true,
+    "8_republish_cannot_change_identity": true,
+    "9_fresh_and_cached_pull_identical_content": true
   },
   "clear": true
 }
 ```
 
-exit code 0. All 7 named invariants (§5 above) observed true on this exact
-run; the finally-block cleanup left no stray containers/images behind
-(confirmed via `docker ps -a`/`docker images` immediately after).
+exit code 0. All 9 named invariants (§5 above) observed true on this exact
+run, confirmed deterministic across two consecutive clean runs; the
+finally-block cleanup left no stray containers/images/registry behind each
+time (confirmed via `docker ps -a`/`docker images` immediately after).
+
+**Independent-review Finding L (resolved 2026-10-08):** the proof above now
+starts a throwaway local Docker registry and builds two genuinely distinct
+images (separate `--label`s, separate real pushed digests — not one build
+retagged three ways as the original Finding D version did), proving
+release independence and digest-bound identity for real rather than by
+construction. One real defect surfaced and was fixed in this expansion:
+step 9's fresh-pull check called `docker rmi` on an image a still-running
+container referenced (left over from the immediately-preceding redeploy),
+which Docker correctly refuses ("image is being used by running
+container"). Fixed by stopping that container (`docker compose down`)
+before removing the image, which is also simply the correct operational
+order. Re-run clean twice after the fix.
 
 This first real execution also surfaced and fixed five genuine defects in
 the proof harness that static review alone had missed — exactly why

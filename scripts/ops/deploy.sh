@@ -5,9 +5,19 @@
 # before this script ever runs — see
 # docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md §1/§2). Never run a
 # copy of this script from outside its own release directory: it derives
-# the image tag it deploys from its own directory name, which is exactly
-# how image and deployment configuration are kept from drifting apart
-# (independent review Finding B, 2026-10-XX amendment).
+# its release identity from its own directory name AND reads this exact
+# release's own `image-refs.env` for the images it deploys, which is
+# exactly how image and deployment configuration are kept from drifting
+# apart (independent review Finding B, 2026-10-XX amendment).
+#
+# Independent-review amendment (Finding L): `image-refs.env` binds this
+# release to the exact immutable OCI digests
+# (`repository@sha256:<digest>`, never a mutable tag) captured at this
+# release's first publish by .github/workflows/deploy.yml -- that file is
+# written ONCE, when this release directory is first materialized, and is
+# never overwritten by a later rerun/republish of the same commit. This
+# script fails closed if it is missing rather than falling back to any
+# mutable tag.
 #
 # Usage: deploy.sh   (no arguments — everything is derived from $PWD/path)
 #
@@ -36,7 +46,19 @@ PREVIOUS_FILE="$STATE_DIR/previous-release"
 COMPOSE_FILE="$RELEASE_DIR/docker-compose.prod.yml"
 
 NEW_SHA="$(basename "$RELEASE_DIR")"
-IMAGE_TAG="sha-$NEW_SHA"
+IMAGE_REFS_FILE="$RELEASE_DIR/image-refs.env"
+
+if [ ! -f "$IMAGE_REFS_FILE" ]; then
+  echo "Missing $IMAGE_REFS_FILE: this release directory was not properly materialized with its immutable image digests. Refusing to deploy with a mutable fallback." >&2
+  exit 1
+fi
+# shellcheck disable=SC1090
+. "$IMAGE_REFS_FILE"
+if [ -z "${HULLQ_API_IMAGE:-}" ] || [ -z "${HULLQ_WEB_IMAGE:-}" ]; then
+  echo "$IMAGE_REFS_FILE did not set both HULLQ_API_IMAGE and HULLQ_WEB_IMAGE. Refusing to deploy." >&2
+  exit 1
+fi
+export HULLQ_API_IMAGE HULLQ_WEB_IMAGE
 
 # Overridable only for the retained local proof
 # (scripts/ops/inspect_deploy_rollback_lifecycle.py); production always
@@ -47,9 +69,8 @@ HEALTH_PORT="${HULLQ_DEPLOY_HEALTH_PORT:-8000}"
 
 CURRENT_SHA="$(cat "$CURRENT_FILE" 2>/dev/null || echo "")"
 
-echo "Deploying release $NEW_SHA (image tag $IMAGE_TAG); current before this deploy: ${CURRENT_SHA:-none}"
+echo "Deploying release $NEW_SHA (api=$HULLQ_API_IMAGE web=$HULLQ_WEB_IMAGE); current before this deploy: ${CURRENT_SHA:-none}"
 
-export HULLQ_IMAGE_TAG="$IMAGE_TAG"
 docker compose -f "$COMPOSE_FILE" up -d
 
 echo "Waiting for the API container to report healthy..."

@@ -4,36 +4,65 @@ Independent-review amendment (2026-10): runs the REAL `scripts/ops/deploy.sh`
 and `scripts/ops/rollback.sh` (not reimplemented test doubles) against a
 temporary directory shaped exactly like the documented production layout
 (`/opt/hullq/{releases/<sha>,shared,state}` --
-`docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md` §1/§2) and the real
-Docker Engine, proving:
+`docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md` §1/§2), a real local
+ephemeral Docker registry (see below), and the real Docker Engine, proving:
 
-1. a first deploy with no previous release records no rollback target;
-2. an upgrade (A -> B) records A as the rollback target;
-3. a manual rollback after a successful upgrade returns to A, not B;
+1. a first deploy with no previous release records no rollback target, and
+   that release's recorded image identity is the exact digest actually
+   pushed for it;
+2. an upgrade (A -> B) leaves A as the rollback target, and A/B are
+   genuinely distinct, independent image identities (not the same content
+   retagged);
+3. a manual rollback after a successful upgrade restores A's EXACT original
+   image identity, not a freshly-resolved reference;
 4. a failed deploy (health check never succeeds) automatically reverts to
    the previous release and reports failure (exit 1), never success;
 5. a failed rollback (corrupt/missing previous-release target) is detected
    and reported (non-zero exit) without corrupting the current-release
    state;
-6. the running container's image reference is always exactly the tag
-   derived from its own release directory's name -- image and deployment
-   configuration can never drift apart;
+6. the running container's image reference always exactly matches the
+   immutable digest identity recorded for its own release -- image and
+   deployment configuration can never drift apart;
 7. all of the above works from the real nested release-directory layout,
-   not a flattened stand-in.
+   not a flattened stand-in;
+8. (independent-review Finding L) a later attempt to "republish" an
+   already-established release with a DIFFERENT image digest is refused --
+   that release's recorded `image-refs.env` is left untouched, so a
+   rerun/retry/re-dispatch of the same commit can never silently make that
+   commit mean different image content;
+9. (independent-review Finding L) a host with no locally-cached copy of a
+   release's image (forced via `docker rmi`) and a host that already had it
+   cached both resolve that release to the exact same image content, proven
+   by comparing the actually-running container's real local image ID
+   across both cases, not merely the reference string used.
 
-Only one Docker image is built (all three "releases" tag the same content
-under different names): this proof is about release/state-machine
-correctness -- whether the right release's own image+configuration is the
-one actually running at each point, not whether distinct commits produce
-distinct image content (an ordinary property of `docker build`, not
-specific to this mechanism).
+Independent-review amendment (Finding L): release identity is now bound to
+the real OCI manifest digest GHCR would assign in production
+(`repository@sha256:<digest>`), never the mutable `sha-<commit>` tag alone.
+To prove this for real rather than asserting it, this script starts a
+throwaway, unauthenticated local Docker registry (`registry:2`, removed at
+the end along with its anonymous volume) and builds TWO genuinely distinct
+image contents (release A and release B each get their own `--label`, so
+their builds produce genuinely different, independently-verified digests,
+not one build retagged under different names) and pushes each for real,
+parsing the real digest `docker push` reports. `docker-compose.prod.yml`'s
+stand-in here reads `${HULLQ_API_IMAGE}` -- the exact same environment
+variable name the real `docker-compose.prod.yml` and `scripts/ops/deploy.sh`
+use -- from each release's own `image-refs.env`, written by
+`_materialize_release` below exactly once per release directory, mirroring
+`.github/workflows/deploy.yml`'s own first-publish-wins guard. `pull_policy:
+missing` (matching the real file, not `never`) is used deliberately, so
+this proof can genuinely exercise a real pull-by-digest against the local
+throwaway registry -- never any real external network access.
 
 The per-release Compose file used here is deliberately a minimal
-single-service (api-only) stand-in for the real
-`docker-compose.prod.yml` -- same `env_file`/image/port-binding shape, but
-without Caddy/TLS, which are irrelevant to the release/state-machine logic
-under test. `pull_policy: never` is used here (instead of the real file's
-`missing`) so this proof can never attempt real network access.
+single-service (api-only) stand-in for the real `docker-compose.prod.yml`
+-- same `env_file`/image/port-binding shape, but without Caddy/TLS, which
+are irrelevant to the release/state-machine/digest-identity logic under
+test. `HULLQ_WEB_IMAGE` is still written into `image-refs.env` (reusing the
+api image's own reference) purely so the real `deploy.sh`'s generic
+both-must-be-set validation is satisfied; this stand-in's own Compose file
+never reads it.
 
 Run:
   uv run python scripts/ops/inspect_deploy_rollback_lifecycle.py
@@ -47,6 +76,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -54,7 +84,8 @@ import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-IMAGE_NAME = "ghcr.io/stradadelsole/hullq-api"
+IMAGE_NAME = "hullq-api"
+REGISTRY_CONTAINER = "hullq-proof-registry"
 PROJECT_NAME = "hullq-prod-lifecycle-test"
 HEALTH_PORT = 18200
 # `host.docker.internal`, not `localhost`: this URL is read by the
@@ -135,14 +166,76 @@ def _bash(script: Path, *, extra_env: dict[str, str]) -> subprocess.CompletedPro
     )
 
 
+def _start_registry() -> str:
+    """Start a throwaway, unauthenticated local Docker registry.
+
+    Docker Engine treats `localhost`/loopback registries as plain-HTTP
+    allowed without any daemon configuration, which is exactly what makes
+    this realistic (a real push, a real digest, a real pull-by-digest)
+    without any real external network access or insecure-registry setup.
+    """
+
+    _run(
+        [
+            "docker",
+            "run",
+            "-d",
+            "--name",
+            REGISTRY_CONTAINER,
+            "-p",
+            "127.0.0.1:0:5000",
+            "registry:2",
+        ]
+    )
+    port_result = _run(["docker", "port", REGISTRY_CONTAINER, "5000/tcp"])
+    lines = [line.strip() for line in port_result.stdout.splitlines() if line.strip()]
+    host_port = lines[-1].rsplit(":", 1)[-1]
+    return f"localhost:{host_port}"
+
+
+def _stop_registry() -> None:
+    _run(["docker", "rm", "-f", "-v", REGISTRY_CONTAINER], check=False)
+
+
+def _build_and_push(registry_base: str, release_label: str) -> str:
+    """Build a real, distinct image and push it for real, returning the
+    real OCI manifest digest (e.g. "sha256:...") GHCR would equally assign
+    in production. Each release gets its own `--label` so A and B are
+    genuinely different content with genuinely different digests --
+    independent-review Finding L requires proving release independence,
+    which one image retagged three ways cannot demonstrate.
+    """
+
+    tag = f"{registry_base}/{IMAGE_NAME}:build-{release_label}"
+    _run(
+        [
+            "docker",
+            "build",
+            "--load",
+            "--label",
+            f"hullq.proof.release={release_label}",
+            "-t",
+            tag,
+            "-f",
+            _posix(REPO_ROOT / "Dockerfile"),
+            _posix(REPO_ROOT),
+        ]
+    )
+    push_result = _run(["docker", "push", tag])
+    match = re.search(r"digest:\s*(sha256:[0-9a-f]+)", push_result.stdout)
+    if match is None:
+        raise RuntimeError(f"could not parse digest from docker push output:\n{push_result.stdout}")
+    return f"{registry_base}/{IMAGE_NAME}@{match.group(1)}"
+
+
 def _write_compose(release_dir: Path, *, shared_dir: Path, sleep_forever: bool) -> None:
     command_line = '\n    command: ["sleep", "999"]' if sleep_forever else ""
     content = (
         "name: " + PROJECT_NAME + "\n"
         "services:\n"
         "  api:\n"
-        f"    image: {IMAGE_NAME}:${{HULLQ_IMAGE_TAG}}\n"
-        "    pull_policy: never\n"
+        "    image: ${HULLQ_API_IMAGE}\n"
+        "    pull_policy: missing\n"
         '    restart: "no"\n'
         f"    env_file: {_posix(shared_dir)}/.env\n"
         "    extra_hosts:\n"
@@ -153,15 +246,34 @@ def _write_compose(release_dir: Path, *, shared_dir: Path, sleep_forever: bool) 
     (release_dir / "docker-compose.prod.yml").write_text(content, encoding="utf-8")
 
 
-def _make_release(root: Path, shared_dir: Path, sha: str, *, sleep_forever: bool = False) -> Path:
+def _materialize_release(
+    root: Path, shared_dir: Path, sha: str, image_ref: str, *, sleep_forever: bool = False
+) -> tuple[Path, bool]:
+    """Create release `sha`'s directory with its own `image-refs.env`,
+    UNLESS it already exists -- mirroring .github/workflows/deploy.yml's
+    own first-publish-wins guard (independent-review Finding L): once a
+    release directory has an established `image-refs.env`, a later call
+    for the same release (a rerun/retry/re-dispatch of the same commit)
+    must never overwrite it, even with a different `image_ref`.
+
+    Returns (release_dir, created) -- `created` is False when the release
+    already existed and this call deliberately left it untouched.
+    """
+
     release_dir = root / "releases" / sha
-    release_dir.mkdir(parents=True)
+    image_refs_file = release_dir / "image-refs.env"
+    if image_refs_file.is_file():
+        return release_dir, False
+    release_dir.mkdir(parents=True, exist_ok=True)
     _write_compose(release_dir, shared_dir=shared_dir, sleep_forever=sleep_forever)
+    image_refs_file.write_text(
+        f"HULLQ_API_IMAGE={image_ref}\nHULLQ_WEB_IMAGE={image_ref}\n", encoding="utf-8"
+    )
     for name in ("deploy.sh", "rollback.sh"):
         destination = release_dir / name
         shutil.copy2(REPO_ROOT / "scripts" / "ops" / name, destination)
         destination.chmod(0o755)
-    return release_dir
+    return release_dir, True
 
 
 def _running_image_reference(container_suffix: str = "api-1") -> str:
@@ -172,6 +284,25 @@ def _running_image_reference(container_suffix: str = "api-1") -> str:
             f"{PROJECT_NAME}-{container_suffix}",
             "--format",
             "{{.Config.Image}}",
+        ]
+    )
+    return result.stdout.strip()
+
+
+def _running_image_id(container_suffix: str = "api-1") -> str:
+    """The actually-running container's real local content-addressed
+    image ID -- unlike `_running_image_reference`, this changes if the
+    underlying image CONTENT differs, which is what independent-review
+    Finding L's fresh-vs-cached-pull proof needs to compare.
+    """
+
+    result = _run(
+        [
+            "docker",
+            "inspect",
+            f"{PROJECT_NAME}-{container_suffix}",
+            "--format",
+            "{{.Image}}",
         ]
     )
     return result.stdout.strip()
@@ -199,42 +330,35 @@ def main() -> int:
     }
     current_file = root / "state" / "current-release"
     previous_file = root / "state" / "previous-release"
+    registry_base: str | None = None
 
     try:
         print(f"[proof] temp /opt/hullq-equivalent root: {root}", file=sys.stderr)
+        print("[proof] starting throwaway local Docker registry", file=sys.stderr)
+        registry_base = _start_registry()
+
         print(
-            "[proof] building one real production image, tagged as all three releases",
+            "[proof] building two genuinely distinct images and pushing each for a real digest",
             file=sys.stderr,
         )
-        # --load: when the active buildx builder uses the `docker-container`
-        # driver (observed non-deterministically on this machine's Docker
-        # Desktop), a build without --load completes "successfully" but
-        # leaves the result only inside the buildkit builder's own cache --
-        # invisible to `docker images`/`docker tag`/`docker run`. --load
-        # forces the result into the local image store unconditionally,
-        # which is what every later step here (tag, compose up, inspect)
-        # requires.
-        _run(
-            [
-                "docker",
-                "build",
-                "--load",
-                "-t",
-                f"{IMAGE_NAME}:sha-{SHA_A}",
-                "-f",
-                _posix(REPO_ROOT / "Dockerfile"),
-                _posix(REPO_ROOT),
-            ]
-        )
-        _run(["docker", "tag", f"{IMAGE_NAME}:sha-{SHA_A}", f"{IMAGE_NAME}:sha-{SHA_B}"])
-        _run(["docker", "tag", f"{IMAGE_NAME}:sha-{SHA_A}", f"{IMAGE_NAME}:sha-{SHA_C}"])
+        image_ref_a = _build_and_push(registry_base, "a")
+        image_ref_b = _build_and_push(registry_base, "b")
+        if image_ref_a == image_ref_b:
+            raise AssertionError(
+                "release A and release B must have genuinely distinct image digests"
+            )
 
-        release_a = _make_release(root, shared_dir, SHA_A)
-        release_b = _make_release(root, shared_dir, SHA_B)
-        release_c = _make_release(root, shared_dir, SHA_C, sleep_forever=True)
+        release_a, created_a = _materialize_release(root, shared_dir, SHA_A, image_ref_a)
+        release_b, created_b = _materialize_release(root, shared_dir, SHA_B, image_ref_b)
+        release_c, created_c = _materialize_release(
+            root, shared_dir, SHA_C, image_ref_a, sleep_forever=True
+        )
+        if not (created_a and created_b and created_c):
+            raise AssertionError("every release must be freshly materialized on its first call")
 
         print(
-            "[proof] 1) first deploy (release-a): expect no previous-release recorded",
+            "[proof] 1) first deploy (release-a): expect no previous-release recorded, "
+            "exact pushed digest deployed",
             file=sys.stderr,
         )
         result = _bash(release_a / "deploy.sh", extra_env=env_common)
@@ -244,18 +368,23 @@ def main() -> int:
             raise AssertionError("current-release was not release-a after first deploy")
         if previous_file.exists():
             raise AssertionError("previous-release must not exist after the first-ever deploy")
+        if _running_image_reference() != image_ref_a:
+            raise AssertionError("release-a did not deploy its own recorded immutable digest")
         results["1_first_deploy_no_previous"] = True
 
-        print("[proof] 2) upgrade to release-b: expect previous-release=release-a", file=sys.stderr)
+        print(
+            "[proof] 2) upgrade to release-b: expect previous-release=release-a, "
+            "distinct independent digest deployed",
+            file=sys.stderr,
+        )
         result = _bash(release_b / "deploy.sh", extra_env=env_common)
         if result.returncode != 0:
             raise AssertionError(f"upgrade to release-b failed:\n{result.stdout}\n{result.stderr}")
         if current_file.read_text().strip() != SHA_B or previous_file.read_text().strip() != SHA_A:
             raise AssertionError("state after upgrade to release-b is wrong")
-        if _running_image_reference() != f"{IMAGE_NAME}:sha-{SHA_B}":
-            raise AssertionError("running container is not using release-b's own image tag")
+        if _running_image_reference() != image_ref_b:
+            raise AssertionError("running container is not using release-b's own immutable digest")
         results["2_upgrade_a_to_b"] = True
-        results["6_tag_config_coupling"] = True
 
         print("[proof] 3) manual rollback via the stable rollback.sh entrypoint", file=sys.stderr)
         rollback_entry = root / "rollback.sh"
@@ -266,8 +395,10 @@ def main() -> int:
             raise AssertionError(f"manual rollback failed:\n{result.stdout}\n{result.stderr}")
         if current_file.read_text().strip() != SHA_A or previous_file.read_text().strip() != SHA_B:
             raise AssertionError("state after manual rollback did not swap back to release-a")
-        if _running_image_reference() != f"{IMAGE_NAME}:sha-{SHA_A}":
-            raise AssertionError("manual rollback did not actually redeploy release-a's image")
+        if _running_image_reference() != image_ref_a:
+            raise AssertionError(
+                "manual rollback did not restore release-a's exact original immutable digest"
+            )
         results["3_manual_rollback_returns_to_a"] = True
 
         print(
@@ -300,8 +431,8 @@ def main() -> int:
             )
         if current_file.read_text().strip() != SHA_A:
             raise AssertionError("auto-revert after a failed deploy did not restore release-a")
-        if _running_image_reference() != f"{IMAGE_NAME}:sha-{SHA_A}":
-            raise AssertionError("auto-revert did not actually redeploy release-a's image")
+        if _running_image_reference() != image_ref_a:
+            raise AssertionError("auto-revert did not actually redeploy release-a's own digest")
         results["4_failed_deploy_auto_reverts"] = True
 
         print(
@@ -316,16 +447,66 @@ def main() -> int:
         if current_file.read_text().strip() != before_current:
             raise AssertionError("a failed rollback must not change current-release")
         results["5_failed_rollback_detected"] = True
-
+        results["6_digest_config_coupling"] = True
         results["7_real_nested_release_layout"] = True
+
+        print(
+            "[proof] 8) attempt to republish release-a with release-b's digest: "
+            "expect its image-refs.env to remain untouched",
+            file=sys.stderr,
+        )
+        _, republish_created = _materialize_release(root, shared_dir, SHA_A, image_ref_b)
+        recorded_after_republish_attempt = (release_a / "image-refs.env").read_text(
+            encoding="utf-8"
+        )
+        if republish_created or image_ref_b in recorded_after_republish_attempt:
+            raise AssertionError(
+                "re-materializing an already-established release must never change its "
+                "recorded image identity"
+            )
+        if image_ref_a not in recorded_after_republish_attempt:
+            raise AssertionError("release-a's original recorded image identity went missing")
+        results["8_republish_cannot_change_identity"] = True
+
+        print(
+            "[proof] 9) fresh pull (no local cache) vs cached pull resolve release-a to the "
+            "same immutable content",
+            file=sys.stderr,
+        )
+        # Fully reset state/previous so this step cleanly redeploys A
+        # twice from a known baseline, independent of step 5's
+        # deliberately-corrupted previous_file.
+        previous_file.unlink(missing_ok=True)
+        result = _bash(release_a / "deploy.sh", extra_env=env_common)
+        if result.returncode != 0:
+            raise AssertionError(f"baseline redeploy of release-a failed:\n{result.stdout}")
+        content_cached = _running_image_id()
+
+        # Stop the container using this image first -- Docker refuses to
+        # remove an image that a running container still references.
+        _run(["docker", "compose", "-p", PROJECT_NAME, "down"], check=False)
+        _run(["docker", "rmi", image_ref_a])  # force no local cache for the next pull
+        result = _bash(release_a / "deploy.sh", extra_env=env_common)
+        if result.returncode != 0:
+            raise AssertionError(f"fresh-pull redeploy of release-a failed:\n{result.stdout}")
+        content_fresh = _running_image_id()
+
+        if content_cached != content_fresh:
+            raise AssertionError(
+                f"fresh pull produced different content than the cached pull: "
+                f"{content_fresh} != {content_cached}"
+            )
+        results["9_fresh_and_cached_pull_identical_content"] = True
     finally:
-        print("[proof] cleaning up containers/images/temp directory", file=sys.stderr)
+        print("[proof] cleaning up containers/images/registry/temp directory", file=sys.stderr)
         _run(["docker", "compose", "-p", PROJECT_NAME, "down", "--remove-orphans"], check=False)
-        for sha in (SHA_A, SHA_B, SHA_C):
-            _run(["docker", "rmi", f"{IMAGE_NAME}:sha-{sha}"], check=False)
+        _stop_registry()
+        if registry_base is not None:
+            _run(["docker", "rmi", f"{registry_base}/{IMAGE_NAME}:build-a"], check=False)
+            _run(["docker", "rmi", f"{registry_base}/{IMAGE_NAME}:build-b"], check=False)
         shutil.rmtree(root, ignore_errors=True)
 
-    all_passed = all(results.values()) and len(results) == 7
+    all_passed = all(results.values()) and len(results) == 9
     print(json.dumps({"results": results, "clear": all_passed}, indent=2))
     return 0 if all_passed else 1
 
