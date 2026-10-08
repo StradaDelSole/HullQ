@@ -80,7 +80,10 @@ artifact type, service or platform was introduced. Before building either
 image, `.github/workflows/deploy.yml`'s `push_api_to_ghcr`/
 `push_web_to_ghcr` jobs check whether `ghcr.io/stradadelsole/hullq-<api|web>
 :sha-<commit>` already resolves to a digest (`docker buildx imagetools
-inspect`). If it does — this commit was ever successfully published
+inspect`) — `stradadelsole` here is the canonical LOWERCASE namespace a
+dedicated `resolve_namespace` job derives once from the real, mixed-case
+`StradaDelSole` GitHub owner and that every job reuses (independent-review
+Finding O, below). If it does — this commit was ever successfully published
 before, by this run or any earlier one, regardless of what happened to the
 VPS in between — that existing digest is reused unconditionally and
 nothing is rebuilt. `deploy`'s VPS-local `image-refs.env` write (Finding L)
@@ -102,6 +105,33 @@ temporary outage for an ALREADY-established commit fall through to an
 unsafe rebuild. As an additional safeguard, after a first publish the
 workflow re-resolves the tag it just pushed and confirms the digest
 matches what the push itself reported before trusting it.
+
+**Independent-review Finding O — one canonical lowercase GHCR namespace.**
+Docker/OCI repository names must be lowercase, but `github.repository_owner`
+is the real, mixed-case `StradaDelSole`. Spelling GHCR references from that
+raw value in some places while another already used the lowercase form
+elsewhere (as this workflow did before this fix) risks two different
+namespaces for the same logical repository — making the very first real
+lookup target an invalid, wrong-case reference, which Finding N's own
+correct fail-closed behavior would then block on forever. Fixed by adding
+one `resolve_namespace` job that lowercases `github.repository_owner` once
+(`tr '[:upper:]' '[:lower:]'`) and is the ONLY source every other job
+(`push_api_to_ghcr`, `push_web_to_ghcr`, `deploy`) reads for its own GHCR
+namespace — never independently re-spelled.
+
+**Independent-review Finding P — exact-match confirmed-absence
+classification.** The push jobs' existence check previously accepted ANY
+failure output ending in `: not found`, including via a suffix-matching
+regex in the retained proof script. A nested manifest/content-resolution
+failure can itself end in the same four words (e.g. "...failed to resolve
+some-internal-blob: not found") while the top-level queried tag genuinely
+exists — and that must never be classified as confirmed absence. Fixed by
+matching the COMPLETE expected message, exactly, anchored to the exact
+queried reference (`"ERROR: <ref>: not found"` in the workflow's bash;
+`_is_confirmed_not_found(ref, stderr)` in the proof script) rather than any
+substring/suffix. Any other failure — including a wording change in a
+future Buildx version — now correctly fails closed instead of ever being
+treated as absence.
 
 This is what actually justifies "the VPS can be rebuilt from scratch":
 Both images are stateless: neither writes canonical application data to a
@@ -236,6 +266,23 @@ exit code 0. All 11 named invariants (§5 above) observed true on this exact
 run, confirmed deterministic across two consecutive clean runs; the
 finally-block cleanup left no stray containers/images/registry behind each
 time (confirmed via `docker ps -a`/`docker images` immediately after).
+
+**Independent-review amendment re-run (Findings O and P, 2026-10-09):**
+`_resolve_existing_digest`'s classifier changed materially (suffix-matching
+regex → exact-message match, see Finding P below), so this proof was
+re-executed against the real Docker Engine rather than trusting code
+inspection alone. Observed exit 0 with the same 11 named invariants true,
+confirmed across two consecutive clean runs — the stricter classifier
+still correctly accepts every genuine confirmed-absence case this proof
+actually produces (it never exercises the adversarial nested-failure
+message the stricter match exists to reject; that negative case is proven
+separately, without Docker, in
+`tests/unit/test_deploy_rollback_lifecycle_classifier.py`). The
+lowercase-namespace mechanism (Finding O) is GHCR-specific — this proof's
+own throwaway registry has no owner segment in its image name, so it was
+never exposed to that bug and needed no corresponding harness change; it
+is proven directly against the real, mixed-case `StradaDelSole` value in
+the same test file.
 
 **Independent-review Finding N (resolved 2026-10-08):** added invariant 11,
 which establishes a tag for real, actually stops the throwaway registry

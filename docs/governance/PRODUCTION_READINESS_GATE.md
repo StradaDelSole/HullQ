@@ -80,6 +80,16 @@ and that a registry lookup failure which is not a confirmed absence fails
 closed rather than falling through to an unsafe rebuild
 (independent-review Finding N)
 (`PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md` §5 has the exact command/output);
+every GHCR reference the deploy workflow builds now derives from one
+canonical lowercase namespace rather than the real, mixed-case
+`StradaDelSole` GitHub owner directly (independent-review Finding O), and
+the confirmed-absence check that gates a first publish now requires an
+EXACT match to the complete expected message for the exact queried
+reference rather than a suffix match that a nested manifest/content
+failure could also satisfy (independent-review Finding P) — both proven
+without Docker in `tests/unit/test_deploy_rollback_lifecycle_classifier.py`,
+and the real-Docker 11-invariant proof re-run clean after the classifier
+change (`PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md` §5);
 an independent encrypted R2-bound backup/restore
 mechanism with a real destroy-then-restore proof against a disposable
 PostgreSQL schema;

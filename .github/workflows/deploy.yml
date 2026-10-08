@@ -29,7 +29,15 @@ name: Deploy
 # has a resolvable digest in GHCR (durable, off-host, survives total VPS
 # loss) and reuses it unconditionally rather than rebuilding, so a lost
 # VPS can always be reconstructed to the SAME digests a commit originally
-# established, never silently rebuilt into different ones.
+# established, never silently rebuilt into different ones. Independent
+# -review Finding O: Docker/OCI references must be lowercase, so every
+# GHCR reference in this file is built from `resolve_namespace`'s single
+# canonical lowercase owner output, never from the raw (mixed-case)
+# `github.repository_owner` directly. Independent-review Finding P: the
+# confirmed-absence check each push job performs is an EXACT match
+# against the complete expected "<ref>: not found" message, not a suffix
+# match -- a suffix match could misclassify a nested manifest/content
+# -resolution failure as a confirmed absence of the top-level queried ref.
 #
 # `deploy` is manual-only (`workflow_dispatch` with `deploy: true`) AND
 # fail-closed to the canonical branch (`github.ref ==
@@ -175,6 +183,33 @@ jobs:
             sleep 30
           done
 
+  # Independent-review amendment (Finding O): Docker/OCI repository names
+  # must be lowercase, but `github.repository_owner` is the canonical
+  # mixed-case GitHub login ("StradaDelSole"). Before this job existed,
+  # some GHCR references in this workflow were built directly from that
+  # raw value while OTHER logic already hardcoded the lowercase form --
+  # an inconsistency that could make the very FIRST real lookup fail with
+  # an invalid-reference error (not a confirmed absence), which Finding
+  # N's own correct fail-closed behavior would then block on forever.
+  # Computing the canonical lowercase namespace exactly once here, and
+  # having every later job consume THIS job's output, is what makes it
+  # impossible for two spots to independently (and incorrectly) spell the
+  # namespace differently again.
+  resolve_namespace:
+    name: resolve canonical lowercase GHCR namespace
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      owner: ${{ steps.lower.outputs.owner }}
+    steps:
+      - name: Lowercase the repository owner for GHCR references
+        id: lower
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          lower="$(printf '%s' "$OWNER" | tr '[:upper:]' '[:lower:]')"
+          echo "owner=$lower" >> "$GITHUB_OUTPUT"
+
   # Independent-review amendment (Finding L): split out of the previous
   # single matrix job so each image's push has its OWN addressable job
   # output -- `needs.<job>.outputs.X` on a matrix job does not reliably
@@ -187,7 +222,7 @@ jobs:
   push_api_to_ghcr:
     name: push api image to GHCR
     if: github.event_name != 'pull_request'
-    needs: [build, verify_ci_passed]
+    needs: [build, verify_ci_passed, resolve_namespace]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -238,10 +273,20 @@ jobs:
       # failure (network/auth/rate-limit/unexpected response) -> fail this
       # job immediately, build nothing, push nothing, touch no release
       # identity.
+      #
+      # Independent-review amendment (Finding P): the confirmed-absence
+      # match below is an EXACT match against the complete expected
+      # message for THIS `$REF`, not a suffix match -- a suffix match
+      # (e.g. anything ending in ": not found") could also match a nested
+      # manifest/content-resolution failure whose own message happens to
+      # end the same way even though the top-level queried ref actually
+      # exists. If buildx's wording ever changes, this intentionally stops
+      # classifying anything as absent (a safe availability failure)
+      # rather than silently broadening to match more text.
       - name: Check GHCR for this exact commit's durable image identity
         id: existing
         run: |
-          REF="ghcr.io/${{ github.repository_owner }}/hullq-api:sha-${{ github.sha }}"
+          REF="ghcr.io/${{ needs.resolve_namespace.outputs.owner }}/hullq-api:sha-${{ github.sha }}"
           set +e
           output="$(docker buildx imagetools inspect "$REF" 2>&1)"
           rc=$?
@@ -255,11 +300,11 @@ jobs:
             echo "found=true" >> "$GITHUB_OUTPUT"
             echo "digest=$digest" >> "$GITHUB_OUTPUT"
             echo "GHCR already durably records $REF -> $digest; reusing it, not rebuilding."
-          elif printf '%s' "$output" | grep -Eq ': not found$'; then
+          elif [ "$output" = "ERROR: $REF: not found" ]; then
             echo "found=false" >> "$GITHUB_OUTPUT"
             echo "Confirmed: $REF does not exist yet; this run may establish it."
           else
-            echo "Could not confirm whether $REF exists -- a registry/network/auth failure is NOT a confirmed absence (independent-review Finding N). Failing closed rather than risking an unsafe rebuild of an already-established release:" >&2
+            echo "Could not confirm whether $REF exists -- a registry/network/auth failure is NOT a confirmed absence (independent-review Finding N/P). Failing closed rather than risking an unsafe rebuild of an already-established release:" >&2
             printf '%s\n' "$output" >&2
             exit 1
           fi
@@ -269,7 +314,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
-          images: ghcr.io/${{ github.repository_owner }}/hullq-api
+          images: ghcr.io/${{ needs.resolve_namespace.outputs.owner }}/hullq-api
           # Immutable exact-commit tag only -- deliberately no `latest`
           # (ARCHITECTURE_REBASELINE_2026-09-02.md §24). This tag is also
           # the durable off-host release-manifest key (Finding M); `deploy`
@@ -303,7 +348,7 @@ jobs:
             # the tag we just pushed from the registry itself and confirm it
             # matches what the push action reported, rather than trusting
             # that single report alone.
-            REF="ghcr.io/${{ github.repository_owner }}/hullq-api:sha-${{ github.sha }}"
+            REF="ghcr.io/${{ needs.resolve_namespace.outputs.owner }}/hullq-api:sha-${{ github.sha }}"
             verify_output="$(docker buildx imagetools inspect "$REF" 2>&1)"
             verify_digest="$(printf '%s\n' "$verify_output" | awk '/^Digest:/ {print $2}')"
             if [ "$verify_digest" != "$digest" ]; then
@@ -316,7 +361,7 @@ jobs:
   push_web_to_ghcr:
     name: push web image to GHCR
     if: github.event_name != 'pull_request'
-    needs: [build, verify_ci_passed]
+    needs: [build, verify_ci_passed, resolve_namespace]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -341,12 +386,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # See push_api_to_ghcr's own "Check GHCR for this exact commit's
-      # durable image identity" step -- same Finding M/N rationale, applied
-      # to the web image's own GHCR repository/tag.
+      # durable image identity" step -- same Finding M/N/P rationale,
+      # applied to the web image's own GHCR repository/tag.
       - name: Check GHCR for this exact commit's durable image identity
         id: existing
         run: |
-          REF="ghcr.io/${{ github.repository_owner }}/hullq-web:sha-${{ github.sha }}"
+          REF="ghcr.io/${{ needs.resolve_namespace.outputs.owner }}/hullq-web:sha-${{ github.sha }}"
           set +e
           output="$(docker buildx imagetools inspect "$REF" 2>&1)"
           rc=$?
@@ -360,11 +405,11 @@ jobs:
             echo "found=true" >> "$GITHUB_OUTPUT"
             echo "digest=$digest" >> "$GITHUB_OUTPUT"
             echo "GHCR already durably records $REF -> $digest; reusing it, not rebuilding."
-          elif printf '%s' "$output" | grep -Eq ': not found$'; then
+          elif [ "$output" = "ERROR: $REF: not found" ]; then
             echo "found=false" >> "$GITHUB_OUTPUT"
             echo "Confirmed: $REF does not exist yet; this run may establish it."
           else
-            echo "Could not confirm whether $REF exists -- a registry/network/auth failure is NOT a confirmed absence (independent-review Finding N). Failing closed rather than risking an unsafe rebuild of an already-established release:" >&2
+            echo "Could not confirm whether $REF exists -- a registry/network/auth failure is NOT a confirmed absence (independent-review Finding N/P). Failing closed rather than risking an unsafe rebuild of an already-established release:" >&2
             printf '%s\n' "$output" >&2
             exit 1
           fi
@@ -374,7 +419,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
-          images: ghcr.io/${{ github.repository_owner }}/hullq-web
+          images: ghcr.io/${{ needs.resolve_namespace.outputs.owner }}/hullq-web
           tags: type=sha,format=long
 
       - name: Build and push web image (only if not already durably published)
@@ -403,7 +448,7 @@ jobs:
             # the tag we just pushed from the registry itself and confirm it
             # matches what the push action reported, rather than trusting
             # that single report alone.
-            REF="ghcr.io/${{ github.repository_owner }}/hullq-web:sha-${{ github.sha }}"
+            REF="ghcr.io/${{ needs.resolve_namespace.outputs.owner }}/hullq-web:sha-${{ github.sha }}"
             verify_output="$(docker buildx imagetools inspect "$REF" 2>&1)"
             verify_digest="$(printf '%s\n' "$verify_output" | awk '/^Digest:/ {print $2}')"
             if [ "$verify_digest" != "$digest" ]; then
@@ -423,7 +468,7 @@ jobs:
     # in this run (not just the ref the workflow file was read from), so
     # this is the real fail-closed gate, not a cosmetic one.
     if: github.event_name == 'workflow_dispatch' && inputs.deploy == true && github.ref == 'refs/heads/main'
-    needs: [push_api_to_ghcr, push_web_to_ghcr]
+    needs: [resolve_namespace, push_api_to_ghcr, push_web_to_ghcr]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: production
@@ -492,6 +537,7 @@ jobs:
           RELEASE_SHA: ${{ github.sha }}
           API_DIGEST: ${{ needs.push_api_to_ghcr.outputs.digest }}
           WEB_DIGEST: ${{ needs.push_web_to_ghcr.outputs.digest }}
+          GHCR_OWNER: ${{ needs.resolve_namespace.outputs.owner }}
         run: |
           install -d -m 700 ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
@@ -507,7 +553,7 @@ jobs:
             echo "Release $RELEASE_SHA already has an established image-refs.env on the VPS -- leaving its recorded image identity untouched (Finding L)."
           else
             $SSH "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" "mkdir -p '$RELEASE_DIR'"
-            printf 'HULLQ_API_IMAGE=ghcr.io/stradadelsole/hullq-api@%s\nHULLQ_WEB_IMAGE=ghcr.io/stradadelsole/hullq-web@%s\n' "$API_DIGEST" "$WEB_DIGEST" > image-refs.env
+            printf 'HULLQ_API_IMAGE=ghcr.io/%s/hullq-api@%s\nHULLQ_WEB_IMAGE=ghcr.io/%s/hullq-web@%s\n' "$GHCR_OWNER" "$API_DIGEST" "$GHCR_OWNER" "$WEB_DIGEST" > image-refs.env
             $SCP \
               docker-compose.prod.yml Caddyfile scripts/ops/deploy.sh scripts/ops/rollback.sh image-refs.env \
               "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST:$RELEASE_DIR/"

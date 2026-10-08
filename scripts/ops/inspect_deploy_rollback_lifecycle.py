@@ -99,6 +99,31 @@ is actually stopped, not simulated) must make the resolver raise rather
 than silently rebuild, and the established identity must survive the
 outage unchanged once the registry recovers.
 
+Independent-review amendment (Findings O and P): two HIGH findings from
+reviewing Finding N itself. Finding O: `.github/workflows/deploy.yml`
+built GHCR references from the raw (mixed-case) `github.repository_owner`
+in some places while other logic already hardcoded the lowercase form
+Docker/OCI references actually require -- an inconsistency that could
+make the very FIRST real lookup fail with an invalid-reference error
+rather than a confirmed absence, which Finding N's own correct fail-closed
+behavior would then block on forever. Fixed by computing one canonical
+lowercase namespace once (a dedicated `resolve_namespace` job) and reusing
+it everywhere a GHCR reference is built. This proof script's own
+`IMAGE_NAME` has no owner segment at all (a local throwaway registry, not
+GHCR), so it was never exposed to this bug; Finding O's fix and its
+regression test (`tests/unit/test_deploy_rollback_lifecycle_classifier.py`)
+live with the real workflow instead. Finding P: `_is_confirmed_not_found`
+(above) replaces what was a suffix-matching regex -- which could have
+misclassified a nested manifest/content-resolution failure ending in the
+same four words as a confirmed absence of the top-level queried ref -- with
+an exact-message match tied to that exact `ref`. The same test file
+proves this distinction directly (no Docker required) alongside the
+lowercase-namespace mechanism; this script's own steps 1-11 were re-run
+against the real Docker Engine after the classifier change, confirming the
+stricter classifier still accepts every genuine confirmed-absence case
+this proof actually produces (see the amendment's retained execution
+evidence for the observed result).
+
 The per-release Compose file used here is deliberately a minimal
 single-service (api-only) stand-in for the real `docker-compose.prod.yml`
 -- same `env_file`/image/port-binding shape, but without Caddy/TLS, which
@@ -248,7 +273,29 @@ def _stop_registry() -> None:
 
 
 _DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
-_NOT_FOUND_RE = re.compile(r": not found\s*$")
+
+
+def _is_confirmed_not_found(ref: str, stderr_text: str) -> bool:
+    """True ONLY for buildx's own exact confirmed-absence message for
+    THIS specific `ref` -- `ERROR: <ref>: not found`, the complete
+    message, not a substring or suffix match.
+
+    Independent-review Finding P: an earlier version of this check used a
+    suffix match (`re.search(r": not found\\s*$", ...)`), which would
+    also match a NESTED manifest/content-resolution failure whose own
+    message happens to end the same way (e.g. "ERROR: <ref>: failed to
+    resolve some-internal-blob: not found") even though the top-level
+    queried `ref` actually exists. Exact equality against the full
+    expected message, anchored to this exact `ref`, is what makes this
+    genuinely "only a confirmed absence of the exact queried tag may
+    authorize first publication" rather than "any error that happens to
+    end in the same four words." If buildx's wording ever changes, this
+    correctly stops classifying anything as absent (a safe availability
+    failure -- see `_resolve_existing_digest`) rather than silently
+    broadening to match more text.
+    """
+
+    return stderr_text.strip() == f"ERROR: {ref}: not found"
 
 
 def _resolve_existing_digest(ref: str) -> str | None:
@@ -261,10 +308,10 @@ def _resolve_existing_digest(ref: str) -> str | None:
     this logic, and of `.github/workflows/deploy.yml`'s matching step)
     risked exactly the invariant Findings L/M exist to protect: a lookup
     failure for an ALREADY-established commit falling through to a
-    rebuild that could silently redefine it. Only buildx's own confirmed
-    "<ref>: not found" message (verified empirically against a real
-    registry, not assumed -- see this amendment's own verification) is
-    treated as absence; every other failure raises instead.
+    rebuild that could silently redefine it. Only `_is_confirmed_not_found`
+    (verified empirically against a real registry, not assumed -- see this
+    amendment's own verification) is treated as absence; every other
+    failure raises instead.
     """
 
     result = _run(["docker", "buildx", "imagetools", "inspect", ref], check=False)
@@ -274,7 +321,7 @@ def _resolve_existing_digest(ref: str) -> str | None:
         if not _DIGEST_RE.match(digest):
             raise RuntimeError(f"resolved digest for {ref} has an unexpected shape: {digest!r}")
         return digest
-    if _NOT_FOUND_RE.search(result.stderr.strip()):
+    if _is_confirmed_not_found(ref, result.stderr):
         return None
     raise RuntimeError(
         f"could not confirm whether {ref} exists (registry/network/auth failure, "
