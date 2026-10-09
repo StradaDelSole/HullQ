@@ -21,6 +21,8 @@ For SLICE-0052 and later, the trigger-gates check is additionally mandatory befo
 
 For slices selected after SLICE-0072, the overall-MVP capability-register check is additionally mandatory before a primary slice may become `READY`.
 
+For SLICE-0080 and later, the mechanical-invariants / failure-modes check is additionally mandatory before a primary slice may become `READY`. This incorporates the production-readiness lessons from SLICE-0079: high-risk behavior must be specified as mechanical invariants and adversarial failure cases before implementation, not discovered one review amendment at a time.
+
 **ONE-CAPABILITY CHECK:** PASS | FAIL  
 Does this slice deliver exactly one coherent user-visible capability OR answer exactly one business-critical hypothesis?
 
@@ -41,7 +43,10 @@ Required for SLICE-0052 and later. Were `docs/governance/POST_0051_TRIGGER_GATES
 **OVERALL MVP CAPABILITY REGISTER CHECK:** PASS | FAIL | NOT_APPLICABLE  
 Required for every primary slice selected after SLICE-0072. Was `docs/governance/OVERALL_MVP_CAPABILITY_REGISTER.md` inspected, were newly DUE/open capabilities accounted for, and does the readiness state why this capability is selected ahead of any higher-risk or higher-leverage due gap? This check prevents support, trust/safety, privacy/legal, admin/operations, communications, accessibility, i18n, monetization and production/data-operations obligations from disappearing from the execution path.
 
-A required `FAIL` on any of these checks blocks readiness. Genuine prerequisite/blocker work must still be cut so the Project Owner can inspect its concrete result and the check can honestly be `PASS`.
+**MECHANICAL INVARIANTS / FAILURE MODES CHECK:** PASS | NOT_APPLICABLE  
+Required for every primary slice from SLICE-0080 onward. Use `PASS` whenever the slice touches a high-risk boundary such as authentication/authorization/privileged access, persistence or migrations, identity/provenance/truth, concurrency/idempotency/replay, payments/settlement, deployment/release/CI supply chain, backup/restore/durability, production data/operations, destructive or irreversible state, or another boundary where a fail-open bug can silently corrupt trust or recoverability. Use `NOT_APPLICABLE` only for genuinely ordinary low-risk work and explain why in `## Mechanical invariants / failure modes`. A gate-closing or infrastructure label does not exempt a slice from the one-capability check or this failure-mode analysis.
+
+A required `FAIL` on any of these checks blocks readiness. `SPLIT_REQUIRED` in the mechanical-invariants section also blocks readiness. Genuine prerequisite/blocker work must still be cut so the Project Owner can inspect its concrete result and the check can honestly be `PASS`.
 
 ## Decision / implementation reconciliation
 
@@ -59,6 +64,16 @@ Required for SLICE-0051 and later. Fill every evidence line with concrete reposi
 The six evidence lines are machine-checked for presence, non-empty/non-placeholder values and accepted classification tokens by `START_SLICE` and repository validation. Independent readiness review must still verify that the cited records and implementation actually support the classifications.
 
 Classify material points using the governance states in `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md` rather than turning remembered/implemented behavior back into an open question.
+
+## Production phase transition check
+
+Required when this slice provisions production services, changes production operational boundaries, introduces real production data, begins/expands an external pilot, enables buyer/public exposure, or otherwise advances HullQ toward a later go-live phase.
+
+**Launch-pack phase before this slice:** NOT_APPLICABLE | NOT_STARTED | 1 | 2 | 3 | 4 | 5 | 6 | 7  
+**Launch-pack phase after this slice:** NOT_APPLICABLE | NOT_STARTED | 1 | 2 | 3 | 4 | 5 | 6 | 7  
+**PRODUCTION LAUNCH PACK CHECK:** PASS | NOT_APPLICABLE  
+
+`PASS` requires reconciliation with `docs/operations/PRODUCTION_LAUNCH_PACK.md`: `Launch-pack phase before this slice` must exactly match the canonical `PRODUCTION_LAUNCH_PACK_PHASE` marker in `docs/PROJECT_STATE.md`; the slice may hold that phase or advance by at most one phase, may not skip a prior phase, must preserve the Production Readiness Gate and buyer-exposure prerequisites, and must define the done-when evidence for any production phase transition. A deployment or provider configuration step must not silently authorize external data, pilot or public launch.
 
 ## Trigger gates
 
@@ -84,6 +99,34 @@ Rules:
 - any Search capability must preserve the accepted non-commercial organic Search invariant: seller/broker payments or HullQ revenue opportunity may not affect organic eligibility, match classification or organic ordering.
 
 Repository validation checks deterministic relationships it knows about. Independent readiness review must verify substantive comparison/generalization/distinction, owner-direct alignment and gate evidence are true.
+
+## Mechanical invariants / failure modes
+
+Required for SLICE-0080 and later. This section is a readiness contract, not implementation commentary. It must be completed before `READY` so the implementation agent and independent reviewer share the same failure model.
+
+**Risk classification:** HIGH_RISK | ORDINARY  
+**Why this classification:**  
+**Must-never-change invariant:**  
+**Durable source of truth / loss boundary:**  
+**Retry / replay / partial-failure behavior:**  
+**Absence-vs-error / fail-closed behavior:**  
+**Executable adversarial proof:**  
+**Slice sizing assessment:** COHERENT | SPLIT_REQUIRED  
+
+Rules:
+
+- `HIGH_RISK` requires `**MECHANICAL INVARIANTS / FAILURE MODES CHECK:** PASS` and concrete repository/domain-specific evidence on every line above. If one dimension genuinely does not apply, say why; bare `N/A`, `TODO`, `TBD` or equivalent is not evidence.
+- `ORDINARY` may use `NOT_APPLICABLE`, but `Why this classification` and `Slice sizing assessment` still require concrete content. Do not use `ORDINARY` merely because the change is small in line count or lives in docs/config/scripts.
+- State the invariant mechanically. Prefer forms such as: “once X is established, retry/rerun/host loss cannot silently make X mean Y”; “failed B never advances current state”; “unknown/error is never treated as absent”; “rollback restores the exact prior identity/configuration.” Avoid vague goals such as “robust”, “secure” or “works reliably”.
+- Name the authoritative durable state and what happens when replaceable process/host/cache/local files are lost. If no durable state is required, explain why that is safe.
+- Distinguish confirmed absence from lookup/transport/auth/timeout/parse failure wherever an external dependency or registry/API lookup controls mutation. Error paths must fail closed unless an accepted contract explicitly requires another behavior.
+- Define retry, rerun, replay, duplicate request, partial success, rollback and concurrency semantics wherever they can affect identity or mutation. Include stale-state/version races when relevant.
+- `Executable adversarial proof` must name the negative/failure scenarios that require real execution, not only static review or documentation. External/provider criteria remain unverified until actually observed; do not turn vendor documentation or intended configuration into execution evidence.
+- The implementation agent must trace every high-risk invariant to code plus proof before handoff, and the independent reviewer must re-run the reasoning adversarially on the exact HEAD.
+- `Slice sizing assessment` is `SPLIT_REQUIRED` when the proposed slice bundles multiple independently useful/testable failure domains or subsystems that can be accepted separately. A shared umbrella such as “production readiness”, “security” or “launch gate” is not by itself one coherent capability. Keep one slice only when the parts are inseparable for one observable outcome and one acceptance boundary.
+- When a slice contains deploy + recovery + observability + another independent operational subsystem, default to splitting unless readiness explains why separation would make the result unusable or unsafe.
+
+Every material invariant above should map to at least one acceptance criterion and, where executable, one validation/proof step. The readiness reviewer should reject a `PASS` that merely restates architecture nouns without specifying failure semantics.
 
 ## Why this slice exists
 
@@ -143,6 +186,7 @@ Stop and report instead of inventing a solution when:
 - an accepted implementation obligation is missing and lacks a concrete owner/explicit deferral;
 - a post-0051 trigger gate is due but not satisfied;
 - a post-SLICE-0072 readiness ignores an applicable DUE/open obligation in `docs/governance/OVERALL_MVP_CAPABILITY_REGISTER.md` or silently drops it from the launch boundary;
+- a SLICE-0080+ readiness leaves a high-risk mechanical invariant/failure mode unspecified, treats dependency error as confirmed absence without proof, relies on replaceable local state as the sole durable truth, or has `Slice sizing assessment: SPLIT_REQUIRED`;
 - the requested behavior would violate source-rights, provenance, identity, search/SEO, product-execution, owner-direct/private-seller or other accepted policy;
 - implementation requires scope outside this slice.
 
@@ -175,6 +219,8 @@ Use this structure exactly at the end of the assigned slice.
 - REPOSITORY RECONCILIATION CHECK: `PASS` | `FAIL` | `NOT APPLICABLE`
 - TRIGGER GATES CHECK: `PASS` | `FAIL` | `NOT APPLICABLE`
 - OVERALL MVP CAPABILITY REGISTER CHECK: `PASS` | `FAIL` | `NOT APPLICABLE`
+- MECHANICAL INVARIANTS / FAILURE MODES CHECK: `PASS` | `NOT APPLICABLE`
+- PRODUCTION LAUNCH PACK CHECK: `PASS` | `NOT APPLICABLE`
 
 ### Changes
 
@@ -186,6 +232,7 @@ Use this structure exactly at the end of the assigned slice.
 
 - Local validation: `PASS` | `FAIL` | `PARTIAL` | `NOT APPLICABLE`
 - Commands/results: one compact line/grouped summary; no logs
+- Mechanical/adversarial validation: `PASS` | `FAIL` | `PARTIAL` | `NOT APPLICABLE`
 
 ### External verification
 

@@ -20,6 +20,9 @@ CLAUDE_DIAG = ROOT / "scripts" / "workflow" / "claude_diag.py"
 
 _PROJECT_STATE_ACCEPTED_RE = re.compile(r"<!--\s*PROJECT_STATE_ACCEPTED_SLICE:\s*(\d{4})\s*-->")
 _PROJECT_STATE_QUEUE_RE = re.compile(r"<!--\s*PROJECT_STATE_QUEUE_SLICE:\s*(\d{4})\s*-->")
+_PRODUCTION_LAUNCH_PACK_PHASE_RE = re.compile(
+    r"<!--\s*PRODUCTION_LAUNCH_PACK_PHASE:\s*(NOT_STARTED|[1-7])\s*-->"
+)
 _ACCEPTANCE_CLOSURE_RE = re.compile(r"^SLICE-(\d{4})-.*acceptance-closure\.md$")
 _SLICE_TYPE_RE = re.compile(r"(?m)^\*\*Type:\*\*\s*([A-Z_]+)\s*$")
 _SLICE_STATUS_RE = re.compile(r"(?m)^\*\*Status:\*\*\s*([A-Z_]+)\s*$")
@@ -30,6 +33,12 @@ _RECONCILIATION_SECTION_RE = re.compile(
     r"(?ms)^## Decision / implementation reconciliation[ \t]*\n(.*?)(?=^##[ \t]|\Z)"
 )
 _TRIGGER_GATES_SECTION_RE = re.compile(r"(?ms)^## Trigger gates[ \t]*\n(.*?)(?=^##[ \t]|\Z)")
+_MECHANICAL_INVARIANTS_SECTION_RE = re.compile(
+    r"(?ms)^## Mechanical invariants / failure modes[ \t]*\n(.*?)(?=^##[ \t]|\Z)"
+)
+_PRODUCTION_PHASE_TRANSITION_SECTION_RE = re.compile(
+    r"(?ms)^## Production phase transition check[ \t]*\n(.*?)(?=^##[ \t]|\Z)"
+)
 _ARCHITECTURE_RECONCILIATION_RE = re.compile(
     r"<!--\s*POST_0051_ARCHITECTURE_RECONCILIATION:\s*(PASS|FAIL)\s*-->"
 )
@@ -62,6 +71,8 @@ _POST_0038_PRODUCT_CHECKS = (
 )
 _POST_0050_RECONCILIATION_CHECK = "REPOSITORY RECONCILIATION CHECK"
 _POST_0051_TRIGGER_GATES_CHECK = "TRIGGER GATES CHECK"
+_POST_0079_MECHANICAL_INVARIANTS_CHECK = "MECHANICAL INVARIANTS / FAILURE MODES CHECK"
+_POST_0079_PRODUCTION_LAUNCH_PACK_CHECK = "PRODUCTION LAUNCH PACK CHECK"
 _RECONCILIATION_EVIDENCE_LABELS = (
     "Accepted records checked",
     "Production implementation checked",
@@ -85,6 +96,19 @@ _TRIGGER_EVIDENCE_LABELS = (
     "Second-criterion bridge comparison",
     "Third-copy abstraction guard",
     "Workflow reassessment status",
+)
+_MECHANICAL_EVIDENCE_LABELS = (
+    "Risk classification",
+    "Why this classification",
+    "Must-never-change invariant",
+    "Durable source of truth / loss boundary",
+    "Retry / replay / partial-failure behavior",
+    "Absence-vs-error / fail-closed behavior",
+    "Executable adversarial proof",
+    "Slice sizing assessment",
+)
+_MECHANICAL_BARE_PLACEHOLDERS = frozenset(
+    {"TODO", "TBD", "PLACEHOLDER", "N/A", "NA", "NOT_APPLICABLE", "NOT APPLICABLE"}
 )
 
 
@@ -230,6 +254,17 @@ def declared_project_queue_slice(project_state: Path = PROJECT_STATE) -> int:
             "docs/PROJECT_STATE.md must contain exactly one PROJECT_STATE_QUEUE_SLICE marker"
         )
     return int(matches[0])
+
+
+def declared_production_launch_pack_phase(project_state: Path = PROJECT_STATE) -> str:
+    """Read the canonical completed production launch-pack phase."""
+    text = project_state.read_text(encoding="utf-8")
+    matches = _PRODUCTION_LAUNCH_PACK_PHASE_RE.findall(text)
+    if len(matches) != 1:
+        raise ValueError(
+            "docs/PROJECT_STATE.md must contain exactly one PRODUCTION_LAUNCH_PACK_PHASE marker"
+        )
+    return matches[0]
 
 
 def project_state_freshness_check(
@@ -516,6 +551,156 @@ def _validate_trigger_gate_evidence(
         )
 
 
+def _mechanical_invariants_section(*, queue: int, path: Path, text: str) -> str:
+    match = _MECHANICAL_INVARIANTS_SECTION_RE.search(text)
+    if match is None:
+        raise ValueError(
+            f"SLICE-{queue:04d} queue document {path.name} must contain "
+            "'## Mechanical invariants / failure modes'"
+        )
+    return match.group(1)
+
+
+def _mechanical_evidence_value(*, queue: int, path: Path, section: str, label: str) -> str:
+    pattern = re.compile(rf"(?m)^\*\*{re.escape(label)}:\*\*[ \t]*(\S[^\r\n]*)[ \t]*$")
+    match = pattern.search(section)
+    if match is None:
+        raise ValueError(
+            f"SLICE-{queue:04d} queue document {path.name} must contain a non-empty "
+            f"'**{label}:** <evidence>' line in its mechanical-invariants section"
+        )
+    value = match.group(1).strip()
+    if _is_reconciliation_placeholder(value):
+        raise ValueError(
+            f"SLICE-{queue:04d} queue document {path.name} has placeholder rather than "
+            f"mechanical-invariant evidence after '**{label}:**'"
+        )
+    return value
+
+
+def _validate_mechanical_invariant_evidence(
+    *, queue: int, path: Path, section: str, check_value: str
+) -> None:
+    values = {
+        label: _mechanical_evidence_value(queue=queue, path=path, section=section, label=label)
+        for label in _MECHANICAL_EVIDENCE_LABELS
+    }
+
+    risk = values["Risk classification"]
+    if risk not in {"HIGH_RISK", "ORDINARY"}:
+        raise ValueError(
+            f"SLICE-{queue:04d} Risk classification must be HIGH_RISK or ORDINARY, got {risk!r}"
+        )
+
+    sizing = values["Slice sizing assessment"]
+    if sizing not in {"COHERENT", "SPLIT_REQUIRED"}:
+        raise ValueError(
+            f"SLICE-{queue:04d} Slice sizing assessment must be COHERENT or SPLIT_REQUIRED, "
+            f"got {sizing!r}"
+        )
+    if sizing == "SPLIT_REQUIRED":
+        raise ValueError(
+            f"SLICE-{queue:04d} cannot become startable while its mechanical readiness "
+            "assessment says SPLIT_REQUIRED"
+        )
+
+    if check_value not in {"PASS", "NOT_APPLICABLE"}:
+        raise ValueError(
+            f"SLICE-{queue:04d} {_POST_0079_MECHANICAL_INVARIANTS_CHECK} must be PASS or "
+            f"NOT_APPLICABLE, got {check_value!r}"
+        )
+    if risk == "HIGH_RISK" and check_value != "PASS":
+        raise ValueError(
+            f"SLICE-{queue:04d} is HIGH_RISK and therefore requires "
+            f"'**{_POST_0079_MECHANICAL_INVARIANTS_CHECK}:** PASS'"
+        )
+
+    if risk == "HIGH_RISK":
+        for label in (
+            "Why this classification",
+            "Must-never-change invariant",
+            "Durable source of truth / loss boundary",
+            "Retry / replay / partial-failure behavior",
+            "Absence-vs-error / fail-closed behavior",
+            "Executable adversarial proof",
+        ):
+            if values[label].upper() in _MECHANICAL_BARE_PLACEHOLDERS:
+                raise ValueError(
+                    f"SLICE-{queue:04d} HIGH_RISK mechanical evidence after '**{label}:**' "
+                    "must be concrete, not a bare placeholder/not-applicable value"
+                )
+
+
+def _production_phase_transition_section(*, queue: int, path: Path, text: str) -> str:
+    match = _PRODUCTION_PHASE_TRANSITION_SECTION_RE.search(text)
+    if match is None:
+        raise ValueError(
+            f"SLICE-{queue:04d} queue document {path.name} must contain "
+            "'## Production phase transition check'"
+        )
+    return match.group(1)
+
+
+def _validate_production_phase_transition(
+    *, queue: int, path: Path, section: str, check_value: str, canonical_phase: str
+) -> None:
+    def value(label: str) -> str:
+        pattern = re.compile(rf"(?m)^\*\*{re.escape(label)}:\*\*[ \t]*(\S[^\r\n]*)[ \t]*$")
+        match = pattern.search(section)
+        if match is None:
+            raise ValueError(
+                f"SLICE-{queue:04d} queue document {path.name} must contain a non-empty "
+                f"'**{label}:** <value>' line in its production phase transition section"
+            )
+        return match.group(1).strip()
+
+    before = value("Launch-pack phase before this slice")
+    after = value("Launch-pack phase after this slice")
+    allowed_before = {"NOT_APPLICABLE", "NOT_STARTED", "1", "2", "3", "4", "5", "6", "7"}
+    allowed_after = {"NOT_APPLICABLE", "NOT_STARTED", "1", "2", "3", "4", "5", "6", "7"}
+    if before not in allowed_before:
+        raise ValueError(f"SLICE-{queue:04d} has invalid launch-pack phase before value {before!r}")
+    if after not in allowed_after:
+        raise ValueError(f"SLICE-{queue:04d} has invalid launch-pack phase after value {after!r}")
+
+    if before == "NOT_APPLICABLE" or after == "NOT_APPLICABLE":
+        if before != "NOT_APPLICABLE" or after != "NOT_APPLICABLE":
+            raise ValueError(
+                f"SLICE-{queue:04d} launch-pack phases must both be NOT_APPLICABLE when "
+                "the production launch pack does not apply"
+            )
+        if check_value != "NOT_APPLICABLE":
+            raise ValueError(
+                f"SLICE-{queue:04d} non-production slice must use "
+                f"'**{_POST_0079_PRODUCTION_LAUNCH_PACK_CHECK}:** NOT_APPLICABLE'"
+            )
+        return
+
+    if check_value != "PASS":
+        raise ValueError(
+            f"SLICE-{queue:04d} production-phase work requires "
+            f"'**{_POST_0079_PRODUCTION_LAUNCH_PACK_CHECK}:** PASS'"
+        )
+
+    if before != canonical_phase:
+        raise ValueError(
+            f"SLICE-{queue:04d} launch-pack phase before {before!r} does not match canonical "
+            f"PRODUCTION_LAUNCH_PACK_PHASE {canonical_phase!r} in docs/PROJECT_STATE.md"
+        )
+
+    before_number = 0 if before == "NOT_STARTED" else int(before)
+    after_number = 0 if after == "NOT_STARTED" else int(after)
+    if after_number < before_number:
+        raise ValueError(
+            f"SLICE-{queue:04d} production launch phase cannot move backwards: {before} -> {after}"
+        )
+    if after_number > before_number + 1:
+        raise ValueError(
+            f"SLICE-{queue:04d} production launch phase cannot skip stages: "
+            f"{before} -> {after}; follow docs/operations/PRODUCTION_LAUNCH_PACK.md"
+        )
+
+
 def queue_slice_startability_check(
     *, slices_dir: Path = SLICES, project_state: Path = PROJECT_STATE
 ) -> tuple[int, str | None]:
@@ -617,6 +802,44 @@ def queue_slice_startability_check(
             production_status=production_status,
         )
 
+    if queue >= 80:
+        launch_pattern = re.compile(
+            rf"(?m)^\*\*{re.escape(_POST_0079_PRODUCTION_LAUNCH_PACK_CHECK)}:\*\*"
+            r"[ \t]*(PASS|NOT_APPLICABLE)[ \t]*$"
+        )
+        launch_match = launch_pattern.search(text)
+        if launch_match is None:
+            raise ValueError(
+                f"SLICE-{queue:04d} queue document {path.name} must contain "
+                f"'**{_POST_0079_PRODUCTION_LAUNCH_PACK_CHECK}:** PASS | NOT_APPLICABLE'"
+            )
+        transition_section = _production_phase_transition_section(queue=queue, path=path, text=text)
+        _validate_production_phase_transition(
+            queue=queue,
+            path=path,
+            section=transition_section,
+            check_value=launch_match.group(1),
+            canonical_phase=declared_production_launch_pack_phase(project_state),
+        )
+    if queue >= 80:
+        mechanical_pattern = re.compile(
+            rf"(?m)^\*\*{re.escape(_POST_0079_MECHANICAL_INVARIANTS_CHECK)}:\*\*"
+            r"[ \t]*(PASS|NOT_APPLICABLE)[ \t]*$"
+        )
+        mechanical_match = mechanical_pattern.search(text)
+        if mechanical_match is None:
+            raise ValueError(
+                f"SLICE-{queue:04d} queue document {path.name} must contain "
+                f"'**{_POST_0079_MECHANICAL_INVARIANTS_CHECK}:** PASS | NOT_APPLICABLE'"
+            )
+        mechanical_section = _mechanical_invariants_section(queue=queue, path=path, text=text)
+        _validate_mechanical_invariant_evidence(
+            queue=queue,
+            path=path,
+            section=mechanical_section,
+            check_value=mechanical_match.group(1),
+        )
+
     return queue, path.name
 
 
@@ -626,6 +849,7 @@ def main() -> None:
     no_active_drafts_check()
     claude_approval_autonomy_check()
     state_slice, _ = project_state_freshness_check()
+    launch_phase = declared_production_launch_pack_phase()
     architecture, criteria_count, workflow_status, production_status = trigger_gate_state_check()
     queue_slice, queue_file = queue_slice_startability_check()
     print(f"active schemas: {len(registry.schema_names)}")
@@ -637,6 +861,7 @@ def main() -> None:
     print(f"accepted technical native Search criteria: {criteria_count}")
     print(f"workflow reassessment: {workflow_status}")
     print(f"production readiness gate: {production_status}")
+    print(f"production launch-pack phase: {launch_phase}")
     if queue_file is None:
         print(f"queue readiness document: not yet present for SLICE-{queue_slice:04d}")
     else:

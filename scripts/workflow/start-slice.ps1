@@ -54,6 +54,20 @@ function Assert-ProductExecutionChecks([string]$Number, [string]$Text, [string]$
         }
     }
 
+    if ([int]$Number -ge 80) {
+        $launchPackCheck = 'PRODUCTION LAUNCH PACK CHECK'
+        $launchPackPattern = "(?m)^\*\*$([regex]::Escape($launchPackCheck)):\*\*[ \t]*(PASS|NOT_APPLICABLE)[ \t]*$"
+        if ($Text -notmatch $launchPackPattern) {
+            throw "SLICE-$Number cannot start: $FileName must contain '**${launchPackCheck}:** PASS' or NOT_APPLICABLE. Reconcile any production-phase change with docs/operations/PRODUCTION_LAUNCH_PACK.md first."
+        }
+    }
+    if ([int]$Number -ge 80) {
+        $mechanicalCheck = 'MECHANICAL INVARIANTS / FAILURE MODES CHECK'
+        $mechanicalPattern = "(?m)^\*\*$([regex]::Escape($mechanicalCheck)):\*\*[ \t]*(PASS|NOT_APPLICABLE)[ \t]*$"
+        if ($Text -notmatch $mechanicalPattern) {
+            throw "SLICE-$Number cannot start: $FileName must contain '**${mechanicalCheck}:** PASS' or NOT_APPLICABLE. Complete the post-0079 mechanical-invariants readiness section first."
+        }
+    }
     if ([int]$Number -ge 51) {
         $sectionPattern = '(?ms)^## Decision / implementation reconciliation[ \t]*\r?\n(.*?)(?=^##[ \t]|\z)'
         $sectionMatch = [regex]::Match($Text, $sectionPattern)
