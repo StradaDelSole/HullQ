@@ -1,11 +1,11 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0078 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0079 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0079 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0080 -->
 
-**Updated:** 2026-10-03  
-**Latest owner-accepted / DONE slice:** SLICE-0078  
-**Current queue:** SLICE-0079 — **Production Readiness & External Broker Pilot Foundation — READY ON MAIN**. Post-SLICE-0078 reconciliation, independent readiness review and required remote gates are complete; implementation starts only through `START_SLICE.bat`. No external pilot or production data is authorized by readiness.  
+**Updated:** 2026-10-09  
+**Latest owner-accepted / DONE slice:** SLICE-0079  
+**Current queue:** SLICE-0080 — **UNSELECTED**. SLICE-0079 is owner-accepted and merged; Production Readiness remains `IN_PROGRESS`. A fresh post-SLICE-0079 Decision/Implementation Reconciliation and reassessment must select the next capability before any SLICE-0080 readiness is created. No external production data, pilot or public launch is authorized.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -163,6 +163,7 @@ SLICE-0040 marketplace identity/truth separation
 → SLICE-0076 Broker Workspace Launch Validation: Usability & Competitive Benchmark
 → SLICE-0077 Broker Lead Assignment Discoverability Remediation
 → SLICE-0078 Holistic Security Hardening & Adversarial Validation
+→ SLICE-0079 Production Readiness & External Broker Pilot Foundation
 ```
 
 Latest closures:
@@ -191,6 +192,7 @@ docs/slices/SLICE-0075-acceptance-closure.md
 docs/slices/SLICE-0076-acceptance-closure.md
 docs/slices/SLICE-0077-acceptance-closure.md
 docs/slices/SLICE-0078-acceptance-closure.md
+docs/slices/SLICE-0079-acceptance-closure.md
 ```
 
 ## Accepted technical Search result
@@ -241,7 +243,7 @@ BROKER_SELF_SERVICE_PILOT_STATUS: NOT_STARTED
 PAID_BROKER_PLAN_STATUS: NOT_STARTED
 ```
 
-SLICE-0075 uses retained local/synthetic proof and introduces no real external marketplace production data, broker self-service pilot, production pilot or public production launch. The Production Readiness gate therefore remains untriggered after acceptance. The mandatory post-0056 workflow reassessment remains `PASS`; SLICE-0075 acceptance does not alter that gate. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA/production-readiness rules remain mandatory.
+SLICE-0079 is owner-accepted and merged. It implements and locally proves the repository-owned production deployment, rollback, recoverability, observability and release mechanisms, but the canonical Production Readiness gate remains `IN_PROGRESS` because real provider/infrastructure observations are still missing. No real external marketplace production data, broker self-service pilot, production pilot or public launch has started. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA rule remains mandatory.
 
 ## Broker Mandatory Capability Register
 
@@ -300,7 +302,9 @@ Every primary slice selected after SLICE-0072 must reconcile that register befor
 
 Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; production email-provider activation; buyer-contact email verification; periodic/broader broker analytics beyond the accepted factual SLICE-0075 snapshot; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
-SLICE-0078 is owner-accepted and merged. The dedicated pre-pilot Security Hardening & Adversarial Validation gate is PASS after exact-head independent review, remediation of all reachable Critical/High findings, explicit Owner risk acceptance of SEC-0078-07, and successful CI/reproducibility. Broker Workspace Launch Gate is also PASS. No broker self-service pilot, paid plan, production pilot or public launch has started.
+SLICE-0078 is owner-accepted and merged. The dedicated pre-pilot Security Hardening & Adversarial Validation gate is PASS after exact-head independent review, remediation of all reachable Critical/High findings, explicit Owner risk acceptance of SEC-0078-07, and successful CI/reproducibility. Broker Workspace Launch Gate is also PASS.
+
+SLICE-0079 is owner-accepted and merged. The production-readiness mechanisms are implemented with all independent-review Findings A–P closed, but `PRODUCTION_READINESS_GATE_STATUS` remains `IN_PROGRESS` until the required real GHCR/VPS/Managed-PostgreSQL and other provider evidence is observed. No broker self-service pilot, paid plan, real external production data or public launch has started.
 
 ## Broker launch execution focus
 
@@ -333,12 +337,12 @@ Large retained research artifacts are acknowledged as repository-hygiene debt, n
 Next queue number:
 
 ```text
-SLICE-0079
+SLICE-0080
 ```
 
-**Capability:** Production Readiness & External Broker Pilot Foundation.
+**Capability:** UNSELECTED.
 
-Post-SLICE-0078 reconciliation selected SLICE-0079 to implement and prove the canonical Production Readiness Gate before any real external broker data/pilot. Readiness is in review; no external pilot, paid plan or public launch is authorized.
+A fresh post-SLICE-0079 Decision/Implementation Reconciliation and reassessment must identify the highest-leverage next capability before readiness is created. Production Readiness remains `IN_PROGRESS`; no external production data, pilot, buyer exposure or public launch may be inferred from SLICE-0079 acceptance.
 
 ## Development workflow
 
@@ -353,6 +357,6 @@ Post-SLICE-0078 reconciliation selected SLICE-0079 to implement and prove the ca
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0078 is owner-accepted and finished; SLICE-0079 Production Readiness & External Broker Pilot Foundation is READY ON MAIN and may start only when the Project Owner runs `START_SLICE.bat`.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0079 is owner-accepted and merged; SLICE-0080 remains UNSELECTED pending fresh post-SLICE-0079 reconciliation/reassessment.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
