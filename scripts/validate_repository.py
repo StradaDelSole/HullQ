@@ -20,6 +20,9 @@ CLAUDE_DIAG = ROOT / "scripts" / "workflow" / "claude_diag.py"
 
 _PROJECT_STATE_ACCEPTED_RE = re.compile(r"<!--\s*PROJECT_STATE_ACCEPTED_SLICE:\s*(\d{4})\s*-->")
 _PROJECT_STATE_QUEUE_RE = re.compile(r"<!--\s*PROJECT_STATE_QUEUE_SLICE:\s*(\d{4})\s*-->")
+_PRODUCTION_LAUNCH_PACK_PHASE_RE = re.compile(
+    r"<!--\s*PRODUCTION_LAUNCH_PACK_PHASE:\s*(NOT_STARTED|[1-7])\s*-->"
+)
 _ACCEPTANCE_CLOSURE_RE = re.compile(r"^SLICE-(\d{4})-.*acceptance-closure\.md$")
 _SLICE_TYPE_RE = re.compile(r"(?m)^\*\*Type:\*\*\s*([A-Z_]+)\s*$")
 _SLICE_STATUS_RE = re.compile(r"(?m)^\*\*Status:\*\*\s*([A-Z_]+)\s*$")
@@ -251,6 +254,17 @@ def declared_project_queue_slice(project_state: Path = PROJECT_STATE) -> int:
             "docs/PROJECT_STATE.md must contain exactly one PROJECT_STATE_QUEUE_SLICE marker"
         )
     return int(matches[0])
+
+
+def declared_production_launch_pack_phase(project_state: Path = PROJECT_STATE) -> str:
+    """Read the canonical completed production launch-pack phase."""
+    text = project_state.read_text(encoding="utf-8")
+    matches = _PRODUCTION_LAUNCH_PACK_PHASE_RE.findall(text)
+    if len(matches) != 1:
+        raise ValueError(
+            "docs/PROJECT_STATE.md must contain exactly one PRODUCTION_LAUNCH_PACK_PHASE marker"
+        )
+    return matches[0]
 
 
 def project_state_freshness_check(
@@ -628,7 +642,7 @@ def _production_phase_transition_section(*, queue: int, path: Path, text: str) -
 
 
 def _validate_production_phase_transition(
-    *, queue: int, path: Path, section: str, check_value: str
+    *, queue: int, path: Path, section: str, check_value: str, canonical_phase: str
 ) -> None:
     def value(label: str) -> str:
         pattern = re.compile(rf"(?m)^\*\*{re.escape(label)}:\*\*[ \t]*(\S[^\r\n]*)[ \t]*$")
@@ -666,6 +680,12 @@ def _validate_production_phase_transition(
         raise ValueError(
             f"SLICE-{queue:04d} production-phase work requires "
             f"'**{_POST_0079_PRODUCTION_LAUNCH_PACK_CHECK}:** PASS'"
+        )
+
+    if before != canonical_phase:
+        raise ValueError(
+            f"SLICE-{queue:04d} launch-pack phase before {before!r} does not match canonical "
+            f"PRODUCTION_LAUNCH_PACK_PHASE {canonical_phase!r} in docs/PROJECT_STATE.md"
         )
 
     before_number = 0 if before == "NOT_STARTED" else int(before)
@@ -799,6 +819,7 @@ def queue_slice_startability_check(
             path=path,
             section=transition_section,
             check_value=launch_match.group(1),
+            canonical_phase=declared_production_launch_pack_phase(project_state),
         )
     if queue >= 80:
         mechanical_pattern = re.compile(
@@ -828,6 +849,7 @@ def main() -> None:
     no_active_drafts_check()
     claude_approval_autonomy_check()
     state_slice, _ = project_state_freshness_check()
+    launch_phase = declared_production_launch_pack_phase()
     architecture, criteria_count, workflow_status, production_status = trigger_gate_state_check()
     queue_slice, queue_file = queue_slice_startability_check()
     print(f"active schemas: {len(registry.schema_names)}")
@@ -839,6 +861,7 @@ def main() -> None:
     print(f"accepted technical native Search criteria: {criteria_count}")
     print(f"workflow reassessment: {workflow_status}")
     print(f"production readiness gate: {production_status}")
+    print(f"production launch-pack phase: {launch_phase}")
     if queue_file is None:
         print(f"queue readiness document: not yet present for SLICE-{queue_slice:04d}")
     else:
