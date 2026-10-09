@@ -19,13 +19,13 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 Latest owner-accepted slice: SLICE-0079
 Current queue:               SLICE-0080
 Current capability:          Provider-Independent Broker Original-Media Redundancy
-Current readiness:           REVIEW — Backblaze B2 decision accepted; independent readiness review in progress
+Current readiness:           READY CANDIDATE — reviewed; remote gates/merge still required
 ```
 
 Current selection:
 
 - capability selected by `docs/POST_SLICE_0079_REASSESSMENT_2026-10-09.md`;
-- primary readiness contract: `docs/slices/SLICE-0080-provider-independent-broker-original-media-redundancy.md` (REVIEW);
+- primary readiness contract: `docs/slices/SLICE-0080-provider-independent-broker-original-media-redundancy.md` (READY candidate; merge still required);
 - `docs/PROJECT_STATE.md` remains the canonical accepted/queue boundary;
 - Production Launch Pack phase remains `NOT_STARTED`;
 - `START_SLICE.bat 0080` is not authorized until readiness review/gates/merge complete;
