@@ -415,3 +415,13 @@ def test_production_launch_before_phase_must_match_canonical_state(tmp_path: Pat
             check_value="PASS",
             canonical_phase="2",
         )
+
+def test_public_launch_phase_may_hold_at_seven(tmp_path: Path) -> None:
+    _validate_production_phase_transition(
+        queue=80,
+        path=tmp_path / "SLICE-0080-test.md",
+        section=_production_phase_section(before="7", after="7"),
+        check_value="PASS",
+        canonical_phase="7",
+    )
+
