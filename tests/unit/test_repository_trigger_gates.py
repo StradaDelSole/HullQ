@@ -15,11 +15,12 @@ def _write(path: Path, text: str) -> Path:
     return path
 
 
-def _project_state(tmp_path: Path, accepted: int) -> Path:
+def _project_state(tmp_path: Path, accepted: int, *, launch_phase: str = "NOT_STARTED") -> Path:
     return _write(
         tmp_path / "PROJECT_STATE.md",
         f"<!-- PROJECT_STATE_ACCEPTED_SLICE: {accepted:04d} -->\n"
-        f"<!-- PROJECT_STATE_QUEUE_SLICE: {accepted + 1:04d} -->\n",
+        f"<!-- PROJECT_STATE_QUEUE_SLICE: {accepted + 1:04d} -->\n"
+        f"<!-- PRODUCTION_LAUNCH_PACK_PHASE: {launch_phase} -->\n",
     )
 
 
@@ -348,6 +349,7 @@ def test_non_production_slice_uses_not_applicable_launch_pack_check(tmp_path: Pa
         path=tmp_path / "SLICE-0080-test.md",
         section=_production_phase_section(before="NOT_APPLICABLE", after="NOT_APPLICABLE"),
         check_value="NOT_APPLICABLE",
+        canonical_phase="NOT_STARTED",
     )
 
 
@@ -357,6 +359,7 @@ def test_production_launch_can_start_at_phase_one(tmp_path: Path) -> None:
         path=tmp_path / "SLICE-0080-test.md",
         section=_production_phase_section(before="NOT_STARTED", after="1"),
         check_value="PASS",
+        canonical_phase="NOT_STARTED",
     )
 
 
@@ -366,6 +369,7 @@ def test_production_launch_may_hold_same_phase(tmp_path: Path) -> None:
         path=tmp_path / "SLICE-0080-test.md",
         section=_production_phase_section(before="3", after="3"),
         check_value="PASS",
+        canonical_phase="3",
     )
 
 
@@ -376,6 +380,7 @@ def test_production_launch_cannot_skip_phases(tmp_path: Path) -> None:
             path=tmp_path / "SLICE-0080-test.md",
             section=_production_phase_section(before="2", after="6"),
             check_value="PASS",
+            canonical_phase="2",
         )
 
 
@@ -386,6 +391,7 @@ def test_production_phase_work_requires_launch_pack_pass(tmp_path: Path) -> None
             path=tmp_path / "SLICE-0080-test.md",
             section=_production_phase_section(before="4", after="5"),
             check_value="NOT_APPLICABLE",
+            canonical_phase="4",
         )
 
 
@@ -396,4 +402,16 @@ def test_production_launch_cannot_move_backwards(tmp_path: Path) -> None:
             path=tmp_path / "SLICE-0080-test.md",
             section=_production_phase_section(before="5", after="4"),
             check_value="PASS",
+            canonical_phase="5",
+        )
+
+
+def test_production_launch_before_phase_must_match_canonical_state(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="does not match canonical"):
+        _validate_production_phase_transition(
+            queue=80,
+            path=tmp_path / "SLICE-0080-test.md",
+            section=_production_phase_section(before="5", after="6"),
+            check_value="PASS",
+            canonical_phase="2",
         )
