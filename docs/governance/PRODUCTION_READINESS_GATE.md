@@ -54,7 +54,7 @@ This record is intentionally separate from feature prioritization. It makes oper
 
 ## Current execution
 
-SLICE-0079 — Production Readiness & External Broker Pilot Foundation owns the current implementation/evidence pass for this gate. Full evidence: `docs/validation/PRODUCTION_READINESS_EVIDENCE_2026-10.md`.
+SLICE-0079 — Production Readiness & External Broker Pilot Foundation implemented the repository-owned mechanism/evidence pass for this gate. Post-merge production evidence and residual reconciliation continue in `docs/validation/PRODUCTION_READINESS_EVIDENCE_2026-10.md` and `docs/POST_SLICE_0079_REASSESSMENT_2026-10-09.md`.
 
 ```text
 PRODUCTION_READINESS_GATE_STATUS = IN_PROGRESS
@@ -64,7 +64,7 @@ PRODUCTION_PILOT_STATUS = NOT_STARTED
 PUBLIC_PRODUCTION_LAUNCH_STATUS = NOT_STARTED
 ```
 
-`IN_PROGRESS` records proactive readiness work only. It does not authorize real external production data, pilot activity or public launch. The status may become `PASS` only through verified SLICE-0079 gate evidence and the normal independent-review / Owner-acceptance workflow.
+`IN_PROGRESS` records proactive readiness work only. It does not authorize real external production data, pilot activity or public launch. The status may become `PASS` only when the applicable repository mechanisms plus real provider/production evidence satisfy this gate through reviewed evidence and the normal independent-review / Owner-acceptance workflow.
 
 SLICE-0079 implemented and locally proved (against real, non-production
 resources) every mechanism this gate requires: repository-owned immutable
@@ -97,15 +97,23 @@ structured JSON logging, a global unhandled-exception capture path,
 `/healthz`/`/readyz`, and an actionable operator-alert-webhook mechanism; a
 controlled migration CLI (real execution against a real
 incrementally-migrated database); and a smoke-check CLI (real execution
-against a real running instance). The gate remains `IN_PROGRESS` rather
-than `PASS` because three concrete gaps require the Project Owner's own
-production credentials/infrastructure decisions rather than anything
-SLICE-0079 could prove in its sandbox: no real GHCR push has yet been
-observed (the push-on-merge-to-`main` workflow has not fired), no real
-production VPS exists to deploy to, and no real DigitalOcean Managed
-PostgreSQL instance has been provisioned (so database HA is honestly
-`NOT_ACTIVE`, which the gate's own text permits for a strictly-internal
-phase). See evidence document §9 for the exact residual list.
+against a real running instance).
+
+After SLICE-0079 merged, canonical-main Deploy run #28 / run id
+`37868264887` at SHA
+`5532cd2cc13d9e2ce8bcee90cfc7f0591f14ae9a` real-executed the exact-SHA
+publication gate plus API and web GHCR publication/digest re-resolution
+successfully. The GHCR-observation residual is therefore closed.
+
+The gate remains `IN_PROGRESS`. Real production VPS and DigitalOcean
+Managed PostgreSQL targets are still absent; production R2/alert/deploy
+secret configuration and later boundary-specific edge/Auth0/HA evidence
+remain operationally unproven. Post-SLICE-0079 reconciliation also restored
+the accepted architecture §22 requirement that original broker media have
+an independent second copy at a different storage provider before real
+broker production. SLICE-0068 implemented primary R2 storage only, so that
+separate media-redundancy implementation gap is selected for SLICE-0080.
+See the evidence document §9 for the current residual list.
 
 ## Required PASS evidence
 
