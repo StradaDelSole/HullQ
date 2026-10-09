@@ -631,7 +631,7 @@ def _validate_production_phase_transition(
     *, queue: int, path: Path, section: str, check_value: str
 ) -> None:
     def value(label: str) -> str:
-        pattern = re.compile(rf"(?m)^\\*\\*{re.escape(label)}:\\*\\*[ \\t]*(\\S[^\\r\\n]*)[ \\t]*$")
+        pattern = re.compile(rf"(?m)^\*\*{re.escape(label)}:\*\*[ \t]*(\S[^\r\n]*)[ \t]*$")
         match = pattern.search(section)
         if match is None:
             raise ValueError(
