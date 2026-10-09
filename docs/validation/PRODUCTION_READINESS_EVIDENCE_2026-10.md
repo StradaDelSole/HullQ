@@ -19,9 +19,9 @@ docs/operations/production.env.example
 
 | Requirement | Artifact | Proof | Result | Residual |
 |---|---|---|---|---|
-| CI-verified immutable Docker images | `Dockerfile`, `web/Dockerfile`, `.github/workflows/deploy.yml` | The real production `Dockerfile` was built live via the real Docker Engine as part of the §below lifecycle proof (2026-10-08); `web/Dockerfile` builds in CI's own `build` job (reviewed, not independently rebuilt in this sandbox this pass). Independent-review Finding H (closed): before this amendment, `push_to_ghcr`/`deploy` depended only on `deploy.yml`'s own harmless build-sanity job — never on the "CI" workflow's quality/db-integration/dependency-audit/historical-replay checks or the "Manufacturer artifact reproducibility" workflow, so a `main` commit whose normal checks were failing could still be built/pushed/deployed. `deploy.yml` now has a `verify_ci_passed` job that polls GitHub's Checks API for `github.sha` (the exact commit being built/deployed, not branch-protection status or a different SHA) and fails closed unless every one of those required checks has actually completed with `success` for that exact commit; `push_api_to_ghcr`/`push_web_to_ghcr` (independent-review Finding L split this into two named jobs so each image's real digest is its own addressable job output) now depend on it | **PROVEN locally** (api image); **REVIEWED** (web image); **MECHANISM IMPLEMENTED, NOT YET OBSERVED** (the exact-SHA CI gate itself — needs a real `push` to `main` to observe it actually gate a real run) | neither push job has yet run on a real GitHub Actions `push` to `main` — first real exact-head observation happens post-merge |
-| Images stored in GHCR, versioned | `.github/workflows/deploy.yml` (`push_api_to_ghcr`/`push_web_to_ghcr` jobs, tag = `sha-<commit>` for human readability, never `latest`) | Workflow YAML reviewed; uses `secrets.GITHUB_TOKEN` (no extra secret needed for same-repo GHCR push). Independent-review Finding O (closed): Docker/OCI repository names must be lowercase, but `github.repository_owner` is the real, mixed-case `StradaDelSole` — using it directly in some GHCR references while another already-lowercased spelling existed elsewhere risked two different namespaces for the same repository, which would make the very first real lookup target an invalid reference. Fixed with a single `resolve_namespace` job that lowercases the owner once (`tr '[:upper:]' '[:lower:]'`); every job that builds a GHCR reference now reads that one output, never `github.repository_owner` directly. Proven for the real mixed-case value via `tests/unit/test_deploy_rollback_lifecycle_classifier.py` | **MECHANISM PROVEN, NOT YET OBSERVED** | needs a real `push` to `main` to actually populate GHCR — **BLOCKING item for full gate PASS (§9.1)** |
-| Image identity is mechanically immutable, not merely a `sha-<commit>` tag convention | `.github/workflows/deploy.yml` (`push_api_to_ghcr`/`push_web_to_ghcr`'s `digest` outputs, `deploy`'s first-publish-wins `image-refs.env` materialization), `scripts/ops/deploy.sh`, `docker-compose.prod.yml` | Independent-review Finding L (closed): a `sha-<commit>` TAG alone is not mechanically immutable (reruns/retries can republish different bytes under it; the Dockerfiles' own base images are themselves mutable tags). Each release is now bound to the real OCI manifest `digest` GHCR assigns (`repository@sha256:<digest>`), recorded in that release's own `image-refs.env`, written exactly once and never overwritten by a later rerun of the same commit | **PROVEN locally** against the real Docker Engine and a real local registry — exact command/output retained in `PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md` §5 | the real GHCR registry leg (vs. this proof's local throwaway registry) still needs a real VPS — see residual |
+| CI-verified immutable Docker images | `Dockerfile`, `web/Dockerfile`, `.github/workflows/deploy.yml` | The real production `Dockerfile` was built live via the real Docker Engine as part of the §below lifecycle proof (2026-10-08); `web/Dockerfile` builds in CI. Independent-review Finding H (closed) added the exact-SHA prerequisite-check gate before publication. Post-merge canonical-main Deploy run #28 / run id `37868264887` at SHA `5532cd2cc13d9e2ce8bcee90cfc7f0591f14ae9a` then executed that gate for real and it completed SUCCESS before both image-publish jobs | **PROVEN locally + OBSERVED on real GitHub Actions main push** | real production VPS pull/deploy remains unobserved |
+| Images stored in GHCR, versioned | `.github/workflows/deploy.yml` (`push_api_to_ghcr`/`push_web_to_ghcr` jobs, tag = `sha-<commit>` for human readability, never `latest`) | Workflow YAML reviewed; uses `secrets.GITHUB_TOKEN` for same-repo GHCR publication. Independent-review Finding O (closed) canonicalizes the mixed-case GitHub owner to one lowercase GHCR namespace. Canonical-main Deploy run #28 / `37868264887` real-executed GHCR login, durable-identity lookup, API build/push, web build/push and post-push digest resolution; both publish jobs completed SUCCESS | **OBSERVED on real GHCR publication path** | production VPS pull/deploy of these digests remains unobserved |
+| Image identity is mechanically immutable, not merely a `sha-<commit>` tag convention | `.github/workflows/deploy.yml` (`push_api_to_ghcr`/`push_web_to_ghcr`'s `digest` outputs, `deploy`'s first-publish-wins `image-refs.env` materialization), `scripts/ops/deploy.sh`, `docker-compose.prod.yml` | Independent-review Finding L (closed): a `sha-<commit>` tag alone is not mechanically immutable. Each release is bound to the real OCI manifest digest. The local-registry lifecycle proof established first-publish-wins behavior; canonical-main Deploy run #28 additionally real-executed both GHCR digest resolution paths after publication | **PROVEN locally + real GHCR digest resolution OBSERVED** | first VPS materialization of `image-refs.env` from those digests remains unobserved |
 | That immutable image identity is durably retained OFF the application host, not only in VPS-local `image-refs.env` | `.github/workflows/deploy.yml` (`push_api_to_ghcr`/`push_web_to_ghcr`'s "Check GHCR for this exact commit's durable image identity" step, via `docker buildx imagetools inspect`) | Independent-review Finding M (closed): `image-refs.env` exists only on the application VPS, which the accepted architecture requires to be replaceable — a lost/rebuilt VPS re-dispatched for a previously-deployed commit could otherwise rebuild it into different bytes (upstream base images are mutable) and silently redefine that commit. Each push job now checks GHCR for an existing resolvable digest for `sha-<commit>` BEFORE building, and reuses it unconditionally if found — GHCR itself (already-accepted infrastructure, no new artifact type/service/platform) becomes the durable, off-host release manifest. `deploy`'s `image-refs.env` write is always sourced from this resolved (possibly reused) digest, never unconditionally from a fresh build | **PROVEN locally**: `scripts/ops/inspect_deploy_rollback_lifecycle.py`'s `_resolve_or_build_and_push` mirrors this exact check-then-build logic against the real local throwaway registry — see invariant 10 below | same residual as above — the real GHCR leg needs a real VPS |
 | That durable-manifest lookup fails closed on anything other than a confirmed absence | `.github/workflows/deploy.yml` (both push jobs' existence-check step), `scripts/ops/inspect_deploy_rollback_lifecycle.py` (`_resolve_existing_digest`) | Independent-review Finding N (closed): the Finding M version of this check treated ANY non-zero `imagetools inspect` exit as "not published," including a transient registry/network outage, an auth failure, or a rate limit — none of which are proof of absence, and any of which could have let an already-established commit fall through to an unsafe rebuild. The check now distinguishes exactly three outcomes: a successful resolve (reuse, after validating the digest's `sha256:<64 hex>` shape); buildx's own confirmed `"<ref>: not found"` response (the ONLY case allowed to proceed to a first publish, verified empirically against a real registry); and everything else, which fails the job immediately. A post-push re-resolve-and-compare safeguard was also added. Independent-review Finding P (closed): the confirmed-absence check itself was a suffix match (`: not found` at the end of any output), which could misclassify a nested manifest/content-resolution failure ending in the same four words as a confirmed absence of the top-level queried tag. Fixed to an EXACT match against the complete expected message anchored to the exact queried ref (`"ERROR: <ref>: not found"`, both in the workflow's bash and in `_is_confirmed_not_found`) — any other failure, including a future Buildx wording change, now correctly fails closed instead of ever being misread as absence. The adversarial nested-failure case is covered as a negative regression in `tests/unit/test_deploy_rollback_lifecycle_classifier.py` | **PROVEN locally** against the real Docker Engine: a real registry outage (the throwaway registry container actually stopped, not simulated) is proven to make the resolver raise rather than rebuild, and the established digest is proven unchanged once the registry recovers — see invariant 11 below; the exact-match classifier and its negative regression are proven without Docker in the unit test above | same residual as above — the real GHCR leg needs a real VPS |
 | Rollback to previous known-good image/configuration is documented and tested | `scripts/ops/deploy.sh`, `scripts/ops/rollback.sh`, `docker-compose.prod.yml` | `scripts/ops/inspect_deploy_rollback_lifecycle.py` — the REAL `deploy.sh`/`rollback.sh` run against the real Docker Engine and a real nested `releases/<sha>/`+`state/` layout (not reimplemented test doubles): (1) first deploy records no rollback target and the exact pushed digest; (2) A→B upgrade leaves A as the recorded rollback target, A/B genuinely distinct independent digests; (3) manual rollback restores A's exact original digest; (4)/(5) failure paths (auto-revert, corrupted rollback target) unchanged; (6) running container always matches its release's recorded digest; (7) real nested layout; (8) a "republish" attempt with a different digest for an already-established release is refused, its `image-refs.env` left untouched; (9) a host with no locally-cached copy (forced `docker rmi`) and a host with a cached copy resolve to the same content; (10) a release whose entire VPS-local directory is deleted (simulated total host loss) is reconstructed from the durable off-host registry record, redeploying the ORIGINAL content even when a simulated rebuild attempt for the same commit would have produced different content; (11) a real registry outage makes the resolver fail closed (raise, no build/push) rather than rebuild, and the established digest survives the outage unchanged. Executed 2026-10-08, exit 0, all 11 named invariants true, confirmed deterministic across two consecutive runs — exact command/output retained in `PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md` §5 | **PROVEN locally** against the real Docker Engine (mechanism; the real GHCR `docker compose pull` network leg still needs a real VPS — see residual) | first real VPS execution is operational (§9.2) |
@@ -87,39 +87,60 @@ Unchanged by this slice. Already implemented by SLICE-0053 (broker Auth0/session
 | Internal-vs-external-exposure distinction explicit | this document's header + §4 | — | **EXPLICIT** |
 | PASS record names which supply paths are covered | this document covers the professional-broker boundary only (owner-direct publication remains separately `PENDING` per `OVERALL_MVP_CAPABILITY_REGISTER.md` MVP-OWNER-002 and is not newly exposed by this slice) | — | **NAMED** |
 
-## 9. Why the gate is not `PASS` — the exact residual list
+## 9. Why the gate is not `PASS` — current post-merge residuals
 
-Three items require Project-Owner-level production access/decisions this
-slice cannot fabricate (`CLAUDE.md` stop condition: *"production
-credentials/provider access required for a mandatory proof are
-unavailable"*):
+Post-merge reconciliation on 2026-10-09 closes one of SLICE-0079's original
+provider-observation gaps:
 
-1. **No real GHCR push has been observed.** `push_api_to_ghcr`/
-   `push_web_to_ghcr` in `.github/workflows/deploy.yml` run on
-   `push: branches: [main]` — neither has fired yet because this slice
-   has not merged. The first
-   exact-head CI run after merge is the real observation.
+1. **Real GHCR publication — CLOSED.** Canonical-main Deploy run #28 /
+   run id `37868264887` at exact SHA
+   `5532cd2cc13d9e2ce8bcee90cfc7f0591f14ae9a` completed the exact-SHA
+   prerequisite gate, canonical lowercase namespace resolution, API GHCR
+   login/lookup/build-push/digest re-resolution and web
+   login/lookup/build-push/digest re-resolution with SUCCESS.
+
+The gate remains `IN_PROGRESS` because current-boundary provider evidence
+is still incomplete. At minimum:
+
 2. **No real production VPS exists.** `scripts/ops/deploy.sh`/`rollback.sh`
-   and the Cloudflare Origin CA certificate setup in
-   `PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md` §2 are written and locally
-   drilled against the real Docker Engine, but have never run against a
-   real host.
-3. **No real DigitalOcean Managed PostgreSQL instance exists.** HA state
-   is honestly recorded as `NOT_ACTIVE` (§2); this is explicitly allowed
-   for a strictly-internal phase by the gate's own text, but it means
-   "production PostgreSQL target/configuration evidence" is currently a
-   design + locally-proven-mechanism, not an actually-provisioned target.
+   and the Cloudflare Origin CA topology are written and locally drilled,
+   but have never run against a real Contabo production host.
+3. **No real DigitalOcean Managed PostgreSQL 18 FRA1 instance exists.**
+   Provider backup/PITR, real production connectivity and the controlled
+   production migration path therefore remain unobserved against the actual
+   target. HA remains `NOT_ACTIVE`; that is allowed only while the stricter
+   buyer-exposure trigger is not reached.
+4. **The real Cloudflare R2 production configuration is not provisioned.**
+   The database-backup mechanism is proven, but the independent encrypted
+   production backup bucket/credentials do not yet exist; marketplace-media
+   R2 production credentials likewise remain operator configuration.
+5. **Real alert delivery is not configured.** The alert mechanism is
+   unit-tested, but no production Slack/Discord webhook has been observed.
+6. **Production deploy secrets/environment are not provisioned.** The GitHub
+   `production` Environment, VPS SSH host/user/key, pinned
+   `DEPLOY_SSH_KNOWN_HOSTS` and deploy path still require real operator
+   setup before the deploy job can run.
+7. **Public/pilot-only controls remain separately gated.** Cloudflare public
+   ingress/edge protection, interactive production Auth0 broker login where
+   exposed, and PostgreSQL HA before real external buyer exposure must be
+   evidenced when those boundaries become active.
 
-None of these three can be satisfied inside this slice's sandbox without
-either fabricating a provider relationship (forbidden by the slice's
-explicit "pretending a provider capability exists when it has not been
-configured/tested" out-of-scope item) or taking an action
-(provisioning real paid infrastructure, or triggering a real GHCR package
-publish under the project's namespace) that is the Project Owner's call,
-not this agent's. Every mechanism the gate requires is built, reviewed and
-proven against real (non-production) resources everywhere that was
-possible in this sandbox; the remaining gap is provisioning, not
-engineering.
+Post-SLICE-0079 reconciliation also restored one already-accepted
+architecture obligation that was not visible in SLICE-0079's three-item
+summary:
+
+8. **Provider-independent broker-original media redundancy is not
+   implemented.** `docs/ARCHITECTURE_REBASELINE_2026-09-02.md` §22
+   requires an independent second copy of original broker media at a
+   different storage provider before real broker production. SLICE-0068
+   implemented primary Cloudflare R2 storage and future backup/purge
+   compatibility only. Current code has one original-media storage write
+   path. This implementation gap is selected for SLICE-0080 by
+   `docs/POST_SLICE_0079_REASSESSMENT_2026-10-09.md`.
+
+These residuals are not permission to infer production readiness from
+mechanism-level proof. Provider-console state and real production
+observations must be retained as evidence when established.
 
 ## 10. `MVP-PROD-012` stale-marker reconciliation
 
