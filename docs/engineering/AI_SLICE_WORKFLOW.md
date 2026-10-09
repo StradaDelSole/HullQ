@@ -156,6 +156,8 @@ Any readiness/reassessment or operator action that would advance HullQ into a la
 
 Production setup should be executed one provider/dependency at a time with an explicit done-when test and `PASS` / `BLOCKED` outcome. Secret values never belong in the launch pack or repository documentation; only secret names, purpose and destination secret store may be recorded.
 
+`docs/PROJECT_STATE.md` carries the canonical machine-readable `PRODUCTION_LAUNCH_PACK_PHASE`. A production-phase slice from SLICE-0080 onward must declare that exact current value as its `Launch-pack phase before this slice`; repository validation rejects a stale/fabricated before-phase, backwards movement or a skip of more than one phase. If an accepted slice advances the phase, its acceptance closure must update the canonical marker atomically to the slice contract's `phase after` value. Pure provider-console execution outside a slice may advance the marker only through a separately reviewed repository maintenance change after the phase's defined done-when evidence is complete.
+
 If launch execution uncovers a new product/domain/data/architecture decision, stop and route it back through the normal HullQ reconciliation/readiness/slice lifecycle. Pure provider-console provisioning of already-accepted configuration may remain an operator-checklist action, but evidence required by the controlling gate/runbook must still be retained.
 
 ### Start a slice
@@ -292,6 +294,7 @@ Every closure that creates a new highest `SLICE-XXXX-acceptance-closure.md` MUST
 4. update the near-term product-execution path when the accepted slice changes the route to the first visible listing;
 5. update `TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT` in `POST_0051_TRIGGER_GATES.md` if and only if the accepted slice actually added another hard technical native-inventory Search criterion;
 6. if the accepted slice makes the workflow reassessment due, ensure the canonical workflow-reassessment state is no longer invalidly `NOT_DUE`.
+7. if the accepted slice's `PRODUCTION LAUNCH PACK CHECK` is `PASS` and its declared `phase after` differs from the canonical `PRODUCTION_LAUNCH_PACK_PHASE`, update that marker atomically to the accepted `phase after` only after the phase's done-when evidence is satisfied.
 
 `scripts/validate_repository.py` mechanically compares the `PROJECT_STATE_ACCEPTED_SLICE` marker with the highest acceptance-closure filename. A stale or ahead-of-history state document fails repository validation and therefore CI.
 
