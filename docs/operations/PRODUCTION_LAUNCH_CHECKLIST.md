@@ -16,7 +16,7 @@ Phase 1 — Accounts & Ownership
 
 No production launch phase advances until the complete Phase-1 Done-when conditions are evidenced and a reviewed repository maintenance/closure change updates `PRODUCTION_LAUNCH_PACK_PHASE`.
 
-SLICE-0080 is a separate repository implementation capability for provider-independent broker-original media redundancy. It does not itself advance this launch phase.
+SLICE-0080 is Owner-accepted and merged: the repository mechanism for provider-independent broker-original media redundancy now exists. This still does not advance the launch phase; the real Backblaze account/bucket/application-key and live-provider proof remain operator work.
 
 ## Already observed
 
@@ -40,7 +40,7 @@ Statuses in this table are account/ownership setup states only. They do not impl
 | DigitalOcean | Managed PostgreSQL 18 FRA1 Standard | before closed production infrastructure | account/team ownership not yet retained | not yet retained | DB plan/region FRA1 accepted; actual subscription not yet provisioned | OWNER_INPUT_REQUIRED |
 | Auth0 Public Cloud | EU tenant, authentication-only | before real interactive broker authentication | account/tenant ownership not yet retained | tenant/admin recovery not yet retained | EU tenant accepted; actual production tenant state not yet retained | OWNER_INPUT_REQUIRED |
 | Operator alert destination | actionable production alert webhook; current implementation accepts Slack or Discord webhook | before Production Readiness PASS when operator relies on alert delivery | provider/account/channel not yet selected/retained | provider-dependent | provider choice open | OWNER_DECISION_REQUIRED |
-| Backblaze B2 EU Central | independent second copy of broker original/source media, separate from primary Cloudflare R2 | before real broker production media; implementation selected for SLICE-0080 | provider owner-decided; real account not yet provisioned | MFA/recovery evidence required in Phase 1 | EU Central / Amsterdam accepted; usage-based billing; real account/billing not yet retained | OWNER_ACCOUNT_SETUP_REQUIRED |
+| Backblaze B2 EU Central | independent second copy of broker original/source media, separate from primary Cloudflare R2 | before real broker production media; repository mechanism implemented by Owner-accepted SLICE-0080 | provider owner-decided; real account not yet provisioned | MFA/recovery evidence required in Phase 1 | EU Central / Amsterdam accepted; usage-based billing; real account/billing not yet retained | OWNER_ACCOUNT_SETUP_REQUIRED |
 | Zammad Hosted Professional v2 | customer Help/Support system | before external support launch | accepted product choice; account not yet provisioned | later | later | LATER_TRIGGER |
 | Transactional email provider | real external lead/account email delivery when relied upon | before real external email dependency | no accepted concrete provider yet | later | later provider decision | LATER_TRIGGER |
 
@@ -60,7 +60,7 @@ Owner decision: **Backblaze B2 EU Central**.
 
 The accepted choice preserves provider independence from Cloudflare, uses an EU data region, provides an S3-compatible integration surface and fits the project's highly constrained MVP budget. The provider decision is retained in `docs/BROKER_ORIGINAL_MEDIA_REDUNDANCY_PROVIDER_DECISION_2026-10-09.md`.
 
-SLICE-0080 readiness is READY; the real account/bucket/application key remains Phase-1/Phase-2 operator work and is not created by the slice.
+SLICE-0080 implementation is Owner-accepted; the real account/bucket/application key, secret-store wiring and live connectivity proof remain Phase-1/Phase-2 operator work and were not created by the slice.
 
 ## Phase 1 Done-when
 
