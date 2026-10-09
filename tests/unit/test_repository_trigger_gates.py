@@ -435,4 +435,3 @@ def test_public_launch_phase_may_hold_at_seven(tmp_path: Path) -> None:
         check_value="PASS",
         canonical_phase="7",
     )
-
