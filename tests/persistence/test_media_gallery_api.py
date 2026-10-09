@@ -70,7 +70,7 @@ from hullq.persistence.native_listing_offer import (
 from hullq.persistence.physical_boat import create_physical_boat
 from hullq.persistence.physical_boat_claims import write_physical_boat_claim_revision
 from hullq.security.session_token import mint_session_token
-from hullq.storage.object_storage import InMemoryObjectStorage
+from hullq.storage.object_storage import InMemoryObjectStorage, ObjectStorageConfigError
 
 _SECRET = b"8" * 32
 _WEB_ORIGIN = "http://web.test"
@@ -123,8 +123,19 @@ def object_storage() -> InMemoryObjectStorage:
 
 
 @pytest.fixture()
+def backup_object_storage() -> InMemoryObjectStorage:
+    """SLICE-0080 independent-original-copy fake (Backblaze B2 in
+    production) -- injected exactly like *object_storage* so every existing
+    upload-route test keeps requiring no real/live credentials."""
+    return InMemoryObjectStorage()
+
+
+@pytest.fixture()
 def client(
-    api_url: str, object_storage: InMemoryObjectStorage, monkeypatch: pytest.MonkeyPatch
+    api_url: str,
+    object_storage: InMemoryObjectStorage,
+    backup_object_storage: InMemoryObjectStorage,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> Generator[TestClient]:
     from hullq.api.app import create_app
 
@@ -135,6 +146,7 @@ def client(
         session_signing_secret=_SECRET,
         web_origin=_WEB_ORIGIN,
         object_storage=object_storage,
+        backup_object_storage=backup_object_storage,
     )
     test_client = TestClient(app, base_url="http://api.test", follow_redirects=False)
     try:
@@ -1255,6 +1267,185 @@ class TestOriginalDerivativeSeparation:
         # to use one as if it were a media_asset_id is simply not found.
         response = client.get(_asset_bytes_path(org_id, original_keys[0]))
         assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0080: provider-independent broker original-media redundancy
+# ---------------------------------------------------------------------------
+
+
+class _TrackingObjectStorage:
+    """Wraps a real `InMemoryObjectStorage`, recording every `get_object`
+    call -- used to prove the independent-original-copy store is never read
+    by any serving route (redundancy contract §9: "is never exposed through
+    a browser URL")."""
+
+    def __init__(self, delegate: InMemoryObjectStorage) -> None:
+        self.delegate = delegate
+        self.get_calls: list[str] = []
+
+    def put_object(self, key: str, data: bytes, *, content_type: str) -> None:
+        self.delegate.put_object(key, data, content_type=content_type)
+
+    def get_object(self, key: str) -> bytes:
+        self.get_calls.append(key)
+        return self.delegate.get_object(key)
+
+    def delete_object(self, key: str) -> None:
+        self.delegate.delete_object(key)
+
+    def keys_with_prefix(self, prefix: str) -> tuple[str, ...]:
+        return self.delegate.keys_with_prefix(prefix)
+
+
+class TestIndependentOriginalCopyRedundancy:
+    """SLICE-0080 (`specs/BROKER_ORIGINAL_MEDIA_REDUNDANCY_CONTRACT.v0.1.md`
+    §14 acceptance proof matrix) exercised through the real upload route."""
+
+    def test_approved_upload_establishes_identical_independent_backup_copy(
+        self,
+        client: TestClient,
+        api_url: str,
+        object_storage: InMemoryObjectStorage,
+        backup_object_storage: InMemoryObjectStorage,
+    ) -> None:
+        org_id, account_id, membership_id = "ORG-BK1", "ACC-BK1", "OM-BK1"
+        _seed_org_and_membership(
+            api_url, org_id=org_id, account_id=account_id, membership_id=membership_id
+        )
+        _create_listing(
+            api_url,
+            listing_id="NL-BK1",
+            org_id=org_id,
+            account_id=account_id,
+            membership_id=membership_id,
+            physical_boat_id="PB-BK1",
+            market_episode_id="ME-BK1",
+        )
+        _log_in(client, account_id)
+        raw_bytes = _jpeg_bytes()
+        response = _upload_one(client, org_id, "NL-BK1", body=raw_bytes)
+        assert response.status_code == 201
+
+        original_keys = list(object_storage.keys_with_prefix("media/original/"))
+        assert len(original_keys) == 1
+        backup_keys = list(backup_object_storage.keys_with_prefix("media/original/"))
+        assert backup_keys == original_keys
+        assert backup_object_storage.get_object(backup_keys[0]) == raw_bytes
+
+    def test_broker_preview_route_never_reads_the_independent_backup_store(
+        self,
+        api_url: str,
+        object_storage: InMemoryObjectStorage,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        from hullq.api.app import create_app
+
+        tracking_backup = _TrackingObjectStorage(InMemoryObjectStorage())
+        monkeypatch.setenv("HULLQ_SESSION_COOKIE_SECURE", "false")
+        app = create_app(
+            database_url=api_url,
+            preview_signing_secret=os.urandom(32),
+            session_signing_secret=_SECRET,
+            web_origin=_WEB_ORIGIN,
+            object_storage=object_storage,
+            backup_object_storage=tracking_backup,
+        )
+        client = TestClient(app, base_url="http://api.test", follow_redirects=False)
+        try:
+            org_id, account_id, membership_id = "ORG-BK2", "ACC-BK2", "OM-BK2"
+            _seed_org_and_membership(
+                api_url, org_id=org_id, account_id=account_id, membership_id=membership_id
+            )
+            _create_listing(
+                api_url,
+                listing_id="NL-BK2",
+                org_id=org_id,
+                account_id=account_id,
+                membership_id=membership_id,
+                physical_boat_id="PB-BK2",
+                market_episode_id="ME-BK2",
+            )
+            _log_in(client, account_id)
+            upload = _upload_one(client, org_id, "NL-BK2")
+            asset_id = upload.json()["media_asset_id"]
+
+            preview = client.get(_asset_bytes_path(org_id, asset_id))
+            assert preview.status_code == 200
+            assert tracking_backup.get_calls == []
+        finally:
+            client.close()
+
+    def test_backup_endpoint_matching_primary_endpoint_fails_closed(
+        self,
+        api_url: str,
+        object_storage: InMemoryObjectStorage,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Contract §12 / acceptance criterion: "ordinary production
+        resolver cannot accidentally satisfy primary and secondary roles
+        from one Cloudflare R2 configuration". Real (non-injected) env-based
+        resolution is exercised here -- *backup_object_storage* is
+        deliberately left unset so `create_app` falls back to
+        `get_b2_object_storage_config`/`get_r2_object_storage_config`."""
+        from hullq.api.app import create_app
+
+        monkeypatch.setenv("HULLQ_SESSION_COOKIE_SECURE", "false")
+        monkeypatch.setenv("HULLQ_R2_ACCOUNT_ID", "acct-collide")
+        monkeypatch.setenv("HULLQ_R2_ACCESS_KEY_ID", "r2-key")
+        monkeypatch.setenv("HULLQ_R2_SECRET_ACCESS_KEY", "r2-secret")
+        monkeypatch.setenv("HULLQ_R2_BUCKET", "r2-bucket")
+        # Deliberately misconfigured: the B2 endpoint is set to the exact
+        # endpoint R2ObjectStorageConfig derives for the account id above.
+        monkeypatch.setenv(
+            "HULLQ_MEDIA_BACKUP_B2_ENDPOINT", "https://acct-collide.r2.cloudflarestorage.com"
+        )
+        monkeypatch.setenv("HULLQ_MEDIA_BACKUP_B2_REGION", "auto")
+        monkeypatch.setenv("HULLQ_MEDIA_BACKUP_B2_KEY_ID", "b2-key")
+        monkeypatch.setenv("HULLQ_MEDIA_BACKUP_B2_APPLICATION_KEY", "b2-secret")
+        monkeypatch.setenv("HULLQ_MEDIA_BACKUP_B2_BUCKET", "b2-bucket")
+        app = create_app(
+            database_url=api_url,
+            preview_signing_secret=os.urandom(32),
+            session_signing_secret=_SECRET,
+            web_origin=_WEB_ORIGIN,
+            object_storage=object_storage,
+        )
+        client = TestClient(app, base_url="http://api.test", follow_redirects=False)
+        try:
+            org_id, account_id, membership_id = "ORG-BK3", "ACC-BK3", "OM-BK3"
+            _seed_org_and_membership(
+                api_url, org_id=org_id, account_id=account_id, membership_id=membership_id
+            )
+            _create_listing(
+                api_url,
+                listing_id="NL-BK3",
+                org_id=org_id,
+                account_id=account_id,
+                membership_id=membership_id,
+                physical_boat_id="PB-BK3",
+                market_episode_id="ME-BK3",
+            )
+            _log_in(client, account_id)
+            # In production this unhandled exception is caught by the app's
+            # registered generic exception handler and redacted to a bounded
+            # 500 (proven for the primary-store-failure path elsewhere); the
+            # important proof here is specifically that the guard fires with
+            # `ObjectStorageConfigError` rather than silently "succeeding"
+            # with a single-provider "redundancy" (contract §12) -- it must
+            # never reach object storage or the database at all.
+            with pytest.raises(ObjectStorageConfigError, match="must not match"):
+                _upload_one(client, org_id, "NL-BK3")
+            with psycopg.connect(api_url) as conn, conn.cursor() as cur:
+                cur.execute(
+                    "SELECT count(*) FROM media_assets WHERE owner_organization_id = %s",
+                    [org_id],
+                )
+                row = cur.fetchone()
+                assert row is not None
+                assert row[0] == 0
+        finally:
+            client.close()
 
 
 # ---------------------------------------------------------------------------

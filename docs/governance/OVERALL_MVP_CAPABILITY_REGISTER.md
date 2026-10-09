@@ -227,7 +227,7 @@ Controlling gate: docs/governance/PRODUCTION_READINESS_GATE.md.
 | MVP-PROD-010 | incident communication/status path | before broad public production | PENDING |
 | MVP-PROD-011 | incident-response/post-incident operating procedure | overall production MVP | PENDING |
 | MVP-PROD-012 | holistic Security Hardening & Adversarial Validation gate | before first external broker self-service pilot | IMPLEMENTED by SLICE-0078 — gate PASS; SEC-0078-07 Owner-risk-accepted with retained re-review triggers |
-| MVP-PROD-013 | provider-independent second copy of broker original media | before real broker production media | READY — accepted architecture §22; Backblaze B2 EU Central owner-selected as the independent provider; SLICE-0080 readiness defines synchronous dual-original write + non-fabricated redundancy truth; implementation not started |
+| MVP-PROD-013 | provider-independent second copy of broker original media | before real broker production media | SLICE-0080 candidate implementation complete, pending independent review/Owner acceptance — synchronous dual-original write (primary R2 + independent Backblaze B2) and non-fabricated redundancy database truth implemented and deterministically tested (fake dual-store success/failure/absence-vs-error/migration/reuse/retirement proof); MECHANISM PROVEN, REAL B2 NOT YET OBSERVED — the real Backblaze account/bucket/application key remain Production Launch Pack operator setup |
 
 ## L. Data Operations and Truth Maintenance
 

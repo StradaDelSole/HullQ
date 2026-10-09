@@ -28,6 +28,7 @@ from hullq.domain.market_identity import (
 )
 from hullq.domain.media_gallery import (
     MediaAssetId,
+    MediaBackupProviderKind,
     MediaPlacementId,
     MediaPlacementKind,
     MediaSourceKind,
@@ -325,6 +326,213 @@ class TestRejectedAssetCreation:
         assert asset.original_object_key == "media/original/test-rejected.orig"
         assert asset.mime_type is None
         assert asset.rejection_reason == "UNSUPPORTED_OR_MALFORMED"
+
+
+class TestBackupRedundancyShape:
+    """SLICE-0080 (`specs/BROKER_ORIGINAL_MEDIA_REDUNDANCY_CONTRACT.v0.1.md`
+    §3/§14): durable truth distinguishing legacy/not-established rows from
+    rows with a confirmed independent B2 copy, and the database-boundary
+    shape guarantee that makes an impossible partial shape unrepresentable."""
+
+    def test_legacy_insert_without_backup_args_is_not_established(self, conn: Any) -> None:
+        """Every unrelated feature test in this repository seeds MediaAssets
+        via `insert_approved_media_asset` without ever passing
+        *backup_provider*/*backup_object_key* -- those rows must read back
+        exactly like a legacy pre-SLICE-0080 row: not established, never
+        fabricated."""
+        account = _seed_account(conn, "ACC-BK1")
+        org = _seed_org(conn, "ORG-BK1")
+        with conn.transaction():
+            asset = insert_approved_media_asset(
+                conn,
+                owner_organization_id=org.id,
+                uploaded_by_account_id=account,
+                rights_declared=True,
+                source_kind=MediaSourceKind.BROKER_UPLOAD,
+                source_reference=None,
+                original_object_key="media/original/legacy.orig",
+                derivative_object_key="media/legacy.jpg",
+                content_hash="hash-legacy",
+                mime_type="image/jpeg",
+                width=100,
+                height=50,
+                byte_size=999,
+            )
+        assert not asset.has_established_backup
+        assert asset.backup_provider is None
+        assert asset.backup_object_key is None
+        assert asset.backup_established_at is None
+
+    def test_insert_with_backup_args_records_established_redundancy(self, conn: Any) -> None:
+        account = _seed_account(conn, "ACC-BK2")
+        org = _seed_org(conn, "ORG-BK2")
+        with conn.transaction():
+            asset = insert_approved_media_asset(
+                conn,
+                owner_organization_id=org.id,
+                uploaded_by_account_id=account,
+                rights_declared=True,
+                source_kind=MediaSourceKind.BROKER_UPLOAD,
+                source_reference=None,
+                original_object_key="media/original/backed-up.orig",
+                derivative_object_key="media/backed-up.jpg",
+                content_hash="hash-bk2",
+                mime_type="image/jpeg",
+                width=100,
+                height=50,
+                byte_size=999,
+                backup_provider=MediaBackupProviderKind.BACKBLAZE_B2,
+                backup_object_key="media/original/backed-up.orig",
+            )
+        assert asset.has_established_backup
+        assert asset.backup_provider is MediaBackupProviderKind.BACKBLAZE_B2
+        assert asset.backup_object_key == "media/original/backed-up.orig"
+        assert asset.backup_established_at is not None
+        fetched = fetch_media_asset(conn, asset.media_asset_id)
+        assert fetched == asset
+
+    def test_rejected_insert_with_backup_args_records_established_redundancy(
+        self, conn: Any
+    ) -> None:
+        account = _seed_account(conn, "ACC-BK3")
+        org = _seed_org(conn, "ORG-BK3")
+        with conn.transaction():
+            asset = insert_rejected_media_asset(
+                conn,
+                owner_organization_id=org.id,
+                uploaded_by_account_id=account,
+                rights_declared=True,
+                source_kind=MediaSourceKind.BROKER_UPLOAD,
+                source_reference=None,
+                original_object_key="media/original/rejected-backed-up.orig",
+                rejection_reason="UNSUPPORTED_OR_MALFORMED",
+                backup_provider=MediaBackupProviderKind.BACKBLAZE_B2,
+                backup_object_key="media/original/rejected-backed-up.orig",
+            )
+        assert asset.has_established_backup
+        assert not asset.is_public_usable
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"backup_provider": MediaBackupProviderKind.BACKBLAZE_B2, "backup_object_key": None},
+            {"backup_provider": None, "backup_object_key": "media/original/x.orig"},
+        ],
+    )
+    def test_mismatched_backup_args_rejected_before_any_write(
+        self, conn: Any, kwargs: dict[str, Any]
+    ) -> None:
+        account = _seed_account(conn, "ACC-BK4")
+        org = _seed_org(conn, "ORG-BK4")
+        with conn.transaction(), pytest.raises(ValueError, match="both"):
+            insert_approved_media_asset(
+                conn,
+                owner_organization_id=org.id,
+                uploaded_by_account_id=account,
+                rights_declared=True,
+                source_kind=MediaSourceKind.BROKER_UPLOAD,
+                source_reference=None,
+                original_object_key="media/original/x.orig",
+                derivative_object_key="media/x.jpg",
+                content_hash="hash-x",
+                mime_type="image/jpeg",
+                width=100,
+                height=50,
+                byte_size=999,
+                **kwargs,
+            )
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT count(*) FROM media_assets WHERE owner_organization_id = %s", [org.id.value]
+            )
+            row = cur.fetchone()
+            assert row is not None
+            assert row[0] == 0
+
+    def test_database_rejects_impossible_partial_backup_shape(self, conn: Any) -> None:
+        """Contract §3: "mechanically impossible for a row to claim an
+        established B2 copy while lacking the durable backup object
+        reference" -- proved directly against the database boundary itself
+        (`ck_media_assets_backup_shape`), bypassing the Python helper's own
+        defensive check entirely, with a raw `INSERT`."""
+        account = _seed_account(conn, "ACC-BK5")
+        org = _seed_org(conn, "ORG-BK5")
+        with pytest.raises(psycopg.errors.CheckViolation), conn.transaction(), conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO media_assets (media_asset_id, owner_organization_id, "
+                "uploaded_by_account_id, source_kind, processing_state, rights_state, "
+                "original_object_key, derivative_object_key, content_hash, mime_type, "
+                "width, height, byte_size, backup_provider, backup_object_key, "
+                "backup_established_at) "
+                "VALUES (%s, %s, %s, 'BROKER_UPLOAD', 'APPROVED', 'DECLARED', %s, %s, "
+                "'h', 'image/jpeg', 1, 1, 1, 'BACKBLAZE_B2', NULL, NOW())",
+                [
+                    "MA-BK5",
+                    org.id.value,
+                    account.value,
+                    "media/original/bk5.orig",
+                    "media/bk5.jpg",
+                ],
+            )
+
+    def test_database_rejects_unknown_backup_provider_token(self, conn: Any) -> None:
+        account = _seed_account(conn, "ACC-BK6")
+        org = _seed_org(conn, "ORG-BK6")
+        with pytest.raises(psycopg.errors.CheckViolation), conn.transaction(), conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO media_assets (media_asset_id, owner_organization_id, "
+                "uploaded_by_account_id, source_kind, processing_state, rights_state, "
+                "original_object_key, derivative_object_key, content_hash, mime_type, "
+                "width, height, byte_size, backup_provider, backup_object_key, "
+                "backup_established_at) "
+                "VALUES (%s, %s, %s, 'BROKER_UPLOAD', 'APPROVED', 'DECLARED', %s, %s, "
+                "'h', 'image/jpeg', 1, 1, 1, 'SOME_OTHER_PROVIDER', %s, NOW())",
+                [
+                    "MA-BK6",
+                    org.id.value,
+                    account.value,
+                    "media/original/bk6.orig",
+                    "media/bk6.jpg",
+                    "media/original/bk6.orig",
+                ],
+            )
+
+    def test_retirement_preserves_backup_locator_for_future_purge(self, conn: Any) -> None:
+        account = _seed_account(conn, "ACC-BK7")
+        org = _seed_org(conn, "ORG-BK7")
+        with conn.transaction():
+            asset = insert_approved_media_asset(
+                conn,
+                owner_organization_id=org.id,
+                uploaded_by_account_id=account,
+                rights_declared=True,
+                source_kind=MediaSourceKind.BROKER_UPLOAD,
+                source_reference=None,
+                original_object_key="media/original/retire-bk.orig",
+                derivative_object_key="media/retire-bk.jpg",
+                content_hash="hash-retire-bk",
+                mime_type="image/jpeg",
+                width=100,
+                height=50,
+                byte_size=999,
+                backup_provider=MediaBackupProviderKind.BACKBLAZE_B2,
+                backup_object_key="media/original/retire-bk.orig",
+            )
+        with conn.transaction():
+            result = retire_media_asset(
+                conn, media_asset_id=asset.media_asset_id, owner_organization_id=org.id
+            )
+        assert result is RetireAssetOutcome.RETIRED
+        fetched = fetch_media_asset(conn, asset.media_asset_id)
+        assert fetched is not None
+        assert fetched.retired_at is not None
+        # Retirement prevents new reuse/public usability -- it never erases
+        # the independent-copy locator a future purge would need (contract
+        # §10: "No implementation may delete the B2 copy merely because a
+        # placement is removed").
+        assert fetched.has_established_backup
+        assert fetched.backup_provider is MediaBackupProviderKind.BACKBLAZE_B2
+        assert fetched.backup_object_key == "media/original/retire-bk.orig"
 
 
 class TestPlacementCreationAndGalleryRead:
