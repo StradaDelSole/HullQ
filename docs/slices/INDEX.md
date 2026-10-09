@@ -38,7 +38,7 @@ Current boundary:
 | SLICE-0001–0038 | accepted foundational research/architecture/data/product work except where an individual slice record states otherwise |
 | SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
 | SLICE-0040–0080 | later accepted marketplace/Search/buyer/broker/security/production-foundation/media-durability work; final state is authoritative in each acceptance closure and `PROJECT_STATE.md` |
-| SLICE-0081 | current numeric queue only; capability UNSELECTED pending fresh reassessment |
+| SLICE-0081 | current numeric queue only; post-0080 reassessment completed and deliberately left capability UNSELECTED while Production Launch Pack Phase 1 operator work proceeds |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
