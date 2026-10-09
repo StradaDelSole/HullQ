@@ -6,7 +6,7 @@
 
 **Updated:** 2026-10-09  
 **Latest owner-accepted / DONE slice:** SLICE-0079  
-**Current queue:** SLICE-0080 — **UNSELECTED**. SLICE-0079 is owner-accepted and merged; Production Readiness remains `IN_PROGRESS`. A fresh post-SLICE-0079 Decision/Implementation Reconciliation and reassessment must select the next capability before any SLICE-0080 readiness is created. No external production data, pilot or public launch is authorized.  
+**Current queue:** SLICE-0080 — **Provider-Independent Broker Original-Media Redundancy — SELECTED / READINESS NOT YET READY**. Post-SLICE-0079 reconciliation found the accepted architecture §22 second-provider original-media requirement is still unimplemented. Readiness is blocked only on the secondary-provider direction; `START_SLICE.bat 0080` is not yet authorized. Production Readiness remains `IN_PROGRESS`; no external production data, pilot or public launch is authorized.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -244,7 +244,7 @@ BROKER_SELF_SERVICE_PILOT_STATUS: NOT_STARTED
 PAID_BROKER_PLAN_STATUS: NOT_STARTED
 ```
 
-SLICE-0079 is owner-accepted and merged. It implements and locally proves the repository-owned production deployment, rollback, recoverability, observability and release mechanisms, but the canonical Production Readiness gate remains `IN_PROGRESS` because real provider/infrastructure observations are still missing. No real external marketplace production data, broker self-service pilot, production pilot or public launch has started. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA rule remains mandatory.
+SLICE-0079 is owner-accepted and merged. It implements and locally proves the repository-owned production deployment, rollback, recoverability, observability and release mechanisms. Canonical-main Deploy run #28 (`37868264887`) subsequently real-executed API/web GHCR publication successfully, closing that provider-observation gap. The Production Readiness gate remains `IN_PROGRESS` because VPS/database/R2/alert/deploy-secret and later exposure-specific provider evidence is still incomplete. Post-SLICE-0079 reconciliation also restored the accepted architecture §22 requirement for a different-provider second copy of broker original media; current code remains primary-R2-only and SLICE-0080 is selected to close that implementation gap. No real external marketplace production data, broker self-service pilot, production pilot or public launch has started. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA rule remains mandatory.
 
 ## Broker Mandatory Capability Register
 
@@ -341,9 +341,9 @@ Next queue number:
 SLICE-0080
 ```
 
-**Capability:** UNSELECTED.
+**Capability:** Provider-Independent Broker Original-Media Redundancy.
 
-A fresh post-SLICE-0079 Decision/Implementation Reconciliation and reassessment must identify the highest-leverage next capability before readiness is created. Production Readiness remains `IN_PROGRESS`; no external production data, pilot, buyer exposure or public launch may be inferred from SLICE-0079 acceptance.
+Selected by `docs/POST_SLICE_0079_REASSESSMENT_2026-10-09.md` because accepted architecture §22 requires original broker media to have an independent second copy at a different storage provider before real broker production, while SLICE-0068 implemented only primary Cloudflare R2 storage plus future backup/purge compatibility. SLICE-0080 readiness remains NOT READY until the Project Owner resolves the secondary-provider direction. The Production Launch Pack remains at `NOT_STARTED`, and no external production data, pilot, buyer exposure or public launch is authorized.
 
 ## Development workflow
 
@@ -358,6 +358,6 @@ A fresh post-SLICE-0079 Decision/Implementation Reconciliation and reassessment 
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0079 is owner-accepted and merged; SLICE-0080 remains UNSELECTED pending fresh post-SLICE-0079 reconciliation/reassessment.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0079 is owner-accepted and merged; post-SLICE-0079 reconciliation selected SLICE-0080 Provider-Independent Broker Original-Media Redundancy, but readiness remains blocked on the secondary-provider Owner decision and no implementation start is authorized yet.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
