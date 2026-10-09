@@ -134,6 +134,32 @@ jobs:
         with:
           persist-credentials: false
 
+      # SLICE-0079 amendment: tests/persistence/test_backup_restore_disposable_proof.py
+      # exercises the real pg_dump/pg_restore CLI
+      # (src/hullq/ops/backup_restore.py) against the postgres:18 service
+      # below. ubuntu-latest's own ambient `postgresql-client` package does
+      # not track PostgreSQL's current major version and was observed
+      # OLDER than this service (client 16 vs server 18) -- pg_dump
+      # refuses to dump from a server newer than itself. Install the exact
+      # matching PGDG client, the same way
+      # PRODUCTION_BACKUP_RESTORE_RUNBOOK.md already requires on the real
+      # VPS, rather than relying on whatever the runner image happens to
+      # ship.
+      - name: Install PostgreSQL 18 client (matches postgres:18 service exactly)
+        # Installing postgresql-client-18 alone is not sufficient: it was
+        # observed to leave the already-present older client's `pg_dump`
+        # ahead on PATH (the runner's `update-alternatives` only switched
+        # over the `psql` man page, not the actual dump/restore binaries).
+        # Prepend the exact versioned PGDG bin directory to $GITHUB_PATH so
+        # every later step's bare `pg_dump`/`pg_restore` unambiguously
+        # resolves to the version-18 binaries, matching the real
+        # postgres:18 service below.
+        run: |
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-18
+          echo "/usr/lib/postgresql/18/bin" >> "$GITHUB_PATH"
+
       - name: Install uv and Python
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:

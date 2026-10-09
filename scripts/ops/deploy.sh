@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+# SLICE-0079 production deploy script — part of one immutable release
+# directory (/opt/hullq/releases/<git-commit-sha>/, copied there from the
+# exact checked-out commit by .github/workflows/deploy.yml's `deploy` job
+# before this script ever runs — see
+# docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md §1/§2). Never run a
+# copy of this script from outside its own release directory: it derives
+# its release identity from its own directory name AND reads this exact
+# release's own `image-refs.env` for the images it deploys, which is
+# exactly how image and deployment configuration are kept from drifting
+# apart (independent review Finding B, 2026-10-XX amendment).
+#
+# Independent-review amendment (Finding L): `image-refs.env` binds this
+# release to the exact immutable OCI digests
+# (`repository@sha256:<digest>`, never a mutable tag) captured at this
+# release's first publish by .github/workflows/deploy.yml -- that file is
+# written ONCE, when this release directory is first materialized, and is
+# never overwritten by a later rerun/republish of the same commit. This
+# script fails closed if it is missing rather than falling back to any
+# mutable tag.
+#
+# Usage: deploy.sh   (no arguments — everything is derived from $PWD/path)
+#
+# State machine (independent review Finding C): two small files under
+# $HULLQ_ROOT/state/ record which release is current and which is the
+# rollback target:
+#
+#   state/current-release    the SHA of the release this script last
+#                             successfully brought up
+#   state/previous-release   the SHA that was current immediately before
+#                             that — i.e. the ONE valid rollback target
+#
+# Every successful run of this script shifts current -> previous and
+# records its own SHA as the new current. A rollback is implemented
+# (rollback.sh) as simply re-running the previous release's OWN copy of
+# this exact script, which naturally swaps current/previous back — so
+# repeated rollbacks correctly toggle rather than requiring unbounded
+# history.
+set -euo pipefail
+
+RELEASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HULLQ_ROOT="$(cd "$RELEASE_DIR/../.." && pwd)"
+STATE_DIR="$HULLQ_ROOT/state"
+CURRENT_FILE="$STATE_DIR/current-release"
+PREVIOUS_FILE="$STATE_DIR/previous-release"
+COMPOSE_FILE="$RELEASE_DIR/docker-compose.prod.yml"
+
+NEW_SHA="$(basename "$RELEASE_DIR")"
+IMAGE_REFS_FILE="$RELEASE_DIR/image-refs.env"
+
+if [ ! -f "$IMAGE_REFS_FILE" ]; then
+  echo "Missing $IMAGE_REFS_FILE: this release directory was not properly materialized with its immutable image digests. Refusing to deploy with a mutable fallback." >&2
+  exit 1
+fi
+# shellcheck disable=SC1090
+. "$IMAGE_REFS_FILE"
+if [ -z "${HULLQ_API_IMAGE:-}" ] || [ -z "${HULLQ_WEB_IMAGE:-}" ]; then
+  echo "$IMAGE_REFS_FILE did not set both HULLQ_API_IMAGE and HULLQ_WEB_IMAGE. Refusing to deploy." >&2
+  exit 1
+fi
+export HULLQ_API_IMAGE HULLQ_WEB_IMAGE
+
+# Overridable only for the retained local proof
+# (scripts/ops/inspect_deploy_rollback_lifecycle.py); production always
+# uses the defaults (up to 60s on the real published port 8000).
+HEALTH_RETRIES="${HULLQ_DEPLOY_HEALTH_RETRIES:-30}"
+HEALTH_INTERVAL_SECONDS="${HULLQ_DEPLOY_HEALTH_INTERVAL_SECONDS:-2}"
+HEALTH_PORT="${HULLQ_DEPLOY_HEALTH_PORT:-8000}"
+
+CURRENT_SHA="$(cat "$CURRENT_FILE" 2>/dev/null || echo "")"
+
+echo "Deploying release $NEW_SHA (api=$HULLQ_API_IMAGE web=$HULLQ_WEB_IMAGE); current before this deploy: ${CURRENT_SHA:-none}"
+
+docker compose -f "$COMPOSE_FILE" up -d
+
+echo "Waiting for the API container to report healthy..."
+ATTEMPT=0
+until curl -fsS "http://127.0.0.1:$HEALTH_PORT/healthz" >/dev/null 2>&1 \
+      && curl -fsS "http://127.0.0.1:$HEALTH_PORT/readyz" >/dev/null 2>&1; do
+  ATTEMPT=$((ATTEMPT + 1))
+  if [ "$ATTEMPT" -ge "$HEALTH_RETRIES" ]; then
+    echo "Deploy health check failed for $NEW_SHA after $((HEALTH_RETRIES * HEALTH_INTERVAL_SECONDS))s." >&2
+    if [ -n "$CURRENT_SHA" ] && [ "$CURRENT_SHA" != "$NEW_SHA" ]; then
+      echo "Attempting automatic revert to previous release $CURRENT_SHA." >&2
+      if "$HULLQ_ROOT/releases/$CURRENT_SHA/deploy.sh"; then
+        echo "Automatic revert to $CURRENT_SHA succeeded. Deploy of $NEW_SHA FAILED (exit 1)." >&2
+        exit 1
+      else
+        echo "Automatic revert to $CURRENT_SHA ALSO FAILED. Manual intervention required immediately (exit 3)." >&2
+        exit 3
+      fi
+    fi
+    echo "No different previous release recorded; cannot auto-revert. Manual intervention required (exit 1)." >&2
+    exit 1
+  fi
+  sleep "$HEALTH_INTERVAL_SECONDS"
+done
+
+mkdir -p "$STATE_DIR"
+if [ -n "$CURRENT_SHA" ] && [ "$CURRENT_SHA" != "$NEW_SHA" ]; then
+  echo "$CURRENT_SHA" > "$PREVIOUS_FILE"
+fi
+echo "$NEW_SHA" > "$CURRENT_FILE"
+# Refresh the stable rollback entrypoint from this exact release's own
+# copy, so the operator never needs to know which release directory to
+# look in (docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md §4).
+cp "$RELEASE_DIR/rollback.sh" "$HULLQ_ROOT/rollback.sh"
+chmod +x "$HULLQ_ROOT/rollback.sh"
+
+echo "Deploy succeeded: $NEW_SHA is now the current release."

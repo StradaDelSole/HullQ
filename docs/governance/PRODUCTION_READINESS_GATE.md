@@ -54,7 +54,7 @@ This record is intentionally separate from feature prioritization. It makes oper
 
 ## Current execution
 
-SLICE-0079 — Production Readiness & External Broker Pilot Foundation owns the current implementation/evidence pass for this gate.
+SLICE-0079 — Production Readiness & External Broker Pilot Foundation owns the current implementation/evidence pass for this gate. Full evidence: `docs/validation/PRODUCTION_READINESS_EVIDENCE_2026-10.md`.
 
 ```text
 PRODUCTION_READINESS_GATE_STATUS = IN_PROGRESS
@@ -65,6 +65,47 @@ PUBLIC_PRODUCTION_LAUNCH_STATUS = NOT_STARTED
 ```
 
 `IN_PROGRESS` records proactive readiness work only. It does not authorize real external production data, pilot activity or public launch. The status may become `PASS` only through verified SLICE-0079 gate evidence and the normal independent-review / Owner-acceptance workflow.
+
+SLICE-0079 implemented and locally proved (against real, non-production
+resources) every mechanism this gate requires: repository-owned immutable
+Docker images (`Dockerfile`, `web/Dockerfile`); the real per-commit
+release-directory deploy/rollback state machine
+(`scripts/ops/deploy.sh`/`rollback.sh`, `docker-compose.prod.yml`) proved by
+real execution of `scripts/ops/inspect_deploy_rollback_lifecycle.py`
+against the real Docker Engine on 2026-10-08, observed to exit 0 with all
+11 named invariants true, including that a release whose VPS-local state
+is completely lost is reconstructed from a durable off-host GHCR record
+rather than a potentially-divergent rebuild (independent-review Finding M),
+and that a registry lookup failure which is not a confirmed absence fails
+closed rather than falling through to an unsafe rebuild
+(independent-review Finding N)
+(`PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md` §5 has the exact command/output);
+every GHCR reference the deploy workflow builds now derives from one
+canonical lowercase namespace rather than the real, mixed-case
+`StradaDelSole` GitHub owner directly (independent-review Finding O), and
+the confirmed-absence check that gates a first publish now requires an
+EXACT match to the complete expected message for the exact queried
+reference rather than a suffix match that a nested manifest/content
+failure could also satisfy (independent-review Finding P) — both proven
+without Docker in `tests/unit/test_deploy_rollback_lifecycle_classifier.py`,
+and the real-Docker 11-invariant proof re-run clean after the classifier
+change (`PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md` §5);
+an independent encrypted R2-bound backup/restore
+mechanism with a real destroy-then-restore proof against a disposable
+PostgreSQL schema;
+structured JSON logging, a global unhandled-exception capture path,
+`/healthz`/`/readyz`, and an actionable operator-alert-webhook mechanism; a
+controlled migration CLI (real execution against a real
+incrementally-migrated database); and a smoke-check CLI (real execution
+against a real running instance). The gate remains `IN_PROGRESS` rather
+than `PASS` because three concrete gaps require the Project Owner's own
+production credentials/infrastructure decisions rather than anything
+SLICE-0079 could prove in its sandbox: no real GHCR push has yet been
+observed (the push-on-merge-to-`main` workflow has not fired), no real
+production VPS exists to deploy to, and no real DigitalOcean Managed
+PostgreSQL instance has been provisioned (so database HA is honestly
+`NOT_ACTIVE`, which the gate's own text permits for a strictly-internal
+phase). See evidence document §9 for the exact residual list.
 
 ## Required PASS evidence
 

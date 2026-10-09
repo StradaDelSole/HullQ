@@ -1,0 +1,583 @@
+name: Deploy
+
+# SLICE-0079 — docs/governance/PRODUCTION_READINESS_GATE.md §1
+# ("controlled deployment uses CI-verified immutable Docker images... in
+# GHCR"). Mirrors ci.yml's trigger/pin/checkout conventions.
+#
+# `build` runs on every push/PR and never pushes anything -- it only proves
+# both Dockerfiles still build. `verify_ci_passed` (independent-review
+# Finding H) then fails closed unless the "CI" and "Manufacturer artifact
+# reproducibility" workflows' required checks have actually succeeded for
+# THIS EXACT commit SHA -- see that job's own comment. Only once both have
+# passed do `push_api_to_ghcr`/`push_web_to_ghcr` each push their image to
+# GHCR, tagged with the exact immutable git commit SHA for human
+# readability (never `latest` --
+# docs/ARCHITECTURE_REBASELINE_2026-09-02.md §24) -- but only on push to
+# `main` or an explicit manual run: a pull_request from an untrusted fork
+# must never be able to publish a package under this repository's GHCR
+# namespace using `secrets.GITHUB_TOKEN`. Independent-review Finding L: a
+# `sha-<commit>` TAG alone is not a mechanically immutable image identity
+# (the same tag could in principle be republished with different bytes by
+# a rerun/retry, and the Dockerfiles' own upstream base images are
+# themselves mutable tags) -- so each push job also exposes the real OCI
+# manifest `digest` GHCR assigned as a job output, and `deploy` binds that
+# exact digest into the release's own `image-refs.env`, never resolving
+# the tag at deploy/rollback time. Independent-review Finding M: that
+# `image-refs.env` binding exists only on the application VPS, which the
+# accepted architecture requires to be replaceable/rebuildable from
+# scratch -- so each push job first checks whether `sha-<commit>` already
+# has a resolvable digest in GHCR (durable, off-host, survives total VPS
+# loss) and reuses it unconditionally rather than rebuilding, so a lost
+# VPS can always be reconstructed to the SAME digests a commit originally
+# established, never silently rebuilt into different ones. Independent
+# -review Finding O: Docker/OCI references must be lowercase, so every
+# GHCR reference in this file is built from `resolve_namespace`'s single
+# canonical lowercase owner output, never from the raw (mixed-case)
+# `github.repository_owner` directly. Independent-review Finding P: the
+# confirmed-absence check each push job performs is an EXACT match
+# against the complete expected "<ref>: not found" message, not a suffix
+# match -- a suffix match could misclassify a nested manifest/content
+# -resolution failure as a confirmed absence of the top-level queried ref.
+#
+# `deploy` is manual-only (`workflow_dispatch` with `deploy: true`) AND
+# fail-closed to the canonical branch (`github.ref ==
+# 'refs/heads/main'` -- independent-review Finding G): an unmerged/
+# unaccepted feature or slice branch can never reach the production VPS
+# through this workflow, no matter how it is dispatched. It is additionally
+# gated behind the `production` GitHub Environment (configure required
+# reviewers/secrets there before first use, AND restrict that Environment's
+# allowed deployment branches to `main` only --
+# docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md §2 -- defense in
+# depth alongside the workflow-level ref check above). It has not been
+# exercised against a real VPS by SLICE-0079 itself: that requires
+# production SSH/host secrets this slice does not have access to and must
+# not fabricate.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Also deploy the pushed images to the production VPS (requires the production environment's secrets)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.workflow }}-${{ github.ref }}
+  # A deploy in flight must never be cancelled mid-rollout by a newer push
+  # -- that could leave the VPS mid-swap between two image tags.
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build ${{ matrix.image }} image (no push)
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: api
+            context: .
+            dockerfile: Dockerfile
+          - image: web
+            context: web
+            dockerfile: web/Dockerfile
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build ${{ matrix.image }} image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: false
+          load: false
+
+  verify_ci_passed:
+    name: verify CI/security/reproducibility gate passed for this exact commit
+    # Independent-review amendment (Finding H): accepted architecture is
+    # GitHub Actions -> tests/security checks -> immutable versioned
+    # images -> GHCR -> controlled deployment. Before this amendment,
+    # push_to_ghcr/deploy depended only on THIS workflow's own harmless
+    # build-sanity job -- never on the "CI" workflow's
+    # quality/db-integration/dependency-audit/historical-replay checks or
+    # the "Manufacturer artifact reproducibility" workflow's checks, so a
+    # main commit whose normal checks were failing could still be built,
+    # pushed and manually deployed. This job queries GitHub's own Checks
+    # API directly for `github.sha` -- the EXACT commit this run is
+    # building/deploying, not branch-protection status or a differently
+    # -pinned/older SHA -- and fails closed unless every required check
+    # has actually completed with `success` for that exact SHA. Polling is
+    # required (rather than a one-shot check) because this workflow's own
+    # push-triggered run starts independently of, and often finishes
+    # before, the CI/reproducibility workflows' runs for the same push.
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      checks: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SHA: ${{ github.sha }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Wait for required checks to succeed on this exact commit
+        run: |
+          required=(
+            "quality (ubuntu-latest)"
+            "quality (windows-latest)"
+            "web quality (Astro/Node)"
+            "db integration (PostgreSQL 18)"
+            "historical research/bootstrap replay (PostgreSQL 18)"
+            "dependency audit"
+            "reproduce (ubuntu-latest)"
+            "reproduce (windows-latest)"
+          )
+          deadline=$(( $(date +%s) + 1200 ))
+          while true; do
+            runs_json="$(gh api "repos/$REPO/commits/$SHA/check-runs?per_page=100" -q '.check_runs')"
+            missing=()
+            pending=()
+            failed=()
+            for name in "${required[@]}"; do
+              entry="$(echo "$runs_json" | jq -c --arg n "$name" '[.[] | select(.name == $n)] | sort_by(.started_at) | last')"
+              if [ "$entry" = "null" ]; then
+                missing+=("$name")
+                continue
+              fi
+              status="$(echo "$entry" | jq -r '.status')"
+              conclusion="$(echo "$entry" | jq -r '.conclusion')"
+              if [ "$status" != "completed" ]; then
+                pending+=("$name")
+              elif [ "$conclusion" != "success" ]; then
+                failed+=("$name")
+              fi
+            done
+            if [ "${#failed[@]}" -gt 0 ]; then
+              echo "Required check(s) failed for commit $SHA: ${failed[*]}" >&2
+              exit 1
+            fi
+            if [ "${#missing[@]}" -eq 0 ] && [ "${#pending[@]}" -eq 0 ]; then
+              echo "All required checks succeeded for commit $SHA."
+              exit 0
+            fi
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "Timed out waiting for checks on commit $SHA. missing=${missing[*]:-none} pending=${pending[*]:-none}" >&2
+              exit 1
+            fi
+            echo "Waiting for checks on commit $SHA... missing=${missing[*]:-none} pending=${pending[*]:-none}"
+            sleep 30
+          done
+
+  # Independent-review amendment (Finding O): Docker/OCI repository names
+  # must be lowercase, but `github.repository_owner` is the canonical
+  # mixed-case GitHub login ("StradaDelSole"). Before this job existed,
+  # some GHCR references in this workflow were built directly from that
+  # raw value while OTHER logic already hardcoded the lowercase form --
+  # an inconsistency that could make the very FIRST real lookup fail with
+  # an invalid-reference error (not a confirmed absence), which Finding
+  # N's own correct fail-closed behavior would then block on forever.
+  # Computing the canonical lowercase namespace exactly once here, and
+  # having every later job consume THIS job's output, is what makes it
+  # impossible for two spots to independently (and incorrectly) spell the
+  # namespace differently again.
+  resolve_namespace:
+    name: resolve canonical lowercase GHCR namespace
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      owner: ${{ steps.lower.outputs.owner }}
+    steps:
+      - name: Lowercase the repository owner for GHCR references
+        id: lower
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          lower="$(printf '%s' "$OWNER" | tr '[:upper:]' '[:lower:]')"
+          echo "owner=$lower" >> "$GITHUB_OUTPUT"
+
+  # Independent-review amendment (Finding L): split out of the previous
+  # single matrix job so each image's push has its OWN addressable job
+  # output -- `needs.<job>.outputs.X` on a matrix job does not reliably
+  # give you every matrix leg's value, only split named jobs do. The
+  # `digest` output is the real immutable OCI manifest digest GHCR
+  # assigned to what was just pushed (`docker/build-push-action`'s own
+  # output, not derived from the `sha-<commit>` tag), which `deploy`
+  # below binds into this release's `image-refs.env` -- the actual
+  # immutable identity, not the mutable tag.
+  push_api_to_ghcr:
+    name: push api image to GHCR
+    if: github.event_name != 'pull_request'
+    needs: [build, verify_ci_passed, resolve_namespace]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.resolve.outputs.digest }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Independent-review amendment (Finding M): GHCR is this release's
+      # DURABLE off-host release manifest -- the `sha-<commit>` tag's
+      # resolved digest survives even a total loss/rebuild of the
+      # application VPS, unlike $DEPLOY_PATH/releases/<sha>/image-refs.env
+      # (Finding L), which exists only on that host. If this exact tag was
+      # ever successfully published before (by this run or any earlier
+      # one), its digest is the durable record of what commit X means --
+      # reuse it unconditionally rather than rebuilding, so a rebuild that
+      # would produce different bytes (mutable upstream base images) can
+      # never silently redefine an already-established commit.
+      #
+      # Independent-review amendment (Finding N): a non-zero exit from
+      # `imagetools inspect` is NOT proof the tag doesn't exist -- it can
+      # equally mean a transient registry/network outage, an auth failure,
+      # or a rate limit. Treating any failure as "not published" (the
+      # previous version of this step) risked exactly the Finding L/M
+      # invariant this mechanism exists to protect: a temporary lookup
+      # failure for an ALREADY-established commit could fall through to
+      # rebuilding and overwriting it. This step therefore distinguishes
+      # three outcomes explicitly: (1) inspect succeeds -> reuse that
+      # digest, after validating its shape; (2) inspect fails with
+      # buildx's own confirmed "<ref>: not found" message (verified
+      # empirically against a real registry, not assumed) -> this is the
+      # ONLY case allowed to proceed to a first publish; (3) any other
+      # failure (network/auth/rate-limit/unexpected response) -> fail this
+      # job immediately, build nothing, push nothing, touch no release
+      # identity.
+      #
+      # Independent-review amendment (Finding P): the confirmed-absence
+      # match below is an EXACT match against the complete expected
+      # message for THIS `$REF`, not a suffix match -- a suffix match
+      # (e.g. anything ending in ": not found") could also match a nested
+      # manifest/content-resolution failure whose own message happens to
+      # end the same way even though the top-level queried ref actually
+      # exists. If buildx's wording ever changes, this intentionally stops
+      # classifying anything as absent (a safe availability failure)
+      # rather than silently broadening to match more text.
+      - name: Check GHCR for this exact commit's durable image identity
+        id: existing
+        run: |
+          REF="ghcr.io/${{ needs.resolve_namespace.outputs.owner }}/hullq-api:sha-${{ github.sha }}"
+          set +e
+          output="$(docker buildx imagetools inspect "$REF" 2>&1)"
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then
+            digest="$(printf '%s\n' "$output" | awk '/^Digest:/ {print $2}')"
+            if ! printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+              echo "Resolved digest for $REF has an unexpected shape: '$digest'" >&2
+              exit 1
+            fi
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "digest=$digest" >> "$GITHUB_OUTPUT"
+            echo "GHCR already durably records $REF -> $digest; reusing it, not rebuilding."
+          elif [ "$output" = "ERROR: $REF: not found" ]; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "Confirmed: $REF does not exist yet; this run may establish it."
+          else
+            echo "Could not confirm whether $REF exists -- a registry/network/auth failure is NOT a confirmed absence (independent-review Finding N/P). Failing closed rather than risking an unsafe rebuild of an already-established release:" >&2
+            printf '%s\n' "$output" >&2
+            exit 1
+          fi
+
+      - name: Derive image metadata
+        if: steps.existing.outputs.found != 'true'
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ghcr.io/${{ needs.resolve_namespace.outputs.owner }}/hullq-api
+          # Immutable exact-commit tag only -- deliberately no `latest`
+          # (ARCHITECTURE_REBASELINE_2026-09-02.md §24). This tag is also
+          # the durable off-host release-manifest key (Finding M); `deploy`
+          # deploys by the `digest` output below, never by re-resolving
+          # this tag at deploy/rollback time.
+          tags: type=sha,format=long
+
+      - name: Build and push api image (only if not already durably published)
+        if: steps.existing.outputs.found != 'true'
+        id: push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Resolve this release's durable digest
+        id: resolve
+        run: |
+          if [ "${{ steps.existing.outputs.found }}" = "true" ]; then
+            echo "digest=${{ steps.existing.outputs.digest }}" >> "$GITHUB_OUTPUT"
+          else
+            digest="${{ steps.push.outputs.digest }}"
+            if ! printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+              echo "Freshly-pushed digest has an unexpected shape: '$digest'" >&2
+              exit 1
+            fi
+            # Independent-review Finding N recommended safeguard: re-resolve
+            # the tag we just pushed from the registry itself and confirm it
+            # matches what the push action reported, rather than trusting
+            # that single report alone.
+            REF="ghcr.io/${{ needs.resolve_namespace.outputs.owner }}/hullq-api:sha-${{ github.sha }}"
+            verify_output="$(docker buildx imagetools inspect "$REF" 2>&1)"
+            verify_digest="$(printf '%s\n' "$verify_output" | awk '/^Digest:/ {print $2}')"
+            if [ "$verify_digest" != "$digest" ]; then
+              echo "Post-push verification mismatch for $REF: push reported $digest, registry now resolves $verify_digest" >&2
+              exit 1
+            fi
+            echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          fi
+
+  push_web_to_ghcr:
+    name: push web image to GHCR
+    if: github.event_name != 'pull_request'
+    needs: [build, verify_ci_passed, resolve_namespace]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.resolve.outputs.digest }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # See push_api_to_ghcr's own "Check GHCR for this exact commit's
+      # durable image identity" step -- same Finding M/N/P rationale,
+      # applied to the web image's own GHCR repository/tag.
+      - name: Check GHCR for this exact commit's durable image identity
+        id: existing
+        run: |
+          REF="ghcr.io/${{ needs.resolve_namespace.outputs.owner }}/hullq-web:sha-${{ github.sha }}"
+          set +e
+          output="$(docker buildx imagetools inspect "$REF" 2>&1)"
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then
+            digest="$(printf '%s\n' "$output" | awk '/^Digest:/ {print $2}')"
+            if ! printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+              echo "Resolved digest for $REF has an unexpected shape: '$digest'" >&2
+              exit 1
+            fi
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "digest=$digest" >> "$GITHUB_OUTPUT"
+            echo "GHCR already durably records $REF -> $digest; reusing it, not rebuilding."
+          elif [ "$output" = "ERROR: $REF: not found" ]; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "Confirmed: $REF does not exist yet; this run may establish it."
+          else
+            echo "Could not confirm whether $REF exists -- a registry/network/auth failure is NOT a confirmed absence (independent-review Finding N/P). Failing closed rather than risking an unsafe rebuild of an already-established release:" >&2
+            printf '%s\n' "$output" >&2
+            exit 1
+          fi
+
+      - name: Derive image metadata
+        if: steps.existing.outputs.found != 'true'
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ghcr.io/${{ needs.resolve_namespace.outputs.owner }}/hullq-web
+          tags: type=sha,format=long
+
+      - name: Build and push web image (only if not already durably published)
+        if: steps.existing.outputs.found != 'true'
+        id: push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: web
+          file: web/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Resolve this release's durable digest
+        id: resolve
+        run: |
+          if [ "${{ steps.existing.outputs.found }}" = "true" ]; then
+            echo "digest=${{ steps.existing.outputs.digest }}" >> "$GITHUB_OUTPUT"
+          else
+            digest="${{ steps.push.outputs.digest }}"
+            if ! printf '%s' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+              echo "Freshly-pushed digest has an unexpected shape: '$digest'" >&2
+              exit 1
+            fi
+            # Independent-review Finding N recommended safeguard: re-resolve
+            # the tag we just pushed from the registry itself and confirm it
+            # matches what the push action reported, rather than trusting
+            # that single report alone.
+            REF="ghcr.io/${{ needs.resolve_namespace.outputs.owner }}/hullq-web:sha-${{ github.sha }}"
+            verify_output="$(docker buildx imagetools inspect "$REF" 2>&1)"
+            verify_digest="$(printf '%s\n' "$verify_output" | awk '/^Digest:/ {print $2}')"
+            if [ "$verify_digest" != "$digest" ]; then
+              echo "Post-push verification mismatch for $REF: push reported $digest, registry now resolves $verify_digest" >&2
+              exit 1
+            fi
+            echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    name: deploy to production VPS
+    # Independent-review amendment (Finding G): production deployment must
+    # fail closed on anything but the accepted canonical branch -- a
+    # workflow_dispatch run against an unmerged/unaccepted feature or slice
+    # branch must never be able to reach the VPS, regardless of the
+    # `deploy` input. `github.ref` is the ref actually being built/deployed
+    # in this run (not just the ref the workflow file was read from), so
+    # this is the real fail-closed gate, not a cosmetic one.
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy == true && github.ref == 'refs/heads/main'
+    needs: [resolve_namespace, push_api_to_ghcr, push_web_to_ghcr]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    # Independent-review amendment (Finding G): a fixed, ref-independent
+    # concurrency group so at most one deploy job can ever be mutating the
+    # production VPS at a time -- distinct from the build/push jobs' own
+    # per-ref concurrency group above, which is fine to keep per-ref since
+    # those jobs never touch the VPS.
+    concurrency:
+      group: hullq-production-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Deploy over SSH
+        # Independent-review amendment (Finding A/B): deploy.sh takes NO
+        # arguments and derives the Compose/Caddy configuration it deploys
+        # entirely from its own release directory's name
+        # (scripts/ops/deploy.sh header,
+        # docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md §1/§2). So
+        # this step must first materialize this exact commit's own release
+        # directory on the VPS -- $DEPLOY_PATH/releases/<github.sha>/,
+        # containing this checkout's own docker-compose.prod.yml, Caddyfile,
+        # deploy.sh, rollback.sh and (Finding L) this exact release's own
+        # `image-refs.env` -- and only then run that release's own
+        # deploy.sh.
+        #
+        # Independent-review amendment (Finding L): `image-refs.env` binds
+        # this release to the exact immutable `repository@sha256:<digest>`
+        # identities `push_api_to_ghcr`/`push_web_to_ghcr` just produced for
+        # THIS commit -- never a mutable `sha-<commit>` tag. Critically,
+        # this step writes that file ONLY the first time this release
+        # directory is materialized: if $RELEASE_DIR already exists (a
+        # rerun/retry/re-dispatch of this exact commit, including one
+        # after a partial previous publish), its existing `image-refs.env`
+        # is left untouched rather than being overwritten with a possibly
+        # different digest from this run's rebuild -- "once release X's
+        # image identity is established, later execution must never
+        # silently make X mean different image content." A fresh release
+        # directory still gets this run's real, just-produced digests.
+        #
+        # Independent-review amendment (Finding I): the production host's
+        # SSH identity must be verified against a value provisioned
+        # independently of this workflow run's own network path, not
+        # trusted-on-first-use from whatever key is presented right before
+        # it is used. DEPLOY_SSH_KNOWN_HOSTS holds the exact `known_hosts`
+        # line(s) for the production VPS, obtained ONCE out-of-band (e.g.
+        # from the VPS provider's console/control-panel host-key display,
+        # or an operator-run `ssh-keyscan` over a channel independently
+        # trusted at provisioning time -- never captured by this workflow
+        # itself) and stored as a `production` Environment secret
+        # (docs/operations/PRODUCTION_DEPLOY_ROLLBACK_RUNBOOK.md §2 has the
+        # one-time provisioning/rotation procedure). `StrictHostKeyChecking
+        # =yes` is passed explicitly so a missing/mismatched entry fails
+        # the connection rather than silently falling back to any
+        # interactive-prompt default.
+        env:
+          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          RELEASE_SHA: ${{ github.sha }}
+          API_DIGEST: ${{ needs.push_api_to_ghcr.outputs.digest }}
+          WEB_DIGEST: ${{ needs.push_web_to_ghcr.outputs.digest }}
+          GHCR_OWNER: ${{ needs.resolve_namespace.outputs.owner }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+          SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes"
+          SCP="scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes"
+          RELEASE_DIR="$DEPLOY_PATH/releases/$RELEASE_SHA"
+
+          if $SSH "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" "test -f '$RELEASE_DIR/image-refs.env'"; then
+            echo "Release $RELEASE_SHA already has an established image-refs.env on the VPS -- leaving its recorded image identity untouched (Finding L)."
+          else
+            $SSH "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" "mkdir -p '$RELEASE_DIR'"
+            printf 'HULLQ_API_IMAGE=ghcr.io/%s/hullq-api@%s\nHULLQ_WEB_IMAGE=ghcr.io/%s/hullq-web@%s\n' "$GHCR_OWNER" "$API_DIGEST" "$GHCR_OWNER" "$WEB_DIGEST" > image-refs.env
+            $SCP \
+              docker-compose.prod.yml Caddyfile scripts/ops/deploy.sh scripts/ops/rollback.sh image-refs.env \
+              "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST:$RELEASE_DIR/"
+          fi
+          $SSH "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" \
+            "chmod +x '$RELEASE_DIR/deploy.sh' '$RELEASE_DIR/rollback.sh' && '$RELEASE_DIR/deploy.sh'"
+
+      - name: Install uv and Python
+        # Independent-review amendment (Finding K): the smoke check must
+        # run with the same pinned `uv` version and locked dependency set
+        # as every other job in this repository, not an ad-hoc
+        # `pip install` of whatever `httpx` happens to be current on PyPI
+        # at deploy time -- production deploy must not depend on an
+        # unpinned supply-chain input.
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.12.5"
+          enable-cache: true
+          python-version: "3.14"
+
+      - name: Sync locked environment
+        run: uv sync --locked --no-dev
+
+      - name: Post-deploy smoke check
+        env:
+          HULLQ_SMOKE_BASE_URL: ${{ vars.HULLQ_PRODUCTION_BASE_URL }}
+        run: uv run python scripts/ops/smoke_check.py --base-url "$HULLQ_SMOKE_BASE_URL"
