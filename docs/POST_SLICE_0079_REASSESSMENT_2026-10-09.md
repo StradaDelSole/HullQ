@@ -100,13 +100,9 @@ SLICE-0068 implemented only the primary R2 original/quarantine and derivative st
 
 ### GENUINELY_OPEN
 
-One implementation-adjacent provider decision remains for the newly surfaced media-redundancy capability:
+No material product/provider decision remains open for SLICE-0080 readiness.
 
-- which non-Cloudflare S3-compatible provider should hold the independent original-media copy.
-
-The provider must be operationally independent of Cloudflare R2 and must not become domain identity. The implementation should preserve an S3-compatible/provider-abstracted boundary so a later provider change does not redefine MediaAsset identity.
-
-Current practical candidates include a second provider already needed by HullQ (DigitalOcean Spaces) or a dedicated low-cost backup/object-storage provider. Provider selection affects credentials, endpoint configuration, cost and operational-account count and therefore remains an Owner decision before SLICE-0080 readiness becomes READY.
+After this reassessment was merged, the Project Owner explicitly selected **Backblaze B2 EU Central** as the independent second provider for broker original/source media. The decision is retained in `docs/BROKER_ORIGINAL_MEDIA_REDUNDANCY_PROVIDER_DECISION_2026-10-09.md`. B2 remains operational storage metadata only and must not become MediaAsset identity.
 
 ### CONFLICT_OR_REGRESSION
 
@@ -227,7 +223,7 @@ Real external buyer visibility still additionally requires the accepted PostgreS
 ```text
 POST_SLICE_0079_RECONCILIATION = PASS
 SLICE_0080_CAPABILITY_SELECTED = Provider-Independent Broker Original-Media Redundancy
-SLICE_0080_READINESS_STATUS = NOT_READY — secondary provider decision still required
+SLICE_0080_READINESS_STATUS = IN_REVIEW — Backblaze B2 provider decision owner-accepted
 PRODUCTION_LAUNCH_PACK_PHASE = NOT_STARTED
 EXTERNAL_BROKER_PILOT_AUTHORIZED = NO
 PUBLIC_LAUNCH_AUTHORIZED = NO
