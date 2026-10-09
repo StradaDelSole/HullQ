@@ -129,27 +129,27 @@ Post-SLICE-0079 reconciliation also restored one already-accepted
 architecture obligation that was not visible in SLICE-0079's three-item
 summary:
 
-8. **Provider-independent broker-original media redundancy: mechanism
-   implemented, real provider unobserved.** `docs/ARCHITECTURE_REBASELINE_
+8. **Provider-independent broker-original media redundancy: repository
+   mechanism Owner-accepted; real provider unobserved.** `docs/ARCHITECTURE_REBASELINE_
    2026-09-02.md` §22 requires an independent second copy of original
    broker media at a different storage provider before real broker
-   production. SLICE-0080 (candidate, pending independent review/Owner
-   acceptance) adds a Backblaze B2 S3-compatible adapter/configuration
-   boundary distinct from Cloudflare R2, extends broker image-upload
-   orchestration so a new MediaAsset row commits only after both the
-   primary R2 original write and the independent B2 original write are
-   confirmed, and adds durable PostgreSQL redundancy truth (`backup_
-   provider`/`backup_object_key`/`backup_established_at`, with a database
-   CHECK constraint rejecting any partial/impossible shape; pre-existing
-   rows migrate as unverified, never fabricated as backed up). Deterministic
-   fake-dual-store tests cover primary failure, B2 failure/auth/network/
-   timeout-style error, rejected-image and derivative-failure ordering,
-   database-failure-after-storage-success, same-Organization reuse writing
-   no second backup, retirement preserving the backup locator, and the
-   primary/backup endpoint-collision guard. **MECHANISM PROVEN, REAL B2 NOT
-   YET OBSERVED** — the real Backblaze EU Central account/bucket/application
-   key remain Production Launch Pack operator setup and are not provisioned
-   by this slice.
+   production. Owner-accepted SLICE-0080 implements a Backblaze B2 EU Central
+   S3-compatible adapter/configuration boundary distinct from Cloudflare R2,
+   extends broker image-upload orchestration so a new MediaAsset row commits
+   only after both the primary R2 original write and the independent B2
+   original write are confirmed, and adds durable PostgreSQL redundancy truth
+   (`backup_provider`/`backup_object_key`/`backup_established_at`) with
+   database constraints rejecting partial, unsupported-provider and
+   empty/whitespace locator shapes while pre-existing rows remain unverified.
+   Exact-head adversarial proof covers primary/B2 failure, provider auth/
+   network/timeout and streaming-body errors, rejected-image and derivative-
+   failure ordering, database-failure-after-storage-success, same-Organization
+   reuse writing no second backup, retirement preserving the backup locator,
+   public-read isolation, structural Backblaze EU Central endpoint validation
+   and database-shape bypass attempts. **MECHANISM PROVEN, REAL B2 NOT YET
+   OBSERVED** — the real Backblaze EU Central account/bucket/application key,
+   secret-store wiring and live write/read/delete observation remain
+   Production Launch Pack operator setup.
 
 These residuals are not permission to infer production readiness from
 mechanism-level proof. Provider-console state and real production
