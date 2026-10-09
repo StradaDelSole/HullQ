@@ -227,7 +227,7 @@ Controlling gate: docs/governance/PRODUCTION_READINESS_GATE.md.
 | MVP-PROD-010 | incident communication/status path | before broad public production | PENDING |
 | MVP-PROD-011 | incident-response/post-incident operating procedure | overall production MVP | PENDING |
 | MVP-PROD-012 | holistic Security Hardening & Adversarial Validation gate | before first external broker self-service pilot | IMPLEMENTED by SLICE-0078 — gate PASS; SEC-0078-07 Owner-risk-accepted with retained re-review triggers |
-| MVP-PROD-013 | provider-independent second copy of broker original media | before real broker production media | PENDING — accepted architecture §22 requires a different storage provider from primary Cloudflare R2; SLICE-0068 implemented primary-only storage plus future backup/purge compatibility; selected for SLICE-0080 by the post-0079 reassessment |
+| MVP-PROD-013 | provider-independent second copy of broker original media | before real broker production media | READY — accepted architecture §22; Backblaze B2 EU Central owner-selected as the independent provider; SLICE-0080 readiness defines synchronous dual-original write + non-fabricated redundancy truth; implementation not started |
 
 ## L. Data Operations and Truth Maintenance
 

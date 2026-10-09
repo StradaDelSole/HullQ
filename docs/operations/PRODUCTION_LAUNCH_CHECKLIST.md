@@ -37,10 +37,10 @@ Statuses in this table are account/ownership setup states only. They do not impl
 | HullQ domain registrar / `hullq.com` ownership | authoritative domain control before DNS/edge | before production DNS work | registrar/account owner not yet retained | not yet retained | registrar/renewal state not yet retained | OWNER_INPUT_REQUIRED |
 | Cloudflare | DNS/proxy/edge; primary marketplace-media R2; independent encrypted DB-backup R2 | before closed production infrastructure; edge before external exposure | account/zone/R2 ownership not yet retained | not yet retained | EU/data-location/billing configuration not yet retained | OWNER_INPUT_REQUIRED |
 | Contabo | selected initial replaceable Linux application VPS | before closed production infrastructure | account ownership not yet retained | not yet retained | VPS plan/region not yet provisioned | OWNER_INPUT_REQUIRED |
-| DigitalOcean | Managed PostgreSQL 18 FRA1 Standard; optional candidate for secondary media storage | before closed production infrastructure | account/team ownership not yet retained | not yet retained | DB plan/region FRA1 accepted; actual subscription not yet provisioned | OWNER_INPUT_REQUIRED |
+| DigitalOcean | Managed PostgreSQL 18 FRA1 Standard | before closed production infrastructure | account/team ownership not yet retained | not yet retained | DB plan/region FRA1 accepted; actual subscription not yet provisioned | OWNER_INPUT_REQUIRED |
 | Auth0 Public Cloud | EU tenant, authentication-only | before real interactive broker authentication | account/tenant ownership not yet retained | tenant/admin recovery not yet retained | EU tenant accepted; actual production tenant state not yet retained | OWNER_INPUT_REQUIRED |
 | Operator alert destination | actionable production alert webhook; current implementation accepts Slack or Discord webhook | before Production Readiness PASS when operator relies on alert delivery | provider/account/channel not yet selected/retained | provider-dependent | provider choice open | OWNER_DECISION_REQUIRED |
-| Independent broker-original media backup provider | second durable copy at a provider different from Cloudflare R2 | before real broker production media; implementation selected for SLICE-0080 | provider not yet selected | provider-dependent | provider/cost decision open | OWNER_DECISION_REQUIRED |
+| Backblaze B2 EU Central | independent second copy of broker original/source media, separate from primary Cloudflare R2 | before real broker production media; implementation selected for SLICE-0080 | provider owner-decided; real account not yet provisioned | MFA/recovery evidence required in Phase 1 | EU Central / Amsterdam accepted; usage-based billing; real account/billing not yet retained | OWNER_ACCOUNT_SETUP_REQUIRED |
 | Zammad Hosted Professional v2 | customer Help/Support system | before external support launch | accepted product choice; account not yet provisioned | later | later | LATER_TRIGGER |
 | Transactional email provider | real external lead/account email delivery when relied upon | before real external email dependency | no accepted concrete provider yet | later | later provider decision | LATER_TRIGGER |
 
@@ -56,17 +56,11 @@ original/source media before real broker production
 
 The secondary provider must not become MediaAsset/domain identity and should be consumed through an S3-compatible/provider-abstracted HullQ boundary.
 
-The current Owner decision is deliberately not guessed in this checklist. The decision should optimize:
+Owner decision: **Backblaze B2 EU Central**.
 
-- provider independence from Cloudflare;
-- EU-appropriate data location;
-- low solo-operator account burden;
-- predictable MVP cost;
-- S3-compatible integration;
-- credentials that can be least-privilege and separated from the primary media store;
-- future purge/recovery operability.
+The accepted choice preserves provider independence from Cloudflare, uses an EU data region, provides an S3-compatible integration surface and fits the project's highly constrained MVP budget. The provider decision is retained in `docs/BROKER_ORIGINAL_MEDIA_REDUNDANCY_PROVIDER_DECISION_2026-10-09.md`.
 
-SLICE-0080 readiness remains blocked until this provider direction is decided because endpoint/credential/configuration and executable failure semantics depend on it.
+SLICE-0080 readiness is READY; the real account/bucket/application key remains Phase-1/Phase-2 operator work and is not created by the slice.
 
 ## Phase 1 Done-when
 
