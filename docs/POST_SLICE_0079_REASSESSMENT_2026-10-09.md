@@ -223,7 +223,7 @@ Real external buyer visibility still additionally requires the accepted PostgreS
 ```text
 POST_SLICE_0079_RECONCILIATION = PASS
 SLICE_0080_CAPABILITY_SELECTED = Provider-Independent Broker Original-Media Redundancy
-SLICE_0080_READINESS_STATUS = IN_REVIEW — Backblaze B2 provider decision owner-accepted
+SLICE_0080_READINESS_STATUS = READY — Backblaze B2 provider decision owner-accepted
 PRODUCTION_LAUNCH_PACK_PHASE = NOT_STARTED
 EXTERNAL_BROKER_PILOT_AUTHORIZED = NO
 PUBLIC_LAUNCH_AUTHORIZED = NO
