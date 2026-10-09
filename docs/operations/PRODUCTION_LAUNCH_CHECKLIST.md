@@ -8,11 +8,13 @@
 
 ## Current execution boundary
 
-The next operator goal is:
+The active operator goal is:
 
 ```text
 Phase 1 — Accounts & Ownership
 ```
+
+Post-SLICE-0080 reconciliation deliberately selects this provider/account work instead of opening SLICE-0081.
 
 No production launch phase advances until the complete Phase-1 Done-when conditions are evidenced and a reviewed repository maintenance/closure change updates `PRODUCTION_LAUNCH_PACK_PHASE`.
 
@@ -61,6 +63,29 @@ Owner decision: **Backblaze B2 EU Central**.
 The accepted choice preserves provider independence from Cloudflare, uses an EU data region, provides an S3-compatible integration surface and fits the project's highly constrained MVP budget. The provider decision is retained in `docs/BROKER_ORIGINAL_MEDIA_REDUNDANCY_PROVIDER_DECISION_2026-10-09.md`.
 
 SLICE-0080 implementation is Owner-accepted; the real account/bucket/application key, secret-store wiring and live connectivity proof remain Phase-1/Phase-2 operator work and were not created by the slice.
+
+## Current Phase-1 execution order
+
+To minimize recurring spend and avoid provisioning resources before their ownership/recovery boundary is ready:
+
+```text
+1. GitHub / GHCR evidence
+2. hullq.com registrar ownership
+3. Cloudflare account / zone / R2 ownership
+4. Backblaze B2 EU Central account
+5. Auth0 EU tenant/account
+6. DigitalOcean account
+   → explicit Owner decision before paid PostgreSQL provisioning
+7. Contabo account
+   → no VPS purchase yet
+8. operator alert destination decision
+```
+
+DigitalOcean provider-plan watch, verified 2026-10-09: DigitalOcean announces that beginning 2026-10-15 for accounts that have never created PostgreSQL/MySQL and beginning 2026-11-30 generally, new Standard Edition clusters no longer support standby/read-only nodes; existing clusters are not affected. This creates a time-sensitive conflict risk with HullQ's accepted low-cost Standard→later-standby HA path. Phase 1 may create/secure the DigitalOcean account, but no paid database cluster is provisioned without explicit Owner approval.
+
+Official references:
+- https://docs.digitalocean.com/products/databases/
+- https://docs.digitalocean.com/products/databases/postgresql/details/pricing/
 
 ## Phase 1 Done-when
 
