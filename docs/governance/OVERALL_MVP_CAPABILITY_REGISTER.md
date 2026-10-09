@@ -215,7 +215,7 @@ Controlling gate: docs/governance/PRODUCTION_READINESS_GATE.md.
 
 | ID | Capability | Timing | Status |
 |---|---|---|---|
-| MVP-PROD-001 | immutable CI-built production deploy + rollback | before production gate PASS | PARTIAL — mechanism implemented + locally proven by SLICE-0079; real GHCR push/VPS deploy not yet observed (`docs/validation/PRODUCTION_READINESS_EVIDENCE_2026-10.md` §1/§9) |
+| MVP-PROD-001 | immutable CI-built production deploy + rollback | before production gate PASS | PARTIAL — mechanism implemented + locally proven by SLICE-0079; real GHCR API/web publication is now observed SUCCESS on canonical main Deploy run #28 / run id `37868264887`; real VPS deploy/rollback remains unobserved (`docs/validation/PRODUCTION_READINESS_EVIDENCE_2026-10.md` §1/§9) |
 | MVP-PROD-002 | production PostgreSQL target and controlled migrations | before production gate PASS | PARTIAL — migration CLI implemented + real-executed by SLICE-0079; no real DO Managed PostgreSQL instance provisioned yet (evidence §2/§8/§9) |
 | MVP-PROD-003 | automatic failover/standby before real buyer exposure to external inventory | hard trigger | PENDING — `POSTGRESQL_HA_STATUS = NOT_ACTIVE`, explicitly recorded by SLICE-0079 (evidence §2) |
 | MVP-PROD-004 | independent encrypted backup + tested restore | before production gate PASS | IMPLEMENTED by SLICE-0079 — real destroy-then-restore proof against disposable PostgreSQL (evidence §2) |
@@ -227,6 +227,7 @@ Controlling gate: docs/governance/PRODUCTION_READINESS_GATE.md.
 | MVP-PROD-010 | incident communication/status path | before broad public production | PENDING |
 | MVP-PROD-011 | incident-response/post-incident operating procedure | overall production MVP | PENDING |
 | MVP-PROD-012 | holistic Security Hardening & Adversarial Validation gate | before first external broker self-service pilot | IMPLEMENTED by SLICE-0078 — gate PASS; SEC-0078-07 Owner-risk-accepted with retained re-review triggers |
+| MVP-PROD-013 | provider-independent second copy of broker original media | before real broker production media | PENDING — accepted architecture §22 requires a different storage provider from primary Cloudflare R2; SLICE-0068 implemented primary-only storage plus future backup/purge compatibility; selected for SLICE-0080 by the post-0079 reassessment |
 
 ## L. Data Operations and Truth Maintenance
 
@@ -256,12 +257,12 @@ Nothing in this register supersedes existing accepted invariants, including:
 
 ## Current overall interpretation
 
-As of 2026-10-03:
+As of 2026-10-09:
 
 - the marketplace/truth/search/broker operational loop through factual performance reporting is materially implemented through SLICE-0075;
 - broker usability evidence + competitive benchmark is implemented by SLICE-0076; the resulting Lead-assignment blocker was closed by SLICE-0077 and the Broker Workspace Launch Gate now supports PASS;
 - the dedicated Security Hardening & Adversarial Validation gate is implemented and PASS through SLICE-0078;
-- SLICE-0079 implements and locally proves (against real, non-production resources) every mechanism the Production Readiness Gate requires — deploy/rollback, encrypted backup/restore, observability/alerting, migration/smoke verification, secrets/least-privilege design — but the gate remains `IN_PROGRESS` pending real GHCR/VPS/managed-PostgreSQL provisioning the Project Owner has not yet made (`docs/validation/PRODUCTION_READINESS_EVIDENCE_2026-10.md`);
+- SLICE-0079 implements and locally proves the repository-owned Production Readiness mechanisms. After merge, canonical-main Deploy run #28 (`37868264887`) also real-executed the GHCR API/web publication path successfully. The gate remains `IN_PROGRESS` pending real VPS/managed-PostgreSQL and other boundary-specific provider configuration/evidence. Post-0079 reconciliation also restored the already-accepted architecture §22 requirement for a provider-independent second copy of broker original media, which remains unimplemented and is selected for SLICE-0080 (`docs/POST_SLICE_0079_REASSESSMENT_2026-10-09.md`);
 - the largest remaining overall-MVP workstreams include owner-direct completion, trust/verification/safety, buyer persistence/alerts, periodic reporting/export/Search-fit diagnostics, support/admin/privacy/legal/comms, monetization where included, and production/data operations;
 - these remaining workstreams are not permission to reopen already-decided architecture.
 
