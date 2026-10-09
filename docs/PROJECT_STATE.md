@@ -1,12 +1,12 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0079 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0080 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0080 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0081 -->
 <!-- PRODUCTION_LAUNCH_PACK_PHASE: NOT_STARTED -->
 
 **Updated:** 2026-10-09  
-**Latest owner-accepted / DONE slice:** SLICE-0079  
-**Current queue:** SLICE-0080 — **Provider-Independent Broker Original-Media Redundancy — READY ON MAIN**. Backblaze B2 EU Central is Owner-selected; the HIGH_RISK mechanical failure model is reviewed and the readiness package is canonical. Implementation starts only through `START_SLICE.bat 0080`. Production Readiness remains `IN_PROGRESS`; no external production data, pilot or public launch is authorized.  
+**Latest owner-accepted / DONE slice:** SLICE-0080  
+**Current queue:** SLICE-0081 — **UNSELECTED / reassessment required**. SLICE-0080 is Owner-accepted and merged; provider-independent broker-original redundancy is implemented in the repository, while the real Backblaze account/bucket/application-key and live-provider proof remain Production Launch Pack work. Production Readiness remains `IN_PROGRESS`; no external production data, pilot, buyer exposure or public launch is authorized.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -244,7 +244,7 @@ BROKER_SELF_SERVICE_PILOT_STATUS: NOT_STARTED
 PAID_BROKER_PLAN_STATUS: NOT_STARTED
 ```
 
-SLICE-0079 is owner-accepted and merged. It implements and locally proves the repository-owned production deployment, rollback, recoverability, observability and release mechanisms. Canonical-main Deploy run #28 (`37868264887`) subsequently real-executed API/web GHCR publication successfully, closing that provider-observation gap. The Production Readiness gate remains `IN_PROGRESS` because VPS/database/R2/alert/deploy-secret and later exposure-specific provider evidence is still incomplete. Post-SLICE-0079 reconciliation also restored the accepted architecture §22 requirement for a different-provider second copy of broker original media; current code remains primary-R2-only and SLICE-0080 is selected to close that implementation gap. No real external marketplace production data, broker self-service pilot, production pilot or public launch has started. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA rule remains mandatory.
+SLICE-0079 is owner-accepted and merged. It implements and locally proves the repository-owned production deployment, rollback, recoverability, observability and release mechanisms. Canonical-main Deploy run #28 (`37868264887`) subsequently real-executed API/web GHCR publication successfully, closing that provider-observation gap. SLICE-0080 is also Owner-accepted and merged: broker-uploaded original/source media now has a truthful synchronous independent-copy mechanism using primary Cloudflare R2 plus Backblaze B2 EU Central before durable MediaAsset redundancy truth may commit. The Production Readiness gate remains `IN_PROGRESS` because the real B2 account/bucket/key and live proof, VPS/database/R2/alert/deploy-secret and later exposure-specific provider evidence are still incomplete. No real external marketplace production data, broker self-service pilot, production pilot or public launch has started. Before real external marketplace inventory is exposed to external buyers, the accepted PostgreSQL HA rule remains mandatory.
 
 ## Broker Mandatory Capability Register
 
@@ -338,12 +338,12 @@ Large retained research artifacts are acknowledged as repository-hygiene debt, n
 Next queue number:
 
 ```text
-SLICE-0080
+SLICE-0081
 ```
 
-**Capability:** Provider-Independent Broker Original-Media Redundancy.
+**Capability:** UNSELECTED — fresh post-SLICE-0080 reassessment required.
 
-Selected by `docs/POST_SLICE_0079_REASSESSMENT_2026-10-09.md` because accepted architecture §22 requires original broker media to have an independent second copy at a different storage provider before real broker production, while SLICE-0068 implemented only primary Cloudflare R2 storage plus future backup/purge compatibility. SLICE-0080 readiness is in independent review after the Project Owner selected Backblaze B2 EU Central as the secondary provider. The Production Launch Pack remains at `NOT_STARTED`, and no external production data, pilot, buyer exposure or public launch is authorized.
+SLICE-0080 is Owner-accepted and merged. No SLICE-0081 capability is selected automatically. A fresh Decision/Implementation Reconciliation must determine the next highest-leverage capability while preserving `PRODUCTION_READINESS_GATE_STATUS = IN_PROGRESS`, `PRODUCTION_LAUNCH_PACK_PHASE = NOT_STARTED`, no external production data/pilot/public launch, and the separate PostgreSQL HA trigger before real external buyer exposure.
 
 ## Development workflow
 
@@ -358,6 +358,6 @@ Selected by `docs/POST_SLICE_0079_REASSESSMENT_2026-10-09.md` because accepted a
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0079 is owner-accepted and merged; post-SLICE-0079 reconciliation selected SLICE-0080 Provider-Independent Broker Original-Media Redundancy, but readiness remains blocked on the secondary-provider Owner decision and no implementation start is authorized yet.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0079 and SLICE-0080 are Owner-accepted and merged; SLICE-0081 remains UNSELECTED until a fresh post-SLICE-0080 reconciliation/reassessment.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
