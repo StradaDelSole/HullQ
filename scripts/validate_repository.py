@@ -656,7 +656,7 @@ def _validate_production_phase_transition(
 
     before = value("Launch-pack phase before this slice")
     after = value("Launch-pack phase after this slice")
-    allowed_before = {"NOT_APPLICABLE", "NOT_STARTED", "1", "2", "3", "4", "5", "6"}
+    allowed_before = {"NOT_APPLICABLE", "NOT_STARTED", "1", "2", "3", "4", "5", "6", "7"}
     allowed_after = {"NOT_APPLICABLE", "1", "2", "3", "4", "5", "6", "7"}
     if before not in allowed_before:
         raise ValueError(f"SLICE-{queue:04d} has invalid launch-pack phase before value {before!r}")
