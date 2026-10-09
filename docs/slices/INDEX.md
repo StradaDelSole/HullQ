@@ -18,7 +18,7 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ```text
 Latest owner-accepted slice: SLICE-0080
 Current queue:               SLICE-0081
-Current capability:          UNSELECTED — reassessment required
+Current capability:          UNSELECTED — Phase 1 operator work active
 Current readiness:           NOT_APPLICABLE
 ```
 
@@ -27,7 +27,8 @@ Current boundary:
 - SLICE-0080 is Owner-accepted; final history is retained in `docs/slices/SLICE-0080-acceptance-closure.md`;
 - `docs/PROJECT_STATE.md` remains the canonical accepted/queue boundary;
 - Production Launch Pack phase remains `NOT_STARTED`;
-- SLICE-0081 has no selected capability/readiness yet;
+- post-SLICE-0080 reassessment selects Production Launch Pack Phase 1 — Accounts & Ownership as the active next work;
+- SLICE-0081 has no selected capability/readiness and is not needed unless provider execution exposes a genuine repository capability gap;
 - no later slice is authorized automatically.
 
 ## Historical execution ranges
