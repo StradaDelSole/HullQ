@@ -56,17 +56,11 @@ original/source media before real broker production
 
 The secondary provider must not become MediaAsset/domain identity and should be consumed through an S3-compatible/provider-abstracted HullQ boundary.
 
-The current Owner decision is deliberately not guessed in this checklist. The decision should optimize:
+Owner decision: **Backblaze B2 EU Central**.
 
-- provider independence from Cloudflare;
-- EU-appropriate data location;
-- low solo-operator account burden;
-- predictable MVP cost;
-- S3-compatible integration;
-- credentials that can be least-privilege and separated from the primary media store;
-- future purge/recovery operability.
+The accepted choice preserves provider independence from Cloudflare, uses an EU data region, provides an S3-compatible integration surface and fits the project's highly constrained MVP budget. The provider decision is retained in `docs/BROKER_ORIGINAL_MEDIA_REDUNDANCY_PROVIDER_DECISION_2026-10-09.md`.
 
-Provider direction is now decided: Backblaze B2 EU Central. SLICE-0080 readiness is in review; the real account/bucket/application key remains Phase-1/Phase-2 operator work and is not created by the slice.
+SLICE-0080 readiness is in review; the real account/bucket/application key remains Phase-1/Phase-2 operator work and is not created by the slice.
 
 ## Phase 1 Done-when
 
