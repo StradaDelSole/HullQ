@@ -159,6 +159,7 @@ def client(api_url: str, monkeypatch: pytest.MonkeyPatch) -> Generator[TestClien
         session_signing_secret=_SECRET,
         web_origin=_WEB_ORIGIN,
         object_storage=InMemoryObjectStorage(),
+        backup_object_storage=InMemoryObjectStorage(),
     )
     test_client = TestClient(app, base_url="http://api.test", follow_redirects=False)
     try:

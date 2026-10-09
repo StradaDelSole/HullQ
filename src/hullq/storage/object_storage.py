@@ -1,35 +1,63 @@
-"""Object-storage boundary — SLICE-0068.
+"""Object-storage boundary — SLICE-0068; SLICE-0080 adds Backblaze B2.
 
 Implements `specs/MARKETPLACE_MEDIA_GALLERY_CONTRACT.v0.1.md` §5/§11: Cloudflare
-R2 Standard is the initial primary marketplace-media object store, accessed
+R2 Standard is the primary marketplace-media object store, accessed
 only through this S3-compatible boundary using server-owned opaque object
 keys -- never a caller-supplied filename or a provider URL as identity.
 
+SLICE-0080 (`specs/BROKER_ORIGINAL_MEDIA_REDUNDANCY_CONTRACT.v0.1.md` §2/§11/
+§12) adds Backblaze B2 as the one accepted independent-original-copy
+provider, consumed through the identical S3-compatible boundary. `R2Object
+Storage` and `B2ObjectStorage` are deliberately two distinct adapter classes
+built from two distinct, independently-validated config loaders (`get_r2_
+object_storage_config` reads `HULLQ_R2_*`; `get_b2_object_storage_config`
+reads `HULLQ_MEDIA_BACKUP_B2_*`) so the ordinary production configuration
+path has no code path that could resolve both storage roles from one R2
+configuration by accident (contract §12). Both share the same underlying
+boto3 S3-compatible request/error-mapping plumbing (`_s3_put_object`/`_s3_
+get_object`/`_s3_delete_object` below) because that plumbing is provider-
+agnostic -- the contract explicitly permits factoring shared S3-client code
+as long as no second media domain model is created and the domain never
+depends on boto3/provider URLs (contract §12).
+
 `ObjectStorage` is the one interface every caller (application orchestration,
-tests) depends on. `R2ObjectStorage` is the real boto3-backed S3-compatible
-adapter; `InMemoryObjectStorage` is the deterministic local fake required by
-contract §17 ("retained local/fake S3-compatible proof is deterministic; live
-Cloudflare credentials are not required in ordinary CI"). Application hosts
-remain stateless: neither adapter ever writes media bytes to local disk.
+tests) depends on. `InMemoryObjectStorage` is the deterministic local fake
+required by contract §17 ("retained local/fake S3-compatible proof is
+deterministic; live Cloudflare credentials are not required in ordinary
+CI") -- SLICE-0080 reuses the identical fake for the independent B2 role in
+tests; no live Backblaze credentials are required in ordinary CI either
+(`specs/BROKER_ORIGINAL_MEDIA_REDUNDANCY_CONTRACT.v0.1.md` §11). Application
+hosts remain stateless: neither adapter ever writes media bytes to local
+disk.
 """
 
 from __future__ import annotations
 
 import os
+import re
 import threading
 from typing import Any, Protocol
+from urllib.parse import urlsplit
 
 __all__ = [
+    "HULLQ_MEDIA_BACKUP_B2_APPLICATION_KEY_ENV",
+    "HULLQ_MEDIA_BACKUP_B2_BUCKET_ENV",
+    "HULLQ_MEDIA_BACKUP_B2_ENDPOINT_ENV",
+    "HULLQ_MEDIA_BACKUP_B2_KEY_ID_ENV",
+    "HULLQ_MEDIA_BACKUP_B2_REGION_ENV",
     "HULLQ_R2_ACCESS_KEY_ID_ENV",
     "HULLQ_R2_ACCOUNT_ID_ENV",
     "HULLQ_R2_BUCKET_ENV",
     "HULLQ_R2_SECRET_ACCESS_KEY_ENV",
+    "B2ObjectStorage",
+    "B2ObjectStorageConfig",
     "InMemoryObjectStorage",
     "ObjectNotFoundError",
     "ObjectStorage",
     "ObjectStorageConfigError",
     "R2ObjectStorage",
     "R2ObjectStorageConfig",
+    "get_b2_object_storage_config",
     "get_r2_object_storage_config",
 ]
 
@@ -100,10 +128,13 @@ class InMemoryObjectStorage:
 
 
 class ObjectStorageConfigError(RuntimeError):
-    """R2 object-storage configuration is missing or invalid.
+    """Object-storage configuration is missing/invalid, or a provider
+    request failed in a way that must never leak credentials/raw SDK detail.
 
-    Raised before any storage operation is attempted. There is no insecure/
-    hard-coded fallback bucket or credential.
+    Raised before any storage operation is attempted when configuration is
+    missing, or raised in place of a provider's raw exception when a request
+    fails. There is no insecure/hard-coded fallback bucket or credential for
+    either Cloudflare R2 or Backblaze B2 (SLICE-0080).
     """
 
 
@@ -166,6 +197,130 @@ def get_r2_object_storage_config() -> R2ObjectStorageConfig:
     )
 
 
+def _build_s3_client(
+    *, endpoint_url: str, region_name: str, access_key_id: str, secret_access_key: str
+) -> Any:
+    """Shared boto3 S3-compatible client construction (contract §12: "may
+    factor shared S3-client plumbing to avoid duplicate provider code").
+    Used by both `R2ObjectStorage.from_config` and `B2ObjectStorage.
+    from_config` -- the only difference between providers is which
+    *endpoint_url*/*region_name*/credentials are resolved, never this
+    construction logic itself."""
+    import boto3  # deferred: no module-level network/SDK dependency
+    from botocore.config import Config as BotoConfig
+
+    return boto3.client(
+        "s3",
+        endpoint_url=endpoint_url,
+        aws_access_key_id=access_key_id,
+        aws_secret_access_key=secret_access_key,
+        region_name=region_name,
+        config=BotoConfig(signature_version="s3v4"),
+    )
+
+
+def _classify_s3_exception(exc: Exception) -> str:
+    """Bounded, safe classification for a provider exception -- never the
+    raw exception message/args, which may embed endpoint URLs, bucket
+    names, request ids, signatures or other provider-internal detail
+    (independent review Finding A / contract §13: "no credentials or
+    provider error payloads leak to API/browser/logs"). A `ClientError`
+    contributes only its documented `Error.Code`; every other Botocore
+    failure (transport/timeout/DNS/connection/endpoint-resolution) -- which
+    carries no comparable documented code -- contributes only its own
+    exception class name, never its formatted message."""
+    from botocore.exceptions import ClientError  # deferred: no module-level SDK dependency
+
+    if isinstance(exc, ClientError):
+        return exc.response.get("Error", {}).get("Code", "") or "ClientError"
+    return exc.__class__.__name__
+
+
+def _bounded_s3_error(
+    provider_label: str, operation: str, exc: Exception
+) -> ObjectStorageConfigError:
+    return ObjectStorageConfigError(
+        f"{provider_label} {operation} failed ({_classify_s3_exception(exc)})"
+    )
+
+
+def _s3_put_object(
+    client: Any, bucket: str, key: str, data: bytes, *, content_type: str, provider_label: str
+) -> None:
+    if not key:
+        raise ValueError("key must be non-empty")
+    from botocore.exceptions import (  # deferred: no module-level SDK dependency
+        BotoCoreError,
+        ClientError,
+    )
+
+    try:
+        client.put_object(Bucket=bucket, Key=key, Body=data, ContentType=content_type)
+    except (ClientError, BotoCoreError) as exc:
+        # Independent review Finding A / contract §7/§13: every PUT
+        # failure -- `ClientError` (auth/permission/quota/unknown) or any
+        # other Botocore failure (transport/timeout/DNS/endpoint-
+        # resolution) -- fails closed as one bounded error, never a silent
+        # success. `from None` additionally suppresses Python's implicit
+        # exception-chaining context (`__context__`/`__cause__`) so the
+        # app's global unhandled-exception handler, which logs with
+        # `exc_info`, can never walk back to the original provider
+        # exception/message through the chain.
+        raise _bounded_s3_error(provider_label, "put_object", exc) from None
+
+
+def _s3_get_object(client: Any, bucket: str, key: str, *, provider_label: str) -> bytes:
+    from botocore.exceptions import (  # deferred: no module-level SDK dependency
+        BotoCoreError,
+        ClientError,
+    )
+
+    try:
+        response = client.get_object(Bucket=bucket, Key=key)
+    except ClientError as exc:
+        error_code = exc.response.get("Error", {}).get("Code", "")
+        if error_code in ("NoSuchKey", "404"):
+            # Confirmed absence (contract §7): the *only* documented
+            # not-found condition for the exact requested key -- every
+            # other `ClientError`/Botocore failure below is a dependency
+            # error, never absence.
+            raise ObjectNotFoundError(key) from None
+        raise _bounded_s3_error(provider_label, "get_object", exc) from None
+    except BotoCoreError as exc:
+        # Transport/timeout/DNS/endpoint-resolution failures are never
+        # absence either (contract §7) -- same bounded-error, suppressed-
+        # chaining treatment as the `ClientError` branch above.
+        raise _bounded_s3_error(provider_label, "get_object", exc) from None
+
+    try:
+        body = response["Body"].read()
+    except (ClientError, BotoCoreError) as exc:
+        # Independent review Finding A-residual: `get_object()` itself
+        # already returned successfully by this point -- a streaming-body
+        # read failure (read-timeout/incomplete-read/transport) happens
+        # strictly afterward and is never confirmed absence (contract §7),
+        # only ever a dependency error. It therefore gets the identical
+        # bounded-error, suppressed-chaining treatment as every provider
+        # failure above -- deliberately never the `ObjectNotFoundError`
+        # carve-out, even if the underlying exception happened to carry a
+        # `NoSuchKey`-shaped code.
+        raise _bounded_s3_error(provider_label, "get_object", exc) from None
+    assert isinstance(body, bytes)
+    return body
+
+
+def _s3_delete_object(client: Any, bucket: str, key: str, *, provider_label: str) -> None:
+    from botocore.exceptions import (  # deferred: no module-level SDK dependency
+        BotoCoreError,
+        ClientError,
+    )
+
+    try:
+        client.delete_object(Bucket=bucket, Key=key)
+    except (ClientError, BotoCoreError) as exc:
+        raise _bounded_s3_error(provider_label, "delete_object", exc) from None
+
+
 class R2ObjectStorage:
     """Real Cloudflare R2 adapter behind the S3-compatible boundary.
 
@@ -185,40 +340,219 @@ class R2ObjectStorage:
 
     @classmethod
     def from_config(cls, config: R2ObjectStorageConfig) -> R2ObjectStorage:
-        import boto3  # deferred: no module-level network/SDK dependency
-        from botocore.config import Config as BotoConfig
-
-        client = boto3.client(
-            "s3",
+        client = _build_s3_client(
             endpoint_url=config.endpoint_url,
-            aws_access_key_id=config.access_key_id,
-            aws_secret_access_key=config.secret_access_key,
             # R2 has no regions; "auto" is Cloudflare's documented value.
             region_name="auto",
-            config=BotoConfig(signature_version="s3v4"),
+            access_key_id=config.access_key_id,
+            secret_access_key=config.secret_access_key,
         )
         return cls(client=client, bucket=config.bucket)
 
     def put_object(self, key: str, data: bytes, *, content_type: str) -> None:
-        if not key:
-            raise ValueError("key must be non-empty")
-        self._client.put_object(Bucket=self._bucket, Key=key, Body=data, ContentType=content_type)
+        _s3_put_object(
+            self._client, self._bucket, key, data, content_type=content_type, provider_label="R2"
+        )
 
     def get_object(self, key: str) -> bytes:
-        from botocore.exceptions import ClientError  # deferred: no module-level SDK dependency
-
-        try:
-            response = self._client.get_object(Bucket=self._bucket, Key=key)
-        except ClientError as exc:
-            error_code = exc.response.get("Error", {}).get("Code", "")
-            if error_code in ("NoSuchKey", "404"):
-                raise ObjectNotFoundError(key) from None
-            # Never propagate botocore's raw exception (it may embed request
-            # parameters); surface only the opaque key and error code.
-            raise ObjectStorageConfigError(f"R2 get_object failed ({error_code}) for key") from None
-        body = response["Body"].read()
-        assert isinstance(body, bytes)
-        return body
+        return _s3_get_object(self._client, self._bucket, key, provider_label="R2")
 
     def delete_object(self, key: str) -> None:
-        self._client.delete_object(Bucket=self._bucket, Key=key)
+        _s3_delete_object(self._client, self._bucket, key, provider_label="R2")
+
+
+HULLQ_MEDIA_BACKUP_B2_ENDPOINT_ENV = "HULLQ_MEDIA_BACKUP_B2_ENDPOINT"
+HULLQ_MEDIA_BACKUP_B2_REGION_ENV = "HULLQ_MEDIA_BACKUP_B2_REGION"
+HULLQ_MEDIA_BACKUP_B2_KEY_ID_ENV = "HULLQ_MEDIA_BACKUP_B2_KEY_ID"
+HULLQ_MEDIA_BACKUP_B2_APPLICATION_KEY_ENV = "HULLQ_MEDIA_BACKUP_B2_APPLICATION_KEY"
+HULLQ_MEDIA_BACKUP_B2_BUCKET_ENV = "HULLQ_MEDIA_BACKUP_B2_BUCKET"
+
+#: Independent review Finding B: the Owner-accepted provider decision is
+#: Backblaze B2 **EU Central** only (`docs/BROKER_ORIGINAL_MEDIA_REDUNDANCY_
+#: PROVIDER_DECISION_2026-10-09.md`). The exact numeric cluster suffix is
+#: runtime configuration obtained from Backblaze and MUST NOT be hardcoded
+#: (contract §11) -- only the `eu-central-<digits>` region *family* shape is
+#: mechanically enforced here, never one specific cluster number.
+_B2_EU_CENTRAL_REGION_RE = re.compile(r"^eu-central-\d+$")
+
+
+def _validate_b2_eu_central_endpoint(*, endpoint: str, region: str) -> None:
+    """Mechanically enforce the accepted Backblaze B2 EU Central S3-
+    compatible shape (independent review Finding B).
+
+    A non-empty string alone is not a provider-independence guarantee: this
+    rejects any other S3 provider, any non-EU-Central Backblaze region, and
+    any Cloudflare R2/arbitrary endpoint regardless of harmless lexical
+    variation (trailing slash, case) -- the comparison is structural
+    (scheme/host/path shape plus the exact configured region), never a
+    textual one. Never includes the rejected *endpoint*/*region* value in
+    the raised exception (contract §13) -- only the bounded env-var name
+    and reason.
+    """
+    if not _B2_EU_CENTRAL_REGION_RE.fullmatch(region):
+        raise ObjectStorageConfigError(
+            f"{HULLQ_MEDIA_BACKUP_B2_REGION_ENV} must be an accepted Backblaze B2 EU Central "
+            "region identifier"
+        )
+    try:
+        parts = urlsplit(endpoint)
+        hostname = parts.hostname
+        has_port = parts.port is not None
+    except ValueError:
+        # A malformed URL (e.g. an invalid port/IPv6 host) fails exactly
+        # like any other shape violation -- never silently coerced.
+        raise ObjectStorageConfigError(
+            f"{HULLQ_MEDIA_BACKUP_B2_ENDPOINT_ENV} is not a valid URL"
+        ) from None
+    if parts.scheme != "https":
+        raise ObjectStorageConfigError(f"{HULLQ_MEDIA_BACKUP_B2_ENDPOINT_ENV} must use https")
+    if parts.username is not None or parts.password is not None:
+        raise ObjectStorageConfigError(
+            f"{HULLQ_MEDIA_BACKUP_B2_ENDPOINT_ENV} must not include user-info"
+        )
+    if has_port:
+        raise ObjectStorageConfigError(
+            f"{HULLQ_MEDIA_BACKUP_B2_ENDPOINT_ENV} must not include an explicit port"
+        )
+    if parts.query or parts.fragment:
+        raise ObjectStorageConfigError(
+            f"{HULLQ_MEDIA_BACKUP_B2_ENDPOINT_ENV} must not include a query or fragment"
+        )
+    if parts.path not in ("", "/"):
+        raise ObjectStorageConfigError(
+            f"{HULLQ_MEDIA_BACKUP_B2_ENDPOINT_ENV} must not include a path"
+        )
+    # `SplitResult.hostname` is already lowercased by `urlsplit`, so a
+    # harmless-looking case variation on a non-Backblaze host is rejected
+    # exactly like the canonical-case form -- this is a structural hostname
+    # comparison, never a textual one.
+    expected_hostname = f"s3.{region}.backblazeb2.com"
+    if hostname != expected_hostname:
+        raise ObjectStorageConfigError(
+            f"{HULLQ_MEDIA_BACKUP_B2_ENDPOINT_ENV} must be the accepted Backblaze B2 "
+            "S3-compatible hostname for the configured EU Central region"
+        )
+
+
+class B2ObjectStorageConfig:
+    """Resolved, validated Backblaze B2 independent-original-copy connection
+    configuration (SLICE-0080; `specs/BROKER_ORIGINAL_MEDIA_REDUNDANCY_
+    CONTRACT.v0.1.md` §11).
+
+    Unlike `R2ObjectStorageConfig`, *endpoint*/*region* are taken verbatim
+    from the environment rather than derived from an account id -- contract
+    §11: "the exact S3 endpoint/cluster suffix is runtime configuration
+    obtained from Backblaze and MUST NOT be hardcoded in domain logic."
+    Verbatim does not mean unvalidated: independent review Finding B --
+    every construction mechanically enforces the accepted Backblaze B2 EU
+    Central S3-compatible hostname/region shape (`_validate_b2_eu_central_
+    endpoint`), rejecting any other provider, any non-EU-Central Backblaze
+    region, or any lexically-varied non-Backblaze endpoint. Holds
+    credentials only -- never logged or included in any exception message
+    raised by `B2ObjectStorage` below.
+    """
+
+    __slots__ = ("application_key", "bucket", "endpoint", "key_id", "region")
+
+    def __init__(
+        self, *, endpoint: str, region: str, key_id: str, application_key: str, bucket: str
+    ) -> None:
+        # Independent review Finding B: enforced on every construction path
+        # (not only the env-var loader below), so no caller can ever hold a
+        # `B2ObjectStorageConfig` that is not actually the accepted
+        # Backblaze B2 EU Central S3-compatible shape.
+        _validate_b2_eu_central_endpoint(endpoint=endpoint, region=region)
+        self.endpoint = endpoint
+        self.region = region
+        self.key_id = key_id
+        self.application_key = application_key
+        self.bucket = bucket
+
+    @property
+    def endpoint_url(self) -> str:
+        """Named identically to `R2ObjectStorageConfig.endpoint_url` so the
+        two configs can be compared structurally by callers that must
+        refuse to let primary and independent-original roles resolve to the
+        same endpoint (contract §12)."""
+        return self.endpoint
+
+    def __repr__(self) -> str:  # pragma: no cover - defensive redaction only
+        # Deliberately never includes key_id/application_key: a stray
+        # repr()/log call must never leak credentials (contract §13).
+        return (
+            f"B2ObjectStorageConfig(bucket={self.bucket!r}, endpoint={self.endpoint!r}, "
+            f"region={self.region!r}, key_id=<redacted>)"
+        )
+
+
+def get_b2_object_storage_config() -> B2ObjectStorageConfig:
+    """Read and validate Backblaze B2 independent-original-copy connection
+    configuration from the environment.
+
+    Fails fast with `ObjectStorageConfigError` when any required variable is
+    unset or empty -- mirrors `get_r2_object_storage_config`'s identical
+    fail-fast discipline, using the separate `HULLQ_MEDIA_BACKUP_B2_*` names
+    (contract §11: "separate from Cloudflare R2 credentials"). Never falls
+    back to a default bucket/endpoint/region/credential.
+    """
+    values: dict[str, str] = {}
+    for env_var in (
+        HULLQ_MEDIA_BACKUP_B2_ENDPOINT_ENV,
+        HULLQ_MEDIA_BACKUP_B2_REGION_ENV,
+        HULLQ_MEDIA_BACKUP_B2_KEY_ID_ENV,
+        HULLQ_MEDIA_BACKUP_B2_APPLICATION_KEY_ENV,
+        HULLQ_MEDIA_BACKUP_B2_BUCKET_ENV,
+    ):
+        raw = os.environ.get(env_var, "").strip()
+        if not raw:
+            raise ObjectStorageConfigError(f"{env_var} is not set or empty")
+        values[env_var] = raw
+    return B2ObjectStorageConfig(
+        endpoint=values[HULLQ_MEDIA_BACKUP_B2_ENDPOINT_ENV],
+        region=values[HULLQ_MEDIA_BACKUP_B2_REGION_ENV],
+        key_id=values[HULLQ_MEDIA_BACKUP_B2_KEY_ID_ENV],
+        application_key=values[HULLQ_MEDIA_BACKUP_B2_APPLICATION_KEY_ENV],
+        bucket=values[HULLQ_MEDIA_BACKUP_B2_BUCKET_ENV],
+    )
+
+
+class B2ObjectStorage:
+    """Real Backblaze B2 adapter behind the identical S3-compatible boundary
+    (SLICE-0080) -- the one accepted independent-original-copy provider
+    (`docs/BROKER_ORIGINAL_MEDIA_REDUNDANCY_PROVIDER_DECISION_2026-10-09.md`).
+
+    A distinct class from `R2ObjectStorage` (contract §12: the application/
+    FastAPI wiring must distinguish primary from independent-original
+    storage explicitly; "passing the same resolved Cloudflare R2 store for
+    both roles is not a valid production configuration") even though both
+    share the provider-agnostic S3 request plumbing above. *client* may be
+    injected (a real `boto3` S3 client, or a test double); production code
+    should normally use `B2ObjectStorage.from_config`.
+    """
+
+    def __init__(self, *, client: Any, bucket: str) -> None:
+        if not bucket:
+            raise ValueError("bucket must be non-empty")
+        self._client = client
+        self._bucket = bucket
+
+    @classmethod
+    def from_config(cls, config: B2ObjectStorageConfig) -> B2ObjectStorage:
+        client = _build_s3_client(
+            endpoint_url=config.endpoint,
+            region_name=config.region,
+            access_key_id=config.key_id,
+            secret_access_key=config.application_key,
+        )
+        return cls(client=client, bucket=config.bucket)
+
+    def put_object(self, key: str, data: bytes, *, content_type: str) -> None:
+        _s3_put_object(
+            self._client, self._bucket, key, data, content_type=content_type, provider_label="B2"
+        )
+
+    def get_object(self, key: str) -> bytes:
+        return _s3_get_object(self._client, self._bucket, key, provider_label="B2")
+
+    def delete_object(self, key: str) -> None:
+        _s3_delete_object(self._client, self._bucket, key, provider_label="B2")

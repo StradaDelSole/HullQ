@@ -216,8 +216,11 @@ from hullq.security.session_token import (
     verify_and_decode_session_token,
 )
 from hullq.storage.object_storage import (
+    B2ObjectStorage,
     ObjectStorage,
+    ObjectStorageConfigError,
     R2ObjectStorage,
+    get_b2_object_storage_config,
     get_r2_object_storage_config,
 )
 
@@ -590,6 +593,7 @@ def create_app(
     auth_http_client: Any | None = None,
     auth_jwks_cache: Any | None = None,
     object_storage: ObjectStorage | None = None,
+    backup_object_storage: ObjectStorage | None = None,
 ) -> FastAPI:
     """Build the SLICE-0048 preview FastAPI application.
 
@@ -685,6 +689,33 @@ def create_app(
         if _cached_object_storage is None:
             _cached_object_storage = R2ObjectStorage.from_config(get_r2_object_storage_config())
         return _cached_object_storage
+
+    # SLICE-0080 (`specs/BROKER_ORIGINAL_MEDIA_REDUNDANCY_CONTRACT.v0.1.md`
+    # §11/§12): the independent-original-copy boundary, resolved lazily and
+    # cached exactly like the primary resolver above -- only the upload
+    # route below ever calls this. Resolved from the separate
+    # `HULLQ_MEDIA_BACKUP_B2_*` configuration, never derived from or shared
+    # with the primary R2 configuration. The explicit endpoint comparison
+    # below is the mechanical guard required by contract §12: "the ordinary
+    # production configuration path" must have no way to "satisfy both
+    # roles from the same R2 configuration by accident" -- if a
+    # misconfigured environment ever pointed the B2 variables at the exact
+    # primary R2 endpoint, this fails fast instead of silently proceeding
+    # with a single-provider "redundancy".
+    _cached_backup_object_storage: ObjectStorage | None = backup_object_storage
+
+    def _resolve_backup_object_storage() -> ObjectStorage:
+        nonlocal _cached_backup_object_storage
+        if _cached_backup_object_storage is None:
+            backup_config = get_b2_object_storage_config()
+            primary_config = get_r2_object_storage_config()
+            if backup_config.endpoint_url == primary_config.endpoint_url:
+                raise ObjectStorageConfigError(
+                    "independent-original-copy endpoint must not match the primary "
+                    "object-storage endpoint"
+                )
+            _cached_backup_object_storage = B2ObjectStorage.from_config(backup_config)
+        return _cached_backup_object_storage
 
     def _cookie_secure() -> bool:
         raw = os.environ.get(_SESSION_COOKIE_SECURE_ENV, "true").strip().lower()
@@ -2639,6 +2670,7 @@ def create_app(
                 raw_bytes=raw_bytes,
                 rights_confirmed=rights_confirmed,
                 object_storage=_resolve_object_storage(),
+                backup_object_storage=_resolve_backup_object_storage(),
                 raw_source_reference=raw_source_reference,
             )
         finally:

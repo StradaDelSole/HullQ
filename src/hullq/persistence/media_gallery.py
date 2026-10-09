@@ -85,13 +85,14 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
 from hullq.domain.market_identity import NativeListingId
 from hullq.domain.media_gallery import (
     MediaAssetId,
+    MediaBackupProviderKind,
     MediaPlacementId,
     MediaPlacementKind,
     MediaProcessingState,
@@ -168,6 +169,13 @@ class MediaAssetRecord:
     retired_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    #: SLICE-0080 (`specs/BROKER_ORIGINAL_MEDIA_REDUNDANCY_CONTRACT.v0.1.md`
+    #: §3): `None` on every one of these three fields means "legacy/not-
+    #: established" -- never fabricated. All three are populated together,
+    #: never partially (enforced by `ck_media_assets_backup_shape`).
+    backup_provider: MediaBackupProviderKind | None
+    backup_object_key: str | None
+    backup_established_at: datetime | None
 
     @property
     def is_public_usable(self) -> bool:
@@ -178,6 +186,14 @@ class MediaAssetRecord:
             and self.rights_state is MediaRightsState.DECLARED
             and self.retired_at is None
         )
+
+    @property
+    def has_established_backup(self) -> bool:
+        """SLICE-0080 contract §3/§5: `True` only when a confirmed
+        independent Backblaze B2 original copy was established before this
+        row's database truth committed -- never inferred from intention,
+        queued work or retry scheduling."""
+        return self.backup_established_at is not None
 
 
 @dataclass(frozen=True)
@@ -214,7 +230,7 @@ _ASSET_COLUMNS = (
     "media_asset_id, owner_organization_id, uploaded_by_account_id, source_kind, "
     "source_reference, processing_state, rejection_reason, rights_state, original_object_key, "
     "derivative_object_key, content_hash, mime_type, width, height, byte_size, retired_at, "
-    "created_at, updated_at"
+    "created_at, updated_at, backup_provider, backup_object_key, backup_established_at"
 )
 
 
@@ -238,6 +254,9 @@ def _row_to_asset(row: tuple[Any, ...]) -> MediaAssetRecord:
         retired_at,
         created_at,
         updated_at,
+        backup_provider,
+        backup_object_key,
+        backup_established_at,
     ) = row
     return MediaAssetRecord(
         media_asset_id=MediaAssetId(asset_id),
@@ -258,6 +277,11 @@ def _row_to_asset(row: tuple[Any, ...]) -> MediaAssetRecord:
         retired_at=retired_at,
         created_at=created_at,
         updated_at=updated_at,
+        backup_provider=(
+            MediaBackupProviderKind(backup_provider) if backup_provider is not None else None
+        ),
+        backup_object_key=backup_object_key,
+        backup_established_at=backup_established_at,
     )
 
 
@@ -369,20 +393,56 @@ _INSERT_APPROVED_ASSET = f"""
 INSERT INTO media_assets
     (media_asset_id, owner_organization_id, uploaded_by_account_id, source_kind,
      source_reference, processing_state, rights_state, original_object_key,
-     derivative_object_key, content_hash, mime_type, width, height, byte_size)
-VALUES (%s, %s, %s, %s, %s, 'APPROVED', %s, %s, %s, %s, %s, %s, %s, %s)
+     derivative_object_key, content_hash, mime_type, width, height, byte_size,
+     backup_provider, backup_object_key, backup_established_at)
+VALUES (%s, %s, %s, %s, %s, 'APPROVED', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 RETURNING {_ASSET_COLUMNS}
 """
 
 _INSERT_REJECTED_ASSET = f"""
 INSERT INTO media_assets
     (media_asset_id, owner_organization_id, uploaded_by_account_id, source_kind,
-     source_reference, processing_state, rights_state, original_object_key, rejection_reason)
-VALUES (%s, %s, %s, %s, %s, 'REJECTED', %s, %s, %s)
+     source_reference, processing_state, rights_state, original_object_key, rejection_reason,
+     backup_provider, backup_object_key, backup_established_at)
+VALUES (%s, %s, %s, %s, %s, 'REJECTED', %s, %s, %s, %s, %s, %s)
 RETURNING {_ASSET_COLUMNS}
 """
 
 _SELECT_ASSET = f"SELECT {_ASSET_COLUMNS} FROM media_assets WHERE media_asset_id = %s"
+
+
+def _resolve_backup_columns(
+    *,
+    backup_provider: MediaBackupProviderKind | None,
+    backup_object_key: str | None,
+) -> tuple[str | None, str | None, datetime | None]:
+    """SLICE-0080 contract §3: the all-or-nothing backup shape, enforced
+    defensively here *and* by `ck_media_assets_backup_shape` at the database
+    boundary. `backup_established_at` is computed at the moment of this
+    call, not read back from either object-storage write, because contract
+    §5's establishment event is "successful PUT completion" -- which the
+    caller (`hullq.application.media_gallery.upload_image_for_organization`)
+    has already observed, synchronously, before reaching this insert.
+
+    Both arguments `None` (the default for every caller outside the
+    SLICE-0080 upload path -- e.g. unrelated feature tests seeding a
+    MediaAsset directly) means "not established", exactly like a legacy
+    pre-SLICE-0080 row -- never fabricated as backed up.
+
+    Independent review Finding C: a present `backup_object_key` that is
+    empty or whitespace-only cannot actually locate anything, so it is
+    rejected here -- defense in depth alongside `ck_media_assets_backup_
+    shape`'s equivalent `length(btrim(backup_object_key)) > 0` database
+    check, never relying on the database boundary alone.
+    """
+    if (backup_provider is None) != (backup_object_key is None):
+        raise ValueError("backup_provider and backup_object_key must both be set or both be None")
+    if backup_provider is None:
+        return None, None, None
+    assert backup_object_key is not None
+    if not backup_object_key.strip():
+        raise ValueError("backup_object_key must not be empty or whitespace-only")
+    return backup_provider.value, backup_object_key, datetime.now(UTC)
 
 
 def insert_approved_media_asset(
@@ -400,6 +460,8 @@ def insert_approved_media_asset(
     width: int,
     height: int,
     byte_size: int,
+    backup_provider: MediaBackupProviderKind | None = None,
+    backup_object_key: str | None = None,
 ) -> MediaAssetRecord:
     """Durably create one APPROVED MediaAsset (contract §6/§7).
 
@@ -408,9 +470,19 @@ def insert_approved_media_asset(
     contract §6's first ingestion step) and, on successful processing, the
     safe derivative at the separate *derivative_object_key* -- this function
     never itself touches object storage.
+
+    SLICE-0080 (`specs/BROKER_ORIGINAL_MEDIA_REDUNDANCY_CONTRACT.v0.1.md`
+    §3/§5): *backup_provider*/*backup_object_key* must both be supplied, by
+    the caller already having confirmed the independent B2 original write
+    succeeded, or both omitted -- there is no "established later" path.
     """
     media_asset_id = MediaAssetId(str(uuid.uuid4()))
     rights_state = MediaRightsState.DECLARED if rights_declared else MediaRightsState.UNKNOWN
+    backup_provider_value, resolved_backup_object_key, backup_established_at = (
+        _resolve_backup_columns(
+            backup_provider=backup_provider, backup_object_key=backup_object_key
+        )
+    )
     with conn.cursor() as cur:
         cur.execute(
             _INSERT_APPROVED_ASSET,
@@ -428,6 +500,9 @@ def insert_approved_media_asset(
                 width,
                 height,
                 byte_size,
+                backup_provider_value,
+                resolved_backup_object_key,
+                backup_established_at,
             ],
         )
         row = cur.fetchone()
@@ -445,6 +520,8 @@ def insert_rejected_media_asset(
     source_reference: str | None,
     original_object_key: str,
     rejection_reason: str,
+    backup_provider: MediaBackupProviderKind | None = None,
+    backup_object_key: str | None = None,
 ) -> MediaAssetRecord:
     """Durably record one REJECTED upload attempt (contract §6.4/§7).
 
@@ -453,11 +530,20 @@ def insert_rejected_media_asset(
     contract §6 frames quarantine storage as the first ingestion step,
     before any accept/reject decision -- it simply never gets promoted to a
     derivative.
+
+    SLICE-0080 contract §5: "This applies to both APPROVED and retained
+    REJECTED MediaAssets" -- *backup_provider*/*backup_object_key* follow
+    the identical all-or-nothing contract as `insert_approved_media_asset`.
     """
     if not rejection_reason:
         raise ValueError("rejection_reason must be non-empty")
     media_asset_id = MediaAssetId(str(uuid.uuid4()))
     rights_state = MediaRightsState.DECLARED if rights_declared else MediaRightsState.UNKNOWN
+    backup_provider_value, resolved_backup_object_key, backup_established_at = (
+        _resolve_backup_columns(
+            backup_provider=backup_provider, backup_object_key=backup_object_key
+        )
+    )
     with conn.cursor() as cur:
         cur.execute(
             _INSERT_REJECTED_ASSET,
@@ -470,6 +556,9 @@ def insert_rejected_media_asset(
                 rights_state.value,
                 original_object_key,
                 rejection_reason,
+                backup_provider_value,
+                resolved_backup_object_key,
+                backup_established_at,
             ],
         )
         row = cur.fetchone()

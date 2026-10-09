@@ -29,6 +29,18 @@ strict ordering: this module always writes bytes to *object_storage* before
 it ever inserts the corresponding durable `APPROVED` MediaAsset row. A
 storage failure therefore leaves zero database trace -- there is nothing to
 roll back.
+
+SLICE-0080 (`specs/BROKER_ORIGINAL_MEDIA_REDUNDANCY_CONTRACT.v0.1.md` §5)
+extends this same discipline one step further: `upload_image_for_
+organization` writes the raw upload to the required independent
+*backup_object_storage* (Backblaze B2 in production) immediately after the
+primary R2 original write and before processing ever runs. Any exception
+from that second write -- auth/network/timeout/unknown-provider, exactly
+like a primary-write failure -- propagates unchanged and is caught only by
+`hullq.api.app`'s existing generic unhandled-exception handler, so no new
+error-leakage surface is introduced; it simply means no MediaAsset row (and
+therefore no "two copies established" truth) is ever created, identically
+to how a primary-write failure already behaves.
 """
 
 from __future__ import annotations
@@ -46,6 +58,7 @@ from hullq.domain.market_identity import NativeListingId
 from hullq.domain.media_gallery import (
     MAX_SOURCE_REFERENCE_LENGTH,
     MediaAssetId,
+    MediaBackupProviderKind,
     MediaPlacementId,
     MediaSourceKind,
     parse_youtube_reference,
@@ -440,10 +453,11 @@ def upload_image_for_organization(
     raw_bytes: bytes,
     rights_confirmed: bool,
     object_storage: ObjectStorage,
+    backup_object_storage: ObjectStorage,
     raw_source_reference: Any = None,
 ) -> UploadImageResult:
     """Validate, safely re-encode, store and durably place one uploaded
-    IMAGE (contract §6/§8/§11).
+    IMAGE (contract §6/§8/§11; SLICE-0080 redundancy contract §5).
 
     Independent review Finding A: *raw_bytes* is durably stored, verbatim,
     at a fresh private/quarantine `original_object_key` *before* processing
@@ -453,6 +467,15 @@ def upload_image_for_organization(
     processing is a second, independently-purgeable public derivative
     stored under its own `derivative_object_key`. A storage failure at
     either step leaves zero database trace to roll back (contract §16).
+
+    SLICE-0080: *backup_object_storage* (Backblaze B2 in production) must
+    independently confirm the identical original bytes under the identical
+    `original_object_key` immediately after the primary *object_storage*
+    write succeeds and before processing/derivative/database work begins --
+    the redundancy contract's §5 synchronous establishment invariant. A
+    failure there raises exactly like a primary-write failure: no MediaAsset
+    row is ever created, and the already-durable primary original may
+    remain as a clearly-namespaced, unreferenced GC candidate (contract §6).
 
     Independent review Finding B: *raw_source_reference* is the optional
     bounded D14 broker note, validated before any processing/storage is
@@ -488,6 +511,21 @@ def upload_image_for_organization(
         original_object_key, raw_bytes, content_type="application/octet-stream"
     )
 
+    # SLICE-0080 redundancy contract §5: the independent B2 original write
+    # must also be confirmed successful before any MediaAsset/redundancy
+    # database truth may exist -- immediately after the primary write, still
+    # before processing/accept/reject is even decided. Any exception here
+    # (auth/network/timeout/unknown-provider) propagates unchanged, exactly
+    # like a primary-write failure above: no MediaAsset row is ever reached.
+    # Contract §4: the identical server-generated opaque key is reused for
+    # both roles, so the database can deterministically locate this exact
+    # copy without a second identity concept.
+    backup_object_storage.put_object(
+        original_object_key, raw_bytes, content_type="application/octet-stream"
+    )
+    backup_provider = MediaBackupProviderKind.BACKBLAZE_B2
+    backup_object_key = original_object_key
+
     processed = process_uploaded_image(raw_bytes)
 
     if isinstance(processed, RejectedImage):
@@ -501,6 +539,8 @@ def upload_image_for_organization(
                 source_reference=source_reference,
                 original_object_key=original_object_key,
                 rejection_reason=processed.reason.value,
+                backup_provider=backup_provider,
+                backup_object_key=backup_object_key,
             )
         return UploadImageResult(
             outcome=UploadImageOutcome.REJECTED, rejection_reason=processed.reason.value
@@ -530,6 +570,8 @@ def upload_image_for_organization(
             width=processed.width,
             height=processed.height,
             byte_size=processed.byte_size,
+            backup_provider=backup_provider,
+            backup_object_key=backup_object_key,
         )
         placement_result = create_uploaded_image_placement(
             conn,

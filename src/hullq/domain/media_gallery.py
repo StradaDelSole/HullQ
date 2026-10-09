@@ -56,6 +56,7 @@ __all__ = [
     "MAX_SOURCE_REFERENCE_LENGTH",
     "OUTPUT_IMAGE_MIME_TYPE",
     "MediaAssetId",
+    "MediaBackupProviderKind",
     "MediaPlacementId",
     "MediaPlacementKind",
     "MediaProcessingState",
@@ -146,6 +147,21 @@ class MediaSourceKind(StrEnum):
     how the asset entered HullQ, not how it is later placed."""
 
     BROKER_UPLOAD = "BROKER_UPLOAD"
+
+
+class MediaBackupProviderKind(StrEnum):
+    """SLICE-0080 bounded independent-original-copy storage-provider token
+    (`specs/BROKER_ORIGINAL_MEDIA_REDUNDANCY_CONTRACT.v0.1.md` §3/§11).
+
+    Operational recovery metadata only -- it identifies *which* second
+    provider holds the independent copy so a future restore/purge can find
+    it, never MediaAsset/listing/public-URL identity (contract §3: "the
+    storage provider token ... MUST NOT participate in MediaAsset identity").
+    `BACKBLAZE_B2` is the only v0.1 value (accepted Owner provider decision,
+    `docs/BROKER_ORIGINAL_MEDIA_REDUNDANCY_PROVIDER_DECISION_2026-10-09.md`).
+    """
+
+    BACKBLAZE_B2 = "BACKBLAZE_B2"
 
 
 #: Independent review Finding B: an optional bounded broker-supplied note/
