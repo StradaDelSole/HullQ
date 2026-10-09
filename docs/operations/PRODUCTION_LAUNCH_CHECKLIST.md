@@ -60,7 +60,7 @@ Owner decision: **Backblaze B2 EU Central**.
 
 The accepted choice preserves provider independence from Cloudflare, uses an EU data region, provides an S3-compatible integration surface and fits the project's highly constrained MVP budget. The provider decision is retained in `docs/BROKER_ORIGINAL_MEDIA_REDUNDANCY_PROVIDER_DECISION_2026-10-09.md`.
 
-SLICE-0080 readiness is in review; the real account/bucket/application key remains Phase-1/Phase-2 operator work and is not created by the slice.
+SLICE-0080 readiness is READY; the real account/bucket/application key remains Phase-1/Phase-2 operator work and is not created by the slice.
 
 ## Phase 1 Done-when
 
