@@ -449,6 +449,42 @@ class TestBackupRedundancyShape:
             assert row is not None
             assert row[0] == 0
 
+    @pytest.mark.parametrize("empty_key", ["", "   ", "\t\n"])
+    def test_python_helper_rejects_empty_or_whitespace_backup_object_key(
+        self, conn: Any, empty_key: str
+    ) -> None:
+        """Independent review Finding C: defense in depth alongside the
+        database CHECK constraint -- the Python persistence helper itself
+        must never even attempt the write with an empty/whitespace-only
+        backup locator."""
+        account = _seed_account(conn, "ACC-BK4E")
+        org = _seed_org(conn, "ORG-BK4E")
+        with conn.transaction(), pytest.raises(ValueError, match="empty"):
+            insert_approved_media_asset(
+                conn,
+                owner_organization_id=org.id,
+                uploaded_by_account_id=account,
+                rights_declared=True,
+                source_kind=MediaSourceKind.BROKER_UPLOAD,
+                source_reference=None,
+                original_object_key="media/original/x.orig",
+                derivative_object_key="media/x.jpg",
+                content_hash="hash-x",
+                mime_type="image/jpeg",
+                width=100,
+                height=50,
+                byte_size=999,
+                backup_provider=MediaBackupProviderKind.BACKBLAZE_B2,
+                backup_object_key=empty_key,
+            )
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT count(*) FROM media_assets WHERE owner_organization_id = %s", [org.id.value]
+            )
+            row = cur.fetchone()
+            assert row is not None
+            assert row[0] == 0
+
     def test_database_rejects_impossible_partial_backup_shape(self, conn: Any) -> None:
         """Contract §3: "mechanically impossible for a row to claim an
         established B2 copy while lacking the durable backup object
@@ -472,6 +508,37 @@ class TestBackupRedundancyShape:
                     account.value,
                     "media/original/bk5.orig",
                     "media/bk5.jpg",
+                ],
+            )
+
+    @pytest.mark.parametrize("empty_key", ["", "   ", "\t\n"])
+    def test_database_rejects_established_shape_with_empty_or_whitespace_locator(
+        self, conn: Any, empty_key: str
+    ) -> None:
+        """Independent review Finding C: `backup_object_key IS NOT NULL`
+        alone would still let an established row claim an empty-string or
+        whitespace-only locator, which cannot actually locate anything --
+        `ck_media_assets_backup_shape`'s `length(btrim(backup_object_key))
+        > 0` closes that gap at the database boundary itself, bypassing the
+        Python helper's own defensive check entirely, with a raw `INSERT`."""
+        account = _seed_account(conn, "ACC-BK5E")
+        org = _seed_org(conn, "ORG-BK5E")
+        with pytest.raises(psycopg.errors.CheckViolation), conn.transaction(), conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO media_assets (media_asset_id, owner_organization_id, "
+                "uploaded_by_account_id, source_kind, processing_state, rights_state, "
+                "original_object_key, derivative_object_key, content_hash, mime_type, "
+                "width, height, byte_size, backup_provider, backup_object_key, "
+                "backup_established_at) "
+                "VALUES (%s, %s, %s, 'BROKER_UPLOAD', 'APPROVED', 'DECLARED', %s, %s, "
+                "'h', 'image/jpeg', 1, 1, 1, 'BACKBLAZE_B2', %s, NOW())",
+                [
+                    "MA-BK5E",
+                    org.id.value,
+                    account.value,
+                    "media/original/bk5e.orig",
+                    "media/bk5e.jpg",
+                    empty_key,
                 ],
             )
 

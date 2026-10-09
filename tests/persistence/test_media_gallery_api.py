@@ -1387,7 +1387,18 @@ class TestIndependentOriginalCopyRedundancy:
         from one Cloudflare R2 configuration". Real (non-injected) env-based
         resolution is exercised here -- *backup_object_storage* is
         deliberately left unset so `create_app` falls back to
-        `get_b2_object_storage_config`/`get_r2_object_storage_config`."""
+        `get_b2_object_storage_config`/`get_r2_object_storage_config`.
+
+        Independent review Finding B added a structural Backblaze B2 EU
+        Central shape guard directly on `B2ObjectStorageConfig` construction
+        -- stronger than, and now reached before, `app.py`'s own literal
+        endpoint-equality comparison below. A B2 endpoint accidentally
+        pointed at the real R2 endpoint is therefore rejected by the shape
+        guard (wrong hostname) rather than by the equality check, but the
+        observable outcome this test protects -- misconfiguration always
+        fails closed, never silently "succeeds" with one real provider
+        serving both roles -- is unchanged.
+        """
         from hullq.api.app import create_app
 
         monkeypatch.setenv("HULLQ_SESSION_COOKIE_SECURE", "false")
@@ -1400,7 +1411,7 @@ class TestIndependentOriginalCopyRedundancy:
         monkeypatch.setenv(
             "HULLQ_MEDIA_BACKUP_B2_ENDPOINT", "https://acct-collide.r2.cloudflarestorage.com"
         )
-        monkeypatch.setenv("HULLQ_MEDIA_BACKUP_B2_REGION", "auto")
+        monkeypatch.setenv("HULLQ_MEDIA_BACKUP_B2_REGION", "eu-central-003")
         monkeypatch.setenv("HULLQ_MEDIA_BACKUP_B2_KEY_ID", "b2-key")
         monkeypatch.setenv("HULLQ_MEDIA_BACKUP_B2_APPLICATION_KEY", "b2-secret")
         monkeypatch.setenv("HULLQ_MEDIA_BACKUP_B2_BUCKET", "b2-bucket")
@@ -1433,8 +1444,11 @@ class TestIndependentOriginalCopyRedundancy:
             # important proof here is specifically that the guard fires with
             # `ObjectStorageConfigError` rather than silently "succeeding"
             # with a single-provider "redundancy" (contract §12) -- it must
-            # never reach object storage or the database at all.
-            with pytest.raises(ObjectStorageConfigError, match="must not match"):
+            # never reach object storage or the database at all. Rejected by
+            # the Finding B hostname-shape guard (an R2 hostname can never
+            # satisfy the accepted Backblaze B2 shape), not by app.py's own
+            # equality check specifically -- see this test's docstring.
+            with pytest.raises(ObjectStorageConfigError, match="hostname"):
                 _upload_one(client, org_id, "NL-BK3")
             with psycopg.connect(api_url) as conn, conn.cursor() as cur:
                 cur.execute(

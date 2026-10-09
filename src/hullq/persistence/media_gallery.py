@@ -428,11 +428,20 @@ def _resolve_backup_columns(
     SLICE-0080 upload path -- e.g. unrelated feature tests seeding a
     MediaAsset directly) means "not established", exactly like a legacy
     pre-SLICE-0080 row -- never fabricated as backed up.
+
+    Independent review Finding C: a present `backup_object_key` that is
+    empty or whitespace-only cannot actually locate anything, so it is
+    rejected here -- defense in depth alongside `ck_media_assets_backup_
+    shape`'s equivalent `length(btrim(backup_object_key)) > 0` database
+    check, never relying on the database boundary alone.
     """
     if (backup_provider is None) != (backup_object_key is None):
         raise ValueError("backup_provider and backup_object_key must both be set or both be None")
     if backup_provider is None:
         return None, None, None
+    assert backup_object_key is not None
+    if not backup_object_key.strip():
+        raise ValueError("backup_object_key must not be empty or whitespace-only")
     return backup_provider.value, backup_object_key, datetime.now(UTC)
 
 

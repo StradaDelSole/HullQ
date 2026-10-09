@@ -37,13 +37,22 @@ separate flag.
 for a row to claim an established B2 copy while lacking the durable backup
 object reference/provider role required to locate it" a real database
 invariant, not only an application-level convention: all three columns are
-`NULL` together (not established) or all three are `NOT NULL` together
-(established with a locator) -- no partial/impossible shape is representable
-at all, in either direction. `ck_media_assets_backup_provider_valid` bounds
-`backup_provider` to the finite v0.1 token vocabulary, mirroring this
-table's existing `source_kind`/`processing_state`/`rights_state` TEXT-plus-
-CHECK-constraint convention (see the owning `d4e8f2a71b93` migration's
-docstring) rather than a native Postgres ENUM type.
+`NULL` together (not established) or all three are `NOT NULL` AND
+`backup_object_key` is genuinely non-empty/non-whitespace together
+(established with a real locator) -- no partial/impossible shape is
+representable at all, in either direction. Independent review Finding C:
+`backup_object_key IS NOT NULL` alone would still let an established row
+claim an empty-string or whitespace-only locator, which cannot actually
+locate anything -- `backup_object_key !~ '^\\s*$'` (rejecting a value that is
+entirely whitespace, of any kind -- plain `btrim()` alone only strips plain
+space characters by default, not tabs/newlines) closes that gap at the
+database boundary itself, not only in the Python persistence helper
+(`hullq.persistence.media_gallery._resolve_backup_columns`).
+`ck_media_assets_backup_provider_valid` bounds `backup_provider` to the
+finite v0.1 token vocabulary, mirroring this table's existing `source_kind`/
+`processing_state`/`rights_state` TEXT-plus-CHECK-constraint convention
+(see the owning `d4e8f2a71b93` migration's docstring) rather than a native
+Postgres ENUM type.
 
 These columns apply uniformly to both `APPROVED` and `REJECTED` rows
 (contract §5: "This applies to both APPROVED and retained REJECTED
@@ -86,7 +95,7 @@ def upgrade() -> None:
         " AND backup_established_at IS NULL)"
         " OR "
         "(backup_provider IS NOT NULL AND backup_object_key IS NOT NULL "
-        " AND backup_established_at IS NOT NULL)",
+        " AND backup_object_key !~ '^\\s*$' AND backup_established_at IS NOT NULL)",
     )
 
 
