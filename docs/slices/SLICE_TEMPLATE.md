@@ -69,7 +69,7 @@ Classify material points using the governance states in `docs/governance/DECISIO
 
 Required when this slice provisions production services, changes production operational boundaries, introduces real production data, begins/expands an external pilot, enables buyer/public exposure, or otherwise advances HullQ toward a later go-live phase.
 
-**Launch-pack phase before this slice:** NOT_APPLICABLE | NOT_STARTED | 1 | 2 | 3 | 4 | 5 | 6  
+**Launch-pack phase before this slice:** NOT_APPLICABLE | NOT_STARTED | 1 | 2 | 3 | 4 | 5 | 6 | 7  
 **Launch-pack phase after this slice:** NOT_APPLICABLE | 1 | 2 | 3 | 4 | 5 | 6 | 7  
 **PRODUCTION LAUNCH PACK CHECK:** PASS | NOT_APPLICABLE  
 
@@ -220,6 +220,7 @@ Use this structure exactly at the end of the assigned slice.
 - TRIGGER GATES CHECK: `PASS` | `FAIL` | `NOT APPLICABLE`
 - OVERALL MVP CAPABILITY REGISTER CHECK: `PASS` | `FAIL` | `NOT APPLICABLE`
 - MECHANICAL INVARIANTS / FAILURE MODES CHECK: `PASS` | `NOT APPLICABLE`
+- PRODUCTION LAUNCH PACK CHECK: `PASS` | `NOT APPLICABLE`
 
 ### Changes
 
