@@ -6,7 +6,7 @@
 
 **Updated:** 2026-10-09  
 **Latest owner-accepted / DONE slice:** SLICE-0080  
-**Current queue:** SLICE-0081 — **UNSELECTED / reassessment required**. SLICE-0080 is Owner-accepted and merged; provider-independent broker-original redundancy is implemented in the repository, while the real Backblaze account/bucket/application-key and live-provider proof remain Production Launch Pack work. Production Readiness remains `IN_PROGRESS`; no external production data, pilot, buyer exposure or public launch is authorized.  
+**Current queue:** SLICE-0081 — **UNSELECTED**. Post-SLICE-0080 reconciliation is PASS and deliberately selects no new code slice. The active next work is Production Launch Pack Phase 1 — Accounts & Ownership; the canonical phase marker remains `NOT_STARTED` until Phase 1 is fully evidenced and reviewed. Production Readiness remains `IN_PROGRESS`; no external production data, pilot, buyer exposure or public launch is authorized.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -341,9 +341,9 @@ Next queue number:
 SLICE-0081
 ```
 
-**Capability:** UNSELECTED — fresh post-SLICE-0080 reassessment required.
+**Capability:** UNSELECTED — post-SLICE-0080 reassessment selects Production Launch Pack Phase 1 operator work instead of a new code slice.
 
-SLICE-0080 is Owner-accepted and merged. No SLICE-0081 capability is selected automatically. A fresh Decision/Implementation Reconciliation must determine the next highest-leverage capability while preserving `PRODUCTION_READINESS_GATE_STATUS = IN_PROGRESS`, `PRODUCTION_LAUNCH_PACK_PHASE = NOT_STARTED`, no external production data/pilot/public launch, and the separate PostgreSQL HA trigger before real external buyer exposure.
+SLICE-0080 is Owner-accepted and merged. `docs/POST_SLICE_0080_REASSESSMENT_2026-10-09.md` concludes that the highest-leverage next work is Production Launch Pack Phase 1 — Accounts & Ownership, not another code slice. SLICE-0081 remains UNSELECTED unless provider execution reveals a genuine repository capability gap. The DigitalOcean Standard→later-standby assumption is now a time-sensitive provider-plan conflict risk requiring explicit Owner decision before paid PostgreSQL provisioning.
 
 ## Development workflow
 
@@ -358,6 +358,6 @@ SLICE-0080 is Owner-accepted and merged. No SLICE-0081 capability is selected au
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0079 and SLICE-0080 are Owner-accepted and merged; SLICE-0081 remains UNSELECTED until a fresh post-SLICE-0080 reconciliation/reassessment.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0079 and SLICE-0080 are Owner-accepted and merged; the post-SLICE-0080 reconciliation is PASS and leaves SLICE-0081 UNSELECTED while Production Launch Pack Phase 1 account/ownership work proceeds.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
