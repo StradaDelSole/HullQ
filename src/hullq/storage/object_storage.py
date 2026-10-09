@@ -291,7 +291,20 @@ def _s3_get_object(client: Any, bucket: str, key: str, *, provider_label: str) -
         # absence either (contract §7) -- same bounded-error, suppressed-
         # chaining treatment as the `ClientError` branch above.
         raise _bounded_s3_error(provider_label, "get_object", exc) from None
-    body = response["Body"].read()
+
+    try:
+        body = response["Body"].read()
+    except (ClientError, BotoCoreError) as exc:
+        # Independent review Finding A-residual: `get_object()` itself
+        # already returned successfully by this point -- a streaming-body
+        # read failure (read-timeout/incomplete-read/transport) happens
+        # strictly afterward and is never confirmed absence (contract §7),
+        # only ever a dependency error. It therefore gets the identical
+        # bounded-error, suppressed-chaining treatment as every provider
+        # failure above -- deliberately never the `ObjectNotFoundError`
+        # carve-out, even if the underlying exception happened to carry a
+        # `NoSuchKey`-shaped code.
+        raise _bounded_s3_error(provider_label, "get_object", exc) from None
     assert isinstance(body, bytes)
     return body
 

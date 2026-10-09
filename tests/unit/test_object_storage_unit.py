@@ -14,7 +14,12 @@ import traceback
 from unittest.mock import MagicMock
 
 import pytest
-from botocore.exceptions import ClientError, EndpointConnectionError
+from botocore.exceptions import (
+    ClientError,
+    EndpointConnectionError,
+    IncompleteReadError,
+    ReadTimeoutError,
+)
 
 from hullq.storage.object_storage import (
     HULLQ_MEDIA_BACKUP_B2_APPLICATION_KEY_ENV,
@@ -229,6 +234,36 @@ class TestR2ObjectStorageAdapter:
             storage.get_object("media/xyz.jpg")
         assert "SECRET-ENDPOINT-TOKEN-GET" not in _formatted_traceback(exc_info.value)
         assert "EndpointConnectionError" in str(exc_info.value)
+
+    # -- Independent review Finding A-residual: `get_object()` itself can
+    # succeed while the subsequent `response["Body"].read()` streaming-body
+    # read fails (read-timeout/incomplete-read/transport) -- that failure
+    # must also be bounded, never absence.
+
+    def test_get_object_body_read_timeout_is_bounded_not_absence(self) -> None:
+        client = MagicMock()
+        body = MagicMock()
+        body.read.side_effect = ReadTimeoutError(
+            endpoint_url="https://SECRET-ENDPOINT-TOKEN-STREAM.example.com"
+        )
+        client.get_object.return_value = {"Body": body}
+        storage = R2ObjectStorage(client=client, bucket="bucket-1")
+        with pytest.raises(ObjectStorageConfigError) as exc_info:
+            storage.get_object("media/xyz.jpg")
+        assert not isinstance(exc_info.value, ObjectNotFoundError)
+        assert "SECRET-ENDPOINT-TOKEN-STREAM" not in _formatted_traceback(exc_info.value)
+        assert "ReadTimeoutError" in str(exc_info.value)
+
+    def test_get_object_body_read_incomplete_is_bounded_not_absence(self) -> None:
+        client = MagicMock()
+        body = MagicMock()
+        body.read.side_effect = IncompleteReadError(actual_bytes=10, expected_bytes=100)
+        client.get_object.return_value = {"Body": body}
+        storage = R2ObjectStorage(client=client, bucket="bucket-1")
+        with pytest.raises(ObjectStorageConfigError) as exc_info:
+            storage.get_object("media/xyz.jpg")
+        assert not isinstance(exc_info.value, ObjectNotFoundError)
+        assert "IncompleteReadError" in str(exc_info.value)
 
 
 # ---------------------------------------------------------------------------
@@ -593,3 +628,33 @@ class TestB2ObjectStorageAdapter:
             storage.get_object("media/original/xyz")
         assert "SECRET-B2-ENDPOINT-TOKEN-GET" not in _formatted_traceback(exc_info.value)
         assert "EndpointConnectionError" in str(exc_info.value)
+
+    # -- Independent review Finding A-residual: `get_object()` itself can
+    # succeed while the subsequent `response["Body"].read()` streaming-body
+    # read fails (read-timeout/incomplete-read/transport) -- that failure
+    # must also be bounded, never absence.
+
+    def test_get_object_body_read_timeout_is_bounded_not_absence(self) -> None:
+        client = MagicMock()
+        body = MagicMock()
+        body.read.side_effect = ReadTimeoutError(
+            endpoint_url="https://SECRET-B2-ENDPOINT-TOKEN-STREAM.example.com"
+        )
+        client.get_object.return_value = {"Body": body}
+        storage = B2ObjectStorage(client=client, bucket="backup-bucket-1")
+        with pytest.raises(ObjectStorageConfigError) as exc_info:
+            storage.get_object("media/original/xyz")
+        assert not isinstance(exc_info.value, ObjectNotFoundError)
+        assert "SECRET-B2-ENDPOINT-TOKEN-STREAM" not in _formatted_traceback(exc_info.value)
+        assert "ReadTimeoutError" in str(exc_info.value)
+
+    def test_get_object_body_read_incomplete_is_bounded_not_absence(self) -> None:
+        client = MagicMock()
+        body = MagicMock()
+        body.read.side_effect = IncompleteReadError(actual_bytes=10, expected_bytes=100)
+        client.get_object.return_value = {"Body": body}
+        storage = B2ObjectStorage(client=client, bucket="backup-bucket-1")
+        with pytest.raises(ObjectStorageConfigError) as exc_info:
+            storage.get_object("media/original/xyz")
+        assert not isinstance(exc_info.value, ObjectNotFoundError)
+        assert "IncompleteReadError" in str(exc_info.value)
