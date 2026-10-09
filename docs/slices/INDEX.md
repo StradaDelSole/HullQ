@@ -1,7 +1,7 @@
 # HullQ Slice Index
 
 **Status:** ACTIVE navigation board  
-**Updated:** 2026-09-27  
+**Updated:** 2026-10-09  
 **Canonical current-state authority:** `docs/PROJECT_STATE.md`
 
 This file is deliberately a **compact navigation index**, not a second historical status authority.
@@ -16,17 +16,19 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ## Current execution boundary
 
 ```text
-Latest owner-accepted slice: SLICE-0066
-Current queue:               SLICE-0067
-Current capability:          Professional Draft → Atomic Marketplace Promotion
+Latest owner-accepted slice: SLICE-0079
+Current queue:               SLICE-0080
+Current capability:          Provider-Independent Broker Original-Media Redundancy
+Current readiness:           NOT YET READY — secondary-provider Owner decision required
 ```
 
-Current slice:
+Current selection:
 
-- `docs/slices/SLICE-0067-professional-draft-atomic-promotion.md`;
-- capability selected by `docs/POST_SLICE_0066_REASSESSMENT_2026-09-27.md`;
-- read the primary slice for live handoff status and `docs/PROJECT_STATE.md` for the canonical accepted/queue boundary;
-- implementation is not authorized until readiness review/gates/merge complete;
+- capability selected by `docs/POST_SLICE_0079_REASSESSMENT_2026-10-09.md`;
+- no SLICE-0080 readiness contract is startable yet;
+- `docs/PROJECT_STATE.md` remains the canonical accepted/queue boundary;
+- Production Launch Pack phase remains `NOT_STARTED`;
+- `START_SLICE.bat 0080` is not authorized until readiness review/gates/merge complete;
 - no later slice is authorized automatically.
 
 ## Historical execution ranges
@@ -35,14 +37,14 @@ Current slice:
 |---|---|
 | SLICE-0001–0038 | accepted foundational research/architecture/data/product work except where an individual slice record states otherwise |
 | SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
-| SLICE-0040–0066 | later accepted marketplace/Search/buyer/broker work; final state is authoritative in each acceptance closure and `PROJECT_STATE.md` |
-| SLICE-0067 | current selected queue capability; live status is authoritative in its primary slice document |
+| SLICE-0040–0079 | later accepted marketplace/Search/buyer/broker/security/production-foundation work; final state is authoritative in each acceptance closure and `PROJECT_STATE.md` |
+| SLICE-0080 | current selected queue capability; readiness is not yet startable and live status is authoritative in `PROJECT_STATE.md` plus the post-0079 reassessment |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
 ## Current product execution focus
 
-Current execution priority after accepted SLICE-0066 is governed by:
+Current execution priority after accepted SLICE-0079 is governed by:
 
 - `docs/BROKER_LAUNCH_EXECUTION_FOCUS_2026-09-26.md`
 - `docs/PROFESSIONAL_MARKETPLACE_WORKFLOW_DECISIONS_2026-09-26.md`
