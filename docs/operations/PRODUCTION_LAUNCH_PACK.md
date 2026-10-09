@@ -24,6 +24,24 @@ A later phase may begin only when the prior phase's required evidence is complet
 
 No phase transition is implied by infrastructure merely existing. Creating an account, database, VPS, DNS record, production image or deployment does not by itself authorize external data, a pilot, buyer exposure or public launch.
 
+## Canonical phase state
+
+The current completed launch phase is recorded in `docs/PROJECT_STATE.md` as:
+
+```text
+PRODUCTION_LAUNCH_PACK_PHASE: NOT_STARTED | 1 | 2 | 3 | 4 | 5 | 6 | 7
+```
+
+This marker is authoritative for sequencing. A future production-phase slice must declare the same current value as its before-phase and may hold it or advance by at most one phase. Self-declaring a later before-phase is invalid even when the slice's own before/after pair looks sequential.
+
+The marker advances only after the current phase's **Done when** evidence is complete. When a slice owns that completion, its acceptance closure updates the marker atomically. When the work is pure provider-console provisioning outside a slice, a separately reviewed repository maintenance change records the evidence and advances the marker. Merely creating an account, resource, DNS record or deployment never advances the phase by itself.
+
+Current state after SLICE-0079 acceptance:
+
+```text
+PRODUCTION_LAUNCH_PACK_PHASE = NOT_STARTED
+```
+
 ## Operator rule
 
 Production setup is executed one service and one verified dependency at a time.
