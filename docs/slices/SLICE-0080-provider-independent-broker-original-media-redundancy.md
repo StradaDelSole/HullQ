@@ -2,7 +2,7 @@
 
 **ID:** SLICE-0080
 **Type:** IMPLEMENTATION
-**Status:** REVIEW
+**Status:** READY
 **Stage:** pre-production broker-media durability
 **Depends on:** SLICE-0079 owner-accepted / DONE; post-SLICE-0079 reconciliation PASS; Backblaze B2 provider decision OWNER_ACCEPTED
 **Blocks:** real broker production media until independent original/source redundancy is implemented and later operationally configured/proven
