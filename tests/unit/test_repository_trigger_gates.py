@@ -3,6 +3,8 @@ from pathlib import Path
 import pytest
 
 from scripts.validate_repository import (
+    _validate_mechanical_invariant_evidence,
+    _validate_production_phase_transition,
     _validate_trigger_gate_evidence,
     trigger_gate_state_check,
 )
@@ -254,3 +256,144 @@ def test_third_search_criterion_passes_with_abstraction_guard(tmp_path: Path) ->
         ),
         criteria_count=2,
     )
+
+
+def _mechanical_section(
+    *,
+    risk: str = "HIGH_RISK",
+    why: str = "Deployment identity can mutate across retries or infrastructure loss.",
+    invariant: str = "Once release X is established, later execution cannot silently redefine X.",
+    durable: str = (
+        "Registry digest is authoritative; replaceable host-local state is only a cache."
+    ),
+    retry: str = "Retry/replay reuses established identity; partial failure never advances state.",
+    absence: str = (
+        "Confirmed not-found permits creation; network/auth/timeout/parse errors fail closed."
+    ),
+    proof: str = "Execute retry, host-loss, partial-failure and dependency-error negative cases.",
+    sizing: str = "COHERENT",
+) -> str:
+    return (
+        f"**Risk classification:** {risk}\n"
+        f"**Why this classification:** {why}\n"
+        f"**Must-never-change invariant:** {invariant}\n"
+        f"**Durable source of truth / loss boundary:** {durable}\n"
+        f"**Retry / replay / partial-failure behavior:** {retry}\n"
+        f"**Absence-vs-error / fail-closed behavior:** {absence}\n"
+        f"**Executable adversarial proof:** {proof}\n"
+        f"**Slice sizing assessment:** {sizing}\n"
+    )
+
+
+def test_high_risk_mechanical_readiness_requires_pass(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match=r"HIGH_RISK.*requires"):
+        _validate_mechanical_invariant_evidence(
+            queue=80,
+            path=tmp_path / "SLICE-0080-test.md",
+            section=_mechanical_section(),
+            check_value="NOT_APPLICABLE",
+        )
+
+
+def test_high_risk_mechanical_readiness_rejects_bare_not_applicable(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="must be concrete"):
+        _validate_mechanical_invariant_evidence(
+            queue=80,
+            path=tmp_path / "SLICE-0080-test.md",
+            section=_mechanical_section(absence="NOT_APPLICABLE"),
+            check_value="PASS",
+        )
+
+
+def test_split_required_blocks_readiness(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="SPLIT_REQUIRED"):
+        _validate_mechanical_invariant_evidence(
+            queue=80,
+            path=tmp_path / "SLICE-0080-test.md",
+            section=_mechanical_section(sizing="SPLIT_REQUIRED"),
+            check_value="PASS",
+        )
+
+
+def test_ordinary_mechanical_readiness_may_be_not_applicable(tmp_path: Path) -> None:
+    _validate_mechanical_invariant_evidence(
+        queue=80,
+        path=tmp_path / "SLICE-0080-test.md",
+        section=_mechanical_section(
+            risk="ORDINARY",
+            why=(
+                "Copy-only documentation change with no runtime, state, trust or external "
+                "dependency semantics."
+            ),
+            invariant="NOT_APPLICABLE",
+            durable="NOT_APPLICABLE",
+            retry="NOT_APPLICABLE",
+            absence="NOT_APPLICABLE",
+            proof="NOT_APPLICABLE",
+        ),
+        check_value="NOT_APPLICABLE",
+    )
+
+
+def _production_phase_section(*, before: str, after: str) -> str:
+    return (
+        f"**Launch-pack phase before this slice:** {before}\n"
+        f"**Launch-pack phase after this slice:** {after}\n"
+    )
+
+
+def test_non_production_slice_uses_not_applicable_launch_pack_check(tmp_path: Path) -> None:
+    _validate_production_phase_transition(
+        queue=80,
+        path=tmp_path / "SLICE-0080-test.md",
+        section=_production_phase_section(before="NOT_APPLICABLE", after="NOT_APPLICABLE"),
+        check_value="NOT_APPLICABLE",
+    )
+
+
+def test_production_launch_can_start_at_phase_one(tmp_path: Path) -> None:
+    _validate_production_phase_transition(
+        queue=80,
+        path=tmp_path / "SLICE-0080-test.md",
+        section=_production_phase_section(before="NOT_STARTED", after="1"),
+        check_value="PASS",
+    )
+
+
+def test_production_launch_may_hold_same_phase(tmp_path: Path) -> None:
+    _validate_production_phase_transition(
+        queue=80,
+        path=tmp_path / "SLICE-0080-test.md",
+        section=_production_phase_section(before="3", after="3"),
+        check_value="PASS",
+    )
+
+
+def test_production_launch_cannot_skip_phases(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="cannot skip stages"):
+        _validate_production_phase_transition(
+            queue=80,
+            path=tmp_path / "SLICE-0080-test.md",
+            section=_production_phase_section(before="2", after="6"),
+            check_value="PASS",
+        )
+
+
+def test_production_phase_work_requires_launch_pack_pass(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="production-phase work requires"):
+        _validate_production_phase_transition(
+            queue=80,
+            path=tmp_path / "SLICE-0080-test.md",
+            section=_production_phase_section(before="4", after="5"),
+            check_value="NOT_APPLICABLE",
+        )
+
+
+def test_production_launch_cannot_move_backwards(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="cannot move backwards"):
+        _validate_production_phase_transition(
+            queue=80,
+            path=tmp_path / "SLICE-0080-test.md",
+            section=_production_phase_section(before="5", after="4"),
+            check_value="PASS",
+        )

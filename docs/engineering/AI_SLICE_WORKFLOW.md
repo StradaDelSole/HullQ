@@ -112,6 +112,52 @@ This line distinguishes a real implementation handoff from a malformed readiness
 
 `scripts/validate_repository.py` mechanically validates this for the current `PROJECT_STATE_QUEUE_SLICE` whenever a queue document exists. Before execution it mirrors the `START_SLICE` primary-document header rules and post-SLICE-0038 product checks; from SLICE-0051 onward it also requires the repository-reconciliation PASS marker/section, and from SLICE-0052 onward it requires the trigger-gates PASS marker/section and validates the canonical trigger state. After an explicit implementation handoff it permits only the tightly marked `REVIEW`/`BLOCKED` states above. This ensures an unstartable readiness artifact fails CI before merge without blocking the normal implementation-review lifecycle.
 
+### Post-SLICE-0079 mechanical-invariant readiness rule
+
+From SLICE-0080 onward, every primary readiness contract must contain the `MECHANICAL INVARIANTS / FAILURE MODES CHECK` and `## Mechanical invariants / failure modes` section defined by `docs/slices/SLICE_TEMPLATE.md`.
+
+This rule exists because SLICE-0079 showed that high-level acceptance phrases such as “immutable images”, “controlled rollback”, “replaceable host” or “fail closed” are not precise enough by themselves. Readiness must translate those goals into mechanical invariants before implementation starts.
+
+For `HIGH_RISK` work, readiness must explicitly answer all of the following:
+
+- what state/identity must never silently change once established;
+- which source is authoritative and which state must survive loss of a process, cache, local file or replaceable host;
+- what retries, reruns, replays, duplicate requests, partial successes, rollbacks and concurrent attempts are allowed to do;
+- how confirmed absence is distinguished from network/auth/timeout/parse/provider failure before any mutation is authorized;
+- which failures must fail closed;
+- which negative cases require executable proof rather than static review or documentation;
+- whether the proposed slice is still one coherent capability or actually multiple independently testable failure domains.
+
+A shared umbrella such as “production readiness”, “security hardening” or “launch gate” does not itself satisfy the one-capability rule. If deploy/rollback, backup/restore, observability/alerting, identity/durability and another independently useful subsystem can each be implemented and accepted separately, readiness should split them unless separation would make the observable outcome unusable or unsafe.
+
+Repository validation and `START_SLICE` enforce the presence and basic shape of this section for SLICE-0080+, but independent readiness review remains responsible for judging whether the invariants are actually complete and whether `ORDINARY` / `NOT_APPLICABLE` is honest.
+
+Before a `HIGH_RISK` implementation is handed to independent review, the implementation agent must perform one adversarial self-review against the readiness failure model. At minimum, re-check applicable retry/rerun/replay, partial-failure, stale/concurrent-state, dependency-unavailable/auth/timeout, confirmed-absence-vs-error, replaceable-host/cache-loss and rollback/recovery paths. Evidence claims must state what was actually executed; intended configuration, vendor documentation or an unrun harness is not execution proof.
+
+Independent exact-head review should then re-run that same failure model rather than merely checking that the happy path and acceptance checklist are present.
+
+### Production go-live staging invariant
+
+The Project Owner accepted the staged operator procedure in `docs/operations/PRODUCTION_LAUNCH_PACK.md` on 2026-10-08.
+
+HullQ production go-live is not a big-bang cutover. The required phase order is:
+
+```text
+1. Accounts & Ownership
+2. Secrets & Connections
+3. Closed Production Infrastructure
+4. Closed HullQ Production Deploy
+5. Internal Real Operation
+6. Bounded External Broker Pilot
+7. Public Production Launch
+```
+
+Any readiness/reassessment or operator action that would advance HullQ into a later production phase MUST reconcile against that launch pack and the canonical Production Readiness Gate first. A successful deploy, provider account creation, DNS change, database creation or pilot does not implicitly authorize the next phase.
+
+Production setup should be executed one provider/dependency at a time with an explicit done-when test and `PASS` / `BLOCKED` outcome. Secret values never belong in the launch pack or repository documentation; only secret names, purpose and destination secret store may be recorded.
+
+If launch execution uncovers a new product/domain/data/architecture decision, stop and route it back through the normal HullQ reconciliation/readiness/slice lifecycle. Pure provider-console provisioning of already-accepted configuration may remain an operator-checklist action, but evidence required by the controlling gate/runbook must still be retained.
+
 ### Start a slice
 
 1. Double-click `START_SLICE.bat` in the normal HullQ folder.
@@ -188,7 +234,7 @@ If an amendment is required:
 - Claude applies only the requested amendment plus necessary tests/validation and reports a new exact HEAD using the compact amendment report from `SLICE_TEMPLATE.md`;
 - use focused validation during intermediate amendment rounds; require the slice's complete validation on the final candidate HEAD unless the contract or risk boundary requires it earlier.
 
-Independent review must compare implementation not only with the immediate slice text but with the accepted semantics named by the reconciliation and trigger-gate records. A regression from previously accepted/implemented behavior is a review defect, not a new design choice.
+Independent review must compare implementation not only with the immediate slice text but with the accepted semantics named by the reconciliation and trigger-gate records. A regression from previously accepted/implemented behavior is a review defect, not a new design choice. For SLICE-0080+ `HIGH_RISK` work, review must also explicitly traverse the readiness contract's mechanical invariants/failure modes and look for second-order failures caused by retry, partial completion, host/cache loss, external dependency errors and ambiguous absence detection.
 
 #### Post-SLICE-0056 risk-focused review depth
 
