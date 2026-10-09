@@ -70,7 +70,7 @@ Classify material points using the governance states in `docs/governance/DECISIO
 Required when this slice provisions production services, changes production operational boundaries, introduces real production data, begins/expands an external pilot, enables buyer/public exposure, or otherwise advances HullQ toward a later go-live phase.
 
 **Launch-pack phase before this slice:** NOT_APPLICABLE | NOT_STARTED | 1 | 2 | 3 | 4 | 5 | 6 | 7  
-**Launch-pack phase after this slice:** NOT_APPLICABLE | 1 | 2 | 3 | 4 | 5 | 6 | 7  
+**Launch-pack phase after this slice:** NOT_APPLICABLE | NOT_STARTED | 1 | 2 | 3 | 4 | 5 | 6 | 7  
 **PRODUCTION LAUNCH PACK CHECK:** PASS | NOT_APPLICABLE  
 
 `PASS` requires reconciliation with `docs/operations/PRODUCTION_LAUNCH_PACK.md`: `Launch-pack phase before this slice` must exactly match the canonical `PRODUCTION_LAUNCH_PACK_PHASE` marker in `docs/PROJECT_STATE.md`; the slice may hold that phase or advance by at most one phase, may not skip a prior phase, must preserve the Production Readiness Gate and buyer-exposure prerequisites, and must define the done-when evidence for any production phase transition. A deployment or provider configuration step must not silently authorize external data, pilot or public launch.
