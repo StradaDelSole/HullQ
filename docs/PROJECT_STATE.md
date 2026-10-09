@@ -6,7 +6,7 @@
 
 **Updated:** 2026-10-09  
 **Latest owner-accepted / DONE slice:** SLICE-0079  
-**Current queue:** SLICE-0080 — **Provider-Independent Broker Original-Media Redundancy — READINESS REVIEW**. The Project Owner selected Backblaze B2 EU Central as the independent second provider; the readiness contract and mechanical failure model are under independent review. `START_SLICE.bat 0080` remains unauthorized until that readiness is reviewed, gates are green and the readiness PR is merged to `main`. Production Readiness remains `IN_PROGRESS`; no external production data, pilot or public launch is authorized.  
+**Current queue:** SLICE-0080 — **Provider-Independent Broker Original-Media Redundancy — READY CANDIDATE**. Backblaze B2 EU Central is Owner-selected and the readiness contract/mechanical failure model passed independent content review. `START_SLICE.bat 0080` remains unauthorized until required remote gates are green and this readiness is merged to canonical `main`. Production Readiness remains `IN_PROGRESS`; no external production data, pilot or public launch is authorized.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
