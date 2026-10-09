@@ -16,19 +16,18 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ## Current execution boundary
 
 ```text
-Latest owner-accepted slice: SLICE-0079
-Current queue:               SLICE-0080
-Current capability:          Provider-Independent Broker Original-Media Redundancy
-Current readiness:           READY ON MAIN
+Latest owner-accepted slice: SLICE-0080
+Current queue:               SLICE-0081
+Current capability:          UNSELECTED — reassessment required
+Current readiness:           NOT_APPLICABLE
 ```
 
-Current selection:
+Current boundary:
 
-- capability selected by `docs/POST_SLICE_0079_REASSESSMENT_2026-10-09.md`;
-- primary readiness contract: `docs/slices/SLICE-0080-provider-independent-broker-original-media-redundancy.md` (READY);
+- SLICE-0080 is Owner-accepted; final history is retained in `docs/slices/SLICE-0080-acceptance-closure.md`;
 - `docs/PROJECT_STATE.md` remains the canonical accepted/queue boundary;
 - Production Launch Pack phase remains `NOT_STARTED`;
-- `START_SLICE.bat 0080` is not authorized until readiness review/gates/merge complete;
+- SLICE-0081 has no selected capability/readiness yet;
 - no later slice is authorized automatically.
 
 ## Historical execution ranges
@@ -37,8 +36,8 @@ Current selection:
 |---|---|
 | SLICE-0001–0038 | accepted foundational research/architecture/data/product work except where an individual slice record states otherwise |
 | SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
-| SLICE-0040–0079 | later accepted marketplace/Search/buyer/broker/security/production-foundation work; final state is authoritative in each acceptance closure and `PROJECT_STATE.md` |
-| SLICE-0080 | current selected queue capability; readiness is not yet startable and live status is authoritative in `PROJECT_STATE.md` plus the post-0079 reassessment |
+| SLICE-0040–0080 | later accepted marketplace/Search/buyer/broker/security/production-foundation/media-durability work; final state is authoritative in each acceptance closure and `PROJECT_STATE.md` |
+| SLICE-0081 | current numeric queue only; capability UNSELECTED pending fresh reassessment |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
