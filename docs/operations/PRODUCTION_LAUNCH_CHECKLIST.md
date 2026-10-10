@@ -64,6 +64,16 @@ The accepted choice preserves provider independence from Cloudflare, uses an EU 
 
 SLICE-0080 implementation is Owner-accepted; the real account/bucket/application key, secret-store wiring and live connectivity proof remain Phase-1/Phase-2 operator work and were not created by the slice.
 
+## Owner hosting/security decision (2026-10-10)
+
+The Project Owner reaffirmed **Contabo** as the intended application VPS, with **Cloudflare Tunnel as proposed ingress**, pending independent operational proof. Priorities: security, stability/availability, then total cost. **No VPS purchase or production exposure is authorized.**
+
+Before actual VPS procurement/provisioning, prepare an explicit security/reliability acceptance catalogue with testable STOP/GO checks; run and retain the relevant evidence before any production operation. Scope includes host/admin hardening, edge/tunnel origin isolation, container boundaries, secret handling, monitoring, backups/recovery, external validation and the accepted Auth0/session and security gates.
+
+Controlling Owner record: `docs/operations/CONTABO_CLOUDFLARE_SECURITY_DECISION_2026-10-10.md`.
+
+The separate production PostgreSQL provider/HA decision is **not changed** by this hosting choice; Neon Free is dev/test-only. No production phase marker advances and SLICE-0081 remains unselected.
+
 ## Current Phase-1 execution order
 
 To minimize recurring spend and avoid provisioning resources before their ownership/recovery boundary is ready:
