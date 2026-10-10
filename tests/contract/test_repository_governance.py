@@ -42,7 +42,9 @@ def test_post_0051_trigger_gate_state_is_valid() -> None:
 def test_current_architecture_artifacts_are_reconciled() -> None:
     system = (ROOT / "architecture/SYSTEM_ARCHITECTURE.md").read_text(encoding="utf-8")
     assert "PlanetScale Managed PostgreSQL 18" in system
-    adr_0012 = (ROOT / "architecture/decisions/ADR-0012-planetscale-managed-postgresql.md").read_text(encoding="utf-8")
+    adr_0012 = (
+        ROOT / "architecture/decisions/ADR-0012-planetscale-managed-postgresql.md"
+    ).read_text(encoding="utf-8")
     assert "**Status:** ACCEPTED" in adr_0012
     assert "PlanetScale Managed PostgreSQL 18" in adr_0012
     assert "Auth0 Public Cloud" in system
