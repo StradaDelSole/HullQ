@@ -36,7 +36,7 @@ Domain/truth boundaries are deliberately more stable than deployment providers o
              +--------------+---------------+
                             |
                             v
-              DigitalOcean Managed PostgreSQL 18
+              PlanetScale Managed PostgreSQL 18
                          FRA1
                             |
                  background/scheduled Python worker
@@ -55,7 +55,7 @@ The initial deployment control plane is deliberately small: CI-built immutable D
 Critical durable production state must not depend on the application host.
 
 ```text
-application truth  -> DigitalOcean Managed PostgreSQL 18 FRA1
+application truth  -> PlanetScale Managed PostgreSQL 18 (EU region subject to verification)
 identity/authn      -> Auth0 EU for authentication only
 HullQ authorization -> PostgreSQL/domain state
 media               -> object storage when introduced
@@ -67,9 +67,11 @@ Application hosts should be stateless/replaceable enough that loss of a host doe
 
 ### PostgreSQL availability / recoverability
 
+**Controlling provider change:** Accepted `architecture/decisions/ADR-0012-planetscale-managed-postgresql.md` supersedes the prior DigitalOcean-specific provider clauses only. Initial PS-5 and later PS-10 ARM three-node HA are conditional sizing hypotheses, not proven features, quotes or purchase authorization. Neon Free remains development/test-only.
+
 Local development uses PostgreSQL 18.
 
-A small single-node DigitalOcean Managed PostgreSQL instance is acceptable for hosted internal/pre-Gate-1 work. The previously accepted hard redundancy trigger was framed around real external broker production inventory. After the 2026-09-14 mixed-supply pivot, no owner-direct production path may exploit that broker-specific wording as a loophole: before real external marketplace inventory is made available to real external buyers, the applicable Production Readiness/HA boundary must be explicitly reconciled for the supply type being launched.
+A small verified single-node PlanetScale Managed PostgreSQL 18 instance is acceptable for hosted internal/pre-Gate-1 work. The previously accepted hard redundancy trigger was framed around real external broker production inventory. After the 2026-09-14 mixed-supply pivot, no owner-direct production path may exploit that broker-specific wording as a loophole: before real external marketplace inventory is made available to real external buyers, the applicable Production Readiness/HA boundary must be explicitly reconciled for the supply type being launched.
 
 Provider backup alone is insufficient. Production recoverability also requires an independent encrypted backup, with Cloudflare R2 EU the accepted direction unless superseded, plus tested restore. A backup is not proven until restore is proven.
 
