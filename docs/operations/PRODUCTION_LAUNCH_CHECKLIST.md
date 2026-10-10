@@ -88,9 +88,9 @@ The Project Owner confirmed the following facts during live setup. These are **O
 | Discord | Separate HullQ operational account created; MFA and recovery codes secured; private `HullQ Operations` server and `#production-alerts` channel created; Discord Free chosen | No webhook created or alert-delivery proof; defer to Phase 2 / Production Readiness |
 | Neon Free | Development/test PostgreSQL 18.6 in Frankfurt, branch `hullq-development`; legacy baseline and Alembic head `b6f3d9a0c452`; 50 public tables, 59 FKs; read-only HullQ persistence connection test PASS | **Development only**; not an approved production PostgreSQL provider or production-readiness proof |
 | Contabo | Owner retains Contabo VPS as application-host choice; account registration requires first order per provider process, so deferred until explicit purchase approval | No account or VPS created; mandatory security/reliability acceptance catalogue required before VPS provisioning |
-| Production PostgreSQL | Owner's working preference is **PlanetScale PostgreSQL** when production is actually needed; Neon Free remains development/test-only. DigitalOcean is still named in older canonical architecture records and has a plan/HA conflict risk | **PlanetScale is PREFERRED CANDIDATE, not yet final production approval**. Validate HullQ compatibility, full usage/HA costs, backups/restore and HA before explicit Owner approval; no paid provisioning |
+| Production PostgreSQL | Owner accepted the **staged PlanetScale PostgreSQL target**: PS-5 Single Node for closed/internal production subject to measurements, then PS-10 ARM three-node HA before real external buyer exposure, subject to provider/HA proof. Neon Free remains dev/test only | Package sizing is provisional pending price, actual usage, PostgreSQL 18 and HA/restore validation. No paid provisioning authorized; DigitalOcean legacy production direction must be reconciled in canonical architecture records |
 
-**Phase-1 evaluation:** `IN_PROGRESS`. The accounts already accessible have owner-attested MFA/recovery evidence, but Contabo enrollment is purchase-gated, production DB provider/HA path remains unresolved and some billing/ownership evidence is still outstanding. These explicit deferrals are not equivalent to phase PASS. `PRODUCTION_LAUNCH_PACK_PHASE` remains `NOT_STARTED`.
+**Phase-1 evaluation:** `IN_PROGRESS`. The accounts already accessible have owner-attested MFA/recovery evidence, but Contabo enrollment is purchase-gated, production DB provider and package direction is Owner-selected but price/HA/provider proof and canonical architecture reconciliation remain outstanding and some billing/ownership evidence is still outstanding. These explicit deferrals are not equivalent to phase PASS. `PRODUCTION_LAUNCH_PACK_PHASE` remains `NOT_STARTED`.
 
 ## Current Phase-1 execution order
 
@@ -102,18 +102,29 @@ To minimize recurring spend and avoid provisioning resources before their owners
 3. Cloudflare account / zone / R2 ownership
 4. Backblaze B2 EU Central account
 5. Auth0 EU tenant/account
-6. DigitalOcean account
-   → explicit Owner decision before paid PostgreSQL provisioning
+6. PlanetScale production target: PS-5 Single Node (closed) → PS-10 ARM 3-node HA (buyer exposure), both conditional on evidence
+   → no cluster purchase yet; reconcile old DigitalOcean architecture record first
 7. Contabo account
-   → no VPS purchase yet
-8. operator alert destination decision
+   → account created during first purchase, so defer until VPS order expressly approved and security acceptance catalogue prepared
+8. Discord Free operator-alert destination: Owner-selected, MFA/recovery complete, private operations server and channel established
+   → webhook secret and delivery proof deferred to Phase 2
 ```
 
-DigitalOcean provider-plan watch, verified 2026-10-09: DigitalOcean announces that beginning 2026-10-15 for accounts that have never created PostgreSQL/MySQL and beginning 2026-11-30 generally, new Standard Edition clusters no longer support standby/read-only nodes; existing clusters are not affected. This creates a time-sensitive conflict risk with HullQ's accepted low-cost Standard→later-standby HA path. Phase 1 may create/secure the DigitalOcean account, but no paid database cluster is provisioned without explicit Owner approval.
+Historical DigitalOcean provider-plan watch, verified 2026-10-09 (relevant only to legacy architecture reconciliation): DigitalOcean announces that beginning 2026-10-15 for accounts that have never created PostgreSQL/MySQL and beginning 2026-11-30 generally, new Standard Edition clusters no longer support standby/read-only nodes; existing clusters are not affected. This creates a time-sensitive conflict risk with HullQ's accepted low-cost Standard→later-standby HA path. Phase 1 may create/secure the DigitalOcean account, but no paid database cluster is provisioned without explicit Owner approval.
 
 Official references:
 - https://docs.digitalocean.com/products/databases/
 - https://docs.digitalocean.com/products/databases/postgresql/details/pricing/
+
+## Owner-accepted staged PlanetScale direction (2026-10-10)
+
+The Owner accepted the sequence: **Neon Free for development/test → PlanetScale PS-5 Single Node for closed/internal production → PlanetScale PS-10 ARM 3-node HA before real external buyer exposure**, if compatibility, capacity and independent security/reliability evidence substantiate the choices. These package labels/prices are planning assumptions, **not a bill, resource reservation or proof of HA**. Later plan sizing is subject to measured load. The pre-buyer-exposure HA gate is unchanged.
+
+Backups remain **two independent layers**: provider-managed backups and point-in-time recovery (verify actual policy, retention and restore in the selected paid plan), plus HullQ-controlled encrypted PostgreSQL exports to separate Cloudflare R2 storage with least privilege, retention, integrity and independent restore drills. Replica nodes do not replace backups.
+
+Required before paid provisioning: current region/version/feature availability; resource limits and all-in pricing (compute, storage, backup/WAL, transfer, taxes, growth); private/public network exposure controls, TLS, roles; exact 3-node HA/failover characteristics; retention and restoration tests; Contabo-to-DB latency; written security/cost STOP/GO evidence. **No production purchase has been approved.**
+
+This direction supersedes the choice to **start** with a DigitalOcean account operationally, but `docs/PROJECT_STATE.md` still contains the older DigitalOcean production architecture; treat that as **OPEN RECONCILIATION**, not a silently completed canonical architecture change. Retain existing production/HA gates and follow the repository decision-review procedure before declaring the canonical provider selection implemented.
 
 ## Phase 1 Done-when
 
