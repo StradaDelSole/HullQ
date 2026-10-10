@@ -37,7 +37,7 @@ Domain/truth boundaries are deliberately more stable than deployment providers o
                             |
                             v
               PlanetScale Managed PostgreSQL 18
-                         FRA1
+                   EU region: to verify
                             |
                  background/scheduled Python worker
 
