@@ -118,7 +118,7 @@ Official references:
 
 ## PlanetScale alternative — Owner preference, NOT an approved architecture change (2026-10-10)
 
-Proposed architecture reconciliation (not yet accepted or controlling): `architecture/decisions/ADR-0011-planetscale-managed-postgresql.md`. Do not provision or update canonical provider references until the ADR has passed independent review and explicit Owner acceptance.
+Proposed architecture reconciliation (not yet accepted or controlling): `architecture/decisions/ADR-0012-planetscale-managed-postgresql.md`. Do not provision or update canonical provider references until the ADR has passed independent review and explicit Owner acceptance.
 
 **Status: OPEN ARCHITECTURE RECONCILIATION / NOT IMPLEMENTED.** The Owner prefers evaluating PlanetScale PostgreSQL at the time a production database is actually required, with an indicative sizing hypothesis of PS-5 Single Node for a closed/internal environment, possibly expanding to PS-10 ARM three-node HA before real external buyer exposure. These are **proposals, not selected production packages or accepted pricing**. The Owner has not authorized an account/cluster purchase.
 
