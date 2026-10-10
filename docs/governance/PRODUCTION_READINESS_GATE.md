@@ -105,8 +105,8 @@ After SLICE-0079 merged, canonical-main Deploy run #28 / run id
 publication gate plus API and web GHCR publication/digest re-resolution
 successfully. The GHCR-observation residual is therefore closed.
 
-The gate remains `IN_PROGRESS`. Real production VPS and DigitalOcean
-Managed PostgreSQL targets are still absent; production R2/alert/deploy
+The gate remains `IN_PROGRESS`. Real production VPS and PlanetScale Managed PostgreSQL 18 targets
+(per accepted ADR-0012) are still absent; production R2/alert/deploy
 secret configuration and later boundary-specific edge/Auth0/HA evidence
 remain operationally unproven. Post-SLICE-0079 reconciliation also restored
 the accepted architecture §22 requirement that original broker media have

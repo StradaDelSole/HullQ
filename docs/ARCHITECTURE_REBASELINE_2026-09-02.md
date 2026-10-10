@@ -678,6 +678,8 @@ Potential logical modules may include catalog, market, identity, authorization, 
 
 ## 19. PostgreSQL / production database
 
+**2026-10-10 targeted provider amendment:** Accepted ADR-0012 replaces only the DigitalOcean-specific production provider choice in this 2026-09-02 rebaseline with PlanetScale Managed PostgreSQL 18. No PostgreSQL, HA, backup, privacy, security or production-readiness invariant is relaxed. PS-5 Single Node (closed) and PS-10 ARM three-node HA (before external buyer exposure) remain unverified candidate configurations; no purchase is authorized.
+
 Development:
 
 ```text
@@ -687,9 +689,9 @@ Local PostgreSQL 18
 Production target:
 
 ```text
-DigitalOcean Managed PostgreSQL 18
-FRA1
-Standard Edition
+PlanetScale Managed PostgreSQL 18
+EU production region to be verified before procurement
+Actual plan/capacity subject to accepted ADR-0012 security, HA, backup and cost gates
 ```
 
 Approved extensions where needed:
@@ -717,7 +719,7 @@ cloud DB cost = €0
 
 ### Hosted internal / Pre-Gate-1 validation
 
-A small DigitalOcean Managed PostgreSQL single node is acceptable initially. Start small and scale only from measured load.
+A small verified PlanetScale Managed PostgreSQL single node is acceptable initially, if all applicable requirements are met. Start small and scale only from measured load.
 
 ### Public real-broker production
 
@@ -736,8 +738,8 @@ Provider backup alone is insufficient.
 Required architecture:
 
 ```text
-DigitalOcean Managed PostgreSQL
-  ├→ provider backup / PITR
+PlanetScale Managed PostgreSQL
+  ├→ verified provider backup / PITR
   └→ independent encrypted logical backup
         ↓
       Cloudflare R2 EU
@@ -1018,7 +1020,7 @@ In particular, do not assume that:
 
 - Astro migration is already complete;
 - Auth0 is already integrated;
-- DigitalOcean production DB is already provisioned;
+- PlanetScale production DB is already provisioned;
 - HA is already active;
 - R2 media quarantine already exists;
 - second-provider media backup already exists;

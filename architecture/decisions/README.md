@@ -36,3 +36,4 @@ See `templates/ADR_TEMPLATE.md` and `docs/governance/OPEN_QUESTION_PROCESS.md`.
 - `ADR-0009` — Python research/data-pipeline toolchain
 - `ADR-0010` — VPS-first application stack: Contabo + Cloudflare edge + Astro/TypeScript + selective React + FastAPI/Python + PostgreSQL; auth remains deferred
 - `ADR-0011` — Brand/Marque and Builder/Manufacturer are distinct first-class identities; both are searchable and may have independent aliases and historical relationships
+- `ADR-0012` — PlanetScale Managed PostgreSQL 18 accepted as conditional production provider target, superseding DigitalOcean-specific direction only; provisioning and HA/restore proof remain gated
