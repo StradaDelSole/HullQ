@@ -39,7 +39,7 @@ Statuses in this table are account/ownership setup states only. They do not impl
 | HullQ domain registrar / `hullq.com` ownership | authoritative domain control before DNS/edge | before production DNS work | Namecheap domain paid, auto-renew enabled; Cloudflare nameservers active (Owner-attested) | MFA active; recovery codes secured | renewal evidence Owner-attested | OWNER_SECURITY_CONFIRMED |
 | Cloudflare | DNS/proxy/edge; primary media R2; independent encrypted DB-backup R2 | before closed production infrastructure | DNS active, R2 activated (Owner-attested) | MFA and backup codes secured | production bucket/keys, EU placement and billing evidence remain | OWNER_SECURITY_CONFIRMED_DETAILS_OPEN |
 | Contabo | selected replaceable application VPS; Cloudflare Tunnel intended pending proof | before closed production infrastructure | account enrollment tied to first VPS order; deliberately deferred | account MFA/recovery at purchase, not yet possible to evidence | paid VPS not yet authorized; security acceptance catalogue required before provisioning | PURCHASE_GATED_DEFERRED |
-| Production PostgreSQL (currently canonical: DigitalOcean) | Existing accepted architecture specifies DigitalOcean Managed PostgreSQL 18; Owner expressed preference to evaluate PlanetScale PS-5 → PS-10 ARM HA as alternative | before closed production infrastructure | Neither provider provisioned | Provider account MFA/recovery not evidenced | Provider change **NOT APPROVED architecturally**; ADR and reconciliation required before replacement; no purchase | ARCHITECTURE_RECONCILIATION_OPEN |
+| Production PostgreSQL (accepted target: PlanetScale) | Accepted ADR-0012 selects PlanetScale Managed PostgreSQL 18, with provisional PS-5 closed → PS-10 ARM three-node HA pre-buyer-exposure sizing | before closed production infrastructure | No production provider provisioned | Provider account MFA/recovery not evidenced | Pricing, EU region, HA, PITR, independent restore and security proof pending; no purchase authorized | PROVIDER_DECIDED_PROVISIONING_DEFERRED |
 | Auth0 Public Cloud | EU authentication-only tenant | before real interactive broker authentication | Owner confirmed Hullq_Dev EU dev tenant | Auth0 Guardian MFA and recovery codes secured | production tenant/config and billing evidence later | DEV_ACCOUNT_SECURED_PROD_PENDING |
 | Discord Free operator alerts | current Slack/Discord webhook mechanism; Owner-selected Discord Free channel | webhook delivery before Production Readiness PASS | private HullQ Operations server and #production-alerts channel confirmed | Discord account MFA and recovery codes secured | Free plan; webhook and real delivery deferred to Phase 2 | OWNER_SETUP_CONFIRMED_PHASE2_PENDING |
 | Backblaze B2 EU Central | independent second copy of broker original/source media, separate from primary Cloudflare R2 | before real broker production media; mechanism accepted in SLICE-0080 | Owner confirmed EU account active; no bucket yet | MFA and recovery codes secured (Owner-attested) | usage-based billing; no billing method yet; bucket/key and proof later | ACCOUNT_SECURED_PROVIDER_PROOF_PENDING |
@@ -88,9 +88,9 @@ The Project Owner confirmed the following facts during live setup. These are **O
 | Discord | Separate HullQ operational account created; MFA and recovery codes secured; private `HullQ Operations` server and `#production-alerts` channel created; Discord Free chosen | No webhook created or alert-delivery proof; defer to Phase 2 / Production Readiness |
 | Neon Free | Development/test PostgreSQL 18.6 in Frankfurt, branch `hullq-development`; legacy baseline and Alembic head `b6f3d9a0c452`; 50 public tables, 59 FKs; read-only HullQ persistence connection test PASS | **Development only**; not an approved production PostgreSQL provider or production-readiness proof |
 | Contabo | Owner retains Contabo VPS as application-host choice; account registration requires first order per provider process, so deferred until explicit purchase approval | No account or VPS created; mandatory security/reliability acceptance catalogue required before VPS provisioning |
-| Production PostgreSQL | Owner expressed a preferred **conditional PlanetScale evaluation sequence**, PS-5 for closed/internal then PS-10 ARM three-node HA before buyer exposure, subject to suitability and an accepted ADR. Neon Free remains dev/test only | **NOT an approved provider replacement or selected production package**. DigitalOcean remains the controlling target in architecture documents until formal reconciliation. No paid provisioning authorized |
+| Production PostgreSQL | **Accepted ADR-0012** selects PlanetScale Managed PostgreSQL 18, with PS-5 closed/internal and PS-10 ARM HA before buyer exposure as provisional configurations. Neon Free remains dev/test only | Provider target ACCEPTED, sizing/pricing/region/HA/restore NOT PROVEN; no paid provisioning authorized |
 
-**Phase-1 evaluation:** `IN_PROGRESS`. The accounts already accessible have owner-attested MFA/recovery evidence, but Contabo enrollment is purchase-gated, production DB replacement remains unapproved pending an ADR, authoritative-document reconciliation, price/HA/provider proof, and some billing/ownership evidence is still outstanding. These explicit deferrals are not equivalent to phase PASS. `PRODUCTION_LAUNCH_PACK_PHASE` remains `NOT_STARTED`.
+**Phase-1 evaluation:** `IN_PROGRESS`. The accounts already accessible have owner-attested MFA/recovery evidence, but Contabo enrollment is purchase-gated, production DB provider is accepted via ADR-0012 but provisioning remains blocked by price/HA/provider proof, and some billing/ownership evidence is still outstanding. These explicit deferrals are not equivalent to phase PASS. `PRODUCTION_LAUNCH_PACK_PHASE` remains `NOT_STARTED`.
 
 ## Current Phase-1 execution order
 
@@ -102,8 +102,8 @@ To minimize recurring spend and avoid provisioning resources before their owners
 3. Cloudflare account / zone / R2 ownership
 4. Backblaze B2 EU Central account
 5. Auth0 EU tenant/account
-6. Production PostgreSQL provider reconciliation: accepted architecture still names DigitalOcean; investigate Owner-preferred PlanetScale alternative
-   → ADR and reconciliation with architecture/SYSTEM_ARCHITECTURE.md, docs/ARCHITECTURE_REBASELINE_2026-09-02.md and docs/PROJECT_STATE.md required before any replacement or provisioning
+6. PlanetScale Managed PostgreSQL 18 — ADR-0012 Owner-accepted; controlling architecture reconciliation in reviewed maintenance PR
+   → before any purchase verify region, package, HA, backups/PITR, R2 restore, security and all-in spend
 7. Contabo account
    → account created during first purchase, so defer until VPS order expressly approved and security acceptance catalogue prepared
 8. Discord Free operator-alert destination: Owner-selected, MFA/recovery complete, private operations server and channel established
@@ -116,17 +116,17 @@ Official references:
 - https://docs.digitalocean.com/products/databases/
 - https://docs.digitalocean.com/products/databases/postgresql/details/pricing/
 
-## PlanetScale alternative — Owner preference, NOT an approved architecture change (2026-10-10)
+## PlanetScale production provider — Owner-accepted ADR-0012 (2026-10-10)
 
-Proposed architecture reconciliation (not yet accepted or controlling): `architecture/decisions/ADR-0012-planetscale-managed-postgresql.md`. Do not provision or update canonical provider references until the ADR has passed independent review and explicit Owner acceptance.
+Accepted decision: `architecture/decisions/ADR-0012-planetscale-managed-postgresql.md` (Owner accepted 2026-10-10, independent review PASS); provider-specific clauses are reconciled through this reviewed maintenance PR. No production provisioning or spend is authorized.
 
-**Status: OPEN ARCHITECTURE RECONCILIATION / NOT IMPLEMENTED.** The Owner prefers evaluating PlanetScale PostgreSQL at the time a production database is actually required, with an indicative sizing hypothesis of PS-5 Single Node for a closed/internal environment, possibly expanding to PS-10 ARM three-node HA before real external buyer exposure. These are **proposals, not selected production packages or accepted pricing**. The Owner has not authorized an account/cluster purchase.
+**Status: DECIDED_NOT_YET_IMPLEMENTED.** PlanetScale Managed PostgreSQL 18 is the accepted provider target, with tentative PS-5 Single Node for closed/internal production and PS-10 ARM three-node HA before real external buyer exposure. These are **unverified sizing hypotheses, not selected purchased packages or accepted pricing**. The Owner has not authorized an account/cluster purchase.
 
-The **controlling accepted production architecture still specifies DigitalOcean Managed PostgreSQL 18**, in `architecture/SYSTEM_ARCHITECTURE.md`, `docs/ARCHITECTURE_REBASELINE_2026-09-02.md` and `docs/PROJECT_STATE.md`. This checklist cannot override those authorities. Per `CLAUDE.md`, a significant production DB provider change requires a separately reviewed/accepted **ADR** and explicit Decision/Implementation Reconciliation. Do not silently treat the historic DigitalOcean plan/HA conflict as permission to replace the provider.
+The controlling provider-specific references in `architecture/SYSTEM_ARCHITECTURE.md`, `docs/ARCHITECTURE_REBASELINE_2026-09-02.md` and `docs/PROJECT_STATE.md` are updated together through the reviewed ADR-0012 reconciliation PR. The historical DigitalOcean plan/HA conflict explains the decision but is not itself technical acceptance evidence.
 
 The candidate backup design discussed by the Owner is two independent layers: provider-managed backups and PITR (actual features/retention must be verified), plus HullQ-controlled encrypted PostgreSQL exports to independent Cloudflare R2 storage, with integrity and isolated restore drills. The accepted independent backup/restore requirements and existing HA-before-external-buyer-exposure gate continue unchanged regardless of provider.
 
-Before any provider selection or provisioning: reconcile and update all controlling architecture decisions through the required ADR process; verify PostgreSQL 18, EU region, data protection, network security, expected application compatibility, actual compute/storage/backup/transfer costs, HA topology/failover and restore evidence. **Neon Free remains development/testing only.**
+Before any paid provisioning: confirm provider compatibility and all applicable phase-gate evidence; verify PostgreSQL 18, EU region, data protection, network security, expected application compatibility, actual compute/storage/backup/transfer costs, HA topology/failover and restore evidence. **Neon Free remains development/testing only.**
 
 ## Phase 1 Done-when
 
