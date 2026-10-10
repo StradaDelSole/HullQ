@@ -35,14 +35,14 @@ Statuses in this table are account/ownership setup states only. They do not impl
 
 | Service / account | Accepted HullQ purpose | Required timing | Account/ownership evidence | MFA / recovery evidence | Billing / region decision | Phase-1 status |
 |---|---|---|---|---|---|---|
-| GitHub / GHCR | canonical source, Actions, immutable container registry | now | repository/package namespace proven under `StradaDelSole` | not yet retained in launch evidence | current GitHub plan/package billing not yet retained | IN_PROGRESS |
-| HullQ domain registrar / `hullq.com` ownership | authoritative domain control before DNS/edge | before production DNS work | registrar/account owner not yet retained | not yet retained | registrar/renewal state not yet retained | OWNER_INPUT_REQUIRED |
-| Cloudflare | DNS/proxy/edge; primary marketplace-media R2; independent encrypted DB-backup R2 | before closed production infrastructure; edge before external exposure | account/zone/R2 ownership not yet retained | not yet retained | EU/data-location/billing configuration not yet retained | OWNER_INPUT_REQUIRED |
-| Contabo | selected initial replaceable Linux application VPS | before closed production infrastructure | account ownership not yet retained | not yet retained | VPS plan/region not yet provisioned | OWNER_INPUT_REQUIRED |
-| DigitalOcean | Managed PostgreSQL 18 FRA1 Standard | before closed production infrastructure | account/team ownership not yet retained | not yet retained | DB plan/region FRA1 accepted; actual subscription not yet provisioned | OWNER_INPUT_REQUIRED |
-| Auth0 Public Cloud | EU tenant, authentication-only | before real interactive broker authentication | account/tenant ownership not yet retained | tenant/admin recovery not yet retained | EU tenant accepted; actual production tenant state not yet retained | OWNER_INPUT_REQUIRED |
-| Operator alert destination | actionable production alert webhook; current implementation accepts Slack or Discord webhook | before Production Readiness PASS when operator relies on alert delivery | provider/account/channel not yet selected/retained | provider-dependent | provider choice open | OWNER_DECISION_REQUIRED |
-| Backblaze B2 EU Central | independent second copy of broker original/source media, separate from primary Cloudflare R2 | before real broker production media; repository mechanism implemented by Owner-accepted SLICE-0080 | provider owner-decided; real account not yet provisioned | MFA/recovery evidence required in Phase 1 | EU Central / Amsterdam accepted; usage-based billing; real account/billing not yet retained | OWNER_ACCOUNT_SETUP_REQUIRED |
+| GitHub / GHCR | canonical source, Actions, immutable container registry | now | repository and GHCR path proven under StradaDelSole | Microsoft Authenticator MFA and recovery codes secured (Owner-attested) | GitHub Free intended; precise billing/usage not independently checked | OWNER_SECURITY_CONFIRMED |
+| HullQ domain registrar / `hullq.com` ownership | authoritative domain control before DNS/edge | before production DNS work | Namecheap domain paid, auto-renew enabled; Cloudflare nameservers active (Owner-attested) | MFA active; recovery codes secured | renewal evidence Owner-attested | OWNER_SECURITY_CONFIRMED |
+| Cloudflare | DNS/proxy/edge; primary media R2; independent encrypted DB-backup R2 | before closed production infrastructure | DNS active, R2 activated (Owner-attested) | MFA and backup codes secured | production bucket/keys, EU placement and billing evidence remain | OWNER_SECURITY_CONFIRMED_DETAILS_OPEN |
+| Contabo | selected replaceable application VPS; Cloudflare Tunnel intended pending proof | before closed production infrastructure | account enrollment tied to first VPS order; deliberately deferred | account MFA/recovery at purchase, not yet possible to evidence | paid VPS not yet authorized; security acceptance catalogue required before provisioning | PURCHASE_GATED_DEFERRED |
+| Production PostgreSQL (currently canonical: DigitalOcean) | Existing accepted architecture specifies DigitalOcean Managed PostgreSQL 18; Owner expressed preference to evaluate PlanetScale PS-5 → PS-10 ARM HA as alternative | before closed production infrastructure | Neither provider provisioned | Provider account MFA/recovery not evidenced | Provider change **NOT APPROVED architecturally**; ADR and reconciliation required before replacement; no purchase | ARCHITECTURE_RECONCILIATION_OPEN |
+| Auth0 Public Cloud | EU authentication-only tenant | before real interactive broker authentication | Owner confirmed Hullq_Dev EU dev tenant | Auth0 Guardian MFA and recovery codes secured | production tenant/config and billing evidence later | DEV_ACCOUNT_SECURED_PROD_PENDING |
+| Discord Free operator alerts | current Slack/Discord webhook mechanism; Owner-selected Discord Free channel | webhook delivery before Production Readiness PASS | private HullQ Operations server and #production-alerts channel confirmed | Discord account MFA and recovery codes secured | Free plan; webhook and real delivery deferred to Phase 2 | OWNER_SETUP_CONFIRMED_PHASE2_PENDING |
+| Backblaze B2 EU Central | independent second copy of broker original/source media, separate from primary Cloudflare R2 | before real broker production media; mechanism accepted in SLICE-0080 | Owner confirmed EU account active; no bucket yet | MFA and recovery codes secured (Owner-attested) | usage-based billing; no billing method yet; bucket/key and proof later | ACCOUNT_SECURED_PROVIDER_PROOF_PENDING |
 | Zammad Hosted Professional v2 | customer Help/Support system | before external support launch | accepted target; paid account/trial not yet activated; local license-free Community permitted for development tests only | hosted trial deferred until acceptance-ready; hosted branding/privacy validation required | explicit Owner cost/plan approval only when paid external support is due | LATER_TRIGGER |
 | Transactional email provider | real external lead/account email delivery when relied upon | before real external email dependency | no accepted concrete provider yet | later | later provider decision | LATER_TRIGGER |
 
@@ -64,6 +64,34 @@ The accepted choice preserves provider independence from Cloudflare, uses an EU 
 
 SLICE-0080 implementation is Owner-accepted; the real account/bucket/application key, secret-store wiring and live connectivity proof remain Phase-1/Phase-2 operator work and were not created by the slice.
 
+## Owner hosting/security decision (2026-10-10)
+
+The Project Owner reaffirmed **Contabo** as the intended application VPS, with **Cloudflare Tunnel as proposed ingress**, pending independent operational proof. Priorities: security, stability/availability, then total cost. **No VPS purchase or production exposure is authorized.**
+
+Before actual VPS procurement/provisioning, prepare an explicit security/reliability acceptance catalogue with testable STOP/GO checks; run and retain the relevant evidence before any production operation. Scope includes host/admin hardening, edge/tunnel origin isolation, container boundaries, secret handling, monitoring, backups/recovery, external validation and the accepted Auth0/session and security gates.
+
+Controlling Owner record: `docs/operations/CONTABO_CLOUDFLARE_SECURITY_DECISION_2026-10-10.md`.
+
+The separate production PostgreSQL provider/HA decision is **not changed** by this hosting choice; Neon Free is dev/test-only. No production phase marker advances and SLICE-0081 remains unselected.
+
+## Owner-reported Phase-1 account evidence (2026-10-10)
+
+The Project Owner confirmed the following facts during live setup. These are **Owner-attested account/security states**, not independent provider-admin screenshots or secret material; no recovery codes or credentials are retained here.
+
+| Account/provider | Confirmed evidence | Remaining boundary |
+|---|---|---|
+| GitHub/GHCR | Account MFA via Microsoft Authenticator; recovery codes securely stored; owner intends GitHub Free; repository and GHCR build/publish previously verified | Actual billing configuration, usage caps and any plan exceptions not independently inspected |
+| Namecheap / hullq.com | Registrar MFA enabled; recovery codes stored; domain paid and auto-renew enabled; Cloudflare nameservers working | Actual registrar/renewal evidence remains owner-attested |
+| Cloudflare | MFA enabled; backup codes secured; authoritative DNS operational; R2 activated under existing account | R2 production buckets/keys, detailed billing/data placement and operational security proof later |
+| Backblaze B2 | EU account established; MFA enabled; backup codes secured; **no billing method and no bucket yet** | Billing decision and isolated bucket/key/live proof deferred to relevant phase; no real-provider B2 proof claimed |
+| Auth0 | Hullq_Dev tenant, EU Auth0 domain; MFA via Auth0 Guardian and recovery codes secured | Production tenant/configuration, recovery/ownership evidence and secrets not yet proven |
+| Discord | Separate HullQ operational account created; MFA and recovery codes secured; private `HullQ Operations` server and `#production-alerts` channel created; Discord Free chosen | No webhook created or alert-delivery proof; defer to Phase 2 / Production Readiness |
+| Neon Free | Development/test PostgreSQL 18.6 in Frankfurt, branch `hullq-development`; legacy baseline and Alembic head `b6f3d9a0c452`; 50 public tables, 59 FKs; read-only HullQ persistence connection test PASS | **Development only**; not an approved production PostgreSQL provider or production-readiness proof |
+| Contabo | Owner retains Contabo VPS as application-host choice; account registration requires first order per provider process, so deferred until explicit purchase approval | No account or VPS created; mandatory security/reliability acceptance catalogue required before VPS provisioning |
+| Production PostgreSQL | Owner expressed a preferred **conditional PlanetScale evaluation sequence**, PS-5 for closed/internal then PS-10 ARM three-node HA before buyer exposure, subject to suitability and an accepted ADR. Neon Free remains dev/test only | **NOT an approved provider replacement or selected production package**. DigitalOcean remains the controlling target in architecture documents until formal reconciliation. No paid provisioning authorized |
+
+**Phase-1 evaluation:** `IN_PROGRESS`. The accounts already accessible have owner-attested MFA/recovery evidence, but Contabo enrollment is purchase-gated, production DB replacement remains unapproved pending an ADR, authoritative-document reconciliation, price/HA/provider proof, and some billing/ownership evidence is still outstanding. These explicit deferrals are not equivalent to phase PASS. `PRODUCTION_LAUNCH_PACK_PHASE` remains `NOT_STARTED`.
+
 ## Current Phase-1 execution order
 
 To minimize recurring spend and avoid provisioning resources before their ownership/recovery boundary is ready:
@@ -74,18 +102,29 @@ To minimize recurring spend and avoid provisioning resources before their owners
 3. Cloudflare account / zone / R2 ownership
 4. Backblaze B2 EU Central account
 5. Auth0 EU tenant/account
-6. DigitalOcean account
-   → explicit Owner decision before paid PostgreSQL provisioning
+6. Production PostgreSQL provider reconciliation: accepted architecture still names DigitalOcean; investigate Owner-preferred PlanetScale alternative
+   → ADR and reconciliation with architecture/SYSTEM_ARCHITECTURE.md, docs/ARCHITECTURE_REBASELINE_2026-09-02.md and docs/PROJECT_STATE.md required before any replacement or provisioning
 7. Contabo account
-   → no VPS purchase yet
-8. operator alert destination decision
+   → account created during first purchase, so defer until VPS order expressly approved and security acceptance catalogue prepared
+8. Discord Free operator-alert destination: Owner-selected, MFA/recovery complete, private operations server and channel established
+   → webhook secret and delivery proof deferred to Phase 2
 ```
 
-DigitalOcean provider-plan watch, verified 2026-10-09: DigitalOcean announces that beginning 2026-10-15 for accounts that have never created PostgreSQL/MySQL and beginning 2026-11-30 generally, new Standard Edition clusters no longer support standby/read-only nodes; existing clusters are not affected. This creates a time-sensitive conflict risk with HullQ's accepted low-cost Standard→later-standby HA path. Phase 1 may create/secure the DigitalOcean account, but no paid database cluster is provisioned without explicit Owner approval.
+Historical DigitalOcean provider-plan watch, verified 2026-10-09 (relevant only to legacy architecture reconciliation): DigitalOcean announces that beginning 2026-10-15 for accounts that have never created PostgreSQL/MySQL and beginning 2026-11-30 generally, new Standard Edition clusters no longer support standby/read-only nodes; existing clusters are not affected. This creates a time-sensitive conflict risk with HullQ's accepted low-cost Standard→later-standby HA path. The legacy DigitalOcean account path is no longer in the active Phase-1 sequence; no database cluster may be provisioned without explicit Owner approval.
 
 Official references:
 - https://docs.digitalocean.com/products/databases/
 - https://docs.digitalocean.com/products/databases/postgresql/details/pricing/
+
+## PlanetScale alternative — Owner preference, NOT an approved architecture change (2026-10-10)
+
+**Status: OPEN ARCHITECTURE RECONCILIATION / NOT IMPLEMENTED.** The Owner prefers evaluating PlanetScale PostgreSQL at the time a production database is actually required, with an indicative sizing hypothesis of PS-5 Single Node for a closed/internal environment, possibly expanding to PS-10 ARM three-node HA before real external buyer exposure. These are **proposals, not selected production packages or accepted pricing**. The Owner has not authorized an account/cluster purchase.
+
+The **controlling accepted production architecture still specifies DigitalOcean Managed PostgreSQL 18**, in `architecture/SYSTEM_ARCHITECTURE.md`, `docs/ARCHITECTURE_REBASELINE_2026-09-02.md` and `docs/PROJECT_STATE.md`. This checklist cannot override those authorities. Per `CLAUDE.md`, a significant production DB provider change requires a separately reviewed/accepted **ADR** and explicit Decision/Implementation Reconciliation. Do not silently treat the historic DigitalOcean plan/HA conflict as permission to replace the provider.
+
+The candidate backup design discussed by the Owner is two independent layers: provider-managed backups and PITR (actual features/retention must be verified), plus HullQ-controlled encrypted PostgreSQL exports to independent Cloudflare R2 storage, with integrity and isolated restore drills. The accepted independent backup/restore requirements and existing HA-before-external-buyer-exposure gate continue unchanged regardless of provider.
+
+Before any provider selection or provisioning: reconcile and update all controlling architecture decisions through the required ADR process; verify PostgreSQL 18, EU region, data protection, network security, expected application compatibility, actual compute/storage/backup/transfer costs, HA topology/failover and restore evidence. **Neon Free remains development/testing only.**
 
 ## Phase 1 Done-when
 
