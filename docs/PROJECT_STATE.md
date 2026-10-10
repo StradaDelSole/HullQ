@@ -271,7 +271,7 @@ REQ-BROKER-023 and REQ-BROKER-024 are implemented by the accepted SLICE-0063 and
 
 ## Architecture and production direction
 
-Current accepted application direction remains Astro as primary web framework with React only for justified interactive islands, FastAPI as sole application/domain API boundary, PostgreSQL 18 production target in DigitalOcean FRA1, Auth0 Public Cloud EU as authentication-only, and immutable container deployment through GHCR/versioned Docker Compose. Production app hosts remain stateless/replaceable; independent encrypted backup plus restore testing remains required.
+Current accepted application direction remains Astro as primary web framework with React only for justified interactive islands, FastAPI as sole application/domain API boundary, PostgreSQL 18 production target at PlanetScale per accepted ADR-0012 (verified EU region and sizing required before purchase), Auth0 Public Cloud EU as authentication-only, and immutable container deployment through GHCR/versioned Docker Compose. Production app hosts remain stateless/replaceable; independent encrypted backup plus restore testing remains required.
 
 The SLICE-0053 same-host session-topology invariant remains in force for browser-visible FastAPI auth/callback and authenticated Astro workspace surfaces. SLICE-0054 reuses this session boundary rather than creating a second authentication stack.
 
@@ -343,7 +343,7 @@ SLICE-0081
 
 **Capability:** UNSELECTED — post-SLICE-0080 reassessment selects Production Launch Pack Phase 1 operator work instead of a new code slice.
 
-SLICE-0080 is Owner-accepted and merged. `docs/POST_SLICE_0080_REASSESSMENT_2026-10-09.md` concludes that the highest-leverage next work is Production Launch Pack Phase 1 — Accounts & Ownership, not another code slice. SLICE-0081 remains UNSELECTED unless provider execution reveals a genuine repository capability gap. The DigitalOcean Standard→later-standby assumption is now a time-sensitive provider-plan conflict risk requiring explicit Owner decision before paid PostgreSQL provisioning.
+SLICE-0080 is Owner-accepted and merged. `docs/POST_SLICE_0080_REASSESSMENT_2026-10-09.md` concludes that the highest-leverage next work is Production Launch Pack Phase 1 — Accounts & Ownership, not another code slice. SLICE-0081 remains UNSELECTED unless provider execution reveals a genuine repository capability gap. Accepted ADR-0012 (Owner acceptance 2026-10-10) supersedes the former DigitalOcean provider selection in favor of PlanetScale Managed PostgreSQL 18, without waiving cost, EU location, HA, backup/restore or security validations. No paid PostgreSQL provisioning is authorized.
 
 ## Development workflow
 
