@@ -172,6 +172,21 @@ The following is DECIDED_NOT_YET_IMPLEMENTED:
 - automatic listing suppression or verification changes based solely on Zammad ticket state;
 - bespoke HullQ ticketing/agent inbox when Zammad already provides the commodity capability.
 
+
+## Owner-accepted zero-cost development and hosted-validation sequence — 2026-10-10
+
+**Status:** OWNER_ACCEPTED (execution sequencing; does not replace the 2026-09-30 Hosted Professional v2 product/provider decision).
+
+1. Do **not** subscribe to paid Zammad Hosted during general HullQ development or merely because the Production Launch Pack Phase 1 is active.
+2. When HullQ support integration work is selected through the normal slice/readiness workflow, use a **locally hosted, license-free Zammad Community development/test instance** where compatible to prove API, tickets, minimal opaque HullQ entity references, support entry points and error paths. Local Community is permitted for development/tests only; it is **not** an accepted production replacement.
+3. **Preserve the Zammad Hosted Professional v2 production target.** Community parity must not be assumed for hosted-only capabilities, plan entitlements, branding, custom domain, sender identity, roles or Help Center delivery.
+4. Start the time-limited **Hosted trial only when the hosted-specific acceptance matrix is ready to execute**, not while unrelated development work is ongoing. Verify actual current trial eligibility, length, terms and Professional v2 features with Zammad immediately before activation; do not assume permanent free hosting or guaranteed feature parity.
+5. During the Hosted trial, verify end-to-end customer-facing HullQ branding (including absence of prominent Zammad branding), support domain, mail identity/routing, agent permissions, Knowledge Base/Help Center and secure integration; retain non-secret evidence and any blockers. A trial expiration is not permission to bypass a required gate.
+6. Activate a paid Hosted Professional v2 plan **only when external production support is genuinely due and required acceptance/security/privacy/vendor gates pass**, with explicit Project Owner approval of actual plan/seat cost and billing. Until then, status remains PENDING / LATER_TRIGGER. No automatic paid conversion or premature trial activation is authorized.
+7. Record these constraints in future Support readiness and independent review. Check MVP-SUP-001..009 and applicable Trust & Safety triggers; never use Zammad tickets as HullQ domain authority.
+
+**Workflow:** no new support slice is selected by this sequencing decision. SLICE-0081 remains UNSELECTED. Any implementation still requires normal reassessment → readiness → independent review → merge → Owner START_SLICE.bat → Claude implementation → review → acceptance → closure. This is an operator/development cost guardrail, not production authorization.
+
 ## Slice interaction
 
 This decision does **not** modify or expand active SLICE-0072.
