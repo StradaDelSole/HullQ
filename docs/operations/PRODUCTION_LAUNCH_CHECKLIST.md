@@ -74,6 +74,24 @@ Controlling Owner record: `docs/operations/CONTABO_CLOUDFLARE_SECURITY_DECISION_
 
 The separate production PostgreSQL provider/HA decision is **not changed** by this hosting choice; Neon Free is dev/test-only. No production phase marker advances and SLICE-0081 remains unselected.
 
+## Owner-reported Phase-1 account evidence (2026-10-10)
+
+The Project Owner confirmed the following facts during live setup. These are **Owner-attested account/security states**, not independent provider-admin screenshots or secret material; no recovery codes or credentials are retained here.
+
+| Account/provider | Confirmed evidence | Remaining boundary |
+|---|---|---|
+| GitHub/GHCR | Account MFA via Microsoft Authenticator; recovery codes securely stored; owner intends GitHub Free; repository and GHCR build/publish previously verified | Actual billing configuration, usage caps and any plan exceptions not independently inspected |
+| Namecheap / hullq.com | Registrar MFA enabled; recovery codes stored; domain paid and auto-renew enabled; Cloudflare nameservers working | Actual registrar/renewal evidence remains owner-attested |
+| Cloudflare | MFA enabled; backup codes secured; authoritative DNS operational; R2 activated under existing account | R2 production buckets/keys, detailed billing/data placement and operational security proof later |
+| Backblaze B2 | EU account established; MFA enabled; backup codes secured; **no billing method and no bucket yet** | Billing decision and isolated bucket/key/live proof deferred to relevant phase; no real-provider B2 proof claimed |
+| Auth0 | Hullq_Dev tenant, EU Auth0 domain; MFA via Auth0 Guardian and recovery codes secured | Production tenant/configuration, recovery/ownership evidence and secrets not yet proven |
+| Discord | Separate HullQ operational account created; MFA and recovery codes secured; private `HullQ Operations` server and `#production-alerts` channel created; Discord Free chosen | No webhook created or alert-delivery proof; defer to Phase 2 / Production Readiness |
+| Neon Free | Development/test PostgreSQL 18.6 in Frankfurt, branch `hullq-development`; legacy baseline and Alembic head `b6f3d9a0c452`; 50 public tables, 59 FKs; read-only HullQ persistence connection test PASS | **Development only**; not an approved production PostgreSQL provider or production-readiness proof |
+| Contabo | Owner retains Contabo VPS as application-host choice; account registration requires first order per provider process, so deferred until explicit purchase approval | No account or VPS created; mandatory security/reliability acceptance catalogue required before VPS provisioning |
+| Production PostgreSQL | DigitalOcean original canonical direction has a provider-plan/HA conflict risk; Owner deferred immediate DigitalOcean account/cluster and considered alternatives | **Decision reconciliation required** before production DB provisioning; do not infer PlanetScale or Neon as accepted replacement |
+
+**Phase-1 evaluation:** `IN_PROGRESS`. The accounts already accessible have owner-attested MFA/recovery evidence, but Contabo enrollment is purchase-gated, production DB provider/HA path remains unresolved and some billing/ownership evidence is still outstanding. These explicit deferrals are not equivalent to phase PASS. `PRODUCTION_LAUNCH_PACK_PHASE` remains `NOT_STARTED`.
+
 ## Current Phase-1 execution order
 
 To minimize recurring spend and avoid provisioning resources before their ownership/recovery boundary is ready:
