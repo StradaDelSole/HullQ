@@ -118,6 +118,8 @@ Official references:
 
 ## PlanetScale alternative — Owner preference, NOT an approved architecture change (2026-10-10)
 
+Proposed architecture reconciliation (not yet accepted or controlling): `architecture/decisions/ADR-0012-planetscale-managed-postgresql.md`. Do not provision or update canonical provider references until the ADR has passed independent review and explicit Owner acceptance.
+
 **Status: OPEN ARCHITECTURE RECONCILIATION / NOT IMPLEMENTED.** The Owner prefers evaluating PlanetScale PostgreSQL at the time a production database is actually required, with an indicative sizing hypothesis of PS-5 Single Node for a closed/internal environment, possibly expanding to PS-10 ARM three-node HA before real external buyer exposure. These are **proposals, not selected production packages or accepted pricing**. The Owner has not authorized an account/cluster purchase.
 
 The **controlling accepted production architecture still specifies DigitalOcean Managed PostgreSQL 18**, in `architecture/SYSTEM_ARCHITECTURE.md`, `docs/ARCHITECTURE_REBASELINE_2026-09-02.md` and `docs/PROJECT_STATE.md`. This checklist cannot override those authorities. Per `CLAUDE.md`, a significant production DB provider change requires a separately reviewed/accepted **ADR** and explicit Decision/Implementation Reconciliation. Do not silently treat the historic DigitalOcean plan/HA conflict as permission to replace the provider.
