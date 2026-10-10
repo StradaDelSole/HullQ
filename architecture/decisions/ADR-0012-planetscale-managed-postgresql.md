@@ -3,7 +3,7 @@
 **Status:** ACCEPTED — explicitly Owner-accepted 2026-10-10 after independent exact-HEAD review PASS on PR #322. Implementation/provisioning NOT YET PROVEN or authorized.
 **Date:** 2026-10-10
 **Decision scope:** Production PostgreSQL provider substitution only, with staged capacity and mandatory HA/backup gates.
-**Reconciles:** `architecture/SYSTEM_ARCHITECTURE.md`; `docs/ARCHITECTURE_REBASELINE_2026-09-02.md` §§19–21; `docs/PROJECT_STATE.md`; `docs/operations/PRODUCTION_LAUNCH_CHECKLIST.md`; `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md`.
+**Reconciles:** `architecture/SYSTEM_ARCHITECTURE.md`; `docs/ARCHITECTURE_REBASELINE_2026-09-02.md` §§19–21; `docs/PROJECT_STATE.md`; `docs/governance/PRODUCTION_READINESS_GATE.md`; `docs/operations/PRODUCTION_LAUNCH_CHECKLIST.md`; `docs/governance/DECISION_IMPLEMENTATION_RECONCILIATION.md`.
 
 ## Context and authority
 
