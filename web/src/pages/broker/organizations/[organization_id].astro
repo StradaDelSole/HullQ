@@ -25,18 +25,13 @@
 // mutation on this GET.
 export const prerender = false;
 
-import { fetchOrganizationContext, fetchOrganizationInventory } from "../../../lib/brokerApi";
-import type { OrganizationInventoryResult } from "../../../lib/brokerApi";
-import { fetchOrganizationLeadCounts, fetchOrganizationLeadInbox } from "../../../lib/brokerLeadOpsApi";
-import type { LeadCountsResult, LeadInboxResult } from "../../../lib/brokerLeadOpsApi";
-import { fetchProfessionalDrafts } from "../../../lib/professionalDraftApi";
-import type { ProfessionalDraftListResult } from "../../../lib/professionalDraftApi";
-import { fetchOrganizationPerformance } from "../../../lib/brokerPerformanceApi";
-import type { OrganizationPerformanceResult } from "../../../lib/brokerPerformanceApi";
+import { fetchOrganizationContext } from "../../../lib/brokerApi";
+import { fetchDashboardPanels } from "../../../lib/brokerDashboardPanels";
+import type { DashboardPanels } from "../../../lib/brokerDashboardPanels";
 import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../lib/authConstants";
 import {
+  draftPanelStatusLabel,
   draftPreviewLabel,
-  draftReadinessLabel,
   inventoryReadinessLabel,
   panelUnavailableText,
 } from "../../../lib/brokerDashboardPresentation";
@@ -73,26 +68,26 @@ const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(nextPat
 // there; the local deterministic test issuer exercises this exact value.
 const stepUpUrl = `${loginUrl}&acr_values=${encodeURIComponent(AUTH0_MFA_STEP_UP_ACR_VALUE)}`;
 
-let leadCountsResult: LeadCountsResult | null = null;
-let leadInboxResult: LeadInboxResult | null = null;
-let draftsResult: ProfessionalDraftListResult | null = null;
-let inventoryResult: OrganizationInventoryResult | null = null;
-let performanceResult: OrganizationPerformanceResult | null = null;
+let panels: DashboardPanels | null = null;
 
 if (result.kind === "ok" && organizationId) {
   // Five independent, bounded (page_size: 5) reads -- each keeps its own
   // endpoint-specific auth/error semantics; one panel failing never masks
   // or zeroes out the others (SLICE-0081 "Retry / replay / partial-failure
-  // behavior"). Concurrent source updates may yield a non-atomic snapshot
-  // across these five calls -- this page never claims one atomic timestamp.
-  [leadCountsResult, leadInboxResult, draftsResult, inventoryResult, performanceResult] = await Promise.all([
-    fetchOrganizationLeadCounts(apiBaseUrl, organizationId, cookieHeader),
-    fetchOrganizationLeadInbox(apiBaseUrl, organizationId, cookieHeader, { pageSize: 5 }),
-    fetchProfessionalDrafts(apiBaseUrl, organizationId, cookieHeader, { pageSize: 5 }),
-    fetchOrganizationInventory(apiBaseUrl, organizationId, cookieHeader, { pageSize: 5 }),
-    fetchOrganizationPerformance(apiBaseUrl, organizationId, cookieHeader, "LAST_30_DAYS"),
-  ]);
+  // behavior"). `fetchDashboardPanels` wraps each call in its own
+  // fail-closed catch (PR #327 review finding A), so a malformed/truncated
+  // body from one panel can never reject this `Promise.all` and take down
+  // every other already-authorized panel. Concurrent source updates may
+  // yield a non-atomic snapshot across these five calls -- this page never
+  // claims one atomic timestamp.
+  panels = await fetchDashboardPanels(apiBaseUrl, organizationId, cookieHeader);
 }
+
+const leadCountsResult = panels?.leadCounts ?? null;
+const leadInboxResult = panels?.leadInbox ?? null;
+const draftsResult = panels?.drafts ?? null;
+const inventoryResult = panels?.inventory ?? null;
+const performanceResult = panels?.performance ?? null;
 ---
 
 <html lang="en">
@@ -198,7 +193,7 @@ if (result.kind === "ok" && organizationId) {
                             )}`}
                           >
                             {draftPreviewLabel(draft)} (v{draft.version}) &mdash;{" "}
-                            {draftReadinessLabel(draft.promotion_readiness)}
+                            {draftPanelStatusLabel(draft)}
                           </a>
                         </li>
                       ))}

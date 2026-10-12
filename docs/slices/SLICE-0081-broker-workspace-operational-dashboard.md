@@ -2,7 +2,8 @@
 
 **ID:** SLICE-0081  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
+**Status set by this handoff:** `REVIEW`  
 **Stage:** Broker Workspace product-completion / daily-operations UI  
 **Depends on:** SLICE-0080 Owner-accepted/DONE; accepted Broker Workspace and performance/lead/inventory/draft read paths (SLICE-0053, -0060, -0061, -0071, -0075, -0077); Owner's 2026-10-12 product-building priority decision  
 **Blocks:** a practical central daily-operations entry point; does not independently close REQ-BROKER-022/026/027/028

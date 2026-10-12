@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  draftPanelStatusLabel,
   draftPreviewLabel,
   draftReadinessLabel,
   inventoryReadinessLabel,
@@ -114,4 +115,53 @@ test("draftPreviewLabel: falls back to broker_listing_reference, then draft_id",
     "REF-1",
   );
   assert.equal(draftPreviewLabel({ draft_id: "DRAFT-1", broker_listing_reference: null }), "DRAFT-1");
+});
+
+// PR #327 review finding B: a PROMOTED draft must never be presented as
+// still available to promote, regardless of what its (now-historical)
+// promotion_readiness still says.
+test("draftPanelStatusLabel: EDITABLE defers to the ordinary readiness label", () => {
+  assert.equal(
+    draftPanelStatusLabel({ promotion_state: "EDITABLE", promotion_readiness: { ready: true, reasons: [] } }),
+    "Ready to promote",
+  );
+  assert.equal(
+    draftPanelStatusLabel({
+      promotion_state: "EDITABLE",
+      promotion_readiness: { ready: false, reasons: ["MISSING_CURRENCY"] },
+    }),
+    "Not ready: MISSING_CURRENCY",
+  );
+});
+
+test("draftPanelStatusLabel: PROMOTED+ready is never worded as ready to promote", () => {
+  const text = draftPanelStatusLabel({
+    promotion_state: "PROMOTED",
+    promotion_readiness: { ready: true, reasons: [] },
+    promoted_native_listing_id: "NL-1",
+  });
+  assert.doesNotMatch(text, /Ready to promote/);
+  assert.match(text, /Promoted/);
+  assert.match(text, /NL-1/);
+});
+
+test("draftPanelStatusLabel: PROMOTED+not-ready is still rendered as promoted, not as a readiness blocker", () => {
+  const text = draftPanelStatusLabel({
+    promotion_state: "PROMOTED",
+    promotion_readiness: { ready: false, reasons: ["MISSING_CURRENCY"] },
+    promoted_native_listing_id: "NL-2",
+  });
+  assert.doesNotMatch(text, /Not ready/);
+  assert.doesNotMatch(text, /MISSING_CURRENCY/);
+  assert.match(text, /Promoted/);
+  assert.match(text, /NL-2/);
+});
+
+test("draftPanelStatusLabel: PROMOTED without a promoted_native_listing_id still reads as promoted/immutable", () => {
+  const text = draftPanelStatusLabel({
+    promotion_state: "PROMOTED",
+    promotion_readiness: { ready: true, reasons: [] },
+  });
+  assert.match(text, /Promoted/);
+  assert.match(text, /immutable/i);
 });

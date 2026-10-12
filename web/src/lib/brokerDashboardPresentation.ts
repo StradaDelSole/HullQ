@@ -71,3 +71,28 @@ export interface DraftPreviewFields {
 export function draftPreviewLabel(draft: DraftPreviewFields): string {
   return draft["physical_boat.boat_name"] ?? draft.broker_listing_reference ?? draft.draft_id;
 }
+
+export interface DraftPanelStatusFields {
+  promotion_state: "EDITABLE" | "PROMOTED";
+  promotion_readiness: { ready: boolean; reasons: readonly string[] };
+  promoted_native_listing_id?: string;
+}
+
+/**
+ * PR #327 review finding B: a PROMOTED draft is permanently immutable
+ * (contract SLICE-0067 §5) and `promotion_readiness` keeps describing the
+ * pre-promotion evaluation -- it must never be read as "still available to
+ * promote". This is checked first and unconditionally, independent of
+ * whatever `promotion_readiness.ready` happens to still hold, so a
+ * PROMOTED+ready draft and a PROMOTED+not-ready draft render identically
+ * (both "Promoted", never "Ready to promote"). Only a genuinely EDITABLE
+ * draft defers to `draftReadinessLabel`.
+ */
+export function draftPanelStatusLabel(draft: DraftPanelStatusFields): string {
+  if (draft.promotion_state === "PROMOTED") {
+    return draft.promoted_native_listing_id
+      ? `Promoted -- now listing ${draft.promoted_native_listing_id} (immutable)`
+      : "Promoted (immutable)";
+  }
+  return draftReadinessLabel(draft.promotion_readiness);
+}
