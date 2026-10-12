@@ -85,6 +85,7 @@ Existing broker governance remains controlling in docs/governance/BROKER_WORKSPA
 | MVP-BROKER-011 | structured bulk onboarding/import | before scaled broker onboarding | PENDING |
 | MVP-BROKER-012 | Search exclusion / aggregate demand insights | volume-triggered | PENDING |
 | MVP-BROKER-013 | usability evidence + competitive benchmark | before first external self-service pilot | IMPLEMENTED by SLICE-0076; blocking Lead-assignment finding closed by SLICE-0077; Broker Workspace Launch Gate evidence supports PASS |
+| MVP-BROKER-014 | explicit broker NativeListing → existing canonical BoatDesign association (normal inventory path; no guessing) | before meaningful broker-published technical native Search; does not itself authorize external pilot | DUE — SLICE-0082 readiness selected after post-0081 reconciliation; no implementation yet |
 
 ## C. Owner-Direct Marketplace
 
