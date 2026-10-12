@@ -283,7 +283,7 @@ class _FaultInjectingProxyHandler(http.server.BaseHTTPRequestHandler):
     api_base: str = ""
     intercept_path: str = ""
 
-    def do_GET(self) -> None:  # noqa: N802 (BaseHTTPRequestHandler naming)
+    def do_GET(self) -> None:
         request_path = urllib.parse.urlsplit(self.path).path
         if request_path == self.intercept_path:
             body = b'{"window": "LAST_30_DAYS", "public_listing_views": '
@@ -314,7 +314,7 @@ class _FaultInjectingProxyHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
+    def log_message(self, format: str, *args: Any) -> None:
         pass
 
 
