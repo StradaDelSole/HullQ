@@ -1,12 +1,12 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0080 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0081 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0081 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0082 -->
 <!-- PRODUCTION_LAUNCH_PACK_PHASE: NOT_STARTED -->
 
 **Updated:** 2026-10-12  
-**Latest owner-accepted / DONE slice:** SLICE-0080  
-**Current queue:** SLICE-0081 — **Broker Workspace Operational Dashboard**, readiness contract `READY`; implementation not started. The Owner's 2026-10-12 product-first prioritization supersedes the 2026-10-09 selection of Phase-1 operator work **for execution order only**; it does not waive operational requirements. Production Launch Pack remains `NOT_STARTED` and is paused, not completed. Production Readiness remains `IN_PROGRESS`; no external production data, pilot, buyer exposure or public launch is authorized.  
+**Latest owner-accepted / DONE slice:** SLICE-0081  
+**Current queue:** SLICE-0082 — **UNSELECTED**. SLICE-0081 Broker Workspace Operational Dashboard is Owner-accepted, independently reviewed, CI-verified and merged to `main` (see `docs/slices/SLICE-0081-acceptance-closure.md`). The Owner's 2026-10-12 product-first priority remains controlling for development sequence. Next capability requires separate post-0081 repository reconciliation/readiness, not automatic selection. Production Launch Pack phase remains `NOT_STARTED` (operator provisioning deferred, not completed); Production Readiness remains `IN_PROGRESS`; no real external data, pilot, buyer exposure or public launch is authorized.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -338,12 +338,12 @@ Large retained research artifacts are acknowledged as repository-hygiene debt, n
 Next queue number:
 
 ```text
-SLICE-0081
+SLICE-0082
 ```
 
-**Capability:** Broker Workspace Operational Dashboard — owner-selected 2026-10-12; readiness contract `READY` in `docs/slices/SLICE-0081-broker-workspace-operational-dashboard.md`. Implement only after the readiness PR passes review/CI and merges to canonical `main`, using `START_SLICE.bat` as normal.
+**Capability:** UNSELECTED — no SLICE-0082 readiness contract exists or is authorized. A fresh post-SLICE-0081 Decision/Implementation Reconciliation and Overall MVP register review must identify the next highest-leverage coherent product outcome before readiness. Do not automatically select broker import, Search-fit or any other feature.
 
-SLICE-0080 is Owner-accepted and merged. The earlier `docs/POST_SLICE_0080_REASSESSMENT_2026-10-09.md` correctly identified Production Launch Pack Phase 1 as the next step **toward the limited broker pilot**. On 2026-10-12 the Owner explicitly changed the work priority to rapid completion of missing product capabilities and accepted the Broker Workspace Operational Dashboard as the next development step. This is a later owner-directed priority amendment, not an invalidation of the prior implementation or any Production Readiness / security gate. Accepted ADR-0012 (Owner acceptance 2026-10-10) supersedes DigitalOcean in favor of PlanetScale Managed PostgreSQL 18; no paid PostgreSQL provisioning is authorized. The separate multi-format import draft branch is **not** the selected SLICE-0081.
+SLICE-0081 is Owner-accepted and merged as a read-only operational Broker Workspace Dashboard composing source-truthful Lead, draft, inventory and last-30-day performance panels with independent failure containment. Implementation PR #327 and its exact accepted branch HEAD `33c7d51edd0dd066bbe00a2c7710b67740ae8e33` are recorded in the SLICE-0081 acceptance closure. The Owner's 2026-10-12 development-first priority remains in force while all previously accepted Production Readiness and security gates remain mandatory. The earlier `docs/POST_SLICE_0080_REASSESSMENT_2026-10-09.md` selected Phase 1 operator work for a limited broker pilot; that operational work is deferred, not completed. Accepted ADR-0012 selects PlanetScale Managed PostgreSQL 18 and does not authorize paid provisioning. The unmerged multi-format import draft branch was **not** SLICE-0081 and does not select SLICE-0082.
 
 ## Development workflow
 
@@ -358,6 +358,6 @@ SLICE-0080 is Owner-accepted and merged. The earlier `docs/POST_SLICE_0080_REASS
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0079 and SLICE-0080 are Owner-accepted and merged; the post-SLICE-0080 reconciliation remains historical PASS for its then-active pilot objective, while the Owner's 2026-10-12 product-first amendment selects the SLICE-0081 dashboard readiness ahead of paused Phase-1 account work.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0079 through SLICE-0081 are Owner-accepted and merged; the post-SLICE-0080 reassessment remains historical PASS for its then-active pilot objective. The Owner's 2026-10-12 product-first priority amendment is implemented in SLICE-0081; SLICE-0082 remains UNSELECTED pending the next reconciliation.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
