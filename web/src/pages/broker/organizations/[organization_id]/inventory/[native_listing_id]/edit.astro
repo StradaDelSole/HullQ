@@ -47,6 +47,15 @@ function formatGenerationIdentity(generation: GenerationIdentity): string {
   if (generation.hull_number_from !== null || generation.hull_number_to !== null) {
     parts.push(`hulls ${generation.hull_number_from ?? "?"}–${generation.hull_number_to ?? "?"}`);
   }
+  // Independent review Finding B (second pass, 2026-10-12): two otherwise-
+  // identical-looking generations (same label/sequence/years/hull numbers)
+  // can still be genuinely distinct designs recorded only by their
+  // aliases -- never silently omitted, or they would render identically.
+  parts.push(
+    generation.aliases.length > 0
+      ? `aliases: ${generation.aliases.join(", ")}`
+      : "no aliases recorded",
+  );
   parts.push(`boundary confidence: ${generation.boundary_confidence ?? "unknown"}`);
   return parts.join(", ");
 }

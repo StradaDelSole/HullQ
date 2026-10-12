@@ -323,6 +323,46 @@ def _insert_boat_design_with_keel_baseline(conn: Any, design_id: str, model_id: 
     conn.commit()
 
 
+#: Independent review Finding B (second pass, 2026-10-12): a sibling design
+#: sharing the identical `_MODEL_ID` (hence identical brand, model name and
+#: model-level first/last-built years) as `_DESIGN_ID`'s own design, whose
+#: recorded generation block differs from it *only* by `aliases` -- every
+#: other generation field (label/sequence/years/hull numbers/confidence) is
+#: byte-identical. If `aliases` were not safely rendered, these two designs
+#: would be textually indistinguishable in the selector.
+_SIBLING_DESIGN_ID = "BD-0082-E2E-ALIAS"
+
+
+def _insert_sibling_boat_design_same_model(conn: Any, design_id: str, model_id: str) -> None:
+    with conn.cursor() as cur:
+        baseline = json.dumps({"appendages": {"keel_type": "fin"}})
+        generation = json.dumps(
+            {
+                "label": "Mk2",
+                "sequence": 2,
+                "aliases": ["Evolution"],
+                "first_built": 2018,
+                "last_built": 2022,
+                "hull_number_from": None,
+                "hull_number_to": None,
+                "boundary_confidence": "high",
+            }
+        )
+        cur.execute(
+            "INSERT INTO canonical_boat_designs "
+            "(id, boat_model_id, generation, designers, baseline, named_variants, "
+            " design_options, quality, content_hash) "
+            "VALUES (%s, %s, %s::jsonb, '[]'::jsonb, %s::jsonb, '[]'::jsonb, "
+            "'[]'::jsonb, '{}'::jsonb, %s)",
+            [design_id, model_id, generation, baseline, "1" * 64],
+        )
+        # No second canonical_brand_model_relationships row is needed: the
+        # candidate query joins on `boat_model_id`, and this design shares
+        # the identical `model_id` design A's own relationship row already
+        # associates with "Beneteau".
+    conn.commit()
+
+
 def _admit_keel_field_resolution(conn: Any, design_id: str) -> None:
     """Durably admit one `resolved` `appendages.keel_type` FieldResolution
     on *design_id*'s baseline, through the real accepted
@@ -517,11 +557,14 @@ def main() -> int:
         try:
             _insert_boat_design_with_keel_baseline(conn, _DESIGN_ID, _MODEL_ID)
             _admit_keel_field_resolution(conn, _DESIGN_ID)
+            _insert_sibling_boat_design_same_model(conn, _SIBLING_DESIGN_ID, _MODEL_ID)
         finally:
             conn.close()
         print(
             f"0a. seeded one canonical BoatDesign ({_DESIGN_ID}, Beneteau Oceanis 30.1, FIN keel) "
-            "with a real admitted FieldResolution -> OK\n"
+            "with a real admitted FieldResolution, plus one sibling design "
+            f"({_SIBLING_DESIGN_ID}) sharing the identical brand/model/years but a different "
+            "recorded generation.aliases -> OK\n"
         )
 
         api_port = _free_port()
@@ -744,18 +787,40 @@ def main() -> int:
         # exactly the `<form>...</form>` span -- the generation text is
         # rendered just *before* that form, in the same `<li>`).
         generation_text_present = "Generation: Mk2" in page_text and "#2" in page_text
+        # Independent review Finding B (second pass): the sibling design
+        # shares an identical label/sequence/years/hull-numbers/confidence
+        # generation block with _DESIGN_ID -- an aliases-only distinction.
+        # If aliases were not rendered, both <li> entries would show the
+        # byte-identical generation line despite being genuinely different
+        # canonical designs.
+        sibling_present = _SIBLING_DESIGN_ID in page_text
+        identical_core_shown_twice = (
+            page_text.count("Generation: Mk2, #2, 2018–2022") == 2  # noqa: RUF001
+        )
+        aliases_distinguish_the_two = (
+            "aliases: Evolution" in page_text and "no aliases recorded" in page_text
+        )
         selector_ok = (
             status == 200
             and candidate_ul_present
             and parsed_candidate_ref == _DESIGN_ID
             and "Unresolved." in page_text
             and generation_text_present
+            and sibling_present
+            and identical_core_shown_twice
+            and aliases_distinguish_the_two
         )
         ok &= selector_ok
         print(
             f"5. the real editor's bounded selector surfaces {_DESIGN_ID} for a search of "
             f"'Oceanis', including its recorded generation identity (Mk2, #2), and the page "
             f"shows UNRESOLVED before confirmation -> {'OK' if selector_ok else 'FAIL'}"
+        )
+        print(
+            f"   the sibling design {_SIBLING_DESIGN_ID} (identical brand/model/years, identical "
+            "label/sequence/years/hull-numbers/confidence) is distinguished from it only by "
+            "recorded generation.aliases ('aliases: Evolution' vs. 'no aliases recorded') -> "
+            f"{'OK' if (sibling_present and identical_core_shown_twice and aliases_distinguish_the_two) else 'FAIL'}"
         )
 
         # Independent review Finding C: the Offer/PhysicalBoat claim

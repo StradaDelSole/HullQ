@@ -193,14 +193,33 @@ export interface DesignAssociationView {
   candidate: DesignCandidate | null;
 }
 
+/**
+ * Independent review Finding C (second pass, 2026-10-12): structural
+ * consistency, not merely per-field shape. An inconsistent payload --
+ * UNRESOLVED carrying a design ref or candidate, LINKED carrying an empty/
+ * missing ref, or a candidate that names a *different* canonical design
+ * than `boat_design_ref` itself -- is never treated as authoritative
+ * absence or presence; it degrades to `service_error` the same as a
+ * malformed body.
+ */
 function isDesignAssociationView(value: unknown): value is DesignAssociationView {
   if (!isRecord(value)) return false;
-  return (
-    typeof value.native_listing_id === "string" &&
-    (value.link_status === "UNRESOLVED" || value.link_status === "LINKED") &&
-    isNullableString(value.boat_design_ref) &&
-    (value.candidate === null || isDesignCandidate(value.candidate))
-  );
+  if (typeof value.native_listing_id !== "string" || value.native_listing_id.length === 0) {
+    return false;
+  }
+  if (value.link_status === "UNRESOLVED") {
+    return value.boat_design_ref === null && value.candidate === null;
+  }
+  if (value.link_status === "LINKED") {
+    if (typeof value.boat_design_ref !== "string" || value.boat_design_ref.length === 0) {
+      return false;
+    }
+    if (value.candidate === null) return true;
+    return (
+      isDesignCandidate(value.candidate) && value.candidate.boat_design_ref === value.boat_design_ref
+    );
+  }
+  return false;
 }
 
 export type DesignAssociationReadResult =
@@ -308,8 +327,20 @@ export async function associateListingDesign(
     if (!isRecord(body)) return { kind: "service_error" };
     if (body.error === "chain_incomplete") return { kind: "chain_incomplete" };
     if (body.error === "shared_boat_conflict") return { kind: "shared_boat_conflict" };
-    const storedBoatDesignRef = typeof body.boat_design_ref === "string" ? body.boat_design_ref : null;
-    return { kind: "conflict", storedBoatDesignRef };
+    // Independent review Finding C (second pass): only a well-formed
+    // CONFLICT body (the exact shape `_design_association_write_response`
+    // actually sends) is ever treated as a genuine conflict. An unknown or
+    // malformed 409 body -- missing `outcome`, an empty/missing
+    // `boat_design_ref` -- degrades to `service_error`; it is never
+    // fabricated into a conflict result with a guessed/absent design ref.
+    if (
+      body.outcome === "CONFLICT" &&
+      typeof body.boat_design_ref === "string" &&
+      body.boat_design_ref.length > 0
+    ) {
+      return { kind: "conflict", storedBoatDesignRef: body.boat_design_ref };
+    }
+    return { kind: "service_error" };
   }
   if (response.status === 422) {
     const body = await safeJson(response);

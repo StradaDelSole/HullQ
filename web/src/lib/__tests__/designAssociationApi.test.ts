@@ -242,6 +242,120 @@ test("fetchDesignAssociation: 409 is chain_incomplete", async () => {
 });
 
 // ---------------------------------------------------------------------------
+// fetchDesignAssociation: independent review Finding C (second pass) --
+// structural consistency, not just per-field shape.
+// ---------------------------------------------------------------------------
+
+test("fetchDesignAssociation: UNRESOLVED carrying a non-null boat_design_ref is inconsistent -> service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        native_listing_id: "NL-1",
+        link_status: "UNRESOLVED",
+        boat_design_ref: "BD-1",
+        candidate: null,
+      }),
+    async (baseUrl) => {
+      const result = await fetchDesignAssociation(baseUrl, "ORG-1", "NL-1", null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchDesignAssociation: UNRESOLVED carrying a non-null candidate is inconsistent -> service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        native_listing_id: "NL-1",
+        link_status: "UNRESOLVED",
+        boat_design_ref: null,
+        candidate: VALID_CANDIDATE,
+      }),
+    async (baseUrl) => {
+      const result = await fetchDesignAssociation(baseUrl, "ORG-1", "NL-1", null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchDesignAssociation: LINKED with an empty-string boat_design_ref is service_error, never authoritative presence", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        native_listing_id: "NL-1",
+        link_status: "LINKED",
+        boat_design_ref: "",
+        candidate: null,
+      }),
+    async (baseUrl) => {
+      const result = await fetchDesignAssociation(baseUrl, "ORG-1", "NL-1", null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchDesignAssociation: LINKED with a null boat_design_ref is service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        native_listing_id: "NL-1",
+        link_status: "LINKED",
+        boat_design_ref: null,
+        candidate: null,
+      }),
+    async (baseUrl) => {
+      const result = await fetchDesignAssociation(baseUrl, "ORG-1", "NL-1", null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchDesignAssociation: LINKED whose candidate names a *different* design than boat_design_ref is service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        native_listing_id: "NL-1",
+        link_status: "LINKED",
+        boat_design_ref: "BD-1",
+        candidate: { ...VALID_CANDIDATE, boat_design_ref: "BD-DIFFERENT" },
+      }),
+    async (baseUrl) => {
+      const result = await fetchDesignAssociation(baseUrl, "ORG-1", "NL-1", null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchDesignAssociation: LINKED with a matching candidate and LINKED with no candidate are both ok", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        native_listing_id: "NL-1",
+        link_status: "LINKED",
+        boat_design_ref: "BD-1",
+        candidate: VALID_CANDIDATE,
+      }),
+    async (baseUrl) => {
+      const result = await fetchDesignAssociation(baseUrl, "ORG-1", "NL-1", null);
+      assert.equal(result.kind, "ok");
+    },
+  );
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        native_listing_id: "NL-1",
+        link_status: "LINKED",
+        boat_design_ref: "BD-1",
+        candidate: null,
+      }),
+    async (baseUrl) => {
+      const result = await fetchDesignAssociation(baseUrl, "ORG-1", "NL-1", null);
+      assert.equal(result.kind, "ok");
+    },
+  );
+});
+
+// ---------------------------------------------------------------------------
 // associateListingDesign
 // ---------------------------------------------------------------------------
 
@@ -321,6 +435,49 @@ test("associateListingDesign: 409 conflict carries the stored design ref", async
       const result = await associateListingDesign(baseUrl, "ORG-1", "NL-1", "BD-1", null, null);
       assert.equal(result.kind, "conflict");
       if (result.kind === "conflict") assert.equal(result.storedBoatDesignRef, "BD-EXISTING");
+    },
+  );
+});
+
+test("associateListingDesign: an unrecognized 409 body is service_error, never a fabricated conflict", async () => {
+  await withServer(
+    (_req, res) => jsonResponse(res, 409, { surprising: "shape" }),
+    async (baseUrl) => {
+      const result = await associateListingDesign(baseUrl, "ORG-1", "NL-1", "BD-1", null, null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("associateListingDesign: a 409 CONFLICT body missing boat_design_ref is service_error, never a conflict with a guessed ref", async () => {
+  await withServer(
+    (_req, res) => jsonResponse(res, 409, { outcome: "CONFLICT" }),
+    async (baseUrl) => {
+      const result = await associateListingDesign(baseUrl, "ORG-1", "NL-1", "BD-1", null, null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("associateListingDesign: a 409 CONFLICT body with an empty-string boat_design_ref is service_error", async () => {
+  await withServer(
+    (_req, res) => jsonResponse(res, 409, { outcome: "CONFLICT", boat_design_ref: "" }),
+    async (baseUrl) => {
+      const result = await associateListingDesign(baseUrl, "ORG-1", "NL-1", "BD-1", null, null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("associateListingDesign: a malformed (non-JSON) 409 body is service_error, never throws", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(409, { "Content-Type": "application/json" });
+      res.end("not json");
+    },
+    async (baseUrl) => {
+      const result = await associateListingDesign(baseUrl, "ORG-1", "NL-1", "BD-1", null, null);
+      assert.equal(result.kind, "service_error");
     },
   );
 });
