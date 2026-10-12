@@ -18,8 +18,8 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ```text
 Latest owner-accepted slice: SLICE-0082
 Current queue:               SLICE-0083
-Current capability:          UNSELECTED — post-0082 reconciliation required
-Current readiness:           NOT_APPLICABLE
+Current capability:          Multi-format Broker Inventory Intake (CSV/Excel/JSON/NautiX v1.4)
+Current readiness:           READY contract pending independent review/CI/merge; no implementation
 ```
 
 Current boundary:
@@ -30,7 +30,7 @@ Current boundary:
 - post-SLICE-0080 reassessment selected Production Launch Pack Phase 1 for the limited pilot, but the Owner explicitly reprioritized unfinished product development on 2026-10-12;
 - SLICE-0081 Operational Dashboard remains accepted; Phase-1 operator provisioning is paused in priority, not completed;
 - SLICE-0082 closes the normal broker→canonical BoatDesign→native technical Search bridge with accepted auditable first-time association and real synthetic end-to-end proof; no production/pilot launch was authorized;
-- SLICE-0083 is a numeric queue only; no scope is selected or authorized until fresh post-0082 repository reconciliation and Owner-selected readiness;
+- SLICE-0083 is Owner-selected after fresh post-0082 reconciliation as one common-format broker file import (including NautiX v1.4) with D26-staged validation and ordinary private ProfessionalListingDraft creation; readiness must pass independent review/CI/merge before local START_SLICE;
 - no later slice is authorized automatically.
 
 ## Historical execution ranges
@@ -40,7 +40,7 @@ Current boundary:
 | SLICE-0001–0038 | accepted foundational research/architecture/data/product work except where an individual slice record states otherwise |
 | SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
 | SLICE-0040–0082 | accepted marketplace/Search/buyer/broker/security/production-foundation/media-durability work; final state is authoritative in each acceptance closure and `PROJECT_STATE.md` |
-| SLICE-0083 | next numeric queue only; UNSELECTED pending fresh post-0082 reconciliation/readiness |
+| SLICE-0083 | Owner-selected common-format Broker Inventory Intake (CSV/TSV/XLS/XLSX/XLSB/ODS/JSON/NautiX XML v1.4); readiness pending review/CI/merge; implementation not started |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
