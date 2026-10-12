@@ -19,7 +19,7 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 Latest owner-accepted slice: SLICE-0080
 Current queue:               SLICE-0081
 Current capability:          Broker Workspace Operational Dashboard (Owner-selected 2026-10-12)
-Current readiness:           READY contract proposed — independent review/merge pending
+Current readiness:           READY contract; implementation not started
 ```
 
 Current boundary:
@@ -28,7 +28,7 @@ Current boundary:
 - `docs/PROJECT_STATE.md` remains the canonical accepted/queue boundary;
 - Production Launch Pack phase remains `NOT_STARTED`;
 - post-SLICE-0080 reassessment selected Production Launch Pack Phase 1 for the limited pilot, but the Owner explicitly reprioritized unfinished product development on 2026-10-12;
-- SLICE-0081 now proposes the Broker Workspace Operational Dashboard readiness contract; Phase-1 operator provisioning is paused in priority, not completed;
+- SLICE-0081 is selected for the Broker Workspace Operational Dashboard; readiness contract must pass review/CI and be merged before `START_SLICE.bat`; Phase-1 operator provisioning is paused in priority, not completed;
 - no later slice is authorized automatically.
 
 ## Historical execution ranges
@@ -38,7 +38,7 @@ Current boundary:
 | SLICE-0001–0038 | accepted foundational research/architecture/data/product work except where an individual slice record states otherwise |
 | SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
 | SLICE-0040–0080 | later accepted marketplace/Search/buyer/broker/security/production-foundation/media-durability work; final state is authoritative in each acceptance closure and `PROJECT_STATE.md` |
-| SLICE-0081 | Owner-selected Broker Workspace Operational Dashboard; readiness under independent review before implementation authorization |
+| SLICE-0081 | Owner-selected Broker Workspace Operational Dashboard; readiness contract READY; implement only after reviewed readiness merge via `START_SLICE.bat` |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
