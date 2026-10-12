@@ -1,7 +1,7 @@
 # HullQ Slice Index
 
 **Status:** ACTIVE navigation board  
-**Updated:** 2026-10-09  
+**Updated:** 2026-10-12  
 **Canonical current-state authority:** `docs/PROJECT_STATE.md`
 
 This file is deliberately a **compact navigation index**, not a second historical status authority.
@@ -18,8 +18,8 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ```text
 Latest owner-accepted slice: SLICE-0080
 Current queue:               SLICE-0081
-Current capability:          UNSELECTED — Phase 1 operator work active
-Current readiness:           NOT_APPLICABLE
+Current capability:          Broker Workspace Operational Dashboard (Owner-selected 2026-10-12)
+Current readiness:           READY contract proposed — independent review/merge pending
 ```
 
 Current boundary:
@@ -27,8 +27,8 @@ Current boundary:
 - SLICE-0080 is Owner-accepted; final history is retained in `docs/slices/SLICE-0080-acceptance-closure.md`;
 - `docs/PROJECT_STATE.md` remains the canonical accepted/queue boundary;
 - Production Launch Pack phase remains `NOT_STARTED`;
-- post-SLICE-0080 reassessment selects Production Launch Pack Phase 1 — Accounts & Ownership as the active next work;
-- SLICE-0081 has no selected capability/readiness and is not needed unless provider execution exposes a genuine repository capability gap;
+- post-SLICE-0080 reassessment selected Production Launch Pack Phase 1 for the limited pilot, but the Owner explicitly reprioritized unfinished product development on 2026-10-12;
+- SLICE-0081 now proposes the Broker Workspace Operational Dashboard readiness contract; Phase-1 operator provisioning is paused in priority, not completed;
 - no later slice is authorized automatically.
 
 ## Historical execution ranges
@@ -38,7 +38,7 @@ Current boundary:
 | SLICE-0001–0038 | accepted foundational research/architecture/data/product work except where an individual slice record states otherwise |
 | SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
 | SLICE-0040–0080 | later accepted marketplace/Search/buyer/broker/security/production-foundation/media-durability work; final state is authoritative in each acceptance closure and `PROJECT_STATE.md` |
-| SLICE-0081 | current numeric queue only; post-0080 reassessment completed and deliberately left capability UNSELECTED while Production Launch Pack Phase 1 operator work proceeds |
+| SLICE-0081 | Owner-selected Broker Workspace Operational Dashboard; readiness under independent review before implementation authorization |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
