@@ -212,7 +212,7 @@ def _wait_for_http(url: str, *, timeout_seconds: float = 15.0) -> bool:
             return True
         except urllib.error.HTTPError:
             return True
-        except (urllib.error.URLError, ConnectionError, TimeoutError, OSError):
+        except urllib.error.URLError, ConnectionError, TimeoutError, OSError:
             time.sleep(0.2)
     return False
 
@@ -349,11 +349,14 @@ def _seed_populated_organization_with_listing_and_leads(
                 [writer_account.value],
             )
         conn.commit()
-        create_physical_boat(conn, physical_boat=PhysicalBoat(id=PhysicalBoatId(f"PB-{listing_id}")))
+        create_physical_boat(
+            conn, physical_boat=PhysicalBoat(id=PhysicalBoatId(f"PB-{listing_id}"))
+        )
         create_market_episode(
             conn,
             market_episode=MarketEpisode(
-                id=MarketEpisodeId(f"ME-{listing_id}"), physical_boat_id=PhysicalBoatId(f"PB-{listing_id}")
+                id=MarketEpisodeId(f"ME-{listing_id}"),
+                physical_boat_id=PhysicalBoatId(f"PB-{listing_id}"),
             ),
         )
         create_native_listing(
@@ -361,7 +364,10 @@ def _seed_populated_organization_with_listing_and_leads(
             account_id=writer_account,
             candidate_organization=org,
             membership=membership,
-            listing=NativeListing(id=NativeListingId(listing_id), market_episode_id=MarketEpisodeId(f"ME-{listing_id}")),
+            listing=NativeListing(
+                id=NativeListingId(listing_id),
+                market_episode_id=MarketEpisodeId(f"ME-{listing_id}"),
+            ),
         )
         write_native_listing_offer_revision(
             conn,
@@ -410,7 +416,10 @@ def _seed_populated_organization_with_listing_and_leads(
                 byte_size=12345,
             )
             placement_result = create_uploaded_image_placement(
-                conn, native_listing_id=NativeListingId(listing_id), owner_organization_id=org.id, media_asset=asset
+                conn,
+                native_listing_id=NativeListingId(listing_id),
+                owner_organization_id=org.id,
+                media_asset=asset,
             )
             set_cover(
                 conn,
@@ -420,7 +429,10 @@ def _seed_populated_organization_with_listing_and_leads(
                 expected_version=placement_result.gallery_version,
             )
         publish_result = publish_native_listing(
-            conn, account_id=writer_account, candidate_organization=org, membership=membership,
+            conn,
+            account_id=writer_account,
+            candidate_organization=org,
+            membership=membership,
             native_listing_id=NativeListingId(listing_id),
         )
         assert publish_result.status.value == "transitioned", publish_result
@@ -504,7 +516,9 @@ def main() -> int:
             )
         issuer_ready = _wait_for_http(f"{issuer_base}.well-known/jwks.json")
         ok &= issuer_ready
-        print(f"1. deterministic local OIDC/JWKS test issuer serving -> {'OK' if issuer_ready else 'FAIL'}")
+        print(
+            f"1. deterministic local OIDC/JWKS test issuer serving -> {'OK' if issuer_ready else 'FAIL'}"
+        )
 
         api_env = dict(os.environ)
         api_env["HULLQ_DATABASE_URL"] = url
@@ -525,11 +539,23 @@ def main() -> int:
         with api_log_path.open("wb") as api_log:
             api_proc = subprocess.Popen(
                 [
-                    sys.executable, "-m", "uvicorn", "hullq.api.app:create_app", "--factory",
-                    "--host", "127.0.0.1", "--port", str(api_port),
-                    "--no-access-log", "--log-level", "warning",
+                    sys.executable,
+                    "-m",
+                    "uvicorn",
+                    "hullq.api.app:create_app",
+                    "--factory",
+                    "--host",
+                    "127.0.0.1",
+                    "--port",
+                    str(api_port),
+                    "--no-access-log",
+                    "--log-level",
+                    "warning",
                 ],
-                cwd=REPO_ROOT, env=api_env, stdout=api_log, stderr=subprocess.STDOUT,
+                cwd=REPO_ROOT,
+                env=api_env,
+                stdout=api_log,
+                stderr=subprocess.STDOUT,
             )
         api_ready = _wait_for_http(f"{api_base}/api/broker/context")
         ok &= api_ready
@@ -548,7 +574,9 @@ def main() -> int:
             f"/api/broker/organizations/{_ORG_POPULATED_ID}/performance"
         )
         proxy_port = _free_port()
-        proxy_server = http.server.ThreadingHTTPServer(("127.0.0.1", proxy_port), _FaultInjectingProxyHandler)
+        proxy_server = http.server.ThreadingHTTPServer(
+            ("127.0.0.1", proxy_port), _FaultInjectingProxyHandler
+        )
         proxy_thread = threading.Thread(target=proxy_server.serve_forever, daemon=True)
         proxy_thread.start()
         proxy_base = f"http://127.0.0.1:{proxy_port}"
@@ -561,7 +589,10 @@ def main() -> int:
         with web_log_path.open("wb") as web_log:
             web_proc = subprocess.Popen(
                 ["node", "./dist/server/entry.mjs"],
-                cwd=WEB_DIR, env=web_env, stdout=web_log, stderr=subprocess.STDOUT,
+                cwd=WEB_DIR,
+                env=web_env,
+                stdout=web_log,
+                stderr=subprocess.STDOUT,
             )
         web_ready = _wait_for_http(f"{web_base}/broker")
         ok &= web_ready
@@ -721,17 +752,19 @@ def main() -> int:
         page_text = body.decode("utf-8")
         no_cross_leak_ok = _ORG_PUB_ID not in page_text
         ok &= no_cross_leak_ok
-        print(f"   ORG_NOPUB's page never leaks ORG_PUB's id -> {'OK' if no_cross_leak_ok else 'FAIL'}\n")
+        print(
+            f"   ORG_NOPUB's page never leaks ORG_PUB's id -> {'OK' if no_cross_leak_ok else 'FAIL'}\n"
+        )
 
         # 8. foreign Organization and a never-created Organization id remain
         # identical, non-enumerating 404s on this composed page.
-        status_foreign, _, body_foreign = session.get(f"{web_base}/broker/organizations/{_ORG_FOREIGN_ID}")
-        status_never, _, body_never = session.get(f"{web_base}/broker/organizations/{_NEVER_SEEDED_ORG_ID}")
-        cross_org_ok = (
-            status_foreign == 404
-            and status_never == 404
-            and body_foreign == body_never
+        status_foreign, _, body_foreign = session.get(
+            f"{web_base}/broker/organizations/{_ORG_FOREIGN_ID}"
         )
+        status_never, _, body_never = session.get(
+            f"{web_base}/broker/organizations/{_NEVER_SEEDED_ORG_ID}"
+        )
+        cross_org_ok = status_foreign == 404 and status_never == 404 and body_foreign == body_never
         ok &= cross_org_ok
         print(
             f"8. foreign Organization and a never-created Organization id are identical, "
@@ -742,7 +775,10 @@ def main() -> int:
         # the real performance endpoint intercepted by the fault-injecting
         # proxy. Seed a real published NativeListing + 6 real buyer Leads.
         _seed_populated_organization_with_listing_and_leads(
-            url, org_id=_ORG_POPULATED_ID, listing_id=_POPULATED_LISTING_ID, lead_count=_POPULATED_LEAD_COUNT
+            url,
+            org_id=_ORG_POPULATED_ID,
+            listing_id=_POPULATED_LISTING_ID,
+            lead_count=_POPULATED_LEAD_COUNT,
         )
 
         def _draft_csrf_headers() -> dict[str, str]:
