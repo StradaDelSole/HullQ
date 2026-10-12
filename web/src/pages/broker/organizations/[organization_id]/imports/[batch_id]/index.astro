@@ -1,0 +1,253 @@
+---
+// SLICE-0083: one staged import batch's preview/mapping/confirm surface.
+// Mapping targets below must stay in sync with
+// `hullq.domain.import_intake.MAPPABLE_TARGET_KEYS` plus the two pseudo-
+// targets `__ignore__`/`__source_record_key__` -- this is a display-only
+// list; FastAPI independently validates/rejects any other value.
+export const prerender = false;
+
+import {
+  confirmImportBatch,
+  fetchImportBatch,
+  setImportMapping,
+} from "../../../../../../lib/importIntakeApi";
+import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../../../../lib/authConstants";
+
+const MAPPING_TARGETS: { value: string; label: string }[] = [
+  { value: "__ignore__", label: "— Ignore this column —" },
+  { value: "__source_record_key__", label: "Stable source row ID (dedup key)" },
+  { value: "physical_boat.marketed_brand_claim", label: "Brand / manufacturer" },
+  { value: "physical_boat.model_designation_claim", label: "Model designation" },
+  { value: "physical_boat.build_year", label: "Build year" },
+  { value: "physical_boat.boat_name", label: "Boat name" },
+  { value: "listing_offer.asking_price_mode", label: "Asking price mode (AMOUNT/POA)" },
+  { value: "listing_offer.asking_price_amount", label: "Asking price amount" },
+  { value: "listing_offer.currency", label: "Currency (3-letter)" },
+  { value: "listing_offer.location_country", label: "Location country (2-letter)" },
+  { value: "listing_offer.location_region", label: "Location region" },
+  { value: "broker_listing_reference", label: "Broker listing reference" },
+  { value: "listing_offer.broker_description", label: "Broker description" },
+];
+
+const organizationId = Astro.params.organization_id ?? "";
+const batchId = Astro.params.batch_id ?? "";
+const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
+const cookieHeader = Astro.request.headers.get("cookie");
+const originHeader = Astro.request.headers.get("origin");
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+Astro.response.headers.set("Cache-Control", "private, no-store");
+
+let actionMessage: string | null = null;
+
+if (Astro.request.method === "POST" && organizationId && batchId) {
+  const form = await Astro.request.formData();
+  const action = form.get("action");
+  if (action === "set_mapping") {
+    const mapping: Record<string, string> = {};
+    for (const [key, value] of form.entries()) {
+      if (key.startsWith("map::") && typeof value === "string" && value) {
+        mapping[key.slice("map::".length)] = value;
+      }
+    }
+    const snapshotMode = form.get("snapshot_mode") === "on";
+    const mapResult = await setImportMapping(
+      apiBaseUrl,
+      organizationId,
+      batchId,
+      cookieHeader,
+      originHeader,
+      mapping,
+      snapshotMode,
+    );
+    if (mapResult.kind !== "ok") {
+      actionMessage =
+        mapResult.kind === "invalid_mapping"
+          ? `Invalid mapping: ${mapResult.message ?? "see column assignments"}`
+          : `Could not apply mapping (${mapResult.kind}).`;
+    }
+  } else if (action === "confirm") {
+    const confirmResult = await confirmImportBatch(
+      apiBaseUrl,
+      organizationId,
+      batchId,
+      cookieHeader,
+      originHeader,
+    );
+    if (confirmResult.kind !== "ok") {
+      actionMessage = `Could not confirm import (${confirmResult.kind}).`;
+    }
+  }
+}
+
+const result = organizationId && batchId
+  ? await fetchImportBatch(apiBaseUrl, organizationId, batchId, cookieHeader)
+  : ({ kind: "batch_not_found" } as const);
+
+if (result.kind === "not_found" || result.kind === "batch_not_found") {
+  Astro.response.status = 404;
+} else if (result.kind === "mfa_required") {
+  Astro.response.status = 403;
+} else if (result.kind === "publisher_role_required") {
+  Astro.response.status = 403;
+}
+
+const nextPath = `/broker/organizations/${organizationId}/imports/${batchId}`;
+const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(nextPath)}`;
+const stepUpUrl = `${loginUrl}&acr_values=${encodeURIComponent(AUTH0_MFA_STEP_UP_ACR_VALUE)}`;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>HullQ Broker Workspace — Import Batch</title>
+  </head>
+  <body>
+    <main>
+      <h1>Import batch</h1>
+      {
+        result.kind === "unauthenticated" ? (
+          <p>
+            Please <a href={loginUrl}>log in</a>.
+          </p>
+        ) : result.kind === "not_found" || result.kind === "batch_not_found" ? (
+          <>
+            <h2>Not found</h2>
+            <p>This import batch is not available.</p>
+          </>
+        ) : result.kind === "mfa_required" ? (
+          <>
+            <h2>Additional verification required</h2>
+            <a href={stepUpUrl}>Verify and continue</a>
+          </>
+        ) : result.kind === "publisher_role_required" ? (
+          <h2>Not authorized</h2>
+        ) : (
+          <>
+            <p>
+              <a href={`/broker/organizations/${organizationId}/imports`}>Back to imports</a>
+            </p>
+            {actionMessage && <p>{actionMessage}</p>}
+            <p>
+              <strong>Source:</strong> {result.batch.import_source} ({result.batch.import_format})
+              <br />
+              <strong>Status:</strong> {result.batch.status}
+              <br />
+              <strong>Rows:</strong> {result.batch.row_count}
+              <br />
+              <strong>Staging expires:</strong> {result.batch.expires_at}
+            </p>
+
+            {result.batch.status === "AWAITING_MAPPING" && result.batch.headers && (
+              <section>
+                <h2>Map columns</h2>
+                <p>
+                  Assign each detected column to exactly one target, or Ignore. Choose exactly one
+                  stable source-row-ID column, or check snapshot mode for a file with no such
+                  column.
+                </p>
+                <form method="POST">
+                  <input type="hidden" name="action" value="set_mapping" />
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Column</th>
+                        <th>Sample value</th>
+                        <th>Maps to</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {result.batch.headers.map((header, columnIndex) => (
+                        <tr>
+                          <td>{header}</td>
+                          <td>{result.batch.preview_rows?.[0]?.[columnIndex] ?? ""}</td>
+                          <td>
+                            <select name={`map::${header}`}>
+                              {MAPPING_TARGETS.map((target) => (
+                                <option value={target.value}>{target.label}</option>
+                              ))}
+                            </select>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p>
+                    <label>
+                      <input type="checkbox" name="snapshot_mode" /> One-time snapshot mode (no
+                      stable row ID column available; a later changed file will require review,
+                      never silently create duplicate drafts)
+                    </label>
+                  </p>
+                  <button type="submit">Apply mapping</button>
+                </form>
+              </section>
+            )}
+
+            {(result.batch.status === "MAPPED" || result.batch.status === "CONFIRMING") && (
+              <form method="POST">
+                <input type="hidden" name="action" value="confirm" />
+                <button type="submit">Confirm import ({result.batch.row_count} row(s))</button>
+              </form>
+            )}
+
+            {result.batch.summary && (
+              <section>
+                <h2>Confirm summary</h2>
+                <ul>
+                  {Object.entries(result.batch.summary).map(([outcome, count]) => (
+                    <li>
+                      {outcome}: {count}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            <section>
+              <h2>Rows</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Classification</th>
+                    <th>Outcome</th>
+                    <th>Reasons</th>
+                    <th>Source key</th>
+                    <th>Draft</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.batch.rows.map((row) => (
+                    <tr>
+                      <td>{row.row_ordinal}</td>
+                      <td>{row.preview_classification}</td>
+                      <td>{row.outcome ?? "—"}</td>
+                      <td>{row.preview_reasons.join("; ")}</td>
+                      <td>{row.source_record_key ?? "—"}</td>
+                      <td>
+                        {row.created_professional_listing_draft_id ? (
+                          <a
+                            href={`/broker/organizations/${organizationId}/drafts/${encodeURIComponent(
+                              row.created_professional_listing_draft_id,
+                            )}`}
+                          >
+                            open draft
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          </>
+        )
+      }
+    </main>
+  </body>
+</html>
