@@ -4,9 +4,9 @@
 <!-- PROJECT_STATE_QUEUE_SLICE: 0081 -->
 <!-- PRODUCTION_LAUNCH_PACK_PHASE: NOT_STARTED -->
 
-**Updated:** 2026-10-09  
+**Updated:** 2026-10-12  
 **Latest owner-accepted / DONE slice:** SLICE-0080  
-**Current queue:** SLICE-0081 — **UNSELECTED**. Post-SLICE-0080 reconciliation is PASS and deliberately selects no new code slice. The active next work is Production Launch Pack Phase 1 — Accounts & Ownership; the canonical phase marker remains `NOT_STARTED` until Phase 1 is fully evidenced and reviewed. Production Readiness remains `IN_PROGRESS`; no external production data, pilot, buyer exposure or public launch is authorized.  
+**Current queue:** SLICE-0081 — **Broker Workspace Operational Dashboard**, readiness contract proposed for independent review. The Owner's 2026-10-12 product-first prioritization supersedes the 2026-10-09 selection of Phase-1 operator work **for execution order only**; it does not waive operational requirements. Production Launch Pack remains `NOT_STARTED` and is paused, not completed. Production Readiness remains `IN_PROGRESS`; no external production data, pilot, buyer exposure or public launch is authorized.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -341,9 +341,9 @@ Next queue number:
 SLICE-0081
 ```
 
-**Capability:** UNSELECTED — post-SLICE-0080 reassessment selects Production Launch Pack Phase 1 operator work instead of a new code slice.
+**Capability:** Broker Workspace Operational Dashboard — owner-selected 2026-10-12; readiness prepared in `docs/slices/SLICE-0081-broker-workspace-operational-dashboard.md`, pending independent readiness review/merge before `START_SLICE.bat`.
 
-SLICE-0080 is Owner-accepted and merged. `docs/POST_SLICE_0080_REASSESSMENT_2026-10-09.md` concludes that the highest-leverage next work is Production Launch Pack Phase 1 — Accounts & Ownership, not another code slice. SLICE-0081 remains UNSELECTED unless provider execution reveals a genuine repository capability gap. Accepted ADR-0012 (Owner acceptance 2026-10-10) supersedes the former DigitalOcean provider selection in favor of PlanetScale Managed PostgreSQL 18, without waiving cost, EU location, HA, backup/restore or security validations. No paid PostgreSQL provisioning is authorized.
+SLICE-0080 is Owner-accepted and merged. The earlier `docs/POST_SLICE_0080_REASSESSMENT_2026-10-09.md` correctly identified Production Launch Pack Phase 1 as the next step **toward the limited broker pilot**. On 2026-10-12 the Owner explicitly changed the work priority to rapid completion of missing product capabilities and accepted the Broker Workspace Operational Dashboard as the next development step. This is a later owner-directed priority amendment, not an invalidation of the prior implementation or any Production Readiness / security gate. Accepted ADR-0012 (Owner acceptance 2026-10-10) supersedes DigitalOcean in favor of PlanetScale Managed PostgreSQL 18; no paid PostgreSQL provisioning is authorized. The separate multi-format import draft branch is **not** the selected SLICE-0081.
 
 ## Development workflow
 
@@ -358,6 +358,6 @@ SLICE-0080 is Owner-accepted and merged. `docs/POST_SLICE_0080_REASSESSMENT_2026
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0079 and SLICE-0080 are Owner-accepted and merged; the post-SLICE-0080 reconciliation is PASS and leaves SLICE-0081 UNSELECTED while Production Launch Pack Phase 1 account/ownership work proceeds.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0079 and SLICE-0080 are Owner-accepted and merged; the post-SLICE-0080 reconciliation remains historical PASS for its then-active pilot objective, while the Owner's 2026-10-12 product-first amendment selects the SLICE-0081 dashboard readiness ahead of paused Phase-1 account work.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
