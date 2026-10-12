@@ -16,20 +16,21 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ## Current execution boundary
 
 ```text
-Latest owner-accepted slice: SLICE-0081
-Current queue:               SLICE-0082
-Current capability:          Broker Listing → Canonical BoatDesign Association
-Current readiness:           READY contract merged in PR #329; implementation not started
+Latest owner-accepted slice: SLICE-0082
+Current queue:               SLICE-0083
+Current capability:          UNSELECTED — post-0082 reconciliation required
+Current readiness:           NOT_APPLICABLE
 ```
 
 Current boundary:
 
-- SLICE-0081 is Owner-accepted; final implementation/review history is retained in `docs/slices/SLICE-0081-acceptance-closure.md`;
+- SLICE-0082 is Owner-accepted; final implementation/review history is retained in `docs/slices/SLICE-0082-acceptance-closure.md` (implementation PR #331 and separate closure PR);
 - `docs/PROJECT_STATE.md` remains the canonical accepted/queue boundary;
 - Production Launch Pack phase remains `NOT_STARTED`;
 - post-SLICE-0080 reassessment selected Production Launch Pack Phase 1 for the limited pilot, but the Owner explicitly reprioritized unfinished product development on 2026-10-12;
-- SLICE-0081 Operational Dashboard is merged and accepted; Phase-1 operator provisioning is paused in priority, not completed;
-- SLICE-0082 was selected after the 2026-10-12 post-0081 source-to-Search review; its READY contract and reassessment passed independent review/CI and merged in PR #329; `START_SLICE.bat` is now authorized for 0082;
+- SLICE-0081 Operational Dashboard remains accepted; Phase-1 operator provisioning is paused in priority, not completed;
+- SLICE-0082 closes the normal broker→canonical BoatDesign→native technical Search bridge with accepted auditable first-time association and real synthetic end-to-end proof; no production/pilot launch was authorized;
+- SLICE-0083 is a numeric queue only; no scope is selected or authorized until fresh post-0082 repository reconciliation and Owner-selected readiness;
 - no later slice is authorized automatically.
 
 ## Historical execution ranges
@@ -38,8 +39,8 @@ Current boundary:
 |---|---|
 | SLICE-0001–0038 | accepted foundational research/architecture/data/product work except where an individual slice record states otherwise |
 | SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
-| SLICE-0040–0081 | accepted marketplace/Search/buyer/broker/security/production-foundation/media-durability work; final state is authoritative in each acceptance closure and `PROJECT_STATE.md` |
-| SLICE-0082 | selected broker NativeListing→canonical BoatDesign association; readiness merged in PR #329, implementation not started |
+| SLICE-0040–0082 | accepted marketplace/Search/buyer/broker/security/production-foundation/media-durability work; final state is authoritative in each acceptance closure and `PROJECT_STATE.md` |
+| SLICE-0083 | next numeric queue only; UNSELECTED pending fresh post-0082 reconciliation/readiness |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
