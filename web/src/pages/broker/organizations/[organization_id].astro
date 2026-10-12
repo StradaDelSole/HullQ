@@ -1,7 +1,10 @@
 ---
-// SLICE-0053: one explicit Organization-scoped protected workspace landing
-// (contract §9/§11). Organization context is always explicit -- the exact
-// path segment -- never inferred from mutable browser state.
+// SLICE-0053/SLICE-0081: one explicit Organization-scoped protected
+// workspace landing (contract §9/§11), now a coherent read-only operational
+// dashboard composed from existing bounded Organization-scoped read
+// services. Organization context is always explicit -- the exact path
+// segment -- never inferred from mutable browser state. No private panel is
+// fetched before this top-level Organization access is resolved.
 //
 // unauthenticated             -> login path
 // unknown/unauthorized org    -> ordinary not-found (non-enumerating,
@@ -9,29 +12,54 @@
 //                                not exist or simply isn't this Account's)
 // privileged membership,
 //   no validated MFA          -> blocked/step-up prompt
-// authorized                  -> workspace landing (Organization ID,
-//                                professional category, publishing
-//                                eligibility, membership roles)
+// authorized                  -> workspace dashboard: identity/roles, Lead
+//                                workload counters + recent Leads, recent
+//                                listing drafts, recent inventory, LAST_30_
+//                                DAYS performance -- each independently
+//                                fetched and independently error-aware
+//                                (SLICE-0081 mechanical invariants).
+//
+// Every fact rendered below is exactly what FastAPI decided via the four
+// already-accepted read clients; this page never re-derives/aggregates a
+// total, never infers zero from a denied/failed panel, and never performs a
+// mutation on this GET.
 export const prerender = false;
 
-import { fetchOrganizationContext } from "../../../lib/brokerApi";
+import { fetchOrganizationContext, fetchOrganizationInventory } from "../../../lib/brokerApi";
+import type { OrganizationInventoryResult } from "../../../lib/brokerApi";
+import { fetchOrganizationLeadCounts, fetchOrganizationLeadInbox } from "../../../lib/brokerLeadOpsApi";
+import type { LeadCountsResult, LeadInboxResult } from "../../../lib/brokerLeadOpsApi";
+import { fetchProfessionalDrafts } from "../../../lib/professionalDraftApi";
+import type { ProfessionalDraftListResult } from "../../../lib/professionalDraftApi";
+import { fetchOrganizationPerformance } from "../../../lib/brokerPerformanceApi";
+import type { OrganizationPerformanceResult } from "../../../lib/brokerPerformanceApi";
 import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../lib/authConstants";
+import {
+  draftPreviewLabel,
+  draftReadinessLabel,
+  inventoryReadinessLabel,
+  panelUnavailableText,
+} from "../../../lib/brokerDashboardPresentation";
 
 const organizationId = Astro.params.organization_id;
 const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
 const cookieHeader = Astro.request.headers.get("cookie");
 
 Astro.response.headers.set("X-Robots-Tag", "noindex");
-// This page renders Account/Organization/role context for exactly one
-// signed-in Account: never reusable by a browser/shared cache across
-// Accounts or after logout (independent review 2026-09-14, exact-head
-// a7fee1a0).
+// This page renders Account/Organization/role context and private panel
+// data for exactly one signed-in Account: never reusable by a browser/
+// shared cache across Accounts or after logout (independent review
+// 2026-09-14, exact-head a7fee1a0; preserved unchanged for SLICE-0081).
 Astro.response.headers.set("Cache-Control", "private, no-store");
 
 const result = organizationId
   ? await fetchOrganizationContext(apiBaseUrl, organizationId, cookieHeader)
   : ({ kind: "not_found" } as const);
 
+// The page's HTTP status reflects only this top-level Organization
+// authorization decision, never any individual panel's outcome below --
+// a panel outage must stay a visible "unavailable" section, not a page-wide
+// failure status that implies the whole Organization is inaccessible.
 if (result.kind === "not_found") {
   Astro.response.status = 404;
 } else if (result.kind === "mfa_required") {
@@ -44,6 +72,27 @@ const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(nextPat
 // verbatim by FastAPI's login endpoint without HullQ-specific meaning
 // there; the local deterministic test issuer exercises this exact value.
 const stepUpUrl = `${loginUrl}&acr_values=${encodeURIComponent(AUTH0_MFA_STEP_UP_ACR_VALUE)}`;
+
+let leadCountsResult: LeadCountsResult | null = null;
+let leadInboxResult: LeadInboxResult | null = null;
+let draftsResult: ProfessionalDraftListResult | null = null;
+let inventoryResult: OrganizationInventoryResult | null = null;
+let performanceResult: OrganizationPerformanceResult | null = null;
+
+if (result.kind === "ok" && organizationId) {
+  // Five independent, bounded (page_size: 5) reads -- each keeps its own
+  // endpoint-specific auth/error semantics; one panel failing never masks
+  // or zeroes out the others (SLICE-0081 "Retry / replay / partial-failure
+  // behavior"). Concurrent source updates may yield a non-atomic snapshot
+  // across these five calls -- this page never claims one atomic timestamp.
+  [leadCountsResult, leadInboxResult, draftsResult, inventoryResult, performanceResult] = await Promise.all([
+    fetchOrganizationLeadCounts(apiBaseUrl, organizationId, cookieHeader),
+    fetchOrganizationLeadInbox(apiBaseUrl, organizationId, cookieHeader, { pageSize: 5 }),
+    fetchProfessionalDrafts(apiBaseUrl, organizationId, cookieHeader, { pageSize: 5 }),
+    fetchOrganizationInventory(apiBaseUrl, organizationId, cookieHeader, { pageSize: 5 }),
+    fetchOrganizationPerformance(apiBaseUrl, organizationId, cookieHeader, "LAST_30_DAYS"),
+  ]);
+}
 ---
 
 <html lang="en">
@@ -83,30 +132,132 @@ const stepUpUrl = `${loginUrl}&acr_values=${encodeURIComponent(AUTH0_MFA_STEP_UP
             <p>Publishing eligibility: {result.data.publishing_eligibility}</p>
             <p>Roles: {result.data.roles.join(", ")}</p>
             <p>
-              <a href={`/broker/organizations/${result.data.organization_id}/inventory`}>
-                View inventory
-              </a>
-            </p>
-            <p>
-              <a href={`/broker/organizations/${result.data.organization_id}/drafts`}>
-                Listing drafts
-              </a>
-            </p>
-            <p>
-              <a href={`/broker/organizations/${result.data.organization_id}/leads`}>
-                Leads
-              </a>
-            </p>
-            <p>
               <a href={`/broker/organizations/${result.data.organization_id}/notifications`}>
                 Lead notification settings
               </a>
             </p>
-            <p>
-              <a href={`/broker/organizations/${result.data.organization_id}/performance`}>
-                Performance &amp; funnel snapshot
-              </a>
-            </p>
+
+            <section aria-labelledby="leads-heading">
+              <h2 id="leads-heading">Leads</h2>
+              <p>
+                <a href={`/broker/organizations/${organizationId}/leads`}>Open the Leads inbox</a>
+              </p>
+              {leadCountsResult && leadCountsResult.kind === "ok" ? (
+                <ul>
+                  <li>New / unread: {leadCountsResult.data.new_unread}</li>
+                  <li>Unassigned: {leadCountsResult.data.unassigned}</li>
+                  <li>Follow-up due: {leadCountsResult.data.follow_up_due}</li>
+                  <li>Follow-up overdue: {leadCountsResult.data.follow_up_overdue}</li>
+                </ul>
+              ) : leadCountsResult ? (
+                <p>{panelUnavailableText(leadCountsResult.kind)}</p>
+              ) : null}
+              {leadInboxResult && leadInboxResult.kind === "ok" ? (
+                leadInboxResult.data.items.length === 0 ? (
+                  <p>No leads yet.</p>
+                ) : (
+                  <>
+                    <p>Recent leads (sample, up to 5):</p>
+                    <ul>
+                      {leadInboxResult.data.items.map((item) => (
+                        <li>
+                          <a
+                            href={`/broker/organizations/${organizationId}/leads/${encodeURIComponent(item.lead_id)}`}
+                          >
+                            {item.received_at} &mdash; {item.buyer_name} &mdash;{" "}
+                            {item.operational_state.operational_status}
+                            {item.operational_state.is_unread ? " (unread)" : ""}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )
+              ) : leadInboxResult ? (
+                <p>{panelUnavailableText(leadInboxResult.kind)}</p>
+              ) : null}
+            </section>
+
+            <section aria-labelledby="drafts-heading">
+              <h2 id="drafts-heading">Listing drafts</h2>
+              <p>
+                <a href={`/broker/organizations/${organizationId}/drafts`}>Open listing drafts</a>
+              </p>
+              {draftsResult && draftsResult.kind === "ok" ? (
+                draftsResult.data.drafts.length === 0 ? (
+                  <p>This Organization has no drafts yet.</p>
+                ) : (
+                  <>
+                    <p>Recent drafts (sample, up to 5):</p>
+                    <ul>
+                      {draftsResult.data.drafts.map((draft) => (
+                        <li>
+                          <a
+                            href={`/broker/organizations/${organizationId}/drafts/${encodeURIComponent(
+                              draft.draft_id,
+                            )}`}
+                          >
+                            {draftPreviewLabel(draft)} (v{draft.version}) &mdash;{" "}
+                            {draftReadinessLabel(draft.promotion_readiness)}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )
+              ) : draftsResult ? (
+                <p>{panelUnavailableText(draftsResult.kind)}</p>
+              ) : null}
+            </section>
+
+            <section aria-labelledby="inventory-heading">
+              <h2 id="inventory-heading">Inventory</h2>
+              <p>
+                <a href={`/broker/organizations/${organizationId}/inventory`}>Open inventory</a>
+              </p>
+              {inventoryResult && inventoryResult.kind === "ok" ? (
+                inventoryResult.data.items.length === 0 ? (
+                  <p>This Organization has no listings yet.</p>
+                ) : (
+                  <>
+                    <p>Recent listings (sample, up to 5):</p>
+                    <ul>
+                      {inventoryResult.data.items.map((item) => (
+                        <li>
+                          <a href={`/broker/organizations/${organizationId}/inventory`}>
+                            {item.native_listing_id} &mdash; {item.lifecycle_state} &mdash;{" "}
+                            {inventoryReadinessLabel(item)}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )
+              ) : inventoryResult ? (
+                <p>{panelUnavailableText(inventoryResult.kind)}</p>
+              ) : null}
+            </section>
+
+            <section aria-labelledby="performance-heading">
+              <h2 id="performance-heading">Performance &mdash; last 30 days</h2>
+              <p>
+                <a href={`/broker/organizations/${organizationId}/performance`}>
+                  Open the full performance &amp; funnel snapshot
+                </a>
+              </p>
+              {performanceResult && performanceResult.kind === "ok" ? (
+                <ul>
+                  <li>
+                    Window: {performanceResult.data.window_start} to {performanceResult.data.window_end}
+                  </li>
+                  <li>Public listing views observed: {performanceResult.data.public_listing_views}</li>
+                  <li>Leads received: {performanceResult.data.leads_received}</li>
+                  <li>Explicit SOLD outcomes recorded in window: {performanceResult.data.sold_outcomes}</li>
+                </ul>
+              ) : performanceResult ? (
+                <p>{panelUnavailableText(performanceResult.kind)}</p>
+              ) : null}
+            </section>
           </>
         )
       }
