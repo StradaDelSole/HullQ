@@ -11,11 +11,18 @@ Authorization reuses the exact accepted SLICE-0053 Organization workspace/
 MFA boundary (`hullq.application.broker_workspace_read.
 get_organization_workspace_result`) -- mirrors
 `hullq.application.inventory_editing`'s identical `_authorize_editor_actor`
-pattern -- then re-fetches the current `MarketplaceOrganization`/
-`OrganizationMembership` domain records so the real accepted SLICE-0041
-publishing-eligibility evaluator remains the sole authority over write
-denial. Reads (the selector search and the current-link readback) do not
-evaluate publishing eligibility at all, mirroring
+pattern -- as a fast, non-enumerating *preflight* gate only (session/
+workspace validity does not change mid-request the way fine-grained role/
+eligibility/ownership state can). The actual authorizing decision for the
+mutating association endpoint -- current Organization membership,
+publisher eligibility, and the NativeListing -> MarketEpisode ->
+PhysicalBoat ownership chain -- is re-evaluated fresh *inside*
+`hullq.persistence.boat_design_association.
+associate_physical_boat_design_for_listing`'s own committing transaction
+(SLICE-0082 amendment Finding A, 2026-10-12): a value resolved by this
+application layer before that transaction opens is never trusted as
+authoritative for the write. Reads (the selector search and the current-
+link readback) do not evaluate publishing eligibility at all, mirroring
 `hullq.application.inventory_editing.get_inventory_edit_detail`'s identical
 read/write authorization split: only the mutating association endpoint
 requires the PUBLISHER role / Organization eligibility gate.
@@ -38,6 +45,7 @@ from hullq.application.broker_workspace_read import (
 )
 from hullq.domain.boat_design_association import (
     DesignCandidate,
+    GenerationIdentity,
     InvalidDesignAssociationRequestError,
     InvalidDesignSelectorQueryError,
     parse_design_association_request,
@@ -49,13 +57,11 @@ from hullq.domain.publishing_eligibility import (
     MarketplaceOrganizationId,
     OrganizationMembership,
     PublishingEligibilityReason,
-    PublishingEligibilityStatus,
-    evaluate_native_listing_publishing_eligibility,
 )
 from hullq.persistence.boat_design_association import (
     DesignAssociationStatus,
     DesignAssociationWriteResult,
-    associate_physical_boat_design,
+    associate_physical_boat_design_for_listing,
     fetch_boat_design_candidate,
     search_boat_design_candidates,
 )
@@ -78,9 +84,47 @@ __all__ = [
     "DesignSelectorOutcome",
     "DesignSelectorResult",
     "associate_organization_listing_design",
+    "candidate_to_public_dict",
     "get_organization_listing_design_association",
     "search_organization_listing_design_candidates",
 ]
+
+
+# ---------------------------------------------------------------------------
+# Candidate wire serialization -- shared by the selector search response and
+# the current-link readback response (independent review Finding B,
+# 2026-10-12: a safely-typed `generation` block, never the raw opaque JSON,
+# so same-brand/same-model/same-year designs that differ only by recorded
+# generation remain distinguishable in both places).
+# ---------------------------------------------------------------------------
+
+
+def _generation_to_public_dict(generation: GenerationIdentity) -> dict[str, Any]:
+    return {
+        "label": generation.label,
+        "sequence": generation.sequence,
+        "aliases": list(generation.aliases),
+        "first_built": generation.first_built,
+        "last_built": generation.last_built,
+        "hull_number_from": generation.hull_number_from,
+        "hull_number_to": generation.hull_number_to,
+        "boundary_confidence": generation.boundary_confidence,
+    }
+
+
+def candidate_to_public_dict(candidate: DesignCandidate) -> dict[str, Any]:
+    """The one wire shape used by both the bounded selector search response
+    and the current-link readback response -- never two independently
+    maintained candidate shapes."""
+    return {
+        "boat_design_ref": candidate.boat_design_ref.value,
+        "boat_model_id": candidate.boat_model_id,
+        "canonical_model_name": candidate.canonical_model_name,
+        "generation": _generation_to_public_dict(candidate.generation),
+        "brand_names": list(candidate.brand_names),
+        "first_built": candidate.first_built,
+        "last_built": candidate.last_built,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -236,17 +280,9 @@ class DesignReadView:
             raise ValueError("An UNRESOLVED view must not carry boat_design_ref")
 
     def to_public_dict(self) -> dict[str, Any]:
-        candidate_dict: dict[str, Any] | None = None
-        if self.candidate is not None:
-            candidate_dict = {
-                "boat_design_ref": self.candidate.boat_design_ref.value,
-                "boat_model_id": self.candidate.boat_model_id,
-                "canonical_model_name": self.candidate.canonical_model_name,
-                "generation": self.candidate.generation,
-                "brand_names": list(self.candidate.brand_names),
-                "first_built": self.candidate.first_built,
-                "last_built": self.candidate.last_built,
-            }
+        candidate_dict = (
+            candidate_to_public_dict(self.candidate) if self.candidate is not None else None
+        )
         return {
             "native_listing_id": self.native_listing_id,
             "link_status": self.link_status.value,
@@ -372,11 +408,23 @@ class DesignAssociationWriteApplicationResult:
 def _map_write_result(
     result: DesignAssociationWriteResult,
 ) -> DesignAssociationWriteApplicationResult:
-    if result.status is DesignAssociationStatus.PHYSICAL_BOAT_NOT_FOUND:
-        # Defensive only: the caller already confirmed the chain resolves
-        # before invoking the write, so this is CHAIN_INCOMPLETE territory
-        # if it is ever reached (the PhysicalBoat vanished between the two
-        # reads, which no existing mutation path can actually do).
+    if result.status is DesignAssociationStatus.DENIED:
+        assert result.denial_reason is not None
+        return DesignAssociationWriteApplicationResult(
+            outcome=DesignAssociationOutcome.DENIED, denial_reason=result.denial_reason
+        )
+    if result.status is DesignAssociationStatus.LISTING_NOT_FOUND:
+        return DesignAssociationWriteApplicationResult(
+            outcome=DesignAssociationOutcome.LISTING_NOT_FOUND
+        )
+    if result.status in (
+        DesignAssociationStatus.CHAIN_INCOMPLETE,
+        DesignAssociationStatus.PHYSICAL_BOAT_NOT_FOUND,
+    ):
+        # PHYSICAL_BOAT_NOT_FOUND is defensive-only (the MarketEpisode's own
+        # real foreign key already guarantees the PhysicalBoat row exists
+        # once the chain resolves) and collapses into the identical outward
+        # CHAIN_INCOMPLETE bucket as a broken listing->episode->boat chain.
         return DesignAssociationWriteApplicationResult(
             outcome=DesignAssociationOutcome.CHAIN_INCOMPLETE
         )
@@ -416,7 +464,18 @@ def associate_organization_listing_design(
     raw_body: Any,
 ) -> DesignAssociationWriteApplicationResult:
     """Apply one explicit confirmed first-time design association for one
-    own NativeListing (Required Behavior #2/#3/#4)."""
+    own NativeListing (Required Behavior #2/#3/#4).
+
+    This preliminary MFA/workspace-existence check is a fast, non-
+    enumerating preflight gate only (session/workspace validity never
+    changes mid-request the way fine-grained role/eligibility/ownership
+    state can). The actual authorizing decision -- current Organization
+    membership, publisher eligibility, and the NativeListing ->
+    MarketEpisode -> PhysicalBoat ownership chain -- is re-evaluated fresh
+    *inside* `associate_physical_boat_design_for_listing`'s own committing
+    transaction (SLICE-0082 amendment Finding A), never trusted from a
+    value resolved earlier against an already-closed read transaction.
+    """
     organization_id = MarketplaceOrganizationId(organization_id_value)
     auth_outcome, actor = _authorize_actor(conn, session, organization_id)
     if auth_outcome is _ActorAuthorizationOutcome.NOT_FOUND_OR_DENIED:
@@ -436,35 +495,13 @@ def associate_organization_listing_design(
             outcome=DesignAssociationOutcome.INVALID_PAYLOAD
         )
 
-    decision = evaluate_native_listing_publishing_eligibility(
-        session.account_id, actor.organization, actor.membership
-    )
-    if decision.status is PublishingEligibilityStatus.DENIED:
-        assert decision.reason is not None
-        return DesignAssociationWriteApplicationResult(
-            outcome=DesignAssociationOutcome.DENIED, denial_reason=decision.reason
-        )
-
     native_listing_id = NativeListingId(native_listing_id_value)
-    found, physical_boat_id = _fetch_owned_listing_physical_boat_id(
-        conn, native_listing_id, organization_id
-    )
-    if not found:
-        return DesignAssociationWriteApplicationResult(
-            outcome=DesignAssociationOutcome.LISTING_NOT_FOUND
-        )
-    if physical_boat_id is None:
-        return DesignAssociationWriteApplicationResult(
-            outcome=DesignAssociationOutcome.CHAIN_INCOMPLETE
-        )
-
-    conn.commit()
-    write_result = associate_physical_boat_design(
+    conn.commit()  # release the preflight read transaction above
+    write_result = associate_physical_boat_design_for_listing(
         conn,
-        physical_boat_id=physical_boat_id,
-        boat_design_ref=boat_design_ref,
+        account_id=session.account_id,
+        organization_id=organization_id,
         native_listing_id=native_listing_id,
-        confirming_organization_id=organization_id,
-        recorded_by_account_id=session.account_id,
+        boat_design_ref=boat_design_ref,
     )
     return _map_write_result(write_result)

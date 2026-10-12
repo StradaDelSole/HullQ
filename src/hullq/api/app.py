@@ -106,6 +106,7 @@ from hullq.application.design_association import (
     DesignReadOutcome,
     DesignSelectorOutcome,
     associate_organization_listing_design,
+    candidate_to_public_dict,
     get_organization_listing_design_association,
     search_organization_listing_design_candidates,
 )
@@ -1813,20 +1814,7 @@ def create_app(
             return JSONResponse({"error": "invalid_query"}, status_code=400)
         assert result.candidates is not None
         return JSONResponse(
-            {
-                "candidates": [
-                    {
-                        "boat_design_ref": candidate.boat_design_ref.value,
-                        "boat_model_id": candidate.boat_model_id,
-                        "canonical_model_name": candidate.canonical_model_name,
-                        "generation": candidate.generation,
-                        "brand_names": list(candidate.brand_names),
-                        "first_built": candidate.first_built,
-                        "last_built": candidate.last_built,
-                    }
-                    for candidate in result.candidates
-                ]
-            }
+            {"candidates": [candidate_to_public_dict(candidate) for candidate in result.candidates]}
         )
 
     @app.get(

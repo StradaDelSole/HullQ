@@ -176,3 +176,14 @@ Do not claim validation success until actually executed. If broad test commands 
 ## Status handoff rule
 
 The implementation agent sets `**Status:** REVIEW` and matching `**Status set by this handoff:** \`REVIEW\`` on the same primary document only at the implementation completion handoff. It must not mark `DONE`, merge, close the slice, or launch a subsequent slice. Review and explicit Project Owner acceptance remain mandatory before the separate acceptance closure and local `FINISH_SLICE.bat` of 0082.
+
+## Review amendment (2026-10-12)
+
+Independent review (PR #331) raised four findings, all addressed on the same `slice/0082-broker-listing-boatdesign-association` branch; **Status remains `REVIEW`** pending remote CI and independent re-review.
+
+- **Finding A (HIGH, transaction-time authorization):** `associate_physical_boat_design_for_listing` (renamed from `associate_physical_boat_design`) now re-evaluates current Organization membership (`FOR UPDATE`-locked), publishing eligibility and the NativeListing → MarketEpisode → PhysicalBoat ownership chain fresh, entirely inside the one committing transaction, instead of trusting an application-layer pre-check. Proven under real PostgreSQL lock contention: `test_concurrent_membership_revocation_cannot_produce_unauthorized_association`.
+- **Finding B (canonical identity disambiguation):** the recorded `BOAT_DESIGN_SCHEMA.v0.5` `generation` block (label/sequence/years/hull numbers/boundary confidence) is now safely projected (`GenerationIdentity`) and rendered for both selector candidates and the linked readback, never silently omitted. Proven through real Astro SSR in the retained E2E script.
+- **Finding C (safe read failure handling):** `UNRESOLVED` is now shown only for a confirmed successful `kind: "ok"` read; every denied/unavailable/malformed outcome gets its own distinct message and the confirm UI is hidden. `designAssociationApi.ts` validates every parsed JSON body structurally before trusting it; a malformed/unexpected-shape response degrades to `service_error`, never a thrown exception. Proven by 20 new web-client unit tests plus the retained E2E script.
+- **Finding D (CI blocker):** `test_native_listing_market_episode_linkage.py`'s stale single-head assertion updated to the current head `d8f3b61a9c74`.
+
+See chat history for the full Amendment Completion Report (exact HEAD, validation results).

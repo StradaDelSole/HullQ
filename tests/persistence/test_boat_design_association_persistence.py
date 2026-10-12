@@ -5,11 +5,21 @@ write.
 
 Mirrors `tests/persistence/test_physical_boat_persistence.py`'s disposable-
 schema fixture/isolation pattern.
+
+Amended per independent review Finding A (2026-10-12): every successful
+association now requires a real seeded Organization + ACTIVE PUBLISHER
+membership, because `associate_physical_boat_design_for_listing` re-
+evaluates membership/eligibility/listing-ownership fresh *inside* its own
+committing transaction rather than trusting values resolved earlier. The
+new `test_concurrent_membership_revocation_cannot_produce_unauthorized_
+association` test proves that invariant under real lock contention, not
+only by code inspection.
 """
 
 from __future__ import annotations
 
 import threading
+import time
 import uuid
 from collections.abc import Generator
 from typing import Any
@@ -27,14 +37,29 @@ from hullq.domain.market_identity import (
     PhysicalBoat,
     PhysicalBoatId,
 )
-from hullq.domain.publishing_eligibility import AccountId, MarketplaceOrganizationId
+from hullq.domain.publishing_eligibility import (
+    AccountId,
+    MarketplaceOrganization,
+    MarketplaceOrganizationId,
+    MembershipRole,
+    MembershipState,
+    OrganizationMembership,
+    OrganizationMembershipId,
+    OrganizationPublishingEligibility,
+    ProfessionalCategory,
+    PublishingEligibilityReason,
+)
 from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
 from hullq.persistence.boat_design_association import (
     BoatDesignAssociationTransactionOwnershipError,
     DesignAssociationStatus,
-    associate_physical_boat_design,
+    associate_physical_boat_design_for_listing,
     fetch_boat_design_candidate,
     search_boat_design_candidates,
+)
+from hullq.persistence.broker_identity import (
+    seed_marketplace_organization,
+    seed_organization_membership,
 )
 from hullq.persistence.market_episode import create_market_episode
 from hullq.persistence.physical_boat import create_physical_boat
@@ -106,6 +131,45 @@ def _insert_account(conn: Any, account_id: str) -> None:
     conn.commit()
 
 
+def _seed_org_and_membership(
+    conn: Any,
+    *,
+    organization_id: str,
+    account_id: str,
+    membership_id: str | None = None,
+    roles: frozenset[MembershipRole] = frozenset({MembershipRole.PUBLISHER}),
+    state: MembershipState = MembershipState.ACTIVE,
+    publishing_eligibility: OrganizationPublishingEligibility = (
+        OrganizationPublishingEligibility.ELIGIBLE
+    ),
+) -> None:
+    """Seed a real Organization + membership through the accepted
+    persistence writers (never raw SQL) -- every successful
+    `associate_physical_boat_design_for_listing` call now requires this,
+    since it re-evaluates real SLICE-0041 eligibility fresh inside its own
+    transaction."""
+    _insert_account(conn, account_id)
+    seed_marketplace_organization(
+        conn,
+        MarketplaceOrganization(
+            id=MarketplaceOrganizationId(organization_id),
+            professional_category=ProfessionalCategory.BROKER,
+            publishing_eligibility=publishing_eligibility,
+        ),
+    )
+    seed_organization_membership(
+        conn,
+        OrganizationMembership(
+            id=OrganizationMembershipId(membership_id or f"OM-{organization_id}"),
+            account_id=AccountId(account_id),
+            organization_id=MarketplaceOrganizationId(organization_id),
+            roles=roles,
+            state=state,
+        ),
+    )
+    conn.commit()
+
+
 def _insert_canonical_boat_design(
     conn: Any,
     design_id: str,
@@ -166,10 +230,14 @@ def _setup_chain(
     listing_id: str,
     organization_id: str,
     account_id: str,
+    seed_membership: bool = True,
 ) -> None:
     """One PhysicalBoat -> MarketEpisode -> NativeListing chain, unresolved
-    design, owned by *organization_id*."""
+    design, owned by *organization_id*, with a real ACTIVE PUBLISHER
+    membership seeded by default."""
     _insert_account(conn, account_id)
+    if seed_membership:
+        _seed_org_and_membership(conn, organization_id=organization_id, account_id=account_id)
     result = create_physical_boat(
         conn, physical_boat=PhysicalBoat(id=PhysicalBoatId(physical_boat_id))
     )
@@ -201,6 +269,33 @@ def _stored_design_ref(conn: Any, physical_boat_id: str) -> str | None:
         )
         row = cur.fetchone()
     return row[0] if row else None
+
+
+def _backend_pid(conn: Any) -> int:
+    with conn.cursor() as cur:
+        cur.execute("SELECT pg_backend_pid()")
+        pid = int(cur.fetchone()[0])
+    conn.commit()  # end the implicit read transaction; leaves conn IDLE
+    return pid
+
+
+def _wait_until_blocked_on_lock(monitor_conn: Any, pid: int, *, timeout: float = 10.0) -> bool:
+    """Poll `pg_locks` on a dedicated connection until *pid* is genuinely
+    waiting (not granted) on a lock -- never a fixed sleep guessing at
+    scheduling, so this proof cannot be flaky about *whether* contention
+    actually happened."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        with monitor_conn.cursor() as cur:
+            cur.execute(
+                "SELECT EXISTS(SELECT 1 FROM pg_locks WHERE pid = %s AND NOT granted)", [pid]
+            )
+            (is_waiting,) = cur.fetchone()
+        monitor_conn.commit()
+        if is_waiting:
+            return True
+        time.sleep(0.05)
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -289,13 +384,12 @@ def test_first_association_links_and_records_exactly_one_audit_event(conn: Any) 
         account_id="ACC-A",
     )
 
-    result = associate_physical_boat_design(
+    result = associate_physical_boat_design_for_listing(
         conn,
-        physical_boat_id=PhysicalBoatId("PB-A1"),
-        boat_design_ref=BoatDesignRef("BD-ASSOC1"),
+        account_id=AccountId("ACC-A"),
+        organization_id=MarketplaceOrganizationId("ORG-A"),
         native_listing_id=NativeListingId("NL-A1"),
-        confirming_organization_id=MarketplaceOrganizationId("ORG-A"),
-        recorded_by_account_id=AccountId("ACC-A"),
+        boat_design_ref=BoatDesignRef("BD-ASSOC1"),
     )
     assert result.status is DesignAssociationStatus.LINKED
     assert result.stored_boat_design_ref == BoatDesignRef("BD-ASSOC1")
@@ -314,16 +408,15 @@ def test_exact_retry_is_idempotent_with_no_second_audit_event(conn: Any) -> None
         account_id="ACC-IDEM",
     )
     kwargs = {
-        "physical_boat_id": PhysicalBoatId("PB-IDEM"),
-        "boat_design_ref": BoatDesignRef("BD-IDEM"),
+        "account_id": AccountId("ACC-IDEM"),
+        "organization_id": MarketplaceOrganizationId("ORG-IDEM"),
         "native_listing_id": NativeListingId("NL-IDEM"),
-        "confirming_organization_id": MarketplaceOrganizationId("ORG-IDEM"),
-        "recorded_by_account_id": AccountId("ACC-IDEM"),
+        "boat_design_ref": BoatDesignRef("BD-IDEM"),
     }
-    first = associate_physical_boat_design(conn, **kwargs)
+    first = associate_physical_boat_design_for_listing(conn, **kwargs)
     assert first.status is DesignAssociationStatus.LINKED
 
-    second = associate_physical_boat_design(conn, **kwargs)
+    second = associate_physical_boat_design_for_listing(conn, **kwargs)
     assert second.status is DesignAssociationStatus.ALREADY_LINKED
     assert second.stored_boat_design_ref == BoatDesignRef("BD-IDEM")
     assert _audit_row_count(conn, "PB-IDEM") == 1
@@ -340,23 +433,21 @@ def test_different_target_conflicts_and_does_not_overwrite(conn: Any) -> None:
         organization_id="ORG-CONF",
         account_id="ACC-CONF",
     )
-    first = associate_physical_boat_design(
+    first = associate_physical_boat_design_for_listing(
         conn,
-        physical_boat_id=PhysicalBoatId("PB-CONF"),
-        boat_design_ref=BoatDesignRef("BD-CX"),
+        account_id=AccountId("ACC-CONF"),
+        organization_id=MarketplaceOrganizationId("ORG-CONF"),
         native_listing_id=NativeListingId("NL-CONF"),
-        confirming_organization_id=MarketplaceOrganizationId("ORG-CONF"),
-        recorded_by_account_id=AccountId("ACC-CONF"),
+        boat_design_ref=BoatDesignRef("BD-CX"),
     )
     assert first.status is DesignAssociationStatus.LINKED
 
-    second = associate_physical_boat_design(
+    second = associate_physical_boat_design_for_listing(
         conn,
-        physical_boat_id=PhysicalBoatId("PB-CONF"),
-        boat_design_ref=BoatDesignRef("BD-CY"),
+        account_id=AccountId("ACC-CONF"),
+        organization_id=MarketplaceOrganizationId("ORG-CONF"),
         native_listing_id=NativeListingId("NL-CONF"),
-        confirming_organization_id=MarketplaceOrganizationId("ORG-CONF"),
-        recorded_by_account_id=AccountId("ACC-CONF"),
+        boat_design_ref=BoatDesignRef("BD-CY"),
     )
     assert second.status is DesignAssociationStatus.CONFLICT
     assert second.stored_boat_design_ref == BoatDesignRef("BD-CX")
@@ -373,13 +464,12 @@ def test_unknown_design_ref_fails_closed_and_writes_no_row(conn: Any) -> None:
         organization_id="ORG-UNK",
         account_id="ACC-UNK",
     )
-    result = associate_physical_boat_design(
+    result = associate_physical_boat_design_for_listing(
         conn,
-        physical_boat_id=PhysicalBoatId("PB-UNK"),
-        boat_design_ref=BoatDesignRef("BD-DOES-NOT-EXIST"),
+        account_id=AccountId("ACC-UNK"),
+        organization_id=MarketplaceOrganizationId("ORG-UNK"),
         native_listing_id=NativeListingId("NL-UNK"),
-        confirming_organization_id=MarketplaceOrganizationId("ORG-UNK"),
-        recorded_by_account_id=AccountId("ACC-UNK"),
+        boat_design_ref=BoatDesignRef("BD-DOES-NOT-EXIST"),
     )
     assert result.status is DesignAssociationStatus.DESIGN_NOT_FOUND
     # Checked immediately, before any other cursor use: a plain SELECT under
@@ -391,18 +481,41 @@ def test_unknown_design_ref_fails_closed_and_writes_no_row(conn: Any) -> None:
     assert _audit_row_count(conn, "PB-UNK") == 0
 
 
-def test_physical_boat_not_found(conn: Any) -> None:
-    _insert_canonical_boat_design(conn, "BD-NOBOAT", "BM-NOBOAT")
-    _insert_account(conn, "ACC-NOBOAT")
-    result = associate_physical_boat_design(
+def test_unknown_listing_fails_closed_as_listing_not_found(conn: Any) -> None:
+    _seed_org_and_membership(conn, organization_id="ORG-NOLISTING", account_id="ACC-NOLISTING")
+    _insert_canonical_boat_design(conn, "BD-NOLISTING", "BM-NOLISTING")
+    result = associate_physical_boat_design_for_listing(
         conn,
-        physical_boat_id=PhysicalBoatId("PB-DOES-NOT-EXIST"),
-        boat_design_ref=BoatDesignRef("BD-NOBOAT"),
+        account_id=AccountId("ACC-NOLISTING"),
+        organization_id=MarketplaceOrganizationId("ORG-NOLISTING"),
         native_listing_id=NativeListingId("NL-DOES-NOT-EXIST"),
-        confirming_organization_id=MarketplaceOrganizationId("ORG-NOBOAT"),
-        recorded_by_account_id=AccountId("ACC-NOBOAT"),
+        boat_design_ref=BoatDesignRef("BD-NOLISTING"),
     )
-    assert result.status is DesignAssociationStatus.PHYSICAL_BOAT_NOT_FOUND
+    assert result.status is DesignAssociationStatus.LISTING_NOT_FOUND
+
+
+def test_foreign_organization_listing_fails_closed_as_listing_not_found(conn: Any) -> None:
+    _insert_canonical_boat_design(conn, "BD-FOREIGN", "BM-FOREIGN")
+    _setup_chain(
+        conn,
+        physical_boat_id="PB-FOREIGN",
+        market_episode_id="ME-FOREIGN",
+        listing_id="NL-FOREIGN",
+        organization_id="ORG-FOREIGN-OWNER",
+        account_id="ACC-FOREIGN-OWNER",
+    )
+    _seed_org_and_membership(
+        conn, organization_id="ORG-FOREIGN-ATTACKER", account_id="ACC-FOREIGN-ATTACKER"
+    )
+    result = associate_physical_boat_design_for_listing(
+        conn,
+        account_id=AccountId("ACC-FOREIGN-ATTACKER"),
+        organization_id=MarketplaceOrganizationId("ORG-FOREIGN-ATTACKER"),
+        native_listing_id=NativeListingId("NL-FOREIGN"),
+        boat_design_ref=BoatDesignRef("BD-FOREIGN"),
+    )
+    assert result.status is DesignAssociationStatus.LISTING_NOT_FOUND
+    assert _stored_design_ref(conn, "PB-FOREIGN") is None
 
 
 def test_shared_boat_with_foreign_organization_denies_without_mutation(conn: Any) -> None:
@@ -423,13 +536,12 @@ def test_shared_boat_with_foreign_organization_denies_without_mutation(conn: Any
     # MarketEpisode.
     _insert_native_listing(conn, "NL-SHARED-FOREIGN", "ORG-FOREIGN", "ACC-OWN", "ME-SHARED")
 
-    result = associate_physical_boat_design(
+    result = associate_physical_boat_design_for_listing(
         conn,
-        physical_boat_id=PhysicalBoatId("PB-SHARED"),
-        boat_design_ref=BoatDesignRef("BD-SHARED"),
+        account_id=AccountId("ACC-OWN"),
+        organization_id=MarketplaceOrganizationId("ORG-OWN"),
         native_listing_id=NativeListingId("NL-SHARED-OWN"),
-        confirming_organization_id=MarketplaceOrganizationId("ORG-OWN"),
-        recorded_by_account_id=AccountId("ACC-OWN"),
+        boat_design_ref=BoatDesignRef("BD-SHARED"),
     )
     assert result.status is DesignAssociationStatus.SHARED_BOAT_CONFLICT
     assert _stored_design_ref(conn, "PB-SHARED") is None
@@ -463,13 +575,12 @@ def test_same_organization_multiple_listings_is_not_a_shared_boat_conflict(conn:
     assert second_episode.status.value == "created"
     _insert_native_listing(conn, "NL-SAMEORG-2", "ORG-SAME", "ACC-SAME", "ME-SAMEORG-2")
 
-    result = associate_physical_boat_design(
+    result = associate_physical_boat_design_for_listing(
         conn,
-        physical_boat_id=PhysicalBoatId("PB-SAMEORG"),
-        boat_design_ref=BoatDesignRef("BD-SAMEORG"),
+        account_id=AccountId("ACC-SAME"),
+        organization_id=MarketplaceOrganizationId("ORG-SAME"),
         native_listing_id=NativeListingId("NL-SAMEORG-1"),
-        confirming_organization_id=MarketplaceOrganizationId("ORG-SAME"),
-        recorded_by_account_id=AccountId("ACC-SAME"),
+        boat_design_ref=BoatDesignRef("BD-SAMEORG"),
     )
     assert result.status is DesignAssociationStatus.LINKED
 
@@ -491,13 +602,12 @@ def test_transaction_ownership_error_on_already_open_transaction(
     assert conn.info.transaction_status != TransactionStatus.IDLE
 
     with pytest.raises(BoatDesignAssociationTransactionOwnershipError):
-        associate_physical_boat_design(
+        associate_physical_boat_design_for_listing(
             conn,
-            physical_boat_id=PhysicalBoatId("PB-TXN"),
-            boat_design_ref=BoatDesignRef("BD-TXN"),
+            account_id=AccountId("ACC-TXN"),
+            organization_id=MarketplaceOrganizationId("ORG-TXN"),
             native_listing_id=NativeListingId("NL-TXN"),
-            confirming_organization_id=MarketplaceOrganizationId("ORG-TXN"),
-            recorded_by_account_id=AccountId("ACC-TXN"),
+            boat_design_ref=BoatDesignRef("BD-TXN"),
         )
     conn.rollback()
     assert _stored_design_ref(conn, "PB-TXN") is None
@@ -530,13 +640,12 @@ def test_concurrent_identical_and_different_target_attempts_resolve_deterministi
             worker_conn = psycopg.connect(design_assoc_url)
             try:
                 barrier.wait(timeout=10)
-                result = associate_physical_boat_design(
+                result = associate_physical_boat_design_for_listing(
                     worker_conn,
-                    physical_boat_id=PhysicalBoatId("PB-RACE"),
-                    boat_design_ref=BoatDesignRef(design_ref_value),
+                    account_id=AccountId("ACC-RACE"),
+                    organization_id=MarketplaceOrganizationId("ORG-RACE"),
                     native_listing_id=NativeListingId("NL-RACE"),
-                    confirming_organization_id=MarketplaceOrganizationId("ORG-RACE"),
-                    recorded_by_account_id=AccountId("ACC-RACE"),
+                    boat_design_ref=BoatDesignRef(design_ref_value),
                 )
                 results.append(result)
             finally:
@@ -562,5 +671,173 @@ def test_concurrent_identical_and_different_target_attempts_resolve_deterministi
     verify_conn = psycopg.connect(design_assoc_url)
     try:
         assert _audit_row_count(verify_conn, "PB-RACE") == 1
+    finally:
+        verify_conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Finding A: transaction-time authorization re-validation
+# ---------------------------------------------------------------------------
+
+
+def test_membership_revoked_before_call_is_denied_with_zero_mutation(conn: Any) -> None:
+    """Stale identity context: if membership was already revoked by the
+    time this call happens, the fresh in-transaction re-read must see it --
+    never the ACTIVE state a caller might have resolved earlier."""
+    _insert_canonical_boat_design(conn, "BD-STALE", "BM-STALE")
+    _setup_chain(
+        conn,
+        physical_boat_id="PB-STALE",
+        market_episode_id="ME-STALE",
+        listing_id="NL-STALE",
+        organization_id="ORG-STALE",
+        account_id="ACC-STALE",
+    )
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE organization_memberships SET state = 'INACTIVE' "
+            "WHERE account_id = %s AND organization_id = %s",
+            ["ACC-STALE", "ORG-STALE"],
+        )
+    conn.commit()
+
+    result = associate_physical_boat_design_for_listing(
+        conn,
+        account_id=AccountId("ACC-STALE"),
+        organization_id=MarketplaceOrganizationId("ORG-STALE"),
+        native_listing_id=NativeListingId("NL-STALE"),
+        boat_design_ref=BoatDesignRef("BD-STALE"),
+    )
+    assert result.status is DesignAssociationStatus.DENIED
+    assert result.denial_reason is PublishingEligibilityReason.MEMBERSHIP_INACTIVE
+    assert _stored_design_ref(conn, "PB-STALE") is None
+    assert _audit_row_count(conn, "PB-STALE") == 0
+
+
+def test_organization_ineligible_at_write_time_is_denied(conn: Any) -> None:
+    """Fresh re-evaluation covers Organization-side eligibility too, not
+    only membership state."""
+    _insert_canonical_boat_design(conn, "BD-INELIG", "BM-INELIG")
+    _setup_chain(
+        conn,
+        physical_boat_id="PB-INELIG",
+        market_episode_id="ME-INELIG",
+        listing_id="NL-INELIG",
+        organization_id="ORG-INELIG",
+        account_id="ACC-INELIG",
+    )
+    # Re-seed the identical Organization as no longer eligible.
+    seed_marketplace_organization(
+        conn,
+        MarketplaceOrganization(
+            id=MarketplaceOrganizationId("ORG-INELIG"),
+            professional_category=ProfessionalCategory.BROKER,
+            publishing_eligibility=OrganizationPublishingEligibility.UNVERIFIED,
+        ),
+    )
+    conn.commit()
+
+    result = associate_physical_boat_design_for_listing(
+        conn,
+        account_id=AccountId("ACC-INELIG"),
+        organization_id=MarketplaceOrganizationId("ORG-INELIG"),
+        native_listing_id=NativeListingId("NL-INELIG"),
+        boat_design_ref=BoatDesignRef("BD-INELIG"),
+    )
+    assert result.status is DesignAssociationStatus.DENIED
+    assert result.denial_reason is PublishingEligibilityReason.ORGANIZATION_UNVERIFIED
+    assert _stored_design_ref(conn, "PB-INELIG") is None
+
+
+def test_concurrent_membership_revocation_cannot_produce_unauthorized_association(
+    design_assoc_url: str,
+) -> None:
+    """The exact Finding A race: a membership revocation and an association
+    attempt contend for the identical membership row under real PostgreSQL
+    lock contention (confirmed via `pg_locks`, never a timing guess). The
+    revocation is only allowed to commit once the association attempt is
+    genuinely blocked behind this transaction's own lock -- proving the
+    association re-reads membership state fresh *after* the revocation,
+    never from a value resolved earlier, and is denied with zero mutation."""
+    setup_conn = psycopg.connect(design_assoc_url)
+    try:
+        _insert_canonical_boat_design(setup_conn, "BD-RACE-REVOKE", "BM-RACE-REVOKE")
+        _setup_chain(
+            setup_conn,
+            physical_boat_id="PB-RACE-REVOKE",
+            market_episode_id="ME-RACE-REVOKE",
+            listing_id="NL-RACE-REVOKE",
+            organization_id="ORG-RACE-REVOKE",
+            account_id="ACC-RACE-REVOKE",
+        )
+    finally:
+        setup_conn.close()
+
+    revoker_conn = psycopg.connect(design_assoc_url)
+    monitor_conn = psycopg.connect(design_assoc_url)
+    assoc_conn = psycopg.connect(design_assoc_url)
+    assoc_pid = _backend_pid(assoc_conn)
+
+    errors: list[BaseException] = []
+    association_results: list[Any] = []
+    membership_locked = threading.Event()
+
+    def _hold_lock_then_revoke() -> None:
+        try:
+            with revoker_conn.cursor() as cur:
+                cur.execute(
+                    "SELECT 1 FROM organization_memberships "
+                    "WHERE account_id = %s AND organization_id = %s FOR UPDATE",
+                    ["ACC-RACE-REVOKE", "ORG-RACE-REVOKE"],
+                )
+            membership_locked.set()
+            blocked = _wait_until_blocked_on_lock(monitor_conn, assoc_pid)
+            assert blocked, "association attempt never blocked on the membership row lock"
+            with revoker_conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE organization_memberships SET state = 'INACTIVE' "
+                    "WHERE account_id = %s AND organization_id = %s",
+                    ["ACC-RACE-REVOKE", "ORG-RACE-REVOKE"],
+                )
+            revoker_conn.commit()
+        except Exception as exc:  # pragma: no cover - surfaced via errors assertion
+            errors.append(exc)
+
+    def _attempt_association() -> None:
+        try:
+            membership_locked.wait(timeout=10)
+            result = associate_physical_boat_design_for_listing(
+                assoc_conn,
+                account_id=AccountId("ACC-RACE-REVOKE"),
+                organization_id=MarketplaceOrganizationId("ORG-RACE-REVOKE"),
+                native_listing_id=NativeListingId("NL-RACE-REVOKE"),
+                boat_design_ref=BoatDesignRef("BD-RACE-REVOKE"),
+            )
+            association_results.append(result)
+        except Exception as exc:  # pragma: no cover - surfaced via errors assertion
+            errors.append(exc)
+
+    threads = [
+        threading.Thread(target=_hold_lock_then_revoke),
+        threading.Thread(target=_attempt_association),
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=20)
+    revoker_conn.close()
+    monitor_conn.close()
+    assoc_conn.close()
+
+    assert not errors, f"Thread errors: {errors}"
+    assert len(association_results) == 1
+    result = association_results[0]
+    assert result.status is DesignAssociationStatus.DENIED
+    assert result.denial_reason is PublishingEligibilityReason.MEMBERSHIP_INACTIVE
+
+    verify_conn = psycopg.connect(design_assoc_url)
+    try:
+        assert _stored_design_ref(verify_conn, "PB-RACE-REVOKE") is None
+        assert _audit_row_count(verify_conn, "PB-RACE-REVOKE") == 0
     finally:
         verify_conn.close()

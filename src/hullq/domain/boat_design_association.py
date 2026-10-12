@@ -30,10 +30,12 @@ __all__ = [
     "MAX_DESIGN_SELECTOR_QUERY_LENGTH",
     "DesignCandidate",
     "DesignConfirmationMethod",
+    "GenerationIdentity",
     "InvalidDesignAssociationRequestError",
     "InvalidDesignSelectorQueryError",
     "parse_design_association_request",
     "parse_design_selector_query",
+    "parse_generation_identity",
 ]
 
 #: Required Behavior #1: "server-defined max 20 results per query" -- a hard
@@ -56,6 +58,101 @@ class DesignConfirmationMethod(StrEnum):
     MANUAL_SELECTOR_CONFIRMATION = "MANUAL_SELECTOR_CONFIRMATION"
 
 
+#: `BOAT_DESIGN_SCHEMA.v0.5` §`generation.boundary_confidence`'s exact closed
+#: vocabulary. A value outside this set is treated as genuinely unrecorded
+#: (`None`) rather than guessed -- see `parse_generation_identity`.
+_GENERATION_BOUNDARY_CONFIDENCE_VALUES = frozenset({"high", "medium", "low", "unknown"})
+
+
+@dataclass(frozen=True, slots=True)
+class GenerationIdentity:
+    """The recorded `BOAT_DESIGN_SCHEMA.v0.5` §`generation` identity block,
+    projected safely and verbatim (independent review Finding B, 2026-10-12).
+
+    This is what actually distinguishes two canonical designs that share an
+    identical brand, model name and even identical BoatModel-level
+    first/last-built years but are genuinely different designs (a different
+    generation/hull revision): `label`/`sequence` are the recorded
+    generation identity itself; `first_built`/`last_built`/
+    `hull_number_from`/`hull_number_to` are *this generation's own*
+    recorded production boundary -- independent of, and potentially
+    narrower than, the parent BoatModel's overall first/last-built years
+    already shown elsewhere. `boundary_confidence` is the schema's own
+    explicit confidence in that boundary, shown so a broker never reads an
+    uncertain boundary as a certain one.
+
+    Every field is `None`/`()` only when genuinely unrecorded or when the
+    underlying stored value could not be safely interpreted as its declared
+    type -- never a guessed/inferred value standing in for an absent one.
+    """
+
+    label: str | None
+    sequence: int | None
+    aliases: tuple[str, ...]
+    first_built: int | None
+    last_built: int | None
+    hull_number_from: str | None
+    hull_number_to: str | None
+    boundary_confidence: str | None
+
+
+def _safe_str(value: Any) -> str | None:
+    return value if isinstance(value, str) and value else None
+
+
+def _safe_int(value: Any) -> int | None:
+    # bool is an int subclass in Python; a boundary year/sequence number
+    # stored as a boolean is not a value this projection will ever trust.
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def parse_generation_identity(raw: Any) -> GenerationIdentity:
+    """Safely project a raw `canonical_boat_designs.generation` JSONB value
+    into a typed `GenerationIdentity`.
+
+    This is a defensive *read* projection, not a second admission validator:
+    canonical admission already enforces `BOAT_DESIGN_SCHEMA.v0.5`'s exact
+    `generation` shape, so a non-conforming stored value is not expected to
+    be reachable here -- but if one is ever encountered (a future schema
+    migration, a direct-SQL seeding error), every field independently
+    degrades to `None`/`()` rather than raising or guessing, so a
+    display-layer caller always receives a safely renderable value and
+    never silently fabricates one.
+    """
+    if not isinstance(raw, dict):
+        return GenerationIdentity(
+            label=None,
+            sequence=None,
+            aliases=(),
+            first_built=None,
+            last_built=None,
+            hull_number_from=None,
+            hull_number_to=None,
+            boundary_confidence=None,
+        )
+    aliases_raw = raw.get("aliases")
+    aliases = (
+        tuple(a for a in aliases_raw if isinstance(a, str) and a)
+        if isinstance(aliases_raw, list)
+        else ()
+    )
+    boundary_confidence = raw.get("boundary_confidence")
+    return GenerationIdentity(
+        label=_safe_str(raw.get("label")),
+        sequence=_safe_int(raw.get("sequence")),
+        aliases=aliases,
+        first_built=_safe_int(raw.get("first_built")),
+        last_built=_safe_int(raw.get("last_built")),
+        hull_number_from=_safe_str(raw.get("hull_number_from")),
+        hull_number_to=_safe_str(raw.get("hull_number_to")),
+        boundary_confidence=(
+            boundary_confidence
+            if boundary_confidence in _GENERATION_BOUNDARY_CONFIDENCE_VALUES
+            else None
+        ),
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class DesignCandidate:
     """One exact-canonical-identity candidate shown by the bounded selector.
@@ -63,17 +160,18 @@ class DesignCandidate:
     Every field is read verbatim from durable canonical identity storage
     (`hullq.persistence.identity_readback`'s own `canonical_boat_designs`/
     `canonical_boat_models`/`canonical_brands` authority) -- this type
-    carries no derived/guessed/fuzzy-matched value. `generation` is the raw
-    recorded JSON shape (or `None`); `brand_names`/`first_built`/
-    `last_built` are `()`/`None` when genuinely unrecorded, which the
-    broker-facing selector must label as unknown, never silently omit as if
-    it meant "no brand".
+    carries no derived/guessed/fuzzy-matched value. `generation` is the
+    safely-typed `GenerationIdentity` projection (independent review
+    Finding B) -- never the raw opaque JSON a display layer would have to
+    interpret itself; `brand_names`/`first_built`/`last_built` are
+    `()`/`None` when genuinely unrecorded, which the broker-facing selector
+    must label as unknown, never silently omit as if it meant "no brand".
     """
 
     boat_design_ref: BoatDesignRef
     boat_model_id: str
     canonical_model_name: str
-    generation: Any
+    generation: GenerationIdentity
     brand_names: tuple[str, ...]
     first_built: int | None
     last_built: int | None

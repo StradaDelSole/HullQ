@@ -286,13 +286,30 @@ def _insert_boat_design_with_keel_baseline(conn: Any, design_id: str, model_id: 
             [model_id, "Oceanis 30.1", "0" * 64],
         )
         baseline = json.dumps({"appendages": {"keel_type": "fin"}})
+        # Independent review Finding B (2026-10-12): a real recorded
+        # `generation` identity block, not an empty `{}` -- the retained
+        # proof below asserts this exact generation context is actually
+        # rendered through real Astro SSR, distinguishing this design from
+        # a same-brand/same-model/same-year sibling generation.
+        generation = json.dumps(
+            {
+                "label": "Mk2",
+                "sequence": 2,
+                "aliases": [],
+                "first_built": 2018,
+                "last_built": 2022,
+                "hull_number_from": None,
+                "hull_number_to": None,
+                "boundary_confidence": "high",
+            }
+        )
         cur.execute(
             "INSERT INTO canonical_boat_designs "
             "(id, boat_model_id, generation, designers, baseline, named_variants, "
             " design_options, quality, content_hash) "
-            "VALUES (%s, %s, '{}'::jsonb, '[]'::jsonb, %s::jsonb, '[]'::jsonb, "
+            "VALUES (%s, %s, %s::jsonb, '[]'::jsonb, %s::jsonb, '[]'::jsonb, "
             "'[]'::jsonb, '{}'::jsonb, %s)",
-            [design_id, model_id, baseline, "1" * 64],
+            [design_id, model_id, generation, baseline, "1" * 64],
         )
         cur.execute(
             "INSERT INTO canonical_brands (id, canonical_name, content_hash) VALUES (%s, %s, %s)",
@@ -524,6 +541,10 @@ def main() -> int:
         api_ready = _wait_for_http(f"{api_base}/api/broker/context")
         ok &= api_ready
         print(f"1. FastAPI serving -> {'OK' if api_ready else 'FAIL'}")
+        if not api_ready:
+            print(
+                _api_log_path.read_text(encoding="utf-8", errors="replace")[-4000:], file=sys.stderr
+            )
 
         web_env = dict(os.environ)
         web_env["HULLQ_API_BASE_URL"] = api_base
@@ -714,17 +735,41 @@ def main() -> int:
         candidate_ul_present = "<li>" in page_text and _DESIGN_ID in page_text
         design_form = _form_block(page_text, f"<code>{_DESIGN_ID}</code>")
         parsed_candidate_ref = _hidden_field_value(design_form, "boat_design_ref")
+        # Independent review Finding B: the recorded generation identity
+        # (label/sequence/years) is actually rendered in the real selector
+        # list, not merely carried in the JSON response -- this is what
+        # would distinguish this design from a same-brand/same-model/
+        # same-year sibling generation. Checked against the full page text
+        # (not `design_form`, which `_form_block` deliberately bounds to
+        # exactly the `<form>...</form>` span -- the generation text is
+        # rendered just *before* that form, in the same `<li>`).
+        generation_text_present = "Generation: Mk2" in page_text and "#2" in page_text
         selector_ok = (
             status == 200
             and candidate_ul_present
             and parsed_candidate_ref == _DESIGN_ID
             and "Unresolved." in page_text
+            and generation_text_present
         )
         ok &= selector_ok
         print(
             f"5. the real editor's bounded selector surfaces {_DESIGN_ID} for a search of "
-            f"'Oceanis', and the page shows UNRESOLVED before confirmation -> "
-            f"{'OK' if selector_ok else 'FAIL'}"
+            f"'Oceanis', including its recorded generation identity (Mk2, #2), and the page "
+            f"shows UNRESOLVED before confirmation -> {'OK' if selector_ok else 'FAIL'}"
+        )
+
+        # Independent review Finding C: the Offer/PhysicalBoat claim
+        # sections render independently of the Canonical design section on
+        # this same page load -- proving the design-link read/render is not
+        # on a failure path that could hide neighboring sections.
+        neighboring_sections_intact = (
+            "<h2>Offer</h2>" in page_text and "<h2>PhysicalBoat claim</h2>" in page_text
+        )
+        ok &= neighboring_sections_intact
+        print(
+            f"   the Offer and PhysicalBoat claim sections render normally alongside the "
+            f"Canonical design section on the same page load -> "
+            f"{'OK' if neighboring_sections_intact else 'FAIL'}"
         )
 
         status, _, body = session_a.post_form(
@@ -737,11 +782,12 @@ def main() -> int:
             status == 200
             and "Design confirmed and linked." in page_text
             and (f"Linked to <strong>{_DESIGN_ID}</strong>" in page_text)
+            and "Generation: Mk2" in page_text
         )
         ok &= confirm_ok
         print(
-            f"   real browser form POST explicitly confirms {_DESIGN_ID}; page now shows LINKED -> "
-            f"{'OK' if confirm_ok else 'FAIL'}"
+            f"   real browser form POST explicitly confirms {_DESIGN_ID}; page now shows LINKED "
+            f"with its recorded generation identity visible -> {'OK' if confirm_ok else 'FAIL'}"
         )
 
         conn = psycopg.connect(url)

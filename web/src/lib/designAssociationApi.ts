@@ -10,6 +10,13 @@
 // header and forwards the browser's own `Origin` header value as Astro
 // received it on the incoming page request -- never a substituted trusted
 // value.
+//
+// Independent review Finding C (2026-10-12): every `response.json()` call
+// is wrapped and the parsed body is structurally validated before any field
+// is trusted -- a malformed/unexpected-shape body from FastAPI degrades to
+// `{kind: "service_error"}` here, never a thrown exception that could crash
+// the whole inventory-editor page render or silently propagate `undefined`
+// into a field a caller treats as authoritative.
 
 const CSRF_HEADER_NAME = "X-HullQ-Requested-With";
 const CSRF_HEADER_VALUE = "broker-design-association-v1";
@@ -36,18 +43,92 @@ function basePath(organizationId: string, nativeListingId: string): string {
   );
 }
 
+/** Parse a response body as JSON without ever throwing -- a non-JSON or
+ * empty body becomes `undefined`, which every caller below treats as
+ * "malformed", not as "field absent and therefore falsy". */
+async function safeJson(response: Response): Promise<unknown> {
+  try {
+    return await response.json();
+  } catch {
+    return undefined;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === "string";
+}
+
+function isNullableNumber(value: unknown): value is number | null {
+  return value === null || typeof value === "number";
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((v) => typeof v === "string");
+}
+
 // ---------------------------------------------------------------------------
 // Read: bounded candidate search
 // ---------------------------------------------------------------------------
+
+/**
+ * The recorded `BOAT_DESIGN_SCHEMA.v0.5` `generation` identity block
+ * (independent review Finding B): what actually distinguishes two
+ * candidates that share an identical brand, model name and even identical
+ * model-level first/last-built years but are genuinely different designs.
+ * Every field is `null`/`[]` only when genuinely unrecorded -- never
+ * inferred.
+ */
+export interface GenerationIdentity {
+  label: string | null;
+  sequence: number | null;
+  aliases: string[];
+  first_built: number | null;
+  last_built: number | null;
+  hull_number_from: string | null;
+  hull_number_to: string | null;
+  boundary_confidence: string | null;
+}
 
 export interface DesignCandidate {
   boat_design_ref: string;
   boat_model_id: string;
   canonical_model_name: string;
-  generation: unknown;
+  generation: GenerationIdentity;
   brand_names: string[];
   first_built: number | null;
   last_built: number | null;
+}
+
+function isGenerationIdentity(value: unknown): value is GenerationIdentity {
+  if (!isRecord(value)) return false;
+  return (
+    isNullableString(value.label) &&
+    isNullableNumber(value.sequence) &&
+    isStringArray(value.aliases) &&
+    isNullableNumber(value.first_built) &&
+    isNullableNumber(value.last_built) &&
+    isNullableString(value.hull_number_from) &&
+    isNullableString(value.hull_number_to) &&
+    isNullableString(value.boundary_confidence)
+  );
+}
+
+function isDesignCandidate(value: unknown): value is DesignCandidate {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.boat_design_ref === "string" &&
+    value.boat_design_ref.length > 0 &&
+    typeof value.boat_model_id === "string" &&
+    typeof value.canonical_model_name === "string" &&
+    isGenerationIdentity(value.generation) &&
+    isStringArray(value.brand_names) &&
+    isNullableNumber(value.first_built) &&
+    isNullableNumber(value.last_built)
+  );
 }
 
 type AuthFailure =
@@ -90,8 +171,15 @@ export async function fetchDesignCandidates(
   if (authFailure) return authFailure;
   if (response.status === 400) return { kind: "invalid_query" };
   if (!response.ok) return { kind: "service_error" };
-  const data = (await response.json()) as { candidates: DesignCandidate[] };
-  return { kind: "ok", candidates: data.candidates };
+  const parsed = await safeJson(response);
+  if (
+    !isRecord(parsed) ||
+    !Array.isArray(parsed.candidates) ||
+    !parsed.candidates.every(isDesignCandidate)
+  ) {
+    return { kind: "service_error" };
+  }
+  return { kind: "ok", candidates: parsed.candidates as DesignCandidate[] };
 }
 
 // ---------------------------------------------------------------------------
@@ -103,6 +191,16 @@ export interface DesignAssociationView {
   link_status: "UNRESOLVED" | "LINKED";
   boat_design_ref: string | null;
   candidate: DesignCandidate | null;
+}
+
+function isDesignAssociationView(value: unknown): value is DesignAssociationView {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.native_listing_id === "string" &&
+    (value.link_status === "UNRESOLVED" || value.link_status === "LINKED") &&
+    isNullableString(value.boat_design_ref) &&
+    (value.candidate === null || isDesignCandidate(value.candidate))
+  );
 }
 
 export type DesignAssociationReadResult =
@@ -131,8 +229,9 @@ export async function fetchDesignAssociation(
   if (authFailure) return authFailure;
   if (response.status === 409) return { kind: "chain_incomplete" };
   if (!response.ok) return { kind: "service_error" };
-  const data = (await response.json()) as DesignAssociationView;
-  return { kind: "ok", data };
+  const parsed = await safeJson(response);
+  if (!isDesignAssociationView(parsed)) return { kind: "service_error" };
+  return { kind: "ok", data: parsed };
 }
 
 // ---------------------------------------------------------------------------
@@ -151,14 +250,12 @@ export async function fetchDesignAssociation(
 async function classifyAssociate403(
   response: Response,
 ): Promise<{ kind: "mfa_required" } | { kind: "denied"; reason: string } | { kind: "service_error" }> {
-  let body: { error?: string; reason?: string } = {};
-  try {
-    body = (await response.json()) as { error?: string; reason?: string };
-  } catch {
-    return { kind: "service_error" };
-  }
+  const body = await safeJson(response);
+  if (!isRecord(body)) return { kind: "service_error" };
   if (body.error === "mfa_required") return { kind: "mfa_required" };
-  if (body.error === "publishing_denied") return { kind: "denied", reason: body.reason ?? "unknown" };
+  if (body.error === "publishing_denied" && typeof body.reason === "string") {
+    return { kind: "denied", reason: body.reason };
+  }
   return { kind: "service_error" };
 }
 
@@ -207,26 +304,28 @@ export async function associateListingDesign(
   if (response.status === 400) return { kind: "invalid_payload" };
   if (response.status === 403) return await classifyAssociate403(response);
   if (response.status === 409) {
-    const data = (await response.json()) as {
-      error?: string;
-      boat_design_ref?: string;
-    };
-    if (data.error === "chain_incomplete") return { kind: "chain_incomplete" };
-    if (data.error === "shared_boat_conflict") return { kind: "shared_boat_conflict" };
-    return { kind: "conflict", storedBoatDesignRef: data.boat_design_ref ?? null };
+    const body = await safeJson(response);
+    if (!isRecord(body)) return { kind: "service_error" };
+    if (body.error === "chain_incomplete") return { kind: "chain_incomplete" };
+    if (body.error === "shared_boat_conflict") return { kind: "shared_boat_conflict" };
+    const storedBoatDesignRef = typeof body.boat_design_ref === "string" ? body.boat_design_ref : null;
+    return { kind: "conflict", storedBoatDesignRef };
   }
   if (response.status === 422) {
-    const data = (await response.json()) as { error?: string };
-    if (data.error === "design_not_found") return { kind: "design_not_found" };
+    const body = await safeJson(response);
+    if (isRecord(body) && body.error === "design_not_found") return { kind: "design_not_found" };
     return { kind: "service_error" };
   }
   if (!response.ok) return { kind: "service_error" };
-  const data = (await response.json()) as { outcome: string; boat_design_ref: string };
-  if (data.outcome === "LINKED") {
-    return { kind: "ok", outcome: "linked", storedBoatDesignRef: data.boat_design_ref };
+  const body = await safeJson(response);
+  if (!isRecord(body) || typeof body.boat_design_ref !== "string") {
+    return { kind: "service_error" };
   }
-  if (data.outcome === "ALREADY_LINKED") {
-    return { kind: "ok", outcome: "already_linked", storedBoatDesignRef: data.boat_design_ref };
+  if (body.outcome === "LINKED") {
+    return { kind: "ok", outcome: "linked", storedBoatDesignRef: body.boat_design_ref };
+  }
+  if (body.outcome === "ALREADY_LINKED") {
+    return { kind: "ok", outcome: "already_linked", storedBoatDesignRef: body.boat_design_ref };
   }
   return { kind: "service_error" };
 }

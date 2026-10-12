@@ -26,8 +26,30 @@ import {
   associateListingDesign,
   fetchDesignAssociation,
   fetchDesignCandidates,
+  type GenerationIdentity,
 } from "../../../../../../lib/designAssociationApi";
 import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../../../../lib/authConstants";
+
+// Independent review Finding B: the recorded generation identity is what
+// actually distinguishes two candidates sharing an identical brand, model
+// name and even identical model-level years but genuinely different
+// designs. Every field renders a truthful, explicit placeholder when
+// unrecorded -- never silently omitted, which could otherwise make two
+// different designs look identical in this list.
+function formatGenerationIdentity(generation: GenerationIdentity): string {
+  const label = generation.label ?? "unlabeled";
+  const sequence = generation.sequence !== null ? `#${generation.sequence}` : "no sequence recorded";
+  const years =
+    generation.first_built !== null || generation.last_built !== null
+      ? `${generation.first_built ?? "?"}–${generation.last_built ?? "?"}`
+      : "years not recorded";
+  const parts = [`Generation: ${label}`, sequence, years];
+  if (generation.hull_number_from !== null || generation.hull_number_to !== null) {
+    parts.push(`hulls ${generation.hull_number_from ?? "?"}–${generation.hull_number_to ?? "?"}`);
+  }
+  parts.push(`boundary confidence: ${generation.boundary_confidence ?? "unknown"}`);
+  return parts.join(", ");
+}
 
 const organizationId = Astro.params.organization_id;
 const nativeListingId = Astro.params.native_listing_id;
@@ -834,83 +856,114 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
 
             <h2>Canonical design</h2>
             {designOutcomeText[designSaveOutcome] && <p>{designOutcomeText[designSaveOutcome]}</p>}
-            {designAssociationResult?.kind === "chain_incomplete" ? (
-              <p>This listing's underlying boat record isn't available for a design link yet.</p>
-            ) : designAssociation?.link_status === "LINKED" ? (
-              <p>
-                Linked to <strong>{designAssociation.boat_design_ref}</strong>
-                {designAssociation.candidate && (
-                  <>
-                    {" "}
-                    (
-                    {designAssociation.candidate.brand_names.length > 0
-                      ? designAssociation.candidate.brand_names.join(" / ")
-                      : "unknown brand"}
-                    {" "}
-                    {designAssociation.candidate.canonical_model_name}
-                    {designAssociation.candidate.first_built || designAssociation.candidate.last_built ? (
-                      <>
-                        , {designAssociation.candidate.first_built ?? "?"}–
-                        {designAssociation.candidate.last_built ?? "?"}
-                      </>
-                    ) : null}
-                    )
-                  </>
-                )}
-                . This is a confirmed association assertion only -- it does not verify this boat's
-                actual keel, rudder, draft, year or configuration.
-              </p>
-            ) : (
-              <p>
-                <strong>Unresolved.</strong> This listing's PhysicalBoat is not yet linked to a
-                canonical design. It can still be published and found via other search criteria,
-                but it will not appear as a confirmed design match until linked.
-              </p>
-            )}
+            {
+              // Independent review Finding C: every non-"ok" read outcome gets
+              // its own distinct, truthful message. "Unresolved" is rendered
+              // ONLY for a successful authoritative read that actually
+              // confirms a null link -- never as a fallback for a denied,
+              // unavailable or malformed read, which would otherwise silently
+              // claim confirmed-absence for a state we simply failed to read.
+              designAssociationResult === null ? null : designAssociationResult.kind === "unauthenticated" ? (
+                <p>Please log in to see this listing's design link status.</p>
+              ) : designAssociationResult.kind === "not_found" ? (
+                <p>This listing isn't available here.</p>
+              ) : designAssociationResult.kind === "mfa_required" ? (
+                <p>Additional verification is required before this listing's design link status can be shown.</p>
+              ) : designAssociationResult.kind === "chain_incomplete" ? (
+                <p>This listing's underlying boat record isn't available for a design link yet.</p>
+              ) : designAssociationResult.kind === "service_error" ? (
+                <p>
+                  Something went wrong reading this listing's design link status. The link may or
+                  may not already be established -- please reload before confirming a design.
+                </p>
+              ) : designAssociation?.link_status === "LINKED" ? (
+                <p>
+                  Linked to <strong>{designAssociation.boat_design_ref}</strong>
+                  {designAssociation.candidate && (
+                    <>
+                      {" "}
+                      (
+                      {designAssociation.candidate.brand_names.length > 0
+                        ? designAssociation.candidate.brand_names.join(" / ")
+                        : "unknown brand"}
+                      {" "}
+                      {designAssociation.candidate.canonical_model_name}
+                      {designAssociation.candidate.first_built || designAssociation.candidate.last_built ? (
+                        <>
+                          , {designAssociation.candidate.first_built ?? "?"}–
+                          {designAssociation.candidate.last_built ?? "?"}
+                        </>
+                      ) : null}
+                      ) &middot; {formatGenerationIdentity(designAssociation.candidate.generation)}
+                    </>
+                  )}
+                  . This is a confirmed association assertion only -- it does not verify this boat's
+                  actual keel, rudder, draft, year or configuration.
+                </p>
+              ) : (
+                <p>
+                  <strong>Unresolved.</strong> This listing's PhysicalBoat is not yet linked to a
+                  canonical design. It can still be published and found via other search criteria,
+                  but it will not appear as a confirmed design match until linked.
+                </p>
+              )
+            }
 
-            {designAssociation?.link_status !== "LINKED" && (
-              <>
-                <form method="GET">
-                  <label>
-                    Search canonical designs:
-                    <input type="text" name="design_q" value={designQuery} placeholder="e.g. Oceanis 46" />
-                  </label>
-                  <button type="submit">Search</button>
-                </form>
+            {
+              // The search/confirm UI is only ever shown once a successful
+              // authoritative read has actually confirmed the link is still
+              // unresolved -- never merely because the link status is
+              // "not known to be LINKED" (which is also true for every
+              // denied/unavailable/malformed read above, independent review
+              // Finding C: "prevent confirmation when authoritative link
+              // state is unavailable").
+              designAssociationResult?.kind === "ok" &&
+              designAssociation?.link_status === "UNRESOLVED" && (
+                <>
+                  <form method="GET">
+                    <label>
+                      Search canonical designs:
+                      <input type="text" name="design_q" value={designQuery} placeholder="e.g. Oceanis 46" />
+                    </label>
+                    <button type="submit">Search</button>
+                  </form>
 
-                {designCandidates !== null && (
-                  <>
-                    {designCandidates.length === 0 ? (
-                      <p>No matching canonical design found. Try a different search term.</p>
-                    ) : (
-                      <ul>
-                        {designCandidates.map((candidate) => (
-                          <li>
-                            {candidate.brand_names.length > 0
-                              ? candidate.brand_names.join(" / ")
-                              : "unknown brand"}{" "}
-                            {candidate.canonical_model_name}
-                            {candidate.first_built || candidate.last_built ? (
-                              <> ({candidate.first_built ?? "?"}–{candidate.last_built ?? "?"})</>
-                            ) : null}{" "}
-                            — <code>{candidate.boat_design_ref}</code>
-                            <form method="POST" style="display:inline">
-                              <input type="hidden" name="action" value="associate_design" />
-                              <input
-                                type="hidden"
-                                name="boat_design_ref"
-                                value={candidate.boat_design_ref}
-                              />
-                              <button type="submit">Confirm this design</button>
-                            </form>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </>
-                )}
-              </>
-            )}
+                  {designCandidates !== null && (
+                    <>
+                      {designCandidates.length === 0 ? (
+                        <p>No matching canonical design found. Try a different search term.</p>
+                      ) : (
+                        <ul>
+                          {designCandidates.map((candidate) => (
+                            <li>
+                              {candidate.brand_names.length > 0
+                                ? candidate.brand_names.join(" / ")
+                                : "unknown brand"}{" "}
+                              {candidate.canonical_model_name}
+                              {candidate.first_built || candidate.last_built ? (
+                                <> ({candidate.first_built ?? "?"}–{candidate.last_built ?? "?"})</>
+                              ) : null}{" "}
+                              — <code>{candidate.boat_design_ref}</code>
+                              <br />
+                              <small>{formatGenerationIdentity(candidate.generation)}</small>
+                              <form method="POST" style="display:inline">
+                                <input type="hidden" name="action" value="associate_design" />
+                                <input
+                                  type="hidden"
+                                  name="boat_design_ref"
+                                  value={candidate.boat_design_ref}
+                                />
+                                <button type="submit">Confirm this design</button>
+                              </form>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  )}
+                </>
+              )
+            }
 
             <h2>Sale / outcome</h2>
             {saleOutcomeOutcomeText[saleOutcomeSaveOutcome] && (

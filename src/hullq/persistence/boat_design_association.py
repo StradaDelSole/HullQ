@@ -1,5 +1,6 @@
 """Durable broker-confirmed PhysicalBoat -> canonical BoatDesign first
-association -- SLICE-0082.
+association -- SLICE-0082 (amended per independent review Finding A,
+2026-10-12: transaction-time authorization).
 
 Two independent read/write surfaces:
 
@@ -9,6 +10,21 @@ Two independent read/write surfaces:
   candidate-shape queries);
 - one atomic, single-use, auditable NULL -> non-NULL first-time write to
   the existing SLICE-0046 `physical_boats.boat_design_ref` column.
+
+`associate_physical_boat_design_for_listing` is the sole write entry point.
+Required Behavior #3's "Authoritative server-side check must run before
+lookup/write and again under transaction" is implemented literally: current
+Organization membership, publishing eligibility and the NativeListing ->
+MarketEpisode -> PhysicalBoat ownership chain are all re-read -- fresh, with
+row-level locks on the membership and Organization rows -- *inside* the
+one top-level transaction that performs the CAS write, never from values an
+application-layer caller resolved earlier against a separate, already-closed
+read transaction. This closes the check-then-act window a purely
+application-layer pre-check would leave open: a concurrent membership
+revocation or Organization eligibility change either committed before this
+transaction's locked read (and is therefore seen and enforced) or is
+blocked behind this transaction's lock until it concludes (and is therefore
+applied strictly afterward) -- never silently skipped in between.
 
 The write never relaxes `hullq.persistence.physical_boat.create_physical_boat`'s
 immutable-create semantics and never reassigns/detaches an existing link: a
@@ -39,23 +55,39 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
-from hullq.domain.boat_design_association import DesignCandidate, DesignConfirmationMethod
-from hullq.domain.market_identity import BoatDesignRef, NativeListingId, PhysicalBoatId
-from hullq.domain.publishing_eligibility import AccountId, MarketplaceOrganizationId
+from hullq.domain.boat_design_association import (
+    DesignCandidate,
+    DesignConfirmationMethod,
+    parse_generation_identity,
+)
+from hullq.domain.market_identity import BoatDesignRef, NativeListingId
+from hullq.domain.publishing_eligibility import (
+    AccountId,
+    MarketplaceOrganizationId,
+    PublishingEligibilityReason,
+    PublishingEligibilityStatus,
+    evaluate_native_listing_publishing_eligibility,
+)
+from hullq.persistence.broker_identity import (
+    fetch_marketplace_organization,
+    fetch_membership_for_account_and_organization,
+)
+from hullq.persistence.market_episode import fetch_market_episode
+from hullq.persistence.native_listing import fetch_native_listing
 
 __all__ = [
     "BoatDesignAssociationTransactionOwnershipError",
     "DesignAssociationStatus",
     "DesignAssociationWriteResult",
-    "associate_physical_boat_design",
+    "associate_physical_boat_design_for_listing",
     "fetch_boat_design_candidate",
     "search_boat_design_candidates",
 ]
 
 
 class BoatDesignAssociationTransactionOwnershipError(RuntimeError):
-    """`associate_physical_boat_design` cannot safely own a top-level
-    transaction on *conn*.
+    """`associate_physical_boat_design_for_listing` cannot safely own a
+    top-level transaction on *conn*.
 
     Mirrors `hullq.persistence.physical_boat.PhysicalBoatTransactionOwnershipError`:
     a LINKED result must always mean the row/audit event is already durably
@@ -102,7 +134,7 @@ def _row_to_candidate(row: tuple[Any, ...]) -> DesignCandidate:
         boat_design_ref=BoatDesignRef(design_id),
         boat_model_id=boat_model_id,
         canonical_model_name=canonical_model_name,
-        generation=generation,
+        generation=parse_generation_identity(generation),
         brand_names=tuple(brand_names or ()),
         first_built=first_built,
         last_built=last_built,
@@ -186,6 +218,16 @@ class DesignAssociationStatus(StrEnum):
     DESIGN_NOT_FOUND = "design_not_found"
     PHYSICAL_BOAT_NOT_FOUND = "physical_boat_not_found"
     SHARED_BOAT_CONFLICT = "shared_boat_conflict"
+    #: SLICE-0082 amendment Finding A: the fresh, transaction-scoped
+    #: membership/Organization-eligibility re-evaluation denied the request.
+    DENIED = "denied"
+    #: SLICE-0082 amendment Finding A: the fresh, transaction-scoped
+    #: NativeListing ownership re-check found it unknown or foreign.
+    LISTING_NOT_FOUND = "listing_not_found"
+    #: SLICE-0082 amendment Finding A: the fresh, transaction-scoped
+    #: NativeListing -> MarketEpisode -> PhysicalBoat chain re-check found a
+    #: broken/incomplete link.
+    CHAIN_INCOMPLETE = "chain_incomplete"
 
 
 _STATUSES_CARRYING_STORED_REF = frozenset(
@@ -199,17 +241,21 @@ _STATUSES_CARRYING_STORED_REF = frozenset(
 
 @dataclass(frozen=True)
 class DesignAssociationWriteResult:
-    """Deterministic result of one `associate_physical_boat_design` call.
+    """Deterministic result of one `associate_physical_boat_design_for_listing`
+    call.
 
     `stored_boat_design_ref` is populated for LINKED/ALREADY_LINKED/CONFLICT
     only: the exact durable current value after this call returns (the
     newly-written value for LINKED, the pre-existing value for the other
     two) -- never the caller's requested value when that differs from what
-    is actually stored.
+    is actually stored. `denial_reason` is populated for DENIED only, and is
+    always the real SLICE-0041 reason the fresh transaction-scoped
+    eligibility re-evaluation produced.
     """
 
     status: DesignAssociationStatus
     stored_boat_design_ref: BoatDesignRef | None = None
+    denial_reason: PublishingEligibilityReason | None = None
 
     def __post_init__(self) -> None:
         if self.status in _STATUSES_CARRYING_STORED_REF:
@@ -221,6 +267,12 @@ class DesignAssociationWriteResult:
             raise ValueError(
                 f"A {self.status.value.upper()} result must not carry stored_boat_design_ref"
             )
+
+        if self.status is DesignAssociationStatus.DENIED:
+            if self.denial_reason is None:
+                raise ValueError("A DENIED result must carry an explicit denial_reason")
+        elif self.denial_reason is not None:
+            raise ValueError("Only a DENIED result may carry denial_reason")
 
 
 _SELECT_FOR_UPDATE = (
@@ -248,26 +300,44 @@ VALUES (%s, %s, %s, %s, %s, %s, %s)
 """
 
 
-def associate_physical_boat_design(
+def associate_physical_boat_design_for_listing(
     conn: Any,
     *,
-    physical_boat_id: PhysicalBoatId,
-    boat_design_ref: BoatDesignRef,
+    account_id: AccountId,
+    organization_id: MarketplaceOrganizationId,
     native_listing_id: NativeListingId,
-    confirming_organization_id: MarketplaceOrganizationId,
-    recorded_by_account_id: AccountId,
+    boat_design_ref: BoatDesignRef,
 ) -> DesignAssociationWriteResult:
-    """Durably confirm *boat_design_ref* for *physical_boat_id* iff it is
-    currently unresolved and not shared with a foreign Organization.
+    """Durably confirm *boat_design_ref* for the PhysicalBoat *native_listing_id*
+    resolves to, iff it is currently unresolved and not shared with a
+    foreign Organization -- with every authorization/ownership fact
+    re-checked fresh, inside this one committing transaction (SLICE-0082
+    amendment Finding A; see this module's docstring).
 
-    Race-safe: `SELECT ... FOR UPDATE` locks the target row for the whole
-    decision + write, so a concurrent second attempt for the same
-    PhysicalBoatId blocks until this transaction commits/rolls back and then
-    observes the now-committed state -- never a lost-update race. Same
-    caller or a later authorized actor re-sending the identical already-
-    established target returns ALREADY_LINKED with zero additional mutation
-    and zero additional audit rows; a different target returns CONFLICT,
-    never silently overwriting the existing link.
+    Authorization order, all inside the same transaction:
+
+    1. lock + re-fetch the Organization and OrganizationMembership rows
+       (`FOR UPDATE`) and re-evaluate the real SLICE-0041 publishing-
+       eligibility decision against them -- DENIED fails closed with zero
+       mutation;
+    2. re-fetch the NativeListing and confirm it is still owned by
+       *organization_id* -- unknown/foreign fails closed as
+       LISTING_NOT_FOUND with zero mutation;
+    3. re-resolve NativeListing -> MarketEpisode -> PhysicalBoat -- any
+       broken link fails closed as CHAIN_INCOMPLETE with zero mutation;
+    4. lock the resolved PhysicalBoat row (`FOR UPDATE`) and apply the
+       identical CAS/shared-boat/audit logic as before.
+
+    Race-safe: the `FOR UPDATE` locks above mean a concurrent membership
+    revocation, Organization eligibility change, or second association
+    attempt for the same PhysicalBoatId either committed strictly before
+    this transaction's locked reads (and is therefore seen and enforced) or
+    blocks behind this transaction's locks until it concludes (and is
+    therefore applied strictly afterward) -- never silently skipped in
+    between. Same caller or a later authorized actor re-sending the
+    identical already-established target returns ALREADY_LINKED with zero
+    additional mutation and zero additional audit rows; a different target
+    returns CONFLICT, never silently overwriting the existing link.
 
     A requested *boat_design_ref* unknown to ``canonical_boat_designs``
     fails closed as DESIGN_NOT_FOUND (real foreign-key violation on the
@@ -276,26 +346,20 @@ def associate_physical_boat_design(
     Raises BoatDesignAssociationTransactionOwnershipError, before any
     read/write is attempted, if *conn* already has an open transaction.
     """
-    if not isinstance(physical_boat_id, PhysicalBoatId):
+    if not isinstance(account_id, AccountId):
+        raise TypeError(f"account_id must be an AccountId, got {type(account_id).__name__}")
+    if not isinstance(organization_id, MarketplaceOrganizationId):
         raise TypeError(
-            f"physical_boat_id must be a PhysicalBoatId, got {type(physical_boat_id).__name__}"
-        )
-    if not isinstance(boat_design_ref, BoatDesignRef):
-        raise TypeError(
-            f"boat_design_ref must be a BoatDesignRef, got {type(boat_design_ref).__name__}"
+            "organization_id must be a MarketplaceOrganizationId, "
+            f"got {type(organization_id).__name__}"
         )
     if not isinstance(native_listing_id, NativeListingId):
         raise TypeError(
             f"native_listing_id must be a NativeListingId, got {type(native_listing_id).__name__}"
         )
-    if not isinstance(confirming_organization_id, MarketplaceOrganizationId):
+    if not isinstance(boat_design_ref, BoatDesignRef):
         raise TypeError(
-            "confirming_organization_id must be a MarketplaceOrganizationId, "
-            f"got {type(confirming_organization_id).__name__}"
-        )
-    if not isinstance(recorded_by_account_id, AccountId):
-        raise TypeError(
-            f"recorded_by_account_id must be an AccountId, got {type(recorded_by_account_id).__name__}"
+            f"boat_design_ref must be a BoatDesignRef, got {type(boat_design_ref).__name__}"
         )
 
     from psycopg.pq import TransactionStatus  # deferred: no module-level psycopg dependency
@@ -303,8 +367,8 @@ def associate_physical_boat_design(
     if conn.info.transaction_status != TransactionStatus.IDLE:
         raise BoatDesignAssociationTransactionOwnershipError(
             "conn already has an open transaction (transaction_status="
-            f"{conn.info.transaction_status!r}); associate_physical_boat_design() requires "
-            "an IDLE connection so it can safely own and commit its own top-level "
+            f"{conn.info.transaction_status!r}); associate_physical_boat_design_for_listing() "
+            "requires an IDLE connection so it can safely own and commit its own top-level "
             "transaction. Call conn.commit()/conn.rollback() first, or pass a freshly "
             "opened connection."
         )
@@ -313,6 +377,42 @@ def associate_physical_boat_design(
 
     try:
         with conn.transaction(), conn.cursor() as cur:
+            # 1. Fresh, locked membership/eligibility re-evaluation.
+            organization = fetch_marketplace_organization(conn, organization_id, for_update=True)
+            if organization is None:
+                return DesignAssociationWriteResult(
+                    status=DesignAssociationStatus.LISTING_NOT_FOUND
+                )
+            membership = fetch_membership_for_account_and_organization(
+                conn, account_id, organization_id, for_update=True
+            )
+            decision = evaluate_native_listing_publishing_eligibility(
+                account_id, organization, membership
+            )
+            if decision.status is PublishingEligibilityStatus.DENIED:
+                assert decision.reason is not None
+                return DesignAssociationWriteResult(
+                    status=DesignAssociationStatus.DENIED, denial_reason=decision.reason
+                )
+
+            # 2/3. Fresh NativeListing -> MarketEpisode -> PhysicalBoat
+            # ownership-chain re-resolution.
+            listing_record = fetch_native_listing(conn, native_listing_id)
+            if (
+                listing_record is None
+                or listing_record.publishing_organization_id != organization_id
+            ):
+                return DesignAssociationWriteResult(
+                    status=DesignAssociationStatus.LISTING_NOT_FOUND
+                )
+            if listing_record.listing.market_episode_id is None:
+                return DesignAssociationWriteResult(status=DesignAssociationStatus.CHAIN_INCOMPLETE)
+            episode_record = fetch_market_episode(conn, listing_record.listing.market_episode_id)
+            if episode_record is None:
+                return DesignAssociationWriteResult(status=DesignAssociationStatus.CHAIN_INCOMPLETE)
+            physical_boat_id = episode_record.market_episode.physical_boat_id
+
+            # 4. Lock the resolved PhysicalBoat row and classify/write.
             cur.execute(_SELECT_FOR_UPDATE, [physical_boat_id.value])
             row = cur.fetchone()
             if row is None:
@@ -333,7 +433,7 @@ def associate_physical_boat_design(
 
             cur.execute(
                 _SELECT_SHARED_BOAT_FOREIGN_LISTING,
-                [physical_boat_id.value, confirming_organization_id.value],
+                [physical_boat_id.value, organization_id.value],
             )
             if cur.fetchone() is not None:
                 return DesignAssociationWriteResult(
@@ -353,8 +453,8 @@ def associate_physical_boat_design(
                     physical_boat_id.value,
                     boat_design_ref.value,
                     native_listing_id.value,
-                    confirming_organization_id.value,
-                    recorded_by_account_id.value,
+                    organization_id.value,
+                    account_id.value,
                     DesignConfirmationMethod.MANUAL_SELECTOR_CONFIRMATION.value,
                 ),
             )
