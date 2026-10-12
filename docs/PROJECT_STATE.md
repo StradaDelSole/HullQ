@@ -1,12 +1,12 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0081 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0082 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0082 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0083 -->
 <!-- PRODUCTION_LAUNCH_PACK_PHASE: NOT_STARTED -->
 
 **Updated:** 2026-10-12  
-**Latest owner-accepted / DONE slice:** SLICE-0081  
-**Current queue:** SLICE-0082 — **Broker Listing → Canonical BoatDesign Association**; selected by the Project Owner after the 2026-10-12 external technical review and explicit “ok go”, with post-0081 repository reconciliation in `docs/POST_SLICE_0081_REASSESSMENT_2026-10-12.md` and primary READY implementation contract in `docs/slices/SLICE-0082-broker-listing-boatdesign-association.md`. Implementation **not started**; readiness passed independent review and exact-head CI/reproducibility and merged in PR #329; `START_SLICE.bat` is authorized for 0082. SLICE-0081 remains Owner-accepted/DONE (closure retained). Production Launch Pack remains `NOT_STARTED`; Production Readiness remains `IN_PROGRESS`; no external production data, pilot, buyer exposure or public launch is authorized.  
+**Latest owner-accepted / DONE slice:** SLICE-0082  
+**Current queue:** SLICE-0083 — **UNSELECTED**. SLICE-0082 Broker Listing → Canonical BoatDesign Association is explicitly Owner-accepted, independently reviewed, CI/reproducibility verified and merged to `main` (implementation PR #331, separate acceptance closure `docs/slices/SLICE-0082-acceptance-closure.md`). Post-0082 repository Decision/Implementation Reconciliation and Overall MVP register review must precede any new product/architecture selection or readiness. The Owner's 2026-10-12 product-first sequencing remains in force; Production Launch Pack remains `NOT_STARTED`, Production Readiness remains `IN_PROGRESS`, and no external production data, pilot, buyer exposure or public launch is authorized.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -59,6 +59,8 @@ SLICE-0067 adds the accepted fresh-identity professional promotion path. An auth
 SLICE-0068 adds the accepted Organization-controlled mixed-media gallery for existing NativeListings: private original/quarantine image storage, safely processed derivatives, provenance/rights state, durable MediaAsset/MediaPlacement ordering and explicit cover, same-Organization reuse, structured YouTube references, bounded streaming broker uploads, ACTIVE-listing media protection and race-safe retirement/reuse/cover locking. Cloudflare R2 Standard is the initial primary media store behind HullQ's S3-compatible boundary.
 
 SLICE-0069 adds canonical D22 PublicationReadiness and D29 CurrentPublicEligibility. Broker Workspace preflight and authoritative publish-time re-evaluation now share one readiness authority; DRAFT→ACTIVE publication consumes current Organization eligibility, episode/PhysicalBoat chain, current offer, current PhysicalBoat claim and accepted media/cover truth. Buyer/public exact-listing and both accepted Direct Search paths reuse one current-public eligibility authority, so ACTIVE alone no longer implies current-market visibility. Suppression does not rewrite lifecycle. Public listings now expose the accepted bounded IMAGE/YOUTUBE gallery with listing-scoped processed-derivative delivery; private originals/object-storage identity remain hidden. Technical Search criteria remain exactly 2.
+
+SLICE-0082 adds the accepted post-promotion broker first-time canonical BoatDesign association to the existing Organization-controlled inventory editor, closing the source-to-technical-Search gap identified after SLICE-0081. A broker can inspect bounded canonical design candidates (including recorded generation and aliases), explicitly confirm one existing identity and persist a first NULL→BoatDesignRef PhysicalBoat link plus one durable audit event in the same PostgreSQL transaction. Organization/Membership/PUBLISHER authorization and listing→episode→boat ownership are revalidated under transaction locks; no cross-Organization shared PhysicalBoat unilateral linking, fuzzy model inference, existing-link correction or copy of design facts into concrete physical-yacht truth is permitted. Normal broker-created eligible NativeListings can now qualify for existing **two-criterion** buyer technical Search when existing current-public and concrete claim/design evidence warrants it. Owner acceptance and exact review/CI evidence reside in `docs/slices/SLICE-0082-acceptance-closure.md`.
 
 SLICE-0054 now adds the first accepted owner-direct provider surface:
 
@@ -338,10 +340,10 @@ Large retained research artifacts are acknowledged as repository-hygiene debt, n
 Next queue number:
 
 ```text
-SLICE-0082
+SLICE-0083
 ```
 
-**Capability:** Broker Listing → Canonical BoatDesign Association — selected after the Owner's 2026-10-12 review/approval; readiness in `docs/slices/SLICE-0082-broker-listing-boatdesign-association.md`. Independent review and CI/merge of that readiness must precede `START_SLICE.bat` for 0082. Confirmed first association unlocks existing two-criterion technical Search for eligible real broker-created inventory; it does not implement new Search criteria, bulk import or pre-publication Search-fit.
+**Capability:** UNSELECTED. No new SLICE-0083 readiness/implementation is authorized. After local `FINISH_SLICE.bat` for 0082, perform a fresh post-0082 repository-based Decision/Implementation Reconciliation and Overall MVP capability register/trigger review, then choose the next coherent Owner-prioritized outcome. Do not automatically select broker CSV import, pre-publication Search-fit, runtime hardening or Production Launch Pack.
 
 SLICE-0081 is Owner-accepted and merged as a read-only operational Broker Workspace Dashboard composing source-truthful Lead, draft, inventory and last-30-day performance panels with independent failure containment. Implementation PR #327 and its exact accepted branch HEAD `33c7d51edd0dd066bbe00a2c7710b67740ae8e33` are recorded in the SLICE-0081 acceptance closure. The Owner's 2026-10-12 development-first priority remains in force while all previously accepted Production Readiness and security gates remain mandatory. The earlier `docs/POST_SLICE_0080_REASSESSMENT_2026-10-09.md` selected Phase 1 operator work for a limited broker pilot; that operational work is deferred, not completed. Accepted ADR-0012 selects PlanetScale Managed PostgreSQL 18 and does not authorize paid provisioning. The unmerged multi-format import draft branch was **not** SLICE-0081; the Owner selected explicit broker listing-to-canonical-design association for SLICE-0082 instead, after the post-0081 code review. Review-verified additional pilot runtime/onboarding/notification risks are tracked in `docs/POST_SLICE_0081_REASSESSMENT_2026-10-12.md` and remain separately gated.
 
@@ -358,6 +360,6 @@ SLICE-0081 is Owner-accepted and merged as a read-only operational Broker Worksp
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0079 through SLICE-0081 are Owner-accepted and merged; the post-SLICE-0080 reassessment remains historical PASS for its then-active pilot objective. The Owner's 2026-10-12 product-first priority amendment is implemented in SLICE-0081; SLICE-0082 readiness is now the selected subsequent capability after post-0081 reconciliation, not implementation DONE.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0079 through SLICE-0082 are Owner-accepted and merged; the post-SLICE-0080 reassessment remains historical PASS for its then-active pilot objective. The Owner's 2026-10-12 product-first priority remains controlling for development sequence, without waiving any external production/pilot gate. SLICE-0082 completes the ordinary broker inventory→existing canonical BoatDesign→accepted native technical Search connection for a truthful synthetic end-to-end path; SLICE-0083 is UNSELECTED.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
