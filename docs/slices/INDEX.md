@@ -19,7 +19,7 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 Latest owner-accepted slice: SLICE-0081
 Current queue:               SLICE-0082
 Current capability:          Broker Listing → Canonical BoatDesign Association
-Current readiness:           READY contract, review/CI/merge pending; implementation not started
+Current readiness:           READY contract merged in PR #329; implementation not started
 ```
 
 Current boundary:
@@ -29,7 +29,7 @@ Current boundary:
 - Production Launch Pack phase remains `NOT_STARTED`;
 - post-SLICE-0080 reassessment selected Production Launch Pack Phase 1 for the limited pilot, but the Owner explicitly reprioritized unfinished product development on 2026-10-12;
 - SLICE-0081 Operational Dashboard is merged and accepted; Phase-1 operator provisioning is paused in priority, not completed;
-- SLICE-0082 is selected after the 2026-10-12 post-0081 source-to-Search review; the READY contract `SLICE-0082-broker-listing-boatdesign-association.md` and reassessment require independent review/CI/merge before `START_SLICE.bat`;
+- SLICE-0082 was selected after the 2026-10-12 post-0081 source-to-Search review; its READY contract and reassessment passed independent review/CI and merged in PR #329; `START_SLICE.bat` is now authorized for 0082;
 - no later slice is authorized automatically.
 
 ## Historical execution ranges
@@ -39,7 +39,7 @@ Current boundary:
 | SLICE-0001–0038 | accepted foundational research/architecture/data/product work except where an individual slice record states otherwise |
 | SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
 | SLICE-0040–0081 | accepted marketplace/Search/buyer/broker/security/production-foundation/media-durability work; final state is authoritative in each acceptance closure and `PROJECT_STATE.md` |
-| SLICE-0082 | selected broker NativeListing→canonical BoatDesign association; READY contract pending independent review/CI/merge; no implementation started |
+| SLICE-0082 | selected broker NativeListing→canonical BoatDesign association; readiness merged in PR #329, implementation not started |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
