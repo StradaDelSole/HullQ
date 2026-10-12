@@ -6,7 +6,7 @@
 
 **Updated:** 2026-10-12  
 **Latest owner-accepted / DONE slice:** SLICE-0080  
-**Current queue:** SLICE-0081 — **Broker Workspace Operational Dashboard**, readiness contract proposed for independent review. The Owner's 2026-10-12 product-first prioritization supersedes the 2026-10-09 selection of Phase-1 operator work **for execution order only**; it does not waive operational requirements. Production Launch Pack remains `NOT_STARTED` and is paused, not completed. Production Readiness remains `IN_PROGRESS`; no external production data, pilot, buyer exposure or public launch is authorized.  
+**Current queue:** SLICE-0081 — **Broker Workspace Operational Dashboard**, readiness contract `READY`; implementation not started. The Owner's 2026-10-12 product-first prioritization supersedes the 2026-10-09 selection of Phase-1 operator work **for execution order only**; it does not waive operational requirements. Production Launch Pack remains `NOT_STARTED` and is paused, not completed. Production Readiness remains `IN_PROGRESS`; no external production data, pilot, buyer exposure or public launch is authorized.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -341,7 +341,7 @@ Next queue number:
 SLICE-0081
 ```
 
-**Capability:** Broker Workspace Operational Dashboard — owner-selected 2026-10-12; readiness prepared in `docs/slices/SLICE-0081-broker-workspace-operational-dashboard.md`, pending independent readiness review/merge before `START_SLICE.bat`.
+**Capability:** Broker Workspace Operational Dashboard — owner-selected 2026-10-12; readiness contract `READY` in `docs/slices/SLICE-0081-broker-workspace-operational-dashboard.md`. Implement only after the readiness PR passes review/CI and merges to canonical `main`, using `START_SLICE.bat` as normal.
 
 SLICE-0080 is Owner-accepted and merged. The earlier `docs/POST_SLICE_0080_REASSESSMENT_2026-10-09.md` correctly identified Production Launch Pack Phase 1 as the next step **toward the limited broker pilot**. On 2026-10-12 the Owner explicitly changed the work priority to rapid completion of missing product capabilities and accepted the Broker Workspace Operational Dashboard as the next development step. This is a later owner-directed priority amendment, not an invalidation of the prior implementation or any Production Readiness / security gate. Accepted ADR-0012 (Owner acceptance 2026-10-10) supersedes DigitalOcean in favor of PlanetScale Managed PostgreSQL 18; no paid PostgreSQL provisioning is authorized. The separate multi-format import draft branch is **not** the selected SLICE-0081.
 
