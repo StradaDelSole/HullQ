@@ -101,6 +101,15 @@ from hullq.application.buyer_lead_creation import (
     CreateBuyerLeadOutcome,
     create_buyer_lead_for_listing,
 )
+from hullq.application.design_association import (
+    DesignAssociationOutcome,
+    DesignReadOutcome,
+    DesignSelectorOutcome,
+    associate_organization_listing_design,
+    candidate_to_public_dict,
+    get_organization_listing_design_association,
+    search_organization_listing_design_candidates,
+)
 from hullq.application.inventory_editing import (
     ClaimSaveOutcome,
     InventoryDetailOutcome,
@@ -354,6 +363,14 @@ _BROKER_LEAD_OPS_CSRF_HEADER_VALUE = "broker-lead-operations-v1"
 #: gallery/buyer-lead/lead-ops CSRF header can never be replayed against the
 #: post-promotion offer/claim editor mutation routes.
 _INVENTORY_EDITING_CSRF_HEADER_VALUE = "professional-inventory-editing-v1"
+
+#: SLICE-0082: the identical fixed-header + exact-Origin CSRF discipline as
+#: every other authenticated broker-write channel above, with its own
+#: distinct header value so a valid draft/owner-direct/lifecycle/gallery/
+#: buyer-lead/lead-ops/inventory-editing CSRF header can never be replayed
+#: against the broker-confirmed PhysicalBoat -> BoatDesign association
+#: mutation route.
+_DESIGN_ASSOCIATION_CSRF_HEADER_VALUE = "broker-design-association-v1"
 
 #: SLICE-0074 contract §8: the identical fixed-header + exact-Origin CSRF
 #: discipline as every other authenticated broker-write channel above, with
@@ -871,6 +888,22 @@ def create_app(
             actual is None
             or actual != accepted
             or requested_with != _INVENTORY_EDITING_CSRF_HEADER_VALUE
+        ):
+            raise HTTPException(status_code=403, detail="csrf validation failed")
+
+    def _require_design_association_csrf(request: Request) -> None:
+        # SLICE-0082: identical exact-Origin-match + fixed non-simple header
+        # discipline as every other authenticated broker-write channel,
+        # with its own distinct header value (see
+        # `_DESIGN_ASSOCIATION_CSRF_HEADER_VALUE`).
+        origin_header = request.headers.get("origin")
+        requested_with = request.headers.get(_OWNER_DIRECT_CSRF_HEADER_NAME)
+        accepted = _normalized_origin(_resolve_web_origin())
+        actual = _normalized_origin(origin_header) if origin_header else None
+        if (
+            actual is None
+            or actual != accepted
+            or requested_with != _DESIGN_ASSOCIATION_CSRF_HEADER_VALUE
         ):
             raise HTTPException(status_code=403, detail="csrf validation failed")
 
@@ -1749,6 +1782,119 @@ def create_app(
         finally:
             conn.close()
         return _claim_save_response(result)
+
+    # -----------------------------------------------------------------
+    # SLICE-0082: broker-confirmed PhysicalBoat -> BoatDesign association
+    # -----------------------------------------------------------------
+
+    @app.get(
+        "/api/broker/organizations/{organization_id}/inventory/{native_listing_id}/design-candidates"
+    )
+    def get_design_candidates_route(
+        organization_id: str, native_listing_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        raw_query = request.query_params.get("q")
+        conn = open_connection(resolved_database_url)
+        try:
+            result = search_organization_listing_design_candidates(
+                conn, session, organization_id, native_listing_id, raw_query
+            )
+        finally:
+            conn.close()
+        if result.outcome is DesignSelectorOutcome.ORG_NOT_FOUND_OR_DENIED:
+            raise HTTPException(status_code=404, detail="organization not found")
+        if result.outcome is DesignSelectorOutcome.MFA_REQUIRED:
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if result.outcome is DesignSelectorOutcome.LISTING_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="listing not found")
+        if result.outcome is DesignSelectorOutcome.INVALID_QUERY:
+            return JSONResponse({"error": "invalid_query"}, status_code=400)
+        assert result.candidates is not None
+        return JSONResponse(
+            {"candidates": [candidate_to_public_dict(candidate) for candidate in result.candidates]}
+        )
+
+    @app.get(
+        "/api/broker/organizations/{organization_id}/inventory/{native_listing_id}/design-association"
+    )
+    def get_design_association_route(
+        organization_id: str, native_listing_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            result = get_organization_listing_design_association(
+                conn, session, organization_id, native_listing_id
+            )
+        finally:
+            conn.close()
+        if result.outcome is DesignReadOutcome.ORG_NOT_FOUND_OR_DENIED:
+            raise HTTPException(status_code=404, detail="organization not found")
+        if result.outcome is DesignReadOutcome.MFA_REQUIRED:
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if result.outcome is DesignReadOutcome.LISTING_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="listing not found")
+        if result.outcome is DesignReadOutcome.CHAIN_INCOMPLETE:
+            return JSONResponse({"error": "chain_incomplete"}, status_code=409)
+        assert result.view is not None
+        return JSONResponse(result.view.to_public_dict())
+
+    def _design_association_write_response(result: Any) -> JSONResponse:
+        # Required Behavior #5: every outcome maps to a mechanically
+        # distinct status/body -- never a false-success shape for a denied/
+        # invalid/conflicting attempt.
+        outcome = result.outcome
+        if outcome is DesignAssociationOutcome.ORG_NOT_FOUND_OR_DENIED:
+            raise HTTPException(status_code=404, detail="organization not found")
+        if outcome is DesignAssociationOutcome.MFA_REQUIRED:
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if outcome is DesignAssociationOutcome.DENIED:
+            assert result.denial_reason is not None
+            return JSONResponse(
+                {"error": "publishing_denied", "reason": result.denial_reason.value},
+                status_code=403,
+            )
+        if outcome is DesignAssociationOutcome.LISTING_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="listing not found")
+        if outcome is DesignAssociationOutcome.CHAIN_INCOMPLETE:
+            return JSONResponse({"error": "chain_incomplete"}, status_code=409)
+        if outcome is DesignAssociationOutcome.INVALID_PAYLOAD:
+            return JSONResponse({"error": "invalid_payload"}, status_code=400)
+        if outcome is DesignAssociationOutcome.DESIGN_NOT_FOUND:
+            return JSONResponse({"error": "design_not_found"}, status_code=422)
+        if outcome is DesignAssociationOutcome.SHARED_BOAT_CONFLICT:
+            return JSONResponse({"error": "shared_boat_conflict"}, status_code=409)
+        if outcome is DesignAssociationOutcome.CONFLICT:
+            return JSONResponse(result.to_public_dict(), status_code=409)
+        if outcome is DesignAssociationOutcome.ALREADY_LINKED:
+            return JSONResponse(result.to_public_dict(), status_code=200)
+        assert outcome is DesignAssociationOutcome.LINKED
+        return JSONResponse(result.to_public_dict(), status_code=201)
+
+    @app.post(
+        "/api/broker/organizations/{organization_id}/inventory/{native_listing_id}/design-association"
+    )
+    async def post_design_association_route(
+        organization_id: str, native_listing_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_design_association_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        conn = open_connection(resolved_database_url)
+        try:
+            result = associate_organization_listing_design(
+                conn, session, organization_id, native_listing_id, raw_body
+            )
+        finally:
+            conn.close()
+        return _design_association_write_response(result)
 
     # -----------------------------------------------------------------
     # SLICE-0074: broker sale / outcome close-out

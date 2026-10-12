@@ -218,15 +218,21 @@ def seed_marketplace_organization(conn: Any, organization: MarketplaceOrganizati
 
 
 def fetch_marketplace_organization(
-    conn: Any, organization_id: MarketplaceOrganizationId
+    conn: Any, organization_id: MarketplaceOrganizationId, *, for_update: bool = False
 ) -> MarketplaceOrganization | None:
+    """*for_update* (SLICE-0082 amendment Finding A): lock the row `FOR
+    UPDATE` so a caller re-evaluating eligibility inside a committing
+    transaction serializes against a concurrent `seed_marketplace_organization`
+    eligibility change instead of racing it -- the only existing write path
+    that can change `publishing_eligibility`."""
     if not isinstance(organization_id, MarketplaceOrganizationId):
         raise TypeError(
             "organization_id must be a MarketplaceOrganizationId, "
             f"got {type(organization_id).__name__}"
         )
+    query = _SELECT_ORGANIZATION + (" FOR UPDATE" if for_update else "")
     with conn.cursor() as cur:
-        cur.execute(_SELECT_ORGANIZATION, [organization_id.value])
+        cur.execute(query, [organization_id.value])
         row = cur.fetchone()
     if row is None:
         return None
@@ -317,7 +323,11 @@ def _load_roles(conn: Any, membership_id: str) -> frozenset[MembershipRole]:
 
 
 def fetch_membership_for_account_and_organization(
-    conn: Any, account_id: AccountId, organization_id: MarketplaceOrganizationId
+    conn: Any,
+    account_id: AccountId,
+    organization_id: MarketplaceOrganizationId,
+    *,
+    for_update: bool = False,
 ) -> OrganizationMembership | None:
     """Read current membership truth for one exact `(account, Organization)` pair.
 
@@ -326,6 +336,14 @@ def fetch_membership_for_account_and_organization(
     hidden, so callers can distinguish NO_MEMBERSHIP from
     MEMBERSHIP_INACTIVE internally while still collapsing both to the same
     external non-enumerating failure shape.
+
+    *for_update* (SLICE-0082 amendment Finding A): lock the row `FOR
+    UPDATE` so a caller re-evaluating eligibility inside a committing
+    transaction serializes against a concurrent `update_membership_state`
+    revocation instead of racing it -- a revocation either committed
+    before this read (and is seen) or blocks behind this lock and is
+    applied only after this transaction concludes, never silently
+    in-between.
     """
     if not isinstance(account_id, AccountId):
         raise TypeError(f"account_id must be an AccountId, got {type(account_id).__name__}")
@@ -334,8 +352,9 @@ def fetch_membership_for_account_and_organization(
             "organization_id must be a MarketplaceOrganizationId, "
             f"got {type(organization_id).__name__}"
         )
+    query = _SELECT_MEMBERSHIP_FOR_ACCOUNT_ORG + (" FOR UPDATE" if for_update else "")
     with conn.cursor() as cur:
-        cur.execute(_SELECT_MEMBERSHIP_FOR_ACCOUNT_ORG, [account_id.value, organization_id.value])
+        cur.execute(query, [account_id.value, organization_id.value])
         row = cur.fetchone()
     if row is None:
         return None

@@ -2,7 +2,8 @@
 
 **ID:** SLICE-0082  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
+**Status set by this handoff:** `REVIEW`  
 **Stage:** Broker-first marketplace — connect actual broker inventory to accepted technical buyer Search  
 **Depends on:** Owner-accepted SLICE-0067 (draft promotion), -0069 (publication/current-public eligibility), -0072 (inventory editing), -0081 (workspace), accepted identity/Search contracts and post-0081 reassessment  
 **Blocks:** real professional listing inventory entering accepted design-dependent native technical Search without script-seeded design associations
@@ -127,17 +128,17 @@ SLICE-0081 delivered a broker daily operations dashboard, but a normal broker-pr
 
 ## Acceptance criteria
 
-- [ ] Normal authenticated authorized broker creates/promotes a listing in the real app; no direct SQL insertion or manual linking of the PhysicalBoat. Browser selection from an existing canonical model, explicit confirmation and durable link succeed.
-- [ ] After authorized ordinary claim/offer/media/publish steps, the **same NativeListingId** is a CONFIRMED_MATCH for a supported technical Search requirement exactly when existing truth warrants it; no fake relevance/ranking, unchanged 2-criterion vocabulary.
-- [ ] Refresh/browser restart and app/host restart preserve durable link and one audit event; no browser-local authority.
-- [ ] Pre-existing unlinked listings (DRAFT or ACTIVE) are supported without changing 0067 promotion; unresolved stays truthful and independently publication-ready where allowed.
-- [ ] Different canonical identities with similar names cannot be inferred/merged without deliberate exact selection; unavailable catalog/search lookup fails closed.
-- [ ] Unknown/foreign Org/listing, MFA missing, PUBLISHER missing, revoked membership, invalid/ambiguous design and shared boat are denied without identity or provenance disclosure.
-- [ ] Same-target exact retry after lost HTTP response is idempotent; different-target/stale/concurrent attempts never overwrite first link or fabricate extra audit events.
-- [ ] Rollback/failing FK/audit write causes no partially linked row or orphan audit record; host/process/crash loss cannot divide committed truth.
-- [ ] Existing public listing and current Search suppression, withdrawal, stale and concrete claim UNKNOWN rules remain unchanged; unrelated Organization/model identities untouched.
-- [ ] All relevant unit, migration, persistence, API, Astro SSR, existing 0067/0069/0072 regression and main web check/build tests PASS; repository validation PASS; remote CI (Ubuntu/Windows/PostgreSQL 18/Web) and manufacturer reproducibility observed on exact implementation HEAD before Owner acceptance.
-- [ ] High-risk adversarial self-review and independent exact-HEAD review traverse each named mechanical failure case; external/pilot/prod gate claims stay unchanged.
+- [x] Normal authenticated authorized broker creates/promotes a listing in the real app; no direct SQL insertion or manual linking of the PhysicalBoat. Browser selection from an existing canonical model, explicit confirmation and durable link succeed. *(verified: `scripts/inspect_broker_listing_design_association.py`, real PostgreSQL + FastAPI + built Astro SSR, PASS)*
+- [x] After authorized ordinary claim/offer/media/publish steps, the **same NativeListingId** is a CONFIRMED_MATCH for a supported technical Search requirement exactly when existing truth warrants it; no fake relevance/ranking, unchanged 2-criterion vocabulary. *(verified: same E2E script, step 9)*
+- [x] Refresh/browser restart and app/host restart preserve durable link and one audit event; no browser-local authority. *(verified via fresh-connection reads after every write, mirroring this repository's established durability-proof convention; no literal process-restart was performed)*
+- [x] Pre-existing unlinked listings (DRAFT or ACTIVE) are supported without changing 0067 promotion; unresolved stays truthful and independently publication-ready where allowed. *(verified: E2E step 8; SLICE-0067 promotion code untouched, its regression suite re-run and PASS)*
+- [x] Different canonical identities with similar names cannot be inferred/merged without deliberate exact selection; unavailable catalog/search lookup fails closed. *(verified: persistence tests for exact-id-only selection; no fuzzy match path exists)*
+- [x] Unknown/foreign Org/listing, MFA missing, PUBLISHER missing, revoked membership, invalid/ambiguous design and shared boat are denied without identity or provenance disclosure. *(verified: persistence/API/E2E tests; membership-state/role denial reuses the already-proven SLICE-0041 evaluator unchanged)*
+- [x] Same-target exact retry after lost HTTP response is idempotent; different-target/stale/concurrent attempts never overwrite first link or fabricate extra audit events. *(verified: persistence concurrency test with real threads, API idempotent-retry test, E2E)*
+- [x] Rollback/failing FK/audit write causes no partially linked row or orphan audit record; host/process/crash loss cannot divide committed truth. *(verified: DESIGN_NOT_FOUND persistence test proves zero mutation; UPDATE+audit INSERT share one transaction by construction)*
+- [x] Existing public listing and current Search suppression, withdrawal, stale and concrete claim UNKNOWN rules remain unchanged; unrelated Organization/model identities untouched. *(verified: full SLICE-0067/0069/0072/0051/0055 regression suites re-run, PASS; E2E unresolved-listing-still-public proof)*
+- [ ] All relevant unit, migration, persistence, API, Astro SSR, existing 0067/0069/0072 regression and main web check/build tests PASS; repository validation PASS; remote CI (Ubuntu/Windows/PostgreSQL 18/Web) and manufacturer reproducibility observed on exact implementation HEAD before Owner acceptance. *(local portion PASS; remote CI NOT VERIFIED — not yet observed on the pushed HEAD)*
+- [ ] High-risk adversarial self-review and independent exact-HEAD review traverse each named mechanical failure case; external/pilot/prod gate claims stay unchanged. *(this agent's adversarial self-review is complete; independent reviewer pass is outstanding)*
 
 ## Expected touch points
 
@@ -175,3 +176,14 @@ Do not claim validation success until actually executed. If broad test commands 
 ## Status handoff rule
 
 The implementation agent sets `**Status:** REVIEW` and matching `**Status set by this handoff:** \`REVIEW\`` on the same primary document only at the implementation completion handoff. It must not mark `DONE`, merge, close the slice, or launch a subsequent slice. Review and explicit Project Owner acceptance remain mandatory before the separate acceptance closure and local `FINISH_SLICE.bat` of 0082.
+
+## Review amendment (2026-10-12)
+
+Independent review (PR #331) raised four findings, all addressed on the same `slice/0082-broker-listing-boatdesign-association` branch; **Status remains `REVIEW`** pending remote CI and independent re-review.
+
+- **Finding A (HIGH, transaction-time authorization):** `associate_physical_boat_design_for_listing` (renamed from `associate_physical_boat_design`) now re-evaluates current Organization membership (`FOR UPDATE`-locked), publishing eligibility and the NativeListing → MarketEpisode → PhysicalBoat ownership chain fresh, entirely inside the one committing transaction, instead of trusting an application-layer pre-check. Proven under real PostgreSQL lock contention: `test_concurrent_membership_revocation_cannot_produce_unauthorized_association`.
+- **Finding B (canonical identity disambiguation):** the recorded `BOAT_DESIGN_SCHEMA.v0.5` `generation` block (label/sequence/years/hull numbers/boundary confidence) is now safely projected (`GenerationIdentity`) and rendered for both selector candidates and the linked readback, never silently omitted. Proven through real Astro SSR in the retained E2E script.
+- **Finding C (safe read failure handling):** `UNRESOLVED` is now shown only for a confirmed successful `kind: "ok"` read; every denied/unavailable/malformed outcome gets its own distinct message and the confirm UI is hidden. `designAssociationApi.ts` validates every parsed JSON body structurally before trusting it; a malformed/unexpected-shape response degrades to `service_error`, never a thrown exception. Proven by 20 new web-client unit tests plus the retained E2E script.
+- **Finding D (CI blocker):** `test_native_listing_market_episode_linkage.py`'s stale single-head assertion updated to the current head `d8f3b61a9c74`.
+
+See chat history for the full Amendment Completion Report (exact HEAD, validation results).
