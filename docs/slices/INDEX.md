@@ -19,7 +19,7 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 Latest owner-accepted slice: SLICE-0083
 Current queue:               SLICE-0084
 Current capability:          Broker pre-publication Search-fit (Owner-selected)
-Current readiness:           NOT_READY — readiness contract/review/merge pending
+Current readiness:           READY contract documented; implementation NOT_STARTED
 ```
 
 Current boundary:
@@ -31,7 +31,7 @@ Current boundary:
 - SLICE-0081 Operational Dashboard remains accepted; Phase-1 operator provisioning is paused in priority, not completed;
 - SLICE-0082 closes the normal broker→canonical BoatDesign→native technical Search bridge with accepted auditable first-time association and real synthetic end-to-end proof; no production/pilot launch was authorized;
 - SLICE-0083 is Owner-accepted and merged (implementation PR #335), providing D26-governed CSV/TSV/XLSX/XLS/XLSB/ODS/JSON/NautiX 1.4 intake into private drafts only; see `docs/slices/SLICE-0083-acceptance-closure.md`;
-- SLICE-0084 Search-fit is Owner-selected on 2026-10-13, but **NOT_READY** and implementation NOT_STARTED; the binding post-0084 technical Search expansion priority is recorded in `docs/POST_SLICE_0083_SEARCH_PRIORITY_REASSESSMENT_2026-10-13.md`;
+- SLICE-0084 Search-fit is Owner-selected with a separately reviewed READY contract at `docs/slices/SLICE-0084-broker-prepublication-search-fit.md`; implementation remains NOT_STARTED until normal local START_SLICE; the binding post-0084 technical Search expansion priority remains in `docs/POST_SLICE_0083_SEARCH_PRIORITY_REASSESSMENT_2026-10-13.md`;
 - no later slice is authorized automatically.
 
 ## Historical execution ranges
@@ -41,7 +41,7 @@ Current boundary:
 | SLICE-0001–0038 | accepted foundational research/architecture/data/product work except where an individual slice record states otherwise |
 | SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
 | SLICE-0040–0083 | accepted work; see acceptance closures and `PROJECT_STATE.md` |
-| SLICE-0084 | Owner-selected broker Search-fit; not READY, pending independent readiness and CI |
+| SLICE-0084 | Owner-selected broker Search-fit; READY specification after independent readiness CI/merge, implementation NOT_STARTED |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
