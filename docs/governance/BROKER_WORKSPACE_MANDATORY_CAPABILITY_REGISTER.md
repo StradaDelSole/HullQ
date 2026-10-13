@@ -54,7 +54,7 @@ IMPLEMENTED
 | REQ-BROKER-024 | connectivity-resilient draft/recovery behavior | launch/pilot baseline commitment | IMPLEMENTED by SLICE-0062 |
 | REQ-BROKER-025 | Search exclusion explainability: why a listing was not found | search-volume-dependent mandatory capability | PENDING |
 | REQ-BROKER-026 | pre-publication Search-fit diagnostics | mandatory before paid broker activation / broad public launch | PENDING |
-| REQ-BROKER-027 | structured CSV/bulk onboarding/import | scale-triggered mandatory capability | PENDING |
+| REQ-BROKER-027 | structured CSV/bulk onboarding/import | scale-triggered mandatory capability | IMPLEMENTED — Owner-accepted SLICE-0083 (PR #335): bounded CSV/TSV/XLS/XLSX/XLSB/ODS/JSON/NautiX file upload into private professional drafts; no automated live publishing or syncing |
 | REQ-BROKER-028 | periodic engagement/performance reporting even without a lead | mandatory before paid broker activation / broad public launch | PENDING |
 | REQ-BROKER-029 | privacy-safe aggregate demand insights by relevant configuration | search-volume-dependent mandatory capability | PENDING |
 | REQ-BROKER-030 | validation order: coherent product before real external broker pilot | immediate governance rule | IMPLEMENTED by this governance package when merged |
