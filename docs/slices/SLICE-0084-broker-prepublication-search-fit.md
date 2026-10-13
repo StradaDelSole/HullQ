@@ -178,6 +178,38 @@ npm run build --prefix web
 # Verify exact implementation HEAD CI, Windows/Linux, PG18 and manufacturer reproducibility.
 ```
 
+## First-handoff quality gate — minimize avoidable amendments
+
+This section implements the Owner's accepted **2026-10-12 first-pass-quality instruction**: prefer one implementation handoff → one independent exact-HEAD review → Owner acceptance, with amendments as a necessary exception rather than routine cleanup. **Do not create a second initial Claude prompt.** The one canonical initial handoff remains the existing `START_SLICE.bat` clipboard prompt; this READY contract supplies its binding implementation criteria.
+
+### Before implementation changes
+
+1. Read this contract and the controlling, relevant *current* production modules/tests. Trace the existing **single-target technical-evaluation seam**: how public Search constructs typed `MixedAndQuery` + `FieldProjectionSpec`, qualifies current FieldResolution/configurations, classifies current PhysicalBoat claims and retains typed reason/evidence. Identify precisely which shared functions will be reused by the private DRAFT adapter; **do not implement first and discover an incompatible second truth engine during review**.
+2. Resolve the code-local implementation questions from real signatures and state transitions **before** adding endpoint/UI: DRAFT owner + PUBLISHER/MFA lookup; actual lifecycle-read consistency strategy; absent design link vs dangling link vs broken chain; design-level UNKNOWN/nonmatch and when concrete claims may be evaluated; current publisher and cross-Organization observation exposure; bounded canonical Decimal / keel input; typed 401/403/404/409/503 results; private SSR no-store/noindex and escaped rendering.
+3. For every open technical choice, pick the *smallest evidence-supported approach consistent with accepted semantics* and encode its negative test before committing the behavior. **Do not invent new domain policy** for a genuine unresolved ambiguity: stop with the exact conflicting source/code evidence and request a decision. Keep implementation within this one user-visible flow.
+
+### Mandatory first-handoff acceptance matrix
+
+Before the *first* `REVIEW` handoff, the implementation agent must check **every** acceptance criterion above against code, a real executed test/proof and its observed outcome. In the retained evidence and concise completion report, identify concrete code/tests/commands for each of these groups (no assertion of PASS from intended tests or source inspection alone):
+
+| Proof group | Minimum scenarios to execute before handoff |
+|---|---|
+| Authorization and privacy | Current same-Org PUBLISHER/MFA succeeds; unauthenticated, wrong/unknown Org/listing, revoked/inactive/view-only Membership and MFA failure cannot leak presence or unpublished evidence; 401/403/404/service statuses remain distinct |
+| Truth parity | DRAFT technical match/nonmatch/unknown with `draft_max` alone, `keel_configuration` alone and mixed MUST/AND; compare **typed per-criterion/configuration/concrete evidence** with accepted native kernel and equivalent synthetic facts after legitimate publication |
+| Provenance and failure classification | Missing/unlinked design, dangling design, broken MarketEpisode/PhysicalBoat, unresolved or conflicting FieldResolution, NamedVariant applicability/unknown, missing/UNKNOWN/contradictory concrete claims, cross-Organization observations and unsupported `LONG_KEEL` never turn into confirmed match or guessed facts |
+| Read-only and races | Retry/idempotent GET, simultaneous publish/withdraw/revocation or edited claims, lost/stale response, induced DB error and re-open/retry cannot create writes, leak stale authority or convert failure into `0 matches` |
+| Input, UI and operational boundary | Empty/duplicate/malformed/oversize/out-of-vocabulary criterion inputs rejected; accurate synthetic-not-live-demand labels and D22/public-eligibility distinction; escaped private no-store/noindex Astro SSR; real browser→FastAPI→PostgreSQL evidence; no new Search criterion/production-data use |
+| Nonregression and remote verification | Focused tests plus complete repo validator, Ruff/mypy, Python suite/coverage gate, web check/tests/build, accepted public Search/broker inventory/association/publication regressions, and exact final HEAD CI/reproducibility; record real CI run IDs only after they exist |
+
+The retained proof must include at least one **real PostgreSQL 18 + FastAPI + built Astro SSR end-to-end run** including positive, negative and failure paths. Tests that only mock the single-target classification or bypass auth/SSR are not a substitute. Explicitly inspect PostgreSQL state before/after preview for **zero writes** to the relevant listing/claim/association/publication/lead/import/search provenance tables; verify audit and event side effects as well.
+
+### Self-review before asking for independent review
+
+- Inspect the **entire final diff against the slice start/base**, not only the last changed file. Reconcile every requirement and failure invariant to a concrete implementation site and exercised proof. Look specifically for hidden authorization bypasses, public-Search behavioral regressions, missing current-snapshot checks, improper error-to-UNKNOWN coercion, hardcoded values, unescaped text, stale browser results, invented observations and tests that succeed without using the real integration path.
+- Run the complete local validation and retained adversarial matrix **on the final proposed HEAD** after final fixes, not only on earlier intermediate commits. Push a single coherent implementation candidate; distinguish *verified PASS*, *unverified external gate*, and *known defect/blocker* truthfully. If required executable proof fails, fix it and rerun locally **before** requesting independent review; do not hand off a known broken or test-incomplete candidate as clean REVIEW.
+- In the normal **one-page completion report**, reference the acceptance-matrix evidence, negative/failure proof, final exact branch HEAD, actual validation results and any unverified external gates. No paste-dump of test logs or rewritten project history. Leave `DONE`, Owner acceptance, implementation merge, separate closure and next slice to their established owners/steps.
+- The independent reviewer still independently inspects the exact HEAD and classifies findings as **confirmed defect**, **material unmitigated risk** or **missing/insufficient proof**. This quality gate aims to *reduce* amendments, **not** suppress justified findings or compromise correctness.
+
 ## Stop conditions
 
 - Implementing the preview requires any third current public technical Search criterion, unapproved `LONG_KEEL` mapping, synthetic "real buyer demand" claim, new Search ranking/payment semantics or a second incompatible truth engine.
