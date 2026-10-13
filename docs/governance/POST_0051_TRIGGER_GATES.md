@@ -5,7 +5,7 @@
 **Scope:** post-SLICE-0051 reassessment, slice readiness, production-data/pilot readiness, Search abstraction and process governance
 
 <!-- POST_0051_ARCHITECTURE_RECONCILIATION: PASS -->
-<!-- TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 2 -->
+<!-- TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 4 -->
 <!-- WORKFLOW_REASSESSMENT_DUE_AFTER_SLICE: 0056 -->
 <!-- WORKFLOW_REASSESSMENT_STATUS: PASS -->
 <!-- BUYER_CONTACT_EMAIL_VERIFICATION_STATUS: PENDING -->
@@ -123,7 +123,7 @@ If neither can be proved, readiness is not PASS.
 
 The repository validator checks the machine-readable readiness evidence. Independent readiness review remains responsible for deciding whether the claimed comparison/distinction is substantively true.
 
-The `TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT` marker records the number already owner-accepted on canonical main. It advances only through an acceptance closure that actually adds another accepted hard technical native-inventory Search criterion; the owner-direct pivot does not increment it.
+The `TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT` marker records the number already owner-accepted on canonical main. Accepted SLICE-0085 adds exactly **two** new public hard technical dimensions (LOA min/max range counted once and qualified rudder configuration counted once), moving the count **2 → 4**. The existing keel six-value public vocabulary remains unchanged; `LONG_KEEL` stays unsupported, adds no separate dimension and requires future evidence-backed independent taxonomy/claim mapping. The shared static typed criteria registry must reuse the accepted FieldResolution/configuration/qualified concrete-claim kernel and never enable arbitrary schema fields; buyer sensitivity with LOA/rudder active is explicitly unavailable rather than miscomputed. It advances only through an acceptance closure that actually adds another accepted hard technical native-inventory Search criterion; the owner-direct pivot does not increment it.
 
 ### Commercial Search independence
 
