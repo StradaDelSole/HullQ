@@ -2,7 +2,8 @@
 
 **ID:** SLICE-0085  
 **Type:** IMPLEMENTATION  
-**Status:** READY (operative only after this documentation PR receives independent exact-HEAD ACCEPT, remote CI and reproducibility PASS and merges to canonical main)  
+**Status:** READY
+**Readiness authority:** operative only after independent exact-HEAD ACCEPT, remote CI/manufacturer reproducibility PASS and this documentation PR merge to canonical main.  
 **Risk:** HIGH_RISK — buyer technical search truth, cross-Organization evidence, variant applicability, mixed-supply equality and potentially misleading vessel-configuration claims  
 **Stage:** Owner-selected post-0084 product-first technical Buyer Search expansion  
 **Previous accepted:** SLICE-0084; local FINISH confirmed.  
@@ -11,25 +12,29 @@
 
 ## Objective and one-capability check
 
-**ONE-CAPABILITY CHECK: PASS — ONE USER WORKFLOW**  
+**ONE-CAPABILITY CHECK:** PASS
+**Interpretation:** ONE USER WORKFLOW.  
 A buyer can compose a deterministic hard AND technical Search across supported measurements and configuration categories, while a broker can preview those same technical requirements for their own prepublication DRAFT listing. Both surfaces use **one** explicit typed, bounded whitelist of supported criteria and the previously accepted FieldResolution/configuration/concrete claim evaluation kernel. The first bundle adds LOA (minimum/maximum/range) and a safely mapped rudder/skeg choice, and separately attempts the unambiguous `LONG_KEEL` extension to the existing keel dimension under the conservative rules below. This is the smallest end-to-end *reusable multi-filter expansion*, not an architectural rewrite for its own sake.
 
-**VISIBLE-RESULT CHECK: PASS**  
+**VISIBLE-RESULT CHECK:** PASS  
 An anonymous buyer searches for `loa_min=10&loa_max=15` (metres) and optional accepted draft/keel/rudder values, sees only legitimately current public listings whose qualified design/configuration AND current concrete PhysicalBoat facts confirm the exact requirements. A broker editing a promoted, owned lifecycle-DRAFT listing can run an explicitly illustrative multi-filter Search-fit against equivalent facts, receive actual typed criterion/design/concrete evidence, then correct actual boat claims in the existing editor without any preview-side write. The shared supported choices appear in the public UI across EN/DE/FR/PT/ES and in private Search-fit; ambiguity never yields a false match.
 
-**PRODUCT EXECUTION PLAN ALIGNMENT / PRIORITY CHECK: PASS**  
+**PRODUCT EXECUTION PLAN ALIGNMENT:** PASS  
 Implements the Owner's accepted search-breadth priority in one bounded multi-criterion bundle. Preserves past Search-fit, direct Search, Search sensitivity, public eligibility, mixed-supply fairness and other mandatory product/production gates. No extra unrelated consumer feature, ingestion source or persistent subscription.
 
-**REPOSITORY RECONCILIATION CHECK: PASS (baseline `55f967c2`)**  
+**REPOSITORY RECONCILIATION CHECK:** PASS
+**Baseline:** `55f967c2`.  
 Existing shared pieces already implemented: `FieldProjectionSpec` + `run_boat_design_configuration_query`; `MixedAndQuery` + numeric/categorical leaf evaluation; one shared `build_mixed_requirement_query` and `classify_concrete_candidate` for Public Search and broker preview; accepted current authorized PhysicalBoat claim observations; API+Astro, 5 locales. Missing: criterion whitelist composing >2 field dimensions, LOA buyer filters, rudder strict generation-aware mapping, `LONG_KEEL` safely typed public value, revised canonical/SSR/broker two-sided integrations. The pure `draft_max` 0051 path is an accepted compatibility special case, **not** a separate new criterion engine.
 
-**TRIGGER GATES CHECK: PASS — Gate 3 result `COMMON STRUCTURE GENERALIZED / REUSED`**  
+**TRIGGER GATES CHECK:** PASS
+**Gate 3 structural determination:** `COMMON STRUCTURE GENERALIZED / REUSED`.  
 Third and fourth new dimensions must use existing `FieldProjectionSpec`/config kernel + single candidate claim classifier, not a third copied projection/qualification/search funnel. The accepted canonical criterion count on main remains **2** during readiness and implementation; only independent implementation acceptance closure advances it for truly completed public dimensions (LOA counts once despite both operators, long keel adds zero). Private Search-fit mirroring adds zero. Gate 1 architecture PASS, production gate IN_PROGRESS, workflow reassessment PASS.
 
-**MVP / RIGHTS / PRODUCTION CHECK: PASS**  
+**OVERALL MVP CAPABILITY REGISTER CHECK:** PASS
+**MVP / rights / production scope:** retained.  
 Existing broker Search-fit REQ-BROKER-026 already IMPLEMENTED; extending the same read-only private preview is within a public Search-feature parity improvement, not a second broker product launch. Broker export, reporting, owner-direct admission and buyer persistence remain governed at their earlier accepted triggers. Only disposable synthetic integrations; Launch Pack NOT_STARTED, Production Readiness IN_PROGRESS, no external data/pilot/launch.
 
-## Decision/Implementation Reconciliation — material results
+## Decision / implementation reconciliation
 
 - **DECIDED_AND_IMPLEMENTED:** exactly two public criteria (`draft_max`, `keel_configuration`), qualified BoatDesign/NamedVariant FieldResolution, independent concrete publisher claims + cross-Organization contradiction protection, strict MUST/AND/UNKNOWN, lifecycle/public eligibility, exact Decimal query representation, public locale/canonical URLs, 0084 private one-target DRAFT preview and existing Broker LOA/rudder claim edit. Accepted buyer sensitivity continues to measure genuine before/after same-snapshot matches.
 - **DECIDED_NOT_YET_IMPLEMENTED:** LOA min/max/range, generation-aware rudder configuration public search, conservative full-keel public Search value, shared finite supported-criterion metadata/parsing/projection wiring, public+broker UI parity.
@@ -38,6 +43,18 @@ Existing broker Search-fit REQ-BROKER-026 already IMPLEMENTED; extending the sam
 - **CONFLICT_OR_REGRESSION:** no accepted regression in baseline. v0.5 combined rudder_type and v0.6 independent rudder position/support/balance cannot be freely equated; use the bounded conservative mapping below, otherwise UNKNOWN. No v0.6 support=free → SPADE leap.
 
 **Exact source/implementation seams:** `specs/SEARCH_QUERY_SEMANTICS.v0.1.md`, `TECHNICAL_PROFILE_SPEC.v0.1.md`, both BoatDesign schema generations, `docs/engineering/BOAT_DESIGN_V05_TO_V06_MAPPING.md`, physical-claim field registry, accepted keel v0.1 contract, `src/hullq/search/boat_design_field_bridge.py`, both current criterion bridge modules, configuration/query/criteria types, `src/hullq/application/native_inventory_query.py`, `search_read.py`, `inventory_search.py`, `search_sensitivity.py`, `broker_search_fit.py`, `src/hullq/api/app.py`, `src/hullq/domain/physical_boat_claims.py`, claim observation persistence, public Search SSR/typed client/form/text and broker editor, accepted 0084 E2E proof. This reconciliation is not authorization to modify accepted source rights or versioned schemas.
+
+**Accepted records checked:** Current post-0084 project state/Owner priority, SLICE-0084 acceptance closure and READY contract, both technical-profile BoatDesign schema generations, normative technical-query and FieldResolution contracts, physical-claim field registry, production trigger/readiness/workflow governance, v0.5→v0.6 conservative mapping, existing buyer/seller/search product directions.
+
+**Production implementation checked:** Existing `search_read.evaluate_search_request`, `native_inventory_query.build_mixed_requirement_query`/`classify_concrete_candidate`, `boat_design_field_bridge.FieldProjectionSpec`/`run_boat_design_configuration_query`, numeric/categorical MUST/AND kernel, 0084 private broker_search_fit REPEATABLE READ snapshot, PhysicalBoat claim head/observation persistence, FastAPI serializer, public Astro Search and broker editor/typed client.
+
+**Already implemented / not re-decided:** Two owner-accepted native hard technical dimensions (`draft_max`, `keel_configuration`), exact Decimal, FieldResolution/NamedVariant applicability, concrete claim/Org-conflict qualification, public D29 eligibility and typed evidence, private broker PUBLISHER/MFA DRAFT fit, mixed owner-direct neutrality.
+
+**Exact remaining gap:** A buyer cannot yet filter by LOA min/max/range or qualified rudder/skeg data; LONG_KEEL remains outside current public keel vocabulary; public+broker parsing and UI are hardwired to only two supported dimensions instead of one bounded whitelisted multi-filter system.
+
+**Accepted-but-unimplemented obligations:** Later qualified beam/displacement/rig/material and derived fields; current broker export/reporting, buyer persistence/alerts, owner-direct product and trust/ops/privacy/legal/production commitments retain separate gates; future full rudder position/support/balance claim decomposition remains unimplemented.
+
+**Material classifications:** DECIDED_AND_IMPLEMENTED (two accepted dimensions/shared engine, claim truth and 0084 preview); DECIDED_NOT_YET_IMPLEMENTED (two next dimensions/guarded keel extension); EXPLICITLY_DEFERRED (arbitrary field activation/unbounded rewrite); GENUINELY_OPEN (later taxonomy/sub-dimensions), CONFLICT_OR_REGRESSION (none accepted; existing flat rudder ambiguity is a documented fail-closed limitation).
 
 ## Normative bounded first-bundle semantics
 
@@ -74,6 +91,37 @@ Existing broker Search-fit REQ-BROKER-026 already IMPLEMENTED; extending the sam
 5. Bundle size limit: 2 distinct new public dimensions **LOA** and **rudder_configuration**, 1 narrowly constrained existing criterion vocabulary extension **LONG_KEEL**. All further dimensions deferred to following slices; no import/export/paid pilot, new claim schema or owner-direct publication work. Group related locale/API/types/schema/proof updates inside these exact user-visible changes.
 6. Preserve existing `SEARCH_QUERY_SEMANTICS`: inclusive bounds, identical underlying configuration across ALL hard criteria, UNKNOWN never matches, independent PhysicalBoat truth, variant applicability and range provenance, commercial neutrality, no invented ranking, explicit provenance and conflict. Never treat a correct static design spec as proof of actual boat configuration.
 7. Preserve or safely and visibly decline old sensitivity requests with new active dimensions, never compute a sensitivity delta by silently dropping an active LOA/rudder criterion. No unrelated sensitivity product rebuild in this slice; existing old use cases remain green.
+
+## Trigger gates
+
+**Production readiness gate:** IN_PROGRESS  
+**Adds technical native Search criterion:** YES  
+**Technical Search criterion ordinal:** 3  
+**Second-criterion bridge comparison:** PASS  
+**Third-copy abstraction guard:** PASS  
+**Workflow reassessment status:** PASS  
+
+The first added dimension is #3 (LOA), with rudder/skeg #4 in the *same bounded bundle*. The ordinal marker is the required **first newly added** criterion relative to the two accepted criteria on canonical main, not an assertion that this slice adds only one or that the marker can advance before independent implementation closure. `COMMON STRUCTURE GENERALIZED / REUSED` is supported by SLICE-0055's shared FieldProjectionSpec and SLICE-0084's shared query builder and concrete-boat classifier, extended conservatively; adding a third independent resolver is forbidden. `LONG_KEEL` is a vocabulary change to dimension #2 only.
+
+## Production phase transition check
+
+**PRODUCTION LAUNCH PACK CHECK:** NOT_APPLICABLE  
+**Launch-pack phase before this slice:** NOT_APPLICABLE  
+**Launch-pack phase after this slice:** NOT_APPLICABLE  
+
+This is internal/synthetic Search development only, with no actual production infrastructure, payment, pilot, customer data or launch. Canonical Production Launch Pack remains NOT_STARTED and Production Readiness IN_PROGRESS.
+
+## Mechanical invariants / failure modes
+
+**MECHANICAL INVARIANTS / FAILURE MODES CHECK:** PASS  
+**Risk classification:** HIGH_RISK  
+**Why this classification:** Multi-criterion canonical request parsing and compound FieldResolution/variant qualification can create false technical matches across yacht configurations; cross-Organization physical-claim conflicts, current-public eligibility, mixed broker/owner inventory rights and in-flight private DRAFT authorization are material trust and privacy boundaries.  
+**Must-never-change invariant:** A listing is a confirmed public MUST/AND match only when the same qualified applicable BoatDesign/NamedVariant configuration and the publisher's independently current, non-conflicting PhysicalBoat facts each confirm ALL requested hard leaves; no UNKNOWN, wrong-design, DRAFT, nonpublic or paid-for result is promoted to confirmed search membership.  
+**Durable source of truth / loss boundary:** Existing immutable FieldResolution/canonical BoatDesign/NamedVariant versioned production records and existing current PhysicalBoat per-Org claim revisions and NativeListing lifecycle/eligibility remain authoritative PostgreSQL state. The typed supported-criterion registry and buyer/broker query forms have no independent persisted yacht fact, inferred claim, migration or new customer-data store; a lost response loses only a disposable evaluation.  
+**Retry / replay / partial-failure behavior:** Repeated canonical GET against identical snapshot and claims produces identical typed evidence; noncanonical valid URLs receive the same deterministic backend-owned redirect. Invalid duplicate/inverted parameters, malformed/oversize Decimal and unknown tokens return invalid (not partial matches), while private broker in-flight revocation/publish returns existing fail-closed typed denial; db/serialization errors never downgrade to empty match sets or confirmed truth.  
+**Absence-vs-error / fail-closed behavior:** Missing/UNKNOWN/unqualified FieldResolution, schema-generation mismatches, unproven rudder support/position overlap, conflicting concrete claims and unsupported long-keel mappings remain explicit INSUFFICIENT_DATA or invalid request as appropriate; an absent real BoatDesign/claim chain or database outage is an integrity/service failure, never an estimated match or a public result.  
+**Executable adversarial proof:** Before first REVIEW, run real PostgreSQL 18 + FastAPI + built Astro SSR both public and private scenarios for LOA boundaries/range, generation-specific rudder and long-keel if admitted, 2–4 mixed dimensions on one true configuration, variant/claim contradictions, unsupported/duplicate/ambiguous inputs, auth/D29/lifecycle races and zero writes; compare typed results and rerun existing Search sensitivity, shortlist, discovery token, publication and full remote quality/reproducibility suites on the exact final HEAD.  
+**Slice sizing assessment:** COHERENT  
 
 ## Mandatory mechanical invariant / risk proofs
 
