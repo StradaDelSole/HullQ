@@ -51,10 +51,30 @@ from hullq.domain.import_intake import (
 __all__ = ["list_spreadsheet_worksheets", "parse_spreadsheet_table"]
 
 #: ZIP-container formats (XLSX, XLSB and ODS are all ZIP packages; legacy
-#: binary XLS is not). Used only for the pre-parse macro/zip-bomb guard
-#: below -- never for the actual cell parse, which calamine handles
-#: uniformly for all four formats.
+#: binary XLS is not). Used both to pick the expected actual container
+#: below and (independent review amendment Finding 2) to reject a
+#: caller-declared format that does not match the file's real container.
 _ZIP_CONTAINER_FORMATS = frozenset({ImportFormat.XLSX, ImportFormat.XLSB, ImportFormat.ODS})
+
+#: Real ZIP local-file-header/empty-archive/spanned-archive signatures.
+#: Checked against the file's own first bytes -- never the declared
+#: format -- so the macro/zip-bomb guard below can never be bypassed by
+#: mislabeling a real ZIP-based workbook (e.g. a renamed XLSX carrying a
+#: VBA project) as the unguarded legacy `XLS` format.
+_ZIP_MAGIC_PREFIXES = (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08")
+
+#: Legacy OLE2/Compound File Binary Format signature, the real container
+#: of a genuine BIFF8 `.xls` workbook.
+_OLE2_MAGIC_PREFIX = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
+
+
+def _actual_container_is_zip(raw_bytes: bytes) -> bool:
+    return any(raw_bytes.startswith(prefix) for prefix in _ZIP_MAGIC_PREFIXES)
+
+
+def _actual_container_is_ole2(raw_bytes: bytes) -> bool:
+    return raw_bytes.startswith(_OLE2_MAGIC_PREFIX)
+
 
 #: Case-insensitive ZIP-entry-name substrings that indicate embedded macro
 #: content (OOXML VBA project / OpenDocument Basic macro library) renamed
@@ -104,8 +124,31 @@ def _open_workbook(raw_bytes: bytes, fmt: ImportFormat) -> Any:
         )
     if len(raw_bytes) == 0:
         raise ImportParseError(ImportParseErrorKind.EMPTY, "file is empty")
-    if fmt in _ZIP_CONTAINER_FORMATS:
+
+    # Finding 2: the real container type is detected from the file's own
+    # magic bytes, never trusted from the caller-declared *fmt*. calamine
+    # sniffs/parses the real format regardless of what the caller
+    # declared, so a declared format must be validated against reality
+    # before parsing -- otherwise a real ZIP-based workbook (carrying,
+    # e.g., a macro project) declared as the unguarded legacy `XLS`
+    # format would reach calamine with the ZIP-entry/decompression-size/
+    # macro guard below never having run.
+    is_zip = _actual_container_is_zip(raw_bytes)
+    if is_zip:
         _guard_zip_container(raw_bytes)
+
+    if fmt is ImportFormat.XLS:
+        if not _actual_container_is_ole2(raw_bytes):
+            raise ImportParseError(
+                ImportParseErrorKind.MALFORMED,
+                "declared as legacy XLS but the file is not a valid OLE2/BIFF8 container",
+            )
+    elif fmt in _ZIP_CONTAINER_FORMATS and not is_zip:
+        raise ImportParseError(
+            ImportParseErrorKind.MALFORMED,
+            f"declared as {fmt.value} but the file is not a valid ZIP container",
+        )
+
     try:
         return pc.CalamineWorkbook.from_filelike(io.BytesIO(raw_bytes))
     except pc.PasswordError as exc:

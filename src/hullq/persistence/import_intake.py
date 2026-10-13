@@ -73,8 +73,10 @@ __all__ = [
     "finalize_row_outcome_only",
     "list_import_rows",
     "list_recent_import_batches",
+    "lock_organization_import_batch_admission",
     "mark_batch_confirmed",
     "mark_batch_confirming",
+    "purge_all_expired_unconfirmed_batches",
     "purge_expired_unconfirmed_batches",
 ]
 
@@ -837,6 +839,11 @@ SELECT import_batch_id FROM import_batches
 WHERE owner_organization_id = %s AND status = ANY(%s) AND expires_at < NOW()
 """
 
+_SELECT_ALL_PURGEABLE_BATCH_IDS = """
+SELECT import_batch_id FROM import_batches
+WHERE status = ANY(%s) AND expires_at < NOW()
+"""
+
 _DELETE_ROWS_FOR_BATCH = "DELETE FROM import_rows WHERE import_batch_id = %s"
 _DELETE_BATCH = "DELETE FROM import_batches WHERE import_batch_id = %s"
 
@@ -845,14 +852,28 @@ SELECT count(*) FROM import_batches
 WHERE owner_organization_id = %s AND status = ANY(%s) AND expires_at >= NOW()
 """
 
+#: Review amendment Finding 3: the per-Organization pending-batch
+#: admission check (purge + count + the eventual batch insert) must all
+#: happen under one held lock so two concurrent uploads for the same
+#: Organization can never both observe a count below the limit before
+#: either has inserted. Mirrors the identical accepted
+#: `pg_advisory_xact_lock(hashtextextended(...))` pattern already used by
+#: `broker_identity.get_or_create_account_for_identity` and
+#: `field_resolution` -- auto-released at this transaction's
+#: commit/rollback, never requiring an explicit unlock statement.
+_ADVISORY_LOCK = "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))"
+
 
 def purge_expired_unconfirmed_batches(
     conn: Any, *, owner_organization_id: MarketplaceOrganizationId
 ) -> int:
     """Durably delete every expired, never-confirmed batch (and its rows)
-    owned by *owner_organization_id* -- the "safe disposal of unconfirmed
-    raw source data" mechanical invariant, scoped per-request rather than
-    requiring a separate scheduler/cron process this slice does not add.
+    owned by *owner_organization_id*, opportunistically on that
+    Organization's own request path. This is a convenience fast-path only
+    -- `purge_all_expired_unconfirmed_batches` (invoked independently of
+    any Organization's own activity by
+    `scripts/ops/purge_expired_import_batches.py`) is the real retention
+    guarantee.
 
     Only `AWAITING_MAPPING`/`MAPPED` batches are eligible: a `CONFIRMING`
     batch may hold real committed drafts/mappings for some of its rows
@@ -875,6 +896,33 @@ def purge_expired_unconfirmed_batches(
     return len(batch_ids)
 
 
+def purge_all_expired_unconfirmed_batches(conn: Any) -> int:
+    """Durably delete every expired, never-confirmed batch (and its rows)
+    across *every* Organization -- the real "an unconfirmed staged batch
+    is retained for 24 hours and then purged automatically" retention
+    guarantee (independent review amendment Finding 3), independent of
+    whether any particular Organization ever uploads, lists or views its
+    own batches again.
+
+    This is the function `scripts/ops/purge_expired_import_batches.py`
+    runs as a standalone, independently schedulable sweep (e.g. an hourly
+    cron job on the production host) -- the opportunistic per-Organization
+    `purge_expired_unconfirmed_batches` called from the upload path
+    remains a fast-path convenience only and must never be the sole
+    mechanism this guarantee depends on. Eligibility rules are otherwise
+    identical: only `AWAITING_MAPPING`/`MAPPED` batches are ever deleted;
+    `CONFIRMING` and `CONFIRMED` batches are never touched. Returns the
+    number of batches deleted. The caller owns transaction commit.
+    """
+    with conn.cursor() as cur:
+        cur.execute(_SELECT_ALL_PURGEABLE_BATCH_IDS, [list(_PURGEABLE_BATCH_STATUSES)])
+        batch_ids = [row[0] for row in cur.fetchall()]
+        for batch_id in batch_ids:
+            cur.execute(_DELETE_ROWS_FOR_BATCH, [batch_id])
+            cur.execute(_DELETE_BATCH, [batch_id])
+    return len(batch_ids)
+
+
 def count_pending_batches_for_organization(
     conn: Any, *, owner_organization_id: MarketplaceOrganizationId
 ) -> int:
@@ -882,10 +930,33 @@ def count_pending_batches_for_organization(
     not-yet-`CONFIRMED` batches -- the basis for
     `MAX_PENDING_BATCHES_PER_ORGANIZATION`. Call
     `purge_expired_unconfirmed_batches` first so an expired, never-touched
-    batch does not count against the Organization's limit forever."""
+    batch does not count against the Organization's limit forever. The
+    caller must hold `lock_organization_import_batch_admission`'s lock
+    for the duration between this count and the eventual batch insert it
+    gates, or the check is not concurrency-safe."""
     with conn.cursor() as cur:
         cur.execute(
             _COUNT_PENDING_BATCHES, [owner_organization_id.value, list(_PENDING_BATCH_STATUSES)]
         )
         (count,) = cur.fetchone()
     return int(count)
+
+
+def lock_organization_import_batch_admission(
+    conn: Any, *, owner_organization_id: MarketplaceOrganizationId
+) -> None:
+    """Acquire the per-Organization advisory lock serializing admission
+    into `MAX_PENDING_BATCHES_PER_ORGANIZATION` (independent review
+    amendment Finding 3).
+
+    Must be the first statement of the transaction that will also run
+    `count_pending_batches_for_organization` and the eventual batch
+    insert it gates -- the lock is released only at that transaction's
+    commit/rollback (`pg_advisory_xact_lock` semantics), so two
+    concurrent uploads for the same Organization are serialized through
+    this exact critical section and can never both observe a stale count
+    below the limit before either has inserted its new batch row.
+    """
+    lock_key = f"import_pending_batch_admission|{owner_organization_id.value}"
+    with conn.cursor() as cur:
+        cur.execute(_ADVISORY_LOCK, [lock_key])

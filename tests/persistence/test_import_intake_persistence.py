@@ -34,15 +34,19 @@ from hullq.domain.import_intake import (
 from hullq.domain.publishing_eligibility import AccountId, MarketplaceOrganizationId
 from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
 from hullq.persistence.import_intake import (
+    MAX_PENDING_BATCHES_PER_ORGANIZATION,
     ApplyMappingOutcome,
     ImportBatchStatus,
     apply_import_batch_mapping,
     claim_or_check_snapshot_lineage,
     confirm_import_row,
+    count_pending_batches_for_organization,
     create_import_batch_awaiting_mapping,
     fetch_import_batch,
     fetch_import_source_mapping,
     list_import_rows,
+    lock_organization_import_batch_admission,
+    purge_all_expired_unconfirmed_batches,
 )
 from hullq.persistence.professional_listing_draft import create_professional_listing_draft
 
@@ -715,3 +719,227 @@ class TestConcurrentSnapshotLineage:
             verify_conn.close()
         assert len(rows) == 1
         assert rows[0][0] == digest_a
+
+
+class TestConcurrentPendingBatchAdmission:
+    def test_two_concurrent_uploads_at_the_limit_exactly_one_is_admitted(
+        self, import_url: str
+    ) -> None:
+        """Independent review amendment Finding 3: the prior separate
+        count-then-insert allowed two concurrent uploads for the same
+        Organization, both already at MAX_PENDING_BATCHES_PER_ORGANIZATION
+        - 1, to each observe a count below the limit before either had
+        inserted its new batch row -- exceeding the limit. Proven here
+        under genuine PostgreSQL lock contention (confirmed via
+        `pg_locks`, never a timing guess): connection A holds the real
+        `pg_advisory_xact_lock` admission lock mid-transaction while
+        connection B is shown to be genuinely blocked on it; only once A
+        commits does B proceed, see the now-at-limit count, and
+        correctly decline to insert a 21st batch."""
+        org_id = MarketplaceOrganizationId(str(uuid.uuid4()))
+        account_id = AccountId(str(uuid.uuid4()))
+        table = ParsedTable(headers=("a",), rows=(("1",),))
+        conn0 = psycopg.connect(import_url)
+        try:
+            _seed_organization(conn0, org_id)
+            _seed_account(conn0, account_id)
+            for i in range(MAX_PENDING_BATCHES_PER_ORGANIZATION - 1):
+                create_import_batch_awaiting_mapping(
+                    conn0,
+                    owner_organization_id=org_id,
+                    created_by_account_id=account_id,
+                    import_format=ImportFormat.CSV,
+                    import_source=ImportSource(f"PreexistingFeed{i}"),
+                    worksheet_name=None,
+                    file_sha256=compute_file_sha256(f"pre-{i}".encode()),
+                    file_byte_size=10,
+                    staged_table=table,
+                )
+                conn0.commit()
+        finally:
+            conn0.close()
+
+        conn_a = psycopg.connect(import_url)
+        conn_b = psycopg.connect(import_url)
+        monitor_conn = psycopg.connect(import_url)
+        conn_b_pid = _backend_pid(conn_b)
+
+        errors: list[BaseException] = []
+        results: dict[str, str] = {}
+        a_locked = threading.Event()
+
+        def _admit(conn: Any, source: str, digest_payload: bytes) -> str:
+            lock_organization_import_batch_admission(conn, owner_organization_id=org_id)
+            count = count_pending_batches_for_organization(conn, owner_organization_id=org_id)
+            if count >= MAX_PENDING_BATCHES_PER_ORGANIZATION:
+                return "rejected"
+            create_import_batch_awaiting_mapping(
+                conn,
+                owner_organization_id=org_id,
+                created_by_account_id=account_id,
+                import_format=ImportFormat.CSV,
+                import_source=ImportSource(source),
+                worksheet_name=None,
+                file_sha256=compute_file_sha256(digest_payload),
+                file_byte_size=10,
+                staged_table=table,
+            )
+            return "admitted"
+
+        def _admit_a_then_delay_commit() -> None:
+            try:
+                with conn_a.transaction():
+                    results["a"] = _admit(conn_a, "RaceFeedA", b"race-a")
+                    a_locked.set()
+                    blocked = _wait_until_blocked_on_lock(monitor_conn, conn_b_pid)
+                    assert blocked, "conn_b never blocked on conn_a's held admission lock"
+            except Exception as exc:  # pragma: no cover - surfaced via errors assertion
+                errors.append(exc)
+
+        def _admit_b_concurrently() -> None:
+            try:
+                a_locked.wait(timeout=10)
+                with conn_b.transaction():
+                    results["b"] = _admit(conn_b, "RaceFeedB", b"race-b")
+            except Exception as exc:  # pragma: no cover - surfaced via errors assertion
+                errors.append(exc)
+
+        threads = [
+            threading.Thread(target=_admit_a_then_delay_commit),
+            threading.Thread(target=_admit_b_concurrently),
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=20)
+        conn_a.close()
+        conn_b.close()
+        monitor_conn.close()
+
+        assert not errors, f"Thread errors: {errors}"
+        # A, already holding the lock while at exactly MAX - 1, is
+        # admitted. B, genuinely blocked behind A's uncommitted insert and
+        # only unblocked once A committed, must see the now-at-limit count
+        # and decline -- never exceeding the bound.
+        assert results["a"] == "admitted"
+        assert results["b"] == "rejected"
+
+        verify_conn = psycopg.connect(import_url)
+        try:
+            final_count = count_pending_batches_for_organization(
+                verify_conn, owner_organization_id=org_id
+            )
+        finally:
+            verify_conn.close()
+        assert final_count == MAX_PENDING_BATCHES_PER_ORGANIZATION
+
+
+class TestGlobalExpiredBatchPurgeIndependentOfUpload:
+    """Independent review amendment Finding 3: the real 24-hour retention
+    guarantee must not depend on the owning Organization ever uploading
+    again. `purge_all_expired_unconfirmed_batches` -- the function
+    `scripts/ops/purge_expired_import_batches.py` runs as a standalone
+    scheduled sweep -- is exercised here directly against real
+    PostgreSQL with zero further activity from the batch's Organization
+    at all (no second upload, no list, no view)."""
+
+    def test_expired_idle_batch_is_purged_with_no_further_activity_from_its_organization(
+        self, import_url: str
+    ) -> None:
+        org_id = MarketplaceOrganizationId(str(uuid.uuid4()))
+        account_id = AccountId(str(uuid.uuid4()))
+        conn = psycopg.connect(import_url)
+        try:
+            _seed_organization(conn, org_id)
+            _seed_account(conn, account_id)
+            table = ParsedTable(headers=("a",), rows=(("1",),))
+            batch = create_import_batch_awaiting_mapping(
+                conn,
+                owner_organization_id=org_id,
+                created_by_account_id=account_id,
+                import_format=ImportFormat.CSV,
+                import_source=ImportSource("IdleFeed"),
+                worksheet_name=None,
+                file_sha256=compute_file_sha256(b"idle-payload"),
+                file_byte_size=10,
+                staged_table=table,
+            )
+            conn.commit()
+
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE import_batches SET expires_at = NOW() - INTERVAL '1 hour' "
+                    "WHERE import_batch_id = %s",
+                    [batch.batch_id.value],
+                )
+            conn.commit()
+
+            with conn.transaction():
+                purged = purge_all_expired_unconfirmed_batches(conn)
+            assert purged >= 1
+
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT count(*) FROM import_batches WHERE import_batch_id = %s",
+                    [batch.batch_id.value],
+                )
+                (remaining_batches,) = cur.fetchone()
+                cur.execute(
+                    "SELECT count(*) FROM import_rows WHERE import_batch_id = %s",
+                    [batch.batch_id.value],
+                )
+                (remaining_rows,) = cur.fetchone()
+            conn.commit()
+            assert remaining_batches == 0
+            assert remaining_rows == 0
+        finally:
+            conn.close()
+
+    def test_confirming_batch_is_never_purged_by_the_global_sweep_even_once_expired(
+        self, import_url: str
+    ) -> None:
+        """A `CONFIRMING` batch may hold real committed drafts/mappings
+        from a crashed/interrupted confirm call -- the global sweep must
+        never delete it, identical to the per-Organization fast path's
+        own rule."""
+        org_id = MarketplaceOrganizationId(str(uuid.uuid4()))
+        account_id = AccountId(str(uuid.uuid4()))
+        conn = psycopg.connect(import_url)
+        try:
+            _seed_organization(conn, org_id)
+            _seed_account(conn, account_id)
+            table = ParsedTable(headers=("a",), rows=(("1",),))
+            batch = create_import_batch_awaiting_mapping(
+                conn,
+                owner_organization_id=org_id,
+                created_by_account_id=account_id,
+                import_format=ImportFormat.CSV,
+                import_source=ImportSource("StuckFeed"),
+                worksheet_name=None,
+                file_sha256=compute_file_sha256(b"stuck-payload"),
+                file_byte_size=10,
+                staged_table=table,
+            )
+            conn.commit()
+
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE import_batches SET status = 'CONFIRMING', "
+                    "expires_at = NOW() - INTERVAL '1 hour' WHERE import_batch_id = %s",
+                    [batch.batch_id.value],
+                )
+            conn.commit()
+
+            with conn.transaction():
+                purge_all_expired_unconfirmed_batches(conn)
+
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT count(*) FROM import_batches WHERE import_batch_id = %s",
+                    [batch.batch_id.value],
+                )
+                (remaining,) = cur.fetchone()
+            conn.commit()
+            assert remaining == 1
+        finally:
+            conn.close()

@@ -67,6 +67,7 @@ from hullq.persistence.import_intake import (
     finalize_row_outcome_only,
     list_import_rows,
     list_recent_import_batches,
+    lock_organization_import_batch_admission,
     mark_batch_confirmed,
     mark_batch_confirming,
     purge_expired_unconfirmed_batches,
@@ -330,20 +331,6 @@ def upload_import_for_organization(
     if len(raw_bytes) > MAX_IMPORT_FILE_BYTES:
         return UploadImportResult(outcome=UploadImportOutcome.PAYLOAD_TOO_LARGE)
 
-    # Independent review amendment Finding E: opportunistically purge this
-    # Organization's own expired, never-confirmed batches (bounded
-    # staging retention -- no separate scheduler/cron this slice does not
-    # add), then enforce the bounded pending-batch count *before* parsing
-    # or staging anything new.
-    conn.commit()
-    with conn.transaction():
-        purge_expired_unconfirmed_batches(conn, owner_organization_id=organization_id)
-    pending_count = count_pending_batches_for_organization(
-        conn, owner_organization_id=organization_id
-    )
-    if pending_count >= MAX_PENDING_BATCHES_PER_ORGANIZATION:
-        return UploadImportResult(outcome=UploadImportOutcome.TOO_MANY_PENDING_BATCHES)
-
     try:
         import_source = ImportSource(import_source_value)
     except ValueError as exc:
@@ -353,28 +340,48 @@ def upload_import_for_organization(
 
     file_sha256 = compute_file_sha256(raw_bytes)
 
-    try:
-        if fmt is ImportFormat.CSV:
-            table = parse_delimited_table(raw_bytes, delimiter=csv_delimiter)
-        elif fmt is ImportFormat.TSV:
-            table = parse_delimited_table(raw_bytes, delimiter="\t")
-        elif fmt is ImportFormat.JSON:
-            table = parse_json_table(raw_bytes)
-        elif fmt in (ImportFormat.XLSX, ImportFormat.XLS, ImportFormat.XLSB, ImportFormat.ODS):
-            if worksheet_name is None:
-                worksheets = list_spreadsheet_worksheets(raw_bytes, fmt)
-                return UploadImportResult(
-                    outcome=UploadImportOutcome.WORKSHEET_CHOICE_REQUIRED,
-                    available_worksheets=worksheets,
+    # Independent review amendment Finding 3: the per-Organization
+    # pending-batch admission check (purge expired + count against
+    # MAX_PENDING_BATCHES_PER_ORGANIZATION) and the eventual batch insert
+    # below must all happen under one held advisory lock in one
+    # transaction -- a prior separate count-then-insert allowed two
+    # concurrent uploads for the same Organization to both pass the count
+    # check before either had inserted, exceeding the limit. Parsing is
+    # pure in-memory work (no further DB access until the insert itself),
+    # so holding the transaction open across it is safe and bounded by
+    # the MAX_IMPORT_FILE_BYTES already enforced above.
+    conn.commit()
+    with conn.transaction():
+        lock_organization_import_batch_admission(conn, owner_organization_id=organization_id)
+        purge_expired_unconfirmed_batches(conn, owner_organization_id=organization_id)
+        pending_count = count_pending_batches_for_organization(
+            conn, owner_organization_id=organization_id
+        )
+        if pending_count >= MAX_PENDING_BATCHES_PER_ORGANIZATION:
+            return UploadImportResult(outcome=UploadImportOutcome.TOO_MANY_PENDING_BATCHES)
+
+        try:
+            if fmt is ImportFormat.CSV:
+                table = parse_delimited_table(raw_bytes, delimiter=csv_delimiter)
+            elif fmt is ImportFormat.TSV:
+                table = parse_delimited_table(raw_bytes, delimiter="\t")
+            elif fmt is ImportFormat.JSON:
+                table = parse_json_table(raw_bytes)
+            elif fmt in (ImportFormat.XLSX, ImportFormat.XLS, ImportFormat.XLSB, ImportFormat.ODS):
+                if worksheet_name is None:
+                    worksheets = list_spreadsheet_worksheets(raw_bytes, fmt)
+                    return UploadImportResult(
+                        outcome=UploadImportOutcome.WORKSHEET_CHOICE_REQUIRED,
+                        available_worksheets=worksheets,
+                    )
+                table = parse_spreadsheet_table(raw_bytes, fmt, worksheet_name=worksheet_name)
+            else:
+                assert fmt is ImportFormat.NAUTIX_XML
+                root = parse_and_validate_nautix(raw_bytes)
+                rows = map_nautix_adverts_to_rows(
+                    root, attested_account_tokens=attested_account_tokens
                 )
-            table = parse_spreadsheet_table(raw_bytes, fmt, worksheet_name=worksheet_name)
-        else:
-            assert fmt is ImportFormat.NAUTIX_XML
-            root = parse_and_validate_nautix(raw_bytes)
-            rows = map_nautix_adverts_to_rows(root, attested_account_tokens=attested_account_tokens)
-            conn.commit()
-            with conn.transaction():
-                batch = create_import_batch_mapped(
+                nautix_batch = create_import_batch_mapped(
                     conn,
                     owner_organization_id=organization_id,
                     created_by_account_id=session.account_id,
@@ -385,18 +392,17 @@ def upload_import_for_organization(
                     snapshot_mode=False,
                     rows=rows,
                 )
+                nautix_rows = list_import_rows(conn, batch_id=nautix_batch.batch_id)
+                return UploadImportResult(
+                    outcome=UploadImportOutcome.STAGED, batch=nautix_batch, rows=nautix_rows
+                )
+        except ImportParseError as exc:
             return UploadImportResult(
-                outcome=UploadImportOutcome.STAGED,
-                batch=batch,
-                rows=list_import_rows(conn, batch_id=batch.batch_id),
+                outcome=UploadImportOutcome.PARSE_FAILED,
+                parse_error_kind=exc.kind,
+                message=exc.message,
             )
-    except ImportParseError as exc:
-        return UploadImportResult(
-            outcome=UploadImportOutcome.PARSE_FAILED, parse_error_kind=exc.kind, message=exc.message
-        )
 
-    conn.commit()
-    with conn.transaction():
         batch = create_import_batch_awaiting_mapping(
             conn,
             owner_organization_id=organization_id,

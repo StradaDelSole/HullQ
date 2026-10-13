@@ -215,6 +215,56 @@ class TestXls:
         assert exc_info.value.kind is ImportParseErrorKind.MALFORMED
 
 
+class TestDeclaredFormatMustMatchActualContainer:
+    """Independent review amendment Finding 2: `_open_workbook()` must
+    never trust the caller-declared format to decide whether the
+    ZIP-entry/decompression-size/macro guard runs -- it is keyed on the
+    file's own real container bytes. A real ZIP-based workbook (even one
+    carrying a macro project) declared as the unguarded legacy `XLS`
+    format must be rejected deterministically, never silently parsed."""
+
+    def test_real_zip_workbook_declared_as_xls_is_rejected(self) -> None:
+        raw = _xlsx_bytes("S", [["a"], ["1"]])
+        with pytest.raises(ImportParseError) as exc_info:
+            parse_spreadsheet_table(raw, ImportFormat.XLS, worksheet_name="S")
+        assert exc_info.value.kind is ImportParseErrorKind.MALFORMED
+
+    def test_real_zip_workbook_with_macro_marker_declared_as_xls_is_still_caught(
+        self,
+    ) -> None:
+        """Even if the format-mismatch check above were ever removed, the
+        macro guard itself must key on the real detected container, not
+        the declared format -- this is the exact bypass the review named.
+        Asserted independently of which specific check fires first."""
+        raw = _xlsx_bytes("S", [["a"], ["1"]])
+        archive_buf = io.BytesIO()
+        with (
+            zipfile.ZipFile(io.BytesIO(raw)) as original,
+            zipfile.ZipFile(archive_buf, "w") as tampered,
+        ):
+            for name in original.namelist():
+                tampered.writestr(name, original.read(name))
+            tampered.writestr("xl/vbaProject.bin", b"fake macro content")
+        with pytest.raises(ImportParseError) as exc_info:
+            parse_spreadsheet_table(archive_buf.getvalue(), ImportFormat.XLS, worksheet_name="S")
+        assert exc_info.value.kind in (
+            ImportParseErrorKind.UNSUPPORTED_FORMAT,
+            ImportParseErrorKind.MALFORMED,
+        )
+
+    def test_real_ole2_xls_declared_as_xlsx_is_rejected(self) -> None:
+        raw = _xls_bytes("S", [["a"], ["1"]])
+        with pytest.raises(ImportParseError) as exc_info:
+            parse_spreadsheet_table(raw, ImportFormat.XLSX, worksheet_name="S")
+        assert exc_info.value.kind is ImportParseErrorKind.MALFORMED
+
+    def test_real_ole2_xls_declared_as_ods_is_rejected(self) -> None:
+        raw = _xls_bytes("S", [["a"], ["1"]])
+        with pytest.raises(ImportParseError) as exc_info:
+            parse_spreadsheet_table(raw, ImportFormat.ODS, worksheet_name="S")
+        assert exc_info.value.kind is ImportParseErrorKind.MALFORMED
+
+
 class TestGenuineThirdPartyXlsbAndOds:
     """Real third-party-authored files pinned from `python-calamine`'s own
     upstream test corpus -- see `tests/fixtures/spreadsheets/PROVENANCE.md`

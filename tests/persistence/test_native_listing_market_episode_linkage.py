@@ -520,11 +520,24 @@ def test_migration_with_orphan_non_null_episode_reference_fails_closed(
 
 
 def test_alembic_reports_exactly_one_head_after_upgrade(link_url: str) -> None:
-    """The exact head value is expected to change as later slices add
-    migrations on top of SLICE-0047 (see SLICE-0082's
-    `d8f3b61a9c74_boat_design_association_events` revision,
-    the current head at time of writing); what this test protects is that
-    there is always exactly one head, never a branch."""
-    from hullq.persistence.alembic_baseline import alembic_heads
+    """There is always exactly one Alembic head, never a diverging branch.
 
-    assert alembic_heads(link_url) == ["d8f3b61a9c74"]
+    The exact revision id changes with every migration later slices add; a
+    hardcoded expected id would break on the very next migration. Instead,
+    `ScriptDirectory.get_current_head()` is the real Alembic structural
+    check: it raises `CommandError` itself if the script directory ever
+    branches into more than one head, so a passing assertion here already
+    proves linearity independent of any specific revision id. The second
+    assertion then confirms `alembic_heads()` (SLICE-0083's own thin
+    wrapper, used elsewhere for baseline/upgrade orchestration) reports
+    that exact same real script-directory head, not a stale or divergent
+    value."""
+    from alembic.script import ScriptDirectory
+
+    from hullq.persistence.alembic_baseline import alembic_config, alembic_heads
+
+    script = ScriptDirectory.from_config(alembic_config(link_url))
+    current_head = script.get_current_head()
+
+    assert current_head is not None
+    assert alembic_heads(link_url) == [current_head]

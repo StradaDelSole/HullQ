@@ -18,6 +18,7 @@ import os
 import threading
 import time
 import uuid
+import zipfile
 from collections.abc import Generator
 from datetime import UTC, datetime
 from pathlib import Path
@@ -765,6 +766,120 @@ class TestFormatNegatives:
         assert response.status_code == 400
         assert response.json()["kind"] == "EMPTY"
         list_response = client.get(_imports_path("ORG-IMP-MALFORMED"))
+        assert list_response.json()["batches"] == []
+
+    def test_real_zip_workbook_declared_as_xls_is_rejected_with_zero_mutation(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        """Independent review amendment Finding 2: a real ZIP-based
+        workbook (genuine XLSX bytes) declared as the unguarded legacy
+        `XLS` format through the real upload route must be rejected
+        deterministically -- never silently parsed by calamine's own
+        format auto-detection, and never staged as rows."""
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-IMP-ZIPASXLS",
+            account_id="ACC-IMP-ZIPASXLS",
+            membership_id="OM-IMP-ZIPASXLS",
+        )
+        _log_in(client, "ACC-IMP-ZIPASXLS")
+        response = _upload_file(
+            client,
+            "ORG-IMP-ZIPASXLS",
+            declared_format="XLS",
+            import_source="ZipAsXlsFeed",
+            file_bytes=_xlsx_inventory_bytes(),
+            worksheet_name="Inventory",
+        )
+        assert response.status_code == 400
+        assert response.json()["kind"] == "MALFORMED"
+        list_response = client.get(_imports_path("ORG-IMP-ZIPASXLS"))
+        assert list_response.json()["batches"] == []
+        conn = psycopg.connect(api_url)
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT count(*) FROM professional_listing_drafts "
+                    "WHERE owner_organization_id = %s",
+                    ["ORG-IMP-ZIPASXLS"],
+                )
+                (draft_count,) = cur.fetchone()
+        finally:
+            conn.close()
+        assert draft_count == 0
+
+    def test_zip_workbook_with_macro_marker_declared_as_xls_is_rejected_with_zero_mutation(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        """The exact scenario the review named: a ZIP-based workbook
+        carrying a renamed VBA macro project, declared as `XLS` to try to
+        route around the ZIP-container macro guard (which previously only
+        ran when the *declared* format was one of XLSX/XLSB/ODS). The
+        guard must now key on the file's real detected container, so this
+        is caught regardless of the declared label."""
+        raw = _xlsx_inventory_bytes()
+        archive_buf = io.BytesIO()
+        with (
+            zipfile.ZipFile(io.BytesIO(raw)) as original,
+            zipfile.ZipFile(archive_buf, "w") as tampered,
+        ):
+            for name in original.namelist():
+                tampered.writestr(name, original.read(name))
+            tampered.writestr("xl/vbaProject.bin", b"fake macro content")
+
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-IMP-MACROASXLS",
+            account_id="ACC-IMP-MACROASXLS",
+            membership_id="OM-IMP-MACROASXLS",
+        )
+        _log_in(client, "ACC-IMP-MACROASXLS")
+        response = _upload_file(
+            client,
+            "ORG-IMP-MACROASXLS",
+            declared_format="XLS",
+            import_source="MacroAsXlsFeed",
+            file_bytes=archive_buf.getvalue(),
+            worksheet_name="Inventory",
+        )
+        assert response.status_code == 400
+        assert response.json()["kind"] in ("MALFORMED", "UNSUPPORTED_FORMAT")
+        list_response = client.get(_imports_path("ORG-IMP-MACROASXLS"))
+        assert list_response.json()["batches"] == []
+        conn = psycopg.connect(api_url)
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT count(*) FROM professional_listing_drafts "
+                    "WHERE owner_organization_id = %s",
+                    ["ORG-IMP-MACROASXLS"],
+                )
+                (draft_count,) = cur.fetchone()
+        finally:
+            conn.close()
+        assert draft_count == 0
+
+    def test_real_ole2_xls_declared_as_xlsx_is_rejected_with_zero_mutation(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-IMP-XLSASZIP",
+            account_id="ACC-IMP-XLSASZIP",
+            membership_id="OM-IMP-XLSASZIP",
+        )
+        _log_in(client, "ACC-IMP-XLSASZIP")
+        response = _upload_file(
+            client,
+            "ORG-IMP-XLSASZIP",
+            declared_format="XLSX",
+            import_source="XlsAsZipFeed",
+            file_bytes=_xls_inventory_bytes(),
+            worksheet_name="Inventory",
+        )
+        assert response.status_code == 400
+        assert response.json()["kind"] == "MALFORMED"
+        list_response = client.get(_imports_path("ORG-IMP-XLSASZIP"))
         assert list_response.json()["batches"] == []
 
 

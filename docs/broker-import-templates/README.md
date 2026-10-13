@@ -103,9 +103,19 @@ upload time; adverts under any other account token are `INVALID`.
 Only upload a file you are authorized to export/use -- this importer
 never asserts a NautiX Nautic Network partnership or any other third-
 party feed right on your behalf. An unconfirmed staged batch is retained
-for 24 hours and then purged automatically; a confirmed batch's rows are
-kept indefinitely as auditable import provenance alongside the private
-drafts they produced.
+for 24 hours and then purged automatically. The real, independent
+mechanism is a standalone scheduled sweep
+(`scripts/ops/purge_expired_import_batches.py`, run hourly from cron on
+the production host) that deletes every expired, never-confirmed batch
+across every Organization, regardless of whether that Organization ever
+uploads, lists or views its own batches again; the application itself
+additionally purges an Organization's own expired batches opportunistically
+on that Organization's own next upload as a fast path, but this is a
+convenience only, never the guarantee's sole mechanism. A confirmed
+batch's rows are kept indefinitely as auditable import provenance
+alongside the private drafts they produced; a batch mid-confirmation
+(`CONFIRMING`) is never purged even once expired, since it may hold real
+committed drafts from a partially completed confirm call.
 
 ## What this import never does
 
