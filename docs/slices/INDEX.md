@@ -1,7 +1,7 @@
 # HullQ Slice Index
 
 **Status:** ACTIVE navigation board  
-**Updated:** 2026-10-12  
+**Updated:** 2026-10-13  
 **Canonical current-state authority:** `docs/PROJECT_STATE.md`
 
 This file is deliberately a **compact navigation index**, not a second historical status authority.
@@ -16,10 +16,10 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ## Current execution boundary
 
 ```text
-Latest owner-accepted slice: SLICE-0082
-Current queue:               SLICE-0083
-Current capability:          Multi-format Broker Inventory Intake (CSV/Excel/JSON/NautiX v1.4)
-Current readiness:           READY contract pending independent review/CI/merge; no implementation
+Latest owner-accepted slice: SLICE-0083
+Current queue:               SLICE-0084
+Current capability:          UNSELECTED
+Current readiness:           Fresh post-0083 reconciliation and READY review required
 ```
 
 Current boundary:
@@ -30,7 +30,8 @@ Current boundary:
 - post-SLICE-0080 reassessment selected Production Launch Pack Phase 1 for the limited pilot, but the Owner explicitly reprioritized unfinished product development on 2026-10-12;
 - SLICE-0081 Operational Dashboard remains accepted; Phase-1 operator provisioning is paused in priority, not completed;
 - SLICE-0082 closes the normal broker→canonical BoatDesign→native technical Search bridge with accepted auditable first-time association and real synthetic end-to-end proof; no production/pilot launch was authorized;
-- SLICE-0083 is Owner-selected after fresh post-0082 reconciliation as one common-format broker file import (including NautiX v1.4) with D26-staged validation and ordinary private ProfessionalListingDraft creation; readiness must pass independent review/CI/merge before local START_SLICE;
+- SLICE-0083 is Owner-accepted and merged (implementation PR #335), providing D26-governed CSV/TSV/XLSX/XLS/XLSB/ODS/JSON/NautiX 1.4 intake into private drafts only; see `docs/slices/SLICE-0083-acceptance-closure.md`;
+- SLICE-0084 is UNSELECTED pending fresh reconciliation/readiness;
 - no later slice is authorized automatically.
 
 ## Historical execution ranges
@@ -39,8 +40,8 @@ Current boundary:
 |---|---|
 | SLICE-0001–0038 | accepted foundational research/architecture/data/product work except where an individual slice record states otherwise |
 | SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
-| SLICE-0040–0082 | accepted marketplace/Search/buyer/broker/security/production-foundation/media-durability work; final state is authoritative in each acceptance closure and `PROJECT_STATE.md` |
-| SLICE-0083 | Owner-selected common-format Broker Inventory Intake (CSV/TSV/XLS/XLSX/XLSB/ODS/JSON/NautiX XML v1.4); readiness pending review/CI/merge; implementation not started |
+| SLICE-0040–0083 | accepted work; see acceptance closures and `PROJECT_STATE.md` |
+| SLICE-0084 | UNSELECTED — fresh post-0083 reconciliation/readiness required |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
