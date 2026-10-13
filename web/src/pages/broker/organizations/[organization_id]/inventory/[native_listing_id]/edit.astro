@@ -28,6 +28,11 @@ import {
   fetchDesignCandidates,
   type GenerationIdentity,
 } from "../../../../../../lib/designAssociationApi";
+import {
+  fetchSearchFit,
+  type LeafCriterion,
+  type SearchFitResult,
+} from "../../../../../../lib/brokerSearchFitApi";
 import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../../../../lib/authConstants";
 
 // Independent review Finding B: the recorded generation identity is what
@@ -58,6 +63,23 @@ function formatGenerationIdentity(generation: GenerationIdentity): string {
   );
   parts.push(`boundary confidence: ${generation.boundary_confidence ?? "unknown"}`);
   return parts.join(", ");
+}
+
+// Independent review Finding B (PR #342): render the exact requested
+// condition alongside its typed truth/reason/explanation -- a bare "FALSE"
+// or "UNKNOWN" with no condition shown would not let a broker understand
+// *why* a design or concrete criterion did or did not match.
+function describeCriterion(criterion: LeafCriterion): string {
+  if (criterion.kind === "NUMERIC") {
+    if (criterion.comparison === "MAXIMUM") {
+      return `${criterion.field} <= ${criterion.threshold_max}`;
+    }
+    if (criterion.comparison === "MINIMUM") {
+      return `${criterion.field} >= ${criterion.threshold_min}`;
+    }
+    return `${criterion.field} in [${criterion.threshold_min}, ${criterion.threshold_max}]`;
+  }
+  return `${criterion.field} = ${criterion.equals}`;
 }
 
 const organizationId = Astro.params.organization_id;
@@ -341,6 +363,66 @@ const designCandidatesResult =
     : null;
 const designCandidates =
   designCandidatesResult?.kind === "ok" ? designCandidatesResult.candidates : null;
+
+// SLICE-0084: authorized single-target hypothetical DRAFT Search-fit
+// preview, requested via its own GET form fields (distinct param names
+// from the FastAPI `draft_max`/`keel_configuration` query the client lib
+// sends, mirroring `design_q`'s identical page-local-vs-API-param
+// separation). Read independently of every section above -- a service
+// failure here never downgrades the already-successful offer/claim read
+// into a 503 (this section simply shows its own error below).
+// Independent review Finding C (PR #342): `URLSearchParams.get` silently
+// returns only the first value of a repeated key, so a URL such as
+// `?sf_draft_max=1.5&sf_draft_max=0.5` would otherwise forward a single,
+// arbitrarily-chosen parameter to FastAPI instead of failing closed --
+// exactly the "duplicate/ambiguous scenario" case the backend's own
+// `parse_search_fit_scenario` already rejects when it reaches it. `getAll`
+// surfaces the true cardinality so this page can reject it itself, end to
+// end, rather than silently collapsing it before the backend ever sees it.
+const searchFitDraftMaxValues = Astro.url.searchParams.getAll("sf_draft_max");
+const searchFitKeelValues = Astro.url.searchParams.getAll("sf_keel_configuration");
+const searchFitDraftMaxRaw = searchFitDraftMaxValues[0] ?? "";
+const searchFitKeelRaw = searchFitKeelValues[0] ?? "";
+const searchFitHasAmbiguousParams =
+  searchFitDraftMaxValues.length > 1 || searchFitKeelValues.length > 1;
+const searchFitRequested = searchFitDraftMaxValues.length > 0 || searchFitKeelValues.length > 0;
+const searchFitResult: SearchFitResult | null =
+  result.kind === "ok" &&
+  organizationId &&
+  nativeListingId &&
+  searchFitRequested &&
+  !searchFitHasAmbiguousParams
+    ? await fetchSearchFit(
+        apiBaseUrl,
+        organizationId,
+        nativeListingId,
+        {
+          draftMax: searchFitDraftMaxRaw || undefined,
+          keelConfiguration: searchFitKeelRaw || undefined,
+        },
+        cookieHeader,
+      )
+    : null;
+// `hullq.search.keel_design_bridge.SEARCH_KEEL_CONFIGURATION_VALUES` --
+// deliberately narrower than this page's own `KEEL_CONFIGURATIONS` claim
+// vocabulary above: `LONG_KEEL`/`OTHER` remain valid PhysicalBoat claim
+// values but are not accepted public v0.1 Search-fit scenario values.
+const SEARCH_FIT_KEEL_CONFIGURATIONS = [
+  "FIN",
+  "WING",
+  "FIN_WITH_BULB",
+  "CENTERBOARD",
+  "LIFTING_KEEL",
+  "TWIN_KEEL",
+];
+const searchFitBlockerText: Record<string, string> = {
+  BOATDESIGN_NOT_LINKED: "No canonical design is linked yet",
+  BOATDESIGN_CONFIGURATION_UNRESOLVED:
+    "This design's own technical data isn't fully resolved -- confirm the correct canonical model/variant",
+  CONCRETE_DRAFT_UNCONFIRMED: "This boat's actual draft isn't confirmed (or is disputed)",
+  KEEL_CONFIGURATION_UNCONFIRMED:
+    "This boat's actual keel configuration isn't confirmed (or is disputed)",
+};
 
 const nextPath = `/broker/organizations/${organizationId ?? ""}/inventory/${nativeListingId ?? ""}/edit`;
 const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(nextPath)}`;
@@ -680,7 +762,7 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
               <p>No current offer is available to edit for this listing yet.</p>
             )}
 
-            <h2>PhysicalBoat claim</h2>
+            <h2 id="claim-editor">PhysicalBoat claim</h2>
             {outcomeText[claimOutcome] && <p>{outcomeText[claimOutcome]}</p>}
             {claim ? (
               <form method="POST">
@@ -863,7 +945,7 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
               <p>No PhysicalBoat claim is available to edit for this listing yet.</p>
             )}
 
-            <h2>Canonical design</h2>
+            <h2 id="design-editor">Canonical design</h2>
             {designOutcomeText[designSaveOutcome] && <p>{designOutcomeText[designSaveOutcome]}</p>}
             {
               // Independent review Finding C: every non-"ok" read outcome gets
@@ -968,6 +1050,167 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
                           ))}
                         </ul>
                       )}
+                    </>
+                  )}
+                </>
+              )
+            }
+
+            <h2>Search-fit preview</h2>
+            <p>
+              <em>Illustrative only / not actual buyer demand.</em> Enter a representative
+              maximum draft and/or keel configuration to see whether this listing would
+              technically satisfy it, using the exact same truth the public technical Search
+              uses. This never publishes anything, changes any stored evidence, or asserts this
+              listing is ready/eligible to publish.
+            </p>
+            <form method="GET">
+              <p>
+                <label>
+                  Maximum draft (metres):
+                  <input
+                    type="text"
+                    name="sf_draft_max"
+                    value={searchFitDraftMaxRaw}
+                    placeholder="e.g. 1.6"
+                  />
+                </label>
+              </p>
+              <p>
+                <label>
+                  Keel configuration:
+                  <select name="sf_keel_configuration">
+                    <option value="" selected={searchFitKeelRaw === ""}>
+                      (not specified)
+                    </option>
+                    {SEARCH_FIT_KEEL_CONFIGURATIONS.map((value) => (
+                      <option value={value} selected={searchFitKeelRaw === value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </p>
+              <button type="submit">Run Search-fit preview</button>
+            </form>
+            {
+              searchFitHasAmbiguousParams ? (
+                <p>
+                  That scenario isn't valid (a duplicate/ambiguous maximum draft or keel
+                  configuration parameter was submitted). Choose exactly one positive maximum
+                  draft in metres (e.g. 1.6) and/or one supported keel configuration from the
+                  list above.
+                </p>
+              ) : searchFitResult === null ? null : searchFitResult.kind === "unauthenticated" ? (
+                <p>Please log in to run this preview.</p>
+              ) : searchFitResult.kind === "not_found" ? (
+                <p>This listing isn't available here.</p>
+              ) : searchFitResult.kind === "mfa_required" ? (
+                <p>Additional verification is required before you can run this preview.</p>
+              ) : searchFitResult.kind === "publisher_role_required" ? (
+                <p>Only a Publisher on this Organization can run this preview.</p>
+              ) : searchFitResult.kind === "invalid_scenario" ? (
+                <p>
+                  That scenario isn't valid. Choose a positive maximum draft in metres (e.g. 1.6)
+                  and/or one supported keel configuration from the list above.
+                </p>
+              ) : searchFitResult.kind === "not_previewable" ? (
+                <p>
+                  This listing is no longer lifecycle-DRAFT (or just changed) -- it can't be
+                  previewed as a hypothetical draft anymore. Reload the page to see its current
+                  state.
+                </p>
+              ) : searchFitResult.kind === "chain_integrity_fault" ? (
+                <p>
+                  Something went wrong resolving this listing's underlying boat/design records.
+                  Please try again.
+                </p>
+              ) : searchFitResult.kind === "service_error" ? (
+                <p>Something went wrong running this preview. Please try again.</p>
+              ) : (
+                <>
+                  <p>
+                    Result: <strong>{searchFitResult.data.result_class}</strong>
+                  </p>
+                  {searchFitResult.data.blockers.length > 0 && (
+                    <ul>
+                      {searchFitResult.data.blockers.map((blocker) => (
+                        <li>
+                          {searchFitBlockerText[blocker] ?? blocker}
+                          {" -- see "}
+                          {blocker === "CONCRETE_DRAFT_UNCONFIRMED" ||
+                          blocker === "KEEL_CONFIGURATION_UNCONFIRMED" ? (
+                            <a href="#claim-editor">PhysicalBoat claim</a>
+                          ) : (
+                            <a href="#design-editor">Canonical design</a>
+                          )}
+                          {" above."}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {
+                    // Independent review Finding B (PR #342): the design-
+                    // level aggregate reason plus every evaluated
+                    // configuration's own per-criterion requested condition/
+                    // truth/reason/explanation/observed value -- rendered
+                    // for every design result class, including
+                    // CONFIRMED_NON_MATCH and INSUFFICIENT_DATA, which
+                    // previously showed only a bare aggregate status with no
+                    // visible per-criterion explanation.
+                    searchFitResult.data.design_evaluation && (
+                      <>
+                        <p>
+                          Canonical design result:{" "}
+                          <strong>{searchFitResult.data.design_evaluation.result_class}</strong>
+                          {searchFitResult.data.design_evaluation.reason && (
+                            <> ({searchFitResult.data.design_evaluation.reason})</>
+                          )}
+                        </p>
+                        {searchFitResult.data.design_configuration_evidence.length > 0 && (
+                          <ul>
+                            {searchFitResult.data.design_configuration_evidence.map(
+                              (configEvidence) => (
+                                <li>
+                                  Configuration <code>{configEvidence.configuration_id}</code>{" "}
+                                  ({configEvidence.truth})
+                                  <ul>
+                                    {configEvidence.criterion_evidence.map((evidence) => (
+                                      <li>
+                                        {describeCriterion(evidence.criterion)}: {evidence.truth}
+                                        {evidence.observed_value !== null && (
+                                          <> -- design value: {evidence.observed_value}</>
+                                        )}
+                                        {evidence.reason && <> ({evidence.reason})</>}
+                                        {" -- "}
+                                        {evidence.explanation}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </li>
+                              ),
+                            )}
+                          </ul>
+                        )}
+                      </>
+                    )
+                  }
+                  {searchFitResult.data.criterion_evidence.length > 0 && (
+                    <>
+                      <p>This boat's own current PhysicalBoat claim evidence:</p>
+                      <ul>
+                        {searchFitResult.data.criterion_evidence.map((evidence) => (
+                          <li>
+                            {describeCriterion(evidence.criterion)}: {evidence.truth}
+                            {evidence.observed_value !== null && (
+                              <> -- this boat's current claim: {evidence.observed_value}</>
+                            )}
+                            {evidence.reason && <> ({evidence.reason})</>}
+                            {" -- "}
+                            {evidence.explanation}
+                          </li>
+                        ))}
+                      </ul>
                     </>
                   )}
                 </>
