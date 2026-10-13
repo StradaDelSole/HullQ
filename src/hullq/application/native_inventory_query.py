@@ -90,6 +90,7 @@ carry (the resolved/observed value) -- never re-derived from
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -100,38 +101,37 @@ from hullq.application.native_listing_freshness import resolve_current_freshness
 from hullq.domain.current_public_eligibility import CurrentPublicEligibilityStatus
 from hullq.domain.market_identity import NativeListingId, PhysicalBoatId
 from hullq.domain.native_listing_freshness import FreshnessStatus
-from hullq.domain.physical_boat_claims import AssertionKind, KeelConfigurationClaim
+from hullq.domain.physical_boat_claims import AssertionKind
 from hullq.domain.publishing_eligibility import MarketplaceOrganizationId
 from hullq.persistence.identity_readback import fetch_boat_design
 from hullq.persistence.inventory_search import list_active_design_linked_listings
 from hullq.persistence.physical_boat_claims import list_current_physical_boat_claim_observations
-from hullq.search.boat_design_field_bridge import (
-    FieldProjectionSpec,
-    run_boat_design_configuration_query,
-)
+from hullq.search.boat_design_field_bridge import BoatDesignConfigurationQueryResult
 from hullq.search.configuration import (
     ConfigurationIdentity,
     ConfigurationProjection,
+    DesignConfigurationSet,
     ResolvedConfiguration,
 )
 from hullq.search.configuration_engine import (
     ConfigurationEvaluation,
+    ConfigurationSearchOutcome,
     DesignQueryEvaluation,
     evaluate_configuration,
+    run_configuration_query,
 )
 from hullq.search.criteria import (
     CategoricalLeafCriterion,
     CriterionEvaluation,
     NumericLeafCriterion,
 )
-from hullq.search.draft_max_design_bridge import (
-    DRAFT_MAX_FIELD_PROJECTION_SPEC,
-    DRAFT_MAX_PROJECTION_FIELD,
-)
-from hullq.search.keel_design_bridge import (
-    KEEL_CONFIGURATION_FIELD_PROJECTION_SPEC,
-    KEEL_CONFIGURATION_PROJECTION_FIELD,
-    SEARCH_KEEL_CONFIGURATION_VALUES,
+from hullq.search.criteria_registry import (
+    DRAFT_MAX_DEFINITION,
+    KEEL_CONFIGURATION_DEFINITION,
+    LOA_DEFINITION,
+    RUDDER_CONFIGURATION_DEFINITION,
+    CriterionDefinition,
+    CriterionKind,
 )
 from hullq.search.query_mixed import MixedAndQuery, MixedLeafCriterion
 from hullq.search.types import NumericComparisonKind, ResultClass, TruthState, ValueQualification
@@ -146,6 +146,7 @@ __all__ = [
     "build_mixed_requirement_query",
     "classify_concrete_candidate",
     "evaluate_native_inventory_requirements",
+    "run_mixed_boat_design_configuration_query",
 ]
 
 
@@ -240,6 +241,9 @@ class NativeInventorySearchOutcome:
 
     draft_max: Decimal | None
     keel_configuration: str | None
+    loa_min: Decimal | None
+    loa_max: Decimal | None
+    rudder_configuration: str | None
     query: MixedAndQuery
     confirmed_matches: tuple[NativeInventoryCandidateEvaluation, ...]
     confirmed_non_matches: tuple[NativeInventoryCandidateEvaluation, ...]
@@ -256,20 +260,6 @@ class NativeInventorySearchOutcome:
     @property
     def insufficient_data_count(self) -> int:
         return len(self.insufficient_data)
-
-
-def _confirmed_keel_claim_value(claim: KeelConfigurationClaim) -> str:
-    """Extract the Search-vocabulary string from a `VALUE_ASSERTION` keel claim.
-
-    Callers must only pass a claim already known (by their own
-    `assertion_kind is AssertionKind.VALUE_ASSERTION` check) to carry a
-    value -- `KeelConfigurationClaim.__post_init__` guarantees `value` is
-    non-`None` exactly for that assertion kind, but that domain invariant is
-    not itself visible to the type checker at the call site.
-    """
-    assert claim.assertion_kind is AssertionKind.VALUE_ASSERTION
-    assert claim.value is not None
-    return claim.value.value
 
 
 def _qualify_claim_field(
@@ -362,20 +352,30 @@ def classify_concrete_candidate(
     physical_boat_id: PhysicalBoatId,
     boat_design_id: str,
     query: MixedAndQuery,
-    draft_active: bool,
-    keel_active: bool,
+    active_definitions: Sequence[CriterionDefinition],
 ) -> tuple[ResultClass, tuple[SearchCriterionEvidence, ...]]:
     """Classify one design-eligible, currently-fresh candidate's concrete
     PhysicalBoat claims.
 
     Reads every active field's current cross-Organization observation set
     from one call to `list_current_physical_boat_claim_observations` (one
-    SQL statement, therefore one consistent PostgreSQL MVCC snapshot for
-    both draft and keel -- mirrors the SLICE-0051 Finding 5 rationale), then
-    reuses the exact same `evaluate_configuration` MUST-AND kernel already
-    used for design-level eligibility to combine the active criteria's
-    concrete truth: any confirmed FALSE prevents a confirmed joint match;
-    unresolved evidence never becomes TRUE (Required Behavior §B).
+    SQL statement, therefore one consistent PostgreSQL MVCC snapshot across
+    every active criterion -- mirrors the SLICE-0051 Finding 5 rationale),
+    then reuses the exact same `evaluate_configuration` MUST-AND kernel
+    already used for design-level eligibility to combine the active
+    criteria's concrete truth: any confirmed FALSE prevents a confirmed
+    joint match; unresolved evidence never becomes TRUE (Required
+    Behavior §B).
+
+    Review amendment (Finding C): *active_definitions* replaces four
+    previously hand-duplicated per-criterion boolean flags/blocks. Every
+    `hullq.search.criteria_registry.CriterionDefinition.read_claim` has the
+    identical `(observation) -> (assertion_kind, value) | None` shape, so
+    the same-PhysicalBoat cross-Organization qualification
+    (`_qualify_claim_field`) now runs in one shared loop over whichever
+    definitions are active, rather than one copy-pasted block per
+    criterion -- this is the registry's "concrete publisher accessor"
+    being genuinely consumed, not merely declared.
 
     Returns typed `SearchCriterionEvidence` (requested criterion + typed
     evaluation + safely observed concrete value), not bare
@@ -401,53 +401,34 @@ def classify_concrete_candidate(
     categorical_values: dict[str, QualifiedCategoricalValue] = {}
     observed_by_field: dict[str, Decimal | str | None] = {}
 
-    if draft_active:
-        draft_claim = publisher_observation.draft if publisher_observation is not None else None
-        cross_organization_draft_values = {
-            obs.draft.value
-            for obs in observations
-            if obs.draft is not None and obs.draft.assertion_kind is AssertionKind.VALUE_ASSERTION
-        }
-        qualification, value = _qualify_claim_field(
-            publisher_assertion_kind=(
-                draft_claim.assertion_kind if draft_claim is not None else None
-            ),
-            publisher_value=draft_claim.value if draft_claim is not None else None,
-            cross_organization_values=cross_organization_draft_values,
-        )
-        is_confirmed = qualification is ValueQualification.CONFIRMED
-        numeric_values[DRAFT_MAX_PROJECTION_FIELD] = QualifiedNumericValue(
-            value=value if is_confirmed else None, qualification=qualification
-        )
-        observed_by_field[DRAFT_MAX_PROJECTION_FIELD] = value if is_confirmed else None
-
-    if keel_active:
-        keel_claim = (
-            publisher_observation.keel_configuration if publisher_observation is not None else None
-        )
-        cross_organization_keel_values = {
-            _confirmed_keel_claim_value(obs.keel_configuration)
-            for obs in observations
-            if obs.keel_configuration is not None
-            and obs.keel_configuration.assertion_kind is AssertionKind.VALUE_ASSERTION
-        }
-        publisher_keel_value = (
-            _confirmed_keel_claim_value(keel_claim)
-            if keel_claim is not None and keel_claim.assertion_kind is AssertionKind.VALUE_ASSERTION
+    for definition in active_definitions:
+        publisher_entry = (
+            definition.read_claim(publisher_observation)
+            if publisher_observation is not None
             else None
         )
+        cross_organization_values = {
+            entry[1]
+            for obs in observations
+            if (entry := definition.read_claim(obs)) is not None
+            and entry[0] is AssertionKind.VALUE_ASSERTION
+        }
         qualification, value = _qualify_claim_field(
-            publisher_assertion_kind=(
-                keel_claim.assertion_kind if keel_claim is not None else None
-            ),
-            publisher_value=publisher_keel_value,
-            cross_organization_values=cross_organization_keel_values,
+            publisher_assertion_kind=publisher_entry[0] if publisher_entry is not None else None,
+            publisher_value=publisher_entry[1] if publisher_entry is not None else None,
+            cross_organization_values=cross_organization_values,
         )
         is_confirmed = qualification is ValueQualification.CONFIRMED
-        categorical_values[KEEL_CONFIGURATION_PROJECTION_FIELD] = QualifiedCategoricalValue(
-            value=value if is_confirmed else None, qualification=qualification
-        )
-        observed_by_field[KEEL_CONFIGURATION_PROJECTION_FIELD] = value if is_confirmed else None
+        resolved_value = value if is_confirmed else None
+        if definition.kind is CriterionKind.CATEGORICAL:
+            categorical_values[definition.projection_field] = QualifiedCategoricalValue(
+                value=resolved_value, qualification=qualification
+            )
+        else:
+            numeric_values[definition.projection_field] = QualifiedNumericValue(
+                value=resolved_value, qualification=qualification
+            )
+        observed_by_field[definition.projection_field] = resolved_value
 
     projection = ConfigurationProjection(
         numeric_values=numeric_values, categorical_values=categorical_values
@@ -485,60 +466,218 @@ def classify_concrete_candidate(
 
 
 def build_mixed_requirement_query(
-    *, draft_max: Decimal | None, keel_configuration: str | None
-) -> tuple[MixedAndQuery, tuple[FieldProjectionSpec, ...]]:
-    """Validate and build the bounded `draft_max`/`keel_configuration`
-    `MixedAndQuery` + its matching `FieldProjectionSpec`s.
+    *,
+    draft_max: Decimal | None,
+    keel_configuration: str | None,
+    loa_min: Decimal | None = None,
+    loa_max: Decimal | None = None,
+    rudder_configuration: str | None = None,
+) -> tuple[MixedAndQuery, tuple[CriterionDefinition, ...]]:
+    """Validate and build the bounded multi-criterion `MixedAndQuery` + the
+    exact `hullq.search.criteria_registry.CriterionDefinition`s active in it.
 
     Shared by the public bulk native-inventory funnel
     (`evaluate_native_inventory_requirements`, below) and SLICE-0084's
     authorized single-target hypothetical DRAFT preview
     (`hullq.application.broker_search_fit`), so the MUST/AND query this
     bounded vertical evaluates is constructed in exactly one place -- never
-    a second, independently maintained query-construction path for the two
-    accepted criteria.
+    a second, independently maintained query-construction path for any of
+    the accepted criteria.
 
-    At least one of *draft_max*/*keel_configuration* must be supplied.
-    *draft_max* must already be an exact positive finite `Decimal`
-    (`hullq.search.draft_max_request.parse_draft_max_decimal`).
-    *keel_configuration* must already be one of
-    `hullq.search.keel_design_bridge.SEARCH_KEEL_CONFIGURATION_VALUES`.
-    Neither is re-parsed/re-validated for public syntax here.
+    At least one criterion must be supplied. Every value must already be
+    parsed/validated for public syntax by its own accepted parser (each
+    `CriterionDefinition`'s own `parse_value`/`allowed_values`) -- none is
+    re-parsed/re-validated here, only re-checked as a defensive invariant.
+
+    Review amendment (Finding C): the returned `active_definitions` replaces
+    the previous `(specs, rudder_active)` pair -- `run_mixed_boat_design_
+    configuration_query` and `classify_concrete_candidate` both consume the
+    SAME tuple directly, so "which criteria are active" is computed exactly
+    once per request, not re-derived at each call site.
     """
-    if draft_max is None and keel_configuration is None:
-        raise ValueError("at least one of draft_max/keel_configuration must be supplied")
+    if (
+        draft_max is None
+        and keel_configuration is None
+        and loa_min is None
+        and loa_max is None
+        and rudder_configuration is None
+    ):
+        raise ValueError("at least one criterion must be supplied")
     if draft_max is not None and (
         not isinstance(draft_max, Decimal) or not draft_max.is_finite() or draft_max <= 0
     ):
         raise ValueError(f"draft_max must be a positive finite Decimal; got {draft_max!r}")
+    assert KEEL_CONFIGURATION_DEFINITION.allowed_values is not None
     if (
         keel_configuration is not None
-        and keel_configuration not in SEARCH_KEEL_CONFIGURATION_VALUES
+        and keel_configuration not in KEEL_CONFIGURATION_DEFINITION.allowed_values
     ):
         raise ValueError(
-            f"keel_configuration must be one of {sorted(SEARCH_KEEL_CONFIGURATION_VALUES)}; "
-            f"got {keel_configuration!r}"
+            f"keel_configuration must be one of "
+            f"{sorted(KEEL_CONFIGURATION_DEFINITION.allowed_values)}; got {keel_configuration!r}"
+        )
+    for label, bound in (("loa_min", loa_min), ("loa_max", loa_max)):
+        if bound is not None and (
+            not isinstance(bound, Decimal) or not bound.is_finite() or bound <= 0
+        ):
+            raise ValueError(f"{label} must be a positive finite Decimal; got {bound!r}")
+    if loa_min is not None and loa_max is not None and loa_min > loa_max:
+        raise ValueError(f"loa_min ({loa_min}) must be <= loa_max ({loa_max})")
+    assert RUDDER_CONFIGURATION_DEFINITION.allowed_values is not None
+    if (
+        rudder_configuration is not None
+        and rudder_configuration not in RUDDER_CONFIGURATION_DEFINITION.allowed_values
+    ):
+        raise ValueError(
+            f"rudder_configuration must be one of "
+            f"{sorted(RUDDER_CONFIGURATION_DEFINITION.allowed_values)}; got {rudder_configuration!r}"
         )
 
     criteria: list[NumericLeafCriterion | CategoricalLeafCriterion] = []
-    specs: list[FieldProjectionSpec] = []
+    active_definitions: list[CriterionDefinition] = []
     if draft_max is not None:
         criteria.append(
             NumericLeafCriterion(
-                field=DRAFT_MAX_PROJECTION_FIELD,
+                field=DRAFT_MAX_DEFINITION.projection_field,
                 comparison=NumericComparisonKind.MAXIMUM,
                 threshold_max=draft_max,
             )
         )
-        specs.append(DRAFT_MAX_FIELD_PROJECTION_SPEC)
+        active_definitions.append(DRAFT_MAX_DEFINITION)
     if keel_configuration is not None:
         criteria.append(
             CategoricalLeafCriterion(
-                field=KEEL_CONFIGURATION_PROJECTION_FIELD, equals=keel_configuration
+                field=KEEL_CONFIGURATION_DEFINITION.projection_field, equals=keel_configuration
             )
         )
-        specs.append(KEEL_CONFIGURATION_FIELD_PROJECTION_SPEC)
-    return MixedAndQuery(criteria=tuple(criteria)), tuple(specs)
+        active_definitions.append(KEEL_CONFIGURATION_DEFINITION)
+    if loa_min is not None or loa_max is not None:
+        # SLICE-0085 normative LOA semantics: both bounds project against the
+        # SAME deduplicated loa_m field, as two independent numeric leaves --
+        # never a single RANGE leaf (which would merge their evidence into
+        # one explanation) and never a duplicated design-side build.
+        if loa_min is not None:
+            criteria.append(
+                NumericLeafCriterion(
+                    field=LOA_DEFINITION.projection_field,
+                    comparison=NumericComparisonKind.MINIMUM,
+                    threshold_min=loa_min,
+                )
+            )
+        if loa_max is not None:
+            criteria.append(
+                NumericLeafCriterion(
+                    field=LOA_DEFINITION.projection_field,
+                    comparison=NumericComparisonKind.MAXIMUM,
+                    threshold_max=loa_max,
+                )
+            )
+        active_definitions.append(LOA_DEFINITION)
+    if rudder_configuration is not None:
+        criteria.append(
+            CategoricalLeafCriterion(
+                field=RUDDER_CONFIGURATION_DEFINITION.projection_field, equals=rudder_configuration
+            )
+        )
+        active_definitions.append(RUDDER_CONFIGURATION_DEFINITION)
+    return MixedAndQuery(criteria=tuple(criteria)), tuple(active_definitions)
+
+
+def _merge_configuration_sets(
+    design_id: str, configuration_sets: Sequence[DesignConfigurationSet]
+) -> DesignConfigurationSet:
+    """Merge every active criterion's own `DesignConfigurationSet` for one
+    design into a single combined set, by `configuration_id`.
+
+    Review amendment (Finding C): generalizes the previous rudder-only
+    special-case merge to every active `CriterionDefinition.design_set_
+    builder` uniformly -- draft_max/keel_configuration/loa (ordinary
+    `FieldProjectionSpec`-backed) and rudder_configuration (generation-aware
+    derived) are merged by the exact same code path, never a second
+    "ordinary vs. special" branch. Every builder enumerates the identical
+    baseline + eligible-NamedVariant configuration set for the same
+    `boat_design` (same exclusion of a variant with unresolved
+    `requires_option_ids`), so their `configuration_id`s are always
+    identical sets across all of *configuration_sets* -- a direct per-id
+    lookup (never positional zipping) is safe. A single-element input is
+    returned unchanged (no-op merge).
+    """
+    if len(configuration_sets) == 1:
+        return configuration_sets[0]
+    by_id_per_set = [
+        {c.identity.configuration_id: c for c in s.configurations} for s in configuration_sets
+    ]
+    base_by_id = by_id_per_set[0]
+    base_set = configuration_sets[0]
+    merged_configurations = []
+    for configuration_id, base_config in base_by_id.items():
+        numeric_values: dict[str, Any] = dict(base_config.projection.numeric_values)
+        categorical_values: dict[str, Any] = dict(base_config.projection.categorical_values)
+        for other_by_id in by_id_per_set[1:]:
+            other_config = other_by_id[configuration_id]
+            numeric_values.update(other_config.projection.numeric_values)
+            categorical_values.update(other_config.projection.categorical_values)
+        merged_configurations.append(
+            ResolvedConfiguration(
+                identity=base_config.identity,
+                projection=ConfigurationProjection(
+                    numeric_values=numeric_values, categorical_values=categorical_values
+                ),
+            )
+        )
+    return DesignConfigurationSet(
+        design_id=design_id,
+        configurations=tuple(merged_configurations),
+        configuration_space_complete=base_set.configuration_space_complete,
+        option_constraints=base_set.option_constraints,
+        variant_constraints=base_set.variant_constraints,
+        is_fixture=base_set.is_fixture,
+    )
+
+
+def run_mixed_boat_design_configuration_query(
+    conn: Any,
+    query: MixedAndQuery,
+    boat_designs: Iterable[Mapping[str, Any]],
+    active_definitions: Sequence[CriterionDefinition],
+) -> BoatDesignConfigurationQueryResult:
+    """Evaluate *query* against every design's configuration set, merging
+    every active criterion's own `design_set_builder` output (SLICE-0085,
+    review amendment Finding C).
+
+    Review amendment (Finding C): replaces the previous "ordinary
+    `FieldProjectionSpec`-list fast path, with a rudder-only special merge"
+    split -- every active definition's `design_set_builder` is called and
+    merged uniformly via `_merge_configuration_sets`, regardless of whether
+    its own projection is `FieldProjectionSpec`-backed or a generation-aware
+    derived value. No second, independently maintained FieldResolution/
+    configuration-evaluation kernel is introduced; `run_configuration_query`
+    (the unmodified shared kernel) still does the actual truth evaluation.
+    """
+    boat_designs = tuple(boat_designs)
+    if not boat_designs:
+        return BoatDesignConfigurationQueryResult(
+            outcome=ConfigurationSearchOutcome(
+                confirmed_matches=(), confirmed_non_matches=(), insufficient_data=()
+            ),
+            configurations_by_id={},
+        )
+    merged_sets = tuple(
+        _merge_configuration_sets(
+            boat_design["id"],
+            [definition.design_set_builder(conn, boat_design) for definition in active_definitions],
+        )
+        for boat_design in boat_designs
+    )
+    configurations_by_id = {
+        configuration.identity.configuration_id: configuration
+        for configuration_set in merged_sets
+        for configuration in configuration_set.configurations
+    }
+    outcome = run_configuration_query(query, merged_sets)
+    return BoatDesignConfigurationQueryResult(
+        outcome=outcome, configurations_by_id=configurations_by_id
+    )
 
 
 def evaluate_native_inventory_requirements(
@@ -546,16 +685,17 @@ def evaluate_native_inventory_requirements(
     *,
     draft_max: Decimal | None,
     keel_configuration: str | None,
+    loa_min: Decimal | None = None,
+    loa_max: Decimal | None = None,
+    rudder_configuration: str | None = None,
     as_of: datetime,
 ) -> NativeInventorySearchOutcome:
     """Evaluate the bounded mixed vertical against real persisted state.
 
-    At least one of *draft_max*/*keel_configuration* must be supplied.
-    *draft_max* must already be an exact positive finite `Decimal`
-    (`hullq.search.draft_max_request.parse_draft_max_decimal`).
-    *keel_configuration* must already be one of
-    `hullq.search.keel_design_bridge.SEARCH_KEEL_CONFIGURATION_VALUES`.
-    Neither is re-parsed/re-validated for public syntax here.
+    At least one criterion must be supplied. Every value must already be
+    parsed/validated for public syntax by its own accepted parser -- see
+    `build_mixed_requirement_query`'s docstring for the exact list. None is
+    re-parsed/re-validated for public syntax here.
 
     SLICE-0069 (supersedes the SLICE-0052 §7.2 freshness-only narrowing):
     every ACTIVE design-linked candidate is resolved against the canonical
@@ -579,21 +719,27 @@ def evaluate_native_inventory_requirements(
 
     Finding 1 (second amendment): every candidate's
     `NativeInventoryCandidateEvaluation.design_configuration_evidence` is
-    populated from `hullq.search.boat_design_field_bridge.
-    run_boat_design_configuration_query`'s `configurations_by_id`, so the
-    safely resolved/observed BoatDesign/NamedVariant canonical value behind
-    each design-side criterion evaluation remains typed and recoverable,
-    not only the aggregate truth/reason `DesignQueryEvaluation` itself
-    carries.
+    populated from `run_mixed_boat_design_configuration_query`'s
+    `configurations_by_id`, so the safely resolved/observed BoatDesign/
+    NamedVariant canonical value behind each design-side criterion
+    evaluation remains typed and recoverable, not only the aggregate
+    truth/reason `DesignQueryEvaluation` itself carries.
     """
-    query, specs = build_mixed_requirement_query(
-        draft_max=draft_max, keel_configuration=keel_configuration
+    query, active_definitions = build_mixed_requirement_query(
+        draft_max=draft_max,
+        keel_configuration=keel_configuration,
+        loa_min=loa_min,
+        loa_max=loa_max,
+        rudder_configuration=rudder_configuration,
     )
 
     def _empty() -> NativeInventorySearchOutcome:
         return NativeInventorySearchOutcome(
             draft_max=draft_max,
             keel_configuration=keel_configuration,
+            loa_min=loa_min,
+            loa_max=loa_max,
+            rudder_configuration=rudder_configuration,
             query=query,
             confirmed_matches=(),
             confirmed_non_matches=(),
@@ -623,7 +769,9 @@ def evaluate_native_inventory_requirements(
         if raw_design is not None:
             boat_designs.append(raw_design)
 
-    design_result = run_boat_design_configuration_query(conn, query, boat_designs, tuple(specs))
+    design_result = run_mixed_boat_design_configuration_query(
+        conn, query, boat_designs, active_definitions
+    )
     design_evaluation_by_id: dict[str, DesignQueryEvaluation] = {
         evaluation.design_id: evaluation
         for evaluation in (
@@ -661,8 +809,7 @@ def evaluate_native_inventory_requirements(
                 physical_boat_id=candidate.physical_boat_id,
                 boat_design_id=candidate.boat_design_ref.value,
                 query=query,
-                draft_active=draft_max is not None,
-                keel_active=keel_configuration is not None,
+                active_definitions=active_definitions,
             )
         else:
             # Design/configuration eligibility never admitted this design to
@@ -697,6 +844,9 @@ def evaluate_native_inventory_requirements(
     return NativeInventorySearchOutcome(
         draft_max=draft_max,
         keel_configuration=keel_configuration,
+        loa_min=loa_min,
+        loa_max=loa_max,
+        rudder_configuration=rudder_configuration,
         query=query,
         confirmed_matches=tuple(confirmed_matches),
         confirmed_non_matches=tuple(confirmed_non_matches),

@@ -64,12 +64,14 @@ export async function loadSearchPageData(
  * `redirect`/`invalid`/`unavailable` page never has a canonical result
  * URL, so callers pass `null` for those.
  *
- * SLICE-0056: mirrors `src/hullq/application/search_read.py`'s own
- * canonical-query-part ordering exactly (`draft_max` before
- * `keel_configuration`, contract §B "Canonical query ordering ... remain
- * backend-owned") -- this never independently decides canonicalization, it
- * only echoes back the exact sparse key set/order FastAPI already applied
- * to reach a `kind: "ok"` result in the first place.
+ * SLICE-0056 (extended SLICE-0085): mirrors `src/hullq/application/
+ * search_read.py`'s own canonical-query-part ordering exactly
+ * (`hullq.search.criteria_registry.CANONICAL_PARAM_KEY_ORDER`: `draft_max`,
+ * `keel_configuration`, `loa_max`, `loa_min`, `rudder_configuration`,
+ * contract §B "Canonical query ordering ... remain backend-owned") -- this
+ * never independently decides canonicalization, it only echoes back the
+ * exact sparse key set/order FastAPI already applied to reach a `kind:
+ * "ok"` result in the first place.
  */
 export function buildSearchCanonicalPath(
   locale: SupportedLocale,
@@ -84,6 +86,15 @@ export function buildSearchCanonicalPath(
   }
   if (activeRequirement.keel_configuration !== undefined) {
     parts.push(`keel_configuration=${activeRequirement.keel_configuration}`);
+  }
+  if (activeRequirement.loa_max !== undefined) {
+    parts.push(`loa_max=${activeRequirement.loa_max}`);
+  }
+  if (activeRequirement.loa_min !== undefined) {
+    parts.push(`loa_min=${activeRequirement.loa_min}`);
+  }
+  if (activeRequirement.rudder_configuration !== undefined) {
+    parts.push(`rudder_configuration=${activeRequirement.rudder_configuration}`);
   }
   return `/${locale}/search?${parts.join("&")}`;
 }

@@ -222,6 +222,31 @@ test("fetchSearchFit: network failure collapses to service_error rather than thr
   assert.equal(result.kind, "service_error");
 });
 
+// SLICE-0085: loa_min/loa_max/rudder_configuration extend the same bounded
+// scenario forwarding -- only the supplied fields become query params.
+test("fetchSearchFit: loa/rudder scenario fields are forwarded as query params", async () => {
+  await withServer(
+    (req, res) => {
+      const url = new URL(req.url ?? "", "http://localhost");
+      assert.equal(url.searchParams.get("loa_min"), "10");
+      assert.equal(url.searchParams.get("loa_max"), "15");
+      assert.equal(url.searchParams.get("rudder_configuration"), "SKEG_HUNG");
+      assert.equal(url.searchParams.has("draft_max"), false);
+      jsonResponse(res, 200, VALID_VIEW);
+    },
+    async (baseUrl) => {
+      const result = await fetchSearchFit(
+        baseUrl,
+        "ORG-1",
+        "NL-1",
+        { loaMin: "10", loaMax: "15", rudderConfiguration: "SKEG_HUNG" },
+        null,
+      );
+      assert.equal(result.kind, "ok");
+    },
+  );
+});
+
 test("fetchSearchFit: cookie header is forwarded verbatim", async () => {
   await withServer(
     (req, res) => {

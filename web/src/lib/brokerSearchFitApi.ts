@@ -146,7 +146,13 @@ function isDesignEvaluation(value: unknown): value is DesignEvaluation {
 
 export interface SearchFitView {
   native_listing_id: string;
-  active_requirement: { draft_max?: string; keel_configuration?: string };
+  active_requirement: {
+    draft_max?: string;
+    keel_configuration?: string;
+    loa_min?: string;
+    loa_max?: string;
+    rudder_configuration?: string;
+  };
   result_class: ResultClass;
   design_evaluation: DesignEvaluation | null;
   design_configuration_evidence: ConfigurationEvidence[];
@@ -191,6 +197,9 @@ function authFailureFromStatus(status: number): AuthFailure | null {
 export interface SearchFitScenario {
   draftMax?: string;
   keelConfiguration?: string;
+  loaMin?: string;
+  loaMax?: string;
+  rudderConfiguration?: string;
 }
 
 export type SearchFitResult =
@@ -225,6 +234,9 @@ export async function fetchSearchFit(
   const params = new URLSearchParams();
   if (scenario.draftMax) params.set("draft_max", scenario.draftMax);
   if (scenario.keelConfiguration) params.set("keel_configuration", scenario.keelConfiguration);
+  if (scenario.loaMin) params.set("loa_min", scenario.loaMin);
+  if (scenario.loaMax) params.set("loa_max", scenario.loaMax);
+  if (scenario.rudderConfiguration) params.set("rudder_configuration", scenario.rudderConfiguration);
   const search = params.toString() ? `?${params.toString()}` : "";
   let response: Response;
   try {

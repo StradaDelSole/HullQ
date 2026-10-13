@@ -32,6 +32,38 @@ export interface SearchText {
     LIFTING_KEEL: string;
     TWIN_KEEL: string;
   };
+  // SLICE-0085: LOA (length overall) min/max filter.
+  loaMinLabel: string;
+  loaMaxLabel: string;
+  loaMinPlaceholder: string;
+  loaMaxPlaceholder: string;
+  // SLICE-0085: rudder/skeg configuration filter.
+  rudderConfigurationLabel: string;
+  rudderConfigurationAnyOption: string;
+  /** Localized display label for each accepted technical rudder value. */
+  rudderConfigurationLabels: {
+    SKEG_HUNG: string;
+    TRANSOM_HUNG: string;
+    SPADE: string;
+    TWIN: string;
+  };
+  // SLICE-0085: per-criterion requirement-summary phrase fragments, combined
+  // generically (joined with `requirementSummaryListConjunction`) by
+  // `requirementSummaryGeneric` whenever any of loa_min/loa_max/
+  // rudder_configuration is active. `requirementSummary`/
+  // `requirementSummaryKeelOnly`/`requirementSummaryMixed` stay byte-for-byte
+  // unchanged and are used only for the three originally accepted shapes
+  // (draft-only, keel-only, draft+keel) -- Required Behavior non-regression.
+  requirementPhraseDraftMax: (draftMax: string) => string;
+  requirementPhraseKeel: (keelLabel: string) => string;
+  requirementPhraseLoaMin: (loaMin: string) => string;
+  requirementPhraseLoaMax: (loaMax: string) => string;
+  requirementPhraseLoaRange: (loaMin: string, loaMax: string) => string;
+  requirementPhraseRudder: (rudderLabel: string) => string;
+  requirementSummaryListConjunction: string;
+  requirementSummaryGeneric: (phrases: string) => string;
+  resolvedLoaText: (resolvedLoaM: string) => string;
+  resolvedRudderText: (rudderLabel: string) => string;
   submit: string;
   formInstructions: string;
   invalidTitle: string;
@@ -75,6 +107,14 @@ export interface SearchText {
   // "better", "worse", "optimal", "should" or "relax this".
   /** Shown alongside each per-active-criterion sensitivity form on the Search page. */
   sensitivityFormNote: string;
+  /**
+   * Review amendment Finding A (SLICE-0085): shown instead of the
+   * sensitivity forms whenever a length-overall or rudder-configuration
+   * filter is active alongside draft_max/keel_configuration -- truthful,
+   * decision-neutral, never implying the feature is temporarily broken
+   * (contract §12/§19 tone).
+   */
+  sensitivityUnavailableWithNewCriteria: string;
   sensitivityDraftSubmitLabel: string;
   sensitivityKeelSubmitLabel: string;
   sensitivityAlternativeDraftLabel: string;
@@ -113,6 +153,31 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       LIFTING_KEEL: "Lifting keel",
       TWIN_KEEL: "Twin keel",
     },
+    loaMinLabel: "Minimum length overall (metres)",
+    loaMaxLabel: "Maximum length overall (metres)",
+    loaMinPlaceholder: "10",
+    loaMaxPlaceholder: "15",
+    rudderConfigurationLabel: "Rudder configuration",
+    rudderConfigurationAnyOption: "Any rudder configuration",
+    rudderConfigurationLabels: {
+      SKEG_HUNG: "Skeg-hung rudder",
+      TRANSOM_HUNG: "Transom-hung rudder",
+      SPADE: "Spade rudder",
+      TWIN: "Twin rudders",
+    },
+    requirementPhraseDraftMax: (draftMax) => `a draft of ${draftMax} m or less`,
+    requirementPhraseKeel: (keelLabel) => `a ${keelLabel}`,
+    requirementPhraseLoaMin: (loaMin) => `a length overall of at least ${loaMin} m`,
+    requirementPhraseLoaMax: (loaMax) => `a length overall of ${loaMax} m or less`,
+    requirementPhraseLoaRange: (loaMin, loaMax) =>
+      `a length overall between ${loaMin} m and ${loaMax} m`,
+    requirementPhraseRudder: (rudderLabel) => `a ${rudderLabel}`,
+    requirementSummaryListConjunction: "and",
+    requirementSummaryGeneric: (phrases) => `Showing boats confirmed to have ${phrases}.`,
+    resolvedLoaText: (resolvedLoaM) =>
+      `broker-declared length overall: ${resolvedLoaM} m (not independently verified)`,
+    resolvedRudderText: (rudderLabel) =>
+      `broker-declared rudder configuration: ${rudderLabel} (not independently verified)`,
     submit: "Search",
     formInstructions:
       "Enter the deepest draft your boat can be, in metres, and/or choose a keel configuration. HullQ only shows boats a broker has confirmed meet these requirements.",
@@ -147,6 +212,8 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       "The broker has not reconfirmed this listing recently; it will be hidden soon unless reconfirmed.",
     sensitivityFormNote:
       "See how many confirmed matches change if you try a different value for one requirement. This does not change your current search.",
+    sensitivityUnavailableWithNewCriteria:
+      "Requirement sensitivity isn't available while a length overall or rudder configuration filter is also active.",
     sensitivityDraftSubmitLabel: "See the effect of a different maximum draft",
     sensitivityKeelSubmitLabel: "See the effect of a different keel configuration",
     sensitivityAlternativeDraftLabel: "Alternative maximum draft (metres)",
@@ -189,6 +256,31 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       LIFTING_KEEL: "Hubkiel",
       TWIN_KEEL: "Doppelkiel",
     },
+    loaMinLabel: "Mindestlänge über alles (Meter)",
+    loaMaxLabel: "Maximale Länge über alles (Meter)",
+    loaMinPlaceholder: "10",
+    loaMaxPlaceholder: "15",
+    rudderConfigurationLabel: "Ruderkonfiguration",
+    rudderConfigurationAnyOption: "Beliebige Ruderkonfiguration",
+    rudderConfigurationLabels: {
+      SKEG_HUNG: "Skegruder",
+      TRANSOM_HUNG: "Spiegelruder (heckhängend)",
+      SPADE: "Spatenruder (freistehend)",
+      TWIN: "Doppelruder",
+    },
+    requirementPhraseDraftMax: (draftMax) => `einem Tiefgang von ${draftMax} m oder weniger`,
+    requirementPhraseKeel: (keelLabel) => `einer Kielkonfiguration: ${keelLabel}`,
+    requirementPhraseLoaMin: (loaMin) => `einer Gesamtlänge von mindestens ${loaMin} m`,
+    requirementPhraseLoaMax: (loaMax) => `einer Gesamtlänge von ${loaMax} m oder weniger`,
+    requirementPhraseLoaRange: (loaMin, loaMax) =>
+      `einer Gesamtlänge zwischen ${loaMin} m und ${loaMax} m`,
+    requirementPhraseRudder: (rudderLabel) => `einer Ruderkonfiguration: ${rudderLabel}`,
+    requirementSummaryListConjunction: "und",
+    requirementSummaryGeneric: (phrases) => `Boote mit ${phrases} (bestätigt).`,
+    resolvedLoaText: (resolvedLoaM) =>
+      `vom Makler angegebene Gesamtlänge: ${resolvedLoaM} m (nicht unabhängig verifiziert)`,
+    resolvedRudderText: (rudderLabel) =>
+      `vom Makler angegebene Ruderkonfiguration: ${rudderLabel} (nicht unabhängig verifiziert)`,
     submit: "Suchen",
     formInstructions:
       "Geben Sie den größten zulässigen Tiefgang in Metern an und/oder wählen Sie eine Kielkonfiguration. HullQ zeigt nur Boote, die von einem Makler als diesen Anforderungen entsprechend bestätigt wurden.",
@@ -223,6 +315,8 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       "Der Makler hat dieses Angebot kürzlich nicht erneut bestätigt; es wird bald ausgeblendet, sofern es nicht erneut bestätigt wird.",
     sensitivityFormNote:
       "Sehen Sie, wie viele bestätigte Treffer sich ändern, wenn Sie für eine Anforderung einen anderen Wert ausprobieren. Dies ändert Ihre aktuelle Suche nicht.",
+    sensitivityUnavailableWithNewCriteria:
+      "Die Anforderungssensitivität ist nicht verfügbar, während zusätzlich ein Filter für Gesamtlänge oder Ruderkonfiguration aktiv ist.",
     sensitivityDraftSubmitLabel: "Auswirkung eines anderen maximalen Tiefgangs anzeigen",
     sensitivityKeelSubmitLabel: "Auswirkung einer anderen Kielkonfiguration anzeigen",
     sensitivityAlternativeDraftLabel: "Alternativer maximaler Tiefgang (Meter)",
@@ -265,6 +359,31 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       LIFTING_KEEL: "Quille relevable",
       TWIN_KEEL: "Quille double",
     },
+    loaMinLabel: "Longueur hors tout minimale (mètres)",
+    loaMaxLabel: "Longueur hors tout maximale (mètres)",
+    loaMinPlaceholder: "10",
+    loaMaxPlaceholder: "15",
+    rudderConfigurationLabel: "Configuration de safran",
+    rudderConfigurationAnyOption: "Toute configuration de safran",
+    rudderConfigurationLabels: {
+      SKEG_HUNG: "Safran sur aileron (skeg)",
+      TRANSOM_HUNG: "Safran de voûte (sur tableau arrière)",
+      SPADE: "Safran suspendu (spade)",
+      TWIN: "Safrans jumelés",
+    },
+    requirementPhraseDraftMax: (draftMax) => `un tirant d'eau de ${draftMax} m ou moins`,
+    requirementPhraseKeel: (keelLabel) => `une configuration de quille : ${keelLabel}`,
+    requirementPhraseLoaMin: (loaMin) => `une longueur hors tout d'au moins ${loaMin} m`,
+    requirementPhraseLoaMax: (loaMax) => `une longueur hors tout de ${loaMax} m ou moins`,
+    requirementPhraseLoaRange: (loaMin, loaMax) =>
+      `une longueur hors tout comprise entre ${loaMin} m et ${loaMax} m`,
+    requirementPhraseRudder: (rudderLabel) => `une configuration de safran : ${rudderLabel}`,
+    requirementSummaryListConjunction: "et",
+    requirementSummaryGeneric: (phrases) => `Bateaux confirmés avec ${phrases}.`,
+    resolvedLoaText: (resolvedLoaM) =>
+      `longueur hors tout déclarée par le courtier : ${resolvedLoaM} m (non vérifiée de manière indépendante)`,
+    resolvedRudderText: (rudderLabel) =>
+      `configuration de safran déclarée par le courtier : ${rudderLabel} (non vérifiée de manière indépendante)`,
     submit: "Rechercher",
     formInstructions:
       "Indiquez le tirant d'eau maximal admissible, en mètres, et/ou choisissez une configuration de quille. HullQ n'affiche que les bateaux dont le courtier a confirmé qu'ils respectent ces exigences.",
@@ -300,6 +419,8 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       "Le courtier n'a pas reconfirmé cette annonce récemment ; elle sera bientôt masquée si elle n'est pas reconfirmée.",
     sensitivityFormNote:
       "Découvrez combien de résultats confirmés changent si vous essayez une valeur différente pour une exigence. Cela ne modifie pas votre recherche actuelle.",
+    sensitivityUnavailableWithNewCriteria:
+      "La sensibilité de l'exigence n'est pas disponible lorsqu'un filtre de longueur hors tout ou de configuration de safran est également actif.",
     sensitivityDraftSubmitLabel: "Voir l'effet d'un tirant d'eau maximal différent",
     sensitivityKeelSubmitLabel: "Voir l'effet d'une configuration de quille différente",
     sensitivityAlternativeDraftLabel: "Tirant d'eau maximal alternatif (mètres)",
@@ -342,6 +463,31 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       LIFTING_KEEL: "Quilha retrátil",
       TWIN_KEEL: "Quilha dupla",
     },
+    loaMinLabel: "Comprimento total mínimo (metros)",
+    loaMaxLabel: "Comprimento total máximo (metros)",
+    loaMinPlaceholder: "10",
+    loaMaxPlaceholder: "15",
+    rudderConfigurationLabel: "Configuração do leme",
+    rudderConfigurationAnyOption: "Qualquer configuração de leme",
+    rudderConfigurationLabels: {
+      SKEG_HUNG: "Leme em skeg",
+      TRANSOM_HUNG: "Leme no espelho (popa)",
+      SPADE: "Leme suspenso (spade)",
+      TWIN: "Lemes duplos",
+    },
+    requirementPhraseDraftMax: (draftMax) => `um calado de ${draftMax} m ou menos`,
+    requirementPhraseKeel: (keelLabel) => `uma configuração de quilha: ${keelLabel}`,
+    requirementPhraseLoaMin: (loaMin) => `um comprimento total de pelo menos ${loaMin} m`,
+    requirementPhraseLoaMax: (loaMax) => `um comprimento total de ${loaMax} m ou menos`,
+    requirementPhraseLoaRange: (loaMin, loaMax) =>
+      `um comprimento total entre ${loaMin} m e ${loaMax} m`,
+    requirementPhraseRudder: (rudderLabel) => `uma configuração de leme: ${rudderLabel}`,
+    requirementSummaryListConjunction: "e",
+    requirementSummaryGeneric: (phrases) => `A mostrar barcos confirmados com ${phrases}.`,
+    resolvedLoaText: (resolvedLoaM) =>
+      `comprimento total declarado pelo corretor: ${resolvedLoaM} m (não verificado de forma independente)`,
+    resolvedRudderText: (rudderLabel) =>
+      `configuração de leme declarada pelo corretor: ${rudderLabel} (não verificada de forma independente)`,
     submit: "Pesquisar",
     formInstructions:
       "Indique o calado máximo admissível, em metros, e/ou escolha uma configuração de quilha. A HullQ apenas apresenta barcos cujo corretor confirmou cumprirem estes requisitos.",
@@ -377,6 +523,8 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       "O corretor não reconfirmou este anúncio recentemente; será ocultado em breve caso não seja reconfirmado.",
     sensitivityFormNote:
       "Veja quantas correspondências confirmadas mudam se experimentar um valor diferente para um requisito. Isto não altera a sua pesquisa atual.",
+    sensitivityUnavailableWithNewCriteria:
+      "A sensibilidade do requisito não está disponível enquanto um filtro de comprimento total ou de configuração de leme também estiver ativo.",
     sensitivityDraftSubmitLabel: "Ver o efeito de um calado máximo diferente",
     sensitivityKeelSubmitLabel: "Ver o efeito de uma configuração de quilha diferente",
     sensitivityAlternativeDraftLabel: "Calado máximo alternativo (metros)",
@@ -419,6 +567,31 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       LIFTING_KEEL: "Quilla retráctil",
       TWIN_KEEL: "Quilla doble",
     },
+    loaMinLabel: "Eslora total mínima (metros)",
+    loaMaxLabel: "Eslora total máxima (metros)",
+    loaMinPlaceholder: "10",
+    loaMaxPlaceholder: "15",
+    rudderConfigurationLabel: "Configuración de timón",
+    rudderConfigurationAnyOption: "Cualquier configuración de timón",
+    rudderConfigurationLabels: {
+      SKEG_HUNG: "Timón en skeg",
+      TRANSOM_HUNG: "Timón en el espejo de popa",
+      SPADE: "Timón suspendido (spade)",
+      TWIN: "Timones gemelos",
+    },
+    requirementPhraseDraftMax: (draftMax) => `un calado de ${draftMax} m o menos`,
+    requirementPhraseKeel: (keelLabel) => `una configuración de quilla: ${keelLabel}`,
+    requirementPhraseLoaMin: (loaMin) => `una eslora total de al menos ${loaMin} m`,
+    requirementPhraseLoaMax: (loaMax) => `una eslora total de ${loaMax} m o menos`,
+    requirementPhraseLoaRange: (loaMin, loaMax) =>
+      `una eslora total entre ${loaMin} m y ${loaMax} m`,
+    requirementPhraseRudder: (rudderLabel) => `una configuración de timón: ${rudderLabel}`,
+    requirementSummaryListConjunction: "y",
+    requirementSummaryGeneric: (phrases) => `Mostrando barcos confirmados con ${phrases}.`,
+    resolvedLoaText: (resolvedLoaM) =>
+      `eslora total declarada por el bróker: ${resolvedLoaM} m (no verificada de forma independiente)`,
+    resolvedRudderText: (rudderLabel) =>
+      `configuración de timón declarada por el bróker: ${rudderLabel} (no verificada de forma independiente)`,
     submit: "Buscar",
     formInstructions:
       "Indique el calado máximo admisible, en metros, y/o elija una configuración de quilla. HullQ solo muestra barcos cuyo bróker ha confirmado que cumplen estos requisitos.",
@@ -454,6 +627,8 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       "El bróker no ha reconfirmado este anuncio recientemente; se ocultará pronto si no se reconfirma.",
     sensitivityFormNote:
       "Vea cuántas coincidencias confirmadas cambian si prueba un valor diferente para un requisito. Esto no modifica su búsqueda actual.",
+    sensitivityUnavailableWithNewCriteria:
+      "La sensibilidad del requisito no está disponible mientras también esté activo un filtro de eslora total o de configuración de timón.",
     sensitivityDraftSubmitLabel: "Ver el efecto de un calado máximo diferente",
     sensitivityKeelSubmitLabel: "Ver el efecto de una configuración de quilla diferente",
     sensitivityAlternativeDraftLabel: "Calado máximo alternativo (metros)",

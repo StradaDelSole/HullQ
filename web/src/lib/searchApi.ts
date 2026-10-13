@@ -35,14 +35,32 @@ export const SEARCH_KEEL_CONFIGURATION_VALUES = [
 
 export type SearchKeelConfigurationValue = (typeof SEARCH_KEEL_CONFIGURATION_VALUES)[number];
 
+// SLICE-0085: the exact accepted public `rudder_configuration` query/display
+// values (`hullq.search.rudder_design_bridge.SEARCH_RUDDER_CONFIGURATION_VALUES`).
+// Technical values, language-neutral -- never localized, never remapped.
+export const SEARCH_RUDDER_CONFIGURATION_VALUES = [
+  "SKEG_HUNG",
+  "TRANSOM_HUNG",
+  "SPADE",
+  "TWIN",
+] as const;
+
+export type SearchRudderConfigurationValue = (typeof SEARCH_RUDDER_CONFIGURATION_VALUES)[number];
+
 // Mirrors `src/hullq/application/search_read.py`'s sparse
-// `active_requirement` construction: `draft_max` and/or
-// `keel_configuration`, never neither (a `null` `active_requirement` is the
-// base state, represented separately below).
-export type SearchActiveRequirement =
-  | { draft_max: string; keel_configuration?: undefined }
-  | { keel_configuration: string; draft_max?: undefined }
-  | { draft_max: string; keel_configuration: string };
+// `active_requirement` construction (SLICE-0051/0056, extended SLICE-0085):
+// any non-empty subset of `draft_max`/`keel_configuration`/`loa_min`/
+// `loa_max`/`rudder_configuration`, never none (a `null` `active_requirement`
+// is the base state, represented separately below). TypeScript cannot
+// mechanically enforce "at least one of five" any more cheaply than at
+// runtime -- FastAPI is the actual source of truth for that invariant.
+export interface SearchActiveRequirement {
+  draft_max?: string;
+  keel_configuration?: string;
+  loa_min?: string;
+  loa_max?: string;
+  rudder_configuration?: string;
+}
 
 /** SLICE-0051 draft-only confirmed match, unchanged (contract §8 non-regression). */
 export interface DraftOnlyConfirmedMatch {

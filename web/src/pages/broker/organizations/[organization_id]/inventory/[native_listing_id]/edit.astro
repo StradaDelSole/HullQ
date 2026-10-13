@@ -381,11 +381,30 @@ const designCandidates =
 // end, rather than silently collapsing it before the backend ever sees it.
 const searchFitDraftMaxValues = Astro.url.searchParams.getAll("sf_draft_max");
 const searchFitKeelValues = Astro.url.searchParams.getAll("sf_keel_configuration");
+// SLICE-0085: the same bounded Search-fit scenario, extended to LOA/rudder --
+// mirrors the draft/keel `getAll`-then-reject-duplicates discipline above
+// exactly (never silently collapsed before the backend's own
+// `parse_search_fit_scenario` would reject it).
+const searchFitLoaMinValues = Astro.url.searchParams.getAll("sf_loa_min");
+const searchFitLoaMaxValues = Astro.url.searchParams.getAll("sf_loa_max");
+const searchFitRudderValues = Astro.url.searchParams.getAll("sf_rudder_configuration");
 const searchFitDraftMaxRaw = searchFitDraftMaxValues[0] ?? "";
 const searchFitKeelRaw = searchFitKeelValues[0] ?? "";
+const searchFitLoaMinRaw = searchFitLoaMinValues[0] ?? "";
+const searchFitLoaMaxRaw = searchFitLoaMaxValues[0] ?? "";
+const searchFitRudderRaw = searchFitRudderValues[0] ?? "";
 const searchFitHasAmbiguousParams =
-  searchFitDraftMaxValues.length > 1 || searchFitKeelValues.length > 1;
-const searchFitRequested = searchFitDraftMaxValues.length > 0 || searchFitKeelValues.length > 0;
+  searchFitDraftMaxValues.length > 1 ||
+  searchFitKeelValues.length > 1 ||
+  searchFitLoaMinValues.length > 1 ||
+  searchFitLoaMaxValues.length > 1 ||
+  searchFitRudderValues.length > 1;
+const searchFitRequested =
+  searchFitDraftMaxValues.length > 0 ||
+  searchFitKeelValues.length > 0 ||
+  searchFitLoaMinValues.length > 0 ||
+  searchFitLoaMaxValues.length > 0 ||
+  searchFitRudderValues.length > 0;
 const searchFitResult: SearchFitResult | null =
   result.kind === "ok" &&
   organizationId &&
@@ -399,6 +418,9 @@ const searchFitResult: SearchFitResult | null =
         {
           draftMax: searchFitDraftMaxRaw || undefined,
           keelConfiguration: searchFitKeelRaw || undefined,
+          loaMin: searchFitLoaMinRaw || undefined,
+          loaMax: searchFitLoaMaxRaw || undefined,
+          rudderConfiguration: searchFitRudderRaw || undefined,
         },
         cookieHeader,
       )
@@ -415,6 +437,10 @@ const SEARCH_FIT_KEEL_CONFIGURATIONS = [
   "LIFTING_KEEL",
   "TWIN_KEEL",
 ];
+// SLICE-0085: `hullq.search.rudder_design_bridge.SEARCH_RUDDER_CONFIGURATION_VALUES`
+// -- `OTHER` remains valid PhysicalBoat claim vocabulary but is not an
+// accepted public Search-fit scenario value.
+const SEARCH_FIT_RUDDER_CONFIGURATIONS = ["SKEG_HUNG", "TRANSOM_HUNG", "SPADE", "TWIN"];
 const searchFitBlockerText: Record<string, string> = {
   BOATDESIGN_NOT_LINKED: "No canonical design is linked yet",
   BOATDESIGN_CONFIGURATION_UNRESOLVED:
@@ -422,6 +448,9 @@ const searchFitBlockerText: Record<string, string> = {
   CONCRETE_DRAFT_UNCONFIRMED: "This boat's actual draft isn't confirmed (or is disputed)",
   KEEL_CONFIGURATION_UNCONFIRMED:
     "This boat's actual keel configuration isn't confirmed (or is disputed)",
+  LOA_UNCONFIRMED: "This boat's actual length overall isn't confirmed (or is disputed)",
+  RUDDER_CONFIGURATION_UNCONFIRMED:
+    "This boat's actual rudder configuration isn't confirmed (or is disputed)",
 };
 
 const nextPath = `/broker/organizations/${organizationId ?? ""}/inventory/${nativeListingId ?? ""}/edit`;
@@ -1059,10 +1088,10 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
             <h2>Search-fit preview</h2>
             <p>
               <em>Illustrative only / not actual buyer demand.</em> Enter a representative
-              maximum draft and/or keel configuration to see whether this listing would
-              technically satisfy it, using the exact same truth the public technical Search
-              uses. This never publishes anything, changes any stored evidence, or asserts this
-              listing is ready/eligible to publish.
+              maximum draft, length overall, keel configuration and/or rudder configuration to
+              see whether this listing would technically satisfy it, using the exact same truth
+              the public technical Search uses. This never publishes anything, changes any
+              stored evidence, or asserts this listing is ready/eligible to publish.
             </p>
             <form method="GET">
               <p>
@@ -1091,15 +1120,51 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
                   </select>
                 </label>
               </p>
+              <p>
+                <label>
+                  Minimum length overall (metres):
+                  <input
+                    type="text"
+                    name="sf_loa_min"
+                    value={searchFitLoaMinRaw}
+                    placeholder="e.g. 10"
+                  />
+                </label>
+              </p>
+              <p>
+                <label>
+                  Maximum length overall (metres):
+                  <input
+                    type="text"
+                    name="sf_loa_max"
+                    value={searchFitLoaMaxRaw}
+                    placeholder="e.g. 15"
+                  />
+                </label>
+              </p>
+              <p>
+                <label>
+                  Rudder configuration:
+                  <select name="sf_rudder_configuration">
+                    <option value="" selected={searchFitRudderRaw === ""}>
+                      (not specified)
+                    </option>
+                    {SEARCH_FIT_RUDDER_CONFIGURATIONS.map((value) => (
+                      <option value={value} selected={searchFitRudderRaw === value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </p>
               <button type="submit">Run Search-fit preview</button>
             </form>
             {
               searchFitHasAmbiguousParams ? (
                 <p>
-                  That scenario isn't valid (a duplicate/ambiguous maximum draft or keel
-                  configuration parameter was submitted). Choose exactly one positive maximum
-                  draft in metres (e.g. 1.6) and/or one supported keel configuration from the
-                  list above.
+                  That scenario isn't valid (a duplicate/ambiguous parameter was submitted).
+                  Choose at most one value for each of maximum draft, minimum/maximum length
+                  overall, keel configuration and rudder configuration.
                 </p>
               ) : searchFitResult === null ? null : searchFitResult.kind === "unauthenticated" ? (
                 <p>Please log in to run this preview.</p>
