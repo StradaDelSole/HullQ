@@ -1,12 +1,12 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0082 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0083 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0083 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0084 -->
 <!-- PRODUCTION_LAUNCH_PACK_PHASE: NOT_STARTED -->
 
-**Updated:** 2026-10-12  
-**Latest owner-accepted / DONE slice:** SLICE-0082  
-**Current queue:** SLICE-0083 — **Multi-format Broker Inventory Intake (CSV/TSV, Excel XLS/XLSX/XLSB, ODS, JSON, NautiX XML v1.4)**. After successful local `FINISH_SLICE.bat 0082`, the Project Owner explicitly directed preparation of NautiX integration and all commonly used broker inventory file formats. Fresh post-0082 source/implementation reconciliation: `docs/POST_SLICE_0082_IMPORT_REASSESSMENT_2026-10-12.md`; selected primary READY contract: `docs/slices/SLICE-0083-multiformat-broker-inventory-intake.md`. **Implementation NOT_STARTED**; independent readiness review, exact-head CI and merge must pass before local `START_SLICE.bat 0083`. Owner-accepted SLICE-0082 remains DONE (implementation PR #331/closure #332). Product-first development continues; Production Launch Pack remains `NOT_STARTED`, Production Readiness remains `IN_PROGRESS`, no external broker/owner production data, pilot, buyer exposure or public launch authorized.  
+**Updated:** 2026-10-13  
+**Latest owner-accepted / DONE slice:** SLICE-0083  
+**Current queue:** SLICE-0084 — **UNSELECTED**. SLICE-0083's multi-format broker inventory intake (CSV, TSV, XLSX, XLS, XLSB, ODS, structured JSON and NautiX 1.4 XML) is Owner-accepted, independently reviewed and merged (implementation PR #335; details in `docs/slices/SLICE-0083-acceptance-closure.md`). Imports stage and explicitly confirm into ordinary **private ProfessionalListingDrafts**, without automatic publication or Search changes. Next scope requires fresh post-0083 Decision/Implementation Reconciliation and independently reviewed readiness. Product-first development continues, but Production Launch Pack remains `NOT_STARTED` and Production Readiness `IN_PROGRESS`; external production data, broker pilot, public buyer exposure and public launch remain unauthorized.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -331,7 +331,7 @@ Post-0067 reassessment should strongly prefer the shortest safe path through med
 
 The existing public NativeListing read path is already implemented; near-term work is to let normal broker-created inventory reach that path truthfully rather than to invent a second public-listing architecture.
 
-Structured bulk/source import remains strategically important and should move forward early once the normal draft→marketplace path is stable, but it must use staging/mapping and normal HullQ workflows rather than become a second truth pipeline. REQ-BROKER-027 remains mandatory before scaled broker onboarding.
+Structured bulk/source import is now implemented by Owner-accepted SLICE-0083 using bounded staging, mapping and explicit confirmation into existing private professional drafts (REQ-BROKER-027, MVP-BROKER-011). This does not authorize external broker production data or replace the existing publication/technical Search flow; broker export, Search-fit, periodic reporting and production operation remain separately governed.
 
 Large retained research artifacts are acknowledged as repository-hygiene debt, not a launch blocker. They remain in-repo for now because they support deterministic evidence replay/auditability; any later externalization must preserve immutable hashes, provenance and reproducibility.
 
@@ -340,12 +340,14 @@ Large retained research artifacts are acknowledged as repository-hygiene debt, n
 Next queue number:
 
 ```text
-SLICE-0083
+SLICE-0084
 ```
 
-**Capability:** Owner-selected multi-format Broker Inventory Intake (CSV, TSV, XLSX, XLS, XLSB, ODS, JSON and NautiX v1.4 `adverts.xml`) with ONE normalized staged mapping/validation/explicit-confirm→private ProfessionalListingDraft workflow; D26 ImportBatch/ImportRow/Organization+ImportSource+SourceRecordKey protections. Post-0082 reconciliation and readiness are in `docs/POST_SLICE_0082_IMPORT_REASSESSMENT_2026-10-12.md` and `docs/slices/SLICE-0083-multiformat-broker-inventory-intake.md`. Independent readiness review, exact-head CI and merge required before `START_SLICE.bat`. Automated NautiX feed polling/Push, active NativeListing edits/withdrawals and unsupported proprietary adapters remain future separately governed capabilities; no production data/launch authorized.
+**Capability: UNSELECTED.** Owner-accepted SLICE-0083 implements a single D26-preserving structured file intake for CSV/TSV/XLSX/XLS/XLSB/ODS/JSON and NautiX 1.4, with explicit staged mapping/preview/confirmation and ordinary private ProfessionalListingDraft output. It does not create public inventory, infer canonical BoatDesign identity, synchronize remote provider feeds, automatically withdraw listings or change Search. The implementation, remote review, CI and Owner acceptance are recorded in `docs/slices/SLICE-0083-acceptance-closure.md`.
 
-SLICE-0081 is Owner-accepted and merged as a read-only operational Broker Workspace Dashboard composing source-truthful Lead, draft, inventory and last-30-day performance panels with independent failure containment. Implementation PR #327 and its exact accepted branch HEAD `33c7d51edd0dd066bbe00a2c7710b67740ae8e33` are recorded in the SLICE-0081 acceptance closure. The Owner's 2026-10-12 development-first priority remains in force while all previously accepted Production Readiness and security gates remain mandatory. The earlier `docs/POST_SLICE_0080_REASSESSMENT_2026-10-09.md` selected Phase 1 operator work for a limited broker pilot; that operational work is deferred, not completed. Accepted ADR-0012 selects PlanetScale Managed PostgreSQL 18 and does not authorize paid provisioning. The unmerged multi-format import draft branch was **not** SLICE-0081; the Owner selected explicit broker listing-to-canonical-design association for SLICE-0082 instead, after the post-0081 code review. Review-verified additional pilot runtime/onboarding/notification risks are tracked in `docs/POST_SLICE_0081_REASSESSMENT_2026-10-12.md` and remain separately gated.
+SLICE-0084 selection requires fresh post-0083 repository Decision/Implementation Reconciliation, trigger/capability-register checks, Owner prioritization and independent READY review. No capability is automatically selected by this closure.
+
+Production Launch Pack Phase 1 operator work remains deferred in priority, not completed; Owner's product-first direction does not waive mandatory Production Readiness gates. The global import-expiry purge CLI is implemented and tested, but live cron scheduling, monitoring and retention proof are not verified. The accepted PlanetScale Managed PostgreSQL 18 ADR does not itself authorize paid provisioning.
 
 ## Development workflow
 
@@ -360,6 +362,6 @@ SLICE-0081 is Owner-accepted and merged as a read-only operational Broker Worksp
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0079 through SLICE-0082 are Owner-accepted and merged; the post-SLICE-0080 reassessment remains historical PASS for its then-active pilot objective. The Owner's 2026-10-12 product-first priority remains controlling for development sequence, without waiving any external production/pilot gate. SLICE-0082 completes the ordinary broker inventory→existing canonical BoatDesign→accepted native technical Search connection for a truthful synthetic end-to-end path; SLICE-0083 is Owner-selected for D26-preserving common-format private Broker Inventory Intake, with readiness separately reviewed/merged before implementation.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0079 through SLICE-0083 are Owner-accepted and merged; the post-SLICE-0080 reassessment remains historical PASS for its then-active pilot objective. The Owner's 2026-10-12 product-first priority remains controlling for development sequence, without waiving any external production/pilot gate. SLICE-0082 completes the ordinary broker inventory→existing canonical BoatDesign→accepted native technical Search connection for a truthful synthetic end-to-end path; SLICE-0083 implements the Owner-accepted D26-preserving common-format private Broker Inventory Intake; any future capability requires fresh post-0083 reconciliation/readiness.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
