@@ -18,8 +18,8 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ```text
 Latest owner-accepted slice: SLICE-0084
 Current queue:               SLICE-0085
-Current capability:          UNSELECTED — technical Buyer Search expansion is Owner's binding next-wave priority
-Current readiness:           Post-0084 reconciliation and independent READY review required
+Current capability:          Owner-selected bounded Multi-Criteria Technical Search foundation + initial filter bundle
+Current readiness:           READY contract drafted — operative after independent review/CI/repro/merge; implementation NOT_STARTED
 ```
 
 Current boundary:
@@ -32,7 +32,8 @@ Current boundary:
 - SLICE-0082 closes the normal broker→canonical BoatDesign→native technical Search bridge with accepted auditable first-time association and real synthetic end-to-end proof; no production/pilot launch was authorized;
 - SLICE-0083 is Owner-accepted and merged (implementation PR #335), providing D26-governed CSV/TSV/XLSX/XLS/XLSB/ODS/JSON/NautiX 1.4 intake into private drafts only; see `docs/slices/SLICE-0083-acceptance-closure.md`;
 - SLICE-0084 Broker pre-publication Search-fit is Owner-accepted and merged (implementation PR #342, independent exact-head ACCEPT); closure at `docs/slices/SLICE-0084-acceptance-closure.md`. The accepted technical Search expansion priority (LOA first candidate, then rudder/skeg; separate long-keel taxonomy review) remains binding for the post-0084 reassessment under `docs/POST_SLICE_0083_SEARCH_PRIORITY_REASSESSMENT_2026-10-13.md` / issue #339;
-- no later slice is authorized automatically.
+- SLICE-0085 is Owner-selected as a bundled multi-criterion Search expansion; source-backed reconciliation in `docs/POST_SLICE_0084_MULTICRITERIA_SEARCH_REASSESSMENT_2026-10-13.md` and guarded readiness in `docs/slices/SLICE-0085-multicriteria-technical-search-foundation.md`; implementation remains NOT_STARTED until independently reviewed READY PR merge and normal `START_SLICE.bat`;
+- no subsequent slice is authorized automatically.
 
 ## Historical execution ranges
 
@@ -41,7 +42,7 @@ Current boundary:
 | SLICE-0001–0038 | accepted foundational research/architecture/data/product work except where an individual slice record states otherwise |
 | SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
 | SLICE-0040–0084 | accepted work; see acceptance closures and `PROJECT_STATE.md` |
-| SLICE-0085 | UNSELECTED — fresh post-0084 reconciliation/readiness required; binding technical Search expansion priority |
+| SLICE-0085 | OWNER-SELECTED Multi-Criteria Technical Search + bounded first criteria bundle; READY only after independent docs PR merge; not started |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
