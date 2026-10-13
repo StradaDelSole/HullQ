@@ -16,10 +16,10 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ## Current execution boundary
 
 ```text
-Latest owner-accepted slice: SLICE-0084
-Current queue:               SLICE-0085
-Current capability:          Owner-selected bounded Multi-Criteria Technical Search foundation + initial filter bundle
-Current readiness:           READY contract drafted — operative after independent review/CI/repro/merge; implementation NOT_STARTED
+Latest owner-accepted slice: SLICE-0085
+Current queue:               SLICE-0086
+Current capability:          UNSELECTED — post-0085 reconciliation and Owner decision required
+Current readiness:           NOT_STARTED — no SLICE-0086 readiness/implementation authorized
 ```
 
 Current boundary:
@@ -32,7 +32,7 @@ Current boundary:
 - SLICE-0082 closes the normal broker→canonical BoatDesign→native technical Search bridge with accepted auditable first-time association and real synthetic end-to-end proof; no production/pilot launch was authorized;
 - SLICE-0083 is Owner-accepted and merged (implementation PR #335), providing D26-governed CSV/TSV/XLSX/XLS/XLSB/ODS/JSON/NautiX 1.4 intake into private drafts only; see `docs/slices/SLICE-0083-acceptance-closure.md`;
 - SLICE-0084 Broker pre-publication Search-fit is Owner-accepted and merged (implementation PR #342, independent exact-head ACCEPT); closure at `docs/slices/SLICE-0084-acceptance-closure.md`. The accepted technical Search expansion priority (LOA first candidate, then rudder/skeg; separate long-keel taxonomy review) remains binding for the post-0084 reassessment under `docs/POST_SLICE_0083_SEARCH_PRIORITY_REASSESSMENT_2026-10-13.md` / issue #339;
-- SLICE-0085 is Owner-selected as a bundled multi-criterion Search expansion; source-backed reconciliation in `docs/POST_SLICE_0084_MULTICRITERIA_SEARCH_REASSESSMENT_2026-10-13.md` and guarded readiness in `docs/slices/SLICE-0085-multicriteria-technical-search-foundation.md`; implementation remains NOT_STARTED until independently reviewed READY PR merge and normal `START_SLICE.bat`;
+- SLICE-0085 is **Owner-accepted, implementation-merged and closing**: bounded typed registry plus LOA range and qualified rudder configuration added as hard Buyer Search dimensions #3/#4 with private broker Search-fit parity, five-locale SSR and real PG18 proof; accepted implementation PR #345, final review #5510329645, closure `docs/slices/SLICE-0085-acceptance-closure.md`. Exactly **4** technical hard dimensions are accepted after closure. `LONG_KEEL` remains unsupported; no new production authorization. Post-0085 reconciliation/choice is required before any 0086 readiness/start;
 - no subsequent slice is authorized automatically.
 
 ## Historical execution ranges
@@ -41,8 +41,8 @@ Current boundary:
 |---|---|
 | SLICE-0001–0038 | accepted foundational research/architecture/data/product work except where an individual slice record states otherwise |
 | SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
-| SLICE-0040–0084 | accepted work; see acceptance closures and `PROJECT_STATE.md` |
-| SLICE-0085 | OWNER-SELECTED Multi-Criteria Technical Search + bounded first criteria bundle; READY only after independent docs PR merge; not started |
+| SLICE-0040–0085 | accepted work; see acceptance closures and `PROJECT_STATE.md` |
+| SLICE-0086 | UNSELECTED; requires fresh reconciliation, Owner selection and independently reviewed READY |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
