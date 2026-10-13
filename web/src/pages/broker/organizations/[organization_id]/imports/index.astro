@@ -118,6 +118,15 @@ const uploadPath = `/broker/organizations/${organizationId}/imports/upload`;
                     <input type="text" id="import-source" required maxlength="63" />
                   </label>
                 </p>
+                <p id="csv-delimiter-row" hidden>
+                  <label>
+                    CSV delimiter
+                    <select id="csv-delimiter">
+                      <option value="COMMA">Comma (,)</option>
+                      <option value="SEMICOLON">Semicolon (;)</option>
+                    </select>
+                  </label>
+                </p>
                 <p id="worksheet-row" hidden>
                   <label>
                     Worksheet
@@ -171,6 +180,8 @@ const uploadPath = `/broker/organizations/${organizationId}/imports/upload`;
       const worksheetSelect = document.getElementById("import-worksheet");
       const nautixRow = document.getElementById("nautix-tokens-row");
       const nautixInput = document.getElementById("nautix-tokens");
+      const csvDelimiterRow = document.getElementById("csv-delimiter-row");
+      const csvDelimiterSelect = document.getElementById("csv-delimiter");
       const statusEl = document.getElementById("upload-status");
 
       function updateFormatVisibility() {
@@ -178,6 +189,7 @@ const uploadPath = `/broker/organizations/${organizationId}/imports/upload`;
         const isSpreadsheet = ["XLSX", "XLS", "XLSB", "ODS"].includes(fmt);
         worksheetRow.hidden = !isSpreadsheet;
         nautixRow.hidden = fmt !== "NAUTIX_XML";
+        csvDelimiterRow.hidden = fmt !== "CSV";
       }
       formatSelect?.addEventListener("change", updateFormatVisibility);
       updateFormatVisibility();
@@ -194,6 +206,7 @@ const uploadPath = `/broker/organizations/${organizationId}/imports/upload`;
         };
         if (worksheetSelect.value) headers["X-HullQ-Worksheet"] = worksheetSelect.value;
         if (nautixInput.value) headers["X-HullQ-Nautix-Account-Tokens"] = nautixInput.value;
+        if (formatSelect.value === "CSV") headers["X-HullQ-Csv-Delimiter"] = csvDelimiterSelect.value;
 
         let response;
         try {

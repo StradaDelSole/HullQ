@@ -37,6 +37,7 @@ from lxml import etree
 
 from hullq.domain.import_intake import (
     MAX_IMPORT_FILE_BYTES,
+    MAX_IMPORT_ROWS,
     ImportParseError,
     ImportParseErrorKind,
     RowPreviewClassification,
@@ -194,7 +195,15 @@ def _advert_raw_fields(advert: Any) -> dict[str, str | None]:
     loa_el = dimensions_el.find(_ns("loa")) if dimensions_el is not None else None
     media_el = advert.find(_ns("media"))
     images_el = media_el.find(_ns("images")) if media_el is not None else None
-    image_count = len(images_el.findall(_ns("image"))) if images_el is not None else 0
+    image_elements = images_el.findall(_ns("image")) if images_el is not None else []
+    image_count = len(image_elements)
+    # Mechanical invariants: "An imported media URL is retained as an
+    # inert reference only ... no HTTP requests/downloads". Captured as
+    # plain staged text -- the element's own URL/md5 text, never fetched
+    # -- and bounded to the first 20 images so one adversarial advert
+    # cannot inflate staged JSONB without bound.
+    media_image_urls = "; ".join((_text(img) or "") for img in image_elements[:20] if _text(img))
+    media_image_md5s = "; ".join(md5 for img in image_elements[:20] if (md5 := img.get("md5")))
 
     return {
         "advert_id": advert.get("id"),
@@ -217,6 +226,8 @@ def _advert_raw_fields(advert: Any) -> dict[str, str | None]:
         "price_currency": price_el.get("currency") if price_el is not None else None,
         "location_country": location_el.get("country") if location_el is not None else None,
         "image_count": str(image_count),
+        "media_image_urls": media_image_urls or None,
+        "media_image_md5s": media_image_md5s or None,
         "subtitle": _text(advert_data.find(_ns("subtitle"))) if advert_data is not None else None,
     }
 
@@ -236,21 +247,41 @@ def _map_advert_to_wire(fields: dict[str, str | None]) -> tuple[dict[str, Any], 
     if fields["boat_name"]:
         wire["physical_boat.boat_name"] = fields["boat_name"]
 
-    year_text = fields["year_built"] or fields["model_year"]
+    # Independent review amendment Finding C: `year_built` and `model_year`
+    # are two separately defined XSD fields with different real-world
+    # semantics (a boat's actual build year vs. its marketed model-year
+    # designation, which commonly differ by up to a year for new/demo
+    # boats) -- `physical_boat.build_year` is mapped ONLY from
+    # `year_built`. A missing `year_built` is an honest absence (core data
+    # guardrail: "missing/unknown is not evidence a characteristic is
+    # absent"), never silently backfilled from a different-meaning field.
+    year_text = fields["year_built"]
     if year_text:
         try:
             wire["physical_boat.build_year"] = int(year_text)
         except ValueError:
             errors.append(f"physical_boat.build_year: expected an integer year, got {year_text!r}")
 
+    # Independent review amendment Finding C: `price/@type` is authoritative
+    # for whether an amount is expected at all. Only `type="on-request"`
+    # means "no asking amount by definition" -> POA. Every other declared
+    # type (fixed/negotiable/auction/share) asserts a real amount exists;
+    # a missing amount under one of those types is a genuinely ambiguous/
+    # incomplete source record and must never be silently reinterpreted as
+    # POA (mechanical invariants: "no guessed ... price ... facts").
+    price_type = fields["price_type"]
     price_amount = fields["price_amount"]
-    if price_amount:
+    if price_type == "on-request":
+        wire["listing_offer.asking_price_mode"] = "POA"
+    elif price_amount:
         wire["listing_offer.asking_price_mode"] = "AMOUNT"
         wire["listing_offer.asking_price_amount"] = price_amount
         if fields["price_currency"]:
             wire["listing_offer.currency"] = fields["price_currency"]
-    elif fields["price_type"] is not None:
-        wire["listing_offer.asking_price_mode"] = "POA"
+    elif price_type is not None:
+        errors.append(
+            f"sale_data.price: type={price_type!r} declares an asking amount but none was provided"
+        )
 
     if fields["location_country"]:
         wire["listing_offer.location_country"] = fields["location_country"]
@@ -275,7 +306,25 @@ def map_nautix_adverts_to_rows(
     attested, otherwise fail closed"). An advert under an unattested
     account token is `INVALID`, never silently skipped or silently
     imported.
+
+    Independent review amendment Finding E: the total advert count across
+    every account is bounded by `MAX_IMPORT_ROWS` -- checked *before* any
+    row is mapped/materialized, mirroring every column-mapped format's
+    identical bound, rather than silently accepting and persisting an
+    unbounded number of staged rows from one oversized document.
     """
+    total_adverts = sum(
+        len(adverts_el.findall(_ns("advert")))
+        for account in root.findall(_ns("account"))
+        for adverts_el in (account.find(_ns("adverts")),)
+        if adverts_el is not None
+    )
+    if total_adverts > MAX_IMPORT_ROWS:
+        raise ImportParseError(
+            ImportParseErrorKind.TOO_MANY_ROWS,
+            f"more than {MAX_IMPORT_ROWS} adverts across all accounts",
+        )
+
     previews: list[StagedRowPreview] = []
     ordinal = 0
     for account in root.findall(_ns("account")):

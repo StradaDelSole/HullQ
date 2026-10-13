@@ -55,6 +55,7 @@ from hullq.domain.professional_listing_draft import ProfessionalListingDraftId
 from hullq.domain.publishing_eligibility import AccountId, MarketplaceOrganizationId
 
 __all__ = [
+    "MAX_PENDING_BATCHES_PER_ORGANIZATION",
     "ApplyMappingOutcome",
     "ImportBatchRecord",
     "ImportBatchStatus",
@@ -62,17 +63,19 @@ __all__ = [
     "ImportRowRecord",
     "ImportSourceMappingRecord",
     "apply_import_batch_mapping",
+    "claim_or_check_snapshot_lineage",
     "confirm_import_row",
+    "count_pending_batches_for_organization",
     "create_import_batch_awaiting_mapping",
     "create_import_batch_mapped",
     "fetch_import_batch",
     "fetch_import_source_mapping",
     "finalize_row_outcome_only",
-    "has_confirmed_snapshot_batch_with_different_digest",
     "list_import_rows",
     "list_recent_import_batches",
     "mark_batch_confirmed",
     "mark_batch_confirming",
+    "purge_expired_unconfirmed_batches",
 ]
 
 
@@ -473,35 +476,72 @@ def list_import_rows(conn: Any, *, batch_id: ImportBatchId) -> tuple[ImportRowRe
     return tuple(_row_to_import_row(row) for row in rows)
 
 
-def has_confirmed_snapshot_batch_with_different_digest(
+_SELECT_SNAPSHOT_LINEAGE_FOR_UPDATE = (
+    "SELECT file_sha256 FROM import_snapshot_lineages "
+    "WHERE owner_organization_id = %s AND import_source = %s FOR UPDATE"
+)
+
+_INSERT_SNAPSHOT_LINEAGE = """
+INSERT INTO import_snapshot_lineages
+    (owner_organization_id, import_source, file_sha256, established_by_batch_id)
+VALUES (%s, %s, %s, %s)
+ON CONFLICT (owner_organization_id, import_source) DO NOTHING
+RETURNING file_sha256
+"""
+
+
+def claim_or_check_snapshot_lineage(
     conn: Any,
     *,
     owner_organization_id: MarketplaceOrganizationId,
     import_source: ImportSource,
     file_sha256: str,
+    batch_id: ImportBatchId,
 ) -> bool:
-    """`True` iff this Organization/ImportSource already has at least one
-    *other*, previously `CONFIRMED` one-time-snapshot batch whose exact
-    uploaded-file digest differs from *file_sha256* (mechanical invariants/
-    Required Behavior #4: "a further changed upload for the same
-    Organization/ImportSource must be classified for explicit
-    CONFLICT_REVIEW").
+    """Atomically establish -- or check against an already-established --
+    this Organization/ImportSource's one-time-snapshot lineage.
 
-    Snapshot keys are namespaced by their own file digest
-    (`SNAPSHOT:<digest>:<ordinal>`), so a changed file's rows never
-    collide at the `import_source_mappings` primary-key level the way a
-    stable-ID column's rows do -- this batch/source-level lineage check is
-    what actually enforces "no silent duplicate drafts" for snapshot mode,
-    one layer above the per-row identity-mapping primitive.
+    Independent review amendment Finding B: the original implementation
+    decided "does a conflicting snapshot lineage already exist?" by
+    reading only previously `CONFIRMED` batches, outside any lock, before
+    the row-confirmation loop began -- two concurrent first confirms for
+    the same Organization/ImportSource with *different* digests could
+    both read "no conflict yet" and both proceed to create drafts. This
+    function instead performs one atomic `INSERT ... ON CONFLICT DO
+    NOTHING` against the real unique `(owner_organization_id,
+    import_source)` primary key: exactly one concurrent caller's insert
+    can ever win and durably become the lineage; every other caller
+    (concurrent or later) reads that already-committed row back under
+    `SELECT ... FOR UPDATE` -- which blocks until the winner's transaction
+    concludes, never racing it -- and compares digests from there.
+
+    Returns `True` iff *file_sha256* conflicts with the established
+    lineage (the caller must then force every row in this batch to
+    `CONFLICT_REVIEW`); `False` if this call just established the lineage
+    or *file_sha256* matches the already-established one (an exact
+    replay, resolved normally per source-record-key as always). The
+    caller owns transaction commit; this function performs its own
+    mutation (the `INSERT`) but holds no lock beyond this call's own
+    transaction once it returns.
     """
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT 1 FROM import_batches "
-            "WHERE owner_organization_id = %s AND import_source = %s AND snapshot_mode = TRUE "
-            "AND status = 'CONFIRMED' AND file_sha256 != %s LIMIT 1",
-            [owner_organization_id.value, import_source.value, file_sha256],
+            _INSERT_SNAPSHOT_LINEAGE,
+            [owner_organization_id.value, import_source.value, file_sha256, batch_id.value],
         )
-        return cur.fetchone() is not None
+        inserted = cur.fetchone()
+        if inserted is not None:
+            return False  # this call established the lineage
+
+        cur.execute(
+            _SELECT_SNAPSHOT_LINEAGE_FOR_UPDATE, [owner_organization_id.value, import_source.value]
+        )
+        existing = cur.fetchone()
+        assert existing is not None, (
+            "INSERT ON CONFLICT DO NOTHING reported a conflict but no row exists -- unreachable"
+        )
+        established_digest: str = existing[0]
+        return established_digest != file_sha256
 
 
 def mark_batch_confirming(conn: Any, *, batch_id: ImportBatchId) -> None:
@@ -610,6 +650,7 @@ def confirm_import_row(
     import_source: ImportSource,
     batch_id: ImportBatchId,
     create_draft: Any,
+    recheck_authorization: Any,
 ) -> ImportRowConfirmResult:
     """Resolve and durably commit exactly one row's final D26 outcome, in
     one dedicated transaction.
@@ -626,6 +667,20 @@ def confirm_import_row(
     an injected callable so this module never imports the draft payload
     parsing it would otherwise need to reconstruct a `ListingDraftPayload`
     from `row.draft_request_wire`.
+
+    *recheck_authorization* (independent review amendment Finding A) is a
+    zero-argument callable the caller supplies, which re-validates the
+    current actor's Organization/PUBLISHER authority fresh, under a lock,
+    using this same *conn*/transaction, and raises if denied. It is called
+    exactly once per invocation, immediately before any mutation this call
+    would otherwise perform (including stamping `ALREADY_IMPORTED`/
+    `CONFLICT_REVIEW` on a pre-existing key, not only draft creation) --
+    never before the idempotent-resume check below, so resuming an
+    already-decided row stays a pure read even if current authorization
+    has since changed. A raised exception propagates out of this
+    function's transaction (rolling it back -- zero mutation for this
+    row) for the caller to classify and act on (e.g. stop processing
+    further rows in the batch).
 
     Idempotent/resumable: if *row* already carries a non-`None` `outcome`,
     it is returned unchanged with zero further mutation (Required
@@ -666,6 +721,11 @@ def confirm_import_row(
         assert row.preview_classification is RowPreviewClassification.VALID
         assert row.source_record_key is not None
         assert row.row_digest is not None
+
+        # Finding A: re-validated fresh, under this transaction, immediately
+        # before the first mutating statement below -- never trusted from
+        # a check the caller made before opening this transaction.
+        recheck_authorization()
 
         cur.execute(
             _SELECT_MAPPING_FOR_UPDATE,
@@ -748,3 +808,84 @@ def confirm_import_row(
             outcome=ImportRowOutcome.CREATE_NEW_DRAFT,
             professional_listing_draft_id=new_draft_id,
         )
+
+
+# ---------------------------------------------------------------------------
+# Independent review amendment Finding E: bounded staging retention and
+# per-Organization pending-batch limits.
+# ---------------------------------------------------------------------------
+
+#: The pending (not yet `CONFIRMED`) batch states one Organization may
+#: accumulate without confirming -- bounded below by
+#: `MAX_PENDING_BATCHES_PER_ORGANIZATION`.
+_PENDING_BATCH_STATUSES = ("AWAITING_MAPPING", "MAPPED", "CONFIRMING")
+
+#: A batch in `CONFIRMING` may hold real committed drafts/mappings for
+#: some of its rows (partial progress from a crashed/interrupted confirm
+#: call) and must never be purged -- only a batch that has never been
+#: touched by any confirm attempt is safe to delete wholesale.
+_PURGEABLE_BATCH_STATUSES = ("AWAITING_MAPPING", "MAPPED")
+
+#: Bounded pending (unconfirmed) batches per Organization -- generous for
+#: real broker usage (a handful of in-flight imports at once) while
+#: preventing unbounded accumulation of unconfirmed staged state from
+#: repeated uploads that are never confirmed or abandoned.
+MAX_PENDING_BATCHES_PER_ORGANIZATION = 20
+
+_SELECT_PURGEABLE_BATCH_IDS = """
+SELECT import_batch_id FROM import_batches
+WHERE owner_organization_id = %s AND status = ANY(%s) AND expires_at < NOW()
+"""
+
+_DELETE_ROWS_FOR_BATCH = "DELETE FROM import_rows WHERE import_batch_id = %s"
+_DELETE_BATCH = "DELETE FROM import_batches WHERE import_batch_id = %s"
+
+_COUNT_PENDING_BATCHES = """
+SELECT count(*) FROM import_batches
+WHERE owner_organization_id = %s AND status = ANY(%s) AND expires_at >= NOW()
+"""
+
+
+def purge_expired_unconfirmed_batches(
+    conn: Any, *, owner_organization_id: MarketplaceOrganizationId
+) -> int:
+    """Durably delete every expired, never-confirmed batch (and its rows)
+    owned by *owner_organization_id* -- the "safe disposal of unconfirmed
+    raw source data" mechanical invariant, scoped per-request rather than
+    requiring a separate scheduler/cron process this slice does not add.
+
+    Only `AWAITING_MAPPING`/`MAPPED` batches are eligible: a `CONFIRMING`
+    batch may hold real committed drafts/mappings for some of its rows
+    from a crashed/interrupted confirm call and must never be deleted,
+    even once its `expires_at` has passed -- a stuck `CONFIRMING` batch is
+    a durability concern for the Owner to resolve, never silent data
+    loss. A `CONFIRMED` batch's rows are retained indefinitely as
+    auditable import provenance. Returns the number of batches deleted.
+    The caller owns transaction commit.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            _SELECT_PURGEABLE_BATCH_IDS,
+            [owner_organization_id.value, list(_PURGEABLE_BATCH_STATUSES)],
+        )
+        batch_ids = [row[0] for row in cur.fetchall()]
+        for batch_id in batch_ids:
+            cur.execute(_DELETE_ROWS_FOR_BATCH, [batch_id])
+            cur.execute(_DELETE_BATCH, [batch_id])
+    return len(batch_ids)
+
+
+def count_pending_batches_for_organization(
+    conn: Any, *, owner_organization_id: MarketplaceOrganizationId
+) -> int:
+    """Count *owner_organization_id*'s currently non-expired,
+    not-yet-`CONFIRMED` batches -- the basis for
+    `MAX_PENDING_BATCHES_PER_ORGANIZATION`. Call
+    `purge_expired_unconfirmed_batches` first so an expired, never-touched
+    batch does not count against the Organization's limit forever."""
+    with conn.cursor() as cur:
+        cur.execute(
+            _COUNT_PENDING_BATCHES, [owner_organization_id.value, list(_PENDING_BATCH_STATUSES)]
+        )
+        (count,) = cur.fetchone()
+    return int(count)

@@ -153,6 +153,12 @@ export async function uploadImport(
     importSource: string;
     worksheetName?: string;
     nautixAccountTokens?: string[];
+    /**
+     * Independent review amendment Finding G: explicit CSV dialect
+     * selection through the real upload workflow -- "COMMA" (default) or
+     * "SEMICOLON". Ignored for every other format.
+     */
+    csvDelimiter?: "COMMA" | "SEMICOLON";
   },
 ): Promise<ImportUploadResult> {
   const base = apiBaseUrl.replace(/\/+$/, "");
@@ -167,6 +173,7 @@ export async function uploadImport(
   if (options.nautixAccountTokens?.length) {
     headers["X-HullQ-Nautix-Account-Tokens"] = options.nautixAccountTokens.join(",");
   }
+  if (options.csvDelimiter) headers["X-HullQ-Csv-Delimiter"] = options.csvDelimiter;
 
   let response: Response;
   try {
@@ -256,14 +263,23 @@ export type ImportConfirmResult =
   | { kind: "batch_not_found" }
   | { kind: "wrong_state" }
   | { kind: "staging_expired" }
+  | { kind: "stale_confirmation" }
   | { kind: "ok"; batch: ImportBatch };
 
+/**
+ * `expectedRowCount` (independent review amendment Finding F) must be the
+ * exact `row_count` this caller most recently observed from the batch's
+ * own mapping/get response -- never invented client-side. A mismatch
+ * against the server's current value is `stale_confirmation`, zero
+ * mutation: the caller's view of this batch is out of date.
+ */
 export async function confirmImportBatch(
   apiBaseUrl: string,
   organizationId: string,
   batchId: string,
   cookieHeader: string | null,
   originHeader: string | null,
+  expectedRowCount: number,
 ): Promise<ImportConfirmResult> {
   const base = apiBaseUrl.replace(/\/+$/, "");
   let response: Response;
@@ -275,7 +291,7 @@ export async function confirmImportBatch(
         ...csrfHeaders(originHeader),
         "Content-Type": "application/json",
       },
-      body: "{}",
+      body: JSON.stringify({ expected_row_count: expectedRowCount }),
       redirect: "manual",
     });
   } catch {
@@ -293,5 +309,6 @@ export async function confirmImportBatch(
   }
   if (response.status === 200) return { kind: "ok", batch: body as ImportBatch };
   if (body.error === "staging_expired") return { kind: "staging_expired" };
+  if (body.error === "stale_confirmation") return { kind: "stale_confirmation" };
   return { kind: "wrong_state" };
 }

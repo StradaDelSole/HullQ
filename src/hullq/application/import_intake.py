@@ -52,21 +52,24 @@ from hullq.domain.import_spreadsheet import list_spreadsheet_worksheets, parse_s
 from hullq.domain.professional_listing_draft import parse_professional_listing_draft_request
 from hullq.domain.publishing_eligibility import MarketplaceOrganizationId
 from hullq.persistence.import_intake import (
+    MAX_PENDING_BATCHES_PER_ORGANIZATION,
     ApplyMappingOutcome,
     ImportBatchRecord,
     ImportBatchStatus,
     ImportRowRecord,
     apply_import_batch_mapping,
+    claim_or_check_snapshot_lineage,
     confirm_import_row,
+    count_pending_batches_for_organization,
     create_import_batch_awaiting_mapping,
     create_import_batch_mapped,
     fetch_import_batch,
     finalize_row_outcome_only,
-    has_confirmed_snapshot_batch_with_different_digest,
     list_import_rows,
     list_recent_import_batches,
     mark_batch_confirmed,
     mark_batch_confirming,
+    purge_expired_unconfirmed_batches,
 )
 from hullq.persistence.professional_listing_draft import create_professional_listing_draft
 from hullq.security.session_token import SessionClaims
@@ -110,6 +113,67 @@ def _authorize_import_actor(
     if "PUBLISHER" not in workspace_result.context.roles:
         return _ImportActorAuthorizationOutcome.PUBLISHER_ROLE_REQUIRED
     return _ImportActorAuthorizationOutcome.AUTHORIZED
+
+
+class ImportRowAuthorizationDeniedError(Exception):
+    """Independent review amendment Finding A: raised by the fresh,
+    `FOR UPDATE`-locked re-check a multi-row confirmation performs
+    immediately before each row's mutation, when current Organization/
+    PUBLISHER authority no longer holds -- even though the one check at
+    the top of `confirm_import_batch_for_organization` passed when the
+    HTTP request started. Carries the exact `_ImportActorAuthorizationOutcome`
+    reason so the caller can map it to the identical outcome vocabulary the
+    initial check already uses, rather than inventing a second one.
+    """
+
+    def __init__(self, reason: _ImportActorAuthorizationOutcome) -> None:
+        super().__init__(reason.value)
+        self.reason = reason
+
+
+def _recheck_fresh_publisher_authorization(
+    conn: Any, session: SessionClaims, organization_id: MarketplaceOrganizationId
+) -> None:
+    """Re-validate current Organization/PUBLISHER authority fresh, under a
+    `FOR UPDATE` lock on the membership row, using the caller's own already-
+    open transaction/*conn* -- never the separate, unlocked read
+    `_authorize_import_actor` performs at request-entry time. A concurrent
+    membership revocation either committed before this locked read (and is
+    therefore seen and enforced here) or blocks behind this lock until this
+    transaction concludes (and is therefore applied strictly afterward),
+    mirroring `hullq.persistence.boat_design_association.
+    associate_physical_boat_design_for_listing`'s identical discipline.
+
+    Raises `ImportRowAuthorizationDeniedError` on denial; returns `None` on
+    success. MFA is a static claim already committed to the current signed
+    session token, not Organization-mutable state, so it is re-checked
+    against the same `session.identity.mfa_satisfied` value as the initial
+    check -- only the membership row itself is re-read under lock.
+    """
+    from hullq.domain.broker_access import (
+        OrganizationAuthorizationReason,
+        OrganizationAuthorizationStatus,
+        evaluate_organization_workspace_authorization,
+    )
+    from hullq.persistence.broker_identity import fetch_membership_for_account_and_organization
+
+    membership = fetch_membership_for_account_and_organization(
+        conn, session.account_id, organization_id, for_update=True
+    )
+    decision = evaluate_organization_workspace_authorization(
+        membership=membership, mfa_satisfied=session.identity.mfa_satisfied
+    )
+    if decision.status is OrganizationAuthorizationStatus.DENIED:
+        if decision.reason is OrganizationAuthorizationReason.MFA_REQUIRED:
+            raise ImportRowAuthorizationDeniedError(_ImportActorAuthorizationOutcome.MFA_REQUIRED)
+        raise ImportRowAuthorizationDeniedError(
+            _ImportActorAuthorizationOutcome.NOT_FOUND_OR_DENIED
+        )
+    assert membership is not None
+    if "PUBLISHER" not in {role.value for role in membership.roles}:
+        raise ImportRowAuthorizationDeniedError(
+            _ImportActorAuthorizationOutcome.PUBLISHER_ROLE_REQUIRED
+        )
 
 
 def _batch_to_public_dict(
@@ -168,6 +232,7 @@ class UploadImportOutcome(StrEnum):
     UNSUPPORTED_FORMAT = "UNSUPPORTED_FORMAT"
     INVALID_IMPORT_SOURCE = "INVALID_IMPORT_SOURCE"
     PAYLOAD_TOO_LARGE = "PAYLOAD_TOO_LARGE"
+    TOO_MANY_PENDING_BATCHES = "TOO_MANY_PENDING_BATCHES"
     WORKSHEET_CHOICE_REQUIRED = "WORKSHEET_CHOICE_REQUIRED"
     PARSE_FAILED = "PARSE_FAILED"
     STAGED = "STAGED"
@@ -200,6 +265,15 @@ class UploadImportResult:
 
 _FORMAT_FROM_HEADER: dict[str, ImportFormat] = {f.value: f for f in ImportFormat}
 
+#: Independent review amendment Finding G: CSV dialect selection is an
+#: explicit, finite, server-validated choice -- never a client-supplied
+#: raw delimiter character (which would let an upload smuggle an
+#: arbitrary single-character "delimiter" into the parser) and never
+#: `csv.Sniffer`/locale-based guessing. `COMMA` remains the default when
+#: no selection is supplied, preserving the exact prior behavior for
+#: every existing caller.
+_CSV_DELIMITER_FROM_HEADER: dict[str, str] = {"COMMA": ",", "SEMICOLON": ";"}
+
 
 def upload_import_for_organization(
     conn: Any,
@@ -211,6 +285,7 @@ def upload_import_for_organization(
     import_source_value: str,
     worksheet_name: str | None,
     attested_account_tokens: frozenset[str],
+    csv_delimiter_value: str | None = None,
 ) -> UploadImportResult:
     """Parse *raw_bytes* under the broker-declared *declared_format_value*
     and stage it as one new `ImportBatch` owned by the selected, authorized
@@ -220,6 +295,14 @@ def upload_import_for_organization(
     `WORKSHEET_CHOICE_REQUIRED` with the real worksheet-name list and
     creates nothing (Required Behavior #1: explicit worksheet choice,
     never an implicit "first sheet" default).
+
+    *csv_delimiter_value* (independent review amendment Finding G) selects
+    the real-world comma/semicolon CSV dialect through the actual upload
+    workflow -- `None` or `"COMMA"` keep the prior fixed-comma behavior;
+    `"SEMICOLON"` selects the common European dialect. Only meaningful for
+    `ImportFormat.CSV`; TSV's delimiter remains fixed at tab, matching its
+    name. An unrecognized value fails closed as `UNSUPPORTED_FORMAT`
+    rather than silently falling back to comma.
     """
     organization_id = MarketplaceOrganizationId(organization_id_value)
     auth = _authorize_import_actor(conn, session, organization_id)
@@ -237,8 +320,29 @@ def upload_import_for_organization(
             parse_error_kind=ImportParseErrorKind.UNSUPPORTED_FORMAT,
             message=f"unrecognized declared format {declared_format_value!r}",
         )
+    csv_delimiter = _CSV_DELIMITER_FROM_HEADER.get(csv_delimiter_value or "COMMA")
+    if csv_delimiter is None:
+        return UploadImportResult(
+            outcome=UploadImportOutcome.UNSUPPORTED_FORMAT,
+            parse_error_kind=ImportParseErrorKind.UNSUPPORTED_FORMAT,
+            message=f"unrecognized CSV delimiter selection {csv_delimiter_value!r}",
+        )
     if len(raw_bytes) > MAX_IMPORT_FILE_BYTES:
         return UploadImportResult(outcome=UploadImportOutcome.PAYLOAD_TOO_LARGE)
+
+    # Independent review amendment Finding E: opportunistically purge this
+    # Organization's own expired, never-confirmed batches (bounded
+    # staging retention -- no separate scheduler/cron this slice does not
+    # add), then enforce the bounded pending-batch count *before* parsing
+    # or staging anything new.
+    conn.commit()
+    with conn.transaction():
+        purge_expired_unconfirmed_batches(conn, owner_organization_id=organization_id)
+    pending_count = count_pending_batches_for_organization(
+        conn, owner_organization_id=organization_id
+    )
+    if pending_count >= MAX_PENDING_BATCHES_PER_ORGANIZATION:
+        return UploadImportResult(outcome=UploadImportOutcome.TOO_MANY_PENDING_BATCHES)
 
     try:
         import_source = ImportSource(import_source_value)
@@ -251,7 +355,7 @@ def upload_import_for_organization(
 
     try:
         if fmt is ImportFormat.CSV:
-            table = parse_delimited_table(raw_bytes, delimiter=",")
+            table = parse_delimited_table(raw_bytes, delimiter=csv_delimiter)
         elif fmt is ImportFormat.TSV:
             table = parse_delimited_table(raw_bytes, delimiter="\t")
         elif fmt is ImportFormat.JSON:
@@ -492,6 +596,7 @@ class ConfirmImportBatchOutcome(StrEnum):
     BATCH_NOT_FOUND = "BATCH_NOT_FOUND"
     WRONG_STATE = "WRONG_STATE"
     STAGING_EXPIRED = "STAGING_EXPIRED"
+    STALE_CONFIRMATION = "STALE_CONFIRMATION"
     CONFIRMED = "CONFIRMED"
 
 
@@ -552,10 +657,29 @@ def _create_draft_for_row(
 
 
 def confirm_import_batch_for_organization(
-    conn: Any, session: SessionClaims, organization_id_value: str, batch_id_value: str
+    conn: Any,
+    session: SessionClaims,
+    organization_id_value: str,
+    batch_id_value: str,
+    *,
+    expected_row_count: int,
 ) -> ConfirmImportBatchResult:
     """Explicitly confirm one staged batch: resolve every row's final D26
     outcome and durably commit it.
+
+    *expected_row_count* (independent review amendment Finding F) must be
+    the exact `row_count` the caller most recently observed from this
+    batch's own mapping/get response -- a server-issued, Organization-
+    scoped value the caller echoes back, never a client-invented number.
+    A mismatch is `STALE_CONFIRMATION`, zero mutation: the caller's view
+    of this batch is stale (e.g. it is confirming a batch it no longer
+    correctly remembers the shape of). This check deliberately does *not*
+    extend to the batch's `status`: status legitimately advances through
+    `MAPPED -> CONFIRMING -> CONFIRMED` as confirmation itself proceeds,
+    so comparing status would break the exact "retry after lost
+    response" idempotency this function also guarantees -- `row_count`
+    never changes after mapping, so it is the one value stale-vs-current
+    can be judged against without that conflict.
 
     Resumable: a row that already carries an `outcome` (from a prior
     confirm call, including one whose HTTP response was lost) is read
@@ -581,6 +705,8 @@ def confirm_import_batch_for_organization(
         ImportBatchStatus.CONFIRMED,
     ):
         return ConfirmImportBatchResult(outcome=ConfirmImportBatchOutcome.WRONG_STATE)
+    if batch.row_count != expected_row_count:
+        return ConfirmImportBatchResult(outcome=ConfirmImportBatchOutcome.STALE_CONFIRMATION)
     if datetime.now(UTC) > batch.expires_at and batch.status is not ImportBatchStatus.CONFIRMED:
         return ConfirmImportBatchResult(outcome=ConfirmImportBatchOutcome.STAGING_EXPIRED)
 
@@ -595,54 +721,86 @@ def confirm_import_batch_for_organization(
     # than silently creating a second batch of drafts for conceptually the
     # same rows (snapshot keys are namespaced by file digest, so they would
     # otherwise never collide at the identity-mapping-table level at all).
-    force_snapshot_conflict = (
-        batch.snapshot_mode
-        and has_confirmed_snapshot_batch_with_different_digest(
-            conn,
-            owner_organization_id=organization_id,
-            import_source=batch.import_source,
-            file_sha256=batch.file_sha256,
-        )
-    )
+    force_snapshot_conflict = False
+    if batch.snapshot_mode:
+        conn.commit()
+        with conn.transaction():
+            force_snapshot_conflict = claim_or_check_snapshot_lineage(
+                conn,
+                owner_organization_id=organization_id,
+                import_source=batch.import_source,
+                file_sha256=batch.file_sha256,
+                batch_id=batch_id,
+            )
 
     rows = list_import_rows(conn, batch_id=batch_id)
     summary = RowConfirmSummary()
     for row in rows:
-        if row.preview_classification is RowPreviewClassification.INVALID:
-            outcome = ImportRowOutcome.INVALID
-            if row.outcome is None:
-                conn.commit()
-                with conn.transaction():
-                    finalize_row_outcome_only(conn, row_id=row.row_id, outcome=outcome)
-        elif (
-            row.preview_classification is RowPreviewClassification.CONFLICT_REVIEW
-            or force_snapshot_conflict
-        ):
-            outcome = ImportRowOutcome.CONFLICT_REVIEW
-            if row.outcome is None:
-                conn.commit()
-                with conn.transaction():
-                    finalize_row_outcome_only(conn, row_id=row.row_id, outcome=outcome)
-        else:
-            assert row.preview_classification is RowPreviewClassification.VALID
+        try:
+            if row.preview_classification is RowPreviewClassification.INVALID:
+                outcome = ImportRowOutcome.INVALID
+                if row.outcome is None:
+                    conn.commit()
+                    with conn.transaction():
+                        # Finding A: re-validated fresh, under this row's own
+                        # transaction, before the mutation it is about to
+                        # perform -- not only at request entry.
+                        _recheck_fresh_publisher_authorization(conn, session, organization_id)
+                        finalize_row_outcome_only(conn, row_id=row.row_id, outcome=outcome)
+            elif (
+                row.preview_classification is RowPreviewClassification.CONFLICT_REVIEW
+                or force_snapshot_conflict
+            ):
+                outcome = ImportRowOutcome.CONFLICT_REVIEW
+                if row.outcome is None:
+                    conn.commit()
+                    with conn.transaction():
+                        _recheck_fresh_publisher_authorization(conn, session, organization_id)
+                        finalize_row_outcome_only(conn, row_id=row.row_id, outcome=outcome)
+            else:
+                assert row.preview_classification is RowPreviewClassification.VALID
 
-            # confirm_import_row requires an IDLE connection (it owns its
-            # own per-row transaction) -- a prior branch's skipped
-            # finalize_row_outcome_only call, or the read-only
-            # list_import_rows() select above, may have left an implicit
-            # transaction open.
-            conn.commit()
-            result = confirm_import_row(
-                conn,
-                row=row,
-                owner_organization_id=organization_id,
-                import_source=batch.import_source,
-                batch_id=batch_id,
-                create_draft=lambda row=row: _create_draft_for_row(
-                    conn, organization_id, session, row
+                # confirm_import_row requires an IDLE connection (it owns its
+                # own per-row transaction) -- a prior branch's skipped
+                # finalize_row_outcome_only call, or the read-only
+                # list_import_rows() select above, may have left an implicit
+                # transaction open.
+                conn.commit()
+                result = confirm_import_row(
+                    conn,
+                    row=row,
+                    owner_organization_id=organization_id,
+                    import_source=batch.import_source,
+                    batch_id=batch_id,
+                    create_draft=lambda row=row: _create_draft_for_row(
+                        conn, organization_id, session, row
+                    ),
+                    recheck_authorization=lambda: _recheck_fresh_publisher_authorization(
+                        conn, session, organization_id
+                    ),
+                )
+                outcome = result.outcome
+        except ImportRowAuthorizationDeniedError as denied:
+            # Finding A: current access was revoked partway through this
+            # multi-row confirmation. Every row already durably stamped
+            # above stays stamped (truthful partial success); this row and
+            # every row after it in `rows` are left with `outcome IS NULL`
+            # for a later resumed confirm call (by a still-authorized
+            # actor) to complete -- never silently written anyway. The
+            # `with conn.transaction():` block that raised this already
+            # rolled itself back, so *conn* is already IDLE here.
+            denial_outcome = {
+                _ImportActorAuthorizationOutcome.NOT_FOUND_OR_DENIED: (
+                    ConfirmImportBatchOutcome.NOT_FOUND_OR_DENIED
                 ),
-            )
-            outcome = result.outcome
+                _ImportActorAuthorizationOutcome.MFA_REQUIRED: (
+                    ConfirmImportBatchOutcome.MFA_REQUIRED
+                ),
+                _ImportActorAuthorizationOutcome.PUBLISHER_ROLE_REQUIRED: (
+                    ConfirmImportBatchOutcome.PUBLISHER_ROLE_REQUIRED
+                ),
+            }[denied.reason]
+            return ConfirmImportBatchResult(outcome=denial_outcome)
 
         if outcome is ImportRowOutcome.CREATE_NEW_DRAFT:
             summary = RowConfirmSummary(

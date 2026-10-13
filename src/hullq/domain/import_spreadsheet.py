@@ -10,16 +10,22 @@ macro-content/zip-bomb guard over the underlying ZIP container (XLSX/XLSB/
 ODS are all ZIP packages) before calamine is ever invoked, on top of the
 shared `MAX_IMPORT_FILE_BYTES` whole-file bound every format enforces.
 
-Known, documented limitation (slice stop-condition: "document the exact
-deficiency ... rather than falsely mark the acceptance matrix complete"):
-calamine's `to_python()` returns a formula cell's cached computed value
-(or an empty string if the file carries no cached value for it) and does
-not expose whether a given cell was a literal or a formula. A formula cell
-lacking a trustworthy cached value is therefore indistinguishable from a
-genuinely blank cell and is treated the same safe way: omitted (never a
-guessed value), surfaced to the broker only as a blank cell in the row
-preview they explicitly review before confirming -- never a silently
-fabricated field value.
+Formula-cell fail-closed policy (independent review amendment Finding D,
+verified against hand-authored OOXML XML -- see
+`tests/fixtures/spreadsheets/PROVENANCE.md`): calamine's `to_python()`
+exposes a formula cell's genuine last-cached computed value when the
+source file carries a non-error one -- trusted the same as any other
+literal cell, since calamine itself never evaluates the formula (it only
+replays whatever the authoring application already computed and stored;
+no "formula/macro execution" ever happens here). A formula cell carrying
+no cached value at all, or an explicit error-typed cached value (e.g.
+`#DIV/0!`), is surfaced as empty -- genuinely indistinguishable from a
+literal blank cell, and handled identically: omitted (never guessed),
+surfaced to the broker only as a blank cell in the row preview they
+explicitly review before confirming. There is therefore no case in which
+a formula cell can silently become a fabricated/untrustworthy literal
+value: either calamine faithfully replays a real previously-computed
+value, or the cell is safely blank.
 """
 
 from __future__ import annotations
@@ -137,6 +143,14 @@ def _cell_to_text(value: object) -> str | None:
         return repr(value)
     if isinstance(value, datetime.datetime | datetime.date | datetime.time):
         return value.isoformat()
+    if isinstance(value, datetime.timedelta):
+        # A worksheet duration/elapsed-time cell (calamine's own Rust type
+        # maps Excel's elapsed-time numeric format to `timedelta`). ISO
+        # 8601 duration form is lossless and unambiguous -- never silently
+        # dropped as "unsupported" merely because it is a genuine but
+        # uncommon cell type.
+        total_seconds = value.total_seconds()
+        return f"P{value.days}DT{total_seconds - value.days * 86400}S"
     raise ImportParseError(
         ImportParseErrorKind.MALFORMED, f"unsupported cell value type {type(value).__name__}"
     )

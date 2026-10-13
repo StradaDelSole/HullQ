@@ -13,6 +13,7 @@ from __future__ import annotations
 import pytest
 
 from hullq.domain.import_intake import (
+    MAX_IMPORT_ROWS,
     ImportParseError,
     ImportParseErrorKind,
     RowPreviewClassification,
@@ -214,3 +215,91 @@ class TestMapNautixAdvertsToRows:
         assert rows[0].draft_request_wire is not None
         assert rows[0].draft_request_wire["listing_offer.asking_price_mode"] == "POA"
         assert "listing_offer.asking_price_amount" not in rows[0].draft_request_wire
+
+    def test_fixed_price_type_without_amount_is_invalid_not_poa(self) -> None:
+        """Independent review amendment Finding C: a declared `type="fixed"`
+        price with a missing amount is an incomplete source record, never
+        silently reinterpreted as POA."""
+        broken_price = _VALID_ACTIVE_SAIL_ADVERT.replace(
+            '<price type="fixed" currency="EUR">125000.00</price>',
+            '<price type="fixed" currency="EUR"></price>',
+        )
+        root = parse_and_validate_nautix(_wrap(broken_price))
+        rows = map_nautix_adverts_to_rows(root, attested_account_tokens=frozenset({"ACME-1"}))
+        assert rows[0].classification is RowPreviewClassification.INVALID
+        assert any("declares an asking amount but none was provided" in r for r in rows[0].reasons)
+
+    def test_model_year_is_never_substituted_for_build_year(self) -> None:
+        """Independent review amendment Finding C: `year_built` and
+        `model_year` are distinct XSD fields with distinct semantics --
+        `model_year` must never silently fill in a missing `build_year`."""
+        model_year_only = _VALID_ACTIVE_SAIL_ADVERT.replace(
+            "<year_built>2019</year_built>", "<model_year>2020</model_year>"
+        )
+        root = parse_and_validate_nautix(_wrap(model_year_only))
+        rows = map_nautix_adverts_to_rows(root, attested_account_tokens=frozenset({"ACME-1"}))
+        assert rows[0].classification is RowPreviewClassification.VALID
+        assert rows[0].draft_request_wire is not None
+        assert "physical_boat.build_year" not in rows[0].draft_request_wire
+
+    def test_build_year_mapped_only_from_year_built(self) -> None:
+        both_present = _VALID_ACTIVE_SAIL_ADVERT.replace(
+            "<year_built>2019</year_built>",
+            "<year_built>2019</year_built><model_year>2020</model_year>",
+        )
+        root = parse_and_validate_nautix(_wrap(both_present))
+        rows = map_nautix_adverts_to_rows(root, attested_account_tokens=frozenset({"ACME-1"}))
+        assert rows[0].classification is RowPreviewClassification.VALID
+        assert rows[0].draft_request_wire is not None
+        assert rows[0].draft_request_wire["physical_boat.build_year"] == 2019
+
+    def test_too_many_adverts_is_rejected_before_mapping(self) -> None:
+        """Independent review amendment Finding E: the total advert count
+        is bounded by `MAX_IMPORT_ROWS`, checked before any row is mapped
+        or materialized -- mirroring every column-mapped format's
+        identical bound."""
+        adverts_xml = "".join(
+            f'<advert id="A{i}" purpose="sale" type="engine" status="active" '
+            f'modified="2026-09-15T08:00:00+02:00"/>'
+            for i in range(MAX_IMPORT_ROWS + 1)
+        )
+        account_body = f"""
+  <account token="ACME-1" status="active">
+    <account_name>Acme Yacht Brokers</account_name>
+    <adverts>{adverts_xml}</adverts>
+  </account>
+"""
+        root = parse_and_validate_nautix(_wrap(account_body))
+        with pytest.raises(ImportParseError) as exc_info:
+            map_nautix_adverts_to_rows(root, attested_account_tokens=frozenset({"ACME-1"}))
+        assert exc_info.value.kind is ImportParseErrorKind.TOO_MANY_ROWS
+
+    def test_media_image_urls_staged_as_inert_text_never_fetched(self) -> None:
+        """Independent review amendment Finding H: media URLs/checksums
+        are honestly surfaced as staged evidence (never mapped into any
+        accepted draft fact, never fetched) -- the broker can see exactly
+        what the source document referenced."""
+        advert_with_media = _VALID_ACTIVE_SAIL_ADVERT.replace(
+            "</boat_data>",
+            "</boat_data>"
+            '<media validation="non-strict">'
+            "<images>"
+            '<image type="image/jpeg" md5="d41d8cd98f00b204e9800998ecf8427e">'
+            "https://example.test/not-a-real-host/aria-1.jpg"
+            "</image>"
+            "</images>"
+            "</media>",
+        )
+        root = parse_and_validate_nautix(_wrap(advert_with_media))
+        rows = map_nautix_adverts_to_rows(root, attested_account_tokens=frozenset({"ACME-1"}))
+        assert rows[0].classification is RowPreviewClassification.VALID
+        assert rows[0].raw_fields["image_count"] == "1"
+        assert (
+            rows[0].raw_fields["media_image_urls"]
+            == "https://example.test/not-a-real-host/aria-1.jpg"
+        )
+        assert rows[0].raw_fields["media_image_md5s"] == "d41d8cd98f00b204e9800998ecf8427e"
+        # Never promoted into any accepted draft fact -- media stays
+        # staged evidence only.
+        assert rows[0].draft_request_wire is not None
+        assert not any("media" in key or "image" in key for key in rows[0].draft_request_wire)

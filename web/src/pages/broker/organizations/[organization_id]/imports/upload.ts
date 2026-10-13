@@ -49,6 +49,7 @@ export async function POST({ params, request }: APIContext): Promise<Response> {
   const importSource = request.headers.get("x-hullq-import-source");
   const worksheetName = request.headers.get("x-hullq-worksheet");
   const nautixTokens = request.headers.get("x-hullq-nautix-account-tokens");
+  const csvDelimiter = request.headers.get("x-hullq-csv-delimiter");
   if (!declaredFormat || !importSource) {
     return jsonError("invalid_request", 400);
   }
@@ -64,6 +65,7 @@ export async function POST({ params, request }: APIContext): Promise<Response> {
   if (originHeader) upstreamHeaders.Origin = originHeader;
   if (worksheetName) upstreamHeaders["X-HullQ-Worksheet"] = worksheetName;
   if (nautixTokens) upstreamHeaders["X-HullQ-Nautix-Account-Tokens"] = nautixTokens;
+  if (csvDelimiter) upstreamHeaders["X-HullQ-Csv-Delimiter"] = csvDelimiter;
 
   let upstream: Response;
   try {

@@ -2680,15 +2680,36 @@ def create_app(
             content_length = int(raw_content_length)
         except ValueError:
             return JSONResponse({"error": "invalid_content_length"}, status_code=400)
+        if content_length < 0:
+            return JSONResponse({"error": "invalid_content_length"}, status_code=400)
         if content_length > MAX_IMPORT_FILE_BYTES:
             return JSONResponse({"error": "payload_too_large"}, status_code=413)
 
         declared_format = request.headers.get("x-hullq-import-format", "")
         import_source = request.headers.get("x-hullq-import-source", "")
         worksheet_name = request.headers.get("x-hullq-worksheet")
+        csv_delimiter_value = request.headers.get("x-hullq-csv-delimiter")
         raw_tokens = request.headers.get("x-hullq-nautix-account-tokens", "")
         attested_account_tokens = frozenset(t.strip() for t in raw_tokens.split(",") if t.strip())
-        raw_bytes = await request.body()
+
+        # Independent review amendment Finding E: bound the *actual* bytes
+        # read from the stream as they arrive, never trusting the
+        # declared Content-Length alone (which only gates a fast 413
+        # before any read is attempted above) -- a request whose body
+        # genuinely delivers more than MAX_IMPORT_FILE_BYTES is aborted
+        # mid-stream, and one that delivers fewer bytes than it declared
+        # (a truncated/mismatched body) is rejected rather than silently
+        # processed as if complete.
+        chunks: list[bytes] = []
+        received = 0
+        async for chunk in request.stream():
+            received += len(chunk)
+            if received > MAX_IMPORT_FILE_BYTES:
+                return JSONResponse({"error": "payload_too_large"}, status_code=413)
+            chunks.append(chunk)
+        if received != content_length:
+            return JSONResponse({"error": "invalid_content_length"}, status_code=400)
+        raw_bytes = b"".join(chunks)
 
         conn = open_connection(resolved_database_url)
         try:
@@ -2701,6 +2722,7 @@ def create_app(
                 import_source_value=import_source,
                 worksheet_name=worksheet_name,
                 attested_account_tokens=attested_account_tokens,
+                csv_delimiter_value=csv_delimiter_value,
             )
         finally:
             conn.close()
@@ -2708,7 +2730,12 @@ def create_app(
         auth_error = _import_intake_authorization_error(result.outcome)
         if auth_error is not None:
             return auth_error
-        status_code = 201 if result.outcome is UploadImportOutcome.STAGED else 400
+        if result.outcome is UploadImportOutcome.STAGED:
+            status_code = 201
+        elif result.outcome is UploadImportOutcome.TOO_MANY_PENDING_BATCHES:
+            status_code = 429
+        else:
+            status_code = 400
         return JSONResponse(result.to_public_dict(), status_code=status_code)
 
     @app.get("/api/broker/organizations/{organization_id}/imports")
@@ -2792,11 +2819,22 @@ def create_app(
         if session is None:
             raise HTTPException(status_code=401, detail="authentication required")
         _require_import_intake_csrf(request)
-        await _read_json_body(request, allow_empty=True)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        if not isinstance(raw_body, dict):
+            return JSONResponse({"error": "invalid_confirm_request"}, status_code=400)
+        raw_expected_row_count = raw_body.get("expected_row_count")
+        if not isinstance(raw_expected_row_count, int) or isinstance(raw_expected_row_count, bool):
+            return JSONResponse({"error": "invalid_confirm_request"}, status_code=400)
 
         conn = open_connection(resolved_database_url)
         try:
-            result = confirm_import_batch_for_organization(conn, session, organization_id, batch_id)
+            result = confirm_import_batch_for_organization(
+                conn,
+                session,
+                organization_id,
+                batch_id,
+                expected_row_count=raw_expected_row_count,
+            )
         finally:
             conn.close()
 
@@ -2813,6 +2851,7 @@ def create_app(
             in (
                 ConfirmImportBatchOutcome.WRONG_STATE,
                 ConfirmImportBatchOutcome.STAGING_EXPIRED,
+                ConfirmImportBatchOutcome.STALE_CONFIRMATION,
             )
             else 400
         )

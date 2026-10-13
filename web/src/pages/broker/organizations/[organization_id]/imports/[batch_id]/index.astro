@@ -67,15 +67,21 @@ if (Astro.request.method === "POST" && organizationId && batchId) {
           : `Could not apply mapping (${mapResult.kind}).`;
     }
   } else if (action === "confirm") {
-    const confirmResult = await confirmImportBatch(
-      apiBaseUrl,
-      organizationId,
-      batchId,
-      cookieHeader,
-      originHeader,
-    );
-    if (confirmResult.kind !== "ok") {
-      actionMessage = `Could not confirm import (${confirmResult.kind}).`;
+    const expectedRowCount = Number(form.get("expected_row_count") ?? "");
+    if (!Number.isInteger(expectedRowCount)) {
+      actionMessage = "Could not confirm import (missing expected row count).";
+    } else {
+      const confirmResult = await confirmImportBatch(
+        apiBaseUrl,
+        organizationId,
+        batchId,
+        cookieHeader,
+        originHeader,
+        expectedRowCount,
+      );
+      if (confirmResult.kind !== "ok") {
+        actionMessage = `Could not confirm import (${confirmResult.kind}).`;
+      }
     }
   }
 }
@@ -189,6 +195,7 @@ const stepUpUrl = `${loginUrl}&acr_values=${encodeURIComponent(AUTH0_MFA_STEP_UP
             {(result.batch.status === "MAPPED" || result.batch.status === "CONFIRMING") && (
               <form method="POST">
                 <input type="hidden" name="action" value="confirm" />
+                <input type="hidden" name="expected_row_count" value={result.batch.row_count} />
                 <button type="submit">Confirm import ({result.batch.row_count} row(s))</button>
               </form>
             )}

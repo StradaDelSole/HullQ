@@ -10,6 +10,8 @@ constraint.
 
 from __future__ import annotations
 
+import threading
+import time
 import uuid
 from collections.abc import Generator
 from typing import Any
@@ -35,6 +37,7 @@ from hullq.persistence.import_intake import (
     ApplyMappingOutcome,
     ImportBatchStatus,
     apply_import_batch_mapping,
+    claim_or_check_snapshot_lineage,
     confirm_import_row,
     create_import_batch_awaiting_mapping,
     fetch_import_batch,
@@ -315,6 +318,7 @@ class TestConfirmImportRow:
             import_source=batch.import_source,
             batch_id=batch.batch_id,
             create_draft=lambda: create_draft(rows[0].draft_request_wire),
+            recheck_authorization=lambda: None,
         )
         assert result.outcome is ImportRowOutcome.CREATE_NEW_DRAFT
         assert result.professional_listing_draft_id is not None
@@ -344,6 +348,7 @@ class TestConfirmImportRow:
             import_source=batch.import_source,
             batch_id=batch.batch_id,
             create_draft=lambda: create_draft(rows[0].draft_request_wire),
+            recheck_authorization=lambda: None,
         )
         assert first.outcome is ImportRowOutcome.CREATE_NEW_DRAFT
 
@@ -356,6 +361,7 @@ class TestConfirmImportRow:
             import_source=batch.import_source,
             batch_id=batch.batch_id,
             create_draft=lambda: (_ for _ in ()).throw(AssertionError("must not be called")),
+            recheck_authorization=lambda: None,
         )
         assert resumed.outcome is ImportRowOutcome.CREATE_NEW_DRAFT
         assert resumed.professional_listing_draft_id == first.professional_listing_draft_id
@@ -379,6 +385,7 @@ class TestConfirmImportRow:
             import_source=batch1.import_source,
             batch_id=batch1.batch_id,
             create_draft=lambda: create_draft(rows1[0].draft_request_wire),
+            recheck_authorization=lambda: None,
         )
 
         # Same ImportSource, same mapped payload, different batch (e.g. the
@@ -394,6 +401,7 @@ class TestConfirmImportRow:
             import_source=batch2.import_source,
             batch_id=batch2.batch_id,
             create_draft=lambda: (_ for _ in ()).throw(AssertionError("must not be called")),
+            recheck_authorization=lambda: None,
         )
         assert second.outcome is ImportRowOutcome.ALREADY_IMPORTED
         assert second.professional_listing_draft_id == first.professional_listing_draft_id
@@ -414,6 +422,7 @@ class TestConfirmImportRow:
             import_source=batch1.import_source,
             batch_id=batch1.batch_id,
             create_draft=lambda: create_draft(rows1[0].draft_request_wire),
+            recheck_authorization=lambda: None,
         )
         assert first.outcome is ImportRowOutcome.CREATE_NEW_DRAFT
 
@@ -429,6 +438,7 @@ class TestConfirmImportRow:
             import_source=batch2.import_source,
             batch_id=batch2.batch_id,
             create_draft=lambda: (_ for _ in ()).throw(AssertionError("must not be called")),
+            recheck_authorization=lambda: None,
         )
         assert second.outcome is ImportRowOutcome.CONFLICT_REVIEW
         assert second.professional_listing_draft_id is None
@@ -467,6 +477,7 @@ class TestConfirmImportRow:
             import_source=batch_a.import_source,
             batch_id=batch_a.batch_id,
             create_draft=lambda: create_draft_a(rows_a[0].draft_request_wire),
+            recheck_authorization=lambda: None,
         )
         result_b = confirm_import_row(
             conn,
@@ -475,6 +486,7 @@ class TestConfirmImportRow:
             import_source=batch_b.import_source,
             batch_id=batch_b.batch_id,
             create_draft=lambda: create_draft_b(rows_b[0].draft_request_wire),
+            recheck_authorization=lambda: None,
         )
         assert result_a.outcome is ImportRowOutcome.CREATE_NEW_DRAFT
         assert result_b.outcome is ImportRowOutcome.CREATE_NEW_DRAFT
@@ -529,6 +541,7 @@ class TestConfirmImportRow:
             import_source=batch.import_source,
             batch_id=batch.batch_id,
             create_draft=lambda: create_draft(rows[0].draft_request_wire),
+            recheck_authorization=lambda: None,
         )
         # This connection lost the race: it must report the winner's draft
         # (same digest -> ALREADY_IMPORTED), never create a second one.
@@ -542,3 +555,163 @@ class TestConfirmImportRow:
             )
             (count,) = cur.fetchone()
         assert count == 1
+
+
+def _wait_until_blocked_on_lock(monitor_conn: Any, pid: int, *, timeout: float = 10.0) -> bool:
+    """Poll `pg_locks` on a dedicated connection until *pid* is genuinely
+    waiting (not granted) on a lock -- never a fixed sleep guessing at
+    scheduling, mirroring
+    `test_boat_design_association_persistence.py`'s identical SLICE-0082
+    Finding A proof technique."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        with monitor_conn.cursor() as cur:
+            cur.execute(
+                "SELECT EXISTS(SELECT 1 FROM pg_locks WHERE pid = %s AND NOT granted)", [pid]
+            )
+            (is_waiting,) = cur.fetchone()
+        monitor_conn.commit()
+        if is_waiting:
+            return True
+        time.sleep(0.05)
+    return False
+
+
+def _backend_pid(conn: Any) -> int:
+    with conn.cursor() as cur:
+        cur.execute("SELECT pg_backend_pid()")
+        pid = int(cur.fetchone()[0])
+    conn.commit()
+    return pid
+
+
+class TestConcurrentSnapshotLineage:
+    def test_two_concurrent_different_digest_snapshot_claims_exactly_one_wins(
+        self, import_url: str
+    ) -> None:
+        """Independent review amendment Finding B: two genuinely concurrent
+        first-time snapshot-lineage claims for the same Organization/
+        ImportSource with *different* file digests contend for the real
+        `(owner_organization_id, import_source)` primary key under actual
+        PostgreSQL lock contention (confirmed via `pg_locks`, never a
+        timing guess) -- exactly one may durably become the lineage;
+        the other is deterministically told it conflicts.
+        """
+        org_id = MarketplaceOrganizationId(str(uuid.uuid4()))
+        account_id = AccountId(str(uuid.uuid4()))
+        conn0 = psycopg.connect(import_url)
+        try:
+            with conn0.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO marketplace_organizations "
+                    "(organization_id, professional_category, publishing_eligibility, "
+                    " public_display_name) VALUES (%s, %s, %s, %s)",
+                    [org_id.value, "BROKER", "ELIGIBLE", org_id.value],
+                )
+                cur.execute("INSERT INTO accounts (account_id) VALUES (%s)", [account_id.value])
+            conn0.commit()
+
+            table = ParsedTable(headers=("a",), rows=(("1",),))
+            batch_a = create_import_batch_awaiting_mapping(
+                conn0,
+                owner_organization_id=org_id,
+                created_by_account_id=account_id,
+                import_format=ImportFormat.CSV,
+                import_source=ImportSource("ConcurrentSnap"),
+                worksheet_name=None,
+                file_sha256=compute_file_sha256(b"digest-a-payload"),
+                file_byte_size=10,
+                staged_table=table,
+            )
+            conn0.commit()
+            batch_b = create_import_batch_awaiting_mapping(
+                conn0,
+                owner_organization_id=org_id,
+                created_by_account_id=account_id,
+                import_format=ImportFormat.CSV,
+                import_source=ImportSource("ConcurrentSnap"),
+                worksheet_name=None,
+                file_sha256=compute_file_sha256(b"digest-b-payload"),
+                file_byte_size=10,
+                staged_table=table,
+            )
+            conn0.commit()
+        finally:
+            conn0.close()
+
+        digest_a = compute_file_sha256(b"digest-a-payload")
+        digest_b = compute_file_sha256(b"digest-b-payload")
+
+        conn_a = psycopg.connect(import_url)
+        conn_b = psycopg.connect(import_url)
+        monitor_conn = psycopg.connect(import_url)
+        conn_b_pid = _backend_pid(conn_b)
+
+        errors: list[BaseException] = []
+        results: dict[str, bool] = {}
+        a_inserted = threading.Event()
+
+        def _claim_a_then_delay_commit() -> None:
+            try:
+                with conn_a.transaction():
+                    conflict = claim_or_check_snapshot_lineage(
+                        conn_a,
+                        owner_organization_id=org_id,
+                        import_source=ImportSource("ConcurrentSnap"),
+                        file_sha256=digest_a,
+                        batch_id=batch_a.batch_id,
+                    )
+                    results["a"] = conflict
+                    a_inserted.set()
+                    blocked = _wait_until_blocked_on_lock(monitor_conn, conn_b_pid)
+                    assert blocked, "conn_b never blocked on conn_a's uncommitted lineage insert"
+            except Exception as exc:  # pragma: no cover - surfaced via errors assertion
+                errors.append(exc)
+
+        def _claim_b_concurrently() -> None:
+            try:
+                a_inserted.wait(timeout=10)
+                with conn_b.transaction():
+                    conflict = claim_or_check_snapshot_lineage(
+                        conn_b,
+                        owner_organization_id=org_id,
+                        import_source=ImportSource("ConcurrentSnap"),
+                        file_sha256=digest_b,
+                        batch_id=batch_b.batch_id,
+                    )
+                    results["b"] = conflict
+            except Exception as exc:  # pragma: no cover - surfaced via errors assertion
+                errors.append(exc)
+
+        threads = [
+            threading.Thread(target=_claim_a_then_delay_commit),
+            threading.Thread(target=_claim_b_concurrently),
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=20)
+        conn_a.close()
+        conn_b.close()
+        monitor_conn.close()
+
+        assert not errors, f"Thread errors: {errors}"
+        # `a` established the lineage first (no conflict); `b`, blocked
+        # behind `a`'s uncommitted insert and only unblocked once `a`
+        # committed, must see the real winning digest and report conflict.
+        assert results["a"] is False
+        assert results["b"] is True
+
+        verify_conn = psycopg.connect(import_url)
+        try:
+            with verify_conn.cursor() as cur:
+                cur.execute(
+                    "SELECT file_sha256 FROM import_snapshot_lineages "
+                    "WHERE owner_organization_id = %s AND import_source = %s",
+                    [org_id.value, "ConcurrentSnap"],
+                )
+                rows = cur.fetchall()
+        finally:
+            verify_conn.close()
+        assert len(rows) == 1
+        assert rows[0][0] == digest_a
