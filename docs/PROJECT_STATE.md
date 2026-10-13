@@ -1,12 +1,12 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0083 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0084 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0084 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0085 -->
 <!-- PRODUCTION_LAUNCH_PACK_PHASE: NOT_STARTED -->
 
 **Updated:** 2026-10-13  
-**Latest owner-accepted / DONE slice:** SLICE-0083  
-**Current queue:** SLICE-0084 — **READY contract: Broker pre-publication Search-fit** in `docs/slices/SLICE-0084-broker-prepublication-search-fit.md` (only authoritative after independent reviewed readiness PR merge); implementation NOT_STARTED. Owner-accepted post-0083 product priority: once Search-fit is accepted, immediately prioritize successive buyer technical native Search criteria (initially LOA, then rudder/skeg), explicitly review the long-keel taxonomy omission, then expand to beam/displacement/rig/material and other qualified technical-profile fields according to documented evidence. This priority is durable in `docs/POST_SLICE_0083_SEARCH_PRIORITY_REASSESSMENT_2026-10-13.md`; future exceptions require evidence and explicit Owner priority decision. Existing public hard technical Search criteria remain **2**. Production Launch Pack remains `NOT_STARTED`, Production Readiness `IN_PROGRESS`; external production data/pilot/public launch are not authorized.  
+**Latest owner-accepted / DONE slice:** SLICE-0084  
+**Current queue:** SLICE-0085 — **UNSELECTED**, pending fresh post-SLICE-0084 Decision/Implementation Reconciliation and independently reviewed readiness. SLICE-0084 Broker pre-publication Search-fit is **Owner-accepted, implemented and closed** (implementation PR #342, `docs/slices/SLICE-0084-acceptance-closure.md`); `MVP-BROKER-010` / `REQ-BROKER-026` is fulfilled within its accepted bounded two-criterion read-only synthetic-preview scope. The binding Owner priority is successive buyer technical native Search expansion: **LOA first candidate**, then **rudder/skeg**, with a separate `LONG_KEEL` existing-keel mapping review and subsequent beam/displacement/rig/material and qualified fields as evidence permits. This priority is recorded in `docs/POST_SLICE_0083_SEARCH_PRIORITY_REASSESSMENT_2026-10-13.md` and tracked by issue #339; an exception requires evidence and an explicit new Owner decision. Accepted hard technical Search criteria remain **2**. Production Launch Pack remains `NOT_STARTED`, Production Readiness `IN_PROGRESS`; external production data/pilot/public launch are not authorized.  
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -262,14 +262,14 @@ REQ_BROKER_022_STATUS: PENDING
 REQ_BROKER_023_STATUS: IMPLEMENTED
 REQ_BROKER_024_STATUS: IMPLEMENTED
 REQ_BROKER_025_STATUS: PENDING
-REQ_BROKER_026_STATUS: PENDING
-REQ_BROKER_027_STATUS: PENDING
+REQ_BROKER_026_STATUS: IMPLEMENTED
+REQ_BROKER_027_STATUS: IMPLEMENTED
 REQ_BROKER_028_STATUS: PENDING
 REQ_BROKER_029_STATUS: PENDING
 REQ_BROKER_030_STATUS: IMPLEMENTED
 ```
 
-REQ-BROKER-023 and REQ-BROKER-024 are implemented by the accepted SLICE-0063 and SLICE-0062 work respectively. SLICE-0066 changes none of the REQ-BROKER-022…030 status markers. It removes the remaining build-year required-response input blocker on the path to the Broker Workspace Launch Gate §2 professional create/publish workflow, but the remaining mandatory commitments stay controlling and the Broker Workspace Launch Gate remains NOT_READY.
+REQ-BROKER-023 and REQ-BROKER-024 were implemented by accepted SLICE-0063 and SLICE-0062. SLICE-0066 historically changed none of the REQ-BROKER-022…030 status markers; SLICE-0076/0077 subsequently closed the Broker Workspace Launch Gate at PASS. SLICE-0083 implemented REQ-BROKER-027 private multi-format intake; SLICE-0084 implemented REQ-BROKER-026 pre-publication Search-fit. The remaining mandatory export, reports, search-volume-triggered insights and production/trust commitments remain OPEN; a passed Broker Workspace Launch Gate does not authorize external production or make the full broker product COMPLETE.
 
 ## Architecture and production direction
 
@@ -303,7 +303,7 @@ Every primary slice selected after SLICE-0072 must reconcile that register befor
 
 ## What remains unbuilt
 
-Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; production email-provider activation; buyer-contact email verification; periodic/broader broker analytics beyond the accepted factual SLICE-0075 snapshot; export/bulk onboarding; buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
+Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; production email-provider activation; buyer-contact email verification; periodic/broader broker analytics beyond the accepted factual SLICE-0075 snapshot; broker inventory export; expansion of the currently two technical Buyer Search criteria (LOA, rudder/skeg, long-keel mapping and further qualified dimensions) plus buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
 SLICE-0078 is owner-accepted and merged. The dedicated pre-pilot Security Hardening & Adversarial Validation gate is PASS after exact-head independent review, remediation of all reachable Critical/High findings, explicit Owner risk acceptance of SEC-0078-07, and successful CI/reproducibility. Broker Workspace Launch Gate is also PASS.
 
@@ -331,7 +331,7 @@ Post-0067 reassessment should strongly prefer the shortest safe path through med
 
 The existing public NativeListing read path is already implemented; near-term work is to let normal broker-created inventory reach that path truthfully rather than to invent a second public-listing architecture.
 
-Structured bulk/source import is now implemented by Owner-accepted SLICE-0083 using bounded staging, mapping and explicit confirmation into existing private professional drafts (REQ-BROKER-027, MVP-BROKER-011). This does not authorize external broker production data or replace the existing publication/technical Search flow; broker export, Search-fit, periodic reporting and production operation remain separately governed.
+Structured bulk/source import is implemented by Owner-accepted SLICE-0083 (REQ-BROKER-027/MVP-BROKER-011). Broker pre-publication Search-fit for a promoted lifecycle-DRAFT NativeListing is implemented by Owner-accepted SLICE-0084 (REQ-BROKER-026/MVP-BROKER-010) using the existing two technical hard Search criteria. Neither capability authorizes external broker production data or publication/eligibility bypass; broker export, periodic reporting and production operation remain separately governed.
 
 Large retained research artifacts are acknowledged as repository-hygiene debt, not a launch blocker. They remain in-repo for now because they support deterministic evidence replay/auditability; any later externalization must preserve immutable hashes, provenance and reproducibility.
 
@@ -340,16 +340,14 @@ Large retained research artifacts are acknowledged as repository-hygiene debt, n
 Next queue number:
 
 ```text
-SLICE-0084
+SLICE-0085
 ```
 
-**Owner-selected capability:** **Broker pre-publication Search-fit diagnostics** (`MVP-BROKER-010` / `REQ-BROKER-026`). Accepted Owner selection and subsequent technical Search expansion priority are in `docs/POST_SLICE_0083_SEARCH_PRIORITY_REASSESSMENT_2026-10-13.md`.
+**Status: UNSELECTED** pending fresh post-0084 Decision/Implementation Reconciliation, relevant triggered gates, separate Owner-selected capability and independent reviewed readiness. Acceptance of SLICE-0084 Search-fit does **not** preauthorize an implementation contract for LOA, set new public technical Search criteria or launch any production pilot. See `docs/slices/SLICE-0084-acceptance-closure.md`.
 
-**Readiness:** `docs/slices/SLICE-0084-broker-prepublication-search-fit.md` is the independently reviewable **READY** implementation contract. Once its separate documentation PR passes exact-HEAD review/CI/reproducibility and is merged into `main`, the Project Owner may run the existing `START_SLICE.bat` for 0084. The implementation remains NOT_STARTED until then. This one read-only broker DRAFT Search-fit preview evaluates representative *synthetic* scenarios solely against the two accepted criteria. It does not publish, change the technical Search count or bypass current-public eligibility. The agreed post-0084 technical Search expansion remains separately mandatory in future reassessment.
+**Binding Owner product priority:** At this reassessment, explicitly assess the first end-to-end qualified **LOA** numeric native hard Search criterion (BoatDesign/NamedVariant FieldResolution ↔ concrete PhysicalBoat claims), with **rudder/skeg** next and separate `LONG_KEEL`/full-keel taxonomy alignment. This accepted wave remains tracked in `docs/POST_SLICE_0083_SEARCH_PRIORITY_REASSESSMENT_2026-10-13.md` and issue #339. Criterion #3 must satisfy Gate 3's common-structure reuse/no-third-copy rule in `docs/governance/POST_0051_TRIGGER_GATES.md`; a speculative or unqualified field must never count as an implemented public hard filter. A non-Search priority exception requires concrete evidence and an explicit Owner decision. Broker export, reporting, trust and operational/production obligations retain their independent mandatory triggers.
 
-**Binding following priority (not a preselected slice number):** after acceptance of 0084, move directly into successive hard-criterion expansion, with **LOA** first candidate, **rudder/skeg configuration** next, separately reconcile `LONG_KEEL`/full-keel coverage, then beam, displacement, rig, hull material and later qualified fields/derived measures as source and concrete-boat truth permit. Every post-0084 reassessment must track this wave and explicitly justify any exception with Owner priority decision; no later numeric slice or unsupported Search semantics are preauthorized.
-
-Production Launch Pack Phase 1 operator work remains deferred in priority, not completed; product-first work never waives production/security/trust hard gates. The global import-expiry purge CLI is implemented/tested, but production cron activation, monitoring and live retention proof are not verified. Accepted ADR-0012 selects PlanetScale Managed PostgreSQL 18 without authorizing paid provisioning.
+Production Launch Pack Phase 1 operator work remains deferred in priority, not completed. Actual production cron scheduling/monitoring of import-expiry purge and live retention proof are unverified. Accepted ADR-0012 selects PlanetScale Managed PostgreSQL 18 without authorizing paid provisioning.
 
 ## Development workflow
 
@@ -364,6 +362,6 @@ Production Launch Pack Phase 1 operator work remains deferred in priority, not c
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0079 through SLICE-0083 are Owner-accepted and merged; the post-SLICE-0080 reassessment remains historical PASS for its then-active pilot objective. The Owner's 2026-10-12 product-first priority remains controlling for development sequence, without waiving any external production/pilot gate. SLICE-0082 completes the ordinary broker inventory→existing canonical BoatDesign→accepted native technical Search connection for a truthful synthetic end-to-end path; SLICE-0083 implements the Owner-accepted D26-preserving common-format private Broker Inventory Intake; the Owner selected SLICE-0084 Search-fit and subsequent criterion-expansion priority on 2026-10-13, with normal readiness and post-slice review still required.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0079 through SLICE-0084 are Owner-accepted and merged. The post-SLICE-0080 reassessment remains historical PASS for its then-active pilot objective. Owner product-first development priority does not waive external production/pilot gates. SLICE-0082 links broker inventory→existing canonical BoatDesign→native technical Search, SLICE-0083 implements D26-preserving common-format private broker import, and SLICE-0084 implements broker-facing read-only illustrative Search-fit. The Owner's accepted subsequent criterion-expansion priority (LOA → rudder/skeg, separately reconcile long keel) remains controlling for the post-0084 reassessment; no SLICE-0085 capability has been selected.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.

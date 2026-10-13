@@ -15,7 +15,7 @@
 <!-- REQ_BROKER_023_STATUS: IMPLEMENTED -->
 <!-- REQ_BROKER_024_STATUS: IMPLEMENTED -->
 <!-- REQ_BROKER_025_STATUS: PENDING -->
-<!-- REQ_BROKER_026_STATUS: PENDING -->
+<!-- REQ_BROKER_026_STATUS: IMPLEMENTED -->
 <!-- REQ_BROKER_027_STATUS: IMPLEMENTED -->
 <!-- REQ_BROKER_028_STATUS: PENDING -->
 <!-- REQ_BROKER_029_STATUS: PENDING -->
@@ -53,7 +53,7 @@ IMPLEMENTED
 | REQ-BROKER-023 | broker identity / branding preservation | launch/pilot baseline commitment | IMPLEMENTED by SLICE-0063 |
 | REQ-BROKER-024 | connectivity-resilient draft/recovery behavior | launch/pilot baseline commitment | IMPLEMENTED by SLICE-0062 |
 | REQ-BROKER-025 | Search exclusion explainability: why a listing was not found | search-volume-dependent mandatory capability | PENDING |
-| REQ-BROKER-026 | pre-publication Search-fit diagnostics | mandatory before paid broker activation / broad public launch | PENDING |
+| REQ-BROKER-026 | pre-publication Search-fit diagnostics | mandatory before paid broker activation / broad public launch | IMPLEMENTED — Owner-accepted SLICE-0084 (implementation PR #342; bounded PUBLISHER/MFA authorized, read-only synthetic Search-fit on a promoted lifecycle-DRAFT NativeListing; uses accepted `draft_max` and `keel_configuration` truth with design/concrete evidence, no publication or new public criterion) |
 | REQ-BROKER-027 | structured CSV/bulk onboarding/import | scale-triggered mandatory capability | IMPLEMENTED — Owner-accepted SLICE-0083 (PR #335): bounded CSV/TSV/XLS/XLSX/XLSB/ODS/JSON/NautiX file upload into private professional drafts; no automated live publishing or syncing |
 | REQ-BROKER-028 | periodic engagement/performance reporting even without a lead | mandatory before paid broker activation / broad public launch | PENDING |
 | REQ-BROKER-029 | privacy-safe aggregate demand insights by relevant configuration | search-volume-dependent mandatory capability | PENDING |

@@ -81,7 +81,7 @@ Existing broker governance remains controlling in docs/governance/BROKER_WORKSPA
 | MVP-BROKER-007 | explicit sale/outcome workflow | before paid/broad public broker launch | IMPLEMENTED by SLICE-0074 |
 | MVP-BROKER-008 | source-to-outcome / response / engagement reporting | before paid/broad public broker launch | PARTIAL — factual snapshot implemented by SLICE-0075; periodic delivery remains pending |
 | MVP-BROKER-009 | inventory portability/export | before paid/broad public broker launch | PENDING |
-| MVP-BROKER-010 | pre-publication Search-fit diagnostics | before paid/broad public broker launch | PENDING |
+| MVP-BROKER-010 | pre-publication Search-fit diagnostics | before paid/broad public broker launch | IMPLEMENTED — Owner-accepted SLICE-0084 (implementation PR #342, exact-head independent review ACCEPT and CI/repro PASS; one Organization-owned promoted lifecycle-DRAFT NativeListing evaluated read-only against the two accepted `draft_max`/`keel_configuration` technical criteria; typed reasoned hypothetical result and current authorization; no new public criterion, live demand assertion or production/pilot launch authorization). |
 | MVP-BROKER-011 | structured bulk onboarding/import | before scaled broker onboarding | IMPLEMENTED — Owner-accepted SLICE-0083 (implementation PR #335; bounded CSV/TSV/XLSX/XLS/XLSB/ODS/JSON/NautiX 1.4 upload, mapping/preview and explicit confirmation into private ProfessionalListingDrafts with D26 source-identity safeguards). No automatic public publication or live-feed synchronization; production-data gate unchanged. |
 | MVP-BROKER-012 | Search exclusion / aggregate demand insights | volume-triggered | PENDING |
 | MVP-BROKER-013 | usability evidence + competitive benchmark | before first external self-service pilot | IMPLEMENTED by SLICE-0076; blocking Lead-assignment finding closed by SLICE-0077; Broker Workspace Launch Gate evidence supports PASS |
@@ -258,13 +258,14 @@ Nothing in this register supersedes existing accepted invariants, including:
 
 ## Current overall interpretation
 
-As of 2026-10-09:
+As of 2026-10-13:
 
 - the marketplace/truth/search/broker operational loop through factual performance reporting is materially implemented through SLICE-0075;
 - broker usability evidence + competitive benchmark is implemented by SLICE-0076; the resulting Lead-assignment blocker was closed by SLICE-0077 and the Broker Workspace Launch Gate now supports PASS;
 - the dedicated Security Hardening & Adversarial Validation gate is implemented and PASS through SLICE-0078;
 - SLICE-0079 implements and locally proves the repository-owned Production Readiness mechanisms. After merge, canonical-main Deploy run #28 (`37868264887`) also real-executed the GHCR API/web publication path successfully. SLICE-0080 subsequently implements the accepted architecture §22 provider-independent broker-original redundancy mechanism using Backblaze B2 EU Central. The Production Readiness gate remains `IN_PROGRESS` pending real B2/VPS/managed-PostgreSQL and other boundary-specific provider configuration/evidence;
-- the largest remaining overall-MVP workstreams include owner-direct completion, trust/verification/safety, buyer persistence/alerts, periodic reporting/export/Search-fit diagnostics, support/admin/privacy/legal/comms, monetization where included, and production/data operations;
+- SLICE-0083 Owner-accepted common-format broker import to private ProfessionalListingDrafts and SLICE-0084 Owner-accepted promoted-DRAFT broker Search-fit diagnostics are IMPLEMENTED within their explicitly bounded scopes. Exactly two public hard technical Search criteria remain accepted; the Owner prioritized LOA and rudder/skeg expansion next, with separate long/full-keel mapping review;
+- the largest remaining overall-MVP workstreams include owner-direct completion, trust/verification/safety, buyer persistence/alerts, periodic broker reporting/inventory export, further qualified technical Buyer Search criteria, support/admin/privacy/legal/comms, monetization where included, and production/data operations;
 - these remaining workstreams are not permission to reopen already-decided architecture.
 
 ## Evidence rule for status changes

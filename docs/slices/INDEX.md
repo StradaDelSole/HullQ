@@ -16,10 +16,10 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ## Current execution boundary
 
 ```text
-Latest owner-accepted slice: SLICE-0083
-Current queue:               SLICE-0084
-Current capability:          Broker pre-publication Search-fit (Owner-selected)
-Current readiness:           READY contract documented; implementation NOT_STARTED
+Latest owner-accepted slice: SLICE-0084
+Current queue:               SLICE-0085
+Current capability:          UNSELECTED — technical Buyer Search expansion is Owner's binding next-wave priority
+Current readiness:           Post-0084 reconciliation and independent READY review required
 ```
 
 Current boundary:
@@ -31,7 +31,7 @@ Current boundary:
 - SLICE-0081 Operational Dashboard remains accepted; Phase-1 operator provisioning is paused in priority, not completed;
 - SLICE-0082 closes the normal broker→canonical BoatDesign→native technical Search bridge with accepted auditable first-time association and real synthetic end-to-end proof; no production/pilot launch was authorized;
 - SLICE-0083 is Owner-accepted and merged (implementation PR #335), providing D26-governed CSV/TSV/XLSX/XLS/XLSB/ODS/JSON/NautiX 1.4 intake into private drafts only; see `docs/slices/SLICE-0083-acceptance-closure.md`;
-- SLICE-0084 Search-fit is Owner-selected with a separately reviewed READY contract at `docs/slices/SLICE-0084-broker-prepublication-search-fit.md`; implementation remains NOT_STARTED until normal local START_SLICE; the binding post-0084 technical Search expansion priority remains in `docs/POST_SLICE_0083_SEARCH_PRIORITY_REASSESSMENT_2026-10-13.md`;
+- SLICE-0084 Broker pre-publication Search-fit is Owner-accepted and merged (implementation PR #342, independent exact-head ACCEPT); closure at `docs/slices/SLICE-0084-acceptance-closure.md`. The accepted technical Search expansion priority (LOA first candidate, then rudder/skeg; separate long-keel taxonomy review) remains binding for the post-0084 reassessment under `docs/POST_SLICE_0083_SEARCH_PRIORITY_REASSESSMENT_2026-10-13.md` / issue #339;
 - no later slice is authorized automatically.
 
 ## Historical execution ranges
@@ -40,8 +40,8 @@ Current boundary:
 |---|---|
 | SLICE-0001–0038 | accepted foundational research/architecture/data/product work except where an individual slice record states otherwise |
 | SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
-| SLICE-0040–0083 | accepted work; see acceptance closures and `PROJECT_STATE.md` |
-| SLICE-0084 | Owner-selected broker Search-fit; READY specification after independent readiness CI/merge, implementation NOT_STARTED |
+| SLICE-0040–0084 | accepted work; see acceptance closures and `PROJECT_STATE.md` |
+| SLICE-0085 | UNSELECTED — fresh post-0084 reconciliation/readiness required; binding technical Search expansion priority |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
