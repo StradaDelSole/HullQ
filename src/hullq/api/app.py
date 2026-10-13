@@ -226,6 +226,7 @@ from hullq.persistence.native_listing_view_event import record_public_listing_vi
 from hullq.search.configuration_engine import DesignQueryEvaluation
 from hullq.search.criteria import NumericLeafCriterion
 from hullq.search.draft_max_request import canonical_draft_max_str
+from hullq.search.loa_request import canonical_loa_str
 from hullq.search.query_mixed import MixedLeafCriterion
 from hullq.security.discovery_surface_signing import (
     mint_discovery_surface_token,
@@ -449,11 +450,11 @@ _SUPPORTED_SEARCH_LOCALES = ("en", "de", "fr", "pt", "es")
 #: buyer-friendly 400 recovery response"). Technical parameter names/values
 #: remain language-neutral; only this guidance text is translated.
 _INVALID_SEARCH_REQUEST_MESSAGE = {
-    "en": "This search link isn't valid. Enter a maximum draft as a plain decimal number of metres (e.g. 1.6) and/or a supported keel configuration.",
-    "de": "Dieser Suchlink ist ungültig. Geben Sie den maximalen Tiefgang als einfache Dezimalzahl in Metern an (z. B. 1.6) und/oder eine unterstützte Kielkonfiguration.",
-    "fr": "Ce lien de recherche n'est pas valide. Indiquez le tirant d'eau maximal sous forme de nombre décimal simple en mètres (par exemple 1.6) et/ou une configuration de quille prise en charge.",
-    "pt": "Esta ligação de pesquisa não é válida. Indique o calado máximo como um número decimal simples em metros (por exemplo 1.6) e/ou uma configuração de quilha suportada.",
-    "es": "Este enlace de búsqueda no es válido. Indique el calado máximo como un número decimal simple en metros (por ejemplo 1.6) y/o una configuración de quilla admitida.",
+    "en": "This search link isn't valid. Enter a maximum draft and/or length overall as a plain decimal number of metres (e.g. 1.6) and/or a supported keel or rudder configuration.",
+    "de": "Dieser Suchlink ist ungültig. Geben Sie den maximalen Tiefgang und/oder die Gesamtlänge als einfache Dezimalzahl in Metern an (z. B. 1.6) und/oder eine unterstützte Kiel- oder Ruderkonfiguration.",
+    "fr": "Ce lien de recherche n'est pas valide. Indiquez le tirant d'eau maximal et/ou la longueur hors tout sous forme de nombre décimal simple en mètres (par exemple 1.6) et/ou une configuration de quille ou de safran prise en charge.",
+    "pt": "Esta ligação de pesquisa não é válida. Indique o calado máximo e/ou o comprimento total como um número decimal simples em metros (por exemplo 1.6) e/ou uma configuração de quilha ou leme suportada.",
+    "es": "Este enlace de búsqueda no es válido. Indique el calado máximo y/o la eslora total como un número decimal simple en metros (por ejemplo 1.6) y/o una configuración de quilla o timón admitida.",
 }
 
 #: SLICE-0057 buyer-requirement-sensitivity localized 400 recovery guidance
@@ -537,6 +538,33 @@ def _serialize_configuration_evidence(evidence: Any) -> dict[str, Any]:
             _serialize_criterion_evidence(item) for item in evidence.criterion_evidence
         ],
     }
+
+
+def _build_active_requirement(
+    *,
+    draft_max: Any,
+    keel_configuration: str | None,
+    loa_min: Any = None,
+    loa_max: Any = None,
+    rudder_configuration: str | None = None,
+) -> dict[str, str]:
+    """SLICE-0085: the sparse `active_requirement` body shared by the public
+    `GET /api/search/{locale}` route and the broker Search-fit preview --
+    only the active criteria included, each rendered through its own
+    canonicalization, never neither (every caller only builds this once at
+    least one criterion is already known active)."""
+    requirement: dict[str, str] = {}
+    if draft_max is not None:
+        requirement["draft_max"] = canonical_draft_max_str(draft_max)
+    if keel_configuration is not None:
+        requirement["keel_configuration"] = keel_configuration
+    if loa_min is not None:
+        requirement["loa_min"] = canonical_loa_str(loa_min)
+    if loa_max is not None:
+        requirement["loa_max"] = canonical_loa_str(loa_max)
+    if rudder_configuration is not None:
+        requirement["rudder_configuration"] = rudder_configuration
+    return requirement
 
 
 def _serialize_sensitivity_requirement(
@@ -1250,11 +1278,13 @@ def create_app(
         assert outcome.search_outcome is not None
         search_outcome = outcome.search_outcome
 
-        active_requirement: dict[str, str] = {}
-        if outcome.draft_max is not None:
-            active_requirement["draft_max"] = canonical_draft_max_str(outcome.draft_max)
-        if outcome.keel_configuration is not None:
-            active_requirement["keel_configuration"] = outcome.keel_configuration
+        active_requirement = _build_active_requirement(
+            draft_max=outcome.draft_max,
+            keel_configuration=outcome.keel_configuration,
+            loa_min=outcome.loa_min,
+            loa_max=outcome.loa_max,
+            rudder_configuration=outcome.rudder_configuration,
+        )
 
         if isinstance(search_outcome, DraftMaxSearchOutcome):
             # SLICE-0051 draft-only shape, unchanged (contract §8 non-regression).
@@ -1856,11 +1886,13 @@ def create_app(
         assert outcome is SearchFitOutcome.OK
         view = result.view
         assert view is not None
-        active_requirement: dict[str, str] = {}
-        if view.draft_max is not None:
-            active_requirement["draft_max"] = canonical_draft_max_str(view.draft_max)
-        if view.keel_configuration is not None:
-            active_requirement["keel_configuration"] = view.keel_configuration
+        active_requirement = _build_active_requirement(
+            draft_max=view.draft_max,
+            keel_configuration=view.keel_configuration,
+            loa_min=view.loa_min,
+            loa_max=view.loa_max,
+            rudder_configuration=view.rudder_configuration,
+        )
         return JSONResponse(
             {
                 "native_listing_id": view.native_listing_id,

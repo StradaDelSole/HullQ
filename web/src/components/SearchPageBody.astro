@@ -15,6 +15,7 @@
 // reconstructing a value from design-level evidence.
 import {
   SEARCH_KEEL_CONFIGURATION_VALUES,
+  SEARCH_RUDDER_CONFIGURATION_VALUES,
   type DraftOnlyConfirmedMatch,
   type NativeInventoryConfirmedMatch,
 } from "../lib/searchApi";
@@ -41,14 +42,37 @@ const isCanonical = data.kind === "ok";
 
 // The active requirement fully determines which confirmed-match response
 // shape FastAPI returned (searchApi.ts's docstring) -- any request involving
-// `keel_configuration` always uses the SLICE-0055 typed-evidence shape, a
-// pure `draft_max` request always keeps the SLICE-0051 `resolved_draft_m`
-// shape. Never inferred from an individual match.
+// `keel_configuration`/`loa_min`/`loa_max`/`rudder_configuration` (SLICE-0085)
+// always uses the SLICE-0055 typed-evidence shape, a pure `draft_max`
+// request always keeps the SLICE-0051 `resolved_draft_m` shape. Never
+// inferred from an individual match.
 const activeRequirement = data.kind === "ok" ? data.activeRequirement : null;
-const isKeelActive = activeRequirement !== null && activeRequirement.keel_configuration !== undefined;
+const usesTypedEvidenceShape =
+  activeRequirement !== null &&
+  (activeRequirement.keel_configuration !== undefined ||
+    activeRequirement.loa_min !== undefined ||
+    activeRequirement.loa_max !== undefined ||
+    activeRequirement.rudder_configuration !== undefined);
+// Retained alias: the three originally accepted shapes (draft-only,
+// keel-only, draft+keel) keep rendering through the exact same byte-for-byte
+// unchanged branches below (Required Behavior non-regression).
+const isKeelActive = usesTypedEvidenceShape;
+// Whether this is one of the three *originally accepted* active-requirement
+// shapes (no LOA/rudder active) -- used only to pick the legacy fixed-shape
+// `requirementSummary*` text vs. the new SLICE-0085 generic composition,
+// never to change which confirmed-match response shape is read above.
+const isLegacySummaryShape =
+  activeRequirement !== null &&
+  activeRequirement.loa_min === undefined &&
+  activeRequirement.loa_max === undefined &&
+  activeRequirement.rudder_configuration === undefined;
 
 function keelLabel(value: string): string {
   return (t.keelConfigurationLabels as Record<string, string>)[value] ?? value;
+}
+
+function rudderLabel(value: string): string {
+  return (t.rudderConfigurationLabels as Record<string, string>)[value] ?? value;
 }
 
 function draftEvidenceText(match: NativeInventoryConfirmedMatch): string | null {
@@ -67,14 +91,99 @@ function keelEvidenceText(match: NativeInventoryConfirmedMatch): string | null {
   return t.resolvedKeelText(keelLabel(evidence.observed_value));
 }
 
+function loaEvidenceText(match: NativeInventoryConfirmedMatch): string | null {
+  // loa_min/loa_max may each contribute their own criterion_evidence entry
+  // against the shared "loa_m" field -- any one of them already carries the
+  // same safely observed concrete value (contract: "retaining both
+  // requested comparisons and their evidence"), so the first with a value
+  // is sufficient to render.
+  const evidence = match.criterion_evidence.find(
+    (item) => item.field === "loa_m" && item.observed_value !== null,
+  );
+  if (evidence === undefined || evidence.observed_value === null) {
+    return null;
+  }
+  return t.resolvedLoaText(evidence.observed_value);
+}
+
+function rudderEvidenceText(match: NativeInventoryConfirmedMatch): string | null {
+  const evidence = match.criterion_evidence.find((item) => item.field === "rudder_configuration");
+  if (evidence === undefined || evidence.observed_value === null) {
+    return null;
+  }
+  return t.resolvedRudderText(rudderLabel(evidence.observed_value));
+}
+
+// SLICE-0085: one match's evidence text per *active* criterion only (never
+// unconditionally -- a pure loa-only or rudder-only match must never render
+// a null/undefined draft or keel evidence line). Order mirrors the public
+// canonical key order.
+function matchEvidenceTexts(
+  match: NativeInventoryConfirmedMatch,
+  req: NonNullable<typeof activeRequirement>,
+): string[] {
+  const texts: string[] = [];
+  if (req.draft_max !== undefined) {
+    const text = draftEvidenceText(match);
+    if (text !== null) texts.push(text);
+  }
+  if (req.keel_configuration !== undefined) {
+    const text = keelEvidenceText(match);
+    if (text !== null) texts.push(text);
+  }
+  if (req.loa_min !== undefined || req.loa_max !== undefined) {
+    const text = loaEvidenceText(match);
+    if (text !== null) texts.push(text);
+  }
+  if (req.rudder_configuration !== undefined) {
+    const text = rudderEvidenceText(match);
+    if (text !== null) texts.push(text);
+  }
+  return texts;
+}
+
+// SLICE-0085: generic requirement-summary composition for any active
+// combination that is not one of the three legacy fixed shapes. Builds one
+// phrase per active criterion, in the accepted canonical key order, then
+// joins them with the locale's own conjunction before the last phrase --
+// never a second Search truth, purely a presentation-layer phrase join.
+function genericRequirementSummary(req: NonNullable<typeof activeRequirement>): string {
+  const phrases: string[] = [];
+  if (req.draft_max !== undefined) {
+    phrases.push(t.requirementPhraseDraftMax(req.draft_max));
+  }
+  if (req.keel_configuration !== undefined) {
+    phrases.push(t.requirementPhraseKeel(keelLabel(req.keel_configuration)));
+  }
+  if (req.loa_min !== undefined && req.loa_max !== undefined) {
+    phrases.push(t.requirementPhraseLoaRange(req.loa_min, req.loa_max));
+  } else if (req.loa_max !== undefined) {
+    phrases.push(t.requirementPhraseLoaMax(req.loa_max));
+  } else if (req.loa_min !== undefined) {
+    phrases.push(t.requirementPhraseLoaMin(req.loa_min));
+  }
+  if (req.rudder_configuration !== undefined) {
+    phrases.push(t.requirementPhraseRudder(rudderLabel(req.rudder_configuration)));
+  }
+  const joined =
+    phrases.length <= 1
+      ? (phrases[0] ?? "")
+      : `${phrases.slice(0, -1).join(", ")} ${t.requirementSummaryListConjunction} ${phrases[phrases.length - 1]}`;
+  return t.requirementSummaryGeneric(joined);
+}
+
 // Every entry in `data.confirmedMatches` shares the same shape (determined
-// once by `isKeelActive` above, never per-match, per searchApi.ts's
+// once by `usesTypedEvidenceShape` above, never per-match, per searchApi.ts's
 // docstring) -- these narrow it once so the template below can iterate
 // without repeating an `as` cast at each call site.
 const draftOnlyMatches: DraftOnlyConfirmedMatch[] =
-  !isKeelActive && data.kind === "ok" ? (data.confirmedMatches as DraftOnlyConfirmedMatch[]) : [];
+  !usesTypedEvidenceShape && data.kind === "ok"
+    ? (data.confirmedMatches as DraftOnlyConfirmedMatch[])
+    : [];
 const nativeInventoryMatches: NativeInventoryConfirmedMatch[] =
-  isKeelActive && data.kind === "ok" ? (data.confirmedMatches as NativeInventoryConfirmedMatch[]) : [];
+  usesTypedEvidenceShape && data.kind === "ok"
+    ? (data.confirmedMatches as NativeInventoryConfirmedMatch[])
+    : [];
 ---
 
 <html lang={locale}>
@@ -128,6 +237,42 @@ const nativeInventoryMatches: NativeInventoryConfirmedMatch[] =
                 ))}
               </select>
             </label>
+            <label>
+              {t.loaMinLabel}
+              <input
+                type="text"
+                name="loa_min"
+                inputmode="decimal"
+                placeholder={t.loaMinPlaceholder}
+                value={activeRequirement?.loa_min ?? ""}
+              />
+            </label>
+            <label>
+              {t.loaMaxLabel}
+              <input
+                type="text"
+                name="loa_max"
+                inputmode="decimal"
+                placeholder={t.loaMaxPlaceholder}
+                value={activeRequirement?.loa_max ?? ""}
+              />
+            </label>
+            <label>
+              {t.rudderConfigurationLabel}
+              <select name="rudder_configuration">
+                <option value="" selected={activeRequirement?.rudder_configuration === undefined}>
+                  {t.rudderConfigurationAnyOption}
+                </option>
+                {SEARCH_RUDDER_CONFIGURATION_VALUES.map((value) => (
+                  <option
+                    value={value}
+                    selected={activeRequirement?.rudder_configuration === value}
+                  >
+                    {rudderLabel(value)}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button type="submit">{t.submit}</button>
           </form>
           <script>
@@ -164,11 +309,18 @@ const nativeInventoryMatches: NativeInventoryConfirmedMatch[] =
           {activeRequirement !== null && (
             <section aria-label="search results" data-hullq-locale={locale}>
               <p>
-                {activeRequirement.draft_max !== undefined && activeRequirement.keel_configuration !== undefined
-                  ? t.requirementSummaryMixed(activeRequirement.draft_max, keelLabel(activeRequirement.keel_configuration))
-                  : activeRequirement.keel_configuration !== undefined
-                    ? t.requirementSummaryKeelOnly(keelLabel(activeRequirement.keel_configuration))
-                    : t.requirementSummary(activeRequirement.draft_max)}
+                {isLegacySummaryShape
+                  ? activeRequirement.draft_max !== undefined && activeRequirement.keel_configuration !== undefined
+                    ? t.requirementSummaryMixed(activeRequirement.draft_max, keelLabel(activeRequirement.keel_configuration))
+                    : activeRequirement.keel_configuration !== undefined
+                      ? t.requirementSummaryKeelOnly(keelLabel(activeRequirement.keel_configuration))
+                      : // isLegacySummaryShape + keel/loa/rudder all undefined here implies
+                        // draft_max is the one active criterion (FastAPI's own RESULT
+                        // invariant: "at least one active criterion") -- TypeScript's plain
+                        // all-optional SearchActiveRequirement shape (SLICE-0085) cannot
+                        // express that discriminated guarantee structurally.
+                        t.requirementSummary(activeRequirement.draft_max as string)
+                  : genericRequirementSummary(activeRequirement)}
               </p>
 
               <h2>
@@ -185,14 +337,12 @@ const nativeInventoryMatches: NativeInventoryConfirmedMatch[] =
                       >
                         {t.viewListing}: {match.native_listing_id}
                       </a>
-                      {activeRequirement.draft_max !== undefined && (
+                      {matchEvidenceTexts(match, activeRequirement).map((text) => (
                         <>
                           {" — "}
-                          {draftEvidenceText(match)}
+                          {text}
                         </>
-                      )}
-                      {" — "}
-                      {keelEvidenceText(match)}
+                      ))}
                       {" — "}
                       <span aria-label="freshness status">
                         {match.freshness_status === "DUE_FOR_CONFIRMATION"

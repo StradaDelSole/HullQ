@@ -47,8 +47,11 @@ from hullq.domain.physical_boat_claims import (
     DraftClaim,
     KeelConfiguration,
     KeelConfigurationClaim,
+    LoaLengthClaim,
     PhysicalBoatClaimRevisionId,
     PhysicalBoatClaimSnapshot,
+    RudderConfiguration,
+    RudderConfigurationClaim,
 )
 from hullq.domain.provenance import SubjectKind
 from hullq.domain.publishing_eligibility import (
@@ -89,6 +92,8 @@ from hullq.persistence.physical_boat_claims import (
 )
 from hullq.search.draft_max_design_bridge import DRAFT_MAX_FIELD_POINTER
 from hullq.search.keel_design_bridge import KEEL_TYPE_FIELD_POINTER, lookup_keel_canonical_value
+from hullq.search.loa_design_bridge import LOA_FIELD_POINTER, lookup_loa_canonical_value
+from hullq.search.rudder_design_bridge import lookup_rudder_canonical_value
 from hullq.security.session_token import mint_session_token
 
 from ._field_resolution_support import admit_resolved_categorical_field, admit_resolved_draft_max
@@ -222,6 +227,8 @@ def _insert_boat_design(
     *,
     baseline_keel_type: str,
     baseline_draft_max_m: float = 1.30,
+    baseline_loa_m: float | None = None,
+    baseline_rudder_support: str | None = None,
 ) -> None:
     with conn.cursor() as cur:
         cur.execute(
@@ -230,8 +237,11 @@ def _insert_boat_design(
         )
         baseline_json = json.dumps(
             {
-                "dimensions": {"draft_max_m": baseline_draft_max_m},
-                "appendages": {"keel_type": baseline_keel_type},
+                "dimensions": {"draft_max_m": baseline_draft_max_m, "loa_m": baseline_loa_m},
+                "appendages": {
+                    "keel_type": baseline_keel_type,
+                    "rudder_support": baseline_rudder_support,
+                },
             }
         )
         cur.execute(
@@ -245,7 +255,13 @@ def _insert_boat_design(
 
 
 def _admit_design_keel_and_draft(
-    conn: Any, design_id: str, *, keel_type: str, draft_max_m: Decimal = Decimal("1.30")
+    conn: Any,
+    design_id: str,
+    *,
+    keel_type: str,
+    draft_max_m: Decimal = Decimal("1.30"),
+    loa_m: Decimal | None = None,
+    rudder_support: str | None = None,
 ) -> None:
     admit_resolved_draft_max(
         conn,
@@ -264,6 +280,26 @@ def _admit_design_keel_and_draft(
         resolution_id=f"FR-KEEL-{design_id}",
         fetch_canonical_value=lookup_keel_canonical_value,
     )
+    if loa_m is not None:
+        admit_resolved_draft_max(
+            conn,
+            subject_kind=SubjectKind.BOAT_DESIGN,
+            subject_id=design_id,
+            field_pointer=LOA_FIELD_POINTER,
+            value=loa_m,
+            resolution_id=f"FR-LOA-{design_id}",
+            fetch_canonical_value=lookup_loa_canonical_value,
+        )
+    if rudder_support is not None:
+        admit_resolved_categorical_field(
+            conn,
+            subject_kind=SubjectKind.BOAT_DESIGN,
+            subject_id=design_id,
+            field_pointer="/baseline/appendages/rudder_support",
+            value=rudder_support,
+            resolution_id=f"FR-RUDDER-{design_id}",
+            fetch_canonical_value=lookup_rudder_canonical_value,
+        )
 
 
 def _create_draft_listing(
@@ -336,6 +372,16 @@ def _draft_value(value: str) -> DraftClaim:
     return DraftClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal(value))
 
 
+def _loa_value(value: str) -> LoaLengthClaim:
+    return LoaLengthClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal(value))
+
+
+def _rudder_value(value: str) -> RudderConfigurationClaim:
+    return RudderConfigurationClaim(
+        assertion_kind=AssertionKind.VALUE_ASSERTION, value=RudderConfiguration(value)
+    )
+
+
 def _write_claim(
     api_url: str,
     *,
@@ -345,6 +391,8 @@ def _write_claim(
     revision_id: str,
     draft: DraftClaim | None = None,
     keel_configuration: KeelConfigurationClaim | None = None,
+    loa_length: LoaLengthClaim | None = None,
+    rudder_configuration: RudderConfigurationClaim | None = None,
 ) -> None:
     conn = psycopg.connect(api_url)
     try:
@@ -385,6 +433,8 @@ def _write_claim(
                 build_year=BuildYearClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=2021),
                 draft=draft,
                 keel_configuration=keel_configuration,
+                loa_length=loa_length,
+                rudder_configuration=rudder_configuration,
             ),
         )
         assert result.status.value in ("created", "revised"), result
@@ -597,10 +647,14 @@ class TestSearchFitScenarioValidation:
         assert response.status_code == 400
 
     def test_unknown_parameter_is_invalid(self, client: TestClient, api_url: str) -> None:
+        # SLICE-0085: `loa_max` is now an accepted scenario key -- this test's
+        # "unknown parameter" case is updated to a genuinely unsupported key
+        # (`beam_max`, not part of the accepted whitelist) so it still proves
+        # the fail-closed unknown-key rejection it was written for.
         self._setup(api_url, client, "UNKNOWNPARAM")
         response = client.get(
             _search_fit_path("ORG-SF-UNKNOWNPARAM", "NL-SF-UNKNOWNPARAM"),
-            params={"loa_max": "10"},
+            params={"beam_max": "10"},
         )
         assert response.status_code == 400
 
@@ -925,6 +979,146 @@ class TestSearchFitTruthParity:
         assert body["result_class"] == "INSUFFICIENT_DATA"
         assert body["blockers"] == ["BOATDESIGN_CONFIGURATION_UNRESOLVED"]
         assert body["criterion_evidence"] == []
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0085: LOA + rudder_configuration truth parity through the identical
+# bounded preview, reusing the exact same shared funnel as draft/keel above.
+# ---------------------------------------------------------------------------
+
+
+class TestSearchFitMulticriteriaTruthParity:
+    def test_confirmed_match_all_five_criteria(self, client: TestClient, api_url: str) -> None:
+        _seed_org_and_membership(
+            api_url, org_id="ORG-SF-MC5", account_id="ACC-SF-MC5", membership_id="OM-SF-MC5"
+        )
+        conn = psycopg.connect(api_url)
+        try:
+            _insert_boat_design(
+                conn,
+                "BD-SF-MC5",
+                "BM-SF-MC5",
+                baseline_keel_type="fin",
+                baseline_draft_max_m=1.30,
+                baseline_loa_m=10.50,
+                baseline_rudder_support="skeg",
+            )
+            _admit_design_keel_and_draft(
+                conn,
+                "BD-SF-MC5",
+                keel_type="fin",
+                draft_max_m=Decimal("1.30"),
+                loa_m=Decimal("10.50"),
+                rudder_support="skeg",
+            )
+        finally:
+            conn.close()
+        _create_draft_listing(
+            api_url,
+            listing_id="NL-SF-MC5",
+            org_id="ORG-SF-MC5",
+            account_id="ACC-SF-MC5",
+            membership_id="OM-SF-MC5",
+            physical_boat_id="PB-SF-MC5",
+            market_episode_id="ME-SF-MC5",
+            boat_design_id="BD-SF-MC5",
+        )
+        _write_claim(
+            api_url,
+            listing_id="NL-SF-MC5",
+            org_id="ORG-SF-MC5",
+            account_id="ACC-SF-MC5",
+            revision_id="PBCREV-SF-MC5",
+            draft=_draft_value("1.20"),
+            keel_configuration=_keel_value("FIN"),
+            loa_length=_loa_value("10.50"),
+            rudder_configuration=_rudder_value("SKEG_HUNG"),
+        )
+        _log_in(client, "ACC-SF-MC5")
+        response = client.get(
+            _search_fit_path("ORG-SF-MC5", "NL-SF-MC5"),
+            params={
+                "draft_max": "1.5",
+                "keel_configuration": "FIN",
+                "loa_min": "10",
+                "loa_max": "11",
+                "rudder_configuration": "SKEG_HUNG",
+            },
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["result_class"] == "CONFIRMED_MATCH"
+        assert body["blockers"] == []
+        assert body["active_requirement"] == {
+            "draft_max": "1.5",
+            "keel_configuration": "FIN",
+            "loa_min": "10",
+            "loa_max": "11",
+            "rudder_configuration": "SKEG_HUNG",
+        }
+        fields = {ce["field"] for ce in body["criterion_evidence"]}
+        assert fields == {"draft_max_m", "keel_configuration", "loa_m", "rudder_configuration"}
+
+        # Mechanical invariant: lifecycle-DRAFT preview never leaks into the
+        # accepted public technical Search while still DRAFT.
+        public_search = client.get(
+            "/api/search/en",
+            # Accepted canonical key order (draft_max, keel_configuration,
+            # loa_max, loa_min, rudder_configuration) -- httpx serializes a
+            # dict's params in insertion order, so this must already be
+            # canonical to reach 200 directly rather than a 308 redirect.
+            params={
+                "draft_max": "1.5",
+                "keel_configuration": "FIN",
+                "loa_max": "11",
+                "loa_min": "10",
+                "rudder_configuration": "SKEG_HUNG",
+            },
+        )
+        assert public_search.status_code == 200
+        assert public_search.json()["confirmed_match_count"] == 0
+
+    def test_loa_concrete_value_outside_range_is_confirmed_non_match(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        _seed_org_and_membership(
+            api_url, org_id="ORG-SF-MC6", account_id="ACC-SF-MC6", membership_id="OM-SF-MC6"
+        )
+        conn = psycopg.connect(api_url)
+        try:
+            _insert_boat_design(
+                conn, "BD-SF-MC6", "BM-SF-MC6", baseline_keel_type="fin", baseline_loa_m=12.00
+            )
+            _admit_design_keel_and_draft(conn, "BD-SF-MC6", keel_type="fin", loa_m=Decimal("12.00"))
+        finally:
+            conn.close()
+        _create_draft_listing(
+            api_url,
+            listing_id="NL-SF-MC6",
+            org_id="ORG-SF-MC6",
+            account_id="ACC-SF-MC6",
+            membership_id="OM-SF-MC6",
+            physical_boat_id="PB-SF-MC6",
+            market_episode_id="ME-SF-MC6",
+            boat_design_id="BD-SF-MC6",
+        )
+        _write_claim(
+            api_url,
+            listing_id="NL-SF-MC6",
+            org_id="ORG-SF-MC6",
+            account_id="ACC-SF-MC6",
+            revision_id="PBCREV-SF-MC6",
+            loa_length=_loa_value("20.00"),
+        )
+        _log_in(client, "ACC-SF-MC6")
+        response = client.get(
+            _search_fit_path("ORG-SF-MC6", "NL-SF-MC6"),
+            params={"loa_min": "10", "loa_max": "15"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["result_class"] == "CONFIRMED_NON_MATCH"
+        assert body["blockers"] == []
 
 
 # ---------------------------------------------------------------------------

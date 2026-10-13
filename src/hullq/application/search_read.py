@@ -63,12 +63,23 @@ from hullq.application.native_inventory_query import (
     NativeInventorySearchOutcome,
     evaluate_native_inventory_requirements,
 )
+from hullq.search.criteria_registry import (
+    CANONICAL_PARAM_KEY_ORDER,
+    DRAFT_MAX_PARAM_KEY,
+    KEEL_CONFIGURATION_PARAM_KEY,
+    LOA_MAX_PARAM_KEY,
+    LOA_MIN_PARAM_KEY,
+    RUDDER_CONFIGURATION_PARAM_KEY,
+    SUPPORTED_PARAM_KEYS,
+)
 from hullq.search.draft_max_request import (
     DraftMaxSyntaxError,
     canonical_draft_max_str,
     parse_draft_max_decimal,
 )
 from hullq.search.keel_design_bridge import SEARCH_KEEL_CONFIGURATION_VALUES
+from hullq.search.loa_request import LoaSyntaxError, canonical_loa_str, parse_loa_decimal
+from hullq.search.rudder_design_bridge import SEARCH_RUDDER_CONFIGURATION_VALUES
 
 __all__ = [
     "SearchOutcomeKind",
@@ -78,9 +89,12 @@ __all__ = [
     "evaluate_search_request",
 ]
 
-_DRAFT_MAX_KEY = "draft_max"
-_KEEL_CONFIGURATION_KEY = "keel_configuration"
-_ALLOWED_PARAM_KEYS = frozenset({_DRAFT_MAX_KEY, _KEEL_CONFIGURATION_KEY})
+_DRAFT_MAX_KEY = DRAFT_MAX_PARAM_KEY
+_KEEL_CONFIGURATION_KEY = KEEL_CONFIGURATION_PARAM_KEY
+_LOA_MIN_KEY = LOA_MIN_PARAM_KEY
+_LOA_MAX_KEY = LOA_MAX_PARAM_KEY
+_RUDDER_CONFIGURATION_KEY = RUDDER_CONFIGURATION_PARAM_KEY
+_ALLOWED_PARAM_KEYS = SUPPORTED_PARAM_KEYS
 
 
 class SearchOutcomeKind(StrEnum):
@@ -110,6 +124,9 @@ class SearchRequestOutcome:
     canonical_path: str | None = None
     draft_max: Decimal | None = None
     keel_configuration: str | None = None
+    loa_min: Decimal | None = None
+    loa_max: Decimal | None = None
+    rudder_configuration: str | None = None
     search_outcome: DraftMaxSearchOutcome | NativeInventorySearchOutcome | None = None
 
     def __post_init__(self) -> None:
@@ -118,29 +135,41 @@ class SearchRequestOutcome:
         if self.kind is not SearchOutcomeKind.REDIRECT and self.canonical_path is not None:
             raise ValueError("Only a REDIRECT outcome may carry canonical_path")
         is_result = self.kind is SearchOutcomeKind.RESULT
+        active_values = (
+            self.draft_max,
+            self.keel_configuration,
+            self.loa_min,
+            self.loa_max,
+            self.rudder_configuration,
+        )
         if is_result:
             if self.search_outcome is None:
                 raise ValueError("A RESULT outcome must carry search_outcome")
-            if self.draft_max is None and self.keel_configuration is None:
-                raise ValueError("A RESULT outcome must carry draft_max and/or keel_configuration")
-        elif (
-            self.draft_max is not None
-            or self.keel_configuration is not None
-            or self.search_outcome is not None
-        ):
+            if all(value is None for value in active_values):
+                raise ValueError("A RESULT outcome must carry at least one active criterion")
+        elif any(value is not None for value in active_values) or self.search_outcome is not None:
             raise ValueError(
-                "Only a RESULT outcome may carry draft_max/keel_configuration/search_outcome"
+                "Only a RESULT outcome may carry an active criterion value/search_outcome"
             )
 
 
 def build_canonical_search_path(
-    locale: str, *, draft_max: Decimal | None, keel_configuration: str | None
+    locale: str,
+    *,
+    draft_max: Decimal | None,
+    keel_configuration: str | None,
+    loa_min: Decimal | None = None,
+    loa_max: Decimal | None = None,
+    rudder_configuration: str | None = None,
 ) -> str:
     """Build the one canonical, sparse, lexicographically-ordered public
     Direct Search path for *locale* (`docs/
-    OQ_018_SEARCH_PARAMETER_ORDERING_DECISION_2026-09-11.md`): `draft_max`
-    before `keel_configuration`, only the active criteria included, `draft_max`
-    rendered through `canonical_draft_max_str`.
+    OQ_018_SEARCH_PARAMETER_ORDERING_DECISION_2026-09-11.md`, extended
+    SLICE-0085 to all five accepted keys via
+    `hullq.search.criteria_registry.CANONICAL_PARAM_KEY_ORDER`): only the
+    active criteria are included, each rendered through its own
+    canonicalization (`canonical_draft_max_str`/`canonical_loa_str`; `keel_configuration`/
+    `rudder_configuration` are already their own canonical spelling).
 
     Shared by this module's own REDIRECT canonicalization and SLICE-0057's
     buyer-requirement-sensitivity `alternative_search_path` (contract §9:
@@ -148,25 +177,39 @@ def build_canonical_search_path(
     boundary") -- the only place the exact canonical-URL construction rule
     is expressed.
     """
-    parts: list[str] = []
+    rendered: dict[str, str] = {}
     if draft_max is not None:
-        parts.append(f"{_DRAFT_MAX_KEY}={canonical_draft_max_str(draft_max)}")
+        rendered[_DRAFT_MAX_KEY] = canonical_draft_max_str(draft_max)
     if keel_configuration is not None:
-        parts.append(f"{_KEEL_CONFIGURATION_KEY}={keel_configuration}")
+        rendered[_KEEL_CONFIGURATION_KEY] = keel_configuration
+    if loa_max is not None:
+        rendered[_LOA_MAX_KEY] = canonical_loa_str(loa_max)
+    if loa_min is not None:
+        rendered[_LOA_MIN_KEY] = canonical_loa_str(loa_min)
+    if rudder_configuration is not None:
+        rendered[_RUDDER_CONFIGURATION_KEY] = rudder_configuration
+    parts = [f"{key}={rendered[key]}" for key in CANONICAL_PARAM_KEY_ORDER if key in rendered]
     if not parts:
         return f"/{locale}/search"
     return f"/{locale}/search?{'&'.join(parts)}"
 
 
 def evaluate_requirement_search_outcome(
-    conn: Any, *, draft_max: Decimal | None, keel_configuration: str | None, as_of: datetime
+    conn: Any,
+    *,
+    draft_max: Decimal | None,
+    keel_configuration: str | None,
+    loa_min: Decimal | None = None,
+    loa_max: Decimal | None = None,
+    rudder_configuration: str | None = None,
+    as_of: datetime,
 ) -> DraftMaxSearchOutcome | NativeInventorySearchOutcome:
     """Evaluate one already-canonical requirement through the accepted Search
     truth: a pure `draft_max` requirement keeps the unmodified SLICE-0051
     `evaluate_draft_max_requirement`; any requirement involving
-    `keel_configuration` uses the SLICE-0055
-    `evaluate_native_inventory_requirements` funnel instead (this module's
-    docstring explains why).
+    `keel_configuration`/`loa_min`/`loa_max`/`rudder_configuration` uses the
+    SLICE-0055 (extended SLICE-0085) `evaluate_native_inventory_requirements`
+    funnel instead (this module's docstring explains why).
 
     Shared by `evaluate_search_request` (below) and SLICE-0057's buyer-
     requirement-sensitivity application service, so "one Search truth,
@@ -174,11 +217,22 @@ def evaluate_requirement_search_outcome(
     documented intent -- there is exactly one dispatch point between the two
     accepted Search outcome types.
     """
-    if keel_configuration is None:
+    if (
+        keel_configuration is None
+        and loa_min is None
+        and loa_max is None
+        and rudder_configuration is None
+    ):
         assert draft_max is not None
         return evaluate_draft_max_requirement(conn, draft_max, as_of=as_of)
     return evaluate_native_inventory_requirements(
-        conn, draft_max=draft_max, keel_configuration=keel_configuration, as_of=as_of
+        conn,
+        draft_max=draft_max,
+        keel_configuration=keel_configuration,
+        loa_min=loa_min,
+        loa_max=loa_max,
+        rudder_configuration=rudder_configuration,
+        as_of=as_of,
     )
 
 
@@ -201,14 +255,23 @@ def evaluate_search_request(
 
     draft_raw_values = list(query_params.get(_DRAFT_MAX_KEY, ()))
     keel_raw_values = list(query_params.get(_KEEL_CONFIGURATION_KEY, ()))
+    loa_min_raw_values = list(query_params.get(_LOA_MIN_KEY, ()))
+    loa_max_raw_values = list(query_params.get(_LOA_MAX_KEY, ()))
+    rudder_raw_values = list(query_params.get(_RUDDER_CONFIGURATION_KEY, ()))
 
-    if not draft_raw_values and not keel_raw_values:
+    if not (
+        draft_raw_values
+        or keel_raw_values
+        or loa_min_raw_values
+        or loa_max_raw_values
+        or rudder_raw_values
+    ):
         return SearchRequestOutcome(kind=SearchOutcomeKind.BASE)
 
     # Independent review Finding 2: `docs/OQ_018_SEARCH_PARAMETER_ORDERING_DECISION_2026-09-11.md`
     # requires the canonical URL to order active technical parameters
-    # lexicographically (draft_max before keel_configuration for the two
-    # currently accepted criteria); `docs/
+    # lexicographically (`hullq.search.criteria_registry.CANONICAL_PARAM_KEY_ORDER`,
+    # extended SLICE-0085 to all five accepted criteria); `docs/
     # OQ_018_SEARCH_NONCANONICAL_REDIRECT_DECISION_2026-09-11.md` requires a
     # semantically valid but non-canonically ordered request to 308-redirect
     # rather than remain a second successful 200 identity. `query_params`
@@ -217,13 +280,11 @@ def evaluate_search_request(
     # is a structural check independent of value validity, so it is safe to
     # compute unconditionally here and combine with the existing per-value
     # canonicalization flags before deciding REDIRECT vs RESULT.
-    _canonical_key_order = (_DRAFT_MAX_KEY, _KEEL_CONFIGURATION_KEY)
-    canonical_active_key_order = [key for key in _canonical_key_order if key in query_params]
+    canonical_active_key_order = [key for key in CANONICAL_PARAM_KEY_ORDER if key in query_params]
     actual_active_key_order = [key for key in query_params if key in _ALLOWED_PARAM_KEYS]
     order_is_canonical = actual_active_key_order == canonical_active_key_order
 
     draft_max: Decimal | None = None
-    draft_canonical: str | None = None
     draft_is_single_canonical = True
     if draft_raw_values:
         parsed_values: list[Decimal] = []
@@ -260,20 +321,83 @@ def evaluate_search_request(
         # of an identical value) is non-canonical.
         keel_is_single_canonical = len(keel_raw_values) == 1
 
-    if not (draft_is_single_canonical and keel_is_single_canonical and order_is_canonical):
+    def _parse_loa_bound(raw_values: list[str]) -> tuple[Decimal | None, bool] | None:
+        """Returns `(value, is_single_canonical)`, or `None` for INVALID."""
+        if not raw_values:
+            return None, True
+        parsed: list[Decimal] = []
+        for raw in raw_values:
+            try:
+                parsed.append(parse_loa_decimal(raw))
+            except LoaSyntaxError:
+                return None
+        if len(set(parsed)) > 1:
+            return None
+        value = parsed[0]
+        is_single_canonical = len(raw_values) == 1 and raw_values[0] == canonical_loa_str(value)
+        return value, is_single_canonical
+
+    loa_min_parsed = _parse_loa_bound(loa_min_raw_values)
+    if loa_min_parsed is None:
+        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+    loa_min, loa_min_is_single_canonical = loa_min_parsed
+
+    loa_max_parsed = _parse_loa_bound(loa_max_raw_values)
+    if loa_max_parsed is None:
+        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+    loa_max, loa_max_is_single_canonical = loa_max_parsed
+
+    if loa_min is not None and loa_max is not None and loa_min > loa_max:
+        # Slice normative LOA semantics: "Require loa_min <= loa_max
+        # whenever both supplied" -- never silently swapped or clamped.
+        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+
+    rudder_configuration: str | None = None
+    rudder_is_single_canonical = True
+    if rudder_raw_values:
+        for raw in rudder_raw_values:
+            if raw not in SEARCH_RUDDER_CONFIGURATION_VALUES:
+                return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+        if len(set(rudder_raw_values)) > 1:
+            return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+        rudder_configuration = rudder_raw_values[0]
+        rudder_is_single_canonical = len(rudder_raw_values) == 1
+
+    if not (
+        draft_is_single_canonical
+        and keel_is_single_canonical
+        and loa_min_is_single_canonical
+        and loa_max_is_single_canonical
+        and rudder_is_single_canonical
+        and order_is_canonical
+    ):
         return SearchRequestOutcome(
             kind=SearchOutcomeKind.REDIRECT,
             canonical_path=build_canonical_search_path(
-                locale, draft_max=draft_max, keel_configuration=keel_configuration
+                locale,
+                draft_max=draft_max,
+                keel_configuration=keel_configuration,
+                loa_min=loa_min,
+                loa_max=loa_max,
+                rudder_configuration=rudder_configuration,
             ),
         )
 
     search_outcome = evaluate_requirement_search_outcome(
-        conn, draft_max=draft_max, keel_configuration=keel_configuration, as_of=as_of
+        conn,
+        draft_max=draft_max,
+        keel_configuration=keel_configuration,
+        loa_min=loa_min,
+        loa_max=loa_max,
+        rudder_configuration=rudder_configuration,
+        as_of=as_of,
     )
     return SearchRequestOutcome(
         kind=SearchOutcomeKind.RESULT,
         draft_max=draft_max,
         keel_configuration=keel_configuration,
+        loa_min=loa_min,
+        loa_max=loa_max,
+        rudder_configuration=rudder_configuration,
         search_outcome=search_outcome,
     )

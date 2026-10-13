@@ -167,7 +167,14 @@ def test_keel_configuration_alone_proceeds_to_result_via_native_inventory_funnel
     captured: dict[str, object] = {}
 
     def fake_evaluate(
-        conn: object, *, draft_max: Decimal | None, keel_configuration: str | None, as_of: datetime
+        conn: object,
+        *,
+        draft_max: Decimal | None,
+        keel_configuration: str | None,
+        loa_min: Decimal | None = None,
+        loa_max: Decimal | None = None,
+        rudder_configuration: str | None = None,
+        as_of: datetime,
     ) -> object:
         captured["conn"] = conn
         captured["draft_max"] = draft_max
@@ -201,7 +208,14 @@ def test_mixed_draft_and_keel_proceeds_to_result_via_native_inventory_funnel(
     captured: dict[str, object] = {}
 
     def fake_evaluate(
-        conn: object, *, draft_max: Decimal | None, keel_configuration: str | None, as_of: datetime
+        conn: object,
+        *,
+        draft_max: Decimal | None,
+        keel_configuration: str | None,
+        loa_min: Decimal | None = None,
+        loa_max: Decimal | None = None,
+        rudder_configuration: str | None = None,
+        as_of: datetime,
     ) -> object:
         captured["draft_max"] = draft_max
         captured["keel_configuration"] = keel_configuration
@@ -259,7 +273,7 @@ def test_canonical_mixed_order_remains_result(monkeypatch) -> None:
     monkeypatch.setattr(
         module,
         "evaluate_native_inventory_requirements",
-        lambda conn, *, draft_max, keel_configuration, as_of: sentinel_outcome,
+        lambda conn, *, draft_max, keel_configuration, as_of, **_kwargs: sentinel_outcome,
     )
 
     # dict literal insertion order is itself the incoming raw key order here
@@ -350,7 +364,7 @@ def test_keel_only_single_key_order_is_unaffected(monkeypatch) -> None:
     monkeypatch.setattr(
         module,
         "evaluate_native_inventory_requirements",
-        lambda conn, *, draft_max, keel_configuration, as_of: object(),
+        lambda conn, *, draft_max, keel_configuration, as_of, **_kwargs: object(),
     )
     outcome = evaluate_search_request(
         object(), locale="en", query_params={"keel_configuration": ["FIN"]}, as_of=_AS_OF

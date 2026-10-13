@@ -297,6 +297,24 @@ WHERE h.physical_boat_id = %s
 ORDER BY h.claiming_organization_id
 """
 
+#: SLICE-0085: generalizes `_SELECT_CURRENT_DRAFT_AND_KEEL_OBSERVATIONS` to
+#: also carry `loa_length`/`rudder_configuration` from the same single
+#: query/MVCC snapshot (same single-statement-per-PhysicalBoat rationale,
+#: SLICE-0051 Finding 5). `list_current_physical_boat_claim_observations`
+#: moved to this query; the narrower constant above stays for any retained
+#: pre-0085 reference and so a future diff reviewing this exact change can
+#: see both shapes side by side.
+_SELECT_CURRENT_PHYSICAL_BOAT_CLAIM_OBSERVATIONS = """
+SELECT h.claiming_organization_id, r.draft_assertion_kind, r.draft_value,
+       r.keel_configuration_assertion_kind, r.keel_configuration_value,
+       r.loa_length_assertion_kind, r.loa_length_value,
+       r.rudder_configuration_assertion_kind, r.rudder_configuration_value
+FROM physical_boat_claim_heads h
+JOIN physical_boat_claim_revisions r ON r.claim_revision_id = h.current_claim_revision_id
+WHERE h.physical_boat_id = %s
+ORDER BY h.claiming_organization_id
+"""
+
 
 # ---------------------------------------------------------------------------
 # Fingerprint envelope
@@ -871,49 +889,64 @@ def list_current_draft_observations_for_physical_boat(
 
 @dataclass(frozen=True)
 class CurrentPhysicalBoatClaimObservation:
-    """One claiming Organization's current `draft` + `keel_configuration`
-    observations for one PhysicalBoatId (SLICE-0055).
+    """One claiming Organization's current `draft` + `keel_configuration` +
+    `loa_length` + `rudder_configuration` observations for one
+    PhysicalBoatId (SLICE-0055, extended SLICE-0085).
 
-    Generalizes `CurrentDraftObservation` to the second technical native
-    Search criterion so a mixed `draft_max AND keel_configuration`
-    evaluation can read both fields' current cross-Organization state from
-    one consistent PostgreSQL MVCC snapshot (mirroring the SLICE-0051
-    Finding 5 single-query rationale for the draft-only funnel) rather than
-    tearing across two separate queries. `draft`/`keel_configuration` are
-    each `None` when that Organization's current claim snapshot omits the
-    field entirely -- mechanically distinct from an explicit `UNKNOWN`
+    Generalizes `CurrentDraftObservation` to the bounded multi-criterion
+    native Search surface so a mixed evaluation combining any subset of the
+    four accepted concrete criteria can read every field's current
+    cross-Organization state from one consistent PostgreSQL MVCC snapshot
+    (mirroring the SLICE-0051 Finding 5 single-query rationale for the
+    draft-only funnel) rather than tearing across several separate queries.
+    Each field is `None` when that Organization's current claim snapshot
+    omits it entirely -- mechanically distinct from an explicit `UNKNOWN`
     claim, exactly like `CurrentDraftObservation.draft`.
     """
 
     claiming_organization_id: MarketplaceOrganizationId
     draft: DraftClaim | None
     keel_configuration: KeelConfigurationClaim | None
+    loa_length: LoaLengthClaim | None
+    rudder_configuration: RudderConfigurationClaim | None
 
 
 def list_current_physical_boat_claim_observations(
     conn: Any, physical_boat_id: PhysicalBoatId
 ) -> list[CurrentPhysicalBoatClaimObservation]:
-    """Every claiming Organization's current `draft` + `keel_configuration`
-    observation for one PhysicalBoatId, from a single query (SLICE-0055).
+    """Every claiming Organization's current `draft` + `keel_configuration` +
+    `loa_length` + `rudder_configuration` observation for one
+    PhysicalBoatId, from a single query (SLICE-0055, extended SLICE-0085).
 
     Reads only the explicit current head per claiming Organization -- never
     `MAX(recorded_at)` or row order -- across every Organization that has
     ever claimed this PhysicalBoatId, not only the publishing Organization.
     A PhysicalBoat with no current claim at all from any Organization
     returns an empty list. Superseded revisions are history, never observed
-    here. Used by the SLICE-0055 mixed native-inventory funnel; the
-    SLICE-0051 draft-only funnel keeps using
-    `list_current_draft_observations_for_physical_boat` unchanged.
+    here. Used by the SLICE-0055 mixed native-inventory funnel (extended
+    SLICE-0085 for `loa`/`rudder_configuration`); the SLICE-0051 draft-only
+    funnel keeps using `list_current_draft_observations_for_physical_boat`
+    unchanged.
     """
     if not isinstance(physical_boat_id, PhysicalBoatId):
         raise TypeError(
             f"physical_boat_id must be a PhysicalBoatId, got {type(physical_boat_id).__name__}"
         )
     with conn.cursor() as cur:
-        cur.execute(_SELECT_CURRENT_DRAFT_AND_KEEL_OBSERVATIONS, [physical_boat_id.value])
+        cur.execute(_SELECT_CURRENT_PHYSICAL_BOAT_CLAIM_OBSERVATIONS, [physical_boat_id.value])
         rows = cur.fetchall()
     observations = []
-    for claiming_organization_id, draft_kind, draft_value, keel_kind, keel_value in rows:
+    for (
+        claiming_organization_id,
+        draft_kind,
+        draft_value,
+        keel_kind,
+        keel_value,
+        loa_length_kind,
+        loa_length_value,
+        rudder_kind,
+        rudder_value,
+    ) in rows:
         draft: DraftClaim | None = None
         if draft_kind is not None:
             draft = DraftClaim(
@@ -926,11 +959,25 @@ def list_current_physical_boat_claim_observations(
                 assertion_kind=AssertionKind(keel_kind),
                 value=KeelConfiguration(keel_value) if keel_value is not None else None,
             )
+        loa_length: LoaLengthClaim | None = None
+        if loa_length_kind is not None:
+            loa_length = LoaLengthClaim(
+                assertion_kind=AssertionKind(loa_length_kind),
+                value=Decimal(loa_length_value) if loa_length_value is not None else None,
+            )
+        rudder_configuration: RudderConfigurationClaim | None = None
+        if rudder_kind is not None:
+            rudder_configuration = RudderConfigurationClaim(
+                assertion_kind=AssertionKind(rudder_kind),
+                value=RudderConfiguration(rudder_value) if rudder_value is not None else None,
+            )
         observations.append(
             CurrentPhysicalBoatClaimObservation(
                 claiming_organization_id=MarketplaceOrganizationId(claiming_organization_id),
                 draft=draft,
                 keel_configuration=keel_configuration,
+                loa_length=loa_length,
+                rudder_configuration=rudder_configuration,
             )
         )
     return observations

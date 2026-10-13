@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { SEARCH_KEEL_CONFIGURATION_VALUES } from "../searchApi.ts";
+import { SEARCH_KEEL_CONFIGURATION_VALUES, SEARCH_RUDDER_CONFIGURATION_VALUES } from "../searchApi.ts";
 import { SUPPORTED_LOCALES, searchText } from "../searchText.ts";
 
 test("every supported locale has complete non-empty text", () => {
@@ -76,6 +76,60 @@ test("requirementSummaryKeelOnly/requirementSummaryMixed/resolvedKeelText/insuff
     assert.ok(
       t.insufficientDataTextGeneric(3).includes("3"),
       `${locale}.insufficientDataTextGeneric`,
+    );
+  }
+});
+
+// SLICE-0085: LOA/rudder presentation text -- every supported locale has
+// complete non-empty labels/placeholders, a complete rudderConfigurationLabels
+// mapping, and every new interpolating function actually interpolates.
+test("every supported locale has complete non-empty LOA/rudder text", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const t = searchText[locale];
+    assert.ok(t.loaMinLabel.length > 0, `${locale}.loaMinLabel`);
+    assert.ok(t.loaMaxLabel.length > 0, `${locale}.loaMaxLabel`);
+    assert.ok(t.loaMinPlaceholder.length > 0, `${locale}.loaMinPlaceholder`);
+    assert.ok(t.loaMaxPlaceholder.length > 0, `${locale}.loaMaxPlaceholder`);
+    assert.ok(t.rudderConfigurationLabel.length > 0, `${locale}.rudderConfigurationLabel`);
+    assert.ok(
+      t.rudderConfigurationAnyOption.length > 0,
+      `${locale}.rudderConfigurationAnyOption`,
+    );
+    assert.ok(t.requirementSummaryListConjunction.length > 0, `${locale}.requirementSummaryListConjunction`);
+  }
+});
+
+test("every supported locale has a complete rudderConfigurationLabels mapping", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const labels = searchText[locale].rudderConfigurationLabels;
+    for (const value of SEARCH_RUDDER_CONFIGURATION_VALUES) {
+      assert.ok(labels[value].length > 0, `${locale}.rudderConfigurationLabels.${value}`);
+    }
+  }
+});
+
+test("LOA/rudder requirement phrases and resolved-evidence text interpolate their arguments", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const t = searchText[locale];
+    assert.ok(t.requirementPhraseDraftMax("1.6").includes("1.6"), `${locale}.requirementPhraseDraftMax`);
+    assert.ok(t.requirementPhraseKeel("Fin keel").includes("Fin keel"), `${locale}.requirementPhraseKeel`);
+    assert.ok(t.requirementPhraseLoaMin("10").includes("10"), `${locale}.requirementPhraseLoaMin`);
+    assert.ok(t.requirementPhraseLoaMax("15").includes("15"), `${locale}.requirementPhraseLoaMax`);
+    const range = t.requirementPhraseLoaRange("10", "15");
+    assert.ok(range.includes("10"), `${locale}.requirementPhraseLoaRange (min)`);
+    assert.ok(range.includes("15"), `${locale}.requirementPhraseLoaRange (max)`);
+    assert.ok(
+      t.requirementPhraseRudder("Skeg-hung rudder").includes("Skeg-hung rudder"),
+      `${locale}.requirementPhraseRudder`,
+    );
+    assert.ok(
+      t.requirementSummaryGeneric("X").includes("X"),
+      `${locale}.requirementSummaryGeneric`,
+    );
+    assert.ok(t.resolvedLoaText("10.50").includes("10.50"), `${locale}.resolvedLoaText`);
+    assert.ok(
+      t.resolvedRudderText("Skeg-hung rudder").includes("Skeg-hung rudder"),
+      `${locale}.resolvedRudderText`,
     );
   }
 });

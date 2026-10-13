@@ -34,6 +34,37 @@ def test_unknown_current_key_is_invalid() -> None:
     assert outcome.error is SensitivityErrorKind.UNKNOWN_CURRENT_KEY
 
 
+def test_slice_0085_active_loa_min_in_current_is_safely_declined() -> None:
+    """SLICE-0085: a sensitivity request whose current state carries a new
+    active criterion (loa_min/loa_max/rudder_configuration) must fail closed
+    rather than silently drop that criterion's contribution and compute a
+    false delta -- `_ALLOWED_CURRENT_KEYS` is deliberately NOT extended to
+    these keys (`hullq.application.search_sensitivity`'s module docstring)."""
+    outcome = evaluate_requirement_sensitivity(
+        None,
+        locale="en",
+        current={"draft_max": "1.6", "loa_min": "10"},
+        changed_criterion="draft_max",
+        changed_value="1.7",
+        as_of=_AS_OF,
+    )
+    assert outcome.kind is SensitivityOutcomeKind.INVALID
+    assert outcome.error is SensitivityErrorKind.UNKNOWN_CURRENT_KEY
+
+
+def test_slice_0085_rudder_configuration_as_changed_criterion_is_unsupported() -> None:
+    outcome = evaluate_requirement_sensitivity(
+        None,
+        locale="en",
+        current={"keel_configuration": "FIN"},
+        changed_criterion="rudder_configuration",
+        changed_value="SKEG_HUNG",
+        as_of=_AS_OF,
+    )
+    assert outcome.kind is SensitivityOutcomeKind.INVALID
+    assert outcome.error is SensitivityErrorKind.UNSUPPORTED_CHANGED_CRITERION
+
+
 def test_empty_current_is_invalid() -> None:
     outcome = evaluate_requirement_sensitivity(
         None,

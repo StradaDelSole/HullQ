@@ -159,3 +159,59 @@ test("buildSearchCanonicalPath: mixed puts draft_max before keel_configuration",
     "/de/search?draft_max=1.6&keel_configuration=FIN",
   );
 });
+
+// SLICE-0085: loa_min/loa_max/rudder_configuration extend the same sparse
+// activeRequirement shape and canonical key order
+// (hullq.search.criteria_registry.CANONICAL_PARAM_KEY_ORDER: draft_max,
+// keel_configuration, loa_max, loa_min, rudder_configuration).
+
+test("buildSearchCanonicalPath: loa range puts loa_max before loa_min", () => {
+  assert.equal(
+    buildSearchCanonicalPath("en", { loa_min: "10", loa_max: "15" }),
+    "/en/search?loa_max=15&loa_min=10",
+  );
+});
+
+test("buildSearchCanonicalPath: rudder-only", () => {
+  assert.equal(
+    buildSearchCanonicalPath("en", { rudder_configuration: "SKEG_HUNG" }),
+    "/en/search?rudder_configuration=SKEG_HUNG",
+  );
+});
+
+test("buildSearchCanonicalPath: all five keys in accepted canonical order", () => {
+  assert.equal(
+    buildSearchCanonicalPath("en", {
+      draft_max: "1.6",
+      keel_configuration: "FIN",
+      loa_min: "10",
+      loa_max: "15",
+      rudder_configuration: "SKEG_HUNG",
+    }),
+    "/en/search?draft_max=1.6&keel_configuration=FIN&loa_max=15&loa_min=10&rudder_configuration=SKEG_HUNG",
+  );
+});
+
+test("loadSearchPageData: a loa-only 200 result carries only loa_min/loa_max in activeRequirement", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          locale: "en",
+          active_requirement: { loa_min: "10", loa_max: "15" },
+          confirmed_matches: [],
+          confirmed_match_count: 0,
+          insufficient_data_count: 0,
+        }),
+      );
+    },
+    async (baseUrl) => {
+      const data = await loadSearchPageData(baseUrl, "en", "loa_max=15&loa_min=10");
+      assert.equal(data.kind, "ok");
+      if (data.kind === "ok") {
+        assert.deepEqual(data.activeRequirement, { loa_min: "10", loa_max: "15" });
+      }
+    },
+  );
+});

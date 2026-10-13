@@ -62,6 +62,19 @@ __all__ = [
 
 _DRAFT_MAX_KEY = "draft_max"
 _KEEL_CONFIGURATION_KEY = "keel_configuration"
+#: SLICE-0085: deliberately NOT extended to `loa_min`/`loa_max`/
+#: `rudder_configuration`. The slice's own "preserve or safely and visibly
+#: decline" obligation for buyer requirement sensitivity is satisfied by
+#: *declining*: a sensitivity request whose `current` state carries one of
+#: the three new active criteria is rejected outright, fail-closed, as
+#: `UNKNOWN_CURRENT_KEY` below (never silently evaluated while dropping the
+#: new criterion's own current-state contribution, which would risk a false
+#: delta). `evaluate_requirement_search_outcome`'s new keyword-only
+#: `loa_min`/`loa_max`/`rudder_configuration` parameters default to `None`
+#: at both call sites in `_evaluate_coherent_pair`, below, so this module's
+#: own two-criterion evaluation keeps calling the identical accepted code
+#: path it always has -- no behavior change for the two originally accepted
+#: criteria.
 _ALLOWED_CURRENT_KEYS = frozenset({_DRAFT_MAX_KEY, _KEEL_CONFIGURATION_KEY})
 _ALLOWED_CHANGED_CRITERIA = frozenset({_DRAFT_MAX_KEY, _KEEL_CONFIGURATION_KEY})
 
