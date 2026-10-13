@@ -258,13 +258,14 @@ Nothing in this register supersedes existing accepted invariants, including:
 
 ## Current overall interpretation
 
-As of 2026-10-09:
+As of 2026-10-13:
 
 - the marketplace/truth/search/broker operational loop through factual performance reporting is materially implemented through SLICE-0075;
 - broker usability evidence + competitive benchmark is implemented by SLICE-0076; the resulting Lead-assignment blocker was closed by SLICE-0077 and the Broker Workspace Launch Gate now supports PASS;
 - the dedicated Security Hardening & Adversarial Validation gate is implemented and PASS through SLICE-0078;
 - SLICE-0079 implements and locally proves the repository-owned Production Readiness mechanisms. After merge, canonical-main Deploy run #28 (`37868264887`) also real-executed the GHCR API/web publication path successfully. SLICE-0080 subsequently implements the accepted architecture §22 provider-independent broker-original redundancy mechanism using Backblaze B2 EU Central. The Production Readiness gate remains `IN_PROGRESS` pending real B2/VPS/managed-PostgreSQL and other boundary-specific provider configuration/evidence;
-- the largest remaining overall-MVP workstreams include owner-direct completion, trust/verification/safety, buyer persistence/alerts, periodic reporting/export/Search-fit diagnostics, support/admin/privacy/legal/comms, monetization where included, and production/data operations;
+- SLICE-0083 Owner-accepted common-format broker import to private ProfessionalListingDrafts and SLICE-0084 Owner-accepted promoted-DRAFT broker Search-fit diagnostics are IMPLEMENTED within their explicitly bounded scopes. Exactly two public hard technical Search criteria remain accepted; the Owner prioritized LOA and rudder/skeg expansion next, with separate long/full-keel mapping review;
+- the largest remaining overall-MVP workstreams include owner-direct completion, trust/verification/safety, buyer persistence/alerts, periodic broker reporting/inventory export, further qualified technical Buyer Search criteria, support/admin/privacy/legal/comms, monetization where included, and production/data operations;
 - these remaining workstreams are not permission to reopen already-decided architecture.
 
 ## Evidence rule for status changes
