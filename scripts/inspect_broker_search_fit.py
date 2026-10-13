@@ -80,6 +80,8 @@ _LIFECYCLE_CSRF_HEADER_VALUE = "professional-inventory-lifecycle-v1"
 
 _DESIGN_ID = "BD-0084-E2E"
 _MODEL_ID = "BM-0084-E2E"
+_DESIGN_UNRESOLVED_ID = "BD-0084-UNRESOLVED"
+_MODEL_UNRESOLVED_ID = "BM-0084-UNRESOLVED"
 
 
 def _base_db_url() -> str:
@@ -283,10 +285,19 @@ def _insert_boat_design(conn: Any, design_id: str, model_id: str) -> None:
     conn.commit()
 
 
-def _admit_design_keel_and_draft(conn: Any, design_id: str) -> None:
+def _admit_design_keel_and_draft(
+    conn: Any, design_id: str, *, admit_keel: bool = True, admit_draft: bool = True
+) -> None:
     """Durably admit real `resolved` FieldResolutions for this design's
     `draft_max_m`/`keel_type` -- mirrors
-    `scripts/inspect_first_native_inventory_search.py`'s identical recipe."""
+    `scripts/inspect_first_native_inventory_search.py`'s identical recipe.
+
+    `admit_keel`/`admit_draft` default `True`; passing one `False` leaves
+    that field's FieldResolution entirely unadmitted -- Finding B's
+    design-level `INSUFFICIENT_DATA` (unresolved design FieldResolution,
+    distinct from an unlinked design entirely) proof below needs exactly
+    this: a *linked*, otherwise-valid canonical design whose `keel_type`
+    was simply never qualified."""
     from hullq.domain.provenance import (
         ClaimSemantics,
         ConfidenceLevel,
@@ -421,10 +432,15 @@ def _admit_design_keel_and_draft(conn: Any, design_id: str) -> None:
         assert write_result.status is FieldResolutionWriteStatus.CREATED, write_result
         conn.commit()
 
-    _admit(
-        DRAFT_MAX_FIELD_POINTER, "1.30", f"FR-DRAFT-{design_id}", lookup_draft_max_canonical_value
-    )
-    _admit(KEEL_TYPE_FIELD_POINTER, "fin", f"FR-KEEL-{design_id}", lookup_keel_canonical_value)
+    if admit_draft:
+        _admit(
+            DRAFT_MAX_FIELD_POINTER,
+            "1.30",
+            f"FR-DRAFT-{design_id}",
+            lookup_draft_max_canonical_value,
+        )
+    if admit_keel:
+        _admit(KEEL_TYPE_FIELD_POINTER, "fin", f"FR-KEEL-{design_id}", lookup_keel_canonical_value)
 
 
 def main() -> int:
@@ -512,11 +528,19 @@ def main() -> int:
         try:
             _insert_boat_design(conn, _DESIGN_ID, _MODEL_ID)
             _admit_design_keel_and_draft(conn, _DESIGN_ID)
+            # Finding B: a second, *linked* design whose keel_type
+            # FieldResolution is deliberately never admitted -- unlike the
+            # unlinked-design listing below (BOATDESIGN_NOT_LINKED), this
+            # proves the distinct design-level INSUFFICIENT_DATA path
+            # (BOATDESIGN_CONFIGURATION_UNRESOLVED).
+            _insert_boat_design(conn, _DESIGN_UNRESOLVED_ID, _MODEL_UNRESOLVED_ID)
+            _admit_design_keel_and_draft(conn, _DESIGN_UNRESOLVED_ID, admit_keel=False)
         finally:
             conn.close()
         print(
             f"0a. seeded one canonical BoatDesign ({_DESIGN_ID}, FIN keel, draft_max_m=1.30) with "
-            "real admitted FieldResolutions -> OK\n"
+            "real admitted FieldResolutions, plus one linked design with an unadmitted keel "
+            f"FieldResolution ({_DESIGN_UNRESOLVED_ID}) -> OK\n"
         )
 
         api_port = _free_port()
@@ -705,11 +729,39 @@ def main() -> int:
                     market_episode_id=MarketEpisodeId("ME-0084-UNLINKED"),
                 ),
             )
+
+            # A third listing, linked to the design whose keel FieldResolution
+            # is deliberately never admitted (Finding B design-level unknown).
+            create_physical_boat(
+                conn,
+                physical_boat=PhysicalBoat(
+                    id=PhysicalBoatId("PB-0084-DESIGNUNKNOWN"),
+                    boat_design_ref=BoatDesignRef(_DESIGN_UNRESOLVED_ID),
+                ),
+            )
+            create_market_episode(
+                conn,
+                market_episode=MarketEpisode(
+                    id=MarketEpisodeId("ME-0084-DESIGNUNKNOWN"),
+                    physical_boat_id=PhysicalBoatId("PB-0084-DESIGNUNKNOWN"),
+                ),
+            )
+            create_native_listing(
+                conn,
+                account_id=account_a,
+                candidate_organization=org_a,
+                membership=membership_a,
+                listing=NativeListing(
+                    id=NativeListingId("NL-0084-DESIGNUNKNOWN"),
+                    market_episode_id=MarketEpisodeId("ME-0084-DESIGNUNKNOWN"),
+                ),
+            )
         finally:
             conn.close()
         print(
             "3. seeded ORG_A (PUBLISHER) with one lifecycle-DRAFT design-linked listing "
-            "(confirmed draft 1.20m, FIN) and one design-UNRESOLVED listing, plus ORG_B -> OK\n"
+            "(confirmed draft 1.20m, FIN), one design-UNRESOLVED (unlinked) listing and one "
+            "listing linked to a design with an unadmitted keel FieldResolution, plus ORG_B -> OK\n"
         )
 
         session_a = BrowserSession()
@@ -739,6 +791,82 @@ def main() -> int:
         ok &= headers_ok
         print(
             f"   private no-store/noindex response headers present -> {'OK' if headers_ok else 'FAIL'}\n"
+        )
+
+        # Finding B (PR #342): a design-level per-criterion FALSE (requesting
+        # a keel the design's own real value contradicts) must show its
+        # per-criterion reason/explanation text, not merely a bare aggregate
+        # status with no visible blocker. The aggregate design result stays
+        # INSUFFICIENT_DATA rather than CONFIRMED_NON_MATCH here -- the
+        # shared `hullq.search.boat_design_field_bridge.
+        # build_boat_design_configuration_set` bridge this preview reuses
+        # unmodified always sets `configuration_space_complete=False`
+        # (contract: "never claims configuration_space_complete=True"), so
+        # `evaluate_design_configuration_set`'s own CONFIRMED_NON_MATCH
+        # branch (which requires that flag True) is architecturally never
+        # reached through this adapter; the per-criterion FALSE truth and
+        # its real comparison explanation are what Finding B actually
+        # requires to be visible, independent of the aggregate class.
+        status, _, body = session_a.get(
+            f"{web_base}{_edit_page_path(_ORG_A_ID, 'NL-0084-MAIN')}?sf_keel_configuration=WING"
+        )
+        page_text = body.decode("utf-8")
+        design_false_criterion_ok = (
+            status == 200
+            and "Result: <strong>INSUFFICIENT_DATA</strong>" in page_text
+            and "Canonical design result: <strong>INSUFFICIENT_DATA</strong>" in page_text
+            and "does not equal required value" in page_text
+        )
+        ok &= design_false_criterion_ok
+        print(
+            "   a design-level per-criterion FALSE (keel_configuration=WING against this "
+            "design's real FIN) renders the real per-criterion comparison explanation, not "
+            f"merely a bare aggregate status -> {'OK' if design_false_criterion_ok else 'FAIL'}"
+        )
+
+        # Finding B: a *linked* design with an unresolved keel FieldResolution
+        # (never merely "design not linked") must render INSUFFICIENT_DATA
+        # with its actionable BOATDESIGN_CONFIGURATION_UNRESOLVED blocker and
+        # the real per-criterion qualification reason, distinguishing it
+        # from the design-UNRESOLVED-chain case proven separately below.
+        status, _, body = session_a.get(
+            f"{web_base}{_edit_page_path(_ORG_A_ID, 'NL-0084-DESIGNUNKNOWN')}"
+            "?sf_keel_configuration=FIN"
+        )
+        page_text = body.decode("utf-8")
+        design_unknown_ok = (
+            status == 200
+            and "Result: <strong>INSUFFICIENT_DATA</strong>" in page_text
+            # Astro HTML-escapes the apostrophes in this blocker text.
+            and "own technical data isn&#39;t fully resolved" in page_text
+            and "not qualified for confirmed truth" in page_text
+        )
+        ok &= design_unknown_ok
+        print(
+            "   a linked design with an unresolved keel FieldResolution renders INSUFFICIENT_DATA "
+            "with the actionable blocker explanation and the real per-criterion qualification "
+            f"reason -> {'OK' if design_unknown_ok else 'FAIL'}\n"
+        )
+
+        # Finding C (PR #342): a duplicate sf_draft_max parameter must fail
+        # closed end to end at the Astro boundary itself -- never silently
+        # forward only the first value to FastAPI as if it were the whole
+        # submitted scenario.
+        status, _, body = session_a.get(
+            f"{web_base}{_edit_page_path(_ORG_A_ID, 'NL-0084-MAIN')}"
+            "?sf_draft_max=1.5&sf_draft_max=0.5"
+        )
+        page_text = body.decode("utf-8")
+        duplicate_param_ok = (
+            status == 200
+            and "duplicate/ambiguous" in page_text
+            and "Result: <strong>" not in page_text
+        )
+        ok &= duplicate_param_ok
+        print(
+            "   a duplicate sf_draft_max=1.5&sf_draft_max=0.5 is rejected at the Astro boundary "
+            f"itself -- never silently forwarded as a single value -> "
+            f"{'OK' if duplicate_param_ok else 'FAIL'}\n"
         )
 
         # 2. Public Search excludes it while DRAFT.

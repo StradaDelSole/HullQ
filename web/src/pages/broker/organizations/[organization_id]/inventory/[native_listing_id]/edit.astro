@@ -30,6 +30,7 @@ import {
 } from "../../../../../../lib/designAssociationApi";
 import {
   fetchSearchFit,
+  type LeafCriterion,
   type SearchFitResult,
 } from "../../../../../../lib/brokerSearchFitApi";
 import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../../../../lib/authConstants";
@@ -62,6 +63,23 @@ function formatGenerationIdentity(generation: GenerationIdentity): string {
   );
   parts.push(`boundary confidence: ${generation.boundary_confidence ?? "unknown"}`);
   return parts.join(", ");
+}
+
+// Independent review Finding B (PR #342): render the exact requested
+// condition alongside its typed truth/reason/explanation -- a bare "FALSE"
+// or "UNKNOWN" with no condition shown would not let a broker understand
+// *why* a design or concrete criterion did or did not match.
+function describeCriterion(criterion: LeafCriterion): string {
+  if (criterion.kind === "NUMERIC") {
+    if (criterion.comparison === "MAXIMUM") {
+      return `${criterion.field} <= ${criterion.threshold_max}`;
+    }
+    if (criterion.comparison === "MINIMUM") {
+      return `${criterion.field} >= ${criterion.threshold_min}`;
+    }
+    return `${criterion.field} in [${criterion.threshold_min}, ${criterion.threshold_max}]`;
+  }
+  return `${criterion.field} = ${criterion.equals}`;
 }
 
 const organizationId = Astro.params.organization_id;
@@ -353,13 +371,27 @@ const designCandidates =
 // separation). Read independently of every section above -- a service
 // failure here never downgrades the already-successful offer/claim read
 // into a 503 (this section simply shows its own error below).
-const searchFitDraftMaxRaw = Astro.url.searchParams.get("sf_draft_max") ?? "";
-const searchFitKeelRaw = Astro.url.searchParams.get("sf_keel_configuration") ?? "";
-const searchFitRequested =
-  Astro.url.searchParams.has("sf_draft_max") ||
-  Astro.url.searchParams.has("sf_keel_configuration");
+// Independent review Finding C (PR #342): `URLSearchParams.get` silently
+// returns only the first value of a repeated key, so a URL such as
+// `?sf_draft_max=1.5&sf_draft_max=0.5` would otherwise forward a single,
+// arbitrarily-chosen parameter to FastAPI instead of failing closed --
+// exactly the "duplicate/ambiguous scenario" case the backend's own
+// `parse_search_fit_scenario` already rejects when it reaches it. `getAll`
+// surfaces the true cardinality so this page can reject it itself, end to
+// end, rather than silently collapsing it before the backend ever sees it.
+const searchFitDraftMaxValues = Astro.url.searchParams.getAll("sf_draft_max");
+const searchFitKeelValues = Astro.url.searchParams.getAll("sf_keel_configuration");
+const searchFitDraftMaxRaw = searchFitDraftMaxValues[0] ?? "";
+const searchFitKeelRaw = searchFitKeelValues[0] ?? "";
+const searchFitHasAmbiguousParams =
+  searchFitDraftMaxValues.length > 1 || searchFitKeelValues.length > 1;
+const searchFitRequested = searchFitDraftMaxValues.length > 0 || searchFitKeelValues.length > 0;
 const searchFitResult: SearchFitResult | null =
-  result.kind === "ok" && organizationId && nativeListingId && searchFitRequested
+  result.kind === "ok" &&
+  organizationId &&
+  nativeListingId &&
+  searchFitRequested &&
+  !searchFitHasAmbiguousParams
     ? await fetchSearchFit(
         apiBaseUrl,
         organizationId,
@@ -1062,7 +1094,14 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
               <button type="submit">Run Search-fit preview</button>
             </form>
             {
-              searchFitResult === null ? null : searchFitResult.kind === "unauthenticated" ? (
+              searchFitHasAmbiguousParams ? (
+                <p>
+                  That scenario isn't valid (a duplicate/ambiguous maximum draft or keel
+                  configuration parameter was submitted). Choose exactly one positive maximum
+                  draft in metres (e.g. 1.6) and/or one supported keel configuration from the
+                  list above.
+                </p>
+              ) : searchFitResult === null ? null : searchFitResult.kind === "unauthenticated" ? (
                 <p>Please log in to run this preview.</p>
               ) : searchFitResult.kind === "not_found" ? (
                 <p>This listing isn't available here.</p>
@@ -1110,23 +1149,69 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
                       ))}
                     </ul>
                   )}
-                  {searchFitResult.data.criterion_evidence.length > 0 && (
-                    <ul>
-                      {searchFitResult.data.criterion_evidence.map((evidence) => (
-                        <li>
-                          {evidence.field}: {evidence.truth}
-                          {evidence.observed_value !== null && (
-                            <> (this boat's current claim: {evidence.observed_value})</>
+                  {
+                    // Independent review Finding B (PR #342): the design-
+                    // level aggregate reason plus every evaluated
+                    // configuration's own per-criterion requested condition/
+                    // truth/reason/explanation/observed value -- rendered
+                    // for every design result class, including
+                    // CONFIRMED_NON_MATCH and INSUFFICIENT_DATA, which
+                    // previously showed only a bare aggregate status with no
+                    // visible per-criterion explanation.
+                    searchFitResult.data.design_evaluation && (
+                      <>
+                        <p>
+                          Canonical design result:{" "}
+                          <strong>{searchFitResult.data.design_evaluation.result_class}</strong>
+                          {searchFitResult.data.design_evaluation.reason && (
+                            <> ({searchFitResult.data.design_evaluation.reason})</>
                           )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {searchFitResult.data.design_evaluation && (
-                    <p>
-                      Canonical design result:{" "}
-                      <strong>{searchFitResult.data.design_evaluation.result_class}</strong>
-                    </p>
+                        </p>
+                        {searchFitResult.data.design_configuration_evidence.length > 0 && (
+                          <ul>
+                            {searchFitResult.data.design_configuration_evidence.map(
+                              (configEvidence) => (
+                                <li>
+                                  Configuration <code>{configEvidence.configuration_id}</code>{" "}
+                                  ({configEvidence.truth})
+                                  <ul>
+                                    {configEvidence.criterion_evidence.map((evidence) => (
+                                      <li>
+                                        {describeCriterion(evidence.criterion)}: {evidence.truth}
+                                        {evidence.observed_value !== null && (
+                                          <> -- design value: {evidence.observed_value}</>
+                                        )}
+                                        {evidence.reason && <> ({evidence.reason})</>}
+                                        {" -- "}
+                                        {evidence.explanation}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </li>
+                              ),
+                            )}
+                          </ul>
+                        )}
+                      </>
+                    )
+                  }
+                  {searchFitResult.data.criterion_evidence.length > 0 && (
+                    <>
+                      <p>This boat's own current PhysicalBoat claim evidence:</p>
+                      <ul>
+                        {searchFitResult.data.criterion_evidence.map((evidence) => (
+                          <li>
+                            {describeCriterion(evidence.criterion)}: {evidence.truth}
+                            {evidence.observed_value !== null && (
+                              <> -- this boat's current claim: {evidence.observed_value}</>
+                            )}
+                            {evidence.reason && <> ({evidence.reason})</>}
+                            {" -- "}
+                            {evidence.explanation}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
                   )}
                 </>
               )

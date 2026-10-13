@@ -46,14 +46,29 @@ distinguishable from an unknown one once the Organization boundary itself
 has already succeeded (mirrors `hullq.application.inventory_editing`/
 `hullq.application.design_association`).
 
-Mechanical invariants §C (stale/concurrent-state): lifecycle is read once
-before any technical evaluation and re-read once more immediately before
-returning a would-be `OK` result; an interleaved publish/withdraw between
-the two reads returns `NOT_PREVIEWABLE` rather than a DRAFT-labelled result
-assembled from two different state moments. This is the accepted "equivalent
-bounded recheck" strategy (contract §C), not a held transaction/row lock --
-the preview performs zero writes, so there is no mutation to serialize
-against.
+Mechanical invariants §C (stale/concurrent-state; independent review
+Finding A, PR #342): every read needed to assemble a would-be `OK`
+result -- authorization, lifecycle, the NativeListing -> MarketEpisode ->
+PhysicalBoat chain, design evaluation and concrete claim classification --
+runs inside one explicit `REPEATABLE READ` PostgreSQL transaction, mirroring
+`hullq.application.search_sensitivity`'s identical discipline: under the
+default `READ COMMITTED` isolation, several independent statements could
+each see the latest committed state independently, so an interleaved role/
+lifecycle/claim change landing mid-evaluation could produce a result that
+never existed in any single consistent database state. `REPEATABLE READ`
+fixes one MVCC snapshot at the first statement of the transaction and holds
+it for every later statement in that same transaction. Immediately after
+that snapshot transaction closes, both authorization and lifecycle are
+rechecked once more from deliberately fresh statements against the
+now-current committed state -- an Organization membership revoked, its
+PUBLISHER role removed, or a DRAFT->ACTIVE/WITHDRAWN transition occurring
+while the snapshot read was in flight is therefore never silently used to
+legitimize a stale `OK` result; it fails closed to the same typed denial/
+`NOT_PREVIEWABLE` outcome a request arriving after the change would get.
+This is the accepted "single transaction snapshot ... or equivalent bounded
+recheck" strategy (contract §C) applied to the *entire* read, not only
+lifecycle -- not a held row lock or any write: the preview performs zero
+writes, so there is no mutation to serialize against.
 """
 
 from __future__ import annotations
@@ -278,6 +293,41 @@ def _derive_blockers(
     return tuple(blockers)
 
 
+def _authorize_actor(
+    conn: Any, session: SessionClaims, organization_id: MarketplaceOrganizationId
+) -> SearchFitResult | None:
+    """Evaluate the current workspace + PUBLISHER-role authorization boundary
+    (Required Behavior §C), returning `None` when authorized to proceed or
+    the exact denial `SearchFitResult` otherwise.
+
+    Called twice by `evaluate_organization_listing_search_fit` -- once from
+    inside the bounded `REPEATABLE READ` snapshot the rest of the evaluation
+    reads from, and once more immediately after that snapshot closes, from a
+    deliberately fresh statement against the now-current committed state
+    (independent review Finding A, PR #342): an Organization membership
+    revoked, or its PUBLISHER role removed, while the first evaluation was
+    in flight is caught by the second call rather than silently legitimizing
+    a stale authorization decision. A module-level function (not inlined) so
+    both call sites -- and a test harness pausing/monkeypatching exactly the
+    second call to inject a real concurrent mutation -- share the identical
+    authorization logic.
+    """
+    workspace_result = get_organization_workspace_result(conn, session, organization_id)
+    if workspace_result.outcome is OrganizationWorkspaceOutcome.NOT_FOUND_OR_DENIED:
+        return SearchFitResult(outcome=SearchFitOutcome.ORG_NOT_FOUND_OR_DENIED)
+    if workspace_result.outcome is OrganizationWorkspaceOutcome.MFA_REQUIRED:
+        return SearchFitResult(outcome=SearchFitOutcome.MFA_REQUIRED)
+    assert workspace_result.context is not None
+
+    # `evaluate_organization_workspace_authorization` already guarantees an
+    # AUTHORIZED outcome's membership is current and ACTIVE -- only the
+    # PUBLISHER-role requirement this preview's own contract adds (Required
+    # Behavior §C) still needs checking, from the same authorized read.
+    if MembershipRole.PUBLISHER.value not in workspace_result.context.roles:
+        return SearchFitResult(outcome=SearchFitOutcome.PUBLISHER_ROLE_REQUIRED)
+    return None
+
+
 def evaluate_organization_listing_search_fit(
     conn: Any,
     session: SessionClaims,
@@ -295,127 +345,138 @@ def evaluate_organization_listing_search_fit(
     does not itself consult D29 current-public-eligibility or freshness --
     lifecycle alone (never ACTIVE/WITHDRAWN) gates whether a hypothetical
     DRAFT preview may run at all (Required Behavior §B/§C).
+
+    *conn* must be IDLE (no prior statement issued) when this function
+    receives it -- it opens its own top-level `REPEATABLE READ` transaction
+    for the snapshot read (see this module's docstring, independent review
+    Finding A).
     """
     organization_id = MarketplaceOrganizationId(organization_id_value)
-    workspace_result = get_organization_workspace_result(conn, session, organization_id)
-    if workspace_result.outcome is OrganizationWorkspaceOutcome.NOT_FOUND_OR_DENIED:
-        return SearchFitResult(outcome=SearchFitOutcome.ORG_NOT_FOUND_OR_DENIED)
-    if workspace_result.outcome is OrganizationWorkspaceOutcome.MFA_REQUIRED:
-        return SearchFitResult(outcome=SearchFitOutcome.MFA_REQUIRED)
-    assert workspace_result.context is not None
-
-    # `evaluate_organization_workspace_authorization` already guarantees an
-    # AUTHORIZED outcome's membership is current and ACTIVE -- only the
-    # PUBLISHER-role requirement this preview's own contract adds (Required
-    # Behavior §C) still needs checking, from the same authorized read.
-    if MembershipRole.PUBLISHER.value not in workspace_result.context.roles:
-        return SearchFitResult(outcome=SearchFitOutcome.PUBLISHER_ROLE_REQUIRED)
+    native_listing_id = NativeListingId(native_listing_id_value)
 
     try:
         draft_max, keel_configuration = parse_search_fit_scenario(query_params)
     except InvalidSearchFitScenarioError as exc:
         return SearchFitResult(outcome=SearchFitOutcome.INVALID_SCENARIO, invalid_reason=str(exc))
 
-    native_listing_id = NativeListingId(native_listing_id_value)
-    listing_record = fetch_native_listing(conn, native_listing_id)
-    if listing_record is None or listing_record.publishing_organization_id != organization_id:
-        return SearchFitResult(outcome=SearchFitOutcome.LISTING_NOT_FOUND)
-
-    lifecycle_state = fetch_lifecycle_state(conn, native_listing_id)
-    assert lifecycle_state is not None  # the listing was just confirmed to exist, above
-    if lifecycle_state is not NativeListingLifecycleState.DRAFT:
-        return SearchFitResult(outcome=SearchFitOutcome.NOT_PREVIEWABLE)
-
-    market_episode_id = listing_record.listing.market_episode_id
-    if market_episode_id is None:
-        # A listing that completed 0067 promotion always carries a
-        # MarketEpisode -- a promoted DRAFT target missing one is a broken
-        # identity chain, not an ordinary recoverable editing gap.
-        return SearchFitResult(outcome=SearchFitOutcome.CHAIN_INTEGRITY_FAULT)
-    market_episode_record = fetch_market_episode(conn, market_episode_id)
-    if market_episode_record is None:
-        return SearchFitResult(outcome=SearchFitOutcome.CHAIN_INTEGRITY_FAULT)
-    physical_boat_id = market_episode_record.market_episode.physical_boat_id
-    physical_boat_record = fetch_physical_boat(conn, physical_boat_id)
-    if physical_boat_record is None:
-        return SearchFitResult(outcome=SearchFitOutcome.CHAIN_INTEGRITY_FAULT)
-
     query, specs = build_mixed_requirement_query(
         draft_max=draft_max, keel_configuration=keel_configuration
     )
-    boat_design_ref = physical_boat_record.physical_boat.boat_design_ref
 
-    if boat_design_ref is None:
-        view = SearchFitView(
-            native_listing_id=native_listing_id.value,
-            draft_max=draft_max,
-            keel_configuration=keel_configuration,
-            result_class=ResultClass.INSUFFICIENT_DATA,
-            design_evaluation=None,
-            design_configuration_evidence=(),
-            concrete_criterion_evidence=(),
-            blockers=(SearchFitBlocker.BOATDESIGN_NOT_LINKED,),
-        )
-    else:
-        raw_design = fetch_boat_design(conn, boat_design_ref.value)
-        if raw_design is None:
-            # Dangling BoatDesignRef: a stored link to a non-existent
-            # canonical design is a data-integrity error, never an
-            # inferred/guessed design (Required Behavior §B).
+    # Finding A: every read needed to assemble a would-be OK result shares
+    # one consistent MVCC snapshot, fixed at the first statement below.
+    with conn.transaction():
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+
+        denial = _authorize_actor(conn, session, organization_id)
+        if denial is not None:
+            return denial
+
+        listing_record = fetch_native_listing(conn, native_listing_id)
+        if listing_record is None or listing_record.publishing_organization_id != organization_id:
+            return SearchFitResult(outcome=SearchFitOutcome.LISTING_NOT_FOUND)
+
+        lifecycle_state = fetch_lifecycle_state(conn, native_listing_id)
+        assert lifecycle_state is not None  # the listing was just confirmed to exist, above
+        if lifecycle_state is not NativeListingLifecycleState.DRAFT:
+            return SearchFitResult(outcome=SearchFitOutcome.NOT_PREVIEWABLE)
+
+        market_episode_id = listing_record.listing.market_episode_id
+        if market_episode_id is None:
+            # A listing that completed 0067 promotion always carries a
+            # MarketEpisode -- a promoted DRAFT target missing one is a
+            # broken identity chain, not an ordinary recoverable editing gap.
+            return SearchFitResult(outcome=SearchFitOutcome.CHAIN_INTEGRITY_FAULT)
+        market_episode_record = fetch_market_episode(conn, market_episode_id)
+        if market_episode_record is None:
+            return SearchFitResult(outcome=SearchFitOutcome.CHAIN_INTEGRITY_FAULT)
+        physical_boat_id = market_episode_record.market_episode.physical_boat_id
+        physical_boat_record = fetch_physical_boat(conn, physical_boat_id)
+        if physical_boat_record is None:
             return SearchFitResult(outcome=SearchFitOutcome.CHAIN_INTEGRITY_FAULT)
 
-        design_result = run_boat_design_configuration_query(conn, query, [raw_design], specs)
-        design_evaluations = (
-            design_result.outcome.confirmed_matches
-            + design_result.outcome.confirmed_non_matches
-            + design_result.outcome.insufficient_data
-        )
-        assert len(design_evaluations) == 1  # exactly one design was evaluated, above
-        design_evaluation = design_evaluations[0]
+        boat_design_ref = physical_boat_record.physical_boat.boat_design_ref
 
-        design_configuration_evidence = tuple(
-            build_configuration_evidence(
-                query,
-                configuration_evaluation,
-                design_result.configurations_by_id[configuration_evaluation.configuration_id],
-            )
-            for configuration_evaluation in design_evaluation.configuration_evaluations
-        )
-
-        if design_evaluation.result_class is ResultClass.CONFIRMED_MATCH:
-            result_class, concrete_evidence = classify_concrete_candidate(
-                conn,
-                native_listing_id=native_listing_id,
-                publishing_organization_id=organization_id,
-                physical_boat_id=physical_boat_id,
-                boat_design_id=boat_design_ref.value,
-                query=query,
-                draft_active=draft_max is not None,
-                keel_active=keel_configuration is not None,
+        if boat_design_ref is None:
+            view = SearchFitView(
+                native_listing_id=native_listing_id.value,
+                draft_max=draft_max,
+                keel_configuration=keel_configuration,
+                result_class=ResultClass.INSUFFICIENT_DATA,
+                design_evaluation=None,
+                design_configuration_evidence=(),
+                concrete_criterion_evidence=(),
+                blockers=(SearchFitBlocker.BOATDESIGN_NOT_LINKED,),
             )
         else:
-            # Design/configuration eligibility never admitted this design to
-            # the concrete funnel (Required Behavior §B) -- classified
-            # directly from the design-level result, fail-closed, without
-            # ever consulting the concrete PhysicalBoat claim.
-            result_class = design_evaluation.result_class
-            concrete_evidence = ()
+            raw_design = fetch_boat_design(conn, boat_design_ref.value)
+            if raw_design is None:
+                # Dangling BoatDesignRef: a stored link to a non-existent
+                # canonical design is a data-integrity error, never an
+                # inferred/guessed design (Required Behavior §B).
+                return SearchFitResult(outcome=SearchFitOutcome.CHAIN_INTEGRITY_FAULT)
 
-        view = SearchFitView(
-            native_listing_id=native_listing_id.value,
-            draft_max=draft_max,
-            keel_configuration=keel_configuration,
-            result_class=result_class,
-            design_evaluation=design_evaluation,
-            design_configuration_evidence=design_configuration_evidence,
-            concrete_criterion_evidence=concrete_evidence,
-            blockers=_derive_blockers(result_class, concrete_evidence),
-        )
+            design_result = run_boat_design_configuration_query(conn, query, [raw_design], specs)
+            design_evaluations = (
+                design_result.outcome.confirmed_matches
+                + design_result.outcome.confirmed_non_matches
+                + design_result.outcome.insufficient_data
+            )
+            assert len(design_evaluations) == 1  # exactly one design was evaluated, above
+            design_evaluation = design_evaluations[0]
 
-    # Mechanical invariants §C: never let an interleaved publish/withdraw
-    # leave a DRAFT-labelled result assembled from two different state
-    # moments -- the bounded recheck the contract accepts in place of a
-    # held read lock for this read-only, zero-write preview.
+            design_configuration_evidence = tuple(
+                build_configuration_evidence(
+                    query,
+                    configuration_evaluation,
+                    design_result.configurations_by_id[configuration_evaluation.configuration_id],
+                )
+                for configuration_evaluation in design_evaluation.configuration_evaluations
+            )
+
+            if design_evaluation.result_class is ResultClass.CONFIRMED_MATCH:
+                result_class, concrete_evidence = classify_concrete_candidate(
+                    conn,
+                    native_listing_id=native_listing_id,
+                    publishing_organization_id=organization_id,
+                    physical_boat_id=physical_boat_id,
+                    boat_design_id=boat_design_ref.value,
+                    query=query,
+                    draft_active=draft_max is not None,
+                    keel_active=keel_configuration is not None,
+                )
+            else:
+                # Design/configuration eligibility never admitted this
+                # design to the concrete funnel (Required Behavior §B) --
+                # classified directly from the design-level result, fail-
+                # closed, without ever consulting the concrete claim.
+                result_class = design_evaluation.result_class
+                concrete_evidence = ()
+
+            view = SearchFitView(
+                native_listing_id=native_listing_id.value,
+                draft_max=draft_max,
+                keel_configuration=keel_configuration,
+                result_class=result_class,
+                design_evaluation=design_evaluation,
+                design_configuration_evidence=design_configuration_evidence,
+                concrete_criterion_evidence=concrete_evidence,
+                blockers=_derive_blockers(result_class, concrete_evidence),
+            )
+    # The snapshot transaction above committed trivially (read-only) on
+    # normal exit, including every early-return branch -- mirrors
+    # `hullq.persistence.native_listing_lifecycle._apply_transition`'s
+    # identical multiple-early-return-inside-`with conn.transaction():`
+    # convention.
+
+    # Finding A (second half): a completely fresh, independent recheck --
+    # new statements against the now-current committed state, never the
+    # snapshot above -- so an interleaved revoke/role-change/publish/
+    # withdraw during evaluation is caught here, not silently used to
+    # legitimize a stale OK.
+    recheck_denial = _authorize_actor(conn, session, organization_id)
+    if recheck_denial is not None:
+        return recheck_denial
     recheck_lifecycle_state = fetch_lifecycle_state(conn, native_listing_id)
     if recheck_lifecycle_state is not NativeListingLifecycleState.DRAFT:
         return SearchFitResult(outcome=SearchFitOutcome.NOT_PREVIEWABLE)

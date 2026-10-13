@@ -396,6 +396,70 @@ def _search_fit_path(org_id: str, listing_id: str) -> str:
     return f"/api/broker/organizations/{org_id}/inventory/{listing_id}/search-fit"
 
 
+def _capture_write_fingerprint(
+    api_url: str, *, native_listing_id: str, physical_boat_id: str, organization_id: str
+) -> dict[str, Any]:
+    """Independent review proof-completeness note (PR #342): a bounded
+    snapshot across every write destination this preview could conceivably
+    touch -- not only the single current claim revision id the original
+    test checked. Table row *counts* (not merely a single "current" head)
+    so a superseding revision inserted alongside an unchanged head would
+    still be detected."""
+    conn = psycopg.connect(api_url)
+    try:
+        lifecycle = fetch_lifecycle_state(conn, NativeListingId(native_listing_id))
+        claim = fetch_current_physical_boat_claim(
+            conn, PhysicalBoatId(physical_boat_id), MarketplaceOrganizationId(organization_id)
+        )
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT publishing_organization_id, market_episode_id FROM native_listings "
+                "WHERE native_listing_id = %s",
+                [native_listing_id],
+            )
+            listing_row = cur.fetchone()
+            cur.execute(
+                "SELECT boat_design_ref FROM physical_boats WHERE physical_boat_id = %s",
+                [physical_boat_id],
+            )
+            design_ref_row = cur.fetchone()
+            cur.execute("SELECT COUNT(*) FROM native_listing_publication_transitions")
+            transition_count = cur.fetchone()[0]
+            cur.execute(
+                "SELECT COUNT(*) FROM physical_boat_claim_revisions WHERE physical_boat_id = %s",
+                [physical_boat_id],
+            )
+            claim_revision_count = cur.fetchone()[0]
+            cur.execute(
+                "SELECT COUNT(*) FROM native_listing_offer_revisions WHERE native_listing_id = %s",
+                [native_listing_id],
+            )
+            offer_revision_count = cur.fetchone()[0]
+            cur.execute(
+                "SELECT COUNT(*) FROM boat_design_association_events WHERE physical_boat_id = %s",
+                [physical_boat_id],
+            )
+            design_association_event_count = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM buyer_leads")
+            lead_count = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM field_resolutions")
+            field_resolution_count = cur.fetchone()[0]
+    finally:
+        conn.close()
+    return {
+        "lifecycle": lifecycle,
+        "claim_revision_id": claim.revision_id if claim is not None else None,
+        "listing_row": listing_row,
+        "design_ref_row": design_ref_row,
+        "transition_count": transition_count,
+        "claim_revision_count": claim_revision_count,
+        "offer_revision_count": offer_revision_count,
+        "design_association_event_count": design_association_event_count,
+        "lead_count": lead_count,
+        "field_resolution_count": field_resolution_count,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Authorization / privacy / non-enumeration
 # ---------------------------------------------------------------------------
@@ -1096,14 +1160,12 @@ class TestSearchFitLifecycleAndIntegrity:
         )
         _log_in(client, "ACC-SF-NOWRITE")
 
-        conn = psycopg.connect(api_url)
-        try:
-            lifecycle_before = fetch_lifecycle_state(conn, NativeListingId("NL-SF-NOWRITE"))
-            claim_before = fetch_current_physical_boat_claim(
-                conn, PhysicalBoatId("PB-SF-NOWRITE"), MarketplaceOrganizationId("ORG-SF-NOWRITE")
-            )
-        finally:
-            conn.close()
+        fingerprint_before = _capture_write_fingerprint(
+            api_url,
+            native_listing_id="NL-SF-NOWRITE",
+            physical_boat_id="PB-SF-NOWRITE",
+            organization_id="ORG-SF-NOWRITE",
+        )
 
         # Repeated, idempotent GETs -- never a write, never a stale/changed
         # answer for unchanged authoritative state.
@@ -1115,15 +1177,18 @@ class TestSearchFitLifecycleAndIntegrity:
             assert response.status_code == 200
             assert response.json()["result_class"] == "CONFIRMED_MATCH"
 
-        conn = psycopg.connect(api_url)
-        try:
-            lifecycle_after = fetch_lifecycle_state(conn, NativeListingId("NL-SF-NOWRITE"))
-            claim_after = fetch_current_physical_boat_claim(
-                conn, PhysicalBoatId("PB-SF-NOWRITE"), MarketplaceOrganizationId("ORG-SF-NOWRITE")
-            )
-        finally:
-            conn.close()
+        fingerprint_after = _capture_write_fingerprint(
+            api_url,
+            native_listing_id="NL-SF-NOWRITE",
+            physical_boat_id="PB-SF-NOWRITE",
+            organization_id="ORG-SF-NOWRITE",
+        )
 
-        assert lifecycle_after == lifecycle_before
-        assert claim_after is not None and claim_before is not None
-        assert claim_after.revision_id == claim_before.revision_id
+        # Independent review proof-completeness note (PR #342): every
+        # write destination this preview could conceivably touch --
+        # lifecycle, the current claim head, the full claim revision
+        # history count, the listing's own identity columns, the stored
+        # design reference, publication-transition audit rows, offer
+        # revisions, design-association audit events, buyer Leads and
+        # FieldResolution admission -- is bit-for-bit unchanged.
+        assert fingerprint_after == fingerprint_before
