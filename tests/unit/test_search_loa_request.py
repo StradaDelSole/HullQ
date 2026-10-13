@@ -11,7 +11,12 @@ from decimal import Decimal
 
 import pytest
 
-from hullq.search.loa_request import LoaSyntaxError, canonical_loa_str, parse_loa_decimal
+from hullq.search.loa_request import (
+    _MAX_LOA_RAW_LENGTH,
+    LoaSyntaxError,
+    canonical_loa_str,
+    parse_loa_decimal,
+)
 
 
 @pytest.mark.parametrize(
@@ -96,12 +101,13 @@ def test_canonical_loa_str_matches_accepted_examples(raw: str, expected_canonica
         "0.01",
         "0.001",
         "0.0001",
-        "0.00001234567890123456789",
         "0.0100",
         "0.0010000",
-        "1.10000000000000000000001",
-        "99999999999999999999999999999999.6",
-        "0.0000000000000000000000000000001",
+        # Review amendment Finding B: the most extreme-precision examples
+        # mirrored from draft_max_request's own (uncapped) test module are
+        # deliberately dropped here -- LOA's own `_MAX_LOA_RAW_LENGTH` cap
+        # correctly rejects them before `Decimal` construction; that
+        # rejection is covered separately below, not a round-trip concern.
         "1",
         "0.5",
     ],
@@ -122,3 +128,36 @@ def test_canonical_loa_str_rejects_non_positive() -> None:
         canonical_loa_str(Decimal("0"))
     with pytest.raises(ValueError):
         canonical_loa_str(Decimal("-1.6"))
+
+
+# ---------------------------------------------------------------------------
+# Review amendment Finding B: justified resource-length cap
+# ---------------------------------------------------------------------------
+
+
+def test_max_length_boundary_is_accepted() -> None:
+    raw = "1" * _MAX_LOA_RAW_LENGTH
+    assert len(raw) == _MAX_LOA_RAW_LENGTH
+    value = parse_loa_decimal(raw)
+    assert value == Decimal(raw)
+
+
+def test_one_character_over_max_length_is_rejected() -> None:
+    raw = "1" * (_MAX_LOA_RAW_LENGTH + 1)
+    with pytest.raises(LoaSyntaxError):
+        parse_loa_decimal(raw)
+
+
+def test_max_length_boundary_with_fractional_part_is_accepted() -> None:
+    raw = "123456789012345." + "6" * (_MAX_LOA_RAW_LENGTH - 16)
+    assert len(raw) == _MAX_LOA_RAW_LENGTH
+    value = parse_loa_decimal(raw)
+    assert value == Decimal(raw)
+
+
+def test_adversarially_long_digit_string_is_rejected_before_decimal_construction() -> None:
+    """A pathological, arbitrarily long digit string (resource-exhaustion
+    shape) must fail closed on length alone, never reach `Decimal()`."""
+    raw = "9" * 1_000_000
+    with pytest.raises(LoaSyntaxError):
+        parse_loa_decimal(raw)

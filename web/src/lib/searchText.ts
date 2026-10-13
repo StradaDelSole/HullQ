@@ -107,6 +107,14 @@ export interface SearchText {
   // "better", "worse", "optimal", "should" or "relax this".
   /** Shown alongside each per-active-criterion sensitivity form on the Search page. */
   sensitivityFormNote: string;
+  /**
+   * Review amendment Finding A (SLICE-0085): shown instead of the
+   * sensitivity forms whenever a length-overall or rudder-configuration
+   * filter is active alongside draft_max/keel_configuration -- truthful,
+   * decision-neutral, never implying the feature is temporarily broken
+   * (contract §12/§19 tone).
+   */
+  sensitivityUnavailableWithNewCriteria: string;
   sensitivityDraftSubmitLabel: string;
   sensitivityKeelSubmitLabel: string;
   sensitivityAlternativeDraftLabel: string;
@@ -204,6 +212,8 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       "The broker has not reconfirmed this listing recently; it will be hidden soon unless reconfirmed.",
     sensitivityFormNote:
       "See how many confirmed matches change if you try a different value for one requirement. This does not change your current search.",
+    sensitivityUnavailableWithNewCriteria:
+      "Requirement sensitivity isn't available while a length overall or rudder configuration filter is also active.",
     sensitivityDraftSubmitLabel: "See the effect of a different maximum draft",
     sensitivityKeelSubmitLabel: "See the effect of a different keel configuration",
     sensitivityAlternativeDraftLabel: "Alternative maximum draft (metres)",
@@ -305,6 +315,8 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       "Der Makler hat dieses Angebot kürzlich nicht erneut bestätigt; es wird bald ausgeblendet, sofern es nicht erneut bestätigt wird.",
     sensitivityFormNote:
       "Sehen Sie, wie viele bestätigte Treffer sich ändern, wenn Sie für eine Anforderung einen anderen Wert ausprobieren. Dies ändert Ihre aktuelle Suche nicht.",
+    sensitivityUnavailableWithNewCriteria:
+      "Die Anforderungssensitivität ist nicht verfügbar, während zusätzlich ein Filter für Gesamtlänge oder Ruderkonfiguration aktiv ist.",
     sensitivityDraftSubmitLabel: "Auswirkung eines anderen maximalen Tiefgangs anzeigen",
     sensitivityKeelSubmitLabel: "Auswirkung einer anderen Kielkonfiguration anzeigen",
     sensitivityAlternativeDraftLabel: "Alternativer maximaler Tiefgang (Meter)",
@@ -407,6 +419,8 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       "Le courtier n'a pas reconfirmé cette annonce récemment ; elle sera bientôt masquée si elle n'est pas reconfirmée.",
     sensitivityFormNote:
       "Découvrez combien de résultats confirmés changent si vous essayez une valeur différente pour une exigence. Cela ne modifie pas votre recherche actuelle.",
+    sensitivityUnavailableWithNewCriteria:
+      "La sensibilité de l'exigence n'est pas disponible lorsqu'un filtre de longueur hors tout ou de configuration de safran est également actif.",
     sensitivityDraftSubmitLabel: "Voir l'effet d'un tirant d'eau maximal différent",
     sensitivityKeelSubmitLabel: "Voir l'effet d'une configuration de quille différente",
     sensitivityAlternativeDraftLabel: "Tirant d'eau maximal alternatif (mètres)",
@@ -509,6 +523,8 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       "O corretor não reconfirmou este anúncio recentemente; será ocultado em breve caso não seja reconfirmado.",
     sensitivityFormNote:
       "Veja quantas correspondências confirmadas mudam se experimentar um valor diferente para um requisito. Isto não altera a sua pesquisa atual.",
+    sensitivityUnavailableWithNewCriteria:
+      "A sensibilidade do requisito não está disponível enquanto um filtro de comprimento total ou de configuração de leme também estiver ativo.",
     sensitivityDraftSubmitLabel: "Ver o efeito de um calado máximo diferente",
     sensitivityKeelSubmitLabel: "Ver o efeito de uma configuração de quilha diferente",
     sensitivityAlternativeDraftLabel: "Calado máximo alternativo (metros)",
@@ -611,6 +627,8 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       "El bróker no ha reconfirmado este anuncio recientemente; se ocultará pronto si no se reconfirma.",
     sensitivityFormNote:
       "Vea cuántas coincidencias confirmadas cambian si prueba un valor diferente para un requisito. Esto no modifica su búsqueda actual.",
+    sensitivityUnavailableWithNewCriteria:
+      "La sensibilidad del requisito no está disponible mientras también esté activo un filtro de eslora total o de configuración de timón.",
     sensitivityDraftSubmitLabel: "Ver el efecto de un calado máximo diferente",
     sensitivityKeelSubmitLabel: "Ver el efecto de una configuración de quilla diferente",
     sensitivityAlternativeDraftLabel: "Calado máximo alternativo (metros)",

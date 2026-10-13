@@ -30,6 +30,23 @@ __all__ = ["LoaSyntaxError", "canonical_loa_str", "parse_loa_decimal"]
 # empty.
 _LOA_PATTERN: Final = re.compile(r"^[0-9]+(?:\.[0-9]+)?$")
 
+#: Review amendment (Finding B): a justified, narrowly scoped resource-length
+#: cap enforced BEFORE any `Decimal(raw)` construction -- the READY contract
+#: explicitly requires rejecting "unreasonable resource-length input before
+#: Decimal conversion". No real vessel's length overall needs anywhere near
+#: this many digits: the largest vessels ever built are on the order of a
+#: few hundred metres, so even a grossly generous integer part of up to
+#: 999,999 m (6 digits) plus up to 6 fractional digits plus the decimal
+#: point (13 characters) already covers every physically plausible LOA many
+#: orders of magnitude over. 20 characters leaves a further safety margin
+#: for that generous envelope while still bounding `Decimal` construction
+#: and `canonical_loa_str`'s digit-list materialization against an
+#: arbitrarily long digit string submitted as a query parameter. This is a
+#: new, LOA-specific bound -- `hullq.search.draft_max_request`'s own
+#: accepted grammar is deliberately left unchanged (a separate compatibility
+#: decision would be required to retrofit a cap there).
+_MAX_LOA_RAW_LENGTH: Final = 20
+
 
 class LoaSyntaxError(ValueError):
     """Raised when a raw `loa_min`/`loa_max` value fails the bounded lexical envelope."""
@@ -40,9 +57,16 @@ def parse_loa_decimal(raw: str) -> Decimal:
 
     Identical bounded envelope to
     `hullq.search.draft_max_request.parse_draft_max_decimal` -- see that
-    function's docstring for the excluded spellings.
+    function's docstring for the excluded spellings -- plus this module's
+    own `_MAX_LOA_RAW_LENGTH` resource-length cap (Finding B), checked
+    before the lexical-envelope regex and before any `Decimal` construction
+    so an arbitrarily long raw string is rejected as cheaply as possible.
     """
-    if not isinstance(raw, str) or not _LOA_PATTERN.fullmatch(raw):
+    if not isinstance(raw, str) or len(raw) > _MAX_LOA_RAW_LENGTH:
+        raise LoaSyntaxError(
+            f"loa value exceeds the accepted maximum length of {_MAX_LOA_RAW_LENGTH} characters"
+        )
+    if not _LOA_PATTERN.fullmatch(raw):
         raise LoaSyntaxError(
             f"loa value {raw!r} does not match the accepted bounded lexical envelope "
             f"{_LOA_PATTERN.pattern!r}"

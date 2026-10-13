@@ -103,28 +103,18 @@ from hullq.persistence.native_listing_lifecycle import fetch_lifecycle_state
 from hullq.persistence.physical_boat import fetch_physical_boat
 from hullq.search.configuration_engine import DesignQueryEvaluation
 from hullq.search.criteria_registry import (
+    DRAFT_MAX_DEFINITION,
     DRAFT_MAX_PARAM_KEY,
+    KEEL_CONFIGURATION_DEFINITION,
     KEEL_CONFIGURATION_PARAM_KEY,
+    LOA_DEFINITION,
     LOA_MAX_PARAM_KEY,
     LOA_MIN_PARAM_KEY,
+    RUDDER_CONFIGURATION_DEFINITION,
     RUDDER_CONFIGURATION_PARAM_KEY,
     SUPPORTED_PARAM_KEYS,
-)
-from hullq.search.draft_max_design_bridge import DRAFT_MAX_PROJECTION_FIELD
-from hullq.search.draft_max_request import (
-    DraftMaxSyntaxError,
-    canonical_draft_max_str,
-    parse_draft_max_decimal,
-)
-from hullq.search.keel_design_bridge import (
-    KEEL_CONFIGURATION_PROJECTION_FIELD,
-    SEARCH_KEEL_CONFIGURATION_VALUES,
-)
-from hullq.search.loa_design_bridge import LOA_PROJECTION_FIELD
-from hullq.search.loa_request import LoaSyntaxError, canonical_loa_str, parse_loa_decimal
-from hullq.search.rudder_design_bridge import (
-    RUDDER_CONFIGURATION_PROJECTION_FIELD,
-    SEARCH_RUDDER_CONFIGURATION_VALUES,
+    parse_categorical_param,
+    parse_numeric_param,
 )
 from hullq.search.types import ResultClass, TruthState
 from hullq.security.session_token import SessionClaims
@@ -165,6 +155,30 @@ class SearchFitScenario:
     rudder_configuration: str | None = None
 
 
+def _parse_single_valued(
+    label: str, raw_values: Sequence[str], parsed: tuple[Any, bool] | None
+) -> Any:
+    """Shared "exactly-once, canonical-or-fail-closed" rule every scenario
+    criterion follows (review amendment Finding C: driven by
+    `hullq.search.criteria_registry.parse_numeric_param`/
+    `parse_categorical_param`'s shared `(value, is_single_canonical) | None`
+    convention). Unlike the public canonical-URL surface, this private
+    preview has no redirect identity -- ANY non-single-canonical input
+    (duplicate, even of an identical value, or a non-canonical spelling)
+    fails closed directly, never silently normalized.
+    """
+    if parsed is None:
+        raise InvalidSearchFitScenarioError(f"{label} is not a supported/valid value")
+    value, is_single_canonical = parsed
+    if value is None:
+        return None
+    if len(raw_values) > 1:
+        raise InvalidSearchFitScenarioError(f"{label} must be supplied exactly once")
+    if not is_single_canonical:
+        raise InvalidSearchFitScenarioError(f"{label} {raw_values[0]!r} is not in canonical form")
+    return value
+
+
 def parse_search_fit_scenario(query_params: Mapping[str, Sequence[str]]) -> SearchFitScenario:
     """Parse the bounded multi-criterion scenario, or raise.
 
@@ -172,18 +186,17 @@ def parse_search_fit_scenario(query_params: Mapping[str, Sequence[str]]) -> Sear
     (preserving duplicates), independent of any HTTP framework -- mirrors
     `hullq.application.search_read.evaluate_search_request`'s own calling
     convention. Reuses the exact public per-value validation
-    (`hullq.search.draft_max_request.parse_draft_max_decimal`,
-    `hullq.search.loa_request.parse_loa_decimal`,
-    `hullq.search.keel_design_bridge.SEARCH_KEEL_CONFIGURATION_VALUES`,
-    `hullq.search.rudder_design_bridge.SEARCH_RUDDER_CONFIGURATION_VALUES`
-    exact-set membership, so an unauthorized value such as `LONG_KEEL` is
-    never silently accepted merely because it is valid `PhysicalBoat` claim
-    vocabulary). Unlike the public canonical-URL Search surface, this is a
-    private single-target JSON preview with no canonical-URL identity to
-    redirect to -- a non-canonical spelling, any duplicate (even of an
-    identical value), an unknown parameter key, an invalid `loa_min >
-    loa_max` range or an entirely empty scenario all fail closed directly as
-    `InvalidSearchFitScenarioError` (Required Behavior §A/§2).
+    (`hullq.search.criteria_registry.parse_numeric_param`/
+    `parse_categorical_param`, driven by each `CriterionDefinition`'s own
+    `parse_value`/`allowed_values` -- so an unauthorized value such as
+    `LONG_KEEL` is never silently accepted merely because it is valid
+    `PhysicalBoat` claim vocabulary). Unlike the public canonical-URL Search
+    surface, this is a private single-target JSON preview with no
+    canonical-URL identity to redirect to -- a non-canonical spelling, any
+    duplicate (even of an identical value), an unknown parameter key, an
+    invalid `loa_min > loa_max` range or an entirely empty scenario all fail
+    closed directly as `InvalidSearchFitScenarioError` (Required Behavior
+    §A/§2).
     """
     unknown_keys = set(query_params) - _ALLOWED_SCENARIO_KEYS
     if unknown_keys:
@@ -205,60 +218,29 @@ def parse_search_fit_scenario(query_params: Mapping[str, Sequence[str]]) -> Sear
     ):
         raise InvalidSearchFitScenarioError("at least one scenario criterion is required")
 
-    draft_max: Decimal | None = None
-    if draft_raw_values:
-        if len(draft_raw_values) > 1:
-            raise InvalidSearchFitScenarioError("draft_max must be supplied exactly once")
-        raw = draft_raw_values[0]
-        try:
-            draft_max = parse_draft_max_decimal(raw)
-        except DraftMaxSyntaxError as exc:
-            raise InvalidSearchFitScenarioError(str(exc)) from exc
-        if raw != canonical_draft_max_str(draft_max):
-            raise InvalidSearchFitScenarioError(f"draft_max {raw!r} is not in canonical form")
-
-    keel_configuration: str | None = None
-    if keel_raw_values:
-        if len(keel_raw_values) > 1:
-            raise InvalidSearchFitScenarioError("keel_configuration must be supplied exactly once")
-        raw = keel_raw_values[0]
-        if raw not in SEARCH_KEEL_CONFIGURATION_VALUES:
-            raise InvalidSearchFitScenarioError(
-                f"keel_configuration {raw!r} is not a supported public value"
-            )
-        keel_configuration = raw
-
-    def _parse_loa_bound(label: str, raw_values: list[str]) -> Decimal | None:
-        if not raw_values:
-            return None
-        if len(raw_values) > 1:
-            raise InvalidSearchFitScenarioError(f"{label} must be supplied exactly once")
-        raw = raw_values[0]
-        try:
-            value = parse_loa_decimal(raw)
-        except LoaSyntaxError as exc:
-            raise InvalidSearchFitScenarioError(str(exc)) from exc
-        if raw != canonical_loa_str(value):
-            raise InvalidSearchFitScenarioError(f"{label} {raw!r} is not in canonical form")
-        return value
-
-    loa_min = _parse_loa_bound(_LOA_MIN_KEY, loa_min_raw_values)
-    loa_max = _parse_loa_bound(_LOA_MAX_KEY, loa_max_raw_values)
+    draft_max = _parse_single_valued(
+        _DRAFT_MAX_KEY,
+        draft_raw_values,
+        parse_numeric_param(DRAFT_MAX_DEFINITION, draft_raw_values),
+    )
+    keel_configuration = _parse_single_valued(
+        _KEEL_CONFIGURATION_KEY,
+        keel_raw_values,
+        parse_categorical_param(KEEL_CONFIGURATION_DEFINITION, keel_raw_values),
+    )
+    loa_min = _parse_single_valued(
+        _LOA_MIN_KEY, loa_min_raw_values, parse_numeric_param(LOA_DEFINITION, loa_min_raw_values)
+    )
+    loa_max = _parse_single_valued(
+        _LOA_MAX_KEY, loa_max_raw_values, parse_numeric_param(LOA_DEFINITION, loa_max_raw_values)
+    )
     if loa_min is not None and loa_max is not None and loa_min > loa_max:
         raise InvalidSearchFitScenarioError(f"loa_min ({loa_min}) must be <= loa_max ({loa_max})")
-
-    rudder_configuration: str | None = None
-    if rudder_raw_values:
-        if len(rudder_raw_values) > 1:
-            raise InvalidSearchFitScenarioError(
-                "rudder_configuration must be supplied exactly once"
-            )
-        raw = rudder_raw_values[0]
-        if raw not in SEARCH_RUDDER_CONFIGURATION_VALUES:
-            raise InvalidSearchFitScenarioError(
-                f"rudder_configuration {raw!r} is not a supported public value"
-            )
-        rudder_configuration = raw
+    rudder_configuration = _parse_single_valued(
+        _RUDDER_CONFIGURATION_KEY,
+        rudder_raw_values,
+        parse_categorical_param(RUDDER_CONFIGURATION_DEFINITION, rudder_raw_values),
+    )
 
     return SearchFitScenario(
         draft_max=draft_max,
@@ -370,13 +352,13 @@ def _derive_blockers(
         if evidence.evaluation.truth is not TruthState.UNKNOWN:
             continue
         blocker: SearchFitBlocker | None = None
-        if evidence.criterion.field == DRAFT_MAX_PROJECTION_FIELD:
+        if evidence.criterion.field == DRAFT_MAX_DEFINITION.projection_field:
             blocker = SearchFitBlocker.CONCRETE_DRAFT_UNCONFIRMED
-        elif evidence.criterion.field == KEEL_CONFIGURATION_PROJECTION_FIELD:
+        elif evidence.criterion.field == KEEL_CONFIGURATION_DEFINITION.projection_field:
             blocker = SearchFitBlocker.KEEL_CONFIGURATION_UNCONFIRMED
-        elif evidence.criterion.field == LOA_PROJECTION_FIELD:
+        elif evidence.criterion.field == LOA_DEFINITION.projection_field:
             blocker = SearchFitBlocker.LOA_UNCONFIRMED
-        elif evidence.criterion.field == RUDDER_CONFIGURATION_PROJECTION_FIELD:
+        elif evidence.criterion.field == RUDDER_CONFIGURATION_DEFINITION.projection_field:
             blocker = SearchFitBlocker.RUDDER_CONFIGURATION_UNCONFIRMED
         if blocker is not None and blocker not in seen:
             # LOA may contribute two leaves (loa_min/loa_max) against the
@@ -459,7 +441,7 @@ def evaluate_organization_listing_search_fit(
     loa_max = scenario.loa_max
     rudder_configuration = scenario.rudder_configuration
 
-    query, specs, rudder_active = build_mixed_requirement_query(
+    query, active_definitions = build_mixed_requirement_query(
         draft_max=draft_max,
         keel_configuration=keel_configuration,
         loa_min=loa_min,
@@ -524,7 +506,7 @@ def evaluate_organization_listing_search_fit(
                 return SearchFitResult(outcome=SearchFitOutcome.CHAIN_INTEGRITY_FAULT)
 
             design_result = run_mixed_boat_design_configuration_query(
-                conn, query, [raw_design], specs, rudder_active=rudder_active
+                conn, query, [raw_design], active_definitions
             )
             design_evaluations = (
                 design_result.outcome.confirmed_matches
@@ -551,10 +533,7 @@ def evaluate_organization_listing_search_fit(
                     physical_boat_id=physical_boat_id,
                     boat_design_id=boat_design_ref.value,
                     query=query,
-                    draft_active=draft_max is not None,
-                    keel_active=keel_configuration is not None,
-                    loa_active=loa_min is not None or loa_max is not None,
-                    rudder_active=rudder_active,
+                    active_definitions=active_definitions,
                 )
             else:
                 # Design/configuration eligibility never admitted this

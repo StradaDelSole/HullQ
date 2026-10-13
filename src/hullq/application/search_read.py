@@ -65,21 +65,19 @@ from hullq.application.native_inventory_query import (
 )
 from hullq.search.criteria_registry import (
     CANONICAL_PARAM_KEY_ORDER,
+    DRAFT_MAX_DEFINITION,
     DRAFT_MAX_PARAM_KEY,
+    KEEL_CONFIGURATION_DEFINITION,
     KEEL_CONFIGURATION_PARAM_KEY,
+    LOA_DEFINITION,
     LOA_MAX_PARAM_KEY,
     LOA_MIN_PARAM_KEY,
+    RUDDER_CONFIGURATION_DEFINITION,
     RUDDER_CONFIGURATION_PARAM_KEY,
     SUPPORTED_PARAM_KEYS,
+    parse_categorical_param,
+    parse_numeric_param,
 )
-from hullq.search.draft_max_request import (
-    DraftMaxSyntaxError,
-    canonical_draft_max_str,
-    parse_draft_max_decimal,
-)
-from hullq.search.keel_design_bridge import SEARCH_KEEL_CONFIGURATION_VALUES
-from hullq.search.loa_request import LoaSyntaxError, canonical_loa_str, parse_loa_decimal
-from hullq.search.rudder_design_bridge import SEARCH_RUDDER_CONFIGURATION_VALUES
 
 __all__ = [
     "SearchOutcomeKind",
@@ -177,15 +175,17 @@ def build_canonical_search_path(
     boundary") -- the only place the exact canonical-URL construction rule
     is expressed.
     """
+    assert DRAFT_MAX_DEFINITION.canonicalize_value is not None
+    assert LOA_DEFINITION.canonicalize_value is not None
     rendered: dict[str, str] = {}
     if draft_max is not None:
-        rendered[_DRAFT_MAX_KEY] = canonical_draft_max_str(draft_max)
+        rendered[_DRAFT_MAX_KEY] = DRAFT_MAX_DEFINITION.canonicalize_value(draft_max)
     if keel_configuration is not None:
         rendered[_KEEL_CONFIGURATION_KEY] = keel_configuration
     if loa_max is not None:
-        rendered[_LOA_MAX_KEY] = canonical_loa_str(loa_max)
+        rendered[_LOA_MAX_KEY] = LOA_DEFINITION.canonicalize_value(loa_max)
     if loa_min is not None:
-        rendered[_LOA_MIN_KEY] = canonical_loa_str(loa_min)
+        rendered[_LOA_MIN_KEY] = LOA_DEFINITION.canonicalize_value(loa_min)
     if rudder_configuration is not None:
         rendered[_RUDDER_CONFIGURATION_KEY] = rudder_configuration
     parts = [f"{key}={rendered[key]}" for key in CANONICAL_PARAM_KEY_ORDER if key in rendered]
@@ -284,84 +284,46 @@ def evaluate_search_request(
     actual_active_key_order = [key for key in query_params if key in _ALLOWED_PARAM_KEYS]
     order_is_canonical = actual_active_key_order == canonical_active_key_order
 
-    draft_max: Decimal | None = None
-    draft_is_single_canonical = True
-    if draft_raw_values:
-        parsed_values: list[Decimal] = []
-        for raw in draft_raw_values:
-            try:
-                parsed_values.append(parse_draft_max_decimal(raw))
-            except DraftMaxSyntaxError:
-                return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
-        if len(set(parsed_values)) > 1:
-            # Conflicting duplicates (e.g. draft_max=1.6&draft_max=1.7) fail
-            # closed as INVALID -- never silently pick one.
-            return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
-        draft_max = parsed_values[0]
-        draft_canonical = canonical_draft_max_str(draft_max)
-        draft_is_single_canonical = (
-            len(draft_raw_values) == 1 and draft_raw_values[0] == draft_canonical
-        )
-
-    keel_configuration: str | None = None
-    keel_is_single_canonical = True
-    if keel_raw_values:
-        for raw in keel_raw_values:
-            if raw not in SEARCH_KEEL_CONFIGURATION_VALUES:
-                # Unsupported/unknown value fails closed as INVALID -- never
-                # fuzzy-matched or silently normalized (contract §A/§8).
-                return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
-        if len(set(keel_raw_values)) > 1:
-            # Conflicting duplicates fail closed as INVALID, mirroring
-            # draft_max -- never silently pick one.
-            return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
-        keel_configuration = keel_raw_values[0]
-        # Every accepted v0.1 value is already its own canonical spelling
-        # (no redigitting like draft_max) -- only duplication itself (even
-        # of an identical value) is non-canonical.
-        keel_is_single_canonical = len(keel_raw_values) == 1
-
-    def _parse_loa_bound(raw_values: list[str]) -> tuple[Decimal | None, bool] | None:
-        """Returns `(value, is_single_canonical)`, or `None` for INVALID."""
-        if not raw_values:
-            return None, True
-        parsed: list[Decimal] = []
-        for raw in raw_values:
-            try:
-                parsed.append(parse_loa_decimal(raw))
-            except LoaSyntaxError:
-                return None
-        if len(set(parsed)) > 1:
-            return None
-        value = parsed[0]
-        is_single_canonical = len(raw_values) == 1 and raw_values[0] == canonical_loa_str(value)
-        return value, is_single_canonical
-
-    loa_min_parsed = _parse_loa_bound(loa_min_raw_values)
-    if loa_min_parsed is None:
+    # Review amendment Finding C: every criterion's own raw-value parsing/
+    # validation now goes through `hullq.search.criteria_registry.
+    # parse_numeric_param`/`parse_categorical_param`, driven by each
+    # `CriterionDefinition`'s own `parse_value`/`canonicalize_value`/
+    # `allowed_values` -- replacing four previously hand-duplicated
+    # per-criterion blocks. Both helpers share this exact convention: `None`
+    # means genuinely INVALID (unsupported value, or conflicting differing
+    # duplicates); otherwise `(value, is_single_canonical)`, where
+    # `is_single_canonical` is `False` for ANY duplicate (even of an
+    # identical value) or non-canonical spelling -- exactly the REDIRECT
+    # trigger this function already required.
+    draft_result = parse_numeric_param(DRAFT_MAX_DEFINITION, draft_raw_values)
+    if draft_result is None:
         return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
-    loa_min, loa_min_is_single_canonical = loa_min_parsed
+    draft_max, draft_is_single_canonical = draft_result
 
-    loa_max_parsed = _parse_loa_bound(loa_max_raw_values)
-    if loa_max_parsed is None:
+    keel_result = parse_categorical_param(KEEL_CONFIGURATION_DEFINITION, keel_raw_values)
+    if keel_result is None:
         return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
-    loa_max, loa_max_is_single_canonical = loa_max_parsed
+    keel_configuration, keel_is_single_canonical = keel_result
+
+    loa_min_result = parse_numeric_param(LOA_DEFINITION, loa_min_raw_values)
+    if loa_min_result is None:
+        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+    loa_min, loa_min_is_single_canonical = loa_min_result
+
+    loa_max_result = parse_numeric_param(LOA_DEFINITION, loa_max_raw_values)
+    if loa_max_result is None:
+        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+    loa_max, loa_max_is_single_canonical = loa_max_result
 
     if loa_min is not None and loa_max is not None and loa_min > loa_max:
         # Slice normative LOA semantics: "Require loa_min <= loa_max
         # whenever both supplied" -- never silently swapped or clamped.
         return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
 
-    rudder_configuration: str | None = None
-    rudder_is_single_canonical = True
-    if rudder_raw_values:
-        for raw in rudder_raw_values:
-            if raw not in SEARCH_RUDDER_CONFIGURATION_VALUES:
-                return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
-        if len(set(rudder_raw_values)) > 1:
-            return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
-        rudder_configuration = rudder_raw_values[0]
-        rudder_is_single_canonical = len(rudder_raw_values) == 1
+    rudder_result = parse_categorical_param(RUDDER_CONFIGURATION_DEFINITION, rudder_raw_values)
+    if rudder_result is None:
+        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+    rudder_configuration, rudder_is_single_canonical = rudder_result
 
     if not (
         draft_is_single_canonical

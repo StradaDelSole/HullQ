@@ -96,6 +96,12 @@ test("every supported locale has complete non-empty LOA/rudder text", () => {
       `${locale}.rudderConfigurationAnyOption`,
     );
     assert.ok(t.requirementSummaryListConjunction.length > 0, `${locale}.requirementSummaryListConjunction`);
+    // Review amendment Finding A: the truthful explanation shown instead of
+    // the sensitivity forms whenever a new criterion is also active.
+    assert.ok(
+      t.sensitivityUnavailableWithNewCriteria.length > 0,
+      `${locale}.sensitivityUnavailableWithNewCriteria`,
+    );
   }
 });
 
