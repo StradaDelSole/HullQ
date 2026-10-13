@@ -262,14 +262,14 @@ REQ_BROKER_022_STATUS: PENDING
 REQ_BROKER_023_STATUS: IMPLEMENTED
 REQ_BROKER_024_STATUS: IMPLEMENTED
 REQ_BROKER_025_STATUS: PENDING
-REQ_BROKER_026_STATUS: PENDING
-REQ_BROKER_027_STATUS: PENDING
+REQ_BROKER_026_STATUS: IMPLEMENTED
+REQ_BROKER_027_STATUS: IMPLEMENTED
 REQ_BROKER_028_STATUS: PENDING
 REQ_BROKER_029_STATUS: PENDING
 REQ_BROKER_030_STATUS: IMPLEMENTED
 ```
 
-REQ-BROKER-023 and REQ-BROKER-024 are implemented by the accepted SLICE-0063 and SLICE-0062 work respectively. SLICE-0066 changes none of the REQ-BROKER-022…030 status markers. It removes the remaining build-year required-response input blocker on the path to the Broker Workspace Launch Gate §2 professional create/publish workflow, but the remaining mandatory commitments stay controlling and the Broker Workspace Launch Gate remains NOT_READY.
+REQ-BROKER-023 and REQ-BROKER-024 were implemented by accepted SLICE-0063 and SLICE-0062. SLICE-0066 historically changed none of the REQ-BROKER-022…030 status markers; SLICE-0076/0077 subsequently closed the Broker Workspace Launch Gate at PASS. SLICE-0083 implemented REQ-BROKER-027 private multi-format intake; SLICE-0084 implemented REQ-BROKER-026 pre-publication Search-fit. The remaining mandatory export, reports, search-volume-triggered insights and production/trust commitments remain OPEN; a passed Broker Workspace Launch Gate does not authorize external production or make the full broker product COMPLETE.
 
 ## Architecture and production direction
 
