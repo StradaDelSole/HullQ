@@ -1,0 +1,2732 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns="https://nautix.nautic-network.org/v1.4/"
+    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    targetNamespace="https://nautix.nautic-network.org/v1.4/"
+    xml:lang="en" version="1.0"
+    elementFormDefault="qualified">
+
+  <xs:simpleType name="BoolTrueFalse"><!-- only true or false allowed, not 1 or 0 -->
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="true" />
+      <xs:enumeration value="false" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="OnlyTrue"><!-- only true allowed, otherwise the node/attribute must be omitted -->
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="true" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="NotEmptyString"><!-- the node/attribute must be filled -->
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TextOrTrue"><!-- for equipment - either true or brand/info; NOT "false" or empty -->
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1" />
+    </xs:restriction>
+  </xs:simpleType>
+  
+   <xs:simpleType name="DecimalOrEmpty"><!-- for price (type=on-request) -->
+    <xs:union>
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:length value="0"/>
+        </xs:restriction>
+      </xs:simpleType>
+      <xs:simpleType>
+        <xs:restriction base="xs:decimal">
+          <xs:fractionDigits value="2"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
+
+  <!-- ############################################## -->
+  <!-- ########### string values - account ########## -->
+
+  <xs:simpleType name="AccountStatus">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="active" />
+      <xs:enumeration value="inactive" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="PhoneType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="fixed" />
+      <xs:enumeration value="mobile" />
+      <xs:enumeration value="fax" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TitleType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Mrs." />
+      <xs:enumeration value="Mr." />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- ############################################## -->
+  <!-- ########### string values - adverts ########## -->
+
+  <xs:simpleType name="AdvertType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="boat" />
+      <xs:enumeration value="trailer" />
+      <xs:enumeration value="engine" />
+      <xs:enumeration value="mooring" />
+      <xs:enumeration value="other" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="AdvertStatus">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="active" />
+      <xs:enumeration value="inactive" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="AdvertPurpose">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="sale" />
+      <xs:enumeration value="rental" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Subtitle"><!-- addit. info to boat model, max. 60 chars, no line break -->
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[^\n]{1,60}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="SaleClass">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="used" /><!-- used boat / Gebrauchtboot -->
+      <xs:enumeration value="used-excharter" /><!-- used boat, was in charter / Gebrauchtboot, in Charter gelaufen -->
+      <xs:enumeration value="demo-inwater" /><!-- demonstration boat, already in water / Vorführboot, war schon im Wasser -->
+      <xs:enumeration value="demo-exhibition" /><!-- boat from a boat show, NOT yet in water / Ausstellungsboot, war NOCH NICHT im Wasser -->
+      <xs:enumeration value="new" /><!-- Neuboot -->
+      <xs:enumeration value="new-instock" /><!-- stock boat / Neuboot auf Lager -->
+      <xs:enumeration value="new-inorder" /><!-- new boat preordered / Neuboot vorbestellt -->
+      <xs:enumeration value="new-onorder" /><!-- new boat to be ordered / Neuboot konfigurierbar (Katalog) -->
+      <xs:enumeration value="not-applicable" /><!-- for ads that do not have this feature, eg. moorings; not usable for boats!!! -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="SaleStatus">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="under-offer" />
+      <xs:enumeration value="sold" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ConditionType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="as-new" /><!-- neuwertig -->
+      <xs:enumeration value="good" /><!-- gut, gepflegt -->
+      <xs:enumeration value="fair" /><!-- befriedigend, akzeptabel -->
+      <xs:enumeration value="poor" /><!-- überholungsbedürftig -->
+      <xs:enumeration value="damaged" /><!-- defekt, nicht fahrtüchtig -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="PriceType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="fixed" />
+      <xs:enumeration value="on-request" />
+      <xs:enumeration value="negotiable" />
+      <xs:enumeration value="auction" />
+      <xs:enumeration value="share" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="VatStatus">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="paid" />
+      <xs:enumeration value="not-paid" />
+      <xs:enumeration value="unknown" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="MediaValidation">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="strict" />
+      <xs:enumeration value="non-strict" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="MimeTypeImage">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="image/jpeg" />
+      <xs:enumeration value="image/gif" />
+      <xs:enumeration value="image/png" />
+      <xs:enumeration value="image/webp" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="PanoramaType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="iframe" />
+      <xs:enumeration value="cylinder" />
+      <xs:enumeration value="sphere" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- ############################################## -->
+  <!-- ########### string values - boats ############ -->
+
+  <xs:simpleType name="BoatType">
+    <xs:restriction base="xs:string">
+
+      <!-- here is the begin of sailboats -->
+      <xs:enumeration value="sail-cabin" /><!-- sailboat smaller than a yacht, with cabin(s) -->
+      <xs:enumeration value="sail-catamaran" />
+      <xs:enumeration value="sail-classic" /><!-- classic (traditional sailers), old or reproduction of old, often wood as material, often more masts -->
+      <xs:enumeration value="sail-cruising" /><!-- Sailing Yacht equipped for bluewater cruising, Fahrtenjacht in German -->
+      <xs:enumeration value="sail-daysailer" /><!-- A boat without a cabin used for short sails or racing (dinghy has no keel, daysailer has keel). -->
+      <xs:enumeration value="sail-decksaloon" /><!-- Decksalon or Pilothouse sailing yacht. -->
+      <xs:enumeration value="sail-dinghy" /><!-- small sailboat without cabins/berths, "Jolle" in German -->
+      <xs:enumeration value="sail-flat" /><!-- Plattbodenboot - flat keel for shallow waters, often in Wadden Sea/Netherlands -->
+      <xs:enumeration value="sail-gulet" /><!-- A kind of motorsailer - common in Turkey, often luxury equipment -->
+      <xs:enumeration value="sail-hull" /><!-- Casco: Only the hull of the boat is being sold - no engine, no equipment. -->
+      <xs:enumeration value="sail-motorsailer" /><!-- A boat that is designed for propulsion by both sails and engine power, either alternately or simultaneously OR a sailboat with a larger than normal engine and spacious accomodations designed to motor moe and sail less than typical sailboats. -->
+      <xs:enumeration value="sail-racing" /><!-- regatta boat -->
+      <xs:enumeration value="sail-trimaran" />
+      <xs:enumeration value="sail-yacht" /><!-- Sailing yacht - loa >9-10m; smaller boat with cabin is "sail-cabin" -->
+
+      <!-- here is the begin of powerboats -->
+      <xs:enumeration value="power-airboat" /><!-- Airboat / Sumpfboot -->
+      <xs:enumeration value="power-bowrider" /><!-- A runabout with seating area in the bow. -->
+      <xs:enumeration value="power-cabin" /><!-- Smaller than a yacht, with cabin(s) -->
+      <xs:enumeration value="power-cargo" /><!-- General purpose freight ship (eg. tanker, container ship). Often configured with onboard cranes for autonomous materials handling. -->
+      <xs:enumeration value="power-catamaran" />
+      <xs:enumeration value="power-centerconsole" /><!-- helm station located amidships for maximum walk through space around the perimeter of the boat. -->
+      <xs:enumeration value="power-classic" /><!-- classic, old or reproduction of old, often wood as material -->
+      <xs:enumeration value="power-cruiser" />
+      <xs:enumeration value="power-cuddycabin" /> <!-- Cuddy cabin = small cabin below the bow with limited space for shelter or amenities. -->
+      <xs:enumeration value="power-daycruiser" />
+      <xs:enumeration value="power-deck" /><!-- Deckboat: boat with a single-level deck and often rails or gunnels all around. -->
+      <xs:enumeration value="power-diving" />
+      <xs:enumeration value="power-dualconsole"/><!-- A type of boat with twin dashboards separated by a centerline walk-through-deck leading to the bow. -->
+      <xs:enumeration value="power-fishing" /><!-- A type of boat used primary for fishing. -->
+      <xs:enumeration value="power-floatinghome" /><!-- A houseboat on a pontoon, swimming house -->
+      <xs:enumeration value="power-hardtop" />
+      <xs:enumeration value="power-highperformance" /><!-- racing / offshore power boats -->
+      <xs:enumeration value="power-houseboat" /><!-- A houseboat/barge/trawler with engine, wider than a narrow boat -->
+      <xs:enumeration value="power-hull" /><!-- Only the hull of the boat is being sold - no engine, no equipment. -->
+      <xs:enumeration value="power-narrow" /><!-- Narrow boats, often on canals - Great Britain -->
+      <xs:enumeration value="power-passenger" /><!-- Large ship, eg. a ferry. -->
+      <xs:enumeration value="power-pilothouse" /><!-- The place on a vessel that houses the helm and protects the helmsperson from the elements. -->
+      <xs:enumeration value="power-pontoon" />
+      <xs:enumeration value="power-runabout" /><!-- A powerboat less than 25 feet designed for cruising and watersports. May have outboard or sterndrive engine. -->
+      <xs:enumeration value="power-sloep" /><!-- Tuckerboot, Sloep -->
+      <xs:enumeration value="power-skiandwake" /><!-- A boat for waterskiing / wakeboarding -->
+      <xs:enumeration value="power-sport" />
+      <xs:enumeration value="power-submarine" />
+      <xs:enumeration value="power-trawler" /><!-- Large, long distance powerboats with stable, comfortable cabins and creature comforts for living aboard. -->
+      <xs:enumeration value="power-trimaran" />
+      <xs:enumeration value="power-utility" /><!-- Arbeitsboot - commercial / working boat: police, patrol, fire brigade, rescue... -->
+      <xs:enumeration value="power-walkaround" /><!-- https://en.wikipedia.org/wiki/Walkaround_(boat) -->
+      <xs:enumeration value="power-yacht" /><!-- Motor yacht - loa >9-10m; smaller boat with cabin is "power-cabin" -->
+
+      <!-- here is the begin of inflatables -->
+      <xs:enumeration value="inflatable-rib" />
+      <xs:enumeration value="inflatable-soft" /><!-- not RIB inflatables -->
+      <xs:enumeration value="inflatable-rafting" />
+
+      <!-- here is the begin of small boats -->
+      <xs:enumeration value="small-canoe" />
+      <xs:enumeration value="small-dinghy" />
+      <xs:enumeration value="small-fishing" />
+      <xs:enumeration value="small-kayak" />
+      <xs:enumeration value="small-pedal" />
+      <xs:enumeration value="small-rowing" />
+
+      <!-- here is the begin of personal water craft -->
+      <xs:enumeration value="pwc-jetski" />
+      <xs:enumeration value="pwc-gadget" /><!-- Seabob, bodyboard, scubajet, flyboard... -->
+
+<!-- flybridge yacht => category yacht + flybridge node -->
+<!-- mega yacht => category yacht + depends on <loa> -->
+<!-- electric boat => category yacht/sport/... + engine-><fuel>electric</fuel> -->
+<!-- solar boat => category yacht/sport/... + engine-><fuel>solar</fuel> -->
+<!-- ketch => category yacht + <sailplan>ketch</sailplan> -->
+<!-- yawl => category yacht + <sailplan>yawl</sailplan> -->
+<!-- jet boat => <propulsion>jet</propulsion> -->
+<!-- offshore boat => category power-highperformance -->
+<!-- lobster boat, crabber, dragger, longliner, bay boat, duck boat => category power-fishing -->
+<!-- tanker, container ship => category power-cargo -->
+
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="RegistrationPurpose">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="commercial" />
+      <xs:enumeration value="private" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ElectricManual">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="manual" />
+      <xs:enumeration value="electric" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="CEType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="A" /><!-- A - Ocean / A - Hochsee -->
+      <xs:enumeration value="B" /><!-- B - Offshore / B - Außerhalb von Küstengewässern -->
+      <xs:enumeration value="C" /><!-- C - Inshore / C - Küstennahne Gewässer -->
+      <xs:enumeration value="D" /><!-- D - Sheltered waters / D - Geschützte Gewässer -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="HeatingType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="ac" /><!-- heating through air condition / Heizung über Klimaanlage -->
+      <xs:enumeration value="gas" /><!-- gas heating / Gasheizung -->
+      <xs:enumeration value="electric" /><!-- electric heating / Elektroheizung -->
+      <xs:enumeration value="diesel" /><!-- diesel heating / Dieselheizung -->
+      <xs:enumeration value="engine" /><!-- heating through engine / Heizung über Motor -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="CabinType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="master" />
+      <xs:enumeration value="guest" />
+      <xs:enumeration value="crew" />
+      <xs:enumeration value="other" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="CabinPosition">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="aft" />
+      <xs:enumeration value="bow" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="BerthType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="single" />
+      <xs:enumeration value="double" />
+      <xs:enumeration value="saloon" />
+      <xs:enumeration value="crew" />
+      <xs:enumeration value="other" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ToiletType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="manual" />
+      <xs:enumeration value="electric" />
+      <xs:enumeration value="vacuum" />
+      <xs:enumeration value="chemical" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="HullMaterial">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="grp" /><!-- GFK / fiberglass -->
+      <xs:enumeration value="steel" /><!-- Stahl -->
+      <xs:enumeration value="mahogany" /><!-- Mahagoni -->
+      <xs:enumeration value="wood" /><!-- Holz -->
+      <xs:enumeration value="aluminum" /><!-- Aluminium -->
+      <xs:enumeration value="concrete" /><!-- Beton/Stahlbeton - concrete / ferrocement -->
+      <xs:enumeration value="rubber" /><!-- Gummi -->
+      <xs:enumeration value="carbonfibre" /><!-- Carbon -->
+      <xs:enumeration value="pvc-fabric" /><!-- for inflatables, PVC mit Gewebe -->
+      <xs:enumeration value="hypalon" /><!-- for inflatables -->
+      <xs:enumeration value="hypalon-neoprene" /><!-- for inflatables -->
+      <xs:enumeration value="neoprene" /><!-- for inflatables -->
+      <xs:enumeration value="polyurethane-neoprene" /><!-- for inflatables -->
+      <xs:enumeration value="nylon" /><!-- for inflatables -->
+      <xs:enumeration value="polyethylene" /><!-- for inflatables -->
+      <xs:enumeration value="duratex" /><!-- for inflatables -->
+      <xs:enumeration value="decitex" /><!-- for inflatables -->
+      <xs:enumeration value="strongan-duotex" /><!-- for inflatables -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="HullColour">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="white" />
+      <xs:enumeration value="black" />
+      <xs:enumeration value="blue" />
+      <xs:enumeration value="red" />
+      <xs:enumeration value="green" />
+      <xs:enumeration value="yellow" />
+      <xs:enumeration value="brown" />
+      <xs:enumeration value="beige" />
+      <xs:enumeration value="orange" />
+      <xs:enumeration value="violet" />
+      <xs:enumeration value="pink" />
+      <xs:enumeration value="turquoise" />
+      <xs:enumeration value="offwhite" /><!-- cremefarben -->
+      <xs:enumeration value="grey" />
+      <xs:enumeration value="gold" />
+      <xs:enumeration value="silver" />
+      <xs:enumeration value="bronze" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="HullType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="displacement" />
+      <xs:enumeration value="semi-displacement" />
+      <xs:enumeration value="planing" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TankMaterial">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="stainless" />
+      <xs:enumeration value="steel" /><!-- not stainless -->
+      <xs:enumeration value="aluminum" />
+      <xs:enumeration value="plastic" />
+      <xs:enumeration value="grp" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="SailMaterial">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="canvas" />
+      <xs:enumeration value="nylon" />
+      <xs:enumeration value="polyester" />
+      <xs:enumeration value="kevlar" />
+      <xs:enumeration value="dyneema" />
+      <xs:enumeration value="pentex" />
+      <xs:enumeration value="aramid" />
+      <xs:enumeration value="vectran" />
+      <xs:enumeration value="carbonfibre" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="StandingRigMaterial">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="steel_wire" />
+      <xs:enumeration value="steel_rod" />
+      <xs:enumeration value="carbon_rod" />
+      <xs:enumeration value="synthetic_fibre" />
+      <xs:enumeration value="natural_fibre" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="PropellerType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="singleprop" />
+      <xs:enumeration value="duoprop" />
+      <xs:enumeration value="ips" />
+      <xs:enumeration value="folding" /><!-- Faltpropeller -->
+      <xs:enumeration value="fixed" /><!-- Festpropeller -->
+      <xs:enumeration value="variable-pitch" /><!-- Drehflügelpropeller -->
+      <xs:enumeration value="" /><!-- can be empty and only attributes blades and material are filled -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="PropellerMaterial">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="stainless" /><!-- stainless steel / Edelstahl -->
+      <xs:enumeration value="aluminum" />
+      <xs:enumeration value="bronze" />
+      <xs:enumeration value="plastic" />
+      <xs:enumeration value="steel" /><!-- iron - not stainless steel / Eisen oder Stahl -->
+      <xs:enumeration value="alloy" /><!-- Legierung -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="PropellerBlades">
+    <xs:restriction base="xs:byte">
+      <xs:enumeration value="2" />
+      <xs:enumeration value="3" />
+      <xs:enumeration value="4" />
+      <xs:enumeration value="5" />
+      <xs:enumeration value="6" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ControlType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="single" />
+      <xs:enumeration value="twin" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="CockpitType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="aft" />
+      <xs:enumeration value="center" />
+      <xs:enumeration value="double" />
+      <xs:enumeration value="pilothouse" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="SteeringType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="tiller" /><!-- for sailboats / für Segelboote - Pinne -->
+      <xs:enumeration value="single-wheel" /><!-- for sailboats / für Segelboote - ein Steuerrad -->
+      <xs:enumeration value="dual-wheel" /><!-- for sailboats / für Segelboote - zwei Steuerräder -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="SailplanType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="sloop" />
+      <xs:enumeration value="ketch" />
+      <xs:enumeration value="yawl" />
+      <xs:enumeration value="cutter" />
+      <xs:enumeration value="" /><!-- node can be empty, only with attributes -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="KeelType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="fin" /><!-- Kurzkiel / Flossenkiel -->
+      <xs:enumeration value="full" /><!-- full keel / Langkiel -->
+      <xs:enumeration value="bulb" /><!-- Festkiel mit Bombe -->
+      <xs:enumeration value="winged" /><!-- Flügelkiel -->
+      <xs:enumeration value="twin" /><!-- bilge keel / Kimmkiel -->
+      <xs:enumeration value="swing" /><!-- Schwenkkiel -->
+      <xs:enumeration value="lifting" /><!-- Hubkiel -->
+      <xs:enumeration value="canting" /><!-- Kippkiel / Neigekiel -->
+      <xs:enumeration value="daggerboard" /><!-- keel sword / centerboard / Schwert / Kielschwert -->
+      <xs:enumeration value="flat" /><!-- Plattboden -->
+      <xs:enumeration value="fixed" /><!-- Festkiel -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="FurlingTypeMainsail">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="none" />
+      <xs:enumeration value="yes" />
+      <xs:enumeration value="mast" />
+      <xs:enumeration value="boom" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="FurlingTypeOther">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="none" />
+      <xs:enumeration value="roller" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="MastMaterial">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="steel" />
+      <xs:enumeration value="aluminum" />
+      <xs:enumeration value="wood" />
+      <xs:enumeration value="carbonfibre" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- ############################################## -->
+  <!-- ########### string values - engines ########## -->
+
+  <xs:simpleType name="EngineType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="outboard" /><!-- Außenborder -->
+      <xs:enumeration value="inboard" /><!-- Innenborder -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="FuelType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="diesel" />
+      <xs:enumeration value="gasoline" /><!-- Benzin -->
+      <xs:enumeration value="electric" />
+      <xs:enumeration value="solar" />
+      <xs:enumeration value="gas" />
+      <xs:enumeration value="hybrid" />
+      <xs:enumeration value="gasoline-oil" /><!-- for two-stroke engine -->
+      <xs:enumeration value="propane" />
+      <xs:enumeration value="ethanol" />
+      <xs:enumeration value="steam" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="PropulsionType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="outboard" /><!-- Außenborder -->
+      <xs:enumeration value="stern" /><!-- Z-Antrieb -->
+      <xs:enumeration value="vdrive" /><!-- V-Antrieb -->
+      <xs:enumeration value="shaft" /><!-- Antrieb mit Welle -->
+      <xs:enumeration value="jet" /><!-- Strahlantrieb -->
+      <xs:enumeration value="sail" /><!-- Saildrive -->
+      <xs:enumeration value="pod" /><!-- IPS/POD-Antrieb -->
+      <xs:enumeration value="surface" /><!-- Oberflächenantrieb -->
+      <xs:enumeration value="hydraulic" /><!-- Hydraulik-Antrieb -->
+      <xs:enumeration value="forward" /><!-- Forward drive -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="CoolingType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="seawater" />
+      <xs:enumeration value="keel" />
+      <xs:enumeration value="two-circuits" />
+      <xs:enumeration value="builtin" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="StarterType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="manual" />
+      <xs:enumeration value="electric" />
+      <xs:enumeration value="electric-manual" /><!-- electric + manual -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- ############################################## -->
+  <!-- ########### string values - trailers ######### -->
+
+  <xs:simpleType name="TrailerType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="road" />
+      <xs:enumeration value="harbour" />
+      <xs:enumeration value="storage" />
+      <xs:enumeration value="trolley" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TrailerMaterial">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="steel" />
+      <xs:enumeration value="aluminum" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="BoatTypeForTrailer">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="sailboat" />
+      <xs:enumeration value="keelboat" />
+      <xs:enumeration value="motorboat" />
+      <xs:enumeration value="inflatable" />
+      <xs:enumeration value="jetski" />
+      <xs:enumeration value="catamaran" />
+      <xs:enumeration value="canoe-rowing" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- ############################################## -->
+  <!-- ########### string values - moorings ######### -->
+
+  <xs:simpleType name="MooringType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="jetty" /><!-- fester Steg -->
+      <xs:enumeration value="buoy" /><!-- Bojenplatz -->
+      <xs:enumeration value="swimming" /><!-- schwimmende Plattform / Ponton -->
+      <xs:enumeration value="hangar-heated" /><!-- Halle beheizt -->
+      <xs:enumeration value="hangar-unheated" /><!-- Halle unbeheizt -->
+      <xs:enumeration value="outside" /><!-- Außenlager -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- ############################################## -->
+  <!-- ########### string values - boat equipment ### -->
+
+  <xs:simpleType name="AnchorRode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="line" />
+      <xs:enumeration value="chain" />
+      <xs:enumeration value="chain_stainless" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="AnchorWindlassPosition">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="bow" />
+      <xs:enumeration value="stern" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="AnchorWindlassType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="electric" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TrimTabsType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="fixed" />
+      <xs:enumeration value="electric" />
+      <xs:enumeration value="hydraulic" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="FridgeType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="electric" />
+      <xs:enumeration value="gas" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="FridgePosition">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="interior" />
+      <xs:enumeration value="cockpit" />
+      <xs:enumeration value="deck" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="CooktopType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="gas" />
+      <xs:enumeration value="electric" />
+      <xs:enumeration value="ceramic" />
+      <xs:enumeration value="induction" />
+      <xs:enumeration value="diesel" />
+      <xs:enumeration value="petroleum" />
+      <xs:enumeration value="ethanol" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="OvenType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="gas" />
+      <xs:enumeration value="electric" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TvAntennaType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="sat" />
+      <xs:enumeration value="sat_auto_search" />
+      <xs:enumeration value="dvbt" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="DeckShowerPosition">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="stern" />
+      <xs:enumeration value="bow" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="BathingPlatformType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="fixed" />
+      <xs:enumeration value="manual" />
+      <xs:enumeration value="electric" />
+      <xs:enumeration value="hydraulic" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="GangwayType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="manual" />
+      <xs:enumeration value="electric" />
+      <xs:enumeration value="hydraulic" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="CushionCoverMaterial">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="leather" />
+      <xs:enumeration value="synthetic" />
+      <xs:enumeration value="textile" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="SunShadePosition">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="fly" />
+      <xs:enumeration value="aftdeck" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="BilgePumpType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="manual" />
+      <xs:enumeration value="electric" />
+      <xs:enumeration value="automatic" />
+    </xs:restriction>
+  </xs:simpleType>
+
+
+  <!-- ############################################## -->
+  <!-- ########### general string values ############ -->
+
+  <!-- https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes -->
+  <xs:simpleType name="LanguageCode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="aa" /><!-- Afar -->
+      <xs:enumeration value="ab" /><!-- Abkhazian -->
+      <xs:enumeration value="af" /><!-- Afrikaans -->
+      <xs:enumeration value="ak" /><!-- Akan -->
+      <xs:enumeration value="am" /><!-- Amharic -->
+      <xs:enumeration value="an" /><!-- Aragonese -->
+      <xs:enumeration value="ar" /><!-- Arabic -->
+      <xs:enumeration value="as" /><!-- Assamese -->
+      <xs:enumeration value="av" /><!-- Avaric -->
+      <xs:enumeration value="ay" /><!-- Aymara -->
+      <xs:enumeration value="az" /><!-- Azerbaijani -->
+      <xs:enumeration value="ba" /><!-- Bashkir -->
+      <xs:enumeration value="be" /><!-- Belarusian -->
+      <xs:enumeration value="bg" /><!-- Bulgarian -->
+      <xs:enumeration value="bh" /><!-- Bihari languages -->
+      <xs:enumeration value="bi" /><!-- Bislama -->
+      <xs:enumeration value="bm" /><!-- Bambara -->
+      <xs:enumeration value="bn" /><!-- Bengali -->
+      <xs:enumeration value="bo" /><!-- Tibetan -->
+      <xs:enumeration value="br" /><!-- Breton -->
+      <xs:enumeration value="bs" /><!-- Bosnian -->
+      <xs:enumeration value="ca" /><!-- Catalan, Valencian -->
+      <xs:enumeration value="ce" /><!-- Chechen -->
+      <xs:enumeration value="ch" /><!-- Chamorro -->
+      <xs:enumeration value="co" /><!-- Corsican -->
+      <xs:enumeration value="cr" /><!-- Cree -->
+      <xs:enumeration value="cs" /><!-- Czech -->
+      <xs:enumeration value="cv" /><!-- Chuvash -->
+      <xs:enumeration value="cy" /><!-- Welsh -->
+      <xs:enumeration value="da" /><!-- Danish -->
+      <xs:enumeration value="de" /><!-- German -->
+      <xs:enumeration value="dv" /><!-- Divehi, Dhivehi, Maldivian -->
+      <xs:enumeration value="dz" /><!-- Dzongkha -->
+      <xs:enumeration value="ee" /><!-- Ewe -->
+      <xs:enumeration value="el" /><!-- Greek, Modern (1453–) -->
+      <xs:enumeration value="en" /><!-- English -->
+      <xs:enumeration value="es" /><!-- Spanish, Castilian -->
+      <xs:enumeration value="et" /><!-- Estonian -->
+      <xs:enumeration value="eu" /><!-- Basque -->
+      <xs:enumeration value="fa" /><!-- Persian -->
+      <xs:enumeration value="ff" /><!-- Fulah -->
+      <xs:enumeration value="fi" /><!-- Finnish -->
+      <xs:enumeration value="fj" /><!-- Fijian -->
+      <xs:enumeration value="fo" /><!-- Faroese -->
+      <xs:enumeration value="fr" /><!-- French -->
+      <xs:enumeration value="fy" /><!-- Western Frisian -->
+      <xs:enumeration value="ga" /><!-- Irish -->
+      <xs:enumeration value="gd" /><!-- Gaelic, Scottish Gaelic -->
+      <xs:enumeration value="gl" /><!-- Galician -->
+      <xs:enumeration value="gn" /><!-- Guarani -->
+      <xs:enumeration value="gu" /><!-- Gujarati -->
+      <xs:enumeration value="gv" /><!-- Manx -->
+      <xs:enumeration value="ha" /><!-- Hausa -->
+      <xs:enumeration value="he" /><!-- Hebrew -->
+      <xs:enumeration value="hi" /><!-- Hindi -->
+      <xs:enumeration value="ho" /><!-- Hiri Motu -->
+      <xs:enumeration value="hr" /><!-- Croatian -->
+      <xs:enumeration value="ht" /><!-- Haitian, Haitian Kreol -->
+      <xs:enumeration value="hu" /><!-- Hungarian -->
+      <xs:enumeration value="hy" /><!-- Armenian -->
+      <xs:enumeration value="hz" /><!-- Herero -->
+      <xs:enumeration value="id" /><!-- Indonesian -->
+      <xs:enumeration value="ig" /><!-- Igbo -->
+      <xs:enumeration value="ii" /><!-- Sichuan Yi, Nuosu -->
+      <xs:enumeration value="ik" /><!-- Inupiaq -->
+      <xs:enumeration value="io" /><!-- Ido -->
+      <xs:enumeration value="is" /><!-- Icelandic -->
+      <xs:enumeration value="it" /><!-- Italian -->
+      <xs:enumeration value="iu" /><!-- Inuktitut -->
+      <xs:enumeration value="ja" /><!-- Japanese -->
+      <xs:enumeration value="jv" /><!-- Javanese -->
+      <xs:enumeration value="ka" /><!-- Georgian -->
+      <xs:enumeration value="kg" /><!-- Kongo -->
+      <xs:enumeration value="ki" /><!-- Kikuyu, Gikuyu -->
+      <xs:enumeration value="kj" /><!-- Kuanyama, Kwanyama -->
+      <xs:enumeration value="kk" /><!-- Kazakh -->
+      <xs:enumeration value="kl" /><!-- Kalaallisut, Greenlandic -->
+      <xs:enumeration value="km" /><!-- Central Khmer -->
+      <xs:enumeration value="kn" /><!-- Kannada -->
+      <xs:enumeration value="ko" /><!-- Korean -->
+      <xs:enumeration value="kr" /><!-- Kanuri -->
+      <xs:enumeration value="ks" /><!-- Kashmiri -->
+      <xs:enumeration value="ku" /><!-- Kurdish -->
+      <xs:enumeration value="kv" /><!-- Komi -->
+      <xs:enumeration value="kw" /><!-- Cornish -->
+      <xs:enumeration value="ky" /><!-- Kirghiz, Kyrgyz -->
+      <xs:enumeration value="lb" /><!-- Luxembourgish, Letzeburgesch -->
+      <xs:enumeration value="lg" /><!-- Ganda -->
+      <xs:enumeration value="li" /><!-- Limburgan, Limburger, Limburgish -->
+      <xs:enumeration value="ln" /><!-- Lingala -->
+      <xs:enumeration value="lo" /><!-- Lao -->
+      <xs:enumeration value="lt" /><!-- Lithuanian -->
+      <xs:enumeration value="lu" /><!-- Luba-Katanga -->
+      <xs:enumeration value="lv" /><!-- Latvian -->
+      <xs:enumeration value="mg" /><!-- Malagasy -->
+      <xs:enumeration value="mh" /><!-- Marshallese -->
+      <xs:enumeration value="mi" /><!-- Maori -->
+      <xs:enumeration value="mk" /><!-- Macedonian -->
+      <xs:enumeration value="ml" /><!-- Malayalam -->
+      <xs:enumeration value="mn" /><!-- Mongolian -->
+      <xs:enumeration value="mr" /><!-- Marathi -->
+      <xs:enumeration value="ms" /><!-- Malay -->
+      <xs:enumeration value="mt" /><!-- Maltese -->
+      <xs:enumeration value="my" /><!-- Burmese -->
+      <xs:enumeration value="na" /><!-- Nauru -->
+      <xs:enumeration value="nb" /><!-- Norwegian Bokmål -->
+      <xs:enumeration value="nd" /><!-- North Ndebele -->
+      <xs:enumeration value="ne" /><!-- Nepali -->
+      <xs:enumeration value="ng" /><!-- Ndonga -->
+      <xs:enumeration value="nl" /><!-- Dutch, Flemish -->
+      <xs:enumeration value="nn" /><!-- Norwegian Nynorsk -->
+      <xs:enumeration value="no" /><!-- Norwegian -->
+      <xs:enumeration value="nr" /><!-- South Ndebele -->
+      <xs:enumeration value="nv" /><!-- Navajo, Navaho -->
+      <xs:enumeration value="ny" /><!-- Chichewa, Chewa, Nyanja -->
+      <xs:enumeration value="oc" /><!-- Occitan -->
+      <xs:enumeration value="oj" /><!-- Ojibwa -->
+      <xs:enumeration value="om" /><!-- Oromo -->
+      <xs:enumeration value="or" /><!-- Oriya -->
+      <xs:enumeration value="os" /><!-- Ossetian, Ossetic -->
+      <xs:enumeration value="pa" /><!-- Panjabi, Punjabi -->
+      <xs:enumeration value="pi" /><!-- Pali -->
+      <xs:enumeration value="pl" /><!-- Polish -->
+      <xs:enumeration value="ps" /><!-- Pashto, Pushto -->
+      <xs:enumeration value="pt" /><!-- Portuguese -->
+      <xs:enumeration value="qu" /><!-- Quechua -->
+      <xs:enumeration value="rm" /><!-- Romansh -->
+      <xs:enumeration value="rn" /><!-- Rundi -->
+      <xs:enumeration value="ro" /><!-- Romanian, Moldavian, Moldovan -->
+      <xs:enumeration value="ru" /><!-- Russian -->
+      <xs:enumeration value="rw" /><!-- Kinyarwanda -->
+      <xs:enumeration value="sc" /><!-- Sardinian -->
+      <xs:enumeration value="sd" /><!-- Sindhi -->
+      <xs:enumeration value="se" /><!-- Northern Sami -->
+      <xs:enumeration value="sg" /><!-- Sango -->
+      <xs:enumeration value="si" /><!-- Sinhala, Sinhalese -->
+      <xs:enumeration value="sk" /><!-- Slovak -->
+      <xs:enumeration value="sl" /><!-- Slovenian -->
+      <xs:enumeration value="sm" /><!-- Samoan -->
+      <xs:enumeration value="sn" /><!-- Shona -->
+      <xs:enumeration value="so" /><!-- Somali -->
+      <xs:enumeration value="sq" /><!-- Albanian -->
+      <xs:enumeration value="sr" /><!-- Serbian -->
+      <xs:enumeration value="ss" /><!-- Swati -->
+      <xs:enumeration value="st" /><!-- Southern Sotho -->
+      <xs:enumeration value="su" /><!-- Sundanese -->
+      <xs:enumeration value="sv" /><!-- Swedish -->
+      <xs:enumeration value="sw" /><!-- Swahili -->
+      <xs:enumeration value="ta" /><!-- Tamil -->
+      <xs:enumeration value="te" /><!-- Telugu -->
+      <xs:enumeration value="tg" /><!-- Tajik -->
+      <xs:enumeration value="th" /><!-- Thai -->
+      <xs:enumeration value="ti" /><!-- Tigrinya -->
+      <xs:enumeration value="tk" /><!-- Turkmen -->
+      <xs:enumeration value="tl" /><!-- Tagalog -->
+      <xs:enumeration value="tn" /><!-- Tswana -->
+      <xs:enumeration value="to" /><!-- Tonga (Tonga Islands) -->
+      <xs:enumeration value="tr" /><!-- Turkish -->
+      <xs:enumeration value="ts" /><!-- Tsonga -->
+      <xs:enumeration value="tt" /><!-- Tatar -->
+      <xs:enumeration value="tw" /><!-- Twi -->
+      <xs:enumeration value="ty" /><!-- Tahitian -->
+      <xs:enumeration value="ug" /><!-- Uighur, Uyghur -->
+      <xs:enumeration value="uk" /><!-- Ukrainian -->
+      <xs:enumeration value="ur" /><!-- Urdu -->
+      <xs:enumeration value="uz" /><!-- Uzbek -->
+      <xs:enumeration value="ve" /><!-- Venda -->
+      <xs:enumeration value="vi" /><!-- Vietnamese -->
+      <xs:enumeration value="wa" /><!-- Walloon -->
+      <xs:enumeration value="wo" /><!-- Wolof -->
+      <xs:enumeration value="xh" /><!-- Xhosa -->
+      <xs:enumeration value="yi" /><!-- Yiddish -->
+      <xs:enumeration value="yo" /><!-- Yoruba -->
+      <xs:enumeration value="za" /><!-- Zhuang, Chuang -->
+      <xs:enumeration value="zh" /><!-- Chinese -->
+      <xs:enumeration value="zu" /><!-- Zulu -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- https://en.wikipedia.org/wiki/ISO_3166-1 -->
+  <xs:simpleType name="CountryCode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="AD" /><!-- Andorra -->
+      <xs:enumeration value="AE" /><!-- United Arab Emirates -->
+      <xs:enumeration value="AF" /><!-- Afghanistan -->
+      <xs:enumeration value="AG" /><!-- Antigua and Barbuda -->
+      <xs:enumeration value="AI" /><!-- Anguilla -->
+      <xs:enumeration value="AL" /><!-- Albania -->
+      <xs:enumeration value="AM" /><!-- Armenia -->
+      <xs:enumeration value="AO" /><!-- Angola -->
+      <xs:enumeration value="AQ" /><!-- Antarctica -->
+      <xs:enumeration value="AR" /><!-- Argentina -->
+      <xs:enumeration value="AS" /><!-- American Samoa -->
+      <xs:enumeration value="AT" /><!-- Austria -->
+      <xs:enumeration value="AU" /><!-- Australia -->
+      <xs:enumeration value="AW" /><!-- Aruba -->
+      <xs:enumeration value="AX" /><!-- Åland Islands -->
+      <xs:enumeration value="AZ" /><!-- Azerbaijan -->
+      <xs:enumeration value="BA" /><!-- Bosnia and Herzegovina -->
+      <xs:enumeration value="BB" /><!-- Barbados -->
+      <xs:enumeration value="BD" /><!-- Bangladesh -->
+      <xs:enumeration value="BE" /><!-- Belgium -->
+      <xs:enumeration value="BF" /><!-- Burkina Faso -->
+      <xs:enumeration value="BG" /><!-- Bulgaria -->
+      <xs:enumeration value="BH" /><!-- Bahrain -->
+      <xs:enumeration value="BI" /><!-- Burundi -->
+      <xs:enumeration value="BJ" /><!-- Benin -->
+      <xs:enumeration value="BL" /><!-- Saint Barthélemy -->
+      <xs:enumeration value="BM" /><!-- Bermuda -->
+      <xs:enumeration value="BN" /><!-- Brunei Darussalam -->
+      <xs:enumeration value="BO" /><!-- Bolivia (Plurinational State of) -->
+      <xs:enumeration value="BQ" /><!-- Bonaire, Sint Eustatius and Saba -->
+      <xs:enumeration value="BR" /><!-- Brazil -->
+      <xs:enumeration value="BS" /><!-- Bahamas -->
+      <xs:enumeration value="BT" /><!-- Bhutan -->
+      <xs:enumeration value="BV" /><!-- Bouvet Island -->
+      <xs:enumeration value="BW" /><!-- Botswana -->
+      <xs:enumeration value="BY" /><!-- Belarus -->
+      <xs:enumeration value="BZ" /><!-- Belize -->
+      <xs:enumeration value="CA" /><!-- Canada -->
+      <xs:enumeration value="CC" /><!-- Cocos (Keeling) Islands -->
+      <xs:enumeration value="CD" /><!-- Congo, Democratic Republic of the -->
+      <xs:enumeration value="CF" /><!-- Central African Republic -->
+      <xs:enumeration value="CG" /><!-- Congo -->
+      <xs:enumeration value="CH" /><!-- Switzerland -->
+      <xs:enumeration value="CI" /><!-- Côte d'Ivoire -->
+      <xs:enumeration value="CK" /><!-- Cook Islands -->
+      <xs:enumeration value="CL" /><!-- Chile -->
+      <xs:enumeration value="CM" /><!-- Cameroon -->
+      <xs:enumeration value="CN" /><!-- China -->
+      <xs:enumeration value="CO" /><!-- Colombia -->
+      <xs:enumeration value="CR" /><!-- Costa Rica -->
+      <xs:enumeration value="CU" /><!-- Cuba -->
+      <xs:enumeration value="CV" /><!-- Cabo Verde -->
+      <xs:enumeration value="CW" /><!-- Curaçao -->
+      <xs:enumeration value="CX" /><!-- Christmas Island -->
+      <xs:enumeration value="CY" /><!-- Cyprus -->
+      <xs:enumeration value="CZ" /><!-- Czechia -->
+      <xs:enumeration value="DE" /><!-- Germany -->
+      <xs:enumeration value="DJ" /><!-- Djibouti -->
+      <xs:enumeration value="DK" /><!-- Denmark -->
+      <xs:enumeration value="DM" /><!-- Dominica -->
+      <xs:enumeration value="DO" /><!-- Dominican Republic -->
+      <xs:enumeration value="DZ" /><!-- Algeria -->
+      <xs:enumeration value="EC" /><!-- Ecuador -->
+      <xs:enumeration value="EE" /><!-- Estonia -->
+      <xs:enumeration value="EG" /><!-- Egypt -->
+      <xs:enumeration value="EH" /><!-- Western Sahara -->
+      <xs:enumeration value="ER" /><!-- Eritrea -->
+      <xs:enumeration value="ES" /><!-- Spain -->
+      <xs:enumeration value="ET" /><!-- Ethiopia -->
+      <xs:enumeration value="FI" /><!-- Finland -->
+      <xs:enumeration value="FJ" /><!-- Fiji -->
+      <xs:enumeration value="FK" /><!-- Falkland Islands (Malvinas) -->
+      <xs:enumeration value="FM" /><!-- Micronesia (Federated States of) -->
+      <xs:enumeration value="FO" /><!-- Faroe Islands -->
+      <xs:enumeration value="FR" /><!-- France -->
+      <xs:enumeration value="GA" /><!-- Gabon -->
+      <xs:enumeration value="GB" /><!-- United Kingdom of Great Britain and Northern Ireland -->
+      <xs:enumeration value="GD" /><!-- Grenada -->
+      <xs:enumeration value="GE" /><!-- Georgia -->
+      <xs:enumeration value="GF" /><!-- French Guiana -->
+      <xs:enumeration value="GG" /><!-- Guernsey -->
+      <xs:enumeration value="GH" /><!-- Ghana -->
+      <xs:enumeration value="GI" /><!-- Gibraltar -->
+      <xs:enumeration value="GL" /><!-- Greenland -->
+      <xs:enumeration value="GM" /><!-- Gambia -->
+      <xs:enumeration value="GN" /><!-- Guinea -->
+      <xs:enumeration value="GP" /><!-- Guadeloupe -->
+      <xs:enumeration value="GQ" /><!-- Equatorial Guinea -->
+      <xs:enumeration value="GR" /><!-- Greece -->
+      <xs:enumeration value="GS" /><!-- South Georgia and the South Sandwich Islands -->
+      <xs:enumeration value="GT" /><!-- Guatemala -->
+      <xs:enumeration value="GU" /><!-- Guam -->
+      <xs:enumeration value="GW" /><!-- Guinea-Bissau -->
+      <xs:enumeration value="GY" /><!-- Guyana -->
+      <xs:enumeration value="HK" /><!-- Hong Kong -->
+      <xs:enumeration value="HM" /><!-- Heard Island and McDonald Islands -->
+      <xs:enumeration value="HN" /><!-- Honduras -->
+      <xs:enumeration value="HR" /><!-- Croatia -->
+      <xs:enumeration value="HT" /><!-- Haiti -->
+      <xs:enumeration value="HU" /><!-- Hungary -->
+      <xs:enumeration value="ID" /><!-- Indonesia -->
+      <xs:enumeration value="IE" /><!-- Ireland -->
+      <xs:enumeration value="IL" /><!-- Israel -->
+      <xs:enumeration value="IM" /><!-- Isle of Man -->
+      <xs:enumeration value="IN" /><!-- India -->
+      <xs:enumeration value="IO" /><!-- British Indian Ocean Territory -->
+      <xs:enumeration value="IQ" /><!-- Iraq -->
+      <xs:enumeration value="IR" /><!-- Iran (Islamic Republic of) -->
+      <xs:enumeration value="IS" /><!-- Iceland -->
+      <xs:enumeration value="IT" /><!-- Italy -->
+      <xs:enumeration value="JE" /><!-- Jersey -->
+      <xs:enumeration value="JM" /><!-- Jamaica -->
+      <xs:enumeration value="JO" /><!-- Jordan -->
+      <xs:enumeration value="JP" /><!-- Japan -->
+      <xs:enumeration value="KE" /><!-- Kenya -->
+      <xs:enumeration value="KG" /><!-- Kyrgyzstan -->
+      <xs:enumeration value="KH" /><!-- Cambodia -->
+      <xs:enumeration value="KI" /><!-- Kiribati -->
+      <xs:enumeration value="KM" /><!-- Comoros -->
+      <xs:enumeration value="KN" /><!-- Saint Kitts and Nevis -->
+      <xs:enumeration value="KP" /><!-- Korea (Democratic People's Republic of) -->
+      <xs:enumeration value="KR" /><!-- Korea, Republic of -->
+      <xs:enumeration value="KW" /><!-- Kuwait -->
+      <xs:enumeration value="KY" /><!-- Cayman Islands -->
+      <xs:enumeration value="KZ" /><!-- Kazakhstan -->
+      <xs:enumeration value="LA" /><!-- Lao People's Democratic Republic -->
+      <xs:enumeration value="LB" /><!-- Lebanon -->
+      <xs:enumeration value="LC" /><!-- Saint Lucia -->
+      <xs:enumeration value="LI" /><!-- Liechtenstein -->
+      <xs:enumeration value="LK" /><!-- Sri Lanka -->
+      <xs:enumeration value="LR" /><!-- Liberia -->
+      <xs:enumeration value="LS" /><!-- Lesotho -->
+      <xs:enumeration value="LT" /><!-- Lithuania -->
+      <xs:enumeration value="LU" /><!-- Luxembourg -->
+      <xs:enumeration value="LV" /><!-- Latvia -->
+      <xs:enumeration value="LY" /><!-- Libya -->
+      <xs:enumeration value="MA" /><!-- Morocco -->
+      <xs:enumeration value="MC" /><!-- Monaco -->
+      <xs:enumeration value="MD" /><!-- Moldova, Republic of -->
+      <xs:enumeration value="ME" /><!-- Montenegro -->
+      <xs:enumeration value="MF" /><!-- Saint Martin (French part) -->
+      <xs:enumeration value="MG" /><!-- Madagascar -->
+      <xs:enumeration value="MH" /><!-- Marshall Islands -->
+      <xs:enumeration value="MK" /><!-- North Macedonia -->
+      <xs:enumeration value="ML" /><!-- Mali -->
+      <xs:enumeration value="MM" /><!-- Myanmar -->
+      <xs:enumeration value="MN" /><!-- Mongolia -->
+      <xs:enumeration value="MO" /><!-- Macao -->
+      <xs:enumeration value="MP" /><!-- Northern Mariana Islands -->
+      <xs:enumeration value="MQ" /><!-- Martinique -->
+      <xs:enumeration value="MR" /><!-- Mauritania -->
+      <xs:enumeration value="MS" /><!-- Montserrat -->
+      <xs:enumeration value="MT" /><!-- Malta -->
+      <xs:enumeration value="MU" /><!-- Mauritius -->
+      <xs:enumeration value="MV" /><!-- Maldives -->
+      <xs:enumeration value="MW" /><!-- Malawi -->
+      <xs:enumeration value="MX" /><!-- Mexico -->
+      <xs:enumeration value="MY" /><!-- Malaysia -->
+      <xs:enumeration value="MZ" /><!-- Mozambique -->
+      <xs:enumeration value="NA" /><!-- Namibia -->
+      <xs:enumeration value="NC" /><!-- New Caledonia -->
+      <xs:enumeration value="NE" /><!-- Niger -->
+      <xs:enumeration value="NF" /><!-- Norfolk Island -->
+      <xs:enumeration value="NG" /><!-- Nigeria -->
+      <xs:enumeration value="NI" /><!-- Nicaragua -->
+      <xs:enumeration value="NL" /><!-- Netherlands -->
+      <xs:enumeration value="NO" /><!-- Norway -->
+      <xs:enumeration value="NP" /><!-- Nepal -->
+      <xs:enumeration value="NR" /><!-- Nauru -->
+      <xs:enumeration value="NU" /><!-- Niue -->
+      <xs:enumeration value="NZ" /><!-- New Zealand -->
+      <xs:enumeration value="OM" /><!-- Oman -->
+      <xs:enumeration value="PA" /><!-- Panama -->
+      <xs:enumeration value="PE" /><!-- Peru -->
+      <xs:enumeration value="PF" /><!-- French Polynesia -->
+      <xs:enumeration value="PG" /><!-- Papua New Guinea -->
+      <xs:enumeration value="PH" /><!-- Philippines -->
+      <xs:enumeration value="PK" /><!-- Pakistan -->
+      <xs:enumeration value="PL" /><!-- Poland -->
+      <xs:enumeration value="PM" /><!-- Saint Pierre and Miquelon -->
+      <xs:enumeration value="PN" /><!-- Pitcairn -->
+      <xs:enumeration value="PR" /><!-- Puerto Rico -->
+      <xs:enumeration value="PS" /><!-- Palestine, State of -->
+      <xs:enumeration value="PT" /><!-- Portugal -->
+      <xs:enumeration value="PW" /><!-- Palau -->
+      <xs:enumeration value="PY" /><!-- Paraguay -->
+      <xs:enumeration value="QA" /><!-- Qatar -->
+      <xs:enumeration value="RE" /><!-- Réunion -->
+      <xs:enumeration value="RO" /><!-- Romania -->
+      <xs:enumeration value="RS" /><!-- Serbia -->
+      <xs:enumeration value="RU" /><!-- Russian Federation -->
+      <xs:enumeration value="RW" /><!-- Rwanda -->
+      <xs:enumeration value="SA" /><!-- Saudi Arabia -->
+      <xs:enumeration value="SB" /><!-- Solomon Islands -->
+      <xs:enumeration value="SC" /><!-- Seychelles -->
+      <xs:enumeration value="SD" /><!-- Sudan -->
+      <xs:enumeration value="SE" /><!-- Sweden -->
+      <xs:enumeration value="SG" /><!-- Singapore -->
+      <xs:enumeration value="SH" /><!-- Saint Helena, Ascension and Tristan da Cunha -->
+      <xs:enumeration value="SI" /><!-- Slovenia -->
+      <xs:enumeration value="SJ" /><!-- Svalbard and Jan Mayen -->
+      <xs:enumeration value="SK" /><!-- Slovakia -->
+      <xs:enumeration value="SL" /><!-- Sierra Leone -->
+      <xs:enumeration value="SM" /><!-- San Marino -->
+      <xs:enumeration value="SN" /><!-- Senegal -->
+      <xs:enumeration value="SO" /><!-- Somalia -->
+      <xs:enumeration value="SR" /><!-- Suriname -->
+      <xs:enumeration value="SS" /><!-- South Sudan -->
+      <xs:enumeration value="ST" /><!-- Sao Tome and Principe -->
+      <xs:enumeration value="SV" /><!-- El Salvador -->
+      <xs:enumeration value="SX" /><!-- Sint Maarten (Dutch part) -->
+      <xs:enumeration value="SY" /><!-- Syrian Arab Republic -->
+      <xs:enumeration value="SZ" /><!-- Eswatini -->
+      <xs:enumeration value="TC" /><!-- Turks and Caicos Islands -->
+      <xs:enumeration value="TD" /><!-- Chad -->
+      <xs:enumeration value="TF" /><!-- French Southern Territories -->
+      <xs:enumeration value="TG" /><!-- Togo -->
+      <xs:enumeration value="TH" /><!-- Thailand -->
+      <xs:enumeration value="TJ" /><!-- Tajikistan -->
+      <xs:enumeration value="TK" /><!-- Tokelau -->
+      <xs:enumeration value="TL" /><!-- Timor-Leste -->
+      <xs:enumeration value="TM" /><!-- Turkmenistan -->
+      <xs:enumeration value="TN" /><!-- Tunisia -->
+      <xs:enumeration value="TO" /><!-- Tonga -->
+      <xs:enumeration value="TR" /><!-- Turkey -->
+      <xs:enumeration value="TT" /><!-- Trinidad and Tobago -->
+      <xs:enumeration value="TV" /><!-- Tuvalu -->
+      <xs:enumeration value="TW" /><!-- Taiwan, Province of China -->
+      <xs:enumeration value="TZ" /><!-- Tanzania, United Republic of -->
+      <xs:enumeration value="UA" /><!-- Ukraine -->
+      <xs:enumeration value="UG" /><!-- Uganda -->
+      <xs:enumeration value="UM" /><!-- United States Minor Outlying Islands -->
+      <xs:enumeration value="US" /><!-- United States of America -->
+      <xs:enumeration value="UY" /><!-- Uruguay -->
+      <xs:enumeration value="UZ" /><!-- Uzbekistan -->
+      <xs:enumeration value="VA" /><!-- Holy See -->
+      <xs:enumeration value="VC" /><!-- Saint Vincent and the Grenadines -->
+      <xs:enumeration value="VE" /><!-- Venezuela (Bolivarian Republic of) -->
+      <xs:enumeration value="VG" /><!-- Virgin Islands (British) -->
+      <xs:enumeration value="VI" /><!-- Virgin Islands (U.S.) -->
+      <xs:enumeration value="VN" /><!-- Viet Nam -->
+      <xs:enumeration value="VU" /><!-- Vanuatu -->
+      <xs:enumeration value="WF" /><!-- Wallis and Futuna -->
+      <xs:enumeration value="WS" /><!-- Samoa -->
+      <xs:enumeration value="YE" /><!-- Yemen -->
+      <xs:enumeration value="YT" /><!-- Mayotte -->
+      <xs:enumeration value="ZA" /><!-- South Africa -->
+      <xs:enumeration value="ZM" /><!-- Zambia -->
+      <xs:enumeration value="ZW" /><!-- Zimbabwe -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- https://en.wikipedia.org/wiki/ISO_4217 -->
+  <xs:simpleType name="CurrencyCode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="AED" /><!-- United Arab Emirates dirham -->
+      <xs:enumeration value="AFN" /><!-- Afghan afghani -->
+      <xs:enumeration value="ALL" /><!-- Albanian lek -->
+      <xs:enumeration value="AMD" /><!-- Armenian dram -->
+      <xs:enumeration value="ANG" /><!-- Netherlands Antillean guilder -->
+      <xs:enumeration value="AOA" /><!-- Angolan kwanza -->
+      <xs:enumeration value="ARS" /><!-- Argentine peso -->
+      <xs:enumeration value="AUD" /><!-- Australian dollar -->
+      <xs:enumeration value="AWG" /><!-- Aruban florin -->
+      <xs:enumeration value="AZN" /><!-- Azerbaijani manat -->
+      <xs:enumeration value="BAM" /><!-- Bosnia and Herzegovina convertible mark -->
+      <xs:enumeration value="BBD" /><!-- Barbados dollar -->
+      <xs:enumeration value="BDT" /><!-- Bangladeshi taka -->
+      <xs:enumeration value="BGN" /><!-- Bulgarian lev -->
+      <xs:enumeration value="BHD" /><!-- Bahraini dinar -->
+      <xs:enumeration value="BIF" /><!-- Burundian franc -->
+      <xs:enumeration value="BMD" /><!-- Bermudian dollar -->
+      <xs:enumeration value="BND" /><!-- Brunei dollar -->
+      <xs:enumeration value="BOB" /><!-- Boliviano -->
+      <xs:enumeration value="BRL" /><!-- Brazilian real -->
+      <xs:enumeration value="BSD" /><!-- Bahamian dollar -->
+      <xs:enumeration value="BTN" /><!-- Bhutanese ngultrum -->
+      <xs:enumeration value="BWP" /><!-- Botswana pula -->
+      <xs:enumeration value="BYN" /><!-- Belarusian ruble -->
+      <xs:enumeration value="BZD" /><!-- Belize dollar -->
+      <xs:enumeration value="CAD" /><!-- Canadian dollar -->
+      <xs:enumeration value="CDF" /><!-- Congolese franc -->
+      <xs:enumeration value="CHF" /><!-- Swiss franc -->
+      <xs:enumeration value="CLF" /><!-- Unidad de Fomento -->
+      <xs:enumeration value="CLP" /><!-- Chilean peso -->
+      <xs:enumeration value="CNY" /><!-- Renminbi (Chinese) yuan -->
+      <xs:enumeration value="COP" /><!-- Colombian peso -->
+      <xs:enumeration value="CRC" /><!-- Costa Rican colon -->
+      <xs:enumeration value="CUC" /><!-- Cuban convertible peso -->
+      <xs:enumeration value="CUP" /><!-- Cuban peso -->
+      <xs:enumeration value="CVE" /><!-- Cape Verdean escudo -->
+      <xs:enumeration value="CZK" /><!-- Czech koruna -->
+      <xs:enumeration value="DJF" /><!-- Djiboutian franc -->
+      <xs:enumeration value="DKK" /><!-- Danish krone -->
+      <xs:enumeration value="DOP" /><!-- Dominican peso -->
+      <xs:enumeration value="DZD" /><!-- Algerian dinar -->
+      <xs:enumeration value="EGP" /><!-- Egyptian pound -->
+      <xs:enumeration value="ERN" /><!-- Eritrean nakfa -->
+      <xs:enumeration value="ETB" /><!-- Ethiopian birr -->
+      <xs:enumeration value="EUR" /><!-- Euro -->
+      <xs:enumeration value="FJD" /><!-- Fiji dollar -->
+      <xs:enumeration value="FKP" /><!-- Falkland Islands pound -->
+      <xs:enumeration value="GBP" /><!-- Pound sterling -->
+      <xs:enumeration value="GEL" /><!-- Georgian lari -->
+      <xs:enumeration value="GHS" /><!-- Ghanaian cedi -->
+      <xs:enumeration value="GIP" /><!-- Gibraltar pound -->
+      <xs:enumeration value="GMD" /><!-- Gambian dalasi -->
+      <xs:enumeration value="GNF" /><!-- Guinean franc -->
+      <xs:enumeration value="GTQ" /><!-- Guatemalan quetzal -->
+      <xs:enumeration value="GYD" /><!-- Guyanese dollar -->
+      <xs:enumeration value="HKD" /><!-- Hong Kong dollar -->
+      <xs:enumeration value="HNL" /><!-- Honduran lempira -->
+      <xs:enumeration value="HRK" /><!-- Croatian kuna -->
+      <xs:enumeration value="HTG" /><!-- Haitian gourde -->
+      <xs:enumeration value="HUF" /><!-- Hungarian forint -->
+      <xs:enumeration value="IDR" /><!-- Indonesian rupiah -->
+      <xs:enumeration value="ILS" /><!-- Israeli new shekel -->
+      <xs:enumeration value="INR" /><!-- Indian rupee -->
+      <xs:enumeration value="IQD" /><!-- Iraqi dinar -->
+      <xs:enumeration value="IRR" /><!-- Iranian rial -->
+      <xs:enumeration value="ISK" /><!-- Icelandic króna -->
+      <xs:enumeration value="JMD" /><!-- Jamaican dollar -->
+      <xs:enumeration value="JOD" /><!-- Jordanian dinar -->
+      <xs:enumeration value="JPY" /><!-- Japanese yen -->
+      <xs:enumeration value="KES" /><!-- Kenyan shilling -->
+      <xs:enumeration value="KGS" /><!-- Kyrgyzstani som -->
+      <xs:enumeration value="KHR" /><!-- Cambodian riel -->
+      <xs:enumeration value="KMF" /><!-- Comoro franc -->
+      <xs:enumeration value="KPW" /><!-- North Korean won -->
+      <xs:enumeration value="KRW" /><!-- South Korean won -->
+      <xs:enumeration value="KWD" /><!-- Kuwaiti dinar -->
+      <xs:enumeration value="KYD" /><!-- Cayman Islands dollar -->
+      <xs:enumeration value="KZT" /><!-- Kazakhstani tenge -->
+      <xs:enumeration value="LAK" /><!-- Lao kip -->
+      <xs:enumeration value="LBP" /><!-- Lebanese pound -->
+      <xs:enumeration value="LKR" /><!-- Sri Lankan rupee -->
+      <xs:enumeration value="LRD" /><!-- Liberian dollar -->
+      <xs:enumeration value="LSL" /><!-- Lesotho loti -->
+      <xs:enumeration value="LYD" /><!-- Libyan dinar -->
+      <xs:enumeration value="MAD" /><!-- Moroccan dirham -->
+      <xs:enumeration value="MDL" /><!-- Moldovan leu -->
+      <xs:enumeration value="MGA" /><!-- Malagasy ariary -->
+      <xs:enumeration value="MKD" /><!-- Macedonian denar -->
+      <xs:enumeration value="MMK" /><!-- Myanmar kyat -->
+      <xs:enumeration value="MNT" /><!-- Mongolian tögrög -->
+      <xs:enumeration value="MOP" /><!-- Macanese pataca -->
+      <xs:enumeration value="MRU" /><!-- Mauritanian ouguiya -->
+      <xs:enumeration value="MUR" /><!-- Mauritian rupee -->
+      <xs:enumeration value="MVR" /><!-- Maldivian rufiyaa -->
+      <xs:enumeration value="MWK" /><!-- Malawian kwacha -->
+      <xs:enumeration value="MXN" /><!-- Mexican peso -->
+      <xs:enumeration value="MXV" /><!-- Mexican Unidad de Inversion -->
+      <xs:enumeration value="MYR" /><!-- Malaysian ringgit -->
+      <xs:enumeration value="MZN" /><!-- Mozambican metical -->
+      <xs:enumeration value="NAD" /><!-- Namibian dollar -->
+      <xs:enumeration value="NGN" /><!-- Nigerian naira -->
+      <xs:enumeration value="NIO" /><!-- Nicaraguan córdoba -->
+      <xs:enumeration value="NOK" /><!-- Norwegian krone -->
+      <xs:enumeration value="NPR" /><!-- Nepalese rupee -->
+      <xs:enumeration value="NZD" /><!-- New Zealand dollar -->
+      <xs:enumeration value="OMR" /><!-- Omani rial -->
+      <xs:enumeration value="PAB" /><!-- Panamanian balboa -->
+      <xs:enumeration value="PEN" /><!-- Peruvian sol -->
+      <xs:enumeration value="PGK" /><!-- Papua New Guinean kina -->
+      <xs:enumeration value="PHP" /><!-- Philippine peso -->
+      <xs:enumeration value="PKR" /><!-- Pakistani rupee -->
+      <xs:enumeration value="PLN" /><!-- Polish złoty -->
+      <xs:enumeration value="PYG" /><!-- Paraguayan guaraní -->
+      <xs:enumeration value="QAR" /><!-- Qatari riyal -->
+      <xs:enumeration value="RON" /><!-- Romanian leu -->
+      <xs:enumeration value="RSD" /><!-- Serbian dinar -->
+      <xs:enumeration value="RUB" /><!-- Russian ruble -->
+      <xs:enumeration value="RWF" /><!-- Rwandan franc -->
+      <xs:enumeration value="SAR" /><!-- Saudi riyal -->
+      <xs:enumeration value="SBD" /><!-- Solomon Islands dollar -->
+      <xs:enumeration value="SCR" /><!-- Seychelles rupee -->
+      <xs:enumeration value="SDG" /><!-- Sudanese pound -->
+      <xs:enumeration value="SEK" /><!-- Swedish krona -->
+      <xs:enumeration value="SGD" /><!-- Singapore dollar -->
+      <xs:enumeration value="SHP" /><!-- Saint Helena pound -->
+      <xs:enumeration value="SLL" /><!-- Sierra Leonean leone -->
+      <xs:enumeration value="SOS" /><!-- Somali shilling -->
+      <xs:enumeration value="SRD" /><!-- Surinamese dollar -->
+      <xs:enumeration value="SSP" /><!-- South Sudanese pound -->
+      <xs:enumeration value="STN" /><!-- São Tomé and Príncipe dobra -->
+      <xs:enumeration value="SVC" /><!-- Salvadoran colón -->
+      <xs:enumeration value="SYP" /><!-- Syrian pound -->
+      <xs:enumeration value="SZL" /><!-- Swazi lilangeni -->
+      <xs:enumeration value="THB" /><!-- Thai baht -->
+      <xs:enumeration value="TJS" /><!-- Tajikistani somoni -->
+      <xs:enumeration value="TMT" /><!-- Turkmenistan manat -->
+      <xs:enumeration value="TND" /><!-- Tunisian dinar -->
+      <xs:enumeration value="TOP" /><!-- Tongan paʻanga -->
+      <xs:enumeration value="TRY" /><!-- Turkish lira -->
+      <xs:enumeration value="TTD" /><!-- Trinidad and Tobago dollar -->
+      <xs:enumeration value="TWD" /><!-- New Taiwan dollar -->
+      <xs:enumeration value="TZS" /><!-- Tanzanian shilling -->
+      <xs:enumeration value="UAH" /><!-- Ukrainian hryvnia -->
+      <xs:enumeration value="UGX" /><!-- Ugandan shilling -->
+      <xs:enumeration value="USD" /><!-- United States dollar -->
+      <xs:enumeration value="UYU" /><!-- Uruguayan peso -->
+      <xs:enumeration value="UZS" /><!-- Uzbekistan som -->
+      <xs:enumeration value="VES" /><!-- Venezuelan bolívar soberano -->
+      <xs:enumeration value="VND" /><!-- Vietnamese đồng -->
+      <xs:enumeration value="VUV" /><!-- Vanuatu vatu -->
+      <xs:enumeration value="WST" /><!-- Samoan tala -->
+      <xs:enumeration value="XAF" /><!-- CFA franc BEAC -->
+      <xs:enumeration value="XBA" /><!-- European Composite Unit -->
+      <xs:enumeration value="XBB" /><!-- European Monetary Unit -->
+      <xs:enumeration value="XCD" /><!-- East Caribbean dollar -->
+      <xs:enumeration value="XOF" /><!-- CFA franc BCEAO -->
+      <xs:enumeration value="XPF" /><!-- CFP franc -->
+      <xs:enumeration value="XSU" /><!-- SUCRE -->
+      <xs:enumeration value="YER" /><!-- Yemeni rial -->
+      <xs:enumeration value="ZAR" /><!-- South African rand -->
+      <xs:enumeration value="ZMW" /><!-- Zambian kwacha -->
+      <xs:enumeration value="ZWL" /><!-- Zimbabwean dollar -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="VatAreas">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="EU" /><!-- European Union -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ExtendedVatAreas">
+    <xs:union memberTypes="CountryCode VatAreas" />
+  </xs:simpleType>
+
+  <!-- ############################################## -->
+  <!-- ########### numeric/regexp values ############ -->
+
+  <xs:simpleType name="AdvertIdValue"><!-- advert ID alphanumeric, no white spaces -->
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[-a-zA-Z0-9_]+"/>
+      <xs:minLength value="1"/>
+      <xs:maxLength value="36"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="StateValue"><!-- USA states (US-TX...), DE Bundesländer (DE-HH), Austria (AT-1)... -->
+  <!-- should be "US-TX" and NOT "Texas" -->
+  <!-- https://www.iso.org/obp/ui/#iso:code:3166:US, https://www.iso.org/obp/ui/#iso:code:3166:DE ... -->
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[A-Z]{2}\-[0-9A-Z]{1,5}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ValidYear"><!-- year built, year refit, mooring rental... (not negative) -->
+    <xs:restriction base="xs:positiveInteger">
+      <xs:minInclusive value="1700"/>
+      <xs:maxInclusive value="2200"/><!-- "mooring rental until" is in the future -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="BoatDimension"><!-- values for loa, beam, draught... in m (not negative) -->
+    <xs:restriction base="xs:decimal">
+      <xs:fractionDigits value="2"/>
+      <xs:minInclusive value="0.01"/>
+      <xs:maxInclusive value="460.00"/><!-- longest ship: https://en.wikipedia.org/wiki/Seawise_Giant -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="SpeedBoatValue"><!-- range for boat speed in knots (not negative) -->
+    <xs:restriction base="xs:decimal">
+      <xs:fractionDigits value="2"/>
+      <xs:minInclusive value="0"/>
+      <xs:maxInclusive value="210.00"/><!-- https://explore-magazine.de/articles/speedboot_3000ps.html -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ConsumptionValue"><!-- range for engine consumption in l/h (not negative) -->
+    <xs:restriction base="xs:decimal">
+      <xs:fractionDigits value="2"/>
+      <xs:minInclusive value="0.10"/>
+      <xs:maxInclusive value="9000.00"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="SailAreaValue"><!-- min./max. sail area in m2 (not negative) -->
+    <xs:restriction base="xs:decimal">
+      <xs:fractionDigits value="2"/>
+      <xs:minInclusive value="1.00"/>
+      <xs:maxInclusive value="6000.00"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Md5Value"><!-- avoid timestamp in this attribute -->
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[0-9a-fA-F]{32}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="DateTimeWithZone"><!-- enforce time zone 2020-12-31T14:45:56+02:00 -->
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[1-2][0-9]{3}\-[0-1][0-9]\-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9][\+\-][0-1][0-9]:[0-5][0-9]"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Latitude">
+    <xs:restriction base="xs:decimal">
+      <xs:minInclusive value="-90.0"/>
+      <xs:maxInclusive value="90.0"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Longitude">
+    <xs:restriction base="xs:decimal">
+      <xs:minInclusive value="-180.0"/>
+      <xs:maxExclusive value="180.0"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="UnsignedByteWithoutZero">
+    <xs:restriction base="xs:unsignedByte">
+        <xs:minExclusive value="0"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="EngineCapacity">
+    <xs:restriction base="xs:positiveInteger">
+      <xs:minInclusive value="30"/>
+      <xs:maxInclusive value="30000000"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="EnginePower">
+    <xs:restriction base="xs:decimal">
+      <xs:minInclusive value="0.1"/>
+      <xs:maxInclusive value="115000.0"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- ############################################## -->
+  <!-- ########### units ############################ -->
+
+  <xs:simpleType name="LengthUnit">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="m" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="AreaUnit">
+    <xs:restriction base="xs:string">
+       <xs:enumeration value="m2" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="VolumeUnit">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="l" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="SpeedUnitBoat">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="kn" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="SpeedUnitTrailer">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="kmh" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="PowerUnit">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="hp" /><!-- horse power -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="WeightUnit">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="kg" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="RangeUnit">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="nm" /><!-- nautical miles -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ConsumptionUnit">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="lh" /><!-- litres per hour -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="CubicUnit">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="cm3" /><!-- cubic capacity of an engine -->
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- ############################################## -->
+  <!-- ########### combined items ################### -->
+
+  <xs:complexType name="StrWithCountryCodeNotEmpty">
+    <xs:simpleContent>
+      <xs:extension base="NotEmptyString">
+        <xs:attribute name="country" type="CountryCode"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="LengthItem"><!-- loa, beam, clearance, headroom... -->
+    <xs:simpleContent>
+      <xs:extension base="BoatDimension">
+        <xs:attribute name="unit" type="LengthUnit" use="required"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="WeightItem"><!-- weight, payload, ballast -->
+    <xs:simpleContent>
+      <xs:extension base="xs:positiveInteger">
+        <xs:attribute name="unit" type="WeightUnit" use="required"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="TankItem">
+    <xs:simpleContent>
+      <xs:extension base="TextOrTrue">
+        <xs:attribute name="unit" type="VolumeUnit"/>
+        <xs:attribute name="volume" type="xs:positiveInteger"/>
+        <xs:attribute name="material" type="TankMaterial"/>
+        <xs:attribute name="amount" type="UnsignedByteWithoutZero"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="SailItem">
+    <xs:simpleContent>
+      <xs:extension base="TextOrTrue">
+        <xs:attribute name="area" type="SailAreaValue"/>
+        <xs:attribute name="unit" type="AreaUnit"/>
+        <xs:attribute name="year" type="ValidYear"/>
+        <xs:attribute name="material" type="SailMaterial"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="StandingRigItem">
+    <xs:simpleContent>
+      <xs:extension base="TextOrTrue">
+        <xs:attribute name="year" type="ValidYear"/>
+        <xs:attribute name="material" type="StandingRigMaterial"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="AdditionalBasicItem">
+      <xs:sequence>
+        <xs:element type="NotEmptyString" name="value" minOccurs="0"/>
+        <xs:element name="label" maxOccurs="unbounded">
+          <xs:complexType>
+            <xs:simpleContent>
+              <xs:extension base="NotEmptyString">
+                <xs:attribute type="LanguageCode" name="language" use="required"/>
+              </xs:extension>
+            </xs:simpleContent>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+  </xs:complexType>
+
+  <!-- ############################################## -->
+  <!-- ########### whole structure ################## -->
+
+  <xs:element name="nautix">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="account" minOccurs="0" maxOccurs="unbounded">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="account_name" type="NotEmptyString"/>
+              <xs:element name="offices" minOccurs="0">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="office" maxOccurs="unbounded">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element type="NotEmptyString" name="office_name"/>
+                          <xs:element name="person" minOccurs="0">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element name="title" type="TitleType" minOccurs="0"/>
+                                <xs:element name="forename" type="NotEmptyString" minOccurs="0"/>
+                                <xs:element name="surname" type="NotEmptyString" minOccurs="0"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="address" type="NotEmptyString"/>
+                          <xs:element name="address2" type="NotEmptyString" minOccurs="0"/>
+                          <xs:element name="town" type="NotEmptyString"/>
+                          <xs:element name="postcode" type="NotEmptyString" minOccurs="0"/><!-- not all countries have postcode -->
+                          <xs:element name="country" type="CountryCode"/>
+                          <xs:element name="state" type="StateValue" minOccurs="0"/>
+                          <xs:element name="email" type="NotEmptyString" />
+                          <xs:element name="phones">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element name="phone" minOccurs="0" maxOccurs="unbounded">
+                                  <xs:complexType>
+                                    <xs:simpleContent>
+                                      <xs:extension base="NotEmptyString">
+                                        <xs:attribute name="type" type="PhoneType" use="required"/>
+                                      </xs:extension>
+                                    </xs:simpleContent>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="languages" minOccurs="0">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element name="language" type="LanguageCode" minOccurs="0" maxOccurs="unbounded"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="links" minOccurs="0">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element name="link" minOccurs="0" maxOccurs="unbounded">
+                                  <xs:complexType>
+                                    <xs:simpleContent>
+                                      <xs:extension base="xs:anyURI">
+                                        <xs:attribute name="type" type="NotEmptyString" use="required"/>
+                                      </xs:extension>
+                                    </xs:simpleContent>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                        </xs:sequence>
+                        <xs:attribute name="id" type="NotEmptyString" use="required"/>
+                        <xs:attribute name="modified" type="DateTimeWithZone" />
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="billing" minOccurs="0">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="company" type="NotEmptyString" minOccurs="0"/>
+                    <xs:element name="vat_id" type="NotEmptyString" minOccurs="0"/>
+                    <xs:element name="person" minOccurs="0">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="title" type="TitleType" minOccurs="0"/>
+                          <xs:element name="forename" type="NotEmptyString" minOccurs="0"/>
+                          <xs:element name="surname" type="NotEmptyString" minOccurs="0"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element name="address" type="NotEmptyString"/>
+                    <xs:element name="address2" type="NotEmptyString" minOccurs="0"/>
+                    <xs:element name="town" type="NotEmptyString"/>
+                    <xs:element name="postcode" type="NotEmptyString" minOccurs="0"/><!-- not all countries have postcode -->
+                    <xs:element name="country" type="CountryCode"/>
+                    <xs:element name="state" type="StateValue" minOccurs="0"/>
+                    <xs:element name="email" type="NotEmptyString" />
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="adverts" minOccurs="0">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="advert" minOccurs="0" maxOccurs="unbounded">
+                      <xs:complexType>
+                        <xs:all>
+                          <xs:element name="advert_data" minOccurs="0">
+                            <xs:complexType>
+                              <xs:all>
+                                <xs:element name="office_id" type="NotEmptyString"/>
+                                <xs:element name="internal_code" type="NotEmptyString" minOccurs="0"/>
+                                <xs:element name="internal_code_private" type="NotEmptyString" minOccurs="0"/>
+                                <xs:element name="internal_code_public" type="NotEmptyString" minOccurs="0"/>
+                                <xs:element name="subtitle" type="Subtitle" minOccurs="0"/>
+                                <xs:element name="marketing_description" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element name="text" maxOccurs="unbounded">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="NotEmptyString">
+                                              <xs:attribute name="language" type="LanguageCode" use="required"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="external_link" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element name="link" minOccurs="0" maxOccurs="unbounded">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="xs:anyURI">
+                                              <xs:attribute name="language" type="LanguageCode" use="required"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:all>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="sale_data" minOccurs="0">
+                            <xs:complexType>
+                              <xs:all>
+                                <xs:element name="sale_class" type="SaleClass"/>
+                                <xs:element name="sale_status" type="SaleStatus" minOccurs="0"/>
+                                <xs:element name="expected_delivery" type="xs:gYearMonth" minOccurs="0"/>
+                                <xs:element name="condition" type="ConditionType" minOccurs="0"/>
+                                <xs:element name="price">
+                                  <xs:complexType>
+                                    <xs:simpleContent>
+                                      <xs:extension base="DecimalOrEmpty">
+                                        <xs:attribute name="type" type="PriceType" use="required"/>
+                                        <xs:attribute name="currency" type="CurrencyCode"/>
+                                      </xs:extension>
+                                    </xs:simpleContent>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="vat" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element name="paid_area" type="ExtendedVatAreas" minOccurs="0" maxOccurs="unbounded"/>
+                                    </xs:sequence>
+                                    <xs:attribute name="status" type="VatStatus" use="required"/>
+                                    <xs:attribute name="stated_separatly" type="OnlyTrue"/>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="trade_in_allowed" type="OnlyTrue" minOccurs="0"/>
+                                <xs:element name="previous_owners" type="xs:nonNegativeInteger" minOccurs="0"/><!-- 0 possible -->
+                                <xs:element name="location">
+                                  <xs:complexType>
+                                    <xs:simpleContent>
+                                      <xs:extension base="xs:string">
+                                        <xs:attribute name="country" type="CountryCode"/>
+                                        <xs:attribute name="state" type="StateValue"/>
+                                        <xs:attribute name="lat" type="Latitude"/>
+                                        <xs:attribute name="lon" type="Longitude"/>
+                                        <xs:attribute name="mooring_available" type="BoolTrueFalse"/>
+                                      </xs:extension>
+                                    </xs:simpleContent>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:all>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="charter_data" type="xs:string" minOccurs="0"/>
+                          <xs:element name="boat_data" minOccurs="0">
+                            <xs:complexType>
+                              <xs:all>
+                                <xs:element name="boat_types">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element name="type" maxOccurs="unbounded">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="BoatType">
+                                              <xs:attribute name="primary" type="OnlyTrue"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="manufacturer" type="StrWithCountryCodeNotEmpty" minOccurs="0"/>
+                                <xs:element name="designer" type="NotEmptyString" minOccurs="0"/>
+                                <xs:element name="builder" type="NotEmptyString" minOccurs="0"/>
+                                <xs:element name="model" type="NotEmptyString"/>
+                                <xs:element name="boat_name" type="NotEmptyString" minOccurs="0"/>
+                                <xs:element name="model_year" type="ValidYear" minOccurs="0"/>
+                                <xs:element name="year_built" type="ValidYear" minOccurs="0"/>
+                                <xs:element name="year_launched" type="ValidYear" minOccurs="0"/>
+                                <xs:element name="last_refit" type="ValidYear" minOccurs="0"/>
+                                <xs:element name="cockpit_type" type="CockpitType" minOccurs="0"/>
+                                <xs:element name="steering_type" type="SteeringType" minOccurs="0"/>
+                                <xs:element name="flybridge" type="TextOrTrue" minOccurs="0"/>
+                                <xs:element name="hard_top" type="TextOrTrue" minOccurs="0"/>
+                                <xs:element name="convertible_top" type="TextOrTrue" minOccurs="0"/>
+                                <xs:element name="ce_design_category" type="CEType" minOccurs="0"/>
+                                <xs:element name="ce_passenger_capacity" type="xs:unsignedShort" minOccurs="0"/>
+                                <xs:element name="registration" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:all>
+                                      <xs:element name="flag" type="CountryCode" minOccurs="0"/>
+                                      <xs:element name="port" type="NotEmptyString" minOccurs="0"/>
+                                      <xs:element name="purpose" type="RegistrationPurpose" minOccurs="0"/>
+                                    </xs:all>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="dimensions" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:all>
+                                      <xs:element name="loa" type="LengthItem" minOccurs="0"/>
+                                      <xs:element name="lwl" type="LengthItem" minOccurs="0"/>
+                                      <xs:element name="beam" type="LengthItem" minOccurs="0"/>
+                                      <xs:element name="draught" type="LengthItem" minOccurs="0"/>
+                                      <xs:element name="draught_keelup" type="LengthItem" minOccurs="0"/>
+                                      <xs:element name="clearance" type="LengthItem" minOccurs="0"/>
+                                      <xs:element name="displacement" type="WeightItem" minOccurs="0"/>
+                                    </xs:all>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="hull" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:all>
+                                      <xs:element name="hin" type="NotEmptyString" minOccurs="0"/>
+                                      <xs:element name="colours" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:sequence>
+                                            <xs:element name="colour" type="HullColour" minOccurs="0" maxOccurs="3"/>
+                                          </xs:sequence>
+                                          <xs:attribute name="text" type="NotEmptyString"/>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="material" type="HullMaterial" minOccurs="0"/>
+                                      <xs:element name="type" type="HullType" minOccurs="0"/>
+                                      <xs:element name="keel_type" type="KeelType" minOccurs="0"/>
+                                      <xs:element name="keel_ballast" type="WeightItem" minOccurs="0"/>
+                                    </xs:all>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="accommodation" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:all>
+                                      <xs:element name="headroom" type="LengthItem" minOccurs="0"/>
+                                      <xs:element name="cabins" minOccurs="0">
+                                        <xs:complexType>
+                                        <xs:sequence>
+                                            <xs:element name="cabin" minOccurs="0" maxOccurs="unbounded">
+                                              <xs:complexType>
+                                               <xs:simpleContent>
+                                                <xs:extension base="TextOrTrue">
+                                                  <xs:attribute name="type" type="CabinType"/>
+                                                  <xs:attribute name="position" type="CabinPosition"/>
+                                                  <xs:attribute name="amount" type="xs:positiveInteger"/>
+                                                </xs:extension>
+                                               </xs:simpleContent>
+                                             </xs:complexType>
+                                            </xs:element>
+                                          </xs:sequence>
+                                         <xs:attribute name="total" type="xs:nonNegativeInteger" use="required"/><!-- 0 possible -->
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="berths" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:sequence>
+                                            <xs:element name="berth" minOccurs="0" maxOccurs="unbounded">
+                                              <xs:complexType>
+                                                <xs:simpleContent>
+                                                  <xs:extension base="xs:string">
+                                                    <xs:attribute name="type" type="BerthType"/>
+                                                    <xs:attribute name="amount" type="xs:positiveInteger"/>
+                                                  </xs:extension>
+                                                </xs:simpleContent>
+                                              </xs:complexType>
+                                            </xs:element>
+                                          </xs:sequence>
+                                          <xs:attribute name="total" type="xs:nonNegativeInteger" use="required"/><!-- 0 possible -->
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="toilets" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:sequence>
+                                            <xs:element name="toilet" minOccurs="0" maxOccurs="unbounded">
+                                              <xs:complexType>
+                                                <xs:simpleContent>
+                                                  <xs:extension base="TextOrTrue">
+                                                    <xs:attribute name="type" type="ToiletType"/>
+                                                    <xs:attribute name="amount" type="xs:positiveInteger"/>
+                                                  </xs:extension>
+                                                </xs:simpleContent>
+                                              </xs:complexType>
+                                            </xs:element>
+                                          </xs:sequence>
+                                          <xs:attribute name="total" type="xs:nonNegativeInteger"/><!-- 0 possible -->
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="showers" type="xs:nonNegativeInteger" minOccurs="0"/><!-- 0 possible -->
+                                      <xs:element name="bathtub" type="TextOrTrue" minOccurs="0"/>
+                                      <xs:element name="heating" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="TextOrTrue">
+                                              <xs:attribute name="type" type="HeatingType"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element type="TextOrTrue" name="air_conditioning" minOccurs="0"/>
+                                    </xs:all>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="drive" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:all>
+                                      <xs:element name="number_of_engines" type="xs:nonNegativeInteger" minOccurs="0"/><!-- 0 possible -->
+                                      <xs:element name="no_engine" type="OnlyTrue" minOccurs="0"/>
+                                      <xs:element name="propulsion" type="PropulsionType" minOccurs="0"/>
+                                      <xs:element name="propeller" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="TextOrTrue">
+                                              <xs:attribute name="blades" type="PropellerBlades"/>
+                                              <xs:attribute name="material" type="PropellerMaterial"/>
+                                              <xs:attribute name="type" type="PropellerType"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="cruising_speed" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="SpeedBoatValue">
+                                              <xs:attribute name="unit" type="SpeedUnitBoat"/>
+                                              <xs:attribute name="range" type="xs:nonNegativeInteger"/>
+                                              <xs:attribute name="range_unit" type="RangeUnit"/>
+                                              <xs:attribute name="fuel_consumption" type="ConsumptionValue"/>
+                                              <xs:attribute name="consumption_unit" type="ConsumptionUnit"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="max_speed" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="SpeedBoatValue">
+                                              <xs:attribute name="unit" type="SpeedUnitBoat"/>
+                                              <xs:attribute name="range" type="xs:nonNegativeInteger"/>
+                                              <xs:attribute name="range_unit" type="RangeUnit"/>
+                                              <xs:attribute name="fuel_consumption" type="ConsumptionValue"/>
+                                              <xs:attribute name="consumption_unit" type="ConsumptionUnit"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="max_engine_power" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="EnginePower">
+                                              <xs:attribute name="unit" type="PowerUnit" use="required"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="bow_thruster" type="TextOrTrue" minOccurs="0"/>
+                                      <xs:element name="stern_thruster" type="TextOrTrue" minOccurs="0"/>
+                                      <xs:element name="control_type" type="ControlType" minOccurs="0"/>
+                                      <xs:element name="lake_constance" type="OnlyTrue" minOccurs="0"/>
+                                    </xs:all>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="rig_sails" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:all>
+                                      <xs:element name="sailplan" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="SailplanType">
+                                              <xs:attribute name="masts" type="UnsignedByteWithoutZero"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="main_sail" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="SailItem">
+                                              <xs:attribute name="furling" type="FurlingTypeMainsail"/>
+                                              <xs:attribute name="battened" type="OnlyTrue"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="jib" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="SailItem">
+                                              <xs:attribute name="furling" type="FurlingTypeOther"/>
+                                              <xs:attribute name="selftacking" type="OnlyTrue"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="genoa" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="SailItem">
+                                              <xs:attribute name="furling" type="FurlingTypeOther"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="gennaker" type="SailItem" minOccurs="0"/>
+                                      <xs:element name="spinnaker" type="SailItem" minOccurs="0"/>
+                                      <xs:element name="blister" type="SailItem" minOccurs="0"/>
+                                      <xs:element name="storm_jib" type="TextOrTrue" minOccurs="0"/>
+                                      <xs:element name="code_zero" type="SailItem" minOccurs="0"/>
+                                      <xs:element name="total_sail_area" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="xs:decimal">
+                                              <xs:attribute name="unit" type="AreaUnit" use="required"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="mast" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="TextOrTrue">
+                                              <xs:attribute name="material" type="MastMaterial"/>
+                                              <xs:attribute name="height" type="BoatDimension"/>
+                                              <xs:attribute name="unit" type="LengthUnit"/>
+                                              <xs:attribute name="lowering_system" type="OnlyTrue"/>
+                                              <xs:attribute name="lowered_height" type="BoatDimension"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="boom" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="TextOrTrue">
+                                              <xs:attribute name="material" type="MastMaterial"/>
+                                              <xs:attribute name="rodkick" type="OnlyTrue"/>
+                                              <xs:attribute name="lazy_jacks" type="OnlyTrue"/>
+                                              <xs:attribute name="lazy_bag" type="OnlyTrue"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="gennaker_boom" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="TextOrTrue">
+                                              <xs:attribute name="material" type="MastMaterial"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="spinnaker_boom" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="TextOrTrue">
+                                              <xs:attribute name="material" type="MastMaterial"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="winches" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:sequence>
+                                            <xs:element name="winch" minOccurs="0" maxOccurs="unbounded">
+                                              <xs:complexType>
+                                                <xs:simpleContent>
+                                                  <xs:extension base="TextOrTrue">
+                                                    <xs:attribute name="type" type="ElectricManual"/>
+                                                    <xs:attribute name="amount" type="UnsignedByteWithoutZero"/>
+                                                  </xs:extension>
+                                                </xs:simpleContent>
+                                              </xs:complexType>
+                                            </xs:element>
+                                          </xs:sequence>
+                                          <xs:attribute name="total" type="UnsignedByteWithoutZero"/>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="shrouds" type="StandingRigItem" minOccurs="0"/>
+                                      <xs:element name="backstay" type="StandingRigItem" minOccurs="0"/>
+                                      <xs:element name="forestay" type="StandingRigItem" minOccurs="0"/>
+                                    </xs:all>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="tanks" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:all>
+                                      <xs:element name="freshwater" type="TankItem" minOccurs="0"/>
+                                      <xs:element name="wastewater" type="TankItem" minOccurs="0"/>
+                                      <xs:element name="fuel" type="TankItem" minOccurs="0"/>
+                                    </xs:all>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:all>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="engine_data" minOccurs="0">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element name="engine" minOccurs="0" maxOccurs="10">
+                                  <xs:complexType>
+                                    <xs:all>
+                                      <xs:element name="serial_number" type="NotEmptyString" minOccurs="0"/>
+                                      <xs:element name="engine_type" type="EngineType" minOccurs="0"/>
+                                      <xs:element name="manufacturer" type="StrWithCountryCodeNotEmpty" minOccurs="0"/>
+                                      <xs:element name="model" type="NotEmptyString" minOccurs="0"/>
+                                      <xs:element name="power" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="EnginePower"><!-- decimal: eg. 3.5 hp outboard -->
+                                              <xs:attribute name="unit" type="PowerUnit" use="required"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="fuel" type="FuelType" minOccurs="0"/>
+                                      <xs:element name="year_built" type="ValidYear" minOccurs="0"/>
+                                      <xs:element name="hours" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="xs:positiveInteger">
+                                              <xs:attribute name="date" type="xs:date"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="cylinders" type="UnsignedByteWithoutZero" minOccurs="0"/>
+                                      <xs:element name="strokes" type="UnsignedByteWithoutZero" minOccurs="0"/>
+                                      <xs:element name="capacity" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="EngineCapacity">
+                                              <xs:attribute name="unit" type="CubicUnit" use="required"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="weight" type="WeightItem" minOccurs="0"/>
+                                      <xs:element name="cooling_system" type="CoolingType" minOccurs="0"/>
+                                      <xs:element name="starter_type" type="StarterType" minOccurs="0"/>
+                                    </xs:all>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="trailer_data" minOccurs="0">
+                            <xs:complexType>
+                              <xs:all>
+                                <xs:element name="trailer_type" type="TrailerType" minOccurs="0"/>
+                                <xs:element name="boat_types" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element name="type" type="BoatTypeForTrailer" minOccurs="0" maxOccurs="unbounded"/>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="manufacturer" type="StrWithCountryCodeNotEmpty" minOccurs="0"/>
+                                <xs:element name="model" type="NotEmptyString" minOccurs="0"/>
+                                <xs:element name="year_built" type="ValidYear" minOccurs="0"/>
+                                <xs:element name="material" type="TrailerMaterial" minOccurs="0"/>
+                                <xs:element name="axles" type="UnsignedByteWithoutZero" minOccurs="0"/>
+                                <xs:element name="dimensions" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:all>
+                                      <xs:element name="length" type="LengthItem" minOccurs="0"/>
+                                      <xs:element name="width" type="LengthItem" minOccurs="0"/>
+                                      <xs:element name="axle_width" type="LengthItem" minOccurs="0"/>
+                                      <xs:element name="curb_weight" type="WeightItem" minOccurs="0"/>
+                                      <xs:element name="payload" type="WeightItem" minOccurs="0"/>
+                                      <xs:element name="total_weight" type="WeightItem" minOccurs="0"/>
+                                    </xs:all>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="braked" type="BoolTrueFalse" minOccurs="0"/>
+                                <xs:element name="max_speed" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:simpleContent>
+                                      <xs:extension base="UnsignedByteWithoutZero">
+                                        <xs:attribute name="unit" type="SpeedUnitTrailer" use="required"/>
+                                      </xs:extension>
+                                    </xs:simpleContent>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:all>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="mooring_data" minOccurs="0">
+                            <xs:complexType>
+                              <xs:all>
+                                <xs:element name="mooring_type" type="MooringType" minOccurs="0"/>
+                                <xs:element name="title" type="NotEmptyString"/>
+                                <xs:element name="town" type="NotEmptyString" minOccurs="0"/>
+                                <xs:element name="marina" type="NotEmptyString" minOccurs="0"/>
+                                <xs:element name="with_land" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:simpleContent>
+                                      <xs:extension base="OnlyTrue">
+                                        <xs:attribute name="area" type="xs:positiveInteger"/>
+                                        <xs:attribute name="unit" type="AreaUnit"/>
+                                      </xs:extension>
+                                    </xs:simpleContent>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="year_until" type="ValidYear" minOccurs="0"/>
+                                <xs:element name="dimensions" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:all>
+                                      <xs:element name="length" type="LengthItem" minOccurs="0"/>
+                                      <xs:element name="width" type="LengthItem" minOccurs="0"/>
+                                      <xs:element name="water_depth" type="LengthItem" minOccurs="0"/>
+                                      <xs:element name="max_boat_draught" type="LengthItem" minOccurs="0"/>
+                                    </xs:all>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:all>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="equipment_data" minOccurs="0">
+                            <xs:complexType>
+                              <xs:all>
+                                <xs:element name="navigation" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:all>
+                                      <xs:element type="TextOrTrue" name="autopilot" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="automatic_steering_gear" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="radar" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="vhf" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="gps" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="plotter" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="compass" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="depth_instrument" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="speed_instrument" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="wind_instrument" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="fishfinder" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="ais" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="ssb" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="navtex" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="on_board_computer" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="navigation_lights" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="rudder_indicator" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="rev_counter" minOccurs="0"/>
+                                    </xs:all>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="technics" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:all>
+                                      <xs:element type="TextOrTrue" name="battery" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="battery_charger" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="main_circuit_breaker" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="shore_supply" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="generator" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="solar_panels" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="inverter" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="rectifier" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="hour_meter" minOccurs="0"/>
+                                      <xs:element name="anchor" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="TextOrTrue">
+                                              <xs:attribute type="AnchorRode" name="rode"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="anchor_windlasses" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:sequence>
+                                            <xs:element name="anchor_windlass" maxOccurs="unbounded">
+                                              <xs:complexType>
+                                                <xs:simpleContent>
+                                                  <xs:extension base="TextOrTrue">
+                                                    <xs:attribute type="AnchorWindlassPosition" name="position"/>
+                                                    <xs:attribute type="AnchorWindlassType" name="type"/>
+                                                  </xs:extension>
+                                                </xs:simpleContent>
+                                              </xs:complexType>
+                                            </xs:element>
+                                          </xs:sequence>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element type="TextOrTrue" name="search_light" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="bow_floodlight" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="under_water_light" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="under_water_paint" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="davits" minOccurs="0"/>
+                                      <xs:element name="trim_tabs" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="TextOrTrue">
+                                              <xs:attribute type="TrimTabsType" name="type"/>
+                                              <xs:attribute type="OnlyTrue" name="indicator"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element type="TextOrTrue" name="water_pressure_system" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="warm_water_system" minOccurs="0"/>
+                                    </xs:all>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="interior" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:all>
+                                      <xs:element name="fridges" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:sequence>
+                                            <xs:element name="fridge" maxOccurs="unbounded">
+                                              <xs:complexType>
+                                                <xs:simpleContent>
+                                                  <xs:extension base="TextOrTrue">
+                                                    <xs:attribute type="FridgeType" name="type"/>
+                                                    <xs:attribute type="FridgePosition" name="position"/>
+                                                  </xs:extension>
+                                                </xs:simpleContent>
+                                              </xs:complexType>
+                                            </xs:element>
+                                          </xs:sequence>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element type="TextOrTrue" name="freezer" minOccurs="0"/>
+                                      <xs:element name="cooktops" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:sequence>
+                                            <xs:element name="cooktop" maxOccurs="unbounded">
+                                              <xs:complexType>
+                                                <xs:simpleContent>
+                                                  <xs:extension base="TextOrTrue">
+                                                    <xs:attribute type="CooktopType" name="type"/>
+                                                    <xs:attribute type="UnsignedByteWithoutZero" name="burners_or_zones"/>
+                                                  </xs:extension>
+                                                </xs:simpleContent>
+                                              </xs:complexType>
+                                            </xs:element>
+                                          </xs:sequence>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="oven" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="TextOrTrue">
+                                              <xs:attribute type="OvenType" name="type"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element type="TextOrTrue" name="microwave" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="sink" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="dishwasher" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="watermaker" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="washing_machine" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="dryer" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="coolbox" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="icemaker" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="barbecue_grill" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="extractor_hood" minOccurs="0"/>
+                                    </xs:all>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="entertainment" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:all>
+                                      <xs:element type="TextOrTrue" name="radio" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="tv" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="dvd_player" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="cd_player" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="home_cinema" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="mp3_player" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="bluetooth_connector" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="cockpit_speakers" minOccurs="0"/>
+                                      <xs:element name="tv_antenna" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="TextOrTrue">
+                                              <xs:attribute type="TvAntennaType" name="type"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element type="TextOrTrue" name="satellite_phone" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="satellite_internet" minOccurs="0"/>
+                                    </xs:all>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="deck" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:all>
+                                      <xs:element name="deck_showers" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:sequence>
+                                            <xs:element name="deck_shower" maxOccurs="unbounded">
+                                              <xs:complexType>
+                                                <xs:simpleContent>
+                                                  <xs:extension base="TextOrTrue">
+                                                    <xs:attribute type="DeckShowerPosition" name="position"/>
+                                                    <xs:attribute type="OnlyTrue" name="warm"/>
+                                                  </xs:extension>
+                                                </xs:simpleContent>
+                                              </xs:complexType>
+                                            </xs:element>
+                                          </xs:sequence>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element type="TextOrTrue" name="jacuzzi" minOccurs="0"/>
+                                      <xs:element name="bathing_platform" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="TextOrTrue">
+                                              <xs:attribute type="BathingPlatformType" name="type"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element type="TextOrTrue" name="bathing_ladder" minOccurs="0"/>
+                                      <xs:element name="gangway" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="TextOrTrue">
+                                              <xs:attribute type="GangwayType" name="type"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element type="TextOrTrue" name="pulpit" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="pushpit" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="guard_rail" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="stern_rail" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="teak_deck" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="teak_cockpit" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="cockpit_table" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="deck_cleaning_system" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="wetbar" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="jet_ski" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="tender_garage" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="heliport" minOccurs="0"/>
+                                      <xs:element name="boat_crane" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="TextOrTrue">
+                                              <xs:attribute type="ElectricManual" name="type"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element name="equipment_rack" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="TextOrTrue">
+                                              <xs:attribute type="BoolTrueFalse" name="folding"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element type="TextOrTrue" name="suncushions" minOccurs="0"/>
+                                    </xs:all>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="covers" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:all>
+                                      <xs:element type="TextOrTrue" name="spray_hood" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="bimini_top" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="winter_cover" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="harbour_cover" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="full_cover" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="transport_cover" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="camper_canvas" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="cockpit_cover" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="flybridge_cover" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="windscreen_cover" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="prop_cover" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="sail_cover" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="main_sail_cover" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="head_sail_cover" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="wheel_cover" minOccurs="0"/>
+                                      <xs:element name="sun_shades" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:sequence>
+                                            <xs:element name="sun_shade" maxOccurs="unbounded">
+                                              <xs:complexType>
+                                                <xs:simpleContent>
+                                                  <xs:extension base="TextOrTrue">
+                                                    <xs:attribute type="SunShadePosition" name="position"/>
+                                                  </xs:extension>
+                                                </xs:simpleContent>
+                                              </xs:complexType>
+                                            </xs:element>
+                                          </xs:sequence>
+                                        </xs:complexType>
+                                      </xs:element>
+                                    </xs:all>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="safety" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:all>
+                                      <xs:element type="TextOrTrue" name="fire_extinguish_system" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="fire_extinguisher" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="life_raft" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="life_jackets" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="life_belts" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="dan_buoy" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="epirb" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="radar_reflector" minOccurs="0"/>
+                                      <xs:element name="bilge_pump" minOccurs="0">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="TextOrTrue">
+                                              <xs:attribute type="BilgePumpType" name="type"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                      <xs:element type="TextOrTrue" name="self_bailing_valve" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="mob_system" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="alarm" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="bilge_alarm" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="gas_detector" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="smoke_detector" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="emergency_tiller" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="spare_propeller" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="fog_horn" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="flags" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="distress_signals" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="jacklines" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="railing_net" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="safe" minOccurs="0"/>
+                                    </xs:all>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="layout" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:all>
+                                      <xs:element type="TextOrTrue" name="inside_steering" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="outside_steering" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="back2back_seats" minOccurs="0"/>
+                                      <xs:element type="TextOrTrue" name="single_front_seat" minOccurs="0"/>
+                                    </xs:all>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="additional_custom" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element name="item" type="NotEmptyString" maxOccurs="unbounded"/>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="equipment_description" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element name="text" maxOccurs="unbounded">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="NotEmptyString">
+                                              <xs:attribute type="LanguageCode" name="language" use="required"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:all>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="other_data" minOccurs="0">
+                            <xs:complexType>
+                              <xs:all>
+                                <xs:element name="title" type="NotEmptyString"/>
+                                <xs:element name="properties" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element name="property" minOccurs="0" maxOccurs="unbounded">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="xs:string">
+                                              <xs:attribute name="name" type="xs:string"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:all>
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:element name="media" minOccurs="0">
+                            <xs:complexType>
+                              <xs:all>
+                                <xs:element name="images" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element name="image" minOccurs="0" maxOccurs="unbounded">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="xs:anyURI">
+                                              <xs:attribute name="type" type="MimeTypeImage" use="required"/>
+                                              <xs:attribute name="caption" type="NotEmptyString"/>
+                                              <xs:attribute name="md5" type="Md5Value" use="required"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="videos" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element name="video" minOccurs="0" maxOccurs="unbounded">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="xs:anyURI">
+                                              <xs:attribute name="caption" type="NotEmptyString"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="panoramas" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element name="panorama" minOccurs="0" maxOccurs="unbounded">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="xs:anyURI">
+                                              <xs:attribute name="type" type="PanoramaType" use="required"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                                <xs:element name="documents" minOccurs="0">
+                                  <xs:complexType>
+                                    <xs:sequence>
+                                      <xs:element name="document" minOccurs="0" maxOccurs="unbounded">
+                                        <xs:complexType>
+                                          <xs:simpleContent>
+                                            <xs:extension base="xs:anyURI">
+                                              <xs:attribute name="type" type="NotEmptyString" use="required"/>
+                                              <xs:attribute name="caption" type="NotEmptyString"/>
+                                              <xs:attribute name="md5" type="Md5Value" use="required"/>
+                                            </xs:extension>
+                                          </xs:simpleContent>
+                                        </xs:complexType>
+                                      </xs:element>
+                                    </xs:sequence>
+                                  </xs:complexType>
+                                </xs:element>
+                              </xs:all>
+                              <xs:attribute name="validation" type="MediaValidation"/>
+                            </xs:complexType>
+                          </xs:element>
+                        </xs:all>
+                        <xs:attribute name="id" type="AdvertIdValue" use="required"/>
+                        <xs:attribute name="purpose" type="AdvertPurpose" use="required"/>
+                        <xs:attribute name="type" type="AdvertType" use="required"/>
+                        <xs:attribute name="status" type="AdvertStatus" use="required"/>
+                        <xs:attribute name="modified" type="DateTimeWithZone" use="required"/>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                  <xs:attribute name="count" type="xs:nonNegativeInteger"/>
+                  <xs:attribute type="xs:string" name="feed_url"/>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+            <xs:attribute type="NotEmptyString" name="token"/>
+            <xs:attribute type="AccountStatus" name="status" use="required"/>
+            <xs:attribute type="DateTimeWithZone" name="modified"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+      <xs:attribute name="version" type="NotEmptyString" use="required" />
+      <xs:attribute name="origin" type="NotEmptyString" />
+      <xs:attribute name="date" type="DateTimeWithZone" use="required" />
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

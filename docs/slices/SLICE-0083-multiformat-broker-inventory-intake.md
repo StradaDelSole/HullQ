@@ -2,7 +2,8 @@
 
 **ID:** SLICE-0083  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** REVIEW  
+**Status set by this handoff:** `REVIEW`  
 **Stage:** Broker-first marketplace — low-friction, professionally credible inventory onboarding  
 **Depends on:** Owner-accepted SLICE-0061 (private professional drafts), -0067 (atomic promotion), -0069 (public eligibility), -0072 (inventory edits), -0082 (confirmed design association), D26 accepted import decision and post-0082 reassessment  
 **Blocks:** normal broker bulk inventory onboarding without one-off manual retyping for common documented source formats

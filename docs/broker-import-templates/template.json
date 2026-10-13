@@ -1,0 +1,20 @@
+{
+  "listings": [
+    {
+      "Boat Name": "Aria",
+      "Build Year": 1998,
+      "Asking Price": "125000",
+      "Currency": "EUR",
+      "Country": "ES",
+      "Broker Ref": "REF-1001"
+    },
+    {
+      "Boat Name": "Beta",
+      "Build Year": 2005,
+      "Asking Price": "89000",
+      "Currency": "EUR",
+      "Country": "FR",
+      "Broker Ref": "REF-1002"
+    }
+  ]
+}

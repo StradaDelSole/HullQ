@@ -1,0 +1,243 @@
+---
+// SLICE-0083: the broker inventory import intake landing surface. An
+// authenticated Account whose exact current matching ACTIVE
+// OrganizationMembership contains `PUBLISHER` may upload a bounded
+// supported-format inventory file and see this Organization's own staged
+// import batches. Every confirmed row becomes an ordinary private
+// ProfessionalListingDraft (reusing the existing drafts editor/workspace)
+// -- this page never creates/mutates any PhysicalBoat/MarketEpisode/
+// NativeListing/public Search state.
+export const prerender = false;
+
+import { fetchImportBatches } from "../../../../../lib/importIntakeApi";
+import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../../../lib/authConstants";
+
+const organizationId = Astro.params.organization_id ?? "";
+const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
+const cookieHeader = Astro.request.headers.get("cookie");
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+Astro.response.headers.set("Cache-Control", "private, no-store");
+
+const result = organizationId
+  ? await fetchImportBatches(apiBaseUrl, organizationId, cookieHeader)
+  : ({ kind: "not_found" } as const);
+
+if (result.kind === "not_found") {
+  Astro.response.status = 404;
+} else if (result.kind === "mfa_required") {
+  Astro.response.status = 403;
+} else if (result.kind === "publisher_role_required") {
+  Astro.response.status = 403;
+} else if (result.kind === "service_error") {
+  Astro.response.status = 503;
+}
+
+const nextPath = `/broker/organizations/${organizationId}/imports`;
+const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(nextPath)}`;
+const stepUpUrl = `${loginUrl}&acr_values=${encodeURIComponent(AUTH0_MFA_STEP_UP_ACR_VALUE)}`;
+const uploadPath = `/broker/organizations/${organizationId}/imports/upload`;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>HullQ Broker Workspace — Inventory Import</title>
+  </head>
+  <body>
+    <main>
+      <h1>Multi-format inventory import</h1>
+      <p>
+        Upload a bounded CSV, TSV, Excel (XLSX/XLS/XLSB), OpenDocument (ODS), JSON or NautiX 1.4
+        <code>adverts.xml</code> file. Every row is staged and classified before anything is
+        created, and a confirmed row always becomes an ordinary private draft -- never a public
+        listing.
+      </p>
+      {
+        result.kind === "unauthenticated" ? (
+          <p>
+            Please <a href={loginUrl}>log in</a> to import inventory.
+          </p>
+        ) : result.kind === "not_found" ? (
+          <>
+            <h2>Not found</h2>
+            <p>This Organization import workspace is not available.</p>
+          </>
+        ) : result.kind === "mfa_required" ? (
+          <>
+            <h2>Additional verification required</h2>
+            <a href={stepUpUrl}>Verify and continue</a>
+          </>
+        ) : result.kind === "publisher_role_required" ? (
+          <>
+            <h2>Not authorized to import inventory</h2>
+            <p>
+              Your current membership in this Organization does not include the PUBLISHER role.
+            </p>
+          </>
+        ) : result.kind === "service_error" ? (
+          <>
+            <h2>Imports temporarily unavailable</h2>
+          </>
+        ) : (
+          <>
+            <p>
+              <a href={`/broker/organizations/${organizationId}`}>Back to workspace</a> ·{" "}
+              <a href={`/broker/organizations/${organizationId}/drafts`}>View drafts</a>
+            </p>
+
+            <section>
+              <h2>Upload a file</h2>
+              <form id="import-upload-form">
+                <p>
+                  <label>
+                    File
+                    <input type="file" id="import-file" required />
+                  </label>
+                </p>
+                <p>
+                  <label>
+                    Format
+                    <select id="import-format" required>
+                      <option value="CSV">CSV</option>
+                      <option value="TSV">TSV</option>
+                      <option value="XLSX">Excel XLSX</option>
+                      <option value="XLS">Excel XLS (legacy)</option>
+                      <option value="XLSB">Excel Binary XLSB</option>
+                      <option value="ODS">OpenDocument ODS</option>
+                      <option value="JSON">JSON</option>
+                      <option value="NAUTIX_XML">NautiX 1.4 adverts.xml</option>
+                    </select>
+                  </label>
+                </p>
+                <p>
+                  <label>
+                    Import source name (your own label for this recurring feed/file)
+                    <input type="text" id="import-source" required maxlength="63" />
+                  </label>
+                </p>
+                <p id="csv-delimiter-row" hidden>
+                  <label>
+                    CSV delimiter
+                    <select id="csv-delimiter">
+                      <option value="COMMA">Comma (,)</option>
+                      <option value="SEMICOLON">Semicolon (;)</option>
+                    </select>
+                  </label>
+                </p>
+                <p id="worksheet-row" hidden>
+                  <label>
+                    Worksheet
+                    <select id="import-worksheet"></select>
+                  </label>
+                </p>
+                <p id="nautix-tokens-row" hidden>
+                  <label>
+                    NautiX account token(s) you own (comma-separated)
+                    <input type="text" id="nautix-tokens" />
+                  </label>
+                </p>
+                <p>
+                  <button type="submit">Upload</button>
+                </p>
+                <p id="upload-status" role="status"></p>
+              </form>
+            </section>
+
+            <section>
+              <h2>Recent import batches</h2>
+              {result.batches.length === 0 ? (
+                <p>No imports yet.</p>
+              ) : (
+                <ul>
+                  {result.batches.map((batch) => (
+                    <li>
+                      <a
+                        href={`/broker/organizations/${organizationId}/imports/${encodeURIComponent(
+                          batch.import_batch_id,
+                        )}`}
+                      >
+                        {batch.import_source} ({batch.import_format}) — {batch.status} —{" "}
+                        {batch.row_count} row(s)
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </>
+        )
+      }
+    </main>
+    <script define:vars={{ uploadPath, organizationId }}>
+      const form = document.getElementById("import-upload-form");
+      const fileInput = document.getElementById("import-file");
+      const formatSelect = document.getElementById("import-format");
+      const sourceInput = document.getElementById("import-source");
+      const worksheetRow = document.getElementById("worksheet-row");
+      const worksheetSelect = document.getElementById("import-worksheet");
+      const nautixRow = document.getElementById("nautix-tokens-row");
+      const nautixInput = document.getElementById("nautix-tokens");
+      const csvDelimiterRow = document.getElementById("csv-delimiter-row");
+      const csvDelimiterSelect = document.getElementById("csv-delimiter");
+      const statusEl = document.getElementById("upload-status");
+
+      function updateFormatVisibility() {
+        const fmt = formatSelect.value;
+        const isSpreadsheet = ["XLSX", "XLS", "XLSB", "ODS"].includes(fmt);
+        worksheetRow.hidden = !isSpreadsheet;
+        nautixRow.hidden = fmt !== "NAUTIX_XML";
+        csvDelimiterRow.hidden = fmt !== "CSV";
+      }
+      formatSelect?.addEventListener("change", updateFormatVisibility);
+      updateFormatVisibility();
+
+      form?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const file = fileInput.files && fileInput.files[0];
+        if (!file) return;
+        statusEl.textContent = "Uploading…";
+
+        const headers = {
+          "X-HullQ-Import-Format": formatSelect.value,
+          "X-HullQ-Import-Source": sourceInput.value,
+        };
+        if (worksheetSelect.value) headers["X-HullQ-Worksheet"] = worksheetSelect.value;
+        if (nautixInput.value) headers["X-HullQ-Nautix-Account-Tokens"] = nautixInput.value;
+        if (formatSelect.value === "CSV") headers["X-HullQ-Csv-Delimiter"] = csvDelimiterSelect.value;
+
+        let response;
+        try {
+          response = await fetch(uploadPath, { method: "POST", headers, body: file });
+        } catch {
+          statusEl.textContent = "Upload failed: network error.";
+          return;
+        }
+        const body = await response.json().catch(() => ({}));
+        if (response.status === 201) {
+          window.location.href = `/broker/organizations/${organizationId}/imports/${encodeURIComponent(
+            body.import_batch_id,
+          )}`;
+          return;
+        }
+        if (body.error === "worksheet_choice_required") {
+          worksheetRow.hidden = false;
+          worksheetSelect.innerHTML = "";
+          for (const name of body.worksheets ?? []) {
+            const opt = document.createElement("option");
+            opt.value = name;
+            opt.textContent = name;
+            worksheetSelect.appendChild(opt);
+          }
+          statusEl.textContent = "Select a worksheet, then upload again.";
+          return;
+        }
+        statusEl.textContent = `Upload failed: ${body.error ?? "unknown error"}${
+          body.message ? " — " + body.message : ""
+        }`;
+      });
+    </script>
+  </body>
+</html>

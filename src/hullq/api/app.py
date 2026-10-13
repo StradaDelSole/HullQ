@@ -110,6 +110,17 @@ from hullq.application.design_association import (
     get_organization_listing_design_association,
     search_organization_listing_design_candidates,
 )
+from hullq.application.import_intake import (
+    ConfirmImportBatchOutcome,
+    GetImportBatchOutcome,
+    SetImportMappingOutcome,
+    UploadImportOutcome,
+    confirm_import_batch_for_organization,
+    get_import_batch_for_organization,
+    list_import_batches_for_organization,
+    set_import_mapping_for_organization,
+    upload_import_for_organization,
+)
 from hullq.application.inventory_editing import (
     ClaimSaveOutcome,
     InventoryDetailOutcome,
@@ -198,6 +209,7 @@ from hullq.application.search_sensitivity import (
     evaluate_requirement_sensitivity,
 )
 from hullq.domain.buyer_lead import LeadId
+from hullq.domain.import_intake import MAX_IMPORT_FILE_BYTES
 from hullq.domain.lead_operations import LeadCloseReason, LeadOperationalStatus
 from hullq.domain.lead_provenance import DiscoverySurface
 from hullq.domain.listing_telemetry import ListingViewOperationId
@@ -387,6 +399,13 @@ _SALE_OUTCOME_CSRF_HEADER_VALUE = "broker-sale-outcome-v1"
 #: against a known-reachable exploit; consistency with every other mutating
 #: route is the point, not a newly discovered live bypass.
 _LOGOUT_CSRF_HEADER_VALUE = "broker-logout-v1"
+
+#: SLICE-0083: the identical fixed-header + exact-Origin CSRF discipline as
+#: every other authenticated broker-write channel above, with its own
+#: distinct header value so a valid header from any other channel can never
+#: be replayed against the multi-format import upload/mapping/confirm
+#: mutation routes.
+_IMPORT_INTAKE_CSRF_HEADER_VALUE = "broker-import-intake-v1"
 
 #: SLICE-0070 contract §9: bounded request size before any unbounded
 #: buffering, mirroring the media-upload Content-Length discipline --
@@ -904,6 +923,22 @@ def create_app(
             actual is None
             or actual != accepted
             or requested_with != _DESIGN_ASSOCIATION_CSRF_HEADER_VALUE
+        ):
+            raise HTTPException(status_code=403, detail="csrf validation failed")
+
+    def _require_import_intake_csrf(request: Request) -> None:
+        # SLICE-0083: identical exact-Origin-match + fixed non-simple header
+        # discipline as every other authenticated broker-write channel,
+        # with its own distinct header value (see
+        # `_IMPORT_INTAKE_CSRF_HEADER_VALUE`).
+        origin_header = request.headers.get("origin")
+        requested_with = request.headers.get(_OWNER_DIRECT_CSRF_HEADER_NAME)
+        accepted = _normalized_origin(_resolve_web_origin())
+        actual = _normalized_origin(origin_header) if origin_header else None
+        if (
+            actual is None
+            or actual != accepted
+            or requested_with != _IMPORT_INTAKE_CSRF_HEADER_VALUE
         ):
             raise HTTPException(status_code=403, detail="csrf validation failed")
 
@@ -2619,6 +2654,208 @@ def create_app(
         finally:
             conn.close()
         return _promote_professional_draft_response(result)
+
+    def _import_intake_authorization_error(outcome: Any) -> JSONResponse | None:
+        # Shared status mapping for every SLICE-0083 import route, mirroring
+        # `_professional_draft_authorization_error`'s identical discipline.
+        if outcome.name == "NOT_FOUND_OR_DENIED":
+            raise HTTPException(status_code=404, detail="organization not found")
+        if outcome.name == "MFA_REQUIRED":
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if outcome.name == "PUBLISHER_ROLE_REQUIRED":
+            return JSONResponse({"error": "publisher_role_required"}, status_code=403)
+        return None
+
+    @app.post("/api/broker/organizations/{organization_id}/imports")
+    async def upload_import_route(organization_id: str, request: Request) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_import_intake_csrf(request)
+
+        raw_content_length = request.headers.get("content-length")
+        if raw_content_length is None:
+            return JSONResponse({"error": "length_required"}, status_code=411)
+        try:
+            content_length = int(raw_content_length)
+        except ValueError:
+            return JSONResponse({"error": "invalid_content_length"}, status_code=400)
+        if content_length < 0:
+            return JSONResponse({"error": "invalid_content_length"}, status_code=400)
+        if content_length > MAX_IMPORT_FILE_BYTES:
+            return JSONResponse({"error": "payload_too_large"}, status_code=413)
+
+        declared_format = request.headers.get("x-hullq-import-format", "")
+        import_source = request.headers.get("x-hullq-import-source", "")
+        worksheet_name = request.headers.get("x-hullq-worksheet")
+        csv_delimiter_value = request.headers.get("x-hullq-csv-delimiter")
+        raw_tokens = request.headers.get("x-hullq-nautix-account-tokens", "")
+        attested_account_tokens = frozenset(t.strip() for t in raw_tokens.split(",") if t.strip())
+
+        # Independent review amendment Finding E: bound the *actual* bytes
+        # read from the stream as they arrive, never trusting the
+        # declared Content-Length alone (which only gates a fast 413
+        # before any read is attempted above) -- a request whose body
+        # genuinely delivers more than MAX_IMPORT_FILE_BYTES is aborted
+        # mid-stream, and one that delivers fewer bytes than it declared
+        # (a truncated/mismatched body) is rejected rather than silently
+        # processed as if complete.
+        chunks: list[bytes] = []
+        received = 0
+        async for chunk in request.stream():
+            received += len(chunk)
+            if received > MAX_IMPORT_FILE_BYTES:
+                return JSONResponse({"error": "payload_too_large"}, status_code=413)
+            chunks.append(chunk)
+        if received != content_length:
+            return JSONResponse({"error": "invalid_content_length"}, status_code=400)
+        raw_bytes = b"".join(chunks)
+
+        conn = open_connection(resolved_database_url)
+        try:
+            result = upload_import_for_organization(
+                conn,
+                session,
+                organization_id,
+                raw_bytes=raw_bytes,
+                declared_format_value=declared_format,
+                import_source_value=import_source,
+                worksheet_name=worksheet_name,
+                attested_account_tokens=attested_account_tokens,
+                csv_delimiter_value=csv_delimiter_value,
+            )
+        finally:
+            conn.close()
+
+        auth_error = _import_intake_authorization_error(result.outcome)
+        if auth_error is not None:
+            return auth_error
+        if result.outcome is UploadImportOutcome.STAGED:
+            status_code = 201
+        elif result.outcome is UploadImportOutcome.TOO_MANY_PENDING_BATCHES:
+            status_code = 429
+        else:
+            status_code = 400
+        return JSONResponse(result.to_public_dict(), status_code=status_code)
+
+    @app.get("/api/broker/organizations/{organization_id}/imports")
+    def list_imports_route(organization_id: str, request: Request) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            result = list_import_batches_for_organization(conn, session, organization_id)
+        finally:
+            conn.close()
+        auth_error = _import_intake_authorization_error(result.outcome)
+        if auth_error is not None:
+            return auth_error
+        return JSONResponse(result.to_public_dict())
+
+    @app.get("/api/broker/organizations/{organization_id}/imports/{batch_id}")
+    def get_import_route(organization_id: str, batch_id: str, request: Request) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            result = get_import_batch_for_organization(conn, session, organization_id, batch_id)
+        finally:
+            conn.close()
+        auth_error = _import_intake_authorization_error(result.outcome)
+        if auth_error is not None:
+            return auth_error
+        if result.outcome is GetImportBatchOutcome.BATCH_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="import batch not found")
+        return JSONResponse(result.to_public_dict())
+
+    @app.put("/api/broker/organizations/{organization_id}/imports/{batch_id}/mapping")
+    async def set_import_mapping_route(
+        organization_id: str, batch_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_import_intake_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        if not isinstance(raw_body, dict):
+            return JSONResponse({"error": "invalid_mapping_request"}, status_code=400)
+        raw_mapping = raw_body.get("column_mapping")
+        snapshot_mode = raw_body.get("snapshot_mode", False)
+        if not isinstance(raw_mapping, dict) or not isinstance(snapshot_mode, bool):
+            return JSONResponse({"error": "invalid_mapping_request"}, status_code=400)
+        if not all(isinstance(k, str) and isinstance(v, str) for k, v in raw_mapping.items()):
+            return JSONResponse({"error": "invalid_mapping_request"}, status_code=400)
+
+        conn = open_connection(resolved_database_url)
+        try:
+            result = set_import_mapping_for_organization(
+                conn,
+                session,
+                organization_id,
+                batch_id,
+                column_mapping=raw_mapping,
+                snapshot_mode=snapshot_mode,
+            )
+        finally:
+            conn.close()
+
+        auth_error = _import_intake_authorization_error(result.outcome)
+        if auth_error is not None:
+            return auth_error
+        if result.outcome is SetImportMappingOutcome.BATCH_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="import batch not found")
+        status_code = 200 if result.outcome is SetImportMappingOutcome.MAPPED else 400
+        if result.outcome is SetImportMappingOutcome.WRONG_STATE:
+            status_code = 409
+        return JSONResponse(result.to_public_dict(), status_code=status_code)
+
+    @app.post("/api/broker/organizations/{organization_id}/imports/{batch_id}/confirm")
+    async def confirm_import_route(
+        organization_id: str, batch_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_import_intake_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        if not isinstance(raw_body, dict):
+            return JSONResponse({"error": "invalid_confirm_request"}, status_code=400)
+        raw_expected_row_count = raw_body.get("expected_row_count")
+        if not isinstance(raw_expected_row_count, int) or isinstance(raw_expected_row_count, bool):
+            return JSONResponse({"error": "invalid_confirm_request"}, status_code=400)
+
+        conn = open_connection(resolved_database_url)
+        try:
+            result = confirm_import_batch_for_organization(
+                conn,
+                session,
+                organization_id,
+                batch_id,
+                expected_row_count=raw_expected_row_count,
+            )
+        finally:
+            conn.close()
+
+        auth_error = _import_intake_authorization_error(result.outcome)
+        if auth_error is not None:
+            return auth_error
+        if result.outcome is ConfirmImportBatchOutcome.BATCH_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="import batch not found")
+        if result.outcome is ConfirmImportBatchOutcome.CONFIRMED:
+            return JSONResponse(result.to_public_dict(), status_code=200)
+        status_code = (
+            409
+            if result.outcome
+            in (
+                ConfirmImportBatchOutcome.WRONG_STATE,
+                ConfirmImportBatchOutcome.STAGING_EXPIRED,
+                ConfirmImportBatchOutcome.STALE_CONFIRMATION,
+            )
+            else 400
+        )
+        return JSONResponse(result.to_public_dict(), status_code=status_code)
 
     @app.get("/api/owner-direct/drafts")
     def list_owner_direct_drafts_route(request: Request) -> JSONResponse:
