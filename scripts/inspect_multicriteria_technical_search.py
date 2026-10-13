@@ -13,6 +13,16 @@ executed keel/sensitivity base behavior
 scripts' identical disposable-schema/real-HTTP/real-browser-session
 conventions.
 
+PR #345 review ID 5509994284 (second amendment) Finding D coverage gap: the
+first version of this script asserted only listing id + match count for
+public Search, aggregate `CONFIRMED_MATCH` for broker Search-fit, and only
+the `/en/search` locale. Steps 4, 7, and 7b below were extended/added to
+check the real rendered per-criterion leaf evidence (observed LOA/rudder/
+draft/keel values, design- and concrete-level truth lines) and all five
+accepted public Search locales (`en`/`de`/`fr`/`pt`/`es`), each with a real
+filtered request, its own real canonical `<link>` href, and its own real
+localized observed-evidence text -- not merely that the page returns 200.
+
 Demonstrates, end to end, against one real admitted canonical BoatDesign
 (FIN keel, draft_max_m=1.30, loa_m=12.50, rudder_support=skeg -- SKEG_HUNG)
 and its one lifecycle-DRAFT, design-linked, confirmed-matching concrete
@@ -21,7 +31,10 @@ listing (published partway through, exactly where noted below):
     1. private broker Search-fit SSR (listing still DRAFT): a five-criterion
        scenario (draft_max/keel_configuration/loa_min/loa_max/
        rudder_configuration combined) renders CONFIRMED_MATCH on the real
-       built editor page, with private no-store/noindex headers
+       built editor page, with private no-store/noindex headers, and the
+       real per-criterion design/concrete leaf evidence text (including the
+       real observed draft/keel/LOA/rudder values) is actually present, not
+       only the aggregate class
     2. negative: a duplicate `sf_loa_max` parameter fails closed on the real
        SSR editor page without ever reaching FastAPI
     3. negative: an unauthenticated real HTTP call to the Search-fit API is
@@ -31,9 +44,16 @@ listing (published partway through, exactly where noted below):
     5. negative: a malformed (oversized) `loa_max` value is a real HTTP 400
        `invalid_scenario` through the Search-fit API
     6. a real publish transition takes the listing DRAFT -> ACTIVE
-    7. public buyer Search SSR, now against the published listing:
-       LOA-only, rudder-only, and all five criteria combined each confirm
-       the identical match
+    7. public buyer Search SSR (`/en/search`), now against the published
+       listing: LOA-only, rudder-only, and all five criteria combined each
+       confirm the identical match, each checked against the real rendered
+       observed criterion value text, not only the match count
+    7b. the same loa_max+rudder_configuration scenario repeated against
+       every one of the five accepted public Search locales
+       (`/de/`, `/fr/`, `/pt/`, `/es/`, plus `/en/` again): each real
+       request is itself the canonical URL (its own real `<link
+       rel="canonical">` href is checked), confirms the identical match, and
+       renders its own real localized observed LOA/rudder evidence text
     8. Finding B: an oversized raw `loa_max` value fails closed 400 through
        the real SSR page, not merely the unit-level parser; a non-canonical
        parameter order 308-redirects to the canonical order
@@ -780,11 +800,30 @@ def main() -> int:
             "&sf_rudder_configuration=SKEG_HUNG"
         )
         page_text = body.decode("utf-8")
+        # Review amendment (PR #345 review 5509994284, Finding D coverage
+        # gap): the aggregate `CONFIRMED_MATCH` alone does not prove the
+        # real per-criterion leaf evidence actually rendered -- check the
+        # exact design-level and concrete-level criterion lines
+        # `describeCriterion`/the template produce for every one of the
+        # five active criteria, including the real observed LOA/rudder
+        # values (design loa_m=12.50, concrete claim loa_length=11.80,
+        # concrete claim rudder_configuration=SKEG_HUNG).
         broker_fit_ok = (
             status == 200
             and "Result: <strong>CONFIRMED_MATCH</strong>" in page_text
+            and "Canonical design result: <strong>CONFIRMED_MATCH</strong>" in page_text
             and headers.get("Cache-Control") == "private, no-store"
             and headers.get("X-Robots-Tag") == "noindex"
+            and "draft_max_m &lt;= 1.6: TRUE" in page_text
+            and "keel_configuration = FIN: TRUE" in page_text
+            and "loa_m &gt;= 10: TRUE" in page_text
+            and "loa_m &lt;= 15: TRUE" in page_text
+            and "rudder_configuration = SKEG_HUNG: TRUE" in page_text
+            and "design value: 12.50" in page_text
+            and "this boat's current claim: 1.20" in page_text
+            and "this boat's current claim: 11.80" in page_text
+            and "this boat's current claim: SKEG_HUNG" in page_text
+            and "this boat's current claim: FIN" in page_text
         )
         ok &= broker_fit_ok
         print(
@@ -852,39 +891,121 @@ def main() -> int:
         # criteria.
 
         # --- 7. LOA-only public Search SSR -----------------------------------
+        # Review amendment (PR #345 review 5509994284, Finding D coverage
+        # gap): a confirmed-match proof must check the REAL rendered
+        # technical evidence (the concrete claim's own observed LOA/rudder
+        # value), not merely the listing id and match count.
         status, _, body = session.get(f"{web_base}/en/search?loa_max=15")
         page_text = body.decode("utf-8")
         loa_only_ok = (
-            status == 200 and f"{_LISTING_ID}" in page_text and "Confirmed matches (1)" in page_text
+            status == 200
+            and f"{_LISTING_ID}" in page_text
+            and "Confirmed matches (1)" in page_text
+            and "broker-declared length overall: 11.80 m" in page_text
         )
         ok &= loa_only_ok
         print(
-            f"7. public Search SSR, loa_max=15 (LOA-only) -> confirmed match -> {'OK' if loa_only_ok else 'FAIL'}"
+            f"7. public Search SSR, loa_max=15 (LOA-only) -> confirmed match with real observed "
+            f"LOA evidence -> {'OK' if loa_only_ok else 'FAIL'}"
         )
 
         # --- rudder-only public Search SSR -----------------------------------
         status, _, body = session.get(f"{web_base}/en/search?rudder_configuration=SKEG_HUNG")
         page_text = body.decode("utf-8")
         rudder_only_ok = (
-            status == 200 and f"{_LISTING_ID}" in page_text and "Confirmed matches (1)" in page_text
+            status == 200
+            and f"{_LISTING_ID}" in page_text
+            and "Confirmed matches (1)" in page_text
+            and "broker-declared rudder configuration: Skeg-hung rudder" in page_text
         )
         ok &= rudder_only_ok
         print(
             "   public Search SSR, rudder_configuration=SKEG_HUNG (rudder-only) -> confirmed "
-            f"match -> {'OK' if rudder_only_ok else 'FAIL'}"
+            f"match with real observed rudder evidence -> {'OK' if rudder_only_ok else 'FAIL'}"
         )
 
         # --- all five criteria combined ---------------------------------------
         status, _, body = session.get(f"{web_base}/en/search?{mixed_all_query}")
         page_text = body.decode("utf-8")
         mixed_all_ok = (
-            status == 200 and f"{_LISTING_ID}" in page_text and "Confirmed matches (1)" in page_text
+            status == 200
+            and f"{_LISTING_ID}" in page_text
+            and "Confirmed matches (1)" in page_text
+            and "broker-declared draft: 1.20 m" in page_text
+            and "broker-declared keel configuration: Fin keel" in page_text
+            and "broker-declared length overall: 11.80 m" in page_text
+            and "broker-declared rudder configuration: Skeg-hung rudder" in page_text
         )
         ok &= mixed_all_ok
         print(
-            "   public Search SSR, all five criteria combined -> confirmed match -> "
-            f"{'OK' if mixed_all_ok else 'FAIL'}\n"
+            "   public Search SSR, all five criteria combined -> confirmed match with every "
+            f"real observed criterion value rendered -> {'OK' if mixed_all_ok else 'FAIL'}\n"
         )
+
+        # --- 7b. all five public Search locales, each with a real filtered,
+        # canonical request verifying real rendered LOA/rudder evidence
+        # (review amendment Finding D coverage gap) -------------------------
+        _locale_text: dict[str, dict[str, str]] = {
+            "en": {
+                "confirmed_heading": "Confirmed matches",
+                "loa_prefix": "broker-declared length overall:",
+                "rudder_prefix": "broker-declared rudder configuration:",
+                "skeg_hung_label": "Skeg-hung rudder",
+            },
+            "de": {
+                "confirmed_heading": "Bestätigte Treffer",
+                "loa_prefix": "vom Makler angegebene Gesamtlänge:",
+                "rudder_prefix": "vom Makler angegebene Ruderkonfiguration:",
+                "skeg_hung_label": "Skegruder",
+            },
+            "fr": {
+                "confirmed_heading": "Résultats confirmés",
+                "loa_prefix": "longueur hors tout déclarée par le courtier :",
+                "rudder_prefix": "configuration de safran déclarée par le courtier :",
+                "skeg_hung_label": "Safran sur aileron (skeg)",
+            },
+            "pt": {
+                "confirmed_heading": "Correspondências confirmadas",
+                "loa_prefix": "comprimento total declarado pelo corretor:",
+                "rudder_prefix": "configuração de leme declarada pelo corretor:",
+                "skeg_hung_label": "Leme em skeg",
+            },
+            "es": {
+                "confirmed_heading": "Coincidencias confirmadas",
+                "loa_prefix": "eslora total declarada por el bróker:",
+                "rudder_prefix": "configuración de timón declarada por el bróker:",
+                "skeg_hung_label": "Timón en skeg",
+            },
+        }
+        locale_query = "loa_max=15&rudder_configuration=SKEG_HUNG"
+        # Astro HTML-escapes the `&` query separator inside the `href`
+        # attribute (`&amp;`) -- the raw request URL itself still uses a
+        # literal `&` (`session.get` below), only the rendered canonical
+        # link text differs.
+        locale_canonical_href = (
+            f'<link rel="canonical" href="http://127.0.0.1:{web_port}/{{locale}}/search?'
+            'loa_max=15&amp;rudder_configuration=SKEG_HUNG">'
+        )
+        all_locales_ok = True
+        for locale, text in _locale_text.items():
+            status, _, body = session.get(f"{web_base}/{locale}/search?{locale_query}")
+            page_text = body.decode("utf-8")
+            locale_ok = (
+                status == 200
+                and f"{_LISTING_ID}" in page_text
+                and f"{text['confirmed_heading']} (1)" in page_text
+                and locale_canonical_href.format(locale=locale) in page_text
+                and f"{text['loa_prefix']} 11.80 m" in page_text
+                and f"{text['rudder_prefix']} {text['skeg_hung_label']}" in page_text
+            )
+            all_locales_ok &= locale_ok
+            print(
+                f"7b. public Search SSR /{locale}/search (loa_max+rudder_configuration) -> "
+                f"canonical URL + confirmed match with real localized observed evidence -> "
+                f"{'OK' if locale_ok else 'FAIL'}"
+            )
+        ok &= all_locales_ok
+        print()
 
         # --- 8. Finding B: oversized loa_max -> 400 ---------------------------
         status, _, body = session.get(f"{web_base}/en/search?loa_max={_OVERSIZED_LOA_RAW}")

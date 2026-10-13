@@ -5,19 +5,34 @@ accepted criterion's bounded vocabulary. This module proves the registry's
 own internal consistency (every definition is well-formed, every projection
 field is genuinely distinct, every param key maps back to exactly one
 definition) and cross-checks its `allowed_values` against the TypeScript
-presentation layer's own mirrored constants
+presentation layer's own real exported constants
 (`web/src/lib/searchApi.ts::SEARCH_KEEL_CONFIGURATION_VALUES`/
 `SEARCH_RUDDER_CONFIGURATION_VALUES`) -- the one place this registry's
 "cannot be unified across languages" constraint (this module's own
-docstring) is explicitly guarded against silent drift, by hardcoding the
-exact TS values here and asserting set equality against the Python
-registry. If a future criterion value is added/removed on one side without
-the other, this test fails.
+docstring) is explicitly guarded against silent drift.
+
+Review amendment (PR #345 review 5509994284, Finding C parity gap): the
+previous version of this module hardcoded a Python copy of the TS values
+(`_TS_KEEL_CONFIGURATION_VALUES`/`_TS_RUDDER_CONFIGURATION_VALUES`) and
+compared the Python registry against that copy -- a silent TS-side edit
+would never be caught, since both "sides" of the comparison lived in this
+same Python file. `_extract_ts_const_string_array`, below, instead reads
+`web/src/lib/searchApi.ts`'s actual on-disk source text and extracts the
+real `export const ... = [...] as const;` string literals via a bounded
+regex (no Node/TypeScript runtime invocation, no new runtime dependency, no
+dynamic search registry -- purely a static text read, exactly the
+"deterministically generated metadata" the review's own remediation
+describes). `test_extraction_detects_a_deliberately_divergent_ts_fixture`/
+`test_extraction_detects_a_deliberately_missing_value_in_ts_fixture` prove
+this mechanism actually distinguishes a genuinely divergent TS source from
+the real one -- not merely that parsing succeeds.
 """
 
 from __future__ import annotations
 
+import re
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -34,13 +49,31 @@ from hullq.search.criteria_registry import (
     parse_numeric_param,
 )
 
-# Mirrors web/src/lib/searchApi.ts::SEARCH_KEEL_CONFIGURATION_VALUES verbatim.
-_TS_KEEL_CONFIGURATION_VALUES = frozenset(
-    {"FIN", "FIN_WITH_BULB", "WING", "CENTERBOARD", "LIFTING_KEEL", "TWIN_KEEL"}
-)
+_SEARCH_API_TS_PATH = Path(__file__).resolve().parents[2] / "web" / "src" / "lib" / "searchApi.ts"
 
-# Mirrors web/src/lib/searchApi.ts::SEARCH_RUDDER_CONFIGURATION_VALUES verbatim.
-_TS_RUDDER_CONFIGURATION_VALUES = frozenset({"SKEG_HUNG", "TRANSOM_HUNG", "SPADE", "TWIN"})
+
+def _extract_ts_const_string_array(source_text: str, export_name: str) -> frozenset[str]:
+    """Extract the real string literals of a TypeScript
+    `export const <export_name> = [...] as const;` array from *source_text*.
+
+    Fails closed (raises `AssertionError`) when *export_name* cannot be
+    found at all -- a renamed/removed export must never be silently read as
+    an empty, trivially "matching" set. Pure text extraction: never imports,
+    executes, or type-checks TypeScript.
+    """
+    pattern = re.compile(
+        rf"export const {re.escape(export_name)}\s*=\s*\[(?P<body>.*?)\]\s*as const;", re.DOTALL
+    )
+    match = pattern.search(source_text)
+    if match is None:
+        raise AssertionError(
+            f"could not find `export const {export_name} = [...] as const;` in source"
+        )
+    return frozenset(re.findall(r'"([^"]*)"', match.group("body")))
+
+
+def _read_search_api_ts_source() -> str:
+    return _SEARCH_API_TS_PATH.read_text(encoding="utf-8")
 
 
 def test_every_definition_param_key_is_in_supported_param_keys() -> None:
@@ -81,12 +114,63 @@ def test_numeric_definitions_carry_parser_and_no_allowed_values() -> None:
             assert definition.canonicalize_value is not None
 
 
-def test_keel_allowed_values_match_the_mirrored_typescript_constant() -> None:
-    assert KEEL_CONFIGURATION_DEFINITION.allowed_values == _TS_KEEL_CONFIGURATION_VALUES
+def test_keel_allowed_values_match_the_actual_typescript_export() -> None:
+    ts_values = _extract_ts_const_string_array(
+        _read_search_api_ts_source(), "SEARCH_KEEL_CONFIGURATION_VALUES"
+    )
+    assert KEEL_CONFIGURATION_DEFINITION.allowed_values == ts_values
 
 
-def test_rudder_allowed_values_match_the_mirrored_typescript_constant() -> None:
-    assert RUDDER_CONFIGURATION_DEFINITION.allowed_values == _TS_RUDDER_CONFIGURATION_VALUES
+def test_rudder_allowed_values_match_the_actual_typescript_export() -> None:
+    ts_values = _extract_ts_const_string_array(
+        _read_search_api_ts_source(), "SEARCH_RUDDER_CONFIGURATION_VALUES"
+    )
+    assert RUDDER_CONFIGURATION_DEFINITION.allowed_values == ts_values
+
+
+def test_extraction_raises_when_the_export_cannot_be_found() -> None:
+    with pytest.raises(AssertionError):
+        _extract_ts_const_string_array(
+            'export const SOMETHING_ELSE = ["X"] as const;', "SEARCH_KEEL_CONFIGURATION_VALUES"
+        )
+
+
+def test_extraction_detects_a_deliberately_divergent_ts_fixture() -> None:
+    """Proves the parity mechanism itself is sensitive to drift -- a
+    fixture TS source carrying one extra, real-file-absent value must
+    produce a set that does NOT equal the Python registry's own
+    `allowed_values`, exactly the failure a genuine TS-side addition would
+    trigger in `test_rudder_allowed_values_match_the_actual_typescript_export`."""
+    divergent_source = (
+        "export const SEARCH_RUDDER_CONFIGURATION_VALUES = [\n"
+        '  "SKEG_HUNG",\n'
+        '  "TRANSOM_HUNG",\n'
+        '  "SPADE",\n'
+        '  "TWIN",\n'
+        '  "BOGUS_DIVERGENT_VALUE",\n'
+        "] as const;\n"
+    )
+    ts_values = _extract_ts_const_string_array(
+        divergent_source, "SEARCH_RUDDER_CONFIGURATION_VALUES"
+    )
+    assert ts_values != RUDDER_CONFIGURATION_DEFINITION.allowed_values
+    assert ts_values - RUDDER_CONFIGURATION_DEFINITION.allowed_values == {"BOGUS_DIVERGENT_VALUE"}
+
+
+def test_extraction_detects_a_deliberately_missing_value_in_ts_fixture() -> None:
+    """Mirrors the divergent-addition test above for the opposite drift
+    direction -- a fixture TS source missing a real accepted value."""
+    divergent_source = (
+        'export const SEARCH_KEEL_CONFIGURATION_VALUES = [\n  "FIN",\n  "WING",\n] as const;\n'
+    )
+    ts_values = _extract_ts_const_string_array(divergent_source, "SEARCH_KEEL_CONFIGURATION_VALUES")
+    assert ts_values != KEEL_CONFIGURATION_DEFINITION.allowed_values
+    assert KEEL_CONFIGURATION_DEFINITION.allowed_values - ts_values == {
+        "FIN_WITH_BULB",
+        "CENTERBOARD",
+        "LIFTING_KEEL",
+        "TWIN_KEEL",
+    }
 
 
 def test_canonical_param_key_order_matches_definitions_lexicographic_sort() -> None:
