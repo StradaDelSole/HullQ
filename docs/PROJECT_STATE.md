@@ -1,12 +1,12 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0084 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0085 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0085 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0086 -->
 <!-- PRODUCTION_LAUNCH_PACK_PHASE: NOT_STARTED -->
 
-**Updated:** 2026-10-13  
-**Latest owner-accepted / DONE slice:** SLICE-0084  
-**Current queue:** SLICE-0085 — **OWNER-SELECTED BOUNDED MULTI-CRITERIA TECHNICAL SEARCH EXPANSION**; READY contract proposed in `docs/slices/SLICE-0085-multicriteria-technical-search-foundation.md`, operative only after independently reviewed docs PR merge. Implementation NOT_STARTED. SLICE-0084 Broker pre-publication Search-fit is **Owner-accepted, implemented and closed** (implementation PR #342, `docs/slices/SLICE-0084-acceptance-closure.md`); `MVP-BROKER-010` / `REQ-BROKER-026` is fulfilled within its accepted bounded two-criterion read-only synthetic-preview scope. The binding Owner priority is successive buyer technical native Search expansion: **LOA first candidate**, then **rudder/skeg**, with a separate `LONG_KEEL` existing-keel mapping review and subsequent beam/displacement/rig/material and qualified fields as evidence permits. This priority is recorded in `docs/POST_SLICE_0083_SEARCH_PRIORITY_REASSESSMENT_2026-10-13.md` and tracked by issue #339; an exception requires evidence and an explicit new Owner decision. Accepted hard technical Search criteria remain **2**. Production Launch Pack remains `NOT_STARTED`, Production Readiness `IN_PROGRESS`; external production data/pilot/public launch are not authorized.  
+**Updated:** 2026-10-14  
+**Latest owner-accepted / DONE slice:** SLICE-0085  
+**Current queue:** SLICE-0086 — **UNSELECTED**, mandatory post-SLICE-0085 Decision/Implementation Reconciliation and independently reviewed READY required. SLICE-0085 Owner-accepted bounded Multi-Criteria Technical Search Foundation implemented by PR #345 and recorded in `docs/slices/SLICE-0085-acceptance-closure.md`: public hard technical Search now has **4** accepted dimensions (`draft_max`, `keel_configuration`, `loa` min/max/range counted once, `rudder_configuration`). All criteria reuse the accepted deterministic qualification/MUST-AND/independent current concrete-claim pipeline across public Buyer Search and read-only authorized broker DRAFT Search-fit. `LONG_KEEL` remains **NOT SUPPORTED** pending separate accepted full-keel mapping evidence; mixed/new-filter sensitivity comparison is visibly unavailable, not silently miscomputed. Following Owner's approved group-oriented delivery strategy, later Search coverage (beam/displacement/rig/material and more) requires its own evidence-led reassessment/selection; broker/owner-direct/MVP/trust/legal and production gates remain binding. Accepted `TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT=4`; Production Launch Pack `NOT_STARTED`, Production Readiness `IN_PROGRESS`, no external production broker/owner data, pilot or public launch authorized. 0085 local `FINISH_SLICE.bat` is **not yet observed**; no 0086 start authorized.
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
@@ -143,6 +143,7 @@ SLICE-0040 marketplace identity/truth separation
 → SLICE-0053 authenticated Broker Workspace access boundary
 → SLICE-0054 authenticated Owner-Direct Listing Draft Workspace
 → SLICE-0055 second technical native Search criterion (`keel_configuration`) + mixed-criterion typed evidence
+
 → SLICE-0056 public multi-criterion Direct Search browser completion
 → SLICE-0057 buyer-authored one-change Requirement Sensitivity
 → SLICE-0058 anonymous browser-local Shortlist
@@ -200,18 +201,20 @@ docs/slices/SLICE-0079-acceptance-closure.md
 
 ## Accepted technical Search result
 
-HullQ now has exactly two accepted/closed public hard technical native-inventory Search criteria:
+HullQ has exactly **four** Owner-accepted public hard technical native-inventory Search dimensions, through accepted SLICE-0085:
 
 ```text
 1 — draft_max=<exact positive decimal metres>
-2 — keel_configuration=<canonical v0.1 value>
+2 — keel_configuration=<one accepted canonical six-value keel token>
+3 — loa — loa_min and/or loa_max=<exact positive decimal metres>, inclusive (ONE dimension)
+4 — rudder_configuration=<one accepted guarded categorical rudder token>
 ```
 
-Accepted public `keel_configuration` values are exactly `FIN`, `FIN_WITH_BULB`, `WING`, `CENTERBOARD`, `LIFTING_KEEL` and `TWIN_KEEL`.
+Accepted public `keel_configuration` values remain exactly `FIN`, `FIN_WITH_BULB`, `WING`, `CENTERBOARD`, `LIFTING_KEEL` and `TWIN_KEEL`; `LONG_KEEL` stays **UNSUPPORTED** (no unreviewed `full`/modified-full/long-fin mapping). Accepted `rudder_configuration` request values are `SKEG_HUNG`, `TRANSOM_HUNG`, `SPADE`, `TWIN`, subject to **generation-aware qualified** BoatDesign facts and independent actual PhysicalBoat claims. In particular, v0.6 `rudder_support=free` does NOT prove `SPADE` or any other ambiguous flat category; unresolved/concurrent/conflicted data remains `UNKNOWN` and never a confirmed hard-match.
 
-The two criteria may be evaluated alone or together as deterministic hard MUST/AND requirements. SLICE-0055 preserves typed criterion/configuration evidence for confirmed match, confirmed non-match and insufficient-data application outcomes while keeping BoatDesign/configuration truth separate from concrete PhysicalBoat/listing truth.
+SLICE-0085 added two distinct hard dimensions (LOA once, rudder once); five parameter keys (`draft_max`, `keel_configuration`, `loa_min`, `loa_max`, `rudder_configuration`) are **not five Search dimensions**. Every active leaf uses the same qualified applicable BoatDesign/NamedVariant configuration and independent current publisher concrete claim, combined with deterministic MUST/AND and the accepted D29 current-public eligibility. The private authenticated Broker Search-fit preview uses the same shared bounded typed registry/engine on one owned lifecycle-DRAFT listing without a public publication/eligibility or real-demand claim. The accepted original-only SLICE-0057 sensitivity is preserved, while scenarios with a new LOA/rudder criterion show a truthful unavailable note rather than dropping active filters.
 
-The accepted technical native Search criteria count remains `2`. SLICE-0071 adds no Search criterion: it adds private Organization-scoped Lead operations, durable notification/outbox delivery state and factual Lead acquisition/discovery provenance only. SLICE-0057 adds no criterion: it re-evaluates one buyer-selected replacement value for an already active accepted criterion through the same Search truth, in one coherent comparison snapshot, and exposes only factual set-difference counts plus the backend-owned canonical alternative Search path. SLICE-0058 likewise adds no Search criterion: it records explicit buyer interest locally by stable `NativeListingId` and re-resolves current public listing truth when viewed. SLICE-0059 adds no Search criterion: it uses that existing explicit Shortlist as the whole Compare set and re-resolves current public listing/PhysicalBoat claim truth into a factual side-by-side matrix without score, winner, recommendation or hidden weighting. SLICE-0060 adds no Search criterion: it is a private professional Organization inventory projection over accepted NativeListing truth. SLICE-0061 likewise adds no Search criterion: it is private Organization-owned pre-market draft authoring state and has no Search/public promotion path. SLICE-0062 adds no Search criterion: it is bounded browser-local professional draft recovery. SLICE-0063 adds no Search criterion: it adds publisher display identity only. SLICE-0064 adds no Search criterion: it exposes already-accepted lifecycle/freshness operations for existing inventory without changing Search truth. SLICE-0065 also adds no Search criterion: it aligns professional draft description input and optional PhysicalBoat boat-name claim destination only. SLICE-0066 likewise adds no Search criterion: it aligns only shared draft build-year assertion-response semantics and browser/recovery handling. SLICE-0067 adds no Search criterion: it atomically promotes professional draft truth into a fresh lifecycle-DRAFT marketplace chain without changing Search semantics. Any future criterion #3+ readiness is subject to the accepted third-copy abstraction guard in `docs/governance/POST_0051_TRIGGER_GATES.md`.
+The formal canonical `TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT` advances from 2 to **4** only in this Owner-accepted 0085 closure; `docs/governance/POST_0051_TRIGGER_GATES.md` keeps the binding no-third-copy common-evaluator guard for every later criterion. Older SLICE-0051 through 0084 capability accounting remains historical, unchanged; neither the owner-direct pivot nor broker import/preview itself adds a technical criterion.
 
 ## Security hardening direction
 
@@ -231,7 +234,7 @@ Canonical records remain `docs/governance/POST_0051_TRIGGER_GATES.md`, `docs/gov
 
 ```text
 POST_0051_ARCHITECTURE_RECONCILIATION: PASS
-TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 2
+TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 4
 WORKFLOW_REASSESSMENT_DUE_AFTER_SLICE: 0056
 WORKFLOW_REASSESSMENT_STATUS: PASS
 
@@ -331,7 +334,7 @@ Post-0067 reassessment should strongly prefer the shortest safe path through med
 
 The existing public NativeListing read path is already implemented; near-term work is to let normal broker-created inventory reach that path truthfully rather than to invent a second public-listing architecture.
 
-Structured bulk/source import is implemented by Owner-accepted SLICE-0083 (REQ-BROKER-027/MVP-BROKER-011). Broker pre-publication Search-fit for a promoted lifecycle-DRAFT NativeListing is implemented by Owner-accepted SLICE-0084 (REQ-BROKER-026/MVP-BROKER-010) using the existing two technical hard Search criteria. Neither capability authorizes external broker production data or publication/eligibility bypass; broker export, periodic reporting and production operation remain separately governed.
+Structured bulk/source import is implemented by Owner-accepted SLICE-0083 (REQ-BROKER-027/MVP-BROKER-011). Broker pre-publication Search-fit for a promoted lifecycle-DRAFT NativeListing was initially accepted in SLICE-0084 (REQ-BROKER-026/MVP-BROKER-010) with two technical hard criteria and is now extended by Owner-accepted SLICE-0085 to all four accepted public hard Search dimensions, within the same authorized synthetic-read-only and no-real-demand scope. Neither capability authorizes external broker production data or publication/eligibility bypass; broker export, periodic reporting and production operation remain separately governed.
 
 Large retained research artifacts are acknowledged as repository-hygiene debt, not a launch blocker. They remain in-repo for now because they support deterministic evidence replay/auditability; any later externalization must preserve immutable hashes, provenance and reproducibility.
 
@@ -340,14 +343,14 @@ Large retained research artifacts are acknowledged as repository-hygiene debt, n
 Next queue number:
 
 ```text
-SLICE-0085
+SLICE-0086
 ```
 
-**Owner-selected capability:** **bounded Multi-Criteria Technical Search Foundation + initial criterion bundle**; the Owner expressly accepted the new group-oriented strategy instead of treating each future technical filter as a standalone slice. Canonical reconciliation: `docs/POST_SLICE_0084_MULTICRITERIA_SEARCH_REASSESSMENT_2026-10-13.md`. Detailed candidate READY contract: `docs/slices/SLICE-0085-multicriteria-technical-search-foundation.md`. Its READY status is operative only after independent exact-head readiness review, full CI/manufacturer reproducibility PASS and documentation merge. Implementation remains **NOT_STARTED**, with unchanged local `START_SLICE.bat` as sole implementation-start prompt.
+**Status: UNSELECTED.** SLICE-0085 completed the Owner-approved bounded Multi-Criteria Technical Search Foundation and initial LOA + qualified rudder/skeg filter bundle (implementation PR #345, final independently accepted HEAD `12388b18e526ac5ac1e5d9747538fff99f511518`; closure `docs/slices/SLICE-0085-acceptance-closure.md`). The broader group-oriented delivery policy remains accepted; do **not** infer that every next technical field automatically belongs in 0086.
 
-**Bounded first bundle:** the existing two hard technical dimensions are preserved; add **LOA** min/max/range and **rudder/skeg** safe categorical search using only generation-aware BoatDesign and independently qualified concrete PhysicalBoat claims. Evaluate an explicitly guarded `LONG_KEEL` value as an extension of existing keel criterion `#2` only if the accepted design/claim mapping receives independent approval. Both public multilingual Buyer Search and private Broker Search-fit must reuse one static supported-criterion whitelist and shared existing deterministic kernel. Do not implement all technical profile fields, invent arbitrary resolvers or silently drop unsupported mappings. Any material proposed taxonomy that cannot pass the separate readiness/implementation gates remains fail-closed and requires explicit Owner reconciliation. The accepted public criteria-count marker remains **2** until independently accepted implementation closure.
+**Mandatory next action after local FINISH:** fresh post-0085 Decision/Implementation Reconciliation against current `origin/main`, then explicit next-capability choice and separately independently reviewed READY before `START_SLICE.bat`. Evaluate the still-open `LONG_KEEL`/full-keel vocabulary claim-mapping gap (do not infer `modified_full` or `long_fin` equivalence), alongside the next evidenced bundle of technical Search fields (beam/displacement/rig/hull material/derived metrics), and all triggered buyer, broker export/reporting, owner-direct, trust/privacy/legal and production commitments. Nothing here automatically authorizes an 0086 implementation or a new production pilot.
 
-**Binding later priority:** continue remaining qualified technical Search fields (beam, displacement, rig, hull material, ballast/derived fields) as evidence-led bundles in separately selected future slices. Preserve all accepted broker export, reporting, buyer, owner-direct, trust and production hard gates. Production Launch Pack/real data/pilot/public launch remain unauthorized.
+**Fixed gate:** `TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT=4` after this closure, with `LONG_KEEL` excluded; hard MUST/AND and qualified, conflicting actual-boat Search semantics unchanged. Production Launch Pack remains NOT_STARTED, Production Readiness IN_PROGRESS, actual production provider and real external pilot gates incomplete.
 
 Production Launch Pack Phase 1 operator work remains deferred in priority, not completed. Actual production cron scheduling/monitoring of import-expiry purge and live retention proof are unverified. Accepted ADR-0012 selects PlanetScale Managed PostgreSQL 18 without authorizing paid provisioning.
 
@@ -364,6 +367,6 @@ Production Launch Pack Phase 1 operator work remains deferred in priority, not c
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0079 through SLICE-0084 are Owner-accepted and merged. The post-SLICE-0080 reassessment remains historical PASS for its then-active pilot objective. Owner product-first development priority does not waive external production/pilot gates. SLICE-0082 links broker inventory→existing canonical BoatDesign→native technical Search, SLICE-0083 implements D26-preserving common-format private broker import, and SLICE-0084 implements broker-facing read-only illustrative Search-fit. The Owner expressly selected SLICE-0085 as a bounded shared Multi-Criteria Search foundation with an initial LOA + qualified rudder/skeg filter bundle and separately gated long-keel coverage review; independent READY review/merge and implementation have not yet occurred.
+- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0079 through SLICE-0085 are Owner-accepted and implementation-merged. The post-SLICE-0080 operator reassessment remains historical PASS for its then-active pilot objective. Owner product-first development priority does not waive external production/pilot gates. SLICE-0082 linked broker inventory→existing canonical BoatDesign; SLICE-0083 accepted D26-preserving common-format private-draft import; SLICE-0084 accepted broker-facing read-only illustrative Search-fit; SLICE-0085 accepted typed shared Buyer/Broker multi-criterion Search with LOA and bounded rudder as dimensions #3/#4. `LONG_KEEL` stays unsupported pending separate accepted truth mapping. SLICE-0086 remains unselected until post-0085 reconciliation and reviewed READY. Local `FINISH_SLICE.bat` for 0085 has not yet been observed.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
