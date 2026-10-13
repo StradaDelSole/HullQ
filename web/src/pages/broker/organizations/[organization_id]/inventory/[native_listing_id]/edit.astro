@@ -28,6 +28,10 @@ import {
   fetchDesignCandidates,
   type GenerationIdentity,
 } from "../../../../../../lib/designAssociationApi";
+import {
+  fetchSearchFit,
+  type SearchFitResult,
+} from "../../../../../../lib/brokerSearchFitApi";
 import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../../../../lib/authConstants";
 
 // Independent review Finding B: the recorded generation identity is what
@@ -341,6 +345,52 @@ const designCandidatesResult =
     : null;
 const designCandidates =
   designCandidatesResult?.kind === "ok" ? designCandidatesResult.candidates : null;
+
+// SLICE-0084: authorized single-target hypothetical DRAFT Search-fit
+// preview, requested via its own GET form fields (distinct param names
+// from the FastAPI `draft_max`/`keel_configuration` query the client lib
+// sends, mirroring `design_q`'s identical page-local-vs-API-param
+// separation). Read independently of every section above -- a service
+// failure here never downgrades the already-successful offer/claim read
+// into a 503 (this section simply shows its own error below).
+const searchFitDraftMaxRaw = Astro.url.searchParams.get("sf_draft_max") ?? "";
+const searchFitKeelRaw = Astro.url.searchParams.get("sf_keel_configuration") ?? "";
+const searchFitRequested =
+  Astro.url.searchParams.has("sf_draft_max") ||
+  Astro.url.searchParams.has("sf_keel_configuration");
+const searchFitResult: SearchFitResult | null =
+  result.kind === "ok" && organizationId && nativeListingId && searchFitRequested
+    ? await fetchSearchFit(
+        apiBaseUrl,
+        organizationId,
+        nativeListingId,
+        {
+          draftMax: searchFitDraftMaxRaw || undefined,
+          keelConfiguration: searchFitKeelRaw || undefined,
+        },
+        cookieHeader,
+      )
+    : null;
+// `hullq.search.keel_design_bridge.SEARCH_KEEL_CONFIGURATION_VALUES` --
+// deliberately narrower than this page's own `KEEL_CONFIGURATIONS` claim
+// vocabulary above: `LONG_KEEL`/`OTHER` remain valid PhysicalBoat claim
+// values but are not accepted public v0.1 Search-fit scenario values.
+const SEARCH_FIT_KEEL_CONFIGURATIONS = [
+  "FIN",
+  "WING",
+  "FIN_WITH_BULB",
+  "CENTERBOARD",
+  "LIFTING_KEEL",
+  "TWIN_KEEL",
+];
+const searchFitBlockerText: Record<string, string> = {
+  BOATDESIGN_NOT_LINKED: "No canonical design is linked yet",
+  BOATDESIGN_CONFIGURATION_UNRESOLVED:
+    "This design's own technical data isn't fully resolved -- confirm the correct canonical model/variant",
+  CONCRETE_DRAFT_UNCONFIRMED: "This boat's actual draft isn't confirmed (or is disputed)",
+  KEEL_CONFIGURATION_UNCONFIRMED:
+    "This boat's actual keel configuration isn't confirmed (or is disputed)",
+};
 
 const nextPath = `/broker/organizations/${organizationId ?? ""}/inventory/${nativeListingId ?? ""}/edit`;
 const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(nextPath)}`;
@@ -680,7 +730,7 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
               <p>No current offer is available to edit for this listing yet.</p>
             )}
 
-            <h2>PhysicalBoat claim</h2>
+            <h2 id="claim-editor">PhysicalBoat claim</h2>
             {outcomeText[claimOutcome] && <p>{outcomeText[claimOutcome]}</p>}
             {claim ? (
               <form method="POST">
@@ -863,7 +913,7 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
               <p>No PhysicalBoat claim is available to edit for this listing yet.</p>
             )}
 
-            <h2>Canonical design</h2>
+            <h2 id="design-editor">Canonical design</h2>
             {designOutcomeText[designSaveOutcome] && <p>{designOutcomeText[designSaveOutcome]}</p>}
             {
               // Independent review Finding C: every non-"ok" read outcome gets
@@ -969,6 +1019,114 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
                         </ul>
                       )}
                     </>
+                  )}
+                </>
+              )
+            }
+
+            <h2>Search-fit preview</h2>
+            <p>
+              <em>Illustrative only / not actual buyer demand.</em> Enter a representative
+              maximum draft and/or keel configuration to see whether this listing would
+              technically satisfy it, using the exact same truth the public technical Search
+              uses. This never publishes anything, changes any stored evidence, or asserts this
+              listing is ready/eligible to publish.
+            </p>
+            <form method="GET">
+              <p>
+                <label>
+                  Maximum draft (metres):
+                  <input
+                    type="text"
+                    name="sf_draft_max"
+                    value={searchFitDraftMaxRaw}
+                    placeholder="e.g. 1.6"
+                  />
+                </label>
+              </p>
+              <p>
+                <label>
+                  Keel configuration:
+                  <select name="sf_keel_configuration">
+                    <option value="" selected={searchFitKeelRaw === ""}>
+                      (not specified)
+                    </option>
+                    {SEARCH_FIT_KEEL_CONFIGURATIONS.map((value) => (
+                      <option value={value} selected={searchFitKeelRaw === value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </p>
+              <button type="submit">Run Search-fit preview</button>
+            </form>
+            {
+              searchFitResult === null ? null : searchFitResult.kind === "unauthenticated" ? (
+                <p>Please log in to run this preview.</p>
+              ) : searchFitResult.kind === "not_found" ? (
+                <p>This listing isn't available here.</p>
+              ) : searchFitResult.kind === "mfa_required" ? (
+                <p>Additional verification is required before you can run this preview.</p>
+              ) : searchFitResult.kind === "publisher_role_required" ? (
+                <p>Only a Publisher on this Organization can run this preview.</p>
+              ) : searchFitResult.kind === "invalid_scenario" ? (
+                <p>
+                  That scenario isn't valid. Choose a positive maximum draft in metres (e.g. 1.6)
+                  and/or one supported keel configuration from the list above.
+                </p>
+              ) : searchFitResult.kind === "not_previewable" ? (
+                <p>
+                  This listing is no longer lifecycle-DRAFT (or just changed) -- it can't be
+                  previewed as a hypothetical draft anymore. Reload the page to see its current
+                  state.
+                </p>
+              ) : searchFitResult.kind === "chain_integrity_fault" ? (
+                <p>
+                  Something went wrong resolving this listing's underlying boat/design records.
+                  Please try again.
+                </p>
+              ) : searchFitResult.kind === "service_error" ? (
+                <p>Something went wrong running this preview. Please try again.</p>
+              ) : (
+                <>
+                  <p>
+                    Result: <strong>{searchFitResult.data.result_class}</strong>
+                  </p>
+                  {searchFitResult.data.blockers.length > 0 && (
+                    <ul>
+                      {searchFitResult.data.blockers.map((blocker) => (
+                        <li>
+                          {searchFitBlockerText[blocker] ?? blocker}
+                          {" -- see "}
+                          {blocker === "CONCRETE_DRAFT_UNCONFIRMED" ||
+                          blocker === "KEEL_CONFIGURATION_UNCONFIRMED" ? (
+                            <a href="#claim-editor">PhysicalBoat claim</a>
+                          ) : (
+                            <a href="#design-editor">Canonical design</a>
+                          )}
+                          {" above."}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {searchFitResult.data.criterion_evidence.length > 0 && (
+                    <ul>
+                      {searchFitResult.data.criterion_evidence.map((evidence) => (
+                        <li>
+                          {evidence.field}: {evidence.truth}
+                          {evidence.observed_value !== null && (
+                            <> (this boat's current claim: {evidence.observed_value})</>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {searchFitResult.data.design_evaluation && (
+                    <p>
+                      Canonical design result:{" "}
+                      <strong>{searchFitResult.data.design_evaluation.result_class}</strong>
+                    </p>
                   )}
                 </>
               )
