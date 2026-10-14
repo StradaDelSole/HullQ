@@ -47,12 +47,34 @@ export const SEARCH_RUDDER_CONFIGURATION_VALUES = [
 
 export type SearchRudderConfigurationValue = (typeof SEARCH_RUDDER_CONFIGURATION_VALUES)[number];
 
+// SLICE-0086: the exact accepted public `hull_configuration` query/display
+// values (`hullq.search.hull_design_bridge.SEARCH_HULL_CONFIGURATION_VALUES`).
+// Technical values, language-neutral -- never localized, never remapped.
+export const SEARCH_HULL_CONFIGURATION_VALUES = ["MONOHULL", "CATAMARAN", "TRIMARAN"] as const;
+
+export type SearchHullConfigurationValue = (typeof SEARCH_HULL_CONFIGURATION_VALUES)[number];
+
+// SLICE-0086: the exact accepted public `cockpit_position` query/display
+// values (`hullq.search.cockpit_design_bridge.SEARCH_COCKPIT_POSITION_VALUES`).
+export const SEARCH_COCKPIT_POSITION_VALUES = ["AFT", "CENTER", "FORWARD", "MULTIPLE"] as const;
+
+export type SearchCockpitPositionValue = (typeof SEARCH_COCKPIT_POSITION_VALUES)[number];
+
+// SLICE-0086: the exact accepted public `deck_saloon` query/display values
+// (`hullq.search.deck_saloon_design_bridge.SEARCH_DECK_SALOON_VALUES`). `NONE`
+// is a real PhysicalBoat claim value but never a public Search filter value
+// in this slice.
+export const SEARCH_DECK_SALOON_VALUES = ["DECK_SALOON", "PILOTHOUSE"] as const;
+
+export type SearchDeckSaloonValue = (typeof SEARCH_DECK_SALOON_VALUES)[number];
+
 // Mirrors `src/hullq/application/search_read.py`'s sparse
-// `active_requirement` construction (SLICE-0051/0056, extended SLICE-0085):
-// any non-empty subset of `draft_max`/`keel_configuration`/`loa_min`/
-// `loa_max`/`rudder_configuration`, never none (a `null` `active_requirement`
+// `active_requirement` construction (SLICE-0051/0056, extended SLICE-0085/
+// SLICE-0086): any non-empty subset of `draft_max`/`keel_configuration`/
+// `loa_min`/`loa_max`/`rudder_configuration`/`hull_configuration`/
+// `cockpit_position`/`deck_saloon`, never none (a `null` `active_requirement`
 // is the base state, represented separately below). TypeScript cannot
-// mechanically enforce "at least one of five" any more cheaply than at
+// mechanically enforce "at least one of eight" any more cheaply than at
 // runtime -- FastAPI is the actual source of truth for that invariant.
 export interface SearchActiveRequirement {
   draft_max?: string;
@@ -60,6 +82,9 @@ export interface SearchActiveRequirement {
   loa_min?: string;
   loa_max?: string;
   rudder_configuration?: string;
+  hull_configuration?: string;
+  cockpit_position?: string;
+  deck_saloon?: string;
 }
 
 /** SLICE-0051 draft-only confirmed match, unchanged (contract §8 non-regression). */

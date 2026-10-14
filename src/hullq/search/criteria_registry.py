@@ -69,12 +69,33 @@ from typing import Any, Final
 
 from hullq.domain.physical_boat_claims import AssertionKind
 from hullq.persistence.physical_boat_claims import CurrentPhysicalBoatClaimObservation
+from hullq.search.cockpit_design_bridge import (
+    COCKPIT_POSITION_PROJECTION_FIELD as _COCKPIT_POSITION_PROJECTION_FIELD,
+)
+from hullq.search.cockpit_design_bridge import (
+    SEARCH_COCKPIT_POSITION_VALUES,
+    build_boat_design_cockpit_position_set,
+)
 from hullq.search.configuration import DesignConfigurationSet
+from hullq.search.deck_saloon_design_bridge import (
+    DECK_SALOON_PROJECTION_FIELD as _DECK_SALOON_PROJECTION_FIELD,
+)
+from hullq.search.deck_saloon_design_bridge import (
+    SEARCH_DECK_SALOON_VALUES,
+    build_boat_design_deck_saloon_configuration_set,
+)
 from hullq.search.draft_max_design_bridge import (
     DRAFT_MAX_PROJECTION_FIELD as _DRAFT_MAX_PROJECTION_FIELD,
 )
 from hullq.search.draft_max_design_bridge import build_boat_design_draft_configuration_set
 from hullq.search.draft_max_request import canonical_draft_max_str, parse_draft_max_decimal
+from hullq.search.hull_design_bridge import (
+    HULL_CONFIGURATION_PROJECTION_FIELD as _HULL_CONFIGURATION_PROJECTION_FIELD,
+)
+from hullq.search.hull_design_bridge import (
+    SEARCH_HULL_CONFIGURATION_VALUES,
+    build_boat_design_hull_configuration_set,
+)
 from hullq.search.keel_design_bridge import (
     KEEL_CONFIGURATION_PROJECTION_FIELD as _KEEL_CONFIGURATION_PROJECTION_FIELD,
 )
@@ -95,9 +116,15 @@ from hullq.search.rudder_design_bridge import (
 
 __all__ = [
     "CANONICAL_PARAM_KEY_ORDER",
+    "COCKPIT_POSITION_DEFINITION",
+    "COCKPIT_POSITION_PARAM_KEY",
     "CRITERION_DEFINITIONS",
+    "DECK_SALOON_DEFINITION",
+    "DECK_SALOON_PARAM_KEY",
     "DRAFT_MAX_DEFINITION",
     "DRAFT_MAX_PARAM_KEY",
+    "HULL_CONFIGURATION_DEFINITION",
+    "HULL_CONFIGURATION_PARAM_KEY",
     "KEEL_CONFIGURATION_DEFINITION",
     "KEEL_CONFIGURATION_PARAM_KEY",
     "LOA_DEFINITION",
@@ -121,6 +148,10 @@ KEEL_CONFIGURATION_PARAM_KEY: Final = "keel_configuration"
 LOA_MIN_PARAM_KEY: Final = "loa_min"
 LOA_MAX_PARAM_KEY: Final = "loa_max"
 RUDDER_CONFIGURATION_PARAM_KEY: Final = "rudder_configuration"
+#: SLICE-0086 candidate facets #5-#7.
+HULL_CONFIGURATION_PARAM_KEY: Final = "hull_configuration"
+COCKPIT_POSITION_PARAM_KEY: Final = "cockpit_position"
+DECK_SALOON_PARAM_KEY: Final = "deck_saloon"
 
 #: The complete bounded whitelist. Any query-parameter key outside this set
 #: is INVALID, never silently ignored (the accepted zero-non-semantic-
@@ -133,6 +164,9 @@ SUPPORTED_PARAM_KEYS: Final[frozenset[str]] = frozenset(
         LOA_MIN_PARAM_KEY,
         LOA_MAX_PARAM_KEY,
         RUDDER_CONFIGURATION_PARAM_KEY,
+        HULL_CONFIGURATION_PARAM_KEY,
+        COCKPIT_POSITION_PARAM_KEY,
+        DECK_SALOON_PARAM_KEY,
     }
 )
 
@@ -141,7 +175,10 @@ SUPPORTED_PARAM_KEYS: Final[frozenset[str]] = frozenset(
 #: display order"). Plain lexicographic sort of `SUPPORTED_PARAM_KEYS` --
 #: asserted below so this constant can never silently drift from that rule.
 CANONICAL_PARAM_KEY_ORDER: Final[tuple[str, ...]] = (
+    COCKPIT_POSITION_PARAM_KEY,
+    DECK_SALOON_PARAM_KEY,
     DRAFT_MAX_PARAM_KEY,
+    HULL_CONFIGURATION_PARAM_KEY,
     KEEL_CONFIGURATION_PARAM_KEY,
     LOA_MAX_PARAM_KEY,
     LOA_MIN_PARAM_KEY,
@@ -284,8 +321,50 @@ def _read_rudder_claim(observation: CurrentPhysicalBoatClaimObservation) -> Clai
     return claim.assertion_kind, value
 
 
+def _read_hull_configuration_claim(
+    observation: CurrentPhysicalBoatClaimObservation,
+) -> ClaimReadResult:
+    claim = observation.hull_configuration
+    if claim is None:
+        return None
+    value = (
+        claim.value.value
+        if claim.assertion_kind is AssertionKind.VALUE_ASSERTION and claim.value is not None
+        else None
+    )
+    return claim.assertion_kind, value
+
+
+def _read_cockpit_position_claim(
+    observation: CurrentPhysicalBoatClaimObservation,
+) -> ClaimReadResult:
+    claim = observation.cockpit_position
+    if claim is None:
+        return None
+    value = (
+        claim.value.value
+        if claim.assertion_kind is AssertionKind.VALUE_ASSERTION and claim.value is not None
+        else None
+    )
+    return claim.assertion_kind, value
+
+
+def _read_deck_saloon_claim(observation: CurrentPhysicalBoatClaimObservation) -> ClaimReadResult:
+    claim = observation.deck_saloon
+    if claim is None:
+        return None
+    value = (
+        claim.value.value
+        if claim.assertion_kind is AssertionKind.VALUE_ASSERTION and claim.value is not None
+        else None
+    )
+    return claim.assertion_kind, value
+
+
 # ---------------------------------------------------------------------------
-# The four accepted criterion definitions
+# The four originally accepted criterion definitions, plus the three
+# SLICE-0086 candidate facets (hull_configuration/cockpit_position/
+# deck_saloon)
 # ---------------------------------------------------------------------------
 
 DRAFT_MAX_DEFINITION: Final = CriterionDefinition(
@@ -336,10 +415,46 @@ RUDDER_CONFIGURATION_DEFINITION: Final = CriterionDefinition(
     read_claim=_read_rudder_claim,
 )
 
+#: SLICE-0086 candidate facet #5.
+HULL_CONFIGURATION_DEFINITION: Final = CriterionDefinition(
+    criterion_id="hull_configuration",
+    kind=CriterionKind.CATEGORICAL,
+    param_keys=(HULL_CONFIGURATION_PARAM_KEY,),
+    projection_field=_HULL_CONFIGURATION_PROJECTION_FIELD,
+    allowed_values=SEARCH_HULL_CONFIGURATION_VALUES,
+    design_set_builder=build_boat_design_hull_configuration_set,
+    read_claim=_read_hull_configuration_claim,
+)
+
+#: SLICE-0086 candidate facet #6.
+COCKPIT_POSITION_DEFINITION: Final = CriterionDefinition(
+    criterion_id="cockpit_position",
+    kind=CriterionKind.CATEGORICAL,
+    param_keys=(COCKPIT_POSITION_PARAM_KEY,),
+    projection_field=_COCKPIT_POSITION_PROJECTION_FIELD,
+    allowed_values=SEARCH_COCKPIT_POSITION_VALUES,
+    design_set_builder=build_boat_design_cockpit_position_set,
+    read_claim=_read_cockpit_position_claim,
+)
+
+#: SLICE-0086 candidate facet #7.
+DECK_SALOON_DEFINITION: Final = CriterionDefinition(
+    criterion_id="deck_saloon",
+    kind=CriterionKind.CATEGORICAL,
+    param_keys=(DECK_SALOON_PARAM_KEY,),
+    projection_field=_DECK_SALOON_PROJECTION_FIELD,
+    allowed_values=SEARCH_DECK_SALOON_VALUES,
+    design_set_builder=build_boat_design_deck_saloon_configuration_set,
+    read_claim=_read_deck_saloon_claim,
+)
+
 #: Every accepted criterion, in the exact order its PARAM_KEY(s) first
 #: appear in `CANONICAL_PARAM_KEY_ORDER`.
 CRITERION_DEFINITIONS: Final[tuple[CriterionDefinition, ...]] = (
+    COCKPIT_POSITION_DEFINITION,
+    DECK_SALOON_DEFINITION,
     DRAFT_MAX_DEFINITION,
+    HULL_CONFIGURATION_DEFINITION,
     KEEL_CONFIGURATION_DEFINITION,
     LOA_DEFINITION,
     RUDDER_CONFIGURATION_DEFINITION,

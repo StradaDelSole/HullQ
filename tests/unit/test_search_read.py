@@ -174,6 +174,9 @@ def test_keel_configuration_alone_proceeds_to_result_via_native_inventory_funnel
         loa_min: Decimal | None = None,
         loa_max: Decimal | None = None,
         rudder_configuration: str | None = None,
+        hull_configuration: str | None = None,
+        cockpit_position: str | None = None,
+        deck_saloon: str | None = None,
         as_of: datetime,
     ) -> object:
         captured["conn"] = conn
@@ -215,6 +218,9 @@ def test_mixed_draft_and_keel_proceeds_to_result_via_native_inventory_funnel(
         loa_min: Decimal | None = None,
         loa_max: Decimal | None = None,
         rudder_configuration: str | None = None,
+        hull_configuration: str | None = None,
+        cockpit_position: str | None = None,
+        deck_saloon: str | None = None,
         as_of: datetime,
     ) -> object:
         captured["draft_max"] = draft_max

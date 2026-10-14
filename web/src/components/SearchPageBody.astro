@@ -14,6 +14,9 @@
 // SLICE-0055 typed `criterion_evidence` -- never re-running Search truth or
 // reconstructing a value from design-level evidence.
 import {
+  SEARCH_COCKPIT_POSITION_VALUES,
+  SEARCH_DECK_SALOON_VALUES,
+  SEARCH_HULL_CONFIGURATION_VALUES,
   SEARCH_KEEL_CONFIGURATION_VALUES,
   SEARCH_RUDDER_CONFIGURATION_VALUES,
   type DraftOnlyConfirmedMatch,
@@ -52,20 +55,26 @@ const usesTypedEvidenceShape =
   (activeRequirement.keel_configuration !== undefined ||
     activeRequirement.loa_min !== undefined ||
     activeRequirement.loa_max !== undefined ||
-    activeRequirement.rudder_configuration !== undefined);
+    activeRequirement.rudder_configuration !== undefined ||
+    activeRequirement.hull_configuration !== undefined ||
+    activeRequirement.cockpit_position !== undefined ||
+    activeRequirement.deck_saloon !== undefined);
 // Retained alias: the three originally accepted shapes (draft-only,
 // keel-only, draft+keel) keep rendering through the exact same byte-for-byte
 // unchanged branches below (Required Behavior non-regression).
 const isKeelActive = usesTypedEvidenceShape;
 // Whether this is one of the three *originally accepted* active-requirement
-// shapes (no LOA/rudder active) -- used only to pick the legacy fixed-shape
-// `requirementSummary*` text vs. the new SLICE-0085 generic composition,
+// shapes (no LOA/rudder/SLICE-0086 facet active) -- used only to pick the
+// legacy fixed-shape `requirementSummary*` text vs. the generic composition,
 // never to change which confirmed-match response shape is read above.
 const isLegacySummaryShape =
   activeRequirement !== null &&
   activeRequirement.loa_min === undefined &&
   activeRequirement.loa_max === undefined &&
-  activeRequirement.rudder_configuration === undefined;
+  activeRequirement.rudder_configuration === undefined &&
+  activeRequirement.hull_configuration === undefined &&
+  activeRequirement.cockpit_position === undefined &&
+  activeRequirement.deck_saloon === undefined;
 
 function keelLabel(value: string): string {
   return (t.keelConfigurationLabels as Record<string, string>)[value] ?? value;
@@ -73,6 +82,18 @@ function keelLabel(value: string): string {
 
 function rudderLabel(value: string): string {
   return (t.rudderConfigurationLabels as Record<string, string>)[value] ?? value;
+}
+
+function hullLabel(value: string): string {
+  return (t.hullConfigurationLabels as Record<string, string>)[value] ?? value;
+}
+
+function cockpitLabel(value: string): string {
+  return (t.cockpitPositionLabels as Record<string, string>)[value] ?? value;
+}
+
+function deckSaloonLabel(value: string): string {
+  return (t.deckSaloonLabels as Record<string, string>)[value] ?? value;
 }
 
 function draftEvidenceText(match: NativeInventoryConfirmedMatch): string | null {
@@ -114,17 +135,54 @@ function rudderEvidenceText(match: NativeInventoryConfirmedMatch): string | null
   return t.resolvedRudderText(rudderLabel(evidence.observed_value));
 }
 
-// SLICE-0085: one match's evidence text per *active* criterion only (never
-// unconditionally -- a pure loa-only or rudder-only match must never render
-// a null/undefined draft or keel evidence line). Order mirrors the public
-// canonical key order.
+function hullEvidenceText(match: NativeInventoryConfirmedMatch): string | null {
+  const evidence = match.criterion_evidence.find((item) => item.field === "hull_configuration");
+  if (evidence === undefined || evidence.observed_value === null) {
+    return null;
+  }
+  return t.resolvedHullText(hullLabel(evidence.observed_value));
+}
+
+function cockpitEvidenceText(match: NativeInventoryConfirmedMatch): string | null {
+  const evidence = match.criterion_evidence.find((item) => item.field === "cockpit_position");
+  if (evidence === undefined || evidence.observed_value === null) {
+    return null;
+  }
+  return t.resolvedCockpitText(cockpitLabel(evidence.observed_value));
+}
+
+function deckSaloonEvidenceText(match: NativeInventoryConfirmedMatch): string | null {
+  const evidence = match.criterion_evidence.find((item) => item.field === "deck_saloon");
+  if (evidence === undefined || evidence.observed_value === null) {
+    return null;
+  }
+  return t.resolvedDeckSaloonText(deckSaloonLabel(evidence.observed_value));
+}
+
+// SLICE-0085/SLICE-0086: one match's evidence text per *active* criterion
+// only (never unconditionally -- a pure loa-only or hull-only match must
+// never render a null/undefined draft or keel evidence line). Order mirrors
+// the public canonical key order (`CANONICAL_PARAM_KEY_ORDER`): cockpit
+// position, deck saloon, draft, hull form, keel, LOA, rudder.
 function matchEvidenceTexts(
   match: NativeInventoryConfirmedMatch,
   req: NonNullable<typeof activeRequirement>,
 ): string[] {
   const texts: string[] = [];
+  if (req.cockpit_position !== undefined) {
+    const text = cockpitEvidenceText(match);
+    if (text !== null) texts.push(text);
+  }
+  if (req.deck_saloon !== undefined) {
+    const text = deckSaloonEvidenceText(match);
+    if (text !== null) texts.push(text);
+  }
   if (req.draft_max !== undefined) {
     const text = draftEvidenceText(match);
+    if (text !== null) texts.push(text);
+  }
+  if (req.hull_configuration !== undefined) {
+    const text = hullEvidenceText(match);
     if (text !== null) texts.push(text);
   }
   if (req.keel_configuration !== undefined) {
@@ -149,8 +207,17 @@ function matchEvidenceTexts(
 // never a second Search truth, purely a presentation-layer phrase join.
 function genericRequirementSummary(req: NonNullable<typeof activeRequirement>): string {
   const phrases: string[] = [];
+  if (req.cockpit_position !== undefined) {
+    phrases.push(t.requirementPhraseCockpit(cockpitLabel(req.cockpit_position)));
+  }
+  if (req.deck_saloon !== undefined) {
+    phrases.push(t.requirementPhraseDeckSaloon(deckSaloonLabel(req.deck_saloon)));
+  }
   if (req.draft_max !== undefined) {
     phrases.push(t.requirementPhraseDraftMax(req.draft_max));
+  }
+  if (req.hull_configuration !== undefined) {
+    phrases.push(t.requirementPhraseHull(hullLabel(req.hull_configuration)));
   }
   if (req.keel_configuration !== undefined) {
     phrases.push(t.requirementPhraseKeel(keelLabel(req.keel_configuration)));
@@ -214,6 +281,48 @@ const nativeInventoryMatches: NativeInventoryConfirmedMatch[] =
           <h1>{t.title}</h1>
           <p>{t.formInstructions}</p>
           <form method="get" action={`/${locale}/search`} id="hullq-search-form">
+            <fieldset>
+              <legend>{t.structureControlsHeading}</legend>
+              <label>
+                {t.hullConfigurationLabel}
+                <select name="hull_configuration">
+                  <option value="" selected={activeRequirement?.hull_configuration === undefined}>
+                    {t.hullConfigurationAnyOption}
+                  </option>
+                  {SEARCH_HULL_CONFIGURATION_VALUES.map((value) => (
+                    <option value={value} selected={activeRequirement?.hull_configuration === value}>
+                      {hullLabel(value)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {t.cockpitPositionLabel}
+                <select name="cockpit_position">
+                  <option value="" selected={activeRequirement?.cockpit_position === undefined}>
+                    {t.cockpitPositionAnyOption}
+                  </option>
+                  {SEARCH_COCKPIT_POSITION_VALUES.map((value) => (
+                    <option value={value} selected={activeRequirement?.cockpit_position === value}>
+                      {cockpitLabel(value)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {t.deckSaloonLabel}
+                <select name="deck_saloon">
+                  <option value="" selected={activeRequirement?.deck_saloon === undefined}>
+                    {t.deckSaloonAnyOption}
+                  </option>
+                  {SEARCH_DECK_SALOON_VALUES.map((value) => (
+                    <option value={value} selected={activeRequirement?.deck_saloon === value}>
+                      {deckSaloonLabel(value)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </fieldset>
             <label>
               {t.draftMaxLabel}
               <input

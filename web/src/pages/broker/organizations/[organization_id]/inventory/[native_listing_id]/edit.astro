@@ -228,6 +228,12 @@ if (Astro.request.method === "POST" && organizationId && nativeListingId) {
     if (keelConfiguration) body["physical_boat.keel_configuration"] = keelConfiguration;
     const rudderConfiguration = assertionField(formData, "rudder_configuration");
     if (rudderConfiguration) body["physical_boat.rudder_configuration"] = rudderConfiguration;
+    const hullConfiguration = assertionField(formData, "hull_configuration");
+    if (hullConfiguration) body["physical_boat.hull_configuration"] = hullConfiguration;
+    const cockpitPosition = assertionField(formData, "cockpit_position");
+    if (cockpitPosition) body["physical_boat.cockpit_position"] = cockpitPosition;
+    const deckSaloon = assertionField(formData, "deck_saloon");
+    if (deckSaloon) body["physical_boat.deck_saloon"] = deckSaloon;
     const boatName = assertionField(formData, "boat_name");
     if (boatName) body["physical_boat.boat_name"] = boatName;
 
@@ -388,23 +394,38 @@ const searchFitKeelValues = Astro.url.searchParams.getAll("sf_keel_configuration
 const searchFitLoaMinValues = Astro.url.searchParams.getAll("sf_loa_min");
 const searchFitLoaMaxValues = Astro.url.searchParams.getAll("sf_loa_max");
 const searchFitRudderValues = Astro.url.searchParams.getAll("sf_rudder_configuration");
+// SLICE-0086: the same bounded Search-fit scenario, extended to
+// hull_configuration/cockpit_position/deck_saloon -- identical
+// `getAll`-then-reject-duplicates discipline.
+const searchFitHullValues = Astro.url.searchParams.getAll("sf_hull_configuration");
+const searchFitCockpitValues = Astro.url.searchParams.getAll("sf_cockpit_position");
+const searchFitDeckSaloonValues = Astro.url.searchParams.getAll("sf_deck_saloon");
 const searchFitDraftMaxRaw = searchFitDraftMaxValues[0] ?? "";
 const searchFitKeelRaw = searchFitKeelValues[0] ?? "";
 const searchFitLoaMinRaw = searchFitLoaMinValues[0] ?? "";
 const searchFitLoaMaxRaw = searchFitLoaMaxValues[0] ?? "";
 const searchFitRudderRaw = searchFitRudderValues[0] ?? "";
+const searchFitHullRaw = searchFitHullValues[0] ?? "";
+const searchFitCockpitRaw = searchFitCockpitValues[0] ?? "";
+const searchFitDeckSaloonRaw = searchFitDeckSaloonValues[0] ?? "";
 const searchFitHasAmbiguousParams =
   searchFitDraftMaxValues.length > 1 ||
   searchFitKeelValues.length > 1 ||
   searchFitLoaMinValues.length > 1 ||
   searchFitLoaMaxValues.length > 1 ||
-  searchFitRudderValues.length > 1;
+  searchFitRudderValues.length > 1 ||
+  searchFitHullValues.length > 1 ||
+  searchFitCockpitValues.length > 1 ||
+  searchFitDeckSaloonValues.length > 1;
 const searchFitRequested =
   searchFitDraftMaxValues.length > 0 ||
   searchFitKeelValues.length > 0 ||
   searchFitLoaMinValues.length > 0 ||
   searchFitLoaMaxValues.length > 0 ||
-  searchFitRudderValues.length > 0;
+  searchFitRudderValues.length > 0 ||
+  searchFitHullValues.length > 0 ||
+  searchFitCockpitValues.length > 0 ||
+  searchFitDeckSaloonValues.length > 0;
 const searchFitResult: SearchFitResult | null =
   result.kind === "ok" &&
   organizationId &&
@@ -421,6 +442,9 @@ const searchFitResult: SearchFitResult | null =
           loaMin: searchFitLoaMinRaw || undefined,
           loaMax: searchFitLoaMaxRaw || undefined,
           rudderConfiguration: searchFitRudderRaw || undefined,
+          hullConfiguration: searchFitHullRaw || undefined,
+          cockpitPosition: searchFitCockpitRaw || undefined,
+          deckSaloon: searchFitDeckSaloonRaw || undefined,
         },
         cookieHeader,
       )
@@ -441,6 +465,15 @@ const SEARCH_FIT_KEEL_CONFIGURATIONS = [
 // -- `OTHER` remains valid PhysicalBoat claim vocabulary but is not an
 // accepted public Search-fit scenario value.
 const SEARCH_FIT_RUDDER_CONFIGURATIONS = ["SKEG_HUNG", "TRANSOM_HUNG", "SPADE", "TWIN"];
+// SLICE-0086: `hullq.search.hull_design_bridge.SEARCH_HULL_CONFIGURATION_VALUES`/
+// `cockpit_design_bridge.SEARCH_COCKPIT_POSITION_VALUES`/
+// `deck_saloon_design_bridge.SEARCH_DECK_SALOON_VALUES` -- each deliberately
+// narrower than this page's own broader claim vocabulary below (`OTHER`/
+// `NONE` remain valid PhysicalBoat claim values but are not accepted public
+// Search-fit scenario values).
+const SEARCH_FIT_HULL_CONFIGURATIONS = ["MONOHULL", "CATAMARAN", "TRIMARAN"];
+const SEARCH_FIT_COCKPIT_POSITIONS = ["AFT", "CENTER", "FORWARD", "MULTIPLE"];
+const SEARCH_FIT_DECK_SALOONS = ["DECK_SALOON", "PILOTHOUSE"];
 const searchFitBlockerText: Record<string, string> = {
   BOATDESIGN_NOT_LINKED: "No canonical design is linked yet",
   BOATDESIGN_CONFIGURATION_UNRESOLVED:
@@ -451,6 +484,12 @@ const searchFitBlockerText: Record<string, string> = {
   LOA_UNCONFIRMED: "This boat's actual length overall isn't confirmed (or is disputed)",
   RUDDER_CONFIGURATION_UNCONFIRMED:
     "This boat's actual rudder configuration isn't confirmed (or is disputed)",
+  HULL_CONFIGURATION_UNCONFIRMED:
+    "This boat's actual hull form isn't confirmed (or is disputed)",
+  COCKPIT_POSITION_UNCONFIRMED:
+    "This boat's actual cockpit position isn't confirmed (or is disputed)",
+  DECK_SALOON_UNCONFIRMED:
+    "This boat's actual deck saloon/pilothouse isn't confirmed (or is disputed)",
 };
 
 const nextPath = `/broker/organizations/${organizationId ?? ""}/inventory/${nativeListingId ?? ""}/edit`;
@@ -525,6 +564,14 @@ const KEEL_CONFIGURATIONS = [
   "OTHER",
 ];
 const RUDDER_CONFIGURATIONS = ["SPADE", "SKEG_HUNG", "TRANSOM_HUNG", "TWIN", "OTHER"];
+// SLICE-0086: `hullq.domain.physical_boat_claims.HullConfiguration`/
+// `CockpitPosition`/`DeckSaloon` -- each allows only VALUE_ASSERTION|UNKNOWN
+// (no ABSENT, unlike boat_name), so each field's own `${name}_kind` select
+// reuses `UNKNOWN_ONLY`. `OTHER`/`NONE` are ordinary VALUE_ASSERTION values
+// of their own enum, never a separate assertion_kind.
+const HULL_CONFIGURATIONS = ["MONOHULL", "CATAMARAN", "TRIMARAN", "OTHER"];
+const COCKPIT_POSITIONS = ["AFT", "CENTER", "FORWARD", "MULTIPLE", "OTHER"];
+const DECK_SALOONS = ["NONE", "DECK_SALOON", "PILOTHOUSE"];
 const VAT_TAX_STATUS_VALUES = ["VAT_PAID", "VAT_NOT_PAID", "VAT_MARGIN_SCHEME", "OTHER"];
 
 function currentWire(
@@ -947,6 +994,91 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
                 </fieldset>
 
                 <fieldset>
+                  <legend>Hull configuration</legend>
+                  <select name="hull_configuration_kind">
+                    {UNKNOWN_ONLY.map((kind) => (
+                      <option
+                        value={kind}
+                        selected={
+                          (currentWire(claim, "physical_boat.hull_configuration")
+                            ?.assertion_kind ?? "") === kind
+                        }
+                      >
+                        {kind === "" ? "(not specified)" : kind}
+                      </option>
+                    ))}
+                  </select>
+                  <select name="hull_configuration_value">
+                    {HULL_CONFIGURATIONS.map((value) => (
+                      <option
+                        value={value}
+                        selected={
+                          currentWire(claim, "physical_boat.hull_configuration")?.value === value
+                        }
+                      >
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </fieldset>
+
+                <fieldset>
+                  <legend>Cockpit position</legend>
+                  <select name="cockpit_position_kind">
+                    {UNKNOWN_ONLY.map((kind) => (
+                      <option
+                        value={kind}
+                        selected={
+                          (currentWire(claim, "physical_boat.cockpit_position")
+                            ?.assertion_kind ?? "") === kind
+                        }
+                      >
+                        {kind === "" ? "(not specified)" : kind}
+                      </option>
+                    ))}
+                  </select>
+                  <select name="cockpit_position_value">
+                    {COCKPIT_POSITIONS.map((value) => (
+                      <option
+                        value={value}
+                        selected={
+                          currentWire(claim, "physical_boat.cockpit_position")?.value === value
+                        }
+                      >
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </fieldset>
+
+                <fieldset>
+                  <legend>Deck saloon / pilothouse</legend>
+                  <select name="deck_saloon_kind">
+                    {UNKNOWN_ONLY.map((kind) => (
+                      <option
+                        value={kind}
+                        selected={
+                          (currentWire(claim, "physical_boat.deck_saloon")?.assertion_kind ?? "") ===
+                          kind
+                        }
+                      >
+                        {kind === "" ? "(not specified)" : kind}
+                      </option>
+                    ))}
+                  </select>
+                  <select name="deck_saloon_value">
+                    {DECK_SALOONS.map((value) => (
+                      <option
+                        value={value}
+                        selected={currentWire(claim, "physical_boat.deck_saloon")?.value === value}
+                      >
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </fieldset>
+
+                <fieldset>
                   <legend>Boat name</legend>
                   <select name="boat_name_kind">
                     {BOAT_NAME_KINDS.map((kind) => (
@@ -1088,10 +1220,11 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
             <h2>Search-fit preview</h2>
             <p>
               <em>Illustrative only / not actual buyer demand.</em> Enter a representative
-              maximum draft, length overall, keel configuration and/or rudder configuration to
-              see whether this listing would technically satisfy it, using the exact same truth
-              the public technical Search uses. This never publishes anything, changes any
-              stored evidence, or asserts this listing is ready/eligible to publish.
+              maximum draft, length overall, keel configuration, rudder configuration, hull
+              configuration, cockpit position and/or deck saloon to see whether this listing
+              would technically satisfy it, using the exact same truth the public technical
+              Search uses. This never publishes anything, changes any stored evidence, or
+              asserts this listing is ready/eligible to publish.
             </p>
             <form method="GET">
               <p>
@@ -1157,6 +1290,51 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
                   </select>
                 </label>
               </p>
+              <p>
+                <label>
+                  Hull configuration:
+                  <select name="sf_hull_configuration">
+                    <option value="" selected={searchFitHullRaw === ""}>
+                      (not specified)
+                    </option>
+                    {SEARCH_FIT_HULL_CONFIGURATIONS.map((value) => (
+                      <option value={value} selected={searchFitHullRaw === value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </p>
+              <p>
+                <label>
+                  Cockpit position:
+                  <select name="sf_cockpit_position">
+                    <option value="" selected={searchFitCockpitRaw === ""}>
+                      (not specified)
+                    </option>
+                    {SEARCH_FIT_COCKPIT_POSITIONS.map((value) => (
+                      <option value={value} selected={searchFitCockpitRaw === value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </p>
+              <p>
+                <label>
+                  Deck saloon / pilothouse:
+                  <select name="sf_deck_saloon">
+                    <option value="" selected={searchFitDeckSaloonRaw === ""}>
+                      (not specified)
+                    </option>
+                    {SEARCH_FIT_DECK_SALOONS.map((value) => (
+                      <option value={value} selected={searchFitDeckSaloonRaw === value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </p>
               <button type="submit">Run Search-fit preview</button>
             </form>
             {
@@ -1164,7 +1342,8 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
                 <p>
                   That scenario isn't valid (a duplicate/ambiguous parameter was submitted).
                   Choose at most one value for each of maximum draft, minimum/maximum length
-                  overall, keel configuration and rudder configuration.
+                  overall, keel configuration, rudder configuration, hull configuration, cockpit
+                  position and deck saloon.
                 </p>
               ) : searchFitResult === null ? null : searchFitResult.kind === "unauthenticated" ? (
                 <p>Please log in to run this preview.</p>

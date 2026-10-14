@@ -99,3 +99,76 @@ def test_all_five_criteria_scenario_parses() -> None:
     assert scenario.loa_min == Decimal("10")
     assert scenario.loa_max == Decimal("15")
     assert scenario.rudder_configuration == "SKEG_HUNG"
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0086: hull_configuration / cockpit_position / deck_saloon
+# ---------------------------------------------------------------------------
+
+
+def test_hull_configuration_only_scenario_parses() -> None:
+    scenario = parse_search_fit_scenario({"hull_configuration": ["CATAMARAN"]})
+    assert scenario.hull_configuration == "CATAMARAN"
+    assert scenario.cockpit_position is None
+    assert scenario.deck_saloon is None
+
+
+def test_unsupported_hull_configuration_value_is_invalid() -> None:
+    # OTHER is a valid PhysicalBoat claim token but never an accepted public
+    # Search-fit scenario value.
+    with pytest.raises(InvalidSearchFitScenarioError):
+        parse_search_fit_scenario({"hull_configuration": ["OTHER"]})
+
+
+def test_duplicate_hull_configuration_is_invalid() -> None:
+    with pytest.raises(InvalidSearchFitScenarioError):
+        parse_search_fit_scenario({"hull_configuration": ["MONOHULL", "CATAMARAN"]})
+
+
+def test_cockpit_position_only_scenario_parses() -> None:
+    scenario = parse_search_fit_scenario({"cockpit_position": ["MULTIPLE"]})
+    assert scenario.cockpit_position == "MULTIPLE"
+
+
+def test_unsupported_cockpit_position_value_is_invalid() -> None:
+    with pytest.raises(InvalidSearchFitScenarioError):
+        parse_search_fit_scenario({"cockpit_position": ["OTHER"]})
+
+
+def test_deck_saloon_only_scenario_parses() -> None:
+    scenario = parse_search_fit_scenario({"deck_saloon": ["PILOTHOUSE"]})
+    assert scenario.deck_saloon == "PILOTHOUSE"
+
+
+def test_unsupported_deck_saloon_none_value_is_invalid() -> None:
+    # NONE is a real claim value but never a public Search-fit scenario value.
+    with pytest.raises(InvalidSearchFitScenarioError):
+        parse_search_fit_scenario({"deck_saloon": ["NONE"]})
+
+
+def test_duplicate_deck_saloon_is_invalid() -> None:
+    with pytest.raises(InvalidSearchFitScenarioError):
+        parse_search_fit_scenario({"deck_saloon": ["DECK_SALOON", "PILOTHOUSE"]})
+
+
+def test_all_eight_criteria_scenario_parses() -> None:
+    scenario = parse_search_fit_scenario(
+        {
+            "draft_max": ["1.6"],
+            "keel_configuration": ["FIN"],
+            "loa_min": ["10"],
+            "loa_max": ["15"],
+            "rudder_configuration": ["SKEG_HUNG"],
+            "hull_configuration": ["MONOHULL"],
+            "cockpit_position": ["AFT"],
+            "deck_saloon": ["DECK_SALOON"],
+        }
+    )
+    assert scenario.draft_max == Decimal("1.6")
+    assert scenario.keel_configuration == "FIN"
+    assert scenario.loa_min == Decimal("10")
+    assert scenario.loa_max == Decimal("15")
+    assert scenario.rudder_configuration == "SKEG_HUNG"
+    assert scenario.hull_configuration == "MONOHULL"
+    assert scenario.cockpit_position == "AFT"
+    assert scenario.deck_saloon == "DECK_SALOON"

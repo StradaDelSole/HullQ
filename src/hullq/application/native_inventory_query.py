@@ -126,7 +126,10 @@ from hullq.search.criteria import (
     NumericLeafCriterion,
 )
 from hullq.search.criteria_registry import (
+    COCKPIT_POSITION_DEFINITION,
+    DECK_SALOON_DEFINITION,
     DRAFT_MAX_DEFINITION,
+    HULL_CONFIGURATION_DEFINITION,
     KEEL_CONFIGURATION_DEFINITION,
     LOA_DEFINITION,
     RUDDER_CONFIGURATION_DEFINITION,
@@ -244,6 +247,9 @@ class NativeInventorySearchOutcome:
     loa_min: Decimal | None
     loa_max: Decimal | None
     rudder_configuration: str | None
+    hull_configuration: str | None
+    cockpit_position: str | None
+    deck_saloon: str | None
     query: MixedAndQuery
     confirmed_matches: tuple[NativeInventoryCandidateEvaluation, ...]
     confirmed_non_matches: tuple[NativeInventoryCandidateEvaluation, ...]
@@ -472,6 +478,9 @@ def build_mixed_requirement_query(
     loa_min: Decimal | None = None,
     loa_max: Decimal | None = None,
     rudder_configuration: str | None = None,
+    hull_configuration: str | None = None,
+    cockpit_position: str | None = None,
+    deck_saloon: str | None = None,
 ) -> tuple[MixedAndQuery, tuple[CriterionDefinition, ...]]:
     """Validate and build the bounded multi-criterion `MixedAndQuery` + the
     exact `hullq.search.criteria_registry.CriterionDefinition`s active in it.
@@ -501,6 +510,9 @@ def build_mixed_requirement_query(
         and loa_min is None
         and loa_max is None
         and rudder_configuration is None
+        and hull_configuration is None
+        and cockpit_position is None
+        and deck_saloon is None
     ):
         raise ValueError("at least one criterion must be supplied")
     if draft_max is not None and (
@@ -531,6 +543,30 @@ def build_mixed_requirement_query(
         raise ValueError(
             f"rudder_configuration must be one of "
             f"{sorted(RUDDER_CONFIGURATION_DEFINITION.allowed_values)}; got {rudder_configuration!r}"
+        )
+    assert HULL_CONFIGURATION_DEFINITION.allowed_values is not None
+    if (
+        hull_configuration is not None
+        and hull_configuration not in HULL_CONFIGURATION_DEFINITION.allowed_values
+    ):
+        raise ValueError(
+            f"hull_configuration must be one of "
+            f"{sorted(HULL_CONFIGURATION_DEFINITION.allowed_values)}; got {hull_configuration!r}"
+        )
+    assert COCKPIT_POSITION_DEFINITION.allowed_values is not None
+    if (
+        cockpit_position is not None
+        and cockpit_position not in COCKPIT_POSITION_DEFINITION.allowed_values
+    ):
+        raise ValueError(
+            f"cockpit_position must be one of "
+            f"{sorted(COCKPIT_POSITION_DEFINITION.allowed_values)}; got {cockpit_position!r}"
+        )
+    assert DECK_SALOON_DEFINITION.allowed_values is not None
+    if deck_saloon is not None and deck_saloon not in DECK_SALOON_DEFINITION.allowed_values:
+        raise ValueError(
+            f"deck_saloon must be one of "
+            f"{sorted(DECK_SALOON_DEFINITION.allowed_values)}; got {deck_saloon!r}"
         )
 
     criteria: list[NumericLeafCriterion | CategoricalLeafCriterion] = []
@@ -580,6 +616,27 @@ def build_mixed_requirement_query(
             )
         )
         active_definitions.append(RUDDER_CONFIGURATION_DEFINITION)
+    if hull_configuration is not None:
+        criteria.append(
+            CategoricalLeafCriterion(
+                field=HULL_CONFIGURATION_DEFINITION.projection_field, equals=hull_configuration
+            )
+        )
+        active_definitions.append(HULL_CONFIGURATION_DEFINITION)
+    if cockpit_position is not None:
+        criteria.append(
+            CategoricalLeafCriterion(
+                field=COCKPIT_POSITION_DEFINITION.projection_field, equals=cockpit_position
+            )
+        )
+        active_definitions.append(COCKPIT_POSITION_DEFINITION)
+    if deck_saloon is not None:
+        criteria.append(
+            CategoricalLeafCriterion(
+                field=DECK_SALOON_DEFINITION.projection_field, equals=deck_saloon
+            )
+        )
+        active_definitions.append(DECK_SALOON_DEFINITION)
     return MixedAndQuery(criteria=tuple(criteria)), tuple(active_definitions)
 
 
@@ -688,6 +745,9 @@ def evaluate_native_inventory_requirements(
     loa_min: Decimal | None = None,
     loa_max: Decimal | None = None,
     rudder_configuration: str | None = None,
+    hull_configuration: str | None = None,
+    cockpit_position: str | None = None,
+    deck_saloon: str | None = None,
     as_of: datetime,
 ) -> NativeInventorySearchOutcome:
     """Evaluate the bounded mixed vertical against real persisted state.
@@ -731,6 +791,9 @@ def evaluate_native_inventory_requirements(
         loa_min=loa_min,
         loa_max=loa_max,
         rudder_configuration=rudder_configuration,
+        hull_configuration=hull_configuration,
+        cockpit_position=cockpit_position,
+        deck_saloon=deck_saloon,
     )
 
     def _empty() -> NativeInventorySearchOutcome:
@@ -740,6 +803,9 @@ def evaluate_native_inventory_requirements(
             loa_min=loa_min,
             loa_max=loa_max,
             rudder_configuration=rudder_configuration,
+            hull_configuration=hull_configuration,
+            cockpit_position=cockpit_position,
+            deck_saloon=deck_saloon,
             query=query,
             confirmed_matches=(),
             confirmed_non_matches=(),
@@ -847,6 +913,9 @@ def evaluate_native_inventory_requirements(
         loa_min=loa_min,
         loa_max=loa_max,
         rudder_configuration=rudder_configuration,
+        hull_configuration=hull_configuration,
+        cockpit_position=cockpit_position,
+        deck_saloon=deck_saloon,
         query=query,
         confirmed_matches=tuple(confirmed_matches),
         confirmed_non_matches=tuple(confirmed_non_matches),

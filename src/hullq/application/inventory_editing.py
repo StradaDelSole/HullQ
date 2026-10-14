@@ -218,6 +218,12 @@ def _claims_to_wire_dict(claims: PhysicalBoatClaimSnapshot) -> dict[str, Any]:
         )
     if claims.boat_name is not None:
         body["physical_boat.boat_name"] = _claim_wrapper_wire(claims.boat_name)
+    if claims.hull_configuration is not None:
+        body["physical_boat.hull_configuration"] = _claim_wrapper_wire(claims.hull_configuration)
+    if claims.cockpit_position is not None:
+        body["physical_boat.cockpit_position"] = _claim_wrapper_wire(claims.cockpit_position)
+    if claims.deck_saloon is not None:
+        body["physical_boat.deck_saloon"] = _claim_wrapper_wire(claims.deck_saloon)
     return body
 
 

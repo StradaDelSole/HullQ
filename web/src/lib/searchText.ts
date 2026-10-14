@@ -19,6 +19,40 @@ export const SUPPORTED_LOCALES: readonly SupportedLocale[] = ["en", "de", "fr", 
 
 export interface SearchText {
   title: string;
+  // SLICE-0086: first-level hull form / cockpit position / deck saloon
+  // structure controls, rendered before the existing numeric/detail
+  // controls (Search entry hierarchy, not a second results API).
+  structureControlsHeading: string;
+  hullConfigurationLabel: string;
+  hullConfigurationAnyOption: string;
+  /** Localized display label for each accepted technical hull-form value. */
+  hullConfigurationLabels: {
+    MONOHULL: string;
+    CATAMARAN: string;
+    TRIMARAN: string;
+  };
+  cockpitPositionLabel: string;
+  cockpitPositionAnyOption: string;
+  /** Localized display label for each accepted technical cockpit-position value. */
+  cockpitPositionLabels: {
+    AFT: string;
+    CENTER: string;
+    FORWARD: string;
+    MULTIPLE: string;
+  };
+  deckSaloonLabel: string;
+  deckSaloonAnyOption: string;
+  /** Localized display label for each accepted technical deck-saloon value. */
+  deckSaloonLabels: {
+    DECK_SALOON: string;
+    PILOTHOUSE: string;
+  };
+  requirementPhraseHull: (hullLabel: string) => string;
+  requirementPhraseCockpit: (cockpitLabel: string) => string;
+  requirementPhraseDeckSaloon: (deckSaloonLabel: string) => string;
+  resolvedHullText: (hullLabel: string) => string;
+  resolvedCockpitText: (cockpitLabel: string) => string;
+  resolvedDeckSaloonText: (deckSaloonLabel: string) => string;
   draftMaxLabel: string;
   draftMaxPlaceholder: string;
   keelConfigurationLabel: string;
@@ -141,6 +175,37 @@ export interface SearchText {
 export const searchText: Record<SupportedLocale, SearchText> = {
   en: {
     title: "Search: maximum draft",
+    structureControlsHeading: "What kind of sailing vessel structure interests you?",
+    hullConfigurationLabel: "Hull form",
+    hullConfigurationAnyOption: "Any hull form",
+    hullConfigurationLabels: {
+      MONOHULL: "Monohull",
+      CATAMARAN: "Catamaran",
+      TRIMARAN: "Trimaran",
+    },
+    cockpitPositionLabel: "Cockpit position",
+    cockpitPositionAnyOption: "Any cockpit position",
+    cockpitPositionLabels: {
+      AFT: "Aft cockpit",
+      CENTER: "Center cockpit",
+      FORWARD: "Forward cockpit",
+      MULTIPLE: "Multiple cockpits",
+    },
+    deckSaloonLabel: "Deck saloon / pilothouse",
+    deckSaloonAnyOption: "Any deck saloon / pilothouse",
+    deckSaloonLabels: {
+      DECK_SALOON: "Deck saloon",
+      PILOTHOUSE: "Pilothouse",
+    },
+    requirementPhraseHull: (hullLabel) => `a ${hullLabel} hull`,
+    requirementPhraseCockpit: (cockpitLabel) => `a ${cockpitLabel}`,
+    requirementPhraseDeckSaloon: (deckSaloonLabel) => `a ${deckSaloonLabel}`,
+    resolvedHullText: (hullLabel) =>
+      `broker-declared hull form: ${hullLabel} (not independently verified)`,
+    resolvedCockpitText: (cockpitLabel) =>
+      `broker-declared cockpit position: ${cockpitLabel} (not independently verified)`,
+    resolvedDeckSaloonText: (deckSaloonLabel) =>
+      `broker-declared deck saloon/pilothouse: ${deckSaloonLabel} (not independently verified)`,
     draftMaxLabel: "Maximum draft (metres)",
     draftMaxPlaceholder: "1.6",
     keelConfigurationLabel: "Keel configuration",
@@ -180,7 +245,7 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       `broker-declared rudder configuration: ${rudderLabel} (not independently verified)`,
     submit: "Search",
     formInstructions:
-      "Enter the deepest draft your boat can be, in metres, and/or choose a keel configuration. HullQ only shows boats a broker has confirmed meet these requirements.",
+      "Start with the structure that interests you (hull form, cockpit position, deck saloon), then optionally enter the deepest draft your boat can be, in metres, and/or choose a keel configuration. HullQ only shows boats a broker has confirmed meet these requirements.",
     invalidTitle: "This search link isn't valid",
     invalidFallback:
       "Enter a maximum draft as a plain decimal number of metres (for example 1.6) and/or choose a supported keel configuration.",
@@ -213,7 +278,7 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     sensitivityFormNote:
       "See how many confirmed matches change if you try a different value for one requirement. This does not change your current search.",
     sensitivityUnavailableWithNewCriteria:
-      "Requirement sensitivity isn't available while a length overall or rudder configuration filter is also active.",
+      "Requirement sensitivity isn't available while a length overall, rudder configuration, hull form, cockpit position or deck saloon filter is also active.",
     sensitivityDraftSubmitLabel: "See the effect of a different maximum draft",
     sensitivityKeelSubmitLabel: "See the effect of a different keel configuration",
     sensitivityAlternativeDraftLabel: "Alternative maximum draft (metres)",
@@ -244,6 +309,37 @@ export const searchText: Record<SupportedLocale, SearchText> = {
   },
   de: {
     title: "Suche: maximaler Tiefgang",
+    structureControlsHeading: "Welche Art von Segelbootstruktur interessiert Sie?",
+    hullConfigurationLabel: "Rumpfform",
+    hullConfigurationAnyOption: "Beliebige Rumpfform",
+    hullConfigurationLabels: {
+      MONOHULL: "Einrumpfboot",
+      CATAMARAN: "Katamaran",
+      TRIMARAN: "Trimaran",
+    },
+    cockpitPositionLabel: "Cockpit-Position",
+    cockpitPositionAnyOption: "Beliebige Cockpit-Position",
+    cockpitPositionLabels: {
+      AFT: "Hecknahes Cockpit",
+      CENTER: "Mittiges Cockpit",
+      FORWARD: "Vorderes Cockpit",
+      MULTIPLE: "Mehrere Cockpits",
+    },
+    deckSaloonLabel: "Decksalon / Pilothouse",
+    deckSaloonAnyOption: "Beliebiger Decksalon / Pilothouse",
+    deckSaloonLabels: {
+      DECK_SALOON: "Decksalon",
+      PILOTHOUSE: "Pilothouse",
+    },
+    requirementPhraseHull: (hullLabel) => `einem Rumpf: ${hullLabel}`,
+    requirementPhraseCockpit: (cockpitLabel) => `einem ${cockpitLabel}`,
+    requirementPhraseDeckSaloon: (deckSaloonLabel) => `einem ${deckSaloonLabel}`,
+    resolvedHullText: (hullLabel) =>
+      `vom Makler angegebene Rumpfform: ${hullLabel} (nicht unabhängig verifiziert)`,
+    resolvedCockpitText: (cockpitLabel) =>
+      `vom Makler angegebene Cockpit-Position: ${cockpitLabel} (nicht unabhängig verifiziert)`,
+    resolvedDeckSaloonText: (deckSaloonLabel) =>
+      `vom Makler angegebener Decksalon/Pilothouse: ${deckSaloonLabel} (nicht unabhängig verifiziert)`,
     draftMaxLabel: "Maximaler Tiefgang (Meter)",
     draftMaxPlaceholder: "1.6",
     keelConfigurationLabel: "Kielkonfiguration",
@@ -283,7 +379,7 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       `vom Makler angegebene Ruderkonfiguration: ${rudderLabel} (nicht unabhängig verifiziert)`,
     submit: "Suchen",
     formInstructions:
-      "Geben Sie den größten zulässigen Tiefgang in Metern an und/oder wählen Sie eine Kielkonfiguration. HullQ zeigt nur Boote, die von einem Makler als diesen Anforderungen entsprechend bestätigt wurden.",
+      "Beginnen Sie mit der Struktur, die Sie interessiert (Rumpfform, Cockpit-Position, Decksalon), und geben Sie optional den größten zulässigen Tiefgang in Metern an und/oder wählen Sie eine Kielkonfiguration. HullQ zeigt nur Boote, die von einem Makler als diesen Anforderungen entsprechend bestätigt wurden.",
     invalidTitle: "Dieser Suchlink ist ungültig",
     invalidFallback:
       "Geben Sie den maximalen Tiefgang als einfache Dezimalzahl in Metern an (zum Beispiel 1.6) und/oder wählen Sie eine unterstützte Kielkonfiguration.",
@@ -316,7 +412,7 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     sensitivityFormNote:
       "Sehen Sie, wie viele bestätigte Treffer sich ändern, wenn Sie für eine Anforderung einen anderen Wert ausprobieren. Dies ändert Ihre aktuelle Suche nicht.",
     sensitivityUnavailableWithNewCriteria:
-      "Die Anforderungssensitivität ist nicht verfügbar, während zusätzlich ein Filter für Gesamtlänge oder Ruderkonfiguration aktiv ist.",
+      "Die Anforderungssensitivität ist nicht verfügbar, während zusätzlich ein Filter für Gesamtlänge, Ruderkonfiguration, Rumpfform, Cockpit-Position oder Decksalon aktiv ist.",
     sensitivityDraftSubmitLabel: "Auswirkung eines anderen maximalen Tiefgangs anzeigen",
     sensitivityKeelSubmitLabel: "Auswirkung einer anderen Kielkonfiguration anzeigen",
     sensitivityAlternativeDraftLabel: "Alternativer maximaler Tiefgang (Meter)",
@@ -347,6 +443,37 @@ export const searchText: Record<SupportedLocale, SearchText> = {
   },
   fr: {
     title: "Recherche : tirant d'eau maximal",
+    structureControlsHeading: "Quel type de structure de voilier vous intéresse ?",
+    hullConfigurationLabel: "Forme de carène",
+    hullConfigurationAnyOption: "Toute forme de carène",
+    hullConfigurationLabels: {
+      MONOHULL: "Monocoque",
+      CATAMARAN: "Catamaran",
+      TRIMARAN: "Trimaran",
+    },
+    cockpitPositionLabel: "Position du cockpit",
+    cockpitPositionAnyOption: "Toute position de cockpit",
+    cockpitPositionLabels: {
+      AFT: "Cockpit arrière",
+      CENTER: "Cockpit central",
+      FORWARD: "Cockpit avant",
+      MULTIPLE: "Cockpits multiples",
+    },
+    deckSaloonLabel: "Salon de pont / timonerie",
+    deckSaloonAnyOption: "Tout salon de pont / timonerie",
+    deckSaloonLabels: {
+      DECK_SALOON: "Salon de pont",
+      PILOTHOUSE: "Timonerie",
+    },
+    requirementPhraseHull: (hullLabel) => `une carène : ${hullLabel}`,
+    requirementPhraseCockpit: (cockpitLabel) => `un ${cockpitLabel}`,
+    requirementPhraseDeckSaloon: (deckSaloonLabel) => `un ${deckSaloonLabel}`,
+    resolvedHullText: (hullLabel) =>
+      `forme de carène déclarée par le courtier : ${hullLabel} (non vérifiée de manière indépendante)`,
+    resolvedCockpitText: (cockpitLabel) =>
+      `position de cockpit déclarée par le courtier : ${cockpitLabel} (non vérifiée de manière indépendante)`,
+    resolvedDeckSaloonText: (deckSaloonLabel) =>
+      `salon de pont/timonerie déclaré par le courtier : ${deckSaloonLabel} (non vérifié de manière indépendante)`,
     draftMaxLabel: "Tirant d'eau maximal (mètres)",
     draftMaxPlaceholder: "1.6",
     keelConfigurationLabel: "Configuration de quille",
@@ -386,7 +513,7 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       `configuration de safran déclarée par le courtier : ${rudderLabel} (non vérifiée de manière indépendante)`,
     submit: "Rechercher",
     formInstructions:
-      "Indiquez le tirant d'eau maximal admissible, en mètres, et/ou choisissez une configuration de quille. HullQ n'affiche que les bateaux dont le courtier a confirmé qu'ils respectent ces exigences.",
+      "Commencez par la structure qui vous intéresse (forme de carène, position du cockpit, salon de pont), puis indiquez éventuellement le tirant d'eau maximal admissible, en mètres, et/ou choisissez une configuration de quille. HullQ n'affiche que les bateaux dont le courtier a confirmé qu'ils respectent ces exigences.",
     invalidTitle: "Ce lien de recherche n'est pas valide",
     invalidFallback:
       "Indiquez le tirant d'eau maximal sous forme de nombre décimal simple en mètres (par exemple 1.6) et/ou choisissez une configuration de quille prise en charge.",
@@ -420,7 +547,7 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     sensitivityFormNote:
       "Découvrez combien de résultats confirmés changent si vous essayez une valeur différente pour une exigence. Cela ne modifie pas votre recherche actuelle.",
     sensitivityUnavailableWithNewCriteria:
-      "La sensibilité de l'exigence n'est pas disponible lorsqu'un filtre de longueur hors tout ou de configuration de safran est également actif.",
+      "La sensibilité de l'exigence n'est pas disponible lorsqu'un filtre de longueur hors tout, de configuration de safran, de forme de carène, de position de cockpit ou de salon de pont est également actif.",
     sensitivityDraftSubmitLabel: "Voir l'effet d'un tirant d'eau maximal différent",
     sensitivityKeelSubmitLabel: "Voir l'effet d'une configuration de quille différente",
     sensitivityAlternativeDraftLabel: "Tirant d'eau maximal alternatif (mètres)",
@@ -451,6 +578,37 @@ export const searchText: Record<SupportedLocale, SearchText> = {
   },
   pt: {
     title: "Pesquisa: calado máximo",
+    structureControlsHeading: "Que tipo de estrutura de veleiro lhe interessa?",
+    hullConfigurationLabel: "Forma do casco",
+    hullConfigurationAnyOption: "Qualquer forma de casco",
+    hullConfigurationLabels: {
+      MONOHULL: "Monocasco",
+      CATAMARAN: "Catamarã",
+      TRIMARAN: "Trimarã",
+    },
+    cockpitPositionLabel: "Posição do cockpit",
+    cockpitPositionAnyOption: "Qualquer posição de cockpit",
+    cockpitPositionLabels: {
+      AFT: "Cockpit à popa",
+      CENTER: "Cockpit central",
+      FORWARD: "Cockpit à proa",
+      MULTIPLE: "Múltiplos cockpits",
+    },
+    deckSaloonLabel: "Salão de convés / casa do leme",
+    deckSaloonAnyOption: "Qualquer salão de convés / casa do leme",
+    deckSaloonLabels: {
+      DECK_SALOON: "Salão de convés",
+      PILOTHOUSE: "Casa do leme",
+    },
+    requirementPhraseHull: (hullLabel) => `um casco: ${hullLabel}`,
+    requirementPhraseCockpit: (cockpitLabel) => `um ${cockpitLabel}`,
+    requirementPhraseDeckSaloon: (deckSaloonLabel) => `um ${deckSaloonLabel}`,
+    resolvedHullText: (hullLabel) =>
+      `forma de casco declarada pelo corretor: ${hullLabel} (não verificada de forma independente)`,
+    resolvedCockpitText: (cockpitLabel) =>
+      `posição de cockpit declarada pelo corretor: ${cockpitLabel} (não verificada de forma independente)`,
+    resolvedDeckSaloonText: (deckSaloonLabel) =>
+      `salão de convés/casa do leme declarado pelo corretor: ${deckSaloonLabel} (não verificado de forma independente)`,
     draftMaxLabel: "Calado máximo (metros)",
     draftMaxPlaceholder: "1.6",
     keelConfigurationLabel: "Configuração da quilha",
@@ -490,7 +648,7 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       `configuração de leme declarada pelo corretor: ${rudderLabel} (não verificada de forma independente)`,
     submit: "Pesquisar",
     formInstructions:
-      "Indique o calado máximo admissível, em metros, e/ou escolha uma configuração de quilha. A HullQ apenas apresenta barcos cujo corretor confirmou cumprirem estes requisitos.",
+      "Comece pela estrutura que lhe interessa (forma do casco, posição do cockpit, salão de convés) e, opcionalmente, indique o calado máximo admissível, em metros, e/ou escolha uma configuração de quilha. A HullQ apenas apresenta barcos cujo corretor confirmou cumprirem estes requisitos.",
     invalidTitle: "Esta ligação de pesquisa não é válida",
     invalidFallback:
       "Indique o calado máximo como um número decimal simples em metros (por exemplo 1.6) e/ou escolha uma configuração de quilha suportada.",
@@ -524,7 +682,7 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     sensitivityFormNote:
       "Veja quantas correspondências confirmadas mudam se experimentar um valor diferente para um requisito. Isto não altera a sua pesquisa atual.",
     sensitivityUnavailableWithNewCriteria:
-      "A sensibilidade do requisito não está disponível enquanto um filtro de comprimento total ou de configuração de leme também estiver ativo.",
+      "A sensibilidade do requisito não está disponível enquanto um filtro de comprimento total, configuração de leme, forma do casco, posição do cockpit ou salão de convés também estiver ativo.",
     sensitivityDraftSubmitLabel: "Ver o efeito de um calado máximo diferente",
     sensitivityKeelSubmitLabel: "Ver o efeito de uma configuração de quilha diferente",
     sensitivityAlternativeDraftLabel: "Calado máximo alternativo (metros)",
@@ -555,6 +713,37 @@ export const searchText: Record<SupportedLocale, SearchText> = {
   },
   es: {
     title: "Búsqueda: calado máximo",
+    structureControlsHeading: "¿Qué tipo de estructura de velero le interesa?",
+    hullConfigurationLabel: "Forma del casco",
+    hullConfigurationAnyOption: "Cualquier forma de casco",
+    hullConfigurationLabels: {
+      MONOHULL: "Monocasco",
+      CATAMARAN: "Catamarán",
+      TRIMARAN: "Trimarán",
+    },
+    cockpitPositionLabel: "Posición de la bañera",
+    cockpitPositionAnyOption: "Cualquier posición de bañera",
+    cockpitPositionLabels: {
+      AFT: "Bañera de popa",
+      CENTER: "Bañera central",
+      FORWARD: "Bañera de proa",
+      MULTIPLE: "Bañeras múltiples",
+    },
+    deckSaloonLabel: "Salón de cubierta / timonera",
+    deckSaloonAnyOption: "Cualquier salón de cubierta / timonera",
+    deckSaloonLabels: {
+      DECK_SALOON: "Salón de cubierta",
+      PILOTHOUSE: "Timonera",
+    },
+    requirementPhraseHull: (hullLabel) => `un casco: ${hullLabel}`,
+    requirementPhraseCockpit: (cockpitLabel) => `una ${cockpitLabel}`,
+    requirementPhraseDeckSaloon: (deckSaloonLabel) => `un ${deckSaloonLabel}`,
+    resolvedHullText: (hullLabel) =>
+      `forma de casco declarada por el bróker: ${hullLabel} (no verificada de forma independiente)`,
+    resolvedCockpitText: (cockpitLabel) =>
+      `posición de bañera declarada por el bróker: ${cockpitLabel} (no verificada de forma independiente)`,
+    resolvedDeckSaloonText: (deckSaloonLabel) =>
+      `salón de cubierta/timonera declarado por el bróker: ${deckSaloonLabel} (no verificado de forma independiente)`,
     draftMaxLabel: "Calado máximo (metros)",
     draftMaxPlaceholder: "1.6",
     keelConfigurationLabel: "Configuración de quilla",
@@ -594,7 +783,7 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       `configuración de timón declarada por el bróker: ${rudderLabel} (no verificada de forma independiente)`,
     submit: "Buscar",
     formInstructions:
-      "Indique el calado máximo admisible, en metros, y/o elija una configuración de quilla. HullQ solo muestra barcos cuyo bróker ha confirmado que cumplen estos requisitos.",
+      "Empiece por la estructura que le interese (forma de casco, posición de bañera, salón de cubierta) y, opcionalmente, indique el calado máximo admisible, en metros, y/o elija una configuración de quilla. HullQ solo muestra barcos cuyo bróker ha confirmado que cumplen estos requisitos.",
     invalidTitle: "Este enlace de búsqueda no es válido",
     invalidFallback:
       "Indique el calado máximo como un número decimal simple en metros (por ejemplo 1.6) y/o elija una configuración de quilla admitida.",
@@ -628,7 +817,7 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     sensitivityFormNote:
       "Vea cuántas coincidencias confirmadas cambian si prueba un valor diferente para un requisito. Esto no modifica su búsqueda actual.",
     sensitivityUnavailableWithNewCriteria:
-      "La sensibilidad del requisito no está disponible mientras también esté activo un filtro de eslora total o de configuración de timón.",
+      "La sensibilidad del requisito no está disponible mientras también esté activo un filtro de eslora total, configuración de timón, forma de casco, posición de bañera o salón de cubierta.",
     sensitivityDraftSubmitLabel: "Ver el efecto de un calado máximo diferente",
     sensitivityKeelSubmitLabel: "Ver el efecto de una configuración de quilla diferente",
     sensitivityAlternativeDraftLabel: "Calado máximo alternativo (metros)",

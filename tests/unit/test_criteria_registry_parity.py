@@ -38,8 +38,11 @@ import pytest
 
 from hullq.search.criteria_registry import (
     CANONICAL_PARAM_KEY_ORDER,
+    COCKPIT_POSITION_DEFINITION,
     CRITERION_DEFINITIONS,
+    DECK_SALOON_DEFINITION,
     DRAFT_MAX_DEFINITION,
+    HULL_CONFIGURATION_DEFINITION,
     KEEL_CONFIGURATION_DEFINITION,
     LOA_DEFINITION,
     RUDDER_CONFIGURATION_DEFINITION,
@@ -126,6 +129,27 @@ def test_rudder_allowed_values_match_the_actual_typescript_export() -> None:
         _read_search_api_ts_source(), "SEARCH_RUDDER_CONFIGURATION_VALUES"
     )
     assert RUDDER_CONFIGURATION_DEFINITION.allowed_values == ts_values
+
+
+def test_hull_configuration_allowed_values_match_the_actual_typescript_export() -> None:
+    ts_values = _extract_ts_const_string_array(
+        _read_search_api_ts_source(), "SEARCH_HULL_CONFIGURATION_VALUES"
+    )
+    assert HULL_CONFIGURATION_DEFINITION.allowed_values == ts_values
+
+
+def test_cockpit_position_allowed_values_match_the_actual_typescript_export() -> None:
+    ts_values = _extract_ts_const_string_array(
+        _read_search_api_ts_source(), "SEARCH_COCKPIT_POSITION_VALUES"
+    )
+    assert COCKPIT_POSITION_DEFINITION.allowed_values == ts_values
+
+
+def test_deck_saloon_allowed_values_match_the_actual_typescript_export() -> None:
+    ts_values = _extract_ts_const_string_array(
+        _read_search_api_ts_source(), "SEARCH_DECK_SALOON_VALUES"
+    )
+    assert DECK_SALOON_DEFINITION.allowed_values == ts_values
 
 
 def test_extraction_raises_when_the_export_cannot_be_found() -> None:
@@ -251,6 +275,9 @@ def test_loa_definition_parses_both_bound_keys_against_the_same_projection_field
         KEEL_CONFIGURATION_DEFINITION,
         LOA_DEFINITION,
         RUDDER_CONFIGURATION_DEFINITION,
+        HULL_CONFIGURATION_DEFINITION,
+        COCKPIT_POSITION_DEFINITION,
+        DECK_SALOON_DEFINITION,
     ],
 )
 def test_every_definition_design_set_builder_and_read_claim_are_callable(
