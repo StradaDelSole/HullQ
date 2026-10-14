@@ -2,7 +2,8 @@
 
 **ID:** SLICE-0086  
 **Type:** IMPLEMENTATION  
-**Status:** READY — **NOT YET OPERATIVE** until independent exact-HEAD docs review ACCEPT, GitHub CI + manufacturer reproducibility SUCCESS, and docs-only READY PR merge to `origin/main`  
+**Status:** READY
+**Readiness authority:** NOT YET OPERATIVE until independent exact-HEAD docs review ACCEPT, GitHub CI + manufacturer reproducibility SUCCESS, and docs-only READY PR merge to `origin/main`  
 **Risk:** HIGH_RISK — public hard-filter classification, new concrete PhysicalBoat fact/writer contract and cross-Organization evidence, generation-specific BoatDesign/NamedVariant qualification, public/private rights and multilingual browser truth  
 **Previous accepted:** SLICE-0085 (Owner-accepted and remote/local closed; `FINISH_SLICE.bat` owner-confirmed).  
 **Current Owner selection:** 2026-10-14: broad sailing-vessel inclusion in principle, recreational sailing yacht/multihull first launch focus; foundational independent hull/cockpit/deck facets **before** another beam/displacement/material filter bundle.  
@@ -28,6 +29,20 @@ Directly follows Owner-selected product-first, user-meaningful Search priority; 
 
 **OVERALL MVP CAPABILITY REGISTER CHECK:** PASS  
 Current `MVP-BUY-001` remains IMPLEMENTED/PARTIAL; `MVP-BUY-002` remains PARTIAL; Broker `MVP-BROKER-010` remains IMPLEMENTED within illustrative prepublication Search-fit. No broker export/report, buyer persistence/alerts, trust/safety, owner-direct admission or production provider obligation is waived or represented as completed. External production-data pilot and public launch remain NOT_STARTED; Production Readiness IN_PROGRESS; Launch Pack NOT_STARTED. UI accessibility/form truth is functional scope, not visual polish.
+
+## Decision / implementation reconciliation
+
+**Accepted records checked:** `docs/PROJECT_STATE.md` at accepted 0085, `docs/slices/SLICE-0085-acceptance-closure.md`, `docs/governance/OVERALL_MVP_CAPABILITY_REGISTER.md`, `docs/governance/POST_0051_TRIGGER_GATES.md`, `docs/governance/BROKER_WORKSPACE_MANDATORY_CAPABILITY_REGISTER.md`, `docs/governance/PRODUCTION_READINESS_GATE.md`, Owner-direct and broker product directions, `docs/PRODUCT_EXECUTION_PLAN.md`, `specs/TECHNICAL_PROFILE_SPEC.v0.1.md`, `specs/BOAT_DESIGN_SCHEMA.v0.5.json` and `.v0.6.json`, `specs/MARKETPLACE_FIELD_REGISTRY.v0.1.json` and `specs/SEARCH_QUERY_SEMANTICS.v0.1.md`.
+
+**Production implementation checked:** 0085 four-definition `src/hullq/search/criteria_registry.py`, `src/hullq/search/boat_design_field_bridge.py` and `native_inventory_query.py` single qualified design/variant/concrete claim Search kernel, `src/hullq/domain/physical_boat_claims.py` fixed eight-field snapshot, `src/hullq/persistence/physical_boat_claims.py` current immutable revision/observation reading, `src/hullq/application/search_read.py` and `broker_search_fit.py`, `src/hullq/api/app.py`, multilingual `web/src/components/SearchPageBody.astro` and private broker inventory editor, existing real PostgreSQL/FastAPI/built Astro integration script.
+
+**Already implemented / not re-decided:** Four accepted hard Search dimensions; versioned FieldResolution and NamedVariant applicability; identical same-configuration MUST/AND and independent current non-conflicting PhysicalBoat publisher claim requirements; D29 public eligibility, private PUBLISHER/MFA/DRAFT Search-fit, all five locale canonical URLs, existing draft/keel-only sensitivity, strict current-Org permissions. The 0085 acceptance closure and no-automatic-`LONG_KEEL` policy remain binding.
+
+**Exact remaining gap:** No concrete `physical_boat.hull_configuration/cockpit_position/deck_saloon` definitions in the accepted marketplace fact registry or existing PhysicalBoat snapshot/serializer/persistence/editor, and no respective `CriterionDefinition`/first-level public Buyer Search form or private Search-fit. `BoatDesign v0.5/v0.6` already supplies qualified hull form, but only v0.6 has deck/cockpit; v0.5 must never be assumed to have those fields.
+
+**Accepted-but-unimplemented obligations:** BuyerRequirements persistence/Saved Search/alerts, owner-direct promotion/publication and trust requirements, broker export/periodic engagement reporting, expanded numerical/search breadth (beam, displacement, rig, material), unbiased current public Search, safe `LONG_KEEL` mapping, actual production provider and privacy/legal/help/ops gates remain governed by existing independent triggers. No new broker product status is preemptively upgraded.
+
+**Material classifications:** DECIDED_AND_IMPLEMENTED = 0085 four-dimensional Search and reuse kernel; DECIDED_NOT_YET_IMPLEMENTED = three first-level actual-boat and Buyer/Broker facets; EXPLICITLY_DEFERRED = motorsailer/classic/traditional/commercial legal-use subtype filters, unlimited catalogue browse and out-of-scope Search fields; GENUINELY_OPEN = additional safe commercial-type and classic/rig taxonomy for later slices and optional `NONE` public deck predicate; CONFLICT_OR_REGRESSION = no observed accepted regression, but v0.5's absence of qualified deck facts prohibits inferred positives.
 
 ## Normative classification axes — do NOT conflate them
 
@@ -65,6 +80,17 @@ Examples that MUST be representable without category conflict: MONOHULL+CENTER+D
 - **Concrete** optional `physical_boat.deck_saloon` `VALUE_ASSERTION` or `UNKNOWN`, with accepted canonical values as above and truthful optional UNKNOWN vs omission. Same current publisher and cross-Org conflict rules as all other criteria.
 - Before implementation sign-off decide `NONE` as an explicit qualified negative or defer it from public supported vocabulary, and record exact supported values in final evidence. Both DECK_SALOON and PILOTHOUSE must be real end-to-end positive filters for this dimension to count.
 
+## Trigger gates
+
+**Production readiness gate:** IN_PROGRESS
+**Adds technical native Search criterion:** YES
+**Technical Search criterion ordinal:** 5
+**Second-criterion bridge comparison:** PASS
+**Third-copy abstraction guard:** PASS
+**Workflow reassessment status:** PASS
+
+**Gate 3 verdict:** `COMMON STRUCTURE GENERALIZED / REUSED`. Accepted criterion count remains four during readiness/implementation; if and only if the three defined independently truthful public hard dimensions are delivered and Owner-accepted in a later closure may it advance to seven. 0085's typed registry, Shared FieldProjectionSpec/NamedVariant configuration evaluation and existing current PhysicalBoat claim classifier must be reused. External owner/broker production data/pilot and public launch are not triggered by this synthetic feature slice; Production Readiness remains IN_PROGRESS and Launch Pack NOT_STARTED.
+
 ## Shared implementation boundary
 
 1. Extend `specs/MARKETPLACE_FIELD_REGISTRY.v0.1.json` with exactly three explicit `PHYSICAL_BOAT` categorical OPTIONAL `PUBLIC`/`SEARCHABLE` entries (other existing enum tokens only with explicit grounding); do NOT change accepted fields or phases via a sweeping registry edit. Extend corresponding `src/hullq/domain/physical_boat_claims.py` frozen types and `PhysicalBoatClaimSnapshot`, source-specific wire serializer/parser, durable immutable revisions, Postgres current-claim observations and broker inventory editor; compatibility with old revisions and old exact retries is mandatory. A migration is authorized **only if** proven necessary to retain valid historical bytes/schema; no gratuitous structural data rewrite.
@@ -75,9 +101,17 @@ Examples that MUST be representable without category conflict: MONOHULL+CENTER+D
 6. `search_sensitivity`: accepted legacy draft/keel-only forms continue; *any* new facet active must suppress or safely reject sensitivity before backend incomplete-current evaluation. Do not use 0085's existing guard hardcoded only for LOA/rudder without extending to 0086 facets. Original and new combos must be tested against real SSR to catch plausible but wrong deltas.
 7. No uncontrolled admission: a class token cannot be a legal `COMMERCIAL` claim, a fact about past use, a rigging style or an arbitrary label inferred from brand/model. External real commercial sailing-vessel acceptance continues under existing publication/trust/data-rights and eventual legal governance, never by a new Search enum.
 
+## Production phase transition check
+
+**PRODUCTION LAUNCH PACK CHECK:** NOT_APPLICABLE
+**Launch-pack phase before this slice:** NOT_APPLICABLE
+**Launch-pack phase after this slice:** NOT_APPLICABLE
+
+This capability adds no provider account, real customer inventory, live external pilot, paid service, production rollout or permission to bypass the accepted operator/retention/HA/security/legal gates.
+
 ## Required tests and retained real-user proof
 
-**MECHANICAL INVARIANTS / FAILURE MODES CHECK:** PASS — contract specifies executable adversarial proof.  
+**MECHANICAL INVARIANTS / FAILURE MODES CHECK:** PASS  
 **Risk category:** HIGH_RISK; concrete yacht fact revision semantics, classification search truth, authenticated private write/read vs public disclosure.
 
 **Must never change:** Every confirmed public Search result satisfies all selected hull/cockpit/deck + prior constraints on the SAME qualified applicable BoatDesign/NamedVariant configuration and the **actual** currently and independently asserted PhysicalBoat facts, no conflicting other-Org claims, no unqualified Design v0.5 deck inference, no DRAFT eligibility bypass and no payment-dependent organic truth. Specialty sailing vessels remain eligible in principle; unknown class not falsely coded as monohull.
@@ -101,6 +135,17 @@ Examples that MUST be representable without category conflict: MONOHULL+CENTER+D
 **Launch-pack phase before this slice:** NOT_APPLICABLE  
 **Launch-pack phase after this slice:** NOT_APPLICABLE  
 **OVERALL MVP CAPABILITY REGISTER STATUS:** OPEN; no capability marker preemptively upgraded.
+
+## Mechanical invariants / failure modes
+
+**Risk classification:** HIGH_RISK
+**Why this classification:** Three new classification fields touch immutable current concrete boat claim revision/read/write, cross-Organization conflicts, FieldResolution/NamedVariant provenance, public D29 inclusion, multi-filter correct buyer outcomes, and authenticated private broker preview and edit rights. False confirmation can materially mislead vessel choice.
+**Must-never-change invariant:** Confirmed public results MUST satisfy every selected positive hull/cockpit/deck facet and every existing technical hard criterion on the identical qualified BoatDesign/NamedVariant configuration AND independently asserted current non-conflicting offered PhysicalBoat values, without invented older-schema deck data, hidden paid ordering or DRAFT leakage.
+**Durable source of truth / loss boundary:** Existing PostgreSQL immutable per-Organization PhysicalBoat claim revision/head chain and qualified BoatDesign/NamedVariant FieldResolutions, marketplace publication/current eligibility and canonical URL identity remain authoritative. Neither browser choice nor class taxonomy is a durable yacht fact; failed edits never partially create positive claims.
+**Retry / replay / partial-failure behavior:** Accepted old wire and stored immutable claims retain meaning, old exact retries are idempotent; new optional omission/UNKNOWN/VALUE_ASSERTION remain distinct, optimistic edits and authorized confirmation are transactional, duplicate/noncanonical requests follow accepted redirect-or-invalid semantics and a failed form/client service never results in default monohull/class inference.
+**Absence-vs-error / fail-closed behavior:** No v0.5 deck facts, missing/qualified-unknown/contradicted FieldResolution, ambiguous variants and conflicting same-boat other-Org claims produce an explicit UNKNOWN or typed non-match per established truth, never a confirmed positive. Invalid/unrecognized search option is 400, not silently dropped; authentication, lifecycle, database and integrity faults keep existing typed failure status (401/403/404/409/503) and private no-store/noindex.
+**Executable adversarial proof:** Retained disposal-schema PostgreSQL 18 + real FastAPI + **built** Astro SSR inspections of all three new first-level standalone filters and accepted mixed prior dimensions, v0.5 vs v0.6 positive/unknown, NamedVariant and count conflicts, actual writer revision/reopen, DRAFT/ACTIVE rights, all five locales/canonical links and actual rendered source-qualified evidence; browser sensitivity mixed active first-level facets cannot elide criteria, independent old-only flow unchanged. Run full unit/DB/Web/quality/remote CI/manufacturer gates exact final implementation HEAD.
+**Slice sizing assessment:** COHERENT
 
 ## Delivery and workflow
 
