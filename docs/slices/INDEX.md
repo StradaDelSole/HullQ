@@ -18,8 +18,8 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ```text
 Latest owner-accepted slice: SLICE-0085
 Current queue:               SLICE-0086
-Current capability:          UNSELECTED — post-0085 reconciliation and Owner decision required
-Current readiness:           NOT_STARTED — no SLICE-0086 readiness/implementation authorized
+Current capability:          OWNER-SELECTED First-Level Sailing-Vessel Discovery (hull form + cockpit + deck/saloon)
+Current readiness:           READY contract proposed; independent review/CI/repro/docs merge PENDING; implementation NOT_STARTED
 ```
 
 Current boundary:
@@ -33,6 +33,7 @@ Current boundary:
 - SLICE-0083 is Owner-accepted and merged (implementation PR #335), providing D26-governed CSV/TSV/XLSX/XLS/XLSB/ODS/JSON/NautiX 1.4 intake into private drafts only; see `docs/slices/SLICE-0083-acceptance-closure.md`;
 - SLICE-0084 Broker pre-publication Search-fit is Owner-accepted and merged (implementation PR #342, independent exact-head ACCEPT); closure at `docs/slices/SLICE-0084-acceptance-closure.md`. The accepted technical Search expansion priority (LOA first candidate, then rudder/skeg; separate long-keel taxonomy review) remains binding for the post-0084 reassessment under `docs/POST_SLICE_0083_SEARCH_PRIORITY_REASSESSMENT_2026-10-13.md` / issue #339;
 - SLICE-0085 is **Owner-accepted, implementation-merged and closing**: bounded typed registry plus LOA range and qualified rudder configuration added as hard Buyer Search dimensions #3/#4 with private broker Search-fit parity, five-locale SSR and real PG18 proof; accepted implementation PR #345, final review #5510329645, closure `docs/slices/SLICE-0085-acceptance-closure.md`. Exactly **4** technical hard dimensions are accepted after closure. `LONG_KEEL` remains unsupported; no new production authorization. Post-0085 reconciliation/choice is required before any 0086 readiness/start;
+- SLICE-0086 Owner-selected after confirmed local 0085 FINISH: broad sail-vessel market allowed in principle; first live Buyer/Broker Search bundle is hull form, cockpit position and deck saloon/pilothouse over newly declared independent concrete claims, while motorsailer/traditional/commercial *subtype filters* remain deferred. Reconciliation: `docs/POST_SLICE_0085_FIRST_LEVEL_SAILING_VESSEL_DISCOVERY_REASSESSMENT_2026-10-14.md`; proposed READY: `docs/slices/SLICE-0086-first-level-sailing-vessel-discovery.md`. No implementation until independently reviewed docs-only READY merge and normal Owner `START_SLICE.bat`;
 - no subsequent slice is authorized automatically.
 
 ## Historical execution ranges
@@ -42,7 +43,7 @@ Current boundary:
 | SLICE-0001–0038 | accepted foundational research/architecture/data/product work except where an individual slice record states otherwise |
 | SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
 | SLICE-0040–0085 | accepted work; see acceptance closures and `PROJECT_STATE.md` |
-| SLICE-0086 | UNSELECTED; requires fresh reconciliation, Owner selection and independently reviewed READY |
+| SLICE-0086 | OWNER-SELECTED first-level structural Buyer Search; readiness subject to independent review/CI/repro/merge, NOT_STARTED implementation |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
