@@ -16,10 +16,10 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ## Current execution boundary
 
 ```text
-Latest owner-accepted slice: SLICE-0086
-Current queue:               SLICE-0087
-Current capability:          OWNER-SELECTED Qualified Beam & Hull-Material Buyer Search
-Current readiness:           docs-only READY candidate; independent exact-HEAD review/merge PENDING; implementation NOT_STARTED
+Latest owner-accepted slice: SLICE-0087
+Current queue:               SLICE-0088
+Current capability:          UNSELECTED (post-0087 reconciliation and Owner selection required)
+Current readiness:           NOT READY; SLICE-0087 remote implementation accepted/merged, separate closure in review; local FINISH pending
 ```
 
 Current boundary:
@@ -34,7 +34,7 @@ Current boundary:
 - SLICE-0084 Broker pre-publication Search-fit is Owner-accepted and merged (implementation PR #342, independent exact-head ACCEPT); closure at `docs/slices/SLICE-0084-acceptance-closure.md`. The accepted technical Search expansion priority (LOA first candidate, then rudder/skeg; separate long-keel taxonomy review) remains binding for the post-0084 reassessment under `docs/POST_SLICE_0083_SEARCH_PRIORITY_REASSESSMENT_2026-10-13.md` / issue #339;
 - SLICE-0085 is **Owner-accepted, fully remotely closed and locally finished**: bounded typed registry plus LOA range and qualified rudder configuration added as hard Buyer Search dimensions #3/#4, private broker Search-fit parity, five-locale real SSR proof; implementation PR #345, final review #5510329645, formal closure PR #346 and Owner-confirmed local `FINISH_SLICE.bat` 0085 on 2026-10-14. Exactly **4** public hard dimensions were accepted at 0085 closure, prior to accepted 0086's three-dimensional extension. `LONG_KEEL` remains unsupported; no new production authorization;
 - SLICE-0086 is **Owner-accepted, independently reviewed, implementation + separate closure merged and locally finished**: independent hull configuration, cockpit position and deck saloon/pilothouse structural Buyer filters, private authorized Broker Search-fit parity and durable current offered-boat claims; implementation PR #349, formal closure PR #350, Owner-confirmed local `FINISH_SLICE.bat 0086`. Exactly **7** public hard technical Search dimensions are accepted. Public subtype/legal-use categories for motorsailer, traditional and commercial sailing vessels remain deferred; no real production/pilot authorization.
-- SLICE-0087 is **Owner-selected, NOT implemented, docs-only READY review pending**: bounded inclusive `beam_min`/`beam_max` range (one dimension) + evidence-qualified `hull_material` choice (one dimension) with authorized private Broker Search-fit. Reconciliation: `docs/POST_SLICE_0086_BEAM_HULL_MATERIAL_REASSESSMENT_2026-10-15.md`; READY candidate: `docs/slices/SLICE-0087-qualified-beam-hull-material-search.md`. Canonical count remains **7** until independent implementation review, Owner acceptance and formal closure. No `START_SLICE.bat 0087` until READY docs review/CI/repro and merge;
+- SLICE-0087 is **Owner-accepted and implementation-merged**, exact reviewed final HEAD `88c8baa3e8451f9b0afaca776766b1f5a450f354` (PR #352, squash `e6d30f1671e6834d097068a7318a4d84c8f96e04`). Additional Buyer and private Broker Search-fit facets are inclusive overall beam min/max (one semantic dimension) and safely qualified GFK/steel/aluminium/wood hull material (one), with immutable claim revision/editor and retained real PostgreSQL18/FastAPI/built SSR proof. Both initial review Findings A/B closed; exact-head CI and manufacturer successful, Owner explicitly accepted. **9** public hard dimensions are recorded by the separate formal acceptance closure `docs/slices/SLICE-0087-acceptance-closure.md`; local `FINISH_SLICE.bat 0087` remains pending until that closure is reviewed and merged. No real provider/pilot/launch authorization;
 - no subsequent slice is authorized automatically.
 
 ## Historical execution ranges
@@ -43,8 +43,8 @@ Current boundary:
 |---|---|
 | SLICE-0001–0038 | accepted foundational research/architecture/data/product work except where an individual slice record states otherwise |
 | SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
-| SLICE-0040–0086 | accepted work; see acceptance closures and `PROJECT_STATE.md` |
-| SLICE-0087 | OWNER-SELECTED beam and hull material qualified Buyer Search; docs-only READY review/merge pending, NOT_STARTED implementation |
+| SLICE-0040–0087 | accepted work; see acceptance closures and `PROJECT_STATE.md` |
+| SLICE-0088 | UNSELECTED; no READY contract or implementation authorization |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
