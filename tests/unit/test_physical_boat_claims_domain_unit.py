@@ -18,7 +18,13 @@ from hullq.domain.physical_boat_claims import (
     AssertionKind,
     BoatNameClaim,
     BuildYearClaim,
+    CockpitPosition,
+    CockpitPositionClaim,
+    DeckSaloon,
+    DeckSaloonClaim,
     DraftClaim,
+    HullConfiguration,
+    HullConfigurationClaim,
     KeelConfiguration,
     KeelConfigurationClaim,
     LoaLengthClaim,
@@ -44,7 +50,7 @@ def _minimal_snapshot(**overrides: object) -> PhysicalBoatClaimSnapshot:
 # ---------------------------------------------------------------------------
 
 
-def test_snapshot_has_exactly_the_seven_slice_0050_fields_plus_boat_name() -> None:
+def test_snapshot_has_exactly_the_seven_slice_0050_fields_plus_boat_name_and_slice_0086() -> None:
     field_names = {f.name for f in dataclasses.fields(PhysicalBoatClaimSnapshot)}
     assert field_names == {
         "marketed_brand_claim",
@@ -55,6 +61,9 @@ def test_snapshot_has_exactly_the_seven_slice_0050_fields_plus_boat_name() -> No
         "keel_configuration",
         "rudder_configuration",
         "boat_name",
+        "hull_configuration",
+        "cockpit_position",
+        "deck_saloon",
     }
 
 
@@ -334,3 +343,170 @@ def test_adding_absent_to_assertion_kind_does_not_loosen_other_fields() -> None:
         KeelConfigurationClaim(assertion_kind=AssertionKind.ABSENT)
     with pytest.raises(ValueError, match="assertion_kind"):
         RudderConfigurationClaim(assertion_kind=AssertionKind.ABSENT)
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0086: hull_configuration / cockpit_position / deck_saloon
+# ---------------------------------------------------------------------------
+
+
+def test_hull_configuration_omitted_by_default() -> None:
+    assert _minimal_snapshot().hull_configuration is None
+
+
+def test_hull_configuration_value_assertion_round_trips() -> None:
+    snapshot = _minimal_snapshot(
+        hull_configuration=HullConfigurationClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=HullConfiguration.CATAMARAN
+        )
+    )
+    assert snapshot.hull_configuration.value is HullConfiguration.CATAMARAN
+
+
+def test_hull_configuration_other_is_a_value_assertion_not_a_separate_kind() -> None:
+    """OTHER is known-other, asserted via the ordinary VALUE_ASSERTION kind
+    -- never a substitute for UNKNOWN or its own assertion_kind."""
+    snapshot = _minimal_snapshot(
+        hull_configuration=HullConfigurationClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=HullConfiguration.OTHER
+        )
+    )
+    assert snapshot.hull_configuration.assertion_kind is AssertionKind.VALUE_ASSERTION
+    assert snapshot.hull_configuration.value is HullConfiguration.OTHER
+
+
+def test_hull_configuration_explicit_unknown_is_distinct_from_omitted() -> None:
+    snapshot_omitted = _minimal_snapshot()
+    snapshot_unknown = _minimal_snapshot(
+        hull_configuration=HullConfigurationClaim(assertion_kind=AssertionKind.UNKNOWN)
+    )
+    assert snapshot_omitted.hull_configuration is None
+    assert snapshot_unknown.hull_configuration.assertion_kind is AssertionKind.UNKNOWN
+    assert snapshot_unknown.hull_configuration.value is None
+
+
+def test_hull_configuration_rejects_absent() -> None:
+    """Unlike boat_name, hull_configuration never adds a separate ABSENT
+    assertion_kind -- only VALUE_ASSERTION|UNKNOWN."""
+    with pytest.raises(ValueError, match="assertion_kind"):
+        HullConfigurationClaim(assertion_kind=AssertionKind.ABSENT)
+
+
+def test_hull_configuration_rejects_unsupported_categorical_value() -> None:
+    with pytest.raises(ValueError):
+        HullConfiguration("PROA")  # not an accepted registry value
+
+
+def test_hull_configuration_rejects_cockpit_position_value_type() -> None:
+    with pytest.raises(TypeError, match="HullConfiguration"):
+        HullConfigurationClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION,
+            value=CockpitPosition.AFT,  # type: ignore[arg-type]
+        )
+
+
+def test_cockpit_position_omitted_by_default() -> None:
+    assert _minimal_snapshot().cockpit_position is None
+
+
+def test_cockpit_position_value_assertion_round_trips() -> None:
+    snapshot = _minimal_snapshot(
+        cockpit_position=CockpitPositionClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=CockpitPosition.CENTER
+        )
+    )
+    assert snapshot.cockpit_position.value is CockpitPosition.CENTER
+
+
+def test_cockpit_position_multiple_is_an_ordinary_value_assertion() -> None:
+    snapshot = _minimal_snapshot(
+        cockpit_position=CockpitPositionClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=CockpitPosition.MULTIPLE
+        )
+    )
+    assert snapshot.cockpit_position.value is CockpitPosition.MULTIPLE
+
+
+def test_cockpit_position_explicit_unknown_is_distinct_from_omitted() -> None:
+    snapshot_unknown = _minimal_snapshot(
+        cockpit_position=CockpitPositionClaim(assertion_kind=AssertionKind.UNKNOWN)
+    )
+    assert _minimal_snapshot().cockpit_position is None
+    assert snapshot_unknown.cockpit_position.assertion_kind is AssertionKind.UNKNOWN
+    assert snapshot_unknown.cockpit_position.value is None
+
+
+def test_cockpit_position_rejects_unsupported_categorical_value() -> None:
+    with pytest.raises(ValueError):
+        CockpitPosition("MIDSHIP")  # not an accepted registry value
+
+
+def test_deck_saloon_omitted_by_default() -> None:
+    assert _minimal_snapshot().deck_saloon is None
+
+
+def test_deck_saloon_value_assertion_round_trips() -> None:
+    snapshot = _minimal_snapshot(
+        deck_saloon=DeckSaloonClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=DeckSaloon.PILOTHOUSE
+        )
+    )
+    assert snapshot.deck_saloon.value is DeckSaloon.PILOTHOUSE
+
+
+def test_deck_saloon_none_is_a_confirmed_positive_claim_of_absence() -> None:
+    """NONE is an ordinary VALUE_ASSERTION value -- a confirmed positive
+    claim that no deck saloon/pilothouse exists -- mechanically distinct
+    from the whole wrapper being omitted and from explicit UNKNOWN."""
+    snapshot_none = _minimal_snapshot(
+        deck_saloon=DeckSaloonClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=DeckSaloon.NONE
+        )
+    )
+    snapshot_unknown = _minimal_snapshot(
+        deck_saloon=DeckSaloonClaim(assertion_kind=AssertionKind.UNKNOWN)
+    )
+    snapshot_omitted = _minimal_snapshot()
+    assert snapshot_none.deck_saloon.assertion_kind is AssertionKind.VALUE_ASSERTION
+    assert snapshot_none.deck_saloon.value is DeckSaloon.NONE
+    assert snapshot_unknown.deck_saloon.assertion_kind is AssertionKind.UNKNOWN
+    assert snapshot_unknown.deck_saloon.value is None
+    assert snapshot_omitted.deck_saloon is None
+
+
+def test_deck_saloon_rejects_unsupported_categorical_value() -> None:
+    with pytest.raises(ValueError):
+        DeckSaloon("RAISED_SALOON")  # not an accepted registry value
+
+
+def test_hull_cockpit_deck_saloon_are_independent_dimensions() -> None:
+    """Hull form, cockpit position and deck saloon must be settable
+    independently of each other and of keel/rudder (slice normative
+    classification axes)."""
+    snapshot = _minimal_snapshot(
+        hull_configuration=HullConfigurationClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=HullConfiguration.CATAMARAN
+        ),
+        cockpit_position=CockpitPositionClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=CockpitPosition.CENTER
+        ),
+        deck_saloon=DeckSaloonClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=DeckSaloon.DECK_SALOON
+        ),
+    )
+    assert snapshot.hull_configuration.value is HullConfiguration.CATAMARAN
+    assert snapshot.cockpit_position.value is CockpitPosition.CENTER
+    assert snapshot.deck_saloon.value is DeckSaloon.DECK_SALOON
+
+
+def test_adding_hull_cockpit_deck_saloon_kinds_does_not_loosen_other_fields() -> None:
+    """The new fields' own VALUE_ASSERTION|UNKNOWN-only shape must not widen
+    any pre-existing field's allowed assertion_kind set."""
+    with pytest.raises(ValueError, match="assertion_kind"):
+        KeelConfigurationClaim(assertion_kind=AssertionKind.ABSENT)
+    with pytest.raises(ValueError, match="assertion_kind"):
+        RudderConfigurationClaim(assertion_kind=AssertionKind.ABSENT)
+    with pytest.raises(ValueError, match="assertion_kind"):
+        CockpitPositionClaim(assertion_kind=AssertionKind.ABSENT)
+    with pytest.raises(ValueError, match="assertion_kind"):
+        DeckSaloonClaim(assertion_kind=AssertionKind.ABSENT)

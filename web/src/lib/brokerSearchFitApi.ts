@@ -152,6 +152,9 @@ export interface SearchFitView {
     loa_min?: string;
     loa_max?: string;
     rudder_configuration?: string;
+    hull_configuration?: string;
+    cockpit_position?: string;
+    deck_saloon?: string;
   };
   result_class: ResultClass;
   design_evaluation: DesignEvaluation | null;
@@ -200,6 +203,9 @@ export interface SearchFitScenario {
   loaMin?: string;
   loaMax?: string;
   rudderConfiguration?: string;
+  hullConfiguration?: string;
+  cockpitPosition?: string;
+  deckSaloon?: string;
 }
 
 export type SearchFitResult =
@@ -237,6 +243,9 @@ export async function fetchSearchFit(
   if (scenario.loaMin) params.set("loa_min", scenario.loaMin);
   if (scenario.loaMax) params.set("loa_max", scenario.loaMax);
   if (scenario.rudderConfiguration) params.set("rudder_configuration", scenario.rudderConfiguration);
+  if (scenario.hullConfiguration) params.set("hull_configuration", scenario.hullConfiguration);
+  if (scenario.cockpitPosition) params.set("cockpit_position", scenario.cockpitPosition);
+  if (scenario.deckSaloon) params.set("deck_saloon", scenario.deckSaloon);
   const search = params.toString() ? `?${params.toString()}` : "";
   let response: Response;
   try {

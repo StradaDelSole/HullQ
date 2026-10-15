@@ -179,7 +179,7 @@ test("buildSearchCanonicalPath: rudder-only", () => {
   );
 });
 
-test("buildSearchCanonicalPath: all five keys in accepted canonical order", () => {
+test("buildSearchCanonicalPath: all five originally accepted keys in canonical order", () => {
   assert.equal(
     buildSearchCanonicalPath("en", {
       draft_max: "1.6",
@@ -189,6 +189,57 @@ test("buildSearchCanonicalPath: all five keys in accepted canonical order", () =
       rudder_configuration: "SKEG_HUNG",
     }),
     "/en/search?draft_max=1.6&keel_configuration=FIN&loa_max=15&loa_min=10&rudder_configuration=SKEG_HUNG",
+  );
+});
+
+// SLICE-0086: hull_configuration/cockpit_position/deck_saloon.
+
+test("buildSearchCanonicalPath: hull-only", () => {
+  assert.equal(
+    buildSearchCanonicalPath("en", { hull_configuration: "CATAMARAN" }),
+    "/en/search?hull_configuration=CATAMARAN",
+  );
+});
+
+test("buildSearchCanonicalPath: cockpit-only", () => {
+  assert.equal(
+    buildSearchCanonicalPath("en", { cockpit_position: "CENTER" }),
+    "/en/search?cockpit_position=CENTER",
+  );
+});
+
+test("buildSearchCanonicalPath: deck-saloon-only", () => {
+  assert.equal(
+    buildSearchCanonicalPath("en", { deck_saloon: "DECK_SALOON" }),
+    "/en/search?deck_saloon=DECK_SALOON",
+  );
+});
+
+test("buildSearchCanonicalPath: deck_saloon before hull_configuration (canonical key order)", () => {
+  assert.equal(
+    buildSearchCanonicalPath("en", {
+      hull_configuration: "CATAMARAN",
+      deck_saloon: "DECK_SALOON",
+    }),
+    "/en/search?deck_saloon=DECK_SALOON&hull_configuration=CATAMARAN",
+  );
+});
+
+test("buildSearchCanonicalPath: all eight accepted keys in canonical order", () => {
+  assert.equal(
+    buildSearchCanonicalPath("en", {
+      draft_max: "1.6",
+      keel_configuration: "FIN",
+      loa_min: "10",
+      loa_max: "15",
+      rudder_configuration: "SKEG_HUNG",
+      hull_configuration: "CATAMARAN",
+      cockpit_position: "CENTER",
+      deck_saloon: "DECK_SALOON",
+    }),
+    "/en/search?cockpit_position=CENTER&deck_saloon=DECK_SALOON&draft_max=1.6" +
+      "&hull_configuration=CATAMARAN&keel_configuration=FIN&loa_max=15&loa_min=10" +
+      "&rudder_configuration=SKEG_HUNG",
   );
 });
 

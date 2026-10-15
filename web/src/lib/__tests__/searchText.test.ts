@@ -5,7 +5,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { SEARCH_KEEL_CONFIGURATION_VALUES, SEARCH_RUDDER_CONFIGURATION_VALUES } from "../searchApi.ts";
+import {
+  SEARCH_COCKPIT_POSITION_VALUES,
+  SEARCH_DECK_SALOON_VALUES,
+  SEARCH_HULL_CONFIGURATION_VALUES,
+  SEARCH_KEEL_CONFIGURATION_VALUES,
+  SEARCH_RUDDER_CONFIGURATION_VALUES,
+} from "../searchApi.ts";
 import { SUPPORTED_LOCALES, searchText } from "../searchText.ts";
 
 test("every supported locale has complete non-empty text", () => {
@@ -136,6 +142,64 @@ test("LOA/rudder requirement phrases and resolved-evidence text interpolate thei
     assert.ok(
       t.resolvedRudderText("Skeg-hung rudder").includes("Skeg-hung rudder"),
       `${locale}.resolvedRudderText`,
+    );
+  }
+});
+
+// SLICE-0086: hull_configuration/cockpit_position/deck_saloon presentation
+// text -- every supported locale has complete non-empty labels, complete
+// value-label mappings, and every new interpolating function interpolates.
+test("every supported locale has complete non-empty SLICE-0086 structure text", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const t = searchText[locale];
+    assert.ok(t.structureControlsHeading.length > 0, `${locale}.structureControlsHeading`);
+    assert.ok(t.hullConfigurationLabel.length > 0, `${locale}.hullConfigurationLabel`);
+    assert.ok(t.hullConfigurationAnyOption.length > 0, `${locale}.hullConfigurationAnyOption`);
+    assert.ok(t.cockpitPositionLabel.length > 0, `${locale}.cockpitPositionLabel`);
+    assert.ok(t.cockpitPositionAnyOption.length > 0, `${locale}.cockpitPositionAnyOption`);
+    assert.ok(t.deckSaloonLabel.length > 0, `${locale}.deckSaloonLabel`);
+    assert.ok(t.deckSaloonAnyOption.length > 0, `${locale}.deckSaloonAnyOption`);
+  }
+});
+
+test("every supported locale has complete hull/cockpit/deckSaloon label mappings", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const t = searchText[locale];
+    for (const value of SEARCH_HULL_CONFIGURATION_VALUES) {
+      assert.ok(t.hullConfigurationLabels[value].length > 0, `${locale}.hullConfigurationLabels.${value}`);
+    }
+    for (const value of SEARCH_COCKPIT_POSITION_VALUES) {
+      assert.ok(
+        t.cockpitPositionLabels[value].length > 0,
+        `${locale}.cockpitPositionLabels.${value}`,
+      );
+    }
+    for (const value of SEARCH_DECK_SALOON_VALUES) {
+      assert.ok(t.deckSaloonLabels[value].length > 0, `${locale}.deckSaloonLabels.${value}`);
+    }
+  }
+});
+
+test("SLICE-0086 requirement phrases and resolved-evidence text interpolate their arguments", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const t = searchText[locale];
+    assert.ok(t.requirementPhraseHull("Catamaran").includes("Catamaran"), `${locale}.requirementPhraseHull`);
+    assert.ok(
+      t.requirementPhraseCockpit("Center cockpit").includes("Center cockpit"),
+      `${locale}.requirementPhraseCockpit`,
+    );
+    assert.ok(
+      t.requirementPhraseDeckSaloon("Deck saloon").includes("Deck saloon"),
+      `${locale}.requirementPhraseDeckSaloon`,
+    );
+    assert.ok(t.resolvedHullText("Catamaran").includes("Catamaran"), `${locale}.resolvedHullText`);
+    assert.ok(
+      t.resolvedCockpitText("Center cockpit").includes("Center cockpit"),
+      `${locale}.resolvedCockpitText`,
+    );
+    assert.ok(
+      t.resolvedDeckSaloonText("Deck saloon").includes("Deck saloon"),
+      `${locale}.resolvedDeckSaloonText`,
     );
   }
 });

@@ -684,6 +684,102 @@
       "event_structure_ref": null,
       "notes": "Keel, rudder and rig configuration are independent dimensions."
     },
+    "physical_boat.hull_configuration": {
+      "topic": "hull configuration",
+      "subject": "PHYSICAL_BOAT",
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "categorical",
+        "unit": null,
+        "unit_system": null,
+        "values": [
+          "MONOHULL",
+          "CATAMARAN",
+          "TRIMARAN",
+          "OTHER"
+        ],
+        "cardinality": "SINGLE"
+      },
+      "presentation": "PUBLIC",
+      "search_use": "SEARCHABLE",
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
+      "delivery_phase": "GATE_1_OPTIONAL",
+      "claim_risk_class": "MATERIAL",
+      "presentation_policy": null,
+      "event_structure_ref": null,
+      "notes": "SLICE-0086. Hull form, cockpit position and deck saloon are independent dimensions. Public hard-filter vocabulary is the strict subset MONOHULL/CATAMARAN/TRIMARAN; OTHER is a known-other claim, never a public Search value."
+    },
+    "physical_boat.cockpit_position": {
+      "topic": "cockpit position",
+      "subject": "PHYSICAL_BOAT",
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "categorical",
+        "unit": null,
+        "unit_system": null,
+        "values": [
+          "AFT",
+          "CENTER",
+          "FORWARD",
+          "MULTIPLE",
+          "OTHER"
+        ],
+        "cardinality": "SINGLE"
+      },
+      "presentation": "PUBLIC",
+      "search_use": "SEARCHABLE",
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
+      "delivery_phase": "GATE_1_OPTIONAL",
+      "claim_risk_class": "MATERIAL",
+      "presentation_policy": null,
+      "event_structure_ref": null,
+      "notes": "SLICE-0086. Hull form, cockpit position and deck saloon are independent dimensions. Public hard-filter vocabulary is the strict subset AFT/CENTER/FORWARD/MULTIPLE; OTHER is a known-other claim, never a public Search value. MULTIPLE requires corroborated distinct physical cockpits, never a single split cockpit's two zones."
+    },
+    "physical_boat.deck_saloon": {
+      "topic": "deck saloon / pilothouse",
+      "subject": "PHYSICAL_BOAT",
+      "allowed_assertion_kinds": [
+        "VALUE_ASSERTION",
+        "UNKNOWN"
+      ],
+      "value_type": {
+        "data_type": "categorical",
+        "unit": null,
+        "unit_system": null,
+        "values": [
+          "NONE",
+          "DECK_SALOON",
+          "PILOTHOUSE"
+        ],
+        "cardinality": "SINGLE"
+      },
+      "presentation": "PUBLIC",
+      "search_use": "SEARCHABLE",
+      "requiredness": {
+        "kind": "OPTIONAL",
+        "allows_unknown_response": true,
+        "condition": null
+      },
+      "delivery_phase": "GATE_1_OPTIONAL",
+      "claim_risk_class": "MATERIAL",
+      "presentation_policy": null,
+      "event_structure_ref": null,
+      "notes": "SLICE-0086. Hull form, cockpit position and deck saloon are independent dimensions. Public hard-filter vocabulary is the strict subset DECK_SALOON/PILOTHOUSE; NONE is a confirmed positive claim of absence, never a public Search value in this slice."
+    },
     "physical_boat.rig_configuration": {
       "topic": "rig configuration",
       "subject": "PHYSICAL_BOAT",

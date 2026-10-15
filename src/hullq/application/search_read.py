@@ -65,8 +65,14 @@ from hullq.application.native_inventory_query import (
 )
 from hullq.search.criteria_registry import (
     CANONICAL_PARAM_KEY_ORDER,
+    COCKPIT_POSITION_DEFINITION,
+    COCKPIT_POSITION_PARAM_KEY,
+    DECK_SALOON_DEFINITION,
+    DECK_SALOON_PARAM_KEY,
     DRAFT_MAX_DEFINITION,
     DRAFT_MAX_PARAM_KEY,
+    HULL_CONFIGURATION_DEFINITION,
+    HULL_CONFIGURATION_PARAM_KEY,
     KEEL_CONFIGURATION_DEFINITION,
     KEEL_CONFIGURATION_PARAM_KEY,
     LOA_DEFINITION,
@@ -92,6 +98,9 @@ _KEEL_CONFIGURATION_KEY = KEEL_CONFIGURATION_PARAM_KEY
 _LOA_MIN_KEY = LOA_MIN_PARAM_KEY
 _LOA_MAX_KEY = LOA_MAX_PARAM_KEY
 _RUDDER_CONFIGURATION_KEY = RUDDER_CONFIGURATION_PARAM_KEY
+_HULL_CONFIGURATION_KEY = HULL_CONFIGURATION_PARAM_KEY
+_COCKPIT_POSITION_KEY = COCKPIT_POSITION_PARAM_KEY
+_DECK_SALOON_KEY = DECK_SALOON_PARAM_KEY
 _ALLOWED_PARAM_KEYS = SUPPORTED_PARAM_KEYS
 
 
@@ -125,6 +134,9 @@ class SearchRequestOutcome:
     loa_min: Decimal | None = None
     loa_max: Decimal | None = None
     rudder_configuration: str | None = None
+    hull_configuration: str | None = None
+    cockpit_position: str | None = None
+    deck_saloon: str | None = None
     search_outcome: DraftMaxSearchOutcome | NativeInventorySearchOutcome | None = None
 
     def __post_init__(self) -> None:
@@ -139,6 +151,9 @@ class SearchRequestOutcome:
             self.loa_min,
             self.loa_max,
             self.rudder_configuration,
+            self.hull_configuration,
+            self.cockpit_position,
+            self.deck_saloon,
         )
         if is_result:
             if self.search_outcome is None:
@@ -159,6 +174,9 @@ def build_canonical_search_path(
     loa_min: Decimal | None = None,
     loa_max: Decimal | None = None,
     rudder_configuration: str | None = None,
+    hull_configuration: str | None = None,
+    cockpit_position: str | None = None,
+    deck_saloon: str | None = None,
 ) -> str:
     """Build the one canonical, sparse, lexicographically-ordered public
     Direct Search path for *locale* (`docs/
@@ -188,6 +206,12 @@ def build_canonical_search_path(
         rendered[_LOA_MIN_KEY] = LOA_DEFINITION.canonicalize_value(loa_min)
     if rudder_configuration is not None:
         rendered[_RUDDER_CONFIGURATION_KEY] = rudder_configuration
+    if hull_configuration is not None:
+        rendered[_HULL_CONFIGURATION_KEY] = hull_configuration
+    if cockpit_position is not None:
+        rendered[_COCKPIT_POSITION_KEY] = cockpit_position
+    if deck_saloon is not None:
+        rendered[_DECK_SALOON_KEY] = deck_saloon
     parts = [f"{key}={rendered[key]}" for key in CANONICAL_PARAM_KEY_ORDER if key in rendered]
     if not parts:
         return f"/{locale}/search"
@@ -202,6 +226,9 @@ def evaluate_requirement_search_outcome(
     loa_min: Decimal | None = None,
     loa_max: Decimal | None = None,
     rudder_configuration: str | None = None,
+    hull_configuration: str | None = None,
+    cockpit_position: str | None = None,
+    deck_saloon: str | None = None,
     as_of: datetime,
 ) -> DraftMaxSearchOutcome | NativeInventorySearchOutcome:
     """Evaluate one already-canonical requirement through the accepted Search
@@ -222,6 +249,9 @@ def evaluate_requirement_search_outcome(
         and loa_min is None
         and loa_max is None
         and rudder_configuration is None
+        and hull_configuration is None
+        and cockpit_position is None
+        and deck_saloon is None
     ):
         assert draft_max is not None
         return evaluate_draft_max_requirement(conn, draft_max, as_of=as_of)
@@ -232,6 +262,9 @@ def evaluate_requirement_search_outcome(
         loa_min=loa_min,
         loa_max=loa_max,
         rudder_configuration=rudder_configuration,
+        hull_configuration=hull_configuration,
+        cockpit_position=cockpit_position,
+        deck_saloon=deck_saloon,
         as_of=as_of,
     )
 
@@ -258,6 +291,9 @@ def evaluate_search_request(
     loa_min_raw_values = list(query_params.get(_LOA_MIN_KEY, ()))
     loa_max_raw_values = list(query_params.get(_LOA_MAX_KEY, ()))
     rudder_raw_values = list(query_params.get(_RUDDER_CONFIGURATION_KEY, ()))
+    hull_raw_values = list(query_params.get(_HULL_CONFIGURATION_KEY, ()))
+    cockpit_raw_values = list(query_params.get(_COCKPIT_POSITION_KEY, ()))
+    deck_saloon_raw_values = list(query_params.get(_DECK_SALOON_KEY, ()))
 
     if not (
         draft_raw_values
@@ -265,6 +301,9 @@ def evaluate_search_request(
         or loa_min_raw_values
         or loa_max_raw_values
         or rudder_raw_values
+        or hull_raw_values
+        or cockpit_raw_values
+        or deck_saloon_raw_values
     ):
         return SearchRequestOutcome(kind=SearchOutcomeKind.BASE)
 
@@ -325,12 +364,30 @@ def evaluate_search_request(
         return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
     rudder_configuration, rudder_is_single_canonical = rudder_result
 
+    hull_result = parse_categorical_param(HULL_CONFIGURATION_DEFINITION, hull_raw_values)
+    if hull_result is None:
+        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+    hull_configuration, hull_is_single_canonical = hull_result
+
+    cockpit_result = parse_categorical_param(COCKPIT_POSITION_DEFINITION, cockpit_raw_values)
+    if cockpit_result is None:
+        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+    cockpit_position, cockpit_is_single_canonical = cockpit_result
+
+    deck_saloon_result = parse_categorical_param(DECK_SALOON_DEFINITION, deck_saloon_raw_values)
+    if deck_saloon_result is None:
+        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+    deck_saloon, deck_saloon_is_single_canonical = deck_saloon_result
+
     if not (
         draft_is_single_canonical
         and keel_is_single_canonical
         and loa_min_is_single_canonical
         and loa_max_is_single_canonical
         and rudder_is_single_canonical
+        and hull_is_single_canonical
+        and cockpit_is_single_canonical
+        and deck_saloon_is_single_canonical
         and order_is_canonical
     ):
         return SearchRequestOutcome(
@@ -342,6 +399,9 @@ def evaluate_search_request(
                 loa_min=loa_min,
                 loa_max=loa_max,
                 rudder_configuration=rudder_configuration,
+                hull_configuration=hull_configuration,
+                cockpit_position=cockpit_position,
+                deck_saloon=deck_saloon,
             ),
         )
 
@@ -352,6 +412,9 @@ def evaluate_search_request(
         loa_min=loa_min,
         loa_max=loa_max,
         rudder_configuration=rudder_configuration,
+        hull_configuration=hull_configuration,
+        cockpit_position=cockpit_position,
+        deck_saloon=deck_saloon,
         as_of=as_of,
     )
     return SearchRequestOutcome(
@@ -361,5 +424,8 @@ def evaluate_search_request(
         loa_min=loa_min,
         loa_max=loa_max,
         rudder_configuration=rudder_configuration,
+        hull_configuration=hull_configuration,
+        cockpit_position=cockpit_position,
+        deck_saloon=deck_saloon,
         search_outcome=search_outcome,
     )

@@ -1,7 +1,9 @@
-"""PhysicalBoat buyer-critical claim value representation — SLICE-0050/0065.
+"""PhysicalBoat buyer-critical claim value representation — SLICE-0050/0065/0086.
 
 Typed runtime representation for the seven `PHYSICAL_BOAT` registry fields
 accepted by SLICE-0050 §4/§5, plus the SLICE-0065 optional `boat_name` field
+and the SLICE-0086 optional `hull_configuration`/`cockpit_position`/
+`deck_saloon` fields
 (`specs/MARKETPLACE_FIELD_REGISTRY.v0.1.json` /
 `specs/MARKETPLACE_FACT_CONTRACT.v0.1.md`):
 
@@ -13,6 +15,20 @@ accepted by SLICE-0050 §4/§5, plus the SLICE-0065 optional `boat_name` field
     physical_boat.keel_configuration
     physical_boat.rudder_configuration
     physical_boat.boat_name
+    physical_boat.hull_configuration
+    physical_boat.cockpit_position
+    physical_boat.deck_saloon
+
+SLICE-0086 Owner-confirmed vocabulary (governing reconciliation
+`docs/POST_SLICE_0085_FIRST_LEVEL_SAILING_VESSEL_DISCOVERY_REASSESSMENT_2026-10-14.md`
+§Owner confirmation): `hull_configuration`/`cockpit_position` additionally
+allow a VALUE_ASSERTION of `OTHER` (known-other, never a public filter
+value, never a substitute for UNKNOWN); `deck_saloon` additionally allows a
+VALUE_ASSERTION of `NONE` (a confirmed positive claim of absence, mechanically
+distinct from UNKNOWN and from the whole wrapper being omitted). Every field
+also separately permits an entirely omitted optional wrapper (never asked)
+and an explicit `UNKNOWN` assertion -- the same three-state shape every other
+optional claim field in this module already has.
 
 This module contains only pure, frozen value objects -- no persistence, ORM
 or network access. It does not represent any other `PHYSICAL_BOAT` field and
@@ -43,7 +59,13 @@ __all__ = [
     "AssertionKind",
     "BoatNameClaim",
     "BuildYearClaim",
+    "CockpitPosition",
+    "CockpitPositionClaim",
+    "DeckSaloon",
+    "DeckSaloonClaim",
     "DraftClaim",
+    "HullConfiguration",
+    "HullConfigurationClaim",
     "KeelConfiguration",
     "KeelConfigurationClaim",
     "LoaLengthClaim",
@@ -121,6 +143,44 @@ class RudderConfiguration(StrEnum):
     OTHER = "OTHER"
 
 
+class HullConfiguration(StrEnum):
+    """`physical_boat.hull_configuration` categorical values (registry v0.1,
+    SLICE-0086 Owner-confirmed vocabulary). `OTHER` is known-other only --
+    never a public Search filter value and never a substitute for an
+    explicit `UNKNOWN` assertion."""
+
+    MONOHULL = "MONOHULL"
+    CATAMARAN = "CATAMARAN"
+    TRIMARAN = "TRIMARAN"
+    OTHER = "OTHER"
+
+
+class CockpitPosition(StrEnum):
+    """`physical_boat.cockpit_position` categorical values (registry v0.1,
+    SLICE-0086 Owner-confirmed vocabulary). `OTHER` is known-other only --
+    never a public Search filter value and never a substitute for an
+    explicit `UNKNOWN` assertion. `MULTIPLE` requires corroborated distinct
+    physical cockpits, never merely a single split cockpit's two zones."""
+
+    AFT = "AFT"
+    CENTER = "CENTER"
+    FORWARD = "FORWARD"
+    MULTIPLE = "MULTIPLE"
+    OTHER = "OTHER"
+
+
+class DeckSaloon(StrEnum):
+    """`physical_boat.deck_saloon` categorical values (registry v0.1,
+    SLICE-0086 Owner-confirmed vocabulary). `NONE` is a confirmed positive
+    claim of absence -- mechanically distinct from `UNKNOWN` and from the
+    whole `DeckSaloonClaim` wrapper being omitted -- and is never a public
+    Search filter value in this slice."""
+
+    NONE = "NONE"
+    DECK_SALOON = "DECK_SALOON"
+    PILOTHOUSE = "PILOTHOUSE"
+
+
 def _validate_claim(
     assertion_kind: AssertionKind,
     value: object,
@@ -147,6 +207,13 @@ _LOA_LENGTH_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind.UN
 _DRAFT_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind.UNKNOWN})
 _KEEL_CONFIGURATION_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind.UNKNOWN})
 _RUDDER_CONFIGURATION_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind.UNKNOWN})
+#: SLICE-0086: identical two-state shape (VALUE_ASSERTION or explicit
+#: UNKNOWN) to keel/rudder configuration above -- no ABSENT. `OTHER`/`NONE`
+#: are ordinary VALUE_ASSERTION values of their own enum, never a separate
+#: assertion_kind.
+_HULL_CONFIGURATION_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind.UNKNOWN})
+_COCKPIT_POSITION_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind.UNKNOWN})
+_DECK_SALOON_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind.UNKNOWN})
 #: SLICE-0065: the only PhysicalBoat/LISTING_OFFER field that allows ABSENT
 #: (registry `physical_boat.boat_name`) -- every other field's own frozenset
 #: above is untouched, so adding ABSENT to the shared `AssertionKind`
@@ -276,9 +343,60 @@ class BoatNameClaim:
             _require_non_blank(self.value, "BoatNameClaim.value")
 
 
+@dataclass(frozen=True)
+class HullConfigurationClaim:
+    """`physical_boat.hull_configuration`: VALUE_ASSERTION(HullConfiguration)
+    or explicit UNKNOWN -- SLICE-0086. `OTHER` is a VALUE_ASSERTION of its
+    own enum member, never a separate assertion_kind."""
+
+    assertion_kind: AssertionKind
+    value: HullConfiguration | None = None
+
+    def __post_init__(self) -> None:
+        _validate_claim(
+            self.assertion_kind, self.value, _HULL_CONFIGURATION_ALLOWED, "HullConfigurationClaim"
+        )
+        if self.assertion_kind is AssertionKind.VALUE_ASSERTION:
+            _require_kind(self.value, HullConfiguration, "HullConfigurationClaim.value")
+
+
+@dataclass(frozen=True)
+class CockpitPositionClaim:
+    """`physical_boat.cockpit_position`: VALUE_ASSERTION(CockpitPosition) or
+    explicit UNKNOWN -- SLICE-0086. `OTHER` is a VALUE_ASSERTION of its own
+    enum member, never a separate assertion_kind."""
+
+    assertion_kind: AssertionKind
+    value: CockpitPosition | None = None
+
+    def __post_init__(self) -> None:
+        _validate_claim(
+            self.assertion_kind, self.value, _COCKPIT_POSITION_ALLOWED, "CockpitPositionClaim"
+        )
+        if self.assertion_kind is AssertionKind.VALUE_ASSERTION:
+            _require_kind(self.value, CockpitPosition, "CockpitPositionClaim.value")
+
+
+@dataclass(frozen=True)
+class DeckSaloonClaim:
+    """`physical_boat.deck_saloon`: VALUE_ASSERTION(DeckSaloon) or explicit
+    UNKNOWN -- SLICE-0086. `NONE` is a VALUE_ASSERTION of its own enum
+    member (a confirmed positive claim of absence), never a separate
+    assertion_kind and never reinterpreted as UNKNOWN."""
+
+    assertion_kind: AssertionKind
+    value: DeckSaloon | None = None
+
+    def __post_init__(self) -> None:
+        _validate_claim(self.assertion_kind, self.value, _DECK_SALOON_ALLOWED, "DeckSaloonClaim")
+        if self.assertion_kind is AssertionKind.VALUE_ASSERTION:
+            _require_kind(self.value, DeckSaloon, "DeckSaloonClaim.value")
+
+
 # ---------------------------------------------------------------------------
 # The bounded seven-field claim snapshot, plus the optional SLICE-0065
-# boat-name field
+# boat-name field and the optional SLICE-0086 hull_configuration/
+# cockpit_position/deck_saloon fields
 # ---------------------------------------------------------------------------
 
 
@@ -301,6 +419,9 @@ class PhysicalBoatClaimSnapshot:
     keel_configuration: KeelConfigurationClaim | None = None
     rudder_configuration: RudderConfigurationClaim | None = None
     boat_name: BoatNameClaim | None = None
+    hull_configuration: HullConfigurationClaim | None = None
+    cockpit_position: CockpitPositionClaim | None = None
+    deck_saloon: DeckSaloonClaim | None = None
 
     def __post_init__(self) -> None:
         _require_kind(
@@ -335,3 +456,19 @@ class PhysicalBoatClaimSnapshot:
             )
         if self.boat_name is not None:
             _require_kind(self.boat_name, BoatNameClaim, "PhysicalBoatClaimSnapshot.boat_name")
+        if self.hull_configuration is not None:
+            _require_kind(
+                self.hull_configuration,
+                HullConfigurationClaim,
+                "PhysicalBoatClaimSnapshot.hull_configuration",
+            )
+        if self.cockpit_position is not None:
+            _require_kind(
+                self.cockpit_position,
+                CockpitPositionClaim,
+                "PhysicalBoatClaimSnapshot.cockpit_position",
+            )
+        if self.deck_saloon is not None:
+            _require_kind(
+                self.deck_saloon, DeckSaloonClaim, "PhysicalBoatClaimSnapshot.deck_saloon"
+            )

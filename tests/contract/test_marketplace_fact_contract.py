@@ -98,6 +98,9 @@ _EXPECTED_PHYSICAL_BOAT_TECHNICAL_FIELDS = {
     "physical_boat.cabins",
     "physical_boat.berths",
     "physical_boat.heads",
+    "physical_boat.hull_configuration",
+    "physical_boat.cockpit_position",
+    "physical_boat.deck_saloon",
 }
 
 _EXPECTED_PHYSICAL_BOAT_HISTORY_FIELDS = {
@@ -163,7 +166,7 @@ def test_registry_is_schema_valid() -> None:
 
 def test_registry_field_set_exactly_matches_the_independent_bounded_inventory() -> None:
     assert set(_FIELDS) == _EXPECTED_ALL_FIELDS
-    assert len(_FIELDS) == 38
+    assert len(_FIELDS) == 41
 
 
 def test_a_tampered_registry_with_an_extra_field_would_fail_the_bounded_check() -> None:
@@ -1385,6 +1388,6 @@ def test_delivery_phase_counts_sum_to_the_full_registry() -> None:
     counts = defaultdict(int)
     for entry in _FIELDS.values():
         counts[entry["delivery_phase"]] += 1
-    assert sum(counts.values()) == 38
-    assert counts["GATE_1_REQUIRED"] + counts["GATE_1_OPTIONAL"] + counts["LATER"] == 38
+    assert sum(counts.values()) == 41
+    assert counts["GATE_1_REQUIRED"] + counts["GATE_1_OPTIONAL"] + counts["LATER"] == 41
     assert counts["LATER"] == 4

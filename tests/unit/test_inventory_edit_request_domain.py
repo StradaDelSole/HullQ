@@ -473,3 +473,194 @@ class TestClaimEditRequest:
         )
         with pytest.raises(InvalidInventoryEditRequestError):
             parse_physical_boat_claim_edit_request(body)
+
+    # -----------------------------------------------------------------
+    # SLICE-0086: hull_configuration / cockpit_position / deck_saloon
+    # -----------------------------------------------------------------
+
+    def test_hull_configuration_value_assertion_parses(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.hull_configuration": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "CATAMARAN",
+                }
+            },
+        )
+        parsed = parse_physical_boat_claim_edit_request(body)
+        assert parsed.claims.hull_configuration is not None
+        assert parsed.claims.hull_configuration.value.value == "CATAMARAN"
+
+    def test_hull_configuration_other_value_assertion_parses(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.hull_configuration": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "OTHER",
+                }
+            },
+        )
+        parsed = parse_physical_boat_claim_edit_request(body)
+        assert parsed.claims.hull_configuration.value.value == "OTHER"
+
+    def test_hull_configuration_unrecognized_value_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.hull_configuration": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "PROA",
+                }
+            },
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_hull_configuration_unknown_with_present_value_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.hull_configuration": {
+                    "assertion_kind": "UNKNOWN",
+                    "value": "CATAMARAN",
+                }
+            },
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_hull_configuration_absent_is_invalid(self) -> None:
+        # hull_configuration never adds ABSENT -- only boat_name does.
+        body = dict(
+            _BASE_CLAIM, **{"physical_boat.hull_configuration": {"assertion_kind": "ABSENT"}}
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_hull_configuration_omitted_key_leaves_claim_none(self) -> None:
+        parsed = parse_physical_boat_claim_edit_request(_BASE_CLAIM)
+        assert parsed.claims.hull_configuration is None
+
+    def test_cockpit_position_value_assertion_parses(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.cockpit_position": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "CENTER",
+                }
+            },
+        )
+        parsed = parse_physical_boat_claim_edit_request(body)
+        assert parsed.claims.cockpit_position is not None
+        assert parsed.claims.cockpit_position.value.value == "CENTER"
+
+    def test_cockpit_position_multiple_value_assertion_parses(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.cockpit_position": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "MULTIPLE",
+                }
+            },
+        )
+        parsed = parse_physical_boat_claim_edit_request(body)
+        assert parsed.claims.cockpit_position.value.value == "MULTIPLE"
+
+    def test_cockpit_position_unrecognized_value_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.cockpit_position": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "MIDSHIP",
+                }
+            },
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_cockpit_position_unknown_with_present_value_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.cockpit_position": {
+                    "assertion_kind": "UNKNOWN",
+                    "value": "CENTER",
+                }
+            },
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_deck_saloon_value_assertion_parses(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.deck_saloon": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "PILOTHOUSE",
+                }
+            },
+        )
+        parsed = parse_physical_boat_claim_edit_request(body)
+        assert parsed.claims.deck_saloon is not None
+        assert parsed.claims.deck_saloon.value.value == "PILOTHOUSE"
+
+    def test_deck_saloon_none_value_assertion_parses(self) -> None:
+        """`NONE` is a confirmed positive claim of absence -- an ordinary
+        VALUE_ASSERTION, never reinterpreted as UNKNOWN."""
+        body = dict(
+            _BASE_CLAIM,
+            **{"physical_boat.deck_saloon": {"assertion_kind": "VALUE_ASSERTION", "value": "NONE"}},
+        )
+        parsed = parse_physical_boat_claim_edit_request(body)
+        assert parsed.claims.deck_saloon.assertion_kind.value == "VALUE_ASSERTION"
+        assert parsed.claims.deck_saloon.value.value == "NONE"
+
+    def test_deck_saloon_unrecognized_value_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.deck_saloon": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "RAISED_SALOON",
+                }
+            },
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_deck_saloon_unknown_with_present_value_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{"physical_boat.deck_saloon": {"assertion_kind": "UNKNOWN", "value": "NONE"}},
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_hull_cockpit_deck_saloon_all_combinable_in_one_request(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.hull_configuration": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "MONOHULL",
+                },
+                "physical_boat.cockpit_position": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "AFT",
+                },
+                "physical_boat.deck_saloon": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "DECK_SALOON",
+                },
+            },
+        )
+        parsed = parse_physical_boat_claim_edit_request(body)
+        assert parsed.claims.hull_configuration.value.value == "MONOHULL"
+        assert parsed.claims.cockpit_position.value.value == "AFT"
+        assert parsed.claims.deck_saloon.value.value == "DECK_SALOON"

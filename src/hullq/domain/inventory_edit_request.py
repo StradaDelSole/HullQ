@@ -43,7 +43,13 @@ from hullq.domain.native_listing_offer import (
 from hullq.domain.physical_boat_claims import (
     BoatNameClaim,
     BuildYearClaim,
+    CockpitPosition,
+    CockpitPositionClaim,
+    DeckSaloon,
+    DeckSaloonClaim,
     DraftClaim,
+    HullConfiguration,
+    HullConfigurationClaim,
     KeelConfiguration,
     KeelConfigurationClaim,
     LoaLengthClaim,
@@ -356,6 +362,9 @@ _CLAIM_KEYS = frozenset(
         "physical_boat.keel_configuration",
         "physical_boat.rudder_configuration",
         "physical_boat.boat_name",
+        "physical_boat.hull_configuration",
+        "physical_boat.cockpit_position",
+        "physical_boat.deck_saloon",
     }
 )
 
@@ -449,6 +458,68 @@ def _parse_rudder_configuration(raw: Any) -> RudderConfigurationClaim:
     )
 
 
+def _parse_hull_configuration(raw: Any) -> HullConfigurationClaim:
+    raw_kind, raw_value = _assertion_object(raw, "physical_boat.hull_configuration")
+    kind = _assertion_kind(raw_kind, "physical_boat.hull_configuration")
+    value: HullConfiguration | None = None
+    if kind is AssertionKind.VALUE_ASSERTION:
+        if not isinstance(raw_value, str) or raw_value not in {k.value for k in HullConfiguration}:
+            raise InvalidInventoryEditRequestError(
+                "physical_boat.hull_configuration.value must be a recognized hull configuration"
+            )
+        value = HullConfiguration(raw_value)
+    elif raw_value is not None:
+        raise InvalidInventoryEditRequestError(
+            "physical_boat.hull_configuration.value must be omitted/null when assertion_kind is "
+            f"{kind.value}"
+        )
+    return _construct(
+        lambda: HullConfigurationClaim(assertion_kind=kind, value=value),
+        "physical_boat.hull_configuration",
+    )
+
+
+def _parse_cockpit_position(raw: Any) -> CockpitPositionClaim:
+    raw_kind, raw_value = _assertion_object(raw, "physical_boat.cockpit_position")
+    kind = _assertion_kind(raw_kind, "physical_boat.cockpit_position")
+    value: CockpitPosition | None = None
+    if kind is AssertionKind.VALUE_ASSERTION:
+        if not isinstance(raw_value, str) or raw_value not in {k.value for k in CockpitPosition}:
+            raise InvalidInventoryEditRequestError(
+                "physical_boat.cockpit_position.value must be a recognized cockpit position"
+            )
+        value = CockpitPosition(raw_value)
+    elif raw_value is not None:
+        raise InvalidInventoryEditRequestError(
+            "physical_boat.cockpit_position.value must be omitted/null when assertion_kind is "
+            f"{kind.value}"
+        )
+    return _construct(
+        lambda: CockpitPositionClaim(assertion_kind=kind, value=value),
+        "physical_boat.cockpit_position",
+    )
+
+
+def _parse_deck_saloon(raw: Any) -> DeckSaloonClaim:
+    raw_kind, raw_value = _assertion_object(raw, "physical_boat.deck_saloon")
+    kind = _assertion_kind(raw_kind, "physical_boat.deck_saloon")
+    value: DeckSaloon | None = None
+    if kind is AssertionKind.VALUE_ASSERTION:
+        if not isinstance(raw_value, str) or raw_value not in {k.value for k in DeckSaloon}:
+            raise InvalidInventoryEditRequestError(
+                "physical_boat.deck_saloon.value must be a recognized deck saloon value"
+            )
+        value = DeckSaloon(raw_value)
+    elif raw_value is not None:
+        raise InvalidInventoryEditRequestError(
+            "physical_boat.deck_saloon.value must be omitted/null when assertion_kind is "
+            f"{kind.value}"
+        )
+    return _construct(
+        lambda: DeckSaloonClaim(assertion_kind=kind, value=value), "physical_boat.deck_saloon"
+    )
+
+
 def _parse_boat_name(raw: Any) -> BoatNameClaim:
     raw_kind, raw_value = _assertion_object(raw, "physical_boat.boat_name")
     kind = _assertion_kind(raw_kind, "physical_boat.boat_name")
@@ -523,6 +594,21 @@ def parse_physical_boat_claim_edit_request(raw: Any) -> ClaimEditRequest:
         if "physical_boat.boat_name" in raw
         else None
     )
+    hull_configuration = (
+        _parse_hull_configuration(raw["physical_boat.hull_configuration"])
+        if "physical_boat.hull_configuration" in raw
+        else None
+    )
+    cockpit_position = (
+        _parse_cockpit_position(raw["physical_boat.cockpit_position"])
+        if "physical_boat.cockpit_position" in raw
+        else None
+    )
+    deck_saloon = (
+        _parse_deck_saloon(raw["physical_boat.deck_saloon"])
+        if "physical_boat.deck_saloon" in raw
+        else None
+    )
 
     claims = _construct(
         lambda: PhysicalBoatClaimSnapshot(
@@ -534,6 +620,9 @@ def parse_physical_boat_claim_edit_request(raw: Any) -> ClaimEditRequest:
             keel_configuration=keel_configuration,
             rudder_configuration=rudder_configuration,
             boat_name=boat_name,
+            hull_configuration=hull_configuration,
+            cockpit_position=cockpit_position,
+            deck_saloon=deck_saloon,
         ),
         "physical_boat",
     )

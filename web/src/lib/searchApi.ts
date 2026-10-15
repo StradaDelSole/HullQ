@@ -47,12 +47,34 @@ export const SEARCH_RUDDER_CONFIGURATION_VALUES = [
 
 export type SearchRudderConfigurationValue = (typeof SEARCH_RUDDER_CONFIGURATION_VALUES)[number];
 
+// SLICE-0086: the exact accepted public `hull_configuration` query/display
+// values (`hullq.search.hull_design_bridge.SEARCH_HULL_CONFIGURATION_VALUES`).
+// Technical values, language-neutral -- never localized, never remapped.
+export const SEARCH_HULL_CONFIGURATION_VALUES = ["MONOHULL", "CATAMARAN", "TRIMARAN"] as const;
+
+export type SearchHullConfigurationValue = (typeof SEARCH_HULL_CONFIGURATION_VALUES)[number];
+
+// SLICE-0086: the exact accepted public `cockpit_position` query/display
+// values (`hullq.search.cockpit_design_bridge.SEARCH_COCKPIT_POSITION_VALUES`).
+export const SEARCH_COCKPIT_POSITION_VALUES = ["AFT", "CENTER", "FORWARD", "MULTIPLE"] as const;
+
+export type SearchCockpitPositionValue = (typeof SEARCH_COCKPIT_POSITION_VALUES)[number];
+
+// SLICE-0086: the exact accepted public `deck_saloon` query/display values
+// (`hullq.search.deck_saloon_design_bridge.SEARCH_DECK_SALOON_VALUES`). `NONE`
+// is a real PhysicalBoat claim value but never a public Search filter value
+// in this slice.
+export const SEARCH_DECK_SALOON_VALUES = ["DECK_SALOON", "PILOTHOUSE"] as const;
+
+export type SearchDeckSaloonValue = (typeof SEARCH_DECK_SALOON_VALUES)[number];
+
 // Mirrors `src/hullq/application/search_read.py`'s sparse
-// `active_requirement` construction (SLICE-0051/0056, extended SLICE-0085):
-// any non-empty subset of `draft_max`/`keel_configuration`/`loa_min`/
-// `loa_max`/`rudder_configuration`, never none (a `null` `active_requirement`
+// `active_requirement` construction (SLICE-0051/0056, extended SLICE-0085/
+// SLICE-0086): any non-empty subset of `draft_max`/`keel_configuration`/
+// `loa_min`/`loa_max`/`rudder_configuration`/`hull_configuration`/
+// `cockpit_position`/`deck_saloon`, never none (a `null` `active_requirement`
 // is the base state, represented separately below). TypeScript cannot
-// mechanically enforce "at least one of five" any more cheaply than at
+// mechanically enforce "at least one of eight" any more cheaply than at
 // runtime -- FastAPI is the actual source of truth for that invariant.
 export interface SearchActiveRequirement {
   draft_max?: string;
@@ -60,6 +82,9 @@ export interface SearchActiveRequirement {
   loa_min?: string;
   loa_max?: string;
   rudder_configuration?: string;
+  hull_configuration?: string;
+  cockpit_position?: string;
+  deck_saloon?: string;
 }
 
 /** SLICE-0051 draft-only confirmed match, unchanged (contract §8 non-regression). */
@@ -105,15 +130,35 @@ export interface SearchCriterionEvidence {
   observed_value: string | null;
 }
 
+// PR #349 independent-review Finding D: mirrors
+// `src/hullq/api/app.py::_serialize_configuration_evidence` /
+// `hullq.application.native_inventory_query.ConfigurationEvidence` -- one
+// resolved BoatDesign/NamedVariant configuration's own truth plus its
+// per-criterion design-side evidence. `truth` is this configuration's own
+// aggregate truth (never implied to be TRUE for every variant merely
+// because the listing overall confirmed match via a different one) -- a
+// design with multiple NamedVariants may legitimately carry several
+// entries here, each with its own independent truth/evidence, exactly
+// mirroring the already-reviewed private broker Search-fit rendering
+// (`web/src/lib/brokerSearchFitApi.ts`'s `ConfigurationEvidence`).
+export interface SearchConfigurationEvidence {
+  configuration_id: string;
+  boat_design_id: string;
+  named_variant_id: string | null;
+  truth: "TRUE" | "FALSE" | "UNKNOWN";
+  criterion_evidence: SearchCriterionEvidence[];
+}
+
 /**
  * SLICE-0055 keel-only/mixed confirmed match
  * (`hullq.application.native_inventory_query.NativeInventoryCandidateEvaluation`).
- * Only the fields this bounded browser projection actually renders are
- * typed here -- `design_evaluation`/`design_configuration_evidence` are also
- * present on the real JSON body but are design-level evidence, out of scope
- * for this slice's buyer-facing concrete-match rendering (Required Behavior
- * §D uses `criterion_evidence`, the concrete PhysicalBoat-level evidence,
- * only).
+ * `criterion_evidence` is the concrete PhysicalBoat-level evidence
+ * (Required Behavior §D). `design_configuration_evidence` (PR #349 Finding
+ * D) is the separate design/configuration-level evidence for the exact same
+ * active criteria -- design truth kept visibly distinct from physical-offer
+ * truth, per `docs/PRODUCT_UX_PRINCIPLES.md` §15 minimum 5. Both are read
+ * verbatim from the real API body; neither is re-derived or re-evaluated
+ * client-side.
  */
 export interface NativeInventoryConfirmedMatch {
   native_listing_id: string;
@@ -121,6 +166,7 @@ export interface NativeInventoryConfirmedMatch {
   freshness_status: "CONFIRMED" | "DUE_FOR_CONFIRMATION";
   last_confirmed_at: string | null;
   criterion_evidence: SearchCriterionEvidence[];
+  design_configuration_evidence: SearchConfigurationEvidence[];
   /** SLICE-0071 contract §8B amendment: see `DraftOnlyConfirmedMatch.discovery_token`. */
   discovery_token: string;
 }

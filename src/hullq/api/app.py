@@ -547,12 +547,15 @@ def _build_active_requirement(
     loa_min: Any = None,
     loa_max: Any = None,
     rudder_configuration: str | None = None,
+    hull_configuration: str | None = None,
+    cockpit_position: str | None = None,
+    deck_saloon: str | None = None,
 ) -> dict[str, str]:
-    """SLICE-0085: the sparse `active_requirement` body shared by the public
-    `GET /api/search/{locale}` route and the broker Search-fit preview --
-    only the active criteria included, each rendered through its own
-    canonicalization, never neither (every caller only builds this once at
-    least one criterion is already known active)."""
+    """SLICE-0085, extended SLICE-0086: the sparse `active_requirement` body
+    shared by the public `GET /api/search/{locale}` route and the broker
+    Search-fit preview -- only the active criteria included, each rendered
+    through its own canonicalization, never neither (every caller only
+    builds this once at least one criterion is already known active)."""
     requirement: dict[str, str] = {}
     if draft_max is not None:
         requirement["draft_max"] = canonical_draft_max_str(draft_max)
@@ -564,6 +567,12 @@ def _build_active_requirement(
         requirement["loa_max"] = canonical_loa_str(loa_max)
     if rudder_configuration is not None:
         requirement["rudder_configuration"] = rudder_configuration
+    if hull_configuration is not None:
+        requirement["hull_configuration"] = hull_configuration
+    if cockpit_position is not None:
+        requirement["cockpit_position"] = cockpit_position
+    if deck_saloon is not None:
+        requirement["deck_saloon"] = deck_saloon
     return requirement
 
 
@@ -1284,6 +1293,9 @@ def create_app(
             loa_min=outcome.loa_min,
             loa_max=outcome.loa_max,
             rudder_configuration=outcome.rudder_configuration,
+            hull_configuration=outcome.hull_configuration,
+            cockpit_position=outcome.cockpit_position,
+            deck_saloon=outcome.deck_saloon,
         )
 
         if isinstance(search_outcome, DraftMaxSearchOutcome):
@@ -1892,6 +1904,9 @@ def create_app(
             loa_min=view.loa_min,
             loa_max=view.loa_max,
             rudder_configuration=view.rudder_configuration,
+            hull_configuration=view.hull_configuration,
+            cockpit_position=view.cockpit_position,
+            deck_saloon=view.deck_saloon,
         )
         return JSONResponse(
             {

@@ -44,7 +44,13 @@ from hullq.domain.native_listing_offer import AskingPriceMode, NativeListingOffe
 from hullq.domain.physical_boat_claims import (
     AssertionKind,
     BuildYearClaim,
+    CockpitPosition,
+    CockpitPositionClaim,
+    DeckSaloon,
+    DeckSaloonClaim,
     DraftClaim,
+    HullConfiguration,
+    HullConfigurationClaim,
     KeelConfiguration,
     KeelConfigurationClaim,
     LoaLengthClaim,
@@ -90,7 +96,10 @@ from hullq.persistence.physical_boat_claims import (
     fetch_current_physical_boat_claim,
     write_physical_boat_claim_revision,
 )
+from hullq.search.cockpit_design_bridge import lookup_cockpit_position_canonical_value
+from hullq.search.deck_saloon_design_bridge import lookup_deck_saloon_canonical_value
 from hullq.search.draft_max_design_bridge import DRAFT_MAX_FIELD_POINTER
+from hullq.search.hull_design_bridge import lookup_hull_configuration_canonical_value
 from hullq.search.keel_design_bridge import KEEL_TYPE_FIELD_POINTER, lookup_keel_canonical_value
 from hullq.search.loa_design_bridge import LOA_FIELD_POINTER, lookup_loa_canonical_value
 from hullq.search.rudder_design_bridge import lookup_rudder_canonical_value
@@ -229,6 +238,9 @@ def _insert_boat_design(
     baseline_draft_max_m: float = 1.30,
     baseline_loa_m: float | None = None,
     baseline_rudder_support: str | None = None,
+    baseline_hull_configuration: str | None = None,
+    baseline_cockpit_position: str | None = None,
+    baseline_deck_saloon: str | None = None,
 ) -> None:
     with conn.cursor() as cur:
         cur.execute(
@@ -238,9 +250,14 @@ def _insert_boat_design(
         baseline_json = json.dumps(
             {
                 "dimensions": {"draft_max_m": baseline_draft_max_m, "loa_m": baseline_loa_m},
+                "configuration": {"hull_configuration": baseline_hull_configuration},
                 "appendages": {
                     "keel_type": baseline_keel_type,
                     "rudder_support": baseline_rudder_support,
+                },
+                "deck": {
+                    "cockpit_position": baseline_cockpit_position,
+                    "deck_saloon": baseline_deck_saloon,
                 },
             }
         )
@@ -262,6 +279,9 @@ def _admit_design_keel_and_draft(
     draft_max_m: Decimal = Decimal("1.30"),
     loa_m: Decimal | None = None,
     rudder_support: str | None = None,
+    hull_configuration: str | None = None,
+    cockpit_position: str | None = None,
+    deck_saloon: str | None = None,
 ) -> None:
     admit_resolved_draft_max(
         conn,
@@ -299,6 +319,36 @@ def _admit_design_keel_and_draft(
             value=rudder_support,
             resolution_id=f"FR-RUDDER-{design_id}",
             fetch_canonical_value=lookup_rudder_canonical_value,
+        )
+    if hull_configuration is not None:
+        admit_resolved_categorical_field(
+            conn,
+            subject_kind=SubjectKind.BOAT_DESIGN,
+            subject_id=design_id,
+            field_pointer="/baseline/configuration/hull_configuration",
+            value=hull_configuration,
+            resolution_id=f"FR-HULLCFG-{design_id}",
+            fetch_canonical_value=lookup_hull_configuration_canonical_value,
+        )
+    if cockpit_position is not None:
+        admit_resolved_categorical_field(
+            conn,
+            subject_kind=SubjectKind.BOAT_DESIGN,
+            subject_id=design_id,
+            field_pointer="/baseline/deck/cockpit_position",
+            value=cockpit_position,
+            resolution_id=f"FR-COCKPITPOS-{design_id}",
+            fetch_canonical_value=lookup_cockpit_position_canonical_value,
+        )
+    if deck_saloon is not None:
+        admit_resolved_categorical_field(
+            conn,
+            subject_kind=SubjectKind.BOAT_DESIGN,
+            subject_id=design_id,
+            field_pointer="/baseline/deck/deck_saloon",
+            value=deck_saloon,
+            resolution_id=f"FR-DECKSALOON-{design_id}",
+            fetch_canonical_value=lookup_deck_saloon_canonical_value,
         )
 
 
@@ -382,6 +432,22 @@ def _rudder_value(value: str) -> RudderConfigurationClaim:
     )
 
 
+def _hull_value(value: str) -> HullConfigurationClaim:
+    return HullConfigurationClaim(
+        assertion_kind=AssertionKind.VALUE_ASSERTION, value=HullConfiguration(value)
+    )
+
+
+def _cockpit_value(value: str) -> CockpitPositionClaim:
+    return CockpitPositionClaim(
+        assertion_kind=AssertionKind.VALUE_ASSERTION, value=CockpitPosition(value)
+    )
+
+
+def _deck_saloon_value(value: str) -> DeckSaloonClaim:
+    return DeckSaloonClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=DeckSaloon(value))
+
+
 def _write_claim(
     api_url: str,
     *,
@@ -393,6 +459,9 @@ def _write_claim(
     keel_configuration: KeelConfigurationClaim | None = None,
     loa_length: LoaLengthClaim | None = None,
     rudder_configuration: RudderConfigurationClaim | None = None,
+    hull_configuration: HullConfigurationClaim | None = None,
+    cockpit_position: CockpitPositionClaim | None = None,
+    deck_saloon: DeckSaloonClaim | None = None,
 ) -> None:
     conn = psycopg.connect(api_url)
     try:
@@ -435,6 +504,9 @@ def _write_claim(
                 keel_configuration=keel_configuration,
                 loa_length=loa_length,
                 rudder_configuration=rudder_configuration,
+                hull_configuration=hull_configuration,
+                cockpit_position=cockpit_position,
+                deck_saloon=deck_saloon,
             ),
         )
         assert result.status.value in ("created", "revised"), result
@@ -1386,3 +1458,146 @@ class TestSearchFitLifecycleAndIntegrity:
         # revisions, design-association audit events, buyer Leads and
         # FieldResolution admission -- is bit-for-bit unchanged.
         assert fingerprint_after == fingerprint_before
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0086: hull_configuration / cockpit_position / deck_saloon scenario
+# ---------------------------------------------------------------------------
+
+
+class TestSearchFitSlice0086Facets:
+    def test_confirmed_match_all_three_new_facets_combined(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        _seed_org_and_membership(
+            api_url, org_id="ORG-SF-S86A", account_id="ACC-SF-S86A", membership_id="OM-SF-S86A"
+        )
+        conn = psycopg.connect(api_url)
+        try:
+            _insert_boat_design(
+                conn,
+                "BD-SF-S86A",
+                "BM-SF-S86A",
+                baseline_keel_type="fin",
+                baseline_hull_configuration="catamaran",
+                baseline_cockpit_position="center",
+                baseline_deck_saloon="deck_saloon",
+            )
+            _admit_design_keel_and_draft(
+                conn,
+                "BD-SF-S86A",
+                keel_type="fin",
+                hull_configuration="catamaran",
+                cockpit_position="center",
+                deck_saloon="deck_saloon",
+            )
+        finally:
+            conn.close()
+        _create_draft_listing(
+            api_url,
+            listing_id="NL-SF-S86A",
+            org_id="ORG-SF-S86A",
+            account_id="ACC-SF-S86A",
+            membership_id="OM-SF-S86A",
+            physical_boat_id="PB-SF-S86A",
+            market_episode_id="ME-SF-S86A",
+            boat_design_id="BD-SF-S86A",
+        )
+        _write_claim(
+            api_url,
+            listing_id="NL-SF-S86A",
+            org_id="ORG-SF-S86A",
+            account_id="ACC-SF-S86A",
+            revision_id="PBCREV-SF-S86A",
+            hull_configuration=_hull_value("CATAMARAN"),
+            cockpit_position=_cockpit_value("CENTER"),
+            deck_saloon=_deck_saloon_value("DECK_SALOON"),
+        )
+        _log_in(client, "ACC-SF-S86A")
+        response = client.get(
+            _search_fit_path("ORG-SF-S86A", "NL-SF-S86A"),
+            params={
+                "hull_configuration": "CATAMARAN",
+                "cockpit_position": "CENTER",
+                "deck_saloon": "DECK_SALOON",
+            },
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["result_class"] == "CONFIRMED_MATCH"
+        assert body["blockers"] == []
+        assert body["active_requirement"] == {
+            "cockpit_position": "CENTER",
+            "deck_saloon": "DECK_SALOON",
+            "hull_configuration": "CATAMARAN",
+        }
+        fields = {ce["field"] for ce in body["criterion_evidence"]}
+        assert fields == {"cockpit_position", "deck_saloon", "hull_configuration"}
+
+    def test_insufficient_data_produces_hull_configuration_unconfirmed_blocker(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        """The design side is CONFIRMED_MATCH for hull_configuration, but the
+        broker's own concrete claim never confirms it -- INSUFFICIENT_DATA
+        with the exact actionable blocker, never a false CONFIRMED_MATCH."""
+        _seed_org_and_membership(
+            api_url, org_id="ORG-SF-S86B", account_id="ACC-SF-S86B", membership_id="OM-SF-S86B"
+        )
+        conn = psycopg.connect(api_url)
+        try:
+            _insert_boat_design(
+                conn,
+                "BD-SF-S86B",
+                "BM-SF-S86B",
+                baseline_keel_type="fin",
+                baseline_hull_configuration="catamaran",
+            )
+            _admit_design_keel_and_draft(
+                conn, "BD-SF-S86B", keel_type="fin", hull_configuration="catamaran"
+            )
+        finally:
+            conn.close()
+        _create_draft_listing(
+            api_url,
+            listing_id="NL-SF-S86B",
+            org_id="ORG-SF-S86B",
+            account_id="ACC-SF-S86B",
+            membership_id="OM-SF-S86B",
+            physical_boat_id="PB-SF-S86B",
+            market_episode_id="ME-SF-S86B",
+            boat_design_id="BD-SF-S86B",
+        )
+        # Deliberately no _write_claim call for hull_configuration: the
+        # broker's own concrete claim stays unconfirmed.
+        _log_in(client, "ACC-SF-S86B")
+        response = client.get(
+            _search_fit_path("ORG-SF-S86B", "NL-SF-S86B"),
+            params={"hull_configuration": "CATAMARAN"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["result_class"] == "INSUFFICIENT_DATA"
+        assert body["blockers"] == ["HULL_CONFIGURATION_UNCONFIRMED"]
+
+    def test_invalid_deck_saloon_none_scenario_value_400(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        _seed_org_and_membership(
+            api_url, org_id="ORG-SF-S86C", account_id="ACC-SF-S86C", membership_id="OM-SF-S86C"
+        )
+        _create_draft_listing(
+            api_url,
+            listing_id="NL-SF-S86C",
+            org_id="ORG-SF-S86C",
+            account_id="ACC-SF-S86C",
+            membership_id="OM-SF-S86C",
+            physical_boat_id="PB-SF-S86C",
+            market_episode_id="ME-SF-S86C",
+        )
+        _log_in(client, "ACC-SF-S86C")
+        # NONE is a real claim value but never an accepted public Search-fit
+        # scenario value.
+        response = client.get(
+            _search_fit_path("ORG-SF-S86C", "NL-SF-S86C"), params={"deck_saloon": "NONE"}
+        )
+        assert response.status_code == 400

@@ -539,6 +539,18 @@ class TestEditDetailRead:
             "assertion_kind": "VALUE_ASSERTION",
             "value": "Serenity",
         }
+        full_claim_body["physical_boat.hull_configuration"] = {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "MONOHULL",
+        }
+        full_claim_body["physical_boat.cockpit_position"] = {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "AFT",
+        }
+        full_claim_body["physical_boat.deck_saloon"] = {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "NONE",
+        }
         claim_response = client.post(
             _claim_path("ORG-READ-FULL", "NL-READ-FULL"),
             json=full_claim_body,
@@ -586,6 +598,18 @@ class TestEditDetailRead:
         assert claim["physical_boat.boat_name"] == {
             "assertion_kind": "VALUE_ASSERTION",
             "value": "Serenity",
+        }
+        assert claim["physical_boat.hull_configuration"] == {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "MONOHULL",
+        }
+        assert claim["physical_boat.cockpit_position"] == {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "AFT",
+        }
+        assert claim["physical_boat.deck_saloon"] == {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "NONE",
         }
 
 

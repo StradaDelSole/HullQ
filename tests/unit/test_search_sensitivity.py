@@ -52,6 +52,35 @@ def test_slice_0085_active_loa_min_in_current_is_safely_declined() -> None:
     assert outcome.error is SensitivityErrorKind.UNKNOWN_CURRENT_KEY
 
 
+def test_slice_0086_active_hull_configuration_in_current_is_safely_declined() -> None:
+    """SLICE-0086: identical fail-closed decline for the three new facets
+    (hull_configuration/cockpit_position/deck_saloon) -- `_ALLOWED_CURRENT_KEYS`
+    is deliberately NOT extended to these keys either."""
+    outcome = evaluate_requirement_sensitivity(
+        None,
+        locale="en",
+        current={"draft_max": "1.6", "hull_configuration": "CATAMARAN"},
+        changed_criterion="draft_max",
+        changed_value="1.7",
+        as_of=_AS_OF,
+    )
+    assert outcome.kind is SensitivityOutcomeKind.INVALID
+    assert outcome.error is SensitivityErrorKind.UNKNOWN_CURRENT_KEY
+
+
+def test_slice_0086_deck_saloon_as_changed_criterion_is_unsupported() -> None:
+    outcome = evaluate_requirement_sensitivity(
+        None,
+        locale="en",
+        current={"keel_configuration": "FIN"},
+        changed_criterion="deck_saloon",
+        changed_value="DECK_SALOON",
+        as_of=_AS_OF,
+    )
+    assert outcome.kind is SensitivityOutcomeKind.INVALID
+    assert outcome.error is SensitivityErrorKind.UNSUPPORTED_CHANGED_CRITERION
+
+
 def test_slice_0085_rudder_configuration_as_changed_criterion_is_unsupported() -> None:
     outcome = evaluate_requirement_sensitivity(
         None,
