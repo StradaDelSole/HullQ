@@ -25,6 +25,12 @@ Demonstrates, end to end:
     5. the same combined scenario repeated against every one of the five
        accepted public Search locales, each with its own real canonical
        `<link>` href and its own real localized observed-evidence text
+    4c. real built-SSR positive matches for the three remaining material
+        options (STEEL/ALUMINUM/WOOD), each absent from every other
+        material's own result (review amendment Finding A)
+    4d. a real built-SSR request mixing a legacy accepted hard criterion
+        (`keel_configuration`) with both new facets, confirmed match with
+        every criterion's own evidence rendered (review amendment Finding A)
     6. negative: a real BoatDesign/listing whose `hull_material` is
        confirmed `wood_composite` (no v0.1 mapping) never produces a false
        confirmed match for a buyer requesting `WOOD`, through the real built
@@ -34,6 +40,15 @@ Demonstrates, end to end:
        non-canonical key order (`hull_material` before `beam_max`)
        308-redirects to the canonical order
     8. exact finish marker
+
+Review amendment (PR #352 comment 6200576826): Finding A required real
+built-SSR positive coverage for all four material options plus a real
+mixed legacy+new SSR request (items 4c/4d above, added without a second
+harness -- reusing the exact same fixture/session/admission helpers).
+Finding B required explicit accessible `<label for>` pairing for the four
+new broker claim-editor controls (fixed in `edit.astro`) plus a focused
+built-SSR markup assertion proving each `for` resolves to exactly one
+control with a distinct label (added to the step-2 reopen check below).
 
 Requires ``HULLQ_TEST_DATABASE_URL`` and a pre-built Astro web package
 (``cd web && npm ci && npm run build``).
@@ -85,6 +100,18 @@ _NEG_MODEL_ID = "BM-0087-NEG"
 _NEG_LISTING_ID = "NL-0087-NEG"
 _NEG_ORG_ID = "ORG-0087-NEG"
 _NEG_ACCOUNT_ID = "ACC-0087-NEG"
+
+# Review amendment Finding A: one additional confirmed design/listing per
+# remaining public hull_material token (GRP_FIBERGLASS is already proven by
+# the main fixture above), each its own Organization/account/listing so a
+# real built-SSR request for one token can be proven absent from every
+# other token's own result. (public token, BoatDesign raw value, locale
+# display label).
+_MATERIAL_FIXTURES: tuple[tuple[str, str, str], ...] = (
+    ("STEEL", "steel", "Steel"),
+    ("ALUMINUM", "aluminium", "Aluminum"),
+    ("WOOD", "wood", "Wood"),
+)
 
 
 def _base_db_url() -> str:
@@ -289,6 +316,7 @@ def _insert_boat_design(
     *,
     beam_m: float | None,
     hull_material: str | None,
+    keel_type: str | None = None,
 ) -> None:
     with conn.cursor() as cur:
         cur.execute(
@@ -300,6 +328,7 @@ def _insert_boat_design(
             {
                 "dimensions": {"beam_m": beam_m},
                 "construction": {"hull_material": hull_material},
+                "appendages": {"keel_type": keel_type},
             }
         )
         cur.execute(
@@ -585,6 +614,8 @@ def main() -> int:
             BuildYearClaim,
             HullMaterial,
             HullMaterialClaim,
+            KeelConfiguration,
+            KeelConfigurationClaim,
             PhysicalBoatClaimRevisionId,
             PhysicalBoatClaimSnapshot,
         )
@@ -597,6 +628,10 @@ def main() -> int:
         from hullq.search.hull_material_design_bridge import (
             HULL_MATERIAL_FIELD_POINTER,
             lookup_hull_material_canonical_value,
+        )
+        from hullq.search.keel_design_bridge import (
+            KEEL_TYPE_FIELD_POINTER,
+            lookup_keel_canonical_value,
         )
         from hullq.security.session_token import mint_session_token
 
@@ -615,9 +650,16 @@ def main() -> int:
 
         conn = psycopg.connect(url)
         try:
-            # --- Main design/listing: both facets confirmed, consistent ---
+            # --- Main design/listing: both new facets confirmed, consistent,
+            # plus a legacy hard criterion (keel_configuration) so Finding A's
+            # mixed legacy+new real SSR request has a genuine design to match.
             _insert_boat_design(
-                conn, _DESIGN_ID, _MODEL_ID, beam_m=3.80, hull_material="grp_fiberglass"
+                conn,
+                _DESIGN_ID,
+                _MODEL_ID,
+                beam_m=3.80,
+                hull_material="grp_fiberglass",
+                keel_type="fin",
             )
             _admit_design_field(
                 conn,
@@ -637,6 +679,15 @@ def main() -> int:
                 fetch_canonical=lookup_hull_material_canonical_value,
                 is_decimal=False,
             )
+            _admit_design_field(
+                conn,
+                design_id=_DESIGN_ID,
+                field_pointer=KEEL_TYPE_FIELD_POINTER,
+                raw_value="fin",
+                resolution_id=f"FR-KEEL-{_DESIGN_ID}",
+                fetch_canonical=lookup_keel_canonical_value,
+                is_decimal=False,
+            )
 
             # --- Negative fixture: confirmed hull_material=wood_composite ---
             _insert_boat_design(
@@ -651,12 +702,29 @@ def main() -> int:
                 fetch_canonical=lookup_hull_material_canonical_value,
                 is_decimal=False,
             )
+
+            # --- Review amendment Finding A: one confirmed design per
+            # remaining public hull_material token (STEEL/ALUMINUM/WOOD) ---
+            for token, raw_value, _label in _MATERIAL_FIXTURES:
+                design_id = f"BD-0087-{token}"
+                model_id = f"BM-0087-{token}"
+                _insert_boat_design(conn, design_id, model_id, beam_m=None, hull_material=raw_value)
+                _admit_design_field(
+                    conn,
+                    design_id=design_id,
+                    field_pointer=HULL_MATERIAL_FIELD_POINTER,
+                    raw_value=raw_value,
+                    resolution_id=f"FR-HULLMAT-{design_id}",
+                    fetch_canonical=lookup_hull_material_canonical_value,
+                    is_decimal=False,
+                )
         finally:
             conn.close()
         print(
-            "0a. seeded two canonical BoatDesigns (main: 3.80 m beam / GRP_FIBERGLASS both "
-            "confirmed; negative: confirmed hull_material=wood_composite, no v0.1 mapping) "
-            "with real admitted FieldResolutions -> OK\n"
+            "0a. seeded canonical BoatDesigns: main (3.80 m beam / GRP_FIBERGLASS / FIN keel, "
+            "all confirmed), negative (confirmed hull_material=wood_composite, no v0.1 "
+            "mapping), and one each for STEEL/ALUMINUM/WOOD -- all with real admitted "
+            "FieldResolutions -> OK\n"
         )
 
         api_port = _free_port()
@@ -753,6 +821,9 @@ def main() -> int:
                         assertion_kind=AssertionKind.VALUE_ASSERTION,
                         value=HullMaterial.GRP_FIBERGLASS,
                     ),
+                    keel_configuration=KeelConfigurationClaim(
+                        assertion_kind=AssertionKind.VALUE_ASSERTION, value=KeelConfiguration.FIN
+                    ),
                 ),
             )
 
@@ -784,11 +855,49 @@ def main() -> int:
                     ),
                 ),
             )
+
+            # --- Review amendment Finding A: one confirmed listing per
+            # remaining public hull_material token (STEEL/ALUMINUM/WOOD) ---
+            material_identities: dict[str, tuple[Any, Any, Any]] = {}
+            for token, _raw_value, _label in _MATERIAL_FIXTURES:
+                design_id = f"BD-0087-{token}"
+                listing_id = f"NL-0087-{token}"
+                org_id = f"ORG-0087-{token}"
+                account_id = f"ACC-0087-{token}"
+                m_account, m_org, m_membership = _seed_org_account_listing(
+                    conn,
+                    org_id=org_id,
+                    account_id=account_id,
+                    listing_id=listing_id,
+                    physical_boat_id=f"PB-0087-{token}",
+                    market_episode_id=f"ME-0087-{token}",
+                    design_id=design_id,
+                )
+                write_physical_boat_claim_revision(
+                    conn,
+                    account_id=m_account,
+                    candidate_organization=m_org,
+                    membership=m_membership,
+                    native_listing_id=NativeListingId(listing_id),
+                    revision_id=PhysicalBoatClaimRevisionId(f"PBCREV-0087-{token}-1"),
+                    expected_current_revision_id=None,
+                    claims=PhysicalBoatClaimSnapshot(
+                        marketed_brand_claim="Jeanneau",
+                        model_designation_claim="Sun Odyssey",
+                        build_year=BuildYearClaim(
+                            assertion_kind=AssertionKind.VALUE_ASSERTION, value=2020
+                        ),
+                        hull_material=HullMaterialClaim(
+                            assertion_kind=AssertionKind.VALUE_ASSERTION, value=HullMaterial(token)
+                        ),
+                    ),
+                )
+                material_identities[token] = (m_account, m_org, m_membership)
         finally:
             conn.close()
         print(
-            "3. seeded ORG_A (main, PUBLISHER, lifecycle-DRAFT) plus the negative fixture "
-            "Organization/listing -> OK\n"
+            "3. seeded ORG_A (main, PUBLISHER, lifecycle-DRAFT) plus the negative fixture and "
+            "one STEEL/ALUMINUM/WOOD Organization/listing each -> OK\n"
         )
 
         session = BrowserSession()
@@ -824,6 +933,12 @@ def main() -> int:
         )
 
         # --- 2. broker claim save (real HTTP write) + real re-GET reopen ----
+        # Mirrors the real built editor's full-snapshot form submission: a
+        # genuine browser POST re-submits every currently-selected claim
+        # field, not only the two this amendment is proving -- omitting
+        # keel_configuration here would itself silently erase the main
+        # listing's already-confirmed FIN claim on this save (the write path
+        # replaces the whole snapshot, it does not patch individual fields).
         save_fields = {
             "action": "save_claim",
             "revision_id": "PBCREV-0087-MAIN-2",
@@ -832,6 +947,8 @@ def main() -> int:
             "model_designation_claim": "42",
             "build_year_kind": "VALUE_ASSERTION",
             "build_year_value": "2019",
+            "keel_configuration_kind": "VALUE_ASSERTION",
+            "keel_configuration_value": "FIN",
             "beam_kind": "VALUE_ASSERTION",
             "beam_value": "3.80",
             "hull_material_kind": "VALUE_ASSERTION",
@@ -862,13 +979,43 @@ def main() -> int:
             f"GRP_FIBERGLASS claim from durable state -> {'OK' if reopen_ok else 'FAIL'}\n"
         )
 
-        # --- 3. publish DRAFT -> ACTIVE for both listings --------------------
+        # Review amendment Finding B: the four new claim-editor controls each
+        # have exactly one real rendered <label for="..."> paired with
+        # exactly one real element carrying that same id, and the four label
+        # texts are pairwise distinct -- a fieldset legend alone is never an
+        # individual control's accessible name.
+        _new_control_ids = ("beam_kind", "beam_value", "hull_material_kind", "hull_material_value")
+        _new_control_labels = (
+            "Beam assertion status",
+            "Overall beam in metres",
+            "Hull material assertion status",
+            "Hull material value",
+        )
+        accessibility_ok = (
+            all(page_text.count(f'id="{control_id}"') == 1 for control_id in _new_control_ids)
+            and all(page_text.count(f'for="{control_id}"') == 1 for control_id in _new_control_ids)
+            and all(label in page_text for label in _new_control_labels)
+            and len(set(_new_control_labels)) == len(_new_control_labels)
+        )
+        ok &= accessibility_ok
+        print(
+            "   real built-SSR markup: each new beam/hull_material control has a unique id "
+            f"paired with exactly one label, and all four labels are distinct -> "
+            f"{'OK' if accessibility_ok else 'FAIL'}\n"
+        )
+
+        # --- 3. publish DRAFT -> ACTIVE for every listing --------------------
         conn = psycopg.connect(url)
         try:
             attach_d22_minimum_cover_image(conn, listing_id=_LISTING_ID, account=account, org=org)
             attach_d22_minimum_cover_image(
                 conn, listing_id=_NEG_LISTING_ID, account=neg_account, org=neg_org
             )
+            for token, _raw_value, _label in _MATERIAL_FIXTURES:
+                m_account, m_org, _m_membership = material_identities[token]
+                attach_d22_minimum_cover_image(
+                    conn, listing_id=f"NL-0087-{token}", account=m_account, org=m_org
+                )
             conn.commit()
         finally:
             conn.close()
@@ -886,9 +1033,25 @@ def main() -> int:
         )
         neg_published_ok = status == 200 and _json(body).get("outcome") == "PUBLISHED"
         ok &= neg_published_ok
+
+        material_published_ok = True
+        for token, _raw_value, _label in _MATERIAL_FIXTURES:
+            m_session = BrowserSession()
+            m_session.jar.set_cookie(
+                _cookie(f"ACC-0087-{token}", _mint_cookie(f"ACC-0087-{token}"))
+            )
+            status, _, body = m_session.post_json(
+                f"{api_base}/api/broker/organizations/ORG-0087-{token}"
+                f"/inventory/NL-0087-{token}/publish",
+                {},
+                extra_headers=_csrf_headers(web_base, _LIFECYCLE_CSRF_HEADER_VALUE),
+            )
+            material_published_ok &= status == 200 and _json(body).get("outcome") == "PUBLISHED"
+        ok &= material_published_ok
         print(
-            "3. real publish transitions DRAFT -> ACTIVE for both listings -> "
-            f"{'OK' if (published_ok and neg_published_ok) else 'FAIL'}\n"
+            "3. real publish transitions DRAFT -> ACTIVE for every listing (main, negative, "
+            f"STEEL/ALUMINUM/WOOD) -> "
+            f"{'OK' if (published_ok and neg_published_ok and material_published_ok) else 'FAIL'}\n"
         )
 
         # --- 4. public buyer Search SSR, each new facet alone ----------------
@@ -951,6 +1114,66 @@ def main() -> int:
         print(
             "4b. the same combined-match page also renders the separate design/configuration-"
             f"level evidence -> {'OK' if design_evidence_ok else 'FAIL'}\n"
+        )
+
+        # --- 4c. Review amendment Finding A: real built-SSR positive match
+        # for each remaining public hull_material token, each absent from
+        # every other token's own result (never only a nonzero API count) --
+        all_listing_ids = {_LISTING_ID, _NEG_LISTING_ID} | {
+            f"NL-0087-{other_token}" for other_token, _, _ in _MATERIAL_FIXTURES
+        }
+        material_checks_ok = True
+        for token, _raw_value, label in _MATERIAL_FIXTURES:
+            listing_id = f"NL-0087-{token}"
+            other_listing_ids = all_listing_ids - {listing_id}
+            status, _, body = session.get(f"{web_base}/en/search?hull_material={token}")
+            page_text = body.decode("utf-8")
+            token_ok = (
+                status == 200
+                and listing_id in page_text
+                and "Confirmed matches (1)" in page_text
+                and f"broker-declared hull material: {label} (not independently verified)"
+                in page_text
+                and all(other_id not in page_text for other_id in other_listing_ids)
+            )
+            material_checks_ok &= token_ok
+            print(
+                f"4c. public Search SSR, hull_material={token} -> real built-SSR confirmed "
+                f"match, absent from every other material's own result -> "
+                f"{'OK' if token_ok else 'FAIL'}"
+            )
+        ok &= material_checks_ok
+        print()
+
+        # --- 4d. Review amendment Finding A: a real built-SSR request mixing
+        # a legacy accepted hard criterion (keel_configuration) with both new
+        # facets, with every criterion's own evidence actually rendered -----
+        mixed_query = (
+            "beam_max=4.4&beam_min=3.2&hull_material=GRP_FIBERGLASS&keel_configuration=FIN"
+        )
+        status, headers, body = session.get(f"{web_base}/en/search?{mixed_query}")
+        page_text = body.decode("utf-8")
+        _mixed_checks = {
+            "status": status == 200,
+            "listing_id": _LISTING_ID in page_text,
+            "count": "Confirmed matches (1)" in page_text,
+            "beam_evidence": "broker-declared overall beam: 3.80 m (not independently verified)"
+            in page_text,
+            "hull_material_evidence": (
+                "broker-declared hull material: GRP / fiberglass (not independently verified)"
+                in page_text
+            ),
+            "keel_evidence": (
+                "broker-declared keel configuration: Fin keel (not independently verified)"
+                in page_text
+            ),
+        }
+        mixed_ok = all(_mixed_checks.values())
+        ok &= mixed_ok
+        print(
+            "4d. public Search SSR, beam_min/beam_max + hull_material mixed with a legacy "
+            "hard criterion (keel_configuration=FIN) -> real built-SSR confirmed match with "
+            f"every criterion's own evidence rendered -> {'OK' if mixed_ok else 'FAIL'}\n"
         )
 
         # --- 5. all five public Search locales, combined scenario ------------

@@ -1121,7 +1121,8 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
 
                 <fieldset>
                   <legend>Overall beam (meters)</legend>
-                  <select name="beam_kind">
+                  <label for="beam_kind">Beam assertion status</label>
+                  <select id="beam_kind" name="beam_kind">
                     {UNKNOWN_ONLY.map((kind) => (
                       <option
                         value={kind}
@@ -1133,7 +1134,9 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
                       </option>
                     ))}
                   </select>
+                  <label for="beam_value">Overall beam in metres</label>
                   <input
+                    id="beam_value"
                     type="text"
                     name="beam_value"
                     value={(currentWire(claim, "physical_boat.beam")?.value as string) ?? ""}
@@ -1142,7 +1145,8 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
 
                 <fieldset>
                   <legend>Hull material</legend>
-                  <select name="hull_material_kind">
+                  <label for="hull_material_kind">Hull material assertion status</label>
+                  <select id="hull_material_kind" name="hull_material_kind">
                     {UNKNOWN_ONLY.map((kind) => (
                       <option
                         value={kind}
@@ -1155,7 +1159,8 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
                       </option>
                     ))}
                   </select>
-                  <select name="hull_material_value">
+                  <label for="hull_material_value">Hull material value</label>
+                  <select id="hull_material_value" name="hull_material_value">
                     {HULL_MATERIALS.map((value) => (
                       <option
                         value={value}
