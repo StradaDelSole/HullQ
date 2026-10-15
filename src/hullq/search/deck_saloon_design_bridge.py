@@ -16,18 +16,34 @@ logic needed here (slice: "v0.5 missing/unknown design stays UNKNOWN").
 Normative mapping (slice "Public accepted candidate facet #7 — deck
 saloon / pilothouse"):
 
-    deck_saloon -> DECK_SALOON
-    pilothouse  -> PILOTHOUSE
-    none, unknown -> no mapping (MISSING)
+    deck_saloon -> DECK_SALOON   (public filter value)
+    pilothouse  -> PILOTHOUSE    (public filter value)
+    none        -> internal-only NONE sentinel (never a public filter value)
+    unknown     -> no mapping (MISSING)
 
-`none` is deliberately excluded from the taxonomy map (not mapped to a
-Search-side "NONE" sentinel): the accepted public vocabulary for this
-criterion is `DECK_SALOON`/`PILOTHOUSE` only (a public `NONE` filter is
-explicitly deferred), and every other categorical bridge in this codebase
-(`keel_design_bridge`) follows the identical "unmapped raw value -> MISSING"
-rule for a legitimate-but-unsupported-as-a-search-value raw token, never a
-bespoke non-match sentinel. `DECK_SALOON` and `PILOTHOUSE` are never merged
-or treated as entailing one another.
+PR #349 independent-review Finding A: a genuinely qualified, source-backed
+`none` is a *known* fact (the design positively does not have a deck saloon/
+pilothouse) and must not collapse to the same `MISSING` an unqualified or
+`unknown` value produces -- the slice's own normative text requires `NONE`
+to remain "a confirmed positive claim of absence ... mechanically distinct
+... from an explicit UNKNOWN assertion", and that distinction is preserved
+here on the design side too, not only on the concrete-claim side. `none`
+therefore DOES get a taxonomy-map entry, to the internal-only sentinel
+`_DECK_SALOON_NONE_SENTINEL` ("NONE") -- never a member of
+`SEARCH_DECK_SALOON_VALUES`, never accepted by
+`compatible_boat_design_ids_for_deck_saloon`/any public parser's
+`allowed_values`. Because the ordinary categorical MUST-AND evaluator
+(`hullq.search.criteria.evaluate_categorical_leaf`) compares a `CONFIRMED`
+projected value against the *requested* `DECK_SALOON`/`PILOTHOUSE` value by
+plain string equality, a confirmed `"NONE"` projection naturally and
+correctly evaluates FALSE (a true, typed non-match) against either
+requested public category, with no bespoke non-match branch and no second
+evaluator -- exactly "Concrete DeckSaloon.NONE already yields an exact FALSE
+against requested positive categories; keep that" (Finding A), now mirrored
+on the design side. `unknown` keeps no taxonomy-map entry at all and still
+fails closed to `MISSING` (never confused with the confirmed-known-absence
+case). `DECK_SALOON` and `PILOTHOUSE` are never merged or treated as
+entailing one another.
 
 Does not implement: BuyerRequirements, PREFER/DONT_CARE, ranking, a public
 `NONE` filter, or any mapping beyond the explicit rules above.
@@ -54,6 +70,7 @@ __all__ = [
     "BOAT_DESIGN_DECK_SALOON_TO_SEARCH_DECK_SALOON",
     "DECK_SALOON_FIELD_POINTER",
     "DECK_SALOON_FIELD_PROJECTION_SPEC",
+    "DECK_SALOON_NONE_SENTINEL",
     "DECK_SALOON_OVERRIDE_FIELD_POINTER",
     "DECK_SALOON_PROJECTION_FIELD",
     "SEARCH_DECK_SALOON_VALUES",
@@ -71,19 +88,50 @@ DECK_SALOON_PROJECTION_FIELD: Final = "deck_saloon"
 DECK_SALOON_FIELD_POINTER: Final = "/baseline/deck/deck_saloon"
 DECK_SALOON_OVERRIDE_FIELD_POINTER: Final = "/overrides/deck/deck_saloon"
 
-#: Normative v0.1 mapping. `none`/`unknown` have no authorized v0.1 mapping
-#: and fail closed to MISSING (this module's docstring).
+#: Normative v0.1 PUBLIC mapping -- the only two tokens the public Search
+#: filter accepts (`SEARCH_DECK_SALOON_VALUES` below is derived from exactly
+#: this dict, so it can never silently widen). `none` is deliberately NOT a
+#: member here: it is a real, independently qualifiable design value (see
+#: `_BOAT_DESIGN_DECK_SALOON_TO_INTERNAL` below) but never a public filter
+#: token (slice: "a public NONE filter is explicitly deferred").
 BOAT_DESIGN_DECK_SALOON_TO_SEARCH_DECK_SALOON: Final[dict[str, str]] = {
     "deck_saloon": "DECK_SALOON",
     "pilothouse": "PILOTHOUSE",
 }
 
-#: The exact accepted public v0.1 `deck_saloon` query values.
+#: The exact accepted public v0.1 `deck_saloon` query values -- explicit and
+#: bounded to the PUBLIC map above, so adding the internal NONE sentinel
+#: below can never accidentally widen this set.
 SEARCH_DECK_SALOON_VALUES: Final[frozenset[str]] = frozenset(
     BOAT_DESIGN_DECK_SALOON_TO_SEARCH_DECK_SALOON.values()
 )
 
-#: This criterion's shared-bridge field-projection contract.
+#: Internal-only sentinel for a qualified, positively-asserted absence of a
+#: deck saloon/pilothouse (PR #349 review Finding A). Never a member of
+#: `SEARCH_DECK_SALOON_VALUES`, never returned by `allowed_values`/accepted
+#: by any public or broker-facing parser -- it exists solely as the
+#: `QualifiedCategoricalValue.value` a CONFIRMED `none` design fact projects
+#: to, so the ordinary categorical MUST-AND evaluator can correctly classify
+#: it as a confirmed non-match against a requested `DECK_SALOON`/
+#: `PILOTHOUSE` value, rather than collapsing it into the same `MISSING` an
+#: `unknown`/unqualified value produces.
+DECK_SALOON_NONE_SENTINEL: Final = "NONE"
+
+#: The full internal taxonomy this bridge's `FieldProjectionSpec` actually
+#: qualifies against -- every public value plus the internal NONE sentinel.
+#: `unknown` is deliberately absent from this dict too (no entry => fails
+#: closed to MISSING via the shared bridge's `_qualify_and_map`, exactly
+#: like every other unmapped raw token in this codebase).
+_BOAT_DESIGN_DECK_SALOON_TO_INTERNAL: Final[dict[str, str]] = {
+    **BOAT_DESIGN_DECK_SALOON_TO_SEARCH_DECK_SALOON,
+    "none": DECK_SALOON_NONE_SENTINEL,
+}
+
+#: This criterion's shared-bridge field-projection contract. Uses the full
+#: internal taxonomy (including the NONE sentinel), not the public-only map
+#: -- the public/private boundary is enforced separately by
+#: `SEARCH_DECK_SALOON_VALUES`/`compatible_boat_design_ids_for_deck_saloon`,
+#: never by narrowing what this bridge can qualify.
 DECK_SALOON_FIELD_PROJECTION_SPEC: Final = FieldProjectionSpec(
     projection_field=DECK_SALOON_PROJECTION_FIELD,
     section_key="deck",
@@ -92,7 +140,7 @@ DECK_SALOON_FIELD_PROJECTION_SPEC: Final = FieldProjectionSpec(
     override_pointer=DECK_SALOON_OVERRIDE_FIELD_POINTER,
     decode=decode_categorical_string_for_qualification,
     is_numeric=False,
-    taxonomy_map=BOAT_DESIGN_DECK_SALOON_TO_SEARCH_DECK_SALOON,
+    taxonomy_map=_BOAT_DESIGN_DECK_SALOON_TO_INTERNAL,
 )
 
 #: The only accepted `hullq.persistence.field_resolution.FetchCanonicalValue`
@@ -124,7 +172,8 @@ def compatible_boat_design_ids_for_deck_saloon(
     """Return the `design_id`s that are a design-level `CONFIRMED_MATCH` for `deck_saloon`.
 
     *deck_saloon* must already be one of `SEARCH_DECK_SALOON_VALUES` -- never
-    a raw BoatDesign `deck_saloon` spelling. A `CONFIRMED_NON_MATCH` or
+    a raw BoatDesign `deck_saloon` spelling and never the internal
+    `DECK_SALOON_NONE_SENTINEL`. A `CONFIRMED_NON_MATCH` or
     `INSUFFICIENT_DATA` design-level result is simply not included.
     """
     if deck_saloon not in SEARCH_DECK_SALOON_VALUES:

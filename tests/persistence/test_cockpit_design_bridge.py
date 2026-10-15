@@ -252,6 +252,123 @@ def test_cockpit_count_missing_never_blocks_qualified_cockpit_position(conn: Any
 
 
 # ---------------------------------------------------------------------------
+# PR #349 review Finding B: MULTIPLE + cockpit_count consistency
+# ---------------------------------------------------------------------------
+
+
+def test_multiple_with_count_one_fails_closed(conn: Any) -> None:
+    """MULTIPLE requires corroborated distinct physical cockpits -- a
+    confirmed `cockpit_count == 1` directly contradicts that and must never
+    be a confirmed positive match (an impossible single-cockpit MULTIPLE
+    must not falsely confirm)."""
+    design_id = "BD-CDB-MULTIPLE-COUNT-ONE"
+    design = _v06_design(design_id, cockpit_position="multiple", cockpit_count=1)
+    _admit(conn, design)
+    _admit_cockpit_position(conn, design_id, "multiple")
+    _admit_cockpit_count(conn, design_id, 1)
+    qualification, value = _cockpit_value(conn, design)
+    assert qualification is ValueQualification.MISSING
+    assert value is None
+
+
+def test_multiple_with_count_zero_fails_closed(conn: Any) -> None:
+    """Covered generically by the count==0 contradiction check, but proven
+    explicitly for MULTIPLE too."""
+    design_id = "BD-CDB-MULTIPLE-COUNT-ZERO"
+    design = _v06_design(design_id, cockpit_position="multiple", cockpit_count=0)
+    _admit(conn, design)
+    _admit_cockpit_position(conn, design_id, "multiple")
+    _admit_cockpit_count(conn, design_id, 0)
+    qualification, value = _cockpit_value(conn, design)
+    assert qualification is ValueQualification.MISSING
+    assert value is None
+
+
+def test_multiple_with_count_two_still_confirms(conn: Any) -> None:
+    """A confirmed count of two or more is consistent with MULTIPLE and
+    remains a confirmed positive match."""
+    design_id = "BD-CDB-MULTIPLE-COUNT-TWO"
+    design = _v06_design(design_id, cockpit_position="multiple", cockpit_count=2)
+    _admit(conn, design)
+    _admit_cockpit_position(conn, design_id, "multiple")
+    _admit_cockpit_count(conn, design_id, 2)
+    qualification, value = _cockpit_value(conn, design)
+    assert qualification is ValueQualification.CONFIRMED
+    assert value == "MULTIPLE"
+
+
+def test_multiple_with_count_unqualified_still_confirms(conn: Any) -> None:
+    """`cockpit_count` is never fabricated as mandatory evidence -- MULTIPLE
+    alone, with count unresolved, still confirms."""
+    design_id = "BD-CDB-MULTIPLE-COUNT-UNQUALIFIED"
+    design = _v06_design(design_id, cockpit_position="multiple", cockpit_count=2)
+    _admit(conn, design)
+    _admit_cockpit_position(conn, design_id, "multiple")
+    # Deliberately no _admit_cockpit_count call: cockpit_count stays unresolved.
+    qualification, value = _cockpit_value(conn, design)
+    assert qualification is ValueQualification.CONFIRMED
+    assert value == "MULTIPLE"
+
+
+def test_single_positions_with_count_one_are_unaffected_by_the_multiple_check(
+    conn: Any,
+) -> None:
+    """The MULTIPLE+count==1 contradiction check is specific to MULTIPLE --
+    AFT/CENTER/FORWARD paired with a confirmed count of one is consistent
+    (one cockpit, at that one position) and must still confirm."""
+    design_id = "BD-CDB-AFT-COUNT-ONE"
+    design = _v06_design(design_id, cockpit_position="aft", cockpit_count=1)
+    _admit(conn, design)
+    _admit_cockpit_position(conn, design_id, "aft")
+    _admit_cockpit_count(conn, design_id, 1)
+    qualification, value = _cockpit_value(conn, design)
+    assert qualification is ValueQualification.CONFIRMED
+    assert value == "AFT"
+
+
+def test_named_variant_count_override_cannot_bypass_the_multiple_consistency_check(
+    conn: Any,
+) -> None:
+    """A NamedVariant overriding `cockpit_count` to 1 while inheriting (or
+    itself asserting) `cockpit_position=multiple` must still fail closed --
+    the per-configuration cross-check applies independently to each
+    resolved configuration's own qualified count, never bypassed by
+    override/inheritance plumbing."""
+    design_id = "BD-CDB-VAR-MULTIPLE-BYPASS"
+    design = _v06_design(design_id, cockpit_position="multiple", cockpit_count=2)
+    design["named_variants"] = [
+        {"id": "VAR-CDB-MULTIPLE-BYPASS", "overrides": {"deck": {"cockpit_count": 1}}}
+    ]
+    _admit(conn, design)
+    _admit_cockpit_position(conn, design_id, "multiple")
+    _admit_cockpit_count(conn, design_id, 2)
+    admit_resolved_draft_max(
+        conn,
+        subject_kind=SubjectKind.NAMED_VARIANT,
+        subject_id="VAR-CDB-MULTIPLE-BYPASS",
+        field_pointer="/overrides/deck/cockpit_count",
+        value=Decimal(1),
+        resolution_id="FR-VAR-CDB-MULTIPLE-BYPASS",
+        fetch_canonical_value=lookup_cockpit_position_canonical_value,
+    )
+    config_set = build_boat_design_cockpit_position_set(conn, design)
+    baseline_config = next(
+        c for c in config_set.configurations if c.identity.configuration_id == f"{design_id}::baseline"
+    )
+    variant_config = next(
+        c
+        for c in config_set.configurations
+        if c.identity.configuration_id == f"{design_id}::VAR-CDB-MULTIPLE-BYPASS"
+    )
+    baseline_qualified = baseline_config.projection.get_categorical(COCKPIT_POSITION_PROJECTION_FIELD)
+    variant_qualified = variant_config.projection.get_categorical(COCKPIT_POSITION_PROJECTION_FIELD)
+    assert baseline_qualified.qualification is ValueQualification.CONFIRMED
+    assert baseline_qualified.value == "MULTIPLE"
+    assert variant_qualified.qualification is ValueQualification.MISSING
+    assert variant_qualified.value is None
+
+
+# ---------------------------------------------------------------------------
 # compatible_boat_design_ids_for_cockpit_position
 # ---------------------------------------------------------------------------
 

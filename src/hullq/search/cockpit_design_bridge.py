@@ -33,6 +33,22 @@ persisted payloads") and fails closed to `MISSING`, never a confirmed
 positive match. A missing/unqualified `cockpit_count` never blocks an
 otherwise independently qualified `cockpit_position`.
 
+PR #349 independent-review Finding B: `MULTIPLE` requires corroborated
+*distinct physical cockpits* (slice normative cockpit semantics: "at least
+two distinct actual physical cockpits, NOT split helm/seating zones in
+one"), so a confirmed `cockpit_position=multiple` together with a
+separately confirmed `cockpit_count == 1` is exactly as contradictory as
+`cockpit_count == 0` with any confirmed position, and fails closed to
+`MISSING` the same way -- never a confirmed `MULTIPLE` match on a boat whose
+own count says there is only one cockpit. This check is specific to
+`MULTIPLE`: a confirmed `AFT`/`CENTER`/`FORWARD` position paired with
+`cockpit_count == 1` is consistent (one cockpit, at that one position) and
+is not affected. A confirmed `cockpit_count >= 2` alongside `MULTIPLE` is
+consistent and remains a confirmed match; a missing/unqualified
+`cockpit_count` never blocks `MULTIPLE` either (count is never fabricated as
+mandatory evidence). No automatic ban on any other position/deck-saloon
+combination is introduced by this check.
+
 Does not implement: BuyerRequirements, PREFER/DONT_CARE, ranking, `helm_type`/
 `helm_count`, or any mapping beyond the explicit rules above.
 """
@@ -144,6 +160,15 @@ def _derive_cockpit_position(projection: ConfigurationProjection) -> QualifiedCa
         # A confirmed non-unknown cockpit position together with a confirmed
         # cockpit_count of zero is contradictory -- never a confirmed
         # positive match.
+        return QualifiedCategoricalValue(value=None, qualification=ValueQualification.MISSING)
+    if (
+        mapped.value == "MULTIPLE"
+        and count.qualification is ValueQualification.CONFIRMED
+        and count.value == 1
+    ):
+        # PR #349 review Finding B: MULTIPLE means corroborated distinct
+        # physical cockpits -- a confirmed count of exactly one directly
+        # contradicts that, and must never be a confirmed positive match.
         return QualifiedCategoricalValue(value=None, qualification=ValueQualification.MISSING)
     return QualifiedCategoricalValue(value=mapped.value, qualification=ValueQualification.CONFIRMED)
 

@@ -21,6 +21,7 @@ import {
   SEARCH_RUDDER_CONFIGURATION_VALUES,
   type DraftOnlyConfirmedMatch,
   type NativeInventoryConfirmedMatch,
+  type SearchLeafCriterion,
 } from "../lib/searchApi";
 import type { SearchPageData } from "../lib/searchPageData";
 import { searchText, type SupportedLocale } from "../lib/searchText";
@@ -94,6 +95,31 @@ function cockpitLabel(value: string): string {
 
 function deckSaloonLabel(value: string): string {
   return (t.deckSaloonLabels as Record<string, string>)[value] ?? value;
+}
+
+// PR #349 independent-review Finding D: the design/configuration-level
+// evidence rendering below needs the exact same "requested condition" text
+// the already-reviewed private broker Search-fit page produces
+// (`web/src/pages/broker/.../edit.astro`'s own `describeCriterion`) --
+// technical field/comparison/value tokens stay language-neutral verbatim
+// (item K), never re-translated or re-derived from explanation text.
+function describeCriterion(criterion: SearchLeafCriterion): string {
+  if (criterion.kind === "NUMERIC") {
+    if (criterion.comparison === "MAXIMUM") {
+      return `${criterion.field} <= ${criterion.threshold_max}`;
+    }
+    if (criterion.comparison === "MINIMUM") {
+      return `${criterion.field} >= ${criterion.threshold_min}`;
+    }
+    return `${criterion.field} in [${criterion.threshold_min}, ${criterion.threshold_max}]`;
+  }
+  return `${criterion.field} = ${criterion.equals}`;
+}
+
+function truthLabel(truth: "TRUE" | "FALSE" | "UNKNOWN"): string {
+  if (truth === "TRUE") return t.truthTrueLabel;
+  if (truth === "FALSE") return t.truthFalseLabel;
+  return t.truthUnknownLabel;
 }
 
 function draftEvidenceText(match: NativeInventoryConfirmedMatch): string | null {
@@ -461,6 +487,46 @@ const nativeInventoryMatches: NativeInventoryConfirmedMatch[] =
                       {match.freshness_status === "DUE_FOR_CONFIRMATION" && (
                         <p aria-label="freshness due note">{t.freshnessDueNote}</p>
                       )}
+                      {
+                        // PR #349 independent-review Finding D: the design/
+                        // configuration-level evidence FastAPI already
+                        // returns alongside the concrete evidence above --
+                        // rendered distinctly, never merged with/implied by
+                        // the concrete PhysicalBoat claim lines (contract:
+                        // "design truth separated from physical-offer
+                        // truth", docs/PRODUCT_UX_PRINCIPLES.md §15 minimum
+                        // 5). Every evaluated configuration is listed with
+                        // its OWN truth -- never implying every NamedVariant
+                        // matches merely because the listing overall
+                        // confirmed via a different one, and a genuinely
+                        // UNKNOWN per-criterion evaluation is shown as
+                        // UNKNOWN, never silently dropped or upgraded.
+                        match.design_configuration_evidence.length > 0 && (
+                          <div aria-label="design configuration evidence">
+                            <p>{t.designEvidenceHeading}</p>
+                            <ul>
+                              {match.design_configuration_evidence.map((configEvidence) => (
+                                <li>
+                                  {t.designEvidenceConfigurationLabel}{" "}
+                                  <code>{configEvidence.configuration_id}</code>{" "}
+                                  ({truthLabel(configEvidence.truth)})
+                                  <ul>
+                                    {configEvidence.criterion_evidence.map((evidence) => (
+                                      <li>
+                                        {describeCriterion(evidence.criterion)}:{" "}
+                                        {truthLabel(evidence.truth)}
+                                        {evidence.observed_value !== null && (
+                                          <> — {evidence.observed_value}</>
+                                        )}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )
+                      }
                       {" "}
                       <button
                         type="button"

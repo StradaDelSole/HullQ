@@ -53,6 +53,16 @@ export interface SearchText {
   resolvedHullText: (hullLabel: string) => string;
   resolvedCockpitText: (cockpitLabel: string) => string;
   resolvedDeckSaloonText: (deckSaloonLabel: string) => string;
+  // PR #349 independent-review Finding D: design/configuration evidence
+  // shown distinct from this offer's own concrete claim evidence
+  // (`docs/PRODUCT_UX_PRINCIPLES.md` §15 minimum 5: "design truth separated
+  // from physical-offer truth"). `designEvidenceConfigurationLabel` prefixes
+  // the (language-neutral) configuration/variant identity string.
+  designEvidenceHeading: string;
+  designEvidenceConfigurationLabel: string;
+  truthTrueLabel: string;
+  truthFalseLabel: string;
+  truthUnknownLabel: string;
   draftMaxLabel: string;
   draftMaxPlaceholder: string;
   keelConfigurationLabel: string;
@@ -206,6 +216,11 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       `broker-declared cockpit position: ${cockpitLabel} (not independently verified)`,
     resolvedDeckSaloonText: (deckSaloonLabel) =>
       `broker-declared deck saloon/pilothouse: ${deckSaloonLabel} (not independently verified)`,
+    designEvidenceHeading: "Design/configuration specification (separate from this boat's own claim)",
+    designEvidenceConfigurationLabel: "Configuration",
+    truthTrueLabel: "confirmed",
+    truthFalseLabel: "not met",
+    truthUnknownLabel: "unknown",
     draftMaxLabel: "Maximum draft (metres)",
     draftMaxPlaceholder: "1.6",
     keelConfigurationLabel: "Keel configuration",
@@ -340,6 +355,11 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       `vom Makler angegebene Cockpit-Position: ${cockpitLabel} (nicht unabhängig verifiziert)`,
     resolvedDeckSaloonText: (deckSaloonLabel) =>
       `vom Makler angegebener Decksalon/Pilothouse: ${deckSaloonLabel} (nicht unabhängig verifiziert)`,
+    designEvidenceHeading: "Design-/Konfigurationsspezifikation (getrennt von der Angabe des Maklers)",
+    designEvidenceConfigurationLabel: "Konfiguration",
+    truthTrueLabel: "bestätigt",
+    truthFalseLabel: "nicht erfüllt",
+    truthUnknownLabel: "unbekannt",
     draftMaxLabel: "Maximaler Tiefgang (Meter)",
     draftMaxPlaceholder: "1.6",
     keelConfigurationLabel: "Kielkonfiguration",
@@ -474,6 +494,11 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       `position de cockpit déclarée par le courtier : ${cockpitLabel} (non vérifiée de manière indépendante)`,
     resolvedDeckSaloonText: (deckSaloonLabel) =>
       `salon de pont/timonerie déclaré par le courtier : ${deckSaloonLabel} (non vérifié de manière indépendante)`,
+    designEvidenceHeading: "Spécification du design/de la configuration (distincte de la déclaration du courtier)",
+    designEvidenceConfigurationLabel: "Configuration",
+    truthTrueLabel: "confirmé",
+    truthFalseLabel: "non satisfait",
+    truthUnknownLabel: "inconnu",
     draftMaxLabel: "Tirant d'eau maximal (mètres)",
     draftMaxPlaceholder: "1.6",
     keelConfigurationLabel: "Configuration de quille",
@@ -609,6 +634,11 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       `posição de cockpit declarada pelo corretor: ${cockpitLabel} (não verificada de forma independente)`,
     resolvedDeckSaloonText: (deckSaloonLabel) =>
       `salão de convés/casa do leme declarado pelo corretor: ${deckSaloonLabel} (não verificado de forma independente)`,
+    designEvidenceHeading: "Especificação do design/configuração (separada da declaração do corretor)",
+    designEvidenceConfigurationLabel: "Configuração",
+    truthTrueLabel: "confirmado",
+    truthFalseLabel: "não cumprido",
+    truthUnknownLabel: "desconhecido",
     draftMaxLabel: "Calado máximo (metros)",
     draftMaxPlaceholder: "1.6",
     keelConfigurationLabel: "Configuração da quilha",
@@ -744,6 +774,11 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       `posición de bañera declarada por el bróker: ${cockpitLabel} (no verificada de forma independiente)`,
     resolvedDeckSaloonText: (deckSaloonLabel) =>
       `salón de cubierta/timonera declarado por el bróker: ${deckSaloonLabel} (no verificado de forma independiente)`,
+    designEvidenceHeading: "Especificación del diseño/configuración (independiente de la declaración del bróker)",
+    designEvidenceConfigurationLabel: "Configuración",
+    truthTrueLabel: "confirmado",
+    truthFalseLabel: "no cumplido",
+    truthUnknownLabel: "desconocido",
     draftMaxLabel: "Calado máximo (metros)",
     draftMaxPlaceholder: "1.6",
     keelConfigurationLabel: "Configuración de quilla",

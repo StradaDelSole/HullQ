@@ -130,15 +130,35 @@ export interface SearchCriterionEvidence {
   observed_value: string | null;
 }
 
+// PR #349 independent-review Finding D: mirrors
+// `src/hullq/api/app.py::_serialize_configuration_evidence` /
+// `hullq.application.native_inventory_query.ConfigurationEvidence` -- one
+// resolved BoatDesign/NamedVariant configuration's own truth plus its
+// per-criterion design-side evidence. `truth` is this configuration's own
+// aggregate truth (never implied to be TRUE for every variant merely
+// because the listing overall confirmed match via a different one) -- a
+// design with multiple NamedVariants may legitimately carry several
+// entries here, each with its own independent truth/evidence, exactly
+// mirroring the already-reviewed private broker Search-fit rendering
+// (`web/src/lib/brokerSearchFitApi.ts`'s `ConfigurationEvidence`).
+export interface SearchConfigurationEvidence {
+  configuration_id: string;
+  boat_design_id: string;
+  named_variant_id: string | null;
+  truth: "TRUE" | "FALSE" | "UNKNOWN";
+  criterion_evidence: SearchCriterionEvidence[];
+}
+
 /**
  * SLICE-0055 keel-only/mixed confirmed match
  * (`hullq.application.native_inventory_query.NativeInventoryCandidateEvaluation`).
- * Only the fields this bounded browser projection actually renders are
- * typed here -- `design_evaluation`/`design_configuration_evidence` are also
- * present on the real JSON body but are design-level evidence, out of scope
- * for this slice's buyer-facing concrete-match rendering (Required Behavior
- * §D uses `criterion_evidence`, the concrete PhysicalBoat-level evidence,
- * only).
+ * `criterion_evidence` is the concrete PhysicalBoat-level evidence
+ * (Required Behavior §D). `design_configuration_evidence` (PR #349 Finding
+ * D) is the separate design/configuration-level evidence for the exact same
+ * active criteria -- design truth kept visibly distinct from physical-offer
+ * truth, per `docs/PRODUCT_UX_PRINCIPLES.md` §15 minimum 5. Both are read
+ * verbatim from the real API body; neither is re-derived or re-evaluated
+ * client-side.
  */
 export interface NativeInventoryConfirmedMatch {
   native_listing_id: string;
@@ -146,6 +166,7 @@ export interface NativeInventoryConfirmedMatch {
   freshness_status: "CONFIRMED" | "DUE_FOR_CONFIRMATION";
   last_confirmed_at: string | null;
   criterion_evidence: SearchCriterionEvidence[];
+  design_configuration_evidence: SearchConfigurationEvidence[];
   /** SLICE-0071 contract §8B amendment: see `DraftOnlyConfirmedMatch.discovery_token`. */
   discovery_token: string;
 }
